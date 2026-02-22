@@ -1,0 +1,7 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "env": {
+    "AGENT_URL": "https://agent.tolley.io"
+  }
+}
