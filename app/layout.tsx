@@ -57,6 +57,14 @@ export default function RootLayout({
                     Wash &amp; Dry Rental
                   </Link>
                 </li>
+                <li aria-hidden="true" className="text-white/45">
+                  |
+                </li>
+                <li>
+                  <Link className="transition hover:text-white" href="/trailer">
+                    Trailer Rental
+                  </Link>
+                </li>
               </ul>
             </nav>
           </footer>

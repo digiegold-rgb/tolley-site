@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
+import { Fredoka } from "next/font/google";
 
+import { WdBubbles } from "@/components/wd/wd-bubbles";
 import { WdFooter } from "@/components/wd/wd-footer";
+import "./wd.css";
+
+const fredoka = Fredoka({
+  variable: "--font-fredoka",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
   title: "Wash & Dry Rental | Your KC Homes LLC",
@@ -16,7 +24,8 @@ export const metadata: Metadata = {
 
 export default function WdLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="wd-page">
+    <div className={`wd-page ${fredoka.variable}`}>
+      <WdBubbles />
       {children}
       <WdFooter />
     </div>

@@ -1,8 +1,13 @@
-import { WD_CONTACT_EMAIL, WD_CONTACT_PHONE, WD_PRICE_WASHER, WD_PRICE_BUNDLE } from "@/lib/wd";
+import {
+  WD_CONTACT_EMAIL,
+  WD_CONTACT_PHONE,
+  WD_PRICE_WASHER,
+  WD_PRICE_BUNDLE,
+} from "@/lib/wd";
 
 const faqs = [
   {
-    q: "What's included in the rental?",
+    q: "What\u2019s included in the rental?",
     a: "Every rental includes free delivery, professional installation, ongoing maintenance, and replacement coverage if a machine fails. You just pay the monthly subscription.",
   },
   {
@@ -11,11 +16,11 @@ const faqs = [
   },
   {
     q: "How do I cancel?",
-    a: "Cancel anytime before your next billing date — no cancellation fees. We'll schedule a pickup within 5 business days.",
+    a: "Cancel anytime before your next billing date \u2014 no cancellation fees. We\u2019ll schedule a pickup within 5 business days.",
   },
   {
     q: "What areas do you serve?",
-    a: "We cover the Kansas City metro including Independence, Lee's Summit, Blue Springs, Raytown, Grandview, Overland Park, Olathe, Liberty, Gladstone, Belton, and both Kansas City MO & KS. Contact us if you're unsure about your area.",
+    a: "We cover the Kansas City metro including Independence, Lee\u2019s Summit, Blue Springs, Raytown, Grandview, Overland Park, Olathe, Liberty, Gladstone, Belton, and both Kansas City MO & KS.",
   },
   {
     q: "What if my machine breaks down?",
@@ -23,23 +28,28 @@ const faqs = [
   },
   {
     q: "Do you offer referral discounts?",
-    a: "Yes — refer a friend and get 50% off your next month. Ask us for details when you sign up.",
+    a: "Yes \u2014 refer a friend and get 50% off your next month. Ask us for details when you sign up.",
   },
   {
     q: "How do I get support?",
-    a: `Email ${WD_CONTACT_EMAIL} or call ${WD_CONTACT_PHONE}. We're a local Kansas City business and respond fast.`,
+    a: `Email ${WD_CONTACT_EMAIL} or call ${WD_CONTACT_PHONE}. We\u2019re a local Kansas City business and respond fast.`,
   },
 ];
 
 export function WdFaq() {
   return (
-    <section className="rounded-3xl border border-white/18 bg-[linear-gradient(160deg,rgba(255,255,255,0.16),rgba(45,175,180,0.1)),rgba(8,7,15,0.58)] p-6 shadow-[0_20px_48px_rgba(3,2,10,0.62)] backdrop-blur-2xl sm:p-8">
-      <h2 className="text-lg font-semibold text-white/95">FAQ</h2>
-      <div className="mt-4 space-y-4">
+    <section className="rounded-2xl bg-white p-6 shadow-lg shadow-blue-100/50 sm:p-8">
+      <h2 className="text-xl font-bold text-blue-900">FAQ</h2>
+      <div className="mt-4 space-y-3">
         {faqs.map((item) => (
-          <div key={item.q} className="rounded-2xl border border-white/12 bg-black/22 p-4">
-            <h3 className="text-sm font-semibold text-white/90">{item.q}</h3>
-            <p className="mt-1 text-sm leading-7 text-white/74">{item.a}</p>
+          <div
+            key={item.q}
+            className="wd-card rounded-xl border border-blue-100 bg-blue-50/30 p-5"
+          >
+            <h3 className="font-bold text-blue-900">{item.q}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              {item.a}
+            </p>
           </div>
         ))}
       </div>

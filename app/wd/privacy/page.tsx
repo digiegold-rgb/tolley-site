@@ -45,7 +45,7 @@ const sections: PrivacySection[] = [
     items: [
       "All payments are processed through Stripe, a PCI-compliant payment processor.",
       "We do not store credit card numbers on our systems.",
-      "Stripe's privacy policy governs how they handle your payment data.",
+      "Stripe\u2019s privacy policy governs how they handle your payment data.",
     ],
   },
   {
@@ -80,11 +80,11 @@ const sections: PrivacySection[] = [
 function Section({ heading, items }: PrivacySection) {
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold text-white/94 sm:text-xl">{heading}</h2>
-      <ul className="space-y-2.5 text-sm leading-6 text-white/83 sm:text-[0.95rem]">
+      <h2 className="text-lg font-bold text-blue-900 sm:text-xl">{heading}</h2>
+      <ul className="space-y-2.5 text-sm leading-6 text-slate-700 sm:text-[0.95rem]">
         {items.map((item) => (
           <li key={item} className="flex gap-3">
-            <span className="mt-[0.6rem] h-1.5 w-1.5 shrink-0 rounded-full bg-teal-400/80" />
+            <span className="wd-bullet" />
             <span>{item}</span>
           </li>
         ))}
@@ -95,18 +95,16 @@ function Section({ heading, items }: PrivacySection) {
 
 export default function WdPrivacyPage() {
   return (
-    <main className="legal-page relative min-h-screen px-5 pt-10 pb-24 sm:px-8 sm:pt-14">
-      <div aria-hidden="true" className="portal-spotlight wd-spotlight-left" />
-      <div aria-hidden="true" className="portal-spotlight wd-spotlight-right" />
-      <section className="wd-legal-card relative mx-auto w-full max-w-4xl rounded-3xl p-6 sm:p-10">
-        <header className="mb-8 border-b border-white/14 pb-6">
-          <p className="text-[0.7rem] tracking-[0.38em] text-white/66 uppercase">
-            wash &amp; dry rental
+    <main className="relative z-10 min-h-screen px-5 py-10 sm:px-8 sm:py-14">
+      <section className="mx-auto max-w-4xl rounded-2xl bg-white p-6 shadow-lg shadow-blue-100/40 sm:p-10">
+        <header className="mb-8 border-b border-blue-100 pb-6">
+          <p className="text-xs font-semibold tracking-[0.3em] text-blue-400 uppercase">
+            Wash &amp; Dry Rental
           </p>
-          <h1 className="mt-3 text-2xl font-semibold tracking-[0.01em] text-white/95 sm:text-3xl">
+          <h1 className="mt-3 text-2xl font-bold text-blue-900 sm:text-3xl">
             Privacy Policy
           </h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-white/78 sm:text-[0.96rem]">
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
             How {WD_BRAND} (DBA {WD_COMPANY}) collects, uses, and protects your
             information.
           </p>
@@ -122,15 +120,15 @@ export default function WdPrivacyPage() {
           ))}
         </div>
 
-        <section className="mt-8 space-y-3 border-t border-white/14 pt-5">
-          <h2 className="text-lg font-semibold text-white/94 sm:text-xl">
+        <section className="mt-8 space-y-3 border-t border-blue-100 pt-5">
+          <h2 className="text-lg font-bold text-blue-900 sm:text-xl">
             9. Related Documents
           </h2>
-          <p className="text-sm leading-6 text-white/83 sm:text-[0.95rem]">
+          <p className="text-sm leading-6 text-slate-700">
             See our{" "}
             <Link
               href="/wd/terms"
-              className="text-teal-200 underline decoration-white/30 underline-offset-4 transition hover:text-white"
+              className="font-semibold text-blue-600 underline decoration-blue-300 underline-offset-4 transition hover:text-blue-800"
             >
               Rental Agreement
             </Link>{" "}
@@ -138,16 +136,16 @@ export default function WdPrivacyPage() {
           </p>
         </section>
 
-        <section className="mt-7 space-y-3 border-t border-white/14 pt-5">
-          <h2 className="text-lg font-semibold text-white/94 sm:text-xl">
+        <section className="mt-7 space-y-3 border-t border-blue-100 pt-5">
+          <h2 className="text-lg font-bold text-blue-900 sm:text-xl">
             10. Contact Us
           </h2>
-          <p className="text-sm leading-6 text-white/83 sm:text-[0.95rem]">
+          <p className="text-sm leading-6 text-slate-700">
             {WD_BRAND} (DBA {WD_COMPANY})
             <br />
             Email:{" "}
             <a
-              className="underline decoration-white/35 underline-offset-4"
+              className="text-blue-600 underline decoration-blue-300 underline-offset-4"
               href={`mailto:${WD_CONTACT_EMAIL}`}
             >
               {WD_CONTACT_EMAIL}
@@ -155,7 +153,7 @@ export default function WdPrivacyPage() {
             <br />
             Phone:{" "}
             <a
-              className="underline decoration-white/35 underline-offset-4"
+              className="text-blue-600 underline decoration-blue-300 underline-offset-4"
               href={`tel:${WD_CONTACT_PHONE}`}
             >
               {WD_CONTACT_PHONE}
@@ -163,7 +161,7 @@ export default function WdPrivacyPage() {
           </p>
         </section>
 
-        <div className="mt-7 rounded-2xl border border-white/14 bg-white/[0.03] p-4 text-center text-xs text-white/50">
+        <div className="mt-7 rounded-xl border border-blue-100 bg-blue-50/50 p-4 text-center text-xs text-slate-500">
           Last updated: March 2026
         </div>
       </section>
