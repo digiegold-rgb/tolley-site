@@ -11,3 +11,12 @@ export const GEN_PRICE_DAY = 68;
 export const GEN_PRICE_WEEK = 260;
 export const GEN_PRICE_MONTH = 800;
 export const GEN_FUEL_TYPES = ["Gasoline", "Propane", "Natural Gas"] as const;
+
+export const GEN_IMAGES = [
+  "/generator/gen-1.jpg",
+  "/generator/gen-2.jpg",
+  "/generator/gen-3.jpg",
+  "/generator/gen-4.jpg",
+  "/generator/gen-5.jpg",
+  "/generator/gen-6.jpg",
+] as const;

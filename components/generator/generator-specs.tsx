@@ -6,7 +6,6 @@ import {
   GEN_PRICE_WEEK,
   GEN_PRICE_MONTH,
   GEN_FUEL_TYPES,
-  GEN_FACEBOOK_URL,
   GEN_STRIPE_CHECKOUT_URL,
 } from "@/lib/generator";
 
@@ -152,20 +151,6 @@ export function GeneratorSpecs() {
         </div>
       </div>
 
-      {/* Photo link */}
-      <div className="mt-8 rounded-lg border border-yellow-400/15 bg-yellow-400/[0.04] px-5 py-4 text-center">
-        <p className="text-sm font-light text-slate-400">
-          Want to see it?{" "}
-          <a
-            href={GEN_FACEBOOK_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-bold text-yellow-400 transition hover:text-yellow-300"
-          >
-            Check out photos on Facebook &rarr;
-          </a>
-        </p>
-      </div>
     </section>
   );
 }
