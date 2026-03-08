@@ -22,13 +22,13 @@ export function GeneratorGallery() {
         </p>
       </div>
 
-      {/* Main image */}
-      <div className="relative mx-6 mt-5 h-64 overflow-hidden rounded-lg bg-[#0a0e27] sm:mx-8 sm:h-80">
+      {/* Main image — square container, full image visible */}
+      <div className="relative mx-6 mt-5 aspect-square overflow-hidden rounded-lg bg-[#0a0e27] sm:mx-8">
         <Image
           src={images[current]}
           alt={`${GEN_MODEL} - photo ${current + 1}`}
           fill
-          className="object-cover"
+          className="object-contain"
           sizes="(max-width: 640px) 100vw, 800px"
           priority={current === 0}
         />
@@ -63,7 +63,7 @@ export function GeneratorGallery() {
           <button
             key={src}
             onClick={() => setCurrent(i)}
-            className={`relative h-14 w-20 flex-shrink-0 overflow-hidden rounded-md transition ${
+            className={`relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-[#0a0e27] transition ${
               i === current
                 ? "ring-2 ring-yellow-400"
                 : "opacity-50 hover:opacity-80"
@@ -73,8 +73,8 @@ export function GeneratorGallery() {
               src={src}
               alt={`${GEN_MODEL} thumbnail ${i + 1}`}
               fill
-              className="object-cover"
-              sizes="80px"
+              className="object-contain"
+              sizes="64px"
             />
           </button>
         ))}
