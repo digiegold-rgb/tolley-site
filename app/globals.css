@@ -69,6 +69,16 @@ body:has(.trailer-page) .site-legal-footer {
   display: none;
 }
 
+/* Generator page overrides */
+body:has(.generator-page) {
+  background: #0a0e27;
+  color: #f0f0f5;
+}
+
+body:has(.generator-page) .site-legal-footer {
+  display: none;
+}
+
 .portal-shell {
   isolation: isolate;
 }

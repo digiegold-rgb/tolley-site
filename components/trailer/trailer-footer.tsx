@@ -43,7 +43,10 @@ export function TrailerFooter() {
         </div>
         <div className="mt-4 rounded-lg border border-amber-500/15 bg-amber-500/[0.04] px-4 py-2.5 text-center">
           <p className="text-xs font-bold tracking-wider text-amber-400/70 uppercase">
-            Digital waiver &amp; signature coming soon
+            Need a generator?{" "}
+            <Link href="/generator" className="text-amber-400 transition hover:text-amber-300">
+              Check out our generator rental &rarr;
+            </Link>
           </p>
         </div>
         <p className="mt-4 text-center text-sm font-light text-neutral-600">

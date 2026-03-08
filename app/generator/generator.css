@@ -1,0 +1,211 @@
+/* ============================
+   GENERATOR RENTAL
+   Deep navy, electric yellow, lightning
+   Fun + powerful, party + utility
+   ============================ */
+
+/* ---------- Electric font ---------- */
+.generator-page {
+  font-family: var(--font-exo2), sans-serif;
+}
+
+/* ---------- Electric glow text ---------- */
+.gen-neon-text {
+  text-shadow:
+    0 0 10px rgba(255, 208, 0, 0.6),
+    0 0 28px rgba(255, 208, 0, 0.35),
+    0 0 56px rgba(255, 208, 0, 0.15);
+}
+
+/* ---------- Electric border glow ---------- */
+.gen-neon-border {
+  box-shadow:
+    0 0 10px rgba(255, 208, 0, 0.15),
+    inset 0 0 10px rgba(255, 208, 0, 0.05);
+}
+
+/* ---------- CTA glow pulse ---------- */
+.gen-cta-glow {
+  animation: gen-btn-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes gen-btn-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 14px rgba(255, 208, 0, 0.35),
+      0 4px 18px rgba(255, 208, 0, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 32px rgba(255, 208, 0, 0.55),
+      0 4px 36px rgba(255, 208, 0, 0.3),
+      0 0 68px rgba(255, 208, 0, 0.12);
+  }
+}
+
+/* ---------- Card hover lift ---------- */
+.gen-card {
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.gen-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  border-color: rgba(255, 208, 0, 0.4);
+  box-shadow:
+    0 0 22px rgba(255, 208, 0, 0.2),
+    0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- Section entrance ---------- */
+.generator-enter {
+  animation: gen-fade-up 0.7s ease-out both;
+  animation-delay: var(--enter-delay, 0s);
+}
+
+@keyframes gen-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Circuit board background pattern ---------- */
+.gen-circuit::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image:
+    linear-gradient(rgba(255, 208, 0, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 208, 0, 0.2) 1px, transparent 1px),
+    radial-gradient(rgba(255, 208, 0, 0.3) 1px, transparent 1px);
+  background-size: 60px 60px, 60px 60px, 20px 20px;
+  background-position: 0 0, 0 0, 10px 10px;
+  mix-blend-mode: overlay;
+}
+
+/* ---------- Lightning bolt flicker ---------- */
+.gen-spark {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  animation: gen-spark-flicker 4s ease-in-out infinite;
+}
+
+.gen-spark:nth-child(2) {
+  animation-delay: 1.3s;
+}
+
+.gen-spark:nth-child(3) {
+  animation-delay: 2.7s;
+}
+
+@keyframes gen-spark-flicker {
+  0%, 100% {
+    opacity: 0;
+  }
+  4% {
+    opacity: 0.8;
+  }
+  6% {
+    opacity: 0.2;
+  }
+  8% {
+    opacity: 0.9;
+  }
+  12% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ---------- Electric pulse ring ---------- */
+.gen-pulse-ring {
+  animation: gen-pulse 3s ease-out infinite;
+}
+
+@keyframes gen-pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* ---------- Bullet ---------- */
+.gen-bullet {
+  margin-top: 6px;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 1px;
+  background: linear-gradient(135deg, #ffe14d, #ffd000);
+  box-shadow: 0 0 6px rgba(255, 208, 0, 0.5);
+}
+
+/* ---------- Electric arc decoration ---------- */
+.gen-arc {
+  background: linear-gradient(90deg, transparent, rgba(255, 208, 0, 0.4), transparent);
+  height: 1px;
+  animation: gen-arc-pulse 2s ease-in-out infinite;
+}
+
+@keyframes gen-arc-pulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scaleX(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .gen-cta-glow {
+    animation: none;
+  }
+
+  .generator-enter {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .gen-card:hover {
+    transform: none;
+  }
+
+  .gen-spark {
+    animation: none;
+  }
+
+  .gen-pulse-ring {
+    animation: none;
+  }
+
+  .gen-arc {
+    animation: none;
+    opacity: 0.5;
+  }
+}

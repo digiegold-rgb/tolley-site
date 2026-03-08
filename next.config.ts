@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
         destination: "/trailer",
         permanent: true,
       },
+      {
+        source: "/generators/:path*",
+        destination: "/generator/:path*",
+        permanent: true,
+      },
+      {
+        source: "/generators",
+        destination: "/generator",
+        permanent: true,
+      },
     ];
   },
 };

@@ -65,6 +65,14 @@ export default function RootLayout({
                     Trailer Rental
                   </Link>
                 </li>
+                <li aria-hidden="true" className="text-white/45">
+                  |
+                </li>
+                <li>
+                  <Link className="transition hover:text-white" href="/generator">
+                    Generator Rental
+                  </Link>
+                </li>
               </ul>
             </nav>
           </footer>
