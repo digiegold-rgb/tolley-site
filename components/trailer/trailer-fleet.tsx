@@ -1,4 +1,5 @@
 import { TR_TRAILERS, TR_CONTACT_PHONE } from "@/lib/trailer";
+import { TrailerGallery } from "./trailer-gallery";
 
 export function TrailerFleet() {
   return (
@@ -12,26 +13,11 @@ export function TrailerFleet() {
             key={trailer.name}
             className="trailer-card trailer-neon-border rounded-xl border border-neutral-800 bg-neutral-900 overflow-hidden"
           >
-            {/* Photo placeholder — links to Facebook listing */}
-            <a
-              href={trailer.facebookUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group relative block h-52 bg-gradient-to-br from-neutral-800 to-neutral-900 sm:h-60"
-            >
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 transition-all group-hover:scale-105">
-                <svg className="h-16 w-16 text-amber-500/40 transition group-hover:text-amber-500/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.41a2.25 2.25 0 013.182 0l2.909 2.91M3.75 21h16.5a2.25 2.25 0 002.25-2.25V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
-                </svg>
-                <span className="text-sm font-bold tracking-wider text-amber-500/60 uppercase transition group-hover:text-amber-400">
-                  View Photos on Facebook &rarr;
-                </span>
-              </div>
-              {/* Size badge */}
-              <span className="absolute top-3 left-3 rounded bg-amber-500 px-3 py-1 text-sm font-black tracking-wide text-black uppercase">
-                {trailer.size}
-              </span>
-            </a>
+            <TrailerGallery
+              images={trailer.images}
+              alt={trailer.name}
+              size={trailer.size}
+            />
 
             {/* Specs */}
             <div className="p-5 sm:p-6">
