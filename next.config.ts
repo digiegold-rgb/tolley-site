@@ -23,6 +23,11 @@ const nextConfig: NextConfig = {
         destination: "/generator",
         permanent: true,
       },
+      {
+        source: "/moving-supplies",
+        destination: "/moving",
+        permanent: true,
+      },
     ];
   },
 };
