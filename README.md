@@ -1,36 +1,162 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# T-Agent (Next.js App Router)
 
-## Getting Started
+Single-page liquid-glass search portal with:
 
-First, run the development server:
+- Auth.js (NextAuth v5) credentials auth (+ optional email provider)
+- Prisma + Postgres persistence
+- Stripe subscriptions (checkout + portal + webhook)
+- Server-side `/api/ask` protection + paywall + usage limits
+- Auth-gated Agent Setup dashboard (`/agents`) with user-scoped CRUD
+
+## Required Environment Variables
+
+Set these in local `.env.local` and in Vercel project settings:
+
+- `DATABASE_URL`
+- `AUTH_SECRET` (required in production)
+- `AUTH_URL` (or `NEXTAUTH_URL`)
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRICE_BASIC_MONTHLY` (Basic $500/mo recurring price id)
+- `STRIPE_PRICE_PREMIUM_MONTHLY` (Premium $800/mo recurring price id)
+- `APP_URL` (e.g. `https://www.tolley.io`)
+- `AGENT_URL` (upstream agent endpoint, e.g. `http://localhost:3002`)
+- `ADMIN_ALLOWLIST_EMAILS` (comma-separated, e.g. `owner@tolley.io,ops@tolley.io`)
+- `OPENCLAW_CONNECTOR_URL` (connector URL reachable by website backend)
+- `OPENCLAW_CONNECTOR_SHARED_SECRET` (website -> connector HMAC secret)
+
+Optional:
+
+- `EMAIL_SERVER_HOST`
+- `EMAIL_SERVER_PORT`
+- `EMAIL_SERVER_USER`
+- `EMAIL_SERVER_PASSWORD`
+- `EMAIL_FROM`
+- `REDIS_URL` (if you later add Redis-backed usage/cache flows)
+- `SESSION_IDLE_TIMEOUT_MS` (default 45 minutes)
+
+## Local Setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Configure `.env.local` with the variables above.
+
+3. Generate Prisma client:
+
+```bash
+npx prisma generate
+```
+
+4. Run DB migrations against Postgres:
+
+```bash
+npx prisma migrate deploy
+```
+
+For local development migration creation:
+
+```bash
+npx prisma migrate dev
+```
+
+5. Run the web app:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+6. Create your first user:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Open `/signup`
+- Create an account with email + password
+- Sign in and you will land on `/agents`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Login Gate + Protected Routes
 
-## Learn More
+- `/` shows login when logged out.
+- `/` redirects to `/agents` when logged in.
+- `/agents` requires authentication and active subscription tier.
+- `/settings` requires authentication.
+- `/api/agents/*` requires authentication + active subscription and is user-scoped.
+- `/pricing` is public (logged-out users can view plans).
 
-To learn more about Next.js, take a look at the following resources:
+## Billing Routes
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `POST /api/billing/checkout`
+  - body: `{ "priceId": "<stripe_price_id>" }`
+  - supports `plan` fallback (`basic`/`premium`) for compatibility
+- `POST /api/billing/portal`
+- `GET /api/billing/status`
+- `POST /api/stripe/webhook`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Billing pages:
 
-## Deploy on Vercel
+- `/pricing` (Basic vs Premium plans)
+- `/billing/success` (post-checkout confirmation)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Saved results:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `POST /api/results` (create)
+- `GET /api/results/:id` (owner-scoped read)
+- `PATCH /api/results/:id` (owner-scoped update)
+- `/results/:id` (authenticated result view)
+
+## Admin OpenClaw Proxy
+
+- Admin page: `/admin` (allowlist-restricted)
+- Server-side proxy: `/api/admin/openclaw/*`
+- Browser never calls bridge directly.
+
+Request flow:
+
+- Browser -> Next.js API route
+- Next.js signs request with `OPENCLAW_CONNECTOR_SHARED_SECRET`
+- Connector verifies signature and forwards to bridge over tailnet
+
+See connector runtime docs:
+
+- `connector/README.md`
+
+## Auth + Ask Flow
+
+`POST /api/ask` behavior:
+
+- `401 { error: "LOGIN_REQUIRED" }` when unauthenticated
+- `401 { error: "SESSION_EXPIRED" }` after idle timeout
+- `402 { error: "SUBSCRIPTION_REQUIRED" }` when no active subscription
+- `429 { error: "USAGE_LIMIT_REACHED", resetAt, usage }` when daily cap is reached
+- `200` with `{ answer, requestId, cached, latency, usage }` on success
+
+Usage is enforced server-side and persisted using:
+
+- `UsageEvent` (per ask)
+- `UsageBucket` (daily counters, `lastSeenAt`)
+
+## Stripe Webhook Notes
+
+Use Stripe CLI locally:
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+Set `STRIPE_WEBHOOK_SECRET` from the CLI output.
+
+Required webhook events:
+
+- `checkout.session.completed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `invoice.paid`
+- `invoice.payment_failed`
+
+## Deploy Notes
+
+- Do **not** use localhost URLs in production env vars.
+- Ensure `AUTH_URL` (or `NEXTAUTH_URL`) points to your deployed origin.
+- Ensure `AGENT_URL` is publicly reachable from Vercel.
