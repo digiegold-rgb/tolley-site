@@ -14,4 +14,12 @@ export const MV_BUNDLE = [
   { qty: 25, item: "Thick moving blankets", desc: "Protect furniture from scratches & dings" },
 ] as const;
 
-export const MV_IMAGES: string[] = [];
+export const MV_IMAGES = [
+  "/moving/mv-1.jpg",
+  "/moving/mv-2.jpg",
+  "/moving/mv-3.jpg",
+  "/moving/mv-4.jpg",
+  "/moving/mv-5.jpg",
+  "/moving/mv-6.jpg",
+  "/moving/mv-7.jpg",
+] as const;

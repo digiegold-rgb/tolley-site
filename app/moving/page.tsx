@@ -1,4 +1,5 @@
 import { MovingHero } from "@/components/moving/moving-hero";
+import { MovingGallery } from "@/components/moving/moving-gallery";
 import { MovingBundle } from "@/components/moving/moving-bundle";
 import { MovingPricing } from "@/components/moving/moving-pricing";
 import { MovingWhy } from "@/components/moving/moving-why";
@@ -11,6 +12,9 @@ export default function MovingPage() {
 
       <div className="mx-auto max-w-6xl space-y-10 px-5 py-14 sm:px-8 sm:py-18">
         <div className="moving-enter" style={{ "--enter-delay": "0.1s" } as React.CSSProperties}>
+          <MovingGallery />
+        </div>
+        <div className="moving-enter" style={{ "--enter-delay": "0.15s" } as React.CSSProperties}>
           <MovingBundle />
         </div>
         <div className="moving-enter" style={{ "--enter-delay": "0.2s" } as React.CSSProperties}>
