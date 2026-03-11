@@ -747,6 +747,56 @@ model AutoResponder {
   @@index([subscriberId, isActive])
 }
 
+// ─── Follow-Up Drip Sequences ────────────────────────────
+
+model SmsSequence {
+  id              String            @id @default(cuid())
+  subscriberId    String
+  name            String
+  description     String?
+  isActive        Boolean           @default(true)
+  targetSource    String[]          // lead sources this applies to
+  steps           SmsSequenceStep[]
+  enrollments     SmsEnrollment[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([subscriberId, isActive])
+}
+
+model SmsSequenceStep {
+  id              String       @id @default(cuid())
+  sequenceId      String
+  sequence        SmsSequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  stepNumber      Int
+  delayDays       Int
+  delayHours      Int          @default(0)
+  promptId        String?
+  templateBody    String?
+  isAiGenerated   Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+
+  @@unique([sequenceId, stepNumber])
+}
+
+model SmsEnrollment {
+  id              String       @id @default(cuid())
+  sequenceId      String
+  sequence        SmsSequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  leadId          String?
+  phoneNumber     String
+  conversationId  String?
+  currentStep     Int          @default(0)
+  status          String       @default("active") // active, paused, completed, replied, opted_out
+  nextSendAt      DateTime?
+  enrolledAt      DateTime     @default(now())
+  completedAt     DateTime?
+  updatedAt       DateTime     @updatedAt
+
+  @@index([status, nextSendAt])
+  @@index([phoneNumber])
+}
+
 model SyncLog {
   id             String   @id @default(cuid())
   source         String   // mls_grid, propstream

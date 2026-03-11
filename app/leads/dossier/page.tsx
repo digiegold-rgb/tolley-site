@@ -66,34 +66,68 @@ export default async function DossierPage({
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a0a1a] to-[#1a1a2e] text-white">
       <div className="mx-auto max-w-6xl px-4 py-8">
+        {/* Nav */}
+        <nav className="flex items-center gap-1 mb-6 flex-wrap">
+          <a
+            href="/leads/dashboard"
+            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+          >
+            Leads
+          </a>
+          <span className="text-white/20">/</span>
+          <span className="rounded-lg px-3 py-1.5 text-sm font-medium text-white bg-white/10">
+            Dossiers
+          </span>
+          <span className="text-white/20">/</span>
+          <a
+            href="/leads/clients"
+            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+          >
+            Clients
+          </a>
+          <span className="text-white/20">/</span>
+          <a
+            href="/leads/conversations"
+            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+          >
+            Conversations
+          </a>
+          <span className="text-white/20">/</span>
+          <a
+            href="/leads/sequences"
+            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+          >
+            Sequences
+          </a>
+          <span className="text-white/20">/</span>
+          <a
+            href="/leads/connects"
+            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+          >
+            Connects
+          </a>
+          <span className="text-white/20">/</span>
+          <a
+            href="/leads/workflow"
+            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+          >
+            Workflow
+          </a>
+          <span className="text-white/20">/</span>
+          <a
+            href="/leads/snap"
+            className="rounded-lg px-3 py-1.5 text-sm text-purple-300/70 hover:text-purple-200 hover:bg-purple-500/10 transition-colors"
+          >
+            Snap & Know
+          </a>
+        </nav>
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">Lead Intelligence</h1>
-            <p className="text-white/40 text-sm mt-1">
-              Deep research dossiers — owner data, court records, social profiles
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <a
-              href="/leads/snap"
-              className="rounded-lg bg-purple-600/20 border border-purple-500/30 px-4 py-2 text-sm text-purple-300 hover:bg-purple-600/30"
-            >
-              Snap & Know
-            </a>
-            <a
-              href="/leads/dashboard"
-              className="rounded-lg bg-white/10 px-4 py-2 text-sm hover:bg-white/20"
-            >
-              Leads
-            </a>
-            <a
-              href="/leads/conversations"
-              className="rounded-lg bg-white/10 px-4 py-2 text-sm hover:bg-white/20"
-            >
-              Conversations
-            </a>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">Lead Intelligence</h1>
+          <p className="text-white/40 text-sm mt-1">
+            Deep research dossiers — owner data, court records, social profiles
+          </p>
         </div>
 
         {/* Plugin status */}

@@ -149,6 +149,22 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  // ── Engagement handoff: pause drip sequences when lead replies ──
+  try {
+    await prisma.smsEnrollment.updateMany({
+      where: {
+        phoneNumber: from,
+        status: "active",
+      },
+      data: {
+        status: "replied",
+        updatedAt: new Date(),
+      },
+    });
+  } catch {
+    // non-critical
+  }
+
   // Load recent conversation history for context
   const recentMessages = await prisma.smsMessage.findMany({
     where: { conversationId: conversation.id },

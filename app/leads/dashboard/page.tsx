@@ -160,6 +160,13 @@ export default async function AgentDashboardPage({
           </a>
           <span className="text-white/20">/</span>
           <a
+            href="/leads/sequences"
+            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+          >
+            Sequences
+          </a>
+          <span className="text-white/20">/</span>
+          <a
             href="/leads/connects"
             className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
           >
