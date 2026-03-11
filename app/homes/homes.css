@@ -1,0 +1,125 @@
+/* ============================
+   HOMES — Real Estate Landing
+   Dark + sky-blue, professional trust
+   ============================ */
+
+/* ---------- Professional font ---------- */
+.homes-page {
+  font-family: var(--font-poppins), sans-serif;
+}
+
+/* ---------- Neon text glow ---------- */
+.homes-neon-text {
+  text-shadow:
+    0 0 8px rgba(56, 189, 248, 0.5),
+    0 0 22px rgba(56, 189, 248, 0.25),
+    0 0 45px rgba(56, 189, 248, 0.1);
+}
+
+/* ---------- Neon border glow ---------- */
+.homes-neon-border {
+  box-shadow:
+    0 0 8px rgba(56, 189, 248, 0.15),
+    inset 0 0 8px rgba(56, 189, 248, 0.05);
+}
+
+/* ---------- CTA glow pulse ---------- */
+.homes-glow {
+  animation: homes-btn-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes homes-btn-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 12px rgba(56, 189, 248, 0.35),
+      0 4px 16px rgba(56, 189, 248, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 28px rgba(56, 189, 248, 0.55),
+      0 4px 32px rgba(56, 189, 248, 0.3),
+      0 0 60px rgba(56, 189, 248, 0.12);
+  }
+}
+
+/* ---------- Card hover lift ---------- */
+.homes-card {
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s ease;
+}
+
+.homes-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow:
+    0 0 20px rgba(56, 189, 248, 0.2),
+    0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- Section entrance ---------- */
+.homes-enter {
+  animation: homes-fade-up 0.7s ease-out both;
+  animation-delay: var(--enter-delay, 0s);
+}
+
+@keyframes homes-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Subtle grid overlay ---------- */
+.homes-grid::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image:
+    linear-gradient(rgba(56, 189, 248, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.2) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* ---------- Bullet ---------- */
+.homes-bullet {
+  margin-top: 6px;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #7dd3fc, #38bdf8);
+  box-shadow: 0 0 5px rgba(56, 189, 248, 0.4);
+}
+
+/* ---------- Agent photo ring ---------- */
+.homes-photo-ring {
+  box-shadow:
+    0 0 0 3px rgba(56, 189, 248, 0.3),
+    0 0 20px rgba(56, 189, 248, 0.15),
+    0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .homes-glow {
+    animation: none;
+  }
+
+  .homes-enter {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .homes-card:hover {
+    transform: none;
+  }
+}

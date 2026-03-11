@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "connector:start": "node connector/server.js",
@@ -14,14 +14,19 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
     "@prisma/client": "^6.15.0",
+    "@vercel/blob": "^2.3.1",
+    "exifr": "^7.1.3",
     "lightningcss": "^1.31.1",
+    "mcp-handler": "^1.0.7",
     "next": "16.1.6",
     "next-auth": "^5.0.0-beta.30",
     "nodemailer": "^7.0.13",
     "prisma": "^6.15.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "stripe": "^20.3.1"
+    "stripe": "^20.3.1",
+    "twilio": "^5.12.2",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -40,7 +40,7 @@ export function GeneratorHero() {
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3 text-xs font-bold tracking-widest text-slate-400 uppercase">
-          <span className="rounded border border-yellow-400/25 bg-yellow-400/[0.08] px-3 py-1.5 text-yellow-300">
+          <span className="pulse-ring rounded border border-yellow-400/25 bg-yellow-400/[0.08] px-3 py-1.5 text-yellow-300" style={{ "--pulse-color": "rgba(250, 204, 21, 0.35)" } as React.CSSProperties}>
             Tri-Fuel
           </span>
           <span className="rounded border border-yellow-400/25 bg-yellow-400/[0.08] px-3 py-1.5 text-yellow-300">

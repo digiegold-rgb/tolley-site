@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+      },
+    ],
+  },
   async redirects() {
     return [
       {
@@ -26,6 +34,41 @@ const nextConfig: NextConfig = {
       {
         source: "/moving-supplies",
         destination: "/moving",
+        permanent: true,
+      },
+      {
+        source: "/home",
+        destination: "/homes",
+        permanent: true,
+      },
+      {
+        source: "/heating",
+        destination: "/hvac",
+        permanent: true,
+      },
+      {
+        source: "/cooling",
+        destination: "/hvac",
+        permanent: true,
+      },
+      {
+        source: "/ac",
+        destination: "/hvac",
+        permanent: true,
+      },
+      {
+        source: "/dispatch",
+        destination: "/lastmile",
+        permanent: true,
+      },
+      {
+        source: "/delivery",
+        destination: "/lastmile",
+        permanent: true,
+      },
+      {
+        source: "/store",
+        destination: "/shop",
         permanent: true,
       },
     ];

@@ -28,6 +28,7 @@ model User {
   subscription         Subscription?
   usageEvents          UsageEvent[]
   usageBuckets         UsageBucket[]
+  leadSubscription     LeadSubscriber?
 }
 
 model Agent {
@@ -121,16 +122,34 @@ model Subscription {
 }
 
 model UsageEvent {
-  id           String   @id @default(cuid())
-  userId       String
-  type         String
-  createdAt    DateTime @default(now())
-  tokensApprox Int?
-  requestId    String?
-  latencyMs    Int?
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  userId           String?  // null for system/automated calls (SMS webhook, cron, etc.)
+  type             String   // ask, sms_reply, sms_generate, dossier, embedding, agent_tool, etc.
+  createdAt        DateTime @default(now())
+  // Token tracking
+  tokensApprox     Int?     // total tokens (backward compat)
+  promptTokens     Int?     // input tokens
+  completionTokens Int?     // output tokens
+  // Performance
+  requestId        String?
+  latencyMs        Int?
+  statusCode       Int?     // HTTP status or LLM response code
+  errorMessage     String?  // if it failed
+  // Model routing — dynamic, changes as you switch
+  provider         String?  // "vllm-local", "anthropic", "openai", "google", "groq", "together", etc.
+  model            String?  // "Qwen/Qwen3.5-35B-A3B-FP8", "claude-sonnet-4-20250514", "gpt-4o", etc.
+  location         String?  // "dgx-spark", "cloud-us-east", "cloud-eu", "edge", etc.
+  endpoint         String?  // base URL: "http://127.0.0.1:8355/v1", "https://api.anthropic.com", etc.
+  // Context
+  route            String?  // which API route: "/api/ask", "/api/sms/webhook", "/api/leads/dossier/process"
+  // Extensible
+  meta             Json?    // catch-all for future: temperature, max_tokens, tools_used, agent_name, etc.
+  user             User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+  @@index([provider, createdAt])
+  @@index([model, createdAt])
+  @@index([type, createdAt])
 }
 
 model UsageBucket {
@@ -146,4 +165,535 @@ model UsageBucket {
 
   @@unique([userId, bucketDate])
   @@index([userId, lastSeenAt])
+}
+
+model ShopItem {
+  id          String    @id @default(cuid())
+  title       String
+  price       Float
+  description String?
+  category    String?
+  imageUrls   String[]
+  status      String    @default("active")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  soldAt      DateTime?
+
+  @@index([status, createdAt])
+}
+
+model McpInvocation {
+  id        String   @id @default(cuid())
+  tool      String
+  input     Json?
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([tool, createdAt])
+}
+
+// ─── T-Agent Lead Gen System ─────────────────────────────────
+
+model Listing {
+  id                    String    @id @default(cuid())
+  mlsId                 String    @unique
+  status                String    // Active, Closed, Pending, Expired, Withdrawn
+  listPrice             Float?
+  originalListPrice     Float?
+  address               String
+  city                  String?
+  state                 String?   @default("MO")
+  zip                   String?
+  beds                  Int?
+  baths                 Float?
+  sqft                  Int?
+  propertyType          String?
+  daysOnMarket          Int?
+  onMarketDate          DateTime?
+  closeDate             DateTime?
+  listingUrl            String?
+  photoUrls             String[]
+  listAgentName         String?
+  listAgentMlsId        String?
+  listOfficeName        String?
+  listOfficeMlsId       String?
+  lat                   Float?
+  lng                   Float?
+  rawData               Json?
+  source                String?   @default("mls") // mls, snap, manual
+  lastSynced            DateTime  @default(now())
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  leads                 Lead[]
+  enrichment            ListingEnrichment?
+  dossierJobs           DossierJob[]
+
+  @@index([status, zip])
+  @@index([status, daysOnMarket])
+  @@index([status, city])
+  @@index([lastSynced])
+}
+
+model Lead {
+  id              String    @id @default(cuid())
+  listingId       String?
+  listing         Listing?  @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  score           Int       @default(0)    // 0-100, higher = more motivated
+  scoreFactors    Json?     // { "priceDrop": 20, "daysOnMarket": 30, ... }
+  status          String    @default("new") // new, contacted, interested, referred, closed, dead
+  ownerName       String?
+  ownerPhone      String?
+  ownerEmail      String?
+  notes           String?
+  source          String?   // mls_expired, mls_pricedrop, mls_dom, propstream, manual
+  referredTo      String?   // agent name who got the referral
+  referralStatus  String?   // pending, accepted, under_contract, closed, lost
+  referralFee     Float?    // expected or actual referral fee amount
+  contactedAt     DateTime?
+  closedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status, score])
+  @@index([source, createdAt])
+  @@index([referralStatus])
+}
+
+model PointOfInterest {
+  id        String   @id @default(cuid())
+  osmId     String?  @unique
+  type      String   // school, hospital, fire_station, police, park, grocery, mall, airport, sports, restaurant
+  name      String?
+  lat       Float
+  lng       Float
+  tags      Json?
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([type, lat, lng])
+}
+
+model ListingEnrichment {
+  id                    String   @id @default(cuid())
+  listingId             String   @unique
+  listing               Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  // POI proximity
+  nearestSchoolDist     Float?   // km
+  nearestSchoolName     String?
+  schoolsWithin3mi      Int?
+  nearestHospitalDist   Float?
+  nearestHospitalName   String?
+  nearestFireStationDist Float?
+  nearestPoliceDist     Float?
+  nearestParkDist       Float?
+  nearestParkName       String?
+  parksWithin2mi        Int?
+  nearestGroceryDist    Float?
+  nearestGroceryName    String?
+  nearestMallDist       Float?
+  nearestAirportDist    Float?
+  nearestAirportName    String?
+  nearestSportsDist     Float?
+  restaurantsWithin1mi  Int?
+  nearestCourthouseDist Float?   // km
+  nearestCourthouseName String?
+  nearestLibraryDist    Float?   // km
+  nearestLibraryName    String?
+  librariesWithin3mi    Int?
+  // County & Tax data
+  countyName            String?
+  countyFips            String?
+  countyState           String?
+  assessmentRatio       Float?
+  levyPer100            Float?
+  assessedValue         Float?
+  estimatedAnnualTax    Float?
+  estimatedMonthlyTax   Float?
+  effectiveTaxRate      Float?   // percentage of market value
+  taxBurdenRating       String?  // low, moderate, high, very_high
+  // Scores
+  buyScore              Int      @default(0) // 0-100 location desirability
+  buyScoreFactors       Json?
+  enrichedAt            DateTime @default(now())
+
+  @@index([buyScore])
+  @@index([countyName])
+  @@index([taxBurdenRating])
+}
+
+model LeadSubscriber {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier                  String   @default("starter") // starter, pro, team
+  stripeSubscriptionId  String?  @unique
+  status                String   @default("active")  // active, past_due, canceled, incomplete
+  farmZips              String[]  // zip codes they want leads for
+  farmCities            String[]  // cities they want leads for
+  specialties           String[]  // residential, commercial, luxury, first_time, investment
+  smsLimit              Int      @default(50)   // monthly SMS allowance
+  smsUsed               Int      @default(0)    // resets monthly
+  snapLimit             Int      @default(0)    // monthly snap allowance (0 = no access)
+  snapUsed              Int      @default(0)    // resets monthly
+  maxAgents             Int      @default(1)    // team = 5
+  onboarded             Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([status])
+  @@index([tier])
+}
+
+model SmsConversation {
+  id              String       @id @default(cuid())
+  phoneNumber     String       // E.164 format of the external party
+  businessId      String?      // which business/subscriber this convo belongs to
+  subscriberId    String?      // LeadSubscriber.id if linked to a leads subscriber
+  leadId          String?      // Lead.id if linked to a specific lead
+  systemPrompt    String?      // business-specific system prompt override
+  status          String       @default("active") // active, paused, opted_out
+  messageCount    Int          @default(0)
+  lastMessageAt   DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  messages        SmsMessage[]
+
+  @@unique([phoneNumber, businessId])
+  @@index([subscriberId])
+  @@index([status, lastMessageAt])
+}
+
+model SmsMessage {
+  id              String          @id @default(cuid())
+  conversationId  String
+  conversation    SmsConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction       String          // inbound, outbound
+  body            String
+  mediaUrls       String[]
+  twilioSid       String?         @unique
+  status          String          @default("sent") // sent, delivered, failed, received
+  tokensUsed      Int?
+  createdAt       DateTime        @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+// ─── Phase 4: Deep Lead Intelligence (Dossier) ────────────
+
+model DossierJob {
+  id              String          @id @default(cuid())
+  listingId       String
+  listing         Listing         @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  leadId          String?
+  status          String          @default("queued") // queued, running, complete, partial, failed, cancelled
+  progress        Int             @default(0)        // 0-100
+  currentStep     String?         // which plugin is currently running
+  stepsCompleted  String[]        // plugin names that finished
+  stepsFailed     String[]        // plugin names that errored
+  errorMessage    String?
+  requestedBy     String?         // userId or "admin"
+  priority        Int             @default(0)        // higher = process first
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  result          DossierResult?
+
+  @@index([status, priority])
+  @@index([listingId])
+  @@index([createdAt])
+}
+
+model DossierResult {
+  id                String   @id @default(cuid())
+  jobId             String   @unique
+  job               DossierJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // Owner info
+  owners            Json?    // [{name, role, age?, phone?, email?, facebook?, linkedin?, otherUrls?, sourceUrl, confidence}]
+  entityType        String?  // individual, trust, llc, joint, estate, corporate
+  entityName        String?  // "Smith Family Trust", "123 Main LLC"
+
+  // Legal / Court
+  courtCases        Json?    // [{type, caseNumber, court, parties, filedDate, status, sourceUrl}]
+  liens             Json?    // [{type, amount, holder, filedDate, status, sourceUrl}]
+  bankruptcies      Json?    // [{chapter, caseNumber, filedDate, status, sourceUrl}]
+
+  // Tax & Deed
+  taxRecords        Json?    // [{year, assessed, taxAmount, delinquent, paidDate?, sourceUrl}]
+  deedHistory       Json?    // [{date, price, grantor, grantee, type, documentNumber, sourceUrl}]
+
+  // People search / Social
+  socialProfiles    Json?    // [{platform, url, name, confidence}]
+  webMentions       Json?    // [{title, url, snippet, date?}]
+  relatedPeople     Json?    // [{name, relationship, sourceUrl}]
+
+  // Media
+  streetViewUrl     String?
+  satelliteUrl      String?
+  neighborhoodPhotos String[]
+
+  // Computed
+  motivationScore   Int?     // 0-100 composite
+  motivationFlags   String[] // ["divorce", "tax_lien", "high_dom", "price_drop", "pre_foreclosure"]
+  researchSummary   String?  // AI-generated plain English summary
+
+  // ── Plugin output store (extensible) ──
+  // Each plugin writes its raw output here keyed by plugin name
+  // e.g. { "county-assessor": {...}, "court-records": {...}, "skip-trace": {...} }
+  pluginData        Json?
+
+  // ── Future expansion slots ──
+  neighborhoodData  Json?    // census, demographics, crime stats, school ratings
+  financialData     Json?    // mortgage info, equity estimate, pre-foreclosure status
+  permitData        Json?    // building permits, code violations, renovation history
+  rentalData        Json?    // eviction records, rental history, landlord registrations
+  businessData      Json?    // LLC/corp ownership, business filings, UCC records
+  environmentalData Json?    // flood zone, environmental hazards, soil reports
+  marketData        Json?    // comps, market trends, price per sqft, absorption rate
+  customData        Json?    // catch-all for any future plugin type
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([motivationScore])
+}
+
+// ─── Client CRM / Import System ──────────────────────────
+
+model Client {
+  id                     String       @id @default(cuid())
+  subscriberId           String       // LeadSubscriber who owns this client
+  // Basic info
+  firstName              String
+  lastName               String
+  email                  String?
+  phone                  String?
+  // Social
+  facebookUrl            String?
+  instagramUrl           String?
+  linkedinUrl            String?
+  twitterUrl             String?
+  tiktokUrl              String?
+  // Preferences
+  buyerSeller            String       @default("buyer") // buyer, seller, both
+  preApproved            Boolean      @default(false)
+  preApprovalAmount      Float?
+  minPrice               Float?
+  maxPrice               Float?
+  minBeds                Int?
+  maxBeds                Int?
+  minBaths               Float?
+  minSqft                Int?
+  maxSqft                Int?
+  preferredCities        String[]
+  preferredZips          String[]
+  preferredPropertyTypes String[]
+  // Timeline
+  moveTimeline           String?      // asap, 1-3months, 3-6months, 6-12months, just_looking
+  currentCity            String?
+  currentState           String?
+  movingFrom             String?
+  // Personal
+  birthday               String?      // stored as text for flexibility (MM/DD or full date)
+  household              String?      // single, couple, family
+  kids                   Int?
+  pets                   String?
+  occupation             String?
+  // Lifestyle / Interests (free-form enrichment)
+  interests              String[]     // coffee_shops, gyms, hiking, dog_parks, etc.
+  dealbreakers           String[]     // no_hoa, no_flood_zone, must_have_garage, etc.
+  // Employment (structured)
+  jobTitle               String?
+  employer               String?
+  industry               String?
+  educationLevel         String?      // high_school, associates, bachelors, masters, doctorate, trade
+  // Income estimation
+  estimatedIncome        Float?
+  incomeRangeLow         Float?
+  incomeRangeHigh        Float?
+  incomeSource           String?      // careeronestop, census, manual
+  incomeConfidence       String?      // high, medium, low
+  incomeEstimatedAt      DateTime?
+  // Affordability
+  estimatedMaxHome       Float?
+  affordabilityData      Json?        // { maxMonthly, rate, taxes, insurance, method }
+  // DISC Personality
+  discType               String?      // D, I, S, C
+  discSecondary          String?      // secondary type
+  discAssessment         Json?        // full assessment answers + scores
+  // Readiness
+  readinessScore         Int          @default(0)
+  readinessFactors       Json?
+  // Score
+  fitScore               Int          @default(0) // 0-100 client fit score
+  fitScoreFactors        Json?
+  // Status
+  status                 String       @default("active") // active, under_contract, closed, inactive
+  // Photo
+  avatarUrl              String?
+  // Timestamps
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+  notes                  ClientNote[]
+  triggerEvents          TriggerEvent[]
+  clientMatches          ClientMatch[]
+
+  @@index([subscriberId, status])
+  @@index([fitScore])
+  @@index([readinessScore])
+}
+
+model ClientNote {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  category  String   @default("general") // general, preference, lifestyle, viewing, milestone, contact
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([clientId, createdAt])
+}
+
+model TriggerEvent {
+  id         String   @id @default(cuid())
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  type       String   // job_relocation, marriage, baby, promotion, divorce, retirement, rental_complaints, graduation
+  strength   String?  // very_high, high, medium_high, medium
+  details    String?
+  occurredAt DateTime @default(now())
+  source     String?  // agent_input, social_media, conversation
+  createdAt  DateTime @default(now())
+
+  @@index([clientId, occurredAt])
+  @@index([type])
+}
+
+model ClientMatch {
+  id           String   @id @default(cuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  listingId    String
+  matchScore   Int      @default(0) // 0-100
+  matchFactors Json?
+  direction    String   @default("client_to_listing") // client_to_listing, listing_to_client
+  computedAt   DateTime @default(now())
+
+  @@unique([clientId, listingId, direction])
+  @@index([matchScore])
+}
+
+// ─── Junkin' Jay's Analytics ─────────────────────────────
+
+model JjPageView {
+  id        String   @id @default(cuid())
+  path      String   // /junkinjays
+  referrer  String?  // where traffic came from (facebook, craigslist, direct, etc.)
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([path, createdAt])
+  @@index([referrer, createdAt])
+}
+
+model JjPhoneClick {
+  id        String   @id @default(cuid())
+  referrer  String?
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([referrer])
+}
+
+// ─── Universal Site Analytics ─────────────────────────────
+
+model SiteView {
+  id        String   @id @default(cuid())
+  site      String   // "homes", "trailer", "hvac", "wd", "generator", "lastmile", "moving", "junkinjays", "shop", "start", "home"
+  path      String   // full path e.g. "/trailer", "/shop/admin"
+  referrer  String?  // classified: google, facebook, direct, instagram, etc.
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([site, createdAt])
+  @@index([createdAt])
+  @@index([referrer, createdAt])
+}
+
+model SiteEvent {
+  id        String   @id @default(cuid())
+  site      String
+  path      String
+  event     String   // phone_click, cta_click, form_submit, sms_click, etc.
+  label     String?  // human-readable label e.g. "Call Jay", "Book Trailer"
+  referrer  String?
+  userAgent String?
+  ip        String?
+  meta      Json?    // extra data
+  createdAt DateTime @default(now())
+
+  @@index([site, createdAt])
+  @@index([event, createdAt])
+  @@index([createdAt])
+}
+
+// ─── Snap & Know (Photo-to-Property Intelligence) ────────
+
+model SnapRequest {
+  id              String    @id @default(cuid())
+  userId          String
+
+  // Input
+  photoUrl        String    // Vercel Blob URL
+  photoExifLat    Float?
+  photoExifLng    Float?
+  browserLat      Float?
+  browserLng      Float?
+  manualAddress   String?
+
+  // Resolved
+  resolvedLat     Float?
+  resolvedLng     Float?
+  resolvedAddress String?
+  resolvedCity    String?
+  resolvedState   String?
+  resolvedZip     String?
+  resolvedCounty  String?
+
+  // Pipeline links
+  listingId       String?
+  dossierJobId    String?
+
+  // Status
+  status          String    @default("pending") // pending, geocoding, researching, complete, failed
+  errorMessage    String?
+
+  // Equity (computed after dossier completes)
+  estimatedEquity Float?
+  equityBreakdown Json?     // { marketValue, mortgageEstimate, method, sources }
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+model SyncLog {
+  id             String   @id @default(cuid())
+  source         String   // mls_grid, propstream
+  recordsTotal   Int      @default(0)
+  recordsNew     Int      @default(0)
+  recordsUpdated Int      @default(0)
+  duration       Int?     // ms
+  error          String?
+  createdAt      DateTime @default(now())
+
+  @@index([source, createdAt])
 }

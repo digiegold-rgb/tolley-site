@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Oswald } from "next/font/google";
 
 import { TrailerFooter } from "@/components/trailer/trailer-footer";
+import { SiteTracker } from "@/components/analytics/site-tracker";
 import "./trailer.css";
 
 const oswald = Oswald({
@@ -24,6 +25,7 @@ export const metadata: Metadata = {
 export default function TrailerLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`trailer-page trailer-grit ${oswald.variable}`}>
+      <SiteTracker site="trailer" />
       {children}
       <TrailerFooter />
     </div>

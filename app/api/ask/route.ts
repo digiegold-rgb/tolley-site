@@ -12,6 +12,7 @@ import {
   normalizePlanTier,
   toBucketDate,
 } from "@/lib/subscription";
+import { logLlmUsage } from "@/lib/llm-usage";
 
 const SESSION_IDLE_TIMEOUT_MS = Number(
   process.env.SESSION_IDLE_TIMEOUT_MS || 1000 * 60 * 45,
@@ -182,16 +183,20 @@ export async function POST(request: Request) {
       },
     });
 
-    await prisma.usageEvent.create({
-      data: {
-        userId,
-        type: "ask",
-        requestId,
-        latencyMs,
-        tokensApprox: upstreamData.answer
-          ? Math.max(1, Math.ceil(upstreamData.answer.length / 4))
-          : null,
-      },
+    await logLlmUsage({
+      userId,
+      type: "ask",
+      requestId,
+      latencyMs,
+      tokensApprox: upstreamData.answer
+        ? Math.max(1, Math.ceil(upstreamData.answer.length / 4))
+        : undefined,
+      provider: "agent-proxy",
+      model: process.env.LLM_MODEL || "unknown",
+      location: AGENT_URL.includes("localhost") || AGENT_URL.includes("127.0.0.1") ? "dgx-spark" : "cloud",
+      endpoint: AGENT_URL,
+      route: "/api/ask",
+      statusCode: 200,
     });
 
     return NextResponse.json({

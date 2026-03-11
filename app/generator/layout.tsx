@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Exo_2 } from "next/font/google";
 
 import { GeneratorFooter } from "@/components/generator/generator-footer";
+import { SiteTracker } from "@/components/analytics/site-tracker";
 import "./generator.css";
 
 const exo2 = Exo_2({
@@ -24,6 +25,7 @@ export const metadata: Metadata = {
 export default function GeneratorLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`generator-page gen-circuit ${exo2.variable}`}>
+      <SiteTracker site="generator" />
       {children}
       <GeneratorFooter />
     </div>

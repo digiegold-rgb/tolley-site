@@ -60,6 +60,14 @@ export function MovingFooter() {
               </Link>
             </p>
           </div>
+          <div className="rounded-lg border border-red-500/15 bg-red-500/[0.04] px-4 py-2.5 text-center">
+            <p className="text-xs font-bold tracking-wider text-red-400/70 uppercase">
+              Need delivery?{" "}
+              <Link href="/lastmile" className="text-red-400 transition hover:text-red-300">
+                Red Alert Dispatch &rarr;
+              </Link>
+            </p>
+          </div>
         </div>
 
         <p className="mt-4 text-center text-sm font-light text-neutral-600">

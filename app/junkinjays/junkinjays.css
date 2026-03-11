@@ -1,0 +1,258 @@
+/* ── Junkin' Jay's — Rust, Steel & Blue Theme ────────────────── */
+
+/* Theme colors */
+:root {
+  --jj-rust: #e85d04;
+  --jj-blue: #3b82f6;
+  --jj-blue-dark: #1e3a5f;
+  --jj-steel: #94a3b8;
+}
+
+/* Neon rust glow text — toned down */
+.jj-neon-text {
+  text-shadow:
+    0 0 8px rgba(232, 93, 4, 0.3),
+    0 0 20px rgba(232, 93, 4, 0.12);
+}
+
+/* Neon border glow */
+.jj-neon-border {
+  box-shadow:
+    inset 0 0 18px rgba(232, 93, 4, 0.08),
+    0 0 16px rgba(232, 93, 4, 0.1),
+    0 0 32px rgba(232, 93, 4, 0.05);
+}
+
+/* CTA button glow pulse + bounce */
+.jj-glow {
+  animation: jj-btn-glow 2.5s ease-in-out infinite, jj-bounce 2s ease-in-out infinite;
+}
+
+@keyframes jj-btn-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 10px rgba(232, 93, 4, 0.3),
+      0 0 24px rgba(232, 93, 4, 0.1);
+  }
+  50% {
+    box-shadow:
+      0 0 18px rgba(232, 93, 4, 0.5),
+      0 0 40px rgba(232, 93, 4, 0.2);
+  }
+}
+
+@keyframes jj-bounce {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-4px); }
+  50% { transform: translateY(0); }
+  75% { transform: translateY(-2px); }
+}
+
+/* Secondary CTA wiggle */
+.jj-wiggle {
+  animation: jj-wiggle 3s ease-in-out infinite;
+}
+
+@keyframes jj-wiggle {
+  0%, 86%, 100% { transform: rotate(0deg); }
+  88% { transform: rotate(-1.5deg); }
+  90% { transform: rotate(1.5deg); }
+  92% { transform: rotate(-1deg); }
+  94% { transform: rotate(1deg); }
+  96% { transform: rotate(0deg); }
+}
+
+/* Grunge / rust texture overlay */
+.jj-rust::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image:
+    radial-gradient(rgba(232, 93, 4, 0.3) 0.5px, transparent 0.5px),
+    radial-gradient(rgba(180, 70, 10, 0.2) 0.3px, transparent 0.3px);
+  background-size: 5px 5px, 3px 3px;
+  background-position: 0 0, 1.5px 1.5px;
+  mix-blend-mode: overlay;
+}
+
+/* Spark particle animation */
+.jj-spark {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ff8c00;
+  box-shadow: 0 0 6px #ff6a00, 0 0 12px rgba(255, 106, 0, 0.5);
+  animation: jj-spark-fly 2s ease-out infinite;
+  opacity: 0;
+}
+
+.jj-spark:nth-child(2) { animation-delay: 0.3s; left: 20%; }
+.jj-spark:nth-child(3) { animation-delay: 0.6s; left: 40%; }
+.jj-spark:nth-child(4) { animation-delay: 0.9s; left: 60%; }
+.jj-spark:nth-child(5) { animation-delay: 1.2s; left: 80%; }
+.jj-spark:nth-child(6) { animation-delay: 1.5s; left: 35%; }
+.jj-spark:nth-child(7) { animation-delay: 1.8s; left: 65%; }
+.jj-spark:nth-child(8) { animation-delay: 0.15s; left: 15%; }
+.jj-spark:nth-child(9) { animation-delay: 0.45s; left: 50%; }
+.jj-spark:nth-child(10) { animation-delay: 0.75s; left: 75%; }
+.jj-spark:nth-child(11) { animation-delay: 1.05s; left: 90%; }
+.jj-spark:nth-child(12) { animation-delay: 1.35s; left: 10%; }
+
+@keyframes jj-spark-fly {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-80px) translateX(20px) scale(0);
+  }
+}
+
+/* Card hover lift */
+.jj-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.jj-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow:
+    0 12px 40px rgba(232, 93, 4, 0.15),
+    0 0 20px rgba(59, 130, 246, 0.08);
+}
+
+/* Blue-accent card variant */
+.jj-card-blue:hover {
+  box-shadow:
+    0 12px 40px rgba(59, 130, 246, 0.15),
+    0 0 20px rgba(59, 130, 246, 0.1);
+}
+
+/* Section entrance animation */
+.jj-enter {
+  opacity: 0;
+  transform: translateY(28px);
+  animation: jj-fade-up 0.7s ease-out both;
+  animation-delay: var(--enter-delay, 0s);
+}
+
+@keyframes jj-fade-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Metal tag pill */
+.jj-metal-tag {
+  background: linear-gradient(135deg, rgba(232, 93, 4, 0.15), rgba(232, 93, 4, 0.05));
+  border: 1px solid rgba(232, 93, 4, 0.25);
+  transition: all 0.25s ease;
+}
+.jj-metal-tag:hover {
+  background: linear-gradient(135deg, rgba(232, 93, 4, 0.25), rgba(232, 93, 4, 0.1));
+  border-color: rgba(232, 93, 4, 0.4);
+  transform: translateY(-3px) scale(1.03);
+}
+
+/* Phone CTA strip */
+.jj-phone-strip {
+  background: linear-gradient(90deg, rgba(232, 93, 4, 0.9), rgba(194, 65, 0, 0.95));
+  box-shadow: 0 4px 20px rgba(232, 93, 4, 0.3);
+}
+
+/* ── Section backgrounds for depth ── */
+
+/* Hero — dark industrial gradient with blue undertone */
+.jj-hero-bg {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 20%, rgba(59, 130, 246, 0.08), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 20% 80%, rgba(232, 93, 4, 0.06), transparent 60%),
+    linear-gradient(180deg, #0c0a05 0%, #0d1117 50%, #0c0a05 100%);
+}
+
+/* Metals section — subtle blue-steel tint */
+.jj-section-metals {
+  background:
+    linear-gradient(135deg, rgba(30, 58, 95, 0.15), rgba(59, 130, 246, 0.05) 50%, transparent),
+    radial-gradient(ellipse 50% 80% at 80% 20%, rgba(59, 130, 246, 0.06), transparent);
+  border-radius: 1.5rem;
+  padding: 2rem 1.5rem;
+  border: 1px solid rgba(59, 130, 246, 0.08);
+}
+
+/* Services section — warm gradient */
+.jj-section-services {
+  background:
+    radial-gradient(ellipse 60% 60% at 30% 70%, rgba(232, 93, 4, 0.05), transparent),
+    linear-gradient(180deg, transparent, rgba(232, 93, 4, 0.02), transparent);
+  border-radius: 1.5rem;
+  padding: 2rem 1.5rem;
+}
+
+/* Why section — blue-accented */
+.jj-section-why {
+  background:
+    linear-gradient(160deg, rgba(59, 130, 246, 0.08), rgba(30, 58, 95, 0.12) 50%, rgba(59, 130, 246, 0.04)),
+    radial-gradient(ellipse 70% 50% at 50% 50%, rgba(59, 130, 246, 0.04), transparent);
+  border-radius: 1.5rem;
+  padding: 2rem 1.5rem;
+  border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+/* FAQ section — subtle steel */
+.jj-section-faq {
+  background:
+    radial-gradient(ellipse 50% 50% at 50% 0%, rgba(148, 163, 184, 0.05), transparent);
+}
+
+/* Big CTA — enhanced blue + orange */
+.jj-cta-bg {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(59, 130, 246, 0.1), transparent 70%),
+    linear-gradient(135deg, rgba(232, 93, 4, 0.1), rgba(59, 130, 246, 0.05));
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+/* Blue text accent */
+.jj-blue-text {
+  color: var(--jj-blue);
+}
+
+/* Blue border accent on cards */
+.jj-blue-border {
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+/* Service area — blue tint */
+.jj-section-area {
+  background:
+    linear-gradient(135deg, rgba(30, 58, 95, 0.12), rgba(59, 130, 246, 0.06));
+  border: 1px solid rgba(59, 130, 246, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jj-spark,
+  .jj-card,
+  .jj-enter,
+  .jj-glow,
+  .jj-wiggle {
+    animation: none;
+  }
+  .jj-card:hover {
+    transform: none;
+  }
+  .jj-metal-tag:hover {
+    transform: none;
+  }
+  .jj-enter {
+    opacity: 1;
+    transform: none;
+  }
+}

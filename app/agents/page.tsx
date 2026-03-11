@@ -8,7 +8,7 @@ export default async function AgentsPage() {
   const session = await auth();
 
   if (!session?.user?.id) {
-    redirect("/?callbackUrl=/agents");
+    redirect("/login?callbackUrl=/agents");
   }
 
   const billingState = await getUserBillingState(session.user.id);

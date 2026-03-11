@@ -41,13 +41,23 @@ export function TrailerFooter() {
             </a>
           </nav>
         </div>
-        <div className="mt-4 rounded-lg border border-amber-500/15 bg-amber-500/[0.04] px-4 py-2.5 text-center">
-          <p className="text-xs font-bold tracking-wider text-amber-400/70 uppercase">
-            Need a generator?{" "}
-            <Link href="/generator" className="text-amber-400 transition hover:text-amber-300">
-              Check out our generator rental &rarr;
-            </Link>
-          </p>
+        <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <div className="rounded-lg border border-amber-500/15 bg-amber-500/[0.04] px-4 py-2.5 text-center">
+            <p className="text-xs font-bold tracking-wider text-amber-400/70 uppercase">
+              Need a generator?{" "}
+              <Link href="/generator" className="text-amber-400 transition hover:text-amber-300">
+                Generator rental &rarr;
+              </Link>
+            </p>
+          </div>
+          <div className="rounded-lg border border-red-500/15 bg-red-500/[0.04] px-4 py-2.5 text-center">
+            <p className="text-xs font-bold tracking-wider text-red-400/70 uppercase">
+              Need delivery?{" "}
+              <Link href="/lastmile" className="text-red-400 transition hover:text-red-300">
+                Red Alert Dispatch &rarr;
+              </Link>
+            </p>
+          </div>
         </div>
         <p className="mt-4 text-center text-sm font-light text-neutral-600">
           Built for workers, by workers.

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fredoka } from "next/font/google";
 
 import { WdBubbles } from "@/components/wd/wd-bubbles";
+import { SiteTracker } from "@/components/analytics/site-tracker";
 import { WdFooter } from "@/components/wd/wd-footer";
 import "./wd.css";
 
@@ -25,6 +26,7 @@ export const metadata: Metadata = {
 export default function WdLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`wd-page ${fredoka.variable}`}>
+      <SiteTracker site="wd" />
       <WdBubbles />
       {children}
       <WdFooter />

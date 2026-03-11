@@ -51,8 +51,12 @@ export function normalizePlanTier(value?: string | null): PlanTier {
     return "none";
   }
 
-  if (value === "pro") {
+  if (value === "pro" || value === "team") {
     return "premium";
+  }
+
+  if (value === "starter") {
+    return "basic";
   }
 
   if (value === "premium" || value === "basic") {

@@ -1,0 +1,267 @@
+/* ============================================
+   Red Alert Dispatch — "Fast and Done" Theme
+   tolley.io/lastmile
+   ============================================ */
+
+/* Page font */
+.lastmile-page {
+  font-family: var(--font-barlow-condensed), "Barlow Condensed", sans-serif;
+}
+
+/* ---- Neon / Glow ---- */
+
+.lm-neon-text {
+  text-shadow:
+    0 0 8px rgba(239, 68, 68, 0.6),
+    0 0 22px rgba(239, 68, 68, 0.35),
+    0 0 45px rgba(239, 68, 68, 0.15);
+}
+
+.lm-neon-border {
+  box-shadow:
+    0 0 8px rgba(239, 68, 68, 0.15),
+    inset 0 0 8px rgba(239, 68, 68, 0.05);
+}
+
+/* ---- Pulsing CTA glow ---- */
+
+.lm-glow {
+  animation: lm-btn-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes lm-btn-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 12px rgba(239, 68, 68, 0.35),
+      0 0 32px rgba(239, 68, 68, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 28px rgba(239, 68, 68, 0.55),
+      0 0 56px rgba(239, 68, 68, 0.25);
+  }
+}
+
+/* ---- Card hover lift ---- */
+
+.lm-card {
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s ease;
+}
+
+.lm-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow:
+    0 0 20px rgba(239, 68, 68, 0.2),
+    0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ---- Fade-up entrance ---- */
+
+.lm-enter {
+  animation: lm-fade-up 0.7s ease-out both;
+  animation-delay: var(--enter-delay, 0s);
+}
+
+@keyframes lm-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- Bullet accent dot ---- */
+
+.lm-bullet::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  margin-right: 8px;
+  background: linear-gradient(135deg, #ef4444, #f59e0b);
+  flex-shrink: 0;
+}
+
+/* ============================================
+   UNIQUE: Speed Streaks
+   ============================================ */
+
+.lm-streaks {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.lm-streak {
+  position: absolute;
+  left: -20%;
+  height: var(--streak-h, 1px);
+  width: var(--streak-w, 120px);
+  top: var(--streak-y);
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--streak-color, rgba(239, 68, 68, 0.4)) 40%,
+    var(--streak-color, rgba(239, 68, 68, 0.4)) 60%,
+    transparent 100%
+  );
+  opacity: 0;
+  animation: lm-streak-fly var(--streak-dur) linear var(--streak-delay) infinite;
+}
+
+@keyframes lm-streak-fly {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  5% {
+    opacity: var(--streak-opacity, 0.5);
+  }
+  90% {
+    opacity: var(--streak-opacity, 0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(140vw);
+  }
+}
+
+/* ============================================
+   UNIQUE: Dispatch Pulse
+   ============================================ */
+
+.lm-dispatch-pulse {
+  position: relative;
+}
+
+.lm-dispatch-pulse::before,
+.lm-dispatch-pulse::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 2px solid rgba(239, 68, 68, 0.4);
+  animation: lm-pulse-ring 2s ease-out infinite;
+}
+
+.lm-dispatch-pulse::after {
+  animation-delay: 1s;
+}
+
+@keyframes lm-pulse-ring {
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+
+/* ============================================
+   UNIQUE: Route Dots (section divider)
+   ============================================ */
+
+.lm-route-line {
+  position: relative;
+  height: 2px;
+  margin: 2.5rem auto;
+  max-width: 300px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(239, 68, 68, 0.3) 0px,
+    rgba(239, 68, 68, 0.3) 6px,
+    transparent 6px,
+    transparent 14px
+  );
+}
+
+.lm-route-line::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+  animation: lm-route-dot 3s ease-in-out infinite;
+}
+
+@keyframes lm-route-dot {
+  0% {
+    left: 0;
+  }
+  50% {
+    left: calc(100% - 8px);
+  }
+  100% {
+    left: 0;
+  }
+}
+
+/* ============================================
+   UNIQUE: Radar Sweep (very subtle overlay)
+   ============================================ */
+
+.lm-radar::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.015;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    transparent 0deg,
+    rgba(239, 68, 68, 0.5) 30deg,
+    transparent 60deg
+  );
+  animation: lm-radar-sweep 8s linear infinite;
+  mix-blend-mode: screen;
+}
+
+@keyframes lm-radar-sweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================
+   Reduced Motion
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .lm-glow,
+  .lm-streak,
+  .lm-dispatch-pulse::before,
+  .lm-dispatch-pulse::after,
+  .lm-route-line::after,
+  .lm-enter {
+    animation: none;
+  }
+
+  .lm-radar::after {
+    animation: none;
+    opacity: 0;
+  }
+
+  .lm-card:hover {
+    transform: none;
+  }
+}

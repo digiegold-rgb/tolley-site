@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 export default async function SettingsPage() {
   const session = await auth();
   if (!session?.user?.id) {
-    redirect("/?callbackUrl=/settings");
+    redirect("/login?callbackUrl=/settings");
   }
 
   return (

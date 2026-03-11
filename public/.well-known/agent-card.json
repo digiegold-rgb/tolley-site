@@ -1,0 +1,64 @@
+{
+  "name": "Tolley.io",
+  "description": "Kansas City rentals, real estate, and services — trailer rental, washer/dryer rental, generator rental, HVAC, last-mile delivery, real estate, moving supplies, and marketplace shop.",
+  "url": "https://www.tolley.io",
+  "provider": {
+    "organization": "Your KC Homes LLC",
+    "url": "https://www.tolley.io"
+  },
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["application/json"],
+  "skills": [
+    {
+      "id": "list_services",
+      "name": "List Services",
+      "description": "Returns all 8 Tolley.io services with descriptions and URLs"
+    },
+    {
+      "id": "get_trailer_fleet",
+      "name": "Get Trailer Fleet",
+      "description": "Returns enclosed cargo trailer specs, pricing, and availability"
+    },
+    {
+      "id": "get_wd_pricing",
+      "name": "Get Washer & Dryer Pricing",
+      "description": "Returns washer/dryer rental pricing and features"
+    },
+    {
+      "id": "get_generator_info",
+      "name": "Get Generator Info",
+      "description": "Returns generator specs, pricing, and fuel types"
+    },
+    {
+      "id": "get_hvac_services",
+      "name": "Get HVAC Services",
+      "description": "Returns HVAC service list, reviews, and contact info"
+    },
+    {
+      "id": "get_lastmile_info",
+      "name": "Get Last-Mile Delivery Info",
+      "description": "Returns delivery fleet, rates, and service areas"
+    },
+    {
+      "id": "get_real_estate_info",
+      "name": "Get Real Estate Info",
+      "description": "Returns agent info, service areas, and contact details"
+    },
+    {
+      "id": "get_moving_info",
+      "name": "Get Moving Info",
+      "description": "Returns moving supply bundle, pricing, and contact"
+    },
+    {
+      "id": "search_shop_items",
+      "name": "Search Shop Items",
+      "description": "Search active marketplace inventory by category"
+    }
+  ],
+  "mcpEndpoint": "https://www.tolley.io/api/mcp"
+}

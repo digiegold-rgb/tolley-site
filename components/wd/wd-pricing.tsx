@@ -45,7 +45,7 @@ export function WdPricing() {
 
         {/* Washer + Dryer Bundle */}
         <div className="wd-card relative rounded-2xl border-2 border-blue-400 bg-white p-6 shadow-xl shadow-blue-200/40 sm:p-8">
-          <span className="absolute -top-3 right-6 rounded-full bg-blue-600 px-4 py-1 text-xs font-bold tracking-wide text-white uppercase shadow-md shadow-blue-600/30">
+          <span className="pulse-ring absolute -top-3 right-6 rounded-full bg-blue-600 px-4 py-1 text-xs font-bold tracking-wide text-white uppercase shadow-md shadow-blue-600/30" style={{ "--pulse-color": "rgba(37, 99, 235, 0.4)" } as React.CSSProperties}>
             Most Popular
           </span>
           <h2 className="text-lg font-bold text-blue-900">Washer + Dryer</h2>

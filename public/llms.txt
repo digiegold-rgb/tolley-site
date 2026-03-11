@@ -1,0 +1,24 @@
+# Tolley.io
+> Kansas City rentals, real estate, and services — powered by Your KC Homes LLC
+> https://www.tolley.io
+
+## Services
+
+- [Trailer Rental](https://www.tolley.io/trailer) — Enclosed cargo trailers (5×8 to 8.5×20), daily/weekly/monthly pricing
+- [Washer & Dryer Rental](https://www.tolley.io/wd) — Appliance rentals starting at $42/mo
+- [Generator Rental](https://www.tolley.io/generator) — FIRMAN T07571 tri-fuel generator, 7500W running
+- [HVAC Services](https://www.tolley.io/hvac) — The Cool Guys Heating & Air Conditioning, 24/7 service
+- [Last-Mile Delivery](https://www.tolley.io/lastmile) — Red Alert Dispatch, 3000+ deliveries, $2/mile
+- [Real Estate](https://www.tolley.io/homes) — Jared Tolley, United Real Estate Kansas City
+- [Moving Supply Rental](https://www.tolley.io/moving) — Totes, blankets, rubber bands bundle
+- [Shop](https://www.tolley.io/shop) — Facebook Marketplace mirror, furniture, electronics, home goods
+
+## Contact
+
+- Phone: 913-283-3826
+- Email: Jared@yourkchomes.com
+
+## Machine-Readable Endpoints
+
+- MCP Server: https://www.tolley.io/api/mcp
+- Agent Card: https://www.tolley.io/.well-known/agent-card.json

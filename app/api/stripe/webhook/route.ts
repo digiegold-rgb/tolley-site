@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import Stripe from "stripe";
 
 import { getTierFromPriceId, updateUserBillingState } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { resolveTierForStatus } from "@/lib/subscription";
+import {
+  isLeadsPriceId,
+  resolveLeadsTierFromPriceId,
+  getLeadsTierLimits,
+} from "@/lib/leads-subscription";
 
 export const runtime = "nodejs";
 
@@ -109,6 +115,53 @@ async function syncFromInvoice(invoice: Stripe.Invoice) {
   await syncSubscriptionRecord(subscription);
 }
 
+async function syncLeadsSubscription(
+  subscription: Stripe.Subscription,
+  preferredUserId?: string | null
+) {
+  const customerId =
+    typeof subscription.customer === "string"
+      ? subscription.customer
+      : subscription.customer.id;
+
+  const metadataUserId = subscription.metadata?.userId;
+  const userId =
+    preferredUserId ||
+    metadataUserId ||
+    (await resolveUserIdFromStripeCustomer(customerId));
+
+  if (!userId) {
+    console.warn("webhook leads sub sync skipped: no user", subscription.id);
+    return;
+  }
+
+  const priceId = subscription.items?.data?.[0]?.price?.id || null;
+  const tier = resolveLeadsTierFromPriceId(priceId);
+  const limits = getLeadsTierLimits(tier);
+  const isActive = ["active", "trialing", "past_due"].includes(subscription.status);
+
+  await prisma.leadSubscriber.upsert({
+    where: { userId },
+    create: {
+      userId,
+      tier: tier === "none" ? "starter" : tier,
+      stripeSubscriptionId: subscription.id,
+      status: isActive ? "active" : subscription.status,
+      smsLimit: limits.smsLimit,
+      maxAgents: limits.maxAgents,
+    },
+    update: {
+      tier: tier === "none" ? undefined : tier,
+      stripeSubscriptionId: subscription.id,
+      status: isActive ? "active" : subscription.status,
+      smsLimit: limits.smsLimit,
+      maxAgents: limits.maxAgents,
+    },
+  });
+
+  console.log(`[leads] Synced subscription for user ${userId}: ${tier} (${subscription.status})`);
+}
+
 async function syncCheckoutSession(checkoutSession: Stripe.Checkout.Session) {
   const stripe = getStripeClient();
   const userId = checkoutSession.metadata?.userId || null;
@@ -167,6 +220,33 @@ export async function POST(request: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const checkoutSession = event.data.object as Stripe.Checkout.Session;
+
+        // Shop item purchase — mark as sold
+        const shopItemId = checkoutSession.metadata?.shopItemId;
+        if (shopItemId) {
+          await prisma.shopItem.update({
+            where: { id: shopItemId },
+            data: { status: "sold", soldAt: new Date() },
+          });
+          revalidatePath("/shop");
+          console.log(`[shop] Item ${shopItemId} marked sold via Stripe`);
+          break;
+        }
+
+        // Leads subscription checkout
+        if (checkoutSession.metadata?.product === "leads") {
+          const subId =
+            typeof checkoutSession.subscription === "string"
+              ? checkoutSession.subscription
+              : checkoutSession.subscription?.id;
+          if (subId) {
+            const stripe = getStripeClient();
+            const sub = await stripe.subscriptions.retrieve(subId);
+            await syncLeadsSubscription(sub, checkoutSession.metadata?.userId);
+          }
+          break;
+        }
+
         await syncCheckoutSession(checkoutSession);
         break;
       }
@@ -174,7 +254,12 @@ export async function POST(request: Request) {
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
-        await syncSubscriptionRecord(subscription);
+        const subPriceId = subscription.items?.data?.[0]?.price?.id;
+        if (subPriceId && isLeadsPriceId(subPriceId)) {
+          await syncLeadsSubscription(subscription);
+        } else {
+          await syncSubscriptionRecord(subscription);
+        }
         break;
       }
       case "invoice.paid":

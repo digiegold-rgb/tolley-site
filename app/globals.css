@@ -79,6 +79,73 @@ body:has(.generator-page) .site-legal-footer {
   display: none;
 }
 
+/* Homes page overrides */
+body:has(.homes-page) {
+  background: #0a0f1a;
+  color: #f0f5ff;
+}
+
+body:has(.homes-page) .site-legal-footer {
+  display: none;
+}
+
+/* HVAC page overrides */
+body:has(.hvac-page) {
+  background: #0a1628;
+  color: #e8f0f8;
+}
+
+body:has(.hvac-page) .site-legal-footer {
+  display: none;
+}
+
+/* Last-mile / Red Alert Dispatch page overrides */
+body:has(.lastmile-page) {
+  background: #0d0808;
+  color: #f5f0f0;
+}
+
+body:has(.lastmile-page) .site-legal-footer {
+  display: none;
+}
+
+/* Start / link hub page overrides */
+body:has(.start-page) {
+  background:
+    radial-gradient(60% 40% at 50% 0%, rgba(88, 26, 158, 0.25), transparent 70%),
+    linear-gradient(180deg, #06050a 0%, #0a0812 100%);
+  color: #f8f3ff;
+}
+
+body:has(.start-page) .site-legal-footer {
+  display: none;
+}
+
+/* Junkin' Jay's page overrides */
+body:has(.junkinjays-page) {
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(30, 58, 95, 0.12), transparent 60%),
+    radial-gradient(ellipse 50% 30% at 80% 90%, rgba(232, 93, 4, 0.06), transparent 50%),
+    linear-gradient(180deg, #0c0a05 0%, #0a0e14 40%, #0c0a05 100%);
+  color: #f5f0e8;
+}
+
+body:has(.junkinjays-page) .site-legal-footer {
+  display: none;
+}
+
+/* Shop page overrides */
+body:has(.shop-page) {
+  background:
+    radial-gradient(60% 40% at 50% 0%, rgba(88, 26, 158, 0.2), transparent 70%),
+    linear-gradient(180deg, #06050a 0%, #0a0812 100%);
+  color: #f8f3ff;
+}
+
+body:has(.shop-page) .site-legal-footer {
+  display: none;
+}
+
 .portal-shell {
   isolation: isolate;
 }
@@ -477,6 +544,37 @@ body:has(.generator-page) .site-legal-footer {
   }
 }
 
+/* ---------- Dispatch pulse ring (generic, color via --pulse-color) ---------- */
+.pulse-ring {
+  position: relative;
+}
+
+.pulse-ring::before,
+.pulse-ring::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 2px solid var(--pulse-color, rgba(139, 92, 246, 0.4));
+  animation: pulse-ring-anim 2.5s ease-out infinite;
+  pointer-events: none;
+}
+
+.pulse-ring::after {
+  animation-delay: 1.25s;
+}
+
+@keyframes pulse-ring-anim {
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .portal-hero,
   .search-float,
@@ -490,5 +588,10 @@ body:has(.generator-page) .site-legal-footer {
 
   .glass-search::after {
     transition: none;
+  }
+
+  .pulse-ring::before,
+  .pulse-ring::after {
+    animation: none;
   }
 }

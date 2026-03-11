@@ -23,7 +23,7 @@ const faqs = [
   },
   {
     q: "What sizes are available?",
-    a: "We currently have an 18ft dual axle and a 20ft utility trailer, both rated at 7,000 lbs. Check our Facebook for current availability and photos.",
+    a: "We have a 16ft single axle (2,500 lbs), an 18ft dual axle (7,000 lbs), a 20ft utility (7,000 lbs), and a 20ft car hauler (10,000 lbs). Check our Facebook for current availability and photos.",
   },
   {
     q: "Do I need to sign a waiver?",

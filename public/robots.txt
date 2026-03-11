@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+# AI agent signals
+# ai-input=yes — AI agents may read and use content
+# ai-train=no — do not use content for model training
