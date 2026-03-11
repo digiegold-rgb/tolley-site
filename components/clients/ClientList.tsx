@@ -1375,8 +1375,11 @@ export default function ClientList({ clients: initialClients }: { clients: Clien
                             )}
                           </div>
                         )}
-                        <div className="text-[0.55rem] text-white/20 italic">
-                          Estimate based on BLS/Census public data. Not a pre-approval.
+                        <div className="flex items-center gap-2 text-[0.55rem] text-white/20 italic">
+                          <span>Estimate based on BLS/Census public data. Not a pre-approval.</span>
+                          <a href="https://www.careeronestop.org" target="_blank" rel="noopener noreferrer" title="Powered by CareerOneStop">
+                            <img src="https://www.careeronestop.org/images/defined/careeronestop-logo.svg" alt="CareerOneStop" className="h-4 opacity-40 hover:opacity-70 transition-opacity" />
+                          </a>
                         </div>
                       </div>
                     ) : (

@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+import { getPluginManifest } from "@/lib/dossier/plugins/registry";
 import DossierList from "@/components/leads/DossierList";
 
 export const revalidate = 15; // ISR 15s
@@ -20,17 +22,46 @@ export default async function DossierPage({
     }
   }
 
-  // Fetch dossier jobs server-side
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000";
+  // Fetch dossier jobs directly from DB (avoids self-fetch issues on Vercel)
+  const [jobs, total] = await Promise.all([
+    prisma.dossierJob.findMany({
+      include: {
+        listing: {
+          select: {
+            address: true,
+            city: true,
+            zip: true,
+            listPrice: true,
+            mlsId: true,
+            photoUrls: true,
+          },
+        },
+        result: {
+          select: {
+            motivationScore: true,
+            motivationFlags: true,
+            owners: true,
+            entityType: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    prisma.dossierJob.count(),
+  ]);
 
-  const res = await fetch(`${baseUrl}/api/leads/dossier?limit=50`, {
-    headers: { "x-sync-secret": process.env.SYNC_SECRET! },
-    cache: "no-store",
-  });
-
-  const data = res.ok ? await res.json() : { jobs: [], total: 0, plugins: [] };
+  const data = {
+    jobs: jobs.map((j) => ({
+      ...j,
+      createdAt: j.createdAt.toISOString(),
+      updatedAt: j.updatedAt.toISOString(),
+      startedAt: j.startedAt?.toISOString() ?? null,
+      completedAt: j.completedAt?.toISOString() ?? null,
+    })),
+    total,
+    plugins: getPluginManifest(),
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a0a1a] to-[#1a1a2e] text-white">
