@@ -55,6 +55,13 @@ export default async function WorkflowPage() {
             Connects
           </a>
           <span className="text-white/20">/</span>
+          <a
+            href="/leads/analytics"
+            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+          >
+            Analytics
+          </a>
+          <span className="text-white/20">/</span>
           <span className="rounded-lg px-3 py-1.5 text-sm font-medium text-white bg-white/10">
             Workflow
           </span>

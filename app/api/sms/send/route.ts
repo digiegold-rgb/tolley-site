@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendSms } from "@/lib/twilio";
 import { chatCompletion } from "@/lib/llm";
 import { getSystemPrompt, DEFAULT_PROMPT_ID } from "@/lib/sms-prompts";
+import { incrementActivity } from "@/lib/activity-log";
 
 export const runtime = "nodejs";
 
@@ -181,12 +182,13 @@ ${e?.nearestSchoolName ? `Nearest school: ${e.nearestSchoolName}` : ""}`;
     },
   });
 
-  // Increment subscriber usage
+  // Increment subscriber usage + activity tracking
   if (subscriberId) {
     await prisma.leadSubscriber.update({
       where: { id: subscriberId },
       data: { smsUsed: { increment: 1 } },
     }).catch(() => {});
+    incrementActivity(subscriberId, "smsSent");
   }
 
   return NextResponse.json({

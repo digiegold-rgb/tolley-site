@@ -338,6 +338,11 @@ model LeadSubscriber {
   snapUsed              Int      @default(0)    // resets monthly
   maxAgents             Int      @default(1)    // team = 5
   onboarded             Boolean  @default(false)
+  // ROI / Activity tracking
+  referralFeesEarned    Float    @default(0)
+  referralFeesPending   Float    @default(0)
+  dailyContactGoal      Int      @default(10)
+  weeklyDigestEnabled   Boolean  @default(true)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -745,6 +750,27 @@ model AutoResponder {
   updatedAt       DateTime @updatedAt
 
   @@index([subscriberId, isActive])
+}
+
+// ─── ROI Dashboard & Activity Tracking ───────────────────
+
+model ActivityLog {
+  id              String   @id @default(cuid())
+  subscriberId    String
+  activityDate    DateTime @db.Date
+  contactsMade    Int      @default(0)
+  followUpsSent   Int      @default(0)
+  newLeads        Int      @default(0)
+  dossiersRun     Int      @default(0)
+  smsSent         Int      @default(0)
+  smsReplies      Int      @default(0)
+  leadsContacted  Int      @default(0)
+  leadsConverted  Int      @default(0)
+  dailyGoal       Int      @default(10)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([subscriberId, activityDate])
 }
 
 // ─── Follow-Up Drip Sequences ────────────────────────────

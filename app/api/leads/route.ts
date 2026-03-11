@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { incrementActivity } from "@/lib/activity-log";
 
 export const runtime = "nodejs";
 
@@ -153,6 +154,24 @@ export async function PATCH(request: NextRequest) {
     data,
     include: { listing: { select: { address: true, mlsId: true } } },
   });
+
+  // Track activity based on status changes
+  const session = await auth();
+  if (session?.user?.id) {
+    const sub = await prisma.leadSubscriber.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true },
+    });
+    if (sub) {
+      if (updates.status === "contacted") {
+        incrementActivity(sub.id, "leadsContacted");
+        incrementActivity(sub.id, "contactsMade");
+      }
+      if (updates.status === "closed" || updates.status === "referred") {
+        incrementActivity(sub.id, "leadsConverted");
+      }
+    }
+  }
 
   return NextResponse.json({ lead });
 }

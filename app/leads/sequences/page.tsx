@@ -187,6 +187,13 @@ export default function SequencesPage() {
           <span className="text-white/20">/</span>
           <a href="/leads/connects" className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors">Connects</a>
           <span className="text-white/20">/</span>
+          <a
+            href="/leads/analytics"
+            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+          >
+            Analytics
+          </a>
+          <span className="text-white/20">/</span>
           <a href="/leads/workflow" className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors">Workflow</a>
           <span className="text-white/20">/</span>
           <a href="/leads/snap" className="rounded-lg px-3 py-1.5 text-sm text-purple-300/70 hover:text-purple-200 hover:bg-purple-500/10 transition-colors">Snap & Know</a>

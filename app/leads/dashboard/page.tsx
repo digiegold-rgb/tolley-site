@@ -5,6 +5,7 @@ import LeadsDashboard from "@/components/leads/LeadsDashboard";
 import AddressSearch from "@/components/leads/AddressSearch";
 import BatchUpload from "@/components/leads/BatchUpload";
 import AutoResponderConfig from "@/components/leads/AutoResponderConfig";
+import ActivityTracker from "@/components/leads/ActivityTracker";
 
 export const revalidate = 120;
 
@@ -174,6 +175,13 @@ export default async function AgentDashboardPage({
           </a>
           <span className="text-white/20">/</span>
           <a
+            href="/leads/analytics"
+            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+          >
+            Analytics
+          </a>
+          <span className="text-white/20">/</span>
+          <a
             href="/leads/workflow"
             className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
           >
@@ -227,6 +235,9 @@ export default async function AgentDashboardPage({
             </>
           )}
         </div>
+
+        {/* Daily activity tracker */}
+        <ActivityTracker />
 
         {/* Pipeline stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">

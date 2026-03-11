@@ -7,6 +7,7 @@ import {
   LEGAL_OPT_IN_KEYWORDS,
   LEGAL_OPT_IN_MESSAGE,
 } from "@/lib/legal";
+import { incrementActivity } from "@/lib/activity-log";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -278,6 +279,7 @@ export async function POST(request: NextRequest) {
       where: { id: conversation.subscriberId },
       data: { smsUsed: { increment: 1 } },
     }).catch(() => {}); // non-critical
+    incrementActivity(conversation.subscriberId, "smsReplies");
   }
 
   // Return empty TwiML — we already sent via API
