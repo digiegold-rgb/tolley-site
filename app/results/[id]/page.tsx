@@ -116,10 +116,10 @@ export default async function ResultPage({ params }: ResultPageProps) {
             </p>
           </div>
           <Link
-            href="/agents"
+            href="/leads/dashboard"
             className="rounded-full border border-white/20 bg-white/[0.05] px-4 py-2 text-xs font-semibold tracking-[0.1em] text-white/88 uppercase transition hover:bg-white/[0.1]"
           >
-            Back to Agents
+            Back to Dashboard
           </Link>
         </header>
 

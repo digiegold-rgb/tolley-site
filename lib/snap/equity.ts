@@ -82,6 +82,9 @@ interface DossierData {
   lastSalePrice?: number;
   lastSaleDate?: string;
   deedHistory?: Array<{ price?: number | null; date?: string; type?: string }>;
+  // NARRPR data (actual mortgage + MLS-informed valuation)
+  narrprMortgage?: { amount: number; date: string; lender: string; type: string; rate?: number };
+  narrprRvm?: { value: number; confidence: number; low?: number; high?: number };
 }
 
 /**
@@ -94,20 +97,29 @@ export function estimateEquity(data: DossierData): EquityEstimate | null {
   let marketValue: number | undefined;
   let marketValueSource = "";
 
+  // Market value priority: Zestimate > NARRPR RVM (high confidence) > Redfin >
+  // NARRPR RVM (low confidence) > County > List Price
   if (data.zestimate && data.zestimate > 0) {
     marketValue = data.zestimate;
     marketValueSource = "Zillow Zestimate";
     sources.push("Zillow");
+  } else if (data.narrprRvm && data.narrprRvm.value > 0 && data.narrprRvm.confidence >= 0.7) {
+    marketValue = data.narrprRvm.value;
+    marketValueSource = "NARRPR RVM (high confidence)";
+    sources.push("NARRPR");
   } else if (data.refdinEstimate && data.refdinEstimate > 0) {
     marketValue = data.refdinEstimate;
     marketValueSource = "Redfin Estimate";
     sources.push("Redfin");
+  } else if (data.narrprRvm && data.narrprRvm.value > 0) {
+    marketValue = data.narrprRvm.value;
+    marketValueSource = "NARRPR RVM";
+    sources.push("NARRPR");
   } else if (data.marketValue && data.marketValue > 0) {
     marketValue = data.marketValue;
     marketValueSource = "County Market Value";
     sources.push("County Assessor");
   } else if (data.assessedValue && data.assessmentRatio) {
-    // Reverse the assessment ratio to get market value
     marketValue = Math.round(data.assessedValue / data.assessmentRatio);
     marketValueSource = "County Assessed (adjusted)";
     sources.push("County Assessor");
@@ -141,13 +153,41 @@ export function estimateEquity(data: DossierData): EquityEstimate | null {
   let mortgageMethod = "No sale history — assuming no mortgage";
   let confidence: EquityEstimate["confidence"] = "low";
 
-  if (lastSalePrice && lastSaleDate) {
+  if (data.narrprMortgage) {
+    // Use actual NARRPR mortgage data — amortize from real amount/rate/date
+    const m = data.narrprMortgage;
+    const rate = m.rate || getRateForYear(new Date(m.date).getFullYear());
+    const amort = calculateRemainingBalance(
+      m.amount / 0.80, // Reverse LTV assumption since calculateRemainingBalance applies 80% LTV
+      m.date,
+      m.amount / (m.amount / 0.80) // Pass actual LTV
+    );
+    // Override with actual loan balance calculation
+    const monthlyRate = (rate / 100) / 12;
+    const totalMonths = 360;
+    const now = new Date();
+    const origDate = new Date(m.date);
+    const monthsElapsed = (now.getFullYear() - origDate.getFullYear()) * 12 + (now.getMonth() - origDate.getMonth());
+    if (monthsElapsed >= totalMonths) {
+      mortgageEstimate = 0;
+    } else if (monthsElapsed <= 0) {
+      mortgageEstimate = m.amount;
+    } else {
+      const compoundTotal = Math.pow(1 + monthlyRate, totalMonths);
+      const compoundElapsed = Math.pow(1 + monthlyRate, monthsElapsed);
+      mortgageEstimate = Math.max(0, Math.round(m.amount * (compoundTotal - compoundElapsed) / (compoundTotal - 1)));
+    }
+    const yearsAgo = Math.round(monthsElapsed / 12);
+    mortgageMethod = `NARRPR actual: $${m.amount.toLocaleString()} ${m.type} from ${m.lender} (${yearsAgo}yr ago) at ${rate.toFixed(1)}%`;
+    sources.push("NARRPR Mortgage");
+    confidence = "high";
+  } else if (lastSalePrice && lastSaleDate) {
     const amort = calculateRemainingBalance(lastSalePrice, lastSaleDate);
     mortgageEstimate = amort.balance;
     const yearsAgo = Math.round(amort.monthsElapsed / 12);
     mortgageMethod = `Amortized from $${lastSalePrice.toLocaleString()} purchase (${yearsAgo}yr ago) at ${(amort.rate * 100).toFixed(1)}% 30yr fixed, 80% LTV`;
 
-    confidence = marketValueSource.includes("Zestimate") || marketValueSource.includes("Redfin")
+    confidence = marketValueSource.includes("Zestimate") || marketValueSource.includes("Redfin") || marketValueSource.includes("NARRPR")
       ? "high"
       : "medium";
   }

@@ -94,7 +94,7 @@ export default function DossierList({
           return (
             <a
               key={job.id}
-              href={`/leads/dossier/${job.id}?key=${syncKey}`}
+              href={syncKey ? `/leads/dossier/${job.id}?key=${syncKey}` : `/leads/dossier/${job.id}`}
               className="block rounded-xl bg-white/5 border border-white/10 p-4 hover:bg-white/[0.08] transition-colors"
             >
               <div className="flex items-start justify-between gap-4">

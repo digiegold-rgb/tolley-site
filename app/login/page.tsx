@@ -12,7 +12,7 @@ type LoginPageProps = {
 
 function resolveCallbackUrl(value: string | undefined) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/agents";
+    return "/leads/dashboard";
   }
   return value;
 }

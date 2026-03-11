@@ -47,13 +47,13 @@ export function isLeadsPriceId(priceId: string): boolean {
 export function getLeadsTierLimits(tier: LeadsTier) {
   switch (tier) {
     case "starter":
-      return { smsLimit: 50, maxAgents: 1, dailyLeads: 10, snapLimit: 0, autoResponseLimit: 10, agentNotify: false, maxSequences: 1 };
+      return { smsLimit: 50, maxAgents: 1, dailyLeads: 10, snapLimit: 0, autoResponseLimit: 10, agentNotify: false, maxSequences: 1, fundScanLimit: 0 };
     case "pro":
-      return { smsLimit: 200, maxAgents: 1, dailyLeads: 25, snapLimit: 10, autoResponseLimit: 20, agentNotify: true, maxSequences: 5 };
+      return { smsLimit: 200, maxAgents: 1, dailyLeads: 25, snapLimit: 10, autoResponseLimit: 20, agentNotify: true, maxSequences: 5, fundScanLimit: 10 };
     case "team":
-      return { smsLimit: 9999, maxAgents: 5, dailyLeads: 50, snapLimit: 50, autoResponseLimit: 9999, agentNotify: true, maxSequences: 9999 };
+      return { smsLimit: 9999, maxAgents: 5, dailyLeads: 50, snapLimit: 50, autoResponseLimit: 9999, agentNotify: true, maxSequences: 9999, fundScanLimit: 50 };
     default:
-      return { smsLimit: 0, maxAgents: 0, dailyLeads: 0, snapLimit: 0, autoResponseLimit: 0, agentNotify: false, maxSequences: 0 };
+      return { smsLimit: 0, maxAgents: 0, dailyLeads: 0, snapLimit: 0, autoResponseLimit: 0, agentNotify: false, maxSequences: 0, fundScanLimit: 0 };
   }
 }
 
@@ -69,6 +69,7 @@ export const LEADS_TIERS = [
       "50 AI SMS/month",
       "Listing descriptions",
       "Email digest",
+      "Unclaimed funds via dossier",
     ],
   },
   {
@@ -81,6 +82,7 @@ export const LEADS_TIERS = [
       "Everything in Starter",
       "200 AI SMS/month",
       "10 Snap & Know lookups/month",
+      "10 unclaimed fund scans/month",
       "Automated follow-ups",
       "CRM pipeline view",
       "Priority farm areas",
@@ -95,6 +97,7 @@ export const LEADS_TIERS = [
       "Everything in Pro",
       "Unlimited AI SMS",
       "50 Snap & Know lookups/month",
+      "50 unclaimed fund scans/month",
       "5 agent seats",
       "White-label reports",
       "Custom farm areas",

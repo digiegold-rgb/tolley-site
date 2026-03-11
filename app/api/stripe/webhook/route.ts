@@ -148,6 +148,7 @@ async function syncLeadsSubscription(
       stripeSubscriptionId: subscription.id,
       status: isActive ? "active" : subscription.status,
       smsLimit: limits.smsLimit,
+      snapLimit: limits.snapLimit,
       maxAgents: limits.maxAgents,
     },
     update: {
@@ -155,6 +156,7 @@ async function syncLeadsSubscription(
       stripeSubscriptionId: subscription.id,
       status: isActive ? "active" : subscription.status,
       smsLimit: limits.smsLimit,
+      snapLimit: limits.snapLimit,
       maxAgents: limits.maxAgents,
     },
   });

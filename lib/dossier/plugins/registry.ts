@@ -8,6 +8,8 @@
  */
 
 import type { DossierPlugin } from "../types";
+import { narrprImportPlugin } from "./narrpr-import";
+import { regridPlugin } from "./regrid";
 import { countyAssessorPlugin } from "./county-assessor";
 import { courtRecordsPlugin } from "./court-records";
 import { peopleSearchPlugin } from "./people-search";
@@ -15,37 +17,39 @@ import { skipTracePlugin } from "./skip-trace";
 import { streetViewPlugin } from "./street-view";
 import { propertyHistoryPlugin } from "./property-history";
 import { financialPlugin } from "./financial";
-// ── Future plugins (uncomment when implemented) ──
-// import { neighborhoodPlugin } from "./neighborhood";
-// import { permitsPlugin } from "./permits";
-// import { rentalPlugin } from "./rental";
-// import { businessPlugin } from "./business";
-// import { environmentalPlugin } from "./environmental";
-// import { marketPlugin } from "./market";
-// import { socialDeepPlugin } from "./social-deep";
-// import { aiSummaryPlugin } from "./ai-summary";
+import { neighborhoodPlugin } from "./neighborhood";
+import { permitsPlugin } from "./permits";
+import { rentalPlugin } from "./rental";
+import { businessPlugin } from "./business";
+import { environmentalPlugin } from "./environmental";
+import { marketPlugin } from "./market";
+import { socialDeepPlugin } from "./social-deep";
+import { aiSummaryPlugin } from "./ai-summary";
+import { unclaimedFundsPlugin } from "./unclaimed-funds";
 
 /**
  * Master plugin list. Order doesn't matter — plugins are sorted by priority.
  * Disable a plugin by setting enabled: false in its definition.
  */
 const PLUGINS: DossierPlugin[] = [
-  countyAssessorPlugin,     // priority 10 — owner names (everything else depends on this)
+  narrprImportPlugin,       // priority 8  — NARRPR pre-staged data (runs before county-assessor)
+  regridPlugin,             // priority 5  — structured parcel data (runs before county-assessor)
+  countyAssessorPlugin,     // priority 10 — owner names (falls back when Regrid unavailable)
   propertyHistoryPlugin,    // priority 15 — deed history, prior sales
   skipTracePlugin,          // priority 20 — phone/email/age (needs owner names)
   courtRecordsPlugin,       // priority 30 — legal records (needs owner names)
   peopleSearchPlugin,       // priority 40 — web/social search (needs owner names)
   streetViewPlugin,         // priority 50 — property/area photos (independent)
   financialPlugin,          // priority 60 — equity estimation (depends on assessor + history)
-  // ── Future plugins slot in by priority ──
-  // neighborhoodPlugin,    // priority 55
-  // permitsPlugin,         // priority 65
-  // rentalPlugin,          // priority 70
-  // businessPlugin,        // priority 75
-  // environmentalPlugin,   // priority 80
-  // marketPlugin,          // priority 85
-  // socialDeepPlugin,      // priority 90
-  // aiSummaryPlugin,       // priority 99 — runs last, summarizes everything
+  unclaimedFundsPlugin,     // priority 62 — unclaimed property search (depends on assessor)
+  neighborhoodPlugin,       // priority 55 — walk score, schools, crime, demographics
+  permitsPlugin,            // priority 65 — building permits, code violations
+  rentalPlugin,             // priority 70 — rental estimates, eviction flags
+  businessPlugin,           // priority 75 — LLC/corp searches, UCC filings
+  environmentalPlugin,      // priority 80 — flood zones, EPA hazards
+  marketPlugin,             // priority 85 — price analytics, appreciation, comps
+  socialDeepPlugin,         // priority 90 — arrest records, deep social links
+  aiSummaryPlugin,          // priority 99 — runs last, summarizes everything
 ];
 
 /** Get all registered plugins sorted by priority */

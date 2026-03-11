@@ -194,6 +194,13 @@ export default async function AgentDashboardPage({
           >
             Snap & Know
           </a>
+          <span className="text-white/20">/</span>
+          <a
+            href="/leads/unclaimed"
+            className="rounded-lg px-3 py-1.5 text-sm text-emerald-300/70 hover:text-emerald-200 hover:bg-emerald-500/10 transition-colors"
+          >
+            Unclaimed $
+          </a>
         </nav>
 
         {/* Header */}

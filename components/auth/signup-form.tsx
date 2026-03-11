@@ -7,7 +7,7 @@ import { signIn } from "next-auth/react";
 
 function resolveCallbackUrl(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/agents";
+    return "/leads/dashboard";
   }
   return value;
 }

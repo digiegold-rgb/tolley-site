@@ -130,11 +130,19 @@ export default async function DossierPage({
         </nav>
 
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Lead Intelligence</h1>
-          <p className="text-white/40 text-sm mt-1">
-            Deep research dossiers — owner data, court records, social profiles
-          </p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Lead Intelligence</h1>
+            <p className="text-white/40 text-sm mt-1">
+              Deep research dossiers — owner data, court records, social profiles
+            </p>
+          </div>
+          <a
+            href="/leads/narrpr"
+            className="rounded-lg bg-orange-600/80 px-4 py-2 text-sm font-medium text-white hover:bg-orange-500 transition-colors flex items-center gap-2"
+          >
+            <span>NARRPR Import</span>
+          </a>
         </div>
 
         {/* Plugin status */}

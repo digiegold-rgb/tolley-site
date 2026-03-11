@@ -11,6 +11,14 @@
     {
       "path": "/api/cron/sequence-process",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/regrid-scan",
+      "schedule": "0 3 * * 1"
+    },
+    {
+      "path": "/api/cron/unclaimed-compliance",
+      "schedule": "0 7 * * *"
     }
   ]
 }

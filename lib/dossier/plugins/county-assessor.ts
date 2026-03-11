@@ -34,8 +34,9 @@ const COUNTY_CONFIGS: CountyConfig[] = [
     state: "MO",
     fips: "29095",
     searchUrl: "https://ascendweb.jacksongov.org/ascend/(S(0))/result.aspx?searchType=0&SearchString={address}",
-    scrapeable: true,
-    notes: "Primary KC county. Has REST-ish search. Returns owner, legal description, assessed value.",
+    parcelUrl: "https://ascendweb.jacksongov.org/ascend/(S(0))/result.aspx?searchType=6&SearchString={parcel}",
+    scrapeable: false, // Requires Playwright (JS-rendered ASP.NET portal)
+    notes: "Jackson County Ascend portal. Parcel-based search works best. Also try publicaccess.jacksongov.org.",
   },
   {
     name: "Clay",
@@ -95,10 +96,47 @@ export const countyAssessorPlugin: DossierPlugin = {
 
   async run(context: DossierContext): Promise<DossierPluginResult> {
     const start = Date.now();
-    const { listing } = context;
+    const { listing, priorResults } = context;
     const sources: SourceLink[] = [];
     const warnings: string[] = [];
     const owners: OwnerInfo[] = [];
+
+    // ── Defer to Regrid if it ran successfully with high confidence ──
+    const regridResult = priorResults["regrid"];
+    if (regridResult?.success && regridResult.confidence >= 0.8) {
+      const regridOwners = (regridResult.data.owners || []) as OwnerInfo[];
+      if (regridOwners.length > 0) {
+        // Regrid provided good data — skip scraping, just add verification links
+        const countyConfig = detectCountyConfig(listing);
+        if (countyConfig) {
+          const searchUrl = countyConfig.searchUrl
+            .replace("{address}", encodeURIComponent(listing.address?.replace(/,.*$/, "").trim() || ""))
+            .replace("{city}", encodeURIComponent(listing.city || ""))
+            .replace("{zip}", encodeURIComponent(listing.zip || ""));
+          sources.push({
+            label: `${countyConfig.name} County Assessor — Verify (Regrid data used)`,
+            url: searchUrl,
+            type: "county",
+          });
+        }
+
+        return {
+          pluginName: "county-assessor",
+          success: true,
+          data: {
+            owners: regridOwners,
+            rawEntityName: regridResult.data.owner || null,
+            assessedValue: regridResult.data.assessedValue || null,
+            county: regridResult.data.county || null,
+            deferredToRegrid: true,
+          },
+          sources,
+          confidence: regridResult.confidence,
+          warnings: ["Using Regrid parcel data — county assessor scraping skipped"],
+          durationMs: Date.now() - start,
+        };
+      }
+    }
 
     if (!listing.address || !listing.city) {
       return {
@@ -114,6 +152,10 @@ export const countyAssessorPlugin: DossierPlugin = {
     }
 
     await context.updateProgress("Identifying county...");
+
+    // Extract parcel number from MLS rawData
+    const raw = (listing.rawData || {}) as Record<string, unknown>;
+    const parcelNumber = typeof raw.ParcelNumber === "string" ? raw.ParcelNumber : null;
 
     // Detect county from existing enrichment or lat/lng
     const countyConfig = detectCountyConfig(listing);
@@ -198,25 +240,66 @@ export const countyAssessorPlugin: DossierPlugin = {
       warnings.push(`${countyConfig.name} County requires JavaScript rendering — click the link to search manually`);
     }
 
-    // If scraping didn't work, try a fallback Google search for owner
+    // If scraping didn't work, provide targeted search links
     if (owners.length === 0) {
-      await context.updateProgress("Trying Google fallback for owner info...");
+      await context.updateProgress("Building targeted search links...");
+
+      // Parcel-based search (most reliable for Jackson County)
+      if (parcelNumber && countyConfig.parcelUrl) {
+        const parcelUrl = countyConfig.parcelUrl.replace("{parcel}", encodeURIComponent(parcelNumber));
+        sources.push({
+          label: `${countyConfig.name} County Assessor — Parcel Search`,
+          url: parcelUrl,
+          type: "county",
+        });
+      }
+
+      // Google fallback with parcel number
+      if (parcelNumber) {
+        sources.push({
+          label: `Google: parcel ${parcelNumber} owner lookup`,
+          url: `https://www.google.com/search?q=${encodeURIComponent(`"${parcelNumber}" ${countyConfig.name} county ${countyConfig.state} property owner`)}`,
+          type: "search",
+        });
+      }
+
+      // Generic Google owner search
       const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(
         `"${listing.address}" ${listing.city} ${listing.state || "MO"} owner name property records`
       )}`;
-
       sources.push({
         label: "Google: property owner search (fallback)",
         url: googleUrl,
         type: "search",
       });
 
-      // Also add county recorder / tax search links
+      // County recorder / tax search links
       const taxSearchUrl = buildTaxSearchUrl(countyConfig, listing);
       if (taxSearchUrl) {
         sources.push({
           label: `${countyConfig.name} County Tax Records`,
           url: taxSearchUrl,
+          type: "county",
+        });
+      }
+
+      // Jackson County specific: add publicaccess portal and recorder links
+      if (countyConfig.name === "Jackson") {
+        sources.push({
+          label: "Jackson County Public Access Portal",
+          url: "https://publicaccess.jacksongov.org/search/commonsearch.aspx?mode=realprop",
+          type: "county",
+        });
+        if (parcelNumber) {
+          sources.push({
+            label: "Jackson County Recorder — Parcel Deed Search",
+            url: `https://recorder.jacksongov.org/search?searchType=parcel&searchString=${encodeURIComponent(parcelNumber.replace(/-/g, ""))}`,
+            type: "county",
+          });
+        }
+        sources.push({
+          label: "Jackson County Recorder — Address Search",
+          url: `https://recorder.jacksongov.org/search?searchType=address&searchString=${encodeURIComponent(listing.address.replace(/,.*$/, "").trim())}`,
           type: "county",
         });
       }
@@ -302,10 +385,8 @@ async function scrapeAssessor(
     if (!res.ok) return null;
     const html = await res.text();
 
-    // ── Jackson County parser ──
-    if (config.name === "Jackson") {
-      return parseJacksonCounty(html);
-    }
+    // Jackson County now requires Playwright (handled by research worker)
+    // This fetch-based path won't be reached since scrapeable=false
 
     // ── Beacon/Schneider parser (Clay, Platte, Cass) ──
     if (config.name === "Clay" || config.name === "Platte" || config.name === "Cass") {

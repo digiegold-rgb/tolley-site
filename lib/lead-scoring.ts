@@ -134,6 +134,127 @@ export function shouldCreateLead(result: ScoreResult): boolean {
   return result.score >= 25;
 }
 
+// ── Parcel-based scoring (off-market / Regrid) ────────────────
+
+interface ParcelForScoring {
+  isAbsentee: boolean;
+  isVacant: boolean;
+  saleprice: number | null;
+  saledate: string | null;
+  yearbuilt: number | null;
+  parval: number | null;
+  taxamt: number | null;
+  qoz: boolean;
+  owner: string | null;
+  portfolioSize?: number;
+}
+
+export interface ParcelScoreResult {
+  score: number;
+  factors: Record<string, number>;
+  source: string;
+  summary: string;
+}
+
+/**
+ * Score a parcel for off-market lead potential.
+ */
+export function scoreParcel(parcel: ParcelForScoring): ParcelScoreResult {
+  const factors: Record<string, number> = {};
+  let score = 0;
+  const reasons: string[] = [];
+
+  // Absentee owner (situs != mailing)
+  if (parcel.isAbsentee) {
+    factors.absentee = 25;
+    score += 25;
+    reasons.push("absentee owner");
+  }
+
+  // USPS vacant
+  if (parcel.isVacant) {
+    factors.vacant = 20;
+    score += 20;
+    reasons.push("USPS vacant");
+  }
+
+  // Long hold period (years since last sale)
+  if (parcel.saledate) {
+    const saleYear = new Date(parcel.saledate).getFullYear();
+    const currentYear = new Date().getFullYear();
+    const holdYears = currentYear - saleYear;
+    if (holdYears >= 15) {
+      factors.longHold = 15;
+      score += 15;
+      reasons.push(`${holdYears}yr hold`);
+    } else if (holdYears >= 10) {
+      factors.longHold = 10;
+      score += 10;
+      reasons.push(`${holdYears}yr hold`);
+    }
+  }
+
+  // Aging structure
+  if (parcel.yearbuilt) {
+    const age = new Date().getFullYear() - parcel.yearbuilt;
+    if (age >= 40) {
+      factors.agingStructure = 10;
+      score += 10;
+      reasons.push(`built ${parcel.yearbuilt}`);
+    }
+  }
+
+  // Portfolio owner
+  const portfolioSize = parcel.portfolioSize ?? 0;
+  if (portfolioSize >= 5) {
+    factors.portfolio = 15;
+    score += 15;
+    reasons.push(`${portfolioSize}-property portfolio`);
+  } else if (portfolioSize >= 3) {
+    factors.portfolio = 10;
+    score += 10;
+    reasons.push(`${portfolioSize}-property portfolio`);
+  }
+
+  // High tax burden (effective rate > 2.5%)
+  if (parcel.taxamt && parcel.parval && parcel.parval > 0) {
+    const effectiveRate = (parcel.taxamt / parcel.parval) * 100;
+    if (effectiveRate > 2.5) {
+      factors.highTax = 10;
+      score += 10;
+      reasons.push(`${effectiveRate.toFixed(1)}% tax rate`);
+    }
+  }
+
+  // Qualified Opportunity Zone
+  if (parcel.qoz) {
+    factors.qoz = 5;
+    score += 5;
+    reasons.push("QOZ");
+  }
+
+  // Determine source
+  let source = "regrid_offmarket";
+  if (parcel.isAbsentee) source = "regrid_absentee";
+  else if (parcel.isVacant) source = "regrid_vacant";
+
+  score = Math.min(score, 100);
+
+  return {
+    score,
+    factors,
+    source,
+    summary: reasons.length > 0 ? reasons.join(", ") : "off-market parcel",
+  };
+}
+
+/**
+ * Determine if a parcel should generate an off-market lead.
+ */
+export function shouldCreateParcelLead(result: ParcelScoreResult): boolean {
+  return result.score >= 25;
+}
+
 /**
  * Format a lead digest entry for Telegram/Discord.
  */

@@ -228,6 +228,7 @@ model Listing {
   leads                 Lead[]
   enrichment            ListingEnrichment?
   dossierJobs           DossierJob[]
+  parcel                Parcel?
 
   @@index([status, zip])
   @@index([status, daysOnMarket])
@@ -239,6 +240,8 @@ model Lead {
   id              String    @id @default(cuid())
   listingId       String?
   listing         Listing?  @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  parcelId        String?
+  parcel          Parcel?   @relation(fields: [parcelId], references: [id], onDelete: SetNull)
   score           Int       @default(0)    // 0-100, higher = more motivated
   scoreFactors    Json?     // { "priceDrop": 20, "daysOnMarket": 30, ... }
   status          String    @default("new") // new, contacted, interested, referred, closed, dead
@@ -246,7 +249,7 @@ model Lead {
   ownerPhone      String?
   ownerEmail      String?
   notes           String?
-  source          String?   // mls_expired, mls_pricedrop, mls_dom, propstream, manual
+  source          String?   // mls_expired, mls_pricedrop, mls_dom, propstream, manual, regrid_absentee, regrid_vacant, regrid_offmarket
   referredTo      String?   // agent name who got the referral
   referralStatus  String?   // pending, accepted, under_contract, closed, lost
   referralFee     Float?    // expected or actual referral fee amount
@@ -258,6 +261,7 @@ model Lead {
   @@index([status, score])
   @@index([source, createdAt])
   @@index([referralStatus])
+  @@index([parcelId])
 }
 
 model PointOfInterest {
@@ -343,6 +347,9 @@ model LeadSubscriber {
   referralFeesPending   Float    @default(0)
   dailyContactGoal      Int      @default(10)
   weeklyDigestEnabled   Boolean  @default(true)
+  // Unclaimed funds
+  fundScanLimit         Int      @default(0)    // monthly standalone scans (0=dossier-only, 10=pro, 50=team)
+  fundScanUsed          Int      @default(0)    // resets monthly
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -825,7 +832,7 @@ model SmsEnrollment {
 
 model SyncLog {
   id             String   @id @default(cuid())
-  source         String   // mls_grid, propstream
+  source         String   // mls_grid, propstream, regrid
   recordsTotal   Int      @default(0)
   recordsNew     Int      @default(0)
   recordsUpdated Int      @default(0)
@@ -834,4 +841,217 @@ model SyncLog {
   createdAt      DateTime @default(now())
 
   @@index([source, createdAt])
+}
+
+// ─── Regrid Parcel Data (Off-Market Property Intelligence) ──
+
+model Parcel {
+  id                    String    @id @default(cuid())
+  // Regrid identifiers
+  regridId              String    @unique  // Regrid's internal feature ID
+  parcelnumb            String?            // Assessor Parcel Number (APN)
+  // Address
+  address               String
+  city                  String?
+  state                 String?
+  zip                   String?
+  county                String?
+  lat                   Float?
+  lng                   Float?
+  // Ownership
+  owner                 String?            // Full owner name(s) as-is from Regrid
+  owntype               String?            // fee, government, trust, etc.
+  ownfrst               String?
+  ownlast               String?
+  mailadd               String?            // Mailing address line
+  mailcity              String?
+  mailstate             String?
+  mailzip               String?
+  // Computed flags
+  isAbsentee            Boolean   @default(false) // situs != mailing address
+  isVacant              Boolean   @default(false) // USPS vacancy flag
+  // Tax / assessment
+  parval                Float?             // Total parcel value (assessed)
+  landval               Float?             // Land value
+  improvval             Float?             // Improvement value
+  saleprice             Float?             // Last sale price
+  saledate              String?            // Last sale date
+  taxamt                Float?             // Annual tax amount
+  // Structure
+  yearbuilt             Int?
+  numstories            Float?
+  numunits              Int?
+  num_bedrooms          Int?
+  num_bath              Float?
+  struct                String?            // Primary structure type
+  ll_gisacre            Float?             // GIS-computed acreage
+  ll_gissqft            Float?             // GIS-computed lot sqft
+  // Zoning / special
+  zoning                String?
+  zoning_description    String?
+  usps_vacancy          String?            // Y, N, or null
+  qoz                   Boolean   @default(false) // Qualified Opportunity Zone
+  // Raw data store
+  rawData               Json?              // Full GeoJSON feature properties
+  geometry              Json?              // Parcel boundary polygon (GeoJSON)
+  // Relations
+  listingId             String?   @unique  // 1:1 optional link to MLS Listing
+  listing               Listing?  @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  leads                 Lead[]
+  // Cache
+  regridFetchedAt       DateTime  @default(now()) // For 30-day TTL
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([zip])
+  @@index([county])
+  @@index([owner])
+  @@index([isAbsentee, isVacant])
+  @@index([parcelnumb])
+  @@index([lat, lng])
+}
+
+// ─── NARRPR Import (Realtors Property Resource) ─────────────
+
+model NarrprImport {
+  id               String    @id @default(cuid())
+  importType       String    // "csv_bulk" | "rich_detail" | "bookmarklet"
+  address          String
+  city             String?
+  state            String?
+  zip              String?
+  matchedListingId String?
+  matchedDossierId String?
+  matchConfidence  Float?
+  // CSV bulk fields
+  ownerName        String?
+  ownerName2       String?
+  mailingAddress   String?
+  mailingCity      String?
+  mailingState     String?
+  mailingZip       String?
+  // Rich detail fields
+  mortgageData     Json?     // [{lender, amount, type, date, rate?}]
+  rvmValue         Json?     // {value, confidence, date, low?, high?}
+  esriTapestry     Json?     // {segment, segmentCode, lifeMode, urbanization}
+  distressData     Json?     // {nodDate?, auctionDate?, releaseDate?, status?}
+  deedRecords      Json?     // [{date, price, grantor, grantee, type}]
+  // Status
+  status           String    @default("pending")
+  mergedAt         DateTime?
+  userId           String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status])
+  @@index([address])
+  @@index([matchedListingId])
+}
+
+// ─── Unclaimed Funds Discovery ──────────────────────────────
+
+model UnclaimedFundScan {
+  id              String           @id @default(cuid())
+  subscriberId    String?          // LeadSubscriber who initiated
+  userId          String
+  // Search params
+  ownerName       String           // primary name searched
+  alternateNames  String[]         // aliases, maiden names, etc.
+  sources         String[]         // mo_unclaimed, mo_tax_surplus, ks_unclaimed, pa_unclaimed, hud, fdic, missingmoney
+  // Pipeline links (optional — bridges dossier integration)
+  listingId       String?
+  dossierJobId    String?
+  // Results
+  status          String           @default("pending") // pending, running, complete, partial, failed
+  totalFound      Int              @default(0)
+  claimableAmount Float            @default(0)
+  errorMessage    String?
+  duration        Int?             // ms
+  // Relations
+  funds           UnclaimedFund[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([subscriberId])
+  @@index([status])
+  @@index([ownerName])
+  @@index([createdAt])
+}
+
+model UnclaimedFund {
+  id              String               @id @default(cuid())
+  scanId          String
+  scan            UnclaimedFundScan    @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  // Fund details
+  source          String               // mo_unclaimed, mo_tax_surplus, ks_unclaimed, etc.
+  externalId      String?              // ID from the source system (for dedup)
+  amount          Float?               // reported amount (null if not disclosed)
+  ownerName       String               // name as it appears in the source
+  holderName      String?              // entity holding the funds (bank, county, state)
+  propertyType    String?              // cash, stock, insurance, safe_deposit, tax_surplus
+  reportDate      DateTime?            // when funds were reported/escheated
+  lastActivityDate DateTime?           // last known activity on the account
+  address         String?              // address associated with the funds
+  city            String?
+  state           String?
+  zip             String?
+  // Matching
+  matchConfidence Float                @default(0) // 0-1
+  matchMethod     String?              // exact, fuzzy, alias
+  // Raw data from scraper
+  rawData         Json?
+  // Claim link
+  claim           UnclaimedFundClaim?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@unique([source, externalId])
+  @@index([scanId])
+  @@index([ownerName])
+  @@index([amount])
+  @@index([source])
+}
+
+model UnclaimedFundClaim {
+  id              String          @id @default(cuid())
+  fundId          String          @unique
+  fund            UnclaimedFund   @relation(fields: [fundId], references: [id], onDelete: Cascade)
+  subscriberId    String
+  // Status workflow
+  status          String          @default("identified") // identified, contacted, agreement_signed, filed, approved, paid
+  // Compliance
+  jurisdiction    String          // MO, KS, PA, federal
+  sourceType      String          // state_unclaimed, tax_surplus, hud, fdic
+  waitingPeriodEnd DateTime?      // null = no waiting period or unknown
+  maxFeePercent   Float?          // computed from compliance engine
+  currentFeeWindow String?        // e.g. "12-24mo: 10%", "36+: 20%"
+  claimDeadline   DateTime?       // hard deadline if applicable
+  statuteReference String?        // e.g. "RSMo 447.581"
+  complianceWarnings String[]     // any warnings from compliance engine
+  // Financials
+  claimAmount     Float?          // amount being claimed
+  agreedFeePercent Float?         // fee agreed with owner
+  expectedFee     Float?          // claimAmount * agreedFeePercent
+  actualPayout    Float?          // what was actually received
+  // Outreach
+  ownerPhone      String?
+  ownerEmail      String?
+  ownerAddress    String?
+  contactAttempts Int             @default(0)
+  lastContactAt   DateTime?
+  agreementSignedAt DateTime?
+  // Filing
+  filedAt         DateTime?
+  approvedAt      DateTime?
+  paidAt          DateTime?
+  // Notes
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([subscriberId])
+  @@index([status])
+  @@index([jurisdiction])
+  @@index([waitingPeriodEnd])
 }

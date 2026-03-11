@@ -44,6 +44,10 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
     data: { status: "running", startedAt: new Date() },
   });
 
+  // Extract useful fields from MLS rawData
+  const raw = (job.listing.rawData || {}) as Record<string, unknown>;
+  const parcelNumber = typeof raw.ParcelNumber === "string" ? raw.ParcelNumber : null;
+
   const listing: DossierListing = {
     id: job.listing.id,
     mlsId: job.listing.mlsId,
@@ -69,10 +73,52 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
   // Get plugins that are enabled + have config (local fallback)
   const { ready: plugins, notReady } = getReadyPlugins();
 
+  // ── Resolve owner name from available sources ──
+  // Priority: rawData.ownerName (user-provided) → linked Lead.ownerName → MLS rawData
+  let seedOwnerName: string | undefined;
+  if (typeof raw.ownerName === "string" && raw.ownerName.trim()) {
+    seedOwnerName = raw.ownerName.trim();
+  }
+  if (!seedOwnerName && job.leadId) {
+    const lead = await prisma.lead.findUnique({ where: { id: job.leadId }, select: { ownerName: true } });
+    if (lead?.ownerName) seedOwnerName = lead.ownerName;
+  }
+  if (seedOwnerName) {
+    console.log(`[Dossier] Seed owner name: "${seedOwnerName}"`);
+  }
+
   const priorResults: Record<string, DossierPluginResult> = {};
   const knownOwners: OwnerInfo[] = [];
   const stepsCompleted: string[] = [];
   const stepsFailed: string[] = [];
+
+  // Pre-seed known owners from user-provided or lead data
+  if (seedOwnerName) {
+    knownOwners.push({
+      name: seedOwnerName,
+      role: "owner",
+      confidence: 0.9,
+    });
+  }
+
+  // ── Load active workflow config (if any) ──
+  let enabledScrapers: string[] | undefined;
+  try {
+    const activeWorkflow = await prisma.pipelineWorkflow.findFirst({
+      where: { userId: job.requestedBy || "", isActive: true },
+      select: { nodes: true },
+    });
+    if (activeWorkflow?.nodes) {
+      const workflowNodes = activeWorkflow.nodes as { data?: { scraperId?: string } }[];
+      const scraperIds = workflowNodes
+        .map((n) => n.data?.scraperId)
+        .filter((s): s is string => !!s && s !== "mls" && s !== "score-profile" && s !== "owner-verification");
+      if (scraperIds.length > 0) {
+        enabledScrapers = scraperIds;
+        console.log(`[Dossier] Active workflow limits scrapers to: ${enabledScrapers.join(", ")}`);
+      }
+    }
+  } catch { /* no workflow config — run all scrapers */ }
 
   // ── DGX Research Worker (primary — uses Playwright browser automation) ──
   const RESEARCH_WORKER_URL = process.env.RESEARCH_WORKER_URL; // e.g. http://localhost:8900 or tunnel URL
@@ -102,6 +148,8 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
           lat: listing.lat,
           lng: listing.lng,
           listPrice: listing.listPrice,
+          ownerName: seedOwnerName,
+          enabledScrapers, // workflow-controlled scraper list
         }),
         signal: AbortSignal.timeout(300000), // 5 min timeout
       });
@@ -223,6 +271,8 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
             allErrors: workerData.errors,
             motivationScore: workerData.motivationScore,
             motivationFlags: workerData.motivationFlags,
+            intelligenceBrief: workerData.intelligenceBrief,
+            llmTokensUsed: workerData.llmTokensUsed,
           },
           sources: workerData.sources || [],
           confidence: 0.8,
@@ -359,10 +409,50 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
   const webMentions = collectFromPlugins(priorResults, "webMentions");
   const relatedPeople = collectFromPlugins(priorResults, "relatedPeople");
 
+  // Intelligence brief from research worker LLM analysis
+  const workerResult = priorResults["dgx-research-worker"];
+  const researchSummary = workerResult?.data?.intelligenceBrief as string | undefined;
+
   // Financial data from financial-analysis plugin
   const finResult = priorResults["financial-analysis"];
   const financialData = finResult?.success && finResult.data.financialData
     ? JSON.parse(JSON.stringify(finResult.data.financialData))
+    : undefined;
+
+  // New plugin data extraction
+  const neighborhoodResult = priorResults["neighborhood"];
+  const neighborhoodData = neighborhoodResult?.success
+    ? JSON.parse(JSON.stringify(neighborhoodResult.data))
+    : undefined;
+
+  const permitsResult = priorResults["permits"];
+  const permitData = permitsResult?.success
+    ? JSON.parse(JSON.stringify(permitsResult.data))
+    : undefined;
+
+  const rentalResult = priorResults["rental"];
+  const rentalData = rentalResult?.success
+    ? JSON.parse(JSON.stringify(rentalResult.data))
+    : undefined;
+
+  const businessResult = priorResults["business"];
+  const businessData = businessResult?.success
+    ? JSON.parse(JSON.stringify(businessResult.data))
+    : undefined;
+
+  const envResult = priorResults["environmental"];
+  const environmentalData = envResult?.success
+    ? JSON.parse(JSON.stringify(envResult.data))
+    : undefined;
+
+  const marketResult = priorResults["market"];
+  const marketData = marketResult?.success
+    ? JSON.parse(JSON.stringify(marketResult.data))
+    : undefined;
+
+  const aiSummaryResult = priorResults["ai-summary"];
+  const customData = aiSummaryResult?.success
+    ? JSON.parse(JSON.stringify(aiSummaryResult.data))
     : undefined;
 
   // Street view / satellite from street-view plugin
@@ -416,7 +506,15 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
       neighborhoodPhotos,
       motivationScore,
       motivationFlags,
+      researchSummary,
       financialData,
+      neighborhoodData,
+      permitData,
+      rentalData,
+      businessData,
+      environmentalData,
+      marketData,
+      customData,
       pluginData: JSON.parse(JSON.stringify(pluginData)),
     },
   });
@@ -485,7 +583,7 @@ function computeMotivation(
   const flags: MotivationFlag[] = [];
   let score = 0;
 
-  // Existing sell score factors (DOM, price drop, expired/withdrawn)
+  // ── Listing Metrics ──
   if (listing.daysOnMarket && listing.daysOnMarket > 90) {
     flags.push("high_dom");
     score += Math.min(25, Math.floor(listing.daysOnMarket / 10));
@@ -497,14 +595,44 @@ function computeMotivation(
     score += Math.min(25, Math.floor(dropPct * 2));
   }
 
-  // Court records
+  // ── MLS rawData analysis (PublicRemarks keyword scanning) ──
+  const raw = (listing.rawData || {}) as Record<string, unknown>;
+  const remarks = (typeof raw.PublicRemarks === "string" ? raw.PublicRemarks : "").toLowerCase();
+  const ownership = (typeof raw.Ownership === "string" ? raw.Ownership : "").toLowerCase();
+
+  // Estate / probate keywords in remarks
+  if (/\b(estate|probate|heir|inherited|deceased|personal representative|executor)\b/.test(remarks)) {
+    if (!flags.includes("estate_probate")) { flags.push("estate_probate"); score += 15; }
+  }
+  // Divorce / separation keywords
+  if (/\b(divorce|divorc|separation|marital)\b/.test(remarks)) {
+    if (!flags.includes("divorce")) { flags.push("divorce"); score += 15; }
+  }
+  // Relocation keywords
+  if (/\b(relocat|transfer|moving out|must sell|motivated|job transfer)\b/.test(remarks)) {
+    if (!flags.includes("job_relocation")) { flags.push("job_relocation"); score += 10; }
+  }
+  // Vacant / unoccupied
+  if (/\b(vacant|unoccupied|empty|no one living|move.in ready)\b/.test(remarks)) {
+    if (!flags.includes("vacant")) { flags.push("vacant"); score += 10; }
+  }
+  // Investor / non-owner occupied
+  if (ownership === "investment" || ownership === "other" || /\b(investor|investment|rental property|tenant occupied|currently rented)\b/.test(remarks)) {
+    if (!flags.includes("tired_landlord")) { flags.push("tired_landlord"); score += 10; }
+  }
+  // As-is / handyman / fixer
+  if (/\b(as.is|as is|handyman|fixer|needs work|needs repair|needs updating|cash only|investor special)\b/.test(remarks)) {
+    score += 10; // No specific flag, just adds to score
+  }
+
+  // ── Court Records ──
   const courtResult = results["court-records"];
   if (courtResult?.success) {
     const cases = (courtResult.data.courtCases || []) as { type: string }[];
-    if (cases.some((c) => c.type === "divorce")) { flags.push("divorce"); score += 20; }
+    if (cases.some((c) => c.type === "divorce")) { if (!flags.includes("divorce")) { flags.push("divorce"); score += 20; } }
     if (cases.some((c) => c.type === "foreclosure")) { flags.push("pre_foreclosure"); score += 25; }
-    if (cases.some((c) => c.type === "probate")) { flags.push("estate_probate"); score += 15; }
-    if (cases.some((c) => c.type === "eviction")) { flags.push("tired_landlord"); score += 10; }
+    if (cases.some((c) => c.type === "probate")) { if (!flags.includes("estate_probate")) { flags.push("estate_probate"); score += 15; } }
+    if (cases.some((c) => c.type === "eviction")) { if (!flags.includes("tired_landlord")) { flags.push("tired_landlord"); score += 10; } }
 
     const liens = (courtResult.data.liens || []) as { type: string }[];
     if (liens.some((l) => l.type === "tax_lien")) { flags.push("tax_lien"); score += 20; }
@@ -513,18 +641,57 @@ function computeMotivation(
     if (bankruptcies.length > 0) { flags.push("bankruptcy"); score += 20; }
   }
 
-  // Owner analysis
+  // ── Regrid Signals ──
+  const regridResult = results["regrid"];
+  if (regridResult?.success) {
+    // Absentee owner from Regrid
+    if (regridResult.data.isAbsentee === true) {
+      if (!flags.includes("absentee_owner")) {
+        flags.push("absentee_owner");
+        score += 15;
+      }
+    }
+    // USPS Vacant from Regrid
+    if (regridResult.data.isVacant === true) {
+      if (!flags.includes("vacant")) {
+        flags.push("vacant");
+        score += 15;
+      }
+    }
+    // Portfolio owner (multiple properties)
+    const portfolioSize = regridResult.data.portfolioSize as number;
+    if (portfolioSize >= 3) {
+      if (!flags.includes("multiple_properties")) {
+        flags.push("multiple_properties");
+        score += 10;
+      }
+    }
+  }
+
+  // ── Owner Analysis ──
   const assessorResult = results["county-assessor"];
   if (assessorResult?.success) {
     const owners = (assessorResult.data.owners || []) as OwnerInfo[];
     // Out of state owner
     if (owners.some((o) => o.address && !o.address.toLowerCase().includes(listing.state?.toLowerCase() || "mo"))) {
-      flags.push("out_of_state_owner");
-      score += 10;
+      if (!flags.includes("out_of_state_owner")) {
+        flags.push("out_of_state_owner");
+        score += 10;
+      }
+    }
+    // Absentee owner (mailing differs from property)
+    const rawEntity = assessorResult.data.rawEntityName as string;
+    if (rawEntity) {
+      const lower = rawEntity.toLowerCase();
+      if (lower.includes("estate") || lower.includes("trust")) {
+        if (!flags.includes("estate_probate") && !flags.includes("inherited")) {
+          flags.push("inherited"); score += 10;
+        }
+      }
     }
   }
 
-  // Property history — inherited indicator
+  // ── Property History — inherited indicator ──
   const historyResult = results["property-history"];
   if (historyResult?.success) {
     const deeds = (historyResult.data.deedHistory || []) as { type: string }[];
@@ -533,6 +700,28 @@ function computeMotivation(
         flags.push("inherited");
         score += 15;
       }
+    }
+  }
+
+  // ── NARRPR Distress Signals ──
+  const narrprResult = results["narrpr-import"];
+  if (narrprResult?.success) {
+    const distress = narrprResult.data.narrprDistress as { nodDate?: string; auctionDate?: string } | undefined;
+    if (distress?.nodDate) {
+      if (!flags.includes("pre_foreclosure")) {
+        flags.push("pre_foreclosure");
+        score += 25;
+      }
+    }
+    if (distress?.auctionDate) {
+      score += 10; // Additional urgency for scheduled auction
+    }
+
+    // Absentee owner from NARRPR CSV (mailing != property address)
+    const owners = narrprResult.data.owners as { name: string }[] | undefined;
+    if (owners && owners.length > 0) {
+      // If NARRPR provided owner data, check if any CSV import had absentee detection
+      // (absentee flag is set during CSV import merge)
     }
   }
 

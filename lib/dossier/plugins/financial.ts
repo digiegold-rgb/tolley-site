@@ -36,6 +36,7 @@ export const financialPlugin: DossierPlugin = {
     const assessorData = priorResults["county-assessor"]?.data || {};
     const historyData = priorResults["property-history"]?.data || {};
     const workerData = priorResults["dgx-research-worker"]?.data || {};
+    const narrprData = priorResults["narrpr-import"]?.data || {};
 
     const result = estimateEquity({
       zestimate: workerData.zestimate as number | undefined,
@@ -44,7 +45,10 @@ export const financialPlugin: DossierPlugin = {
       assessedValue: assessorData.assessedValue as number | undefined,
       assessmentRatio: undefined, // Will use enrichment data if available
       listPrice: listing.listPrice ?? undefined,
-      deedHistory: (historyData.deedHistory || []) as Array<{ price?: number | null; date?: string }>,
+      deedHistory: (historyData.deedHistory || narrprData.deedHistory || []) as Array<{ price?: number | null; date?: string }>,
+      // NARRPR data: actual mortgage + MLS-informed RVM valuation
+      narrprMortgage: narrprData.narrprMortgage as { amount: number; date: string; lender: string; type: string; rate?: number } | undefined,
+      narrprRvm: narrprData.narrprRvm as { value: number; confidence: number; low?: number; high?: number } | undefined,
     });
 
     if (!result) {

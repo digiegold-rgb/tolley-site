@@ -64,6 +64,7 @@ interface Lead {
   referralFee: number | null;
   ownerName: string | null;
   ownerPhone: string | null;
+  ownerEmail: string | null;
   contactedAt: string | null;
   closedAt: string | null;
   createdAt: string;
@@ -90,6 +91,8 @@ interface Filters {
   source: string;
   county: string;
   propertyType: string;
+  absenteeOnly: boolean;
+  vacantOnly: boolean;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -130,6 +133,8 @@ const DEFAULT_FILTERS: Filters = {
   source: "all",
   county: "all",
   propertyType: "all",
+  absenteeOnly: false,
+  vacantOnly: false,
 };
 
 export default function LeadsDashboard({ leads }: { leads: Lead[] }) {
@@ -138,6 +143,8 @@ export default function LeadsDashboard({ leads }: { leads: Lead[] }) {
   const [updating, setUpdating] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [researching, setResearching] = useState<string | null>(null);
+  const [editingLead, setEditingLead] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<{ ownerName: string; ownerPhone: string; ownerEmail: string }>({ ownerName: "", ownerPhone: "", ownerEmail: "" });
 
   // Derive unique values for dropdowns
   const uniqueValues = useMemo(() => {
@@ -191,6 +198,8 @@ export default function LeadsDashboard({ leads }: { leads: Lead[] }) {
       if (f.source !== "all" && lead.source !== f.source) return false;
       if (f.county !== "all" && e?.countyName !== f.county) return false;
       if (f.propertyType !== "all" && l?.propertyType !== f.propertyType) return false;
+      if (f.absenteeOnly && !lead.source?.startsWith("regrid_absentee")) return false;
+      if (f.vacantOnly && !lead.source?.startsWith("regrid_vacant")) return false;
 
       return true;
     });
@@ -213,6 +222,8 @@ export default function LeadsDashboard({ leads }: { leads: Lead[] }) {
     if (filters.source !== d.source) count++;
     if (filters.county !== d.county) count++;
     if (filters.propertyType !== d.propertyType) count++;
+    if (filters.absenteeOnly) count++;
+    if (filters.vacantOnly) count++;
     return count;
   }, [filters]);
 
@@ -473,6 +484,31 @@ export default function LeadsDashboard({ leads }: { leads: Lead[] }) {
                   ))}
                 </select>
               </div>
+            </div>
+          </div>
+
+          {/* Row 2b: Regrid Filters */}
+          <div>
+            <div className="text-[0.65rem] font-medium text-white/40 uppercase tracking-wider mb-2">Parcel Flags</div>
+            <div className="flex flex-wrap gap-3">
+              <label className="flex items-center gap-1.5 text-xs text-white/60 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.absenteeOnly}
+                  onChange={(e) => setFilter("absenteeOnly", e.target.checked)}
+                  className="rounded border-white/20 bg-white/5 text-orange-500 focus:ring-orange-500/30"
+                />
+                Absentee Owner
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-white/60 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.vacantOnly}
+                  onChange={(e) => setFilter("vacantOnly", e.target.checked)}
+                  className="rounded border-white/20 bg-white/5 text-red-500 focus:ring-red-500/30"
+                />
+                USPS Vacant
+              </label>
             </div>
           </div>
 
@@ -882,6 +918,78 @@ export default function LeadsDashboard({ leads }: { leads: Lead[] }) {
                     >
                       {researching === lead.listing.id ? "Queuing..." : "Research"}
                     </button>
+                  )}
+
+                  {/* Owner Info inline edit */}
+                  {editingLead === lead.id ? (
+                    <div className="flex flex-col gap-1.5 w-44">
+                      <input
+                        type="text"
+                        placeholder="Owner name"
+                        value={editValues.ownerName}
+                        onChange={(e) => setEditValues((v) => ({ ...v, ownerName: e.target.value }))}
+                        className={inputCls + " !w-full"}
+                      />
+                      <input
+                        type="tel"
+                        placeholder="Phone"
+                        value={editValues.ownerPhone}
+                        onChange={(e) => setEditValues((v) => ({ ...v, ownerPhone: e.target.value }))}
+                        className={inputCls + " !w-full"}
+                      />
+                      <input
+                        type="email"
+                        placeholder="Email"
+                        value={editValues.ownerEmail}
+                        onChange={(e) => setEditValues((v) => ({ ...v, ownerEmail: e.target.value }))}
+                        className={inputCls + " !w-full"}
+                      />
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => {
+                            updateLead(lead.id, {
+                              ownerName: editValues.ownerName || null,
+                              ownerPhone: editValues.ownerPhone || null,
+                              ownerEmail: editValues.ownerEmail || null,
+                            });
+                            setEditingLead(null);
+                          }}
+                          disabled={updating === lead.id}
+                          className="flex-1 text-xs rounded bg-green-600/30 text-green-300 px-2 py-1 hover:bg-green-600/50 disabled:opacity-50"
+                        >
+                          {updating === lead.id ? "Saving..." : "Save"}
+                        </button>
+                        <button
+                          onClick={() => setEditingLead(null)}
+                          className="text-xs rounded bg-white/10 text-white/50 px-2 py-1 hover:bg-white/20"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setEditingLead(lead.id);
+                        setEditValues({
+                          ownerName: lead.ownerName || "",
+                          ownerPhone: lead.ownerPhone || "",
+                          ownerEmail: lead.ownerEmail || "",
+                        });
+                      }}
+                      className="text-xs rounded bg-white/10 text-white/50 px-2 py-1 hover:bg-white/20 hover:text-white/70"
+                    >
+                      {lead.ownerName || lead.ownerPhone || lead.ownerEmail ? "Edit Owner" : "Add Owner"}
+                    </button>
+                  )}
+
+                  {/* Owner display (when not editing) */}
+                  {editingLead !== lead.id && (lead.ownerName || lead.ownerPhone || lead.ownerEmail) && (
+                    <div className="text-[0.65rem] text-white/40 text-right max-w-[11rem] truncate">
+                      {lead.ownerName && <div>{lead.ownerName}</div>}
+                      {lead.ownerPhone && <div>{lead.ownerPhone}</div>}
+                      {lead.ownerEmail && <div className="truncate">{lead.ownerEmail}</div>}
+                    </div>
                   )}
 
                   {/* Status change dropdown */}

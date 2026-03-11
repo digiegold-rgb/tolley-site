@@ -7,7 +7,7 @@ import { signIn } from "next-auth/react";
 
 function resolveCallbackUrl(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/agents";
+    return "/leads/dashboard";
   }
   return value;
 }
@@ -64,6 +64,7 @@ export function LoginForm() {
         value={email}
         onChange={(event) => setEmail(event.target.value)}
         placeholder="you@agency.com"
+        autoComplete="email"
         className="w-full rounded-xl border border-white/18 bg-black/25 px-3 py-2 text-sm text-white/90 outline-none transition focus:border-violet-300/75"
       />
 
@@ -75,6 +76,7 @@ export function LoginForm() {
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         placeholder="••••••••"
+        autoComplete="current-password"
         className="w-full rounded-xl border border-white/18 bg-black/25 px-3 py-2 text-sm text-white/90 outline-none transition focus:border-violet-300/75"
       />
 

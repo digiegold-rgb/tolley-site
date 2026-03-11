@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { JetBrains_Mono, Sora } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AuthSessionProvider } from "@/components/providers/auth-session-provider";
 import "./globals.css";
 
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body className={`${sora.variable} ${jetBrainsMono.variable} antialiased`}>
         <AuthSessionProvider>
           {children}
+          <SpeedInsights />
           <footer className="site-legal-footer fixed inset-x-0 bottom-4 z-40 flex items-center justify-center px-4">
             <nav
               aria-label="Legal links"
