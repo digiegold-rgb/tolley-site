@@ -172,6 +172,54 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ── Speed-to-Lead Auto-Response Trigger ──
+    // Fire auto-responder for newly created high-score leads
+    let autoResponded = 0;
+    if (leadsCreated > 0) {
+      try {
+        // Fetch the leads we just created (with phone numbers)
+        const recentLeads = await prisma.lead.findMany({
+          where: {
+            createdAt: { gte: new Date(start) },
+            status: "new",
+            ownerPhone: { not: null },
+          },
+          select: { id: true, score: true, source: true, ownerPhone: true, listingId: true },
+          take: 50,
+        });
+
+        if (recentLeads.length > 0) {
+          const baseUrl = process.env.VERCEL_URL
+            ? `https://${process.env.VERCEL_URL}`
+            : process.env.NEXTAUTH_URL || "http://localhost:3000";
+
+          const triggerRes = await fetch(`${baseUrl}/api/leads/auto-responder/trigger`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-sync-secret": syncSecret,
+            },
+            body: JSON.stringify({
+              leads: recentLeads.map((l) => ({
+                id: l.id,
+                score: l.score,
+                source: l.source,
+                ownerPhone: l.ownerPhone,
+                listingId: l.listingId,
+              })),
+            }),
+          });
+          if (triggerRes.ok) {
+            const triggerData = await triggerRes.json();
+            autoResponded = triggerData.triggered || 0;
+          }
+        }
+      } catch (err) {
+        console.error("[leads/sync] Auto-responder trigger error:", err);
+        // Non-fatal — sync still succeeds
+      }
+    }
+
     const duration = Date.now() - start;
 
     await prisma.syncLog.create({
@@ -191,6 +239,7 @@ export async function POST(request: NextRequest) {
       upserted: recordsNew,
       leadsCreated,
       leadsScoreable: scoreable.length,
+      autoResponded,
       durationMs: duration,
     });
   } catch (err) {

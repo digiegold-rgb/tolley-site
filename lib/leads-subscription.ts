@@ -47,13 +47,13 @@ export function isLeadsPriceId(priceId: string): boolean {
 export function getLeadsTierLimits(tier: LeadsTier) {
   switch (tier) {
     case "starter":
-      return { smsLimit: 50, maxAgents: 1, dailyLeads: 10, snapLimit: 0 };
+      return { smsLimit: 50, maxAgents: 1, dailyLeads: 10, snapLimit: 0, autoResponseLimit: 10, agentNotify: false };
     case "pro":
-      return { smsLimit: 200, maxAgents: 1, dailyLeads: 25, snapLimit: 10 };
+      return { smsLimit: 200, maxAgents: 1, dailyLeads: 25, snapLimit: 10, autoResponseLimit: 20, agentNotify: true };
     case "team":
-      return { smsLimit: 9999, maxAgents: 5, dailyLeads: 50, snapLimit: 50 };
+      return { smsLimit: 9999, maxAgents: 5, dailyLeads: 50, snapLimit: 50, autoResponseLimit: 9999, agentNotify: true };
     default:
-      return { smsLimit: 0, maxAgents: 0, dailyLeads: 0, snapLimit: 0 };
+      return { smsLimit: 0, maxAgents: 0, dailyLeads: 0, snapLimit: 0, autoResponseLimit: 0, agentNotify: false };
   }
 }
 

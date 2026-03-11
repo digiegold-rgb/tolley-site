@@ -2,6 +2,9 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import LeadsDashboard from "@/components/leads/LeadsDashboard";
+import AddressSearch from "@/components/leads/AddressSearch";
+import BatchUpload from "@/components/leads/BatchUpload";
+import AutoResponderConfig from "@/components/leads/AutoResponderConfig";
 
 export const revalidate = 120;
 
@@ -130,10 +133,17 @@ export default async function AgentDashboardPage({
     <div className="min-h-screen bg-[#06050a]">
       <div className="mx-auto max-w-6xl px-4 py-8">
         {/* Nav */}
-        <nav className="flex items-center gap-1 mb-6">
+        <nav className="flex items-center gap-1 mb-6 flex-wrap">
           <span className="rounded-lg px-3 py-1.5 text-sm font-medium text-white bg-white/10">
             Leads
           </span>
+          <span className="text-white/20">/</span>
+          <a
+            href="/leads/dossier"
+            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+          >
+            Dossiers
+          </a>
           <span className="text-white/20">/</span>
           <a
             href="/leads/clients"
@@ -147,6 +157,27 @@ export default async function AgentDashboardPage({
             className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
           >
             Conversations
+          </a>
+          <span className="text-white/20">/</span>
+          <a
+            href="/leads/connects"
+            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+          >
+            Connects
+          </a>
+          <span className="text-white/20">/</span>
+          <a
+            href="/leads/workflow"
+            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+          >
+            Workflow
+          </a>
+          <span className="text-white/20">/</span>
+          <a
+            href="/leads/snap"
+            className="rounded-lg px-3 py-1.5 text-sm text-purple-300/70 hover:text-purple-200 hover:bg-purple-500/10 transition-colors"
+          >
+            Snap & Know
           </a>
         </nav>
 
@@ -165,6 +196,13 @@ export default async function AgentDashboardPage({
             </a>
           </div>
         </div>
+
+        {/* Address lookup + Batch upload */}
+        <AddressSearch />
+        <BatchUpload />
+
+        {/* Speed-to-Lead Auto-Response */}
+        <AutoResponderConfig />
 
         {/* Farm area info */}
         <div className="flex flex-wrap gap-2 text-xs text-white/40 mb-6">

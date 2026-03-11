@@ -381,11 +381,30 @@ model SmsMessage {
 
 // ─── Phase 4: Deep Lead Intelligence (Dossier) ────────────
 
+model DossierBatch {
+  id              String       @id @default(cuid())
+  name            String?      // user label e.g. "PropStream Export March"
+  source          String       @default("csv") // csv, google_sheets, propstream, mls
+  totalRows       Int          @default(0)
+  processedRows   Int          @default(0)
+  failedRows      Int          @default(0)
+  status          String       @default("pending") // pending, processing, complete, failed
+  userId          String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  jobs            DossierJob[]
+
+  @@index([userId])
+  @@index([status])
+}
+
 model DossierJob {
   id              String          @id @default(cuid())
   listingId       String
   listing         Listing         @relation(fields: [listingId], references: [id], onDelete: Cascade)
   leadId          String?
+  batchId         String?
+  batch           DossierBatch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
   status          String          @default("queued") // queued, running, complete, partial, failed, cancelled
   progress        Int             @default(0)        // 0-100
   currentStep     String?         // which plugin is currently running
@@ -402,6 +421,7 @@ model DossierJob {
 
   @@index([status, priority])
   @@index([listingId])
+  @@index([batchId])
   @@index([createdAt])
 }
 
@@ -458,6 +478,23 @@ model DossierResult {
   updatedAt         DateTime @updatedAt
 
   @@index([motivationScore])
+}
+
+// ─── Pipeline Workflow Config ─────────────────────────────
+
+model PipelineWorkflow {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String   @default("Default Pipeline")
+  description String?
+  nodes       Json     // [{id, type, position, data: {label, category, scraperId?, ...}}]
+  edges       Json     // [{id, source, target, label, ...}]
+  isActive    Boolean  @default(false)  // active workflow used for pipeline execution
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, isActive])
 }
 
 // ─── Client CRM / Import System ──────────────────────────
@@ -683,6 +720,31 @@ model SnapRequest {
 
   @@index([userId, createdAt])
   @@index([status])
+}
+
+// ─── Speed-to-Lead Auto-Response ─────────────────────────
+
+model AutoResponder {
+  id              String   @id @default(cuid())
+  subscriberId    String
+  name            String   @default("Default")
+  isActive        Boolean  @default(true)
+  triggerSource   String[] // mls_expired, mls_pricedrop, mls_dom, snap, csv
+  minScore        Int      @default(30)
+  promptId        String   @default("speed_to_lead_seller")
+  delaySeconds    Int      @default(30)
+  maxPerDay       Int      @default(20)
+  sentToday       Int      @default(0)
+  notifyPhone     String?
+  notifyEmail     String?
+  notifyMinScore  Int      @default(60)
+  activeStartHour Int      @default(9)
+  activeEndHour   Int      @default(20)
+  timezone        String   @default("America/Chicago")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([subscriberId, isActive])
 }
 
 model SyncLog {
