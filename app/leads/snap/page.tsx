@@ -114,6 +114,13 @@ export default function SnapPage() {
           <span className="rounded-lg px-3 py-1.5 text-sm font-medium text-purple-200 bg-purple-500/15">
             Snap & Know
           </span>
+          <span className="text-white/20">/</span>
+          <a
+            href="/markets"
+            className="rounded-lg px-3 py-1.5 text-sm text-cyan-300/70 hover:text-cyan-200 hover:bg-cyan-500/10 transition-colors"
+          >
+            Markets
+          </a>
         </nav>
 
         {/* Header */}

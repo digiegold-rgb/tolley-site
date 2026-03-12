@@ -103,19 +103,29 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
 
   // ── Load active workflow config (if any) ──
   let enabledScrapers: string[] | undefined;
+  let enabledLocalPlugins: Set<string> | undefined;
   try {
     const activeWorkflow = await prisma.pipelineWorkflow.findFirst({
       where: { userId: job.requestedBy || "", isActive: true },
       select: { nodes: true },
     });
     if (activeWorkflow?.nodes) {
-      const workflowNodes = activeWorkflow.nodes as { data?: { scraperId?: string } }[];
+      const workflowNodes = activeWorkflow.nodes as { data?: { scraperId?: string; pluginType?: string } }[];
       const scraperIds = workflowNodes
         .map((n) => n.data?.scraperId)
         .filter((s): s is string => !!s && s !== "mls" && s !== "score-profile" && s !== "owner-verification");
       if (scraperIds.length > 0) {
         enabledScrapers = scraperIds;
         console.log(`[Dossier] Active workflow limits scrapers to: ${enabledScrapers.join(", ")}`);
+
+        // Build set of local plugin names from workflow nodes
+        const localPluginNames = new Set(plugins.map((p) => p.name));
+        enabledLocalPlugins = new Set(
+          scraperIds.filter((id) => localPluginNames.has(id))
+        );
+        if (enabledLocalPlugins.size > 0) {
+          console.log(`[Dossier] Active workflow limits local plugins to: ${[...enabledLocalPlugins].join(", ")}`);
+        }
       }
     }
   } catch { /* no workflow config — run all scrapers */ }
@@ -269,6 +279,7 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
             workerStatus: workerData.status,
             allSources: workerData.sources,
             allErrors: workerData.errors,
+            blockedSources: workerData.blockedSources || [],
             motivationScore: workerData.motivationScore,
             motivationFlags: workerData.motivationFlags,
             intelligenceBrief: workerData.intelligenceBrief,
@@ -292,7 +303,18 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
   }
 
   // ── Local plugins (fallback for any steps the worker didn't cover) ──
-  const ordered = resolveDependencies(plugins);
+  // Filter plugins by workflow config (if active)
+  const workflowFilteredPlugins = enabledLocalPlugins
+    ? plugins.filter((p) => enabledLocalPlugins!.has(p.name))
+    : plugins;
+
+  if (enabledLocalPlugins) {
+    const skipped = plugins.filter((p) => !enabledLocalPlugins!.has(p.name)).map((p) => p.name);
+    if (skipped.length > 0) {
+      console.log(`[Dossier] Workflow skipping local plugins: ${skipped.join(", ")}`);
+    }
+  }
+
   const coveredSteps = new Set(stepsCompleted);
 
   if (notReady.length > 0) {
@@ -301,80 +323,98 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
     );
   }
 
-  for (let i = 0; i < ordered.length; i++) {
-    const plugin = ordered[i];
+  // ── Phase 2: Tier-based parallel execution ──
+  const tiers = resolveExecutionTiers(workflowFilteredPlugins);
+  let pluginsProcessed = 0;
+  const totalPlugins = workflowFilteredPlugins.length;
 
-    // Skip if the research worker already covered this step
-    if (coveredSteps.has(plugin.name)) {
-      console.log(`[Dossier] Skipping local plugin ${plugin.name} — covered by research worker`);
-      continue;
-    }
+  for (let tierIdx = 0; tierIdx < tiers.length; tierIdx++) {
+    const tier = tiers[tierIdx];
+    const tierPlugins = tier.filter((p) => !coveredSteps.has(p.name));
 
-    const progressPct = RESEARCH_WORKER_URL
-      ? 50 + Math.round(((i + 1) / ordered.length) * 45) // 50-95% for local plugins
-      : Math.round(((i + 1) / ordered.length) * 95);
+    if (tierPlugins.length === 0) continue;
 
-    await prisma.dossierJob.update({
-      where: { id: jobId },
-      data: {
-        currentStep: plugin.name,
-        progress: Math.min(progressPct, 95),
-      },
-    });
+    console.log(`[Dossier] Tier ${tierIdx}: running ${tierPlugins.map((p) => p.name).join(", ")} in parallel`);
 
-    const context: DossierContext = {
-      listing,
-      priorResults,
-      knownOwners: [...knownOwners],
-      jobId,
-      updateProgress: async (message: string) => {
+    const tierResults = await Promise.allSettled(
+      tierPlugins.map(async (plugin) => {
+        pluginsProcessed++;
+        const progressPct = RESEARCH_WORKER_URL
+          ? 50 + Math.round((pluginsProcessed / totalPlugins) * 45)
+          : Math.round((pluginsProcessed / totalPlugins) * 95);
+
         await prisma.dossierJob.update({
           where: { id: jobId },
-          data: { currentStep: `${plugin.name}: ${message}` },
+          data: {
+            currentStep: plugin.name,
+            progress: Math.min(progressPct, 95),
+          },
         });
-      },
-    };
 
-    try {
-      console.log(`[Dossier] Running local plugin: ${plugin.name}`);
-      const result = await plugin.run(context);
-      priorResults[plugin.name] = result;
+        const context: DossierContext = {
+          listing,
+          priorResults,
+          knownOwners: [...knownOwners],
+          jobId,
+          updateProgress: async (message: string) => {
+            await prisma.dossierJob.update({
+              where: { id: jobId },
+              data: { currentStep: `${plugin.name}: ${message}` },
+            });
+          },
+        };
 
-      if (result.success && result.data.owners) {
-        const newOwners = result.data.owners as OwnerInfo[];
-        for (const owner of newOwners) {
-          if (!knownOwners.some((o) => o.name.toLowerCase() === owner.name.toLowerCase())) {
-            knownOwners.push(owner);
+        console.log(`[Dossier] Running local plugin: ${plugin.name}`);
+        const result = await plugin.run(context);
+        return { plugin, result };
+      })
+    );
+
+    // Merge results from this tier before moving to next
+    for (const settled of tierResults) {
+      if (settled.status === "fulfilled") {
+        const { plugin, result } = settled.value;
+        priorResults[plugin.name] = result;
+
+        if (result.success && result.data.owners) {
+          const newOwners = result.data.owners as OwnerInfo[];
+          for (const owner of newOwners) {
+            if (!knownOwners.some((o) => o.name.toLowerCase() === owner.name.toLowerCase())) {
+              knownOwners.push(owner);
+            }
           }
         }
-      }
 
-      if (result.success && result.data.updatedOwners) {
-        const updated = result.data.updatedOwners as OwnerInfo[];
-        for (const upd of updated) {
-          const idx = knownOwners.findIndex((o) => o.name.toLowerCase() === upd.name.toLowerCase());
-          if (idx >= 0) knownOwners[idx] = { ...knownOwners[idx], ...upd };
+        if (result.success && result.data.updatedOwners) {
+          const updated = result.data.updatedOwners as OwnerInfo[];
+          for (const upd of updated) {
+            const idx = knownOwners.findIndex((o) => o.name.toLowerCase() === upd.name.toLowerCase());
+            if (idx >= 0) knownOwners[idx] = { ...knownOwners[idx], ...upd };
+          }
         }
-      }
 
-      if (result.success) {
-        stepsCompleted.push(plugin.name);
+        if (result.success) {
+          stepsCompleted.push(plugin.name);
+        } else {
+          stepsFailed.push(plugin.name);
+        }
       } else {
-        stepsFailed.push(plugin.name);
+        // Promise rejected — plugin crashed
+        const pluginName = tierPlugins[tierResults.indexOf(settled)]?.name || "unknown";
+        const err = settled.reason;
+        console.error(`[Dossier] Plugin ${pluginName} crashed:`, err);
+        priorResults[pluginName] = {
+          pluginName,
+          success: false,
+          error: err instanceof Error ? err.message : "Unknown error",
+          data: {},
+          sources: [],
+          confidence: 0,
+          warnings: [],
+          durationMs: 0,
+        };
+        stepsFailed.push(pluginName);
       }
-    } catch (err) {
-      console.error(`[Dossier] Plugin ${plugin.name} crashed:`, err);
-      priorResults[plugin.name] = {
-        pluginName: plugin.name,
-        success: false,
-        error: err instanceof Error ? err.message : "Unknown error",
-        data: {},
-        sources: [],
-        confidence: 0,
-        warnings: [],
-        durationMs: 0,
-      };
-      stepsFailed.push(plugin.name);
     }
   }
 
@@ -520,7 +560,7 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
   });
 
   // Mark job complete
-  const finalStatus = stepsFailed.length === ordered.length ? "failed"
+  const finalStatus = stepsFailed.length === totalPlugins ? "failed"
     : stepsFailed.length > 0 ? "partial"
     : "complete";
 
@@ -542,6 +582,44 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
 }
 
 // ── Helpers ─────────────────────────────────────────────────
+
+/** Topological sort into parallel execution tiers.
+ * Tier 0 = no deps, Tier 1 = depends only on Tier 0 plugins, etc. */
+function resolveExecutionTiers(plugins: DossierPlugin[]): DossierPlugin[][] {
+  const pluginMap = new Map(plugins.map((p) => [p.name, p]));
+  const assigned = new Set<string>();
+  const tiers: DossierPlugin[][] = [];
+
+  // Keep assigning until all plugins are placed
+  let remaining = [...plugins];
+  while (remaining.length > 0) {
+    const tier: DossierPlugin[] = [];
+    for (const plugin of remaining) {
+      // Plugin can go in this tier if all its deps are already assigned
+      const depsResolved = plugin.dependsOn.every(
+        (dep) => assigned.has(dep) || !pluginMap.has(dep) // dep not in our list = external, treat as resolved
+      );
+      if (depsResolved) {
+        tier.push(plugin);
+      }
+    }
+
+    if (tier.length === 0) {
+      // Circular dep or missing dep — dump remaining into final tier
+      tier.push(...remaining);
+      remaining = [];
+    } else {
+      for (const p of tier) assigned.add(p.name);
+      remaining = remaining.filter((p) => !assigned.has(p.name));
+    }
+
+    // Sort within tier by priority
+    tier.sort((a, b) => a.priority - b.priority);
+    tiers.push(tier);
+  }
+
+  return tiers;
+}
 
 function resolveDependencies(plugins: DossierPlugin[]): DossierPlugin[] {
   const sorted: DossierPlugin[] = [];

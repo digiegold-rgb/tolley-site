@@ -1214,3 +1214,97 @@ model WdPayment {
   @@index([clientId, month])
   @@index([month])
 }
+
+// ─── Market Intelligence ───
+
+model MarketSource {
+  id          String   @id @default(cuid())
+  type        String   // youtube_channel, rss_feed, stock_ticker, fred_indicator, blog
+  name        String
+  url         String?  // RSS URL, blog URL, YouTube channel URL
+  identifier  String?  // channel_id, ticker symbol, FRED series ID
+  active      Boolean  @default(true)
+  lastChecked DateTime?
+  checkInterval Int    @default(21600) // seconds between checks (default 6h)
+  metadata    Json?    // extra config per source type
+  dataPoints  MarketDataPoint[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([type, identifier])
+  @@index([active, type])
+}
+
+model MarketDataPoint {
+  id               String   @id @default(cuid())
+  sourceId         String?
+  source           MarketSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  type             String   // video_analysis, article_summary, stock_reading, economic_indicator, manual_note
+  title            String
+  url              String?
+  scope            String   @default("national") // national, local_kc
+  // Sentiment & signal
+  sentiment        Float?   // -1.0 to 1.0
+  signal           String?  // buy, sell, hold, neutral
+  signalConfidence Float?   // 0.0 to 1.0
+  // Content
+  rawContent       String?  // transcript, article text (cleaned after 90 days)
+  summary          String?
+  analysis         Json?    // structured LLM output
+  // For stock/economic data
+  numericValue     Float?
+  previousValue    Float?
+  changePercent    Float?
+  // Metadata
+  publishedAt      DateTime?
+  collectedAt      DateTime @default(now())
+  expiresAt        DateTime? // for data retention
+  tags             String[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([type, createdAt(sort: Desc)])
+  @@index([scope, signal])
+  @@index([sourceId, createdAt(sort: Desc)])
+}
+
+model MarketSignal {
+  id               String   @id @default(cuid())
+  signal           String   // buy, sell, hold
+  confidence       Float    // 0.0 to 1.0
+  scope            String   @default("national") // national, local_kc
+  category         String   // mortgage_rates, housing_supply, economic, sentiment, composite
+  title            String
+  reasoning        String
+  supportingData   Json?    // references to data point IDs and key facts
+  timeHorizon      String?  // short_term, medium_term, long_term
+  active           Boolean  @default(true)
+  expiresAt        DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([active, signal])
+  @@index([category, createdAt(sort: Desc)])
+}
+
+model MarketSnapshot {
+  id                  String   @id @default(cuid())
+  date                DateTime @unique // one per day
+  nationalHealth      Float?   // 0-100
+  localKcHealth       Float?   // 0-100
+  mortgage30yr        Float?
+  mortgage15yr        Float?
+  treasury10yr        Float?
+  treasury30yr        Float?
+  unemployment        Float?
+  cpi                 Float?
+  consumerSentiment   Float?
+  housingStarts       Float?
+  tickers             Json?    // { VNQ: { price, change }, ITB: {...}, ... }
+  topSignals          Json?    // array of signal summaries
+  dataPointCount      Int      @default(0)
+  signalCount         Int      @default(0)
+  summary             String?  // AI-generated daily market summary
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}

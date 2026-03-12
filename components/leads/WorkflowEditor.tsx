@@ -26,6 +26,7 @@ import Dagre from "@dagrejs/dagre";
 
 type NodeStatus = "idle" | "running" | "success" | "failed" | "skipped";
 type Category = "property" | "verification" | "people" | "legal" | "output" | "financial" | "neighborhood" | "market" | "content";
+type PluginType = "research-worker" | "local" | "virtual";
 
 interface PipelineNodeData {
   label: string;
@@ -35,6 +36,7 @@ interface PipelineNodeData {
   description?: string;
   url?: string;
   scraperId?: string; // maps to actual scraper name in research worker
+  pluginType?: PluginType; // distinguishes research-worker vs local vs virtual nodes
   [key: string]: unknown;
 }
 
@@ -101,45 +103,56 @@ const STATUS_BADGE: Record<NodeStatus, { bg: string; text: string; label: string
 };
 
 // Known scrapers for the Add Node panel
-const KNOWN_SCRAPERS = [
+const KNOWN_SCRAPERS: { id: string; label: string; category: Category; pluginType: PluginType }[] = [
   // ── DGX Research Worker scrapers (live browser automation) ──
-  { id: "matrix-tax", label: "MLS Matrix (Tax/Mortgage)", category: "property" as Category },
-  { id: "county-assessor", label: "County Assessor", category: "property" as Category },
-  { id: "remine", label: "Remine Pro (Sell Score/AVM)", category: "property" as Category },
-  { id: "zillow", label: "Zillow", category: "property" as Category },
-  { id: "redfin", label: "Redfin", category: "property" as Category },
-  { id: "realtor", label: "Realtor.com", category: "property" as Category },
-  { id: "homes", label: "Homes.com", category: "property" as Category },
-  { id: "owner-finder", label: "Owner Finder (Google)", category: "property" as Category },
-  { id: "cyberbackgroundchecks", label: "CyberBackgroundChecks", category: "people" as Category },
-  { id: "backgroundchecks", label: "BackgroundChecks", category: "people" as Category },
-  { id: "truepeoplesearch", label: "TruePeopleSearch", category: "people" as Category },
-  { id: "casenet", label: "CaseNet (MO Courts)", category: "legal" as Category },
-  { id: "social-media", label: "Social Media", category: "people" as Category },
-  { id: "obituary", label: "Obituary Search", category: "people" as Category },
+  { id: "matrix-tax", label: "MLS Matrix (Tax/Mortgage)", category: "property", pluginType: "research-worker" },
+  { id: "county-assessor", label: "County Assessor", category: "property", pluginType: "research-worker" },
+  { id: "remine", label: "Remine Pro (Sell Score/AVM)", category: "property", pluginType: "research-worker" },
+  { id: "zillow", label: "Zillow", category: "property", pluginType: "research-worker" },
+  { id: "redfin", label: "Redfin", category: "property", pluginType: "research-worker" },
+  { id: "realtor", label: "Realtor.com", category: "property", pluginType: "research-worker" },
+  { id: "homes", label: "Homes.com", category: "property", pluginType: "research-worker" },
+  { id: "owner-finder", label: "Owner Finder (Google)", category: "property", pluginType: "research-worker" },
+  { id: "cyberbackgroundchecks", label: "CyberBackgroundChecks", category: "people", pluginType: "research-worker" },
+  { id: "backgroundchecks", label: "BackgroundChecks", category: "people", pluginType: "research-worker" },
+  { id: "truepeoplesearch", label: "TruePeopleSearch", category: "people", pluginType: "research-worker" },
+  { id: "casenet", label: "CaseNet (MO Courts)", category: "legal", pluginType: "research-worker" },
+  { id: "social-media", label: "Social Media", category: "people", pluginType: "research-worker" },
+  { id: "obituary", label: "Obituary Search", category: "people", pluginType: "research-worker" },
+  { id: "paid-bgcheck", label: "Background Check API", category: "people", pluginType: "research-worker" },
   // ── Local Tolley.io plugins (fallback / enrichment) ──
-  { id: "regrid", label: "Regrid (Parcel/Absentee)", category: "property" as Category },
-  { id: "narrpr-import", label: "NARRPR Import", category: "property" as Category },
-  { id: "property-history", label: "Property History", category: "property" as Category },
-  { id: "skip-trace", label: "Skip Trace", category: "people" as Category },
-  { id: "court-records", label: "Court Records", category: "legal" as Category },
-  { id: "people-search", label: "People Search (Google)", category: "people" as Category },
-  { id: "street-view", label: "Street View / Maps", category: "property" as Category },
-  { id: "neighborhood", label: "Neighborhood Analysis", category: "neighborhood" as Category },
-  { id: "financial", label: "Financial Analysis", category: "financial" as Category },
-  { id: "unclaimed-funds", label: "Unclaimed Funds", category: "financial" as Category },
-  { id: "permits", label: "Building Permits", category: "property" as Category },
-  { id: "rental", label: "Rental Analysis", category: "financial" as Category },
-  { id: "business", label: "Business Records", category: "legal" as Category },
-  { id: "environmental", label: "Environmental (FEMA/EPA)", category: "property" as Category },
-  { id: "market", label: "Market Analysis", category: "market" as Category },
-  { id: "social-deep", label: "Social Deep Dive", category: "people" as Category },
-  { id: "ai-summary", label: "AI Summary", category: "output" as Category },
+  { id: "regrid", label: "Regrid (Parcel/Absentee)", category: "property", pluginType: "local" },
+  { id: "narrpr-import", label: "NARRPR Import", category: "property", pluginType: "local" },
+  { id: "property-history", label: "Property History", category: "property", pluginType: "local" },
+  { id: "skip-trace", label: "Skip Trace", category: "people", pluginType: "local" },
+  { id: "court-records", label: "Court Records", category: "legal", pluginType: "local" },
+  { id: "people-search", label: "People Search (Google)", category: "people", pluginType: "local" },
+  { id: "street-view", label: "Street View / Maps", category: "property", pluginType: "local" },
+  { id: "neighborhood", label: "Neighborhood Analysis", category: "neighborhood", pluginType: "local" },
+  { id: "financial", label: "Financial Analysis", category: "financial", pluginType: "local" },
+  { id: "unclaimed-funds", label: "Unclaimed Funds", category: "financial", pluginType: "local" },
+  { id: "permits", label: "Building Permits", category: "property", pluginType: "local" },
+  { id: "rental", label: "Rental Analysis", category: "financial", pluginType: "local" },
+  { id: "business", label: "Business Records", category: "legal", pluginType: "local" },
+  { id: "environmental", label: "Environmental (FEMA/EPA)", category: "property", pluginType: "local" },
+  { id: "market", label: "Market Analysis", category: "market", pluginType: "local" },
+  { id: "social-deep", label: "Social Deep Dive", category: "people", pluginType: "local" },
+  { id: "cross-verify", label: "Cross-Verify All Sources", category: "verification", pluginType: "local" },
+  { id: "ai-summary", label: "AI Summary", category: "output", pluginType: "local" },
   // ── Content Engine (social media automation) ──
-  { id: "content-generate", label: "AI Content Generate", category: "content" as Category },
-  { id: "content-publish", label: "Content Publish", category: "content" as Category },
-  { id: "content-linkedin", label: "LinkedIn Publish", category: "content" as Category },
-  { id: "content-twitter", label: "X/Twitter Publish", category: "content" as Category },
+  { id: "content-generate", label: "AI Content Generate", category: "content", pluginType: "local" },
+  { id: "analytics-export", label: "Analytics Export", category: "output", pluginType: "local" },
+  { id: "content-publish", label: "Content Publish", category: "content", pluginType: "local" },
+  { id: "content-linkedin", label: "LinkedIn Publish", category: "content", pluginType: "local" },
+  { id: "content-twitter", label: "X/Twitter Publish", category: "content", pluginType: "local" },
+  // ── Virtual nodes (pipeline control, not actual scrapers) ──
+  { id: "mls", label: "MLS Listing", category: "property", pluginType: "virtual" },
+  { id: "owner-verification", label: "Owner Verification", category: "verification", pluginType: "virtual" },
+  { id: "score-profile", label: "Score & Profile", category: "output", pluginType: "virtual" },
+  { id: "second-pass", label: "Second-Pass Address Match", category: "verification", pluginType: "virtual" },
+  { id: "risk-assess", label: "Risk/Distress Assessment", category: "verification", pluginType: "virtual" },
+  { id: "address-verify", label: "Home Address Verify", category: "verification", pluginType: "virtual" },
+  { id: "social-drip", label: "Social Media Drip", category: "content", pluginType: "virtual" },
 ];
 
 const STORAGE_KEY = "tolley-workflow-v1";
@@ -147,75 +160,104 @@ const STORAGE_KEY = "tolley-workflow-v1";
 // ── Initial DAG definition ───────────────────────────────────
 
 const INITIAL_NODES: Node<PipelineNodeData>[] = [
-  // ── Source ──
-  { id: "mls", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "MLS Listing", category: "property", status: "idle", confidence: 0, scraperId: "mls" } },
-  // ── Property Layer ──
-  { id: "county", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "County Assessor", category: "property", status: "idle", confidence: 0, scraperId: "county-assessor" } },
-  { id: "remine", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Remine Pro", category: "property", status: "idle", confidence: 0, scraperId: "remine", description: "Sell Score, AVM, equity, contacts" } },
-  { id: "zillow", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Zillow", category: "property", status: "idle", confidence: 0, scraperId: "zillow" } },
-  { id: "homes", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Homes.com", category: "property", status: "idle", confidence: 0, scraperId: "homes" } },
-  { id: "regrid", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Regrid (Parcel)", category: "property", status: "idle", confidence: 0, scraperId: "regrid", description: "Absentee, vacant, portfolio" } },
-  // ── Verification ──
-  { id: "verify", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Owner Verification", category: "verification", status: "idle", confidence: 0, scraperId: "owner-verification" } },
-  // ── People Layer ──
-  { id: "cyberbg", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "CyberBackgroundChecks", category: "people", status: "idle", confidence: 0, scraperId: "cyberbackgroundchecks" } },
-  { id: "social", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Social Media", category: "people", status: "idle", confidence: 0, scraperId: "social-media" } },
-  // ── Legal Layer ──
-  { id: "casenet", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "CaseNet (Courts)", category: "legal", status: "idle", confidence: 0, scraperId: "casenet" } },
-  // ── Financial Layer ──
-  { id: "financial", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Financial Analysis", category: "financial", status: "idle", confidence: 0, scraperId: "financial", description: "Equity, mortgage, appreciation" } },
-  { id: "unclaimed", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Unclaimed Funds", category: "financial", status: "idle", confidence: 0, scraperId: "unclaimed-funds" } },
-  // ── Environment / Neighborhood ──
-  { id: "neighborhood", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Neighborhood", category: "neighborhood", status: "idle", confidence: 0, scraperId: "neighborhood", description: "Walk Score, schools, crime" } },
-  { id: "environmental", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Environmental", category: "property", status: "idle", confidence: 0, scraperId: "environmental", description: "FEMA flood, EPA" } },
-  // ── Market ──
-  { id: "market", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Market Analysis", category: "market", status: "idle", confidence: 0, scraperId: "market", description: "Price/sqft, CAGR, comps" } },
-  // ── Output ──
-  { id: "ai-summary", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "AI Summary", category: "output", status: "idle", confidence: 0, scraperId: "ai-summary" } },
-  { id: "score", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Score & Profile", category: "output", status: "idle", confidence: 0, scraperId: "score-profile" } },
-  // ── Content Engine ──
-  { id: "content-gen", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "AI Content Gen", category: "content", status: "idle", confidence: 0, scraperId: "content-generate", description: "Generate social posts from dossier data" } },
-  { id: "content-publish", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Multi-Platform Publish", category: "content", status: "idle", confidence: 0, scraperId: "content-publish", description: "LinkedIn, X, FB, IG" } },
+  // ── Layer 1: Source ──
+  { id: "mls", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "MLS Listing", category: "property", status: "idle", confidence: 0, scraperId: "mls", pluginType: "virtual" } },
+  // ── Layer 2: Property (parallel) ──
+  { id: "county", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "County Assessor", category: "property", status: "idle", confidence: 0, scraperId: "county-assessor", pluginType: "research-worker" } },
+  { id: "remine", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Remine Pro", category: "property", status: "idle", confidence: 0, scraperId: "remine", pluginType: "research-worker", description: "Sell Score, AVM, equity, contacts" } },
+  { id: "zillow", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Zillow", category: "property", status: "idle", confidence: 0, scraperId: "zillow", pluginType: "research-worker" } },
+  { id: "homes", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Homes.com", category: "property", status: "idle", confidence: 0, scraperId: "homes", pluginType: "research-worker" } },
+  { id: "regrid", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Regrid (Parcel)", category: "property", status: "idle", confidence: 0, scraperId: "regrid", pluginType: "local", description: "Absentee, vacant, portfolio" } },
+  { id: "realtor", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Realtor.com", category: "property", status: "idle", confidence: 0, scraperId: "realtor", pluginType: "research-worker" } },
+  // ── Layer 3: Owner Verification ──
+  { id: "verify", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Owner Verification", category: "verification", status: "idle", confidence: 0, scraperId: "owner-verification", pluginType: "virtual" } },
+  // ── Layer 4: People / Legal (parallel) ──
+  { id: "social", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Social Media", category: "people", status: "idle", confidence: 0, scraperId: "social-media", pluginType: "research-worker" } },
+  { id: "cyberbg", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "CyberBackgroundChecks", category: "people", status: "idle", confidence: 0, scraperId: "cyberbackgroundchecks", pluginType: "research-worker" } },
+  { id: "casenet", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "CaseNet (Courts)", category: "legal", status: "idle", confidence: 0, scraperId: "casenet", pluginType: "research-worker" } },
+  { id: "bg-api", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Background API", category: "people", status: "idle", confidence: 0, scraperId: "paid-bgcheck", pluginType: "research-worker", description: "Paid — Whitepages Pro" } },
+  // ── Layer 5: Cross-Verify ──
+  { id: "cross-verify", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Cross-Verify", category: "verification", status: "idle", confidence: 0, scraperId: "cross-verify", pluginType: "local", description: "Consensus scoring across all sources" } },
+  // ── Layer 6: Assessment ──
+  { id: "risk-assess", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Risk Assessment", category: "verification", status: "idle", confidence: 0, scraperId: "risk-assess", pluginType: "virtual", description: "Distress / motivation flags" } },
+  { id: "address-verify", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Address Verify", category: "verification", status: "idle", confidence: 0, scraperId: "address-verify", pluginType: "virtual" } },
+  // ── Layer 7: Analysis (parallel) ──
+  { id: "financial", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Financial Analysis", category: "financial", status: "idle", confidence: 0, scraperId: "financial", pluginType: "local", description: "Equity, mortgage, appreciation" } },
+  { id: "neighborhood", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Neighborhood", category: "neighborhood", status: "idle", confidence: 0, scraperId: "neighborhood", pluginType: "local", description: "Walk Score, schools, crime" } },
+  { id: "environmental", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Environmental", category: "property", status: "idle", confidence: 0, scraperId: "environmental", pluginType: "local", description: "FEMA flood, EPA" } },
+  { id: "market", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Market Analysis", category: "market", status: "idle", confidence: 0, scraperId: "market", pluginType: "local", description: "Price/sqft, CAGR, comps" } },
+  // ── Layer 8: Second Pass ──
+  { id: "second-pass", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Second-Pass Verify", category: "verification", status: "idle", confidence: 0, scraperId: "second-pass", pluginType: "virtual", description: "Re-verify address from property sources" } },
+  // ── Layer 9: Visual ──
+  { id: "street-view", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Street View", category: "property", status: "idle", confidence: 0, scraperId: "street-view", pluginType: "local" } },
+  // ── Layer 10: Scoring ──
+  { id: "ai-summary", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "AI Summary", category: "output", status: "idle", confidence: 0, scraperId: "ai-summary", pluginType: "local" } },
+  { id: "score", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Score & Profile", category: "output", status: "idle", confidence: 0, scraperId: "score-profile", pluginType: "virtual" } },
+  // ── Layer 11: Output ──
+  { id: "content-gen", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "AI Content Gen", category: "content", status: "idle", confidence: 0, scraperId: "content-generate", pluginType: "local", description: "Social posts, SMS, drip emails" } },
+  { id: "analytics-export", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Analytics Export", category: "output", status: "idle", confidence: 0, scraperId: "analytics-export", pluginType: "local" } },
+  { id: "content-publish", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Multi-Platform Publish", category: "content", status: "idle", confidence: 0, scraperId: "content-publish", pluginType: "virtual", description: "LinkedIn, X, FB, IG" } },
+  { id: "social-drip", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Social Drip", category: "content", status: "idle", confidence: 0, scraperId: "social-drip", pluginType: "virtual", description: "Automated follow-up sequences" } },
 ];
 
 const INITIAL_EDGES: Edge[] = [
-  // ── MLS → Property scrapers ──
+  // ── Layer 1→2: MLS → Property scrapers (parallel) ──
   { id: "mls-county", source: "mls", target: "county", animated: true, label: "address", style: { stroke: CATEGORY_COLORS.property } },
   { id: "mls-remine", source: "mls", target: "remine", animated: true, label: "address", style: { stroke: CATEGORY_COLORS.property } },
   { id: "mls-zillow", source: "mls", target: "zillow", animated: true, label: "address", style: { stroke: CATEGORY_COLORS.property } },
   { id: "mls-homes", source: "mls", target: "homes", animated: true, label: "address", style: { stroke: CATEGORY_COLORS.property } },
   { id: "mls-regrid", source: "mls", target: "regrid", animated: true, label: "address", style: { stroke: CATEGORY_COLORS.property } },
-  // ── Property → Owner Verification ──
+  { id: "mls-realtor", source: "mls", target: "realtor", animated: true, label: "address", style: { stroke: CATEGORY_COLORS.property } },
+  // ── Layer 2→3: Property → Owner Verification ──
   { id: "county-verify", source: "county", target: "verify", animated: true, label: "owner_name", style: { stroke: CATEGORY_COLORS.property } },
   { id: "remine-verify", source: "remine", target: "verify", animated: true, label: "owner+contacts", style: { stroke: CATEGORY_COLORS.property } },
+  { id: "zillow-verify", source: "zillow", target: "verify", animated: true, label: "owner_name", style: { stroke: CATEGORY_COLORS.property } },
   { id: "homes-verify", source: "homes", target: "verify", animated: true, label: "owner_name", style: { stroke: CATEGORY_COLORS.property } },
-  // ── Verification → People/Legal ──
+  { id: "regrid-verify", source: "regrid", target: "verify", animated: true, label: "parcel_owner", style: { stroke: CATEGORY_COLORS.property } },
+  // ── Layer 3→4: Verification → People/Legal (parallel) ──
+  { id: "verify-social", source: "verify", target: "social", animated: true, label: "owner_name", style: { stroke: CATEGORY_COLORS.verification } },
   { id: "verify-cyberbg", source: "verify", target: "cyberbg", animated: true, label: "verified_owner", style: { stroke: CATEGORY_COLORS.verification } },
   { id: "verify-casenet", source: "verify", target: "casenet", animated: true, label: "owner_name", style: { stroke: CATEGORY_COLORS.verification } },
-  { id: "verify-social", source: "verify", target: "social", animated: true, label: "owner_name", style: { stroke: CATEGORY_COLORS.verification } },
-  { id: "verify-unclaimed", source: "verify", target: "unclaimed", animated: true, label: "owner_name", style: { stroke: CATEGORY_COLORS.verification } },
-  // ── Property → Financial/Neighborhood/Market ──
+  { id: "verify-bgapi", source: "verify", target: "bg-api", animated: true, label: "owner_name", style: { stroke: CATEGORY_COLORS.verification } },
+  // ── Layer 4→5: People/Legal + Verify → Cross-Verify ──
+  { id: "social-xv", source: "social", target: "cross-verify", animated: true, label: "profiles", style: { stroke: CATEGORY_COLORS.people } },
+  { id: "cyberbg-xv", source: "cyberbg", target: "cross-verify", animated: true, label: "people_data", style: { stroke: CATEGORY_COLORS.people } },
+  { id: "casenet-xv", source: "casenet", target: "cross-verify", animated: true, label: "court_records", style: { stroke: CATEGORY_COLORS.legal } },
+  { id: "bgapi-xv", source: "bg-api", target: "cross-verify", animated: true, label: "bg_data", style: { stroke: CATEGORY_COLORS.people } },
+  { id: "verify-xv", source: "verify", target: "cross-verify", animated: true, label: "owner_data", style: { stroke: CATEGORY_COLORS.verification } },
+  // ── Layer 5→6: Cross-Verify → Assessment ──
+  { id: "xv-risk", source: "cross-verify", target: "risk-assess", animated: true, label: "consensus", style: { stroke: CATEGORY_COLORS.verification } },
+  { id: "xv-addr", source: "cross-verify", target: "address-verify", animated: true, label: "addresses", style: { stroke: CATEGORY_COLORS.verification } },
+  // ── Layer 2→7: Property → Financial/Neighborhood/Market ──
   { id: "county-financial", source: "county", target: "financial", animated: true, label: "assessed_value", style: { stroke: CATEGORY_COLORS.financial } },
   { id: "remine-financial", source: "remine", target: "financial", animated: true, label: "avm+equity", style: { stroke: CATEGORY_COLORS.financial } },
+  { id: "regrid-financial", source: "regrid", target: "financial", animated: true, label: "parcel_data", style: { stroke: CATEGORY_COLORS.financial } },
   { id: "mls-neighborhood", source: "mls", target: "neighborhood", animated: true, label: "lat/lng", style: { stroke: CATEGORY_COLORS.neighborhood } },
   { id: "mls-environmental", source: "mls", target: "environmental", animated: true, label: "lat/lng", style: { stroke: CATEGORY_COLORS.property } },
   { id: "zillow-market", source: "zillow", target: "market", animated: true, label: "price_history", style: { stroke: CATEGORY_COLORS.market } },
   { id: "remine-market", source: "remine", target: "market", animated: true, label: "sell_score+avm", style: { stroke: CATEGORY_COLORS.market } },
-  // ── Everything → AI Summary → Score ──
-  { id: "cyberbg-ai", source: "cyberbg", target: "ai-summary", animated: true, label: "phone/email", style: { stroke: CATEGORY_COLORS.people } },
-  { id: "casenet-ai", source: "casenet", target: "ai-summary", animated: true, label: "court_records", style: { stroke: CATEGORY_COLORS.legal } },
-  { id: "social-ai", source: "social", target: "ai-summary", animated: true, label: "profiles", style: { stroke: CATEGORY_COLORS.people } },
+  // ── Layer 6+7→8: Assessment + Analysis → Second Pass ──
+  { id: "risk-2nd", source: "risk-assess", target: "second-pass", animated: true, label: "risk_flags", style: { stroke: CATEGORY_COLORS.verification } },
+  { id: "addr-2nd", source: "address-verify", target: "second-pass", animated: true, label: "addr_status", style: { stroke: CATEGORY_COLORS.verification } },
+  { id: "financial-2nd", source: "financial", target: "second-pass", animated: true, label: "financials", style: { stroke: CATEGORY_COLORS.financial } },
+  { id: "neighborhood-2nd", source: "neighborhood", target: "second-pass", animated: true, label: "area_data", style: { stroke: CATEGORY_COLORS.neighborhood } },
+  { id: "environmental-2nd", source: "environmental", target: "second-pass", animated: true, label: "env_data", style: { stroke: CATEGORY_COLORS.property } },
+  { id: "market-2nd", source: "market", target: "second-pass", animated: true, label: "market_data", style: { stroke: CATEGORY_COLORS.market } },
+  // ── Layer 8→9: Second Pass → Street View ──
+  { id: "2nd-sv", source: "second-pass", target: "street-view", animated: true, label: "verified_addr", style: { stroke: CATEGORY_COLORS.property } },
+  // ── Layer 9→10: Visual + Data → AI Summary → Score ──
+  { id: "sv-ai", source: "street-view", target: "ai-summary", animated: true, label: "photos", style: { stroke: CATEGORY_COLORS.property } },
+  { id: "xv-ai", source: "cross-verify", target: "ai-summary", animated: true, label: "consensus", style: { stroke: CATEGORY_COLORS.verification } },
   { id: "financial-ai", source: "financial", target: "ai-summary", animated: true, label: "equity+mortgage", style: { stroke: CATEGORY_COLORS.financial } },
-  { id: "unclaimed-ai", source: "unclaimed", target: "ai-summary", animated: true, label: "funds_found", style: { stroke: CATEGORY_COLORS.financial } },
-  { id: "neighborhood-ai", source: "neighborhood", target: "ai-summary", animated: true, label: "walk+school+crime", style: { stroke: CATEGORY_COLORS.neighborhood } },
-  { id: "environmental-ai", source: "environmental", target: "ai-summary", animated: true, label: "flood+env", style: { stroke: CATEGORY_COLORS.property } },
   { id: "market-ai", source: "market", target: "ai-summary", animated: true, label: "market_data", style: { stroke: CATEGORY_COLORS.market } },
-  { id: "regrid-ai", source: "regrid", target: "ai-summary", animated: true, label: "parcel_flags", style: { stroke: CATEGORY_COLORS.property } },
-  { id: "zillow-ai", source: "zillow", target: "ai-summary", animated: true, label: "property_data", style: { stroke: CATEGORY_COLORS.property } },
+  { id: "environmental-ai", source: "environmental", target: "ai-summary", animated: true, label: "flood+env", style: { stroke: CATEGORY_COLORS.property } },
+  { id: "neighborhood-ai", source: "neighborhood", target: "ai-summary", animated: true, label: "walk+school+crime", style: { stroke: CATEGORY_COLORS.neighborhood } },
   { id: "ai-score", source: "ai-summary", target: "score", animated: true, label: "full_dossier", style: { stroke: CATEGORY_COLORS.output } },
-  // ── Score → Content Engine ──
+  // ── Layer 10→11: Score → Content + Analytics ──
   { id: "score-content", source: "score", target: "content-gen", animated: true, label: "dossier+score", style: { stroke: CATEGORY_COLORS.content } },
+  { id: "score-analytics", source: "score", target: "analytics-export", animated: true, label: "all_data", style: { stroke: CATEGORY_COLORS.output } },
   { id: "content-gen-publish", source: "content-gen", target: "content-publish", animated: true, label: "ai_posts", style: { stroke: CATEGORY_COLORS.content } },
+  { id: "content-gen-drip", source: "content-gen", target: "social-drip", animated: true, label: "drip_content", style: { stroke: CATEGORY_COLORS.content } },
 ];
 
 // ── Dagre layout ─────────────────────────────────────────────
@@ -263,7 +305,16 @@ function PipelineNode({ data, selected }: NodeProps<Node<PipelineNodeData>>) {
           </span>
         </div>
         {data.scraperId && (
-          <div className="text-[0.55rem] text-white/20 mt-1 font-mono truncate">{data.scraperId}</div>
+          <div className="flex items-center gap-1 mt-1">
+            <span className="text-[0.55rem] text-white/20 font-mono truncate">{data.scraperId}</span>
+            {data.pluginType && (
+              <span className={`rounded px-1 py-0 text-[0.45rem] font-semibold uppercase tracking-wider ${
+                data.pluginType === "research-worker" ? "bg-blue-500/20 text-blue-400" :
+                data.pluginType === "local" ? "bg-green-500/20 text-green-400" :
+                "bg-white/10 text-white/30"
+              }`}>{data.pluginType === "research-worker" ? "DGX" : data.pluginType === "local" ? "LOCAL" : "VIRT"}</span>
+            )}
+          </div>
         )}
         {data.description && (
           <div className="text-[0.6rem] text-white/30 mt-0.5 truncate">{data.description}</div>
@@ -281,11 +332,12 @@ function PipelineNode({ data, selected }: NodeProps<Node<PipelineNodeData>>) {
 
 // ── Add Node Panel ───────────────────────────────────────────
 
-function AddNodePanel({ onAdd, onClose }: { onAdd: (label: string, category: Category, description: string, scraperId: string) => void; onClose: () => void }) {
+function AddNodePanel({ onAdd, onClose }: { onAdd: (label: string, category: Category, description: string, scraperId: string, pluginType?: PluginType) => void; onClose: () => void }) {
   const [label, setLabel] = useState("");
   const [category, setCategory] = useState<Category>("property");
   const [description, setDescription] = useState("");
   const [scraperId, setScraperId] = useState("");
+  const [pluginType, setPluginType] = useState<PluginType | undefined>();
   const [showScraperList, setShowScraperList] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -294,7 +346,7 @@ function AddNodePanel({ onAdd, onClose }: { onAdd: (label: string, category: Cat
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!label.trim()) return;
-    onAdd(label.trim(), category, description.trim(), scraperId.trim());
+    onAdd(label.trim(), category, description.trim(), scraperId.trim(), pluginType);
     onClose();
   };
 
@@ -302,6 +354,7 @@ function AddNodePanel({ onAdd, onClose }: { onAdd: (label: string, category: Cat
     setLabel(s.label);
     setCategory(s.category);
     setScraperId(s.id);
+    setPluginType(s.pluginType);
     setShowScraperList(false);
   };
 
@@ -325,8 +378,12 @@ function AddNodePanel({ onAdd, onClose }: { onAdd: (label: string, category: Cat
                 <button key={s.id} type="button" onClick={() => selectScraper(s)}
                   className="w-full text-left rounded-md px-2 py-1 text-xs text-white/60 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2">
                   <span className="w-2 h-2 rounded-sm" style={{ background: CATEGORY_COLORS[s.category] }} />
-                  <span>{s.label}</span>
-                  <span className="text-white/20 font-mono text-[0.55rem] ml-auto">{s.id}</span>
+                  <span className="truncate">{s.label}</span>
+                  <span className={`rounded px-1 text-[0.45rem] font-semibold uppercase ml-auto shrink-0 ${
+                    s.pluginType === "research-worker" ? "bg-blue-500/20 text-blue-400" :
+                    s.pluginType === "local" ? "bg-green-500/20 text-green-400" :
+                    "bg-white/10 text-white/30"
+                  }`}>{s.pluginType === "research-worker" ? "DGX" : s.pluginType === "local" ? "LOCAL" : "VIRT"}</span>
                 </button>
               ))}
             </div>
@@ -632,13 +689,13 @@ function WorkflowEditorInner() {
   }, [setEdges, nodes, markDirty]);
 
   // ── Add node ──
-  const addNode = useCallback((label: string, category: Category, description: string, scraperId: string) => {
+  const addNode = useCallback((label: string, category: Category, description: string, scraperId: string, pType?: PluginType) => {
     const id = `node-${Date.now()}`;
     const newNode: Node<PipelineNodeData> = {
       id,
       type: "pipeline",
       position: screenToFlowPosition({ x: 400, y: 300 }),
-      data: { label, category, status: "idle", confidence: 0, description: description || undefined, scraperId: scraperId || undefined },
+      data: { label, category, status: "idle", confidence: 0, description: description || undefined, scraperId: scraperId || undefined, pluginType: pType },
     };
     setNodes((nds) => [...nds, newNode]);
     markDirty();

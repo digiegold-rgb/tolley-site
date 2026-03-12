@@ -24,7 +24,10 @@ import { businessPlugin } from "./business";
 import { environmentalPlugin } from "./environmental";
 import { marketPlugin } from "./market";
 import { socialDeepPlugin } from "./social-deep";
+import { crossVerifyPlugin } from "./cross-verify";
 import { aiSummaryPlugin } from "./ai-summary";
+import { contentGeneratePlugin } from "./content-generate";
+import { analyticsExportPlugin } from "./analytics-export";
 import { unclaimedFundsPlugin } from "./unclaimed-funds";
 
 /**
@@ -49,7 +52,10 @@ const PLUGINS: DossierPlugin[] = [
   environmentalPlugin,      // priority 80 — flood zones, EPA hazards
   marketPlugin,             // priority 85 — price analytics, appreciation, comps
   socialDeepPlugin,         // priority 90 — arrest records, deep social links
+  crossVerifyPlugin,        // priority 95 — cross-verification scoring across all sources
   aiSummaryPlugin,          // priority 99 — runs last, summarizes everything
+  contentGeneratePlugin,    // priority 97 — AI content generation (depends on ai-summary)
+  analyticsExportPlugin,    // priority 98 — structured metrics extraction (depends on ai-summary)
 ];
 
 /** Get all registered plugins sorted by priority */

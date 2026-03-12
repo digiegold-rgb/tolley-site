@@ -38,6 +38,8 @@ export type PluginCategory =
   | "property"       // Photos, street view, permits, condition
   | "neighborhood"   // Census, crime, schools, market
   | "market"         // Comps, trends, absorption
+  | "verification"   // Cross-verification, data consensus
+  | "content"        // AI content generation, social drip
   | "custom";        // User-defined / future expansion
 
 // ── Plugin Context (what each plugin receives) ──────────────

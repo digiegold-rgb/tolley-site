@@ -199,6 +199,13 @@ export default function SequencesPage() {
           <a href="/leads/workflow" className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors">Workflow</a>
           <span className="text-white/20">/</span>
           <a href="/leads/snap" className="rounded-lg px-3 py-1.5 text-sm text-purple-300/70 hover:text-purple-200 hover:bg-purple-500/10 transition-colors">Snap & Know</a>
+          <span className="text-white/20">/</span>
+          <a
+            href="/markets"
+            className="rounded-lg px-3 py-1.5 text-sm text-cyan-300/70 hover:text-cyan-200 hover:bg-cyan-500/10 transition-colors"
+          >
+            Markets
+          </a>
         </nav>
 
         {/* Header */}
