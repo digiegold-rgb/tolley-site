@@ -1,0 +1,401 @@
+/* ─── Vater Ventures — Aviation Theme ─── */
+
+.vater-page {
+  font-family: var(--font-rajdhani), sans-serif;
+  color: #e2e8f0;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ─── Neon Text ─── */
+.vater-neon {
+  color: #38bdf8;
+  text-shadow:
+    0 0 7px rgba(56, 189, 248, 0.5),
+    0 0 20px rgba(56, 189, 248, 0.25);
+}
+
+.vater-neon-amber {
+  color: #f59e0b;
+  text-shadow:
+    0 0 7px rgba(245, 158, 11, 0.5),
+    0 0 20px rgba(245, 158, 11, 0.25);
+}
+
+/* ─── Glass Card ─── */
+.vater-card {
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.85) 0%,
+    rgba(15, 23, 42, 0.65) 100%
+  );
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 1rem;
+  transition: all 0.3s ease;
+}
+
+.vater-card:hover {
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow:
+    0 0 20px rgba(56, 189, 248, 0.1),
+    0 20px 40px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+/* ─── Badge ─── */
+.vater-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 9999px;
+  background: rgba(56, 189, 248, 0.08);
+}
+
+/* ─── CTA Button ─── */
+.vater-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 2rem;
+  font-family: var(--font-rajdhani), sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #0f172a;
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  border: none;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-decoration: none;
+}
+
+.vater-cta:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  box-shadow:
+    0 0 20px rgba(245, 158, 11, 0.35),
+    0 8px 24px rgba(245, 158, 11, 0.2);
+  transform: translateY(-1px);
+}
+
+/* ─── Section Headings ─── */
+.vater-section-title {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #e2e8f0;
+}
+
+.vater-section-subtitle {
+  font-size: 1.1rem;
+  color: #94a3b8;
+  max-width: 600px;
+}
+
+/* ─── Steps / How It Works ─── */
+.vater-step {
+  position: relative;
+  padding-left: 3rem;
+}
+
+.vater-step::before {
+  content: attr(data-step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 50%;
+  background: rgba(56, 189, 248, 0.1);
+}
+
+/* ─── Contrail Particles (CSS-only) ─── */
+.vater-contrails {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.vater-contrail {
+  position: absolute;
+  width: 200px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.15), transparent);
+  transform: rotate(-35deg);
+  animation: contrail-drift var(--contrail-duration, 18s) linear infinite;
+  opacity: 0;
+}
+
+.vater-contrail:nth-child(1) {
+  top: 10%;
+  left: -200px;
+  --contrail-duration: 22s;
+  animation-delay: 0s;
+  width: 180px;
+}
+
+.vater-contrail:nth-child(2) {
+  top: 30%;
+  left: -200px;
+  --contrail-duration: 28s;
+  animation-delay: 5s;
+  width: 250px;
+}
+
+.vater-contrail:nth-child(3) {
+  top: 55%;
+  left: -200px;
+  --contrail-duration: 20s;
+  animation-delay: 10s;
+  width: 160px;
+}
+
+.vater-contrail:nth-child(4) {
+  top: 75%;
+  left: -200px;
+  --contrail-duration: 25s;
+  animation-delay: 3s;
+  width: 220px;
+}
+
+.vater-contrail:nth-child(5) {
+  top: 45%;
+  left: -200px;
+  --contrail-duration: 30s;
+  animation-delay: 8s;
+  width: 280px;
+}
+
+@keyframes contrail-drift {
+  0% {
+    opacity: 0;
+    transform: rotate(-35deg) translate3d(0, 0, 0);
+  }
+  5% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(-35deg) translate3d(calc(100vw + 400px), calc(-50vh), 0);
+  }
+}
+
+/* ─── Hero Glow ─── */
+.vater-hero-glow {
+  position: absolute;
+  width: min(50vw, 500px);
+  height: min(50vw, 500px);
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.vater-hero-glow-left {
+  left: -10vw;
+  top: 10vh;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.12), transparent 70%);
+}
+
+.vater-hero-glow-right {
+  right: -10vw;
+  top: 20vh;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.08), transparent 70%);
+}
+
+/* ─── Checklist ─── */
+.vater-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(56, 189, 248, 0.08);
+}
+
+.vater-checklist .check-icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: #38bdf8;
+}
+
+/* ─── FAQ ─── */
+.vater-faq-item {
+  border-bottom: 1px solid rgba(56, 189, 248, 0.1);
+  padding: 1.25rem 0;
+}
+
+.vater-faq-q {
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 0.5rem;
+  font-size: 1.05rem;
+}
+
+.vater-faq-a {
+  color: #94a3b8;
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+/* ─── Venture Hub Card Hover Glow ─── */
+.vater-venture-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.vater-venture-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  background: radial-gradient(
+    circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(56, 189, 248, 0.06),
+    transparent 60%
+  );
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.vater-venture-card:hover::after {
+  opacity: 1;
+}
+
+/* ─── Price Gap Calculator ─── */
+.vater-price-bar {
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.vater-price-amazon {
+  background: linear-gradient(90deg, rgba(255, 153, 0, 0.2), rgba(255, 153, 0, 0.05));
+  border: 1px solid rgba(255, 153, 0, 0.3);
+  color: #ff9900;
+}
+
+.vater-price-ebay {
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.05));
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+}
+
+.vater-price-profit {
+  background: linear-gradient(90deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.05));
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+/* ─── Course Module List ─── */
+.vater-module {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(56, 189, 248, 0.08);
+  background: rgba(15, 23, 42, 0.4);
+  transition: all 0.2s ease;
+}
+
+.vater-module:hover {
+  border-color: rgba(56, 189, 248, 0.2);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.vater-module-number {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #38bdf8;
+  font-size: 0.85rem;
+}
+
+/* ─── Revenue Timeline ─── */
+.vater-milestone {
+  position: relative;
+  padding-left: 2.5rem;
+  padding-bottom: 2rem;
+  border-left: 2px solid rgba(56, 189, 248, 0.2);
+}
+
+.vater-milestone:last-child {
+  border-left-color: transparent;
+  padding-bottom: 0;
+}
+
+.vater-milestone::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .vater-section-title {
+    font-size: 1.5rem;
+  }
+}
+
+/* ─── Reduced Motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  .vater-contrail {
+    animation: none;
+  }
+  .vater-card:hover {
+    transform: none;
+  }
+  .vater-cta:hover {
+    transform: none;
+  }
+}

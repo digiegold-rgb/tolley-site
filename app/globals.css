@@ -50,7 +50,7 @@ body {
 }
 
 /* Add bottom padding on pages that show the fixed footer (not standalone pages) */
-body:not(:has(.wd-page)):not(:has(.trailer-page)):not(:has(.generator-page)):not(:has(.homes-page)):not(:has(.hvac-page)):not(:has(.lastmile-page)):not(:has(.start-page)):not(:has(.junkinjays-page)):not(:has(.shop-page)):not(:has(.moving-page)) {
+body:not(:has(.wd-page)):not(:has(.trailer-page)):not(:has(.generator-page)):not(:has(.homes-page)):not(:has(.hvac-page)):not(:has(.lastmile-page)):not(:has(.start-page)):not(:has(.junkinjays-page)):not(:has(.shop-page)):not(:has(.moving-page)):not(:has(.vater-page)) {
   padding-bottom: 4.5rem;
 }
 
@@ -152,6 +152,16 @@ body:has(.shop-page) .site-legal-footer {
 }
 
 body:has(.moving-page) .site-legal-footer {
+  display: none;
+}
+
+/* Vater Ventures page overrides */
+body:has(.vater-page) {
+  background: linear-gradient(180deg, #061020 0%, #0a1628 100%);
+  color: #e2e8f0;
+}
+
+body:has(.vater-page) .site-legal-footer {
   display: none;
 }
 
