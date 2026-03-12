@@ -1172,3 +1172,45 @@ model ContentCampaign {
   @@index([subscriberId, isActive])
   @@index([isActive])
 }
+
+// ─── Washer/Dryer Rental Admin ───
+
+model WdClient {
+  id               String      @id @default(cuid())
+  name             String
+  address          String?
+  phone            String?
+  email            String?
+  unitDescription  String
+  unitCost         Float       @default(200)
+  installDate      DateTime?
+  active           Boolean     @default(true)
+  notes            String?
+  photoUrls        String[]
+  receiptUrls      String[]
+  source           String      @default("tolley")   // "tolley" | "keegan" | "both"
+  paidBy           String      @default("tolley")   // Who bought the unit
+  needsReview      Boolean     @default(false)
+  blockedFields    String[]                          // Fields hidden from Keegan
+  locked           Boolean     @default(false)
+  stripeCustomerId String?
+  payments         WdPayment[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([active])
+  @@index([source])
+}
+
+model WdPayment {
+  id        String   @id @default(cuid())
+  clientId  String
+  amount    Float
+  month     String   // "2025-09" format
+  note      String?
+  client    WdClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([clientId, month])
+  @@index([month])
+}
