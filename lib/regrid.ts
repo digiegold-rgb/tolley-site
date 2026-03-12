@@ -30,16 +30,26 @@ function buildUrl(path: string, params?: Record<string, string>): string {
 export interface RegridFeature {
   type: "Feature";
   id: number;
-  properties: RegridProperties;
+  properties: {
+    headline: string;
+    path: string;
+    fields: RegridFields;
+    context?: Record<string, unknown>;
+    addresses?: unknown[];
+    enhanced_ownership?: unknown;
+    ll_uuid: string;
+  };
   geometry: {
     type: string;
     coordinates: unknown;
   } | null;
 }
 
-export interface RegridProperties {
-  ll_uuid: string;
+/** Parcel data fields — nested under properties.fields in the API response */
+export interface RegridFields {
+  ll_uuid?: string;
   parcelnumb: string | null;
+  parcelnumb_no_formatting?: string | null;
   // Address
   address: string | null;
   saddno: string | null;
@@ -56,6 +66,7 @@ export interface RegridProperties {
   lon: number | null;
   // Owner
   owner: string | null;
+  owner2?: string | null;
   owntype: string | null;
   ownfrst: string | null;
   ownlast: string | null;
@@ -83,15 +94,33 @@ export interface RegridProperties {
   zoning: string | null;
   zoning_description: string | null;
   usps_vacancy: string | null;
+  usps_vacancy_date?: string | null;
   qoz: string | null;
+  // LBCS codes
+  lbcs_activity?: number | null;
+  lbcs_activity_desc?: string | null;
+  // Extra
+  geoid?: string | null;
+  fema_nri_risk_rating?: string | null;
   [key: string]: unknown;
 }
 
-/** Raw API response — features are nested under `parcels` */
+/** Legacy alias — use RegridFields for new code */
+export type RegridProperties = RegridFields;
+
+/** Raw API response — features nested under `parcels`, with optional buildings/zoning */
 export interface RegridApiResponse {
   parcels: {
     type: "FeatureCollection";
     features: RegridFeature[];
+  };
+  buildings?: {
+    type: "FeatureCollection";
+    features: unknown[];
+  };
+  zoning?: {
+    type: "FeatureCollection";
+    features: unknown[];
   };
 }
 
@@ -188,63 +217,65 @@ async function throttledFetch(url: string): Promise<Response> {
 // ── Feature parser ───────────────────────────────────────────
 
 export function parseFeature(feature: RegridFeature): ParsedParcel {
-  const p = feature.properties;
+  // Data fields are nested under properties.fields in the API response
+  const f = feature.properties.fields;
 
   // Build address from components if full address is null
   const address =
-    p.address ||
-    [p.saddno, p.saddpref, p.saddstr, p.saddsttyp, p.saddstsuf]
+    f.address ||
+    [f.saddno, f.saddpref, f.saddstr, f.saddsttyp, f.saddstsuf]
       .filter(Boolean)
       .join(" ") ||
     "Unknown";
 
   const isAbsentee = detectAbsentee(
     address,
-    p.scity,
-    [p.mailadd, p.mail_city, p.mail_state2, p.mail_zip].filter(Boolean).join(", ")
+    f.scity,
+    [f.mailadd, f.mail_city, f.mail_state2, f.mail_zip].filter(Boolean).join(", ")
   );
 
-  const isVacant = p.usps_vacancy === "Y";
+  const isVacant = f.usps_vacancy === "Y";
 
   return {
-    regridId: p.ll_uuid || String(feature.id),
-    parcelnumb: p.parcelnumb,
+    // ll_uuid is on both properties and properties.fields
+    regridId: feature.properties.ll_uuid || f.ll_uuid || String(feature.id),
+    parcelnumb: f.parcelnumb,
     address,
-    city: p.scity,
-    state: p.state2,
-    zip: p.szip,
-    county: p.county,
-    lat: p.lat,
-    lng: p.lon,
-    owner: p.owner,
-    owntype: p.owntype,
-    ownfrst: p.ownfrst,
-    ownlast: p.ownlast,
-    mailadd: p.mailadd,
-    mailcity: p.mail_city,
-    mailstate: p.mail_state2,
-    mailzip: p.mail_zip,
+    city: f.scity,
+    state: f.state2,
+    zip: f.szip,
+    county: f.county,
+    lat: f.lat,
+    lng: f.lon,
+    owner: f.owner,
+    owntype: f.owntype,
+    ownfrst: f.ownfrst,
+    ownlast: f.ownlast,
+    mailadd: f.mailadd,
+    mailcity: f.mail_city,
+    mailstate: f.mail_state2,
+    mailzip: f.mail_zip,
     isAbsentee,
     isVacant,
-    parval: p.parval,
-    landval: p.landval,
-    improvval: p.improvval,
-    saleprice: p.saleprice,
-    saledate: p.saledate,
-    taxamt: p.taxamt,
-    yearbuilt: p.yearbuilt,
-    numstories: p.numstories,
-    numunits: p.numunits,
-    num_bedrooms: p.num_bedrooms,
-    num_bath: p.num_bath,
-    struct: p.struct,
-    ll_gisacre: p.ll_gisacre,
-    ll_gissqft: p.ll_gissqft,
-    zoning: p.zoning,
-    zoning_description: p.zoning_description,
-    usps_vacancy: p.usps_vacancy,
-    qoz: p.qoz === "Yes" || p.qoz === "Y" || p.qoz === "true",
-    rawData: p,
+    parval: f.parval,
+    landval: f.landval,
+    improvval: f.improvval,
+    saleprice: f.saleprice,
+    saledate: f.saledate,
+    taxamt: f.taxamt,
+    yearbuilt: f.yearbuilt,
+    numstories: f.numstories,
+    numunits: f.numunits,
+    num_bedrooms: f.num_bedrooms,
+    num_bath: f.num_bath,
+    struct: f.struct,
+    ll_gisacre: f.ll_gisacre,
+    ll_gissqft: f.ll_gissqft,
+    zoning: f.zoning,
+    zoning_description: f.zoning_description,
+    usps_vacancy: f.usps_vacancy,
+    qoz: f.qoz === "Yes" || f.qoz === "Y" || f.qoz === "true",
+    rawData: f,
     geometry: feature.geometry,
   };
 }
