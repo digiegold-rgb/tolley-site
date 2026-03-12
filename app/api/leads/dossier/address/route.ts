@@ -79,11 +79,35 @@ export async function POST(req: NextRequest) {
   });
 
   if (existingJob) {
-    return NextResponse.json({
-      ok: true,
-      jobId: existingJob.id,
-      existing: true,
-    });
+    // If the job has been "running" for > 30 min, it's stale — fail it and allow re-run
+    const staleMs = 30 * 60 * 1000;
+    const isStale =
+      existingJob.status === "running" &&
+      existingJob.startedAt &&
+      Date.now() - existingJob.startedAt.getTime() > staleMs;
+
+    const isStaleQueued =
+      existingJob.status === "queued" &&
+      Date.now() - existingJob.createdAt.getTime() > 60 * 60 * 1000;
+
+    if (isStale || isStaleQueued) {
+      await prisma.dossierJob.update({
+        where: { id: existingJob.id },
+        data: {
+          status: "failed",
+          errorMessage: "Auto-failed: stale job replaced by new request",
+          completedAt: new Date(),
+          currentStep: null,
+        },
+      });
+      // Fall through to create a new job
+    } else {
+      return NextResponse.json({
+        ok: true,
+        jobId: existingJob.id,
+        existing: true,
+      });
+    }
   }
 
   // Also check for a completed job (allow re-running if older than 24h)
