@@ -19,6 +19,14 @@
     {
       "path": "/api/cron/unclaimed-compliance",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/content-publish",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/token-refresh",
+      "schedule": "0 */6 * * *"
     }
   ]
 }

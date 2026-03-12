@@ -1055,3 +1055,120 @@ model UnclaimedFundClaim {
   @@index([jurisdiction])
   @@index([waitingPeriodEnd])
 }
+
+// ─── Multi-Channel Content & Outreach Engine ────────────────
+
+model PlatformConnection {
+  id                  String    @id @default(cuid())
+  subscriberId        String
+  platform            String    // linkedin, twitter, facebook, instagram, youtube, tiktok
+  platformAccountId   String    // platform-specific user/page ID
+  platformUsername    String?
+  accessToken         String    // encrypted at rest via env
+  refreshToken        String?
+  tokenExpiresAt      DateTime?
+  scopes              String[]
+  pageId              String?   // for FB Pages, LinkedIn Orgs
+  pageName            String?
+  status              String    @default("active") // active, expired, revoked, error
+  lastError           String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([subscriberId, platform, platformAccountId])
+  @@index([subscriberId])
+  @@index([status])
+  @@index([tokenExpiresAt])
+}
+
+model ContentTemplate {
+  id              String    @id @default(cuid())
+  subscriberId    String?   // null = system default template
+  name            String
+  platform        String    // linkedin, twitter, facebook, instagram, youtube, tiktok, all
+  category        String    // market_update, listing_promo, neighborhood_spotlight, seller_tip, buyer_guide, just_sold, open_house, personal_brand
+  promptTemplate  String    // system prompt with {{variables}}
+  bodyTemplate    String?   // optional static body
+  hashtagStrategy Json?     // { count: 5, style: "trending" | "niche" | "branded" }
+  mediaStrategy   Json?     // { type: "property_photo" | "infographic" | "none", count: 1 }
+  tone            String    @default("professional") // professional, casual, authoritative, friendly
+  isActive        Boolean   @default(true)
+  posts           ContentPost[]
+  campaigns       ContentCampaign[] @relation("CampaignTemplates")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([subscriberId])
+  @@index([platform, category])
+}
+
+model ContentPost {
+  id              String    @id @default(cuid())
+  subscriberId    String
+  platform        String    // linkedin, twitter, facebook, instagram, youtube, tiktok
+  contentType     String    @default("text") // text, image, carousel, video, reel
+  body            String
+  mediaUrls       String[]
+  hashtags        String[]
+  // Source context
+  templateId      String?
+  template        ContentTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  listingId       String?
+  clientId        String?
+  dossierJobId    String?
+  aiPromptUsed    String?   // the actual prompt sent to LLM
+  campaignId      String?
+  campaign        ContentCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  // Schedule
+  scheduledAt     DateTime?
+  publishedAt     DateTime?
+  // Platform response
+  platformPostId  String?
+  platformUrl     String?
+  // Status: draft → scheduled → publishing → published → failed
+  status          String    @default("draft")
+  errorMessage    String?
+  retryCount      Int       @default(0)
+  // Engagement metrics
+  likes           Int       @default(0)
+  comments        Int       @default(0)
+  shares          Int       @default(0)
+  impressions     Int       @default(0)
+  clicks          Int       @default(0)
+  engagementRate  Float     @default(0)
+  lastEngagementSync DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([subscriberId, status])
+  @@index([status, scheduledAt])
+  @@index([platform, publishedAt])
+  @@index([campaignId])
+}
+
+model ContentCampaign {
+  id              String    @id @default(cuid())
+  subscriberId    String
+  name            String
+  description     String?
+  platforms       String[]  // linkedin, twitter, etc.
+  templateIds     String[]
+  templates       ContentTemplate[] @relation("CampaignTemplates")
+  frequency       String    @default("daily") // daily, weekdays, weekly, custom
+  postsPerDay     Int       @default(1)
+  preferredTimes  String[]  // ["09:00", "12:00", "17:00"]
+  timezone        String    @default("America/Chicago")
+  sourceType      String    @default("ai_generated") // ai_generated, template_fill
+  sourceFilter    Json?     // { minScore: 30, status: ["new"], farmZips: ["64055"] }
+  isActive        Boolean   @default(false)
+  startDate       DateTime?
+  endDate         DateTime?
+  postsGenerated  Int       @default(0)
+  postsPublished  Int       @default(0)
+  posts           ContentPost[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([subscriberId, isActive])
+  @@index([isActive])
+}

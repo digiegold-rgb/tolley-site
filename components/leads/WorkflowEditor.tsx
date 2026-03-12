@@ -25,7 +25,7 @@ import Dagre from "@dagrejs/dagre";
 // ── Types ────────────────────────────────────────────────────
 
 type NodeStatus = "idle" | "running" | "success" | "failed" | "skipped";
-type Category = "property" | "verification" | "people" | "legal" | "output" | "financial" | "neighborhood" | "market";
+type Category = "property" | "verification" | "people" | "legal" | "output" | "financial" | "neighborhood" | "market" | "content";
 
 interface PipelineNodeData {
   label: string;
@@ -65,6 +65,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   financial: "#06b6d4",
   neighborhood: "#14b8a6",
   market: "#f97316",
+  content: "#a855f7",
 };
 
 const CATEGORY_BG: Record<string, string> = {
@@ -76,6 +77,7 @@ const CATEGORY_BG: Record<string, string> = {
   financial: "rgba(6,182,212,0.08)",
   neighborhood: "rgba(20,184,166,0.08)",
   market: "rgba(249,115,22,0.08)",
+  content: "rgba(168,85,247,0.08)",
 };
 
 const CATEGORIES: { value: Category; label: string }[] = [
@@ -86,6 +88,7 @@ const CATEGORIES: { value: Category; label: string }[] = [
   { value: "financial", label: "Financial" },
   { value: "neighborhood", label: "Neighborhood" },
   { value: "market", label: "Market" },
+  { value: "content", label: "Content" },
   { value: "output", label: "Output" },
 ];
 
@@ -132,6 +135,11 @@ const KNOWN_SCRAPERS = [
   { id: "market", label: "Market Analysis", category: "market" as Category },
   { id: "social-deep", label: "Social Deep Dive", category: "people" as Category },
   { id: "ai-summary", label: "AI Summary", category: "output" as Category },
+  // ── Content Engine (social media automation) ──
+  { id: "content-generate", label: "AI Content Generate", category: "content" as Category },
+  { id: "content-publish", label: "Content Publish", category: "content" as Category },
+  { id: "content-linkedin", label: "LinkedIn Publish", category: "content" as Category },
+  { id: "content-twitter", label: "X/Twitter Publish", category: "content" as Category },
 ];
 
 const STORAGE_KEY = "tolley-workflow-v1";
@@ -165,6 +173,9 @@ const INITIAL_NODES: Node<PipelineNodeData>[] = [
   // ── Output ──
   { id: "ai-summary", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "AI Summary", category: "output", status: "idle", confidence: 0, scraperId: "ai-summary" } },
   { id: "score", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Score & Profile", category: "output", status: "idle", confidence: 0, scraperId: "score-profile" } },
+  // ── Content Engine ──
+  { id: "content-gen", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "AI Content Gen", category: "content", status: "idle", confidence: 0, scraperId: "content-generate", description: "Generate social posts from dossier data" } },
+  { id: "content-publish", type: "pipeline", position: { x: 0, y: 0 }, data: { label: "Multi-Platform Publish", category: "content", status: "idle", confidence: 0, scraperId: "content-publish", description: "LinkedIn, X, FB, IG" } },
 ];
 
 const INITIAL_EDGES: Edge[] = [
@@ -202,6 +213,9 @@ const INITIAL_EDGES: Edge[] = [
   { id: "regrid-ai", source: "regrid", target: "ai-summary", animated: true, label: "parcel_flags", style: { stroke: CATEGORY_COLORS.property } },
   { id: "zillow-ai", source: "zillow", target: "ai-summary", animated: true, label: "property_data", style: { stroke: CATEGORY_COLORS.property } },
   { id: "ai-score", source: "ai-summary", target: "score", animated: true, label: "full_dossier", style: { stroke: CATEGORY_COLORS.output } },
+  // ── Score → Content Engine ──
+  { id: "score-content", source: "score", target: "content-gen", animated: true, label: "dossier+score", style: { stroke: CATEGORY_COLORS.content } },
+  { id: "content-gen-publish", source: "content-gen", target: "content-publish", animated: true, label: "ai_posts", style: { stroke: CATEGORY_COLORS.content } },
 ];
 
 // ── Dagre layout ─────────────────────────────────────────────
