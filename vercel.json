@@ -30,7 +30,7 @@
     },
     {
       "path": "/api/cron/market-collect",
-      "schedule": "0 */4 * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }
