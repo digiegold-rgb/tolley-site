@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { DropshipArbitrage } from "@/components/vater/dropship-arbitrage";
 import { DropshipFaq } from "@/components/vater/dropship-faq";
 import { DropshipHero } from "@/components/vater/dropship-hero";
 import { DropshipHow } from "@/components/vater/dropship-how";
@@ -18,6 +19,7 @@ export default function DropshipPage() {
       <DropshipHero />
       <DropshipHow />
       <DropshipPipeline />
+      <DropshipArbitrage />
       <DropshipSetup />
       <DropshipFaq />
     </main>

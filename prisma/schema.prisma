@@ -1382,9 +1382,58 @@ model PoolProduct {
   status      String   @default("active")
   featured    Boolean  @default(false)
   sortOrder   Int      @default(0)
+  stockQty    Int?                        // Pool360 stock level (null = unknown)
+  stockStatus String?                     // "in-stock", "low-stock", "out-of-stock"
+  lastSyncedAt DateTime?                  // last Pool360 price/stock sync
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([status, sortOrder])
   @@index([category, status])
+  @@index([sku])
+}
+
+model ArbitragePair {
+  id             String   @id @default(cuid())
+
+  // eBay (sell side)
+  ebayTitle      String
+  ebayPrice      Float
+  ebayUrl        String?
+  ebayImageUrl   String?
+  ebayItemId     String?
+
+  // Amazon (buy side)
+  amazonTitle    String
+  amazonPrice    Float
+  amazonUrl      String?
+  amazonImageUrl String?
+  amazonAsin     String?
+
+  // Computed financials
+  ebayFeeRate    Float    @default(0.13)
+  ebayFees       Float
+  profit         Float
+  marginPercent  Float
+  roi            Float
+
+  // Workflow
+  status         String   @default("pending") // pending, approved, rejected, listed
+
+  // Meta
+  source         String   @default("manual") // manual, scanner, agent
+  submittedBy    String?
+  category       String?
+  notes          String?
+
+  // Timestamps
+  approvedAt     DateTime?
+  rejectedAt     DateTime?
+  listedAt       DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([marginPercent])
 }
