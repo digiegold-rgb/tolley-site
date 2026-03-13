@@ -53,7 +53,7 @@ export async function PoolsProducts() {
 
         {/* Product grid */}
         <div
-          className="pools-product-grid mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          className="pools-product-grid mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
           data-products={JSON.stringify(
             products.map((p) => ({
               id: p.id,
