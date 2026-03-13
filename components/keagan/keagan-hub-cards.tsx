@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CATEGORY_COLORS } from "@/lib/keegan";
+import { CATEGORY_COLORS } from "@/lib/keagan";
 
 interface CardData {
   title: string;
@@ -28,7 +28,7 @@ export function KeeganHubCards({ wdClients, wdEarned, trailerClients, trailerEar
   const cards: CardData[] = [
     {
       title: "W&D Rental",
-      href: "/keegan/wd",
+      href: "/keagan/wd",
       color: CATEGORY_COLORS.wd,
       stat1Label: "Clients",
       stat1Value: String(wdClients),
@@ -39,7 +39,7 @@ export function KeeganHubCards({ wdClients, wdEarned, trailerClients, trailerEar
     },
     {
       title: "Trailer Rental",
-      href: "/keegan/trailer",
+      href: "/keagan/trailer",
       color: CATEGORY_COLORS.trailer,
       stat1Label: "Clients",
       stat1Value: String(trailerClients),
@@ -50,7 +50,7 @@ export function KeeganHubCards({ wdClients, wdEarned, trailerClients, trailerEar
     },
     {
       title: "All Payments",
-      href: "/keegan/payments",
+      href: "/keagan/payments",
       color: CATEGORY_COLORS.labor,
       stat1Label: "Total Paid",
       stat1Value: `$${totalPaid.toLocaleString()}`,
@@ -67,24 +67,25 @@ export function KeeganHubCards({ wdClients, wdEarned, trailerClients, trailerEar
         <Link
           key={card.href}
           href={card.href}
-          className="block bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow"
+          className="block bg-white border border-gray-100 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden relative"
         >
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-3 h-3 rounded-full" style={{ background: card.color }} />
+          <div className="absolute top-0 left-0 bottom-0 w-1 rounded-l-xl" style={{ background: card.color }} />
+          <div className="flex items-center gap-2.5 mb-4 pl-2">
+            <div className="w-3 h-3 rounded-full shadow-sm" style={{ background: card.color }} />
             <h3 className="text-base font-bold text-gray-900">{card.title}</h3>
           </div>
-          <div className="space-y-2 text-sm">
+          <div className="space-y-2.5 text-sm pl-2">
             <div className="flex justify-between">
               <span className="text-gray-500">{card.stat1Label}</span>
-              <span className="font-semibold">{card.stat1Value}</span>
+              <span className="font-semibold text-gray-900">{card.stat1Value}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">{card.stat2Label}</span>
-              <span className="font-semibold">{card.stat2Value}</span>
+              <span className="font-semibold text-gray-900">{card.stat2Value}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">{card.stat3Label}</span>
-              <span className="font-semibold">{card.stat3Value}</span>
+              <span className="font-semibold text-gray-900">{card.stat3Value}</span>
             </div>
           </div>
         </Link>

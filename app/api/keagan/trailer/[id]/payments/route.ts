@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
 
-// POST /api/keegan/trailer/[id]/payments — add payment
+// POST /api/keagan/trailer/[id]/payments — add payment
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -40,7 +40,7 @@ export async function POST(
   return NextResponse.json(payment, { status: 201 });
 }
 
-// PATCH /api/keegan/trailer/[id]/payments?paymentId=xxx — update status
+// PATCH /api/keagan/trailer/[id]/payments?paymentId=xxx — update status
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -68,7 +68,7 @@ export async function PATCH(
   return NextResponse.json(payment);
 }
 
-// DELETE /api/keegan/trailer/[id]/payments?paymentId=xxx — Tolley only
+// DELETE /api/keagan/trailer/[id]/payments?paymentId=xxx — Tolley only
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

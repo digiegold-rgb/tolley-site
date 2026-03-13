@@ -56,8 +56,8 @@ function BarChart({ data }: { data: { label: string; value: number }[] }) {
             width: "100%",
             maxWidth: 28,
             height: `${(d.value / max) * 100}px`,
-            background: "#4472c4",
-            borderRadius: "2px 2px 0 0",
+            background: "linear-gradient(180deg, #5b9bd5, #4472c4)",
+            borderRadius: "6px 6px 0 0",
             minHeight: 2,
           }} />
           <div style={{ fontSize: 8, marginTop: 2, transform: "rotate(-45deg)", transformOrigin: "top left", whiteSpace: "nowrap" }}>

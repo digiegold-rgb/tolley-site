@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
 
-// GET /api/keegan/payments?category=wd&status=paid
+// GET /api/keagan/payments?category=wd&status=paid
 export async function GET(request: NextRequest) {
   const { authed } = await validateWdAdmin();
   if (!authed) {
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ payments });
 }
 
-// POST /api/keegan/payments — Tolley only
+// POST /api/keagan/payments — Tolley only
 export async function POST(request: NextRequest) {
   const { authed, role } = await validateWdAdmin();
   if (!authed) {

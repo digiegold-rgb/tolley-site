@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
 
-// PATCH /api/keegan/payments/[id]
+// PATCH /api/keagan/payments/[id]
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -26,7 +26,7 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/keegan/payments/[id]
+// DELETE /api/keagan/payments/[id]
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

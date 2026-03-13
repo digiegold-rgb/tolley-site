@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { WdSpreadsheet } from "@/components/wd/admin/wd-spreadsheet";
 import type { WdClientData } from "@/components/wd/admin/wd-client-row";
+import { KeaganRoiBar } from "@/components/keagan/keagan-roi-bar";
 import "@/app/wd/admin/admin.css";
 
 export default function KeeganWdPage() {
@@ -63,12 +64,26 @@ export default function KeeganWdPage() {
     return <div className="p-8 text-center text-gray-400 text-sm">Loading W&D clients...</div>;
   }
 
+  // Filter to Keagan's clients for ROI bars
+  const keaganClients = clients.filter(c => c.source === "keegan" || c.source === "both");
+
   return (
     <div className="px-2 py-4">
       <div className="max-w-2xl mx-auto mb-4">
         <h1 className="text-lg font-bold text-gray-900">W&D Rental — Keagan&apos;s Clients</h1>
         <p className="text-xs text-gray-500">Shared clients with revenue split breakdown</p>
       </div>
+
+      {/* ROI Progress Bars */}
+      {keaganClients.length > 0 && (
+        <div className="max-w-2xl mx-auto mb-6">
+          <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">ROI Progress</h2>
+          {keaganClients.map(c => (
+            <KeaganRoiBar key={c.id} clientName={c.name} unitCost={c.unitCost} split={c.split} />
+          ))}
+        </div>
+      )}
+
       <div className="wd-admin">
         <WdSpreadsheet
           clients={clients}

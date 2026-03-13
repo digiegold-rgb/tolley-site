@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { KeeganHubStats } from "@/components/keegan/keegan-hub-stats";
-import { KeeganHubCards } from "@/components/keegan/keegan-hub-cards";
-import type { PartnerPaymentData } from "@/components/keegan/keegan-payment-ledger";
+import { KeeganHubStats } from "@/components/keagan/keagan-hub-stats";
+import { KeeganHubCards } from "@/components/keagan/keagan-hub-cards";
+import type { PartnerPaymentData } from "@/components/keagan/keagan-payment-ledger";
+import { KeaganSplitCard } from "@/components/keagan/keagan-split-card";
 
 interface WdClientSlim {
   id: string;
@@ -24,8 +25,8 @@ export default function KeeganHubPage() {
   useEffect(() => {
     Promise.all([
       fetch("/api/wd/clients").then(r => r.ok ? r.json() : { clients: [] }),
-      fetch("/api/keegan/trailer").then(r => r.ok ? r.json() : { clients: [] }),
-      fetch("/api/keegan/payments").then(r => r.ok ? r.json() : { payments: [] }),
+      fetch("/api/keagan/trailer").then(r => r.ok ? r.json() : { clients: [] }),
+      fetch("/api/keagan/payments").then(r => r.ok ? r.json() : { payments: [] }),
     ]).then(([wd, trailer, pay]) => {
       // Filter WD to only Keagan's clients
       const keeganWd = (wd.clients || []).filter((c: { source: string }) => c.source === "keegan" || c.source === "both");
@@ -59,6 +60,7 @@ export default function KeeganHubPage() {
       <p className="text-sm text-gray-500 mb-6">All businesses at a glance</p>
 
       <KeeganHubStats totalEarned={totalPaid} totalPending={totalPending} thisMonth={thisMonth} />
+      <KeaganSplitCard />
       <KeeganHubCards
         wdClients={wdClients.length}
         wdEarned={Math.round(wdEarned)}

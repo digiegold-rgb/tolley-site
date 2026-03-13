@@ -17,10 +17,10 @@ export const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export const HUB_NAV = [
-  { label: "Hub", href: "/keegan" },
-  { label: "WD", href: "/keegan/wd" },
-  { label: "Trailer", href: "/keegan/trailer" },
-  { label: "Payments", href: "/keegan/payments" },
+  { label: "Hub", href: "/keagan" },
+  { label: "WD", href: "/keagan/wd" },
+  { label: "Trailer", href: "/keagan/trailer" },
+  { label: "Payments", href: "/keagan/payments" },
 ] as const;
 
 export function computeTrailerSplit(totalPaid: number) {

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { KeeganPaymentLedger, type PartnerPaymentData } from "@/components/keegan/keegan-payment-ledger";
-import { KeeganAddPayment } from "@/components/keegan/keegan-add-payment";
+import { KeeganPaymentLedger, type PartnerPaymentData } from "@/components/keagan/keagan-payment-ledger";
+import { KeeganAddPayment } from "@/components/keagan/keagan-add-payment";
 
 export default function KeeganPaymentsPage() {
   const [payments, setPayments] = useState<PartnerPaymentData[]>([]);
@@ -11,7 +11,7 @@ export default function KeeganPaymentsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/keegan/payments").then(r => r.ok ? r.json() : { payments: [] }),
+      fetch("/api/keagan/payments").then(r => r.ok ? r.json() : { payments: [] }),
       fetch("/api/wd/clients").then(r => r.ok ? r.json() : { role: "keegan" }),
     ]).then(([pay, wd]) => {
       setPayments(pay.payments || []);
@@ -27,7 +27,7 @@ export default function KeeganPaymentsPage() {
     category: string;
     status: string;
   }) {
-    const res = await fetch("/api/keegan/payments", {
+    const res = await fetch("/api/keagan/payments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -39,12 +39,12 @@ export default function KeeganPaymentsPage() {
   }
 
   async function handleDelete(id: string) {
-    await fetch(`/api/keegan/payments/${id}`, { method: "DELETE" });
+    await fetch(`/api/keagan/payments/${id}`, { method: "DELETE" });
     setPayments(prev => prev.filter(p => p.id !== id));
   }
 
   async function handleUpdate(id: string, data: Partial<PartnerPaymentData>) {
-    const res = await fetch(`/api/keegan/payments/${id}`, {
+    const res = await fetch(`/api/keagan/payments/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),

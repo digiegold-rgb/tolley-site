@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/keegan";
+import { CATEGORY_LABELS, CATEGORY_COLORS } from "@/lib/keagan";
 
 export interface PartnerPaymentData {
   id: string;
@@ -49,10 +49,10 @@ export function KeeganPaymentLedger({ payments, role, onDelete, onUpdate }: Prop
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto border border-gray-200 rounded-lg">
+      <div className="overflow-x-auto bg-white border border-gray-100 rounded-xl shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
+            <tr className="bg-gray-50/80 border-b border-gray-200">
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Date</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Description</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Category</th>
@@ -66,7 +66,7 @@ export function KeeganPaymentLedger({ payments, role, onDelete, onUpdate }: Prop
               <tr><td colSpan={isTolley ? 6 : 5} className="text-center py-6 text-gray-400">No payments recorded</td></tr>
             )}
             {sorted.map(p => (
-              <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
+              <tr key={p.id} className="border-b border-gray-100/80 hover:bg-blue-50/30 transition-colors">
                 <td className="px-3 py-2 text-gray-700">
                   {new Date(p.date).toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "2-digit" })}
                 </td>
@@ -84,7 +84,7 @@ export function KeeganPaymentLedger({ payments, role, onDelete, onUpdate }: Prop
                   {isTolley ? (
                     <button
                       onClick={() => onUpdate(p.id, { status: p.status === "paid" ? "pending" : "paid" })}
-                      className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                         p.status === "paid"
                           ? "bg-green-100 text-green-700"
                           : "bg-amber-100 text-amber-700"
@@ -93,7 +93,7 @@ export function KeeganPaymentLedger({ payments, role, onDelete, onUpdate }: Prop
                       {p.status}
                     </button>
                   ) : (
-                    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                       p.status === "paid" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
                     }`}>
                       {p.status}

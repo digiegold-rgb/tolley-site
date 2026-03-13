@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
 
-// GET /api/keegan/trailer
+// GET /api/keagan/trailer
 export async function GET() {
   const { authed } = await validateWdAdmin();
   if (!authed) {
@@ -17,7 +17,7 @@ export async function GET() {
   return NextResponse.json({ clients });
 }
 
-// POST /api/keegan/trailer — add trailer client
+// POST /api/keagan/trailer — add trailer client
 export async function POST(request: NextRequest) {
   const { authed, role } = await validateWdAdmin();
   if (!authed) {

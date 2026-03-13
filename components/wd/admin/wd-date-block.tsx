@@ -19,6 +19,17 @@ const BASE_COLS = [
   "Phone", "Email",
 ];
 
+const WEEK_LABELS: Record<string, string> = {
+  "Install Day 1-7": "Week 1 \u2014 1st through 7th",
+  "Install Day 8-14": "Week 2 \u2014 8th through 14th",
+  "Install Day 15-21": "Week 3 \u2014 15th through 21st",
+  "Install Day 22-31": "Week 4 \u2014 22nd through 31st",
+};
+
+function getDisplayLabel(label: string): string {
+  return WEEK_LABELS[label] ?? label;
+}
+
 export function WdDateBlock({ label, clients, role, showSplit, maxPayments, onPaymentStatus, onConfirmToggle, onSave }: Props) {
   if (clients.length === 0) return null;
 
@@ -45,45 +56,49 @@ export function WdDateBlock({ label, clients, role, showSplit, maxPayments, onPa
   const totalPaid = clients.reduce((s, c) => s + c.payments.reduce((ps, p) => ps + p.amount, 0), 0);
   const totalProfit = totalPaid - totalInvestment;
 
+  const displayLabel = getDisplayLabel(label);
+
   return (
-    <div className="table-scroll">
-      <table>
-        <thead>
-          <tr className="section-header">
-            <td colSpan={cols.length}>{label} ({clients.length} clients)</td>
-          </tr>
-          <tr>
-            {cols.map((c, i) => {
-              const stickyClass = i < 5 ? `sticky-col-${i}` : "";
-              return <th key={i} className={stickyClass}>{c}</th>;
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {clients.map(c => (
-            <WdClientRow
-              key={c.id}
-              client={c}
-              role={role}
-              showSplit={showSplit}
-              maxPayments={maxPayments}
-              onPaymentStatus={onPaymentStatus}
-              onConfirmToggle={onConfirmToggle}
-              onSave={onSave}
-            />
-          ))}
-          <tr className="subtotal-row">
-            <td className="sticky-col-0" />
-            <td className="sticky-col-1">{clients.length} units</td>
-            <td className="sticky-col-2" style={{ textAlign: "right" }}>${totalInvestment.toFixed(0)}</td>
-            <td className="sticky-col-3" />
-            <td className="sticky-col-4" style={{ textAlign: "right", color: totalProfit >= 0 ? "#006100" : "#9c0006" }}>${totalProfit.toFixed(0)}</td>
-            <td />
-            <td style={{ textAlign: "right" }}>${totalPaid.toFixed(0)}</td>
-            <td colSpan={cols.length - 7} />
-          </tr>
-        </tbody>
-      </table>
+    <div className="date-block-card">
+      <div className="table-scroll">
+        <table>
+          <thead>
+            <tr className="section-header">
+              <td colSpan={cols.length}>{displayLabel} ({clients.length} clients)</td>
+            </tr>
+            <tr>
+              {cols.map((c, i) => {
+                const stickyClass = i < 5 ? `sticky-col-${i}` : "";
+                return <th key={i} className={stickyClass}>{c}</th>;
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {clients.map(c => (
+              <WdClientRow
+                key={c.id}
+                client={c}
+                role={role}
+                showSplit={showSplit}
+                maxPayments={maxPayments}
+                onPaymentStatus={onPaymentStatus}
+                onConfirmToggle={onConfirmToggle}
+                onSave={onSave}
+              />
+            ))}
+            <tr className="subtotal-row">
+              <td className="sticky-col-0" />
+              <td className="sticky-col-1">{clients.length} units</td>
+              <td className="sticky-col-2" style={{ textAlign: "right" }}>${totalInvestment.toFixed(0)}</td>
+              <td className="sticky-col-3" />
+              <td className="sticky-col-4" style={{ textAlign: "right", color: totalProfit >= 0 ? "#006100" : "#9c0006" }}>${totalProfit.toFixed(0)}</td>
+              <td />
+              <td style={{ textAlign: "right" }}>${totalPaid.toFixed(0)}</td>
+              <td colSpan={cols.length - 7} />
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

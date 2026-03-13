@@ -219,7 +219,7 @@ export default function WdAdminPage() {
         </div>
       </div>
 
-      <div style={{ padding: "8px 12px" }}>
+      <div style={{ padding: "12px 16px" }}>
         {/* Tab bar */}
         <div className="tab-bar">
           {(["all", "tolley", "keegan"] as const).map(t => (

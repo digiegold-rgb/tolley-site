@@ -17,13 +17,15 @@ export function WdPaymentCell({ paymentId, amount, status, onStatusChange }: Pro
   const cls = status === "paid" ? "pay-paid" : status === "late" ? "pay-late" : "pay-missed";
 
   return (
-    <td
-      className={cls}
-      style={{ cursor: "pointer", textAlign: "right", minWidth: 50 }}
-      onClick={() => onStatusChange(paymentId, STATUS_CYCLE[status] || "paid")}
-      title={`$${amount.toFixed(0)} — ${status} (click to change)`}
-    >
-      ${amount.toFixed(0)}
+    <td style={{ textAlign: "center", padding: "4px 2px" }}>
+      <span
+        className={`pay-pill ${cls}`}
+        onClick={() => onStatusChange(paymentId, STATUS_CYCLE[status] || "paid")}
+        title={`$${amount.toFixed(0)} — ${status} (click to change)`}
+        style={{ cursor: "pointer" }}
+      >
+        ${amount.toFixed(0)}
+      </span>
     </td>
   );
 }

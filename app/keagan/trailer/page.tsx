@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { computeTrailerSplit } from "@/lib/keegan";
+import { computeTrailerSplit } from "@/lib/keagan";
 import "@/app/wd/admin/admin.css";
 
 interface TrailerPayment {
@@ -39,7 +39,7 @@ export default function KeeganTrailerPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/keegan/trailer").then(r => r.ok ? r.json() : { clients: [] }),
+      fetch("/api/keagan/trailer").then(r => r.ok ? r.json() : { clients: [] }),
       fetch("/api/wd/clients").then(r => r.ok ? r.json() : { role: "keegan" }),
     ]).then(([t, wd]) => {
       setClients(t.clients || []);
@@ -49,7 +49,7 @@ export default function KeeganTrailerPage() {
   }, []);
 
   async function refresh() {
-    const r = await fetch("/api/keegan/trailer");
+    const r = await fetch("/api/keagan/trailer");
     if (r.ok) {
       const d = await r.json();
       setClients(d.clients || []);
@@ -61,7 +61,7 @@ export default function KeeganTrailerPage() {
       ...c,
       payments: c.payments.map(p => p.id === paymentId ? { ...p, status: newStatus } : p),
     })));
-    await fetch(`/api/keegan/trailer/${clientId}/payments?paymentId=${paymentId}`, {
+    await fetch(`/api/keagan/trailer/${clientId}/payments?paymentId=${paymentId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
@@ -71,7 +71,7 @@ export default function KeeganTrailerPage() {
   async function handleAddClient(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim() || !form.trailerDescription.trim()) return;
-    await fetch("/api/keegan/trailer", {
+    await fetch("/api/keagan/trailer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -93,7 +93,7 @@ export default function KeeganTrailerPage() {
 
   async function handleConfirm(clientId: string, val: boolean) {
     setClients(prev => prev.map(c => c.id === clientId ? { ...c, confirmed: val } : c));
-    await fetch(`/api/keegan/trailer/${clientId}`, {
+    await fetch(`/api/keagan/trailer/${clientId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ confirmed: val }),
