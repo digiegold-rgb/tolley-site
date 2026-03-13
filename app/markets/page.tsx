@@ -12,7 +12,7 @@ export const metadata = {
 export default async function MarketsPage() {
   let snapshotRow = null;
   let signals: Awaited<ReturnType<typeof prisma.marketSignal.findMany>> = [];
-  let dataPoints: { id: string; type: string; title: string; url: string | null; summary: string | null; signal: string | null; signalConfidence: number | null; sentiment: number | null; numericValue: number | null; changePercent: number | null; publishedAt: Date | null; createdAt: Date }[] = [];
+  let dataPoints: { id: string; type: string; title: string; url: string | null; summary: string | null; signal: string | null; signalConfidence: number | null; sentiment: number | null; numericValue: number | null; changePercent: number | null; tags: string[]; publishedAt: Date | null; createdAt: Date }[] = [];
 
   try {
     [snapshotRow, signals, dataPoints] = await Promise.all([
@@ -37,11 +37,12 @@ export default async function MarketsPage() {
           sentiment: true,
           numericValue: true,
           changePercent: true,
+          tags: true,
           publishedAt: true,
           createdAt: true,
         },
         orderBy: { createdAt: "desc" },
-        take: 50,
+        take: 100,
       }),
     ]);
   } catch (e) {

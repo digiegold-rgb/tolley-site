@@ -12,11 +12,17 @@ interface Source {
   lastChecked?: string;
 }
 
-export default function SourceManager() {
+interface Props {
+  onSourceAdded?: () => void;
+}
+
+export default function SourceManager({ onSourceAdded }: Props) {
   const [sources, setSources] = useState<Source[]>([]);
   const [showAdd, setShowAdd] = useState(false);
-  const [newSource, setNewSource] = useState({ type: "youtube_channel", name: "", url: "", identifier: "" });
+  const [addType, setAddType] = useState<"rss" | "channel">("rss");
+  const [inputUrl, setInputUrl] = useState("");
   const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/markets/sources")
@@ -27,21 +33,38 @@ export default function SourceManager() {
 
   async function addSource(e: React.FormEvent) {
     e.preventDefault();
+    setLoading(true);
     setStatus("Adding...");
+
     try {
-      const res = await fetch("/api/markets/sources", {
+      // Use the main /api/markets POST which handles resolution
+      const res = await fetch("/api/markets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newSource),
+        body: JSON.stringify({
+          type: addType === "channel" ? "channel" : "rss",
+          url: inputUrl,
+        }),
       });
-      if (!res.ok) throw new Error("Failed");
+
       const data = await res.json();
-      setSources((prev) => [...prev, data.source]);
-      setNewSource({ type: "youtube_channel", name: "", url: "", identifier: "" });
+      if (!res.ok) throw new Error(data.error || "Failed");
+
+      // Refresh sources list
+      const refreshRes = await fetch("/api/markets/sources");
+      if (refreshRes.ok) {
+        const refreshData = await refreshRes.json();
+        setSources(refreshData.sources || []);
+      }
+
+      setInputUrl("");
       setShowAdd(false);
       setStatus("");
-    } catch {
-      setStatus("Failed to add source");
+      onSourceAdded?.();
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Failed to add source");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -51,7 +74,7 @@ export default function SourceManager() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ active: !active }),
     });
-    setSources((prev) => prev.map((s) => s.id === id ? { ...s, active: !active } : s));
+    setSources((prev) => prev.map((s) => (s.id === id ? { ...s, active: !active } : s)));
   }
 
   async function deleteSource(id: string) {
@@ -65,6 +88,14 @@ export default function SourceManager() {
     stock_ticker: "Stock",
     fred_indicator: "FRED",
     blog: "Blog",
+  };
+
+  const typeColors: Record<string, string> = {
+    youtube_channel: "bg-red-500/20 text-red-400",
+    rss_feed: "bg-orange-500/20 text-orange-400",
+    stock_ticker: "bg-green-500/20 text-green-400",
+    fred_indicator: "bg-blue-500/20 text-blue-400",
+    blog: "bg-purple-500/20 text-purple-400",
   };
 
   return (
@@ -81,60 +112,98 @@ export default function SourceManager() {
 
       {showAdd && (
         <form onSubmit={addSource} className="rounded-lg bg-white/5 border border-white/10 p-3 space-y-2">
-          <select
-            value={newSource.type}
-            onChange={(e) => setNewSource({ ...newSource, type: e.target.value })}
-            className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-xs text-white"
-          >
-            <option value="youtube_channel">YouTube Channel</option>
-            <option value="rss_feed">RSS Feed</option>
-            <option value="blog">Blog</option>
-          </select>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setAddType("rss")}
+              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                addType === "rss"
+                  ? "bg-orange-500/20 text-orange-300 border border-orange-500/30"
+                  : "text-white/40 hover:text-white/60"
+              }`}
+            >
+              RSS Feed
+            </button>
+            <button
+              type="button"
+              onClick={() => setAddType("channel")}
+              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                addType === "channel"
+                  ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                  : "text-white/40 hover:text-white/60"
+              }`}
+            >
+              YouTube Channel
+            </button>
+          </div>
+
           <input
-            type="text"
-            placeholder="Name (e.g., Reventure Consulting)"
-            value={newSource.name}
-            onChange={(e) => setNewSource({ ...newSource, name: e.target.value })}
-            className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-xs text-white placeholder:text-white/20"
+            type="url"
+            placeholder={
+              addType === "channel"
+                ? "https://youtube.com/@ChannelName"
+                : "https://example.com/feed/"
+            }
+            value={inputUrl}
+            onChange={(e) => setInputUrl(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/30"
             required
           />
-          {newSource.type === "youtube_channel" ? (
-            <input
-              type="text"
-              placeholder="Channel ID (e.g., UCBcRF18a7Qf58cCRy5xuWwQ)"
-              value={newSource.identifier}
-              onChange={(e) => setNewSource({ ...newSource, identifier: e.target.value })}
-              className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-xs text-white placeholder:text-white/20"
-              required
-            />
-          ) : (
-            <input
-              type="url"
-              placeholder="URL"
-              value={newSource.url}
-              onChange={(e) => setNewSource({ ...newSource, url: e.target.value })}
-              className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-xs text-white placeholder:text-white/20"
-              required
-            />
-          )}
-          <button type="submit" className="w-full px-3 py-1.5 rounded bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-medium">
-            Add Source
+
+          <p className="text-[10px] text-white/25">
+            {addType === "channel"
+              ? "Paste any YouTube channel URL. We'll auto-detect the channel and monitor for new videos."
+              : "Paste an RSS or Atom feed URL. Articles will be AI-analyzed automatically."}
+          </p>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full px-3 py-1.5 rounded bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-medium disabled:opacity-50"
+          >
+            {loading ? "Adding..." : "Subscribe"}
           </button>
-          {status && <p className="text-[10px] text-red-400">{status}</p>}
+          {status && status !== "Adding..." && (
+            <p className="text-[10px] text-red-400">{status}</p>
+          )}
         </form>
       )}
 
       <div className="space-y-1">
         {sources.map((s) => (
           <div key={s.id} className="flex items-center gap-2 rounded bg-white/5 px-3 py-2">
-            <span className={`text-[10px] px-1.5 py-0.5 rounded ${s.active ? "bg-green-500/20 text-green-400" : "bg-white/5 text-white/30"}`}>
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded ${
+                s.active
+                  ? typeColors[s.type] || "bg-white/10 text-white/50"
+                  : "bg-white/5 text-white/30"
+              }`}
+            >
               {typeLabels[s.type] || s.type}
             </span>
-            <span className="flex-1 text-xs text-white/70 truncate">{s.name}</span>
-            <button onClick={() => toggleSource(s.id, s.active)} className="text-[10px] text-white/30 hover:text-white/50">
+            <span className="flex-1 text-xs text-white/70 truncate" title={s.url || s.identifier}>
+              {s.name}
+            </span>
+            {s.url && (
+              <a
+                href={s.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-white/20 hover:text-white/40"
+              >
+                link
+              </a>
+            )}
+            <button
+              onClick={() => toggleSource(s.id, s.active)}
+              className="text-[10px] text-white/30 hover:text-white/50"
+            >
               {s.active ? "Pause" : "Resume"}
             </button>
-            <button onClick={() => deleteSource(s.id)} className="text-[10px] text-red-400/50 hover:text-red-400">
+            <button
+              onClick={() => deleteSource(s.id)}
+              className="text-[10px] text-red-400/50 hover:text-red-400"
+            >
               Remove
             </button>
           </div>

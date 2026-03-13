@@ -34,7 +34,11 @@
     },
     {
       "path": "/api/cron/dossier-cleanup",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/crypto-sync",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

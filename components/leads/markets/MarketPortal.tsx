@@ -52,6 +52,7 @@ interface DataPoint {
   numericValue?: number;
   changePercent?: number;
   publishedAt?: string;
+  tags?: string[];
   createdAt: string;
 }
 
@@ -67,34 +68,38 @@ export default function MarketPortal({ initialSnapshot, initialSignals, initialD
   const [signals, setSignals] = useState(initialSignals);
   const [dataPoints, setDataPoints] = useState(initialDataPoints);
 
+  // Refresh all data
+  const refreshData = async () => {
+    try {
+      const [snapRes, sigRes, dpRes] = await Promise.all([
+        fetch("/api/markets/snapshot/latest"),
+        fetch("/api/markets/signals"),
+        fetch("/api/markets?limit=50"),
+      ]);
+      if (snapRes.ok) {
+        const data = await snapRes.json();
+        if (data.snapshot) setSnapshot(data.snapshot);
+      }
+      if (sigRes.ok) {
+        const data = await sigRes.json();
+        setSignals(data.signals || []);
+      }
+      if (dpRes.ok) {
+        const data = await dpRes.json();
+        setDataPoints(data.dataPoints || []);
+      }
+    } catch { /* silent */ }
+  };
+
   // Poll every 60s
   useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const [snapRes, sigRes, dpRes] = await Promise.all([
-          fetch("/api/markets/snapshot/latest"),
-          fetch("/api/markets/signals"),
-          fetch("/api/markets?limit=50"),
-        ]);
-        if (snapRes.ok) {
-          const data = await snapRes.json();
-          if (data.snapshot) setSnapshot(data.snapshot);
-        }
-        if (sigRes.ok) {
-          const data = await sigRes.json();
-          setSignals(data.signals || []);
-        }
-        if (dpRes.ok) {
-          const data = await dpRes.json();
-          setDataPoints(data.dataPoints || []);
-        }
-      } catch { /* silent */ }
-    }, 60000);
+    const interval = setInterval(refreshData, 60000);
     return () => clearInterval(interval);
   }, []);
 
   const videos = dataPoints.filter((d) => d.type === "video_analysis");
   const articles = dataPoints.filter((d) => d.type === "article_summary");
+  const econIndicators = dataPoints.filter((d) => d.type === "economic_indicator");
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "overview", label: "Overview" },
@@ -174,13 +179,14 @@ export default function MarketPortal({ initialSnapshot, initialSignals, initialD
               cpi={snapshot?.cpi ?? null}
               consumerSentiment={snapshot?.consumerSentiment ?? null}
               housingStarts={snapshot?.housingStarts ?? null}
+              dataPoints={econIndicators}
             />
           </div>
 
           {/* Manual input */}
           <div>
             <h3 className="text-sm font-medium text-white/60 mb-3">Add Data</h3>
-            <ManualInputForm />
+            <ManualInputForm onDataAdded={refreshData} />
           </div>
         </div>
       )}
@@ -188,7 +194,7 @@ export default function MarketPortal({ initialSnapshot, initialSignals, initialD
       {/* Videos tab */}
       {tab === "videos" && (
         <div className="space-y-4">
-          <ManualInputForm />
+          <ManualInputForm onDataAdded={refreshData} />
           <VideoAnalysisList videos={videos} />
         </div>
       )}
@@ -215,13 +221,13 @@ export default function MarketPortal({ initialSnapshot, initialSignals, initialD
       {/* News tab */}
       {tab === "news" && (
         <div className="space-y-4">
-          <ManualInputForm />
+          <ManualInputForm onDataAdded={refreshData} />
           <BlogFeed articles={articles} />
         </div>
       )}
 
       {/* Sources tab */}
-      {tab === "sources" && <SourceManager />}
+      {tab === "sources" && <SourceManager onSourceAdded={refreshData} />}
     </div>
   );
 }
