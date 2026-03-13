@@ -76,6 +76,11 @@ const nextConfig: NextConfig = {
         destination: "/vater/courses/:path*",
         permanent: true,
       },
+      {
+        source: "/pool",
+        destination: "/pools",
+        permanent: true,
+      },
     ];
   },
 };
