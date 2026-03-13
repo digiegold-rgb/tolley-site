@@ -15,7 +15,7 @@ export async function POST(
   const { id } = await params;
 
   try {
-    const { amount, month, note } = await request.json();
+    const { amount, month, note, status } = await request.json();
 
     if (typeof amount !== "number" || amount <= 0) {
       return NextResponse.json({ error: "Valid amount required" }, { status: 400 });
@@ -35,6 +35,7 @@ export async function POST(
         clientId: id,
         amount,
         month,
+        status: status || "paid",
         note: note?.trim() || null,
       },
     });
@@ -43,6 +44,37 @@ export async function POST(
   } catch (err) {
     console.error("[wd/payments POST]", err);
     return NextResponse.json({ error: "Bad request" }, { status: 400 });
+  }
+}
+
+// PATCH /api/wd/clients/[id]/payments?paymentId=xxx — update payment status
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { authed } = await validateWdAdmin();
+  if (!authed) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  await params;
+  const paymentId = new URL(request.url).searchParams.get("paymentId");
+  if (!paymentId) {
+    return NextResponse.json({ error: "paymentId required" }, { status: 400 });
+  }
+
+  try {
+    const { status } = await request.json();
+    if (!["paid", "late", "missed"].includes(status)) {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    }
+    const payment = await prisma.wdPayment.update({
+      where: { id: paymentId },
+      data: { status },
+    });
+    return NextResponse.json(payment);
+  } catch {
+    return NextResponse.json({ error: "Payment not found" }, { status: 404 });
   }
 }
 

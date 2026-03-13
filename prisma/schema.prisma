@@ -1185,6 +1185,7 @@ model WdClient {
   unitCost         Float       @default(200)
   installDate      DateTime?
   active           Boolean     @default(true)
+  confirmed        Boolean     @default(false)
   notes            String?
   photoUrls        String[]
   receiptUrls      String[]
@@ -1207,12 +1208,68 @@ model WdPayment {
   clientId  String
   amount    Float
   month     String   // "2025-09" format
+  status    String   @default("paid")   // "paid" | "late" | "missed"
   note      String?
   client    WdClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
   @@index([clientId, month])
   @@index([month])
+}
+
+model WdRepairItem {
+  id        String   @id @default(cuid())
+  name      String
+  cost      Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Keegan Partnership Hub ───
+
+model PartnerPayment {
+  id          String   @id @default(cuid())
+  amount      Float
+  date        DateTime
+  description String                      // "Garage cleanout", "WD split - Feb 2026", etc.
+  category    String                      // "wd" | "trailer" | "labor" | "other"
+  status      String   @default("paid")   // "paid" | "pending"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([status])
+}
+
+model TrailerClient {
+  id                 String           @id @default(cuid())
+  name               String
+  address            String?
+  phone              String?
+  email              String?
+  trailerDescription String                // "28ft Bumper Pull", etc.
+  monthlyCost        Float            @default(0)
+  investmentCost     Float            @default(0)
+  installDate        DateTime?
+  active             Boolean          @default(true)
+  confirmed          Boolean          @default(false)
+  notes              String?
+  payments           TrailerPayment[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+}
+
+model TrailerPayment {
+  id        String        @id @default(cuid())
+  clientId  String
+  amount    Float
+  month     String                         // "YYYY-MM"
+  status    String        @default("paid") // "paid" | "late" | "missed"
+  note      String?
+  client    TrailerClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@index([clientId, month])
 }
 
 // ─── Market Intelligence ───
@@ -1307,4 +1364,27 @@ model MarketSnapshot {
   summary             String?  // AI-generated daily market summary
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+}
+
+model PoolProduct {
+  id          String   @id @default(cuid())
+  sku         String   @unique
+  name        String
+  description String?
+  category    String?
+  price       Float
+  costPrice   Float?
+  retailPrice Float?
+  imageUrl    String?
+  brand       String?
+  unit        String?
+  size        String?
+  status      String   @default("active")
+  featured    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, sortOrder])
+  @@index([category, status])
 }
