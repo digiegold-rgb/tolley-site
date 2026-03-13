@@ -17,6 +17,16 @@ function calcSellingPrice(cost: number): number {
   return Math.round(cost * MARKUP);
 }
 
+function buildImageUrl(sku: string): string | null {
+  // Pool360 CDN pattern: /insite/Product/Images/{AA}/{A-}/{50}/{SKU}_medium.jpg
+  const parts = sku.split("-");
+  if (parts.length < 3 || parts[0].length < 3) return null;
+  const dir1 = parts[0].substring(0, 2);
+  const dir2 = parts[0].substring(2) + "-";
+  const dir3 = parts[1];
+  return `https://poolimages.azureedge.net/insite/Product/Images/${dir1}/${dir2}/${dir3}/${sku}_medium.jpg`;
+}
+
 function deriveStockStatus(qty: number | null | undefined): string | null {
   if (qty == null) return null;
   if (qty <= 0) return "out-of-stock";
@@ -54,6 +64,7 @@ export async function POST(request: NextRequest) {
         }
 
         const sellingPrice = calcSellingPrice(p.price);
+        const imageUrl = buildImageUrl(p.sku);
         const stockData =
           p.stockQty != null
             ? { stockQty: p.stockQty, stockStatus: deriveStockStatus(p.stockQty) }
@@ -67,6 +78,7 @@ export async function POST(request: NextRequest) {
             brand: p.brand || null,
             price: sellingPrice,
             costPrice: p.price,
+            imageUrl,
             lastSyncedAt: new Date(),
             ...stockData,
           },
@@ -76,6 +88,7 @@ export async function POST(request: NextRequest) {
             lastSyncedAt: new Date(),
             ...(p.name ? { name: p.name } : {}),
             ...(p.brand ? { brand: p.brand } : {}),
+            ...(imageUrl && { imageUrl }),
             ...stockData,
           },
         });
