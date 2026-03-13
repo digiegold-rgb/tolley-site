@@ -1317,6 +1317,8 @@ model MarketDataPoint {
   collectedAt      DateTime @default(now())
   expiresAt        DateTime? // for data retention
   tags             String[]
+  qualityScore     Float?   // 0-1 source reliability * freshness
+  impactScore      Float?   // 0-1 how much this moved signals
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -1362,8 +1364,43 @@ model MarketSnapshot {
   dataPointCount      Int      @default(0)
   signalCount         Int      @default(0)
   summary             String?  // AI-generated daily market summary
+  momentum            Float?   // -100 to +100 composite momentum
+  healthDelta         Float?   // nationalHealth change from yesterday
+  kcHealthDelta       Float?   // localKcHealth change from yesterday
+  sentimentBullPct    Float?   // % bullish articles today
+  sentimentBearPct    Float?   // % bearish articles today
+  articleCount        Int      @default(0)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+}
+
+model MarketSignalArchive {
+  id               String    @id @default(cuid())
+  originalSignalId String
+  signal           String
+  confidence       Float
+  scope            String
+  category         String
+  title            String
+  reasoning        String
+  timeHorizon      String?
+  wasAccurate      Boolean?
+  createdAt        DateTime
+  archivedAt       DateTime  @default(now())
+
+  @@index([category, createdAt(sort: Desc)])
+  @@index([signal, wasAccurate])
+}
+
+model MarketDailyDigest {
+  id            String   @id @default(cuid())
+  date          DateTime @unique
+  headline      String
+  keyChanges    Json     // [{metric, from, to, direction}]
+  topArticles   Json     // [{id, title, impactScore}]
+  riskFactors   Json     // [{factor, severity, description}]
+  opportunities Json     // [{opportunity, confidence, reasoning}]
+  createdAt     DateTime @default(now())
 }
 
 model PoolProduct {
@@ -1436,4 +1473,88 @@ model ArbitragePair {
   @@index([status])
   @@index([createdAt])
   @@index([marginPercent])
+}
+
+// ─── Crypto Trading Engine ───
+
+model CryptoTrade {
+  id            String   @id @default(cuid())
+  symbol        String
+  side          String
+  strategy      String
+  entryPrice    Float
+  exitPrice     Float?
+  size          Float
+  pnl           Float?
+  pnlPct        Float?
+  fees          Float    @default(0)
+  stopLoss      Float?
+  takeProfit    Float?
+  status        String   @default("open")
+  exitReason    String?
+  regime        String?
+  enteredAt     DateTime @default(now())
+  exitedAt      DateTime?
+  metadata      Json?
+  @@index([status, enteredAt])
+  @@index([strategy, status])
+}
+
+model CryptoSnapshot {
+  id            String   @id @default(cuid())
+  equity        Float
+  cash          Float
+  unrealizedPnl Float
+  realizedPnl   Float
+  openPositions Int
+  regime        String?
+  engineMode    String   @default("paper")
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  @@index([createdAt])
+}
+
+model CryptoStrategy {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  displayName   String
+  status        String   @default("active")
+  regime        String?
+  winRate       Float?
+  sharpe        Float?
+  totalTrades   Int      @default(0)
+  totalPnl      Float    @default(0)
+  config        Json?
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+}
+
+model CryptoPrediction {
+  id            String   @id @default(cuid())
+  asset         String
+  direction     String
+  targetPrice   Float
+  confidence    Float
+  rationale     String?
+  source        String   @default("ai")
+  currentPrice  Float
+  actualPrice   Float?
+  accuracy      Float?
+  status        String   @default("pending")
+  targetDate    DateTime
+  gradedAt      DateTime?
+  createdAt     DateTime @default(now())
+  @@index([status, targetDate])
+}
+
+model CryptoWallet {
+  id            String   @id @default(cuid())
+  provider      String
+  network       String   @default("base")
+  address       String?
+  balanceUsd    Float    @default(0)
+  balances      Json?
+  mode          String   @default("paper")
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
 }
