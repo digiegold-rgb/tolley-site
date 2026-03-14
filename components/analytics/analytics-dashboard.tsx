@@ -189,7 +189,31 @@ interface StripeAnalyticsData {
   pastDueAlerts: { name: string; email: string; amount: number; since: string }[];
 }
 
-type DashTab = "overview" | "pools" | "stripe" | "video";
+type DashTab = "overview" | "pools" | "stripe" | "video" | "leads";
+
+// ─── Leads Types ────────────────────────────────────────
+interface LeadsAnalytics {
+  overview: {
+    totalLeads: number;
+    recentLeads: number;
+    totalDossiers: number;
+    totalSubscribers: number;
+    referralFeesEarned: number;
+    referralFeesPending: number;
+    smsUsed: number;
+    smsLimit: number;
+    snapUsed: number;
+    snapLimit: number;
+  };
+  leadsByStatus: { status: string; count: number }[];
+  leadsBySource: { source: string; count: number }[];
+  dossiersByStatus: { status: string; count: number }[];
+  subscribersByTier: { tier: string; count: number }[];
+  dailyLeads: { date: string; count: number }[];
+  dailyDossiers: { date: string; count: number }[];
+  batches: { total: number; totalRows: number; processedRows: number; failedRows: number };
+  topMotivated: { id: string; ownerName: string | null; score: number; status: string; source: string | null; createdAt: string }[];
+}
 
 interface VideoAnalytics {
   totalGenerations: number;
@@ -213,6 +237,8 @@ export default function AnalyticsDashboard() {
   const [stripeLoading, setStripeLoading] = useState(false);
   const [videoData, setVideoData] = useState<VideoAnalytics | null>(null);
   const [videoLoading, setVideoLoading] = useState(false);
+  const [leadsData, setLeadsData] = useState<LeadsAnalytics | null>(null);
+  const [leadsLoading, setLeadsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<DashTab>("overview");
   const [period, setPeriod] = useState(30);
   const [loading, setLoading] = useState(true);
@@ -287,10 +313,24 @@ export default function AnalyticsDashboard() {
     setVideoLoading(false);
   }, []);
 
+  const fetchLeadsData = useCallback(async () => {
+    setLeadsLoading(true);
+    try {
+      const res = await fetch("/api/analytics/leads");
+      if (res.ok) setLeadsData(await res.json());
+    } catch { /* ignore */ }
+    setLeadsLoading(false);
+  }, []);
+
   // Lazy-load video data when tab selected
   useEffect(() => {
     if (activeTab === "video" && !videoData && !videoLoading) fetchVideoData();
   }, [activeTab, videoData, videoLoading, fetchVideoData]);
+
+  // Lazy-load leads data when tab selected
+  useEffect(() => {
+    if (activeTab === "leads" && !leadsData && !leadsLoading) fetchLeadsData();
+  }, [activeTab, leadsData, leadsLoading, fetchLeadsData]);
 
   const showTooltip = (e: React.MouseEvent, content: React.ReactNode) => {
     const rect = dashRef.current?.getBoundingClientRect();
@@ -339,7 +379,7 @@ export default function AnalyticsDashboard() {
       {/* Tab bar */}
       <div className="flex items-center justify-between">
         <div className="flex gap-1 rounded-lg bg-white/5 p-1">
-          {(["overview", "pools", "stripe", "video"] as DashTab[]).map((tab) => (
+          {(["overview", "pools", "stripe", "video", "leads"] as DashTab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -349,7 +389,7 @@ export default function AnalyticsDashboard() {
                   : "text-white/50 hover:text-white hover:bg-white/10"
               }`}
             >
-              {tab === "pools" ? "Pools" : tab === "stripe" ? "Stripe / WD" : tab === "video" ? "Video" : "Overview"}
+              {tab === "pools" ? "Pools" : tab === "stripe" ? "Stripe / WD" : tab === "video" ? "Video" : tab === "leads" ? "Leads" : "Overview"}
             </button>
           ))}
         </div>
@@ -403,7 +443,208 @@ export default function AnalyticsDashboard() {
             {videoLoading ? "Loading..." : "Refresh"}
           </button>
         )}
+        {activeTab === "leads" && (
+          <button
+            onClick={fetchLeadsData}
+            disabled={leadsLoading}
+            className="rounded-md px-3 py-1.5 text-xs font-medium text-white/50 hover:text-white hover:bg-white/10 transition disabled:opacity-40"
+          >
+            {leadsLoading ? "Loading..." : "Refresh"}
+          </button>
+        )}
       </div>
+
+      {/* ─── LEADS TAB ─── */}
+      {activeTab === "leads" && (
+        <div className="space-y-4">
+          {leadsLoading && !leadsData ? (
+            <div className="text-center text-white/40 py-12">Loading leads analytics...</div>
+          ) : leadsData ? (
+            <>
+              {/* Product Screenshots */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Panel title="Lead Intelligence Dashboard">
+                  <img src="/screenshots/dossier-list.png" alt="Lead Intelligence" className="rounded-lg w-full" />
+                </Panel>
+                <Panel title="Property Dossier Detail">
+                  <img src="/screenshots/dossier-detail.png" alt="Dossier Detail" className="rounded-lg w-full" />
+                </Panel>
+              </div>
+
+              {/* Overview stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <StatCard label="Total Leads" value={leadsData.overview.totalLeads} />
+                <StatCard label="Last 30 Days" value={leadsData.overview.recentLeads} />
+                <StatCard label="Dossiers Run" value={leadsData.overview.totalDossiers} />
+                <StatCard label="Subscribers" value={leadsData.overview.totalSubscribers} />
+              </div>
+
+              {/* Revenue & usage */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <Panel title="Referral Fees Earned">
+                  <p className="text-2xl font-bold text-green-400">${leadsData.overview.referralFeesEarned.toLocaleString()}</p>
+                </Panel>
+                <Panel title="Fees Pending">
+                  <p className="text-2xl font-bold text-yellow-400">${leadsData.overview.referralFeesPending.toLocaleString()}</p>
+                </Panel>
+                <Panel title="SMS Usage">
+                  <p className="text-2xl font-bold text-blue-400">{leadsData.overview.smsUsed} <span className="text-sm text-white/40">/ {leadsData.overview.smsLimit}</span></p>
+                </Panel>
+                <Panel title="Snap Lookups">
+                  <p className="text-2xl font-bold text-purple-400">{leadsData.overview.snapUsed} <span className="text-sm text-white/40">/ {leadsData.overview.snapLimit}</span></p>
+                </Panel>
+              </div>
+
+              {/* Leads by status + source */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Panel title="Leads by Status">
+                  <div className="space-y-2">
+                    {leadsData.leadsByStatus.map((s) => {
+                      const colors: Record<string, string> = { new: "bg-blue-500", contacted: "bg-yellow-500", interested: "bg-green-500", referred: "bg-purple-500", closed: "bg-emerald-500", dead: "bg-red-500" };
+                      const max = Math.max(...leadsData.leadsByStatus.map((x) => x.count), 1);
+                      return (
+                        <div key={s.status} className="flex items-center gap-3 text-sm">
+                          <span className="w-20 capitalize text-white/70">{s.status}</span>
+                          <div className="flex-1 h-4 bg-white/5 rounded overflow-hidden">
+                            <div className={`h-full ${colors[s.status] || "bg-white/20"} rounded`} style={{ width: `${(s.count / max) * 100}%` }} />
+                          </div>
+                          <span className="text-white/50 w-10 text-right">{s.count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Panel>
+                <Panel title="Leads by Source">
+                  <div className="space-y-2">
+                    {leadsData.leadsBySource.map((s) => {
+                      const max = Math.max(...leadsData.leadsBySource.map((x) => x.count), 1);
+                      return (
+                        <div key={s.source} className="flex items-center gap-3 text-sm">
+                          <span className="w-28 text-white/70 truncate">{s.source}</span>
+                          <div className="flex-1 h-4 bg-white/5 rounded overflow-hidden">
+                            <div className="h-full bg-cyan-500/60 rounded" style={{ width: `${(s.count / max) * 100}%` }} />
+                          </div>
+                          <span className="text-white/50 w-10 text-right">{s.count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Panel>
+              </div>
+
+              {/* Dossier pipeline + subscribers */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Panel title="Dossier Pipeline">
+                  <div className="space-y-2">
+                    {leadsData.dossiersByStatus.map((s) => {
+                      const colors: Record<string, string> = { complete: "text-green-400", running: "text-blue-400", queued: "text-yellow-400", failed: "text-red-400", partial: "text-orange-400" };
+                      return (
+                        <div key={s.status} className="flex items-center justify-between text-sm">
+                          <span className={`capitalize ${colors[s.status] || "text-white/70"}`}>{s.status}</span>
+                          <span className="text-white/50">{s.count}</span>
+                        </div>
+                      );
+                    })}
+                    {leadsData.batches.total > 0 && (
+                      <div className="pt-2 mt-2 border-t border-white/10 text-xs text-white/40">
+                        {leadsData.batches.total} batches | {leadsData.batches.processedRows}/{leadsData.batches.totalRows} rows | {leadsData.batches.failedRows} failed
+                      </div>
+                    )}
+                  </div>
+                </Panel>
+                <Panel title="Subscribers by Tier">
+                  <div className="space-y-3">
+                    {leadsData.subscribersByTier.map((s) => {
+                      const tierColors: Record<string, string> = { starter: "bg-blue-500", pro: "bg-purple-500", team: "bg-emerald-500" };
+                      return (
+                        <div key={s.tier} className="flex items-center gap-3">
+                          <div className={`w-3 h-3 rounded-full ${tierColors[s.tier] || "bg-white/20"}`} />
+                          <span className="capitalize text-white/80 text-sm">{s.tier}</span>
+                          <span className="ml-auto text-xl font-bold text-white">{s.count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Panel>
+              </div>
+
+              {/* Daily charts */}
+              {leadsData.dailyLeads.length > 0 && (
+                <Panel title="Daily Lead Creation (30d)">
+                  <div className="flex items-end gap-1 h-24">
+                    {leadsData.dailyLeads.map((d) => {
+                      const max = Math.max(...leadsData.dailyLeads.map((x) => x.count), 1);
+                      return (
+                        <div
+                          key={d.date}
+                          className="flex-1 bg-cyan-500/60 rounded-t transition-all hover:bg-cyan-400/80"
+                          style={{ height: `${(d.count / max) * 100}%`, minHeight: d.count > 0 ? 4 : 0 }}
+                          title={`${d.date}: ${d.count} leads`}
+                        />
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between text-[10px] text-white/30 mt-1">
+                    <span>{leadsData.dailyLeads[0]?.date}</span>
+                    <span>{leadsData.dailyLeads[leadsData.dailyLeads.length - 1]?.date}</span>
+                  </div>
+                </Panel>
+              )}
+
+              {leadsData.dailyDossiers.length > 0 && (
+                <Panel title="Daily Dossier Completions (30d)">
+                  <div className="flex items-end gap-1 h-24">
+                    {leadsData.dailyDossiers.map((d) => {
+                      const max = Math.max(...leadsData.dailyDossiers.map((x) => x.count), 1);
+                      return (
+                        <div
+                          key={d.date}
+                          className="flex-1 bg-emerald-500/60 rounded-t transition-all hover:bg-emerald-400/80"
+                          style={{ height: `${(d.count / max) * 100}%`, minHeight: d.count > 0 ? 4 : 0 }}
+                          title={`${d.date}: ${d.count} dossiers`}
+                        />
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between text-[10px] text-white/30 mt-1">
+                    <span>{leadsData.dailyDossiers[0]?.date}</span>
+                    <span>{leadsData.dailyDossiers[leadsData.dailyDossiers.length - 1]?.date}</span>
+                  </div>
+                </Panel>
+              )}
+
+              {/* Top motivated leads */}
+              {leadsData.topMotivated.length > 0 && (
+                <Panel title="Top Motivated Leads">
+                  <div className="space-y-2">
+                    {leadsData.topMotivated.map((l) => (
+                      <div key={l.id} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-3">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded ${l.score >= 75 ? "bg-red-500/20 text-red-300" : l.score >= 50 ? "bg-yellow-500/20 text-yellow-300" : "bg-white/10 text-white/50"}`}>
+                            {l.score}
+                          </span>
+                          <span className="text-white/80">{l.ownerName || "Unknown"}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-white/40">
+                          <span className="capitalize">{l.status}</span>
+                          <span>{l.source || "—"}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Panel>
+              )}
+
+              {/* Vater Hub preview */}
+              <Panel title="Tolley Business Hub">
+                <img src="/screenshots/vater-hub.png" alt="Tolley Business Hub" className="rounded-lg w-full max-w-xl mx-auto" />
+              </Panel>
+            </>
+          ) : (
+            <div className="text-center text-white/40 py-12">No leads data available</div>
+          )}
+        </div>
+      )}
 
       {/* ─── VIDEO TAB ─── */}
       {activeTab === "video" && (
