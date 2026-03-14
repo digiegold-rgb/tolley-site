@@ -16,6 +16,10 @@ interface PoolProduct {
   size: string | null;
   featured: boolean;
   stockStatus: string | null;
+  sku: string;
+  mfgPart: string | null;
+  upc: string | null;
+  specs: string | null;
 }
 
 export async function PoolsProducts() {
@@ -35,6 +39,10 @@ export async function PoolsProducts() {
       size: true,
       featured: true,
       stockStatus: true,
+      sku: true,
+      mfgPart: true,
+      upc: true,
+      specs: true,
     },
   });
 
@@ -55,7 +63,7 @@ export async function PoolsProducts() {
 
         {/* Product grid */}
         <div
-          className="pools-product-grid mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+          className="pools-product-grid mt-5 grid gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
           data-products={JSON.stringify(
             products.map((p) => ({
               id: p.id,
@@ -79,7 +87,7 @@ export async function PoolsProducts() {
                 <div
                   key={product.id}
                   data-category={product.category}
-                  className={`pools-card flex flex-col rounded-xl border p-5 ${
+                  className={`pools-card flex flex-col rounded-xl border p-3 ${
                     outOfStock
                       ? "border-slate-200 bg-slate-50 opacity-60 grayscale"
                       : "border-cyan-100 bg-cyan-50/30"
@@ -87,11 +95,11 @@ export async function PoolsProducts() {
                 >
                   {/* Product image */}
                   {product.imageUrl && (
-                    <div className="mb-3 flex items-center justify-center">
+                    <div className="mb-2 flex items-center justify-center">
                       <img
                         src={product.imageUrl}
                         alt={product.name}
-                        className="h-32 w-auto object-contain"
+                        className="h-24 w-auto object-contain"
                         loading="lazy"
                       />
                     </div>
@@ -99,48 +107,68 @@ export async function PoolsProducts() {
 
                   {/* Out of stock badge */}
                   {outOfStock && (
-                    <span className="mb-2 inline-flex w-fit items-center rounded-full bg-slate-400 px-2.5 py-0.5 text-xs font-semibold text-white">
+                    <span className="mb-1 inline-flex w-fit items-center rounded-full bg-slate-400 px-2 py-0.5 text-[10px] font-semibold text-white">
                       Out of Stock
                     </span>
                   )}
 
                   {/* Featured badge */}
                   {product.featured && !outOfStock && (
-                    <span className="mb-2 inline-flex w-fit items-center rounded-full bg-cyan-600 px-2.5 py-0.5 text-xs font-semibold text-white">
+                    <span className="mb-1 inline-flex w-fit items-center rounded-full bg-cyan-600 px-2 py-0.5 text-[10px] font-semibold text-white">
                       Popular
                     </span>
                   )}
 
                   {/* Product info */}
                   <div className="flex-1">
-                    <h3 className="text-sm font-bold text-cyan-900">{product.name}</h3>
+                    <h3 className="text-xs font-bold leading-tight text-cyan-900">{product.name}</h3>
                     {(product.brand || product.size) && (
-                      <p className="mt-0.5 text-xs text-slate-400">
+                      <p className="mt-0.5 text-[10px] text-slate-400">
                         {[product.brand, product.size]
                           .filter(Boolean)
                           .join(" · ")}
                       </p>
                     )}
+                    {/* Part numbers */}
+                    <div className="mt-1 space-y-0.5 text-[10px] text-slate-400">
+                      {product.mfgPart && (
+                        <p>Mfg#: <span className="font-mono text-slate-500">{product.mfgPart}</span></p>
+                      )}
+                      {product.upc && (
+                        <p>UPC: <span className="font-mono text-slate-500">{product.upc}</span></p>
+                      )}
+                      <p>SKU: <span className="font-mono text-slate-500">{product.sku}</span></p>
+                    </div>
                     {product.description && (
-                      <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                      <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-slate-600">
                         {product.description}
                       </p>
+                    )}
+                    {product.specs && (
+                      <details className="mt-1">
+                        <summary className="cursor-pointer text-[10px] font-semibold text-cyan-600 hover:text-cyan-700">
+                          Specs & Safety
+                        </summary>
+                        <p className="mt-0.5 whitespace-pre-line text-[10px] leading-snug text-slate-500">
+                          {product.specs}
+                        </p>
+                      </details>
                     )}
                   </div>
 
                   {/* Pricing */}
-                  <div className="mt-4 flex items-end gap-2">
-                    <span className="text-2xl font-extrabold text-cyan-700">
+                  <div className="mt-2 flex items-end gap-1">
+                    <span className="text-lg font-extrabold text-cyan-700">
                       {formatPoolPrice(product.price)}
                     </span>
                     {product.retailPrice && (
-                      <span className="text-sm text-slate-400 line-through">
+                      <span className="text-[10px] text-slate-400 line-through">
                         {formatPoolPrice(product.retailPrice)}
                       </span>
                     )}
                     {savings && (
-                      <span className="pools-savings-badge ml-auto rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-700">
-                        Save ${savings}
+                      <span className="pools-savings-badge ml-auto rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">
+                        -${savings}
                       </span>
                     )}
                   </div>

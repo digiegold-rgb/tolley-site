@@ -1419,9 +1419,12 @@ model PoolProduct {
   status      String   @default("active")
   featured    Boolean  @default(false)
   sortOrder   Int      @default(0)
-  stockQty    Int?                        // Pool360 stock level (null = unknown)
-  stockStatus String?                     // "in-stock", "low-stock", "out-of-stock"
-  lastSyncedAt DateTime?                  // last Pool360 price/stock sync
+  mfgPart     String?                      // manufacturer part number
+  upc         String?                      // UPC/barcode
+  specs       String?                      // technical specs / safety info (text)
+  stockQty    Int?                         // Pool360 stock level (null = unknown)
+  stockStatus String?                      // "in-stock", "low-stock", "out-of-stock"
+  lastSyncedAt DateTime?                   // last Pool360 price/stock sync
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

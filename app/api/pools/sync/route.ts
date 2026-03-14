@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
               price: sellingPrice,
               costPrice: p.price!,
               imageUrl,
+              mfgPart: p.mfgPart || null,
               lastSyncedAt: new Date(),
               ...stockData,
             },
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest) {
               ...(p.name ? { name: p.name } : {}),
               ...(p.brand ? { brand: p.brand } : {}),
               ...(imageUrl && { imageUrl }),
+              ...(p.mfgPart ? { mfgPart: p.mfgPart } : {}),
               ...stockData,
             },
           });

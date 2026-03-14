@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
 
-import { PoolsWaterEffects } from "@/components/pools/pools-water-effects";
 import { SiteTracker } from "@/components/analytics/site-tracker";
 import { PoolsFooter } from "@/components/pools/pools-footer";
 import "./pools.css";
@@ -27,7 +26,6 @@ export default function PoolsLayout({ children }: { children: React.ReactNode })
   return (
     <div className={`pools-page ${nunito.variable}`}>
       <SiteTracker site="pools" />
-      <PoolsWaterEffects />
       {children}
       <PoolsFooter />
     </div>
