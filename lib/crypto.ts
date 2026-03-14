@@ -100,3 +100,29 @@ export async function fetchDataSources() {
   if (!res.ok) throw new Error(`Data sources failed: ${res.status}`);
   return res.json();
 }
+
+export async function fetchValidation() {
+  const res = await fetch(`${ENGINE_URL}/validation`, {
+    headers: { "x-sync-secret": SYNC_SECRET },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw new Error(`Validation failed: ${res.status}`);
+  return res.json();
+}
+
+export async function switchMode(mode: "paper" | "live") {
+  const res = await fetch(`${ENGINE_URL}/mode`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-sync-secret": SYNC_SECRET,
+    },
+    body: JSON.stringify({ mode }),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.detail?.error || `Mode switch failed: ${res.status}`);
+  }
+  return res.json();
+}

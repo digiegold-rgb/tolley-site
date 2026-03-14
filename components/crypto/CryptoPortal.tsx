@@ -11,13 +11,15 @@ import PredictionScorecard from "./PredictionScorecard";
 import BotStatusBar from "./BotStatusBar";
 import PriceGrid from "./PriceGrid";
 import OptimizerHistory from "./OptimizerHistory";
+import WalletCard from "./WalletCard";
+import ValidationProgress from "./ValidationProgress";
 import dynamic from "next/dynamic";
 
 const MarketIntel = dynamic(() => import("./MarketIntel"), { ssr: false });
 const CryptoWorkflow = dynamic(() => import("./CryptoWorkflow"), { ssr: false });
 const DrivesTab = dynamic(() => import("./DrivesTab"), { ssr: false });
 
-type Tab = "overview" | "strategies" | "trades" | "predictions" | "market" | "optimizer" | "workflow" | "drives";
+type Tab = "overview" | "strategies" | "trades" | "predictions" | "market" | "optimizer" | "workflow" | "wallet" | "drives";
 
 interface Snapshot {
   equity: number;
@@ -146,6 +148,22 @@ export default function CryptoPortal({
   const prices = liveData?.prices ?? snapshot?.metadata?.prices ?? {};
   const livePredictions = liveData?.predictions ?? [];
 
+  const handleModeSwitch = async (targetMode: string) => {
+    try {
+      const res = await fetch("/api/crypto/mode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: targetMode }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(`Mode switch failed: ${err?.detail?.error || err?.detail || "Unknown error"}`);
+      }
+    } catch {
+      alert("Mode switch request failed");
+    }
+  };
+
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "overview", label: "Overview" },
     { key: "strategies", label: "Strategies", count: Object.keys(liveData?.strategies ?? {}).length || strategies.length },
@@ -154,6 +172,7 @@ export default function CryptoPortal({
     { key: "market", label: "Market Intel" },
     { key: "optimizer", label: "Optimizer", count: optimizerHistory.length },
     { key: "workflow", label: "Workflow" },
+    { key: "wallet", label: "Wallet" },
     { key: "drives", label: "Drives" },
   ];
 
@@ -168,6 +187,9 @@ export default function CryptoPortal({
         totalReturn={totalReturn}
         proxyEnabled={liveData?.data_sources?.proxy?.enabled}
         tier4Count={liveData?.tier4_degen?.length}
+        sharpe={liveData?.sharpe}
+        validationReady={liveData?.validation?.ready_for_live}
+        onModeSwitch={handleModeSwitch}
       />
 
       {/* Tab bar */}
@@ -293,6 +315,17 @@ export default function CryptoPortal({
       )}
 
       {tab === "workflow" && <CryptoWorkflow liveData={liveData} engineOnline={engineOnline} />}
+
+      {tab === "wallet" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <WalletCard
+            exchangeStatus={liveData?.exchange_status}
+            cash={currentCash}
+            mode={currentMode}
+          />
+          <ValidationProgress validation={liveData?.validation} />
+        </div>
+      )}
 
       {tab === "drives" && <DrivesTab />}
     </div>
