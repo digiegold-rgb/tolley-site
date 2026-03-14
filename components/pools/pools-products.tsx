@@ -15,6 +15,7 @@ interface PoolProduct {
   unit: string | null;
   size: string | null;
   featured: boolean;
+  stockStatus: string | null;
 }
 
 export async function PoolsProducts() {
@@ -33,6 +34,7 @@ export async function PoolsProducts() {
       unit: true,
       size: true,
       featured: true,
+      stockStatus: true,
     },
   });
 
@@ -71,12 +73,17 @@ export async function PoolsProducts() {
                 product.retailPrice && product.retailPrice > product.price
                   ? Math.round(product.retailPrice - product.price)
                   : null;
+              const outOfStock = product.stockStatus === "out-of-stock";
 
               return (
                 <div
                   key={product.id}
                   data-category={product.category}
-                  className="pools-card flex flex-col rounded-xl border border-cyan-100 bg-cyan-50/30 p-5"
+                  className={`pools-card flex flex-col rounded-xl border p-5 ${
+                    outOfStock
+                      ? "border-slate-200 bg-slate-50 opacity-60 grayscale"
+                      : "border-cyan-100 bg-cyan-50/30"
+                  }`}
                 >
                   {/* Product image */}
                   {product.imageUrl && (
@@ -90,8 +97,15 @@ export async function PoolsProducts() {
                     </div>
                   )}
 
+                  {/* Out of stock badge */}
+                  {outOfStock && (
+                    <span className="mb-2 inline-flex w-fit items-center rounded-full bg-slate-400 px-2.5 py-0.5 text-xs font-semibold text-white">
+                      Out of Stock
+                    </span>
+                  )}
+
                   {/* Featured badge */}
-                  {product.featured && (
+                  {product.featured && !outOfStock && (
                     <span className="mb-2 inline-flex w-fit items-center rounded-full bg-cyan-600 px-2.5 py-0.5 text-xs font-semibold text-white">
                       Popular
                     </span>
@@ -137,6 +151,7 @@ export async function PoolsProducts() {
                     name={product.name}
                     price={product.price}
                     imageUrl={product.imageUrl}
+                    outOfStock={outOfStock}
                   />
                 </div>
               );

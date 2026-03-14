@@ -6,7 +6,7 @@ interface SyncProduct {
   sku: string;
   name: string;
   brand?: string;
-  price: number;
+  price?: number;
   stockQty?: number;
   mfgPart?: string;
 }
@@ -58,51 +58,72 @@ export async function POST(request: NextRequest) {
 
     for (const p of products) {
       try {
-        if (!p.sku || typeof p.price !== "number" || p.price <= 0) {
+        if (!p.sku) {
           skipped++;
           continue;
         }
 
-        const sellingPrice = calcSellingPrice(p.price);
+        const hasPrice = typeof p.price === "number" && p.price > 0;
         const imageUrl = buildImageUrl(p.sku);
         const stockData =
           p.stockQty != null
             ? { stockQty: p.stockQty, stockStatus: deriveStockStatus(p.stockQty) }
             : {};
 
-        await prisma.poolProduct.upsert({
-          where: { sku: p.sku },
-          create: {
-            sku: p.sku,
-            name: p.name,
-            brand: p.brand || null,
-            price: sellingPrice,
-            costPrice: p.price,
-            imageUrl,
-            lastSyncedAt: new Date(),
-            ...stockData,
-          },
-          update: {
-            costPrice: p.price,
-            price: sellingPrice,
-            lastSyncedAt: new Date(),
-            ...(p.name ? { name: p.name } : {}),
-            ...(p.brand ? { brand: p.brand } : {}),
-            ...(imageUrl && { imageUrl }),
-            ...stockData,
-          },
-        });
+        if (hasPrice) {
+          // Full sync: price + stock
+          const sellingPrice = calcSellingPrice(p.price!);
+          await prisma.poolProduct.upsert({
+            where: { sku: p.sku },
+            create: {
+              sku: p.sku,
+              name: p.name,
+              brand: p.brand || null,
+              price: sellingPrice,
+              costPrice: p.price!,
+              imageUrl,
+              lastSyncedAt: new Date(),
+              ...stockData,
+            },
+            update: {
+              costPrice: p.price!,
+              price: sellingPrice,
+              lastSyncedAt: new Date(),
+              ...(p.name ? { name: p.name } : {}),
+              ...(p.brand ? { brand: p.brand } : {}),
+              ...(imageUrl && { imageUrl }),
+              ...stockData,
+            },
+          });
+        } else {
+          // Stock-only sync: update stock on existing products, skip unknown SKUs
+          const existing = await prisma.poolProduct.findUnique({ where: { sku: p.sku } });
+          if (!existing) {
+            skipped++;
+            continue;
+          }
+          await prisma.poolProduct.update({
+            where: { sku: p.sku },
+            data: {
+              lastSyncedAt: new Date(),
+              ...stockData,
+            },
+          });
+        }
 
-        const existing = await prisma.poolProduct.findUnique({
-          where: { sku: p.sku },
-          select: { createdAt: true, lastSyncedAt: true },
-        });
-        // If createdAt and lastSyncedAt are within 2s, it was just created
-        if (
-          existing &&
-          Math.abs(existing.createdAt.getTime() - (existing.lastSyncedAt?.getTime() ?? 0)) < 2000
-        ) {
-          created++;
+        if (hasPrice) {
+          const check = await prisma.poolProduct.findUnique({
+            where: { sku: p.sku },
+            select: { createdAt: true, lastSyncedAt: true },
+          });
+          if (
+            check &&
+            Math.abs(check.createdAt.getTime() - (check.lastSyncedAt?.getTime() ?? 0)) < 2000
+          ) {
+            created++;
+          } else {
+            updated++;
+          }
         } else {
           updated++;
         }

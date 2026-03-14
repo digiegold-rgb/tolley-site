@@ -58,7 +58,7 @@ interface ScrapedProduct {
   sku: string;
   name: string;
   brand: string;
-  price: number;
+  price?: number;
   stockQty?: number;
   mfgPart?: string;
 }
@@ -196,29 +196,56 @@ async function scrapeCategory(
       sku: string;
       name: string;
       brand: string;
-      price: number;
+      price?: number;
       stockQty?: number;
       mfgPart?: string;
     }[] = [];
 
-    // Pool360 page format (innerText):
-    // BRAND\nProduct Name\nProduct #:SKU-XX-XXXX\nMfg. Part #:XXXXX\n$XX.XX\n...(XX in stock)...
     const bodyText = document.body.innerText;
-    const regex =
+
+    // Primary regex: full match with price visible
+    // Pool360 format: BRAND\nProduct Name\nProduct #:SKU\nMfg. Part #:XXX\n$XX.XX\n...(XX in stock)...
+    const regexWithPrice =
       /([A-Z][A-Z &\-']+)\n([^\n]+)\nProduct #:([A-Z0-9\-]+)\nMfg\. Part #:([^\n]+)\n\$([\d,]+\.\d{2})/g;
+    const matched = new Set<string>();
     let match;
-    while ((match = regex.exec(bodyText)) !== null) {
+    while ((match = regexWithPrice.exec(bodyText)) !== null) {
+      const sku = match[3].trim();
       const afterMatch = bodyText.substring(match.index, match.index + 500);
       const stockMatch = afterMatch.match(/\((\d+)\s+in stock\)/);
+      const outOfStockMatch = afterMatch.match(/\(Out of stock\)/);
       const price = parseFloat(match[5].replace(",", ""));
       if (isNaN(price) || price <= 0) continue;
 
+      matched.add(sku);
       results.push({
-        sku: match[3].trim(),
+        sku,
         name: match[2].trim(),
         brand: match[1].trim(),
         price,
-        stockQty: stockMatch ? parseInt(stockMatch[1], 10) : undefined,
+        stockQty: stockMatch ? parseInt(stockMatch[1], 10) : outOfStockMatch ? 0 : undefined,
+        mfgPart: match[4].trim(),
+      });
+    }
+
+    // Fallback regex: stock-only (when prices are hidden behind auth)
+    // Format: BRAND\nProduct Name\nProduct #:SKU\nMfg. Part #:XXX\n$\n...(XX in stock)...
+    const regexStockOnly =
+      /([A-Z][A-Z &\-']+)\n([^\n]+)\nProduct #:([A-Z0-9\-]+)\nMfg\. Part #:([^\n]+)/g;
+    while ((match = regexStockOnly.exec(bodyText)) !== null) {
+      const sku = match[3].trim();
+      if (matched.has(sku)) continue; // already got full data
+      const afterMatch = bodyText.substring(match.index, match.index + 500);
+      const stockMatch = afterMatch.match(/\((\d+)\s+in stock\)/);
+      const outOfStockMatch = afterMatch.match(/\(Out of stock\)/);
+      if (!stockMatch && !outOfStockMatch) continue; // no stock info at all, skip
+
+      matched.add(sku);
+      results.push({
+        sku,
+        name: match[2].trim(),
+        brand: match[1].trim(),
+        stockQty: stockMatch ? parseInt(stockMatch[1], 10) : 0,
         mfgPart: match[4].trim(),
       });
     }
@@ -285,18 +312,17 @@ async function main() {
       return;
     }
 
-    // Normal headless sync — check auth from persistent profile
+    // Check auth status (stock data loads either way, prices require auth)
     await page.goto(POOL360_BASE, { waitUntil: "domcontentloaded" });
     await randomDelay(3000, 5000);
 
-    if (!(await isAuthenticated(page))) {
-      console.error(
-        "[main] Not authenticated. Run with --login first:\n" +
-          "  DISPLAY=:0 npx tsx scripts/pool360-sync.ts --login"
-      );
-      process.exit(1);
+    const authenticated = await isAuthenticated(page);
+    if (authenticated) {
+      console.log("[main] Fully authenticated — will sync prices + stock.");
+    } else {
+      console.log("[main] Not fully authenticated — will sync stock only (prices hidden).");
+      console.log("[main] To also sync prices, run: DISPLAY=:0 npx tsx scripts/pool360-sync.ts --login");
     }
-    console.log("[login] Authenticated via persistent profile.");
 
     const allProducts: ScrapedProduct[] = [];
 
