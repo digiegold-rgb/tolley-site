@@ -20,7 +20,7 @@ export function WdServiceArea() {
     <section className="rounded-2xl bg-white p-6 shadow-lg shadow-blue-100/50 sm:p-8">
       <h2 className="text-xl font-bold text-blue-900">Service Area</h2>
       <p className="mt-2 text-sm text-slate-600">
-        We deliver and service across the Kansas City metro.
+        We deliver and service across the Kansas City metro — <strong>serving over 2.2 million people</strong>.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         {cities.map((city) => (
@@ -39,6 +39,8 @@ export function WdServiceArea() {
         Don&apos;t see your area?{" "}
         <a
           href={`mailto:${WD_CONTACT_EMAIL}`}
+          data-track-event="email_click"
+          data-track-label="service_area"
           className="font-semibold text-blue-600 underline decoration-blue-300 underline-offset-4 transition hover:text-blue-800"
         >
           Email us
@@ -46,6 +48,8 @@ export function WdServiceArea() {
         or call{" "}
         <a
           href={`tel:${WD_CONTACT_PHONE}`}
+          data-track-event="phone_click"
+          data-track-label="service_area"
           className="font-semibold text-blue-600 underline decoration-blue-300 underline-offset-4 transition hover:text-blue-800"
         >
           {WD_CONTACT_PHONE}

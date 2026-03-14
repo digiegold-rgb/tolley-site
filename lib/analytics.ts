@@ -13,6 +13,7 @@ export const TRACKED_SITES = [
   { id: "shop", label: "Shop", color: "#ec4899", path: "/shop" },
   { id: "start", label: "Start Page", color: "#8b5cf6", path: "/start" },
   { id: "pools", label: "Pool Supplies", color: "#06b6d4", path: "/pools" },
+  { id: "video", label: "AI Video", color: "#c084fc", path: "/video" },
 ] as const;
 
 export type SiteId = (typeof TRACKED_SITES)[number]["id"];

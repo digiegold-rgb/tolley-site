@@ -29,6 +29,8 @@ model User {
   usageEvents          UsageEvent[]
   usageBuckets         UsageBucket[]
   leadSubscription     LeadSubscriber?
+  videoGenerations     VideoGeneration[]
+  videoCredit          VideoCredit?
 }
 
 model Agent {
@@ -1605,4 +1607,85 @@ model CryptoWallet {
   mode          String   @default("paper")
   updatedAt     DateTime @updatedAt
   createdAt     DateTime @default(now())
+}
+
+model CryptoDriveScan {
+  id            String   @id @default(cuid())
+  label         String
+  devicePath    String?
+  filesystem    String?
+  totalSizeGb   Float?
+  serialNumber  String?
+  scanStatus    String   @default("pending") // pending, scanning, complete, error
+  scanDuration  Int?     // seconds
+  scanLog       String?  @db.Text
+  itemCount     Int      @default(0)
+  notes         String?  @db.Text
+  scannedAt     DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  items         CryptoDriveItem[]
+  @@index([scanStatus])
+}
+
+model CryptoDriveItem {
+  id            String   @id @default(cuid())
+  scanId        String
+  scan          CryptoDriveScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  category      String   // wallet_file, keystore, private_key, seed_phrase, crypto_dir, browser_extension, qr_image, document, config_file, address
+  subcategory   String?  // bitcoin, ethereum, litecoin, dogecoin, monero, metamask, etc.
+  filePath      String
+  fileSize      Int?     // bytes
+  fileMtime     DateTime?
+  contentPreview String? @db.Text // redacted for keys
+  extractedData Json?    // structured data from extraction
+  sensitivity   String   @default("normal") // critical, sensitive, normal
+  verified      Boolean  @default(false)
+  archived      Boolean  @default(false)
+  localCopyPath String?
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([scanId])
+  @@index([category])
+  @@index([sensitivity])
+}
+
+model VideoGeneration {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt        String    @db.Text
+  model         String    // "wan26-720p", "wan26-1080p", "veo3-fast", "veo3-standard"
+  tier          String    // "basic", "cinematic", "premium", "ultra"
+  status        String    @default("queued") // queued, generating, completed, failed
+  creditsUsed   Int       @default(1)
+  costCents     Int       @default(0) // our cost in cents (fal.ai charge)
+  outputUrl     String?   // fal.ai CDN URL for completed video
+  thumbnailUrl  String?
+  durationSecs  Float?    // video duration
+  resolution    String?   // "720p", "1080p"
+  errorMessage  String?
+  falRequestId  String?   // fal.ai request ID for polling
+  metadata      Json?     // address, MLS#, extra context
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+model VideoCredit {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance          Int       @default(0)   // current credits
+  totalPurchased   Int       @default(0)   // lifetime purchased
+  totalUsed        Int       @default(0)   // lifetime used
+  subscriptionTier String?   // "basic", "pro", "unlimited" or null for pack-only
+  monthlyAllotment Int       @default(0)   // credits per billing cycle
+  rolloverCredits  Int       @default(0)   // unused from last month (max 1 month rollover)
+  packsPurchased   Int       @default(0)   // lifetime pack purchases
+  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime  @default(now())
 }

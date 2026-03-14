@@ -157,6 +157,39 @@ export async function trackedLlmCall({
   return { response: response!, json, latencyMs: Date.now() - start };
 }
 
+// ─── Video generation usage logging ──────────────────────
+
+export async function logVideoUsage(input: {
+  userId: string;
+  model: string;        // "wan-2.6" | "veo3-fast" | "veo3"
+  tier: string;
+  creditsUsed: number;
+  costCents: number;
+  latencyMs?: number;
+  generationId?: string;
+  errorMessage?: string;
+}): Promise<void> {
+  await logLlmUsage({
+    userId: input.userId,
+    type: "video_generation",
+    provider: "fal-ai",
+    model: input.model,
+    location: "cloud",
+    endpoint: "https://queue.fal.run",
+    route: "/api/video/generate",
+    tokensApprox: input.costCents, // map cost cents as "tokens" for analytics
+    latencyMs: input.latencyMs,
+    statusCode: input.errorMessage ? 500 : 200,
+    errorMessage: input.errorMessage,
+    meta: {
+      tier: input.tier,
+      creditsUsed: input.creditsUsed,
+      costCents: input.costCents,
+      generationId: input.generationId,
+    },
+  });
+}
+
 // ─── Provider presets for quick usage ────────────────────
 // Update these as you switch models/providers
 

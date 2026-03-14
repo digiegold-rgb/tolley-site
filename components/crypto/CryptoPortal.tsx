@@ -15,8 +15,9 @@ import dynamic from "next/dynamic";
 
 const MarketIntel = dynamic(() => import("./MarketIntel"), { ssr: false });
 const CryptoWorkflow = dynamic(() => import("./CryptoWorkflow"), { ssr: false });
+const DrivesTab = dynamic(() => import("./DrivesTab"), { ssr: false });
 
-type Tab = "overview" | "strategies" | "trades" | "predictions" | "market" | "optimizer" | "workflow";
+type Tab = "overview" | "strategies" | "trades" | "predictions" | "market" | "optimizer" | "workflow" | "drives";
 
 interface Snapshot {
   equity: number;
@@ -153,6 +154,7 @@ export default function CryptoPortal({
     { key: "market", label: "Market Intel" },
     { key: "optimizer", label: "Optimizer", count: optimizerHistory.length },
     { key: "workflow", label: "Workflow" },
+    { key: "drives", label: "Drives" },
   ];
 
   return (
@@ -291,6 +293,8 @@ export default function CryptoPortal({
       )}
 
       {tab === "workflow" && <CryptoWorkflow liveData={liveData} engineOnline={engineOnline} />}
+
+      {tab === "drives" && <DrivesTab />}
     </div>
   );
 }

@@ -12,6 +12,8 @@ export function WdFooter() {
             <p className="mt-1 text-sm text-slate-500">
               <a
                 href={`mailto:${WD_CONTACT_EMAIL}`}
+                data-track-event="email_click"
+                data-track-label="footer"
                 className="transition hover:text-blue-600"
               >
                 {WD_CONTACT_EMAIL}
@@ -19,6 +21,8 @@ export function WdFooter() {
               {" \u00B7 "}
               <a
                 href={`tel:${WD_CONTACT_PHONE}`}
+                data-track-event="phone_click"
+                data-track-label="footer"
                 className="transition hover:text-blue-600"
               >
                 {WD_CONTACT_PHONE}

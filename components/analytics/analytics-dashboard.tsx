@@ -189,7 +189,19 @@ interface StripeAnalyticsData {
   pastDueAlerts: { name: string; email: string; amount: number; since: string }[];
 }
 
-type DashTab = "overview" | "pools" | "stripe";
+type DashTab = "overview" | "pools" | "stripe" | "video";
+
+interface VideoAnalytics {
+  totalGenerations: number;
+  completedGenerations: number;
+  failedGenerations: number;
+  totalCreditsUsed: number;
+  totalCostCents: number;
+  totalRevenueCents: number;
+  byTier: { tier: string; count: number; credits: number; costCents: number }[];
+  byModel: { model: string; count: number }[];
+  daily: { date: string; count: number; credits: number }[];
+}
 
 // ─── Main Dashboard ──────────────────────────────────────
 export default function AnalyticsDashboard() {
@@ -199,6 +211,8 @@ export default function AnalyticsDashboard() {
   const [poolLoading, setPoolLoading] = useState(false);
   const [stripeData, setStripeData] = useState<StripeAnalyticsData | null>(null);
   const [stripeLoading, setStripeLoading] = useState(false);
+  const [videoData, setVideoData] = useState<VideoAnalytics | null>(null);
+  const [videoLoading, setVideoLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<DashTab>("overview");
   const [period, setPeriod] = useState(30);
   const [loading, setLoading] = useState(true);
@@ -264,6 +278,20 @@ export default function AnalyticsDashboard() {
     if (activeTab === "stripe" && !stripeData && !stripeLoading) fetchStripeData();
   }, [activeTab, stripeData, stripeLoading, fetchStripeData]);
 
+  const fetchVideoData = useCallback(async () => {
+    setVideoLoading(true);
+    try {
+      const res = await fetch("/api/analytics/video");
+      if (res.ok) setVideoData(await res.json());
+    } catch { /* ignore */ }
+    setVideoLoading(false);
+  }, []);
+
+  // Lazy-load video data when tab selected
+  useEffect(() => {
+    if (activeTab === "video" && !videoData && !videoLoading) fetchVideoData();
+  }, [activeTab, videoData, videoLoading, fetchVideoData]);
+
   const showTooltip = (e: React.MouseEvent, content: React.ReactNode) => {
     const rect = dashRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -311,7 +339,7 @@ export default function AnalyticsDashboard() {
       {/* Tab bar */}
       <div className="flex items-center justify-between">
         <div className="flex gap-1 rounded-lg bg-white/5 p-1">
-          {(["overview", "pools", "stripe"] as DashTab[]).map((tab) => (
+          {(["overview", "pools", "stripe", "video"] as DashTab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -321,7 +349,7 @@ export default function AnalyticsDashboard() {
                   : "text-white/50 hover:text-white hover:bg-white/10"
               }`}
             >
-              {tab === "pools" ? "Pools" : tab === "stripe" ? "Stripe / WD" : "Overview"}
+              {tab === "pools" ? "Pools" : tab === "stripe" ? "Stripe / WD" : tab === "video" ? "Video" : "Overview"}
             </button>
           ))}
         </div>
@@ -366,7 +394,107 @@ export default function AnalyticsDashboard() {
             {stripeLoading ? "Loading..." : "Refresh"}
           </button>
         )}
+        {activeTab === "video" && (
+          <button
+            onClick={fetchVideoData}
+            disabled={videoLoading}
+            className="rounded-md px-3 py-1.5 text-xs font-medium text-white/50 hover:text-white hover:bg-white/10 transition disabled:opacity-40"
+          >
+            {videoLoading ? "Loading..." : "Refresh"}
+          </button>
+        )}
       </div>
+
+      {/* ─── VIDEO TAB ─── */}
+      {activeTab === "video" && (
+        <div className="space-y-4">
+          {videoLoading && !videoData ? (
+            <div className="text-center text-white/40 py-12">Loading video analytics...</div>
+          ) : videoData ? (
+            <>
+              {/* Stats row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <StatCard label="Total Generations" value={videoData.totalGenerations} />
+                <StatCard label="Completed" value={videoData.completedGenerations} />
+                <StatCard label="Credits Used" value={videoData.totalCreditsUsed} />
+                <StatCard label="Profit Margin" value={`${videoData.totalRevenueCents > 0 ? Math.round(((videoData.totalRevenueCents - videoData.totalCostCents) / videoData.totalRevenueCents) * 100) : 0}%`} />
+              </div>
+
+              {/* Revenue / cost */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <Panel title="Revenue (credits sold)">
+                  <p className="text-2xl font-bold text-green-400">${(videoData.totalRevenueCents / 100).toFixed(2)}</p>
+                </Panel>
+                <Panel title="Cost (fal.ai)">
+                  <p className="text-2xl font-bold text-red-400">${(videoData.totalCostCents / 100).toFixed(2)}</p>
+                </Panel>
+                <Panel title="Net Profit">
+                  <p className="text-2xl font-bold text-purple-300">${((videoData.totalRevenueCents - videoData.totalCostCents) / 100).toFixed(2)}</p>
+                </Panel>
+              </div>
+
+              {/* By tier */}
+              <Panel title="Generations by Tier">
+                <div className="space-y-2">
+                  {videoData.byTier.map((t) => (
+                    <div key={t.tier} className="flex items-center justify-between text-sm">
+                      <span className="capitalize text-white/80">{t.tier}</span>
+                      <div className="flex items-center gap-4 text-white/50">
+                        <span>{t.count} videos</span>
+                        <span>{t.credits} credits</span>
+                        <span>${(t.costCents / 100).toFixed(2)} cost</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+
+              {/* By model */}
+              <Panel title="Model Usage">
+                <div className="flex gap-4">
+                  {videoData.byModel.map((m) => (
+                    <div key={m.model} className="text-sm">
+                      <span className="text-white/80">{m.model}</span>
+                      <span className="ml-2 text-white/40">{m.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+
+              {/* Daily chart */}
+              {videoData.daily.length > 0 && (
+                <Panel title="Daily Generations">
+                  <div className="flex items-end gap-1 h-24">
+                    {videoData.daily.map((d) => {
+                      const max = Math.max(...videoData.daily.map((x) => x.count), 1);
+                      return (
+                        <div
+                          key={d.date}
+                          className="flex-1 bg-purple-500/60 rounded-t transition-all hover:bg-purple-400/80"
+                          style={{ height: `${(d.count / max) * 100}%`, minHeight: d.count > 0 ? 4 : 0 }}
+                          title={`${d.date}: ${d.count} videos, ${d.credits} credits`}
+                        />
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between text-[10px] text-white/30 mt-1">
+                    <span>{videoData.daily[0]?.date}</span>
+                    <span>{videoData.daily[videoData.daily.length - 1]?.date}</span>
+                  </div>
+                </Panel>
+              )}
+
+              {videoData.failedGenerations > 0 && (
+                <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-300">
+                  {videoData.failedGenerations} failed generation{videoData.failedGenerations > 1 ? "s" : ""} in this period
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center text-white/40 py-12">No video data available</div>
+          )}
+        </div>
+      )}
 
       {/* ─── STRIPE TAB ─── */}
       {activeTab === "stripe" && (

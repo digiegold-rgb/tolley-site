@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { WD_STRIPE_CHECKOUT_URL, WD_STRIPE_PORTAL_URL, WD_FACEBOOK_URL } from "@/lib/wd";
+import { WdCheckoutLink } from "./wd-checkout-link";
 
 function WavyText({ text }: { text: string }) {
   return (
@@ -71,14 +73,24 @@ export function WdHero() {
         </a>
 
         <div className="mt-8 flex flex-wrap gap-3">
-          <a
-            href={WD_STRIPE_CHECKOUT_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="wd-glow inline-flex items-center rounded-full bg-white px-8 py-3 text-sm font-bold text-blue-700 shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
-          >
-            Start Renting
-          </a>
+          <Suspense fallback={
+            <a
+              href={WD_STRIPE_CHECKOUT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="wd-glow inline-flex items-center rounded-full bg-white px-8 py-3 text-sm font-bold text-blue-700 shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+            >
+              Start Renting
+            </a>
+          }>
+            <WdCheckoutLink
+              href={WD_STRIPE_CHECKOUT_URL}
+              label="bundle_hero"
+              className="wd-glow inline-flex items-center rounded-full bg-white px-8 py-3 text-sm font-bold text-blue-700 shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+            >
+              Start Renting
+            </WdCheckoutLink>
+          </Suspense>
           <a
             href={WD_STRIPE_PORTAL_URL}
             target="_blank"

@@ -75,6 +75,14 @@ export default function RootLayout({
                     Generator Rental
                   </Link>
                 </li>
+                <li aria-hidden="true" className="text-white/45">
+                  |
+                </li>
+                <li>
+                  <Link className="transition hover:text-white" href="/pools">
+                    Pool Supplies
+                  </Link>
+                </li>
               </ul>
             </nav>
           </footer>

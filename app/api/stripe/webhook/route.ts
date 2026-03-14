@@ -11,6 +11,7 @@ import {
   resolveLeadsTierFromPriceId,
   getLeadsTierLimits,
 } from "@/lib/leads-subscription";
+import { SUBSCRIPTION_PLANS } from "@/lib/video";
 
 export const runtime = "nodejs";
 
@@ -164,6 +165,111 @@ async function syncLeadsSubscription(
   console.log(`[leads] Synced subscription for user ${userId}: ${tier} (${subscription.status})`);
 }
 
+async function fulfillVideoCredits(checkoutSession: Stripe.Checkout.Session) {
+  const userId = checkoutSession.metadata?.userId;
+  if (!userId) return false;
+
+  const product = checkoutSession.metadata?.product;
+
+  if (product === "video_credits") {
+    const credits = parseInt(checkoutSession.metadata?.credits || "0", 10);
+    if (credits <= 0) return false;
+
+    await prisma.videoCredit.upsert({
+      where: { userId },
+      create: {
+        userId,
+        balance: credits,
+        totalPurchased: credits,
+        packsPurchased: 1,
+      },
+      update: {
+        balance: { increment: credits },
+        totalPurchased: { increment: credits },
+        packsPurchased: { increment: 1 },
+      },
+    });
+
+    console.log(`[video] Credited ${credits} video credits to user ${userId} (pack purchase)`);
+    return true;
+  }
+
+  if (product === "video_subscription") {
+    const planId = checkoutSession.metadata?.planId;
+    const monthlyCredits = parseInt(checkoutSession.metadata?.monthlyCredits || "0", 10);
+    const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId);
+    if (!plan || monthlyCredits <= 0) return false;
+
+    await prisma.videoCredit.upsert({
+      where: { userId },
+      create: {
+        userId,
+        balance: monthlyCredits,
+        totalPurchased: monthlyCredits,
+        subscriptionTier: plan.id,
+        monthlyAllotment: monthlyCredits,
+      },
+      update: {
+        balance: { increment: monthlyCredits },
+        totalPurchased: { increment: monthlyCredits },
+        subscriptionTier: plan.id,
+        monthlyAllotment: monthlyCredits,
+      },
+    });
+
+    console.log(`[video] Activated ${plan.name} subscription for user ${userId} (${monthlyCredits} credits/mo)`);
+    return true;
+  }
+
+  return false;
+}
+
+async function fulfillVideoSubscriptionRenewal(invoice: Stripe.Invoice) {
+  const customerId =
+    typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+  if (!customerId) return;
+
+  // Check if this invoice is for a video subscription
+  const lineItem = invoice.lines?.data?.[0] as { price?: { id?: string } } | undefined;
+  const priceId = lineItem?.price?.id;
+  if (!priceId) return;
+
+  // Match against video subscription price IDs
+  const plan = SUBSCRIPTION_PLANS.find((p) => {
+    const envPriceId = process.env[p.envKey];
+    return envPriceId && envPriceId === priceId;
+  });
+  if (!plan) return;
+
+  const userId = await resolveUserIdFromStripeCustomer(customerId);
+  if (!userId) return;
+
+  // Rollover: save up to 1 month of unused credits
+  const current = await prisma.videoCredit.findUnique({ where: { userId } });
+  const rollover = current ? Math.min(current.balance, plan.credits) : 0;
+
+  await prisma.videoCredit.upsert({
+    where: { userId },
+    create: {
+      userId,
+      balance: plan.credits + rollover,
+      totalPurchased: plan.credits,
+      subscriptionTier: plan.id,
+      monthlyAllotment: plan.credits,
+      rolloverCredits: rollover,
+    },
+    update: {
+      balance: plan.credits + rollover,
+      totalPurchased: { increment: plan.credits },
+      subscriptionTier: plan.id,
+      monthlyAllotment: plan.credits,
+      rolloverCredits: rollover,
+    },
+  });
+
+  console.log(`[video] Renewed ${plan.name} for user ${userId}: ${plan.credits} + ${rollover} rollover`);
+}
+
 async function syncCheckoutSession(checkoutSession: Stripe.Checkout.Session) {
   const stripe = getStripeClient();
   const userId = checkoutSession.metadata?.userId || null;
@@ -223,6 +329,11 @@ export async function POST(request: Request) {
       case "checkout.session.completed": {
         const checkoutSession = event.data.object as Stripe.Checkout.Session;
 
+        // Video credit purchase — fulfill credits
+        if (await fulfillVideoCredits(checkoutSession)) {
+          break;
+        }
+
         // Shop item purchase — mark as sold
         const shopItemId = checkoutSession.metadata?.shopItemId;
         if (shopItemId) {
@@ -264,10 +375,15 @@ export async function POST(request: Request) {
         }
         break;
       }
-      case "invoice.paid":
+      case "invoice.paid": {
+        const paidInvoice = event.data.object as Stripe.Invoice;
+        await fulfillVideoSubscriptionRenewal(paidInvoice);
+        await syncFromInvoice(paidInvoice);
+        break;
+      }
       case "invoice.payment_failed": {
-        const invoice = event.data.object as Stripe.Invoice;
-        await syncFromInvoice(invoice);
+        const failedInvoice = event.data.object as Stripe.Invoice;
+        await syncFromInvoice(failedInvoice);
         break;
       }
       default:
