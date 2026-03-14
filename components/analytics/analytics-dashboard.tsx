@@ -152,7 +152,44 @@ interface PoolMarginData {
   insights: PoolInsightItem[];
 }
 
-type DashTab = "overview" | "pools";
+// ─── Stripe Types ────────────────────────────────────────
+interface StripeAnalyticsData {
+  balance: { available: number; pending: number; instantAvailable: number };
+  wd: {
+    mrr: number;
+    activeCount: number;
+    bundleCount: number;
+    washerCount: number;
+    byStatus: Record<string, number>;
+    totalRevenue: number;
+    totalFees: number;
+    netRevenue: number;
+    churnRate: number;
+    pastDueCount: number;
+    canceledCount: number;
+  };
+  overall: {
+    totalMrr: number;
+    totalRevenue: number;
+    totalFees: number;
+    netRevenue: number;
+    chargeCount: number;
+  };
+  revenueByMonth: { month: string; revenue: number; fees: number; net: number; count: number }[];
+  customers: {
+    id: string;
+    name: string;
+    email: string;
+    city: string;
+    plan: string;
+    amount: number;
+    status: string;
+    since: string;
+  }[];
+  pastDueAlerts: { name: string; email: string; amount: number; since: string }[];
+}
+
+type DashTab = "overview" | "pools" | "stripe";
 
 // ─── Main Dashboard ──────────────────────────────────────
 export default function AnalyticsDashboard() {
@@ -160,6 +197,8 @@ export default function AnalyticsDashboard() {
   const [ga4, setGa4] = useState<GA4Data | null>(null);
   const [poolData, setPoolData] = useState<PoolMarginData | null>(null);
   const [poolLoading, setPoolLoading] = useState(false);
+  const [stripeData, setStripeData] = useState<StripeAnalyticsData | null>(null);
+  const [stripeLoading, setStripeLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<DashTab>("overview");
   const [period, setPeriod] = useState(30);
   const [loading, setLoading] = useState(true);
@@ -206,10 +245,24 @@ export default function AnalyticsDashboard() {
     return () => clearInterval(interval);
   }, [fetchGa4]);
 
+  const fetchStripeData = useCallback(async () => {
+    setStripeLoading(true);
+    try {
+      const res = await fetch("/api/analytics/stripe");
+      if (res.ok) setStripeData(await res.json());
+    } catch { /* ignore */ }
+    setStripeLoading(false);
+  }, []);
+
   // Lazy-load pool data when tab selected
   useEffect(() => {
     if (activeTab === "pools" && !poolData && !poolLoading) fetchPoolData();
   }, [activeTab, poolData, poolLoading, fetchPoolData]);
+
+  // Lazy-load stripe data when tab selected
+  useEffect(() => {
+    if (activeTab === "stripe" && !stripeData && !stripeLoading) fetchStripeData();
+  }, [activeTab, stripeData, stripeLoading, fetchStripeData]);
 
   const showTooltip = (e: React.MouseEvent, content: React.ReactNode) => {
     const rect = dashRef.current?.getBoundingClientRect();
@@ -258,7 +311,7 @@ export default function AnalyticsDashboard() {
       {/* Tab bar */}
       <div className="flex items-center justify-between">
         <div className="flex gap-1 rounded-lg bg-white/5 p-1">
-          {(["overview", "pools"] as DashTab[]).map((tab) => (
+          {(["overview", "pools", "stripe"] as DashTab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -268,7 +321,7 @@ export default function AnalyticsDashboard() {
                   : "text-white/50 hover:text-white hover:bg-white/10"
               }`}
             >
-              {tab === "pools" ? "Pools" : "Overview"}
+              {tab === "pools" ? "Pools" : tab === "stripe" ? "Stripe / WD" : "Overview"}
             </button>
           ))}
         </div>
@@ -304,7 +357,26 @@ export default function AnalyticsDashboard() {
             {poolLoading ? "Loading..." : "Refresh"}
           </button>
         )}
+        {activeTab === "stripe" && (
+          <button
+            onClick={fetchStripeData}
+            disabled={stripeLoading}
+            className="rounded-md px-3 py-1.5 text-xs font-medium text-white/50 hover:text-white hover:bg-white/10 transition disabled:opacity-40"
+          >
+            {stripeLoading ? "Loading..." : "Refresh"}
+          </button>
+        )}
       </div>
+
+      {/* ─── STRIPE TAB ─── */}
+      {activeTab === "stripe" && (
+        <StripeSection
+          data={stripeData}
+          loading={stripeLoading}
+          showTooltip={showTooltip}
+          hideTooltip={hideTooltip}
+        />
+      )}
 
       {/* ─── POOLS TAB ─── */}
       {activeTab === "pools" && (
@@ -984,6 +1056,254 @@ function Heatmap({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ─── Stripe / WD Section ─────────────────────────────────
+
+function StripeSection({
+  data,
+  loading,
+  showTooltip,
+  hideTooltip,
+}: {
+  data: StripeAnalyticsData | null;
+  loading: boolean;
+  showTooltip: (e: React.MouseEvent, content: React.ReactNode) => void;
+  hideTooltip: () => void;
+}) {
+  if (loading || !data) {
+    return (
+      <div className="flex items-center justify-center h-40">
+        <div className="text-white/40 text-sm">Loading Stripe data...</div>
+      </div>
+    );
+  }
+
+  const { balance, wd, overall, revenueByMonth, customers, pastDueAlerts } = data;
+  const maxRevMonth = Math.max(1, ...revenueByMonth.map((m) => m.revenue));
+
+  return (
+    <div className="space-y-6">
+      {/* ─── Balance + MRR ─── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <StatCard label="Available" value={`$${balance.available.toFixed(2)}`} color="purple" />
+        <StatCard label="Pending" value={`$${balance.pending.toFixed(2)}`} color="purple" />
+        <StatCard label="Instant Avail." value={`$${balance.instantAvailable.toFixed(2)}`} color="purple" />
+        <StatCard label="WD MRR" value={`$${wd.mrr}`} color="purple" />
+        <StatCard label="Total MRR" value={`$${overall.totalMrr}`} color="purple" />
+        <StatCard label="Net Revenue" value={`$${overall.netRevenue.toFixed(2)}`} color="purple" />
+      </div>
+
+      {/* ─── WD Subscription Breakdown ─── */}
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Panel title="WD Subscriptions">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-white tabular-nums">{wd.activeCount}</div>
+                <div className="text-[0.65rem] text-white/40">Active Subscribers</div>
+              </div>
+              <div className="text-right">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="cursor-default"
+                    onMouseEnter={(e) => showTooltip(e, <>Bundle: {wd.bundleCount} x $58/mo = ${(wd.bundleCount * 58).toLocaleString()}/mo</>)}
+                    onMouseLeave={hideTooltip}
+                  >
+                    <div className="text-lg font-bold text-cyan-400 tabular-nums">{wd.bundleCount}</div>
+                    <div className="text-[0.55rem] text-white/30">Bundle $58</div>
+                  </div>
+                  <div
+                    className="cursor-default"
+                    onMouseEnter={(e) => showTooltip(e, <>Washer: {wd.washerCount} x $42/mo = ${(wd.washerCount * 42).toLocaleString()}/mo</>)}
+                    onMouseLeave={hideTooltip}
+                  >
+                    <div className="text-lg font-bold text-emerald-400 tabular-nums">{wd.washerCount}</div>
+                    <div className="text-[0.55rem] text-white/30">Washer $42</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Status breakdown */}
+            <div className="space-y-1.5">
+              {Object.entries(wd.byStatus)
+                .sort(([, a], [, b]) => b - a)
+                .map(([status, count]) => {
+                  const total = Object.values(wd.byStatus).reduce((a, b) => a + b, 0);
+                  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                  return (
+                    <div key={status} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className={`rounded px-1.5 py-0.5 text-[0.6rem] font-semibold ${
+                          status === "active" ? "bg-green-500/20 text-green-400" :
+                          status === "past_due" ? "bg-yellow-500/20 text-yellow-400" :
+                          status === "canceled" ? "bg-red-500/20 text-red-400" :
+                          "bg-white/10 text-white/40"
+                        }`}>
+                          {status.replace("_", " ")}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              status === "active" ? "bg-green-500/60" :
+                              status === "past_due" ? "bg-yellow-500/60" :
+                              "bg-red-500/60"
+                            }`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="text-white/40 tabular-nums w-8 text-right">{count}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* Churn rate */}
+            <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between text-xs">
+              <span className="text-white/40">Churn Rate</span>
+              <span className={`font-semibold tabular-nums ${wd.churnRate > 30 ? "text-red-400" : wd.churnRate > 15 ? "text-yellow-400" : "text-green-400"}`}>
+                {wd.churnRate}%
+              </span>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel title="WD Profit Summary">
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-lg bg-white/[0.03] border border-white/8 p-3 text-center">
+                <div className="text-lg font-bold text-white tabular-nums">${wd.totalRevenue.toFixed(2)}</div>
+                <div className="text-[0.6rem] text-white/30">Gross Revenue</div>
+              </div>
+              <div className="rounded-lg bg-white/[0.03] border border-white/8 p-3 text-center">
+                <div className="text-lg font-bold text-red-400 tabular-nums">-${wd.totalFees.toFixed(2)}</div>
+                <div className="text-[0.6rem] text-white/30">Stripe Fees</div>
+              </div>
+              <div className="rounded-lg bg-green-500/[0.06] border border-green-500/20 p-3 text-center col-span-2">
+                <div className="text-2xl font-bold text-green-400 tabular-nums">${wd.netRevenue.toFixed(2)}</div>
+                <div className="text-[0.6rem] text-white/40">Net Revenue (after fees)</div>
+              </div>
+            </div>
+
+            {/* Past due warnings */}
+            {wd.pastDueCount > 0 && (
+              <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/[0.06] p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-bold bg-yellow-500/20 text-yellow-400">
+                    PAST DUE
+                  </span>
+                  <span className="text-xs text-white/60">{wd.pastDueCount} subscription{wd.pastDueCount > 1 ? "s" : ""}</span>
+                </div>
+                <div className="space-y-1">
+                  {pastDueAlerts.map((a, i) => (
+                    <div key={i} className="flex items-center justify-between text-[0.65rem]">
+                      <span className="text-white/50 truncate">{a.name || a.email}</span>
+                      <span className="text-yellow-400 tabular-nums shrink-0 ml-2">${(a.amount / 100).toFixed(0)}/mo</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </Panel>
+      </div>
+
+      {/* ─── Revenue Over Time ─── */}
+      <Panel title="Revenue by Month">
+        <div className="flex items-end gap-[3px] h-36">
+          {revenueByMonth.map((m) => {
+            const barH = (m.revenue / maxRevMonth) * 100;
+            const feePct = m.revenue > 0 ? (m.fees / m.revenue) * 100 : 0;
+            return (
+              <div
+                key={m.month}
+                className="flex-1 flex flex-col justify-end cursor-default group"
+                style={{ height: "100%" }}
+                onMouseEnter={(e) =>
+                  showTooltip(e, <div>
+                    <div className="font-bold">{m.month}</div>
+                    <div>Revenue: ${m.revenue.toFixed(2)}</div>
+                    <div>Fees: -${m.fees.toFixed(2)}</div>
+                    <div className="text-green-400">Net: ${m.net.toFixed(2)}</div>
+                    <div>{m.count} charges</div>
+                  </div>)
+                }
+                onMouseLeave={hideTooltip}
+              >
+                <div
+                  className="w-full rounded-t-sm overflow-hidden group-hover:opacity-80 transition-all"
+                  style={{ height: `${Math.max(barH, m.revenue > 0 ? 3 : 0)}%` }}
+                >
+                  <div className="h-full flex flex-col-reverse">
+                    <div className="bg-green-500/60" style={{ height: `${100 - feePct}%` }} />
+                    <div className="bg-red-500/40" style={{ height: `${feePct}%` }} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex mt-1.5 gap-[3px]">
+          {revenueByMonth.map((m) => (
+            <div key={m.month} className="flex-1 text-center">
+              <span className="text-[0.5rem] text-white/20">{m.month.slice(5)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-4 mt-2">
+          <div className="flex items-center gap-1.5 text-[0.6rem] text-white/40">
+            <div className="h-2 w-2 rounded-sm bg-green-500/60" /> Net
+          </div>
+          <div className="flex items-center gap-1.5 text-[0.6rem] text-white/40">
+            <div className="h-2 w-2 rounded-sm bg-red-500/40" /> Fees
+          </div>
+        </div>
+      </Panel>
+
+      {/* ─── Customer Table ─── */}
+      <Panel title={`WD Customers (${customers.length})`}>
+        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-gray-900/95 backdrop-blur-sm">
+              <tr className="text-left text-white/40">
+                <th className="py-2 px-2">Name</th>
+                <th className="py-2 px-2">Email</th>
+                <th className="py-2 px-2">City</th>
+                <th className="py-2 px-2">Plan</th>
+                <th className="py-2 px-2">Status</th>
+                <th className="py-2 px-2">Since</th>
+              </tr>
+            </thead>
+            <tbody>
+              {customers.map((c) => (
+                <tr key={c.id} className="border-t border-white/5 hover:bg-white/[0.03] transition">
+                  <td className="py-1.5 px-2 text-white/70 max-w-[150px] truncate">{c.name || "—"}</td>
+                  <td className="py-1.5 px-2 text-white/40 max-w-[180px] truncate">{c.email || "—"}</td>
+                  <td className="py-1.5 px-2 text-white/40">{c.city || "—"}</td>
+                  <td className="py-1.5 px-2 text-cyan-400/70 text-[0.65rem]">{c.plan}</td>
+                  <td className="py-1.5 px-2">
+                    <span className={`rounded px-1.5 py-0.5 text-[0.6rem] ${
+                      c.status === "active" ? "bg-green-500/15 text-green-400" :
+                      c.status === "past_due" ? "bg-yellow-500/15 text-yellow-400" :
+                      c.status === "canceled" ? "bg-red-500/15 text-red-400" :
+                      "bg-white/10 text-white/30"
+                    }`}>
+                      {c.status.replace("_", " ")}
+                    </span>
+                  </td>
+                  <td className="py-1.5 px-2 text-white/30 tabular-nums">{c.since}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
     </div>
   );
 }
