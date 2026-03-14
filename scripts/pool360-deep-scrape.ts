@@ -254,11 +254,20 @@ async function main() {
       const specs = await scrapeSpecs(page, productUrl);
 
       if (specs) {
-        await prisma.poolProduct.update({
-          where: { sku },
-          data: { specs },
-        });
-        specsUpdated++;
+        try {
+          await prisma.poolProduct.update({
+            where: { sku },
+            data: { specs },
+          });
+          specsUpdated++;
+        } catch (err: any) {
+          if (err?.code === "P2025") {
+            console.log(`[specs] Skipping deleted product: ${sku}`);
+            specsFailed++;
+          } else {
+            throw err;
+          }
+        }
       } else {
         specsFailed++;
       }

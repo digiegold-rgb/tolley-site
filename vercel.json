@@ -39,6 +39,10 @@
     {
       "path": "/api/cron/crypto-sync",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/pools-intelligence",
+      "schedule": "0 4 * * *"
     }
   ]
 }

@@ -3,6 +3,26 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { TRACKED_SITES } from "@/lib/analytics";
 
+// ─── GA4 Types ────────────────────────────────────────────
+interface GA4Data {
+  configured: boolean;
+  realtime?: {
+    activeUsers: number;
+    pages: { page: string; activeUsers: number }[];
+    cities: { city: string; activeUsers: number }[];
+  };
+  report?: {
+    totalSessions: number;
+    totalUsers: number;
+    avgBounceRate: number;
+    avgSessionDuration: number;
+    cities: { city: string; users: number; sessions: number; bounceRate: number; avgSessionDuration: number }[];
+    devices: { device: string; users: number; sessions: number }[];
+    browsers: { browser: string; users: number; sessions: number }[];
+    sources: { channel: string; users: number; sessions: number }[];
+  };
+}
+
 // ─── Types ───────────────────────────────────────────────
 interface DailyRow {
   date: string;
@@ -87,12 +107,64 @@ function formatNum(n: number): string {
   return n.toLocaleString();
 }
 
+// ─── Pool Margin Types ──────────────────────────────────
+interface PoolInsightItem {
+  id: string;
+  type: string;
+  severity: string;
+  sku: string | null;
+  title: string;
+  body: string;
+  meta: Record<string, unknown> | null;
+  status: string;
+  createdAt: string;
+}
+
+interface PoolMarginData {
+  overview: {
+    totalProducts: number;
+    avgMarginPct: number;
+    totalMargin: number;
+    inventoryValue: number;
+    oosCount: number;
+    missingCost: number;
+    totalEngagement: number;
+    lastSnapshot: string | null;
+  };
+  perProduct: {
+    id: string;
+    name: string;
+    sku: string;
+    category: string | null;
+    brand: string | null;
+    cost: number | null;
+    sell: number;
+    retail: number | null;
+    marginDollar: number | null;
+    marginPct: number | null;
+    stockStatus: string | null;
+    stockQty: number | null;
+    engagement: number;
+  }[];
+  byBrand: { name: string; avgMarginPct: number; totalMargin: number; count: number }[];
+  byCategory: { name: string; avgMarginPct: number; totalMargin: number; count: number }[];
+  alerts: { type: "low" | "negative" | "missing"; product: string; sku: string; marginPct: number | null }[];
+  insights: PoolInsightItem[];
+}
+
+type DashTab = "overview" | "pools";
+
 // ─── Main Dashboard ──────────────────────────────────────
 export default function AnalyticsDashboard() {
   const [data, setData] = useState<AnalyticsData | null>(null);
+  const [ga4, setGa4] = useState<GA4Data | null>(null);
+  const [poolData, setPoolData] = useState<PoolMarginData | null>(null);
+  const [poolLoading, setPoolLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<DashTab>("overview");
   const [period, setPeriod] = useState(30);
   const [loading, setLoading] = useState(true);
   const [tooltip, setTooltip] = useState<Tooltip | null>(null);
+  const [poolSort, setPoolSort] = useState<{ col: string; asc: boolean }>({ col: "marginPct", asc: false });
   const dashRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(async (days: number) => {
@@ -107,7 +179,37 @@ export default function AnalyticsDashboard() {
     setLoading(false);
   }, []);
 
+  // Fetch GA4 data (separate, auto-refreshes every 30s for realtime)
+  const fetchGa4 = useCallback(async () => {
+    try {
+      const res = await fetch("/api/analytics/ga4");
+      if (res.ok) {
+        const json = await res.json();
+        setGa4(json);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const fetchPoolData = useCallback(async () => {
+    setPoolLoading(true);
+    try {
+      const res = await fetch("/api/analytics/pools");
+      if (res.ok) setPoolData(await res.json());
+    } catch { /* ignore */ }
+    setPoolLoading(false);
+  }, []);
+
   useEffect(() => { fetchData(period); }, [period, fetchData]);
+  useEffect(() => {
+    fetchGa4();
+    const interval = setInterval(fetchGa4, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchGa4]);
+
+  // Lazy-load pool data when tab selected
+  useEffect(() => {
+    if (activeTab === "pools" && !poolData && !poolLoading) fetchPoolData();
+  }, [activeTab, poolData, poolLoading, fetchPoolData]);
 
   const showTooltip = (e: React.MouseEvent, content: React.ReactNode) => {
     const rect = dashRef.current?.getBoundingClientRect();
@@ -153,28 +255,71 @@ export default function AnalyticsDashboard() {
         </div>
       )}
 
-      {/* Period selector */}
+      {/* Tab bar */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-xs text-white/40">Live</span>
-        </div>
         <div className="flex gap-1 rounded-lg bg-white/5 p-1">
-          {[7, 30, 90].map((d) => (
+          {(["overview", "pools"] as DashTab[]).map((tab) => (
             <button
-              key={d}
-              onClick={() => setPeriod(d)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                period === d
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`rounded-md px-4 py-1.5 text-xs font-medium transition capitalize ${
+                activeTab === tab
                   ? "bg-purple-600 text-white"
                   : "text-white/50 hover:text-white hover:bg-white/10"
               }`}
             >
-              {d}d
+              {tab === "pools" ? "Pools" : "Overview"}
             </button>
           ))}
         </div>
+        {activeTab === "overview" && (
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+              <span className="text-xs text-white/40">Live</span>
+            </div>
+            <div className="flex gap-1 rounded-lg bg-white/5 p-1">
+              {[7, 30, 90].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setPeriod(d)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                    period === d
+                      ? "bg-purple-600 text-white"
+                      : "text-white/50 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  {d}d
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {activeTab === "pools" && (
+          <button
+            onClick={fetchPoolData}
+            disabled={poolLoading}
+            className="rounded-md px-3 py-1.5 text-xs font-medium text-white/50 hover:text-white hover:bg-white/10 transition disabled:opacity-40"
+          >
+            {poolLoading ? "Loading..." : "Refresh"}
+          </button>
+        )}
       </div>
+
+      {/* ─── POOLS TAB ─── */}
+      {activeTab === "pools" && (
+        <PoolsMarginSection
+          data={poolData}
+          loading={poolLoading}
+          sort={poolSort}
+          setSort={setPoolSort}
+          showTooltip={showTooltip}
+          hideTooltip={hideTooltip}
+        />
+      )}
+
+      {/* ─── OVERVIEW TAB ─── */}
+      {activeTab === "overview" && <>
 
       {/* ─── Overview Stats ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -183,6 +328,11 @@ export default function AnalyticsDashboard() {
         <StatCard label="Events / Clicks" value={o.totalEvents} prev={o.prevEvents} />
         <StatCard label="Active Sites" value={o.activeSites} />
       </div>
+
+      {/* ─── GA4 Realtime + Insights ─── */}
+      {ga4?.configured && ga4.realtime && (
+        <GA4Section ga4={ga4} onHover={showTooltip} onLeave={hideTooltip} />
+      )}
 
       {/* ─── Token & API Usage ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -486,6 +636,8 @@ export default function AnalyticsDashboard() {
           </div>
         )}
       </Panel>
+
+      </>}
     </div>
   );
 }
@@ -832,6 +984,540 @@ function Heatmap({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ─── Pool Margin Section ─────────────────────────────────
+
+function PoolsMarginSection({
+  data,
+  loading,
+  sort,
+  setSort,
+  showTooltip,
+  hideTooltip,
+}: {
+  data: PoolMarginData | null;
+  loading: boolean;
+  sort: { col: string; asc: boolean };
+  setSort: (s: { col: string; asc: boolean }) => void;
+  showTooltip: (e: React.MouseEvent, content: React.ReactNode) => void;
+  hideTooltip: () => void;
+}) {
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  if (loading || !data) {
+    return (
+      <div className="flex items-center justify-center h-40">
+        <div className="text-white/40 text-sm">Loading pool margin data...</div>
+      </div>
+    );
+  }
+
+  const ov = data.overview;
+
+  async function handleInsightAction(id: string, action: "apply" | "dismiss") {
+    if (!data) return;
+    setActionLoading(id);
+    try {
+      await fetch("/api/analytics/pools", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ insightId: id, action }),
+      });
+      // Remove from local state
+      data.insights = data.insights.filter((i) => i.id !== id);
+    } catch { /* ignore */ }
+    setActionLoading(null);
+  }
+
+  // Sortable product table
+  const sorted = [...data.perProduct].sort((a, b) => {
+    const dir = sort.asc ? 1 : -1;
+    const col = sort.col;
+    const getValue = (p: typeof a) => {
+      switch (col) {
+        case "name": return p.name;
+        case "sku": return p.sku;
+        case "cost": return p.cost ?? -999;
+        case "sell": return p.sell;
+        case "retail": return p.retail ?? 0;
+        case "marginDollar": return p.marginDollar ?? -999;
+        case "marginPct": return p.marginPct ?? -999;
+        case "engagement": return p.engagement;
+        default: return 0;
+      }
+    };
+    const av = getValue(a);
+    const bv = getValue(b);
+    if (typeof av === "string" && typeof bv === "string") return av.localeCompare(bv) * dir;
+    return ((av as number) - (bv as number)) * dir;
+  });
+
+  function toggleSort(col: string) {
+    setSort({ col, asc: sort.col === col ? !sort.asc : false });
+  }
+
+  const sortIcon = (col: string) =>
+    sort.col === col ? (sort.asc ? " \u2191" : " \u2193") : "";
+
+  function marginColor(pct: number | null): string {
+    if (pct == null) return "bg-white/[0.02]";
+    if (pct >= 30) return "bg-green-500/[0.06]";
+    if (pct >= 20) return "bg-yellow-500/[0.06]";
+    return "bg-red-500/[0.06]";
+  }
+
+  const maxBrandMargin = Math.max(1, ...data.byBrand.map((b) => b.totalMargin));
+  const maxCatMargin = Math.max(1, ...data.byCategory.map((c) => c.totalMargin));
+
+  const insightTypeIcon: Record<string, string> = {
+    margin_alert: "MARGIN",
+    oos_predict: "STOCK",
+    enrichment: "CONTENT",
+    trending: "TRENDING",
+    sort_adjust: "SORT",
+    price_suggest: "PRICE",
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <StatCard label="Total Products" value={ov.totalProducts} color="purple" />
+        <StatCard label="Avg Margin %" value={`${ov.avgMarginPct}%`} color={ov.avgMarginPct >= 20 ? "purple" : "red"} />
+        <StatCard label="Total Margin $" value={`$${ov.totalMargin.toLocaleString()}`} color="purple" />
+        <StatCard label="Inventory Value" value={`$${ov.inventoryValue.toLocaleString()}`} color="purple" />
+        <StatCard label="Out of Stock" value={ov.oosCount} color={ov.oosCount > 0 ? "red" : "purple"} />
+        <StatCard label="Engagement (30d)" value={ov.totalEngagement} color="purple" />
+      </div>
+
+      {/* Intelligence Insights */}
+      {data.insights.length > 0 && (
+        <Panel title={`Intelligence Insights (${data.insights.length})`}>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {data.insights.map((insight) => (
+              <div
+                key={insight.id}
+                className={`rounded-lg border p-3 ${
+                  insight.severity === "critical"
+                    ? "border-red-500/30 bg-red-500/[0.06]"
+                    : insight.severity === "warning"
+                      ? "border-yellow-500/30 bg-yellow-500/[0.06]"
+                      : "border-white/10 bg-white/[0.03]"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-[0.6rem] font-bold ${
+                        insight.severity === "critical"
+                          ? "bg-red-500/20 text-red-400"
+                          : insight.severity === "warning"
+                            ? "bg-yellow-500/20 text-yellow-400"
+                            : "bg-blue-500/20 text-blue-400"
+                      }`}>
+                        {insightTypeIcon[insight.type] || insight.type.toUpperCase()}
+                      </span>
+                      <span className="text-xs font-semibold text-white/70 truncate">{insight.title}</span>
+                    </div>
+                    <p className="text-[0.65rem] text-white/40 leading-relaxed">{insight.body}</p>
+                    {insight.meta && !!(insight.meta as Record<string, unknown>).suggestedPrice && (
+                      <p className="text-[0.65rem] text-cyan-400 mt-1">
+                        Suggested price: ${((insight.meta as Record<string, unknown>).suggestedPrice as number).toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {(insight.type === "margin_alert" || insight.type === "price_suggest") &&
+                      insight.meta &&
+                      !!(insight.meta as Record<string, unknown>).suggestedPrice && (
+                      <button
+                        onClick={() => handleInsightAction(insight.id, "apply")}
+                        disabled={actionLoading === insight.id}
+                        className="rounded px-2 py-1 text-[0.6rem] font-semibold bg-green-500/20 text-green-400 hover:bg-green-500/30 transition disabled:opacity-40"
+                      >
+                        Apply
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleInsightAction(insight.id, "dismiss")}
+                      disabled={actionLoading === insight.id}
+                      className="rounded px-2 py-1 text-[0.6rem] font-semibold bg-white/10 text-white/40 hover:bg-white/20 transition disabled:opacity-40"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {ov.lastSnapshot && (
+            <p className="text-[0.55rem] text-white/20 mt-3">
+              Last snapshot: {new Date(ov.lastSnapshot).toLocaleString()}
+            </p>
+          )}
+        </Panel>
+      )}
+
+      {/* Category + Brand bars side by side */}
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Panel title="Margin by Category">
+          <div className="space-y-2">
+            {data.byCategory.map((c) => (
+              <div
+                key={c.name}
+                className="cursor-default"
+                onMouseEnter={(e) =>
+                  showTooltip(e, <div>
+                    <div className="font-bold">{c.name}</div>
+                    <div>{c.count} products</div>
+                    <div>Avg margin: {c.avgMarginPct}%</div>
+                    <div>Total margin: ${c.totalMargin.toFixed(2)}</div>
+                  </div>)
+                }
+                onMouseLeave={hideTooltip}
+              >
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="text-white/60">{c.name}</span>
+                  <span className="text-white/40 tabular-nums">{c.avgMarginPct}% / ${c.totalMargin.toFixed(0)}</span>
+                </div>
+                <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${c.avgMarginPct >= 30 ? "bg-green-500/60" : c.avgMarginPct >= 20 ? "bg-yellow-500/60" : "bg-red-500/60"}`}
+                    style={{ width: `${(c.totalMargin / maxCatMargin) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel title="Margin by Brand">
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {data.byBrand.map((b) => (
+              <div
+                key={b.name}
+                className="cursor-default"
+                onMouseEnter={(e) =>
+                  showTooltip(e, <div>
+                    <div className="font-bold">{b.name}</div>
+                    <div>{b.count} products</div>
+                    <div>Avg margin: {b.avgMarginPct}%</div>
+                    <div>Total margin: ${b.totalMargin.toFixed(2)}</div>
+                  </div>)
+                }
+                onMouseLeave={hideTooltip}
+              >
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="text-white/60 truncate">{b.name}</span>
+                  <span className="text-white/40 tabular-nums shrink-0 ml-2">{b.avgMarginPct}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${b.avgMarginPct >= 30 ? "bg-green-500/60" : b.avgMarginPct >= 20 ? "bg-yellow-500/60" : "bg-red-500/60"}`}
+                    style={{ width: `${(b.totalMargin / maxBrandMargin) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+
+      {/* Per-product table */}
+      <Panel title={`Per-Product Margins (${sorted.length})`}>
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-gray-900/95 backdrop-blur-sm">
+              <tr className="text-left text-white/40">
+                {[
+                  { col: "name", label: "Product" },
+                  { col: "sku", label: "SKU" },
+                  { col: "cost", label: "Cost" },
+                  { col: "sell", label: "Sell" },
+                  { col: "retail", label: "Retail" },
+                  { col: "marginDollar", label: "Margin $" },
+                  { col: "marginPct", label: "Margin %" },
+                  { col: "engagement", label: "Eng." },
+                ].map(({ col, label }) => (
+                  <th
+                    key={col}
+                    className="py-2 px-2 cursor-pointer hover:text-white/70 transition whitespace-nowrap"
+                    onClick={() => toggleSort(col)}
+                  >
+                    {label}{sortIcon(col)}
+                  </th>
+                ))}
+                <th className="py-2 px-2 whitespace-nowrap">Stock</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((p) => (
+                <tr
+                  key={p.id}
+                  className={`border-t border-white/5 ${marginColor(p.marginPct)} hover:bg-white/[0.05] transition`}
+                >
+                  <td className="py-1.5 px-2 text-white/70 max-w-[200px] truncate">{p.name}</td>
+                  <td className="py-1.5 px-2 text-white/40 font-mono">{p.sku}</td>
+                  <td className="py-1.5 px-2 text-white/40 tabular-nums">{p.cost != null ? `$${p.cost.toFixed(2)}` : "—"}</td>
+                  <td className="py-1.5 px-2 text-white/60 tabular-nums">${p.sell.toFixed(2)}</td>
+                  <td className="py-1.5 px-2 text-white/40 tabular-nums">{p.retail != null ? `$${p.retail.toFixed(2)}` : "—"}</td>
+                  <td className="py-1.5 px-2 tabular-nums font-semibold">
+                    <span className={p.marginDollar != null ? (p.marginDollar >= 0 ? "text-green-400" : "text-red-400") : "text-white/30"}>
+                      {p.marginDollar != null ? `$${p.marginDollar.toFixed(2)}` : "—"}
+                    </span>
+                  </td>
+                  <td className="py-1.5 px-2 tabular-nums font-semibold">
+                    <span className={p.marginPct != null ? (p.marginPct >= 30 ? "text-green-400" : p.marginPct >= 20 ? "text-yellow-400" : "text-red-400") : "text-white/30"}>
+                      {p.marginPct != null ? `${p.marginPct}%` : "—"}
+                    </span>
+                  </td>
+                  <td className="py-1.5 px-2 tabular-nums text-white/40">
+                    {p.engagement > 0 ? p.engagement : "—"}
+                  </td>
+                  <td className="py-1.5 px-2">
+                    <span className={`rounded px-1.5 py-0.5 text-[0.6rem] ${
+                      p.stockStatus === "in-stock" ? "bg-green-500/15 text-green-400" :
+                      p.stockStatus === "low-stock" ? "bg-yellow-500/15 text-yellow-400" :
+                      p.stockStatus === "out-of-stock" ? "bg-red-500/15 text-red-400" :
+                      "bg-white/10 text-white/30"
+                    }`}>
+                      {p.stockStatus || "unknown"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+      {/* Alerts */}
+      {data.alerts.length > 0 && (
+        <Panel title={`Margin Alerts (${data.alerts.length})`}>
+          <div className="space-y-1 max-h-48 overflow-y-auto">
+            {data.alerts.map((a, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs py-1">
+                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[0.6rem] font-semibold ${
+                  a.type === "negative" ? "bg-red-500/20 text-red-400" :
+                  a.type === "missing" ? "bg-orange-500/20 text-orange-400" :
+                  "bg-yellow-500/20 text-yellow-400"
+                }`}>
+                  {a.type === "negative" ? "NEGATIVE" : a.type === "missing" ? "NO COST" : "LOW"}
+                </span>
+                <span className="text-white/60 truncate">{a.product}</span>
+                <span className="text-white/30 font-mono shrink-0">{a.sku}</span>
+                {a.marginPct != null && (
+                  <span className="text-white/40 tabular-nums ml-auto shrink-0">{a.marginPct}%</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
+    </div>
+  );
+}
+
+// ─── GA4 Realtime + Insights Section ─────────────────────
+
+function GA4Section({
+  ga4,
+  onHover,
+  onLeave,
+}: {
+  ga4: GA4Data;
+  onHover: (e: React.MouseEvent, content: React.ReactNode) => void;
+  onLeave: () => void;
+}) {
+  const rt = ga4.realtime!;
+  const rpt = ga4.report;
+
+  function formatDuration(seconds: number): string {
+    if (seconds < 60) return `${seconds}s`;
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}m ${s}s`;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <svg className="h-4 w-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+          <path d="M12 6v6l4 2" />
+        </svg>
+        <h3 className="text-sm font-bold text-blue-400">Google Analytics Realtime</h3>
+        <span className="text-[0.6rem] text-white/20 ml-auto">auto-refreshes every 30s</span>
+      </div>
+
+      {/* Realtime stat + 30-day stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-4 text-center">
+          <div className="text-3xl font-bold text-blue-400 tabular-nums">{rt.activeUsers}</div>
+          <div className="text-[0.65rem] text-white/40 mt-1">Active Now</div>
+          <div className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse mx-auto mt-1.5" />
+        </div>
+        {rpt && (
+          <>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
+              <div className="text-2xl font-bold text-white tabular-nums">{rpt.totalSessions.toLocaleString()}</div>
+              <div className="text-[0.65rem] text-white/40 mt-1">Sessions (30d)</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
+              <div className="text-2xl font-bold text-white tabular-nums">{rpt.avgBounceRate}%</div>
+              <div className="text-[0.65rem] text-white/40 mt-1">Bounce Rate</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
+              <div className="text-2xl font-bold text-white tabular-nums">{formatDuration(rpt.avgSessionDuration)}</div>
+              <div className="text-[0.65rem] text-white/40 mt-1">Avg Session</div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Realtime pages + cities */}
+      {(rt.pages.length > 0 || rt.cities.length > 0) && (
+        <div className="grid sm:grid-cols-2 gap-4">
+          {rt.pages.length > 0 && (
+            <Panel title="Active Pages (Now)">
+              <div className="space-y-1.5">
+                {rt.pages.map((p) => (
+                  <div
+                    key={p.page}
+                    className="flex items-center justify-between text-xs cursor-default"
+                    onMouseEnter={(e) => onHover(e, <><strong>{p.page}</strong>: {p.activeUsers} active</>)}
+                    onMouseLeave={onLeave}
+                  >
+                    <span className="text-white/60 truncate">{p.page}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+                      <span className="text-blue-400 tabular-nums font-semibold">{p.activeUsers}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          )}
+          {rt.cities.length > 0 && (
+            <Panel title="Active Cities (Now)">
+              <div className="space-y-1.5">
+                {rt.cities.map((c) => (
+                  <div
+                    key={c.city}
+                    className="flex items-center justify-between text-xs cursor-default"
+                    onMouseEnter={(e) => onHover(e, <><strong>{c.city}</strong>: {c.activeUsers} active</>)}
+                    onMouseLeave={onLeave}
+                  >
+                    <span className="text-white/60">{c.city}</span>
+                    <span className="text-blue-400 tabular-nums font-semibold">{c.activeUsers}</span>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          )}
+        </div>
+      )}
+
+      {/* 30-day breakdowns: Cities, Devices, Browsers, Channels */}
+      {rpt && (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Top Cities */}
+          <Panel title="Top Cities (30d)">
+            <div className="space-y-1.5">
+              {rpt.cities.slice(0, 8).map((c) => (
+                <div
+                  key={c.city}
+                  className="flex items-center justify-between text-xs cursor-default"
+                  onMouseEnter={(e) =>
+                    onHover(e, <div>
+                      <div className="font-bold">{c.city}</div>
+                      <div>{c.sessions} sessions &middot; {c.users} users</div>
+                      <div>Bounce: {(c.bounceRate * 100).toFixed(1)}%</div>
+                      <div>Avg: {formatDuration(Math.round(c.avgSessionDuration))}</div>
+                    </div>)
+                  }
+                  onMouseLeave={onLeave}
+                >
+                  <span className="text-white/60 truncate">{c.city}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="w-12 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-blue-500/50"
+                        style={{ width: `${(c.sessions / (rpt.cities[0]?.sessions || 1)) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-white/40 tabular-nums w-6 text-right">{c.sessions}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          {/* Devices */}
+          <Panel title="Devices (30d)">
+            <div className="space-y-2">
+              {rpt.devices.map((d) => {
+                const total = rpt.devices.reduce((s, x) => s + x.sessions, 0);
+                const pct = total > 0 ? Math.round((d.sessions / total) * 100) : 0;
+                return (
+                  <div key={d.device} className="text-xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-white/60 capitalize">{d.device}</span>
+                      <span className="text-white/40 tabular-nums">{pct}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                      <div className="h-full rounded-full bg-emerald-500/50" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Panel>
+
+          {/* Browsers */}
+          <Panel title="Browsers (30d)">
+            <div className="space-y-1.5">
+              {rpt.browsers.map((b) => (
+                <div key={b.browser} className="flex items-center justify-between text-xs">
+                  <span className="text-white/60 truncate">{b.browser}</span>
+                  <span className="text-white/40 tabular-nums">{b.sessions}</span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          {/* Channels */}
+          <Panel title="Channels (30d)">
+            <div className="space-y-1.5">
+              {rpt.sources.map((s) => (
+                <div
+                  key={s.channel}
+                  className="flex items-center justify-between text-xs cursor-default"
+                  onMouseEnter={(e) =>
+                    onHover(e, <>{s.channel}: <strong>{s.sessions}</strong> sessions, {s.users} users</>)
+                  }
+                  onMouseLeave={onLeave}
+                >
+                  <span className="text-white/60">{s.channel}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="w-12 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-amber-500/50"
+                        style={{ width: `${(s.sessions / (rpt.sources[0]?.sessions || 1)) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-white/40 tabular-nums w-6 text-right">{s.sessions}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </div>
+      )}
     </div>
   );
 }

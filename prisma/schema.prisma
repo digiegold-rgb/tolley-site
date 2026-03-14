@@ -1433,6 +1433,51 @@ model PoolProduct {
   @@index([sku])
 }
 
+// ─── Pool Intelligence: product engagement events ────────
+model PoolProductEvent {
+  id        String   @id @default(cuid())
+  sku       String
+  event     String   // "view", "cart_add", "filter_click", "mfg_link", "spec_expand"
+  meta      Json?    // { filter: "brand:Pentair", position: 3 }
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([sku, event])
+  @@index([createdAt])
+}
+
+// ─── Pool Intelligence: generated insights / recommendations ───
+model PoolInsight {
+  id        String    @id @default(cuid())
+  type      String    // "margin_alert", "oos_predict", "enrichment", "trending", "sort_adjust", "price_suggest"
+  severity  String    @default("info") // "info", "warning", "critical"
+  sku       String?
+  title     String
+  body      String
+  meta      Json?     // structured data for programmatic use
+  status    String    @default("new") // "new", "applied", "dismissed", "auto_applied"
+  appliedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([type, status])
+  @@index([sku])
+  @@index([createdAt])
+}
+
+// ─── Pool Intelligence: daily stock/price snapshots for trend analysis ───
+model PoolStockSnapshot {
+  id         String   @id @default(cuid())
+  sku        String
+  stockQty   Int?
+  costPrice  Float?
+  price      Float
+  capturedAt DateTime @default(now())
+
+  @@index([sku, capturedAt])
+  @@index([capturedAt])
+}
+
 model ArbitragePair {
   id             String   @id @default(cuid())
 
