@@ -1,48 +1,61 @@
 {
+  "functions": {
+    "app/api/cron/sequence-process/route.ts": { "maxDuration": 120 },
+    "app/api/cron/pools-intelligence/route.ts": { "maxDuration": 120 },
+    "app/api/cron/content-publish/route.ts": { "maxDuration": 120 },
+    "app/api/cron/market-collect/route.ts": { "maxDuration": 60 },
+    "app/api/cron/crypto-sync/route.ts": { "maxDuration": 60 },
+    "app/api/cron/regrid-scan/route.ts": { "maxDuration": 60 },
+    "app/api/analytics/stripe/route.ts": { "maxDuration": 60 },
+    "app/api/leads/sync/route.ts": { "maxDuration": 300 },
+    "app/api/leads/enrich/route.ts": { "maxDuration": 300 },
+    "app/api/poi/sync/route.ts": { "maxDuration": 300 },
+    "app/api/sms/webhook/route.ts": { "maxDuration": 30 }
+  },
   "crons": [
     {
-      "path": "/api/cron/sms-reset",
-      "schedule": "0 0 1 * *"
+      "path": "/api/cron/sequence-process",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/content-publish",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/dossier-cleanup",
+      "schedule": "0 */1 * * *"
     },
     {
       "path": "/api/cron/auto-responder-reset",
       "schedule": "0 6 * * *"
     },
     {
-      "path": "/api/cron/sequence-process",
-      "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/cron/regrid-scan",
-      "schedule": "0 3 * * 1"
+      "path": "/api/cron/token-refresh",
+      "schedule": "0 */6 * * *"
     },
     {
       "path": "/api/cron/unclaimed-compliance",
       "schedule": "0 7 * * *"
     },
     {
-      "path": "/api/cron/content-publish",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/token-refresh",
-      "schedule": "0 2 * * *"
-    },
-    {
       "path": "/api/cron/market-collect",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/dossier-cleanup",
-      "schedule": "0 3 * * *"
+      "schedule": "0 6,12,18 * * *"
     },
     {
       "path": "/api/cron/crypto-sync",
-      "schedule": "0 5 * * *"
+      "schedule": "0 */4 * * *"
     },
     {
       "path": "/api/cron/pools-intelligence",
-      "schedule": "0 4 * * *"
+      "schedule": "0 4,16 * * *"
+    },
+    {
+      "path": "/api/cron/regrid-scan",
+      "schedule": "0 3 * * 1"
+    },
+    {
+      "path": "/api/cron/sms-reset",
+      "schedule": "0 0 1 * *"
     }
   ]
 }
