@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { DISCONTINUED_SKUS } from "@/lib/pool-discontinued-skus";
 
 interface SyncProduct {
   sku: string;
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     for (const p of products) {
       try {
-        if (!p.sku) {
+        if (!p.sku || DISCONTINUED_SKUS.has(p.sku)) {
           skipped++;
           continue;
         }
