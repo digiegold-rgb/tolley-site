@@ -6,11 +6,14 @@ interface Props {
   unrealizedPnl: number;
   realizedPnl: number;
   mode: string;
+  initialCapital?: number;
 }
 
-export default function PortfolioCard({ equity, cash, unrealizedPnl, realizedPnl, mode }: Props) {
-  const totalPnl = unrealizedPnl + realizedPnl;
+export default function PortfolioCard({ equity, cash, unrealizedPnl, realizedPnl, mode, initialCapital = 10000 }: Props) {
+  const totalPnl = equity - initialCapital;
+  const totalPnlPct = ((equity - initialCapital) / initialCapital) * 100;
   const pnlColor = totalPnl >= 0 ? "text-green-400" : "text-red-400";
+  const invested = equity - cash;
 
   return (
     <div className="crypto-card crypto-glow">
@@ -31,17 +34,41 @@ export default function PortfolioCard({ equity, cash, unrealizedPnl, realizedPnl
       </div>
       <div className={`text-sm font-medium ${pnlColor}`}>
         {totalPnl >= 0 ? "+" : ""}
-        ${totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total P&L
+        ${totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        {" "}({totalPnlPct >= 0 ? "+" : ""}{totalPnlPct.toFixed(2)}%)
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <div>
-          <div className="text-[10px] text-white/30 uppercase">Cash</div>
-          <div className="text-sm text-white/80">${cash.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+      <div className="mt-4 space-y-2">
+        <div className="flex justify-between">
+          <span className="text-[10px] text-white/30 uppercase">Cash</span>
+          <span className="text-sm text-white/80">${cash.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
         </div>
-        <div>
-          <div className="text-[10px] text-white/30 uppercase">Unrealized</div>
-          <div className={`text-sm ${unrealizedPnl >= 0 ? "text-green-400/80" : "text-red-400/80"}`}>
+        <div className="flex justify-between">
+          <span className="text-[10px] text-white/30 uppercase">Invested</span>
+          <span className="text-sm text-white/80">${invested.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[10px] text-white/30 uppercase">Unrealized</span>
+          <span className={`text-sm ${unrealizedPnl >= 0 ? "text-green-400/80" : "text-red-400/80"}`}>
             {unrealizedPnl >= 0 ? "+" : ""}${unrealizedPnl.toFixed(2)}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[10px] text-white/30 uppercase">Realized</span>
+          <span className={`text-sm ${realizedPnl >= 0 ? "text-green-400/80" : "text-red-400/80"}`}>
+            {realizedPnl >= 0 ? "+" : ""}${realizedPnl.toFixed(2)}
+          </span>
+        </div>
+        {/* Progress bar: equity vs initial */}
+        <div className="pt-2">
+          <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${totalPnl >= 0 ? "bg-green-500" : "bg-red-500"}`}
+              style={{ width: `${Math.min(Math.max((equity / initialCapital) * 100, 5), 150)}%` }}
+            />
+          </div>
+          <div className="flex justify-between mt-1">
+            <span className="text-[9px] text-white/15">$0</span>
+            <span className="text-[9px] text-white/15">${initialCapital.toLocaleString()}</span>
           </div>
         </div>
       </div>

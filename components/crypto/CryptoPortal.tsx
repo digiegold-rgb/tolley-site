@@ -9,6 +9,7 @@ import EquityChart from "./EquityChart";
 import TradeHistory from "./TradeHistory";
 import PredictionScorecard from "./PredictionScorecard";
 import BotStatusBar from "./BotStatusBar";
+import PriceGrid from "./PriceGrid";
 
 type Tab = "overview" | "strategies" | "trades" | "predictions";
 
@@ -92,7 +93,7 @@ export default function CryptoPortal({
   const [liveData, setLiveData] = useState<any>(null);
   const [engineOnline, setEngineOnline] = useState(false);
 
-  // Poll live engine data every 30s
+  // Poll live engine data every 15s
   useEffect(() => {
     const fetchLive = async () => {
       try {
@@ -109,20 +110,26 @@ export default function CryptoPortal({
       }
     };
     fetchLive();
-    const interval = setInterval(fetchLive, 30000);
+    const interval = setInterval(fetchLive, 15000);
     return () => clearInterval(interval);
   }, []);
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: "overview", label: "Overview" },
-    { key: "strategies", label: "Strategies" },
-    { key: "trades", label: "Trades" },
-    { key: "predictions", label: "Predictions" },
-  ];
-
   const currentEquity = liveData?.equity ?? snapshot?.equity ?? 0;
+  const currentCash = liveData?.cash ?? snapshot?.cash ?? 0;
   const currentRegime = liveData?.regime ?? snapshot?.regime ?? "UNKNOWN";
   const currentMode = liveData?.mode ?? snapshot?.engineMode ?? "paper";
+  const initialCapital = 10000;
+  const totalReturn = ((currentEquity - initialCapital) / initialCapital) * 100;
+  const positions = liveData?.positions ?? [];
+  const prices = liveData?.prices ?? snapshot?.metadata?.prices ?? {};
+  const livePredictions = liveData?.predictions ?? [];
+
+  const tabs: { key: Tab; label: string; count?: number }[] = [
+    { key: "overview", label: "Overview" },
+    { key: "strategies", label: "Strategies", count: Object.keys(liveData?.strategies ?? {}).length || strategies.length },
+    { key: "trades", label: "Trades", count: trades.length },
+    { key: "predictions", label: "Predictions", count: predictions.length || livePredictions.length },
+  ];
 
   return (
     <div>
@@ -130,6 +137,9 @@ export default function CryptoPortal({
         online={engineOnline}
         mode={currentMode}
         uptime={liveData?.uptime_seconds}
+        trackedSymbols={liveData?.tracked_symbols ?? Object.keys(prices).length}
+        openPositions={liveData?.open_positions ?? snapshot?.openPositions ?? 0}
+        totalReturn={totalReturn}
       />
 
       {/* Tab bar */}
@@ -138,26 +148,31 @@ export default function CryptoPortal({
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`px-4 py-2 text-sm rounded-t-lg transition-colors ${
+            className={`px-4 py-2 text-sm rounded-t-lg transition-colors flex items-center gap-2 ${
               tab === t.key
                 ? "bg-amber-500/10 text-amber-400 border-b-2 border-amber-400"
                 : "text-white/40 hover:text-white/60"
             }`}
           >
             {t.label}
+            {t.count != null && t.count > 0 && (
+              <span className="text-[10px] bg-white/5 px-1.5 py-0.5 rounded-full">{t.count}</span>
+            )}
           </button>
         ))}
       </div>
 
       {tab === "overview" && (
         <div className="space-y-6">
+          {/* Row 1: Portfolio + Regime + Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <PortfolioCard
               equity={currentEquity}
-              cash={liveData?.cash ?? snapshot?.cash ?? 0}
+              cash={currentCash}
               unrealizedPnl={liveData?.unrealized_pnl ?? snapshot?.unrealizedPnl ?? 0}
               realizedPnl={liveData?.realized_pnl ?? snapshot?.realizedPnl ?? 0}
               mode={currentMode}
+              initialCapital={initialCapital}
             />
             <RegimeIndicator regime={currentRegime} />
             <div className="crypto-card">
@@ -166,11 +181,11 @@ export default function CryptoPortal({
                 <div className="flex justify-between">
                   <span className="text-sm text-white/60">Open Positions</span>
                   <span className="text-sm text-white font-medium">
-                    {liveData?.open_positions ?? snapshot?.openPositions ?? 0}
+                    {positions.length}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-white/60">Total Trades</span>
+                  <span className="text-sm text-white/60">Closed Trades</span>
                   <span className="text-sm text-white font-medium">
                     {liveData?.total_trades ?? trades.filter((t) => t.status === "closed").length}
                   </span>
@@ -181,20 +196,46 @@ export default function CryptoPortal({
                     {liveData
                       ? Object.values(liveData.strategies || {}).filter((s: any) => s.active).length
                       : strategies.filter((s) => s.status === "active").length}
+                    /{Object.keys(liveData?.strategies ?? {}).length || 4}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-white/60">Symbols Tracked</span>
+                  <span className="text-sm text-white font-medium">
+                    {liveData?.tracked_symbols ?? Object.keys(prices).length}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-white/60">AI Predictions</span>
+                  <span className="text-sm text-white font-medium">
+                    {livePredictions.length || predictions.length}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-white/60">Total Return</span>
+                  <span className={`text-sm font-medium ${totalReturn >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    {totalReturn >= 0 ? "+" : ""}{totalReturn.toFixed(2)}%
                   </span>
                 </div>
               </div>
             </div>
           </div>
 
+          {/* Row 2: Equity Chart */}
           <EquityChart
             curve={liveData?.equity_curve}
             snapshotEquity={snapshot?.equity}
+            initialCapital={initialCapital}
           />
 
-          <PositionTable
-            positions={liveData?.positions ?? []}
+          {/* Row 3: Live Prices Grid */}
+          <PriceGrid
+            prices={prices}
+            predictions={livePredictions}
           />
+
+          {/* Row 4: Open Positions */}
+          <PositionTable positions={positions} />
         </div>
       )}
 
@@ -211,7 +252,10 @@ export default function CryptoPortal({
       )}
 
       {tab === "predictions" && (
-        <PredictionScorecard predictions={predictions} />
+        <PredictionScorecard
+          predictions={predictions}
+          livePredictions={livePredictions}
+        />
       )}
     </div>
   );
