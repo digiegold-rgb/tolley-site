@@ -14,8 +14,9 @@ import OptimizerHistory from "./OptimizerHistory";
 import dynamic from "next/dynamic";
 
 const MarketIntel = dynamic(() => import("./MarketIntel"), { ssr: false });
+const CryptoWorkflow = dynamic(() => import("./CryptoWorkflow"), { ssr: false });
 
-type Tab = "overview" | "strategies" | "trades" | "predictions" | "market" | "optimizer";
+type Tab = "overview" | "strategies" | "trades" | "predictions" | "market" | "optimizer" | "workflow";
 
 interface Snapshot {
   equity: number;
@@ -151,6 +152,7 @@ export default function CryptoPortal({
     { key: "predictions", label: "Predictions", count: predictions.length || livePredictions.length },
     { key: "market", label: "Market Intel" },
     { key: "optimizer", label: "Optimizer", count: optimizerHistory.length },
+    { key: "workflow", label: "Workflow" },
   ];
 
   return (
@@ -287,6 +289,8 @@ export default function CryptoPortal({
       {tab === "optimizer" && (
         <OptimizerHistory history={optimizerHistory} />
       )}
+
+      {tab === "workflow" && <CryptoWorkflow liveData={liveData} engineOnline={engineOnline} />}
     </div>
   );
 }
