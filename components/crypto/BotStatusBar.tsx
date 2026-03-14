@@ -7,6 +7,9 @@ interface Props {
   trackedSymbols?: number;
   openPositions?: number;
   totalReturn?: number;
+  proxyEnabled?: boolean;
+  dataSources?: number;
+  tier4Count?: number;
 }
 
 function formatUptime(seconds?: number): string {
@@ -19,7 +22,7 @@ function formatUptime(seconds?: number): string {
   return `${m}m`;
 }
 
-export default function BotStatusBar({ online, mode, uptime, trackedSymbols, openPositions, totalReturn }: Props) {
+export default function BotStatusBar({ online, mode, uptime, trackedSymbols, openPositions, totalReturn, proxyEnabled, dataSources, tier4Count }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-6 py-2 px-4 rounded-lg bg-white/[0.02] border border-white/5">
       <div className="flex items-center gap-2">
@@ -61,6 +64,22 @@ export default function BotStatusBar({ online, mode, uptime, trackedSymbols, ope
           <span className="text-xs text-white/10">|</span>
           <span className={`text-xs font-medium ${totalReturn >= 0 ? "text-green-400" : "text-red-400"}`}>
             {totalReturn >= 0 ? "+" : ""}{totalReturn.toFixed(2)}% return
+          </span>
+        </>
+      )}
+      {proxyEnabled != null && (
+        <>
+          <span className="text-xs text-white/10">|</span>
+          <span className="text-xs text-white/50">
+            VPN: <span className={proxyEnabled ? "text-green-400" : "text-white/30"}>{proxyEnabled ? "Mullvad" : "Off"}</span>
+          </span>
+        </>
+      )}
+      {tier4Count != null && tier4Count > 0 && (
+        <>
+          <span className="text-xs text-white/10">|</span>
+          <span className="text-xs text-amber-400/70">
+            {tier4Count} degen
           </span>
         </>
       )}

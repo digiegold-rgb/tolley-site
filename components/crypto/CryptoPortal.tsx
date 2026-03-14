@@ -10,8 +10,12 @@ import TradeHistory from "./TradeHistory";
 import PredictionScorecard from "./PredictionScorecard";
 import BotStatusBar from "./BotStatusBar";
 import PriceGrid from "./PriceGrid";
+import OptimizerHistory from "./OptimizerHistory";
+import dynamic from "next/dynamic";
 
-type Tab = "overview" | "strategies" | "trades" | "predictions";
+const MarketIntel = dynamic(() => import("./MarketIntel"), { ssr: false });
+
+type Tab = "overview" | "strategies" | "trades" | "predictions" | "market" | "optimizer";
 
 interface Snapshot {
   equity: number;
@@ -92,6 +96,7 @@ export default function CryptoPortal({
   const [predictions, setPredictions] = useState(initialPredictions);
   const [liveData, setLiveData] = useState<any>(null);
   const [engineOnline, setEngineOnline] = useState(false);
+  const [optimizerHistory, setOptimizerHistory] = useState<any[]>([]);
 
   // Poll live engine data every 15s
   useEffect(() => {
@@ -114,6 +119,21 @@ export default function CryptoPortal({
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch optimizer history on tab switch
+  useEffect(() => {
+    if (tab !== "optimizer") return;
+    const fetchOptimizer = async () => {
+      try {
+        const res = await fetch("/api/crypto/optimizer");
+        if (res.ok) {
+          const data = await res.json();
+          setOptimizerHistory(data.history || []);
+        }
+      } catch {}
+    };
+    fetchOptimizer();
+  }, [tab]);
+
   const currentEquity = liveData?.equity ?? snapshot?.equity ?? 0;
   const currentCash = liveData?.cash ?? snapshot?.cash ?? 0;
   const currentRegime = liveData?.regime ?? snapshot?.regime ?? "UNKNOWN";
@@ -129,6 +149,8 @@ export default function CryptoPortal({
     { key: "strategies", label: "Strategies", count: Object.keys(liveData?.strategies ?? {}).length || strategies.length },
     { key: "trades", label: "Trades", count: trades.length },
     { key: "predictions", label: "Predictions", count: predictions.length || livePredictions.length },
+    { key: "market", label: "Market Intel" },
+    { key: "optimizer", label: "Optimizer", count: optimizerHistory.length },
   ];
 
   return (
@@ -140,6 +162,8 @@ export default function CryptoPortal({
         trackedSymbols={liveData?.tracked_symbols ?? Object.keys(prices).length}
         openPositions={liveData?.open_positions ?? snapshot?.openPositions ?? 0}
         totalReturn={totalReturn}
+        proxyEnabled={liveData?.data_sources?.proxy?.enabled}
+        tier4Count={liveData?.tier4_degen?.length}
       />
 
       {/* Tab bar */}
@@ -256,6 +280,12 @@ export default function CryptoPortal({
           predictions={predictions}
           livePredictions={livePredictions}
         />
+      )}
+
+      {tab === "market" && <MarketIntel />}
+
+      {tab === "optimizer" && (
+        <OptimizerHistory history={optimizerHistory} />
       )}
     </div>
   );

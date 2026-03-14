@@ -37,3 +37,66 @@ export async function triggerKillSwitch() {
   if (!res.ok) throw new Error(`Kill switch failed: ${res.status}`);
   return res.json();
 }
+
+export async function fetchMarketOverview() {
+  const res = await fetch(`${ENGINE_URL}/market/overview`, {
+    headers: { "x-sync-secret": SYNC_SECRET },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`Market overview failed: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchGainersLosers(limit = 10) {
+  const res = await fetch(`${ENGINE_URL}/market/gainers-losers?limit=${limit}`, {
+    headers: { "x-sync-secret": SYNC_SECRET },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`Gainers/losers failed: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchFuturesData() {
+  const res = await fetch(`${ENGINE_URL}/market/futures`, {
+    headers: { "x-sync-secret": SYNC_SECRET },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`Futures data failed: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchDiscovery() {
+  const res = await fetch(`${ENGINE_URL}/discovery`, {
+    headers: { "x-sync-secret": SYNC_SECRET },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw new Error(`Discovery failed: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchTVSignals() {
+  const res = await fetch(`${ENGINE_URL}/signals/tv`, {
+    headers: { "x-sync-secret": SYNC_SECRET },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw new Error(`TV signals failed: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchSentiment() {
+  const res = await fetch(`${ENGINE_URL}/sentiment`, {
+    headers: { "x-sync-secret": SYNC_SECRET },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw new Error(`Sentiment failed: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchDataSources() {
+  const res = await fetch(`${ENGINE_URL}/data-sources`, {
+    headers: { "x-sync-secret": SYNC_SECRET },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw new Error(`Data sources failed: ${res.status}`);
+  return res.json();
+}
