@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. Sync closed trades
-    const tradesRes = await fetch(`${engineUrl}/trades?limit=20`, {
+    const tradesRes = await fetch(`${engineUrl}/trades?limit=50`, {
       headers: { "x-sync-secret": syncSecret },
       signal: AbortSignal.timeout(10000),
     });
@@ -78,7 +78,6 @@ export async function GET(request: NextRequest) {
     if (tradesRes.ok) {
       const { trades } = await tradesRes.json();
       for (const t of trades || []) {
-        // Use entered_at + symbol as unique key to avoid duplicates
         const existing = await prisma.cryptoTrade.findFirst({
           where: {
             symbol: t.symbol,
@@ -104,6 +103,43 @@ export async function GET(request: NextRequest) {
               regime: t.regime || null,
               enteredAt: new Date(t.entered_at),
               exitedAt: t.exited_at ? new Date(t.exited_at) : null,
+            },
+          });
+        }
+      }
+    }
+
+    // 4b. Sync AI predictions
+    if (status.predictions && Array.isArray(status.predictions)) {
+      for (const p of status.predictions) {
+        // Find existing pending prediction for this symbol
+        const existing = await prisma.cryptoPrediction.findFirst({
+          where: { asset: p.symbol, status: "pending" },
+          orderBy: { createdAt: "desc" },
+        });
+
+        if (existing) {
+          await prisma.cryptoPrediction.update({
+            where: { id: existing.id },
+            data: {
+              direction: p.direction,
+              confidence: p.confidence,
+              targetPrice: p.target_price,
+              currentPrice: p.current_price,
+              rationale: p.rationale || null,
+              targetDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            },
+          });
+        } else {
+          await prisma.cryptoPrediction.create({
+            data: {
+              asset: p.symbol,
+              direction: p.direction,
+              confidence: p.confidence,
+              targetPrice: p.target_price,
+              currentPrice: p.current_price,
+              rationale: p.rationale || null,
+              targetDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
             },
           });
         }
