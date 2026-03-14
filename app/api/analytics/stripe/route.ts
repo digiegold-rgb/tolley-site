@@ -2,13 +2,12 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getStripeClient } from "@/lib/stripe";
 
+export const maxDuration = 60; // pagination can take a bit
+
 // WD price IDs
 const WD_BUNDLE_PRICE = "price_1Rxey029zOZYc3GpfoFkUbmv"; // $58/mo
 const WD_WASHER_PRICE = "price_1SB0UF29zOZYc3GpYYrlpCFe"; // $42/mo
 const WD_PRICES = new Set([WD_BUNDLE_PRICE, WD_WASHER_PRICE]);
-
-const STRIPE_FEE_RATE = 0.029; // 2.9%
-const STRIPE_FEE_FIXED = 30; // $0.30 in cents
 
 export async function GET() {
   const session = await auth();
@@ -18,12 +17,28 @@ export async function GET() {
 
   const stripe = getStripeClient();
 
-  // Fetch all data in parallel
-  const [balance, subscriptions, recentCharges] = await Promise.all([
-    stripe.balance.retrieve(),
-    stripe.subscriptions.list({ limit: 100, status: "all", expand: ["data.customer"] }),
-    stripe.charges.list({ limit: 100 }),
-  ]);
+  // ─── Fetch balance ───
+  const balance = await stripe.balance.retrieve();
+
+  // ─── Paginate ALL subscriptions ───
+  const allSubs: Awaited<ReturnType<typeof stripe.subscriptions.list>>["data"] = [];
+  for await (const sub of stripe.subscriptions.list({ limit: 100, status: "all", expand: ["data.customer"] })) {
+    allSubs.push(sub);
+  }
+
+  // ─── Paginate ALL charges (complete history) ───
+  const allCharges: { amount: number; status: string; paid: boolean; created: number; fee: number }[] = [];
+  for await (const charge of stripe.charges.list({ limit: 100, expand: ["data.balance_transaction"] })) {
+    const bt = charge.balance_transaction;
+    const fee = typeof bt === "object" && bt !== null ? (bt.fee || 0) : 0;
+    allCharges.push({
+      amount: charge.amount,
+      status: charge.status,
+      paid: charge.paid,
+      created: charge.created,
+      fee,
+    });
+  }
 
   // ─── Balance ───
   const available = balance.available.reduce((s, b) => s + b.amount, 0);
@@ -31,7 +46,6 @@ export async function GET() {
   const instantAvailable = (balance.instant_available || []).reduce((s, b) => s + b.amount, 0);
 
   // ─── Filter WD subscriptions ───
-  const allSubs = subscriptions.data;
   const wdSubs = allSubs.filter((s) =>
     s.items.data.some((i) => WD_PRICES.has(i.price.id)),
   );
@@ -57,7 +71,7 @@ export async function GET() {
   }
 
   // ─── MRR ───
-  const wdMrr = bundleCount * 5800 + washerCount * 4200; // in cents
+  const wdMrr = bundleCount * 5800 + washerCount * 4200;
   const otherActiveSubs = otherSubs.filter((s) => ["active", "trialing"].includes(s.status));
   const otherMrr = otherActiveSubs.reduce((sum, s) => {
     return sum + s.items.data.reduce((is, item) => {
@@ -68,13 +82,10 @@ export async function GET() {
     }, 0);
   }, 0);
 
-  // ─── Revenue from charges (last 100) ───
-  const succeededCharges = recentCharges.data.filter((c) => c.status === "succeeded" && c.paid);
+  // ─── Revenue from ALL charges (real fees from balance_transaction) ───
+  const succeededCharges = allCharges.filter((c) => c.status === "succeeded" && c.paid);
   const totalRevenue = succeededCharges.reduce((s, c) => s + c.amount, 0);
-  const totalFees = succeededCharges.reduce(
-    (s, c) => s + Math.round(c.amount * STRIPE_FEE_RATE + STRIPE_FEE_FIXED),
-    0,
-  );
+  const totalFees = succeededCharges.reduce((s, c) => s + c.fee, 0);
 
   // Revenue by month
   const revenueByMonth: Record<string, { revenue: number; fees: number; count: number }> = {};
@@ -83,21 +94,17 @@ export async function GET() {
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     if (!revenueByMonth[key]) revenueByMonth[key] = { revenue: 0, fees: 0, count: 0 };
     revenueByMonth[key].revenue += c.amount;
-    revenueByMonth[key].fees += Math.round(c.amount * STRIPE_FEE_RATE + STRIPE_FEE_FIXED);
+    revenueByMonth[key].fees += c.fee;
     revenueByMonth[key].count++;
   }
 
-  // WD revenue only (filter charges by amount matching WD prices)
-  const wdCharges = succeededCharges.filter(
-    (c) => c.amount === 5800 || c.amount === 4200,
-  );
+  // WD revenue (charges matching WD prices: $42 or $58)
+  const wdAmounts = new Set([5800, 4200]);
+  const wdCharges = succeededCharges.filter((c) => wdAmounts.has(c.amount));
   const wdRevenue = wdCharges.reduce((s, c) => s + c.amount, 0);
-  const wdFees = wdCharges.reduce(
-    (s, c) => s + Math.round(c.amount * STRIPE_FEE_RATE + STRIPE_FEE_FIXED),
-    0,
-  );
+  const wdFees = wdCharges.reduce((s, c) => s + c.fee, 0);
 
-  // ─── Customer list with subscription info ───
+  // ─── Customer list ───
   const customerMap: Record<string, {
     id: string;
     name: string;
@@ -120,7 +127,6 @@ export async function GET() {
     const plan = priceId === WD_BUNDLE_PRICE ? "Bundle ($58)" : priceId === WD_WASHER_PRICE ? "Washer ($42)" : "Other";
     const amount = s.items.data[0]?.price.unit_amount || 0;
 
-    // Keep the most recent / active subscription per customer
     if (!customerMap[custId] || ["active", "past_due"].includes(s.status)) {
       customerMap[custId] = {
         id: custId,
@@ -196,5 +202,9 @@ export async function GET() {
       .sort((a, b) => a.month.localeCompare(b.month)),
     customers,
     pastDueAlerts,
+    _meta: {
+      totalChargesScanned: allCharges.length,
+      totalSubsScanned: allSubs.length,
+    },
   });
 }
