@@ -64,6 +64,12 @@ export default async function MarketsPage() {
         tickers: snapshotRow.tickers as Record<string, { price: number; change: number; changePercent: number }> | null,
         summary: snapshotRow.summary,
         updatedAt: snapshotRow.updatedAt.toISOString(),
+        momentum: snapshotRow.momentum,
+        healthDelta: snapshotRow.healthDelta,
+        kcHealthDelta: snapshotRow.kcHealthDelta,
+        sentimentBullPct: snapshotRow.sentimentBullPct,
+        sentimentBearPct: snapshotRow.sentimentBearPct,
+        articleCount: snapshotRow.articleCount,
       }
     : null;
 
@@ -93,7 +99,7 @@ export default async function MarketsPage() {
 
   return (
     <div className="min-h-screen bg-[#06050a]">
-      <div className="mx-auto max-w-6xl px-4 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8">
         {/* Top nav */}
         <nav className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">

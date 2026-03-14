@@ -1,5 +1,8 @@
 "use client";
 
+import IndicatorSparkline from "./charts/IndicatorSparkline";
+import type { SnapshotHistoryPoint } from "./hooks/useMarketData";
+
 interface DataPoint {
   id: string;
   type: string;
@@ -8,17 +11,41 @@ interface DataPoint {
   changePercent?: number;
   signal?: string;
   tags?: string[];
+  createdAt?: string;
 }
 
 interface Props {
-  /** Legacy snapshot props (still used for the 4 main cards) */
   unemployment: number | null;
   cpi: number | null;
   consumerSentiment: number | null;
   housingStarts: number | null;
-  /** All economic indicator data points for the expanded view */
   dataPoints?: DataPoint[];
+  snapshotHistory?: SnapshotHistoryPoint[];
 }
+
+const INDICATOR_FREQUENCY: Record<string, number> = {
+  fedfunds: 1, unrate: 30, payems: 30, icsa: 7,
+  cpiaucsl: 30, umcsent: 30, cscicp03usm665s: 30,
+  gdpc1: 90, m2sl: 30, mspus: 90, csushpisa: 30,
+  houst: 30, permit: 30, msacsr: 30,
+  rrvrusq156n: 90, rhorusq156n: 90, t10y2y: 1, dexuseu: 1,
+};
+
+function getFreshnessStatus(lastUpdated: string | undefined, tag: string): "fresh" | "overdue" | "stale" {
+  if (!lastUpdated) return "stale";
+  const freq = INDICATOR_FREQUENCY[tag] || 30;
+  const ageDays = (Date.now() - new Date(lastUpdated).getTime()) / 86400000;
+  const ratio = ageDays / freq;
+  if (ratio <= 1.2) return "fresh";
+  if (ratio <= 2.5) return "overdue";
+  return "stale";
+}
+
+const FRESHNESS_COLORS: Record<string, string> = {
+  fresh: "bg-green-400",
+  overdue: "bg-amber-400",
+  stale: "bg-red-400",
+};
 
 function IndicatorCard({
   label,
@@ -26,12 +53,16 @@ function IndicatorCard({
   format,
   change,
   signal,
+  sparkData,
+  freshness,
 }: {
   label: string;
   value: number | null;
   format: (v: number) => string;
   change?: number;
   signal?: string;
+  sparkData?: number[];
+  freshness?: "fresh" | "overdue" | "stale";
 }) {
   const signalColors: Record<string, string> = {
     buy: "text-green-400",
@@ -42,11 +73,21 @@ function IndicatorCard({
 
   return (
     <div className="rounded-lg bg-white/5 border border-white/5 p-3">
-      <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1 truncate" title={label}>
-        {label}
+      <div className="flex items-center justify-between mb-1">
+        <div className="text-[10px] text-white/40 uppercase tracking-wider truncate" title={label}>
+          {label}
+        </div>
+        {freshness && (
+          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${FRESHNESS_COLORS[freshness]}`} title={freshness} />
+        )}
       </div>
-      <div className="text-lg font-bold text-white">
-        {value !== null ? format(value) : "—"}
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-lg font-bold text-white">
+          {value !== null ? format(value) : "—"}
+        </div>
+        {sparkData && sparkData.length >= 2 && (
+          <IndicatorSparkline data={sparkData} width={60} height={20} />
+        )}
       </div>
       {(change !== undefined || signal) && (
         <div className="flex items-center gap-2 mt-1">
@@ -66,7 +107,14 @@ function IndicatorCard({
   );
 }
 
-// Group indicators into categories for display
+// Mapping from tag to snapshot field for sparkline data
+const TAG_TO_SNAPSHOT_FIELD: Record<string, keyof SnapshotHistoryPoint> = {
+  unrate: "unemployment",
+  cpiaucsl: "cpi",
+  umcsent: "consumerSentiment",
+  houst: "housingStarts",
+};
+
 const CATEGORIES: { label: string; tags: string[]; format: (v: number) => string }[] = [
   { label: "Fed Funds Rate", tags: ["fedfunds"], format: (v) => `${v.toFixed(2)}%` },
   { label: "Unemployment", tags: ["unrate"], format: (v) => `${v.toFixed(1)}%` },
@@ -94,6 +142,7 @@ export default function EconomicIndicators({
   consumerSentiment,
   housingStarts,
   dataPoints,
+  snapshotHistory,
 }: Props) {
   // If we have data points, use the full grid
   if (dataPoints && dataPoints.length > 0) {
@@ -101,21 +150,34 @@ export default function EconomicIndicators({
       const dp = dataPoints.find((d) =>
         d.tags?.some((t) => cat.tags.includes(t))
       );
-      return dp
-        ? {
-            label: cat.label,
-            value: dp.numericValue ?? null,
-            format: cat.format,
-            change: dp.changePercent,
-            signal: dp.signal,
-          }
-        : null;
+      if (!dp) return null;
+
+      const tag = cat.tags[0];
+      const field = TAG_TO_SNAPSHOT_FIELD[tag];
+      let sparkData: number[] | undefined;
+      if (field && snapshotHistory) {
+        sparkData = snapshotHistory
+          .map((s) => s[field] as number | null)
+          .filter((v): v is number => v !== null);
+      }
+
+      return {
+        label: cat.label,
+        value: dp.numericValue ?? null,
+        format: cat.format,
+        change: dp.changePercent,
+        signal: dp.signal,
+        sparkData,
+        freshness: getFreshnessStatus(dp.createdAt, tag),
+      };
     }).filter(Boolean) as {
       label: string;
       value: number | null;
       format: (v: number) => string;
       change?: number;
       signal?: string;
+      sparkData?: number[];
+      freshness?: "fresh" | "overdue" | "stale";
     }[];
 
     if (indicators.length > 0) {

@@ -85,10 +85,12 @@ async function resolveYouTubeChannelId(channelUrl: string): Promise<{ channelId:
   const html = await res.text();
 
   // Extract channel ID from various patterns in the HTML
+  // Prefer "externalId" — it is the page channel's own ID.
+  // "channelId" often belongs to a featured/embedded video's channel.
   const channelIdMatch =
-    html.match(/"channelId":"(UC[\w-]{22})"/) ||
-    html.match(/channel_id=(UC[\w-]{22})/) ||
+    html.match(/"externalId":"(UC[\w-]{22})"/) ||
     html.match(/<meta itemprop="channelId" content="(UC[\w-]{22})"/) ||
+    html.match(/channel_id=(UC[\w-]{22})/) ||
     html.match(/youtube\.com\/channel\/(UC[\w-]{22})/);
 
   if (!channelIdMatch?.[1]) {

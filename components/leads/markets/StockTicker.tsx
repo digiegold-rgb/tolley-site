@@ -1,5 +1,8 @@
 "use client";
 
+import StockSparkline from "./charts/StockSparkline";
+import type { SnapshotHistoryPoint } from "./hooks/useMarketData";
+
 interface TickerData {
   price: number;
   change: number;
@@ -8,9 +11,10 @@ interface TickerData {
 
 interface Props {
   tickers: Record<string, TickerData> | null;
+  snapshotHistory?: SnapshotHistoryPoint[];
 }
 
-export default function StockTicker({ tickers }: Props) {
+export default function StockTicker({ tickers, snapshotHistory }: Props) {
   if (!tickers || Object.keys(tickers).length === 0) {
     return (
       <div className="text-center py-4 text-white/30 text-xs">
@@ -19,16 +23,35 @@ export default function StockTicker({ tickers }: Props) {
     );
   }
 
+  // Build historical price arrays per ticker from snapshots
+  const tickerHistory: Record<string, number[]> = {};
+  if (snapshotHistory) {
+    for (const snap of snapshotHistory) {
+      if (snap.tickers && typeof snap.tickers === "object") {
+        const t = snap.tickers as Record<string, { price: number }>;
+        for (const [sym, data] of Object.entries(t)) {
+          if (data?.price) {
+            (tickerHistory[sym] ||= []).push(data.price);
+          }
+        }
+      }
+    }
+  }
+
   return (
     <div className="flex flex-wrap gap-3">
       {Object.entries(tickers).map(([symbol, data]) => {
         const isUp = data.changePercent >= 0;
+        const history = tickerHistory[symbol] || [];
         return (
           <div
             key={symbol}
             className="flex items-center gap-2 rounded-lg bg-white/5 border border-white/5 px-3 py-2"
           >
             <span className="text-xs font-bold text-white">{symbol}</span>
+            {history.length >= 2 && (
+              <StockSparkline data={history} width={60} height={20} />
+            )}
             <span className="text-sm text-white/80">${data.price.toFixed(2)}</span>
             <span className={`text-xs font-medium ${isUp ? "text-green-400" : "text-red-400"}`}>
               {isUp ? "+" : ""}{data.changePercent.toFixed(2)}%

@@ -4,9 +4,10 @@ interface Props {
   label: string;
   value: number | null;
   color: string;
+  delta?: number | null;
 }
 
-export default function MarketHealthGauge({ label, value, color }: Props) {
+export default function MarketHealthGauge({ label, value, color, delta }: Props) {
   const score = value ?? 50;
   const circumference = 2 * Math.PI * 40;
   const filled = (score / 100) * circumference;
@@ -31,6 +32,17 @@ export default function MarketHealthGauge({ label, value, color }: Props) {
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-2xl font-bold text-white">{value !== null ? Math.round(score) : "—"}</span>
           <span className={`text-[10px] font-medium ${statusColor}`}>{value !== null ? statusText : "N/A"}</span>
+          {delta != null && delta !== 0 && (
+            <span className={`text-[9px] font-medium flex items-center gap-0.5 ${delta > 0 ? "text-green-400" : "text-red-400"}`}>
+              <svg className="w-2 h-2" viewBox="0 0 8 8" fill="none">
+                <path
+                  d={delta > 0 ? "M4 1L7 5H1L4 1Z" : "M4 7L1 3H7L4 7Z"}
+                  fill="currentColor"
+                />
+              </svg>
+              {delta > 0 ? "+" : ""}{delta.toFixed(1)}
+            </span>
+          )}
         </div>
       </div>
       <span className="text-xs text-white/50">{label}</span>
