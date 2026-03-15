@@ -202,7 +202,7 @@ export default function StartPage() {
   return (
     <div className="start-page">
       <SiteTracker site="start" />
-      <main className="relative z-10 mx-auto flex min-h-screen max-w-2xl flex-col items-center px-5 py-10 sm:py-14">
+      <main className="relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col items-center px-5 py-10 sm:py-14">
         {/* Sections */}
         <div className="flex w-full flex-col gap-10">
           {SECTIONS.map((section) => (
@@ -216,40 +216,38 @@ export default function StartPage() {
               </div>
 
               {/* Cards */}
-              <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {section.services.map((svc) => (
                   <Link
                     key={svc.href}
                     href={svc.href}
-                    className={`group flex items-center gap-5 rounded-2xl border ${svc.border} ${svc.bg} px-6 py-5 transition-all duration-200 hover:-translate-y-1 ${svc.glow}`}
+                    className={`group flex flex-col items-center rounded-2xl border ${svc.border} ${svc.bg} px-5 py-5 text-center transition-all duration-200 hover:-translate-y-1 ${svc.glow}`}
                   >
-                    <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-full border border-white/15 shadow-lg">
+                    <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-full border border-white/15 shadow-lg">
                       <Image
                         src={svc.image}
                         alt={svc.label}
                         fill
                         className="object-cover"
-                        sizes="48px"
+                        sizes="56px"
                       />
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xl font-bold tracking-wide text-white">
-                        {svc.label}
-                      </p>
-                      <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-                        {svc.bullets.map((b) => (
-                          <li
-                            key={b}
-                            className="text-sm text-neutral-400"
-                          >
-                            <span className="mr-1.5 text-neutral-600">&bull;</span>
-                            {b}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    <p className="mt-3 text-lg font-bold tracking-wide text-white">
+                      {svc.label}
+                    </p>
+                    <ul className="mt-1.5 flex flex-wrap justify-center gap-x-2 gap-y-1">
+                      {svc.bullets.map((b) => (
+                        <li
+                          key={b}
+                          className="text-xs text-neutral-400"
+                        >
+                          <span className="mr-1 text-neutral-600">&bull;</span>
+                          {b}
+                        </li>
+                      ))}
+                    </ul>
                     <svg
-                      className="h-5 w-5 flex-shrink-0 text-neutral-600 transition group-hover:translate-x-1 group-hover:text-white"
+                      className="mt-3 h-4 w-4 text-neutral-600 transition group-hover:translate-x-1 group-hover:text-white"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
