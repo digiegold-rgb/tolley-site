@@ -24,11 +24,17 @@ function checkAuth(req: NextRequest): boolean {
   return false;
 }
 
+function getBaseUrl(req: NextRequest): string {
+  const url = new URL(req.url);
+  return `${url.protocol}//${url.host}`;
+}
+
 export async function POST(req: NextRequest) {
   if (!checkAuth(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const baseUrl = getBaseUrl(req);
   const runId = await startScanRun("leads", { source: "auto-scan" });
   const results = {
     regridScan: null as Record<string, unknown> | null,
@@ -57,7 +63,6 @@ export async function POST(req: NextRequest) {
 
     if (allZips.size > 0) {
       try {
-        const baseUrl = process.env.NEXTAUTH_URL || `https://${process.env.VERCEL_URL}` || "http://localhost:3000";
         const scanRes = await fetch(`${baseUrl}/api/regrid/scan`, {
           method: "POST",
           headers: {
@@ -203,7 +208,6 @@ export async function POST(req: NextRequest) {
     // ── Step 4: Process queued dossier jobs ──
     // Fire-and-forget: call the dossier process endpoint
     try {
-      const baseUrl = process.env.NEXTAUTH_URL || `https://${process.env.VERCEL_URL}` || "http://localhost:3000";
       const processRes = await fetch(`${baseUrl}/api/leads/dossier/process?limit=5`, {
         method: "POST",
         headers: { "x-sync-secret": process.env.SYNC_SECRET || "" },
