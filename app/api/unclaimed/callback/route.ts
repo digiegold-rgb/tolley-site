@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { computeCompliance } from "@/lib/unclaimed/compliance";
 import type { Jurisdiction, SourceType } from "@/lib/unclaimed/compliance";
+import { logScanActivity } from "@/lib/scan/log";
 
 const SYNC_SECRET = process.env.SYNC_SECRET || "";
 
@@ -128,6 +129,20 @@ export async function POST(req: Request) {
   console.log(
     `[unclaimed/callback] Scan ${scanId}: ${totalFound} funds, $${claimableAmount.toFixed(2)} claimable`
   );
+
+  if (totalFound > 0) {
+    await logScanActivity("unclaimed", `Unclaimed scan: ${totalFound} funds found, $${claimableAmount.toFixed(0)} claimable`, {
+      event: "discovery",
+      severity: claimableAmount >= 500 ? "alert" : "success",
+      meta: { scanId, totalFound, claimableAmount, ownerName: scan.ownerName },
+    });
+  } else {
+    await logScanActivity("unclaimed", `Unclaimed scan complete: no funds found for "${scan.ownerName}"`, {
+      event: "scan_complete",
+      severity: "info",
+      meta: { scanId, ownerName: scan.ownerName },
+    });
+  }
 
   return NextResponse.json({ ok: true, totalFound, claimableAmount });
 }

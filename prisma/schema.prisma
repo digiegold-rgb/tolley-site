@@ -1740,3 +1740,49 @@ model TradingCapitalFlow {
   createdAt     DateTime  @default(now())
   @@index([assetClass, flowType])
 }
+
+// ── Scan Command Center ──────────────────────────────
+
+model ScanActivity {
+  id        String   @id @default(cuid())
+  scanner   String   // leads, arbitrage, products, unclaimed, markets
+  event     String   // discovery, alert, error, scan_complete
+  title     String
+  detail    String?
+  severity  String   @default("info") // info, success, warning, alert
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([scanner, createdAt])
+  @@index([severity, createdAt])
+  @@index([createdAt])
+}
+
+model ScanRun {
+  id          String    @id @default(cuid())
+  scanner     String    // leads, arbitrage, products, unclaimed, markets
+  status      String    @default("running") // running, complete, failed
+  itemsFound  Int       @default(0)
+  alertsGen   Int       @default(0)
+  duration    Int?      // ms
+  error       String?
+  meta        Json?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([scanner, startedAt])
+  @@index([status])
+}
+
+model ScanRevenue {
+  id        String   @id @default(cuid())
+  scanner   String
+  event     String   // lead_converted, item_sold, claim_paid, subscription_new
+  amount    Float    // revenue in USD
+  sourceId  String?
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([scanner, createdAt])
+  @@index([createdAt])
+}

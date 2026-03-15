@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { DISCONTINUED_SKUS } from "@/lib/pool-discontinued-skus";
+import { logScanActivity, startScanRun, completeScanRun } from "@/lib/scan/log";
 
 interface SyncProduct {
   sku: string;
@@ -44,11 +45,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const runId = await startScanRun("products", { source: "pool360-sync" });
+
   try {
     const body = await request.json();
     const products: SyncProduct[] = body.products;
 
     if (!Array.isArray(products) || products.length === 0) {
+      await completeScanRun(runId, { error: "No products in sync payload" });
       return NextResponse.json({ error: "products array required" }, { status: 400 });
     }
 
@@ -138,10 +142,27 @@ export async function POST(request: NextRequest) {
 
     revalidatePath("/pools");
 
+    await completeScanRun(runId, { itemsFound: created + updated });
+    const oosCount = products.filter((p) => p.stockQty != null && p.stockQty <= 0).length;
+    await logScanActivity("products", `Pool360 sync: ${created} new, ${updated} updated, ${skipped} skipped`, {
+      event: "scan_complete",
+      severity: created > 0 ? "success" : "info",
+      meta: { created, updated, skipped, oosCount, errorCount: errors.length },
+    });
+
+    if (oosCount > 0) {
+      await logScanActivity("products", `${oosCount} products out of stock`, {
+        event: "alert",
+        severity: "warning",
+      });
+    }
+
     return NextResponse.json({ created, updated, skipped, errors });
   } catch (err) {
     console.error("[pools/sync POST]", err);
     const message = err instanceof Error ? err.message : "Unknown error";
+    await completeScanRun(runId, { error: message });
+    await logScanActivity("products", `Pool360 sync failed: ${message}`, { event: "error", severity: "alert" });
     return NextResponse.json({ error: "Bad request", detail: message }, { status: 400 });
   }
 }

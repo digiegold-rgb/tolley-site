@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { logScanActivity, startScanRun, completeScanRun } from "@/lib/scan/log";
 
 const prisma = new PrismaClient();
 
@@ -27,6 +28,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "REGRID_API_TOKEN not configured" }, { status: 500 });
   }
 
+  const runId = await startScanRun("leads", { source: "regrid-cron" });
+
   try {
     // Collect all unique farm zips from active subscribers
     const subscribers = await prisma.leadSubscriber.findMany({
@@ -40,8 +43,12 @@ export async function GET(req: NextRequest) {
     }
 
     if (allZips.size === 0) {
+      await completeScanRun(runId, { itemsFound: 0 });
+      await logScanActivity("leads", "Regrid scan: no farm areas configured", { event: "scan_complete", severity: "info" });
       return NextResponse.json({ message: "No farm areas configured", scanned: 0 });
     }
+
+    await logScanActivity("leads", `Regrid scan started: ${allZips.size} zips, ${subscribers.length} subscribers`, { event: "scan_start", severity: "info" });
 
     // Call our scan endpoint internally
     const scanUrl = new URL("/api/regrid/scan", req.url);
@@ -58,6 +65,14 @@ export async function GET(req: NextRequest) {
     });
 
     const result = await res.json();
+    const itemsFound = result.parcelsFound ?? result.created ?? 0;
+
+    await completeScanRun(runId, { itemsFound });
+    await logScanActivity("leads", `Regrid scan complete: ${itemsFound} parcels found across ${allZips.size} zips`, {
+      event: "scan_complete",
+      severity: itemsFound > 0 ? "success" : "info",
+      meta: { zipsScanned: allZips.size, subscriberCount: subscribers.length, ...result },
+    });
 
     return NextResponse.json({
       message: "Weekly Regrid scan complete",
@@ -67,8 +82,11 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     console.error("[Regrid Cron]", err);
+    const errMsg = err instanceof Error ? err.message : "Cron failed";
+    await completeScanRun(runId, { error: errMsg });
+    await logScanActivity("leads", `Regrid scan failed: ${errMsg}`, { event: "error", severity: "alert" });
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Cron failed" },
+      { error: errMsg },
       { status: 500 }
     );
   }

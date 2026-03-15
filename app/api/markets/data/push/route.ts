@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { logScanActivity } from "@/lib/scan/log";
 
 export const runtime = "nodejs";
 
@@ -238,6 +239,14 @@ export async function POST(request: NextRequest) {
       },
     });
     results.snapshot = true;
+  }
+
+  if (results.dataPoints > 0 || results.signals > 0) {
+    await logScanActivity("markets", `Market data push: ${results.dataPoints} data points, ${results.signals} signals`, {
+      event: "discovery",
+      severity: results.signals > 0 ? "success" : "info",
+      meta: { dataPoints: results.dataPoints, signals: results.signals, snapshot: results.snapshot, duplicatesSkipped: results.duplicatesSkipped },
+    });
   }
 
   return NextResponse.json({ ok: true, ...results });
