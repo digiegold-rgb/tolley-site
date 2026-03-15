@@ -316,7 +316,88 @@ export default function DrivesTab() {
                                     <span>{new Date(item.fileMtime).toLocaleDateString()}</span>
                                   )}
                                 </div>
-                                {item.contentPreview && (
+
+                                {/* Extracted data: balances, explorer link, notes */}
+                                {item.extractedData && (
+                                  <div className="mt-2 space-y-1.5">
+                                    {/* Address + explorer link */}
+                                    {item.extractedData.address && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] text-white/50 font-mono">{item.extractedData.address}</span>
+                                        {item.extractedData.explorerUrl && (
+                                          <a
+                                            href={item.extractedData.explorerUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[10px] text-amber-400 hover:text-amber-300 underline"
+                                          >
+                                            View on Explorer
+                                          </a>
+                                        )}
+                                      </div>
+                                    )}
+                                    {/* Derived address (for seed phrases / private keys) */}
+                                    {!item.extractedData.address && item.extractedData.derivedAddress && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] text-white/50 font-mono">Derives to: {item.extractedData.derivedAddress}</span>
+                                        {item.extractedData.explorerUrl && (
+                                          <a
+                                            href={item.extractedData.explorerUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[10px] text-amber-400 hover:text-amber-300 underline"
+                                          >
+                                            View on Explorer
+                                          </a>
+                                        )}
+                                      </div>
+                                    )}
+                                    {/* On-chain balances */}
+                                    <div className="flex flex-wrap gap-2">
+                                      {typeof item.extractedData.balanceETH === "number" && item.extractedData.balanceETH > 0 && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-medium">
+                                          {item.extractedData.balanceETH} ETH
+                                        </span>
+                                      )}
+                                      {typeof item.extractedData.balanceWTC === "number" && item.extractedData.balanceWTC > 0 && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 font-medium">
+                                          {item.extractedData.balanceWTC} WTC
+                                        </span>
+                                      )}
+                                      {typeof item.extractedData.balanceBTC === "number" && item.extractedData.balanceBTC > 0 && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 font-medium">
+                                          {item.extractedData.balanceBTC} BTC
+                                        </span>
+                                      )}
+                                      {item.extractedData.needsPassword && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400/70 border border-yellow-500/20">
+                                          Needs Password
+                                        </span>
+                                      )}
+                                      {item.extractedData.hasSeedPhrase && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                                          Has Seed Phrase
+                                        </span>
+                                      )}
+                                      {item.extractedData.hasPrivateKey && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">
+                                          Has Private Key
+                                        </span>
+                                      )}
+                                    </div>
+                                    {/* Label */}
+                                    {item.extractedData.label && (
+                                      <p className="text-[10px] text-white/50">{item.extractedData.label}</p>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Notes */}
+                                {item.notes && (
+                                  <p className="text-[10px] text-amber-400/60 mt-1.5 italic">{item.notes}</p>
+                                )}
+
+                                {item.contentPreview && !item.extractedData && (
                                   <pre className="text-[10px] text-white/40 bg-black/30 rounded p-2 mt-2 overflow-x-auto whitespace-pre-wrap break-all max-h-20">
                                     {item.contentPreview}
                                   </pre>
