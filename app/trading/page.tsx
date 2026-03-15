@@ -72,9 +72,6 @@ export default async function TradingPage() {
             <span className="text-sm font-medium text-amber-400">Trading Platform</span>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/crypto" className="text-xs text-white/40 hover:text-white/60 transition-colors">
-              Crypto (Legacy)
-            </a>
             <a href="/markets" className="text-xs text-white/40 hover:text-white/60 transition-colors">
               Markets
             </a>

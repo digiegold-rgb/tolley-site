@@ -81,6 +81,11 @@ const nextConfig: NextConfig = {
         destination: "/pools",
         permanent: true,
       },
+      {
+        source: "/crypto",
+        destination: "/trading/crypto",
+        permanent: true,
+      },
     ];
   },
 };
