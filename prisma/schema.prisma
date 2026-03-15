@@ -1525,6 +1525,23 @@ model ArbitragePair {
   @@index([marginPercent])
 }
 
+model ArbitrageScan {
+  id             String   @id @default(cuid())
+  source         String   // ebay_completed, liquidation, fb_marketplace, bin_store
+  query          String?  // search query used
+  itemsChecked   Int      @default(0)
+  pairsFound     Int      @default(0)
+  avgMargin      Float?
+  bestMargin     Float?
+  status         String   @default("running") // running, complete, failed
+  error          String?
+  startedAt      DateTime @default(now())
+  completedAt    DateTime?
+
+  @@index([source, startedAt])
+  @@index([status])
+}
+
 // ─── Crypto Trading Engine ───
 
 model CryptoTrade {
