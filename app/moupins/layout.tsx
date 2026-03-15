@@ -20,6 +20,7 @@ export const metadata: Metadata = {
       "Same-day junk removal and moving in KC. Free quotes — message 816-442-2483.",
     type: "website",
     url: "https://www.tolley.io/moupins",
+    images: [{ url: "/moupins/opengraph-image", width: 1200, height: 630 }],
   },
 };
 

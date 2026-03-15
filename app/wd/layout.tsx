@@ -36,6 +36,7 @@ export const metadata: Metadata = {
       "Skip the laundromat. Washer and dryer rentals with free delivery, maintenance included, and no contracts. Serving the entire KC metro.",
     type: "website",
     url: "https://www.tolley.io/wd",
+    images: [{ url: "/wd/opengraph-image", width: 1200, height: 630 }],
   },
   alternates: {
     canonical: "https://www.tolley.io/wd",
