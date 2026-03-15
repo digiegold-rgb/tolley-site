@@ -104,46 +104,48 @@ async function getPeriodStats() {
   const now = new Date();
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-  // Leads: count from ScanActivity
-  const [leadActivities, arbActivities, prodActivities, unclaimedTotal, marketSignals] =
-    await Promise.all([
-      prisma.scanActivity.count({
-        where: { scanner: "leads", createdAt: { gte: dayAgo } },
-      }),
-      prisma.scanActivity.count({
-        where: { scanner: "arbitrage", createdAt: { gte: dayAgo } },
-      }),
-      prisma.scanActivity.count({
-        where: { scanner: "products", createdAt: { gte: dayAgo } },
-      }),
-      prisma.scanRevenue.aggregate({
-        _sum: { amount: true },
-        where: { scanner: "unclaimed" },
-      }),
-      prisma.marketSignal.count({
-        where: {
-          active: true,
-          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-        },
-      }),
-    ]);
-
-  // Get hot leads count (score > 70)
-  let hotLeads = 0;
-  try {
-    hotLeads = await prisma.lead.count({
-      where: { score: { gte: 70 } },
-    });
-  } catch {
-    // fallback
-  }
+  const [
+    newLeads,
+    hotLeads,
+    arbPairs,
+    arbAvgMargin,
+    oosProducts,
+    prodAlerts,
+    unclaimedFunds,
+    marketSignals,
+    topSignal,
+  ] = await Promise.all([
+    prisma.lead.count({ where: { createdAt: { gte: dayAgo } } }),
+    prisma.lead.count({ where: { score: { gte: 70 } } }),
+    prisma.arbitragePair.count({ where: { createdAt: { gte: dayAgo } } }),
+    prisma.arbitragePair.aggregate({
+      _avg: { marginPercent: true },
+      where: { createdAt: { gte: dayAgo } },
+    }),
+    prisma.poolProduct.count({ where: { stockStatus: "out-of-stock" } }),
+    prisma.scanActivity.count({
+      where: { scanner: "products", severity: { in: ["warning", "alert"] }, createdAt: { gte: dayAgo } },
+    }),
+    prisma.unclaimedFund.aggregate({
+      _sum: { amount: true },
+      where: { createdAt: { gte: dayAgo } },
+    }),
+    prisma.marketSignal.count({
+      where: { active: true, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+    }),
+    prisma.marketSignal.findFirst({
+      where: { active: true },
+      orderBy: { confidence: "desc" },
+      select: { signal: true },
+    }),
+  ]);
 
   return {
-    leads: { newCount: leadActivities, hotCount: hotLeads },
-    arbitrage: { pairsFound: arbActivities, avgMargin: 0 },
-    products: { alerts: prodActivities, oosCount: 0 },
-    unclaimed: { totalFound: unclaimedTotal._sum.amount ?? 0 },
-    markets: { signals: marketSignals, sentiment: "neutral" },
+    leads: { newCount: newLeads, hotCount: hotLeads },
+    arbitrage: { pairsFound: arbPairs, avgMargin: Math.round(arbAvgMargin._avg.marginPercent ?? 0) },
+    products: { alerts: prodAlerts, oosCount: oosProducts },
+    unclaimed: { totalFound: unclaimedFunds._sum.amount ?? 0 },
+    markets: { signals: marketSignals, sentiment: topSignal?.signal ?? "neutral" },
   };
 }
 
