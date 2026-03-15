@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "Maupin's Junk Removal — Free Quotes, Same-Day Removal";
+export const alt = "Precision Transfer & Removal — Free Quotes, Same-Day Removal";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -54,14 +54,15 @@ export default function OGImage() {
         {/* Brand */}
         <div
           style={{
-            fontSize: 72,
+            fontSize: 52,
             fontWeight: 900,
             color: "#16a34a",
             letterSpacing: "-1px",
             display: "flex",
+            textAlign: "center",
           }}
         >
-          MAUPIN&apos;S
+          PRECISION TRANSFER &amp; REMOVAL
         </div>
 
         {/* Tagline */}

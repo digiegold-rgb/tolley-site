@@ -1,9 +1,9 @@
-export const MP_BRAND = "Maupin's Junk Removal";
+export const MP_BRAND = "Precision Transfer & Removal";
 export const MP_TAGLINE = "Junk Removal & Moving Services";
 export const MP_PHONE = "816-442-2483";
 export const MP_PHONE_TEL = "tel:+18164422483";
 export const MP_SMS = "sms:+18164422483?body=Hey%20I%20need%20a%20quote%20for%20junk%20removal";
-export const MP_OWNER = "Maupin";
+export const MP_OWNER = "Precision Transfer & Removal";
 export const MP_AREA = "Kansas City Metro";
 
 export const MP_SERVICES = [

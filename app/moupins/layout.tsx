@@ -11,11 +11,11 @@ const russoOne = Russo_One({
 });
 
 export const metadata: Metadata = {
-  title: "Maupin's Junk Removal | Junk Hauling & Moving | KC Metro",
+  title: "Precision Transfer & Removal | Junk Hauling & Moving | KC Metro",
   description:
     "Junk removal and moving services in Kansas City. Same-day removal, free quotes. Message 816-442-2483 for a free quote.",
   openGraph: {
-    title: "Maupin's Junk Removal — Junk Hauling & Moving",
+    title: "Precision Transfer & Removal — Junk Hauling & Moving",
     description:
       "Same-day junk removal and moving in KC. Free quotes — message 816-442-2483.",
     type: "website",

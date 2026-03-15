@@ -35,13 +35,13 @@ export default function MoupinsPage() {
         <section className="mp-hero-bg relative overflow-hidden px-5 pt-16 pb-20 text-center sm:pt-24 sm:pb-28">
           <div className="mx-auto max-w-3xl">
             <h1
-              className="mp-glow-text text-5xl font-bold tracking-tight sm:text-7xl"
+              className="mp-glow-text text-3xl font-bold tracking-tight sm:text-5xl"
               style={{
                 fontFamily: "var(--font-russo), sans-serif",
                 color: "#16a34a",
               }}
             >
-              MAUPIN&apos;S
+              PRECISION TRANSFER &amp; REMOVAL
             </h1>
             <p className="mt-1 text-xl text-white/70 sm:text-2xl">
               Junk Removal &amp; Moving
@@ -124,7 +124,7 @@ export default function MoupinsPage() {
             </div>
           </div>
 
-          {/* Why Maupin's */}
+          {/* Why Precision */}
           <div
             className="mp-enter mp-section-why"
             style={{ "--enter-delay": "0.2s" } as React.CSSProperties}
@@ -133,7 +133,7 @@ export default function MoupinsPage() {
               className="text-2xl font-bold text-[#eab308] mb-6 text-center"
               style={{ fontFamily: "var(--font-russo)" }}
             >
-              WHY MAUPIN&apos;S?
+              WHY PRECISION?
             </h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {MP_WHY.map((item) => (
@@ -284,7 +284,7 @@ export default function MoupinsPage() {
         {/* Footer */}
         <footer className="border-t border-white/5 px-5 py-8 text-center">
           <p className="text-sm text-white/30">
-            &copy; {new Date().getFullYear()} Maupin&apos;s Junk Removal
+            &copy; {new Date().getFullYear()} Precision Transfer &amp; Removal
             &middot; {MP_AREA}
           </p>
           <p className="mt-1 text-xs text-white/20">
