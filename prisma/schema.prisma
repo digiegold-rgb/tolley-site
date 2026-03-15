@@ -1689,3 +1689,54 @@ model VideoCredit {
   updatedAt        DateTime  @updatedAt
   createdAt        DateTime  @default(now())
 }
+
+// ── Multi-Asset Trading Platform ────────────────────────────────
+
+model TradingTrade {
+  id            String    @id @default(cuid())
+  assetClass    String    // "crypto", "stocks", "alt"
+  symbol        String
+  side          String
+  strategy      String
+  entryPrice    Float
+  exitPrice     Float?
+  size          Float
+  pnl           Float?
+  pnlPct        Float?
+  fees          Float     @default(0)
+  status        String    @default("open")
+  exitReason    String?
+  regime        String?
+  enteredAt     DateTime  @default(now())
+  exitedAt      DateTime?
+  metadata      Json?
+  @@index([assetClass, status, enteredAt])
+  @@index([assetClass, strategy, status])
+}
+
+model TradingSnapshot {
+  id            String    @id @default(cuid())
+  assetClass    String
+  equity        Float
+  cash          Float
+  unrealizedPnl Float
+  realizedPnl   Float
+  openPositions Int
+  regime        String?
+  engineMode    String    @default("paper")
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+  @@index([assetClass, createdAt])
+}
+
+model TradingCapitalFlow {
+  id            String    @id @default(cuid())
+  assetClass    String    // "crypto", "stocks", "alt"
+  flowType      String    // "deposit", "withdrawal"
+  amount        Float
+  currency      String    @default("USD")
+  broker        String?
+  note          String?
+  createdAt     DateTime  @default(now())
+  @@index([assetClass, flowType])
+}
