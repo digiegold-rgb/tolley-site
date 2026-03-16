@@ -7,7 +7,7 @@ import BatchUpload from "@/components/leads/BatchUpload";
 import AutoResponderConfig from "@/components/leads/AutoResponderConfig";
 import ActivityTracker from "@/components/leads/ActivityTracker";
 
-export const revalidate = 120;
+export const revalidate = 600;
 
 export default async function AgentDashboardPage({
   searchParams,

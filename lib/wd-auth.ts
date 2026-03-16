@@ -3,11 +3,10 @@ import { cookies } from "next/headers";
 const COOKIE_NAME = "wd_admin";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
-export type WdRole = "tolley" | "keegan";
+export type WdRole = "tolley";
 
 export function verifyWdPin(pin: string): { valid: boolean; role: WdRole | null } {
   if (pin === process.env.WD_ADMIN_PIN_TOLLEY) return { valid: true, role: "tolley" };
-  if (pin === process.env.WD_ADMIN_PIN_KEEGAN) return { valid: true, role: "keegan" };
   return { valid: false, role: null };
 }
 
@@ -20,15 +19,10 @@ export async function validateWdAdmin(): Promise<{ authed: boolean; role: WdRole
   const token = cookieStore.get(COOKIE_NAME);
   if (!token?.value) return { authed: false, role: null };
 
-  // Check against both PINs
   const tolleyPin = process.env.WD_ADMIN_PIN_TOLLEY;
-  const keeganPin = process.env.WD_ADMIN_PIN_KEEGAN;
 
   if (tolleyPin && token.value === buildToken("tolley", tolleyPin)) {
     return { authed: true, role: "tolley" };
-  }
-  if (keeganPin && token.value === buildToken("keegan", keeganPin)) {
-    return { authed: true, role: "keegan" };
   }
 
   return { authed: false, role: null };
@@ -43,9 +37,7 @@ export function buildWdAdminCookie(role: WdRole): {
   sameSite: "lax";
   path: string;
 } {
-  const pin = role === "tolley"
-    ? process.env.WD_ADMIN_PIN_TOLLEY!
-    : process.env.WD_ADMIN_PIN_KEEGAN!;
+  const pin = process.env.WD_ADMIN_PIN_TOLLEY!;
 
   return {
     name: COOKIE_NAME,

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getPluginManifest } from "@/lib/dossier/plugins/registry";
 import DossierList from "@/components/leads/DossierList";
 
-export const revalidate = 15; // ISR 15s
+export const revalidate = 300;
 
 export default async function DossierPage({
   searchParams,

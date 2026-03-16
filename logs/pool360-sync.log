@@ -1,0 +1,347 @@
+[main] Pool360 Sync — 2026-03-14T09:00:02.807Z
+[main] Browser profile: /home/jelly/.pool360-profile
+[main] Not fully authenticated — will sync stock only (prices hidden).
+[main] To also sync prices, run: DISPLAY=:0 npx tsx scripts/pool360-sync.ts --login
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/sanitizers/chlorine-sanitizers
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Found 56 products in chlorine-sanitizers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/shock/chlorine-shock
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Clicked Load More (#7)
+[scrape] Clicked Load More (#8)
+[scrape] Clicked Load More (#9)
+[scrape] Found 115 products in chlorine-shock
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/water-balancers/ph-increasers
+[scrape] Found 0 products in ph-increasers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/water-balancers/ph-decreasers
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Found 74 products in ph-decreasers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/algaecides/shop-all-algaecides
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Clicked Load More (#7)
+[scrape] Clicked Load More (#8)
+[scrape] Clicked Load More (#9)
+[scrape] Clicked Load More (#10)
+[scrape] Clicked Load More (#11)
+[scrape] Clicked Load More (#12)
+[scrape] Found 149 products in shop-all-algaecides
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-pumps/pumps
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Clicked Load More (#7)
+[scrape] Clicked Load More (#8)
+[scrape] Clicked Load More (#9)
+[scrape] Clicked Load More (#10)
+[scrape] Clicked Load More (#11)
+[scrape] Clicked Load More (#12)
+[scrape] Clicked Load More (#13)
+[scrape] Clicked Load More (#14)
+[scrape] Clicked Load More (#15)
+[scrape] Clicked Load More (#16)
+[scrape] Clicked Load More (#17)
+[scrape] Clicked Load More (#18)
+[scrape] Clicked Load More (#19)
+[scrape] Clicked Load More (#20)
+[scrape] Hit MAX_LOAD_MORE cap (20) on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-pumps/pumps — results may be truncated
+[scrape] Found 250 products in pumps
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-filters/filters
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Clicked Load More (#7)
+[scrape] Clicked Load More (#8)
+[scrape] Clicked Load More (#9)
+[scrape] Clicked Load More (#10)
+[scrape] Clicked Load More (#11)
+[scrape] Clicked Load More (#12)
+[scrape] Clicked Load More (#13)
+[scrape] Clicked Load More (#14)
+[scrape] Found 180 products in filters
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-sanitizing-systems/salt-generators-cells
+[scrape] Found 0 products in salt-generators-cells
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-heating-cooling/heaters
+[scrape] Found 0 products in heaters
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/brushes
+[scrape] Found 0 products in brushes
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/skimmer-nets-leaf-rakes
+[scrape] Found 0 products in skimmer-nets-leaf-rakes
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/poles
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Clicked Load More (#7)
+[scrape] Clicked Load More (#8)
+[scrape] Clicked Load More (#9)
+[scrape] Clicked Load More (#10)
+[scrape] Clicked Load More (#11)
+[scrape] Clicked Load More (#12)
+[scrape] Clicked Load More (#13)
+[scrape] Clicked Load More (#14)
+[scrape] Clicked Load More (#15)
+[scrape] Clicked Load More (#16)
+[scrape] Clicked Load More (#17)
+[scrape] Clicked Load More (#18)
+[scrape] Clicked Load More (#19)
+[scrape] Clicked Load More (#20)
+[scrape] Hit MAX_LOAD_MORE cap (20) on /Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/poles — results may be truncated
+[scrape] Found 251 products in poles
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/vacuums-heads
+[scrape] Found 0 products in vacuums-heads
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/pool-hoses
+[scrape] Found 0 products in pool-hoses
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/water-testing-control/test-kits-strips
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Found 48 products in test-kits-strips
+[main] Total: 1123 scraped, 1041 unique SKUs
+[sync] Sending 1041 products to https://www.tolley.io/api/pools/sync
+[sync] Result: {
+  "created": 0,
+  "updated": 595,
+  "skipped": 446,
+  "errors": []
+}
+[main] Done.
+[main] Pool360 Sync — 2026-03-15T09:00:02.552Z
+[main] Browser profile: /home/jelly/.pool360-profile
+[main] Not fully authenticated — will sync stock only (prices hidden).
+[main] To also sync prices, run: DISPLAY=:0 npx tsx scripts/pool360-sync.ts --login
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/sanitizers/chlorine-sanitizers
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Found 56 products in chlorine-sanitizers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/shock/chlorine-shock
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Clicked Load More (#7)
+[scrape] Clicked Load More (#8)
+[scrape] Clicked Load More (#9)
+[scrape] Found 115 products in chlorine-shock
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/water-balancers/ph-increasers
+[scrape] Found 0 products in ph-increasers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/water-balancers/ph-decreasers
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Found 74 products in ph-decreasers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/algaecides/shop-all-algaecides
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Clicked Load More (#7)
+[scrape] Clicked Load More (#8)
+[scrape] Clicked Load More (#9)
+[scrape] Clicked Load More (#10)
+[scrape] Clicked Load More (#11)
+[scrape] Clicked Load More (#12)
+[scrape] Found 149 products in shop-all-algaecides
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-pumps/pumps
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Clicked Load More (#7)
+[scrape] Clicked Load More (#8)
+[scrape] Clicked Load More (#9)
+[scrape] Clicked Load More (#10)
+[scrape] Clicked Load More (#11)
+[scrape] Clicked Load More (#12)
+[scrape] Clicked Load More (#13)
+[scrape] Clicked Load More (#14)
+[scrape] Clicked Load More (#15)
+[scrape] Clicked Load More (#16)
+[scrape] Clicked Load More (#17)
+[scrape] Clicked Load More (#18)
+[scrape] Clicked Load More (#19)
+[scrape] Clicked Load More (#20)
+[scrape] Hit MAX_LOAD_MORE cap (20) on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-pumps/pumps — results may be truncated
+[scrape] Found 252 products in pumps
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-filters/filters
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Clicked Load More (#7)
+[scrape] Clicked Load More (#8)
+[scrape] Clicked Load More (#9)
+[scrape] Clicked Load More (#10)
+[scrape] Clicked Load More (#11)
+[scrape] Clicked Load More (#12)
+[scrape] Clicked Load More (#13)
+[scrape] Clicked Load More (#14)
+[scrape] Clicked Load More (#15)
+[scrape] Clicked Load More (#16)
+[scrape] Clicked Load More (#17)
+[scrape] Clicked Load More (#18)
+[scrape] Clicked Load More (#19)
+[scrape] Clicked Load More (#20)
+[scrape] Hit MAX_LOAD_MORE cap (20) on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-filters/filters — results may be truncated
+[scrape] Found 252 products in filters
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-sanitizing-systems/salt-generators-cells
+[scrape] Found 0 products in salt-generators-cells
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-heating-cooling/heaters
+[scrape] Found 0 products in heaters
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/brushes
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Clicked Load More (#7)
+[scrape] Clicked Load More (#8)
+[scrape] Clicked Load More (#9)
+[scrape] Clicked Load More (#10)
+[scrape] Clicked Load More (#11)
+[scrape] Clicked Load More (#12)
+[scrape] Clicked Load More (#13)
+[scrape] Clicked Load More (#14)
+[scrape] Clicked Load More (#15)
+[scrape] Clicked Load More (#16)
+[scrape] Clicked Load More (#17)
+[scrape] Found 206 products in brushes
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/skimmer-nets-leaf-rakes
+[scrape] Found 0 products in skimmer-nets-leaf-rakes
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/poles
+[scrape] Found 0 products in poles
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/vacuums-heads
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Clicked Load More (#7)
+[scrape] Clicked Load More (#8)
+[scrape] Clicked Load More (#9)
+[scrape] Clicked Load More (#10)
+[scrape] Clicked Load More (#11)
+[scrape] Clicked Load More (#12)
+[scrape] Clicked Load More (#13)
+[scrape] Clicked Load More (#14)
+[scrape] Clicked Load More (#15)
+[scrape] Clicked Load More (#16)
+[scrape] Clicked Load More (#17)
+[scrape] Clicked Load More (#18)
+[scrape] Clicked Load More (#19)
+[scrape] Clicked Load More (#20)
+[scrape] Hit MAX_LOAD_MORE cap (20) on /Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/vacuums-heads — results may be truncated
+[scrape] Found 253 products in vacuums-heads
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/pool-hoses
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Clicked Load More (#7)
+[scrape] Clicked Load More (#8)
+[scrape] Clicked Load More (#9)
+[scrape] Clicked Load More (#10)
+[scrape] Clicked Load More (#11)
+[scrape] Clicked Load More (#12)
+[scrape] Clicked Load More (#13)
+[scrape] Clicked Load More (#14)
+[scrape] Clicked Load More (#15)
+[scrape] Clicked Load More (#16)
+[scrape] Clicked Load More (#17)
+[scrape] Clicked Load More (#18)
+[scrape] Clicked Load More (#19)
+[scrape] Clicked Load More (#20)
+[scrape] Hit MAX_LOAD_MORE cap (20) on /Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/pool-hoses — results may be truncated
+[scrape] Found 240 products in pool-hoses
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/water-testing-control/test-kits-strips
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[scrape] Clicked Load More (#5)
+[scrape] Clicked Load More (#6)
+[scrape] Clicked Load More (#7)
+[scrape] Clicked Load More (#8)
+[scrape] Clicked Load More (#9)
+[scrape] Clicked Load More (#10)
+[scrape] Clicked Load More (#11)
+[scrape] Clicked Load More (#12)
+[scrape] Clicked Load More (#13)
+[scrape] Clicked Load More (#14)
+[scrape] Clicked Load More (#15)
+[scrape] Clicked Load More (#16)
+[scrape] Clicked Load More (#17)
+[scrape] Clicked Load More (#18)
+[scrape] Clicked Load More (#19)
+[scrape] Clicked Load More (#20)
+[scrape] Hit MAX_LOAD_MORE cap (20) on /Catalog/pool-and-spa-products/maintenance-cleaning/water-testing-control/test-kits-strips — results may be truncated
+[scrape] Found 262 products in test-kits-strips
+[main] Total: 1859 scraped, 1765 unique SKUs
+[sync] Sending 1765 products to https://www.tolley.io/api/pools/sync
+[sync] Result: {
+  "created": 139,
+  "updated": 999,
+  "skipped": 627,
+  "errors": []
+}
+[main] Done.
+[main] Pool360 Sync — 2026-03-16T09:00:02.938Z
+[main] Browser profile: /home/jelly/.pool360-profile
+[main] Not fully authenticated — will sync stock only (prices hidden).
+[main] To also sync prices, run: DISPLAY=:0 npx tsx scripts/pool360-sync.ts --login
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/sanitizers/chlorine-sanitizers
+[scrape] Clicked Load More (#1)
+[scrape] Clicked Load More (#2)
+[scrape] Clicked Load More (#3)
+[scrape] Clicked Load More (#4)
+[main] Fatal: page.evaluate: Target crashed 
+    at scrapeCategory (/home/jelly/tolley-site/scripts/pool360-sync.ts:194:31)
+    at async main (/home/jelly/tolley-site/scripts/pool360-sync.ts:330:24) {
+  name: 'Error'
+}

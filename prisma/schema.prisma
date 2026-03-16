@@ -31,6 +31,8 @@ model User {
   leadSubscription     LeadSubscriber?
   videoGenerations     VideoGeneration[]
   videoCredit          VideoCredit?
+  deliveryDriver       DeliveryDriver?
+  deliveryClient       DeliveryClient?
 }
 
 model Agent {
@@ -1191,10 +1193,10 @@ model WdClient {
   notes            String?
   photoUrls        String[]
   receiptUrls      String[]
-  source           String      @default("tolley")   // "tolley" | "keegan" | "both"
+  source           String      @default("tolley")
   paidBy           String      @default("tolley")   // Who bought the unit
   needsReview      Boolean     @default(false)
-  blockedFields    String[]                          // Fields hidden from Keegan
+  blockedFields    String[]
   locked           Boolean     @default(false)
   stripeCustomerId String?
   payments         WdPayment[]
@@ -1225,53 +1227,6 @@ model WdRepairItem {
   cost      Float
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-// ─── Keegan Partnership Hub ───
-
-model PartnerPayment {
-  id          String   @id @default(cuid())
-  amount      Float
-  date        DateTime
-  description String                      // "Garage cleanout", "WD split - Feb 2026", etc.
-  category    String                      // "wd" | "trailer" | "labor" | "other"
-  status      String   @default("paid")   // "paid" | "pending"
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([category])
-  @@index([status])
-}
-
-model TrailerClient {
-  id                 String           @id @default(cuid())
-  name               String
-  address            String?
-  phone              String?
-  email              String?
-  trailerDescription String                // "28ft Bumper Pull", etc.
-  monthlyCost        Float            @default(0)
-  investmentCost     Float            @default(0)
-  installDate        DateTime?
-  active             Boolean          @default(true)
-  confirmed          Boolean          @default(false)
-  notes              String?
-  payments           TrailerPayment[]
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
-}
-
-model TrailerPayment {
-  id        String        @id @default(cuid())
-  clientId  String
-  amount    Float
-  month     String                         // "YYYY-MM"
-  status    String        @default("paid") // "paid" | "late" | "missed"
-  note      String?
-  client    TrailerClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  createdAt DateTime      @default(now())
-
-  @@index([clientId, month])
 }
 
 // ─── Market Intelligence ───
@@ -1678,7 +1633,8 @@ model VideoGeneration {
   status        String    @default("queued") // queued, generating, completed, failed
   creditsUsed   Int       @default(1)
   costCents     Int       @default(0) // our cost in cents (fal.ai charge)
-  outputUrl     String?   // fal.ai CDN URL for completed video
+  outputUrl     String?   // fal.ai CDN URL (temporary, expires)
+  blobUrl       String?   // Vercel Blob permanent URL
   thumbnailUrl  String?
   durationSecs  Float?    // video duration
   resolution    String?   // "720p", "1080p"
@@ -1802,4 +1758,447 @@ model ScanRevenue {
 
   @@index([scanner, createdAt])
   @@index([createdAt])
+}
+
+model SystemFeedback {
+  id             String    @id @default(cuid())
+  createdAt      DateTime  @default(now())
+  category       String    // performance, architecture, config, security, cost, reliability
+  severity       String    // info, warning, critical
+  title          String
+  recommendation String
+  metrics        Json?
+  source         String    @default("dgx-self-analysis")
+  status         String    @default("new") // new, acknowledged, resolved, dismissed
+  resolvedAt     DateTime?
+
+  @@index([category, createdAt])
+  @@index([severity, createdAt])
+  @@index([status, createdAt])
+}
+
+// ── Shop / Retail Arbitrage Platform ─────────────────
+
+model Product {
+  id                 String   @id @default(cuid())
+  title              String
+  description        String?
+  category           String?
+  subcategory        String?
+  brand              String?
+  condition          String?  // new, like_new, good, fair, poor
+  sku                String?
+  upc                String?
+  imageUrls          String[]
+
+  // Sourcing
+  sourcingType       String?  // liquidation, bin_store, thrift, wholesale, online_arbitrage
+  sourcingVendor     String?
+  lotId              String?
+  costBasis          Float?
+  shippingCost       Float?
+  totalCogs          Float?
+
+  // AI suggestions
+  aiSuggestedTitle   String?
+  aiSuggestedPrice   Float?
+  aiSuggestedCategory String?
+  aiConfidence       Float?
+
+  // Pricing
+  targetPrice        Float?
+  minPrice           Float?
+
+  // Status: draft → listed → sold → archived | returned
+  status             String   @default("draft")
+
+  // Sale info
+  soldPrice          Float?
+  soldAt             DateTime?
+  soldPlatform       String?
+  totalFees          Float?
+  netProfit          Float?
+  roi                Float?
+
+  // Backward compat
+  shopItemId         String?
+
+  // Relations
+  listings           PlatformListing[]
+  priceHistory       PriceSnapshot[]
+  sales              ShopSale[]
+
+  // Source lot relation
+  sourceLot          SourceLot? @relation(fields: [lotId], references: [id])
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([category])
+  @@index([lotId])
+  @@index([shopItemId])
+}
+
+model PlatformListing {
+  id             String    @id @default(cuid())
+  productId      String
+  platform       String    // ebay, fb_marketplace, mercari, poshmark, offerup, amazon, shop
+  externalId     String?
+  externalUrl    String?
+  price          Float
+  platformFees   Float?
+  netAfterFees   Float?
+
+  // Status: draft → active → pending → sold → removed → expired
+  status         String    @default("draft")
+
+  listedAt       DateTime?
+  soldAt         DateTime?
+  removedAt      DateTime?
+  meta           Json?
+
+  product        Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([productId, platform])
+  @@index([platform, status])
+  @@index([status])
+}
+
+model SourceLot {
+  id              String    @id @default(cuid())
+  name            String
+  sourceType      String    // liquidation, bin_store, wholesale, thrift, online
+  vendorName      String?
+  purchaseDate    DateTime?
+  totalCost       Float
+  estimatedRetail Float?
+  itemCount       Int?
+  manifestUrl     String?
+  notes           String?
+  imageUrls       String[]
+
+  // Computed aggregates
+  totalSold       Float     @default(0)
+  totalProfit     Float     @default(0)
+  itemsSold       Int       @default(0)
+  itemsListed     Int       @default(0)
+
+  // Status: ordered → received → cataloging → listed → complete
+  status          String    @default("ordered")
+
+  products        Product[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([sourceType])
+}
+
+model Supplier {
+  id             String   @id @default(cuid())
+  name           String
+  type           String   // liquidation, wholesale, bin_store, thrift, online
+  website        String?
+  contactEmail   String?
+  contactPhone   String?
+  location       String?
+  notes          String?
+  rating         Int?     // 1-5
+  avgDiscount    Float?
+  categories     String[]
+  isActive       Boolean  @default(true)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([type, isActive])
+}
+
+model PriceSnapshot {
+  id          String    @id @default(cuid())
+  productId   String?
+  query       String?
+  platform    String    // ebay_sold, ebay_active, amazon, mercari, poshmark, offerup
+  title       String?
+  price       Float
+  url         String?
+  imageUrl    String?
+  soldDate    DateTime?
+  condition   String?
+  capturedAt  DateTime  @default(now())
+
+  product     Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([productId, capturedAt])
+  @@index([platform, capturedAt])
+  @@index([query, platform])
+}
+
+model TrendSignal {
+  id           String   @id @default(cuid())
+  category     String
+  platform     String?
+  signalType   String   // hot_category, price_spike, sell_through_high, seasonal_peak, viral
+  title        String
+  body         String?
+  metric       Float?
+  metricLabel  String?
+  confidence   Float?
+
+  // Status: active → expired → dismissed
+  status       String   @default("active")
+
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime?
+
+  @@index([status, createdAt])
+  @@index([signalType])
+  @@index([category])
+}
+
+model AffiliateLink {
+  id            String   @id @default(cuid())
+  network       String   // amazon_associates, ebay_partner, shareasale
+  productUrl    String
+  affiliateUrl  String
+  shortCode     String   @unique
+  title         String?
+  category      String?
+  imageUrl      String?
+  clicks        Int      @default(0)
+  conversions   Int      @default(0)
+  revenue       Float    @default(0)
+  isActive      Boolean  @default(true)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([network, isActive])
+  @@index([shortCode])
+}
+
+model ShopSale {
+  id             String   @id @default(cuid())
+  productId      String?
+  platform       String
+  externalId     String?
+  title          String
+  salePrice      Float
+  platformFees   Float?
+  shippingCost   Float?
+  cogs           Float?
+  netProfit      Float?
+  buyerName      String?
+  buyerLocation  String?
+  paymentMethod  String?
+  soldAt         DateTime @default(now())
+
+  product        Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@index([platform, soldAt])
+  @@index([soldAt])
+}
+
+// ─── Red Alert Dispatch ─────────────────────────────────────────────
+
+model DeliveryDriver {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  phone           String   @unique
+  name            String
+  vehicleType     String   // sedan, suv, pickup, van, box_truck, flatbed, trailer
+  vehicleDetails  String?  // "2022 Honda Ridgeline"
+  maxWeightLbs    Int      @default(500)
+  homeZip         String
+  serviceRadiusMi Int      @default(30)
+  isOnline        Boolean  @default(false)
+  currentLat      Float?
+  currentLng      Float?
+  lastLocationAt  DateTime?
+  stripeConnectId String?  @unique
+  avgRating       Float    @default(5.0)
+  totalRatings    Int      @default(0)
+  completionRate  Float    @default(1.0)
+  totalDeliveries Int      @default(0)
+  status          String   @default("pending") // pending, approved, suspended, deactivated
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders   DeliveryOrder[]
+  earnings DriverEarning[]
+  payouts  DriverPayout[]
+
+  @@index([status, isOnline])
+  @@index([isOnline, currentLat, currentLng])
+  @@index([homeZip])
+}
+
+model DeliveryClient {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  businessName         String?
+  contactName          String
+  phone                String   @unique
+  stripeCustomerId     String?  @unique
+  billingType          String   @default("per_delivery") // per_delivery, monthly_invoice
+  creditBalance        Float    @default(0)
+  defaultPickupAddress String?
+  defaultPickupLat     Float?
+  defaultPickupLng     Float?
+  totalOrders          Int      @default(0)
+  totalSpent           Float    @default(0)
+  status               String   @default("active") // active, suspended
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders    DeliveryOrder[]
+  locations SavedLocation[]
+}
+
+model SavedLocation {
+  id        String   @id @default(cuid())
+  clientId  String
+  label     String   // "Home Depot Noland Rd", "Warehouse"
+  address   String
+  lat       Float
+  lng       Float
+  isPickup  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  client DeliveryClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+}
+
+model DeliveryOrder {
+  id                    String   @id @default(cuid())
+  orderNumber           String   @unique // RAD-XXXXXX
+  clientId              String
+  driverId              String?
+  status                String   @default("pending") // pending, matching, accepted, pickup_enroute, picked_up, delivering, delivered, completed, cancelled, failed
+  urgency               String   @default("standard") // asap, standard, scheduled
+  scheduledAt           DateTime?
+
+  pickupAddress         String
+  pickupLat             Float
+  pickupLng             Float
+  pickupContactName     String?
+  pickupContactPhone    String?
+  pickupInstructions    String?
+  pickupPhotoUrl        String?
+
+  dropoffAddress        String
+  dropoffLat            Float
+  dropoffLng            Float
+  dropoffContactName    String?
+  dropoffContactPhone   String?
+  dropoffInstructions   String?
+  dropoffPhotoUrl       String?
+
+  cargoDescription      String
+  cargoWeightLbs        Int?
+  requiresTrailer       Boolean  @default(false)
+  requiresTempControl   Boolean  @default(false)
+  isFragile             Boolean  @default(false)
+
+  distanceMi            Float?
+  durationMin           Int?
+
+  clientPrice           Float    // what client pays
+  platformFee           Float    // our 18% cut
+  driverPay             Float    // clientPrice - platformFee
+  industryEstimate      Float?   // what Dispatch/Roadie would charge
+  clientSavings         Float?   // dollar amount saved vs industry
+
+  stripePaymentIntentId String?  @unique
+  paymentStatus         String   @default("pending") // pending, authorized, captured, refunded
+
+  matchAttempts         Int      @default(0)
+  aiDispatchLog         String?  // JSON log of matching attempts
+  escalatedAt           DateTime?
+
+  acceptedAt            DateTime?
+  pickedUpAt            DateTime?
+  deliveredAt           DateTime?
+  completedAt           DateTime?
+  cancelledAt           DateTime?
+  cancelReason          String?
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  client   DeliveryClient   @relation(fields: [clientId], references: [id])
+  driver   DeliveryDriver?  @relation(fields: [driverId], references: [id])
+  earning  DriverEarning?
+  ratings  DeliveryRating[]
+
+  @@index([status, createdAt])
+  @@index([clientId, status])
+  @@index([driverId, status])
+  @@index([status, urgency])
+  @@index([orderNumber])
+}
+
+model DriverEarning {
+  id          String   @id @default(cuid())
+  driverId    String
+  orderId     String   @unique
+  amount      Float    // base driver pay
+  tip         Float    @default(0)
+  total       Float    // amount + tip
+  status      String   @default("pending") // pending, available, paid_out
+  availableAt DateTime @default(now())
+  paidOutAt   DateTime?
+  payoutId    String?
+  createdAt   DateTime @default(now())
+
+  driver  DeliveryDriver @relation(fields: [driverId], references: [id])
+  order   DeliveryOrder  @relation(fields: [orderId], references: [id])
+  payout  DriverPayout?  @relation(fields: [payoutId], references: [id])
+
+  @@index([driverId, status])
+  @@index([status, availableAt])
+}
+
+model DriverPayout {
+  id               String   @id @default(cuid())
+  driverId         String
+  amount           Float
+  method           String   @default("stripe_connect") // stripe_connect, instant
+  stripeTransferId String?
+  status           String   @default("pending") // pending, processing, completed, failed
+  failureReason    String?
+  createdAt        DateTime @default(now())
+  completedAt      DateTime?
+
+  driver   DeliveryDriver  @relation(fields: [driverId], references: [id])
+  earnings DriverEarning[]
+
+  @@index([driverId, createdAt])
+  @@index([status])
+}
+
+model DeliveryRating {
+  id        String   @id @default(cuid())
+  orderId   String
+  raterType String   // client, driver
+  raterId   String   // clientId or driverId (no FK — polymorphic)
+  stars     Int      // 1-5
+  comment   String?
+  tags      String[] // on_time, friendly, careful, fast, damaged, late, rude
+  createdAt DateTime @default(now())
+
+  order DeliveryOrder @relation(fields: [orderId], references: [id])
+
+  @@unique([orderId, raterType])
+  @@index([orderId])
 }

@@ -65,6 +65,8 @@ interface Props {
   categories: string[];
 }
 
+const PAGE_SIZE = 48;
+
 export function PoolsProductGrid({ products, categories }: Props) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeBrand, setActiveBrand] = useState<string | null>(null);
@@ -73,6 +75,7 @@ export function PoolsProductGrid({ products, categories }: Props) {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [search, setSearch] = useState("");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   // Derive unique brands and sizes from product data
   const brands = useMemo(
@@ -124,6 +127,14 @@ export function PoolsProductGrid({ products, categories }: Props) {
 
     return result;
   }, [products, activeCategory, activeBrand, activeSize, activeStock, minPrice, maxPrice, search]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [activeCategory, activeBrand, activeSize, activeStock, minPrice, maxPrice, search]);
+
+  const visible = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
 
   const hasFilters =
     activeCategory || activeBrand || activeSize || activeStock || minPrice || maxPrice || search;
@@ -288,11 +299,22 @@ export function PoolsProductGrid({ products, categories }: Props) {
               : "Products coming soon — check back!"}
           </p>
         ) : (
-          filtered.map((product) => (
+          visible.map((product) => (
             <TrackedProductCard key={product.id} product={product} />
           ))
         )}
       </div>
+
+      {hasMore && (
+        <div className="mt-6 flex justify-center">
+          <button
+            onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+            className="rounded-full bg-cyan-600 px-6 py-2 text-sm font-semibold text-white shadow-md shadow-cyan-600/20 transition hover:bg-cyan-700"
+          >
+            Load More ({filtered.length - visibleCount} remaining)
+          </button>
+        </div>
+      )}
     </>
   );
 }
@@ -324,6 +346,7 @@ function TrackedProductCard({ product }: { product: Product }) {
             alt={product.name}
             className="h-24 w-auto object-contain"
             loading="lazy"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
           />
         </div>
       )}

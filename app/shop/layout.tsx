@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { FACEBOOK_PROFILE_URL } from "@/lib/shop";
 import { SiteTracker } from "@/components/analytics/site-tracker";
@@ -19,9 +20,24 @@ export const metadata: Metadata = {
 
 async function getActiveCount(): Promise<number> {
   try {
+    // Try Product model first
+    const productCount = await prisma.platformListing.count({
+      where: { platform: "shop", status: "active" },
+    });
+    if (productCount > 0) return productCount;
+    // Fallback to ShopItem
     return await prisma.shopItem.count({ where: { status: "active" } });
   } catch {
     return 0;
+  }
+}
+
+async function isAdmin(): Promise<boolean> {
+  try {
+    const cookieStore = await cookies();
+    return !!cookieStore.get("shop_admin");
+  } catch {
+    return false;
   }
 }
 
@@ -30,7 +46,7 @@ export default async function ShopLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const count = await getActiveCount();
+  const [count, admin] = await Promise.all([getActiveCount(), isAdmin()]);
 
   return (
     <div className="shop-page">
@@ -52,6 +68,14 @@ export default async function ShopLayout({
               <span className="shop-badge rounded-full px-2.5 py-0.5 text-xs font-medium text-purple-300">
                 {count} item{count !== 1 ? "s" : ""}
               </span>
+            )}
+            {admin && (
+              <Link
+                href="/shop/dashboard"
+                className="rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-300 transition hover:bg-purple-500/20"
+              >
+                Dashboard
+              </Link>
             )}
             <a
               href={FACEBOOK_PROFILE_URL}

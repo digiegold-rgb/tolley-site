@@ -1,0 +1,12 @@
+[
+  {"brand":"PENTAIR","name":"MasterTemp Natural Gas High Performance Heater 400K BTU","sku":"PUR-15-0736","mfgPart":"460736","price":"3926.04","stock":2},
+  {"brand":"JANDY","name":"JXiQ Pool and Spa Heater with VersaFlo Natural Gas 399K BTU","sku":"LAR-15-8521","mfgPart":"JXIQ400NK","price":"3931.04","stock":5},
+  {"brand":"PENTAIR","name":"MasterTemp Natural Gas High Performance Heater 250K BTU","sku":"PUR-15-0732","mfgPart":"460732","price":"3161.62","stock":17},
+  {"brand":"HAYWARD","name":"Universal HC Series Dual Fuel Heater 400K BTU","sku":"HAY-15-7745","mfgPart":"HDF400","price":"4177.12","stock":null},
+  {"brand":"PENTAIR","name":"MasterTemp Liquid Propane High Performance Heater 250K BTU","sku":"PUR-15-0733","mfgPart":"460733","price":"3161.62","stock":null},
+  {"brand":"PENTAIR","name":"MasterTemp Liquid Propane High Performance Heater 400K BTU","sku":"PUR-15-0737","mfgPart":"460737","price":"3932.57","stock":3},
+  {"brand":"JANDY","name":"JXi Natural Gas Low-NOx Pool and Spa Heater 260K BTU","sku":"LAR-15-505","mfgPart":"JXI260N","price":"3079.12","stock":3},
+  {"brand":"RHEEM","name":"Natural Gas Digital Polymer Heater 266K BTU","sku":"RHM-15-9963","mfgPart":"009963","price":"3054.07","stock":9},
+  {"brand":"PENTAIR","name":"MasterTemp Natural Gas High Performance Heater 250HD BTU","sku":"PUR-15-0806","mfgPart":"460806","price":"3665.06","stock":9},
+  {"brand":"JANDY","name":"JXi Natural Gas Pool and Spa Low-NOx Heater 400K BTU","sku":"LAR-15-500","mfgPart":"JXI400N","price":"3889.41","stock":4}
+]

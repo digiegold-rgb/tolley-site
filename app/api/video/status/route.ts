@@ -6,6 +6,7 @@ import {
   getVideoResult,
   type FalModelId,
 } from "@/lib/fal";
+import { persistVideoToBlob } from "@/lib/blob";
 import { logVideoUsage } from "@/lib/llm-usage";
 
 export async function GET(req: Request) {
@@ -33,7 +34,7 @@ export async function GET(req: Request) {
   if (generation.status === "completed") {
     return NextResponse.json({
       status: "completed",
-      outputUrl: generation.outputUrl,
+      outputUrl: generation.blobUrl || generation.outputUrl,
       thumbnailUrl: generation.thumbnailUrl,
       durationSecs: generation.durationSecs,
     });
@@ -68,12 +69,25 @@ export async function GET(req: Request) {
         ? Date.now() - generation.startedAt.getTime()
         : undefined;
 
+      // Persist video to Vercel Blob for permanent storage
+      let blobUrl: string | null = null;
+      try {
+        blobUrl = await persistVideoToBlob(
+          result.videoUrl,
+          generation.id,
+          result.contentType,
+        );
+      } catch {
+        // Blob upload failed — fall back to fal.ai CDN URL
+      }
+
       // Update DB record
       await prisma.videoGeneration.update({
         where: { id: generation.id },
         data: {
           status: "completed",
           outputUrl: result.videoUrl,
+          blobUrl: blobUrl,
           thumbnailUrl: result.thumbnailUrl || null,
           durationSecs: result.durationSecs || null,
           completedAt: new Date(),
@@ -91,9 +105,11 @@ export async function GET(req: Request) {
         generationId: generation.id,
       }).catch(() => {});
 
+      const permanentUrl = blobUrl || result.videoUrl;
+
       return NextResponse.json({
         status: "completed",
-        outputUrl: result.videoUrl,
+        outputUrl: permanentUrl,
         thumbnailUrl: result.thumbnailUrl,
         durationSecs: result.durationSecs,
       });

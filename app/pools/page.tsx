@@ -7,7 +7,7 @@ import { PoolsFaq } from "@/components/pools/pools-faq";
 import { PoolsCartProvider } from "@/components/pools/pools-cart-provider";
 import { PoolsCartDrawer } from "@/components/pools/pools-cart-drawer";
 
-export const revalidate = 30;
+export const revalidate = 600;
 
 export default function PoolsPage() {
   return (

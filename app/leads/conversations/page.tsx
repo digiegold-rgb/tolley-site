@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import ConversationsPanel from "@/components/leads/ConversationsPanel";
 
-export const revalidate = 30;
+export const revalidate = 300;
 
 export default async function ConversationsPage({
   searchParams,

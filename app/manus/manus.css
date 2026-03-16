@@ -1,0 +1,267 @@
+/* ============================
+   MANUS — Autonomous Agent Console
+   Dark terminal aesthetic with green accents
+   ============================ */
+
+.manus-page {
+  font-family: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
+  min-height: 100vh;
+}
+
+/* ── Terminal Window ── */
+.manus-terminal {
+  background: rgba(6, 6, 14, 0.85);
+  border: 1px solid rgba(0, 255, 136, 0.12);
+  border-radius: 12px;
+  backdrop-filter: blur(20px);
+  overflow: hidden;
+}
+
+.manus-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(0, 255, 136, 0.04);
+  border-bottom: 1px solid rgba(0, 255, 136, 0.08);
+}
+
+.manus-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.manus-dot-red { background: #ff5f57; }
+.manus-dot-yellow { background: #febc2e; }
+.manus-dot-green { background: #28c840; }
+
+.manus-titlebar-text {
+  flex: 1;
+  text-align: center;
+  font-size: 0.7rem;
+  color: rgba(0, 255, 136, 0.4);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ── Input Area ── */
+.manus-input-area {
+  padding: 20px;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.06);
+}
+
+.manus-prompt-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: rgba(0, 255, 136, 0.5);
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+}
+
+.manus-textarea {
+  width: 100%;
+  min-height: 100px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 255, 136, 0.1);
+  border-radius: 8px;
+  padding: 14px;
+  color: #e0ffe0;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.manus-textarea::placeholder {
+  color: rgba(0, 255, 136, 0.2);
+}
+
+.manus-textarea:focus {
+  border-color: rgba(0, 255, 136, 0.3);
+}
+
+/* ── Buttons ── */
+.manus-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 24px;
+  background: rgba(0, 255, 136, 0.12);
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  border-radius: 8px;
+  color: #00ff88;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.manus-submit:hover:not(:disabled) {
+  background: rgba(0, 255, 136, 0.2);
+  border-color: rgba(0, 255, 136, 0.4);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.1);
+}
+
+.manus-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Output Area ── */
+.manus-output {
+  padding: 20px;
+  min-height: 200px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.manus-output::-webkit-scrollbar {
+  width: 4px;
+}
+
+.manus-output::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 136, 0.15);
+  border-radius: 2px;
+}
+
+.manus-step {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.04);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.manus-step:last-child {
+  border-bottom: none;
+}
+
+.manus-step-label {
+  color: rgba(0, 255, 136, 0.6);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+/* ── Status Indicators ── */
+.manus-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.manus-status-pending {
+  background: rgba(255, 200, 0, 0.1);
+  color: #ffc800;
+  border: 1px solid rgba(255, 200, 0, 0.2);
+}
+
+.manus-status-running {
+  background: rgba(0, 150, 255, 0.1);
+  color: #0096ff;
+  border: 1px solid rgba(0, 150, 255, 0.2);
+}
+
+.manus-status-completed {
+  background: rgba(0, 255, 136, 0.1);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.2);
+}
+
+.manus-status-failed {
+  background: rgba(255, 80, 80, 0.1);
+  color: #ff5050;
+  border: 1px solid rgba(255, 80, 80, 0.2);
+}
+
+/* ── Pulse animation for running state ── */
+@keyframes manus-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.manus-pulse {
+  animation: manus-pulse 1.5s ease-in-out infinite;
+}
+
+/* ── Cursor blink ── */
+@keyframes manus-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.manus-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  background: #00ff88;
+  animation: manus-blink 1s step-end infinite;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+}
+
+/* ── Task History ── */
+.manus-history-item {
+  padding: 12px 16px;
+  border: 1px solid rgba(0, 255, 136, 0.06);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.manus-history-item:hover {
+  border-color: rgba(0, 255, 136, 0.15);
+  background: rgba(0, 255, 136, 0.03);
+}
+
+.manus-history-prompt {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.manus-history-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* ── Scan line effect ── */
+.manus-scanline {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 136, 0.008) 2px,
+    rgba(0, 255, 136, 0.008) 4px
+  );
+}

@@ -26,18 +26,6 @@ export async function GET(request: NextRequest) {
 
   const result = clients.map((c) => {
     const split = computeRevenueSplit(c);
-
-    // Redact blocked fields for Keagan
-    if (role === "keegan") {
-      const redacted: Record<string, unknown> = { ...c };
-      for (const field of c.blockedFields) {
-        redacted[field] = null;
-      }
-      // Hide block/lock controls from Keagan
-      delete redacted.blockedFields;
-      return { ...redacted, split };
-    }
-
     return { ...c, split };
   });
 

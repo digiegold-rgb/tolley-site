@@ -14,7 +14,6 @@ interface WdPayment {
 interface RevenueSplit {
   totalRevenue: number;
   tolleySplit: number;
-  keeganSplit: number;
   paybackComplete: boolean;
   paybackRemaining: number;
 }
@@ -39,7 +38,7 @@ export interface WdClientData {
 
 interface Props {
   client: WdClientData;
-  role: "tolley" | "keegan";
+  role: "tolley";
   showSplit: boolean;
   maxPayments: number;
   onPaymentStatus: (paymentId: string, status: string) => void;
@@ -213,7 +212,6 @@ export function WdClientRow({ client, role, showSplit, maxPayments, onPaymentSta
       {showSplit && (
         <>
           <td style={{ textAlign: "right" }}>${client.split.tolleySplit.toFixed(0)}</td>
-          <td style={{ textAlign: "right" }}>${client.split.keeganSplit.toFixed(0)}</td>
         </>
       )}
 

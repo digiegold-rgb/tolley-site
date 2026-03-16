@@ -6,6 +6,7 @@ fal.config({ credentials: process.env.FAL_KEY });
 // ─── Model Mapping ───────────────────────────────────────
 // Endpoint IDs must be flat (no nested paths) for queue.result to work
 export const FAL_MODELS = {
+  // Text-to-Video
   "wan26-720p": {
     endpointId: "fal-ai/wan-t2v" as const,
     defaults: { num_frames: 81, enable_safety_checker: false },
@@ -21,6 +22,15 @@ export const FAL_MODELS = {
   "veo3-standard": {
     endpointId: "fal-ai/veo3" as const,
     defaults: {},
+  },
+  // Image-to-Video (for real property photos)
+  "wan26-i2v-720p": {
+    endpointId: "fal-ai/wan-i2v" as const,
+    defaults: { num_frames: 81, enable_safety_checker: false },
+  },
+  "wan26-i2v-1080p": {
+    endpointId: "fal-ai/wan-i2v" as const,
+    defaults: { num_frames: 81, resolution: "720p", enable_safety_checker: false },
   },
 } as const;
 

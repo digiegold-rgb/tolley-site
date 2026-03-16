@@ -35,6 +35,12 @@ interface EngineStatus {
   positions?: any[];
   strategies?: Record<string, any>;
   uptime_seconds?: number;
+  cross_asset?: { vix_level?: number; vix_spike?: boolean; risk_regime?: string; fresh?: boolean };
+  macro?: { economic_phase?: string; yield_curve_inverted?: boolean; fresh?: boolean };
+  sentiment?: { score?: number; headline_count?: number };
+  options_flow?: { market_bias?: string; symbols_scanned?: number; fresh?: boolean };
+  insider_data?: { cluster_buys?: number; total_scanned?: number; fresh?: boolean };
+  data_sources?: Record<string, any>;
 }
 
 interface Props {
@@ -293,6 +299,48 @@ export default function UnifiedDashboard({ initialSnapshots, initialCapital }: P
                   <div className="text-sm font-medium text-white">{strategyCount}</div>
                 </div>
               </div>
+
+              {/* Data Feed Badges */}
+              {(ac === "stocks_conservative" || ac === "stocks_aggressive") && engine.cross_asset && (
+                <div className="mt-3 pt-3 border-t border-white/5 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-white/30">VIX</span>
+                    <span className={`text-[10px] font-medium ${engine.cross_asset.vix_spike ? "text-red-400" : (engine.cross_asset.vix_level ?? 0) > 18 ? "text-orange-400" : "text-green-400"}`}>
+                      {engine.cross_asset.vix_level?.toFixed(1) ?? "--"}{engine.cross_asset.vix_spike ? " SPIKE" : ""}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-white/30">Risk</span>
+                    <span className={`text-[10px] font-medium ${
+                      engine.cross_asset.risk_regime === "RISK_ON" ? "text-green-400"
+                      : engine.cross_asset.risk_regime === "RISK_OFF" ? "text-red-400"
+                      : "text-orange-400"
+                    }`}>
+                      {engine.cross_asset.risk_regime?.replace(/_/g, " ") ?? "--"}
+                    </span>
+                  </div>
+                  {engine.sentiment?.score != null && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-white/30">Sentiment</span>
+                      <span className={`text-[10px] font-medium ${engine.sentiment.score > 0.2 ? "text-green-400" : engine.sentiment.score < -0.2 ? "text-red-400" : "text-white/40"}`}>
+                        {engine.sentiment.score > 0 ? "+" : ""}{engine.sentiment.score.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {engine.options_flow?.market_bias && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-white/30">Options</span>
+                      <span className={`text-[10px] font-medium capitalize ${
+                        engine.options_flow.market_bias === "bullish" ? "text-green-400"
+                        : engine.options_flow.market_bias === "bearish" ? "text-red-400"
+                        : "text-white/40"
+                      }`}>
+                        {engine.options_flow.market_bias}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Hover hint */}
               <div className="mt-4 pt-3 border-t border-white/5 text-center">

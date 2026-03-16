@@ -300,6 +300,49 @@ export async function POST(req: NextRequest) {
     }
 
     // ═══════════════════════════════════════════════════════
+    // SOURCE 4: Create TrendSignals + PriceSnapshots from discoveries
+    // ═══════════════════════════════════════════════════════
+    try {
+      if (results.pairsCreated >= 3) {
+        // High volume of discoveries — create trend signal
+        const topCategory = results.scans.reduce(
+          (best, s) => (s.pairs > (best?.pairs || 0) ? s : best),
+          results.scans[0]
+        );
+        if (topCategory) {
+          await prisma.trendSignal.create({
+            data: {
+              category: topCategory.query || "arbitrage",
+              platform: topCategory.source,
+              signalType: "sell_through_high",
+              title: `${results.pairsCreated} arbitrage opportunities found`,
+              body: `Top category: ${topCategory.query} (${topCategory.pairs} pairs). ${results.highMarginAlerts} high-margin alerts.`,
+              metric: results.pairsCreated,
+              metricLabel: "pairs found",
+              confidence: Math.min(results.pairsCreated / 10, 1),
+            },
+          }).catch(() => {});
+        }
+      }
+
+      // Store price snapshots from eBay completed items
+      for (const scan of results.scans) {
+        if (scan.source === "ebay_completed" && scan.items > 0) {
+          await prisma.priceSnapshot.create({
+            data: {
+              query: scan.query,
+              platform: "ebay_sold",
+              price: 0, // aggregate — individual prices stored in ArbitragePair
+              title: `${scan.query}: ${scan.items} items, ${scan.pairs} pairs`,
+            },
+          }).catch(() => {});
+        }
+      }
+    } catch {
+      // TrendSignal/PriceSnapshot creation is supplementary — don't fail the scan
+    }
+
+    // ═══════════════════════════════════════════════════════
     // COMPLETE
     // ═══════════════════════════════════════════════════════
     await completeScanRun(runId, {

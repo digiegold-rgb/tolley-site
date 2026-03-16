@@ -5,6 +5,11 @@ export const SHOP_CATEGORIES = [
   "Home",
   "Kitchen",
   "Kids",
+  "Sports",
+  "Tools",
+  "Automotive",
+  "Toys",
+  "Books",
   "Other",
 ] as const;
 

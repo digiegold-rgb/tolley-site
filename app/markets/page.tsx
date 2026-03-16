@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import MarketPortal from "@/components/leads/markets/MarketPortal";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 60;
+export const revalidate = 600;
 
 export const metadata = {
   title: "Market Intelligence | T-Agent by Tolley.io",

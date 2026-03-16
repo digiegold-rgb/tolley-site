@@ -27,6 +27,7 @@ export async function GET(req: Request) {
         status: true,
         creditsUsed: true,
         outputUrl: true,
+        blobUrl: true,
         thumbnailUrl: true,
         durationSecs: true,
         resolution: true,
@@ -38,8 +39,14 @@ export async function GET(req: Request) {
     prisma.videoGeneration.count({ where: { userId: session.user.id } }),
   ]);
 
+  // Prefer permanent blob URLs over expiring fal.ai CDN URLs
+  const mapped = generations.map((g) => ({
+    ...g,
+    outputUrl: g.blobUrl || g.outputUrl,
+  }));
+
   return NextResponse.json({
-    generations,
+    generations: mapped,
     total,
     page,
     pages: Math.ceil(total / limit),

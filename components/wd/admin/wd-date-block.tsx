@@ -5,7 +5,7 @@ import { WdClientRow, type WdClientData } from "./wd-client-row";
 interface Props {
   label: string;
   clients: WdClientData[];
-  role: "tolley" | "keegan";
+  role: "tolley";
   showSplit: boolean;
   maxPayments: number;
   onPaymentStatus: (paymentId: string, status: string) => void;
@@ -35,7 +35,7 @@ export function WdDateBlock({ label, clients, role, showSplit, maxPayments, onPa
 
   const cols = [...BASE_COLS];
   if (showSplit) {
-    cols.push("Tolley $", "Keagan $");
+    cols.push("Tolley $");
   }
   cols.push("# Pay");
 

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
@@ -90,15 +90,6 @@ export function LoginForm() {
         {status === "loading" ? "Signing In..." : "Sign In"}
       </button>
 
-      <p className="pt-1 text-center text-xs text-white/60">
-        Need an account?{" "}
-        <Link
-          href={`/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`}
-          className="text-violet-200 transition hover:text-white"
-        >
-          Create one
-        </Link>
-      </p>
     </form>
   );
 }

@@ -4,7 +4,7 @@ import UnifiedDashboard from "@/components/trading/UnifiedDashboard";
 import "../crypto/crypto.css";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 30;
+export const revalidate = 300;
 
 const ASSET_CLASSES = ["crypto", "stocks_conservative", "stocks_aggressive", "polymarket"] as const;
 

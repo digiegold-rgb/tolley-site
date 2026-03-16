@@ -14,8 +14,6 @@ export const WD_COMPANY = "Your KC Homes LLC";
 export const WD_STRIPE_FEE_RATE = 0.0412; // 4.12%
 export const WD_PAYBACK_BUYER_SHARE = 0.75;
 export const WD_PAYBACK_OTHER_SHARE = 0.25;
-export const WD_POST_PAYBACK_KEEGAN_SOURCE = { keegan: 0.6, tolley: 0.4 };
-export const WD_POST_PAYBACK_DEFAULT = { keegan: 0.5, tolley: 0.5 };
 
 interface WdPaymentRecord {
   amount: number;
@@ -33,7 +31,6 @@ interface WdClientForSplit {
 export interface RevenueSplitResult {
   totalRevenue: number;
   tolleySplit: number;
-  keeganSplit: number;
   paybackComplete: boolean;
   paybackRemaining: number;
 }
@@ -45,51 +42,23 @@ export function computeRevenueSplit(client: WdClientForSplit): RevenueSplitResul
 
   let totalRevenue = 0;
   let tolleySplit = 0;
-  let keeganSplit = 0;
   let paidBack = 0;
   const unitCost = client.unitCost;
 
   for (const p of payments) {
     totalRevenue += p.amount;
+    tolleySplit += p.amount;
 
     if (paidBack < unitCost) {
-      // Payback phase
       const remaining = unitCost - paidBack;
       const paybackPortion = Math.min(p.amount, remaining);
-      const postPaybackPortion = p.amount - paybackPortion;
-
-      // Payback split: buyer gets 75%, other gets 25%
-      if (client.paidBy === "tolley") {
-        tolleySplit += paybackPortion * WD_PAYBACK_BUYER_SHARE;
-        keeganSplit += paybackPortion * WD_PAYBACK_OTHER_SHARE;
-      } else {
-        keeganSplit += paybackPortion * WD_PAYBACK_BUYER_SHARE;
-        tolleySplit += paybackPortion * WD_PAYBACK_OTHER_SHARE;
-      }
       paidBack += paybackPortion;
-
-      // Any overflow goes to post-payback split
-      if (postPaybackPortion > 0) {
-        const split = client.source === "keegan"
-          ? WD_POST_PAYBACK_KEEGAN_SOURCE
-          : WD_POST_PAYBACK_DEFAULT;
-        tolleySplit += postPaybackPortion * split.tolley;
-        keeganSplit += postPaybackPortion * split.keegan;
-      }
-    } else {
-      // Post-payback phase
-      const split = client.source === "keegan"
-        ? WD_POST_PAYBACK_KEEGAN_SOURCE
-        : WD_POST_PAYBACK_DEFAULT;
-      tolleySplit += p.amount * split.tolley;
-      keeganSplit += p.amount * split.keegan;
     }
   }
 
   return {
     totalRevenue: Math.round(totalRevenue * 100) / 100,
     tolleySplit: Math.round(tolleySplit * 100) / 100,
-    keeganSplit: Math.round(keeganSplit * 100) / 100,
     paybackComplete: paidBack >= unitCost,
     paybackRemaining: Math.max(0, Math.round((unitCost - paidBack) * 100) / 100),
   };

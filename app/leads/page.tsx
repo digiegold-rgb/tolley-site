@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import LeadsDashboard from "@/components/leads/LeadsDashboard";
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 /**
  * /leads?key=SYNC_SECRET

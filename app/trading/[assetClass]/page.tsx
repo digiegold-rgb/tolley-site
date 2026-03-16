@@ -6,7 +6,7 @@ import CryptoPortal from "@/components/crypto/CryptoPortal";
 import "../../crypto/crypto.css";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 30;
+export const revalidate = 300;
 
 const VALID_ASSET_CLASSES = ["crypto", "stocks_conservative", "stocks_aggressive", "polymarket"] as const;
 type AssetClass = (typeof VALID_ASSET_CLASSES)[number];

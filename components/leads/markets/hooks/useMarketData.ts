@@ -118,7 +118,7 @@ export interface DailyDigest {
 
 export function useDigest() {
   return useApi<{ digest: DailyDigest | null }>(
-    "/api/markets/digest/latest",
+    "/api/markets/digest",
     300000 // 5 min
   );
 }

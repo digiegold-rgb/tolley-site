@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-type Tab = "overview" | "strategies" | "trades" | "predictions" | "market" | "optimizer" | "workflow";
+type Tab = "overview" | "strategies" | "trades" | "predictions" | "datafeeds" | "market" | "optimizer" | "workflow";
 
 interface Snapshot {
   equity: number;
@@ -133,6 +133,22 @@ export default function AssetPortal({
   const livePredictions = liveData?.predictions ?? {};
   const tvSignals = liveData?.tv_signals ?? {};
 
+  // New data feeds
+  const crossAsset = liveData?.cross_asset ?? {};
+  const macro = liveData?.macro ?? {};
+  const optionsFlow = liveData?.options_flow ?? {};
+  const insiderData = liveData?.insider_data ?? {};
+  const earningsData = liveData?.earnings_data ?? {};
+  const sentimentScore = liveData?.sentiment?.score ?? 0;
+  const dataSources = liveData?.data_sources ?? {};
+
+  // Self-improving feedback loop
+  const selfImproving = liveData?.self_improving ?? {};
+  const strategyScores = selfImproving.strategy_scores ?? {};
+  const disabledStrategies = selfImproving.disabled_strategies ?? {};
+  const recentLessons = selfImproving.recent_lessons ?? [];
+  const tradeLessonCount = selfImproving.trade_lessons ?? 0;
+
   const fmt = (n: number) =>
     "$" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const fmtSign = (n: number) =>
@@ -143,11 +159,13 @@ export default function AssetPortal({
       ? liveData.equity_curve
       : null;
 
+  const dataFeedCount = Object.values(dataSources).filter((s: any) => s?.fresh || s?.enabled).length;
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "overview", label: "Overview" },
     { key: "strategies", label: "Strategies", count: strategies.length },
     { key: "trades", label: "Trades", count: trades.length },
     { key: "predictions", label: "Predictions", count: Object.keys(livePredictions).length },
+    { key: "datafeeds", label: "Data Feeds", count: dataFeedCount },
     { key: "market", label: "Market Intel" },
     { key: "optimizer", label: "Optimizer" },
     { key: "workflow", label: "Workflow" },
@@ -190,6 +208,28 @@ export default function AssetPortal({
         <span className="text-xs text-white/40">
           Regime: <span className="text-amber-400/80">{currentRegime.replace(/_/g, " ")}</span>
         </span>
+        {crossAsset.vix_level != null && (
+          <>
+            <div className="h-4 w-px bg-white/10" />
+            <span className="text-xs text-white/30">
+              VIX: <span className={`font-medium ${crossAsset.vix_spike ? "text-red-400" : crossAsset.vix_level > 18 ? "text-orange-400" : "text-green-400"}`}>
+                {crossAsset.vix_level.toFixed(1)}{crossAsset.vix_spike ? " SPIKE" : ""}
+              </span>
+            </span>
+          </>
+        )}
+        {crossAsset.risk_regime && (
+          <>
+            <div className="h-4 w-px bg-white/10" />
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+              crossAsset.risk_regime === "RISK_ON" ? "bg-green-500/20 text-green-400 border border-green-500/30"
+              : crossAsset.risk_regime === "RISK_OFF" ? "bg-red-500/20 text-red-400 border border-red-500/30"
+              : "bg-orange-500/20 text-orange-400 border border-orange-500/30"
+            }`}>
+              {crossAsset.risk_regime.replace(/_/g, " ")}
+            </span>
+          </>
+        )}
         {liveData?.sharpe != null && (
           <>
             <div className="h-4 w-px bg-white/10" />
@@ -411,6 +451,87 @@ export default function AssetPortal({
         </div>
       )}
 
+      {/* Self-Improving Panel (below strategies) */}
+      {tab === "strategies" && (Object.keys(strategyScores).length > 0 || recentLessons.length > 0) && (
+        <div className="mt-6 space-y-4">
+          {/* Adaptive Scoring */}
+          {Object.keys(strategyScores).length > 0 && (
+            <div className="crypto-card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs text-white/40 uppercase tracking-wider">Self-Improving: Adaptive Scoring</h3>
+                <span className="text-[10px] text-white/20">{tradeLessonCount} lessons learned</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-white/30 text-[10px] uppercase">
+                      <th className="text-left py-2">Strategy</th>
+                      <th className="text-right py-2">Win Rate</th>
+                      <th className="text-right py-2">Kelly %</th>
+                      <th className="text-right py-2">Expectancy</th>
+                      <th className="text-right py-2">Profit Factor</th>
+                      <th className="text-right py-2">Consec. Losses</th>
+                      <th className="text-center py-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(strategyScores).map(([name, score]: [string, any]) => {
+                      const disabled = name in disabledStrategies;
+                      return (
+                        <tr key={name} className={`border-t border-white/5 ${disabled ? "opacity-40" : ""}`}>
+                          <td className="py-2 text-white font-medium">{name.replace(/_/g, " ")}</td>
+                          <td className={`py-2 text-right ${score.win_rate >= 0.5 ? "text-green-400" : score.win_rate >= 0.3 ? "text-orange-400" : "text-red-400"}`}>
+                            {(score.win_rate * 100).toFixed(0)}%
+                          </td>
+                          <td className="py-2 text-right text-amber-400">{(score.kelly_fraction * 100).toFixed(1)}%</td>
+                          <td className={`py-2 text-right ${score.expectancy >= 0 ? "text-green-400" : "text-red-400"}`}>
+                            ${score.expectancy.toFixed(2)}
+                          </td>
+                          <td className={`py-2 text-right ${score.profit_factor >= 1 ? "text-green-400" : "text-red-400"}`}>
+                            {score.profit_factor.toFixed(2)}
+                          </td>
+                          <td className={`py-2 text-right ${score.consecutive_losses >= 5 ? "text-red-400" : "text-white/60"}`}>
+                            {score.consecutive_losses}
+                          </td>
+                          <td className="py-2 text-center">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${disabled ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"}`}>
+                              {disabled ? "AUTO-OFF" : "Active"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="text-[10px] text-white/20 mt-3">
+                Kelly % = adaptive position sizing from rolling win rate. Strategies auto-disable at &lt;25% win rate, 8 consecutive losses, or &lt;0.5 profit factor. Re-enables at 40% recovery win rate.
+              </div>
+            </div>
+          )}
+
+          {/* Recent AI Lessons */}
+          {recentLessons.length > 0 && (
+            <div className="crypto-card">
+              <h3 className="text-xs text-white/40 uppercase tracking-wider mb-3">AI Trade Lessons</h3>
+              <div className="space-y-2">
+                {recentLessons.map((l: any, i: number) => (
+                  <div key={i} className={`flex items-start gap-2 bg-white/[0.02] rounded-lg p-3 border ${l.outcome === "win" ? "border-green-500/10" : "border-red-500/10"}`}>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold mt-0.5 ${l.outcome === "win" ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}`}>
+                      {l.outcome.toUpperCase()}
+                    </span>
+                    <div>
+                      <span className="text-xs text-amber-400/80">{l.strategy}</span>
+                      <p className="text-xs text-white/60">{l.lesson}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* TRADES TAB */}
       {tab === "trades" && (
         <div className="space-y-4">
@@ -502,6 +623,217 @@ export default function AssetPortal({
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* DATA FEEDS TAB */}
+      {tab === "datafeeds" && (
+        <div className="space-y-4">
+          {/* Cross-Asset Signals */}
+          <div className="crypto-card crypto-glow">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs text-white/40 uppercase tracking-wider">Cross-Asset Correlation Signals</h3>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${crossAsset.fresh ? "bg-green-500/20 text-green-400" : "bg-white/5 text-white/30"}`}>
+                {crossAsset.fresh ? "Live" : "Stale"}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div className="bg-white/[0.02] rounded-lg p-3 border border-white/5">
+                <div className="text-[10px] text-white/30 uppercase mb-1">VIX Level</div>
+                <div className={`text-xl font-bold ${(crossAsset.vix_level ?? 0) > 25 ? "text-red-400" : (crossAsset.vix_level ?? 0) > 18 ? "text-orange-400" : "text-green-400"}`}>
+                  {crossAsset.vix_level?.toFixed(1) ?? "--"}
+                </div>
+                {crossAsset.vix_spike && (
+                  <div className="text-[10px] px-1.5 py-0.5 mt-1 rounded bg-red-500/20 text-red-400 inline-block">SPIKE</div>
+                )}
+              </div>
+              <div className="bg-white/[0.02] rounded-lg p-3 border border-white/5">
+                <div className="text-[10px] text-white/30 uppercase mb-1">Risk Regime</div>
+                <div className={`text-lg font-bold ${
+                  crossAsset.risk_regime === "RISK_ON" ? "text-green-400"
+                  : crossAsset.risk_regime === "RISK_OFF" ? "text-red-400"
+                  : crossAsset.risk_regime === "CAUTIOUS" ? "text-orange-400"
+                  : "text-white/60"
+                }`}>
+                  {crossAsset.risk_regime?.replace(/_/g, " ") ?? "--"}
+                </div>
+              </div>
+              <div className="bg-white/[0.02] rounded-lg p-3 border border-white/5">
+                <div className="text-[10px] text-white/30 uppercase mb-1">Bond-Equity Divergence</div>
+                <div className={`text-lg font-bold ${crossAsset.bond_equity_divergence ? "text-red-400" : "text-green-400"}`}>
+                  {crossAsset.bond_equity_divergence ? "DETECTED" : "Normal"}
+                </div>
+              </div>
+              <div className="bg-white/[0.02] rounded-lg p-3 border border-white/5">
+                <div className="text-[10px] text-white/30 uppercase mb-1">Credit Stress</div>
+                <div className={`text-lg font-bold ${crossAsset.credit_stress ? "text-red-400" : "text-green-400"}`}>
+                  {crossAsset.credit_stress ? "STRESSED" : "Normal"}
+                </div>
+              </div>
+            </div>
+            <div className="text-[10px] text-white/20">Updates every 5 min. Tracks ^VIX, TLT, DX-Y.NYB, HYG, ^TNX, SPY</div>
+          </div>
+
+          {/* FRED Macro */}
+          <div className="crypto-card">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs text-white/40 uppercase tracking-wider">FRED Macro Economics</h3>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${macro.fresh ? "bg-green-500/20 text-green-400" : "bg-white/5 text-white/30"}`}>
+                {macro.fresh ? "Live" : "Stale"}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div className="bg-white/[0.02] rounded-lg p-3 border border-white/5">
+                <div className="text-[10px] text-white/30 uppercase mb-1">Economic Phase</div>
+                <div className={`text-lg font-bold capitalize ${
+                  macro.economic_phase === "expansion" ? "text-green-400"
+                  : macro.economic_phase === "recovery" ? "text-blue-400"
+                  : macro.economic_phase === "slowdown" ? "text-orange-400"
+                  : macro.economic_phase === "contraction" ? "text-red-400"
+                  : "text-white/60"
+                }`}>
+                  {macro.economic_phase ?? "--"}
+                </div>
+              </div>
+              <div className="bg-white/[0.02] rounded-lg p-3 border border-white/5">
+                <div className="text-[10px] text-white/30 uppercase mb-1">Yield Curve</div>
+                <div className={`text-lg font-bold ${macro.yield_curve_inverted ? "text-red-400" : "text-green-400"}`}>
+                  {macro.yield_curve_inverted ? "INVERTED" : "Normal"}
+                </div>
+              </div>
+              <div className="bg-white/[0.02] rounded-lg p-3 border border-white/5">
+                <div className="text-[10px] text-white/30 uppercase mb-1">Unemployment</div>
+                <div className="text-lg font-bold text-white">{macro.unemployment_rate ?? "--"}%</div>
+              </div>
+              <div className="bg-white/[0.02] rounded-lg p-3 border border-white/5">
+                <div className="text-[10px] text-white/30 uppercase mb-1">Fed Funds Rate</div>
+                <div className="text-lg font-bold text-amber-400">{macro.fed_funds_rate ?? "--"}%</div>
+              </div>
+            </div>
+            <div className="text-[10px] text-white/20">Updates every 6h. Source: Federal Reserve Economic Data (FRED API)</div>
+          </div>
+
+          {/* News Sentiment */}
+          <div className="crypto-card">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs text-white/40 uppercase tracking-wider">AI News Sentiment</h3>
+              <span className="text-[10px] text-white/20">{liveData?.sentiment?.headline_count ?? 0} headlines</span>
+            </div>
+            <div className="flex items-center gap-4 mb-3">
+              <div className="flex-1">
+                <div className="h-3 bg-white/5 rounded-full overflow-hidden relative">
+                  <div
+                    className={`h-full rounded-full transition-all ${sentimentScore > 0 ? "bg-green-500" : sentimentScore < 0 ? "bg-red-500" : "bg-white/20"}`}
+                    style={{ width: `${Math.abs(sentimentScore) * 50 + 50}%`, marginLeft: sentimentScore < 0 ? `${50 - Math.abs(sentimentScore) * 50}%` : "50%" }}
+                  />
+                  <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/20" />
+                </div>
+                <div className="flex justify-between text-[10px] text-white/20 mt-1">
+                  <span>Bearish</span>
+                  <span>Neutral</span>
+                  <span>Bullish</span>
+                </div>
+              </div>
+              <div className={`text-2xl font-bold ${sentimentScore > 0.2 ? "text-green-400" : sentimentScore < -0.2 ? "text-red-400" : "text-white/60"}`}>
+                {sentimentScore > 0 ? "+" : ""}{sentimentScore.toFixed(2)}
+              </div>
+            </div>
+            <div className="text-[10px] text-white/20">Qwen3.5-35B AI scores 7 RSS feeds: Yahoo Finance, MarketWatch, CNBC, Reuters, Seeking Alpha, Benzinga, Investing.com</div>
+          </div>
+
+          {/* Options Flow */}
+          <div className="crypto-card">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs text-white/40 uppercase tracking-wider">Unusual Options Activity</h3>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${optionsFlow.fresh ? "bg-green-500/20 text-green-400" : "bg-white/5 text-white/30"}`}>
+                {optionsFlow.fresh ? "Live" : "Stale"}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div className="bg-white/[0.02] rounded-lg p-3 border border-white/5">
+                <div className="text-[10px] text-white/30 uppercase mb-1">Market Bias</div>
+                <div className={`text-lg font-bold capitalize ${
+                  optionsFlow.market_bias === "bullish" ? "text-green-400"
+                  : optionsFlow.market_bias === "bearish" ? "text-red-400"
+                  : "text-white/60"
+                }`}>
+                  {optionsFlow.market_bias ?? "--"}
+                </div>
+              </div>
+              <div className="bg-white/[0.02] rounded-lg p-3 border border-white/5">
+                <div className="text-[10px] text-white/30 uppercase mb-1">Bullish Unusual</div>
+                <div className="text-lg font-bold text-green-400">{optionsFlow.bullish_unusual ?? 0}</div>
+              </div>
+              <div className="bg-white/[0.02] rounded-lg p-3 border border-white/5">
+                <div className="text-[10px] text-white/30 uppercase mb-1">Bearish Unusual</div>
+                <div className="text-lg font-bold text-red-400">{optionsFlow.bearish_unusual ?? 0}</div>
+              </div>
+              <div className="bg-white/[0.02] rounded-lg p-3 border border-white/5">
+                <div className="text-[10px] text-white/30 uppercase mb-1">Symbols Scanned</div>
+                <div className="text-lg font-bold text-white">{optionsFlow.symbols_scanned ?? 0}</div>
+              </div>
+            </div>
+            <div className="text-[10px] text-white/20">Updates every 15 min. Scans nearest 4 expirations via yfinance, detects vol/OI &gt; 3x</div>
+          </div>
+
+          {/* Insider Trading */}
+          <div className="crypto-card">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs text-white/40 uppercase tracking-wider">SEC Insider Trading</h3>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${insiderData.fresh ? "bg-green-500/20 text-green-400" : "bg-white/5 text-white/30"}`}>
+                {insiderData.fresh ? "Live" : "Stale"}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="bg-white/[0.02] rounded-lg p-3 border border-white/5 text-center">
+                <div className="text-[10px] text-white/30 uppercase mb-1">Cluster Buys</div>
+                <div className={`text-2xl font-bold ${(insiderData.cluster_buys ?? 0) > 0 ? "text-green-400" : "text-white/30"}`}>
+                  {insiderData.cluster_buys ?? 0}
+                </div>
+                <div className="text-[10px] text-white/20 mt-1">3+ insiders buying within 30d</div>
+              </div>
+              <div className="bg-white/[0.02] rounded-lg p-3 border border-white/5 text-center">
+                <div className="text-[10px] text-white/30 uppercase mb-1">Total Scanned</div>
+                <div className="text-2xl font-bold text-white">{insiderData.total_scanned ?? 0}</div>
+              </div>
+              <div className="bg-white/[0.02] rounded-lg p-3 border border-white/5 text-center">
+                <div className="text-[10px] text-white/30 uppercase mb-1">Signal</div>
+                <div className="text-lg font-bold text-amber-400">
+                  {(insiderData.cluster_buys ?? 0) > 0 ? "ACTIVE" : "Monitoring"}
+                </div>
+              </div>
+            </div>
+            <div className="text-[10px] text-white/20">Updates every 60 min. Scans SEC Form 4 filings for open market purchases (not option exercises)</div>
+          </div>
+
+          {/* Earnings Data */}
+          {earningsData?.symbols_with_data > 0 && (
+            <div className="crypto-card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs text-white/40 uppercase tracking-wider">Earnings Data (PEAD)</h3>
+                <span className="text-[10px] text-white/20">{earningsData.symbols_with_data} symbols tracked</span>
+              </div>
+              <div className="text-sm text-white/40 mb-2">
+                Post-Earnings Announcement Drift strategy monitors earnings surprises across all tracked symbols.
+                Stocks with &gt;5% EPS surprise tend to drift for ~15 trading days.
+              </div>
+              <div className="text-[10px] text-white/20">Updates daily via yfinance earnings_history. Last update: {earningsData.last_update ? new Date(earningsData.last_update).toLocaleString() : "pending"}</div>
+            </div>
+          )}
+
+          {/* Data Source Health Grid */}
+          <div className="crypto-card">
+            <h3 className="text-xs text-white/40 uppercase tracking-wider mb-4">Data Source Health</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {Object.entries(dataSources).map(([name, info]: [string, any]) => (
+                <div key={name} className="flex items-center gap-2 bg-white/[0.02] rounded px-3 py-2 border border-white/5">
+                  <span className={`w-2 h-2 rounded-full ${info?.fresh ? "bg-green-400" : info?.enabled ? "bg-amber-400" : "bg-red-400/50"}`} />
+                  <span className="text-xs text-white/60">{name.replace(/_/g, " ")}</span>
+                  <span className="text-[10px] text-white/20 ml-auto">{info?.fresh ? "OK" : info?.enabled ? "Stale" : "Off"}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

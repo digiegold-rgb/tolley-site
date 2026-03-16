@@ -24,8 +24,9 @@ const DailyDigestPanel = dynamic(() => import("./panels/DailyDigestPanel"), { ss
 const TopMoversPanel = dynamic(() => import("./panels/TopMoversPanel"), { ssr: false });
 const PredictiveScoreCard = dynamic(() => import("./panels/PredictiveScoreCard"), { ssr: false });
 const AccuracyTracker = dynamic(() => import("./panels/AccuracyTracker"), { ssr: false });
+const AdsDashboard = dynamic(() => import("./ads/AdsDashboard"), { ssr: false });
 
-type Tab = "dashboard" | "deep-dive" | "news" | "sources";
+type Tab = "dashboard" | "deep-dive" | "ads" | "news" | "sources";
 
 // Period context for global period selector
 const PeriodContext = createContext<{ days: number; setDays: (d: number) => void }>({
@@ -162,6 +163,7 @@ export default function MarketPortal({ initialSnapshot, initialSignals, initialD
   const tabs: { id: Tab; label: string }[] = [
     { id: "dashboard", label: "Dashboard" },
     { id: "deep-dive", label: "Deep Dive" },
+    { id: "ads", label: "Google Ads" },
     { id: "news", label: `News & Videos (${articles.length + videos.length})` },
     { id: "sources", label: "Sources" },
   ];
@@ -324,6 +326,13 @@ export default function MarketPortal({ initialSnapshot, initialSignals, initialD
               <h3 className="text-xs font-medium text-white/50 mb-2">Stock Tickers</h3>
               <StockTicker tickers={snapshot?.tickers ?? null} snapshotHistory={snapshotHistory} />
             </div>
+          </div>
+        )}
+
+        {/* Google Ads tab */}
+        {tab === "ads" && (
+          <div className="animate-in fade-in duration-300">
+            <AdsDashboard />
           </div>
         )}
 

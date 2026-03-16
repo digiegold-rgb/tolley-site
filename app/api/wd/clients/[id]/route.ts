@@ -21,25 +21,10 @@ export async function PATCH(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // Keagan cannot edit locked rows
-    if (existing.locked && role === "keegan") {
-      return NextResponse.json({ error: "This client is locked" }, { status: 403 });
-    }
-
     const body = await request.json();
     const data: Record<string, unknown> = {};
 
-    // Fields Keagan cannot change
-    const adminOnlyFields = ["blockedFields", "locked", "stripeCustomerId"];
-    const blockedForKeagan = existing.blockedFields;
-
     for (const [key, value] of Object.entries(body)) {
-      // Keagan restrictions
-      if (role === "keegan") {
-        if (adminOnlyFields.includes(key)) continue;
-        if (blockedForKeagan.includes(key)) continue;
-      }
-
       if (key === "installDate" && value) {
         data[key] = new Date(value as string);
       } else {

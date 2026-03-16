@@ -1,0 +1,36 @@
+{
+  "brushes": [
+    {"brand":"POOLSTYLE","name":"18\" Poly Bristles Brush with Metal Back","sku":"PSL-40-2001","mfgPart":"PS2120","price":"20.32","stock":106},
+    {"brand":"POOLSTYLE","name":"18\" Wall Brush with Poly Bristles and Back","sku":"PSL-40-2005","mfgPart":"PS2032","price":"10.46","stock":56},
+    {"brand":"SUPER-PRO","name":"18\" Service Grade Combo Grit/Poly Brush","sku":"SPG-40-2007","mfgPart":"SP2007","price":"34.60","stock":8},
+    {"brand":"SUPER-PRO","name":"18\" Stainless Steel/Poly Service Grade Combo Brush","sku":"SPG-40-2006","mfgPart":"SP2006","price":"40.05","stock":17},
+    {"brand":"POOLSTYLE","name":"18\" Polybristle Wall Brush with Aluminum Handle","sku":"PSL-40-2013","mfgPart":"PS2048","price":"21.99","stock":108}
+  ],
+  "skimmerNets": [
+    {"brand":"POOLSTYLE","name":"Heavy Duty Skimmer with ABS Frame and Nylon Net","sku":"PSL-40-2031","mfgPart":"PS2015","price":"16.07","stock":17},
+    {"brand":"POOLSTYLE","name":"Heavy Duty Leaf Rake with ABS Frame and Nylon Mesh Net","sku":"PSL-40-2023","mfgPart":"PS2013","price":"21.52","stock":11},
+    {"brand":"SUPER-PRO","name":"20\" Deep Net Heavy Duty Wide Rim Mesh Leaf Rake","sku":"SPG-40-2014","mfgPart":"SP2014","price":"36.38","stock":33},
+    {"brand":"PENTAIR","name":"Professional Aluminum Frame Heavy Duty Hand Skimmer Net","sku":"RAI-40-2069","mfgPart":"R121196","price":"31.82","stock":32}
+  ],
+  "poles": [
+    {"brand":"POOLSTYLE","name":"Ribbed Outer Lock Telepole 8-16ft","sku":"PSL-40-2045","mfgPart":"PS2026","price":"36.66","stock":129},
+    {"brand":"POOLSTYLE","name":"8-16ft Smooth Aluminum Telepole with Outer Lock","sku":"PSL-40-2053","mfgPart":"PS2071","price":"45.84","stock":20},
+    {"brand":"PENTAIR","name":"8-15.5ft Blue Aluminum 2-Piece Telescopic Pole with E-Z Cam Lock","sku":"RAI-40-2114","mfgPart":"R191306","price":"54.18","stock":null}
+  ],
+  "vacuumHeads": [
+    {"brand":"POOLSTYLE","name":"14\" Flex Vacuum Head with Metal Handle","sku":"PSL-40-2066","mfgPart":"PS2058","price":"46.13","stock":30},
+    {"brand":"POOLSTYLE","name":"Transparent Vinyl Vacuum Head","sku":"PSL-40-2064","mfgPart":"PS2012","price":"41.87","stock":132},
+    {"brand":"PENTAIR","name":"203 14\" Superflex Vacuum Head","sku":"RAI-40-2342","mfgPart":"R201388","price":"49.98","stock":117}
+  ],
+  "hoses": [
+    {"brand":"POOLSTYLE","name":"1.5\" x 35ft Deluxe Series Vacuum Hose","sku":"PSL-40-9235","mfgPart":"BO528112035PSL","price":"63.48","stock":1},
+    {"brand":"POOLSTYLE","name":"1.5\" x 40ft Deluxe Series Vacuum Hose","sku":"PSL-40-9240","mfgPart":"BO528112040PSL","price":"72.45","stock":6},
+    {"brand":"POOLSTYLE","name":"1.5\" x 50ft Professional Series Vacuum Hose with Swivel Cuff","sku":"PSL-40-8550","mfgPart":"IH548112050PCOB","price":"148.29","stock":8}
+  ],
+  "testKits": [
+    {"brand":"TAYLOR","name":"Complete Kit for Chlorine/Bromine/pH/Alkalinity/Hardness/CYA DPD High Range","sku":"TAY-45-1147","mfgPart":"K-2005-6","price":"85.39","stock":5},
+    {"brand":"AQUACHEK","name":"Silver 7-In-1 Test Strip 100 Count","sku":"AQC-47-1032","mfgPart":"551236","price":"31.84","stock":242},
+    {"brand":"AQUACHEK","name":"4 Way Chlorine Test Strips 50 Count","sku":"AQC-45-1002","mfgPart":"511242A","price":"10.40","stock":152},
+    {"brand":"TAYLOR","name":"6-Way Residential Test Kit for Free & Total Chlorine/Bromine/pH","sku":"TAY-47-3303","mfgPart":"K-1004-6","price":"29.30","stock":null}
+  ]
+}

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import SmsInbox from "@/components/leads/SmsInbox";
 
-export const revalidate = 30;
+export const revalidate = 300;
 
 /**
  * /leads/sms?key=SYNC_SECRET

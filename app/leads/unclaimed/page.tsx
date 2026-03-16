@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import UnclaimedDashboard from "@/components/leads/UnclaimedDashboard";
 
-export const revalidate = 30;
+export const revalidate = 600;
 
 export default async function UnclaimedFundsPage() {
   const session = await auth();

@@ -91,14 +91,11 @@ export function WdAddClientModal({ open, onClose, onSubmit }: Props) {
           <label>Source</label>
           <select value={source} onChange={e => setSource(e.target.value)}>
             <option value="tolley">Tolley</option>
-            <option value="keegan">Keagan</option>
-            <option value="both">Both</option>
           </select>
 
           <label>Paid By</label>
           <select value={paidBy} onChange={e => setPaidBy(e.target.value)}>
             <option value="tolley">Tolley</option>
-            <option value="keegan">Keagan</option>
           </select>
 
           <label>Notes</label>

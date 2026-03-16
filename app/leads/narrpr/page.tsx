@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import NarrprUpload from "@/components/leads/NarrprUpload";
 import NarrprDashboard from "./NarrprDashboard";
 
-export const revalidate = 15;
+export const revalidate = 300;
 
 export default async function NarrprPage({
   searchParams,

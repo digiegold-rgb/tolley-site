@@ -5,8 +5,8 @@ import type { WdClientData } from "./wd-client-row";
 
 interface Props {
   clients: WdClientData[];
-  role: "tolley" | "keegan";
-  filter: "all" | "tolley" | "keegan";
+  role: "tolley";
+  filter: "all" | "tolley";
   onPaymentStatus: (paymentId: string, status: string) => void;
   onConfirmToggle: (clientId: string, val: boolean) => void;
   onSave: (clientId: string, fields: Record<string, string | number>) => void;
@@ -28,19 +28,10 @@ export function WdSpreadsheet({ clients, role, filter, onPaymentStatus, onConfir
   let filtered = clients;
   if (filter === "tolley") {
     filtered = clients.filter(c => c.source === "tolley");
-  } else if (filter === "keegan") {
-    filtered = clients.filter(c => c.source === "keegan" || c.source === "both");
   }
 
   const active = filtered.filter(c => c.active);
   const inactive = filtered.filter(c => !c.active);
-
-  // Determine if split info shows
-  // Split only on shared clients (source !== "tolley" when on tolley tab)
-  const shouldShowSplit = (c: WdClientData) => {
-    if (filter === "tolley") return false; // Solo clients, no split
-    return c.source === "keegan" || c.source === "both";
-  };
 
   // Max payments across all clients for column alignment
   const maxPayments = Math.max(1, ...filtered.map(c => c.payments.length));
@@ -51,10 +42,6 @@ export function WdSpreadsheet({ clients, role, filter, onPaymentStatus, onConfir
     clients: active.filter(c => getDateBlock(c.installDate) === block),
   }));
 
-  // For "all" or "keegan" tabs, we need to handle split per-row
-  // Show split columns whenever filter is "keegan" or "all" has shared clients
-  const showSplitCols = filter === "keegan" || (filter === "all" && filtered.some(c => c.source === "keegan" || c.source === "both"));
-
   return (
     <div>
       {blocks.map(b => (
@@ -63,7 +50,7 @@ export function WdSpreadsheet({ clients, role, filter, onPaymentStatus, onConfir
           label={b.label}
           clients={b.clients}
           role={role}
-          showSplit={showSplitCols}
+          showSplit={false}
           maxPayments={maxPayments}
           onPaymentStatus={onPaymentStatus}
           onConfirmToggle={onConfirmToggle}
@@ -76,7 +63,7 @@ export function WdSpreadsheet({ clients, role, filter, onPaymentStatus, onConfir
           label="Inactive / Lost Clients"
           clients={inactive}
           role={role}
-          showSplit={showSplitCols}
+          showSplit={false}
           maxPayments={maxPayments}
           onPaymentStatus={onPaymentStatus}
           onConfirmToggle={onConfirmToggle}

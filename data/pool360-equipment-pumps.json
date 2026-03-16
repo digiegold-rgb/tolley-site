@@ -1,0 +1,14 @@
+[
+  {"brand":"PENTAIR","name":"IntelliFlo3 VSF Pump with Relay Board 3 HP 208-230V","sku":"PUR-10-1076","mfgPart":"011076","price":"1922.62","stock":24},
+  {"brand":"PENTAIR","name":"SuperFlo VST Variable Speed Pump 2.2THP 115/230V","sku":"PAC-10-2002","mfgPart":"342002","price":"1329.67","stock":33},
+  {"brand":"PENTAIR","name":"IntelliFlo3 VSF Pool Pump with Relay Board 1.5 HP 115/208-230V","sku":"PUR-10-3106","mfgPart":"011066","price":"1359.43","stock":48},
+  {"brand":"JANDY","name":"ePump Variable Speed Pump 2.7HP 115/230V","sku":"TLD-10-2133","mfgPart":"VSSHP270DV2A","price":"1892.52","stock":7},
+  {"brand":"PENTAIR","name":"WhisperFlo VST Variable Speed Pump 115/208-230V","sku":"PUR-10-414","mfgPart":"011533","price":"1827.37","stock":19},
+  {"brand":"MOOV","name":"Ai Inverter Pool Pump 2.0HP","sku":"MOV-10-1003","mfgPart":"MP2AI","price":"1049.80","stock":5},
+  {"brand":"JANDY","name":"VS FloPro Pool Pump 1.65HP 115/230V with SpeedSet Controller","sku":"TLD-10-0007","mfgPart":"VSFHP165DVS","price":"1323.23","stock":5},
+  {"brand":"JANDY","name":"VS FloPro Variable Speed Pump 1.85HP 115/230V without Controller","sku":"TLD-10-1002","mfgPart":"VSFHP185DV2A","price":"1432.52","stock":5},
+  {"brand":"JANDY","name":"VS FloPro Variable Speed Pump 2.7HP 115/230V without Controller","sku":"TLD-10-1000","mfgPart":"VSFHP270DV2A","price":"1759.38","stock":5},
+  {"brand":"PENTAIR","name":"SuperFlo 1 Speed High Performance Pump .69HHP 1.1THP","sku":"PAC-10-0048","mfgPart":"348190","price":"752.22","stock":88},
+  {"brand":"HAYWARD","name":"Super Pump 700 1HP 115/230V","sku":"HAY-10-3236","mfgPart":"SP2670007X10","price":"808.87","stock":8},
+  {"brand":"PENTAIR","name":"WhisperFloXF VS Pump 5 HP","sku":"PUR-10-628","mfgPart":"022035","price":"3325.96","stock":21}
+]

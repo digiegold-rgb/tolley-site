@@ -10,7 +10,7 @@ export interface RepairItem {
 
 interface Props {
   items: RepairItem[];
-  role: "tolley" | "keegan";
+  role: "tolley";
   onAdd: (name: string, cost: number) => void;
   onUpdate: (id: string, name: string, cost: number) => void;
   onDelete: (id: string) => void;

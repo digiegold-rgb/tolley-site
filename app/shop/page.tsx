@@ -3,13 +3,63 @@ import { prisma } from "@/lib/prisma";
 import { formatPrice, timeAgo, FACEBOOK_PROFILE_URL } from "@/lib/shop";
 import BuyButton from "@/components/shop/BuyButton";
 
-export const revalidate = 30; // ISR: revalidate every 30 seconds
+export const revalidate = 300;
 
-async function getActiveItems() {
-  return prisma.shopItem.findMany({
+interface DisplayItem {
+  id: string;
+  title: string;
+  price: number;
+  description: string | null;
+  category: string | null;
+  imageUrls: string[];
+  createdAt: Date;
+  source: "product" | "shopItem";
+}
+
+async function getActiveItems(): Promise<DisplayItem[]> {
+  // Try Product model first (new)
+  try {
+    const products = await prisma.product.findMany({
+      where: {
+        status: "listed",
+        listings: { some: { platform: "shop", status: "active" } },
+      },
+      include: { listings: { where: { platform: "shop", status: "active" } } },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (products.length > 0) {
+      return products.map((p) => ({
+        id: p.id,
+        title: p.title,
+        price: p.listings[0]?.price ?? p.targetPrice ?? 0,
+        description: p.description,
+        category: p.category,
+        imageUrls: p.imageUrls,
+        createdAt: p.createdAt,
+        source: "product" as const,
+      }));
+    }
+  } catch {
+    // Product model query failed — fall through to ShopItem
+  }
+
+  // Fallback to ShopItem (legacy)
+  const items = await prisma.shopItem.findMany({
     where: { status: "active" },
     orderBy: { createdAt: "desc" },
   });
+
+  return items.map((item) => ({
+    id: item.id,
+    title: item.title,
+    price: item.price,
+    description: item.description,
+    category: item.category,
+    imageUrls: item.imageUrls,
+    createdAt: item.createdAt,
+    source: "shopItem" as const,
+  }));
 }
 
 export default async function ShopPage() {

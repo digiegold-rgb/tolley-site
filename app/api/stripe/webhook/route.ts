@@ -334,13 +334,81 @@ export async function POST(request: Request) {
           break;
         }
 
-        // Shop item purchase — mark as sold
+        // Shop item purchase — mark as sold + create ShopSale
         const shopItemId = checkoutSession.metadata?.shopItemId;
         if (shopItemId) {
+          // Legacy ShopItem update
           await prisma.shopItem.update({
             where: { id: shopItemId },
             data: { status: "sold", soldAt: new Date() },
+          }).catch(() => {});
+
+          // New Product model — find by shopItemId link
+          const product = await prisma.product.findFirst({
+            where: { shopItemId },
+            include: { listings: { where: { platform: "shop" } } },
           });
+
+          if (product) {
+            const salePrice = (checkoutSession.amount_total || 0) / 100;
+            const stripeFees = salePrice * 0.029 + 0.30;
+            const cogs = product.totalCogs || 0;
+            const netProfit = salePrice - stripeFees - cogs;
+
+            // Create ShopSale record
+            await prisma.shopSale.create({
+              data: {
+                productId: product.id,
+                platform: "shop",
+                title: product.title,
+                salePrice,
+                platformFees: Math.round(stripeFees * 100) / 100,
+                cogs: cogs || null,
+                netProfit: Math.round(netProfit * 100) / 100,
+                paymentMethod: "stripe",
+              },
+            });
+
+            // Update Product status
+            await prisma.product.update({
+              where: { id: product.id },
+              data: {
+                status: "sold",
+                soldPrice: salePrice,
+                soldAt: new Date(),
+                soldPlatform: "shop",
+                totalFees: Math.round(stripeFees * 100) / 100,
+                netProfit: Math.round(netProfit * 100) / 100,
+                roi: cogs > 0 ? Math.round((netProfit / cogs) * 10000) / 100 : null,
+              },
+            });
+
+            // Update PlatformListing
+            if (product.listings[0]) {
+              await prisma.platformListing.update({
+                where: { id: product.listings[0].id },
+                data: { status: "sold", soldAt: new Date() },
+              });
+            }
+
+            // Recompute lot P&L if linked
+            if (product.lotId) {
+              const lotProducts = await prisma.product.findMany({
+                where: { lotId: product.lotId, status: "sold" },
+              });
+              await prisma.sourceLot.update({
+                where: { id: product.lotId },
+                data: {
+                  totalSold: lotProducts.reduce((s, p) => s + (p.soldPrice || 0), 0),
+                  totalProfit: lotProducts.reduce((s, p) => s + (p.netProfit || 0), 0),
+                  itemsSold: lotProducts.length,
+                },
+              });
+            }
+
+            console.log(`[shop] Product ${product.id} marked sold via Stripe ($${salePrice})`);
+          }
+
           revalidatePath("/shop");
           console.log(`[shop] Item ${shopItemId} marked sold via Stripe`);
           break;

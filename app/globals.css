@@ -50,7 +50,7 @@ body {
 }
 
 /* Add bottom padding on pages that show the fixed footer (not standalone pages) */
-body:not(:has(.wd-page)):not(:has(.trailer-page)):not(:has(.generator-page)):not(:has(.homes-page)):not(:has(.hvac-page)):not(:has(.lastmile-page)):not(:has(.start-page)):not(:has(.junkinjays-page)):not(:has(.shop-page)):not(:has(.moving-page)):not(:has(.vater-page)) {
+body:not(:has(.wd-page)):not(:has(.trailer-page)):not(:has(.generator-page)):not(:has(.homes-page)):not(:has(.hvac-page)):not(:has(.lastmile-page)):not(:has(.start-page)):not(:has(.junkinjays-page)):not(:has(.shop-page)):not(:has(.moving-page)):not(:has(.vater-page)):not(:has(.pools-page)):not(:has(.scan-page)):not(:has(.manus-page)) {
   padding-bottom: 4.5rem;
 }
 
@@ -174,6 +174,21 @@ body:has(.scan-page) {
 }
 
 body:has(.scan-page) .site-legal-footer {
+  display: none;
+}
+
+/* Manus autonomous agent page overrides */
+body:has(.manus-page) {
+  background: #030308;
+  color: #e0ffe0;
+}
+
+body:has(.manus-page) .site-legal-footer {
+  display: none;
+}
+
+/* Pools page overrides */
+body:has(.pools-page) .site-legal-footer {
   display: none;
 }
 

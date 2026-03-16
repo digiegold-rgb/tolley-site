@@ -8,8 +8,8 @@ import { WdCharts } from "@/components/wd/admin/wd-charts";
 import { WdAddClientModal } from "@/components/wd/admin/wd-add-client-modal";
 import type { WdClientData } from "@/components/wd/admin/wd-client-row";
 
-type WdRole = "tolley" | "keegan";
-type TabFilter = "all" | "tolley" | "keegan";
+type WdRole = "tolley";
+type TabFilter = "all" | "tolley";
 
 export default function WdAdminPage() {
   const [authed, setAuthed] = useState(false);
@@ -209,7 +209,7 @@ export default function WdAdminPage() {
     <div style={{ padding: 0 }}>
       {/* Top bar */}
       <div className="topbar">
-        <span className="title">WD Admin — {role === "tolley" ? "Tolley" : "Keagan"}</span>
+        <span className="title">WD Admin — Tolley</span>
         <div className="actions">
           {role === "tolley" && (
             <button className="btn btn-sm btn-primary" onClick={() => setShowAddModal(true)} disabled={loading}>
@@ -222,9 +222,9 @@ export default function WdAdminPage() {
       <div style={{ padding: "12px 16px" }}>
         {/* Tab bar */}
         <div className="tab-bar">
-          {(["all", "tolley", "keegan"] as const).map(t => (
+          {(["all", "tolley"] as const).map(t => (
             <button key={t} className={`tab-btn ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
-              {t === "all" ? "All" : t === "tolley" ? "Tolley" : "Keagan"}
+              {t === "all" ? "All" : "Tolley"}
             </button>
           ))}
         </div>

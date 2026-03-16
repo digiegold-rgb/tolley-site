@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import DossierView from "@/components/leads/DossierView";
 
-export const revalidate = 10;
+export const revalidate = 300;
 
 export default async function DossierDetailPage({
   params,
