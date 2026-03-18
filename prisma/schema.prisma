@@ -1714,6 +1714,43 @@ model TradingCapitalFlow {
   @@index([assetClass, flowType])
 }
 
+// ── MiroFish Simulation Engine ───────────────────────
+
+model TradingSimulation {
+  id              String    @id @default(cuid())
+  simulationId    String    @unique
+  event           String
+  eventType       String    // fed_meeting, election, earnings, breaking_news, daily_scan
+  triggerType     String    // scheduled, event_driven, manual
+  status          String    @default("pending")
+  agentCount      Int
+  roundCount      Int
+  currentRound    Int       @default(0)
+  signals         Json?
+  report          String?
+  metadata        Json?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  @@index([status, createdAt])
+  @@index([eventType, createdAt])
+}
+
+model TradingSimulationSignal {
+  id              String    @id @default(cuid())
+  simulationId    String
+  targetEngine    String
+  direction       String
+  confidence      Float
+  magnitude       String?
+  rationale       String?
+  agentConsensus  Float?
+  appliedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  @@index([simulationId])
+  @@index([targetEngine, createdAt])
+}
+
 // ── Scan Command Center ──────────────────────────────
 
 model ScanActivity {
@@ -2031,14 +2068,47 @@ model DeliveryDriver {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orders   DeliveryOrder[]
-  earnings DriverEarning[]
-  payouts  DriverPayout[]
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders    DeliveryOrder[]
+  earnings  DriverEarning[]
+  payouts   DriverPayout[]
+  documents DriverDocument[]
 
   @@index([status, isOnline])
   @@index([isOnline, currentLat, currentLng])
   @@index([homeZip])
+}
+
+model DriverDocument {
+  id         String   @id @default(cuid())
+  driverId   String
+  type       String   // drivers_license, insurance, registration
+  fileUrl    String   // Vercel Blob URL
+  fileName   String
+  fileSize   Int
+  status     String   @default("pending") // pending, approved, rejected, expired
+  expiresAt  DateTime?
+  // Extracted data from document
+  docNumber  String?  // DL number, policy number, plate/VIN
+  issueState String?  // e.g. "MO", "PA"
+  holderName String?  // name on document
+  // Review
+  reviewedBy String?  // admin userId
+  reviewedAt DateTime?
+  rejectedReason String?
+  // Warnings sent
+  warned30d  Boolean  @default(false)
+  warned14d  Boolean  @default(false)
+  warned7d   Boolean  @default(false)
+  warned1d   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  driver DeliveryDriver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@unique([driverId, type])
+  @@index([status, expiresAt])
+  @@index([driverId])
 }
 
 model DeliveryClient {

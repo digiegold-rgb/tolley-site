@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
 const ASSET_CLASSES = ["crypto", "stocks_conservative", "stocks_aggressive", "polymarket"] as const;
 type AssetClass = (typeof ASSET_CLASSES)[number];
@@ -52,6 +53,13 @@ export default function UnifiedDashboard({ initialSnapshots, initialCapital }: P
   const [engines, setEngines] = useState<Record<string, EngineStatus>>({});
   const [capital, setCapital] = useState(initialCapital);
   const [loading, setLoading] = useState(true);
+  const [mirofishStatus, setMirofishStatus] = useState<{
+    online: boolean;
+    running: number;
+    completed: number;
+    cachedSignals: number;
+    lastEvent?: string;
+  }>({ online: false, running: 0, completed: 0, cachedSignals: 0 });
 
   // Build initial engine state from snapshots
   useEffect(() => {
@@ -93,6 +101,29 @@ export default function UnifiedDashboard({ initialSnapshots, initialCapital }: P
         }
       } catch {
         // Silent fail — keep existing data
+      }
+
+      // Fetch MiroFish status
+      try {
+        const simRes = await fetch("/api/trading/simulations?limit=5");
+        if (simRes.ok) {
+          const simData = await simRes.json();
+          const sims = simData.simulations || [];
+          const running = sims.filter((s: any) => ["running", "pending", "extracting"].includes(s.status)).length;
+          const completed = sims.filter((s: any) => s.status === "completed").length;
+          const lastCompleted = sims.find((s: any) => s.status === "completed");
+          setMirofishStatus({
+            online: true,
+            running,
+            completed,
+            cachedSignals: lastCompleted?.signals?.signals ? Object.keys(lastCompleted.signals.signals).length : 0,
+            lastEvent: lastCompleted?.event,
+          });
+        } else {
+          setMirofishStatus((prev) => ({ ...prev, online: false }));
+        }
+      } catch {
+        setMirofishStatus((prev) => ({ ...prev, online: false }));
       }
     };
     fetchSummary();
@@ -214,6 +245,65 @@ export default function UnifiedDashboard({ initialSnapshots, initialCapital }: P
           </div>
         </div>
       </div>
+
+      {/* MiroFish simulation card */}
+      <Link
+        href="/trading/simulations"
+        className="crypto-card group cursor-pointer transition-all hover:border-amber-500/30"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-lg font-bold">
+              {"\uD83D\uDC1F"}
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-white group-hover:text-amber-400 transition-colors">
+                MiroFish Simulations
+              </h3>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-block w-1.5 h-1.5 rounded-full ${
+                    mirofishStatus.online ? "bg-green-400 pulse-gold" : "bg-red-400/50"
+                  }`}
+                />
+                <span className="text-[10px] text-white/30">
+                  {mirofishStatus.online ? "Online" : "Offline"}
+                </span>
+              </div>
+            </div>
+          </div>
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase bg-purple-500/20 text-purple-400 border border-purple-500/30">
+            AI Sim
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/5">
+          <div>
+            <div className="text-[10px] text-white/30 uppercase">Active Sims</div>
+            <div className="text-sm font-medium text-white">{mirofishStatus.running}</div>
+          </div>
+          <div>
+            <div className="text-[10px] text-white/30 uppercase">Completed</div>
+            <div className="text-sm font-medium text-white">{mirofishStatus.completed}</div>
+          </div>
+          <div>
+            <div className="text-[10px] text-white/30 uppercase">Signals</div>
+            <div className="text-sm font-medium text-amber-400/80">{mirofishStatus.cachedSignals}</div>
+          </div>
+          <div>
+            <div className="text-[10px] text-white/30 uppercase">Last Event</div>
+            <div className="text-sm font-medium text-white/60 truncate">
+              {mirofishStatus.lastEvent || "--"}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 pt-3 border-t border-white/5 text-center">
+          <span className="text-[10px] text-white/20 group-hover:text-amber-400/40 transition-colors">
+            View simulations &rarr;
+          </span>
+        </div>
+      </Link>
 
       {/* Engine cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
