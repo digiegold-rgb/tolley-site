@@ -1,0 +1,254 @@
+/* ─── Pool Water Management Theme ─────────────────────────── */
+/* Dark aqua/teal dashboard — differentiated from credit (purple/cyan) */
+
+.water-page {
+  font-family: var(--font-nunito), sans-serif;
+  --water-accent: #00e5c7;
+  --water-accent-dim: rgba(0, 229, 199, 0.15);
+  --water-bg: #0a1118;
+  --water-card-bg: rgba(10, 20, 30, 0.75);
+  --water-card-border: rgba(0, 229, 199, 0.12);
+  --water-good: #10b981;
+  --water-warn: #f59e0b;
+  --water-crit: #ef4444;
+}
+
+/* ─── Shell ───────────────────────────────────────────────── */
+
+.water-shell {
+  background:
+    radial-gradient(80% 50% at 20% 10%, rgba(0, 229, 199, 0.06), transparent 65%),
+    radial-gradient(65% 45% at 80% 92%, rgba(8, 145, 178, 0.08), transparent 68%),
+    linear-gradient(160deg, #0a1118 0%, #0c1620 54%, #080e14 100%);
+  min-height: 100vh;
+}
+
+/* ─── Spotlights ──────────────────────────────────────────── */
+
+.water-spotlight {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.water-spotlight-left {
+  top: -100px;
+  left: -100px;
+  background: radial-gradient(circle, rgba(0, 229, 199, 0.08), transparent 70%);
+}
+
+.water-spotlight-right {
+  bottom: -150px;
+  right: -100px;
+  background: radial-gradient(circle, rgba(8, 145, 178, 0.06), transparent 70%);
+}
+
+/* ─── Cards ───────────────────────────────────────────────── */
+
+.water-card {
+  border-radius: 1rem;
+  border: 1px solid var(--water-card-border);
+  background: var(--water-card-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  padding: 1.25rem;
+}
+
+.water-card-glow {
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.3),
+    0 0 20px var(--water-accent-dim);
+}
+
+/* ─── Status borders ──────────────────────────────────────── */
+
+.water-status-good {
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.08);
+}
+
+.water-status-warning {
+  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.08);
+}
+
+.water-status-critical {
+  border-color: rgba(239, 68, 68, 0.3);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.1);
+  animation: water-pulse-red 2s ease-in-out infinite;
+}
+
+@keyframes water-pulse-red {
+  0%, 100% { box-shadow: 0 0 12px rgba(239, 68, 68, 0.1); }
+  50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.2); }
+}
+
+/* ─── Inputs ──────────────────────────────────────────────── */
+
+.water-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  color: #fff;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+
+.water-input:focus {
+  outline: none;
+  border-color: var(--water-accent);
+  box-shadow: 0 0 0 2px rgba(0, 229, 199, 0.15);
+}
+
+.water-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.water-select {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  color: #fff;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.water-select:focus {
+  outline: none;
+  border-color: var(--water-accent);
+}
+
+/* ─── Buttons ─────────────────────────────────────────────── */
+
+.water-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.water-btn-primary {
+  background: var(--water-accent);
+  color: #0a1118;
+}
+
+.water-btn-primary:hover {
+  background: #00ffdd;
+  box-shadow: 0 0 16px rgba(0, 229, 199, 0.3);
+}
+
+.water-btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.water-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--water-accent);
+}
+
+.water-btn-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.water-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+/* ─── Tabs ────────────────────────────────────────────────── */
+
+.water-tab {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  transition: all 0.2s;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.water-tab:hover {
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.water-tab-active {
+  color: var(--water-accent);
+  background: rgba(0, 229, 199, 0.1);
+}
+
+/* ─── Table ───────────────────────────────────────────────── */
+
+.water-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.water-table th {
+  text-align: left;
+  padding: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.water-table td {
+  padding: 0.75rem;
+  color: rgba(255, 255, 255, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.water-table tr:hover td {
+  background: rgba(0, 229, 199, 0.03);
+}
+
+/* ─── Entry animations ────────────────────────────────────── */
+
+.water-enter {
+  opacity: 0;
+  transform: translateY(12px);
+  animation: water-fade-up 0.5s ease forwards;
+  animation-delay: var(--enter-delay, 0s);
+}
+
+@keyframes water-fade-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Reduced motion ──────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .water-enter {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .water-status-critical {
+    animation: none;
+  }
+}

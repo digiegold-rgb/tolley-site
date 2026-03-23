@@ -109,6 +109,12 @@ export default async function LeadsPage({
         <h1 className="text-2xl font-bold text-white">T-Agent Leads</h1>
         <div className="flex gap-3">
           <a
+            href="/leads/crm"
+            className="rounded-lg bg-orange-600/30 text-orange-300 px-4 py-2 text-sm hover:bg-orange-600/50"
+          >
+            CRM Board
+          </a>
+          <a
             href={`/leads/dossier?key=${params.key}`}
             className="rounded-lg bg-purple-600/30 text-purple-300 px-4 py-2 text-sm hover:bg-purple-600/50"
           >

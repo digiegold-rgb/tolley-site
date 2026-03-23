@@ -4,10 +4,12 @@ import { useState } from "react";
 
 export default function LeadsPricingActions({
   tierId,
+  interval = "monthly",
   isLoggedIn,
   isCurrent,
 }: {
   tierId: string;
+  interval?: "monthly" | "annual";
   isLoggedIn: boolean;
   isCurrent: boolean;
 }) {
@@ -24,7 +26,7 @@ export default function LeadsPricingActions({
       const res = await fetch("/api/leads/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier: tierId }),
+        body: JSON.stringify({ tier: tierId, interval }),
       });
 
       const data = await res.json();

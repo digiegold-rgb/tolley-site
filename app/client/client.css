@@ -1,0 +1,380 @@
+/* ─── Override global body bg for client page ─── */
+body:has(.client-page) {
+  background: #08080A !important;
+}
+
+/* ─── Client Portal — Dark Luxury Theme ─── */
+.client-page {
+  --cl-primary: #C9A84C;
+  --cl-primary-light: #E2C97E;
+  --cl-primary-pale: rgba(201, 168, 76, 0.08);
+  --cl-accent: #C9A84C;
+  --cl-accent-light: #E8D5A3;
+  --cl-positive: #34D399;
+  --cl-negative: #F87171;
+  --cl-neutral: #9A9A8E;
+  --cl-bg: #08080A;
+  --cl-card: rgba(22, 22, 28, 0.85);
+  --cl-card-solid: #16161C;
+  --cl-text: #F2F0EB;
+  --cl-text-muted: #9A9A8E;
+  --cl-text-light: #7A7A72;
+  --cl-border: rgba(201, 168, 76, 0.12);
+  --cl-border-subtle: #1E1E24;
+  --cl-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --cl-shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6);
+  --cl-radius: 16px;
+  --cl-gold: #C9A84C;
+  --cl-gold-light: #E2C97E;
+  --cl-gold-glow: rgba(201, 168, 76, 0.15);
+
+  font-family: var(--font-poppins), "Poppins", sans-serif;
+  background: transparent;
+  color: var(--cl-text);
+  min-height: 100vh;
+}
+
+/* ─── Hero — Dark Luxury Gradient ─── */
+.cl-hero {
+  background: linear-gradient(
+    160deg,
+    rgba(8, 8, 10, 0.90) 0%,
+    rgba(14, 14, 18, 0.85) 30%,
+    rgba(20, 16, 10, 0.80) 60%,
+    rgba(8, 8, 10, 0.90) 100%
+  );
+  background-size: 100% 100%;
+}
+
+/* ─── Dark Glass Card ─── */
+.cl-card {
+  background: var(--cl-card);
+  border: 1px solid var(--cl-border);
+  border-radius: var(--cl-radius);
+  box-shadow: var(--cl-shadow);
+  backdrop-filter: blur(12px);
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.cl-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: var(--cl-shadow-lg);
+  border-color: rgba(201, 168, 76, 0.25);
+}
+
+.cl-card-static {
+  background: var(--cl-card);
+  border: 1px solid var(--cl-border);
+  border-radius: var(--cl-radius);
+  box-shadow: var(--cl-shadow);
+  backdrop-filter: blur(12px);
+}
+
+/* ─── Counter Animation ─── */
+.cl-counter {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Sparkline ─── */
+.cl-sparkline {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.cl-sparkline polyline {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ─── Signal Badge — Dark Theme ─── */
+.cl-badge-buy {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34D399;
+  border: 1px solid rgba(52, 211, 153, 0.25);
+}
+
+.cl-badge-sell {
+  background: rgba(248, 113, 113, 0.15);
+  color: #F87171;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+}
+
+.cl-badge-hold {
+  background: rgba(201, 168, 76, 0.15);
+  color: #E2C97E;
+  border: 1px solid rgba(201, 168, 76, 0.25);
+}
+
+.cl-badge-watch {
+  background: rgba(139, 142, 191, 0.15);
+  color: #B8BAD9;
+  border: 1px solid rgba(139, 142, 191, 0.25);
+}
+
+/* ─── Sentiment Tags — Dark Theme ─── */
+.cl-sentiment-bullish {
+  background: rgba(52, 211, 153, 0.12);
+  color: #34D399;
+}
+
+.cl-sentiment-bearish {
+  background: rgba(248, 113, 113, 0.12);
+  color: #F87171;
+}
+
+.cl-sentiment-neutral {
+  background: rgba(154, 154, 142, 0.12);
+  color: #9A9A8E;
+}
+
+/* ─── Trend Arrows ─── */
+.cl-trend-up {
+  color: var(--cl-positive);
+}
+
+.cl-trend-down {
+  color: var(--cl-negative);
+}
+
+/* ─── Toggle Pill — Dark Glass + Gold ─── */
+.cl-toggle {
+  display: inline-flex;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  border-radius: 999px;
+  padding: 4px;
+  gap: 2px;
+  backdrop-filter: blur(12px);
+}
+
+.cl-toggle button {
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: rgba(242, 240, 235, 0.5);
+  background: transparent;
+}
+
+.cl-toggle button.active {
+  background: linear-gradient(135deg, #C9A84C, #D4B978);
+  color: #08080A;
+  box-shadow: 0 2px 12px rgba(201, 168, 76, 0.3);
+}
+
+/* ─── CTA Button — Gold ─── */
+.cl-cta {
+  background: linear-gradient(135deg, #C9A84C, #D4B978);
+  color: #08080A;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 32px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(201, 168, 76, 0.25);
+}
+
+.cl-cta:hover {
+  background: linear-gradient(135deg, #D4B978, #E8D5A3);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 30px rgba(201, 168, 76, 0.4);
+}
+
+/* ─── Section Wrapper — Dark Glass ─── */
+.cl-section {
+  padding: 4rem 1.25rem;
+  max-width: 80rem;
+  margin: 0 auto;
+  background: rgba(14, 14, 18, 0.88);
+  border-radius: 24px;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(201, 168, 76, 0.06);
+}
+
+@media (min-width: 640px) {
+  .cl-section {
+    padding: 5rem 2rem;
+  }
+}
+
+/* ─── Gauge ─── */
+.cl-gauge-ring {
+  transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─── Filter Bar — Dark ─── */
+.cl-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(22, 22, 28, 0.8);
+  border: 1px solid var(--cl-border);
+  border-radius: 12px;
+}
+
+.cl-filter-bar select,
+.cl-filter-bar input {
+  padding: 8px 12px;
+  border: 1px solid var(--cl-border-subtle);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  background: rgba(14, 14, 18, 0.9);
+  color: var(--cl-text);
+  font-family: inherit;
+}
+
+/* ─── Tab Navigation — Dark + Gold ─── */
+.cl-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--cl-border-subtle);
+}
+
+.cl-tab {
+  padding: 10px 20px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--cl-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s ease;
+}
+
+.cl-tab.active {
+  color: var(--cl-gold);
+  border-bottom-color: var(--cl-gold);
+}
+
+/* ─── Property Card Photo ─── */
+.cl-property-photo {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--cl-radius) var(--cl-radius) 0 0;
+  background: #1E1E24;
+}
+
+.cl-property-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.cl-card:hover .cl-property-photo img {
+  transform: scale(1.05);
+}
+
+/* ─── DOM Badge ─── */
+.cl-dom-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #E2C97E;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+}
+
+/* ─── Buy Score Dot ─── */
+.cl-score-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* ─── Recharts Dark Theme ─── */
+.cl-chart .recharts-cartesian-grid-horizontal line,
+.cl-chart .recharts-cartesian-grid-vertical line {
+  stroke: #1E1E24;
+}
+
+.cl-chart .recharts-text {
+  fill: #9A9A8E;
+  font-size: 0.75rem;
+}
+
+/* ─── Input styles — Dark ─── */
+.cl-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--cl-border-subtle);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--cl-text);
+  background: rgba(14, 14, 18, 0.9);
+  transition: border-color 0.2s ease;
+}
+
+.cl-input:focus {
+  outline: none;
+  border-color: var(--cl-gold);
+  box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.1);
+}
+
+/* ─── 3D Canvas Layer ─── */
+.cl-3d-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  animation: cl-canvas-fade-in 2s ease 0.3s forwards;
+}
+
+@keyframes cl-canvas-fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+/* ─── Reduced Motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  .cl-3d-canvas {
+    display: none;
+  }
+
+  .cl-hero {
+    animation: none;
+  }
+
+  .cl-card:hover {
+    transform: none;
+  }
+
+  .cl-cta:hover {
+    transform: none;
+  }
+
+  .cl-gauge-ring {
+    transition: none;
+  }
+
+  .cl-card:hover .cl-property-photo img {
+    transform: none;
+  }
+}

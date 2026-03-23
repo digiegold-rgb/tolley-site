@@ -2272,3 +2272,65 @@ model DeliveryRating {
   @@unique([orderId, raterType])
   @@index([orderId])
 }
+
+// ─── Pool Water Management ───────────────────────────────────
+
+model WaterReading {
+  id              String   @id @default(cuid())
+  ph              Float?
+  freeChlorine    Float?
+  totalChlorine   Float?
+  alkalinity      Float?
+  cya             Float?
+  calciumHardness Float?
+  salt            Float?
+  temperature     Float?
+  tds             Float?
+  lsi             Float?
+  phosphates      Float?
+  notes           String?
+  source          String   @default("manual")
+  readingAt       DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@index([readingAt])
+  @@index([source, readingAt])
+}
+
+model PoolCost {
+  id           String   @id @default(cuid())
+  season       Int
+  category     String
+  item         String
+  amount       Float
+  quantity     Float?
+  unit         String?
+  vendor       String?
+  notes        String?
+  purchaseDate DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@index([season, category])
+  @@index([purchaseDate])
+}
+
+model PoolInventory {
+  id                String    @id @default(cuid())
+  item              String
+  category          String
+  quantity          Float     @default(0)
+  unit              String    @default("each")
+  lowStockThreshold Float     @default(1)
+  lastRestocked     DateTime?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([category])
+}
+
+model PoolConfig {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}

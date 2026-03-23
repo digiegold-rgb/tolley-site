@@ -92,6 +92,10 @@
       "schedule": "0 7 * * *"
     },
     {
+      "path": "/api/cron/trading-sync",
+      "schedule": "0 */4 * * *"
+    },
+    {
       "path": "/api/cron/trading-sim-sync",
       "schedule": "*/5 * * * *"
     }

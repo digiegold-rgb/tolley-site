@@ -50,7 +50,7 @@ body {
 }
 
 /* Add bottom padding on pages that show the fixed footer (not standalone pages) */
-body:not(:has(.wd-page)):not(:has(.trailer-page)):not(:has(.generator-page)):not(:has(.homes-page)):not(:has(.hvac-page)):not(:has(.lastmile-page)):not(:has(.start-page)):not(:has(.junkinjays-page)):not(:has(.shop-page)):not(:has(.moving-page)):not(:has(.vater-page)):not(:has(.pools-page)):not(:has(.scan-page)):not(:has(.manus-page)) {
+body:not(:has(.wd-page)):not(:has(.trailer-page)):not(:has(.generator-page)):not(:has(.homes-page)):not(:has(.hvac-page)):not(:has(.lastmile-page)):not(:has(.start-page)):not(:has(.junkinjays-page)):not(:has(.shop-page)):not(:has(.moving-page)):not(:has(.vater-page)):not(:has(.pools-page)):not(:has(.scan-page)):not(:has(.manus-page)):not(:has(.water-page)) {
   padding-bottom: 4.5rem;
 }
 
@@ -189,6 +189,19 @@ body:has(.manus-page) .site-legal-footer {
 
 /* Pools page overrides */
 body:has(.pools-page) .site-legal-footer {
+  display: none;
+}
+
+/* Water dashboard overrides */
+body:has(.water-page) {
+  background:
+    radial-gradient(80% 50% at 20% 10%, rgba(0, 229, 199, 0.06), transparent 65%),
+    radial-gradient(65% 45% at 80% 92%, rgba(8, 145, 178, 0.08), transparent 68%),
+    linear-gradient(160deg, #0a1118 0%, #0c1620 54%, #080e14 100%);
+  color: #e2e8f0;
+}
+
+body:has(.water-page) .site-legal-footer {
   display: none;
 }
 
