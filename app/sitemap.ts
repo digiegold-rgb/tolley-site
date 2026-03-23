@@ -2,11 +2,10 @@ import type { MetadataRoute } from "next";
 
 const BASE_URL = "https://www.tolley.io";
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
 
-  // Public marketing / micro-site pages
-  const publicPages: MetadataRoute.Sitemap = [
+  return [
     { url: `${BASE_URL}/`, lastModified: now, changeFrequency: "weekly", priority: 1.0 },
     { url: `${BASE_URL}/start`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: `${BASE_URL}/wd`, lastModified: now, changeFrequency: "monthly", priority: 0.9 },
@@ -25,6 +24,4 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/trading`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE_URL}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
   ];
-
-  return publicPages;
 }
