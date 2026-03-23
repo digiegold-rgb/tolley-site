@@ -25,16 +25,16 @@ model User {
   credentialAuth       CredentialAuth?
   deliveryClient       DeliveryClient?
   deliveryDriver       DeliveryDriver?
-  FoodFamilyMember     FoodFamilyMember[]
+  foodFamilyMembers    FoodFamilyMember[]
   foodHousehold        FoodHousehold?
   leadSubscription     LeadSubscriber?
-  MfaBackupCode        MfaBackupCode[]
+  mfaBackupCodes       MfaBackupCode[]
   savedResults         SavedResult[]
   sessions             Session[]
   subscription         Subscription?
   usageBuckets         UsageBucket[]
   usageEvents          UsageEvent[]
-  UserMfa              UserMfa?
+  mfa                  UserMfa?
   videoCredit          VideoCredit?
   videoGenerations     VideoGeneration[]
 }
@@ -2170,13 +2170,13 @@ model FoodHousehold {
   defaultServings  Int                @default(4)
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
-  FoodFamilyMember FoodFamilyMember[]
+  members          FoodFamilyMember[]
   groceryLists     FoodGroceryList[]
   user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   mealPlans        FoodMealPlan[]
   pantryItems      FoodPantryItem[]
-  FoodPriceEntry   FoodPriceEntry[]
-  FoodReceipt      FoodReceipt[]
+  priceEntries     FoodPriceEntry[]
+  receipts         FoodReceipt[]
   recipes          FoodRecipe[]
 }
 
@@ -2337,8 +2337,8 @@ model AccountContact {
   status            String              @default("ACTIVE")
   createdAt         DateTime            @default(now())
   updatedAt         DateTime
-  Invoice           Invoice[]
-  LedgerTransaction LedgerTransaction[]
+  invoices          Invoice[]
+  transactions      LedgerTransaction[]
 
   @@index([name])
   @@index([status, isCustomer])
@@ -2577,9 +2577,9 @@ model Invoice {
   xeroId                String?           @unique
   createdAt             DateTime          @default(now())
   updatedAt             DateTime
-  AccountContact        AccountContact?   @relation(fields: [contactId], references: [id])
-  InvoiceLineItem       InvoiceLineItem[]
-  InvoicePayment        InvoicePayment[]
+  contact               AccountContact?   @relation(fields: [contactId], references: [id])
+  lineItems             InvoiceLineItem[]
+  payments              InvoicePayment[]
 
   @@index([contactId, status])
   @@index([issueDate(sort: Desc)])
@@ -2595,8 +2595,8 @@ model InvoiceLineItem {
   lineAmount    Float
   accountId     String?
   createdAt     DateTime       @default(now())
-  LedgerAccount LedgerAccount? @relation(fields: [accountId], references: [id])
-  Invoice       Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  account       LedgerAccount? @relation(fields: [accountId], references: [id])
+  invoice       Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
 }
@@ -2627,8 +2627,8 @@ model LedgerAccount {
   isSystem          Boolean             @default(false)
   createdAt         DateTime            @default(now())
   updatedAt         DateTime
-  InvoiceLineItem   InvoiceLineItem[]
-  LedgerTransaction LedgerTransaction[]
+  lineItems         InvoiceLineItem[]
+  transactions      LedgerTransaction[]
 
   @@index([class, status])
   @@index([code])
@@ -2660,8 +2660,8 @@ model LedgerTransaction {
   reconciliationStatus String?
   stripePayoutId       String?
   taxCategory          String?
-  LedgerAccount        LedgerAccount?  @relation(fields: [bankAccountId], references: [id])
-  AccountContact       AccountContact? @relation(fields: [contactId], references: [id])
+  bankAccount          LedgerAccount?  @relation(fields: [bankAccountId], references: [id])
+  contact              AccountContact? @relation(fields: [contactId], references: [id])
 
   @@index([accountCode, date])
   @@index([bankAccountId, date])
