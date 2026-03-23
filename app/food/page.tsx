@@ -11,7 +11,7 @@ export default async function FoodDashboardPage() {
 
   const household = await prisma.foodHousehold.findUnique({
     where: { userId: session.user.id },
-    include: { FoodFamilyMember: true },
+    include: { members: true },
   });
 
   if (!household) redirect("/food/settings");
