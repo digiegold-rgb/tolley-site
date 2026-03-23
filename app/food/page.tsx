@@ -19,7 +19,20 @@ export default async function FoodDashboardPage() {
   const now = new Date();
   const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-  const [expiringItems, groceryItems, recentRecipes] = await Promise.all([
+  const now2 = new Date();
+  const dayOfWeek = now2.getDay();
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const weekStart = new Date(now2);
+  weekStart.setDate(now2.getDate() + mondayOffset);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 7);
+
+  const [mealPlan, expiringItems, groceryItems, recentRecipes] = await Promise.all([
+    prisma.foodMealPlan.findFirst({
+      where: { householdId: household.id, weekStart: { gte: weekStart, lt: weekEnd } },
+      include: { slots: { include: { recipe: true } } },
+    }),
     prisma.foodPantryItem.findMany({
       where: {
         householdId: household.id,
@@ -56,7 +69,7 @@ export default async function FoodDashboardPage() {
     <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1.5rem" }}>
       <FoodHero
         userName={userName}
-        weekSummary={{ planned: 0, cooked: 0 }}
+        weekSummary={{ planned: mealPlan?.slots.length ?? 0, cooked: mealPlan?.slots.filter((s) => s.recipe && s.recipe.timesCooked > 0).length ?? 0 }}
         expiringCount={expiringCount}
         groceryCount={groceryItems}
       />
