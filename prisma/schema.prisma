@@ -8,31 +8,35 @@ datasource db {
 }
 
 model User {
-  id                   String        @id @default(cuid())
+  id                   String             @id @default(cuid())
   name                 String?
-  email                String?       @unique
+  email                String?            @unique
   emailVerified        DateTime?
   image                String?
-  stripeCustomerId     String?       @unique
-  stripeSubscriptionId String?       @unique
-  subscriptionStatus   String        @default("none")
-  subscriptionTier     String        @default("none")
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  subscriptionStatus   String             @default("none")
+  subscriptionTier     String             @default("none")
   currentPeriodEnd     DateTime?
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
   accounts             Account[]
-  sessions             Session[]
-  credentialAuth CredentialAuth?
   agents               Agent[]
-  savedResults         SavedResult[]
-  subscription         Subscription?
-  usageEvents          UsageEvent[]
-  usageBuckets         UsageBucket[]
-  leadSubscription     LeadSubscriber?
-  videoGenerations     VideoGeneration[]
-  videoCredit          VideoCredit?
-  deliveryDriver       DeliveryDriver?
+  credentialAuth       CredentialAuth?
   deliveryClient       DeliveryClient?
+  deliveryDriver       DeliveryDriver?
+  FoodFamilyMember     FoodFamilyMember[]
+  foodHousehold        FoodHousehold?
+  leadSubscription     LeadSubscriber?
+  MfaBackupCode        MfaBackupCode[]
+  savedResults         SavedResult[]
+  sessions             Session[]
+  subscription         Subscription?
+  usageBuckets         UsageBucket[]
+  usageEvents          UsageEvent[]
+  UserMfa              UserMfa?
+  videoCredit          VideoCredit?
+  videoGenerations     VideoGeneration[]
 }
 
 model Agent {
@@ -127,27 +131,22 @@ model Subscription {
 
 model UsageEvent {
   id               String   @id @default(cuid())
-  userId           String?  // null for system/automated calls (SMS webhook, cron, etc.)
-  type             String   // ask, sms_reply, sms_generate, dossier, embedding, agent_tool, etc.
+  userId           String?
+  type             String
   createdAt        DateTime @default(now())
-  // Token tracking
-  tokensApprox     Int?     // total tokens (backward compat)
-  promptTokens     Int?     // input tokens
-  completionTokens Int?     // output tokens
-  // Performance
+  tokensApprox     Int?
   requestId        String?
   latencyMs        Int?
-  statusCode       Int?     // HTTP status or LLM response code
-  errorMessage     String?  // if it failed
-  // Model routing — dynamic, changes as you switch
-  provider         String?  // "vllm-local", "anthropic", "openai", "google", "groq", "together", etc.
-  model            String?  // "Qwen/Qwen3.5-35B-A3B-FP8", "claude-sonnet-4-20250514", "gpt-4o", etc.
-  location         String?  // "dgx-spark", "cloud-us-east", "cloud-eu", "edge", etc.
-  endpoint         String?  // base URL: "http://127.0.0.1:8355/v1", "https://api.anthropic.com", etc.
-  // Context
-  route            String?  // which API route: "/api/ask", "/api/sms/webhook", "/api/leads/dossier/process"
-  // Extensible
-  meta             Json?    // catch-all for future: temperature, max_tokens, tools_used, agent_name, etc.
+  completionTokens Int?
+  endpoint         String?
+  errorMessage     String?
+  location         String?
+  meta             Json?
+  model            String?
+  promptTokens     Int?
+  provider         String?
+  route            String?
+  statusCode       Int?
   user             User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
@@ -197,42 +196,41 @@ model McpInvocation {
   @@index([tool, createdAt])
 }
 
-// ─── T-Agent Lead Gen System ─────────────────────────────────
-
 model Listing {
-  id                    String    @id @default(cuid())
-  mlsId                 String    @unique
-  status                String    // Active, Closed, Pending, Expired, Withdrawn
-  listPrice             Float?
-  originalListPrice     Float?
-  address               String
-  city                  String?
-  state                 String?   @default("MO")
-  zip                   String?
-  beds                  Int?
-  baths                 Float?
-  sqft                  Int?
-  propertyType          String?
-  daysOnMarket          Int?
-  onMarketDate          DateTime?
-  closeDate             DateTime?
-  listingUrl            String?
-  photoUrls             String[]
-  listAgentName         String?
-  listAgentMlsId        String?
-  listOfficeName        String?
-  listOfficeMlsId       String?
-  lat                   Float?
-  lng                   Float?
-  rawData               Json?
-  source                String?   @default("mls") // mls, snap, manual
-  lastSynced            DateTime  @default(now())
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  leads                 Lead[]
-  enrichment            ListingEnrichment?
-  dossierJobs           DossierJob[]
-  parcel                Parcel?
+  id                String             @id @default(cuid())
+  mlsId             String             @unique
+  status            String
+  listPrice         Float?
+  originalListPrice Float?
+  address           String
+  city              String?
+  state             String?            @default("MO")
+  zip               String?
+  beds              Int?
+  baths             Float?
+  sqft              Int?
+  propertyType      String?
+  daysOnMarket      Int?
+  onMarketDate      DateTime?
+  closeDate         DateTime?
+  listingUrl        String?
+  photoUrls         String[]
+  listAgentName     String?
+  listAgentMlsId    String?
+  listOfficeName    String?
+  listOfficeMlsId   String?
+  rawData           Json?
+  lastSynced        DateTime           @default(now())
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  lat               Float?
+  lng               Float?
+  source            String?            @default("mls")
+  Deal              Deal[]
+  dossierJobs       DossierJob[]
+  leads             Lead[]
+  enrichment        ListingEnrichment?
+  parcel            Parcel?
 
   @@index([status, zip])
   @@index([status, daysOnMarket])
@@ -241,37 +239,46 @@ model Listing {
 }
 
 model Lead {
-  id              String    @id @default(cuid())
-  listingId       String?
-  listing         Listing?  @relation(fields: [listingId], references: [id], onDelete: SetNull)
-  parcelId        String?
-  parcel          Parcel?   @relation(fields: [parcelId], references: [id], onDelete: SetNull)
-  score           Int       @default(0)    // 0-100, higher = more motivated
-  scoreFactors    Json?     // { "priceDrop": 20, "daysOnMarket": 30, ... }
-  status          String    @default("new") // new, contacted, interested, referred, closed, dead
-  ownerName       String?
-  ownerPhone      String?
-  ownerEmail      String?
-  notes           String?
-  source          String?   // mls_expired, mls_pricedrop, mls_dom, propstream, manual, regrid_absentee, regrid_vacant, regrid_offmarket
-  referredTo      String?   // agent name who got the referral
-  referralStatus  String?   // pending, accepted, under_contract, closed, lost
-  referralFee     Float?    // expected or actual referral fee amount
-  contactedAt     DateTime?
-  closedAt        DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id             String        @id @default(cuid())
+  listingId      String?
+  score          Int           @default(0)
+  scoreFactors   Json?
+  status         String        @default("new")
+  ownerName      String?
+  ownerPhone     String?
+  ownerEmail     String?
+  notes          String?
+  source         String?
+  referredTo     String?
+  referralStatus String?
+  referralFee    Float?
+  contactedAt    DateTime?
+  closedAt       DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  parcelId       String?
+  pipelineOrder  Int           @default(0)
+  pipelineStage  String        @default("new_lead")
+  ContactTag     ContactTag[]
+  CrmActivity    CrmActivity[]
+  CrmTask        CrmTask[]
+  Deal           Deal[]
+  listing        Listing?      @relation(fields: [listingId], references: [id])
+  parcel         Parcel?       @relation(fields: [parcelId], references: [id])
 
   @@index([status, score])
   @@index([source, createdAt])
   @@index([referralStatus])
   @@index([parcelId])
+  @@index([pipelineStage, pipelineOrder])
+  @@index([score(sort: Desc), createdAt(sort: Desc)])
+  @@index([score(sort: Desc), createdAt(sort: Desc)], map: "Lead_score_desc_createdAt_desc_idx")
 }
 
 model PointOfInterest {
   id        String   @id @default(cuid())
   osmId     String?  @unique
-  type      String   // school, hospital, fire_station, police, park, grocery, mall, airport, sports, restaurant
+  type      String
   name      String?
   lat       Float
   lng       Float
@@ -283,47 +290,44 @@ model PointOfInterest {
 }
 
 model ListingEnrichment {
-  id                    String   @id @default(cuid())
-  listingId             String   @unique
-  listing               Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  // POI proximity
-  nearestSchoolDist     Float?   // km
-  nearestSchoolName     String?
-  schoolsWithin3mi      Int?
-  nearestHospitalDist   Float?
-  nearestHospitalName   String?
+  id                     String   @id @default(cuid())
+  listingId              String   @unique
+  nearestSchoolDist      Float?
+  nearestSchoolName      String?
+  schoolsWithin3mi       Int?
+  nearestHospitalDist    Float?
+  nearestHospitalName    String?
   nearestFireStationDist Float?
-  nearestPoliceDist     Float?
-  nearestParkDist       Float?
-  nearestParkName       String?
-  parksWithin2mi        Int?
-  nearestGroceryDist    Float?
-  nearestGroceryName    String?
-  nearestMallDist       Float?
-  nearestAirportDist    Float?
-  nearestAirportName    String?
-  nearestSportsDist     Float?
-  restaurantsWithin1mi  Int?
-  nearestCourthouseDist Float?   // km
-  nearestCourthouseName String?
-  nearestLibraryDist    Float?   // km
-  nearestLibraryName    String?
-  librariesWithin3mi    Int?
-  // County & Tax data
-  countyName            String?
-  countyFips            String?
-  countyState           String?
-  assessmentRatio       Float?
-  levyPer100            Float?
-  assessedValue         Float?
-  estimatedAnnualTax    Float?
-  estimatedMonthlyTax   Float?
-  effectiveTaxRate      Float?   // percentage of market value
-  taxBurdenRating       String?  // low, moderate, high, very_high
-  // Scores
-  buyScore              Int      @default(0) // 0-100 location desirability
-  buyScoreFactors       Json?
-  enrichedAt            DateTime @default(now())
+  nearestPoliceDist      Float?
+  nearestParkDist        Float?
+  nearestParkName        String?
+  parksWithin2mi         Int?
+  nearestGroceryDist     Float?
+  nearestGroceryName     String?
+  nearestMallDist        Float?
+  nearestAirportDist     Float?
+  nearestAirportName     String?
+  nearestSportsDist      Float?
+  restaurantsWithin1mi   Int?
+  buyScore               Int      @default(0)
+  buyScoreFactors        Json?
+  enrichedAt             DateTime @default(now())
+  assessedValue          Float?
+  assessmentRatio        Float?
+  countyFips             String?
+  countyName             String?
+  countyState            String?
+  effectiveTaxRate       Float?
+  estimatedAnnualTax     Float?
+  estimatedMonthlyTax    Float?
+  levyPer100             Float?
+  librariesWithin3mi     Int?
+  nearestCourthouseDist  Float?
+  nearestCourthouseName  String?
+  nearestLibraryDist     Float?
+  nearestLibraryName     String?
+  taxBurdenRating        String?
+  listing                Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([buyScore])
   @@index([countyName])
@@ -331,49 +335,47 @@ model ListingEnrichment {
 }
 
 model LeadSubscriber {
-  id                    String   @id @default(cuid())
-  userId                String   @unique
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tier                  String   @default("starter") // starter, pro, team
-  stripeSubscriptionId  String?  @unique
-  status                String   @default("active")  // active, past_due, canceled, incomplete
-  farmZips              String[]  // zip codes they want leads for
-  farmCities            String[]  // cities they want leads for
-  specialties           String[]  // residential, commercial, luxury, first_time, investment
-  smsLimit              Int      @default(50)   // monthly SMS allowance
-  smsUsed               Int      @default(0)    // resets monthly
-  snapLimit             Int      @default(0)    // monthly snap allowance (0 = no access)
-  snapUsed              Int      @default(0)    // resets monthly
-  maxAgents             Int      @default(1)    // team = 5
-  onboarded             Boolean  @default(false)
-  // ROI / Activity tracking
-  referralFeesEarned    Float    @default(0)
-  referralFeesPending   Float    @default(0)
-  dailyContactGoal      Int      @default(10)
-  weeklyDigestEnabled   Boolean  @default(true)
-  // Unclaimed funds
-  fundScanLimit         Int      @default(0)    // monthly standalone scans (0=dossier-only, 10=pro, 50=team)
-  fundScanUsed          Int      @default(0)    // resets monthly
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  tier                 String   @default("starter")
+  stripeSubscriptionId String?  @unique
+  status               String   @default("active")
+  farmZips             String[]
+  farmCities           String[]
+  specialties          String[]
+  smsLimit             Int      @default(50)
+  smsUsed              Int      @default(0)
+  maxAgents            Int      @default(1)
+  onboarded            Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  snapLimit            Int      @default(0)
+  snapUsed             Int      @default(0)
+  dailyContactGoal     Int      @default(10)
+  referralFeesEarned   Float    @default(0)
+  referralFeesPending  Float    @default(0)
+  weeklyDigestEnabled  Boolean  @default(true)
+  fundScanLimit        Int      @default(0)
+  fundScanUsed         Int      @default(0)
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@index([tier])
 }
 
 model SmsConversation {
-  id              String       @id @default(cuid())
-  phoneNumber     String       // E.164 format of the external party
-  businessId      String?      // which business/subscriber this convo belongs to
-  subscriberId    String?      // LeadSubscriber.id if linked to a leads subscriber
-  leadId          String?      // Lead.id if linked to a specific lead
-  systemPrompt    String?      // business-specific system prompt override
-  status          String       @default("active") // active, paused, opted_out
-  messageCount    Int          @default(0)
-  lastMessageAt   DateTime?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  messages        SmsMessage[]
+  id            String       @id @default(cuid())
+  phoneNumber   String
+  businessId    String?
+  subscriberId  String?
+  leadId        String?
+  systemPrompt  String?
+  status        String       @default("active")
+  messageCount  Int          @default(0)
+  lastMessageAt DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  messages      SmsMessage[]
 
   @@unique([phoneNumber, businessId])
   @@index([subscriberId])
@@ -381,59 +383,57 @@ model SmsConversation {
 }
 
 model SmsMessage {
-  id              String          @id @default(cuid())
-  conversationId  String
-  conversation    SmsConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  direction       String          // inbound, outbound
-  body            String
-  mediaUrls       String[]
-  twilioSid       String?         @unique
-  status          String          @default("sent") // sent, delivered, failed, received
-  tokensUsed      Int?
-  createdAt       DateTime        @default(now())
+  id             String          @id @default(cuid())
+  conversationId String
+  direction      String
+  body           String
+  mediaUrls      String[]
+  twilioSid      String?         @unique
+  status         String          @default("sent")
+  tokensUsed     Int?
+  createdAt      DateTime        @default(now())
+  conversation   SmsConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
 }
 
-// ─── Phase 4: Deep Lead Intelligence (Dossier) ────────────
-
 model DossierBatch {
-  id              String       @id @default(cuid())
-  name            String?      // user label e.g. "PropStream Export March"
-  source          String       @default("csv") // csv, google_sheets, propstream, mls
-  totalRows       Int          @default(0)
-  processedRows   Int          @default(0)
-  failedRows      Int          @default(0)
-  status          String       @default("pending") // pending, processing, complete, failed
-  userId          String
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  jobs            DossierJob[]
+  id            String       @id @default(cuid())
+  name          String?
+  source        String       @default("csv")
+  totalRows     Int          @default(0)
+  processedRows Int          @default(0)
+  failedRows    Int          @default(0)
+  status        String       @default("pending")
+  userId        String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  jobs          DossierJob[]
 
   @@index([userId])
   @@index([status])
 }
 
 model DossierJob {
-  id              String          @id @default(cuid())
-  listingId       String
-  listing         Listing         @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  leadId          String?
-  batchId         String?
-  batch           DossierBatch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
-  status          String          @default("queued") // queued, running, complete, partial, failed, cancelled
-  progress        Int             @default(0)        // 0-100
-  currentStep     String?         // which plugin is currently running
-  stepsCompleted  String[]        // plugin names that finished
-  stepsFailed     String[]        // plugin names that errored
-  errorMessage    String?
-  requestedBy     String?         // userId or "admin"
-  priority        Int             @default(0)        // higher = process first
-  startedAt       DateTime?
-  completedAt     DateTime?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  result          DossierResult?
+  id             String         @id @default(cuid())
+  listingId      String
+  leadId         String?
+  status         String         @default("queued")
+  progress       Int            @default(0)
+  currentStep    String?
+  stepsCompleted String[]
+  stepsFailed    String[]
+  errorMessage   String?
+  requestedBy    String?
+  priority       Int            @default(0)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  batchId        String?
+  batch          DossierBatch?  @relation(fields: [batchId], references: [id])
+  listing        Listing        @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  result         DossierResult?
 
   @@index([status, priority])
   @@index([listingId])
@@ -442,70 +442,49 @@ model DossierJob {
 }
 
 model DossierResult {
-  id                String   @id @default(cuid())
-  jobId             String   @unique
-  job               DossierJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  // Owner info
-  owners            Json?    // [{name, role, age?, phone?, email?, facebook?, linkedin?, otherUrls?, sourceUrl, confidence}]
-  entityType        String?  // individual, trust, llc, joint, estate, corporate
-  entityName        String?  // "Smith Family Trust", "123 Main LLC"
-
-  // Legal / Court
-  courtCases        Json?    // [{type, caseNumber, court, parties, filedDate, status, sourceUrl}]
-  liens             Json?    // [{type, amount, holder, filedDate, status, sourceUrl}]
-  bankruptcies      Json?    // [{chapter, caseNumber, filedDate, status, sourceUrl}]
-
-  // Tax & Deed
-  taxRecords        Json?    // [{year, assessed, taxAmount, delinquent, paidDate?, sourceUrl}]
-  deedHistory       Json?    // [{date, price, grantor, grantee, type, documentNumber, sourceUrl}]
-
-  // People search / Social
-  socialProfiles    Json?    // [{platform, url, name, confidence}]
-  webMentions       Json?    // [{title, url, snippet, date?}]
-  relatedPeople     Json?    // [{name, relationship, sourceUrl}]
-
-  // Media
-  streetViewUrl     String?
-  satelliteUrl      String?
+  id                 String     @id @default(cuid())
+  jobId              String     @unique
+  owners             Json?
+  entityType         String?
+  entityName         String?
+  courtCases         Json?
+  liens              Json?
+  bankruptcies       Json?
+  taxRecords         Json?
+  deedHistory        Json?
+  socialProfiles     Json?
+  webMentions        Json?
+  relatedPeople      Json?
+  streetViewUrl      String?
+  satelliteUrl       String?
   neighborhoodPhotos String[]
-
-  // Computed
-  motivationScore   Int?     // 0-100 composite
-  motivationFlags   String[] // ["divorce", "tax_lien", "high_dom", "price_drop", "pre_foreclosure"]
-  researchSummary   String?  // AI-generated plain English summary
-
-  // ── Plugin output store (extensible) ──
-  // Each plugin writes its raw output here keyed by plugin name
-  // e.g. { "county-assessor": {...}, "court-records": {...}, "skip-trace": {...} }
-  pluginData        Json?
-
-  // ── Future expansion slots ──
-  neighborhoodData  Json?    // census, demographics, crime stats, school ratings
-  financialData     Json?    // mortgage info, equity estimate, pre-foreclosure status
-  permitData        Json?    // building permits, code violations, renovation history
-  rentalData        Json?    // eviction records, rental history, landlord registrations
-  businessData      Json?    // LLC/corp ownership, business filings, UCC records
-  environmentalData Json?    // flood zone, environmental hazards, soil reports
-  marketData        Json?    // comps, market trends, price per sqft, absorption rate
-  customData        Json?    // catch-all for any future plugin type
-
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  motivationScore    Int?
+  motivationFlags    String[]
+  researchSummary    String?
+  pluginData         Json?
+  neighborhoodData   Json?
+  financialData      Json?
+  permitData         Json?
+  rentalData         Json?
+  businessData       Json?
+  environmentalData  Json?
+  marketData         Json?
+  customData         Json?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  job                DossierJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@index([motivationScore])
 }
-
-// ─── Pipeline Workflow Config ─────────────────────────────
 
 model PipelineWorkflow {
   id          String   @id @default(cuid())
   userId      String
   name        String   @default("Default Pipeline")
   description String?
-  nodes       Json     // [{id, type, position, data: {label, category, scraperId?, ...}}]
-  edges       Json     // [{id, source, target, label, ...}]
-  isActive    Boolean  @default(false)  // active workflow used for pipeline execution
+  nodes       Json
+  edges       Json
+  isActive    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -513,25 +492,20 @@ model PipelineWorkflow {
   @@index([userId, isActive])
 }
 
-// ─── Client CRM / Import System ──────────────────────────
-
 model Client {
-  id                     String       @id @default(cuid())
-  subscriberId           String       // LeadSubscriber who owns this client
-  // Basic info
+  id                     String         @id @default(cuid())
+  subscriberId           String
   firstName              String
   lastName               String
   email                  String?
   phone                  String?
-  // Social
   facebookUrl            String?
   instagramUrl           String?
   linkedinUrl            String?
   twitterUrl             String?
   tiktokUrl              String?
-  // Preferences
-  buyerSeller            String       @default("buyer") // buyer, seller, both
-  preApproved            Boolean      @default(false)
+  buyerSeller            String         @default("buyer")
+  preApproved            Boolean        @default(false)
   preApprovalAmount      Float?
   minPrice               Float?
   maxPrice               Float?
@@ -543,55 +517,47 @@ model Client {
   preferredCities        String[]
   preferredZips          String[]
   preferredPropertyTypes String[]
-  // Timeline
-  moveTimeline           String?      // asap, 1-3months, 3-6months, 6-12months, just_looking
+  moveTimeline           String?
   currentCity            String?
   currentState           String?
   movingFrom             String?
-  // Personal
-  birthday               String?      // stored as text for flexibility (MM/DD or full date)
-  household              String?      // single, couple, family
+  birthday               String?
+  household              String?
   kids                   Int?
   pets                   String?
   occupation             String?
-  // Lifestyle / Interests (free-form enrichment)
-  interests              String[]     // coffee_shops, gyms, hiking, dog_parks, etc.
-  dealbreakers           String[]     // no_hoa, no_flood_zone, must_have_garage, etc.
-  // Employment (structured)
+  interests              String[]
+  dealbreakers           String[]
+  fitScore               Int            @default(0)
+  fitScoreFactors        Json?
+  status                 String         @default("active")
+  avatarUrl              String?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
   jobTitle               String?
   employer               String?
   industry               String?
-  educationLevel         String?      // high_school, associates, bachelors, masters, doctorate, trade
-  // Income estimation
+  educationLevel         String?
   estimatedIncome        Float?
   incomeRangeLow         Float?
   incomeRangeHigh        Float?
-  incomeSource           String?      // careeronestop, census, manual
-  incomeConfidence       String?      // high, medium, low
+  incomeSource           String?
+  incomeConfidence       String?
   incomeEstimatedAt      DateTime?
-  // Affordability
   estimatedMaxHome       Float?
-  affordabilityData      Json?        // { maxMonthly, rate, taxes, insurance, method }
-  // DISC Personality
-  discType               String?      // D, I, S, C
-  discSecondary          String?      // secondary type
-  discAssessment         Json?        // full assessment answers + scores
-  // Readiness
-  readinessScore         Int          @default(0)
+  affordabilityData      Json?
+  discType               String?
+  discSecondary          String?
+  discAssessment         Json?
+  readinessScore         Int            @default(0)
   readinessFactors       Json?
-  // Score
-  fitScore               Int          @default(0) // 0-100 client fit score
-  fitScoreFactors        Json?
-  // Status
-  status                 String       @default("active") // active, under_contract, closed, inactive
-  // Photo
-  avatarUrl              String?
-  // Timestamps
-  createdAt              DateTime     @default(now())
-  updatedAt              DateTime     @updatedAt
-  notes                  ClientNote[]
-  triggerEvents          TriggerEvent[]
   clientMatches          ClientMatch[]
+  notes                  ClientNote[]
+  ContactTag             ContactTag[]
+  CrmActivity            CrmActivity[]
+  CrmTask                CrmTask[]
+  Deal                   Deal[]
+  triggerEvents          TriggerEvent[]
 
   @@index([subscriberId, status])
   @@index([fitScore])
@@ -601,10 +567,10 @@ model Client {
 model ClientNote {
   id        String   @id @default(cuid())
   clientId  String
-  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  category  String   @default("general") // general, preference, lifestyle, viewing, milestone, contact
+  category  String   @default("general")
   content   String
   createdAt DateTime @default(now())
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, createdAt])
 }
@@ -612,13 +578,13 @@ model ClientNote {
 model TriggerEvent {
   id         String   @id @default(cuid())
   clientId   String
-  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  type       String   // job_relocation, marriage, baby, promotion, divorce, retirement, rental_complaints, graduation
-  strength   String?  // very_high, high, medium_high, medium
+  type       String
+  strength   String?
   details    String?
   occurredAt DateTime @default(now())
-  source     String?  // agent_input, social_media, conversation
+  source     String?
   createdAt  DateTime @default(now())
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, occurredAt])
   @@index([type])
@@ -627,23 +593,21 @@ model TriggerEvent {
 model ClientMatch {
   id           String   @id @default(cuid())
   clientId     String
-  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   listingId    String
-  matchScore   Int      @default(0) // 0-100
+  matchScore   Int      @default(0)
   matchFactors Json?
-  direction    String   @default("client_to_listing") // client_to_listing, listing_to_client
+  direction    String   @default("client_to_listing")
   computedAt   DateTime @default(now())
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@unique([clientId, listingId, direction])
   @@index([matchScore])
 }
 
-// ─── Junkin' Jay's Analytics ─────────────────────────────
-
 model JjPageView {
   id        String   @id @default(cuid())
-  path      String   // /junkinjays
-  referrer  String?  // where traffic came from (facebook, craigslist, direct, etc.)
+  path      String
+  referrer  String?
   userAgent String?
   ip        String?
   createdAt DateTime @default(now())
@@ -663,13 +627,11 @@ model JjPhoneClick {
   @@index([referrer])
 }
 
-// ─── Universal Site Analytics ─────────────────────────────
-
 model SiteView {
   id        String   @id @default(cuid())
-  site      String   // "homes", "trailer", "hvac", "wd", "generator", "lastmile", "moving", "junkinjays", "shop", "start", "home"
-  path      String   // full path e.g. "/trailer", "/shop/admin"
-  referrer  String?  // classified: google, facebook, direct, instagram, etc.
+  site      String
+  path      String
+  referrer  String?
   userAgent String?
   ip        String?
   createdAt DateTime @default(now())
@@ -683,12 +645,12 @@ model SiteEvent {
   id        String   @id @default(cuid())
   site      String
   path      String
-  event     String   // phone_click, cta_click, form_submit, sms_click, etc.
-  label     String?  // human-readable label e.g. "Call Jay", "Book Trailer"
+  event     String
+  label     String?
   referrer  String?
   userAgent String?
   ip        String?
-  meta      Json?    // extra data
+  meta      Json?
   createdAt DateTime @default(now())
 
   @@index([site, createdAt])
@@ -696,21 +658,15 @@ model SiteEvent {
   @@index([createdAt])
 }
 
-// ─── Snap & Know (Photo-to-Property Intelligence) ────────
-
 model SnapRequest {
-  id              String    @id @default(cuid())
+  id              String   @id @default(cuid())
   userId          String
-
-  // Input
-  photoUrl        String    // Vercel Blob URL
+  photoUrl        String
   photoExifLat    Float?
   photoExifLng    Float?
   browserLat      Float?
   browserLng      Float?
   manualAddress   String?
-
-  // Resolved
   resolvedLat     Float?
   resolvedLng     Float?
   resolvedAddress String?
@@ -718,34 +674,25 @@ model SnapRequest {
   resolvedState   String?
   resolvedZip     String?
   resolvedCounty  String?
-
-  // Pipeline links
   listingId       String?
   dossierJobId    String?
-
-  // Status
-  status          String    @default("pending") // pending, geocoding, researching, complete, failed
+  status          String   @default("pending")
   errorMessage    String?
-
-  // Equity (computed after dossier completes)
   estimatedEquity Float?
-  equityBreakdown Json?     // { marketValue, mortgageEstimate, method, sources }
-
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  equityBreakdown Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([userId, createdAt])
   @@index([status])
 }
-
-// ─── Speed-to-Lead Auto-Response ─────────────────────────
 
 model AutoResponder {
   id              String   @id @default(cuid())
   subscriberId    String
   name            String   @default("Default")
   isActive        Boolean  @default(true)
-  triggerSource   String[] // mls_expired, mls_pricedrop, mls_dom, snap, csv
+  triggerSource   String[]
   minScore        Int      @default(30)
   promptId        String   @default("speed_to_lead_seller")
   delaySeconds    Int      @default(30)
@@ -763,72 +710,68 @@ model AutoResponder {
   @@index([subscriberId, isActive])
 }
 
-// ─── ROI Dashboard & Activity Tracking ───────────────────
-
 model ActivityLog {
-  id              String   @id @default(cuid())
-  subscriberId    String
-  activityDate    DateTime @db.Date
-  contactsMade    Int      @default(0)
-  followUpsSent   Int      @default(0)
-  newLeads        Int      @default(0)
-  dossiersRun     Int      @default(0)
-  smsSent         Int      @default(0)
-  smsReplies      Int      @default(0)
-  leadsContacted  Int      @default(0)
-  leadsConverted  Int      @default(0)
-  dailyGoal       Int      @default(10)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  subscriberId   String
+  activityDate   DateTime @db.Date
+  contactsMade   Int      @default(0)
+  followUpsSent  Int      @default(0)
+  newLeads       Int      @default(0)
+  dossiersRun    Int      @default(0)
+  smsSent        Int      @default(0)
+  smsReplies     Int      @default(0)
+  leadsContacted Int      @default(0)
+  leadsConverted Int      @default(0)
+  dailyGoal      Int      @default(10)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@unique([subscriberId, activityDate])
 }
 
-// ─── Follow-Up Drip Sequences ────────────────────────────
-
 model SmsSequence {
-  id              String            @id @default(cuid())
-  subscriberId    String
-  name            String
-  description     String?
-  isActive        Boolean           @default(true)
-  targetSource    String[]          // lead sources this applies to
-  steps           SmsSequenceStep[]
-  enrollments     SmsEnrollment[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id           String            @id @default(cuid())
+  subscriberId String
+  name         String
+  description  String?
+  isActive     Boolean           @default(true)
+  targetSource String[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  enrollments  SmsEnrollment[]
+  steps        SmsSequenceStep[]
 
   @@index([subscriberId, isActive])
 }
 
 model SmsSequenceStep {
-  id              String       @id @default(cuid())
-  sequenceId      String
-  sequence        SmsSequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
-  stepNumber      Int
-  delayDays       Int
-  delayHours      Int          @default(0)
-  promptId        String?
-  templateBody    String?
-  isAiGenerated   Boolean      @default(true)
-  createdAt       DateTime     @default(now())
+  id            String      @id @default(cuid())
+  sequenceId    String
+  stepNumber    Int
+  delayDays     Int
+  delayHours    Int         @default(0)
+  promptId      String?
+  templateBody  String?
+  isAiGenerated Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  sequence      SmsSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
 
   @@unique([sequenceId, stepNumber])
 }
 
 model SmsEnrollment {
-  id              String       @id @default(cuid())
-  sequenceId      String
-  sequence        SmsSequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
-  leadId          String?
-  phoneNumber     String
-  conversationId  String?
-  currentStep     Int          @default(0)
-  status          String       @default("active") // active, paused, completed, replied, opted_out
-  nextSendAt      DateTime?
-  enrolledAt      DateTime     @default(now())
-  completedAt     DateTime?
-  updatedAt       DateTime     @updatedAt
+  id             String      @id @default(cuid())
+  sequenceId     String
+  leadId         String?
+  phoneNumber    String
+  conversationId String?
+  currentStep    Int         @default(0)
+  status         String      @default("active")
+  nextSendAt     DateTime?
+  enrolledAt     DateTime    @default(now())
+  completedAt    DateTime?
+  updatedAt      DateTime    @updatedAt
+  sequence       SmsSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
 
   @@index([status, nextSendAt])
   @@index([phoneNumber])
@@ -836,76 +779,64 @@ model SmsEnrollment {
 
 model SyncLog {
   id             String   @id @default(cuid())
-  source         String   // mls_grid, propstream, regrid
+  source         String
   recordsTotal   Int      @default(0)
   recordsNew     Int      @default(0)
   recordsUpdated Int      @default(0)
-  duration       Int?     // ms
+  duration       Int?
   error          String?
   createdAt      DateTime @default(now())
 
   @@index([source, createdAt])
 }
 
-// ─── Regrid Parcel Data (Off-Market Property Intelligence) ──
-
 model Parcel {
-  id                    String    @id @default(cuid())
-  // Regrid identifiers
-  regridId              String    @unique  // Regrid's internal feature ID
-  parcelnumb            String?            // Assessor Parcel Number (APN)
-  // Address
-  address               String
-  city                  String?
-  state                 String?
-  zip                   String?
-  county                String?
-  lat                   Float?
-  lng                   Float?
-  // Ownership
-  owner                 String?            // Full owner name(s) as-is from Regrid
-  owntype               String?            // fee, government, trust, etc.
-  ownfrst               String?
-  ownlast               String?
-  mailadd               String?            // Mailing address line
-  mailcity              String?
-  mailstate             String?
-  mailzip               String?
-  // Computed flags
-  isAbsentee            Boolean   @default(false) // situs != mailing address
-  isVacant              Boolean   @default(false) // USPS vacancy flag
-  // Tax / assessment
-  parval                Float?             // Total parcel value (assessed)
-  landval               Float?             // Land value
-  improvval             Float?             // Improvement value
-  saleprice             Float?             // Last sale price
-  saledate              String?            // Last sale date
-  taxamt                Float?             // Annual tax amount
-  // Structure
-  yearbuilt             Int?
-  numstories            Float?
-  numunits              Int?
-  num_bedrooms          Int?
-  num_bath              Float?
-  struct                String?            // Primary structure type
-  ll_gisacre            Float?             // GIS-computed acreage
-  ll_gissqft            Float?             // GIS-computed lot sqft
-  // Zoning / special
-  zoning                String?
-  zoning_description    String?
-  usps_vacancy          String?            // Y, N, or null
-  qoz                   Boolean   @default(false) // Qualified Opportunity Zone
-  // Raw data store
-  rawData               Json?              // Full GeoJSON feature properties
-  geometry              Json?              // Parcel boundary polygon (GeoJSON)
-  // Relations
-  listingId             String?   @unique  // 1:1 optional link to MLS Listing
-  listing               Listing?  @relation(fields: [listingId], references: [id], onDelete: SetNull)
-  leads                 Lead[]
-  // Cache
-  regridFetchedAt       DateTime  @default(now()) // For 30-day TTL
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                 String   @id @default(cuid())
+  regridId           String   @unique
+  parcelnumb         String?
+  address            String
+  city               String?
+  state              String?
+  zip                String?
+  county             String?
+  lat                Float?
+  lng                Float?
+  owner              String?
+  owntype            String?
+  ownfrst            String?
+  ownlast            String?
+  mailadd            String?
+  mailcity           String?
+  mailstate          String?
+  mailzip            String?
+  isAbsentee         Boolean  @default(false)
+  isVacant           Boolean  @default(false)
+  parval             Float?
+  landval            Float?
+  improvval          Float?
+  saleprice          Float?
+  saledate           String?
+  taxamt             Float?
+  yearbuilt          Int?
+  numstories         Float?
+  numunits           Int?
+  num_bedrooms       Int?
+  num_bath           Float?
+  struct             String?
+  ll_gisacre         Float?
+  ll_gissqft         Float?
+  zoning             String?
+  zoning_description String?
+  usps_vacancy       String?
+  qoz                Boolean  @default(false)
+  rawData            Json?
+  geometry           Json?
+  listingId          String?  @unique
+  regridFetchedAt    DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  leads              Lead[]
+  listing            Listing? @relation(fields: [listingId], references: [id])
 
   @@index([zip])
   @@index([county])
@@ -915,11 +846,9 @@ model Parcel {
   @@index([lat, lng])
 }
 
-// ─── NARRPR Import (Realtors Property Resource) ─────────────
-
 model NarrprImport {
   id               String    @id @default(cuid())
-  importType       String    // "csv_bulk" | "rich_detail" | "bookmarklet"
+  importType       String
   address          String
   city             String?
   state            String?
@@ -927,20 +856,17 @@ model NarrprImport {
   matchedListingId String?
   matchedDossierId String?
   matchConfidence  Float?
-  // CSV bulk fields
   ownerName        String?
   ownerName2       String?
   mailingAddress   String?
   mailingCity      String?
   mailingState     String?
   mailingZip       String?
-  // Rich detail fields
-  mortgageData     Json?     // [{lender, amount, type, date, rate?}]
-  rvmValue         Json?     // {value, confidence, date, low?, high?}
-  esriTapestry     Json?     // {segment, segmentCode, lifeMode, urbanization}
-  distressData     Json?     // {nodDate?, auctionDate?, releaseDate?, status?}
-  deedRecords      Json?     // [{date, price, grantor, grantee, type}]
-  // Status
+  mortgageData     Json?
+  rvmValue         Json?
+  esriTapestry     Json?
+  distressData     Json?
+  deedRecords      Json?
   status           String    @default("pending")
   mergedAt         DateTime?
   userId           String
@@ -952,29 +878,23 @@ model NarrprImport {
   @@index([matchedListingId])
 }
 
-// ─── Unclaimed Funds Discovery ──────────────────────────────
-
 model UnclaimedFundScan {
-  id              String           @id @default(cuid())
-  subscriberId    String?          // LeadSubscriber who initiated
+  id              String          @id @default(cuid())
+  subscriberId    String?
   userId          String
-  // Search params
-  ownerName       String           // primary name searched
-  alternateNames  String[]         // aliases, maiden names, etc.
-  sources         String[]         // mo_unclaimed, mo_tax_surplus, ks_unclaimed, pa_unclaimed, hud, fdic, missingmoney
-  // Pipeline links (optional — bridges dossier integration)
+  ownerName       String
+  alternateNames  String[]
+  sources         String[]
   listingId       String?
   dossierJobId    String?
-  // Results
-  status          String           @default("pending") // pending, running, complete, partial, failed
-  totalFound      Int              @default(0)
-  claimableAmount Float            @default(0)
+  status          String          @default("pending")
+  totalFound      Int             @default(0)
+  claimableAmount Float           @default(0)
   errorMessage    String?
-  duration        Int?             // ms
-  // Relations
+  duration        Int?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   funds           UnclaimedFund[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
 
   @@index([userId])
   @@index([subscriberId])
@@ -984,31 +904,27 @@ model UnclaimedFundScan {
 }
 
 model UnclaimedFund {
-  id              String               @id @default(cuid())
-  scanId          String
-  scan            UnclaimedFundScan    @relation(fields: [scanId], references: [id], onDelete: Cascade)
-  // Fund details
-  source          String               // mo_unclaimed, mo_tax_surplus, ks_unclaimed, etc.
-  externalId      String?              // ID from the source system (for dedup)
-  amount          Float?               // reported amount (null if not disclosed)
-  ownerName       String               // name as it appears in the source
-  holderName      String?              // entity holding the funds (bank, county, state)
-  propertyType    String?              // cash, stock, insurance, safe_deposit, tax_surplus
-  reportDate      DateTime?            // when funds were reported/escheated
-  lastActivityDate DateTime?           // last known activity on the account
-  address         String?              // address associated with the funds
-  city            String?
-  state           String?
-  zip             String?
-  // Matching
-  matchConfidence Float                @default(0) // 0-1
-  matchMethod     String?              // exact, fuzzy, alias
-  // Raw data from scraper
-  rawData         Json?
-  // Claim link
-  claim           UnclaimedFundClaim?
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  id               String              @id @default(cuid())
+  scanId           String
+  source           String
+  externalId       String?
+  amount           Float?
+  ownerName        String
+  holderName       String?
+  propertyType     String?
+  reportDate       DateTime?
+  lastActivityDate DateTime?
+  address          String?
+  city             String?
+  state            String?
+  zip              String?
+  matchConfidence  Float               @default(0)
+  matchMethod      String?
+  rawData          Json?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  scan             UnclaimedFundScan   @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  claim            UnclaimedFundClaim?
 
   @@unique([source, externalId])
   @@index([scanId])
@@ -1018,41 +934,35 @@ model UnclaimedFund {
 }
 
 model UnclaimedFundClaim {
-  id              String          @id @default(cuid())
-  fundId          String          @unique
-  fund            UnclaimedFund   @relation(fields: [fundId], references: [id], onDelete: Cascade)
-  subscriberId    String
-  // Status workflow
-  status          String          @default("identified") // identified, contacted, agreement_signed, filed, approved, paid
-  // Compliance
-  jurisdiction    String          // MO, KS, PA, federal
-  sourceType      String          // state_unclaimed, tax_surplus, hud, fdic
-  waitingPeriodEnd DateTime?      // null = no waiting period or unknown
-  maxFeePercent   Float?          // computed from compliance engine
-  currentFeeWindow String?        // e.g. "12-24mo: 10%", "36+: 20%"
-  claimDeadline   DateTime?       // hard deadline if applicable
-  statuteReference String?        // e.g. "RSMo 447.581"
-  complianceWarnings String[]     // any warnings from compliance engine
-  // Financials
-  claimAmount     Float?          // amount being claimed
-  agreedFeePercent Float?         // fee agreed with owner
-  expectedFee     Float?          // claimAmount * agreedFeePercent
-  actualPayout    Float?          // what was actually received
-  // Outreach
-  ownerPhone      String?
-  ownerEmail      String?
-  ownerAddress    String?
-  contactAttempts Int             @default(0)
-  lastContactAt   DateTime?
-  agreementSignedAt DateTime?
-  // Filing
-  filedAt         DateTime?
-  approvedAt      DateTime?
-  paidAt          DateTime?
-  // Notes
-  notes           String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  id                 String        @id @default(cuid())
+  fundId             String        @unique
+  subscriberId       String
+  status             String        @default("identified")
+  jurisdiction       String
+  sourceType         String
+  waitingPeriodEnd   DateTime?
+  maxFeePercent      Float?
+  currentFeeWindow   String?
+  claimDeadline      DateTime?
+  statuteReference   String?
+  complianceWarnings String[]
+  claimAmount        Float?
+  agreedFeePercent   Float?
+  expectedFee        Float?
+  actualPayout       Float?
+  ownerPhone         String?
+  ownerEmail         String?
+  ownerAddress       String?
+  contactAttempts    Int           @default(0)
+  lastContactAt      DateTime?
+  agreementSignedAt  DateTime?
+  filedAt            DateTime?
+  approvedAt         DateTime?
+  paidAt             DateTime?
+  notes              String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  fund               UnclaimedFund @relation(fields: [fundId], references: [id], onDelete: Cascade)
 
   @@index([subscriberId])
   @@index([status])
@@ -1060,24 +970,22 @@ model UnclaimedFundClaim {
   @@index([waitingPeriodEnd])
 }
 
-// ─── Multi-Channel Content & Outreach Engine ────────────────
-
 model PlatformConnection {
-  id                  String    @id @default(cuid())
-  subscriberId        String
-  platform            String    // linkedin, twitter, facebook, instagram, youtube, tiktok
-  platformAccountId   String    // platform-specific user/page ID
-  platformUsername    String?
-  accessToken         String    // encrypted at rest via env
-  refreshToken        String?
-  tokenExpiresAt      DateTime?
-  scopes              String[]
-  pageId              String?   // for FB Pages, LinkedIn Orgs
-  pageName            String?
-  status              String    @default("active") // active, expired, revoked, error
-  lastError           String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  subscriberId      String
+  platform          String
+  platformAccountId String
+  platformUsername  String?
+  accessToken       String
+  refreshToken      String?
+  tokenExpiresAt    DateTime?
+  scopes            String[]
+  pageId            String?
+  pageName          String?
+  status            String    @default("active")
+  lastError         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@unique([subscriberId, platform, platformAccountId])
   @@index([subscriberId])
@@ -1086,63 +994,58 @@ model PlatformConnection {
 }
 
 model ContentTemplate {
-  id              String    @id @default(cuid())
-  subscriberId    String?   // null = system default template
+  id              String            @id @default(cuid())
+  subscriberId    String?
   name            String
-  platform        String    // linkedin, twitter, facebook, instagram, youtube, tiktok, all
-  category        String    // market_update, listing_promo, neighborhood_spotlight, seller_tip, buyer_guide, just_sold, open_house, personal_brand
-  promptTemplate  String    // system prompt with {{variables}}
-  bodyTemplate    String?   // optional static body
-  hashtagStrategy Json?     // { count: 5, style: "trending" | "niche" | "branded" }
-  mediaStrategy   Json?     // { type: "property_photo" | "infographic" | "none", count: 1 }
-  tone            String    @default("professional") // professional, casual, authoritative, friendly
-  isActive        Boolean   @default(true)
+  platform        String
+  category        String
+  promptTemplate  String
+  bodyTemplate    String?
+  hashtagStrategy Json?
+  mediaStrategy   Json?
+  tone            String            @default("professional")
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
   posts           ContentPost[]
   campaigns       ContentCampaign[] @relation("CampaignTemplates")
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
 
   @@index([subscriberId])
   @@index([platform, category])
 }
 
 model ContentPost {
-  id              String    @id @default(cuid())
-  subscriberId    String
-  platform        String    // linkedin, twitter, facebook, instagram, youtube, tiktok
-  contentType     String    @default("text") // text, image, carousel, video, reel
-  body            String
-  mediaUrls       String[]
-  hashtags        String[]
-  // Source context
-  templateId      String?
-  template        ContentTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  listingId       String?
-  clientId        String?
-  dossierJobId    String?
-  aiPromptUsed    String?   // the actual prompt sent to LLM
-  campaignId      String?
-  campaign        ContentCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  // Schedule
-  scheduledAt     DateTime?
-  publishedAt     DateTime?
-  // Platform response
-  platformPostId  String?
-  platformUrl     String?
-  // Status: draft → scheduled → publishing → published → failed
-  status          String    @default("draft")
-  errorMessage    String?
-  retryCount      Int       @default(0)
-  // Engagement metrics
-  likes           Int       @default(0)
-  comments        Int       @default(0)
-  shares          Int       @default(0)
-  impressions     Int       @default(0)
-  clicks          Int       @default(0)
-  engagementRate  Float     @default(0)
+  id                 String           @id @default(cuid())
+  subscriberId       String
+  platform           String
+  contentType        String           @default("text")
+  body               String
+  mediaUrls          String[]
+  hashtags           String[]
+  templateId         String?
+  listingId          String?
+  clientId           String?
+  dossierJobId       String?
+  aiPromptUsed       String?
+  campaignId         String?
+  scheduledAt        DateTime?
+  publishedAt        DateTime?
+  platformPostId     String?
+  platformUrl        String?
+  status             String           @default("draft")
+  errorMessage       String?
+  retryCount         Int              @default(0)
+  likes              Int              @default(0)
+  comments           Int              @default(0)
+  shares             Int              @default(0)
+  impressions        Int              @default(0)
+  clicks             Int              @default(0)
+  engagementRate     Float            @default(0)
   lastEngagementSync DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  campaign           ContentCampaign? @relation(fields: [campaignId], references: [id])
+  template           ContentTemplate? @relation(fields: [templateId], references: [id])
 
   @@index([subscriberId, status])
   @@index([status, scheduledAt])
@@ -1151,33 +1054,31 @@ model ContentPost {
 }
 
 model ContentCampaign {
-  id              String    @id @default(cuid())
-  subscriberId    String
-  name            String
-  description     String?
-  platforms       String[]  // linkedin, twitter, etc.
-  templateIds     String[]
-  templates       ContentTemplate[] @relation("CampaignTemplates")
-  frequency       String    @default("daily") // daily, weekdays, weekly, custom
-  postsPerDay     Int       @default(1)
-  preferredTimes  String[]  // ["09:00", "12:00", "17:00"]
-  timezone        String    @default("America/Chicago")
-  sourceType      String    @default("ai_generated") // ai_generated, template_fill
-  sourceFilter    Json?     // { minScore: 30, status: ["new"], farmZips: ["64055"] }
-  isActive        Boolean   @default(false)
-  startDate       DateTime?
-  endDate         DateTime?
-  postsGenerated  Int       @default(0)
-  postsPublished  Int       @default(0)
-  posts           ContentPost[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id             String            @id @default(cuid())
+  subscriberId   String
+  name           String
+  description    String?
+  platforms      String[]
+  templateIds    String[]
+  frequency      String            @default("daily")
+  postsPerDay    Int               @default(1)
+  preferredTimes String[]
+  timezone       String            @default("America/Chicago")
+  sourceType     String            @default("ai_generated")
+  sourceFilter   Json?
+  isActive       Boolean           @default(false)
+  startDate      DateTime?
+  endDate        DateTime?
+  postsGenerated Int               @default(0)
+  postsPublished Int               @default(0)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  posts          ContentPost[]
+  templates      ContentTemplate[] @relation("CampaignTemplates")
 
   @@index([subscriberId, isActive])
   @@index([isActive])
 }
-
-// ─── Washer/Dryer Rental Admin ───
 
 model WdClient {
   id               String      @id @default(cuid())
@@ -1189,19 +1090,19 @@ model WdClient {
   unitCost         Float       @default(200)
   installDate      DateTime?
   active           Boolean     @default(true)
-  confirmed        Boolean     @default(false)
   notes            String?
   photoUrls        String[]
   receiptUrls      String[]
   source           String      @default("tolley")
-  paidBy           String      @default("tolley")   // Who bought the unit
+  paidBy           String      @default("tolley")
   needsReview      Boolean     @default(false)
   blockedFields    String[]
   locked           Boolean     @default(false)
   stripeCustomerId String?
-  payments         WdPayment[]
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
+  confirmed        Boolean     @default(false)
+  payments         WdPayment[]
 
   @@index([active])
   @@index([source])
@@ -1211,11 +1112,11 @@ model WdPayment {
   id        String   @id @default(cuid())
   clientId  String
   amount    Float
-  month     String   // "2025-09" format
-  status    String   @default("paid")   // "paid" | "late" | "missed"
+  month     String
   note      String?
-  client    WdClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  status    String   @default("paid")
+  client    WdClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, month])
   @@index([month])
@@ -1229,55 +1130,49 @@ model WdRepairItem {
   updatedAt DateTime @updatedAt
 }
 
-// ─── Market Intelligence ───
-
 model MarketSource {
-  id          String   @id @default(cuid())
-  type        String   // youtube_channel, rss_feed, stock_ticker, fred_indicator, blog
-  name        String
-  url         String?  // RSS URL, blog URL, YouTube channel URL
-  identifier  String?  // channel_id, ticker symbol, FRED series ID
-  active      Boolean  @default(true)
-  lastChecked DateTime?
-  checkInterval Int    @default(21600) // seconds between checks (default 6h)
-  metadata    Json?    // extra config per source type
-  dataPoints  MarketDataPoint[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String            @id @default(cuid())
+  type          String
+  name          String
+  url           String?
+  identifier    String?
+  active        Boolean           @default(true)
+  lastChecked   DateTime?
+  checkInterval Int               @default(21600)
+  metadata      Json?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  dataPoints    MarketDataPoint[]
 
   @@unique([type, identifier])
   @@index([active, type])
 }
 
 model MarketDataPoint {
-  id               String   @id @default(cuid())
+  id               String        @id @default(cuid())
   sourceId         String?
-  source           MarketSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
-  type             String   // video_analysis, article_summary, stock_reading, economic_indicator, manual_note
+  type             String
   title            String
   url              String?
-  scope            String   @default("national") // national, local_kc
-  // Sentiment & signal
-  sentiment        Float?   // -1.0 to 1.0
-  signal           String?  // buy, sell, hold, neutral
-  signalConfidence Float?   // 0.0 to 1.0
-  // Content
-  rawContent       String?  // transcript, article text (cleaned after 90 days)
+  scope            String        @default("national")
+  sentiment        Float?
+  signal           String?
+  signalConfidence Float?
+  rawContent       String?
   summary          String?
-  analysis         Json?    // structured LLM output
-  // For stock/economic data
+  analysis         Json?
   numericValue     Float?
   previousValue    Float?
   changePercent    Float?
-  // Metadata
   publishedAt      DateTime?
-  collectedAt      DateTime @default(now())
-  expiresAt        DateTime? // for data retention
+  collectedAt      DateTime      @default(now())
+  expiresAt        DateTime?
   tags             String[]
-  qualityScore     Float?   // 0-1 source reliability * freshness
-  impactScore      Float?   // 0-1 how much this moved signals
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  impactScore      Float?
+  qualityScore     Float?
+  source           MarketSource? @relation(fields: [sourceId], references: [id])
 
   @@index([type, createdAt(sort: Desc)])
   @@index([scope, signal])
@@ -1285,54 +1180,54 @@ model MarketDataPoint {
 }
 
 model MarketSignal {
-  id               String   @id @default(cuid())
-  signal           String   // buy, sell, hold
-  confidence       Float    // 0.0 to 1.0
-  scope            String   @default("national") // national, local_kc
-  category         String   // mortgage_rates, housing_supply, economic, sentiment, composite
-  title            String
-  reasoning        String
-  supportingData   Json?    // references to data point IDs and key facts
-  timeHorizon      String?  // short_term, medium_term, long_term
-  active           Boolean  @default(true)
-  expiresAt        DateTime?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id             String    @id @default(cuid())
+  signal         String
+  confidence     Float
+  scope          String    @default("national")
+  category       String
+  title          String
+  reasoning      String
+  supportingData Json?
+  timeHorizon    String?
+  active         Boolean   @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([active, signal])
   @@index([category, createdAt(sort: Desc)])
 }
 
 model MarketSnapshot {
-  id                  String   @id @default(cuid())
-  date                DateTime @unique // one per day
-  nationalHealth      Float?   // 0-100
-  localKcHealth       Float?   // 0-100
-  mortgage30yr        Float?
-  mortgage15yr        Float?
-  treasury10yr        Float?
-  treasury30yr        Float?
-  unemployment        Float?
-  cpi                 Float?
-  consumerSentiment   Float?
-  housingStarts       Float?
-  tickers             Json?    // { VNQ: { price, change }, ITB: {...}, ... }
-  topSignals          Json?    // array of signal summaries
-  dataPointCount      Int      @default(0)
-  signalCount         Int      @default(0)
-  summary             String?  // AI-generated daily market summary
-  momentum            Float?   // -100 to +100 composite momentum
-  healthDelta         Float?   // nationalHealth change from yesterday
-  kcHealthDelta       Float?   // localKcHealth change from yesterday
-  sentimentBullPct    Float?   // % bullish articles today
-  sentimentBearPct    Float?   // % bearish articles today
-  articleCount        Int      @default(0)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                String   @id @default(cuid())
+  date              DateTime @unique
+  nationalHealth    Float?
+  localKcHealth     Float?
+  mortgage30yr      Float?
+  mortgage15yr      Float?
+  treasury10yr      Float?
+  treasury30yr      Float?
+  unemployment      Float?
+  cpi               Float?
+  consumerSentiment Float?
+  housingStarts     Float?
+  tickers           Json?
+  topSignals        Json?
+  dataPointCount    Int      @default(0)
+  signalCount       Int      @default(0)
+  summary           String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  articleCount      Int      @default(0)
+  healthDelta       Float?
+  kcHealthDelta     Float?
+  momentum          Float?
+  sentimentBearPct  Float?
+  sentimentBullPct  Float?
 }
 
 model MarketSignalArchive {
-  id               String    @id @default(cuid())
+  id               String   @id @default(cuid())
   originalSignalId String
   signal           String
   confidence       Float
@@ -1343,7 +1238,7 @@ model MarketSignalArchive {
   timeHorizon      String?
   wasAccurate      Boolean?
   createdAt        DateTime
-  archivedAt       DateTime  @default(now())
+  archivedAt       DateTime @default(now())
 
   @@index([category, createdAt(sort: Desc)])
   @@index([signal, wasAccurate])
@@ -1353,49 +1248,48 @@ model MarketDailyDigest {
   id            String   @id @default(cuid())
   date          DateTime @unique
   headline      String
-  keyChanges    Json     // [{metric, from, to, direction}]
-  topArticles   Json     // [{id, title, impactScore}]
-  riskFactors   Json     // [{factor, severity, description}]
-  opportunities Json     // [{opportunity, confidence, reasoning}]
+  keyChanges    Json
+  topArticles   Json
+  riskFactors   Json
+  opportunities Json
   createdAt     DateTime @default(now())
 }
 
 model PoolProduct {
-  id          String   @id @default(cuid())
-  sku         String   @unique
-  name        String
-  description String?
-  category    String?
-  price       Float
-  costPrice   Float?
-  retailPrice Float?
-  imageUrl    String?
-  brand       String?
-  unit        String?
-  size        String?
-  status      String   @default("active")
-  featured    Boolean  @default(false)
-  sortOrder   Int      @default(0)
-  mfgPart     String?                      // manufacturer part number
-  upc         String?                      // UPC/barcode
-  specs       String?                      // technical specs / safety info (text)
-  stockQty    Int?                         // Pool360 stock level (null = unknown)
-  stockStatus String?                      // "in-stock", "low-stock", "out-of-stock"
-  lastSyncedAt DateTime?                   // last Pool360 price/stock sync
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String    @id @default(cuid())
+  sku          String    @unique
+  name         String
+  description  String?
+  category     String?
+  price        Float
+  costPrice    Float?
+  retailPrice  Float?
+  imageUrl     String?
+  brand        String?
+  unit         String?
+  size         String?
+  status       String    @default("active")
+  featured     Boolean   @default(false)
+  sortOrder    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastSyncedAt DateTime?
+  stockQty     Int?
+  stockStatus  String?
+  mfgPart      String?
+  specs        String?
+  upc          String?
 
   @@index([status, sortOrder])
   @@index([category, status])
   @@index([sku])
 }
 
-// ─── Pool Intelligence: product engagement events ────────
 model PoolProductEvent {
   id        String   @id @default(cuid())
   sku       String
-  event     String   // "view", "cart_add", "filter_click", "mfg_link", "spec_expand"
-  meta      Json?    // { filter: "brand:Pentair", position: 3 }
+  event     String
+  meta      Json?
   ip        String?
   createdAt DateTime @default(now())
 
@@ -1403,16 +1297,15 @@ model PoolProductEvent {
   @@index([createdAt])
 }
 
-// ─── Pool Intelligence: generated insights / recommendations ───
 model PoolInsight {
   id        String    @id @default(cuid())
-  type      String    // "margin_alert", "oos_predict", "enrichment", "trending", "sort_adjust", "price_suggest"
-  severity  String    @default("info") // "info", "warning", "critical"
+  type      String
+  severity  String    @default("info")
   sku       String?
   title     String
   body      String
-  meta      Json?     // structured data for programmatic use
-  status    String    @default("new") // "new", "applied", "dismissed", "auto_applied"
+  meta      Json?
+  status    String    @default("new")
   appliedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -1422,7 +1315,6 @@ model PoolInsight {
   @@index([createdAt])
 }
 
-// ─── Pool Intelligence: daily stock/price snapshots for trend analysis ───
 model PoolStockSnapshot {
   id         String   @id @default(cuid())
   sku        String
@@ -1436,44 +1328,32 @@ model PoolStockSnapshot {
 }
 
 model ArbitragePair {
-  id             String   @id @default(cuid())
-
-  // eBay (sell side)
+  id             String    @id @default(cuid())
   ebayTitle      String
   ebayPrice      Float
   ebayUrl        String?
   ebayImageUrl   String?
   ebayItemId     String?
-
-  // Amazon (buy side)
   amazonTitle    String
   amazonPrice    Float
   amazonUrl      String?
   amazonImageUrl String?
   amazonAsin     String?
-
-  // Computed financials
-  ebayFeeRate    Float    @default(0.13)
+  ebayFeeRate    Float     @default(0.13)
   ebayFees       Float
   profit         Float
   marginPercent  Float
   roi            Float
-
-  // Workflow
-  status         String   @default("pending") // pending, approved, rejected, listed
-
-  // Meta
-  source         String   @default("manual") // manual, scanner, agent
+  status         String    @default("pending")
+  source         String    @default("manual")
   submittedBy    String?
   category       String?
   notes          String?
-
-  // Timestamps
   approvedAt     DateTime?
   rejectedAt     DateTime?
   listedAt       DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([status])
   @@index([createdAt])
@@ -1481,43 +1361,42 @@ model ArbitragePair {
 }
 
 model ArbitrageScan {
-  id             String   @id @default(cuid())
-  source         String   // ebay_completed, liquidation, fb_marketplace, bin_store
-  query          String?  // search query used
-  itemsChecked   Int      @default(0)
-  pairsFound     Int      @default(0)
-  avgMargin      Float?
-  bestMargin     Float?
-  status         String   @default("running") // running, complete, failed
-  error          String?
-  startedAt      DateTime @default(now())
-  completedAt    DateTime?
+  id           String    @id @default(cuid())
+  source       String
+  query        String?
+  itemsChecked Int       @default(0)
+  pairsFound   Int       @default(0)
+  avgMargin    Float?
+  bestMargin   Float?
+  status       String    @default("running")
+  error        String?
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
 
   @@index([source, startedAt])
   @@index([status])
 }
 
-// ─── Crypto Trading Engine ───
-
 model CryptoTrade {
-  id            String   @id @default(cuid())
-  symbol        String
-  side          String
-  strategy      String
-  entryPrice    Float
-  exitPrice     Float?
-  size          Float
-  pnl           Float?
-  pnlPct        Float?
-  fees          Float    @default(0)
-  stopLoss      Float?
-  takeProfit    Float?
-  status        String   @default("open")
-  exitReason    String?
-  regime        String?
-  enteredAt     DateTime @default(now())
-  exitedAt      DateTime?
-  metadata      Json?
+  id         String    @id @default(cuid())
+  symbol     String
+  side       String
+  strategy   String
+  entryPrice Float
+  exitPrice  Float?
+  size       Float
+  pnl        Float?
+  pnlPct     Float?
+  fees       Float     @default(0)
+  stopLoss   Float?
+  takeProfit Float?
+  status     String    @default("open")
+  exitReason String?
+  regime     String?
+  enteredAt  DateTime  @default(now())
+  exitedAt   DateTime?
+  metadata   Json?
+
   @@index([status, enteredAt])
   @@index([strategy, status])
 }
@@ -1533,162 +1412,166 @@ model CryptoSnapshot {
   engineMode    String   @default("paper")
   metadata      Json?
   createdAt     DateTime @default(now())
+
   @@index([createdAt])
 }
 
 model CryptoStrategy {
-  id            String   @id @default(cuid())
-  name          String   @unique
-  displayName   String
-  status        String   @default("active")
-  regime        String?
-  winRate       Float?
-  sharpe        Float?
-  totalTrades   Int      @default(0)
-  totalPnl      Float    @default(0)
-  config        Json?
-  updatedAt     DateTime @updatedAt
-  createdAt     DateTime @default(now())
+  id          String   @id @default(cuid())
+  name        String   @unique
+  displayName String
+  status      String   @default("active")
+  regime      String?
+  winRate     Float?
+  sharpe      Float?
+  totalTrades Int      @default(0)
+  totalPnl    Float    @default(0)
+  config      Json?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
 }
 
 model CryptoPrediction {
-  id            String   @id @default(cuid())
-  asset         String
-  direction     String
-  targetPrice   Float
-  confidence    Float
-  rationale     String?
-  source        String   @default("ai")
-  currentPrice  Float
-  actualPrice   Float?
-  accuracy      Float?
-  status        String   @default("pending")
-  targetDate    DateTime
-  gradedAt      DateTime?
-  createdAt     DateTime @default(now())
+  id           String    @id @default(cuid())
+  asset        String
+  direction    String
+  targetPrice  Float
+  confidence   Float
+  rationale    String?
+  source       String    @default("ai")
+  currentPrice Float
+  actualPrice  Float?
+  accuracy     Float?
+  status       String    @default("pending")
+  targetDate   DateTime
+  gradedAt     DateTime?
+  createdAt    DateTime  @default(now())
+
   @@index([status, targetDate])
 }
 
 model CryptoWallet {
-  id            String   @id @default(cuid())
-  provider      String
-  network       String   @default("base")
-  address       String?
-  balanceUsd    Float    @default(0)
-  balances      Json?
-  mode          String   @default("paper")
-  updatedAt     DateTime @updatedAt
-  createdAt     DateTime @default(now())
+  id         String   @id @default(cuid())
+  provider   String
+  network    String   @default("base")
+  address    String?
+  balanceUsd Float    @default(0)
+  balances   Json?
+  mode       String   @default("paper")
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
 }
 
 model CryptoDriveScan {
-  id            String   @id @default(cuid())
-  label         String
-  devicePath    String?
-  filesystem    String?
-  totalSizeGb   Float?
-  serialNumber  String?
-  scanStatus    String   @default("pending") // pending, scanning, complete, error
-  scanDuration  Int?     // seconds
-  scanLog       String?  @db.Text
-  itemCount     Int      @default(0)
-  notes         String?  @db.Text
-  scannedAt     DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  items         CryptoDriveItem[]
+  id           String            @id @default(cuid())
+  label        String
+  devicePath   String?
+  filesystem   String?
+  totalSizeGb  Float?
+  serialNumber String?
+  scanStatus   String            @default("pending")
+  scanDuration Int?
+  scanLog      String?
+  itemCount    Int               @default(0)
+  notes        String?
+  scannedAt    DateTime          @default(now())
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  items        CryptoDriveItem[]
+
   @@index([scanStatus])
 }
 
 model CryptoDriveItem {
-  id            String   @id @default(cuid())
-  scanId        String
-  scan          CryptoDriveScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
-  category      String   // wallet_file, keystore, private_key, seed_phrase, crypto_dir, browser_extension, qr_image, document, config_file, address
-  subcategory   String?  // bitcoin, ethereum, litecoin, dogecoin, monero, metamask, etc.
-  filePath      String
-  fileSize      Int?     // bytes
-  fileMtime     DateTime?
-  contentPreview String? @db.Text // redacted for keys
-  extractedData Json?    // structured data from extraction
-  sensitivity   String   @default("normal") // critical, sensitive, normal
-  verified      Boolean  @default(false)
-  archived      Boolean  @default(false)
-  localCopyPath String?
-  notes         String?  @db.Text
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String          @id @default(cuid())
+  scanId         String
+  category       String
+  subcategory    String?
+  filePath       String
+  fileSize       Int?
+  fileMtime      DateTime?
+  contentPreview String?
+  extractedData  Json?
+  sensitivity    String          @default("normal")
+  verified       Boolean         @default(false)
+  archived       Boolean         @default(false)
+  localCopyPath  String?
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  scan           CryptoDriveScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
   @@index([scanId])
   @@index([category])
   @@index([sensitivity])
 }
 
 model VideoGeneration {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  prompt        String    @db.Text
-  model         String    // "wan26-720p", "wan26-1080p", "veo3-fast", "veo3-standard"
-  tier          String    // "basic", "cinematic", "premium", "ultra"
-  status        String    @default("queued") // queued, generating, completed, failed
-  creditsUsed   Int       @default(1)
-  costCents     Int       @default(0) // our cost in cents (fal.ai charge)
-  outputUrl     String?   // fal.ai CDN URL (temporary, expires)
-  blobUrl       String?   // Vercel Blob permanent URL
-  thumbnailUrl  String?
-  durationSecs  Float?    // video duration
-  resolution    String?   // "720p", "1080p"
-  errorMessage  String?
-  falRequestId  String?   // fal.ai request ID for polling
-  metadata      Json?     // address, MLS#, extra context
-  startedAt     DateTime?
-  completedAt   DateTime?
-  createdAt     DateTime  @default(now())
+  id           String    @id @default(cuid())
+  userId       String
+  prompt       String
+  model        String
+  tier         String
+  status       String    @default("queued")
+  creditsUsed  Int       @default(1)
+  costCents    Int       @default(0)
+  outputUrl    String?
+  thumbnailUrl String?
+  durationSecs Float?
+  resolution   String?
+  errorMessage String?
+  falRequestId String?
+  metadata     Json?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  blobUrl      String?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId, createdAt])
   @@index([status])
 }
 
 model VideoCredit {
-  id               String    @id @default(cuid())
-  userId           String    @unique
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  balance          Int       @default(0)   // current credits
-  totalPurchased   Int       @default(0)   // lifetime purchased
-  totalUsed        Int       @default(0)   // lifetime used
-  subscriptionTier String?   // "basic", "pro", "unlimited" or null for pack-only
-  monthlyAllotment Int       @default(0)   // credits per billing cycle
-  rolloverCredits  Int       @default(0)   // unused from last month (max 1 month rollover)
-  packsPurchased   Int       @default(0)   // lifetime pack purchases
-  updatedAt        DateTime  @updatedAt
-  createdAt        DateTime  @default(now())
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  balance          Int      @default(0)
+  totalPurchased   Int      @default(0)
+  totalUsed        Int      @default(0)
+  subscriptionTier String?
+  monthlyAllotment Int      @default(0)
+  rolloverCredits  Int      @default(0)
+  packsPurchased   Int      @default(0)
+  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ── Multi-Asset Trading Platform ────────────────────────────────
-
 model TradingTrade {
-  id            String    @id @default(cuid())
-  assetClass    String    // "crypto", "stocks", "alt"
-  symbol        String
-  side          String
-  strategy      String
-  entryPrice    Float
-  exitPrice     Float?
-  size          Float
-  pnl           Float?
-  pnlPct        Float?
-  fees          Float     @default(0)
-  status        String    @default("open")
-  exitReason    String?
-  regime        String?
-  enteredAt     DateTime  @default(now())
-  exitedAt      DateTime?
-  metadata      Json?
+  id         String    @id @default(cuid())
+  assetClass String
+  symbol     String
+  side       String
+  strategy   String
+  entryPrice Float
+  exitPrice  Float?
+  size       Float
+  pnl        Float?
+  pnlPct     Float?
+  fees       Float     @default(0)
+  status     String    @default("open")
+  exitReason String?
+  regime     String?
+  enteredAt  DateTime  @default(now())
+  exitedAt   DateTime?
+  metadata   Json?
+
   @@index([assetClass, status, enteredAt])
   @@index([assetClass, strategy, status])
 }
 
 model TradingSnapshot {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   assetClass    String
   equity        Float
   cash          Float
@@ -1696,70 +1579,70 @@ model TradingSnapshot {
   realizedPnl   Float
   openPositions Int
   regime        String?
-  engineMode    String    @default("paper")
+  engineMode    String   @default("paper")
   metadata      Json?
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime @default(now())
+
   @@index([assetClass, createdAt])
 }
 
 model TradingCapitalFlow {
-  id            String    @id @default(cuid())
-  assetClass    String    // "crypto", "stocks", "alt"
-  flowType      String    // "deposit", "withdrawal"
-  amount        Float
-  currency      String    @default("USD")
-  broker        String?
-  note          String?
-  createdAt     DateTime  @default(now())
+  id         String   @id @default(cuid())
+  assetClass String
+  flowType   String
+  amount     Float
+  currency   String   @default("USD")
+  broker     String?
+  note       String?
+  createdAt  DateTime @default(now())
+
   @@index([assetClass, flowType])
 }
 
-// ── MiroFish Simulation Engine ───────────────────────
-
 model TradingSimulation {
-  id              String    @id @default(cuid())
-  simulationId    String    @unique
-  event           String
-  eventType       String    // fed_meeting, election, earnings, breaking_news, daily_scan
-  triggerType     String    // scheduled, event_driven, manual
-  status          String    @default("pending")
-  agentCount      Int
-  roundCount      Int
-  currentRound    Int       @default(0)
-  signals         Json?
-  report          String?
-  metadata        Json?
-  startedAt       DateTime?
-  completedAt     DateTime?
-  createdAt       DateTime  @default(now())
+  id           String    @id @default(cuid())
+  simulationId String    @unique
+  event        String
+  eventType    String
+  triggerType  String
+  status       String    @default("pending")
+  agentCount   Int
+  roundCount   Int
+  currentRound Int       @default(0)
+  signals      Json?
+  report       String?
+  metadata     Json?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
   @@index([status, createdAt])
   @@index([eventType, createdAt])
 }
 
 model TradingSimulationSignal {
-  id              String    @id @default(cuid())
-  simulationId    String
-  targetEngine    String
-  direction       String
-  confidence      Float
-  magnitude       String?
-  rationale       String?
-  agentConsensus  Float?
-  appliedAt       DateTime?
-  createdAt       DateTime  @default(now())
+  id             String    @id @default(cuid())
+  simulationId   String
+  targetEngine   String
+  direction      String
+  confidence     Float
+  magnitude      String?
+  rationale      String?
+  agentConsensus Float?
+  appliedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
   @@index([simulationId])
   @@index([targetEngine, createdAt])
 }
 
-// ── Scan Command Center ──────────────────────────────
-
 model ScanActivity {
   id        String   @id @default(cuid())
-  scanner   String   // leads, arbitrage, products, unclaimed, markets
-  event     String   // discovery, alert, error, scan_complete
+  scanner   String
+  event     String
   title     String
   detail    String?
-  severity  String   @default("info") // info, success, warning, alert
+  severity  String   @default("info")
   meta      Json?
   createdAt DateTime @default(now())
 
@@ -1770,11 +1653,11 @@ model ScanActivity {
 
 model ScanRun {
   id          String    @id @default(cuid())
-  scanner     String    // leads, arbitrage, products, unclaimed, markets
-  status      String    @default("running") // running, complete, failed
+  scanner     String
+  status      String    @default("running")
   itemsFound  Int       @default(0)
   alertsGen   Int       @default(0)
-  duration    Int?      // ms
+  duration    Int?
   error       String?
   meta        Json?
   startedAt   DateTime  @default(now())
@@ -1787,8 +1670,8 @@ model ScanRun {
 model ScanRevenue {
   id        String   @id @default(cuid())
   scanner   String
-  event     String   // lead_converted, item_sold, claim_paid, subscription_new
-  amount    Float    // revenue in USD
+  event     String
+  amount    Float
   sourceId  String?
   note      String?
   createdAt DateTime @default(now())
@@ -1800,13 +1683,13 @@ model ScanRevenue {
 model SystemFeedback {
   id             String    @id @default(cuid())
   createdAt      DateTime  @default(now())
-  category       String    // performance, architecture, config, security, cost, reliability
-  severity       String    // info, warning, critical
+  category       String
+  severity       String
   title          String
   recommendation String
   metrics        Json?
   source         String    @default("dgx-self-analysis")
-  status         String    @default("new") // new, acknowledged, resolved, dismissed
+  status         String    @default("new")
   resolvedAt     DateTime?
 
   @@index([category, createdAt])
@@ -1814,62 +1697,43 @@ model SystemFeedback {
   @@index([status, createdAt])
 }
 
-// ── Shop / Retail Arbitrage Platform ─────────────────
-
 model Product {
-  id                 String   @id @default(cuid())
-  title              String
-  description        String?
-  category           String?
-  subcategory        String?
-  brand              String?
-  condition          String?  // new, like_new, good, fair, poor
-  sku                String?
-  upc                String?
-  imageUrls          String[]
-
-  // Sourcing
-  sourcingType       String?  // liquidation, bin_store, thrift, wholesale, online_arbitrage
-  sourcingVendor     String?
-  lotId              String?
-  costBasis          Float?
-  shippingCost       Float?
-  totalCogs          Float?
-
-  // AI suggestions
-  aiSuggestedTitle   String?
-  aiSuggestedPrice   Float?
+  id                  String            @id @default(cuid())
+  title               String
+  description         String?
+  category            String?
+  subcategory         String?
+  brand               String?
+  condition           String?
+  sku                 String?
+  upc                 String?
+  imageUrls           String[]
+  sourcingType        String?
+  sourcingVendor      String?
+  lotId               String?
+  costBasis           Float?
+  shippingCost        Float?
+  totalCogs           Float?
+  aiSuggestedTitle    String?
+  aiSuggestedPrice    Float?
   aiSuggestedCategory String?
-  aiConfidence       Float?
-
-  // Pricing
-  targetPrice        Float?
-  minPrice           Float?
-
-  // Status: draft → listed → sold → archived | returned
-  status             String   @default("draft")
-
-  // Sale info
-  soldPrice          Float?
-  soldAt             DateTime?
-  soldPlatform       String?
-  totalFees          Float?
-  netProfit          Float?
-  roi                Float?
-
-  // Backward compat
-  shopItemId         String?
-
-  // Relations
-  listings           PlatformListing[]
-  priceHistory       PriceSnapshot[]
-  sales              ShopSale[]
-
-  // Source lot relation
-  sourceLot          SourceLot? @relation(fields: [lotId], references: [id])
-
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  aiConfidence        Float?
+  targetPrice         Float?
+  minPrice            Float?
+  status              String            @default("draft")
+  soldPrice           Float?
+  soldAt              DateTime?
+  soldPlatform        String?
+  totalFees           Float?
+  netProfit           Float?
+  roi                 Float?
+  shopItemId          String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  listings            PlatformListing[]
+  priceHistory        PriceSnapshot[]
+  sourceLot           SourceLot?        @relation(fields: [lotId], references: [id])
+  sales               ShopSale[]
 
   @@index([status, createdAt])
   @@index([category])
@@ -1878,27 +1742,22 @@ model Product {
 }
 
 model PlatformListing {
-  id             String    @id @default(cuid())
-  productId      String
-  platform       String    // ebay, fb_marketplace, mercari, poshmark, offerup, amazon, shop
-  externalId     String?
-  externalUrl    String?
-  price          Float
-  platformFees   Float?
-  netAfterFees   Float?
-
-  // Status: draft → active → pending → sold → removed → expired
-  status         String    @default("draft")
-
-  listedAt       DateTime?
-  soldAt         DateTime?
-  removedAt      DateTime?
-  meta           Json?
-
-  product        Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  productId    String
+  platform     String
+  externalId   String?
+  externalUrl  String?
+  price        Float
+  platformFees Float?
+  netAfterFees Float?
+  status       String    @default("draft")
+  listedAt     DateTime?
+  soldAt       DateTime?
+  removedAt    DateTime?
+  meta         Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([productId, platform])
   @@index([platform, status])
@@ -1908,7 +1767,7 @@ model PlatformListing {
 model SourceLot {
   id              String    @id @default(cuid())
   name            String
-  sourceType      String    // liquidation, bin_store, wholesale, thrift, online
+  sourceType      String
   vendorName      String?
   purchaseDate    DateTime?
   totalCost       Float
@@ -1917,59 +1776,51 @@ model SourceLot {
   manifestUrl     String?
   notes           String?
   imageUrls       String[]
-
-  // Computed aggregates
   totalSold       Float     @default(0)
   totalProfit     Float     @default(0)
   itemsSold       Int       @default(0)
   itemsListed     Int       @default(0)
-
-  // Status: ordered → received → cataloging → listed → complete
   status          String    @default("ordered")
-
-  products        Product[]
-
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+  products        Product[]
 
   @@index([status])
   @@index([sourceType])
 }
 
 model Supplier {
-  id             String   @id @default(cuid())
-  name           String
-  type           String   // liquidation, wholesale, bin_store, thrift, online
-  website        String?
-  contactEmail   String?
-  contactPhone   String?
-  location       String?
-  notes          String?
-  rating         Int?     // 1-5
-  avgDiscount    Float?
-  categories     String[]
-  isActive       Boolean  @default(true)
-
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  type         String
+  website      String?
+  contactEmail String?
+  contactPhone String?
+  location     String?
+  notes        String?
+  rating       Int?
+  avgDiscount  Float?
+  categories   String[]
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([type, isActive])
 }
 
 model PriceSnapshot {
-  id          String    @id @default(cuid())
-  productId   String?
-  query       String?
-  platform    String    // ebay_sold, ebay_active, amazon, mercari, poshmark, offerup
-  title       String?
-  price       Float
-  url         String?
-  imageUrl    String?
-  soldDate    DateTime?
-  condition   String?
-  capturedAt  DateTime  @default(now())
-
-  product     Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  id         String    @id @default(cuid())
+  productId  String?
+  query      String?
+  platform   String
+  title      String?
+  price      Float
+  url        String?
+  imageUrl   String?
+  soldDate   DateTime?
+  condition  String?
+  capturedAt DateTime  @default(now())
+  product    Product?  @relation(fields: [productId], references: [id])
 
   @@index([productId, capturedAt])
   @@index([platform, capturedAt])
@@ -1977,21 +1828,18 @@ model PriceSnapshot {
 }
 
 model TrendSignal {
-  id           String   @id @default(cuid())
-  category     String
-  platform     String?
-  signalType   String   // hot_category, price_spike, sell_through_high, seasonal_peak, viral
-  title        String
-  body         String?
-  metric       Float?
-  metricLabel  String?
-  confidence   Float?
-
-  // Status: active → expired → dismissed
-  status       String   @default("active")
-
-  createdAt    DateTime @default(now())
-  expiresAt    DateTime?
+  id          String    @id @default(cuid())
+  category    String
+  platform    String?
+  signalType  String
+  title       String
+  body        String?
+  metric      Float?
+  metricLabel String?
+  confidence  Float?
+  status      String    @default("active")
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
 
   @@index([status, createdAt])
   @@index([signalType])
@@ -1999,80 +1847,79 @@ model TrendSignal {
 }
 
 model AffiliateLink {
-  id            String   @id @default(cuid())
-  network       String   // amazon_associates, ebay_partner, shareasale
-  productUrl    String
-  affiliateUrl  String
-  shortCode     String   @unique
-  title         String?
-  category      String?
-  imageUrl      String?
-  clicks        Int      @default(0)
-  conversions   Int      @default(0)
-  revenue       Float    @default(0)
-  isActive      Boolean  @default(true)
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  network      String
+  productUrl   String
+  affiliateUrl String
+  shortCode    String   @unique
+  title        String?
+  category     String?
+  imageUrl     String?
+  clicks       Int      @default(0)
+  conversions  Int      @default(0)
+  revenue      Float    @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([network, isActive])
   @@index([shortCode])
 }
 
 model ShopSale {
-  id             String   @id @default(cuid())
-  productId      String?
-  platform       String
-  externalId     String?
-  title          String
-  salePrice      Float
-  platformFees   Float?
-  shippingCost   Float?
-  cogs           Float?
-  netProfit      Float?
-  buyerName      String?
-  buyerLocation  String?
-  paymentMethod  String?
-  soldAt         DateTime @default(now())
-
-  product        Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  id            String   @id @default(cuid())
+  productId     String?
+  platform      String
+  externalId    String?
+  title         String
+  salePrice     Float
+  platformFees  Float?
+  shippingCost  Float?
+  cogs          Float?
+  netProfit     Float?
+  buyerName     String?
+  buyerLocation String?
+  paymentMethod String?
+  soldAt        DateTime @default(now())
+  product       Product? @relation(fields: [productId], references: [id])
 
   @@index([productId])
   @@index([platform, soldAt])
   @@index([soldAt])
 }
 
-// ─── Red Alert Dispatch ─────────────────────────────────────────────
-
 model DeliveryDriver {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  phone           String   @unique
-  name            String
-  vehicleType     String   // sedan, suv, pickup, van, box_truck, flatbed, trailer
-  vehicleDetails  String?  // "2022 Honda Ridgeline"
-  maxWeightLbs    Int      @default(500)
-  homeZip         String
-  serviceRadiusMi Int      @default(30)
-  isOnline        Boolean  @default(false)
-  currentLat      Float?
-  currentLng      Float?
-  lastLocationAt  DateTime?
-  stripeConnectId String?  @unique
-  avgRating       Float    @default(5.0)
-  totalRatings    Int      @default(0)
-  completionRate  Float    @default(1.0)
-  totalDeliveries Int      @default(0)
-  status          String   @default("pending") // pending, approved, suspended, deactivated
-  notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orders    DeliveryOrder[]
-  earnings  DriverEarning[]
-  payouts   DriverPayout[]
-  documents DriverDocument[]
+  id               String           @id @default(cuid())
+  userId           String           @unique
+  phone            String           @unique
+  name             String
+  vehicleType      String
+  vehicleDetails   String?
+  maxWeightLbs     Int              @default(500)
+  homeZip          String
+  serviceRadiusMi  Int              @default(30)
+  isOnline         Boolean          @default(false)
+  currentLat       Float?
+  currentLng       Float?
+  lastLocationAt   DateTime?
+  stripeConnectId  String?          @unique
+  avgRating        Float            @default(5.0)
+  totalRatings     Int              @default(0)
+  completionRate   Float            @default(1.0)
+  totalDeliveries  Int              @default(0)
+  status           String           @default("pending")
+  notes            String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  bankAccountLast4 String?
+  bankInstitution  String?
+  bankLinkedAt     DateTime?
+  plaidItemId      String?
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders           DeliveryOrder[]
+  documents        DriverDocument[]
+  earnings         DriverEarning[]
+  payouts          DriverPayout[]
 
   @@index([status, isOnline])
   @@index([isOnline, currentLat, currentLng])
@@ -2080,31 +1927,27 @@ model DeliveryDriver {
 }
 
 model DriverDocument {
-  id         String   @id @default(cuid())
-  driverId   String
-  type       String   // drivers_license, insurance, registration
-  fileUrl    String   // Vercel Blob URL
-  fileName   String
-  fileSize   Int
-  status     String   @default("pending") // pending, approved, rejected, expired
-  expiresAt  DateTime?
-  // Extracted data from document
-  docNumber  String?  // DL number, policy number, plate/VIN
-  issueState String?  // e.g. "MO", "PA"
-  holderName String?  // name on document
-  // Review
-  reviewedBy String?  // admin userId
-  reviewedAt DateTime?
+  id             String         @id @default(cuid())
+  driverId       String
+  type           String
+  fileUrl        String
+  fileName       String
+  fileSize       Int
+  status         String         @default("pending")
+  expiresAt      DateTime?
+  docNumber      String?
+  issueState     String?
+  holderName     String?
+  reviewedBy     String?
+  reviewedAt     DateTime?
   rejectedReason String?
-  // Warnings sent
-  warned30d  Boolean  @default(false)
-  warned14d  Boolean  @default(false)
-  warned7d   Boolean  @default(false)
-  warned1d   Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  driver DeliveryDriver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  warned30d      Boolean        @default(false)
+  warned14d      Boolean        @default(false)
+  warned7d       Boolean        @default(false)
+  warned1d       Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  driver         DeliveryDriver @relation(fields: [driverId], references: [id], onDelete: Cascade)
 
   @@unique([driverId, type])
   @@index([status, expiresAt])
@@ -2112,52 +1955,49 @@ model DriverDocument {
 }
 
 model DeliveryClient {
-  id                   String   @id @default(cuid())
-  userId               String   @unique
+  id                   String          @id @default(cuid())
+  userId               String          @unique
   businessName         String?
   contactName          String
-  phone                String   @unique
-  stripeCustomerId     String?  @unique
-  billingType          String   @default("per_delivery") // per_delivery, monthly_invoice
-  creditBalance        Float    @default(0)
+  phone                String          @unique
+  stripeCustomerId     String?         @unique
+  billingType          String          @default("per_delivery")
+  creditBalance        Float           @default(0)
   defaultPickupAddress String?
   defaultPickupLat     Float?
   defaultPickupLng     Float?
-  totalOrders          Int      @default(0)
-  totalSpent           Float    @default(0)
-  status               String   @default("active") // active, suspended
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orders    DeliveryOrder[]
-  locations SavedLocation[]
+  totalOrders          Int             @default(0)
+  totalSpent           Float           @default(0)
+  status               String          @default("active")
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders               DeliveryOrder[]
+  locations            SavedLocation[]
 }
 
 model SavedLocation {
-  id        String   @id @default(cuid())
+  id        String         @id @default(cuid())
   clientId  String
-  label     String   // "Home Depot Noland Rd", "Warehouse"
+  label     String
   address   String
   lat       Float
   lng       Float
-  isPickup  Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  client DeliveryClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  isPickup  Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  client    DeliveryClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId])
 }
 
 model DeliveryOrder {
-  id                    String   @id @default(cuid())
-  orderNumber           String   @unique // RAD-XXXXXX
+  id                    String           @id @default(cuid())
+  orderNumber           String           @unique
   clientId              String
   driverId              String?
-  status                String   @default("pending") // pending, matching, accepted, pickup_enroute, picked_up, delivering, delivered, completed, cancelled, failed
-  urgency               String   @default("standard") // asap, standard, scheduled
+  status                String           @default("pending")
+  urgency               String           @default("standard")
   scheduledAt           DateTime?
-
   pickupAddress         String
   pickupLat             Float
   pickupLng             Float
@@ -2165,7 +2005,6 @@ model DeliveryOrder {
   pickupContactPhone    String?
   pickupInstructions    String?
   pickupPhotoUrl        String?
-
   dropoffAddress        String
   dropoffLat            Float
   dropoffLng            Float
@@ -2173,43 +2012,35 @@ model DeliveryOrder {
   dropoffContactPhone   String?
   dropoffInstructions   String?
   dropoffPhotoUrl       String?
-
   cargoDescription      String
   cargoWeightLbs        Int?
-  requiresTrailer       Boolean  @default(false)
-  requiresTempControl   Boolean  @default(false)
-  isFragile             Boolean  @default(false)
-
+  requiresTrailer       Boolean          @default(false)
+  requiresTempControl   Boolean          @default(false)
+  isFragile             Boolean          @default(false)
   distanceMi            Float?
   durationMin           Int?
-
-  clientPrice           Float    // what client pays
-  platformFee           Float    // our 18% cut
-  driverPay             Float    // clientPrice - platformFee
-  industryEstimate      Float?   // what Dispatch/Roadie would charge
-  clientSavings         Float?   // dollar amount saved vs industry
-
-  stripePaymentIntentId String?  @unique
-  paymentStatus         String   @default("pending") // pending, authorized, captured, refunded
-
-  matchAttempts         Int      @default(0)
-  aiDispatchLog         String?  // JSON log of matching attempts
+  clientPrice           Float
+  platformFee           Float
+  driverPay             Float
+  industryEstimate      Float?
+  clientSavings         Float?
+  stripePaymentIntentId String?          @unique
+  paymentStatus         String           @default("pending")
+  matchAttempts         Int              @default(0)
+  aiDispatchLog         String?
   escalatedAt           DateTime?
-
   acceptedAt            DateTime?
   pickedUpAt            DateTime?
   deliveredAt           DateTime?
   completedAt           DateTime?
   cancelledAt           DateTime?
   cancelReason          String?
-
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  client   DeliveryClient   @relation(fields: [clientId], references: [id])
-  driver   DeliveryDriver?  @relation(fields: [driverId], references: [id])
-  earning  DriverEarning?
-  ratings  DeliveryRating[]
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  client                DeliveryClient   @relation(fields: [clientId], references: [id])
+  driver                DeliveryDriver?  @relation(fields: [driverId], references: [id])
+  ratings               DeliveryRating[]
+  earning               DriverEarning?
 
   @@index([status, createdAt])
   @@index([clientId, status])
@@ -2219,61 +2050,56 @@ model DeliveryOrder {
 }
 
 model DriverEarning {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   driverId    String
-  orderId     String   @unique
-  amount      Float    // base driver pay
-  tip         Float    @default(0)
-  total       Float    // amount + tip
-  status      String   @default("pending") // pending, available, paid_out
-  availableAt DateTime @default(now())
+  orderId     String         @unique
+  amount      Float
+  tip         Float          @default(0)
+  total       Float
+  status      String         @default("pending")
+  availableAt DateTime       @default(now())
   paidOutAt   DateTime?
   payoutId    String?
-  createdAt   DateTime @default(now())
-
-  driver  DeliveryDriver @relation(fields: [driverId], references: [id])
-  order   DeliveryOrder  @relation(fields: [orderId], references: [id])
-  payout  DriverPayout?  @relation(fields: [payoutId], references: [id])
+  createdAt   DateTime       @default(now())
+  driver      DeliveryDriver @relation(fields: [driverId], references: [id])
+  order       DeliveryOrder  @relation(fields: [orderId], references: [id])
+  payout      DriverPayout?  @relation(fields: [payoutId], references: [id])
 
   @@index([driverId, status])
   @@index([status, availableAt])
 }
 
 model DriverPayout {
-  id               String   @id @default(cuid())
+  id               String          @id @default(cuid())
   driverId         String
   amount           Float
-  method           String   @default("stripe_connect") // stripe_connect, instant
+  method           String          @default("stripe_connect")
   stripeTransferId String?
-  status           String   @default("pending") // pending, processing, completed, failed
+  status           String          @default("pending")
   failureReason    String?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime        @default(now())
   completedAt      DateTime?
-
-  driver   DeliveryDriver  @relation(fields: [driverId], references: [id])
-  earnings DriverEarning[]
+  earnings         DriverEarning[]
+  driver           DeliveryDriver  @relation(fields: [driverId], references: [id])
 
   @@index([driverId, createdAt])
   @@index([status])
 }
 
 model DeliveryRating {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   orderId   String
-  raterType String   // client, driver
-  raterId   String   // clientId or driverId (no FK — polymorphic)
-  stars     Int      // 1-5
+  raterType String
+  raterId   String
+  stars     Int
   comment   String?
-  tags      String[] // on_time, friendly, careful, fast, damaged, late, rude
-  createdAt DateTime @default(now())
-
-  order DeliveryOrder @relation(fields: [orderId], references: [id])
+  tags      String[]
+  createdAt DateTime      @default(now())
+  order     DeliveryOrder @relation(fields: [orderId], references: [id])
 
   @@unique([orderId, raterType])
   @@index([orderId])
 }
-
-// ─── Pool Water Management ───────────────────────────────────
 
 model WaterReading {
   id              String   @id @default(cuid())
@@ -2333,4 +2159,566 @@ model PoolConfig {
   id    String @id @default(cuid())
   key   String @unique
   value String
+}
+
+model FoodHousehold {
+  id               String             @id @default(cuid())
+  userId           String             @unique
+  name             String             @default("My Kitchen")
+  timezone         String             @default("America/Chicago")
+  weeklyBudget     Float?
+  defaultServings  Int                @default(4)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  FoodFamilyMember FoodFamilyMember[]
+  groceryLists     FoodGroceryList[]
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealPlans        FoodMealPlan[]
+  pantryItems      FoodPantryItem[]
+  FoodPriceEntry   FoodPriceEntry[]
+  FoodReceipt      FoodReceipt[]
+  recipes          FoodRecipe[]
+}
+
+model FoodRecipe {
+  id           String        @id @default(cuid())
+  householdId  String
+  title        String
+  slug         String
+  description  String?
+  ingredients  Json
+  instructions Json
+  cuisine      String?
+  mealType     String[]
+  prepTime     Int?
+  cookTime     Int?
+  servings     Int           @default(4)
+  nutrition    Json?
+  tags         String[]
+  imageUrl     String?
+  rating       Float?
+  timesCooked  Int           @default(0)
+  aiGenerated  Boolean       @default(false)
+  aiPrompt     String?
+  source       String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  FoodCookLog  FoodCookLog[]
+  household    FoodHousehold @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, slug])
+  @@index([cuisine])
+  @@index([householdId])
+  @@index([mealType])
+}
+
+model FoodMealPlan {
+  id              String            @id @default(cuid())
+  householdId     String
+  weekStart       DateTime
+  status          String            @default("draft")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  FoodGroceryList FoodGroceryList[]
+  household       FoodHousehold     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, weekStart])
+  @@index([householdId])
+}
+
+model FoodPantryItem {
+  id             String        @id @default(cuid())
+  householdId    String
+  name           String
+  normalizedName String?
+  location       String        @default("pantry")
+  quantity       Float         @default(1)
+  unit           String?
+  expiresAt      DateTime?
+  status         String        @default("in_stock")
+  autoRestock    Boolean       @default(false)
+  category       String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  household      FoodHousehold @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([householdId])
+  @@index([location])
+  @@index([status])
+}
+
+model FoodGroceryList {
+  id             String            @id @default(cuid())
+  householdId    String
+  planId         String?
+  store          String?
+  status         String            @default("active")
+  estimatedTotal Float?
+  actualTotal    Float?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  items          FoodGroceryItem[]
+  household      FoodHousehold     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  FoodMealPlan   FoodMealPlan?     @relation(fields: [planId], references: [id])
+
+  @@index([householdId])
+  @@index([status])
+}
+
+model FoodGroceryItem {
+  id             String          @id @default(cuid())
+  listId         String
+  name           String
+  normalizedName String?
+  quantity       Float           @default(1)
+  unit           String?
+  category       String?
+  aisle          String?
+  estimatedPrice Float?
+  isChecked      Boolean         @default(false)
+  addedBy        String          @default("manual")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime
+  list           FoodGroceryList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@index([isChecked])
+  @@index([listId])
+}
+
+model AccessGrant {
+  id          String    @id
+  type        String
+  label       String
+  subject     String
+  resource    String
+  grantedAt   DateTime  @default(now())
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  revokedBy   String?
+  fingerprint String?
+  meta        Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+
+  @@index([subject, revokedAt])
+  @@index([type, revokedAt])
+}
+
+model AccountContact {
+  id                String              @id
+  xeroId            String?             @unique
+  name              String
+  email             String?
+  phone             String?
+  address           String?
+  city              String?
+  state             String?
+  zip               String?
+  isCustomer        Boolean             @default(false)
+  isSupplier        Boolean             @default(false)
+  status            String              @default("ACTIVE")
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  Invoice           Invoice[]
+  LedgerTransaction LedgerTransaction[]
+
+  @@index([name])
+  @@index([status, isCustomer])
+}
+
+model CategorizationRule {
+  id          String   @id
+  name        String
+  priority    Int      @default(100)
+  matchType   String   @default("contains")
+  matchField  String   @default("description")
+  matchValue  String
+  accountCode String
+  note        String?
+  isActive    Boolean  @default(true)
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+
+  @@index([isActive, priority])
+}
+
+model ClientPortalSignup {
+  id        String   @id
+  type      String
+  email     String?
+  phone     String?
+  role      String?
+  city      String?
+  zip       String?
+  ip        String?
+  referrer  String?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([type, createdAt])
+}
+
+model ContactTag {
+  id        String   @id
+  tagId     String
+  leadId    String?
+  clientId  String?
+  createdAt DateTime @default(now())
+  Client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  Lead      Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  Tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([tagId, clientId])
+  @@unique([tagId, leadId])
+  @@index([clientId])
+  @@index([leadId])
+}
+
+model CrmActivity {
+  id           String   @id
+  subscriberId String
+  leadId       String?
+  clientId     String?
+  dealId       String?
+  type         String
+  title        String
+  description  String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  Client       Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  Deal         Deal?    @relation(fields: [dealId], references: [id])
+  Lead         Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, createdAt(sort: Desc)])
+  @@index([dealId, createdAt(sort: Desc)])
+  @@index([leadId, createdAt(sort: Desc)])
+  @@index([subscriberId, createdAt(sort: Desc)])
+  @@index([type, createdAt(sort: Desc)])
+}
+
+model CrmTask {
+  id           String    @id
+  subscriberId String
+  title        String
+  description  String?
+  leadId       String?
+  clientId     String?
+  dealId       String?
+  type         String    @default("follow_up")
+  priority     String    @default("medium")
+  status       String    @default("pending")
+  dueDate      DateTime?
+  completedAt  DateTime?
+  isRecurring  Boolean   @default(false)
+  recurPattern String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime
+  Client       Client?   @relation(fields: [clientId], references: [id])
+  Deal         Deal?     @relation(fields: [dealId], references: [id])
+  Lead         Lead?     @relation(fields: [leadId], references: [id])
+
+  @@index([clientId])
+  @@index([dealId])
+  @@index([dueDate])
+  @@index([leadId])
+  @@index([status, dueDate])
+  @@index([subscriberId, status, dueDate])
+}
+
+model Deal {
+  id              String        @id
+  subscriberId    String
+  leadId          String?
+  clientId        String?
+  listingId       String?
+  propertyAddress String?
+  title           String
+  type            String        @default("referral")
+  stage           String        @default("prospect")
+  salePrice       Float?
+  commissionPct   Float?
+  commissionFlat  Float?
+  referralFeePct  Float?
+  expectedRevenue Float?
+  actualRevenue   Float?
+  offerDate       DateTime?
+  contractDate    DateTime?
+  inspectionDate  DateTime?
+  appraisalDate   DateTime?
+  closingDate     DateTime?
+  closedDate      DateTime?
+  buyerName       String?
+  sellerName      String?
+  referredTo      String?
+  referredFrom    String?
+  lenderName      String?
+  titleCompany    String?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime
+  CrmActivity     CrmActivity[]
+  CrmTask         CrmTask[]
+  Client          Client?       @relation(fields: [clientId], references: [id])
+  Lead            Lead?         @relation(fields: [leadId], references: [id])
+  Listing         Listing?      @relation(fields: [listingId], references: [id])
+
+  @@index([clientId])
+  @@index([closingDate])
+  @@index([leadId])
+  @@index([stage])
+  @@index([subscriberId, stage])
+}
+
+model FoodCookLog {
+  id         String     @id
+  recipeId   String
+  rating     Int
+  notes      String?
+  cookedAt   DateTime   @default(now())
+  FoodRecipe FoodRecipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId])
+}
+
+model FoodFamilyMember {
+  id            String        @id
+  householdId   String
+  userId        String?
+  name          String
+  role          String        @default("member")
+  dietaryFlags  String[]
+  dislikes      String[]
+  favorites     String[]
+  ageRange      String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime
+  FoodHousehold FoodHousehold @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  User          User?         @relation(fields: [userId], references: [id])
+
+  @@index([householdId])
+}
+
+model FoodPriceEntry {
+  id             String        @id
+  householdId    String
+  itemName       String
+  normalizedName String?
+  store          String
+  price          Float
+  pricePerUnit   Float?
+  unit           String?
+  quantity       Float?
+  purchaseDate   DateTime
+  receiptId      String?
+  createdAt      DateTime      @default(now())
+  FoodHousehold  FoodHousehold @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@index([normalizedName, store])
+  @@index([store, purchaseDate])
+}
+
+model FoodReceipt {
+  id            String        @id
+  householdId   String
+  imageUrl      String
+  store         String?
+  purchaseDate  DateTime?
+  ocrResult     Json?
+  total         Float?
+  status        String        @default("pending")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime
+  FoodHousehold FoodHousehold @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@index([store])
+}
+
+model Invoice {
+  id                    String            @id
+  invoiceNumber         String            @unique
+  contactId             String?
+  status                String            @default("DRAFT")
+  issueDate             DateTime          @default(now())
+  dueDate               DateTime?
+  subTotal              Float             @default(0)
+  taxAmount             Float             @default(0)
+  total                 Float             @default(0)
+  amountPaid            Float             @default(0)
+  amountDue             Float             @default(0)
+  currency              String            @default("USD")
+  reference             String?
+  notes                 String?
+  stripePaymentLinkId   String?
+  stripePaymentLinkUrl  String?
+  stripePaymentIntentId String?
+  sentAt                DateTime?
+  paidAt                DateTime?
+  xeroId                String?           @unique
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime
+  AccountContact        AccountContact?   @relation(fields: [contactId], references: [id])
+  InvoiceLineItem       InvoiceLineItem[]
+  InvoicePayment        InvoicePayment[]
+
+  @@index([contactId, status])
+  @@index([issueDate(sort: Desc)])
+  @@index([status, dueDate])
+}
+
+model InvoiceLineItem {
+  id            String         @id
+  invoiceId     String
+  description   String
+  quantity      Float          @default(1)
+  unitAmount    Float
+  lineAmount    Float
+  accountId     String?
+  createdAt     DateTime       @default(now())
+  LedgerAccount LedgerAccount? @relation(fields: [accountId], references: [id])
+  Invoice       Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model InvoicePayment {
+  id        String   @id
+  invoiceId String
+  amount    Float
+  paidAt    DateTime @default(now())
+  method    String?
+  reference String?
+  notes     String?
+  createdAt DateTime @default(now())
+  Invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model LedgerAccount {
+  id                String              @id
+  xeroId            String?             @unique
+  code              String?
+  name              String
+  type              String
+  class             String
+  status            String              @default("ACTIVE")
+  taxType           String              @default("NONE")
+  isSystem          Boolean             @default(false)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  InvoiceLineItem   InvoiceLineItem[]
+  LedgerTransaction LedgerTransaction[]
+
+  @@index([class, status])
+  @@index([code])
+}
+
+model LedgerTransaction {
+  id                   String          @id
+  xeroId               String?         @unique
+  date                 DateTime
+  description          String
+  amount               Float
+  type                 String
+  bankAccountId        String?
+  accountCode          String?
+  contactId            String?
+  isReconciled         Boolean         @default(false)
+  source               String          @default("import")
+  autoCategory         String?
+  autoNote             String?
+  autoConfidence       Int?
+  needsReview          Boolean         @default(false)
+  importHash           String?         @unique
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime
+  incomeSource         String?
+  irsLine              String?
+  plaidCategory        String?
+  plaidId              String?         @unique
+  reconciliationStatus String?
+  stripePayoutId       String?
+  taxCategory          String?
+  LedgerAccount        LedgerAccount?  @relation(fields: [bankAccountId], references: [id])
+  AccountContact       AccountContact? @relation(fields: [contactId], references: [id])
+
+  @@index([accountCode, date])
+  @@index([bankAccountId, date])
+  @@index([date(sort: Desc)])
+  @@index([incomeSource])
+  @@index([needsReview, date])
+  @@index([source, date])
+  @@index([taxCategory])
+  @@index([type, date])
+}
+
+model MfaBackupCode {
+  id        String    @id
+  userId    String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  User      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, usedAt])
+}
+
+model SmartList {
+  id           String   @id
+  subscriberId String
+  name         String
+  icon         String?
+  filters      Json
+  sortBy       String   @default("score")
+  sortDir      String   @default("desc")
+  isPinned     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+
+  @@index([subscriberId])
+  @@index([subscriberId, isPinned])
+}
+
+model Tag {
+  id           String       @id
+  subscriberId String
+  name         String
+  color        String       @default("#8b5cf6")
+  category     String       @default("custom")
+  createdAt    DateTime     @default(now())
+  ContactTag   ContactTag[]
+
+  @@unique([subscriberId, name])
+  @@index([category])
+  @@index([subscriberId])
+}
+
+model TradingNotification {
+  id        String   @id
+  engine    String
+  type      String
+  title     String
+  body      String
+  severity  String   @default("info")
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([engine, createdAt])
+  @@index([type, createdAt])
+}
+
+model UserMfa {
+  id         String    @id
+  userId     String    @unique
+  totpSecret String
+  verified   Boolean   @default(false)
+  enabledAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime
+  User       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
