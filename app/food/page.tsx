@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
@@ -12,7 +11,7 @@ export default async function FoodDashboardPage() {
 
   const household = await prisma.foodHousehold.findUnique({
     where: { userId: session.user.id },
-    include: { members: true },
+    include: { FoodFamilyMember: true },
   });
 
   if (!household) redirect("/food/settings");
@@ -20,21 +19,7 @@ export default async function FoodDashboardPage() {
   const now = new Date();
   const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-  // Current week boundaries (Monday-Sunday)
-  const dayOfWeek = now.getDay();
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() + mondayOffset);
-  weekStart.setHours(0, 0, 0, 0);
-
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 7);
-
-  const [mealPlan, expiringItems, groceryItems, recentRecipes] = await Promise.all([
-    prisma.foodMealPlan.findFirst({
-      where: { householdId: household.id, weekStart: { gte: weekStart, lt: weekEnd } },
-      include: { slots: { include: { recipe: true } } },
-    }),
+  const [expiringItems, groceryItems, recentRecipes] = await Promise.all([
     prisma.foodPantryItem.findMany({
       where: {
         householdId: household.id,
@@ -56,8 +41,6 @@ export default async function FoodDashboardPage() {
     }),
   ]);
 
-  const plannedCount = mealPlan?.slots.length ?? 0;
-  const cookedCount = mealPlan?.slots.filter((s) => s.recipe && s.recipe.timesCooked > 0).length ?? 0;
   const expiringCount = expiringItems.length;
   const userName = session.user.name?.split(" ")[0] || "Chef";
 
@@ -73,12 +56,11 @@ export default async function FoodDashboardPage() {
     <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1.5rem" }}>
       <FoodHero
         userName={userName}
-        weekSummary={{ planned: plannedCount, cooked: cookedCount }}
+        weekSummary={{ planned: 0, cooked: 0 }}
         expiringCount={expiringCount}
         groceryCount={groceryItems}
       />
 
-      {/* Use It or Lose It Alert */}
       {expiringCount > 0 && (
         <section
           className="food-enter"
@@ -123,7 +105,6 @@ export default async function FoodDashboardPage() {
         </section>
       )}
 
-      {/* Quick Actions Grid */}
       <section style={{ marginTop: "2rem" }}>
         <h2
           className="food-enter"
@@ -174,7 +155,6 @@ export default async function FoodDashboardPage() {
         </div>
       </section>
 
-      {/* Expiring Soon */}
       {expiringCount > 0 && (
         <section
           className="food-enter"
@@ -231,7 +211,6 @@ export default async function FoodDashboardPage() {
         </section>
       )}
 
-      {/* Recent Recipes */}
       {recentRecipes.length > 0 && (
         <section
           className="food-enter"
@@ -253,7 +232,6 @@ export default async function FoodDashboardPage() {
         </section>
       )}
 
-      {/* Empty state if nothing is set up yet */}
       {recentRecipes.length === 0 && expiringCount === 0 && groceryItems === 0 && (
         <section
           className="food-card food-enter"
@@ -269,7 +247,7 @@ export default async function FoodDashboardPage() {
             Your kitchen is all set up!
           </h3>
           <p style={{ color: "var(--food-text-secondary)", marginBottom: "1.5rem", maxWidth: "400px", margin: "0 auto 1.5rem" }}>
-            Start by adding some recipes or planning your first week of meals. We'll help you build grocery lists and track your pantry automatically.
+            Start by adding some recipes or planning your first week of meals.
           </p>
           <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", flexWrap: "wrap" }}>
             <Link href="/food/recipes/new" className="food-btn food-btn-primary food-glow">
