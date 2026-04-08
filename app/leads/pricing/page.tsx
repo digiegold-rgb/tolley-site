@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { LEADS_TIERS } from "@/lib/leads-subscription";
-import LeadsPricingActions from "@/components/leads/LeadsPricingActions";
+import LeadsPricingClient from "@/components/leads/LeadsPricingClient";
 
 export default async function LeadsPricingPage() {
   const session = await auth();
@@ -19,10 +18,9 @@ export default async function LeadsPricingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#06050a]">
-      <div className="mx-auto max-w-5xl px-4 py-16">
-        {/* Header */}
-        <div className="text-center mb-12">
+    <>
+      {/* Header */}
+      <div className="text-center mb-12">
           <p className="text-xs tracking-[0.2em] text-purple-400/80 uppercase mb-3">
             T-Agent Leads
           </p>
@@ -35,53 +33,8 @@ export default async function LeadsPricingPage() {
           </p>
         </div>
 
-        {/* Pricing cards */}
-        <div className="grid sm:grid-cols-3 gap-6 mb-16">
-          {LEADS_TIERS.map((tier) => (
-            <div
-              key={tier.id}
-              className={`relative rounded-2xl border p-6 ${
-                tier.popular
-                  ? "border-purple-500/50 bg-purple-900/10"
-                  : "border-white/10 bg-white/[0.02]"
-              }`}
-            >
-              {tier.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="rounded-full bg-purple-500 px-3 py-0.5 text-[0.65rem] font-bold text-white uppercase tracking-wider">
-                    Most Popular
-                  </span>
-                </div>
-              )}
-
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold text-white">{tier.name}</h3>
-                <div className="mt-2 flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-white">${tier.price}</span>
-                  <span className="text-white/40 text-sm">/month</span>
-                </div>
-              </div>
-
-              <ul className="space-y-2 mb-6">
-                {tier.features.map((f) => (
-                  <li
-                    key={f}
-                    className="flex items-start gap-2 text-sm text-white/60"
-                  >
-                    <span className="text-green-400 mt-0.5 shrink-0">✓</span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              <LeadsPricingActions
-                tierId={tier.id}
-                isLoggedIn={!!userId}
-                isCurrent={currentTier === tier.id}
-              />
-            </div>
-          ))}
-        </div>
+        {/* Billing toggle + pricing cards (client component for interactivity) */}
+        <LeadsPricingClient isLoggedIn={!!userId} currentTier={currentTier} />
 
         {/* What's included */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 mb-12">
@@ -145,7 +98,6 @@ export default async function LeadsPricingPage() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </>
   );
 }

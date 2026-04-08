@@ -10,13 +10,21 @@ const LEADS_PRICE_ENV: Record<string, LeadsTier> = {};
 function loadPriceMap() {
   if (Object.keys(LEADS_PRICE_ENV).length > 0) return;
 
-  const starter = process.env.STRIPE_PRICE_STARTER;
-  const pro = process.env.STRIPE_PRICE_PRO_LEADS;
-  const team = process.env.STRIPE_PRICE_TEAM;
+  const monthly = [
+    [process.env.STRIPE_PRICE_STARTER, "starter"],
+    [process.env.STRIPE_PRICE_PRO_LEADS, "pro"],
+    [process.env.STRIPE_PRICE_TEAM, "team"],
+  ] as const;
 
-  if (starter) LEADS_PRICE_ENV[starter] = "starter";
-  if (pro) LEADS_PRICE_ENV[pro] = "pro";
-  if (team) LEADS_PRICE_ENV[team] = "team";
+  const annual = [
+    [process.env.STRIPE_PRICE_STARTER_ANNUAL, "starter"],
+    [process.env.STRIPE_PRICE_PRO_LEADS_ANNUAL, "pro"],
+    [process.env.STRIPE_PRICE_TEAM_ANNUAL, "team"],
+  ] as const;
+
+  for (const [id, tier] of [...monthly, ...annual]) {
+    if (id) LEADS_PRICE_ENV[id] = tier;
+  }
 }
 
 export function getLeadsPriceIds() {
@@ -31,6 +39,24 @@ export function getLeadsPriceIds() {
   }
 
   return { starter, pro, team };
+}
+
+export function getLeadsPriceIdsForInterval(interval: "monthly" | "annual") {
+  if (interval === "annual") {
+    const starter = process.env.STRIPE_PRICE_STARTER_ANNUAL;
+    const pro = process.env.STRIPE_PRICE_PRO_LEADS_ANNUAL;
+    const team = process.env.STRIPE_PRICE_TEAM_ANNUAL;
+
+    if (starter && pro && team) return { starter, pro, team };
+
+    // Fall back to monthly if annual prices not yet configured
+    console.warn(
+      "[leads] Annual price IDs not configured — falling back to monthly. " +
+        "Set STRIPE_PRICE_STARTER_ANNUAL, STRIPE_PRICE_PRO_LEADS_ANNUAL, STRIPE_PRICE_TEAM_ANNUAL."
+    );
+  }
+
+  return getLeadsPriceIds();
 }
 
 export function resolveLeadsTierFromPriceId(priceId?: string | null): LeadsTier {

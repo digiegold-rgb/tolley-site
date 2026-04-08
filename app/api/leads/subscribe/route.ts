@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { ensureStripeCustomer, getAppUrl } from "@/lib/billing";
 import { getStripeClient } from "@/lib/stripe";
-import { getLeadsPriceIds, type LeadsTier } from "@/lib/leads-subscription";
+import { getLeadsPriceIdsForInterval, type LeadsTier } from "@/lib/leads-subscription";
 
 export const runtime = "nodejs";
 
@@ -22,13 +22,16 @@ export async function POST(request: Request) {
 
   try {
     const stripe = getStripeClient();
-    const { tier } = (await request.json()) as { tier?: LeadsTier };
+    const body = (await request.json()) as { tier?: LeadsTier; interval?: "monthly" | "annual" };
+    const { tier } = body;
+    const interval: "monthly" | "annual" =
+      body.interval === "annual" ? "annual" : "monthly";
 
     if (!tier || !["starter", "pro", "team"].includes(tier)) {
       return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
     }
 
-    const priceIds = getLeadsPriceIds();
+    const priceIds = getLeadsPriceIdsForInterval(interval);
     const priceId = priceIds[tier as "starter" | "pro" | "team"];
 
     const stripeCustomerId = await ensureStripeCustomer({
@@ -41,11 +44,13 @@ export async function POST(request: Request) {
       mode: "subscription",
       customer: stripeCustomerId,
       line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: { trial_period_days: 7 },
       metadata: {
         userId,
         product: "leads",
         tier,
         priceId,
+        interval,
       },
       success_url: `${appUrl}/leads/onboard?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/leads/pricing`,
