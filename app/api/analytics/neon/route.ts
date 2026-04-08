@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
+import { requireAdminApiSession } from "@/lib/admin-auth";
 
 const NEON_API = "https://console.neon.tech/api/v2";
 
 export async function GET() {
+  const adminCheck = await requireAdminApiSession();
+  if (!adminCheck.ok) return adminCheck.response;
   const apiKey = process.env.NEON_API_KEY;
   const projectId = process.env.NEON_PROJECT_ID;
   const limitGb = parseFloat(process.env.NEON_TRANSFER_LIMIT_GB || "5");
