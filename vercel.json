@@ -19,7 +19,9 @@
     "app/api/cron/dispatch-payouts/route.ts": { "maxDuration": 120 },
     "app/api/cron/dispatch-stale/route.ts": { "maxDuration": 30 },
     "app/api/cron/dispatch-compliance/route.ts": { "maxDuration": 60 },
-    "app/api/cron/trading-sim-sync/route.ts": { "maxDuration": 60 }
+    "app/api/cron/trading-sim-sync/route.ts": { "maxDuration": 60 },
+    "app/api/cron/fb-sync/route.ts": { "maxDuration": 60 },
+    "app/api/cron/mls-sync/route.ts": { "maxDuration": 300 }
   },
   "git": {
     "deploymentEnabled": {
@@ -98,6 +100,14 @@
     {
       "path": "/api/cron/trading-sim-sync",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/fb-sync",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/mls-sync",
+      "schedule": "0 */4 * * *"
     }
   ]
 }
