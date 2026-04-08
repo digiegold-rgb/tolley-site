@@ -26,18 +26,39 @@ export async function GET() {
     allSubs.push(sub);
   }
 
-  // ─── Paginate ALL charges (complete history) ───
+  // ─── Paginate ALL payment intents (replaces deprecated charges.list) ───
   const allCharges: { amount: number; status: string; paid: boolean; created: number; fee: number }[] = [];
-  for await (const charge of stripe.charges.list({ limit: 100, expand: ["data.balance_transaction"] })) {
-    const bt = charge.balance_transaction;
-    const fee = typeof bt === "object" && bt !== null ? (bt.fee || 0) : 0;
-    allCharges.push({
-      amount: charge.amount,
-      status: charge.status,
-      paid: charge.paid,
-      created: charge.created,
-      fee,
-    });
+  for await (const pi of stripe.paymentIntents.list({ limit: 100, expand: ["data.charges.data.balance_transaction"] })) {
+    // Each PaymentIntent may have one or more charges; take the first succeeded charge
+    const charges = (pi as { charges?: { data?: unknown[] } }).charges?.data ?? [];
+    if (charges.length > 0) {
+      const charge = charges[0] as {
+        amount: number;
+        status: string;
+        paid: boolean;
+        created: number;
+        balance_transaction: { fee: number } | string | null;
+      };
+      const bt = charge.balance_transaction;
+      const fee = typeof bt === "object" && bt !== null ? (bt.fee || 0) : 0;
+      allCharges.push({
+        amount: charge.amount,
+        status: charge.status,
+        paid: charge.paid,
+        created: charge.created,
+        fee,
+      });
+    } else {
+      // PaymentIntent with no charges yet (e.g. processing ACH)
+      const succeeded = pi.status === "succeeded";
+      allCharges.push({
+        amount: pi.amount,
+        status: succeeded ? "succeeded" : pi.status,
+        paid: succeeded,
+        created: pi.created,
+        fee: 0,
+      });
+    }
   }
 
   // ─── Balance ───
