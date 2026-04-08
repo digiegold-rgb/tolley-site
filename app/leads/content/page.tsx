@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import ContentEditor from "@/components/content/ContentEditor";
 import PostPreview from "@/components/content/PostPreview";
 
@@ -9,6 +10,8 @@ import PostPreview from "@/components/content/PostPreview";
  * Quick AI generate + recent posts overview
  */
 export default function ContentHubPage() {
+  const { data: session } = useSession();
+  const subscriberId = session?.user?.id ?? "default";
   const [generating, setGenerating] = useState(false);
   const [generatedBody, setGeneratedBody] = useState("");
   const [generatedHashtags, setGeneratedHashtags] = useState<string[]>([]);
@@ -46,7 +49,7 @@ export default function ContentHubPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          subscriberId: "default", // TODO: from session
+          subscriberId,
           saveDraft: false,
         }),
       });
@@ -73,7 +76,7 @@ export default function ContentHubPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          subscriberId: "default",
+          subscriberId,
           platform: data.platform,
           postBody: data.body,
           hashtags: data.hashtags,
