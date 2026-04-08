@@ -6,18 +6,23 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { auth } from "@/auth";
 import { lookupByAddress, lookupByPoint, type ParsedParcel } from "@/lib/regrid";
 
 const prisma = new PrismaClient();
 const CACHE_TTL_DAYS = 30;
 
 export async function POST(req: NextRequest) {
-  // Auth: x-sync-secret or session
+  // Auth: x-sync-secret or valid user session
   const syncSecret = req.headers.get("x-sync-secret");
   const expectedSecret = process.env.SYNC_SECRET;
-  if (!syncSecret || syncSecret !== expectedSecret) {
-    // TODO: also accept session auth
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const isSecretValid = expectedSecret && syncSecret === expectedSecret;
+
+  if (!isSecretValid) {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
 
   const body = await req.json();

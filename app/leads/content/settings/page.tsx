@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import PlatformCard, { ConnectPlatformButton } from "@/components/content/PlatformCard";
 
 interface Connection {
@@ -19,6 +20,8 @@ const AVAILABLE_PLATFORMS = ["linkedin", "twitter"];
 // Phase 2: "facebook", "instagram", "youtube", "tiktok"
 
 export default function ContentSettingsPage() {
+  const { data: session } = useSession();
+  const subscriberId = session?.user?.id ?? "default";
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
@@ -26,7 +29,7 @@ export default function ContentSettingsPage() {
   const fetchConnections = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/content/platforms?subscriberId=default");
+      const res = await fetch(`/api/content/platforms?subscriberId=${subscriberId}`);
       if (res.ok) {
         const data = await res.json();
         setConnections(data.connections || []);
@@ -36,7 +39,7 @@ export default function ContentSettingsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [subscriberId]);
 
   useEffect(() => {
     fetchConnections();
@@ -54,7 +57,7 @@ export default function ContentSettingsPage() {
       const res = await fetch("/api/content/platforms/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform, subscriberId: "default" }),
+        body: JSON.stringify({ platform, subscriberId }),
       });
       if (res.ok) {
         const data = await res.json();

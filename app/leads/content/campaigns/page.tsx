@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import CampaignBuilder from "@/components/content/CampaignBuilder";
 
 interface Campaign {
@@ -29,6 +30,8 @@ const PLATFORM_LABELS: Record<string, string> = {
 };
 
 export default function CampaignsPage() {
+  const { data: session } = useSession();
+  const subscriberId = session?.user?.id ?? "default";
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [showBuilder, setShowBuilder] = useState(false);
@@ -59,7 +62,7 @@ export default function CampaignsPage() {
       const res = await fetch("/api/content/campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, subscriberId: "default" }),
+        body: JSON.stringify({ ...data, subscriberId }),
       });
       if (res.ok) {
         setShowBuilder(false);

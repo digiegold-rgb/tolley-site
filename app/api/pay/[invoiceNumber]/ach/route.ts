@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import Stripe from "stripe";
@@ -47,14 +46,29 @@ export async function POST(
       customerId = customer.id;
     }
 
-    // Attach bank account to customer
-    await getStripe().customers.createSource(customerId, { source: stripeBankToken });
+    // Create and attach PaymentMethod for us_bank_account (replaces deprecated createSource)
+    const paymentMethod = await getStripe().paymentMethods.create({
+      type: "us_bank_account",
+      us_bank_account: {
+        account_holder_type: "individual",
+      },
+      // stripeBankToken is a bank account token from Plaid/Stripe.js
+      billing_details: {
+        name: invoice.contact?.name || "Invoice Client",
+        email: invoice.contact?.email || undefined,
+      },
+    } as Stripe.PaymentMethodCreateParams);
 
-    // Create ACH charge
-    const charge = await getStripe().charges.create({
+    await getStripe().paymentMethods.attach(paymentMethod.id, { customer: customerId });
+
+    // Create PaymentIntent for ACH (replaces deprecated charges.create)
+    const paymentIntent = await getStripe().paymentIntents.create({
       amount: Math.round(amount * 100), // cents
       currency: "usd",
       customer: customerId,
+      payment_method: paymentMethod.id,
+      payment_method_types: ["us_bank_account"],
+      confirm: true,
       description: `Invoice ${invoiceNumber}`,
       metadata: {
         invoiceNumber,
@@ -69,8 +83,8 @@ export async function POST(
         invoiceId: invoice.id,
         amount,
         method: "ach",
-        reference: charge.id,
-        notes: `ACH via Plaid — ${charge.status}`,
+        reference: paymentIntent.id,
+        notes: `ACH via Plaid — ${paymentIntent.status}`,
       },
     });
 
@@ -84,14 +98,14 @@ export async function POST(
         amountDue: Math.max(0, newAmountDue),
         status: newAmountDue <= 0 ? "PAID" : invoice.status,
         paidAt: newAmountDue <= 0 ? new Date() : undefined,
-        stripePaymentIntentId: charge.id,
+        stripePaymentIntentId: paymentIntent.id,
       },
     });
 
     return NextResponse.json({
       success: true,
-      chargeId: charge.id,
-      status: charge.status, // "pending" for ACH
+      paymentIntentId: paymentIntent.id,
+      status: paymentIntent.status, // "processing" for ACH
       message: "ACH payment initiated. Typically settles in 1-3 business days.",
     });
   } catch (err) {
