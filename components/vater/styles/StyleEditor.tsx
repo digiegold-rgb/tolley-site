@@ -6,7 +6,7 @@
  */
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AddReferenceVideo } from "./AddReferenceVideo";
@@ -442,6 +442,19 @@ export function StyleEditor({ initialStyle }: { initialStyle: Style }) {
         </Field>
       </Section>
 
+      {/* Custom Art Style attachment */}
+      <Section
+        title="Custom Art Style"
+        hint="Override the preset art style with a user-uploaded one. Gemini Flash analyzed your reference images and wrote an 800-char hex-coded descriptor that gets injected into every scene prompt."
+      >
+        <CustomArtStylePicker
+          value={style.customArtStyleId}
+          attached={style.customArtStyle}
+          disabled={style.isSystem}
+          onChange={(id) => setField("customArtStyleId", id as Style["customArtStyleId"])}
+        />
+      </Section>
+
       {/* Smart overlays */}
       <Section title="Smart overlays" hint="When enabled, the LLM tags scenes as charts/maps/headers and Remotion renders them natively. Phase 3 wires the renderers.">
         <div className="space-y-2">
@@ -618,6 +631,107 @@ function SliderField({
         disabled={disabled}
         className="w-full"
       />
+    </div>
+  );
+}
+
+// ── CustomArtStyle picker ──────────────────────────────────────────────
+function CustomArtStylePicker({
+  value,
+  attached,
+  disabled,
+  onChange,
+}: {
+  value: string | null;
+  attached: CustomArtStyle | null;
+  disabled?: boolean;
+  onChange: (id: string | null) => void;
+}) {
+  const [available, setAvailable] = useState<CustomArtStyle[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/vater/youtube/custom-art-styles");
+      if (r.ok) {
+        const data = await r.json();
+        setAvailable(data.customArtStyles ?? []);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  return (
+    <div className="space-y-3">
+      {value && attached ? (
+        <div className="rounded-md border border-emerald-700 bg-emerald-950/30 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-emerald-300">
+                ✓ Attached: {attached.name}
+              </p>
+              <p className="mt-1 line-clamp-2 text-xs text-emerald-200/80">
+                {attached.description || "(description pending)"}
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => onChange(null)}
+              className="rounded-md border border-rose-900 px-2 py-1 text-xs text-rose-300 hover:bg-rose-950 disabled:opacity-50"
+            >
+              Detach
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {!disabled && (
+        <div className="space-y-2">
+          <p className="text-xs text-zinc-500">
+            {loading
+              ? "Loading custom art styles…"
+              : available.length === 0
+              ? "No custom art styles yet."
+              : `Pick one of your ${available.length} custom art styles:`}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {available.map((cas) => {
+              const isCurrent = cas.id === value;
+              return (
+                <button
+                  key={cas.id}
+                  type="button"
+                  onClick={() => onChange(isCurrent ? null : cas.id)}
+                  className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition ${
+                    isCurrent
+                      ? "border-emerald-500 bg-emerald-500/20 text-emerald-200"
+                      : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500"
+                  }`}
+                >
+                  {cas.thumbnailUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={cas.thumbnailUrl} alt={cas.name} className="h-6 w-6 rounded object-cover" />
+                  ) : null}
+                  {cas.name}
+                </button>
+              );
+            })}
+            <Link
+              href="/vater/youtube/custom-art-styles"
+              className="rounded-md border border-dashed border-zinc-700 px-3 py-1.5 text-xs text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
+            >
+              + Manage / create
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

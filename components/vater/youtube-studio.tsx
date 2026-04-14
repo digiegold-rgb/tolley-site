@@ -119,6 +119,13 @@ export function YouTubeStudio() {
           >
             🎨 Styles
           </a>
+          <a
+            href="/vater/youtube/custom-art-styles"
+            className="rounded-md border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
+            title="Manage custom art styles — upload reference images, get a hex-coded descriptor"
+          >
+            🖌️ Art Styles
+          </a>
           <span className="vater-badge">{projects.length} projects</span>
         </div>
       </div>
