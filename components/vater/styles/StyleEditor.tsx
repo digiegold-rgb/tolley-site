@@ -81,13 +81,21 @@ const VOICE_BACKENDS = [
 ] as const;
 
 const QUALITY_BACKENDS = [
-  { id: "sdxl-local", label: "SDXL Lightning (local, free, ~60s/scene)", needsKey: false },
-  { id: "sdxl-ipadapter", label: "SDXL + IP-Adapter (local, character-locked)", needsKey: false },
-  { id: "flux-schnell", label: "FLUX.1-schnell (local, ~90s/scene, better adherence)", needsKey: false },
-  { id: "gemini-1k", label: "Gemini Nano Banana 2 1K (cloud, ~$0.04/scene)", needsKey: true, envVar: "GEMINI_API_KEY" },
-  { id: "gemini-2k", label: "Gemini Nano Banana 2 2K (cloud, ~$0.06/scene)", needsKey: true, envVar: "GEMINI_API_KEY" },
-  { id: "ideogram-default", label: "Ideogram Default (cloud, ~$0.05/scene)", needsKey: true, envVar: "IDEOGRAM_API_KEY" },
+  { id: "sdxl-local", label: "SDXL Lightning (local, free, ~60s/scene)", needsKey: false, costPerScene: 0 },
+  { id: "sdxl-ipadapter", label: "SDXL + IP-Adapter (local, character-locked)", needsKey: false, costPerScene: 0 },
+  { id: "flux-schnell", label: "FLUX.1-schnell (local, ~90s/scene, better adherence)", needsKey: false, costPerScene: 0 },
+  { id: "gemini-1k", label: "Gemini Nano Banana 2 1K (cloud, ~$0.04/scene)", needsKey: true, envVar: "GEMINI_API_KEY", costPerScene: 0.04 },
+  { id: "gemini-2k", label: "Gemini Nano Banana Pro (cloud, ~$0.06/scene)", needsKey: true, envVar: "GEMINI_API_KEY", costPerScene: 0.06 },
+  { id: "ideogram-turbo", label: "Ideogram Turbo via fal.ai (~$0.02/scene)", needsKey: true, envVar: "FAL_KEY", costPerScene: 0.02 },
+  { id: "ideogram-default", label: "Ideogram v2 via fal.ai (~$0.05/scene)", needsKey: true, envVar: "FAL_KEY", costPerScene: 0.05 },
+  { id: "ideogram-quality", label: "Ideogram v3 via fal.ai (~$0.08/scene)", needsKey: true, envVar: "FAL_KEY", costPerScene: 0.08 },
 ] as const;
+
+// Estimate scenes for a given video at the Style's pacing
+function estimateScenes(audioSeconds: number, pacingSec: number | null): number {
+  const pacing = pacingSec ?? 4.0;
+  return Math.min(120, Math.max(2, Math.ceil(audioSeconds / pacing)));
+}
 
 const VISUAL_TYPES = [
   { id: "images", label: "Images (still + Ken Burns)" },
@@ -337,14 +345,44 @@ export function StyleEditor({ initialStyle }: { initialStyle: Style }) {
                 </option>
               ))}
             </select>
-            {(style.defaultQuality === "gemini-1k" ||
-              style.defaultQuality === "gemini-2k" ||
-              style.defaultQuality === "ideogram-default") && (
-              <p className="mt-1 text-xs text-amber-400">
-                ⚠️ Cloud backend. Requires API key in autopilot env.
-                Falls back to SDXL local if unset.
-              </p>
-            )}
+            {(() => {
+              const q = QUALITY_BACKENDS.find((b) => b.id === style.defaultQuality);
+              if (!q || q.costPerScene === 0) return null;
+              // Cost estimates for typical short / medium / long videos at this Style's pacing
+              const pacing = style.defaultPacingSec ?? 4.0;
+              const samples = [
+                { label: "1 min video", scenes: estimateScenes(60, pacing) },
+                { label: "10 min video", scenes: estimateScenes(600, pacing) },
+                { label: "20 min video", scenes: estimateScenes(1200, pacing) },
+              ];
+              return (
+                <div className="mt-1 space-y-1">
+                  <p className="text-xs text-amber-400">
+                    ⚠️ Cloud backend. Requires {q.envVar} in autopilot env.
+                    Falls back to SDXL-local if unset or quota exceeded.
+                  </p>
+                  <div className="rounded-md border border-amber-900/40 bg-amber-950/20 p-2 text-xs">
+                    <p className="font-semibold text-amber-300">
+                      Estimated cost per project at {pacing}s/scene:
+                    </p>
+                    <ul className="mt-1 space-y-0.5 text-amber-200/80">
+                      {samples.map((s) => (
+                        <li key={s.label}>
+                          <span className="font-mono">{s.label}</span> ·{" "}
+                          {s.scenes} scenes ·{" "}
+                          <span className="font-semibold">
+                            ~${(s.scenes * q.costPerScene).toFixed(2)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-1.5 text-[10px] text-amber-200/60">
+                      Per the no-API-resale rule, vater pays at-cost; you absorb the spend.
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
           </Field>
           <Field label="Visual type">
             <select
