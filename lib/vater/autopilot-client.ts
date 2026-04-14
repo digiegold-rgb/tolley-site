@@ -49,6 +49,15 @@ export type JobStatus = {
   updatedAt?: string;
 };
 
+export type ReferenceStatusEntry = {
+  hasReference: boolean;
+  ipaWeight: number | null;
+  weightType: string | null;
+  endAt: number | null;
+};
+
+export type ReferenceStatusMap = Record<string, ReferenceStatusEntry>;
+
 export type StylePreset = {
   id: string;
   name: string;
@@ -91,6 +100,75 @@ export type VerifyResult = {
 
 export type CreationMode = "transcribe" | "topic";
 
+/** Video generation backend. "sdxl" = local GPU still images, Veo models = cloud API video clips. */
+export type VideoBackend =
+  | "sdxl"
+  | "veo-3.1-lite"
+  | "veo-3.0-fast"
+  | "veo-3.1-fast"
+  | "veo-3.0"
+  | "veo-3.1"
+  | "hybrid";
+
+/**
+ * TubeGen-parity Style snapshot — sent to DGX inline so the worker has
+ * everything it needs (no callback to the portal). Optional; when omitted
+ * the worker uses the legacy stylePreset/consistency path.
+ *
+ * Snapshot semantics: portal serializes the YouTubeStyle row + its
+ * characters + customArtStyle at submit time. Editing the Style later
+ * never retroactively changes a rendered project.
+ */
+export type StyleSnapshot = {
+  id: string;
+  name: string;
+  voice: string;
+  voiceBackend: "f5-tts" | "elevenlabs";
+  voiceSpeed: number;
+  voiceStability: number;
+  voiceSimilarity: number;
+  voiceExaggeration: number;
+  language: string;
+  defaultWordCount: number;
+  scriptMode: string;
+  webSearchDefault: boolean;
+  additionalContext: string | null;
+  referenceTranscripts: Array<{
+    videoId?: string;
+    url: string;
+    title: string;
+    wordCount: number;
+    transcript: string;
+  }>;
+  artStylePresetId: string;
+  defaultAspectRatio: string;
+  defaultQuality: string;
+  defaultVisualType: string;
+  defaultAnimMode: string;
+  defaultAnimMin: number;
+  defaultAnimMax: number;
+  defaultPacingSec: number | null;
+  defaultConsistency: number;
+  enableCharts: boolean;
+  enableMaps: boolean;
+  enableAutoHeaders: boolean;
+  overlayTheme: string;
+  customArtStyle: {
+    id: string;
+    name: string;
+    description: string;
+    referenceImageUrls: string[];
+  } | null;
+  characters: Array<{
+    id: string;
+    name: string;
+    description: string;
+    imageUrl: string | null;
+    permanent: boolean;
+    placeInEveryImage: boolean;
+  }>;
+};
+
 export type RunCreationInput = {
   projectId: string;
   mode: CreationMode;
@@ -105,6 +183,18 @@ export type RunCreationInput = {
   backgroundMusicId?: string;
   /** 0.0-1.0, default 0.18 in the worker if omitted. */
   musicVolume?: number;
+  /** Creator model script guidelines — injected as system prompt prefix. */
+  scriptGuidelines?: string;
+  /** Scene visual consistency 0-100. 0=independent images, 70=recommended.
+   *  Maps to img2img denoise strength on the DGX: denoise = 1 - consistency/100. */
+  consistency?: number;
+  /** Video backend: "sdxl" (default, still images + Ken Burns) or a Veo model
+   *  for actual AI video clips. "hybrid" auto-picks Veo for hero scenes. */
+  videoBackend?: VideoBackend;
+  /** Phase 1+: full Style snapshot. When present, takes precedence over
+   *  stylePreset/consistency for fields it sets. Sparse — only keys the
+   *  user explicitly set are honored; rest fall through to preset defaults. */
+  style?: StyleSnapshot;
 };
 
 /**
@@ -137,6 +227,23 @@ export type SfxClip = {
   license?: string;
 };
 
+export type ThumbnailInput = {
+  jobId: string;
+  title: string;
+  stylePreset: string;
+  sceneImageUrl?: string;
+};
+
+export type ThumbnailResult = {
+  thumbnailUrl: string;
+};
+
+export type SuggestGoalsInput = {
+  transcript: string;
+  title?: string;
+  channel?: string;
+};
+
 export type FetchSourceInput = {
   projectId?: string;
   sourceUrl: string;
@@ -153,6 +260,37 @@ export type GenerateScenesInput = {
   sceneCount: number;
 };
 
+/** Regenerate ONE scene image. Sync — caller shows a spinner. */
+export type RegenSceneInput = {
+  jobId: string;
+  sceneIdx: number;
+  imagePrompt: string;
+  stylePreset?: string;
+  customStylePrompt?: string;
+  projectId?: string;
+};
+
+export type RegenSceneResult = {
+  jobId: string;
+  sceneIdx: number;
+  version: number;
+  /** Relative URL like `/vater/file/<jobId>/scene/<idx>/<version>` */
+  url: string;
+  filePath: string;
+  prompt: string;
+  seed: number;
+};
+
+/** Re-compose an existing project with an edited VideoSpec. */
+export type ComposeVideoInput = {
+  /** The existing pipeline job id — final.mp4 is written into its work dir. */
+  jobId: string;
+  /** Prisma project id, round-tripped so the async worker knows the row. */
+  projectId?: string;
+  /** Full VideoSpec (the same shape VaterSlideshow renders). */
+  props: unknown;
+};
+
 export type VerifyScriptInput = {
   script: string;
   principles: unknown;
@@ -167,6 +305,7 @@ export type FeedProbeInput = {
  * Mirrors `_run_creation_worker` in vater.py.
  */
 export type RunCreationResult = {
+  videoBackend?: VideoBackend;
   sourcePrinciples?: unknown;
   script?: string;
   scriptMeta?: { wordCount?: number; targetWordCount?: number };
@@ -182,8 +321,15 @@ export type RunCreationResult = {
     endS?: number;
     imagePrompt?: string;
     imageUrl?: string;
+    videoUrl?: string;
+    mediaType?: "image" | "video";
   }>;
   finalVideoUrl?: string;
+  generationCost?: {
+    totalCents: number;
+    perScene: number[];
+    model: string;
+  };
 };
 
 /**
@@ -197,6 +343,9 @@ export type FetchSourceResult = {
   channel?: string;
   language?: string;
   wordCount?: number;
+  /** Length-agnostic goal suggestions from the DGX `_suggest_goals` step
+   *  — each item: {id, title, emoji, subtitle, goalText, preview}. */
+  goalSuggestions?: unknown;
 };
 
 // ---------------------------------------------------------------------------
@@ -327,6 +476,14 @@ export const autopilot = {
   generateScenes: (input: GenerateScenesInput) =>
     call<{ jobId: string }>("POST", "/vater/generate-scenes", input),
 
+  /** Sync — regenerate ONE scene image for the editor. ~15-30s per call. */
+  regenScene: (input: RegenSceneInput) =>
+    call<RegenSceneResult>("POST", "/vater/regen-scene", input),
+
+  /** Async — re-compose the final MP4 from an edited VideoSpec. Returns a jobId. */
+  composeVideo: (input: ComposeVideoInput) =>
+    call<{ jobId: string }>("POST", "/vater/compose-video", input),
+
   /** Sync — verify a script against extracted principles. */
   verifyScript: (input: VerifyScriptInput) =>
     call<VerifyResult>("POST", "/vater/verify-script", input),
@@ -347,6 +504,15 @@ export const autopilot = {
     );
     if (Array.isArray(data)) return data;
     return Array.isArray(data?.styles) ? data.styles : [];
+  },
+
+  /** Per-preset reference-image status from the shared reference library. */
+  getReferenceStatus: async (): Promise<ReferenceStatusMap> => {
+    const data = await call<{
+      root?: string;
+      references?: Record<string, ReferenceStatusEntry>;
+    }>("GET", "/vater/reference-status");
+    return data?.references ?? {};
   },
 
   /** List voice clones. (DGX returns `{voices: [...]}`, unwrap.) */
@@ -390,6 +556,14 @@ export const autopilot = {
   /** Stream a voice clone reference WAV back through the proxy. */
   fetchVoiceFile: (name: string) =>
     callRaw("GET", `/vater/file/voice/${encodeURIComponent(name)}`),
+
+  /** Generate a YouTube thumbnail (1280×720 SDXL + ffmpeg text overlay). */
+  generateThumbnail: (input: ThumbnailInput) =>
+    call<ThumbnailResult>("POST", "/vater/thumbnail", input),
+
+  /** Re-run goal suggestions for a transcript (stateless LLM call, ~10-15s). */
+  suggestGoals: (input: SuggestGoalsInput) =>
+    call<{ suggestions: unknown[] }>("POST", "/vater/suggest-goals", input),
 };
 
 export type AutopilotClient = typeof autopilot;

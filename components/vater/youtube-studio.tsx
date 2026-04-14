@@ -9,12 +9,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Tabs, TabList, TabTrigger, TabPanel } from "@/components/ui/Tabs";
-import { YouTubeUrlInput } from "./youtube-url-input";
+import { YouTubeImportTracker } from "./youtube-import-tracker";
 import { YouTubeProjectCard } from "./youtube-project-card";
 import { YouTubeProjectDetail } from "./youtube-project-detail";
 import { YouTubeRssPanel } from "./youtube-rss-panel";
 import { YouTubeTopicForm } from "./youtube-topic-form";
 import { YouTubeVoiceClonePanel } from "./youtube-voice-clone-panel";
+import { YouTubeLibrary } from "./youtube-library";
 
 interface YouTubeProject {
   id: string;
@@ -53,6 +54,7 @@ interface YouTubeProject {
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
+  thumbnailUrl: string | null;
 }
 
 export function YouTubeStudio() {
@@ -101,6 +103,7 @@ export function YouTubeStudio() {
     (p) => (p.mode || "transcribe") === "transcribe",
   );
   const topicProjects = projects.filter((p) => p.mode === "topic");
+  const libraryProjects = projects.filter((p) => p.status === "ready");
 
   return (
     <div>
@@ -108,7 +111,16 @@ export function YouTubeStudio() {
         <h2 className="vater-neon text-2xl font-bold tracking-wide">
           Content Studio
         </h2>
-        <span className="vater-badge">{projects.length} projects</span>
+        <div className="flex items-center gap-3">
+          <a
+            href="/vater/youtube/styles"
+            className="rounded-md border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
+            title="Manage reusable Styles — voice, references, characters, visual defaults"
+          >
+            🎨 Styles
+          </a>
+          <span className="vater-badge">{projects.length} projects</span>
+        </div>
       </div>
 
       <Tabs defaultValue="transcribe" syncUrl="tab" className="space-y-6">
@@ -116,17 +128,22 @@ export function YouTubeStudio() {
           <TabTrigger value="transcribe">Transcribe</TabTrigger>
           <TabTrigger value="topic">Topic</TabTrigger>
           <TabTrigger value="voices">Voices</TabTrigger>
+          <TabTrigger value="library">
+            Library
+            {libraryProjects.length > 0 && (
+              <span className="ml-1.5 rounded-full bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-bold text-sky-400">
+                {libraryProjects.length}
+              </span>
+            )}
+          </TabTrigger>
         </TabList>
 
         {/* ----- Transcribe tab ----- */}
         <TabPanel value="transcribe" className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <YouTubeUrlInput onCreated={handleCreated} />
-            <div className="vater-card p-4 text-xs text-zinc-500">
-              Paste a YouTube URL on the left, or scroll down to add an RSS
-              feed.
-            </div>
-          </div>
+          <YouTubeImportTracker
+            projects={projects}
+            onCreated={handleCreated}
+          />
 
           <YouTubeRssPanel onProjectCreated={handleCreated} />
 
@@ -172,6 +189,25 @@ export function YouTubeStudio() {
         {/* ----- Voices tab ----- */}
         <TabPanel value="voices" className="space-y-6">
           <YouTubeVoiceClonePanel mode="manage" />
+        </TabPanel>
+
+        {/* ----- Library tab ----- */}
+        <TabPanel value="library" className="space-y-6">
+          <div className="max-w-2xl">
+            <p className="text-sm text-zinc-400">
+              Every completed video in one place — play, download, or delete.
+            </p>
+          </div>
+          {loading ? (
+            <div className="vater-card p-6 text-center text-sm text-zinc-500">
+              Loading library…
+            </div>
+          ) : (
+            <YouTubeLibrary
+              projects={libraryProjects}
+              onDelete={handleDelete}
+            />
+          )}
         </TabPanel>
       </Tabs>
     </div>
@@ -226,6 +262,9 @@ function ProjectsAndDetail({
                 targetDuration: p.targetDuration,
                 createdAt: p.createdAt,
                 progress: p.progress,
+                stylePreset: p.stylePreset,
+                mode: p.mode,
+                topic: p.topic,
               }}
               isActive={p.id === activeId}
               onClick={() => onSelect(p.id)}

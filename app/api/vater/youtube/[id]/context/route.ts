@@ -22,11 +22,15 @@ import { prisma } from "@/lib/prisma";
 import {
   autopilot,
   AutopilotError,
+  type RunCreationInput,
+  type StyleSnapshot,
 } from "@/lib/vater/autopilot-client";
 import {
   isStylePresetId,
   DEFAULT_STYLE_PRESET,
 } from "@/lib/vater/style-presets";
+import { buildStyleSnapshot } from "@/lib/vater/style-snapshot";
+import { auth } from "@/auth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -39,9 +43,21 @@ interface ContextBody {
   customStylePrompt?: string;
   backgroundMusicId?: string | null;
   musicVolume?: number | null;
+  creatorModelId?: string;
+  scriptGuidelines?: string;
+  consistency?: number;
+  videoBackend?: string;
+  /** Phase 1+: opt-in YouTubeStyle id. When present, style snapshot
+   *  takes precedence over stylePreset for fields it sets. */
+  styleId?: string | null;
 }
 
 export async function POST(req: NextRequest, ctx: Ctx) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await ctx.params;
 
   let body: ContextBody;
@@ -108,6 +124,34 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       ? Math.max(0, Math.min(1, body.musicVolume))
       : 0.18;
 
+  // Phase 1: opt-in YouTubeStyle. When body.styleId is set, load the row
+  // and build a snapshot; the snapshot rides inline in the runCreation
+  // payload so the DGX worker has everything (no callback). When NULL, we
+  // stay on the legacy stylePreset path — fully back-compat.
+  const styleId =
+    typeof body.styleId === "string" && body.styleId.trim()
+      ? body.styleId.trim()
+      : null;
+
+  let styleSnapshot: StyleSnapshot | undefined;
+  if (styleId) {
+    const style = await prisma.youTubeStyle.findUnique({
+      where: { id: styleId },
+      include: { characters: true, customArtStyle: true },
+    });
+    if (!style) {
+      return NextResponse.json(
+        { error: `styleId ${styleId} not found` },
+        { status: 404 },
+      );
+    }
+    // System styles (userId=null) are public-read; user styles must be owned.
+    if (style.userId && style.userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    styleSnapshot = buildStyleSnapshot(style);
+  }
+
   // Persist the context fields up front so the UI sees them even if the
   // autopilot call fails.
   const updated = await prisma.youTubeProject.update({
@@ -121,6 +165,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       voiceName: body.voiceCloneName,
       backgroundMusicId,
       musicVolume,
+      styleId, // null is fine, falls back to stylePreset path
       status: "extracting_principles",
       progress: 35,
       errorMessage: null,
@@ -129,6 +174,20 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   // Kick off the run-creation pipeline on the DGX
   try {
+    // Scene consistency: 0=independent (legacy), 70=recommended img2img chaining
+    const consistency =
+      typeof body.consistency === "number" && Number.isFinite(body.consistency)
+        ? Math.max(0, Math.min(100, Math.round(body.consistency)))
+        : 0;
+
+    const validBackends = new Set([
+      "sdxl", "veo-3.1-lite", "veo-3.0-fast", "veo-3.1-fast", "veo-3.0", "veo-3.1", "hybrid",
+    ]);
+    const videoBackend =
+      typeof body.videoBackend === "string" && validBackends.has(body.videoBackend)
+        ? body.videoBackend
+        : "sdxl";
+
     const job = await autopilot.runCreation({
       projectId: id,
       mode: (project.mode as "transcribe" | "topic") || "transcribe",
@@ -140,6 +199,10 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       customStylePrompt: body.customStylePrompt,
       backgroundMusicId: backgroundMusicId ?? undefined,
       musicVolume,
+      scriptGuidelines: body.scriptGuidelines,
+      consistency,
+      videoBackend: videoBackend as RunCreationInput["videoBackend"],
+      style: styleSnapshot,
     });
 
     const withJob = await prisma.youTubeProject.update({

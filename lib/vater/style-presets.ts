@@ -1,15 +1,5 @@
 /**
- * The 14 visual style presets for the VATER YouTube pipeline.
- *
- * 8 original (cinematic, comic_book, anime, pixel_art, pixar, digital_art,
- * watercolor, low_poly) plus 6 cartoon/anime variants added 2026-04-11
- * at user request:
- *   - classic_cartoon (Hanna-Barbera Saturday-morning)
- *   - chibi_kawaii (cute Japanese chibi)
- *   - shonen_action (Dragon Ball Z / Naruto action anime)
- *   - slice_of_life (Makoto Shinkai "Your Name" aesthetic)
- *   - flat_modern (Duolingo/Airbnb flat vector)
- *   - storybook (Quentin Blake children's book)
+ * Visual style presets for the VATER YouTube pipeline.
  *
  * IDs MUST match the DGX side exactly — they are forwarded as-is in
  * `runCreation({ stylePreset })` and used by `vater.py` to look up the
@@ -119,6 +109,48 @@ export const STYLE_PRESETS: readonly StylePreset[] = [
     description: "Low poly 3D, flat shading, geometric, minimalist",
     bestFor: "Tech/product explainers, data viz, modern startup vibe",
     sampleImageUrl: "/vater/styles/low_poly.webp",
+  },
+  // ── Whiteboard cartoon / creator-model styles (2026-04-12) ──────────
+  {
+    id: "whiteboard_cartoon",
+    name: "Whiteboard Cartoon",
+    emoji: "🧑‍🏫",
+    promptPrefix:
+      "adult cartoon illustration, Family Guy American Dad art style, bold black outlines, flat colors, white clean background, whiteboard explainer aesthetic, expressive cartoon character, simple props, no shadows no gradients, educational cartoon",
+    description:
+      "Adult cartoon on white background — Family Guy/American Dad style, bold outlines, whiteboard explainer energy",
+    bestFor:
+      "Personal finance, educational content, explainers, faceless channels like Nick Invests",
+    sampleImageUrl: "/vater/styles/whiteboard_cartoon.webp",
+  },
+  // ── Animated Explainer (2026-04-14) — TubeGen-style ──────────────────
+  // Same visual aesthetic as whiteboard_cartoon; differs in pacing
+  // (2.5s/scene vs 4s) and auto-locks character consistency. Sample image
+  // is shared with whiteboard_cartoon since the stills look identical.
+  {
+    id: "animated_explainer",
+    name: "Animated Explainer",
+    emoji: "📺",
+    promptPrefix:
+      "adult cartoon illustration, Family Guy American Dad art style, bold black outlines, flat colors, white clean background, whiteboard explainer aesthetic, expressive cartoon character, simple props, no shadows no gradients, educational cartoon",
+    description:
+      "TubeGen-style — same cartoon look as Whiteboard, but fast scene cuts (~2.5s) and locked character across scenes",
+    bestFor:
+      "Punchy explainer videos with a recurring protagonist — matches the TubeGen.ai faceless-channel format",
+    sampleImageUrl: "/vater/styles/whiteboard_cartoon.webp",
+  },
+  // ── 1D flat cartoon (2026-04-12) ────────────────────────────────────
+  {
+    id: "flat_cartoon",
+    name: "1D Cartoon",
+    emoji: "✏️",
+    promptPrefix:
+      "simple flat cartoon, single-weight black ink outlines, solid flat colors with no shading no gradients no shadows, white background, zero depth zero perspective, newspaper comic strip style, clean vector lines, minimal detail",
+    description:
+      "Ultra-flat single-color cartoon — bold ink outlines, zero depth, no shading, comic-strip simplicity",
+    bestFor:
+      "Explainers, quick takes, comedic commentary, meme-style content, anything that needs maximum clarity",
+    sampleImageUrl: "/vater/styles/flat_cartoon.webp",
   },
   // ── 6 cartoon/anime additions (2026-04-11) ─────────────────────────
   {
