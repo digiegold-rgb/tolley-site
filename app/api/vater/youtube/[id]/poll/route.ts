@@ -24,6 +24,7 @@ import {
   phaseToStatus,
   type YouTubeProjectStatus,
 } from "@/lib/vater/youtube-status";
+import { auth } from "@/auth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -80,6 +81,11 @@ function logTransition(
 // ---------------------------------------------------------------------------
 
 export async function GET(_req: NextRequest, ctx: Ctx) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await ctx.params;
 
   const project = await prisma.youTubeProject.findUnique({ where: { id } });
@@ -184,6 +190,11 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
         wordCount: result.wordCount ?? null,
       } as Prisma.InputJsonValue;
     }
+    // Goal suggestions — emitted by the DGX `_suggest_goals` step during
+    // fetch-source. Empty array on topic mode or LLM failure.
+    if (result.goalSuggestions !== undefined) {
+      data.goalSuggestions = result.goalSuggestions as Prisma.InputJsonValue;
+    }
     if (result.title) data.sourceTitle = result.title;
     if (result.channel) data.sourceChannel = result.channel;
 
@@ -232,8 +243,53 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     if (result.captionTimings !== undefined) {
       data.captionTimings = result.captionTimings as Prisma.InputJsonValue;
     }
-    if (result.scenesJson !== undefined) {
-      data.scenesJson = result.scenesJson as Prisma.InputJsonValue;
+    // DGX vater.py stores scenes as result.scenes (not result.scenesJson).
+    // Normalise either field into scenesJson so the editor can load them.
+    // imageUrl is rewritten to the Vercel proxy URL so browsers can load it.
+    {
+      type DgxScene = {
+        idx?: number;
+        imagePath?: string;
+        imageUrl?: string;
+        startS?: number;
+        endS?: number;
+        beatText?: string;
+        overlays?: unknown[];
+        prompt?: string;
+        // Phase 3 Smart Overlay flags + data — pass through unchanged.
+        // Remotion's SceneRouter parses + falls back gracefully on bad data.
+        isChart?: boolean;
+        chartData?: unknown;
+        isMap?: boolean;
+        mapData?: unknown;
+        isHeader?: boolean;
+        headerData?: unknown;
+      };
+      const anyResult = result as unknown as {
+        scenesJson?: unknown;
+        scenes?: DgxScene[];
+      };
+      if (anyResult.scenesJson !== undefined) {
+        data.scenesJson = anyResult.scenesJson as Prisma.InputJsonValue;
+      } else if (Array.isArray(anyResult.scenes) && anyResult.scenes.length > 0) {
+        data.scenesJson = anyResult.scenes.map((s, i) => ({
+          idx: s.idx ?? i,
+          imageUrl: `/api/vater/youtube/${id}/scene/${s.idx ?? i}`,
+          startS: s.startS ?? 0,
+          endS: s.endS ?? 0,
+          beatText: s.beatText ?? "",
+          imagePrompt: s.prompt ?? "",
+          version: 0,
+          overlays: Array.isArray(s.overlays) ? s.overlays : [],
+          // Phase 3 — overlay flags pass through unchanged
+          isChart: s.isChart === true,
+          chartData: s.chartData ?? undefined,
+          isMap: s.isMap === true,
+          mapData: s.mapData ?? undefined,
+          isHeader: s.isHeader === true,
+          headerData: s.headerData ?? undefined,
+        })) as Prisma.InputJsonValue;
+      }
     }
 
     // -- final video: accept finalVideoUrl OR finalVideoPath --------------
