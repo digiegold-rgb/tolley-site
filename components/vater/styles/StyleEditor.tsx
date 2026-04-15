@@ -83,7 +83,7 @@ const VOICE_BACKENDS = [
 const QUALITY_BACKENDS = [
   { id: "sdxl-local", label: "SDXL Lightning (local, free, ~60s/scene)", needsKey: false, costPerScene: 0 },
   { id: "sdxl-ipadapter", label: "SDXL + IP-Adapter (local, character-locked)", needsKey: false, costPerScene: 0 },
-  { id: "flux-schnell", label: "FLUX.1-schnell (local, ~90s/scene, better adherence)", needsKey: false, costPerScene: 0 },
+  { id: "flux-schnell", label: "FLUX.1-schnell — NOT YET IMPLEMENTED (falls back to SDXL)", needsKey: false, costPerScene: 0 },
   { id: "gemini-1k", label: "Gemini Nano Banana 2 1K (cloud, ~$0.04/scene)", needsKey: true, envVar: "GEMINI_API_KEY", costPerScene: 0.04 },
   { id: "gemini-2k", label: "Gemini Nano Banana Pro (cloud, ~$0.06/scene)", needsKey: true, envVar: "GEMINI_API_KEY", costPerScene: 0.06 },
   { id: "ideogram-turbo", label: "Ideogram Turbo via fal.ai (~$0.02/scene)", needsKey: true, envVar: "FAL_KEY", costPerScene: 0.02 },
