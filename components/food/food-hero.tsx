@@ -1,60 +1,108 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface FoodHeroProps {
   userName: string;
-  weekSummary: { planned: number; cooked: number };
-  expiringCount: number;
-  groceryCount: number;
 }
 
-export function FoodHero({ userName, weekSummary, expiringCount, groceryCount }: FoodHeroProps) {
-  const stats = [
-    { label: "Planned", value: weekSummary.planned, emoji: "📅" },
-    { label: "Cooked", value: weekSummary.cooked, emoji: "👩‍🍳" },
-    { label: "Expiring Soon", value: expiringCount, emoji: "⏰" },
-    { label: "Grocery Items", value: groceryCount, emoji: "🛒" },
-  ];
+const FILTER_CHIPS: { label: string; href: string }[] = [
+  { label: "Quick (≤30 min)", href: "/food/recipes?filter=quick" },
+  { label: "Family-style", href: "/food/recipes?filter=family" },
+  { label: "Use pantry", href: "/food/tonight" },
+];
 
-  const quickActions = [
-    { label: "Plan Meals", href: "/food/plan", emoji: "📅", style: "food-btn food-btn-primary" },
-    { label: "Browse Recipes", href: "/food/recipes", emoji: "📖", style: "food-btn food-btn-secondary" },
-    { label: "Scan Receipt", href: "/food/scan", emoji: "📷", style: "food-btn food-btn-secondary" },
-    { label: "Check Pantry", href: "/food/pantry", emoji: "🗄️", style: "food-btn food-btn-mint" },
-  ];
+function deriveGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+export function FoodHero({ userName }: FoodHeroProps) {
+  // Greeting derived on client to match the user's local time-of-day.
+  // Use a stable initial value during SSR to avoid hydration mismatch.
+  const [greeting, setGreeting] = useState("Hey");
+
+  useEffect(() => {
+    setGreeting(deriveGreeting());
+  }, []);
 
   return (
-    <section className="food-enter" style={{ padding: "2rem 1.5rem" }}>
-      <h1 style={{ fontSize: "2rem", fontWeight: 700, color: "var(--food-text)", marginBottom: "0.5rem" }}>
-        Hey {userName}! 💕
-      </h1>
-      <p style={{ color: "var(--food-text-secondary)", marginBottom: "1.5rem" }}>
-        Here's what's happening in your kitchen this week
+    <section
+      className="relative overflow-hidden food-enter"
+      style={{
+        background: "linear-gradient(135deg, #f472b6, #c084fc)",
+        padding: "28px 20px 36px",
+      }}
+    >
+      <div
+        aria-hidden="true"
+        className="absolute"
+        style={{
+          top: -30,
+          right: -20,
+          width: 140,
+          height: 140,
+          borderRadius: "50%",
+          background: "rgba(255,255,255,0.12)",
+        }}
+      />
+      <div
+        aria-hidden="true"
+        className="absolute"
+        style={{
+          bottom: -40,
+          left: 30,
+          width: 90,
+          height: 90,
+          borderRadius: "50%",
+          background: "rgba(255,255,255,0.08)",
+        }}
+      />
+
+      <p
+        className="text-white/85 mb-1 relative"
+        style={{
+          fontSize: 13,
+          fontFamily: "var(--font-sora), sans-serif",
+        }}
+      >
+        {greeting}, {userName} 👋
       </p>
+      <h1
+        className="text-white relative"
+        style={{
+          fontFamily: "var(--font-fredoka), system-ui, sans-serif",
+          fontSize: 26,
+          fontWeight: 700,
+          lineHeight: 1.15,
+          margin: 0,
+        }}
+      >
+        What&rsquo;s for<br />dinner tonight?
+      </h1>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="food-card"
-            style={{ padding: "1rem", textAlign: "center" }}
+      <div
+        className="relative flex flex-wrap"
+        style={{ marginTop: 14, gap: 8 }}
+      >
+        {FILTER_CHIPS.map((chip) => (
+          <Link
+            key={chip.label}
+            href={chip.href}
+            className="text-white no-underline"
+            style={{
+              background: "rgba(255,255,255,0.22)",
+              border: "1px solid rgba(255,255,255,0.35)",
+              padding: "6px 13px",
+              borderRadius: 9999,
+              fontSize: 12,
+              fontFamily: "var(--font-sora), sans-serif",
+            }}
           >
-            <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>{stat.emoji}</div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--food-pink)" }}>
-              {stat.value}
-            </div>
-            <div style={{ fontSize: "0.8125rem", color: "var(--food-text-secondary)" }}>
-              {stat.label}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
-        {quickActions.map((action) => (
-          <Link key={action.href} href={action.href} className={action.style}>
-            {action.emoji} {action.label}
+            {chip.label}
           </Link>
         ))}
       </div>

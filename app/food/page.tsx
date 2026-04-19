@@ -3,43 +3,47 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { FoodHero } from "@/components/food/food-hero";
-import { FoodRecipeCard } from "@/components/food/food-recipe-card";
+import { FoodLanding } from "@/components/food/food-landing";
+import { isFoodAccessGranted } from "@/lib/food-subscription";
+
+const RECIPE_EMOJIS = ["🍝", "🌮", "🍲", "🥗", "🍕", "🍜", "🥘", "🍗", "🥧", "🍳"];
+function recipeEmoji(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return RECIPE_EMOJIS[h % RECIPE_EMOJIS.length];
+}
 
 export default async function FoodDashboardPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login?callbackUrl=/food");
+
+  if (!session?.user?.id) {
+    return <FoodLanding />;
+  }
 
   const household = await prisma.foodHousehold.findUnique({
     where: { userId: session.user.id },
     include: { members: true },
   });
 
-  if (!household) redirect("/food/settings");
+  if (!household) redirect("/food/onboarding");
+
+  if (!isFoodAccessGranted(household.subscriptionStatus)) {
+    redirect("/food/billing");
+  }
 
   const now = new Date();
-  const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-
-  const now2 = new Date();
-  const dayOfWeek = now2.getDay();
+  const dayOfWeek = now.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const weekStart = new Date(now2);
-  weekStart.setDate(now2.getDate() + mondayOffset);
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() + mondayOffset);
   weekStart.setHours(0, 0, 0, 0);
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 7);
 
-  const [mealPlan, expiringItems, groceryItems, recentRecipes] = await Promise.all([
+  const [mealPlan, groceryItems, recentRecipes, pantryStats] = await Promise.all([
     prisma.foodMealPlan.findFirst({
       where: { householdId: household.id, weekStart: { gte: weekStart, lt: weekEnd } },
       include: { slots: { include: { recipe: true } } },
-    }),
-    prisma.foodPantryItem.findMany({
-      where: {
-        householdId: household.id,
-        expiresAt: { lte: threeDaysFromNow, gte: now },
-        status: "in_stock",
-      },
-      orderBy: { expiresAt: "asc" },
     }),
     prisma.foodGroceryItem.count({
       where: {
@@ -50,228 +54,308 @@ export default async function FoodDashboardPage() {
     prisma.foodRecipe.findMany({
       where: { householdId: household.id, timesCooked: { gt: 0 } },
       orderBy: { updatedAt: "desc" },
-      take: 4,
+      take: 6,
+    }),
+    prisma.foodPantryItem.count({
+      where: { householdId: household.id, status: "in_stock" },
     }),
   ]);
 
-  const expiringCount = expiringItems.length;
   const userName = session.user.name?.split(" ")[0] || "Chef";
+  const plannedCount = mealPlan?.slots.length ?? 0;
+
+  // Find tonight's planned dinner. day field: 0=Mon..6=Sun; getDay() returns 0=Sun..6=Sat.
+  const todayDay = (now.getDay() + 6) % 7;
+  const tonightSlot =
+    mealPlan?.slots.find(
+      (s) => s.day === todayDay && s.mealType === "dinner" && s.recipe,
+    ) || null;
 
   const quickActions = [
-    { title: "Plan This Week's Meals", description: "Build your weekly menu and stay organized", href: "/food/plan", emoji: "📅", color: "var(--food-pink)" },
-    { title: "Browse Recipes", description: "Find or generate your next family favorite", href: "/food/recipes", emoji: "📖", color: "var(--food-lavender)" },
-    { title: "Scan Groceries", description: "Snap a photo to auto-track your haul", href: "/food/scan", emoji: "📷", color: "var(--food-mint)" },
-    { title: "Check Pantry", description: "See what you have and what's running low", href: "/food/pantry", emoji: "🗄️", color: "var(--food-peach)" },
-    { title: "View Spending", description: "Track your grocery budget and find deals", href: "/food/analytics", emoji: "📊", color: "var(--food-rose-gold)" },
+    {
+      href: "/food/plan",
+      emoji: "📅",
+      label: "Meal Plan",
+      sub:
+        plannedCount > 0 ? `${plannedCount} planned` : "Plan your week",
+    },
+    {
+      href: "/food/groceries",
+      emoji: "🛒",
+      label: "Groceries",
+      sub:
+        groceryItems > 0
+          ? `${groceryItems} item${groceryItems === 1 ? "" : "s"} left`
+          : "All set ✨",
+    },
+    {
+      href: "/food/recipes",
+      emoji: "📖",
+      label: "Recipes",
+      sub: `${recentRecipes.length} saved`,
+    },
+    {
+      href: "/food/pantry",
+      emoji: "🥫",
+      label: "Pantry",
+      sub: `${pantryStats} in stock`,
+    },
   ];
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1.5rem" }}>
-      <FoodHero
-        userName={userName}
-        weekSummary={{ planned: mealPlan?.slots.length ?? 0, cooked: mealPlan?.slots.filter((s) => s.recipe && s.recipe.timesCooked > 0).length ?? 0 }}
-        expiringCount={expiringCount}
-        groceryCount={groceryItems}
-      />
+    <div style={{ background: "var(--food-bg-warm)", minHeight: "100vh" }}>
+      <FoodHero userName={userName} />
 
-      {expiringCount > 0 && (
-        <section
-          className="food-enter"
-          style={{
-            marginTop: "1.5rem",
-            "--enter-delay": "0.08s",
-          } as React.CSSProperties}
-        >
-          <div
-            className="food-card"
+      {tonightSlot && tonightSlot.recipe && (
+        <section style={{ margin: "16px 16px 0" }}>
+          <Link
+            href={`/food/recipes/${tonightSlot.recipe.slug}`}
+            className="food-card no-underline flex items-center"
             style={{
-              padding: "1.25rem 1.5rem",
-              background: "linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(253, 186, 116, 0.1))",
-              border: "1.5px solid rgba(239, 68, 68, 0.25)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "1rem",
-              flexWrap: "wrap",
+              background: "white",
+              padding: 14,
+              borderRadius: 18,
+              border: "1px solid var(--food-border)",
+              boxShadow: "0 4px 16px rgba(244,114,182,0.10)",
+              gap: 14,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1 }}>
-              <span style={{ fontSize: "1.75rem" }}>⚠️</span>
-              <div>
-                <p className="food-expiry-urgent" style={{ margin: 0, fontSize: "1.0625rem", fontWeight: 600 }}>
-                  {expiringCount} item{expiringCount !== 1 ? "s" : ""} expiring soon!
-                </p>
-                <p style={{ margin: "0.125rem 0 0", fontSize: "0.8125rem", color: "var(--food-text-secondary)" }}>
-                  {expiringItems.slice(0, 3).map((item) => item.name).join(", ")}
-                  {expiringCount > 3 ? ` and ${expiringCount - 3} more` : ""}
-                </p>
+            <div style={{ fontSize: 36, lineHeight: 1 }} aria-hidden="true">
+              {recipeEmoji(tonightSlot.recipe.title)}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontFamily: "var(--font-sora), sans-serif",
+                  fontSize: 11,
+                  color: "var(--food-text-secondary)",
+                  marginBottom: 3,
+                }}
+              >
+                Tonight&rsquo;s plan
+              </div>
+              <div
+                style={{
+                  fontFamily: "var(--font-fredoka), system-ui, sans-serif",
+                  fontWeight: 700,
+                  fontSize: 16,
+                  color: "var(--food-text)",
+                }}
+              >
+                {tonightSlot.recipe.title}
+              </div>
+              <div
+                style={{
+                  fontFamily: "var(--font-sora), sans-serif",
+                  fontSize: 12,
+                  color: "var(--food-text-secondary)",
+                  marginTop: 2,
+                }}
+              >
+                {(() => {
+                  const total =
+                    (tonightSlot.recipe.prepTime || 0) +
+                    (tonightSlot.recipe.cookTime || 0);
+                  return total > 0 ? `${total} min` : "—";
+                })()}
+                {tonightSlot.recipe.servings
+                  ? ` · ${tonightSlot.recipe.servings} servings`
+                  : ""}
               </div>
             </div>
-            <Link
-              href="/food/tonight"
+            <span
               className="food-btn food-btn-primary"
-              style={{ flexShrink: 0 }}
+              style={{ padding: "8px 16px", fontSize: 14, flexShrink: 0 }}
             >
-              🍽️ Get recipe ideas →
-            </Link>
-          </div>
+              Cook 🍳
+            </span>
+          </Link>
         </section>
       )}
 
-      <section style={{ marginTop: "2rem" }}>
-        <h2
-          className="food-enter"
-          style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--food-text)", marginBottom: "1rem", "--enter-delay": "0.1s" } as React.CSSProperties}
-        >
-          Quick Actions
-        </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
-          {quickActions.map((action, i) => (
-            <Link key={action.href} href={action.href} style={{ textDecoration: "none" }}>
-              <div
-                className="food-card food-enter"
-                style={{
-                  padding: "1.25rem",
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "1rem",
-                  cursor: "pointer",
-                  "--enter-delay": `${0.15 + i * 0.08}s`,
-                } as React.CSSProperties}
-              >
-                <div
-                  style={{
-                    fontSize: "2rem",
-                    width: "3rem",
-                    height: "3rem",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderRadius: "0.75rem",
-                    background: `${action.color}15`,
-                    flexShrink: 0,
-                  }}
-                >
-                  {action.emoji}
-                </div>
-                <div>
-                  <h3 style={{ fontSize: "1rem", fontWeight: 600, color: "var(--food-text)", marginBottom: "0.25rem" }}>
-                    {action.title}
-                  </h3>
-                  <p style={{ fontSize: "0.8125rem", color: "var(--food-text-secondary)", margin: 0 }}>
-                    {action.description}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+      <section
+        className="grid grid-cols-2 gap-[10px]"
+        style={{ margin: "16px 16px 0" }}
+      >
+        {quickActions.map((action) => (
+          <Link
+            key={action.href}
+            href={action.href}
+            className="food-card no-underline"
+            style={{
+              background: "white",
+              border: "1px solid var(--food-border)",
+              borderRadius: 16,
+              padding: 14,
+              textAlign: "left",
+              display: "block",
+            }}
+          >
+            <div style={{ fontSize: 24, marginBottom: 6 }} aria-hidden="true">
+              {action.emoji}
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--font-fredoka), system-ui, sans-serif",
+                fontWeight: 700,
+                fontSize: 14,
+                color: "var(--food-text)",
+              }}
+            >
+              {action.label}
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--font-sora), sans-serif",
+                fontSize: 11,
+                color: "var(--food-text-secondary)",
+                marginTop: 2,
+              }}
+            >
+              {action.sub}
+            </div>
+          </Link>
+        ))}
       </section>
 
-      {expiringCount > 0 && (
-        <section
-          className="food-enter"
-          style={{ marginTop: "2rem", "--enter-delay": "0.5s" } as React.CSSProperties}
-        >
-          <h2 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--food-text)", marginBottom: "1rem" }}>
-            Expiring Soon
-          </h2>
-          <div className="food-card" style={{ padding: "1.25rem" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              {expiringItems.map((item) => {
-                const daysLeft = item.expiresAt
-                  ? Math.ceil((item.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-                  : null;
-                return (
-                  <div
-                    key={item.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "0.75rem",
-                      borderRadius: "0.75rem",
-                      background: "rgba(239, 68, 68, 0.05)",
-                      border: "1px solid rgba(239, 68, 68, 0.15)",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                      <span style={{ fontSize: "1.25rem" }}>
-                        {item.location === "fridge" ? "🧊" : item.location === "freezer" ? "❄️" : "🥫"}
-                      </span>
-                      <div>
-                        <span style={{ fontWeight: 500, color: "var(--food-text)" }}>{item.name}</span>
-                        <span style={{ fontSize: "0.8125rem", color: "var(--food-text-secondary)", marginLeft: "0.5rem" }}>
-                          {item.quantity} {item.unit || ""}
-                        </span>
-                      </div>
-                    </div>
-                    <span className="food-expiry-urgent" style={{ fontSize: "0.8125rem" }}>
-                      {daysLeft === 0 ? "Expires today!" : daysLeft === 1 ? "Expires tomorrow" : `${daysLeft} days left`}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            <Link
-              href="/food/pantry"
-              className="food-btn food-btn-secondary"
-              style={{ marginTop: "1rem", display: "inline-flex" }}
-            >
-              View All Pantry Items
-            </Link>
-          </div>
-        </section>
-      )}
-
       {recentRecipes.length > 0 && (
-        <section
-          className="food-enter"
-          style={{ marginTop: "2rem", "--enter-delay": "0.6s" } as React.CSSProperties}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--food-text)" }}>
+        <section style={{ margin: "20px 16px 0" }}>
+          <div
+            className="flex items-center justify-between"
+            style={{ marginBottom: 12 }}
+          >
+            <h2
+              style={{
+                fontFamily: "var(--font-fredoka), system-ui, sans-serif",
+                fontWeight: 700,
+                fontSize: 16,
+                color: "var(--food-text)",
+                margin: 0,
+              }}
+            >
               Recent Recipes
             </h2>
-            <Link href="/food/recipes" className="food-btn food-btn-secondary" style={{ fontSize: "0.8125rem" }}>
-              View All
+            <Link
+              href="/food/recipes"
+              className="no-underline"
+              style={{
+                fontSize: 13,
+                color: "var(--food-pink)",
+                fontFamily: "var(--font-sora), sans-serif",
+              }}
+            >
+              See all →
             </Link>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "1rem" }}>
+          <div
+            className="flex"
+            style={{
+              gap: 10,
+              overflowX: "auto",
+              paddingBottom: 4,
+              scrollbarWidth: "none",
+            }}
+          >
             {recentRecipes.map((recipe) => (
-              <FoodRecipeCard key={recipe.id} recipe={recipe} />
+              <Link
+                key={recipe.id}
+                href={`/food/recipes/${recipe.slug}`}
+                className="food-card no-underline"
+                style={{
+                  flexShrink: 0,
+                  width: 110,
+                  background: "white",
+                  border: "1px solid var(--food-border)",
+                  borderRadius: 14,
+                  padding: "10px 10px 12px",
+                  textAlign: "center",
+                }}
+              >
+                <div
+                  style={{ fontSize: 28, marginBottom: 6 }}
+                  aria-hidden="true"
+                >
+                  {recipeEmoji(recipe.title)}
+                </div>
+                <div
+                  style={{
+                    fontFamily: "var(--font-fredoka), system-ui, sans-serif",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--food-text)",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {recipe.title}
+                </div>
+                <div
+                  style={{
+                    fontFamily: "var(--font-sora), sans-serif",
+                    fontSize: 10,
+                    color: "var(--food-text-secondary)",
+                    marginTop: 4,
+                  }}
+                >
+                  {(() => {
+                    const total = (recipe.prepTime || 0) + (recipe.cookTime || 0);
+                    return total > 0 ? `${total} min` : "—";
+                  })()}
+                </div>
+              </Link>
             ))}
           </div>
         </section>
       )}
 
-      {recentRecipes.length === 0 && expiringCount === 0 && groceryItems === 0 && (
+      {recentRecipes.length === 0 && plannedCount === 0 && groceryItems === 0 && (
         <section
-          className="food-card food-enter"
+          className="food-card"
           style={{
-            marginTop: "2rem",
-            padding: "3rem 2rem",
+            margin: "20px 16px 0",
+            padding: "32px 20px",
             textAlign: "center",
-            "--enter-delay": "0.5s",
-          } as React.CSSProperties}
+            background: "white",
+            border: "1px solid var(--food-border)",
+            borderRadius: 18,
+          }}
         >
-          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🍳</div>
-          <h3 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--food-text)", marginBottom: "0.5rem" }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🍳</div>
+          <h3
+            style={{
+              fontFamily: "var(--font-fredoka), system-ui, sans-serif",
+              fontSize: 18,
+              fontWeight: 700,
+              color: "var(--food-text)",
+              marginBottom: 6,
+            }}
+          >
             Your kitchen is all set up!
           </h3>
-          <p style={{ color: "var(--food-text-secondary)", marginBottom: "1.5rem", maxWidth: "400px", margin: "0 auto 1.5rem" }}>
-            Start by adding some recipes or planning your first week of meals.
+          <p
+            style={{
+              color: "var(--food-text-secondary)",
+              fontSize: 13,
+              marginBottom: 16,
+              fontFamily: "var(--font-sora), sans-serif",
+            }}
+          >
+            Start by adding recipes or planning your first week of meals.
           </p>
-          <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href="/food/recipes/new" className="food-btn food-btn-primary food-glow">
-              Add Your First Recipe
+          <div className="flex flex-wrap justify-center" style={{ gap: 8 }}>
+            <Link
+              href="/food/recipes/new"
+              className="food-btn food-btn-primary food-glow"
+            >
+              Add a Recipe
             </Link>
             <Link href="/food/plan" className="food-btn food-btn-secondary">
-              Start Meal Planning
+              Plan Meals
             </Link>
           </div>
         </section>
       )}
+
+      <div style={{ height: 24 }} />
     </div>
   );
 }
