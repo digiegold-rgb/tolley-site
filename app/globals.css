@@ -10,6 +10,22 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sora);
   --font-mono: var(--font-jetbrains-mono);
+
+  /* Ruthann's Kitchen / /food design tokens — exposed as Tailwind utilities
+     (bg-food-pink, text-food-text-secondary, font-fredoka, etc.).
+     Source of truth still lives in app/food/food.css for legacy classes. */
+  --color-food-pink: #f472b6;
+  --color-food-pink-hover: #ec4899;
+  --color-food-lavender: #c084fc;
+  --color-food-lavender-light: #e9d5ff;
+  --color-food-mint: #6ee7b7;
+  --color-food-peach: #fdba74;
+  --color-food-rose-gold: #e8b4b8;
+  --color-food-bg-warm: #fff8f3;
+  --color-food-text: #4a2040;
+  --color-food-text-secondary: #9c6b8a;
+  --color-food-border: rgba(244, 114, 182, 0.2);
+  --font-fredoka: var(--font-fredoka);
 }
 
 body {
@@ -50,7 +66,7 @@ body {
 }
 
 /* Add bottom padding on pages that show the fixed footer (not standalone pages) */
-body:not(:has(.wd-page)):not(:has(.trailer-page)):not(:has(.generator-page)):not(:has(.homes-page)):not(:has(.hvac-page)):not(:has(.lastmile-page)):not(:has(.start-page)):not(:has(.junkinjays-page)):not(:has(.shop-page)):not(:has(.moving-page)):not(:has(.vater-page)):not(:has(.pools-page)):not(:has(.scan-page)):not(:has(.manus-page)):not(:has(.water-page)) {
+body:not(:has(.wd-page)):not(:has(.trailer-page)):not(:has(.generator-page)):not(:has(.homes-page)):not(:has(.hvac-page)):not(:has(.lastmile-page)):not(:has(.start-page)):not(:has(.junkinjays-page)):not(:has(.shop-page)):not(:has(.moving-page)):not(:has(.vater-page)):not(:has(.pools-page)):not(:has(.scan-page)):not(:has(.manus-page)):not(:has(.water-page)):not(:has(.rental-page)):not(:has(.tables-page)):not(:has(.picnic-page)):not(:has(.kerplunk-page)):not(:has(.food-page)) {
   padding-bottom: 4.5rem;
 }
 
@@ -116,10 +132,9 @@ body:has(.lastmile-page) .site-legal-footer {
 
 /* Start / link hub page overrides */
 body:has(.start-page) {
-  background:
-    radial-gradient(60% 40% at 50% 0%, rgba(88, 26, 158, 0.25), transparent 70%),
-    linear-gradient(180deg, #06050a 0%, #0a0812 100%);
-  color: #f8f3ff;
+  background: #000000;
+  color: #ffffff;
+  overflow-x: hidden;
 }
 
 body:has(.start-page) .site-legal-footer {
@@ -202,6 +217,46 @@ body:has(.water-page) {
 }
 
 body:has(.water-page) .site-legal-footer {
+  display: none;
+}
+
+/* Rental hub page overrides */
+body:has(.rental-page) {
+  background: #0e0e14;
+  color: #f0f5f5;
+}
+
+body:has(.rental-page) .site-legal-footer {
+  display: none;
+}
+
+/* Tables & Chairs page overrides */
+body:has(.tables-page) {
+  background: #0a1a12;
+  color: #f0f5ee;
+}
+
+body:has(.tables-page) .site-legal-footer {
+  display: none;
+}
+
+/* Picnic Table page overrides */
+body:has(.picnic-page) {
+  background: #0b1a0f;
+  color: #f0f2ee;
+}
+
+body:has(.picnic-page) .site-legal-footer {
+  display: none;
+}
+
+/* Kerplunk page overrides */
+body:has(.kerplunk-page) {
+  background: #12081e;
+  color: #f5f0ff;
+}
+
+body:has(.kerplunk-page) .site-legal-footer {
   display: none;
 }
 
@@ -651,6 +706,110 @@ body:has(.water-page) .site-legal-footer {
 
   .pulse-ring::before,
   .pulse-ring::after {
+    animation: none;
+  }
+}
+
+/* ---------- Animated homepage hero background ----------
+   AI-generated still (SDXL, DGX Spark, aerial KC neighborhood at blue hour)
+   animated with a slow cinematic ken-burns drift. Replaces the inert
+   hp-dot-grid background on the homepage hero. Safe to read text on top
+   because of .hp-hero-bg-overlay. Pairs with components/homepage/hp-hero.tsx.
+*/
+/* hp-hero-bg-image kept as fallback poster styling if video fails */
+.hp-hero-bg-image {
+  position: absolute;
+  inset: 0;
+  background-image: url("/heroes/homepage-still.png");
+  background-size: cover;
+  background-position: center 40%;
+  background-repeat: no-repeat;
+}
+
+.hp-hero-bg-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 70% 55% at center 42%,
+      rgba(6, 5, 10, 0.12) 0%,
+      rgba(6, 5, 10, 0.5) 55%,
+      rgba(6, 5, 10, 0.82) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(6, 5, 10, 0.45) 0%,
+      rgba(6, 5, 10, 0.15) 22%,
+      rgba(6, 5, 10, 0.1) 55%,
+      rgba(6, 5, 10, 0.85) 100%
+    );
+}
+
+/* Kinetic headline reveal — staggered fade-up on first paint */
+.hp-fade-up {
+  opacity: 0;
+  transform: translateY(18px);
+  animation: hp-fade-up-anim 0.7s ease-out forwards;
+}
+.hp-fade-up-d1 { animation-delay: 0.15s; }
+.hp-fade-up-d2 { animation-delay: 0.3s; }
+.hp-fade-up-d3 { animation-delay: 0.45s; }
+.hp-fade-up-d4 { animation-delay: 0.6s; }
+
+@keyframes hp-fade-up-anim {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Film grain — tiling noise overlay */
+.hp-hero-grain {
+  background-image: url("/heroes/grain.png");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  mix-blend-mode: overlay;
+  opacity: 0.045;
+}
+
+/* Drifting light-leak — warm glow that slowly moves */
+.hp-hero-light-leak {
+  background-image: url("/heroes/light-leak.png");
+  background-size: 120% 120%;
+  background-position: center;
+  mix-blend-mode: screen;
+  opacity: 0.35;
+  animation: hp-hero-leak-drift 32s ease-in-out infinite;
+}
+
+@keyframes hp-hero-leak-drift {
+  0% { background-position: 30% 40%; }
+  33% { background-position: 60% 35%; }
+  66% { background-position: 40% 55%; }
+  100% { background-position: 30% 40%; }
+}
+
+/* Vignette — dark edges pulling eye to center */
+.hp-hero-vignette {
+  background: radial-gradient(
+    ellipse 65% 60% at 50% 45%,
+    transparent 0%,
+    rgba(6, 5, 10, 0.3) 70%,
+    rgba(6, 5, 10, 0.65) 100%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hp-hero-bg-image {
+    animation: none;
+  }
+  .hp-hero-light-leak {
+    animation: none;
+  }
+  .hp-fade-up {
+    opacity: 1;
+    transform: none;
     animation: none;
   }
 }
