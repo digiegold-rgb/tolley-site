@@ -3,6 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
+import { MealAlternativesModal } from "@/components/food/meal-alternatives-modal";
+import { CuisinePicker } from "@/components/food/cuisine-picker";
+import { MIN_CUISINES, cuisineLabel } from "@/lib/food/cuisines";
+
 interface MealSlot {
   id: string;
   day: number;
@@ -98,6 +102,22 @@ export default function MealPlanPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [historyPlans, setHistoryPlans] = useState<MealPlan[]>([]);
 
+  // Per-slot regenerate tracking
+  const [regenCount, setRegenCount] = useState<Record<string, number>>({});
+  const [excludedBySlot, setExcludedBySlot] = useState<Record<string, string[]>>({});
+  const [altModalSlotId, setAltModalSlotId] = useState<string | null>(null);
+  const [altModalLabel, setAltModalLabel] = useState<string>("");
+  const [regeneratingSlotId, setRegeneratingSlotId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Household cuisine preferences
+  const [cuisinePrefs, setCuisinePrefs] = useState<string[]>([]);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [showPrefsModal, setShowPrefsModal] = useState(false);
+  const [draftPrefs, setDraftPrefs] = useState<string[]>([]);
+  const [savingPrefs, setSavingPrefs] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
   const weekStart = getWeekStart(weekOffset);
 
   const fetchPlan = useCallback(async () => {
@@ -112,6 +132,34 @@ export default function MealPlanPage() {
   }, [weekStart]);
 
   useEffect(() => { fetchPlan(); }, [fetchPlan]);
+
+  // Load cuisine preferences + banner-dismiss state
+  useEffect(() => {
+    let active = true;
+    async function loadPrefs() {
+      try {
+        const res = await fetch("/api/food/household");
+        if (!active) return;
+        if (res.ok) {
+          const data = await res.json();
+          setCuisinePrefs(data.household?.cuisinePreferences || []);
+        }
+      } catch {} finally {
+        if (active) setPrefsLoaded(true);
+      }
+    }
+    loadPrefs();
+    if (typeof window !== "undefined") {
+      setBannerDismissed(window.localStorage.getItem("food-cuisine-banner-dismissed") === "1");
+    }
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const searchRecipes = useCallback(async (query: string) => {
     try {
@@ -147,7 +195,23 @@ export default function MealPlanPage() {
     setLoading(true);
     try {
       const res = await fetch("/api/food/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ weekStart }) });
-      if (res.ok) fetchPlan();
+      if (!res.ok) return;
+      const data = await res.json();
+      const newPlanId = data.plan?.id;
+      if (newPlanId) {
+        // Auto-generate meals right away so the user lands on a full week
+        setGenerating(true);
+        try {
+          await fetch("/api/food/plan/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ planId: newPlanId }),
+          });
+        } catch {} finally {
+          setGenerating(false);
+        }
+      }
+      fetchPlan();
     } catch {}
   };
 
@@ -182,6 +246,105 @@ export default function MealPlanPage() {
       await fetch("/api/food/plan/slots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planId: plan.id, day: editSlot.day, mealType: editSlot.mealType, customMeal: customMeal.trim() }) });
       setEditSlot(null); fetchPlan();
     } catch {} finally { setSavingSlot(false); }
+  };
+
+  const handleRegenerate = async (slot: MealSlot) => {
+    if (regeneratingSlotId) return;
+    const slotLabel = `${DAYS[slot.day]} ${slot.mealType}`;
+    const currentCount = regenCount[slot.id] || 0;
+
+    // Second+ click → show 3-alternatives modal
+    if (currentCount >= 1) {
+      setAltModalSlotId(slot.id);
+      setAltModalLabel(slotLabel);
+      return;
+    }
+
+    // First click → single swap
+    setRegeneratingSlotId(slot.id);
+    try {
+      const currentExcluded = excludedBySlot[slot.id] || [];
+      const res = await fetch(`/api/food/plan/slots/${slot.id}/regenerate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exclude: currentExcluded }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setToast(data.error || "Could not swap meal");
+        return;
+      }
+      const newTitle = data.slot?.recipe?.title || "New option";
+      setRegenCount((c) => ({ ...c, [slot.id]: (c[slot.id] || 0) + 1 }));
+      if (slot.recipeId) {
+        setExcludedBySlot((m) => ({
+          ...m,
+          [slot.id]: [...(m[slot.id] || []), slot.recipeId!],
+        }));
+      }
+      setToast(`Swapped ${slotLabel} → ${newTitle}`);
+      fetchPlan();
+    } catch {
+      setToast("Network error");
+    } finally {
+      setRegeneratingSlotId(null);
+    }
+  };
+
+  const handleChosenAlternative = async (slotId: string, recipeId: string) => {
+    const slot = plan?.slots.find((s) => s.id === slotId);
+    const prevId = slot?.recipeId || null;
+    try {
+      await fetch("/api/food/plan/slots", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slotId, recipeId }),
+      });
+      setRegenCount((c) => ({ ...c, [slotId]: (c[slotId] || 0) + 1 }));
+      if (prevId) {
+        setExcludedBySlot((m) => ({
+          ...m,
+          [slotId]: [...(m[slotId] || []), prevId],
+        }));
+      }
+      setAltModalSlotId(null);
+      setToast("Meal swapped");
+      fetchPlan();
+    } catch {
+      setToast("Network error");
+    }
+  };
+
+  const openPrefsModal = () => {
+    setDraftPrefs(cuisinePrefs);
+    setShowPrefsModal(true);
+  };
+
+  const savePrefs = async () => {
+    setSavingPrefs(true);
+    try {
+      const res = await fetch("/api/food/household", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cuisinePreferences: draftPrefs }),
+      });
+      if (res.ok) {
+        setCuisinePrefs(draftPrefs);
+        setShowPrefsModal(false);
+        setToast("Cuisine preferences saved");
+      }
+    } catch {
+      setToast("Could not save");
+    } finally {
+      setSavingPrefs(false);
+    }
+  };
+
+  const dismissBanner = () => {
+    setBannerDismissed(true);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("food-cuisine-banner-dismissed", "1");
+    }
   };
 
   const handleRemoveSlot = async (slotId: string) => {
@@ -286,22 +449,221 @@ export default function MealPlanPage() {
 
   const getSlot = (day: number, mealType: string) => plan?.slots.find((s) => s.day === day && s.mealType === mealType);
 
+  // Stats for the design header row
+  const plannedSlots = plan?.slots.filter((s) => s.recipeId || s.customMeal).length ?? 0;
+  const totalSlots = 21; // 7 days × 3 main meals (breakfast, lunch, dinner)
+  const recipeCount = plan?.slots.filter((s) => s.recipe).length ?? 0;
+  const avgPrepCookMin = plan && recipeCount > 0
+    ? Math.round(
+        plan.slots.reduce((sum, s) => sum + ((s.recipe?.prepTime || 0) + (s.recipe?.cookTime || 0)), 0) / recipeCount,
+      )
+    : 0;
+
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
+    <div style={{ background: "var(--food-bg-warm)", minHeight: "100vh" }}>
       {/* Header */}
-      <div className="food-enter" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
-        <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--food-text)" }}>Meal Plan</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <button className="food-btn food-btn-secondary" onClick={() => setWeekOffset((o) => o - 1)} style={{ padding: "0.5rem 0.75rem" }}>&larr;</button>
-          <div style={{ textAlign: "center", minWidth: 160 }}>
-            <div style={{ fontWeight: 600, color: "var(--food-text)", fontSize: "0.9375rem" }}>
-              {weekOffset === 0 ? "This Week" : weekOffset === 1 ? "Next Week" : weekOffset === -1 ? "Last Week" : formatWeekRange(weekStart)}
-            </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--food-text-secondary)" }}>{formatWeekRange(weekStart)}</div>
-          </div>
-          <button className="food-btn food-btn-secondary" onClick={() => setWeekOffset((o) => o + 1)} style={{ padding: "0.5rem 0.75rem" }}>&rarr;</button>
-        </div>
+      <div
+        className="flex items-center justify-between"
+        style={{ padding: "20px 16px 12px", gap: 8 }}
+      >
+        <h1
+          style={{
+            fontFamily: "var(--font-fredoka), system-ui, sans-serif",
+            fontSize: 22,
+            fontWeight: 700,
+            color: "var(--food-text)",
+            margin: 0,
+          }}
+        >
+          Meal Plan 📅
+        </h1>
+        {plan && (
+          <button
+            type="button"
+            onClick={handleAutoGenerate}
+            disabled={generating}
+            className="cursor-pointer"
+            style={{
+              background:
+                "linear-gradient(135deg, var(--food-pink), var(--food-lavender))",
+              color: "white",
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: "var(--font-fredoka), system-ui, sans-serif",
+              padding: "7px 14px",
+              borderRadius: 9999,
+              border: "none",
+              boxShadow: "0 4px 14px rgba(244,114,182,0.35)",
+              opacity: generating ? 0.7 : 1,
+            }}
+          >
+            {generating ? "Planning…" : "✨ AI Plan"}
+          </button>
+        )}
       </div>
+
+      {/* Week navigator */}
+      <div
+        className="flex items-center justify-between"
+        style={{ padding: "0 16px 12px", gap: 8 }}
+      >
+        <button
+          type="button"
+          onClick={() => setWeekOffset((o) => o - 1)}
+          aria-label="Previous week"
+          className="cursor-pointer"
+          style={{
+            padding: "6px 12px",
+            background: "white",
+            border: "1px solid var(--food-border)",
+            borderRadius: 12,
+            color: "var(--food-text)",
+            fontSize: 14,
+          }}
+        >
+          ←
+        </button>
+        <div className="text-center" style={{ flex: 1 }}>
+          <div
+            style={{
+              fontFamily: "var(--font-fredoka), system-ui, sans-serif",
+              fontWeight: 700,
+              fontSize: 14,
+              color: "var(--food-text)",
+            }}
+          >
+            {weekOffset === 0
+              ? "This Week"
+              : weekOffset === 1
+                ? "Next Week"
+                : weekOffset === -1
+                  ? "Last Week"
+                  : formatWeekRange(weekStart)}
+          </div>
+          <div
+            style={{
+              fontSize: 11,
+              color: "var(--food-text-secondary)",
+              fontFamily: "var(--font-sora), sans-serif",
+            }}
+          >
+            {formatWeekRange(weekStart)}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setWeekOffset((o) => o + 1)}
+          aria-label="Next week"
+          className="cursor-pointer"
+          style={{
+            padding: "6px 12px",
+            background: "white",
+            border: "1px solid var(--food-border)",
+            borderRadius: 12,
+            color: "var(--food-text)",
+            fontSize: 14,
+          }}
+        >
+          →
+        </button>
+      </div>
+
+      {/* Stats row */}
+      {plan && (
+        <div
+          className="grid grid-cols-3"
+          style={{ padding: "0 16px 14px", gap: 8 }}
+        >
+          <div
+            className="text-center"
+            style={{
+              background: "white",
+              border: "1px solid var(--food-border)",
+              borderRadius: 14,
+              padding: "10px 6px",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "var(--font-fredoka), system-ui, sans-serif",
+                fontSize: 16,
+                fontWeight: 700,
+                color: "var(--food-pink)",
+              }}
+            >
+              {plannedSlots}/{totalSlots}
+            </div>
+            <div
+              style={{
+                fontSize: 10,
+                color: "var(--food-text-secondary)",
+                fontFamily: "var(--font-sora), sans-serif",
+              }}
+            >
+              meals planned
+            </div>
+          </div>
+          <div
+            className="text-center"
+            style={{
+              background: "white",
+              border: "1px solid var(--food-border)",
+              borderRadius: 14,
+              padding: "10px 6px",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "var(--font-fredoka), system-ui, sans-serif",
+                fontSize: 16,
+                fontWeight: 700,
+                color: "var(--food-lavender)",
+              }}
+            >
+              {recipeCount}
+            </div>
+            <div
+              style={{
+                fontSize: 10,
+                color: "var(--food-text-secondary)",
+                fontFamily: "var(--font-sora), sans-serif",
+              }}
+            >
+              recipes
+            </div>
+          </div>
+          <div
+            className="text-center"
+            style={{
+              background: "white",
+              border: "1px solid var(--food-border)",
+              borderRadius: 14,
+              padding: "10px 6px",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "var(--font-fredoka), system-ui, sans-serif",
+                fontSize: 16,
+                fontWeight: 700,
+                color: "#047857",
+              }}
+            >
+              {avgPrepCookMin || "—"}
+              {avgPrepCookMin ? " min" : ""}
+            </div>
+            <div
+              style={{
+                fontSize: 10,
+                color: "var(--food-text-secondary)",
+                fontFamily: "var(--font-sora), sans-serif",
+              }}
+            >
+              avg cook time
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div style={{ textAlign: "center", padding: "4rem 2rem" }}>
@@ -312,65 +674,307 @@ export default function MealPlanPage() {
         <div className="food-card" style={{ textAlign: "center", padding: "4rem 2rem" }}>
           <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📅</div>
           <h2 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--food-text)", marginBottom: "0.5rem" }}>No meal plan for this week</h2>
-          <p style={{ color: "var(--food-text-secondary)", marginBottom: "1.5rem" }}>Start planning your meals!</p>
-          <button className="food-btn food-btn-primary food-glow" onClick={handleCreatePlan}>Start Planning</button>
+          <p style={{ color: "var(--food-text-secondary)", marginBottom: "1.5rem" }}>
+            {generating ? "Building a week of meals for you…" : "We'll build a full week based on your cuisines — you can swap any meal after."}
+          </p>
+          <button className="food-btn food-btn-primary food-glow" onClick={handleCreatePlan} disabled={generating}>
+            {generating ? "Generating…" : "Generate My Week"}
+          </button>
         </div>
       ) : (
         <>
-          {/* Action buttons */}
-          <div className="food-enter" style={{ display: "flex", gap: "0.75rem", marginBottom: "1.5rem", flexWrap: "wrap", "--enter-delay": "0.1s" } as React.CSSProperties}>
-            <button className="food-btn food-btn-primary food-glow" onClick={handleAutoGenerate} disabled={generating} style={{ opacity: generating ? 0.7 : 1 }}>
-              {generating ? "Generating..." : "Auto-Plan Week"}
+          {/* Cuisine preference banner (only if prefs empty and not dismissed) */}
+          {prefsLoaded && cuisinePrefs.length === 0 && !bannerDismissed && (
+            <div
+              className="food-card food-enter"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.75rem",
+                padding: "0.875rem 1rem",
+                marginBottom: "1rem",
+                background: "linear-gradient(135deg, rgba(244,114,182,0.08), rgba(167,139,250,0.08))",
+                borderColor: "rgba(244,114,182,0.3)",
+                flexWrap: "wrap",
+              }}
+            >
+              <span style={{ fontSize: "1.25rem" }}>🍽️</span>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontWeight: 600, color: "var(--food-text)", fontSize: "0.9375rem" }}>
+                  Pick your favorite cuisines
+                </div>
+                <div style={{ fontSize: "0.8125rem", color: "var(--food-text-secondary)" }}>
+                  Tell us what you love and we&apos;ll build better weekly plans around it.
+                </div>
+              </div>
+              <button className="food-btn food-btn-primary food-glow" onClick={openPrefsModal} style={{ padding: "0.5rem 0.875rem" }}>
+                Pick Cuisines
+              </button>
+              <button
+                onClick={dismissBanner}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--food-text-secondary)",
+                  cursor: "pointer",
+                  fontSize: "1.125rem",
+                  padding: "0 0.25rem",
+                }}
+                aria-label="Dismiss"
+              >
+                &times;
+              </button>
+            </div>
+          )}
+
+          {/* Current cuisines summary (if set) */}
+          {prefsLoaded && cuisinePrefs.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem", fontSize: "0.8125rem" }}>
+              <span style={{ color: "var(--food-text-secondary)" }}>Planning around:</span>
+              {cuisinePrefs.map((c) => (
+                <span key={c} className="food-tag food-tag-lavender">{cuisineLabel(c)}</span>
+              ))}
+              <button
+                onClick={openPrefsModal}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--food-pink)",
+                  cursor: "pointer",
+                  fontSize: "0.8125rem",
+                  textDecoration: "underline",
+                  padding: 0,
+                }}
+              >
+                Edit
+              </button>
+            </div>
+          )}
+
+          {/* Generate Shopping List CTA */}
+          <div style={{ padding: "0 16px 12px" }}>
+            <button
+              type="button"
+              onClick={handleGenerateGroceryPreview}
+              disabled={generatingGroceries}
+              className="cursor-pointer"
+              style={{
+                width: "100%",
+                padding: "11px 14px",
+                background: "rgba(110,231,183,0.15)",
+                border: "1px solid rgba(110,231,183,0.4)",
+                color: "#047857",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                fontFamily: "var(--font-fredoka), system-ui, sans-serif",
+                opacity: generatingGroceries ? 0.6 : 1,
+              }}
+            >
+              {generatingGroceries
+                ? "Checking pantry…"
+                : "🛒 Generate Shopping List"}
             </button>
-            <button className="food-btn food-btn-mint" onClick={handleGenerateGroceryPreview} disabled={generatingGroceries}>
-              {generatingGroceries ? "Checking pantry..." : "🛒 Generate Shopping List"}
-            </button>
-            <span className="food-tag food-tag-lavender" style={{ alignSelf: "center", padding: "0.375rem 0.75rem" }}>
-              {plan.slots.filter((s) => s.recipeId || s.customMeal).length} meals planned
-            </span>
           </div>
 
           {genError && (
-            <div className="food-card" style={{ padding: "0.75rem 1rem", marginBottom: "1rem", borderColor: "var(--food-peach)", color: "#c2410c", fontSize: "0.875rem" }}>
+            <div
+              style={{
+                margin: "0 16px 12px",
+                padding: "10px 14px",
+                background: "rgba(253,186,116,0.15)",
+                border: "1px solid rgba(253,186,116,0.4)",
+                borderRadius: 12,
+                color: "#c2410c",
+                fontSize: 13,
+                fontFamily: "var(--font-sora), sans-serif",
+              }}
+            >
               {genError}
             </div>
           )}
 
-          {/* Calendar grid */}
-          <div className="food-calendar food-enter" style={{ "--enter-delay": "0.15s" } as React.CSSProperties}>
-            {DAYS.map((day, dayIndex) => (
-              <div key={day} className="food-day-col">
-                <div className="food-day-header">{day}</div>
-                {MEAL_TYPES.map((mt) => {
-                  const slot = getSlot(dayIndex, mt);
-                  return (
-                    <div
-                      key={mt}
-                      className={`food-slot ${slot ? "filled" : ""}`}
-                      onClick={() => slot?.recipe ? handleSlotClick(slot) : slot ? undefined : openSlotEditor(dayIndex, mt)}
-                      style={{ cursor: slot?.recipe ? "pointer" : slot ? "default" : "pointer" }}
+          {/* Day cards (vertical) */}
+          <div
+            className="flex flex-col"
+            style={{ padding: "0 16px", gap: 10 }}
+          >
+            {DAYS.map((day, dayIndex) => {
+              const daySlots = MEAL_TYPES.map((mt) => ({
+                mt,
+                slot: getSlot(dayIndex, mt),
+              }));
+              const hasMeals = daySlots.some((d) => d.slot);
+              return (
+                <div
+                  key={day}
+                  style={{
+                    background: "white",
+                    border: "1.5px solid",
+                    borderColor: hasMeals
+                      ? "var(--food-border)"
+                      : "rgba(244,114,182,0.12)",
+                    borderRadius: 16,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    className="flex items-center justify-between"
+                    style={{
+                      padding: "10px 14px",
+                      background: hasMeals
+                        ? "linear-gradient(90deg, rgba(244,114,182,0.12), transparent)"
+                        : "transparent",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: "var(--font-fredoka), system-ui, sans-serif",
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: "var(--food-text)",
+                      }}
                     >
-                      <div style={{ fontSize: "0.625rem", color: "var(--food-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.125rem" }}>
-                        {MEAL_EMOJI[mt]} {mt}
-                      </div>
-                      {slot ? (
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.125rem" }}>
-                          <span style={{ fontSize: "0.75rem", fontWeight: 500, color: slot.customMeal?.startsWith("*") ? "var(--food-lavender)" : "var(--food-text)", lineHeight: 1.3 }}>
-                            {slot.recipe?.title || slot.customMeal || ""}
-                          </span>
+                      {day}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: "var(--food-text-secondary)",
+                        fontFamily: "var(--font-sora), sans-serif",
+                      }}
+                    >
+                      {daySlots.filter((d) => d.slot).length}/{MEAL_TYPES.length}
+                    </span>
+                  </div>
+                  <div className="flex flex-col" style={{ paddingBottom: 6 }}>
+                    {daySlots.map(({ mt, slot }) => (
+                      <div
+                        key={mt}
+                        className="flex items-center"
+                        style={{ gap: 8, padding: "6px 14px" }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 10,
+                            textTransform: "uppercase",
+                            color: "var(--food-text-secondary)",
+                            width: 52,
+                            fontFamily: "var(--font-sora), sans-serif",
+                            fontWeight: 600,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {MEAL_EMOJI[mt]} {mt}
+                        </span>
+                        {slot ? (
+                          <div
+                            className="flex items-center"
+                            style={{
+                              flex: 1,
+                              gap: 6,
+                              padding: "6px 10px",
+                              background: "rgba(192,132,252,0.14)",
+                              border: "1px solid rgba(192,132,252,0.30)",
+                              borderRadius: 8,
+                              cursor: slot.recipe ? "pointer" : "default",
+                              minWidth: 0,
+                            }}
+                            onClick={() =>
+                              slot.recipe ? handleSlotClick(slot) : undefined
+                            }
+                          >
+                            <span
+                              style={{
+                                flex: 1,
+                                fontSize: 13,
+                                color: slot.customMeal?.startsWith("*")
+                                  ? "var(--food-lavender)"
+                                  : "var(--food-text)",
+                                fontFamily: "var(--font-sora), sans-serif",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                minWidth: 0,
+                              }}
+                            >
+                              {slot.recipe?.title || slot.customMeal || ""}
+                            </span>
+                            {slot.recipeId && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRegenerate(slot);
+                                }}
+                                disabled={regeneratingSlotId === slot.id}
+                                title={
+                                  (regenCount[slot.id] || 0) >= 1
+                                    ? "Show 3 other options"
+                                    : "Swap for a new recipe"
+                                }
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  color:
+                                    regeneratingSlotId === slot.id
+                                      ? "var(--food-pink)"
+                                      : "var(--food-text-secondary)",
+                                  cursor: "pointer",
+                                  fontSize: 13,
+                                  padding: "0 4px",
+                                  lineHeight: 1,
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {regeneratingSlotId === slot.id ? "…" : "↻"}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveSlot(slot.id);
+                              }}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                color: "var(--food-text-secondary)",
+                                cursor: "pointer",
+                                fontSize: 14,
+                                padding: 0,
+                                flexShrink: 0,
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ) : (
                           <button
-                            onClick={(e) => { e.stopPropagation(); handleRemoveSlot(slot.id); }}
-                            style={{ background: "none", border: "none", color: "var(--food-text-secondary)", cursor: "pointer", fontSize: "0.75rem", padding: 0, flexShrink: 0 }}
-                          >&times;</button>
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: "0.6875rem", color: "var(--food-border)" }}>+ Add</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+                            type="button"
+                            onClick={() => openSlotEditor(dayIndex, mt)}
+                            className="cursor-pointer"
+                            style={{
+                              flex: 1,
+                              padding: "6px 10px",
+                              background: "transparent",
+                              border: "1.5px dashed var(--food-border)",
+                              borderRadius: 8,
+                              color: "var(--food-text-secondary)",
+                              fontSize: 12,
+                              textAlign: "left",
+                              fontFamily: "var(--font-sora), sans-serif",
+                            }}
+                          >
+                            + Add
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* History toggle */}
@@ -590,6 +1194,74 @@ export default function MealPlanPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ===== MEAL ALTERNATIVES MODAL (3-option picker) ===== */}
+      {altModalSlotId && (
+        <MealAlternativesModal
+          slotId={altModalSlotId}
+          slotLabel={altModalLabel}
+          excludeIds={excludedBySlot[altModalSlotId] || []}
+          onClose={() => setAltModalSlotId(null)}
+          onChosen={(recipeId) => handleChosenAlternative(altModalSlotId, recipeId)}
+        />
+      )}
+
+      {/* ===== CUISINE PREFERENCES MODAL ===== */}
+      {showPrefsModal && (
+        <div
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 110, padding: "1rem",
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowPrefsModal(false); }}
+        >
+          <div className="food-card" style={{ maxWidth: 520, width: "100%", padding: "1.5rem", maxHeight: "85vh", overflow: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.25rem" }}>
+              <h2 style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--food-text)" }}>
+                Your favorite cuisines
+              </h2>
+              <button onClick={() => setShowPrefsModal(false)} style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "var(--food-text-secondary)" }}>&times;</button>
+            </div>
+            <CuisinePicker value={draftPrefs} onChange={setDraftPrefs} />
+            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end", marginTop: "1.25rem" }}>
+              <button className="food-btn food-btn-secondary" onClick={() => setShowPrefsModal(false)}>
+                Cancel
+              </button>
+              <button
+                className="food-btn food-btn-primary food-glow"
+                onClick={savePrefs}
+                disabled={savingPrefs || draftPrefs.length < MIN_CUISINES}
+                style={{ opacity: draftPrefs.length < MIN_CUISINES ? 0.6 : 1 }}
+              >
+                {savingPrefs ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== TOAST ===== */}
+      {toast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "1.5rem",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "var(--food-text)",
+            color: "white",
+            padding: "0.625rem 1rem",
+            borderRadius: "0.625rem",
+            fontSize: "0.875rem",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+            zIndex: 200,
+            maxWidth: "90vw",
+          }}
+        >
+          {toast}
         </div>
       )}
     </div>
