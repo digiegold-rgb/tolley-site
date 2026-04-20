@@ -271,7 +271,6 @@ model Lead {
   @@index([referralStatus])
   @@index([parcelId])
   @@index([pipelineStage, pipelineOrder])
-  @@index([score(sort: Desc), createdAt(sort: Desc)])
   @@index([score(sort: Desc), createdAt(sort: Desc)], map: "Lead_score_desc_createdAt_desc_idx")
 }
 
@@ -363,6 +362,21 @@ model LeadSubscriber {
   @@index([tier])
 }
 
+model EmailLead {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  source    String // "calculator", "audit", "newsletter", "resource", "market-analysis"
+  data      Json? // tool results, preferences, etc.
+  tags      String[]
+  optedIn   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([source])
+  @@index([createdAt])
+}
+
 model SmsConversation {
   id            String       @id @default(cuid())
   phoneNumber   String
@@ -431,6 +445,11 @@ model DossierJob {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   batchId        String?
+  // Per-step execution detail: { [stepName]: { status, error?, warnings?, durationMs?, startedAt?, finishedAt?, tier? } }
+  // Populated incrementally during pipeline execution so live-polling UI can show real-time state.
+  stepDetails    Json?
+  // Which overall phase the pipeline is in: "health_check" | "research_worker" | "local_plugins" | "aggregating" | "done"
+  currentPhase   String?
   batch          DossierBatch?  @relation(fields: [batchId], references: [id])
   listing        Listing        @relation(fields: [listingId], references: [id], onDelete: Cascade)
   result         DossierResult?
@@ -470,6 +489,13 @@ model DossierResult {
   environmentalData  Json?
   marketData         Json?
   customData         Json?
+  // Long-form investment narrative synthesized by OpenManus after all plugins
+  // finish. Written by `lib/dossier/synthesis.ts` as a post-aggregation step.
+  // Null if the synthesis call timed out, errored, or OpenManus was unreachable.
+  narrativeReport    String?
+  // Per-task metadata from the Manus run: task id, step count, source tags.
+  // Allows operators to look up the original Manus task in its RAG record.
+  narrativeMeta      Json?
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
   job                DossierJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
@@ -634,11 +660,17 @@ model SiteView {
   referrer  String?
   userAgent String?
   ip        String?
+  ipHash    String?
+  country   String?
+  region    String?
+  city      String?
   createdAt DateTime @default(now())
 
   @@index([site, createdAt])
   @@index([createdAt])
   @@index([referrer, createdAt])
+  @@index([ipHash, createdAt])
+  @@index([country, createdAt])
 }
 
 model SiteEvent {
@@ -650,12 +682,17 @@ model SiteEvent {
   referrer  String?
   userAgent String?
   ip        String?
+  ipHash    String?
+  country   String?
+  region    String?
+  city      String?
   meta      Json?
   createdAt DateTime @default(now())
 
   @@index([site, createdAt])
   @@index([event, createdAt])
   @@index([createdAt])
+  @@index([ipHash, createdAt])
 }
 
 model SnapRequest {
@@ -1256,29 +1293,36 @@ model MarketDailyDigest {
 }
 
 model PoolProduct {
-  id           String    @id @default(cuid())
-  sku          String    @unique
-  name         String
-  description  String?
-  category     String?
-  price        Float
-  costPrice    Float?
-  retailPrice  Float?
-  imageUrl     String?
-  brand        String?
-  unit         String?
-  size         String?
-  status       String    @default("active")
-  featured     Boolean   @default(false)
-  sortOrder    Int       @default(0)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  lastSyncedAt DateTime?
-  stockQty     Int?
-  stockStatus  String?
-  mfgPart      String?
-  specs        String?
-  upc          String?
+  id            String    @id @default(cuid())
+  sku           String    @unique
+  name          String
+  description   String?
+  category      String?
+  price         Float
+  costPrice     Float?
+  retailPrice   Float?
+  imageUrl      String?
+  brand         String?
+  unit          String?
+  size          String?
+  status        String    @default("active")
+  featured      Boolean   @default(false)
+  sortOrder     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastSyncedAt  DateTime?
+  stockQty      Int?
+  stockStatus   String?
+  mfgPart       String?
+  specs         String?
+  upc           String?
+  features      String?
+  sdsUrl        String?
+  warranty      String?
+  weight        String?
+  dimensions    String?
+  enrichedAt    DateTime?
+  priceOverride Boolean   @default(false)
 
   @@index([status, sortOrder])
   @@index([category, status])
@@ -1718,6 +1762,7 @@ model Product {
   aiSuggestedPrice    Float?
   aiSuggestedCategory String?
   aiConfidence        Float?
+  aiRawResponse       Json?
   targetPrice         Float?
   minPrice            Float?
   status              String            @default("draft")
@@ -2162,26 +2207,37 @@ model PoolConfig {
 }
 
 model FoodHousehold {
-  id               String             @id @default(cuid())
-  userId           String             @unique
-  name             String             @default("My Kitchen")
-  timezone         String             @default("America/Chicago")
-  weeklyBudget     Float?
-  defaultServings  Int                @default(4)
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  members          FoodFamilyMember[]
-  groceryLists     FoodGroceryList[]
-  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mealPlans        FoodMealPlan[]
-  pantryItems      FoodPantryItem[]
-  priceEntries     FoodPriceEntry[]
-  receipts         FoodReceipt[]
-  recipes          FoodRecipe[]
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  name                 String             @default("My Kitchen")
+  timezone             String             @default("America/Chicago")
+  weeklyBudget         Float?
+  defaultServings      Int                @default(4)
+  // Subscription (Ruthann's Kitchen SaaS, $39/yr annual plan)
+  subscriptionStatus   String             @default("none") // none | trialing | active | past_due | canceled
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  stripePriceId        String?
+  trialEndsAt          DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  members              FoodFamilyMember[]
+  groceryLists         FoodGroceryList[]
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealPlans            FoodMealPlan[]
+  pantryItems          FoodPantryItem[]
+  priceEntries         FoodPriceEntry[]
+  receipts             FoodReceipt[]
+  recipes              FoodRecipe[]
+
+  @@index([subscriptionStatus])
+  @@index([stripeCustomerId])
 }
 
 model FoodRecipe {
-  id           String        @id @default(cuid())
+  id           String         @id @default(cuid())
   householdId  String
   title        String
   slug         String
@@ -2192,20 +2248,20 @@ model FoodRecipe {
   mealType     String[]
   prepTime     Int?
   cookTime     Int?
-  servings     Int           @default(4)
+  servings     Int            @default(4)
   nutrition    Json?
   tags         String[]
   imageUrl     String?
   rating       Float?
-  timesCooked  Int           @default(0)
-  aiGenerated  Boolean       @default(false)
+  timesCooked  Int            @default(0)
+  aiGenerated  Boolean        @default(false)
   aiPrompt     String?
   source       String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  FoodCookLog  FoodCookLog[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  cookLogs     FoodCookLog[]
   mealSlots    FoodMealSlot[]
-  household    FoodHousehold @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  household    FoodHousehold  @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@unique([householdId, slug])
   @@index([cuisine])
@@ -2296,7 +2352,7 @@ model FoodGroceryItem {
   isChecked      Boolean         @default(false)
   addedBy        String          @default("manual")
   createdAt      DateTime        @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime        @updatedAt
   list           FoodGroceryList @relation(fields: [listId], references: [id], onDelete: Cascade)
 
   @@index([isChecked])
@@ -2304,7 +2360,7 @@ model FoodGroceryItem {
 }
 
 model AccessGrant {
-  id          String    @id
+  id          String    @id @default(cuid())
   type        String
   label       String
   subject     String
@@ -2316,36 +2372,36 @@ model AccessGrant {
   fingerprint String?
   meta        Json?
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime  @updatedAt
 
   @@index([subject, revokedAt])
   @@index([type, revokedAt])
 }
 
 model AccountContact {
-  id                String              @id
-  xeroId            String?             @unique
-  name              String
-  email             String?
-  phone             String?
-  address           String?
-  city              String?
-  state             String?
-  zip               String?
-  isCustomer        Boolean             @default(false)
-  isSupplier        Boolean             @default(false)
-  status            String              @default("ACTIVE")
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime
-  invoices          Invoice[]
-  transactions      LedgerTransaction[]
+  id           String              @id @default(cuid())
+  xeroId       String?             @unique
+  name         String
+  email        String?
+  phone        String?
+  address      String?
+  city         String?
+  state        String?
+  zip          String?
+  isCustomer   Boolean             @default(false)
+  isSupplier   Boolean             @default(false)
+  status       String              @default("ACTIVE")
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  invoices     Invoice[]
+  transactions LedgerTransaction[]
 
   @@index([name])
   @@index([status, isCustomer])
 }
 
 model CategorizationRule {
-  id          String   @id
+  id          String   @id @default(cuid())
   name        String
   priority    Int      @default(100)
   matchType   String   @default("contains")
@@ -2356,13 +2412,13 @@ model CategorizationRule {
   isActive    Boolean  @default(true)
   isSystem    Boolean  @default(false)
   createdAt   DateTime @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime @updatedAt
 
   @@index([isActive, priority])
 }
 
 model ClientPortalSignup {
-  id        String   @id
+  id        String   @id @default(cuid())
   type      String
   email     String?
   phone     String?
@@ -2378,7 +2434,7 @@ model ClientPortalSignup {
 }
 
 model ContactTag {
-  id        String   @id
+  id        String   @id @default(cuid())
   tagId     String
   leadId    String?
   clientId  String?
@@ -2394,7 +2450,7 @@ model ContactTag {
 }
 
 model CrmActivity {
-  id           String   @id
+  id           String   @id @default(cuid())
   subscriberId String
   leadId       String?
   clientId     String?
@@ -2416,7 +2472,7 @@ model CrmActivity {
 }
 
 model CrmTask {
-  id           String    @id
+  id           String    @id @default(cuid())
   subscriberId String
   title        String
   description  String?
@@ -2431,7 +2487,7 @@ model CrmTask {
   isRecurring  Boolean   @default(false)
   recurPattern String?
   createdAt    DateTime  @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime  @updatedAt
   Client       Client?   @relation(fields: [clientId], references: [id])
   Deal         Deal?     @relation(fields: [dealId], references: [id])
   Lead         Lead?     @relation(fields: [leadId], references: [id])
@@ -2445,7 +2501,7 @@ model CrmTask {
 }
 
 model Deal {
-  id              String        @id
+  id              String        @id @default(cuid())
   subscriberId    String
   leadId          String?
   clientId        String?
@@ -2474,7 +2530,7 @@ model Deal {
   titleCompany    String?
   notes           String?
   createdAt       DateTime      @default(now())
-  updatedAt       DateTime
+  updatedAt       DateTime      @updatedAt
   CrmActivity     CrmActivity[]
   CrmTask         CrmTask[]
   Client          Client?       @relation(fields: [clientId], references: [id])
@@ -2489,36 +2545,36 @@ model Deal {
 }
 
 model FoodCookLog {
-  id         String     @id
-  recipeId   String
-  rating     Int
-  notes      String?
-  cookedAt   DateTime   @default(now())
-  FoodRecipe FoodRecipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  id       String     @id @default(cuid())
+  recipeId String
+  rating   Int
+  notes    String?
+  cookedAt DateTime   @default(now())
+  recipe   FoodRecipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
   @@index([recipeId])
 }
 
 model FoodFamilyMember {
-  id            String        @id
-  householdId   String
-  userId        String?
-  name          String
-  role          String        @default("member")
-  dietaryFlags  String[]
-  dislikes      String[]
-  favorites     String[]
-  ageRange      String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime
-  FoodHousehold FoodHousehold @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  User          User?         @relation(fields: [userId], references: [id])
+  id           String        @id @default(cuid())
+  householdId  String
+  userId       String?
+  name         String
+  role         String        @default("member")
+  dietaryFlags String[]
+  dislikes     String[]
+  favorites    String[]
+  ageRange     String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  household    FoodHousehold @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id])
 
   @@index([householdId])
 }
 
 model FoodPriceEntry {
-  id             String        @id
+  id             String        @id @default(cuid())
   householdId    String
   itemName       String
   normalizedName String?
@@ -2538,7 +2594,7 @@ model FoodPriceEntry {
 }
 
 model FoodReceipt {
-  id            String        @id
+  id            String        @id @default(cuid())
   householdId   String
   imageUrl      String
   store         String?
@@ -2547,7 +2603,7 @@ model FoodReceipt {
   total         Float?
   status        String        @default("pending")
   createdAt     DateTime      @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime      @updatedAt
   FoodHousehold FoodHousehold @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([householdId])
@@ -2555,7 +2611,7 @@ model FoodReceipt {
 }
 
 model Invoice {
-  id                    String            @id
+  id                    String            @id @default(cuid())
   invoiceNumber         String            @unique
   contactId             String?
   status                String            @default("DRAFT")
@@ -2576,7 +2632,7 @@ model Invoice {
   paidAt                DateTime?
   xeroId                String?           @unique
   createdAt             DateTime          @default(now())
-  updatedAt             DateTime
+  updatedAt             DateTime          @updatedAt
   contact               AccountContact?   @relation(fields: [contactId], references: [id])
   lineItems             InvoiceLineItem[]
   payments              InvoicePayment[]
@@ -2587,22 +2643,22 @@ model Invoice {
 }
 
 model InvoiceLineItem {
-  id            String         @id
-  invoiceId     String
-  description   String
-  quantity      Float          @default(1)
-  unitAmount    Float
-  lineAmount    Float
-  accountId     String?
-  createdAt     DateTime       @default(now())
-  account       LedgerAccount? @relation(fields: [accountId], references: [id])
-  invoice       Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  id          String         @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Float          @default(1)
+  unitAmount  Float
+  lineAmount  Float
+  accountId   String?
+  createdAt   DateTime       @default(now())
+  account     LedgerAccount? @relation(fields: [accountId], references: [id])
+  invoice     Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
 }
 
 model InvoicePayment {
-  id        String   @id
+  id        String   @id @default(cuid())
   invoiceId String
   amount    Float
   paidAt    DateTime @default(now())
@@ -2616,26 +2672,26 @@ model InvoicePayment {
 }
 
 model LedgerAccount {
-  id                String              @id
-  xeroId            String?             @unique
-  code              String?
-  name              String
-  type              String
-  class             String
-  status            String              @default("ACTIVE")
-  taxType           String              @default("NONE")
-  isSystem          Boolean             @default(false)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime
-  lineItems         InvoiceLineItem[]
-  transactions      LedgerTransaction[]
+  id           String              @id @default(cuid())
+  xeroId       String?             @unique
+  code         String?
+  name         String
+  type         String
+  class        String
+  status       String              @default("ACTIVE")
+  taxType      String              @default("NONE")
+  isSystem     Boolean             @default(false)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  lineItems    InvoiceLineItem[]
+  transactions LedgerTransaction[]
 
   @@index([class, status])
   @@index([code])
 }
 
 model LedgerTransaction {
-  id                   String          @id
+  id                   String          @id @default(cuid())
   xeroId               String?         @unique
   date                 DateTime
   description          String
@@ -2652,7 +2708,7 @@ model LedgerTransaction {
   needsReview          Boolean         @default(false)
   importHash           String?         @unique
   createdAt            DateTime        @default(now())
-  updatedAt            DateTime
+  updatedAt            DateTime        @updatedAt
   incomeSource         String?
   irsLine              String?
   plaidCategory        String?
@@ -2674,7 +2730,7 @@ model LedgerTransaction {
 }
 
 model MfaBackupCode {
-  id        String    @id
+  id        String    @id @default(cuid())
   userId    String
   codeHash  String
   usedAt    DateTime?
@@ -2685,7 +2741,7 @@ model MfaBackupCode {
 }
 
 model SmartList {
-  id           String   @id
+  id           String   @id @default(cuid())
   subscriberId String
   name         String
   icon         String?
@@ -2694,14 +2750,14 @@ model SmartList {
   sortDir      String   @default("desc")
   isPinned     Boolean  @default(false)
   createdAt    DateTime @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime @updatedAt
 
   @@index([subscriberId])
   @@index([subscriberId, isPinned])
 }
 
 model Tag {
-  id           String       @id
+  id           String       @id @default(cuid())
   subscriberId String
   name         String
   color        String       @default("#8b5cf6")
@@ -2715,7 +2771,7 @@ model Tag {
 }
 
 model TradingNotification {
-  id        String   @id
+  id        String   @id @default(cuid())
   engine    String
   type      String
   title     String
@@ -2730,12 +2786,271 @@ model TradingNotification {
 }
 
 model UserMfa {
-  id         String    @id
+  id         String    @id @default(cuid())
   userId     String    @unique
   totpSecret String
   verified   Boolean   @default(false)
   enabledAt  DateTime?
   createdAt  DateTime  @default(now())
-  updatedAt  DateTime
+  updatedAt  DateTime  @updatedAt
   User       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CompetitorPrice {
+  id          String   @id @default(cuid())
+  sku         String
+  competitor  String
+  price       Float
+  url         String?
+  productName String?
+  matchType   String
+  matchScore  Float?
+  scannedAt   DateTime @default(now())
+
+  @@index([sku, competitor])
+  @@index([scannedAt])
+}
+
+model PriceChangeLog {
+  id          String   @id @default(cuid())
+  sku         String
+  oldPrice    Float
+  newPrice    Float
+  costPrice   Float
+  reason      String
+  competitors Json?
+  margin      Float
+  createdAt   DateTime @default(now())
+
+  @@index([sku])
+  @@index([createdAt])
+}
+
+model VaterRssFeed {
+  id             String         @id @default(cuid())
+  url            String         @unique
+  title          String?
+  feedType       String // "youtube" | "podcast" | "blog" | "social"
+  autoPipeline   Boolean        @default(false)
+  defaultGoal    String?
+  defaultWords   Int?
+  defaultVoiceId String?
+  defaultStyle   String? // one of 8 presets or "custom:<prompt>"
+  lastPolledAt   DateTime?
+  lastItemGuid   String?
+  errorMessage   String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  items          VaterRssItem[]
+
+  @@index([feedType])
+}
+
+model VaterRssItem {
+  id           String          @id @default(cuid())
+  feedId       String
+  feed         VaterRssFeed    @relation(fields: [feedId], references: [id], onDelete: Cascade)
+  guid         String
+  title        String
+  url          String
+  publishedAt  DateTime?
+  description  String?
+  thumbnail    String?
+  discoveredAt DateTime        @default(now())
+  project      YouTubeProject?
+
+  @@unique([feedId, guid])
+  @@index([discoveredAt])
+}
+
+model VaterVoiceClone {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  samplePath String
+  sampleText String?
+  language   String   @default("en")
+  createdAt  DateTime @default(now())
+}
+
+model YouTubeProject {
+  id String @id @default(cuid())
+
+  // Mode + source
+  mode          String        @default("transcribe") // "transcribe" | "topic"
+  sourceUrl     String?
+  sourceTitle   String?
+  sourceChannel String?
+  sourceType    String        @default("manual") // "manual" | "rss" | "topic"
+  rssItemId     String?       @unique
+  rssItem       VaterRssItem? @relation(fields: [rssItemId], references: [id])
+  topic         String? // used in topic mode only
+
+  // Transcript (transcribe mode only)
+  transcript      String?
+  transcriptMeta  Json?
+  goalSuggestions Json?
+
+  // User intent (collected after transcribe, or upfront in topic mode)
+  goal            String?
+  targetDuration  Int     @default(10) // minutes
+  targetWordCount Int     @default(1500)
+
+  // Style + voice
+  stylePreset       String  @default("cinematic") // one of 8
+  customStylePrompt String?
+  voiceCloneId      String?
+  voiceName         String?
+
+  // Music + SFX (frontend pickers; SFX injection is v2)
+  backgroundMusicId String?
+  musicVolume       Float?  @default(0.18)
+  sfxEnabled        Boolean @default(false)
+
+  // Creation stage
+  sourcePrinciples   Json?
+  script             String?
+  scriptMeta         Json?
+  verifiedScript     Boolean @default(false)
+  verificationReport Json?
+
+  // Media
+  audioUrl       String?
+  audioDuration  Float?
+  captionTimings Json? // [{word, start, end}]
+  scenesJson     Json? // [{idx, beatText, startS, endS, imagePrompt, imageUrl}]
+  finalVideoUrl  String?
+
+  // Status
+  status         String    @default("draft")
+  progress       Int       @default(0)
+  stepDetails    Json?
+  errorMessage   String?
+  autopilotJobId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  completedAt    DateTime?
+
+  // Post-generation editor (v2) — review + redo scenes before publishing.
+  // draftSnapshots is an append-only JSON array: [{ts, scenesJson, audioUrl,
+  // backgroundMusicId, thumbnailUrl, note}]. Used for one-click revert.
+  draftSnapshots Json?
+  thumbnailUrl   String?
+  publishedTo    String[]  @default([])
+  editedAt       DateTime?
+
+  // ── TubeGen-parity Style document (2026-04-14) ──────────────────────
+  // styleId is the new path. When NULL, the legacy stylePreset string above
+  // remains the source of truth (back-compat with all existing rows).
+  styleId String?
+  style   YouTubeStyle? @relation(fields: [styleId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([sourceType])
+  @@index([styleId])
+}
+
+// ── TubeGen-parity Style/Character/CustomArtStyle (2026-04-14) ────────
+// The Style is a reusable container — voice, script defaults, reference
+// transcripts (script few-shot corpus), characters, custom art style, and
+// smart-overlay toggles. Modeled after TubeGen's MongoDB Style document
+// observed in research at /tmp/tubegen-research/api-dumps/finance-style.json.
+//
+// userId == NULL means a system-owned seed row (read-only, cloneable).
+// Editing a system row returns 403; clones become user-owned and editable.
+
+model YouTubeStyle {
+  id     String  @id @default(cuid())
+  userId String?
+  name   String
+  emoji  String  @default("🎨")
+
+  // Voice
+  voice             String  @default("MorganDeep")
+  voiceCloneId      String?
+  voiceSpeed        Float   @default(1.0)
+  voiceStability    Float   @default(1.0)
+  voiceSimilarity   Float   @default(1.0)
+  voiceExaggeration Float   @default(0.0)
+  voiceBackend      String  @default("f5-tts") // f5-tts | elevenlabs
+  language          String  @default("en")
+
+  // Script
+  defaultWordCount     Int     @default(1500)
+  scriptMode           String  @default("default") // default | few_shot | story
+  webSearchDefault     Boolean @default(false)
+  additionalContext    String?
+  // [{videoId, url, title, wordCount, transcript, addedAt}] — script few-shot corpus
+  referenceTranscripts Json?
+
+  // Visual defaults
+  artStylePresetId   String  @default("cinematic") // matches STYLE_PRESETS id
+  customArtStyleId   String?
+  defaultAspectRatio String  @default("16x9")
+  // sdxl-local | sdxl-ipadapter | flux-schnell | gemini-1k | gemini-2k | ideogram-default
+  defaultQuality     String  @default("sdxl-local")
+  // images | animated | broll | broll-mix
+  defaultVisualType  String  @default("images")
+  defaultAnimMode    String  @default("none") // none | all | longer-only
+  defaultAnimMin     Int     @default(2)
+  defaultAnimMax     Int     @default(8)
+  defaultPacingSec   Float? // null = preset/global default
+  defaultConsistency Int     @default(0)
+
+  // Smart-overlay defaults
+  enableCharts      Boolean @default(false)
+  enableMaps        Boolean @default(false)
+  enableAutoHeaders Boolean @default(false)
+  overlayTheme      String  @default("dark")
+
+  // Provenance
+  isSystem     Boolean        @default(false)
+  clonedFromId String?
+  clonedFrom   YouTubeStyle?  @relation("StyleClones", fields: [clonedFromId], references: [id], onDelete: SetNull)
+  clones       YouTubeStyle[] @relation("StyleClones")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  characters     YouTubeCharacter[]
+  customArtStyle CustomArtStyle?    @relation(fields: [customArtStyleId], references: [id], onDelete: SetNull)
+  projects       YouTubeProject[]
+
+  @@index([userId])
+  @@index([isSystem])
+}
+
+model YouTubeCharacter {
+  id                String       @id @default(cuid())
+  styleId           String
+  style             YouTubeStyle @relation(fields: [styleId], references: [id], onDelete: Cascade)
+  name              String
+  description       String       @db.Text
+  briefDescription  String?
+  imageUrl          String?
+  imageKey          String?
+  permanent         Boolean      @default(true)
+  placeInEveryImage Boolean      @default(false)
+  customArtStyleId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([styleId])
+}
+
+model CustomArtStyle {
+  id                 String   @id @default(cuid())
+  userId             String?
+  name               String
+  description        String   @db.Text
+  referenceImageUrls String[]
+  thumbnailUrl       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  styles YouTubeStyle[]
+
+  @@index([userId])
 }
