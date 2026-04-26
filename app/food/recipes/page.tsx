@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
 import { FoodRecipeCard } from "@/components/food/food-recipe-card";
 
 interface Recipe {
@@ -18,45 +17,23 @@ interface Recipe {
   timesCooked: number;
 }
 
-const QUICK_FILTERS = [
-  { id: "all", label: "All" },
-  { id: "dinner", label: "Dinner", mealType: "dinner" },
-  { id: "lunch", label: "Lunch", mealType: "lunch" },
-  { id: "breakfast", label: "Breakfast", mealType: "breakfast" },
-  { id: "dessert", label: "Dessert", mealType: "dessert" },
-  { id: "quick", label: "Quick", maxTime: "30" },
-  { id: "healthy", label: "Healthy", tag: "Healthy" },
-] as const;
-
-const CUISINES = [
-  "Italian",
-  "Mexican",
-  "American",
-  "Asian",
-  "Indian",
-  "Mediterranean",
-  "Japanese",
-  "Thai",
-  "Chinese",
-  "French",
-];
+const CUISINES = ["Italian", "Mexican", "American", "Asian", "Indian", "Mediterranean", "Japanese", "Thai", "Chinese", "French"];
 const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack", "dessert"];
-const DIETARY_OPTIONS = [
-  "Vegetarian",
-  "Vegan",
-  "Gluten-Free",
-  "Dairy-Free",
-  "Low-Carb",
-  "Keto",
+const TIME_FILTERS = [
+  { label: "Any Time", value: "" },
+  { label: "Under 15 min", value: "15" },
+  { label: "Under 30 min", value: "30" },
+  { label: "Under 60 min", value: "60" },
 ];
+const DIETARY_OPTIONS = ["Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Low-Carb", "Keto"];
 
 export default function RecipesPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState<string>("all");
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [cuisine, setCuisine] = useState("");
+  const [mealType, setMealType] = useState("");
+  const [maxTime, setMaxTime] = useState("");
   const [kidFriendly, setKidFriendly] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -71,16 +48,9 @@ export default function RecipesPage() {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (cuisine) params.set("cuisine", cuisine);
+    if (mealType) params.set("mealType", mealType);
+    if (maxTime) params.set("maxTime", maxTime);
     if (kidFriendly) params.set("kidFriendly", "true");
-
-    const filter = QUICK_FILTERS.find((f) => f.id === activeFilter);
-    if (filter && "mealType" in filter && filter.mealType) {
-      params.set("mealType", filter.mealType);
-    }
-    if (filter && "maxTime" in filter && filter.maxTime) {
-      params.set("maxTime", filter.maxTime);
-    }
-
     params.set("page", String(page));
     params.set("limit", "12");
 
@@ -88,16 +58,7 @@ export default function RecipesPage() {
       const res = await fetch(`/api/food/recipes?${params}`);
       if (res.ok) {
         const data = await res.json();
-        let list: Recipe[] = data.recipes || [];
-
-        // Tag filter is client-side because API doesn't index tags.
-        if (filter && "tag" in filter && filter.tag) {
-          const needle = filter.tag.toLowerCase();
-          list = list.filter((r) =>
-            r.tags.some((t) => t.toLowerCase().includes(needle)),
-          );
-        }
-        setRecipes(list);
+        setRecipes(data.recipes || []);
         setTotalPages(data.pages || data.totalPages || 1);
       }
     } catch {
@@ -105,7 +66,7 @@ export default function RecipesPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, cuisine, kidFriendly, activeFilter, page]);
+  }, [search, cuisine, mealType, maxTime, kidFriendly, page]);
 
   useEffect(() => {
     fetchRecipes();
@@ -117,11 +78,7 @@ export default function RecipesPage() {
       const res = await fetch("/api/food/recipes/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cuisine: genCuisine,
-          mealType: genMealType,
-          dietary: genDietary,
-        }),
+        body: JSON.stringify({ cuisine: genCuisine, mealType: genMealType, dietary: genDietary }),
       });
       if (res.ok) {
         setShowGenerateModal(false);
@@ -137,311 +94,211 @@ export default function RecipesPage() {
   };
 
   const toggleDietary = (flag: string) => {
-    setGenDietary((prev) =>
-      prev.includes(flag) ? prev.filter((f) => f !== flag) : [...prev, flag],
-    );
+    setGenDietary((prev) => (prev.includes(flag) ? prev.filter((f) => f !== flag) : [...prev, flag]));
   };
 
+  const clearFilters = () => {
+    setSearch("");
+    setCuisine("");
+    setMealType("");
+    setMaxTime("");
+    setKidFriendly(false);
+    setPage(1);
+  };
+
+  const hasFilters = search || cuisine || mealType || maxTime || kidFriendly;
+
   return (
-    <div style={{ background: "var(--food-bg-warm)", minHeight: "100vh" }}>
+    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem 1.5rem" }}>
       {/* Header */}
       <div
-        className="flex items-center justify-between"
-        style={{ padding: "20px 16px 12px" }}
+        className="food-enter"
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}
       >
-        <h1
-          style={{
-            fontFamily: "var(--font-fredoka), system-ui, sans-serif",
-            fontSize: 22,
-            fontWeight: 700,
-            color: "var(--food-text)",
-            margin: 0,
-          }}
-        >
+        <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--food-text)" }}>
           Recipes
         </h1>
         <button
-          type="button"
+          className="food-btn food-btn-primary food-glow"
           onClick={() => setShowGenerateModal(true)}
-          className="cursor-pointer"
-          style={{
-            background:
-              "linear-gradient(135deg, var(--food-pink), var(--food-lavender))",
-            color: "white",
-            fontSize: 13,
-            fontWeight: 600,
-            fontFamily: "var(--font-fredoka), system-ui, sans-serif",
-            padding: "7px 14px",
-            borderRadius: 9999,
-            border: "none",
-            boxShadow: "0 4px 14px rgba(244,114,182,0.35)",
-          }}
         >
-          ✨ AI Recipe
+          Generate Recipe with AI
         </button>
       </div>
 
-      {/* Search */}
-      <div style={{ padding: "0 16px 12px" }}>
+      {/* Search & Filters */}
+      <div
+        className="food-card food-enter"
+        style={{ padding: "1.25rem", marginBottom: "1.5rem", "--enter-delay": "0.1s" } as React.CSSProperties}
+      >
         <input
+          className="food-input"
           type="text"
           placeholder="Search recipes..."
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          style={{
-            width: "100%",
-            padding: "10px 14px",
-            background: "white",
-            border: "1px solid var(--food-border)",
-            borderRadius: 12,
-            fontSize: 14,
-            color: "var(--food-text)",
-            fontFamily: "var(--font-sora), sans-serif",
-            outline: "none",
-          }}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          style={{ width: "100%", marginBottom: "1rem" }}
         />
-      </div>
 
-      {/* Quick filter chips - horizontal scroll */}
-      <div
-        className="flex"
-        style={{
-          gap: 8,
-          overflowX: "auto",
-          padding: "0 16px 12px",
-          scrollbarWidth: "none",
-        }}
-      >
-        {QUICK_FILTERS.map((f) => {
-          const active = activeFilter === f.id;
-          return (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
+          {/* Cuisine chips */}
+          {CUISINES.map((c) => (
             <button
-              key={f.id}
-              type="button"
-              onClick={() => {
-                setActiveFilter(f.id);
-                setPage(1);
-              }}
-              className="cursor-pointer"
+              key={c}
+              className={`food-tag ${cuisine === c ? "food-tag-pink" : ""}`}
+              onClick={() => { setCuisine(cuisine === c ? "" : c); setPage(1); }}
               style={{
-                flexShrink: 0,
-                padding: "6px 14px",
-                borderRadius: 9999,
-                fontSize: 13,
-                fontWeight: active ? 600 : 500,
-                fontFamily: "var(--font-sora), sans-serif",
-                border: "1.5px solid",
-                borderColor: active
-                  ? "var(--food-pink)"
-                  : "var(--food-border)",
-                background: active ? "rgba(244,114,182,0.10)" : "white",
-                color: active ? "#be185d" : "var(--food-text-secondary)",
-                whiteSpace: "nowrap",
+                cursor: "pointer",
+                border: "1px solid var(--food-border)",
+                background: cuisine === c ? "rgba(244, 114, 182, 0.15)" : "white",
+                padding: "0.35rem 0.75rem",
+                fontSize: "0.8125rem",
               }}
             >
-              {f.label}
+              {c}
             </button>
-          );
-        })}
-      </div>
+          ))}
+        </div>
 
-      {/* Advanced filter toggle */}
-      <div style={{ padding: "0 16px 8px" }}>
-        <button
-          type="button"
-          onClick={() => setAdvancedOpen((v) => !v)}
-          className="cursor-pointer bg-transparent border-0"
-          style={{
-            color: "var(--food-pink)",
-            fontSize: 12,
-            fontFamily: "var(--font-sora), sans-serif",
-            fontWeight: 500,
-            padding: 0,
-          }}
-        >
-          {advancedOpen ? "Hide" : "More"} filters{" "}
-          {advancedOpen ? "▲" : "▼"}
-        </button>
-      </div>
-
-      {advancedOpen && (
-        <div
-          className="flex flex-wrap items-center"
-          style={{ padding: "0 16px 12px", gap: 8 }}
-        >
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", marginTop: "0.75rem", alignItems: "center" }}>
+          {/* Meal type */}
           <select
-            value={cuisine}
-            onChange={(e) => {
-              setCuisine(e.target.value);
-              setPage(1);
-            }}
-            style={{
-              padding: "6px 10px",
-              background: "white",
-              border: "1px solid var(--food-border)",
-              borderRadius: 8,
-              fontSize: 12,
-              color: "var(--food-text)",
-              fontFamily: "var(--font-sora), sans-serif",
-            }}
+            className="food-input"
+            value={mealType}
+            onChange={(e) => { setMealType(e.target.value); setPage(1); }}
+            style={{ padding: "0.5rem 0.75rem" }}
           >
-            <option value="">All cuisines</option>
-            {CUISINES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
+            <option value="">All Meals</option>
+            {MEAL_TYPES.map((m) => (
+              <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
             ))}
           </select>
 
-          <label
-            className="flex items-center"
-            style={{
-              gap: 6,
-              fontSize: 12,
-              color: "var(--food-text)",
-              fontFamily: "var(--font-sora), sans-serif",
-              cursor: "pointer",
-            }}
+          {/* Time filter */}
+          <select
+            className="food-input"
+            value={maxTime}
+            onChange={(e) => { setMaxTime(e.target.value); setPage(1); }}
+            style={{ padding: "0.5rem 0.75rem" }}
           >
+            {TIME_FILTERS.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+
+          {/* Kid-friendly toggle */}
+          <label style={{ display: "flex", alignItems: "center", gap: "0.375rem", cursor: "pointer", fontSize: "0.875rem", color: "var(--food-text)" }}>
             <input
               type="checkbox"
               checked={kidFriendly}
-              onChange={(e) => {
-                setKidFriendly(e.target.checked);
-                setPage(1);
-              }}
+              onChange={(e) => { setKidFriendly(e.target.checked); setPage(1); }}
+              className="food-check"
             />
-            Kid-friendly
+            Kid-Friendly
           </label>
-        </div>
-      )}
 
-      {/* Results */}
+          {hasFilters && (
+            <button
+              className="food-btn food-btn-secondary"
+              onClick={clearFilters}
+              style={{ fontSize: "0.8125rem", padding: "0.375rem 0.75rem" }}
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Recipe Grid */}
       {loading ? (
-        <div style={{ textAlign: "center", padding: "48px 16px" }}>
-          <div
-            style={{
-              fontSize: 36,
-              animation: "food-sparkle 1.5s ease-in-out infinite",
-            }}
-          >
+        <div
+          className="food-enter"
+          style={{ textAlign: "center", padding: "4rem 2rem", "--enter-delay": "0.2s" } as React.CSSProperties}
+        >
+          <div style={{ fontSize: "2.5rem", marginBottom: "1rem", animation: "food-sparkle 1.5s ease-in-out infinite" }}>
             🍳
           </div>
-          <p
-            style={{
-              color: "var(--food-text-secondary)",
-              marginTop: 8,
-              fontSize: 13,
-              fontFamily: "var(--font-sora), sans-serif",
-            }}
-          >
-            Loading recipes...
-          </p>
+          <p style={{ color: "var(--food-text-secondary)" }}>Loading recipes...</p>
         </div>
       ) : recipes.length === 0 ? (
         <div
-          className="text-center"
-          style={{
-            margin: "16px 16px 0",
-            padding: "40px 20px",
-            background: "white",
-            border: "1px solid var(--food-border)",
-            borderRadius: 18,
-          }}
+          className="food-card food-enter"
+          style={{ textAlign: "center", padding: "4rem 2rem", "--enter-delay": "0.2s" } as React.CSSProperties}
         >
-          <div style={{ fontSize: 40, marginBottom: 8 }}>📖</div>
-          <h3
-            style={{
-              fontFamily: "var(--font-fredoka), system-ui, sans-serif",
-              fontSize: 16,
-              fontWeight: 700,
-              color: "var(--food-text)",
-              marginBottom: 6,
-            }}
-          >
-            {activeFilter !== "all" || search
-              ? "No matches"
-              : "No recipes yet!"}
+          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📖</div>
+          <h3 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--food-text)", marginBottom: "0.5rem" }}>
+            {hasFilters ? "No recipes match your filters" : "No recipes yet!"}
           </h3>
-          <p
-            style={{
-              color: "var(--food-text-secondary)",
-              fontSize: 13,
-              fontFamily: "var(--font-sora), sans-serif",
-              marginBottom: 16,
-            }}
-          >
-            {activeFilter !== "all" || search
-              ? "Try a different filter or search term."
-              : "Start your collection — add a recipe or generate with AI."}
+          <p style={{ color: "var(--food-text-secondary)", marginBottom: "1.5rem" }}>
+            {hasFilters
+              ? "Try adjusting your filters or search terms"
+              : "Start building your recipe collection. Add your family favorites or let AI generate new ones!"}
           </p>
-          <div className="flex justify-center flex-wrap" style={{ gap: 8 }}>
-            <Link
-              href="/food/recipes/new"
-              className="food-btn food-btn-primary"
-            >
-              Add a Recipe
-            </Link>
-            <button
-              type="button"
-              className="food-btn food-btn-secondary"
-              onClick={() => setShowGenerateModal(true)}
-            >
-              ✨ Generate with AI
-            </button>
-          </div>
+          {!hasFilters && (
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", flexWrap: "wrap" }}>
+              <a href="/food/recipes/new" className="food-btn food-btn-primary">
+                Add a Recipe
+              </a>
+              <button className="food-btn food-btn-secondary" onClick={() => setShowGenerateModal(true)}>
+                Generate with AI
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div
-          className="flex flex-col"
-          style={{ gap: 10, padding: "0 16px" }}
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            gap: "1.25rem",
+          }}
         >
-          {recipes.map((recipe) => (
-            <FoodRecipeCard key={recipe.id} recipe={recipe} />
+          {recipes.map((recipe, i) => (
+            <div
+              key={recipe.id}
+              className="food-enter"
+              style={{ "--enter-delay": `${0.05 * i}s` } as React.CSSProperties}
+            >
+              <FoodRecipeCard recipe={recipe} />
+            </div>
           ))}
         </div>
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && !loading && recipes.length > 0 && (
+      {totalPages > 1 && (
         <div
-          className="flex justify-center items-center"
-          style={{ gap: 12, padding: "20px 16px" }}
+          className="food-enter"
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "0.75rem",
+            marginTop: "2rem",
+            "--enter-delay": "0.3s",
+          } as React.CSSProperties}
         >
           <button
-            type="button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
             className="food-btn food-btn-secondary"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
             style={{ opacity: page <= 1 ? 0.5 : 1 }}
           >
-            ← Prev
+            Previous
           </button>
-          <span
-            style={{
-              fontSize: 13,
-              color: "var(--food-text-secondary)",
-              fontFamily: "var(--font-sora), sans-serif",
-            }}
-          >
-            {page} / {totalPages}
+          <span style={{ fontSize: "0.875rem", color: "var(--food-text-secondary)" }}>
+            Page {page} of {totalPages}
           </span>
           <button
-            type="button"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
             className="food-btn food-btn-secondary"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
             style={{ opacity: page >= totalPages ? 0.5 : 1 }}
           >
-            Next →
+            Next
           </button>
         </div>
       )}
-
-      <div style={{ height: 24 }} />
 
       {/* Generate Recipe Modal */}
       {showGenerateModal && (
@@ -454,57 +311,24 @@ export default function RecipesPage() {
             alignItems: "center",
             justifyContent: "center",
             zIndex: 100,
-            padding: 16,
+            padding: "1rem",
           }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowGenerateModal(false);
-          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowGenerateModal(false); }}
         >
           <div
             className="food-card food-enter"
-            style={{
-              maxWidth: 480,
-              width: "100%",
-              padding: 24,
-              background: "white",
-              borderRadius: 18,
-              border: "1px solid var(--food-border)",
-            }}
+            style={{ maxWidth: "480px", width: "100%", padding: "2rem" }}
           >
-            <h2
-              style={{
-                fontFamily: "var(--font-fredoka), system-ui, sans-serif",
-                fontSize: 20,
-                fontWeight: 700,
-                color: "var(--food-text)",
-                marginBottom: 6,
-              }}
-            >
-              ✨ Generate a Recipe
+            <h2 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--food-text)", marginBottom: "0.5rem" }}>
+              Generate a Recipe with AI
             </h2>
-            <p
-              style={{
-                color: "var(--food-text-secondary)",
-                fontSize: 13,
-                marginBottom: 20,
-                fontFamily: "var(--font-sora), sans-serif",
-              }}
-            >
-              Tell us what you&rsquo;re in the mood for.
+            <p style={{ color: "var(--food-text-secondary)", fontSize: "0.875rem", marginBottom: "1.5rem" }}>
+              Tell us what you're in the mood for and we'll create something special!
             </p>
 
-            <div className="flex flex-col" style={{ gap: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "var(--food-text)",
-                    marginBottom: 6,
-                    fontFamily: "var(--font-sora), sans-serif",
-                  }}
-                >
+                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 500, color: "var(--food-text)", marginBottom: "0.375rem" }}>
                   Cuisine
                 </label>
                 <select
@@ -513,26 +337,15 @@ export default function RecipesPage() {
                   onChange={(e) => setGenCuisine(e.target.value)}
                   style={{ width: "100%" }}
                 >
-                  <option value="">Surprise me!</option>
+                  <option value="">Surprise Me!</option>
                   {CUISINES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+                    <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "var(--food-text)",
-                    marginBottom: 6,
-                    fontFamily: "var(--font-sora), sans-serif",
-                  }}
-                >
+                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 500, color: "var(--food-text)", marginBottom: "0.375rem" }}>
                   Meal Type
                 </label>
                 <select
@@ -542,76 +355,48 @@ export default function RecipesPage() {
                   style={{ width: "100%" }}
                 >
                   {MEAL_TYPES.map((m) => (
-                    <option key={m} value={m}>
-                      {m.charAt(0).toUpperCase() + m.slice(1)}
-                    </option>
+                    <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "var(--food-text)",
-                    marginBottom: 6,
-                    fontFamily: "var(--font-sora), sans-serif",
-                  }}
-                >
+                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 500, color: "var(--food-text)", marginBottom: "0.375rem" }}>
                   Dietary Preferences
                 </label>
-                <div className="flex flex-wrap" style={{ gap: 6 }}>
-                  {DIETARY_OPTIONS.map((d) => {
-                    const on = genDietary.includes(d);
-                    return (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => toggleDietary(d)}
-                        className="cursor-pointer"
-                        style={{
-                          padding: "6px 12px",
-                          borderRadius: 9999,
-                          fontSize: 12,
-                          fontFamily: "var(--font-sora), sans-serif",
-                          border: "1.5px solid",
-                          borderColor: on
-                            ? "var(--food-mint)"
-                            : "var(--food-border)",
-                          background: on
-                            ? "rgba(110,231,183,0.15)"
-                            : "white",
-                          color: on ? "#047857" : "var(--food-text-secondary)",
-                        }}
-                      >
-                        {d}
-                      </button>
-                    );
-                  })}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                  {DIETARY_OPTIONS.map((d) => (
+                    <button
+                      key={d}
+                      className={`food-tag ${genDietary.includes(d) ? "food-tag-mint" : ""}`}
+                      onClick={() => toggleDietary(d)}
+                      style={{
+                        cursor: "pointer",
+                        border: "1px solid var(--food-border)",
+                        background: genDietary.includes(d) ? "rgba(110, 231, 183, 0.15)" : "white",
+                        padding: "0.35rem 0.75rem",
+                      }}
+                    >
+                      {d}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div
-                className="flex justify-end"
-                style={{ gap: 8, marginTop: 6 }}
-              >
+              <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "0.5rem" }}>
                 <button
-                  type="button"
                   className="food-btn food-btn-secondary"
                   onClick={() => setShowGenerateModal(false)}
                 >
                   Cancel
                 </button>
                 <button
-                  type="button"
                   className="food-btn food-btn-primary food-glow"
                   onClick={handleGenerate}
                   disabled={generating}
                   style={{ opacity: generating ? 0.7 : 1 }}
                 >
-                  {generating ? "Generating…" : "Generate Recipe"}
+                  {generating ? "Generating..." : "Generate Recipe"}
                 </button>
               </div>
             </div>
