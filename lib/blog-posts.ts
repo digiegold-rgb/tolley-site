@@ -733,6 +733,93 @@ export const blogPosts: BlogPost[] = [
 <p>In a competitive KC market where differentiation matters, your listing description is one of the cheapest high-leverage improvements available. It's time to treat it that way.</p>
     `.trim(),
   },
+  {
+    slug: "real-estate-lead-generation-software-2026",
+    title: "Real Estate Lead Generation Software: The Complete Agent's Guide for 2026",
+    description:
+      "Compare the best real estate lead generation software for 2026 — from AI lead scoring to automated follow-up. See what top KC agents use to close more deals.",
+    publishedAt: "2026-05-07",
+    category: "AI Tools",
+    tags: ["AI", "lead generation", "real estate", "CRM", "lead management", "Kansas City"],
+    readingTime: 10,
+    body: `
+<h2>Why Most Real Estate Lead Generation Software Falls Short</h2>
+<p>Most real estate agents have tried at least one lead generation platform that promised to fill their pipeline and delivered mostly noise instead. BoomTown, Market Leader, Zillow Premier Agent — these platforms generate volume. Quantity is not the problem. The problem is that raw lead volume without intelligent prioritization creates a treadmill: you're always busy, rarely productive, and wondering why your conversion rate is 2% on a good month.</p>
+<p>The issue is structural. Legacy lead generation platforms were built to sell you leads, not help you close them. Their business model depends on generating enough volume to keep you subscribed, not on optimizing your close rate. This misalignment between what the platform is incentivized to deliver and what you actually need is why most agents churn through 2–3 platforms before finding something that works.</p>
+<p>What top-producing agents need in 2026 isn't more leads — it's an intelligent system that identifies which of their existing leads are worth calling <em>today</em>, automates follow-up for the rest, and surfaces market intelligence that helps them win every conversation.</p>
+
+<h2>The Core Features That Actually Move Deals Forward</h2>
+<p>After analyzing what separates agents closing 40+ deals per year from those stuck at 15–20, the differentiating factor isn't the number of leads in their CRM. It's the quality of their lead intelligence and the consistency of their follow-up system. Here are the features that actually matter:</p>
+<ul>
+  <li><strong>AI Lead Scoring:</strong> A scoring engine that evaluates behavioral signals — search activity, engagement velocity, listing save patterns — and assigns a priority rank to every contact. Without this, every lead looks equally important, which means no lead gets the urgency it deserves.</li>
+  <li><strong>Automated SMS Follow-Up:</strong> Text message response rates for real estate inquiries run 4–8× higher than email. Any platform you evaluate in 2026 needs native SMS automation, not a bolt-on integration that requires a developer to configure.</li>
+  <li><strong>CRM with Behavioral Context:</strong> Standard CRMs show contact information and a note field. Effective lead gen platforms show what a prospect searched for, when they were last active, how their interest level has shifted, and what comparable properties they've viewed — all in a single timeline.</li>
+  <li><strong>Pipeline Velocity Tracking:</strong> How long do leads typically spend in each stage before converting — or going cold? A platform that surfaces this data lets you identify bottlenecks before they compound into a pipeline drought.</li>
+  <li><strong>Local MLS Integration:</strong> Generic platforms pull in national data. If you're working Kansas City, you need a system that understands the KC MLS, cross-state searches between Missouri and Kansas, and neighborhood-specific market dynamics.</li>
+</ul>
+
+<h2>AI Lead Scoring: The Feature That Changes Everything</h2>
+<p>The single highest-leverage feature in modern real estate lead generation software is AI lead scoring — not because it's new technology, but because it solves the most expensive problem agents have: time wasted calling low-intent leads.</p>
+<p>Here's a concrete example of what good AI scoring looks like in practice. A lead registers on your IDX site at 7:30 PM on a Tuesday. They view three listings in Lee's Summit in the $350K–$400K range, save two of them, then return the next morning and view two more. They filter specifically by school district, then click "open this weekend" on a listing they've viewed four times.</p>
+<p>A traditional CRM records this as "new lead, 6 page views." An AI scoring engine recognizes a behavioral cluster that historically precedes a showing request within 7–10 days — and puts this person in your priority queue before you even knew they existed.</p>
+<p>The scoring models that work best are trained on <em>local</em> transaction data. A buyer searching Lee's Summit at $380K behaves differently than a buyer searching Scottsdale at $380K. National AI models calibrated on median-market behavior will regularly misrank KC leads. <a href="/leads">See how T-Agent's AI scoring works with KC-specific data →</a></p>
+
+<h2>Automated Follow-Up: The System That Keeps You in Front of Every Lead</h2>
+<p>The statistics on real estate follow-up are both well-known and routinely ignored. Industry research consistently shows that 80% of sales require five or more contacts, yet 44% of agents quit after a single follow-up attempt. Leads who receive five or more touches convert at 3–5× the rate of single-touch leads.</p>
+<p>The agents who win on follow-up aren't more disciplined — they have better systems. Manual follow-up doesn't scale beyond 30–40 active leads before quality degrades. A well-configured automated follow-up sequence looks like this:</p>
+<ul>
+  <li><strong>Immediate (Day 0):</strong> Automated text acknowledging their search, with a personalized note about the specific neighborhood they searched — not "thanks for registering," but "I saw you were looking at homes near the Blue Valley district — here are two that just listed this week."</li>
+  <li><strong>Day 1:</strong> Follow-up text with 2–3 listing suggestions matching their search criteria and price range.</li>
+  <li><strong>Day 3:</strong> Email with a short market update for their target neighborhood — real days-on-market and price-per-square-foot data, not generic talking points.</li>
+  <li><strong>Day 7:</strong> Personal call attempt for high-score leads. Automated check-in text for medium-score leads.</li>
+  <li><strong>Day 14:</strong> New listing alert if anything matching their criteria entered the market in the previous two weeks.</li>
+  <li><strong>Monthly:</strong> Market report for their target area — automated but personalized to their search history and price range.</li>
+</ul>
+<p>The difference between an agent with a 3% lead conversion rate and one with an 18% conversion rate is usually not talent or market timing. It's the quality of their follow-up infrastructure.</p>
+
+<h2>What Kansas City Agents Need That National Platforms Miss</h2>
+<p>National lead generation platforms are optimized for scale, which means they're calibrated to the median market — not to KC's specific dynamics. Here's what matters locally:</p>
+<p><strong>Cross-State Lead Management.</strong> KC buyers routinely search both sides of the state line. Johnson County, Kansas and Jackson County, Missouri share a metro but operate in different tax structures, school systems, and recording jurisdictions. Your lead gen platform needs to handle this routing without friction — most national tools don't.</p>
+<p><strong>Neighborhood-Level Intelligence.</strong> A buyer comparing Lee's Summit, Liberty, and Olathe needs neighborhood-level data — school ratings, average commute times, price-per-square-foot trends, average days on market by price band. Platforms that surface only city-level aggregates force agents to pull data manually from separate sources mid-conversation.</p>
+<p><strong>New Construction Coverage.</strong> KC has active new construction corridors — Olathe's western expansion, North Shoal Creek in the Northland, Blue Springs' growing southeast side. Platforms that don't integrate builder inventory miss a significant share of buyer intent signals that would otherwise push a lead's score higher.</p>
+<p>T-Agent was built in Kansas City for Kansas City agents. The lead scoring models are trained on KC-area transaction data, the neighborhood taxonomy matches the local MLS structure, and the follow-up templates reference landmarks and neighborhoods KC buyers actually recognize. <a href="/pricing">Compare plans and see what's included →</a></p>
+
+<h2>How to Evaluate Lead Generation Software Before You Buy</h2>
+<p>Before committing to any platform, ask these questions during your demo or free trial:</p>
+<ol>
+  <li><strong>Where do the leads come from?</strong> Platforms that generate their own leads through PPC or content versus platforms that manage leads you import have fundamentally different value propositions. Know which model you're buying before you evaluate features.</li>
+  <li><strong>How is the scoring model trained?</strong> "AI-powered" is not a sufficient answer. Ask whether the model was trained on national data or local data, how often it's retrained, and specifically what signals carry the most weight in the score.</li>
+  <li><strong>What does the follow-up automation actually look like?</strong> Request a live walkthrough of a full automated sequence — the actual message library and triggers, not a slide deck. Generic "hi [First Name], are you still looking?" copy will hurt your brand more than help it.</li>
+  <li><strong>How do you measure success?</strong> Ask what metrics the platform tracks and how it reports on your conversion rate over time. Platforms that can't answer this clearly don't prioritize helping you improve — they prioritize keeping you subscribed.</li>
+  <li><strong>What's the contract structure?</strong> Month-to-month with cancellation flexibility is the right default for software you haven't validated against your own pipeline. Annual contracts locked before you've verified ROI are a risk worth negotiating away.</li>
+</ol>
+
+<h2>Frequently Asked Questions: Real Estate Lead Generation Software</h2>
+
+<h3>What's the difference between lead generation software and a real estate CRM?</h3>
+<p>A CRM stores and organizes your contacts. Lead generation software actively works to identify, score, and nurture those contacts toward a transaction. The best modern platforms combine both functions — but many tools marketed as "lead gen" are actually CRMs with drip email sequences attached, which is useful but not the same as an AI scoring platform that actively prioritizes your pipeline.</p>
+
+<h3>How much does real estate lead generation software typically cost?</h3>
+<p>Pricing ranges from $99/month for basic CRM-with-follow-up tools to $2,000+/month for full-service platforms that include paid lead generation campaigns. AI-powered platforms focused on lead intelligence and automation typically fall in the $149–$299/month range. The ROI math is straightforward: if one additional closing per year adds $8,000–$12,000 to your GCI, a $200/month platform that delivers it pays back in the first transaction alone.</p>
+
+<h3>Do I still need Zillow Premier Agent if I use lead generation software?</h3>
+<p>These serve different functions. Zillow Premier Agent is a lead source — it generates new prospect contacts. Lead generation software is what you use to manage, score, and convert those contacts into appointments. Most high-performing agents use both: external lead sources feeding into an intelligent management platform that maximizes conversion of every lead, regardless of where it originated.</p>
+
+<h3>How long does it take to see results from AI lead scoring?</h3>
+<p>Most agents see measurable improvement in their priority queue within the first week, because the AI can immediately identify which existing contacts are showing high-intent behavioral patterns. Conversion rate improvements typically appear in 30–60 days as automated follow-up sequences work through the pipeline. The model also improves over time as it accumulates data on your specific market and lead sources.</p>
+
+<h3>Can AI lead generation software work for part-time agents?</h3>
+<p>It works especially well for part-time agents. The automation handles the follow-up that a part-time agent would otherwise miss — keeping every lead warm even when you're working another job. The AI scoring helps concentrate limited calling hours on the contacts most likely to convert, rather than distributing that scarce time evenly across a cold database of hundreds.</p>
+
+<h3>What happens to leads who never respond to follow-up?</h3>
+<p>Non-responsive leads move into long-nurture tracks — low-frequency automated touches like monthly market reports and major market shift alerts that keep you present without consuming your time. Industry data consistently shows that 20–30% of leads that go cold in any given month will transact within 12–18 months. Staying in their inbox costs almost nothing; missing that transaction when they re-engage costs a full commission.</p>
+
+<h2>Start Closing More Leads with T-Agent</h2>
+<p>In 2026, real estate success isn't about generating more leads — it's about extracting more value from the leads you already have. The gap between agents closing 12 deals per year and agents closing 40 is not primarily a lead volume gap. It's a lead intelligence gap.</p>
+<p>T-Agent gives Kansas City agents AI scoring, automated SMS follow-up, and local market intelligence in one platform. Setup takes under 30 minutes, there's no annual contract required, and most agents identify at least one high-intent lead in their existing database within the first 24 hours of connecting their sources.</p>
+<p>Ready to stop guessing which leads to call? <a href="/leads">Start your free T-Agent trial and see your priority queue in minutes →</a></p>
+    `.trim(),
+  },
 ];
 
 export function getBlogPost(slug: string): BlogPost | undefined {
