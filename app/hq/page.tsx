@@ -7,14 +7,16 @@ import { useToast } from "@/components/ui/Toast";
 import { HqBoard } from "@/components/hq/hq-board";
 import { HqLeadDrawer } from "@/components/hq/hq-lead-drawer";
 import { HqApprovalQueue } from "@/components/hq/hq-approval-queue";
+import { HqMoney } from "@/components/hq/hq-money";
 import {
   STAGE_LABEL,
   readApiError,
   type HqLead,
+  type HqMoney as HqMoneyData,
   type HqQueueTouch,
 } from "@/components/hq/types";
 
-type Tab = "pipeline" | "approvals";
+type Tab = "pipeline" | "approvals" | "money";
 
 export default function HqPage() {
   const { toast } = useToast();
@@ -32,6 +34,8 @@ export default function HqPage() {
   const [saving, setSaving] = useState(false);
   const [queueLoading, setQueueLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [money, setMoney] = useState<HqMoneyData | null>(null);
+  const [moneyLoading, setMoneyLoading] = useState(false);
 
   // ─── Data loaders ───
   const loadLeads = useCallback(async () => {
@@ -60,6 +64,24 @@ export default function HqPage() {
     }
   }, [toast]);
 
+  const loadMoney = useCallback(async () => {
+    setMoneyLoading(true);
+    try {
+      const r = await fetch("/api/hq/money");
+      if (!r.ok) throw new Error(await readApiError(r, "Failed to load money data"));
+      const d = await r.json();
+      setMoney(d);
+    } catch (err) {
+      toast({
+        title: "Failed to load money data",
+        description: err instanceof Error ? err.message : String(err),
+        variant: "error",
+      });
+    } finally {
+      setMoneyLoading(false);
+    }
+  }, [toast]);
+
   // ─── Auth check on mount (401 = show PIN screen, anything else = error) ───
   useEffect(() => {
     (async () => {
@@ -83,8 +105,11 @@ export default function HqPage() {
   }, [toast]);
 
   useEffect(() => {
-    if (authed) loadDrafts();
-  }, [authed, loadDrafts]);
+    if (authed) {
+      loadDrafts();
+      loadMoney();
+    }
+  }, [authed, loadDrafts, loadMoney]);
 
   // ─── Login ───
   async function handleLogin(e: React.FormEvent) {
@@ -220,6 +245,7 @@ export default function HqPage() {
                 })
               );
               loadDrafts();
+              loadMoney();
             }}
           >
             ↻ Refresh
@@ -266,6 +292,15 @@ export default function HqPage() {
           >
             Approvals{drafts.length > 0 ? ` (${drafts.length})` : ""}
           </button>
+          <button
+            className={`tab-btn ${tab === "money" ? "active" : ""}`}
+            onClick={() => setTab("money")}
+          >
+            Money
+            {money
+              ? ` (${money.wd.pastDue.length + money.wd.pendingApproval.length + money.invoices.open.length})`
+              : ""}
+          </button>
           {tab === "pipeline" && (
             <select
               value={offerFilter}
@@ -282,6 +317,8 @@ export default function HqPage() {
 
         {tab === "pipeline" ? (
           <HqBoard leads={boardLeads} onSelect={setSelected} />
+        ) : tab === "money" ? (
+          <HqMoney money={money} loading={moneyLoading} onRefresh={loadMoney} />
         ) : (
           <HqApprovalQueue
             touches={drafts}

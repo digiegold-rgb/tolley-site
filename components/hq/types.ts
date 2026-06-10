@@ -52,6 +52,60 @@ export interface HqQueueTouch extends HqTouch {
   };
 }
 
+// ─── Money tab (GET /api/hq/money) ───
+
+export interface HqMoneyPastDue {
+  id: string;
+  name: string;
+  phone: string | null;
+  unitCost: number;
+  dunningStage: number;
+  currentPeriodEnd: string | null;
+  missedCount: number;
+  amountBehind: number;
+}
+
+export interface HqMoneyPendingApproval {
+  id: string;
+  name: string;
+  unitCost: number;
+  createdAt: string;
+}
+
+export interface HqMoneyInvoice {
+  id: string;
+  invoiceNumber: string;
+  status: string;
+  contactName: string | null;
+  amountDue: number;
+  dueDate: string | null;
+  issueDate: string;
+  isOverdue: boolean;
+}
+
+export interface HqMoney {
+  wd: {
+    pastDue: HqMoneyPastDue[];
+    pastDueTotal: number;
+    pendingApproval: HqMoneyPendingApproval[];
+    draftCount: number;
+  };
+  invoices: {
+    open: HqMoneyInvoice[];
+    totalDue: number;
+    overdueDue: number;
+  };
+  week: {
+    since: string;
+    wdRevenue: number;
+    wdPayments: number;
+    invoiceRevenue: number;
+    invoicePayments: number;
+    totalRevenue: number;
+    newLeads: number;
+  };
+}
+
 export const STAGE_LABEL: Record<string, string> = {
   scraped: "Scraped",
   enriched: "Enriched",
