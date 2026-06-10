@@ -8,17 +8,17 @@ datasource db {
 }
 
 model User {
-  id                   String             @id @default(cuid())
+  id                   String               @id @default(cuid())
   name                 String?
-  email                String?            @unique
+  email                String?              @unique
   emailVerified        DateTime?
   image                String?
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-  stripeCustomerId     String?            @unique
-  stripeSubscriptionId String?            @unique
-  subscriptionStatus   String             @default("none")
-  subscriptionTier     String             @default("none")
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  stripeCustomerId     String?              @unique
+  stripeSubscriptionId String?              @unique
+  subscriptionStatus   String               @default("none")
+  subscriptionTier     String               @default("none")
   currentPeriodEnd     DateTime?
   accounts             Account[]
   agents               Agent[]
@@ -37,6 +37,103 @@ model User {
   mfa                  UserMfa?
   videoCredit          VideoCredit?
   videoGenerations     VideoGeneration[]
+  videoProjects        VideoProject[]
+  socialAccounts       SocialAccount[]
+  socialShares         SocialShareJob[]
+  vaterSubscription    VaterSubscription?
+  vaterUsages          VaterUsage[]
+  vaterTrialUsage      VaterTrialUsage?
+  vaterMonthlyLimit    VaterMonthlyLimit?
+  budgetCategories     BudgetCategory[]
+  budgetEntries        BudgetEntry[]
+  budgetGoals          BudgetGoal[]
+  budgetRecurring      BudgetRecurring[]
+  budgetPlaidAccounts  BudgetPlaidAccount[]
+  shareLinks           ShareLink[]
+}
+
+/// Per-user credentials for posting to external social platforms from the
+/// vater/youtube Library. Isolated from the global /content portal (which is
+/// Jared-specific) so every tolley-site user can connect their own accounts.
+///
+/// `credentials` is an encrypted-at-rest JSON blob (expected shape differs
+/// per platform — YouTube needs refresh_token + client_id/secret, TikTok
+/// needs client_key + refresh_token, FB needs page_id + long-lived token,
+/// etc). See /api/vater/social-accounts for the per-platform schemas.
+model SocialAccount {
+  id          String    @id @default(cuid())
+  userId      String
+  platform    String // "youtube" | "tiktok" | "instagram" | "facebook" | "pinterest" | "twitter" | "linkedin"
+  displayName String? // handle / channel name shown in the UI
+  avatarUrl   String?
+  credentials Json // platform-specific token blob
+  status      String    @default("active") // active | expired | error
+  lastError   String?
+  connectedAt DateTime  @default(now())
+  lastUsedAt  DateTime?
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+  @@index([userId])
+  @@index([platform])
+}
+
+/// Tracks an outbound upload from a vater/youtube project to a social
+/// platform. Stub-first: rows are created when the user clicks "Post to X"
+/// but the actual platform API call is deferred until OAuth flows land.
+model SocialShareJob {
+  id           String    @id @default(cuid())
+  userId       String
+  projectId    String // YouTubeProject.id
+  platform     String
+  status       String    @default("queued") // queued | posting | posted | failed
+  title        String?
+  description  String?
+  hashtags     String[]  @default([])
+  thumbnailUrl String?
+  platformUrl  String? // final URL after post (e.g. https://youtu.be/...)
+  errorMessage String?
+  queuedAt     DateTime  @default(now())
+  postedAt     DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, queuedAt])
+  @@index([projectId])
+  @@index([status])
+}
+
+/// Central admin queue for the /social dashboard. Distinct from SocialShareJob
+/// (vater-project-scoped) and ContentPost (lead-subscriber-scoped). Each row
+/// represents one piece of media that fans out to multiple platforms.
+///
+/// `source` says where it came from — "manual" (admin upload), "shop"
+/// (product syndicate), "realestate" (MLS pull), "vater" (faceless render).
+/// `platforms` lists the targets; `externalIds` maps platform -> post URL/id
+/// once published. `status` lifecycle: draft -> ready -> posting -> posted | failed.
+model SocialPost {
+  id           String    @id @default(cuid())
+  source       String // manual | shop | realestate | vater
+  sourceRefId  String? // Product.id, Listing.id, YouTubeProject.id (nullable for manual)
+  mediaUrl     String // CDN/blob URL of the video or image
+  mediaType    String    @default("video") // video | image | carousel
+  thumbnailUrl String?
+  title        String?
+  caption      String
+  hashtags     String[]  @default([])
+  platforms    String[]  @default([]) // youtube | tiktok | instagram | facebook | pinterest
+  scheduledAt  DateTime?
+  postedAt     DateTime?
+  status       String    @default("draft") // draft | ready | posting | posted | failed
+  externalIds  Json      @default("{}") // { youtube: "...", tiktok: "..." }
+  errorMessage String?
+  retryCount   Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status, scheduledAt])
+  @@index([source, createdAt])
+  @@index([createdAt])
 }
 
 model Agent {
@@ -171,16 +268,22 @@ model UsageBucket {
 }
 
 model ShopItem {
-  id          String    @id @default(cuid())
-  title       String
-  price       Float
-  description String?
-  category    String?
-  imageUrls   String[]
-  status      String    @default("active")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  soldAt      DateTime?
+  id                 String    @id @default(cuid())
+  title              String
+  price              Float
+  description        String?
+  category           String?
+  imageUrls          String[]
+  status             String    @default("active")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  soldAt             DateTime?
+  shipPrice          Float?
+  weightOz           Int?
+  amazonAsin         String?
+  amazonClicks       Int       @default(0)
+  amazonSearchClicks Int       @default(0)
+  searchKeywords     String?
 
   @@index([status, createdAt])
 }
@@ -375,6 +478,49 @@ model EmailLead {
 
   @@index([source])
   @@index([createdAt])
+}
+
+/// Transactional agent action submission. An AI agent (or HTTP client) calls
+/// `submit_subsite_action` (MCP) or POST /api/lead/action with structured fields,
+/// gets back a `receiptToken`, then can GET /api/lead/<token> for status.
+/// Distinct from EmailLead (which is unique-per-email and used for "I want updates").
+model LeadAction {
+  id              String    @id @default(cuid())
+  receiptToken    String    @unique
+  subsite         String
+  action          String
+  email           String?
+  name            String?
+  phone           String?
+  structured      Json?
+  status          String    @default("new")
+  statusNote      String?
+  statusUpdatedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([subsite, action, createdAt])
+  @@index([status, createdAt])
+}
+
+/// Auto-minted share link for any subsite. Distinct from /go (hand-curated promo redirects).
+/// `/s/<token>` → 302 to `path` with `?ref=share&t=<token>`. Tracks click attribution per subsite.
+model ShareLink {
+  id            String    @id @default(cuid())
+  token         String    @unique
+  subsite       String
+  path          String
+  title         String?
+  createdById   String?
+  createdBy     User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  expiresAt     DateTime?
+  clickCount    Int       @default(0)
+  lastClickedAt DateTime?
+  meta          Json?
+  createdAt     DateTime  @default(now())
+
+  @@index([subsite, createdAt])
+  @@index([createdById])
 }
 
 model SmsConversation {
@@ -1139,10 +1285,22 @@ model WdClient {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   confirmed        Boolean     @default(false)
+  // ── Stripe subscription state (auto-synced via webhook) ──
+  stripeSubscriptionId String?
+  subscriptionStatus   String?   // active | trialing | past_due | canceled | unpaid | incomplete
+  currentPeriodEnd     DateTime? // when the next charge is due
+  cancelAtPeriodEnd    Boolean   @default(false)
+  lastPaymentStatus    String?   // paid | failed (mirrors latest invoice)
+  pendingApproval      Boolean   @default(false) // new self-serve signup awaiting 1-click approve
+  dunningStage         Int       @default(0)     // 0=ok, 1=day0, 2=day3, 3=day7+ (failed-payment ladder)
+  reminderSentForPeriod DateTime? // currentPeriodEnd the renew-soon nudge was last drafted for
   payments         WdPayment[]
+  messages         WdMessage[]
 
   @@index([active])
   @@index([source])
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
 }
 
 model WdPayment {
@@ -1153,10 +1311,38 @@ model WdPayment {
   note      String?
   createdAt DateTime @default(now())
   status    String   @default("paid")
+  // ── Stripe linkage (webhook-created rows) ──
+  source          String   @default("manual") // manual | stripe
+  stripeInvoiceId String?  @unique
+  paidAt          DateTime?
   client    WdClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, month])
   @@index([month])
+}
+
+// Outbound/inbound customer messages for W/D — reminders, dunning, approvals,
+// and AI SMS replies. Default flow is "draft" → admin taps Send (1-click
+// approve-send). Inbound texts land here as direction=inbound.
+model WdMessage {
+  id          String    @id @default(cuid())
+  clientId    String?
+  phone       String?
+  channel     String    @default("sms")      // sms | email
+  direction   String    @default("outbound") // outbound | inbound
+  kind        String                          // reminder | dunning | approval | ai_reply | inbound
+  status      String    @default("draft")    // draft | sent | failed | skipped | received
+  subject     String?                         // email subject (channel=email)
+  body        String
+  aiGenerated Boolean   @default(false)
+  meta        Json?
+  createdAt   DateTime  @default(now())
+  sentAt      DateTime?
+  client      WdClient? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([clientId])
+  @@index([direction, status])
 }
 
 model WdRepairItem {
@@ -1570,6 +1756,9 @@ model VideoGeneration {
   completedAt  DateTime?
   createdAt    DateTime  @default(now())
   blobUrl      String?
+  narrationText     String?
+  narrationVoiceId  String?
+  narrationBlobUrl  String?
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
@@ -1589,6 +1778,32 @@ model VideoCredit {
   updatedAt        DateTime @updatedAt
   createdAt        DateTime @default(now())
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Multi-track timeline editor projects at /video/edit. The `state` JSON column
+/// holds the full timeline (video tracks, audio tracks, text overlays). On
+/// render, output lands in Vercel Blob and a sibling `VideoGeneration` row is
+/// created so the result shows up alongside other generated videos in /video.
+model VideoProject {
+  id                String    @id @default(cuid())
+  userId            String
+  name              String    @default("Untitled project")
+  fps               Int       @default(30)
+  width             Int       @default(1920)
+  height            Int       @default(1080)
+  durationS         Float     @default(0)
+  state             Json
+  status            String    @default("draft") // draft | rendering | completed | failed
+  outputBlobUrl     String?
+  videoGenerationId String?
+  errorMessage      String?
+  renderStartedAt   DateTime?
+  renderCompletedAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
 }
 
 model TradingTrade {
@@ -1773,17 +1988,355 @@ model Product {
   netProfit           Float?
   roi                 Float?
   shopItemId          String?
+  fbListingId         String?
+  fbStatus            String?
+  lastFbCheckAt       DateTime?
+  shipPrice           Float?
+  weightOz            Int?
+  amazonAsin          String?
+  amazonClicks        Int               @default(0)
+  amazonSearchClicks  Int               @default(0)
+  searchKeywords      String?
+  asinMatchScore      Float?
+  asinMatchedAt       DateTime?
+  videoUrl            String?
+  videoThumbnailUrl   String?
+  videoDurationSec    Int?
+  descriptionSource   String?
+  verifiedDescription Boolean           @default(false)
+  fbBackfillBatchId   String?
+  ebayItemId          String?
+  ebayListedAt        DateTime?
+  ebayStatus          String?
+  tiktokShopId        String?
+  vendooSyncedAt      DateTime?
+  vendooStatus        String?
+  goSlug              String?           @unique
+  goClicksTikTok      Int               @default(0)
+  goClicksYouTube     Int               @default(0)
+  goClicksInstagram   Int               @default(0)
+  goClicksFacebook    Int               @default(0)
+  goClicksPinterest   Int               @default(0)
+  goClicksDirect      Int               @default(0)
+  postizPostIds       Json?
+  syndicatedAt        DateTime?
+  haulEligible        Boolean           @default(false)
+  haulCheckedAt       DateTime?
+  haulPromotedAt      DateTime?
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
   listings            PlatformListing[]
   priceHistory        PriceSnapshot[]
   sourceLot           SourceLot?        @relation(fields: [lotId], references: [id])
   sales               ShopSale[]
+  listingJobs         ListingJob[]
+  reviews             Review[]
 
   @@index([status, createdAt])
   @@index([category])
   @@index([lotId])
+  @@index([goSlug])
+  @@index([ebayItemId])
+  @@index([vendooStatus])
   @@index([shopItemId])
+  @@index([fbListingId])
+  @@index([fbStatus])
+  @@index([fbBackfillBatchId])
+  @@index([haulEligible, haulPromotedAt])
+}
+
+model ListingJob {
+  id            String    @id @default(cuid())
+  productId     String
+  platform      String    @default("fb_marketplace")
+  intent        String    @default("post")
+  status        String    @default("queued")
+  attempts      Int       @default(0)
+  lastError     String?
+  lastStage     String?
+  nextAttemptAt DateTime  @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([productId, platform])
+  @@index([intent, status])
+}
+
+/// Beta bulk-photo ingestion. One row per product group submitted from
+/// /shop/admin/bulk-add. The bulk-ingest-worker drains these: Gemini vision
+/// → Amazon SerpAPI lookup → create Product → enqueue ListingJob for FB.
+/// Then walks away — the existing fb-draft-worker handles the rest.
+model BulkIngestJob {
+  id               String    @id @default(cuid())
+  batchId          String
+  status           String    @default("queued")
+  photoUrls        String[]
+  productId        String?
+  visionResult     Json?
+  amazonAsin       String?
+  amazonPriceCents Int?
+  confidence       Float?
+  attempts         Int       @default(0)
+  lastStage        String?
+  lastError        String?
+  nextAttemptAt    DateTime  @default(now())
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([batchId])
+}
+
+/// WhatsApp chat → shop auto-listing. One row per "scan this chat" request from
+/// /shop/whatsapp. The bulk-ingest-worker drains these: pull the chat's photo
+/// backlog from the local WhatsApp bridge, smart-group multi-angle shots by
+/// caption/time, upload to Vercel Blob, then fan out into BulkIngestJob rows
+/// (sharing `batchId`) — which the same worker already turns into Products +
+/// FB drafts. Progress for the vision→product half is read off BulkIngestJob.
+model WhatsappScanJob {
+  id            String    @id @default(cuid())
+  chatId        String
+  chatName      String?
+  count         Int       @default(50)
+  groupMode     String    @default("smart") // smart = group multi-angle; single = one listing per photo
+  status        String    @default("queued") // queued|scraping|enqueued|failed
+  batchId       String?   // links to the BulkIngestJob rows this scan produced
+  photosFound   Int       @default(0)
+  groups        Int       @default(0)
+  skipped       Int       @default(0)
+  attempts      Int       @default(0)
+  lastStage     String?
+  lastError     String?
+  nextAttemptAt DateTime  @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([batchId])
+}
+
+/// Auto-watch a WhatsApp chat: the bulk-ingest-worker polls each enabled row,
+/// pulls photos NEWER than `lastSeenTs` from the bridge, and auto-lists them
+/// (group → Blob → BulkIngestJob → Product + FB draft). `lastSeenTs` is the
+/// unix-seconds watermark advanced after each run so photos are never re-listed.
+model WhatsappWatch {
+  id          String    @id @default(cuid())
+  chatId      String    @unique
+  chatName    String?
+  groupMode   String    @default("single")
+  count       Int       @default(50)
+  lastSeenTs  Int       @default(0)
+  enabled     Boolean   @default(true)
+  lastRunAt   DateTime?
+  lastError   String?
+  lastListed  Int       @default(0)
+  totalListed Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([enabled])
+}
+
+/// Browser-session auth for marketplaces without a public listing API
+/// (Mercari, Poshmark, Depop, FB). One row per platform; the persistent
+/// Chromium profile on disk is the actual credential store. We track here
+/// so the admin UI can show health without touching the worker.
+model PlatformAuth {
+  id           String    @id @default(cuid())
+  platform     String    @unique
+  sessionState String    @default("disabled")
+  profileDir   String
+  lastLoginAt  DateTime?
+  lastError    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([sessionState])
+}
+
+model ShopBlocklist {
+  id        String   @id @default(cuid())
+  pattern   String
+  matchType String   @default("contains")
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([matchType])
+}
+
+/// Daily snapshot of Amazon Associates dashboard numbers, scraped by the
+/// DGX amazon-affiliate-worker. One row per scrape; we keep history so we
+/// can show 7d/30d trends without re-scraping.
+model AmazonStatsSnapshot {
+  id             String   @id @default(cuid())
+  capturedAt     DateTime @default(now())
+  programType    String   @default("associates")
+  earningsToday  Float?
+  earningsMTD    Float?
+  earningsYTD    Float?
+  clicksToday    Int?
+  clicksMTD      Int?
+  itemsShipped   Int?
+  itemsOrdered   Int?
+  conversionRate Float?
+  topAsins       Json?
+  raw            Json?
+
+  @@index([programType, capturedAt])
+}
+
+/// Influencer Program dashboard snapshot — separate metrics from Associates.
+/// Includes onsite earnings (clicks while shopper was already on Amazon).
+model InfluencerStatsSnapshot {
+  id               String   @id @default(cuid())
+  capturedAt       DateTime @default(now())
+  videoViews       Int?
+  storefrontVisits Int?
+  onsiteEarnings   Float?
+  offsiteEarnings  Float?
+  followerCount    Int?
+  topVideos        Json?
+  raw              Json?
+
+  @@index([capturedAt])
+}
+
+/// Auto-activated tier flags. Worker writes here when sales gates clear.
+/// API reads these to determine which Tier 1+ features are live.
+model AmazonFeatureFlag {
+  key         String    @id
+  enabled     Boolean   @default(false)
+  reason      String?
+  activatedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+}
+
+/// Per-channel Amazon Associates Tracking IDs. Source rows mirror the
+/// canonical keys in `lib/amazon/subtags.ts` (tt, yt, ig, fb, brand_fb, gbp,
+/// pin, shop, bounty, direct). Rows with `verified = true` are eligible to
+/// be emitted; unverified rows fall back to the master tag at click time so
+/// no clicks ever land on a tag that wasn't actually registered with Amazon
+/// (which silently drops attribution).
+model AmazonSubtag {
+  source     String    @id
+  tagId      String
+  verified   Boolean   @default(false)
+  verifiedAt DateTime?
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+/// Idea Lists synced bidirectionally with the Influencer dashboard.
+/// productIds is the array of Product IDs we curated into this list.
+model IdeaList {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  coverImageUrl String?
+  amazonListId  String?   @unique
+  productIds    Json
+  followerCount Int?
+  lastSyncAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([amazonListId])
+}
+
+/// Shoppable videos pushed to the Amazon Influencer dashboard.
+/// Tracks per-video Amazon-side metrics so we can correlate vs our own
+/// goClicks* per platform.
+model AmazonVideoUpload {
+  id              String    @id @default(cuid())
+  productId       String
+  amazonVideoId   String?   @unique
+  status          String    @default("queued")
+  uploadedAt      DateTime?
+  viewCount       Int       @default(0)
+  onsiteEarnings  Float     @default(0)
+  lastReconcileAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([productId])
+  @@index([status])
+}
+
+/// Cache of Amazon product detail pulled via Creators API. 24h TTL.
+/// Replaces SerpAPI-backed comp lookups once Tier 2 activates.
+model AmazonProductCache {
+  asin          String   @id
+  title         String?
+  priceCents    Int?
+  imageUrl      String?
+  availability  String?
+  rating        Float?
+  reviewCount   Int?
+  reviewsSample Json?
+  raw           Json?
+  cachedAt      DateTime @default(now())
+
+  @@index([cachedAt])
+}
+
+/// Creator Connections brand campaigns scraped daily from the Influencer
+/// dashboard. Filtered by category match in the worker; alerted via Discord
+/// when a new match appears.
+model CreatorConnectionsCampaign {
+  id            String    @id @default(cuid())
+  amazonId      String?   @unique
+  brandName     String
+  productAsin   String?
+  commissionPct Float?
+  budget        Float?
+  category      String?
+  endDate       DateTime?
+  applied       Boolean   @default(false)
+  appliedAt     DateTime?
+  accepted      Boolean   @default(false)
+  acceptedAt    DateTime?
+  notes         String?
+  raw           Json?
+  firstSeenAt   DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([applied, accepted])
+  @@index([category])
+}
+
+model Review {
+  id             String    @id @default(cuid())
+  source         String
+  externalId     String?
+  reviewerName   String
+  reviewerAvatar String?
+  rating         Int?
+  body           String
+  notableTags    String[]
+  productId      String?
+  product        Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  sourceUrl      String?
+  reviewedAt     DateTime?
+  importedAt     DateTime  @default(now())
+  displayOrder   Int       @default(0)
+  hidden         Boolean   @default(false)
+  bodyHash       String    @unique
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([hidden, displayOrder, reviewedAt])
+  @@index([source, externalId])
+  @@index([productId])
 }
 
 model PlatformListing {
@@ -1807,6 +2360,28 @@ model PlatformListing {
   @@unique([productId, platform])
   @@index([platform, status])
   @@index([status])
+  @@index([platform, externalId])
+}
+
+model EbayAuth {
+  id                    String    @id @default(cuid())
+  sellerEbayId          String?
+  environment           String    @default("production")
+  refreshToken          String
+  refreshTokenExpiresAt DateTime
+  accessToken           String?
+  accessTokenExpiresAt  DateTime?
+  scopes                String?
+  paymentPolicyId       String?
+  returnPolicyId        String?
+  fulfillmentPolicyId   String?
+  defaultLocationKey    String?
+  defaultLocationZip    String?
+  lastRefreshError      String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([environment, sellerEbayId])
 }
 
 model SourceLot {
@@ -1912,21 +2487,28 @@ model AffiliateLink {
 }
 
 model ShopSale {
-  id            String   @id @default(cuid())
-  productId     String?
-  platform      String
-  externalId    String?
-  title         String
-  salePrice     Float
-  platformFees  Float?
-  shippingCost  Float?
-  cogs          Float?
-  netProfit     Float?
-  buyerName     String?
-  buyerLocation String?
-  paymentMethod String?
-  soldAt        DateTime @default(now())
-  product       Product? @relation(fields: [productId], references: [id])
+  id              String    @id @default(cuid())
+  productId       String?
+  platform        String
+  externalId      String?
+  title           String
+  salePrice       Float
+  platformFees    Float?
+  shippingCost    Float?
+  shippingPaid    Float?
+  shippingAddress Json?
+  buyerEmail      String?
+  fulfillment     String    @default("pending")
+  trackingCarrier String?
+  trackingNumber  String?
+  shippedAt       DateTime?
+  cogs            Float?
+  netProfit       Float?
+  buyerName       String?
+  buyerLocation   String?
+  paymentMethod   String?
+  soldAt          DateTime  @default(now())
+  product         Product?  @relation(fields: [productId], references: [id])
 
   @@index([productId])
   @@index([platform, soldAt])
@@ -2207,33 +2789,56 @@ model PoolConfig {
 }
 
 model FoodHousehold {
-  id                   String             @id @default(cuid())
-  userId               String             @unique
-  name                 String             @default("My Kitchen")
-  timezone             String             @default("America/Chicago")
-  weeklyBudget         Float?
-  defaultServings      Int                @default(4)
+  id                      String              @id @default(cuid())
+  userId                  String              @unique
+  name                    String              @default("My Kitchen")
+  timezone                String              @default("America/Chicago")
+  weeklyBudget            Float?
+  defaultServings         Int                 @default(4)
+  cuisinePreferences      String[]            @default([])
   // Subscription (Ruthann's Kitchen SaaS, $39/yr annual plan)
-  subscriptionStatus   String             @default("none") // none | trialing | active | past_due | canceled
-  stripeCustomerId     String?            @unique
-  stripeSubscriptionId String?            @unique
-  stripePriceId        String?
-  trialEndsAt          DateTime?
-  currentPeriodEnd     DateTime?
-  cancelAtPeriodEnd    Boolean            @default(false)
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-  members              FoodFamilyMember[]
-  groceryLists         FoodGroceryList[]
-  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mealPlans            FoodMealPlan[]
-  pantryItems          FoodPantryItem[]
-  priceEntries         FoodPriceEntry[]
-  receipts             FoodReceipt[]
-  recipes              FoodRecipe[]
+  subscriptionStatus      String              @default("none") // none | trialing | active | past_due | canceled
+  stripeCustomerId        String?             @unique
+  stripeSubscriptionId    String?             @unique
+  stripePriceId           String?
+  trialEndsAt             DateTime?
+  currentPeriodEnd        DateTime?
+  cancelAtPeriodEnd       Boolean             @default(false)
+  reengagementEmailSentAt DateTime?
+  lastActiveAt            DateTime?
+  // Grocery auto-sync (Walmart + Sam's Club purchase-history scrapers)
+  walmartAutoSync         Boolean             @default(false)
+  samsclubAutoSync        Boolean             @default(false)
+  lastWalmartSyncAt       DateTime?
+  lastSamsclubSyncAt      DateTime?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  members                 FoodFamilyMember[]
+  groceryLists            FoodGroceryList[]
+  user                    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealPlans               FoodMealPlan[]
+  pantryItems             FoodPantryItem[]
+  priceEntries            FoodPriceEntry[]
+  receipts                FoodReceipt[]
+  recipes                 FoodRecipe[]
+  activityEvents          FoodActivityEvent[]
 
   @@index([subscriptionStatus])
   @@index([stripeCustomerId])
+  @@index([lastActiveAt])
+}
+
+model FoodActivityEvent {
+  id          String        @id @default(cuid())
+  householdId String
+  kind        String
+  meta        Json?
+  createdAt   DateTime      @default(now())
+  household   FoodHousehold @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@index([kind])
+  @@index([householdId, createdAt(sort: Desc)])
 }
 
 model FoodRecipe {
@@ -2611,18 +3216,18 @@ model FoodReceipt {
 }
 
 model Invoice {
-  id                    String            @id @default(cuid())
-  invoiceNumber         String            @unique
+  id                    String              @id @default(cuid())
+  invoiceNumber         String              @unique
   contactId             String?
-  status                String            @default("DRAFT")
-  issueDate             DateTime          @default(now())
+  status                String              @default("DRAFT")
+  issueDate             DateTime            @default(now())
   dueDate               DateTime?
-  subTotal              Float             @default(0)
-  taxAmount             Float             @default(0)
-  total                 Float             @default(0)
-  amountPaid            Float             @default(0)
-  amountDue             Float             @default(0)
-  currency              String            @default("USD")
+  subTotal              Float               @default(0)
+  taxAmount             Float               @default(0)
+  total                 Float               @default(0)
+  amountPaid            Float               @default(0)
+  amountDue             Float               @default(0)
+  currency              String              @default("USD")
   reference             String?
   notes                 String?
   stripePaymentLinkId   String?
@@ -2630,12 +3235,13 @@ model Invoice {
   stripePaymentIntentId String?
   sentAt                DateTime?
   paidAt                DateTime?
-  xeroId                String?           @unique
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  contact               AccountContact?   @relation(fields: [contactId], references: [id])
+  xeroId                String?             @unique
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  contact               AccountContact?     @relation(fields: [contactId], references: [id])
   lineItems             InvoiceLineItem[]
   payments              InvoicePayment[]
+  attachments           InvoiceAttachment[]
 
   @@index([contactId, status])
   @@index([issueDate(sort: Desc)])
@@ -2650,6 +3256,7 @@ model InvoiceLineItem {
   unitAmount  Float
   lineAmount  Float
   accountId   String?
+  sortOrder   Int            @default(0)
   createdAt   DateTime       @default(now())
   account     LedgerAccount? @relation(fields: [accountId], references: [id])
   invoice     Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
@@ -2671,20 +3278,37 @@ model InvoicePayment {
   @@index([invoiceId])
 }
 
+// Signed invoice scans, receipts, and any other per-invoice files. Uploaded
+// via the invoice detail page; stored in Vercel Blob. Replaces the
+// "attach a file" step that Xero used to cover before the 2026-04 cancellation.
+model InvoiceAttachment {
+  id         String   @id @default(cuid())
+  invoiceId  String
+  fileName   String
+  mimeType   String
+  size       Int
+  blobUrl    String
+  uploadedAt DateTime @default(now())
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
 model LedgerAccount {
-  id           String              @id @default(cuid())
-  xeroId       String?             @unique
-  code         String?
-  name         String
-  type         String
-  class        String
-  status       String              @default("ACTIVE")
-  taxType      String              @default("NONE")
-  isSystem     Boolean             @default(false)
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-  lineItems    InvoiceLineItem[]
-  transactions LedgerTransaction[]
+  id             String              @id @default(cuid())
+  xeroId         String?             @unique
+  plaidAccountId String?             @unique
+  code           String?
+  name           String
+  type           String
+  class          String
+  status         String              @default("ACTIVE")
+  taxType        String              @default("NONE")
+  isSystem       Boolean             @default(false)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  lineItems      InvoiceLineItem[]
+  transactions   LedgerTransaction[]
 
   @@index([class, status])
   @@index([code])
@@ -2886,9 +3510,13 @@ model YouTubeProject {
   topic         String? // used in topic mode only
 
   // Transcript (transcribe mode only)
-  transcript      String?
-  transcriptMeta  Json?
-  goalSuggestions Json?
+  transcript       String?
+  transcriptMeta   Json?
+  goalSuggestions  Json?
+  // TubeGen-parity title suggestions (vater v2 Phase 0). Populated by
+  // /api/vater/youtube/[id]/title/generate via autopilot.suggestTitles.
+  // Shape: string[]. Cleared when the user commits a sourceTitle.
+  titleSuggestions Json?
 
   // User intent (collected after transcribe, or upfront in topic mode)
   goal            String?
@@ -2950,6 +3578,130 @@ model YouTubeProject {
   @@index([styleId])
 }
 
+// ── Vater Watcher — embedded Claude observer (2026-04-17) ────────────
+// A persistent Claude Code agent on DGX watches every in-flight YouTube
+// job via the vater-observer MCP server. It writes human-readable notes
+// and actionable proposals through bearer-authed HTTPS so the UI sidebar
+// at /vater/youtube can render the feed and route Apply/Dismiss clicks
+// to the autopilot client.
+
+model VaterObserverNote {
+  id        String   @id @default(cuid())
+  jobId     String   @db.VarChar(64)
+  projectId String?
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([jobId, createdAt])
+  @@index([projectId, createdAt])
+}
+
+model VaterObserverProposal {
+  id            String    @id @default(cuid())
+  jobId         String    @db.VarChar(64)
+  projectId     String?
+  actionType    String // regen_scene | restart_stage | edit_script | tweak_voice_params | tweak_image_prompt | cancel_job
+  params        Json
+  reasoning     String    @db.Text
+  status        String    @default("pending") // pending | applied | dismissed | failed
+  createdAt     DateTime  @default(now())
+  resolvedAt    DateTime?
+  resultSummary String?   @db.Text
+
+  @@index([jobId, status, createdAt])
+  @@index([projectId, status, createdAt])
+}
+
+// ── Vater Studio billing (2026-04-26) ─────────────────────────────────
+// Pure dollar-denominated, NO credits. Mirrors Claude.ai usage UX.
+//
+// Architecture:
+//  - $288/month VaterSubscription (Stripe Subscription, separate from Food/Leads)
+//  - $250 included usage refills every period via Stripe Credit Grant
+//  - Each chargeable action posts a Stripe InvoiceItem (line item) to the
+//    upcoming invoice; we mirror it in VaterUsage for live UI + analytics
+//  - VaterTrialUsage tracks free-tier caps (3 transcripts / 1 scene / 1 anim)
+//  - VaterMonthlyLimit enforces user-set spending cap before paid actions
+//
+// Pattern follows FoodHousehold (each product owns its own Stripe state,
+// avoiding the legacy User.subscriptionStatus single-tenant problem).
+
+model VaterSubscription {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Stripe identifiers
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String? @unique
+  stripePriceId        String?
+  stripeCreditGrantId  String? // current period's $250 grant
+
+  // Lifecycle state (mirrors Stripe.Subscription.Status, but limited to ones we care about)
+  status             String    @default("trialing") // trialing | active | past_due | canceled | none
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean   @default(false)
+
+  // Trial tracking (usage-only — no calendar timer)
+  trialEndedAt     DateTime? // set when paywall fires AND user converts
+  trialConvertedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+/// Immutable ledger of every chargeable action. Mirrors Stripe InvoiceItems
+/// so we can render live usage + analytics without round-tripping to Stripe
+/// on every page render.
+model VaterUsage {
+  id                  String   @id @default(cuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action              String // 'script' | 'voiceover' | 'scene' | 'animation' | 'render' | 'thumbnail' | 'description' | 'transcription'
+  tier                String? // 'dgx' | 'l40s' | 'b100' | null (for tier-agnostic actions)
+  costCents           Int // mirror of the Stripe InvoiceItem amount in cents
+  description         String? // human-readable summary ("Scene 3 — L40S")
+  projectId           String? // YouTubeProject.id when applicable
+  ts                  DateTime @default(now())
+  // Stripe sync
+  stripeInvoiceItemId String?  @unique
+  // Idempotency: when a route retries, we want the same key to dedupe
+  idempotencyKey      String?  @unique
+
+  @@index([userId, ts])
+  @@index([userId, action, ts])
+  @@index([projectId])
+}
+
+/// Per-user free-tier cap counters. One row per user, created on first action.
+model VaterTrialUsage {
+  userId      String    @id
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transcripts Int       @default(0)
+  scenes      Int       @default(0)
+  animations  Int       @default(0)
+  firstUsedAt DateTime  @default(now())
+  capHitAt    DateTime? // first time any cap was reached
+}
+
+/// User-set monthly spending limit. Enforced app-side before chargeable
+/// actions: if (monthSpendCents + actionCostCents > limitCents) → block.
+model VaterMonthlyLimit {
+  userId      String    @id
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  limitCents  Int       @default(50000) // $500/mo default
+  // periodStart anchors which month we're tracking; reset by webhook on invoice.paid
+  periodStart DateTime  @default(now())
+  // usedCents is a CACHE — truth is sum(VaterUsage.costCents WHERE ts >= periodStart)
+  usedCents   Int       @default(0)
+  // when the user has explicitly raised the limit mid-period via the modal
+  raisedAt    DateTime?
+  updatedAt   DateTime  @updatedAt
+}
+
 // ── TubeGen-parity Style/Character/CustomArtStyle (2026-04-14) ────────
 // The Style is a reusable container — voice, script defaults, reference
 // transcripts (script few-shot corpus), characters, custom art style, and
@@ -2987,8 +3739,9 @@ model YouTubeStyle {
   artStylePresetId   String  @default("cinematic") // matches STYLE_PRESETS id
   customArtStyleId   String?
   defaultAspectRatio String  @default("16x9")
-  // sdxl-local | sdxl-ipadapter | flux-schnell | gemini-1k | gemini-2k | ideogram-default
-  defaultQuality     String  @default("sdxl-local")
+  // firered-local (default, local DGX + Qwen-Image-Edit arch) | gemini-1k | gemini-2k
+  // | sdxl-local | sdxl-ipadapter | flux-schnell | ideogram-default | ideogram-turbo | ideogram-quality
+  defaultQuality     String  @default("firered-local")
   // images | animated | broll | broll-mix
   defaultVisualType  String  @default("images")
   defaultAnimMode    String  @default("none") // none | all | longer-only
@@ -3053,4 +3806,475 @@ model CustomArtStyle {
   styles YouTubeStyle[]
 
   @@index([userId])
+}
+
+// =============================================================================
+// /vater/budget — personal voice-activated budgeting (admin-only)
+// =============================================================================
+
+enum BudgetSource {
+  MANUAL
+  VOICE
+  PLAID
+}
+
+model BudgetCategory {
+  id                String            @id @default(cuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  slug              String
+  monthlyLimitCents Int
+  color             String            @default("#38bdf8")
+  icon              String?
+  archived          Boolean           @default(false)
+  sortOrder         Int               @default(0)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  entries           BudgetEntry[]
+  recurring         BudgetRecurring[]
+
+  @@unique([userId, slug])
+  @@index([userId, archived, sortOrder])
+}
+
+model BudgetEntry {
+  id           String          @id @default(cuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId   String?
+  category     BudgetCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  amountCents  Int // negative = expense, positive = refund/income
+  vendor       String?
+  note         String?
+  tags         String[]        @default([])
+  occurredAt   DateTime
+  source       BudgetSource    @default(MANUAL)
+  rawText      String?
+  plaidTxId    String?
+  plaidAccount String?
+  needsReview  Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([userId, plaidTxId])
+  @@index([userId, occurredAt])
+  @@index([userId, categoryId, occurredAt])
+  @@index([userId, needsReview])
+}
+
+model BudgetGoal {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  targetCents  Int
+  currentCents Int       @default(0)
+  targetDate   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model BudgetRecurring {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  amountCents Int
+  cadence     String // "monthly" | "weekly" | "yearly"
+  dayOfMonth  Int?
+  categoryId  String?
+  category    BudgetCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  nextDueAt   DateTime
+  active      Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([userId, active, nextDueAt])
+}
+
+model BudgetPlaidAccount {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plaidAccountId String
+  name           String
+  mask           String?
+  isPersonal     Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, plaidAccountId])
+  @@index([userId, isPersonal])
+}
+
+// Imported revenue from Numbers/Excel sheets — multi-business, line-item.
+// One row per item-line on a source sheet. Aggregations done on read.
+model RevenueEntry {
+  id           String    @id @default(cuid())
+  business     String // "Flips", "Table Rentals", "Extra Extra!", "Cards for Flip", etc.
+  channel      String? // sub-channel (e.g. "Cargo Largo", "Crazy Bin Store - Jan")
+  itemDesc     String?
+  date         DateTime?
+  gross        Float?
+  cost         Float?
+  fees         Float?
+  profit       Float?
+  inventoryRem Float?
+  notes        String?
+
+  sourceFile    String
+  sourceSheet   String
+  sourceRowIdx  Int
+  importBatchId String
+  importBatch   RevenueImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  importedAt    DateTime           @default(now())
+
+  // Stable dedup key so re-imports update existing rows in place.
+  dedupKey String @unique
+
+  @@index([business, date])
+  @@index([business, channel])
+  @@index([importBatchId])
+}
+
+model RevenueImportBatch {
+  id           String                  @id @default(cuid())
+  sourceFile   String
+  sheetCount   Int
+  rowsImported Int
+  rowsSkipped  Int
+  rowsUpdated  Int                     @default(0)
+  notes        String?
+  createdAt    DateTime                @default(now())
+  entries      RevenueEntry[]
+  totals       RevenueBusinessTotals[]
+
+  @@index([createdAt])
+}
+
+// Authoritative per-business totals as reported by the source workbook's
+// own Totals tabs. Surfaced as the headline numbers on the dashboard so
+// what we display matches what the user sees in Numbers.
+model RevenueBusinessTotals {
+  id               String             @id @default(cuid())
+  business         String
+  sourceFile       String
+  sourceSheet      String
+  gross            Float?
+  cost             Float?
+  profit           Float?
+  profitOptimistic Float?
+  inventoryRem     Float?
+  importBatchId    String
+  importBatch      RevenueImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  importedAt       DateTime           @default(now())
+
+  @@unique([sourceFile, business, sourceSheet])
+  @@index([business])
+}
+
+model TradingAgentDecision {
+  id                  String   @id @default(cuid())
+  ticker              String
+  runDate             String
+  decision            String
+  rawDecision         String?
+  elapsedSeconds      Float?
+  fundamentalsReport  String?  @db.Text
+  sentimentReport     String?  @db.Text
+  newsReport          String?  @db.Text
+  marketReport        String?  @db.Text
+  bullHistory         String?  @db.Text
+  bearHistory         String?  @db.Text
+  investmentPlan      String?  @db.Text
+  traderPlan          String?  @db.Text
+  riskJudgeDecision   String?  @db.Text
+  finalTradeDecision  String?  @db.Text
+  realizedReturn      Float?
+  alphaVsSpy          Float?
+  jobId               String?
+  modelUsed           String?
+  createdAt           DateTime @default(now())
+
+  @@unique([ticker, runDate])
+  @@index([ticker, createdAt])
+  @@index([createdAt])
+}
+
+model SerpapiQuery {
+  id          String   @id @default(cuid())
+  integration String
+  engine      String
+  query       String   @db.Text
+  success     Boolean
+  costUnits   Int      @default(1)
+  status      Int?
+  error       String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([integration, createdAt])
+  @@index([createdAt])
+}
+
+// Maps Pack rank tracking — weekly cron snapshots GBP positions for tolley.io
+// businesses across a configured set of (keyword, lat/lng) pairs. Each row is
+// one keyword/zip/business observation per run.
+model MapsPackRank {
+  id           String   @id @default(cuid())
+  keyword      String
+  zip          String
+  lat          Float
+  lng          Float
+  businessName String
+  position     Int?     // null = not in top 20
+  totalResults Int?
+  placeId      String?
+  rating       Float?
+  reviews      Int?
+  rawTitle     String?
+  rawAddress   String?
+  createdAt    DateTime @default(now())
+
+  @@index([keyword, zip, businessName, createdAt])
+  @@index([createdAt])
+}
+
+// AI Overview citation tracking — periodic check whether tolley.io URLs are
+// cited in Google's AI Overview block for target keywords.
+model AiOverviewCheck {
+  id            String   @id @default(cuid())
+  keyword       String
+  hasOverview   Boolean
+  tolleyCited   Boolean
+  citedDomains  String[] @default([])
+  competitorCount Int    @default(0)
+  overviewText  String?  @db.Text
+  rawJson       Json?
+  createdAt     DateTime @default(now())
+
+  @@index([keyword, createdAt])
+  @@index([createdAt])
+}
+
+// Maps Pack snapshot — full top-N GBPs returned for a (keyword, zip) pair on
+// a single run. Lets us see exactly who outranks us and by how much (review
+// counts, ratings) without re-querying.
+model MapsPackSnapshot {
+  id           String   @id @default(cuid())
+  keyword      String
+  zip          String
+  lat          Float
+  lng          Float
+  // Array of { position, title, place_id, rating, reviews, address }
+  topResults   Json
+  totalResults Int
+  createdAt    DateTime @default(now())
+
+  @@index([keyword, zip, createdAt])
+  @@index([createdAt])
+}
+
+// Review-request automation — operator queues SMS/email asks to past clients
+// pointing at a GBP review URL. Tracks send + click for conversion analysis.
+model ReviewRequest {
+  id           String   @id @default(cuid())
+  // Recipient — phone OR email is required
+  phone        String?
+  email        String?
+  recipientName String?
+  // Source attribution
+  sourceType   String?  // "manual_paste" | "stripe_customer" | "lead" | "deal"
+  sourceId     String?
+  // Where the click goes
+  gbpKey       String   // "your_kc_homes" | "treasure_haul" | etc — keys defined in lib/reviews/gbps.ts
+  shortCode    String   @unique // /go/r/<shortCode> redirect target
+  // Lifecycle
+  status       String   @default("queued") // queued | sent | clicked | bounced | failed
+  channel      String   // "sms" | "email"
+  message      String?  @db.Text
+  twilioSid    String?
+  errorMessage String?  @db.Text
+  sentAt       DateTime?
+  clickedAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([gbpKey, status, createdAt])
+  @@index([phone])
+  @@index([email])
+}
+
+// Programmatic SEO neighborhood pages — generated via SerpAPI PAA + KG.
+// Public route at /real-estate-agent/[slug].
+model NeighborhoodPage {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String   // "Independence MO" | "Lee's Summit MO"
+  city         String
+  state        String
+  zip          String?
+  lat          Float?
+  lng          Float?
+  // Generated content
+  intro        String?  @db.Text
+  faqJson      Json?    // [{question, answer}]
+  relatedSearches String[] @default([])
+  schoolsJson  Json?    // {best, count, source}
+  knowledgeGraphJson Json?
+  // Lifecycle
+  generatedAt  DateTime?
+  published    Boolean  @default(false)
+  serpapiQueriesUsed Int @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([state, city])
+  @@index([published, generatedAt])
+}
+
+// Probate / estate-sale lead signals — discovered via obituary + court-record
+// scraping, enriched with SerpAPI heir + property lookups, fed into the
+// existing T-Agent dossier pipeline.
+model ProbateSignal {
+  id              String   @id @default(cuid())
+  source          String   // "legacy.com", "obittree.com", "casenet"
+  sourceUrl       String?  @db.Text
+  decedentName    String
+  decedentAge     Int?
+  obitDate        DateTime?
+  city            String?
+  state           String?
+  county          String?
+  zip             String?
+  // Enrichment
+  matchedAddress  String?
+  parcelId        String?
+  estimatedValue  Float?
+  heirsJson       Json?     // [{ name, relationship, profileUrl, source }]
+  serpapiHits     Int      @default(0)
+  // Lead lifecycle
+  leadId          String?  // FK to existing Lead model when promoted
+  status          String   @default("discovered") // discovered | enriched | promoted | dismissed
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([source, sourceUrl])
+  @@index([status, createdAt])
+  @@index([decedentName])
+  @@index([city, state])
+}
+
+// Distress Lead Engine — weekly SerpAPI google + google_news scan for
+// highest-intent motivated-seller signals: pre-foreclosure / trustee &
+// sheriff sale notices, tax-delinquency lists, and code-violation /
+// dangerous-building dockets. Each hit is a candidate Cordless reviews; the
+// scan PUSHES new rows to Telegram/email so leads come to him, not the other
+// way around. Owner/address are best-effort guesses parsed from the snippet;
+// promoted rows seed a Lead + the (now live) dossier owner-lookup pipeline.
+model DistressSignal {
+  id           String   @id @default(cuid())
+  kind         String   // foreclosure | tax-sale | sheriff-sale | code-violation
+  source       String   // host the notice was found on
+  sourceUrl    String?  @db.Text
+  title        String   @db.Text
+  snippet      String?  @db.Text
+  addressGuess String?
+  ownerGuess   String?
+  city         String?
+  county       String?
+  state        String?
+  leadId       String?  // FK to Lead when promoted
+  status       String   @default("new") // new | reviewed | promoted | dismissed
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([source, sourceUrl])
+  @@index([status, createdAt])
+  @@index([kind, createdAt])
+  @@index([city, state])
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// RoutineBrief — output sink for Claude Code cloud "/schedule" routines.
+// Each scheduled cloud agent POSTs its finished brief here (x-sync-secret auth),
+// where it is stored, surfaced in /admin/routines, and fanned out to the Pulse
+// Discord channel. Routines also email digiegold@ directly via the Gmail
+// connector, so SMTP fan-out here is opt-in (?email=1) to avoid double sends.
+// ────────────────────────────────────────────────────────────────────────────
+model RoutineBrief {
+  id        String    @id @default(cuid())
+  slug      String    // routine identifier, e.g. "revenue-health", "lead-followups"
+  title     String
+  body      String    @db.Text // markdown
+  severity  String    @default("info") // info | action | alert
+  payload   Json?     // optional structured data (drafts, line items, links)
+  readAt    DateTime?
+  emailedAt DateTime? // set when included in a daily digest email (null = pending)
+  createdAt DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([slug, createdAt])
+  @@index([readAt])
+  @@index([emailedAt])
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Growth HQ CRM — pipeline of scraped local-business prospects for the
+// approved growth plan (sites / automation / delivery / video offers).
+// Leads are imported via POST /api/hq/import (SerpAPI scrape output),
+// move through stages on the /hq board, and outreach drafts queue up as
+// GrowthTouch rows for 1-click approval. A separate sender cron picks up
+// status=approved touches — nothing in /hq sends anything itself.
+// ────────────────────────────────────────────────────────────────────────────
+model GrowthLead {
+  id           String        @id @default(cuid())
+  name         String
+  offer        String        // "site" | "automation" | "delivery" | "video"
+  category     String?
+  address      String?
+  city         String?
+  phone        String?
+  email        String?
+  emailSource  String?       // apollo | scraped | manual
+  ownerName    String?
+  website      String?
+  websiteScore Int?
+  websiteNotes String?
+  rating       Float?
+  reviews      Int?
+  placeId      String?       @unique
+  stage        String        @default("scraped") // scraped|enriched|demo_built|contacted|replied|booked|client|dead
+  score        Int?
+  demoUrl      String?
+  source       String        @default("serpapi")
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  touches      GrowthTouch[]
+
+  @@index([stage])
+  @@index([offer, stage])
+  @@index([createdAt])
+}
+
+model GrowthTouch {
+  id        String     @id @default(cuid())
+  leadId    String
+  lead      GrowthLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  channel   String     // email | sms | call | demo | note
+  direction String     @default("out") // out | in
+  status    String     @default("draft") // draft | approved | sent | received | discarded
+  subject   String?
+  body      String?
+  meta      Json?
+  createdAt DateTime   @default(now())
+  sentAt    DateTime?
+
+  @@index([status])
+  @@index([leadId, createdAt])
 }

@@ -1,0 +1,83 @@
+// Growth HQ — client-side DTOs (JSON-serialized GrowthLead / GrowthTouch).
+
+export interface HqTouch {
+  id: string;
+  leadId: string;
+  channel: string;
+  direction: string;
+  status: string;
+  subject: string | null;
+  body: string | null;
+  meta: unknown;
+  createdAt: string;
+  sentAt: string | null;
+}
+
+export interface HqLead {
+  id: string;
+  name: string;
+  offer: string;
+  category: string | null;
+  address: string | null;
+  city: string | null;
+  phone: string | null;
+  email: string | null;
+  emailSource: string | null;
+  ownerName: string | null;
+  website: string | null;
+  websiteScore: number | null;
+  websiteNotes: string | null;
+  rating: number | null;
+  reviews: number | null;
+  placeId: string | null;
+  stage: string;
+  score: number | null;
+  demoUrl: string | null;
+  source: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  touches: HqTouch[];
+}
+
+export interface HqQueueTouch extends HqTouch {
+  lead: {
+    id: string;
+    name: string;
+    offer: string;
+    city: string | null;
+    email: string | null;
+    phone: string | null;
+    stage: string;
+  };
+}
+
+export const STAGE_LABEL: Record<string, string> = {
+  scraped: "Scraped",
+  enriched: "Enriched",
+  demo_built: "Demo Built",
+  contacted: "Contacted",
+  replied: "Replied",
+  booked: "Booked",
+  client: "Client",
+  dead: "Dead",
+};
+
+export const CHANNEL_ICON: Record<string, string> = {
+  email: "✉",
+  sms: "💬",
+  call: "📞",
+  demo: "🖥",
+  note: "📝",
+};
+
+/** Read an { error } payload from a failed response without throwing. */
+export async function readApiError(res: Response, fallback: string): Promise<string> {
+  try {
+    const data = await res.json();
+    if (data && typeof data.error === "string") return data.error;
+  } catch {
+    // non-JSON error body — fall through to fallback
+  }
+  return `${fallback} (HTTP ${res.status})`;
+}
