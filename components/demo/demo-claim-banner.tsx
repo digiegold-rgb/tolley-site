@@ -27,9 +27,39 @@ function ClaimBannerInner({
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [claimed, setClaimed] = useState(false);
+  const [buying, setBuying] = useState(false);
   const [contact, setContact] = useState("");
   const [fromName, setFromName] = useState("");
   const [message, setMessage] = useState("");
+
+  async function handleBuy() {
+    if (buying) return;
+    setBuying(true);
+    try {
+      const res = await fetch("/api/demo/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+      const data = (await res.json().catch(() => null)) as
+        | { url?: string; error?: string }
+        | null;
+      if (!res.ok || !data?.url) {
+        throw new Error(data?.error || `Checkout failed (${res.status})`);
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      setBuying(false);
+      toast({
+        title: "Couldn't start checkout",
+        description:
+          err instanceof Error
+            ? err.message
+            : `Call or text ${DEMO_TOLLEY_PHONE} instead.`,
+        variant: "error",
+      });
+    }
+  }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -167,21 +197,14 @@ function ClaimBannerInner({
               $500 setup + $49/mo
             </span>
           </p>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-center gap-2">
             <a
               href={DEMO_TOLLEY_PHONE_TEL}
               className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-white transition hover:border-white/35 hover:bg-white/5"
             >
               Call
             </a>
-            <a
-              href={`${DEMO_TOLLEY_SMS}?body=${encodeURIComponent(
-                `Hey, I saw the site preview for ${businessName} — let's talk.`
-              )}`}
-              className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-white transition hover:border-white/35 hover:bg-white/5"
-            >
-              Text {DEMO_TOLLEY_PHONE}
-            </a>
+            {/* Softer secondary path — leave info, Cordless follows up. */}
             {claimed ? (
               <span className="rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-400">
                 Claim sent ✓
@@ -190,11 +213,20 @@ function ClaimBannerInner({
               <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-[#1a1405] transition hover:bg-amber-300"
+                className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-white transition hover:border-white/35 hover:bg-white/5"
               >
-                Claim this site
+                Have questions?
               </button>
             )}
+            {/* Primary no-conversation close — pay now, build queued. */}
+            <button
+              type="button"
+              onClick={handleBuy}
+              disabled={buying}
+              className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-[#1a1405] shadow-sm transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {buying ? "Starting…" : "Make it live — $500 + $49/mo"}
+            </button>
           </div>
         </div>
       </div>

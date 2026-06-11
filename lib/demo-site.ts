@@ -14,6 +14,14 @@ export const DEMO_TOLLEY_PHONE = "913-283-3826";
 export const DEMO_TOLLEY_PHONE_TEL = "tel:+19132833826";
 export const DEMO_TOLLEY_SMS = "sms:+19132833826";
 
+// ── Self-serve "buy this website" checkout (offer ①: $500 setup + $49/mo) ──
+// Stripe product "Tolley Local Website" (prod_UgK4qSXvSYNVoB), provisioned by
+// scripts/setup-demo-site-product.mjs. Two prices: a one-time $500 setup and a
+// recurring $49/mo hosting line, both billed via one subscription checkout.
+export const DEMO_SITE_PRODUCT_METADATA = "demo_site";
+export const DEMO_SITE_SETUP_PRICE = "price_1TgxQ829zOZYc3GpHI8WOSv7"; // $500 one-time
+export const DEMO_SITE_MONTHLY_PRICE = "price_1TgxQ829zOZYc3GpYvRZWB20"; // $49/mo
+
 export interface DemoService {
   icon: DemoIconName;
   title: string;
