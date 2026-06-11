@@ -6,8 +6,12 @@
  * log the reply as an inbound GrowthTouch, bump the lead demo_built/contacted
  * → replied, and ping Telegram so Cordless jumps on it in /hq.
  *
- * Auth: shared secret as a query param, compared constant-time against
- * INSTANTLY_WEBHOOK_SECRET. Unknown event types / unmatched emails return
+ * Auth: shared secret compared constant-time against
+ * INSTANTLY_WEBHOOK_SECRET. Preferred transport is the `x-instantly-secret`
+ * header (set it in Instantly's webhook config if custom headers are
+ * supported there); `?secret=` query param is the fallback for webhook UIs
+ * that only take a URL — note query strings can land in proxy/deploy logs,
+ * so use the header when possible. Unknown event types / unmatched emails return
  * 200 { ok, skipped } — never 500 a webhook for events we simply don't
  * handle (Instantly would retry forever). Real processing failures DO 500 so
  * the retry has a chance to land.
@@ -46,7 +50,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const provided = request.nextUrl.searchParams.get("secret") || "";
+  const provided =
+    request.headers.get("x-instantly-secret") ||
+    request.nextUrl.searchParams.get("secret") ||
+    "";
   if (!secretMatches(provided, expected)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
