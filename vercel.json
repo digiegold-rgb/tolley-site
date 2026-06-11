@@ -149,9 +149,6 @@
     },
     "app/api/cron/shop/enrich-pending-descriptions/route.ts": {
       "maxDuration": 300
-    },
-    "app/api/cron/vater-invoice-sweep/route.ts": {
-      "maxDuration": 120
     }
   },
   "git": {
