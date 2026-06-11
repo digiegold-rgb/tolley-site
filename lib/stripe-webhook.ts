@@ -19,6 +19,14 @@ import {
   getLeadsTierLimits,
 } from "@/lib/leads-subscription";
 import { SUBSCRIPTION_PLANS } from "@/lib/video";
+import {
+  isFoodPriceId,
+  mapStripeStatusToFood,
+  getSubscriptionPeriodEnd,
+  getSubscriptionTrialEnd,
+  FOOD_TRIAL_DAYS,
+} from "@/lib/food-subscription";
+import { sendWelcomeEmail, sendPaymentFailedEmail } from "@/lib/food/email";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -170,6 +178,287 @@ export async function syncLeadsSubscription(
   console.log(
     `[leads] Synced subscription for user ${userId}: ${tier} (${subscription.status})`
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Food (Ruthann's Kitchen) subscription sync
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function syncFoodSubscription(
+  subscription: Stripe.Subscription,
+  preferredUserId?: string | null
+): Promise<void> {
+  const customerId =
+    typeof subscription.customer === "string"
+      ? subscription.customer
+      : subscription.customer.id;
+
+  const metadataUserId = subscription.metadata?.userId;
+  const metadataHouseholdId = subscription.metadata?.householdId;
+
+  // Resolve the household: prefer metadata, fall back to customer ID lookup.
+  let household = metadataHouseholdId
+    ? await prisma.foodHousehold.findUnique({
+        where: { id: metadataHouseholdId },
+      })
+    : null;
+
+  if (!household) {
+    household = await prisma.foodHousehold.findFirst({
+      where: { stripeCustomerId: customerId },
+    });
+  }
+
+  if (!household) {
+    const userId =
+      preferredUserId ||
+      metadataUserId ||
+      (await resolveUserIdFromStripeCustomer(customerId));
+    if (userId) {
+      household = await prisma.foodHousehold.findUnique({
+        where: { userId },
+      });
+    }
+  }
+
+  if (!household) {
+    console.warn(
+      "[food] webhook sync skipped: unable to resolve household",
+      subscription.id
+    );
+    return;
+  }
+
+  const priceId = subscription.items?.data?.[0]?.price?.id || null;
+  const status = mapStripeStatusToFood(subscription.status);
+  const periodEnd = getSubscriptionPeriodEnd(subscription);
+  const trialEnd = getSubscriptionTrialEnd(subscription);
+  const previousStatus = household.subscriptionStatus;
+
+  await prisma.foodHousehold.update({
+    where: { id: household.id },
+    data: {
+      subscriptionStatus: status,
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      stripePriceId: priceId,
+      currentPeriodEnd: periodEnd,
+      trialEndsAt: trialEnd,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+    },
+  });
+
+  console.log(
+    `[food] Synced subscription for household ${household.id}: ${status} (${subscription.status})`
+  );
+
+  // Fire transactional emails on state transitions. Best-effort — errors here
+  // must never fail the webhook (Stripe would retry and double-charge).
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: household.userId },
+      select: { email: true },
+    });
+    if (user?.email) {
+      const becameTrialing =
+        status === "trialing" && previousStatus !== "trialing" && previousStatus !== "active";
+      const becamePastDue = status === "past_due" && previousStatus !== "past_due";
+      if (becameTrialing) {
+        await sendWelcomeEmail(user.email, FOOD_TRIAL_DAYS);
+      } else if (becamePastDue) {
+        await sendPaymentFailedEmail(user.email);
+      }
+    }
+  } catch (emailErr) {
+    console.warn("[food] transactional email failed (non-fatal)", emailErr);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Vater Studio subscription sync
+// ─────────────────────────────────────────────────────────────────────────────
+
+import {
+  VATER_INCLUDED_USAGE_CENTS,
+  isVaterPriceId,
+  mapStripeStatusToVater,
+  getSubscriptionPeriodEnd as getVaterPeriodEnd,
+  getSubscriptionPeriodStart as getVaterPeriodStart,
+} from "@/lib/vater-subscription";
+
+export async function syncVaterSubscription(
+  subscription: Stripe.Subscription,
+  preferredUserId?: string | null,
+): Promise<void> {
+  const customerId =
+    typeof subscription.customer === "string"
+      ? subscription.customer
+      : subscription.customer.id;
+
+  const metadataUserId = subscription.metadata?.userId;
+
+  // Resolve the user — prefer metadata, fall back to customer ID lookup.
+  let userId: string | null =
+    preferredUserId || metadataUserId || null;
+
+  if (!userId) {
+    const existing = await prisma.vaterSubscription.findFirst({
+      where: { stripeCustomerId: customerId },
+    });
+    userId = existing?.userId ?? null;
+  }
+
+  if (!userId) {
+    userId = await resolveUserIdFromStripeCustomer(customerId);
+  }
+
+  if (!userId) {
+    console.warn(
+      "[vater] webhook sync skipped: unable to resolve userId",
+      subscription.id,
+    );
+    return;
+  }
+
+  const priceId = subscription.items?.data?.[0]?.price?.id || null;
+  const status = mapStripeStatusToVater(subscription.status);
+  const periodStart = getVaterPeriodStart(subscription);
+  const periodEnd = getVaterPeriodEnd(subscription);
+
+  const existing = await prisma.vaterSubscription.findUnique({
+    where: { userId },
+  });
+  const wasActive = existing?.status === "active" || existing?.status === "trialing";
+  const isNowActive = status === "active" || status === "trialing";
+
+  await prisma.vaterSubscription.upsert({
+    where: { userId },
+    create: {
+      userId,
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      stripePriceId: priceId,
+      status,
+      currentPeriodStart: periodStart,
+      currentPeriodEnd: periodEnd,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+      trialConvertedAt: status === "active" ? new Date() : null,
+    },
+    update: {
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      stripePriceId: priceId,
+      status,
+      currentPeriodStart: periodStart,
+      currentPeriodEnd: periodEnd,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+      // Stamp trialConvertedAt only on the first transition to active
+      ...(status === "active" && !existing?.trialConvertedAt
+        ? { trialConvertedAt: new Date() }
+        : {}),
+    },
+  });
+
+  // On first activation OR period renewal, issue the $250 credit grant.
+  // We detect "period renewal" by comparing periodStart against the existing record.
+  const periodChanged =
+    !existing?.currentPeriodStart ||
+    (periodStart &&
+      existing.currentPeriodStart.getTime() !== periodStart.getTime());
+
+  if (isNowActive && periodChanged && periodStart) {
+    // Credit grants retired with the $288/mo model (2026-06-11) — pay-per-video
+    // has no included usage. Legacy subscription syncs only roll the period.
+    if (VATER_INCLUDED_USAGE_CENTS > 0) {
+      await issueVaterCreditGrant({
+        userId,
+        stripeCustomerId: customerId,
+        periodEnd,
+      });
+    }
+
+    // Reset the monthly limit period anchor so the cache rolls over cleanly.
+    await prisma.vaterMonthlyLimit.upsert({
+      where: { userId },
+      create: {
+        userId,
+        periodStart,
+        usedCents: 0,
+      },
+      update: {
+        periodStart,
+        usedCents: 0,
+        raisedAt: null,
+      },
+    });
+  }
+
+  console.log(
+    `[vater] Synced subscription for user ${userId}: ${status} (was ${existing?.status ?? "new"})`,
+  );
+
+  if (status === "canceled" && wasActive) {
+    console.log(`[vater] Subscription canceled for user ${userId}`);
+    // Future: send cancellation email
+  }
+}
+
+/**
+ * Issue a $250 credit grant for the current Vater period. Best-effort —
+ * Stripe Credit Grants API may require billing-meter feature flag; if it
+ * fails we log and move on (the user just sees full usage charges this
+ * period instead of $250 absorbed).
+ */
+async function issueVaterCreditGrant(opts: {
+  userId: string;
+  stripeCustomerId: string;
+  periodEnd: Date | null;
+}): Promise<void> {
+  const stripe = getStripeClient();
+  try {
+    // The Stripe Node SDK exposes Credit Grants under stripe.billing.creditGrants
+    // (available since SDK v17+). If the runtime doesn't have it we fall back
+    // to a console warning — usage is still tracked, just no automatic discount.
+    const billing = (stripe as unknown as {
+      billing?: {
+        creditGrants?: {
+          create: (params: Record<string, unknown>) => Promise<{ id: string }>;
+        };
+      };
+    }).billing;
+
+    if (!billing?.creditGrants?.create) {
+      console.warn(
+        "[vater] stripe.billing.creditGrants not available — skipping $250 grant",
+      );
+      return;
+    }
+
+    const grant = await billing.creditGrants.create({
+      customer: opts.stripeCustomerId,
+      amount: { type: "monetary", monetary: { value: VATER_INCLUDED_USAGE_CENTS, currency: "usd" } },
+      applicability_config: {
+        scope: { price_type: "metered" },
+      },
+      category: "promotional",
+      ...(opts.periodEnd ? { expires_at: Math.floor(opts.periodEnd.getTime() / 1000) } : {}),
+      metadata: {
+        product: "vater",
+        userId: opts.userId,
+      },
+    });
+
+    await prisma.vaterSubscription.update({
+      where: { userId: opts.userId },
+      data: { stripeCreditGrantId: grant.id },
+    });
+
+    console.log(
+      `[vater] Issued $250 credit grant ${grant.id} for user ${opts.userId}`,
+    );
+  } catch (err) {
+    console.error("[vater] Credit grant creation failed (non-fatal)", err);
+  }
 }
 
 export async function syncCheckoutSession(
@@ -333,6 +622,47 @@ export async function fulfillShopSale(
   const shopItemId = checkoutSession.metadata?.shopItemId;
   if (!shopItemId) return false;
 
+  const sessionAny = checkoutSession as unknown as {
+    shipping_details?: {
+      name?: string | null;
+      address?: Record<string, unknown> | null;
+    } | null;
+    collected_information?: {
+      shipping_details?: {
+        name?: string | null;
+        address?: Record<string, unknown> | null;
+      } | null;
+    } | null;
+    customer_details?: {
+      name?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      address?: Record<string, unknown> | null;
+    } | null;
+    total_details?: { amount_shipping?: number | null } | null;
+  };
+
+  const shipDetails =
+    sessionAny.shipping_details ??
+    sessionAny.collected_information?.shipping_details ??
+    null;
+  const shipAddress = shipDetails?.address ?? null;
+  const buyerName =
+    shipDetails?.name ?? sessionAny.customer_details?.name ?? null;
+  const buyerEmail = sessionAny.customer_details?.email ?? null;
+  const buyerPhone = sessionAny.customer_details?.phone ?? null;
+  const shippingPaid =
+    typeof sessionAny.total_details?.amount_shipping === "number"
+      ? sessionAny.total_details.amount_shipping / 100
+      : null;
+  const buyerLocation = shipAddress
+    ? [shipAddress.city, shipAddress.state].filter(Boolean).join(", ") || null
+    : null;
+  const shippingAddressJson = shipAddress
+    ? { ...shipAddress, name: buyerName, phone: buyerPhone }
+    : null;
+  const fulfillment = shippingAddressJson ? "to_ship" : "pickup";
+
   // Legacy ShopItem update
   await prisma.shopItem
     .update({
@@ -362,6 +692,12 @@ export async function fulfillShopSale(
         cogs: cogs || null,
         netProfit: Math.round(netProfit * 100) / 100,
         paymentMethod: "stripe",
+        shippingPaid,
+        shippingAddress: shippingAddressJson ?? undefined,
+        buyerName,
+        buyerEmail,
+        buyerLocation,
+        fulfillment,
       },
     });
 

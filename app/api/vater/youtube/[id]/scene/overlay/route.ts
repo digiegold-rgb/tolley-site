@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { canAccessProject } from "@/lib/vater/project-access";
 import {
   chartDataSchema,
   mapDataSchema,
@@ -54,7 +55,10 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   }
 
   const project = await prisma.youTubeProject.findUnique({ where: { id } });
-  if (!project) {
+  if (
+    !project ||
+    !canAccessProject(project.userId, session.user.id, session.user.email)
+  ) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
@@ -114,9 +118,16 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const newScenes = [...scenes];
   newScenes[body.sceneIdx] = newScene;
 
+  // Stamp editedAt + flip status (if ready) so isFinalMp4Stale() fires on
+  // subsequent loads — otherwise the Library still looks fresh and the user
+  // doesn't know they need to re-compose to bake the overlay into final.mp4.
   await prisma.youTubeProject.update({
     where: { id },
-    data: { scenesJson: newScenes as unknown as object },
+    data: {
+      scenesJson: newScenes as unknown as object,
+      editedAt: new Date(),
+      status: project.status === "ready" ? "editing" : project.status,
+    },
   });
 
   return NextResponse.json({ scene: newScene });

@@ -8,6 +8,16 @@
  *
  * No silent catches — autopilot client errors bubble up as a 502 with the
  * specific endpoint that failed (per `feedback_silent_failures_leads.md`).
+ *
+ * Billing: this route is the server-side completion hook for the async
+ * kickoff routes (project-create/title-channel → fetch-source, context →
+ * run-creation, compose → re-render). When a job flips to "done" we record
+ * usage for the artifacts it actually produced — transcription, voiceover,
+ * scene images, and (for compose-only jobs) the render. All charges are
+ * idempotent per autopilotJobId, charged to the project OWNER (not the
+ * polling session — admins polling customer projects must not be billed),
+ * and wrapped in try/catch so a billing hiccup never 500s a successful
+ * generation (the reconciler can backfill from logs).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
@@ -25,6 +35,10 @@ import {
   type YouTubeProjectStatus,
 } from "@/lib/vater/youtube-status";
 import { auth } from "@/auth";
+import { canAccessProject } from "@/lib/vater/project-access";
+import { recordUsage } from "@/lib/vater/billing/record-usage";
+import { FLAT_ACTION_PRICES } from "@/lib/vater/pricing";
+import type { VaterAction } from "@/lib/vater-subscription";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -89,8 +103,11 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
 
   const project = await prisma.youTubeProject.findUnique({ where: { id } });
-  if (!project) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (
+    !project ||
+    !canAccessProject(project.userId, session.user.id, session.user.email)
+  ) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
   // No active job — nothing to poll, just return the row.
@@ -174,6 +191,15 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     );
   }
 
+  // Charges to record AFTER the project row persists. Keys are idempotent
+  // per autopilotJobId, so re-polls of an already-done job can't double-bill.
+  const pendingCharges: Array<{
+    action: VaterAction;
+    costCents: number;
+    idempotencyKey: string;
+  }> = [];
+  let generatedSceneCount = 0;
+
   if (job.status === "done") {
     data.errorMessage = null;
     data.completedAt = new Date();
@@ -240,12 +266,31 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     if (typeof result.audioDuration === "number") {
       data.audioDuration = result.audioDuration;
     }
-    if (result.captionTimings !== undefined) {
-      data.captionTimings = result.captionTimings as Prisma.InputJsonValue;
+    // DGX writes whisper word-timings as `result.captions`; legacy callers
+    // sometimes use `result.captionTimings`. Accept either so the captions
+    // actually persist (without this, captionTimings stayed empty and the
+    // compose step rendered video with no burned-in subtitles — verified
+    // 2026-04-25 incident: 1644-word transcript dropped on the floor).
+    const anyResultForCaps = result as unknown as {
+      captionTimings?: unknown;
+      captions?: unknown;
+    };
+    const capsCandidate =
+      anyResultForCaps.captionTimings ?? anyResultForCaps.captions;
+    if (capsCandidate !== undefined) {
+      data.captionTimings = capsCandidate as Prisma.InputJsonValue;
     }
     // DGX vater.py stores scenes as result.scenes (not result.scenesJson).
     // Normalise either field into scenesJson so the editor can load them.
     // imageUrl is rewritten to the Vercel proxy URL so browsers can load it.
+    //
+    // CRITICAL: when the project already has a scenesJson (e.g. after the
+    // user animated scenes in the editor), MERGE per-idx rather than
+    // overwrite. DGX result.scenes only carries pipeline-output fields —
+    // it does NOT know about UI-side animation state (mediaType, videoUrl,
+    // videoVersion, animQuality, etc). Overwriting blindly would wipe the
+    // user's animation work every time poll fires a subsequent "done"
+    // (e.g. after a Re-compose flips status back off "ready").
     {
       type DgxScene = {
         idx?: number;
@@ -269,26 +314,64 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
         scenesJson?: unknown;
         scenes?: DgxScene[];
       };
-      if (anyResult.scenesJson !== undefined) {
-        data.scenesJson = anyResult.scenesJson as Prisma.InputJsonValue;
+      const existingScenes: Record<number, Record<string, unknown>> = {};
+      if (Array.isArray(project.scenesJson)) {
+        for (const s of project.scenesJson as Array<Record<string, unknown>>) {
+          const idx = typeof s?.idx === "number" ? s.idx : -1;
+          if (idx >= 0) existingScenes[idx] = s;
+        }
+      }
+      if (Array.isArray(anyResult.scenesJson) && anyResult.scenesJson.length > 0) {
+        // Alternate branch — DGX may emit `result.scenesJson` directly (rare,
+        // but the poll route accepts it). Apply the SAME per-idx merge as the
+        // `result.scenes` branch below; a wholesale overwrite here would
+        // re-introduce the 2026-04-22 animation-wipe regression.
+        generatedSceneCount = anyResult.scenesJson.length;
+        data.scenesJson = (
+          anyResult.scenesJson as Array<Record<string, unknown>>
+        ).map((s, i) => {
+          const rawIdx = typeof s?.idx === "number" ? s.idx : i;
+          const existing = existingScenes[rawIdx] ?? {};
+          return {
+            ...existing,
+            ...s,
+            idx: rawIdx,
+          };
+        }) as Prisma.InputJsonValue;
       } else if (Array.isArray(anyResult.scenes) && anyResult.scenes.length > 0) {
-        data.scenesJson = anyResult.scenes.map((s, i) => ({
-          idx: s.idx ?? i,
-          imageUrl: `/api/vater/youtube/${id}/scene/${s.idx ?? i}`,
-          startS: s.startS ?? 0,
-          endS: s.endS ?? 0,
-          beatText: s.beatText ?? "",
-          imagePrompt: s.prompt ?? "",
-          version: 0,
-          overlays: Array.isArray(s.overlays) ? s.overlays : [],
-          // Phase 3 — overlay flags pass through unchanged
-          isChart: s.isChart === true,
-          chartData: s.chartData ?? undefined,
-          isMap: s.isMap === true,
-          mapData: s.mapData ?? undefined,
-          isHeader: s.isHeader === true,
-          headerData: s.headerData ?? undefined,
-        })) as Prisma.InputJsonValue;
+        generatedSceneCount = anyResult.scenes.length;
+        data.scenesJson = anyResult.scenes.map((s, i) => {
+          const idx = s.idx ?? i;
+          const existing = existingScenes[idx] ?? {};
+          // Base = fresh values from the DGX pipeline (wins on pipeline
+          // fields like beatText/startS/endS/imagePrompt in case the
+          // script was re-run). Existing wins on UI-edit fields that DGX
+          // doesn't know about.
+          return {
+            ...existing,
+            idx,
+            imageUrl:
+              (existing.imageUrl as string | undefined) ??
+              `/api/vater/youtube/${id}/scene/${idx}`,
+            startS: s.startS ?? (existing.startS as number) ?? 0,
+            endS: s.endS ?? (existing.endS as number) ?? 0,
+            beatText: s.beatText ?? (existing.beatText as string) ?? "",
+            imagePrompt:
+              s.prompt ?? (existing.imagePrompt as string) ?? "",
+            version: (existing.version as number) ?? 0,
+            overlays: Array.isArray(s.overlays)
+              ? s.overlays
+              : (existing.overlays as unknown[]) ?? [],
+            isChart: s.isChart === true,
+            chartData:
+              s.chartData ?? (existing.chartData as unknown) ?? undefined,
+            isMap: s.isMap === true,
+            mapData: s.mapData ?? (existing.mapData as unknown) ?? undefined,
+            isHeader: s.isHeader === true,
+            headerData:
+              s.headerData ?? (existing.headerData as unknown) ?? undefined,
+          };
+        }) as Prisma.InputJsonValue;
       }
     }
 
@@ -315,6 +398,78 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       }
     }
 
+    // ── Collect usage charges for what THIS job actually produced ─────────
+    // Recorded after the DB write below, billed to the project owner.
+    {
+      const jobId = project.autopilotJobId;
+      // Transcription (fetch-source): 50¢ per started 10 min of source audio.
+      if (result.transcript) {
+        const durationS =
+          typeof result.duration === "number" && result.duration > 0
+            ? result.duration
+            : null;
+        const units = durationS ? Math.max(1, Math.ceil(durationS / 600)) : 1;
+        pendingCharges.push({
+          action: "transcription",
+          costCents: units * FLAT_ACTION_PRICES.transcription.priceCents,
+          idempotencyKey: `transcription_${jobId}`,
+        });
+      }
+      // Script (run-creation): flat 5¢ — skipped when the user supplied
+      // their own script (context/topic kickoff stamps scriptMeta.source).
+      const userSuppliedScript =
+        typeof project.scriptMeta === "object" &&
+        project.scriptMeta !== null &&
+        (project.scriptMeta as { source?: unknown }).source === "user-supplied";
+      if (result.script && !userSuppliedScript) {
+        pendingCharges.push({
+          action: "script",
+          costCents: FLAT_ACTION_PRICES.script.priceCents,
+          idempotencyKey: `script_${jobId}`,
+        });
+      }
+      // Voiceover (run-creation): 20¢/min, minimum 1 minute.
+      if (data.audioUrl) {
+        const audioS =
+          typeof result.audioDuration === "number" && result.audioDuration > 0
+            ? result.audioDuration
+            : null;
+        const minutes = audioS ? Math.max(1, Math.ceil(audioS / 60)) : 1;
+        pendingCharges.push({
+          action: "voiceover",
+          costCents: minutes * FLAT_ACTION_PRICES.voiceover.priceCents,
+          idempotencyKey: `voiceover_${jobId}`,
+        });
+      }
+      // Scene images (run-creation): 25¢ per generated scene.
+      if (generatedSceneCount > 0) {
+        pendingCharges.push({
+          action: "scene",
+          costCents:
+            generatedSceneCount * FLAT_ACTION_PRICES.scene.priceCents,
+          idempotencyKey: `scenes_${jobId}`,
+        });
+      }
+      // Render (250¢): ONLY for compose-only jobs — kicked from the compose
+      // route, which gates the budget then swaps autopilotJobId to the
+      // compose job. Their result carries a final video but no
+      // script/transcript/scenes. The initial run-creation also ends with a
+      // final video, but its artifacts are billed piecemeal above and its
+      // bundled compose is not billed as a separate render.
+      if (
+        data.finalVideoUrl &&
+        !result.script &&
+        !result.transcript &&
+        generatedSceneCount === 0
+      ) {
+        pendingCharges.push({
+          action: "render",
+          costCents: FLAT_ACTION_PRICES.render.priceCents,
+          idempotencyKey: `render_${jobId}`,
+        });
+      }
+    }
+
     console.log(
       `[vater/poll] project=${id} job=${project.autopilotJobId} DONE — finalVideoUrl=${data.finalVideoUrl ?? "(none)"} audioUrl=${data.audioUrl ?? "(none)"} transcript=${result.transcript ? `${result.transcript.length}c` : "(none)"}`,
     );
@@ -324,6 +479,29 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     where: { id },
     data,
   });
+
+  // ── Record confirmed-success charges (owner-billed, idempotent) ──────────
+  // Wrapped per-charge: the user already has their output, so a billing
+  // failure must never 500 this response — the reconciler can backfill from
+  // the error log. Legacy projects with userId=null are never billed.
+  if (pendingCharges.length > 0 && project.userId) {
+    for (const charge of pendingCharges) {
+      try {
+        await recordUsage({
+          userId: project.userId,
+          action: charge.action,
+          projectId: id,
+          idempotencyKey: charge.idempotencyKey,
+          overrideCostCents: charge.costCents,
+        });
+      } catch (err) {
+        console.error(
+          `[vater/poll] recordUsage failed project=${id} action=${charge.action} key=${charge.idempotencyKey}`,
+          err,
+        );
+      }
+    }
+  }
 
   return NextResponse.json({
     project: updated,

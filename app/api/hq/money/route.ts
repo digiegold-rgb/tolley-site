@@ -106,6 +106,20 @@ export async function GET() {
       prisma.growthLead.count({ where: { createdAt: { gte: weekAgo } } }),
     ]);
 
+    // Animate Studio (pay-per-video) — this month's metered usage + video-offer
+    // sales. Separate await: keeps the destructured tuple above untouched.
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const [animateMonthAgg, videoOfferClients] = await Promise.all([
+      prisma.vaterUsage.aggregate({
+        where: { ts: { gte: monthStart } },
+        _sum: { costCents: true },
+        _count: true,
+      }),
+      prisma.growthLead.count({
+        where: { offer: "video", stage: "client" },
+      }),
+    ]);
+
     const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const pastDue = pastDueClients.map((c) => ({
@@ -157,6 +171,11 @@ export async function GET() {
         invoicePayments: invoiceWeekAgg._count,
         totalRevenue: wdRevenue + invoiceRevenue,
         newLeads: newLeadsThisWeek,
+      },
+      animate: {
+        monthRevenue: (animateMonthAgg._sum.costCents ?? 0) / 100,
+        monthActions: animateMonthAgg._count,
+        videoOfferClients,
       },
     });
   } catch (err) {

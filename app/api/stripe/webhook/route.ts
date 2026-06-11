@@ -24,6 +24,21 @@ import {
   isDemoSiteSubscription,
   fulfillDemoSiteSale,
 } from "@/lib/demo-site-subscription";
+// B2B "I made you a video" close ($250 + $99/mo). Same narrow pattern as the
+// demo-site handler — self-contained, can't affect other product paths.
+import {
+  isVideoOfferEvent,
+  isVideoOfferSubscription,
+  fulfillVideoOfferSale,
+} from "@/lib/video-offer-subscription";
+// Vater pay-per-video: setup-mode card capture + accrual invoice lifecycle.
+import {
+  isVaterSetupSession,
+  isVaterInvoice,
+  handleVaterSetupCompleted,
+  handleVaterInvoicePaid,
+  handleVaterInvoiceFailed,
+} from "@/lib/vater/billing/sync";
 import {
   syncSubscriptionRecord,
   syncFromInvoice,
@@ -69,12 +84,24 @@ export async function POST(request: Request) {
       case "checkout.session.completed": {
         const checkoutSession = event.data.object as Stripe.Checkout.Session;
 
+        // Vater card-on-file capture (mode=setup — never a payment).
+        if (isVaterSetupSession(checkoutSession)) {
+          await handleVaterSetupCompleted(checkoutSession);
+          break;
+        }
+
         if (await fulfillVideoCredits(checkoutSession)) break;
         if (await fulfillShopSale(checkoutSession)) break;
 
         // Engine 1 "Make it live" site purchase (metadata.product=demo_site).
         if (isDemoSiteEvent(checkoutSession)) {
           await fulfillDemoSiteSale(checkoutSession);
+          break;
+        }
+
+        // "Make it yours" video purchase (metadata.product=video_offer).
+        if (isVideoOfferEvent(checkoutSession)) {
+          await fulfillVideoOfferSale(checkoutSession);
           break;
         }
 
@@ -143,6 +170,8 @@ export async function POST(request: Request) {
         // Engine 1 site sale — fulfill once (idempotent vs the checkout event).
         if (isDemoSiteSubscription(subscription)) {
           await fulfillDemoSiteSale(subscription);
+        } else if (isVideoOfferSubscription(subscription)) {
+          await fulfillVideoOfferSale(subscription);
         } else if (isWdSubscription(subscription)) {
           await syncWdSubscription(subscription);
         } else if (subPriceId && isLeadsPriceId(subPriceId)) {
@@ -168,6 +197,10 @@ export async function POST(request: Request) {
           await recordWdInvoice(paidInvoice, false);
           break;
         }
+        if (isVaterInvoice(paidInvoice)) {
+          await handleVaterInvoicePaid(paidInvoice);
+          break;
+        }
         await fulfillVideoSubscriptionRenewal(paidInvoice);
         await syncFromInvoice(paidInvoice);
         break;
@@ -176,6 +209,10 @@ export async function POST(request: Request) {
         const failedInvoice = event.data.object as Stripe.Invoice;
         if (isWdInvoice(failedInvoice)) {
           await recordWdInvoice(failedInvoice, true);
+          break;
+        }
+        if (isVaterInvoice(failedInvoice)) {
+          await handleVaterInvoiceFailed(failedInvoice);
           break;
         }
         await syncFromInvoice(failedInvoice);

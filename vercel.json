@@ -1,27 +1,158 @@
 {
   "functions": {
-    "app/api/cron/sequence-process/route.ts": { "maxDuration": 120 },
-    "app/api/cron/pools-intelligence/route.ts": { "maxDuration": 120 },
-    "app/api/cron/content-publish/route.ts": { "maxDuration": 120 },
-    "app/api/cron/market-collect/route.ts": { "maxDuration": 60 },
-    "app/api/cron/crypto-sync/route.ts": { "maxDuration": 60 },
-    "app/api/cron/regrid-scan/route.ts": { "maxDuration": 60 },
-    "app/api/analytics/stripe/route.ts": { "maxDuration": 60 },
-    "app/api/leads/sync/route.ts": { "maxDuration": 300 },
-    "app/api/leads/enrich/route.ts": { "maxDuration": 300 },
-    "app/api/poi/sync/route.ts": { "maxDuration": 300 },
-    "app/api/sms/webhook/route.ts": { "maxDuration": 30 },
-    "app/api/cron/shop-intelligence/route.ts": { "maxDuration": 120 },
-    "app/api/dispatch/match/route.ts": { "maxDuration": 60 },
-    "app/api/dispatch/sms/webhook/route.ts": { "maxDuration": 30 },
-    "app/api/dispatch/orders/route.ts": { "maxDuration": 30 },
-    "app/api/cron/dispatch-match/route.ts": { "maxDuration": 60 },
-    "app/api/cron/dispatch-payouts/route.ts": { "maxDuration": 120 },
-    "app/api/cron/dispatch-stale/route.ts": { "maxDuration": 30 },
-    "app/api/cron/dispatch-compliance/route.ts": { "maxDuration": 60 },
-    "app/api/cron/trading-sim-sync/route.ts": { "maxDuration": 60 },
-    "app/api/cron/fb-sync/route.ts": { "maxDuration": 60 },
-    "app/api/cron/mls-sync/route.ts": { "maxDuration": 300 }
+    "app/api/cron/sequence-process/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/cron/leads-monday-digest/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/cron/pools-intelligence/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/cron/content-publish/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/cron/market-collect/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/crypto-sync/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/trading-agents/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/cron/regrid-scan/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/analytics/stripe/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/leads/sync/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/leads/enrich/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/poi/sync/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/sms/webhook/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/cron/shop-intelligence/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/dispatch/match/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/dispatch/sms/webhook/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/dispatch/orders/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/cron/dispatch-match/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/dispatch-payouts/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/cron/dispatch-compliance/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/trading-sim-sync/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/fb-sync/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/mls-sync/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/cron/dossier-process/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/cron/dossier-synthesis-poll/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/leads/dossier/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/leads/dossier/[id]/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/leads/dossier/address/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/leads/dossier/batch/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/leads/dossier/process/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/food/yummly-import/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/cron/food-expiring/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/cron/food-reengagement/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/vater/youtube/[id]/poll/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/vater/youtube/[id]/context/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/vater/youtube/[id]/video/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/vater/topic/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/vater/voices/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/vater/voices/[id]/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/vater/rss/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/vater/rss/[id]/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/vater/rss/[id]/items/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/cron/budget-plaid-sync/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/cron/budget-recurring-rollup/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/budget-digest/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/vater/budget/plaid/sync/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/vater/budget/voice/log/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/vater/budget/voice/ask/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/vater/budget/categorize/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/cron/shop/enrich-pending-descriptions/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/cron/vater-invoice-sweep/route.ts": {
+      "maxDuration": 120
+    }
   },
   "git": {
     "deploymentEnabled": {
@@ -40,6 +171,14 @@
     {
       "path": "/api/cron/dossier-cleanup",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/dossier-process",
+      "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/cron/dossier-synthesis-poll",
+      "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/cron/auto-responder-reset",
@@ -62,6 +201,10 @@
       "schedule": "0 */4 * * *"
     },
     {
+      "path": "/api/cron/trading-agents",
+      "schedule": "0 21 * * 1-5"
+    },
+    {
       "path": "/api/cron/pools-intelligence",
       "schedule": "0 4 * * *"
     },
@@ -76,6 +219,34 @@
     {
       "path": "/api/cron/shop-intelligence",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/asin-backfill",
+      "schedule": "0 6 * * 0"
+    },
+    {
+      "path": "/api/cron/maps-pack-track",
+      "schedule": "0 7 * * 3"
+    },
+    {
+      "path": "/api/cron/ai-overview-check",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/probate-scan",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/distress-scan",
+      "schedule": "30 9 * * 4"
+    },
+    {
+      "path": "/api/cron/deal-review-blast",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/neighborhood-refresh",
+      "schedule": "0 11 * * 1"
     },
     {
       "path": "/api/cron/dispatch-match",
@@ -108,6 +279,82 @@
     {
       "path": "/api/cron/mls-sync",
       "schedule": "0 */4 * * *"
+    },
+    {
+      "path": "/api/cron/mls-social",
+      "schedule": "30 */6 * * *"
+    },
+    {
+      "path": "/api/cron/food-trial-ending",
+      "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/food-expiring",
+      "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/food-reengagement",
+      "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/vater-rss-poll",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/budget-plaid-sync",
+      "schedule": "45 12 * * *"
+    },
+    {
+      "path": "/api/cron/budget-recurring-rollup",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/budget-digest",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/shop/enrich-pending-descriptions",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/treasure-haul-daily",
+      "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/treasure-haul-weekly",
+      "schedule": "0 15 * * 6"
+    },
+    {
+      "path": "/api/cron/treasure-haul-amazon-picks",
+      "schedule": "0 16 * * 0,2,5"
+    },
+    {
+      "path": "/api/cron/haul-flag",
+      "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/cron/haul-promote",
+      "schedule": "0 15 * * 1,3,6"
+    },
+    {
+      "path": "/api/cron/fb-token-health",
+      "schedule": "0 14 * * 1"
+    },
+    {
+      "path": "/api/cron/leads-monday-digest",
+      "schedule": "0 12 * * 1"
+    },
+    {
+      "path": "/api/cron/wd-reminders",
+      "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/wd-dunning",
+      "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/vater-invoice-sweep",
+      "schedule": "0 6 1,2 * *"
     }
   ]
 }

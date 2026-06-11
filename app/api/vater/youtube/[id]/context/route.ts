@@ -31,6 +31,8 @@ import {
 } from "@/lib/vater/style-presets";
 import { buildStyleSnapshot } from "@/lib/vater/style-snapshot";
 import { auth } from "@/auth";
+import { canAccessProject } from "@/lib/vater/project-access";
+import { checkBudget } from "@/lib/vater/billing/check-budget";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -47,9 +49,29 @@ interface ContextBody {
   scriptGuidelines?: string;
   consistency?: number;
   videoBackend?: string;
+  /** TubeGen-parity animation mode. Controls the i2v stage on the DGX.
+   *  "none" skips animation (default), "all"/"longer-only"/"per-scene"
+   *  convert selected stills into MP4 clips before compose. */
+  animMode?: "none" | "all" | "longer-only" | "per-scene";
+  /** Quality tier for i2v: turbo/default/default_1080p/high/ltx-local. */
+  animQuality?: "turbo" | "default" | "default_1080p" | "high" | "ltx-local";
   /** Phase 1+: opt-in YouTubeStyle id. When present, style snapshot
    *  takes precedence over stylePreset for fields it sets. */
   styleId?: string | null;
+  /** Cloud rental: when true, force the paid pipeline — Gemini cloud stills
+   *  (instead of local SDXL) and Modal L40S animation (instead of local
+   *  Wan22). Lets the user trade DGX time for predictable cloud spend so
+   *  long-form runs don't hog the box. */
+  cloudRental?: boolean;
+  /** Image renderer override — when set, overrides Style.defaultQuality and
+   *  cloudRental's auto-pick. Lets the user choose the slide model directly
+   *  (firered-local, firered-modal, firered-modal-fast, gemini-1k, gemini-2k,
+   *  ideogram-*, sdxl-local). */
+  imageQuality?: string;
+  /** Pre-written script. When set, the worker uses it verbatim and skips
+   *  principle extraction + script generation. No min length enforced.
+   *  Goal becomes optional metadata when this is provided. */
+  scriptOverride?: string;
 }
 
 export async function POST(req: NextRequest, ctx: Ctx) {
@@ -67,7 +89,14 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body.goal || typeof body.goal !== "string") {
+  const scriptOverride =
+    typeof body.scriptOverride === "string" && body.scriptOverride.trim()
+      ? body.scriptOverride.trim()
+      : null;
+
+  // Goal is required only when DGX is generating the script. With a
+  // user-supplied script, goal becomes optional metadata.
+  if (!scriptOverride && (!body.goal || typeof body.goal !== "string")) {
     return NextResponse.json(
       { error: "goal is required" },
       { status: 400 },
@@ -81,10 +110,34 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   }
 
   const project = await prisma.youTubeProject.findUnique({ where: { id } });
-  if (!project) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (
+    !project ||
+    !canAccessProject(project.userId, session.user.id, session.user.email)
+  ) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
-  if (project.status !== "transcribed") {
+
+  // ── Billing gate: run-creation generates the scene plan + images. The
+  // exact scene count isn't knowable at kickoff, so gate at one scene image
+  // (25¢, action "scene"). The actual charges (script + voiceover + per-scene
+  // images) are recorded by the poll route once the job is confirmed done,
+  // idempotent per jobId — kickoff never bills.
+  const budget = await checkBudget(session.user.id, "scene");
+  if (!budget.allow) {
+    return NextResponse.json(
+      { error: "Billing check failed", budget },
+      { status: 402 },
+    );
+  }
+
+  // Status gate: normal transcribe-mode requires a finished transcript.
+  // When the user is supplying their own script, we let "draft" / "scripted"
+  // through too — the worker skips principle extraction + script generation
+  // and uses the override verbatim. Mirrors the V1 topic-form path.
+  const allowOwnScriptKickoff =
+    !!scriptOverride &&
+    (project.status === "draft" || project.status === "scripted");
+  if (project.status !== "transcribed" && !allowOwnScriptKickoff) {
     return NextResponse.json(
       {
         error: `Project must be in 'transcribed' status to submit context, currently '${project.status}'`,
@@ -92,7 +145,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       { status: 409 },
     );
   }
-  if (!project.transcript) {
+  if (!scriptOverride && !project.transcript) {
     return NextResponse.json(
       { error: "Project has no transcript yet" },
       { status: 409 },
@@ -104,10 +157,21 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       ? Math.min(30, Math.max(1, Math.round(body.targetDuration)))
       : project.targetDuration || 10;
 
-  const targetWordCount =
-    typeof body.targetWordCount === "number" && body.targetWordCount > 0
+  // When the user supplies their own script, the actual word count IS the
+  // script length — duration sliders become advisory.
+  const overrideWordCount = scriptOverride
+    ? scriptOverride.split(/\s+/).filter(Boolean).length
+    : 0;
+  const targetWordCount = scriptOverride
+    ? Math.max(1, overrideWordCount)
+    : typeof body.targetWordCount === "number" && body.targetWordCount > 0
       ? Math.round(body.targetWordCount)
       : targetDuration * 150;
+
+  const effectiveGoal =
+    typeof body.goal === "string" && body.goal.trim()
+      ? body.goal.trim()
+      : "User-supplied script";
 
   const stylePreset =
     body.stylePreset && isStylePresetId(body.stylePreset)
@@ -153,11 +217,12 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   }
 
   // Persist the context fields up front so the UI sees them even if the
-  // autopilot call fails.
+  // autopilot call fails. With a user-supplied script we jump straight past
+  // principle extraction — the project is already "scripted".
   const updated = await prisma.youTubeProject.update({
     where: { id },
     data: {
-      goal: body.goal,
+      goal: effectiveGoal,
       targetDuration,
       targetWordCount,
       stylePreset,
@@ -166,9 +231,19 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       backgroundMusicId,
       musicVolume,
       styleId, // null is fine, falls back to stylePreset path
-      status: "extracting_principles",
-      progress: 35,
+      status: scriptOverride ? "scripted" : "extracting_principles",
+      progress: scriptOverride ? 30 : 35,
       errorMessage: null,
+      ...(scriptOverride
+        ? {
+            script: scriptOverride,
+            scriptMeta: {
+              wordCount: overrideWordCount,
+              targetWordCount,
+              source: "user-supplied",
+            },
+          }
+        : {}),
     },
   });
 
@@ -188,11 +263,98 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         ? body.videoBackend
         : "sdxl";
 
+    // TubeGen-parity animation mode — folded into the styleSnapshot so the
+    // DGX worker reads it from style_dict.defaultAnimMode. When user didn't
+    // set a Style doc, we synthesise a minimal snapshot just to carry the
+    // anim fields through — the DGX worker treats missing fields as defaults.
+    const validAnimModes = new Set([
+      "none",
+      "all",
+      "longer-only",
+      "per-scene",
+    ]);
+    const validAnimQualities = new Set([
+      "turbo",
+      "default",
+      "default_1080p",
+      "high",
+      "kling-standard",
+      "kling-pro",
+      "kling-master",
+      "luma",
+      "ltx-local",
+    ]);
+    const animMode =
+      typeof body.animMode === "string" && validAnimModes.has(body.animMode)
+        ? body.animMode
+        : "none";
+    const animQuality =
+      typeof body.animQuality === "string" &&
+      validAnimQualities.has(body.animQuality)
+        ? body.animQuality
+        : "default";
+
+    // `animQuality` isn't on StyleSnapshot officially — DGX reads it from
+    // style_dict by key, so we widen to a plain record before passing.
+    const cloudRental = body.cloudRental === true;
+
+    // When user opts into cloud rental, force the paid backends so the bill
+    // matches what the cost panel quoted:
+    //   - stills route → FireRed on Modal L40S (~$0.03/scene). Same model as
+    //     the local DGX firered-local path so character consistency carries
+    //     over identically; just runs on serverless GPU instead of GB10.
+    //   - animation    → Modal L40S Wan2.2, unless user pre-picked a Modal
+    //     tier (respect explicit choice).
+    const effectiveAnimQuality =
+      cloudRental && animMode !== "none" && !animQuality.startsWith("modal-")
+        ? "modal-wan22"
+        : animQuality;
+    // Image renderer: explicit user pick wins over cloud-rental's auto-pick.
+    const validImageQualities = new Set([
+      "firered-local",
+      "firered-modal",
+      "firered-modal-fast",
+      "gemini-1k",
+      "gemini-2k",
+      "ideogram-turbo",
+      "ideogram-default",
+      "ideogram-quality",
+      "sdxl-local",
+    ]);
+    const userImageQuality =
+      typeof body.imageQuality === "string" &&
+      validImageQualities.has(body.imageQuality)
+        ? body.imageQuality
+        : null;
+    const effectiveImageQuality =
+      userImageQuality ?? (cloudRental ? "firered-modal" : undefined);
+
+    const styleWithAnim: StyleSnapshot | undefined =
+      animMode !== "none" || cloudRental || effectiveImageQuality
+        ? ({
+            ...(styleSnapshot ?? {}),
+            ...(animMode !== "none"
+              ? { defaultAnimMode: animMode, animQuality: effectiveAnimQuality }
+              : {}),
+            ...(effectiveImageQuality
+              ? { defaultQuality: effectiveImageQuality }
+              : {}),
+            ...(cloudRental ? { cloudRental: true } : {}),
+          } as unknown as StyleSnapshot)
+        : styleSnapshot;
+
+    // Topic-mode (own-script) kickoffs may have null transcript — autopilot
+    // accepts undefined for that case. transcribe-mode always has one.
+    const effectiveMode: "transcribe" | "topic" =
+      scriptOverride && !project.transcript
+        ? "topic"
+        : ((project.mode as "transcribe" | "topic") || "transcribe");
+
     const job = await autopilot.runCreation({
       projectId: id,
-      mode: (project.mode as "transcribe" | "topic") || "transcribe",
-      transcript: project.transcript,
-      goal: body.goal,
+      mode: effectiveMode,
+      transcript: project.transcript ?? undefined,
+      goal: effectiveGoal,
       targetWordCount,
       stylePreset,
       voiceCloneName: body.voiceCloneName,
@@ -202,7 +364,8 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       scriptGuidelines: body.scriptGuidelines,
       consistency,
       videoBackend: videoBackend as RunCreationInput["videoBackend"],
-      style: styleSnapshot,
+      style: styleWithAnim,
+      ...(scriptOverride ? { scriptOverride } : {}),
     });
 
     const withJob = await prisma.youTubeProject.update({

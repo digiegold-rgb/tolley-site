@@ -73,6 +73,18 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
           <h4>New Leads (7d)</h4>
           <div className="val">{week.newLeads}</div>
         </div>
+        {money.animate && (
+          <div className="stat-card">
+            <h4>Animate Studio (mo)</h4>
+            <div className="val" style={{ fontSize: 15 }}>
+              {usd(money.animate.monthRevenue)}{" "}
+              <span style={{ fontSize: 11, fontWeight: 600, color: "#6e6e73" }}>
+                · {money.animate.monthActions} renders · {money.animate.videoOfferClients} video client
+                {money.animate.videoOfferClients === 1 ? "" : "s"}
+              </span>
+            </div>
+          </div>
+        )}
         <div style={{ marginLeft: "auto", alignSelf: "center" }}>
           <button className="btn btn-sm" onClick={onRefresh} disabled={loading}>
             {loading ? "…" : "Refresh"}

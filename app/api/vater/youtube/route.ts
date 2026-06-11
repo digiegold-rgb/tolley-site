@@ -5,16 +5,25 @@ import {
   autopilot,
   AutopilotError,
 } from "@/lib/vater/autopilot-client";
+import { auth } from "@/auth";
+import { scopedProjectWhere } from "@/lib/vater/project-access";
+import { checkBudget } from "@/lib/vater/billing/check-budget";
 
 export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const projects = await prisma.youTubeProject.findMany({
+    where: scopedProjectWhere(session.user.id, session.user.email),
     orderBy: { createdAt: "desc" },
   });
 
   return NextResponse.json({ projects });
 }
 
-const YT_URL_RE = /^https?:\/\/(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)/;
+const URL_RE = /^https?:\/\/.+\..+/;
 
 interface CreateBody {
   url?: string;
@@ -23,6 +32,11 @@ interface CreateBody {
 }
 
 export async function POST(req: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   let body: CreateBody;
   try {
     body = (await req.json()) as CreateBody;
@@ -55,9 +69,9 @@ export async function POST(req: Request) {
     sourceType = "rss";
     rssItemId = item.id;
   } else {
-    if (!body.url || !YT_URL_RE.test(body.url)) {
+    if (!body.url || !URL_RE.test(body.url)) {
       return NextResponse.json(
-        { error: "Invalid YouTube URL" },
+        { error: "Invalid URL" },
         { status: 400 },
       );
     }
@@ -68,6 +82,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No source resolved" }, { status: 400 });
   }
 
+  // Billing gate: transcribe-mode creation kicks off a transcription on the
+  // DGX immediately. The charge itself lands in the poll route on completion
+  // (transcription_${jobId}) — this pre-check blocks capped trial users and
+  // delinquent cards BEFORE any DGX work starts.
+  const budget = await checkBudget(session.user.id, "transcription");
+  if (!budget.allow) {
+    return NextResponse.json(
+      { error: "Billing check failed", budget },
+      { status: 402 },
+    );
+  }
+
   const duration =
     typeof body.targetDuration === "number" && body.targetDuration > 0
       ? Math.min(30, Math.max(1, Math.round(body.targetDuration)))
@@ -75,6 +101,7 @@ export async function POST(req: Request) {
 
   const project = await prisma.youTubeProject.create({
     data: {
+      userId: session.user.id,
       mode: "transcribe",
       sourceUrl,
       sourceTitle,

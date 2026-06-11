@@ -15,16 +15,24 @@ import {
   autopilot,
   AutopilotError,
 } from "@/lib/vater/autopilot-client";
+import { auth } from "@/auth";
+import { canAccessProject } from "@/lib/vater/project-access";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 const VIDEO_PATH_RE = /^\/?vater\/file\/([^/]+)\/video\/?$/;
 
 export async function GET(req: NextRequest, ctx: Ctx) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await ctx.params;
   const project = await prisma.youTubeProject.findUnique({
     where: { id },
     select: {
+      userId: true,
       finalVideoUrl: true,
       autopilotJobId: true,
       status: true,
@@ -32,8 +40,11 @@ export async function GET(req: NextRequest, ctx: Ctx) {
       topic: true,
     },
   });
-  if (!project) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (
+    !project ||
+    !canAccessProject(project.userId, session.user.id, session.user.email)
+  ) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
   const download = req.nextUrl.searchParams.get("download") === "1";
 
@@ -54,7 +65,11 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   }
 
   try {
-    const upstream = await autopilot.fetchFile(jobId, "video");
+    // Forward the Range header upstream so the browser <video> element can
+    // seek — without this Remotion throws MediaPlaybackError ("The element
+    // has no supported sources"). Matches the per-scene streaming route.
+    const range = req.headers.get("range");
+    const upstream = await autopilot.fetchFile(jobId, "video", range);
     if (!upstream.body) {
       return NextResponse.json(
         { error: "Upstream returned empty body" },
@@ -74,11 +89,14 @@ export async function GET(req: NextRequest, ctx: Ctx) {
         ? `attachment; filename="${filename}"`
         : "inline",
       "Cache-Control": "private, max-age=300",
+      "Accept-Ranges": "bytes",
     });
-    const len = upstream.headers.get("content-length");
-    if (len) headers.set("Content-Length", len);
+    for (const h of ["Content-Length", "Content-Range", "ETag", "Last-Modified"]) {
+      const v = upstream.headers.get(h);
+      if (v) headers.set(h, v);
+    }
 
-    return new Response(upstream.body, { status: 200, headers });
+    return new Response(upstream.body, { status: upstream.status, headers });
   } catch (err) {
     if (err instanceof AutopilotError) {
       return NextResponse.json(

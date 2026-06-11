@@ -1264,38 +1264,38 @@ model ContentCampaign {
 }
 
 model WdClient {
-  id               String      @id @default(cuid())
-  name             String
-  address          String?
-  phone            String?
-  email            String?
-  unitDescription  String
-  unitCost         Float       @default(200)
-  installDate      DateTime?
-  active           Boolean     @default(true)
-  notes            String?
-  photoUrls        String[]
-  receiptUrls      String[]
-  source           String      @default("tolley")
-  paidBy           String      @default("tolley")
-  needsReview      Boolean     @default(false)
-  blockedFields    String[]
-  locked           Boolean     @default(false)
-  stripeCustomerId String?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  confirmed        Boolean     @default(false)
+  id                    String      @id @default(cuid())
+  name                  String
+  address               String?
+  phone                 String?
+  email                 String?
+  unitDescription       String
+  unitCost              Float       @default(200)
+  installDate           DateTime?
+  active                Boolean     @default(true)
+  notes                 String?
+  photoUrls             String[]
+  receiptUrls           String[]
+  source                String      @default("tolley")
+  paidBy                String      @default("tolley")
+  needsReview           Boolean     @default(false)
+  blockedFields         String[]
+  locked                Boolean     @default(false)
+  stripeCustomerId      String?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  confirmed             Boolean     @default(false)
   // ── Stripe subscription state (auto-synced via webhook) ──
-  stripeSubscriptionId String?
-  subscriptionStatus   String?   // active | trialing | past_due | canceled | unpaid | incomplete
-  currentPeriodEnd     DateTime? // when the next charge is due
-  cancelAtPeriodEnd    Boolean   @default(false)
-  lastPaymentStatus    String?   // paid | failed (mirrors latest invoice)
-  pendingApproval      Boolean   @default(false) // new self-serve signup awaiting 1-click approve
-  dunningStage         Int       @default(0)     // 0=ok, 1=day0, 2=day3, 3=day7+ (failed-payment ladder)
+  stripeSubscriptionId  String?
+  subscriptionStatus    String? // active | trialing | past_due | canceled | unpaid | incomplete
+  currentPeriodEnd      DateTime? // when the next charge is due
+  cancelAtPeriodEnd     Boolean     @default(false)
+  lastPaymentStatus     String? // paid | failed (mirrors latest invoice)
+  pendingApproval       Boolean     @default(false) // new self-serve signup awaiting 1-click approve
+  dunningStage          Int         @default(0) // 0=ok, 1=day0, 2=day3, 3=day7+ (failed-payment ladder)
   reminderSentForPeriod DateTime? // currentPeriodEnd the renew-soon nudge was last drafted for
-  payments         WdPayment[]
-  messages         WdMessage[]
+  payments              WdPayment[]
+  messages              WdMessage[]
 
   @@index([active])
   @@index([source])
@@ -1304,18 +1304,18 @@ model WdClient {
 }
 
 model WdPayment {
-  id        String   @id @default(cuid())
-  clientId  String
-  amount    Float
-  month     String
-  note      String?
-  createdAt DateTime @default(now())
-  status    String   @default("paid")
+  id              String    @id @default(cuid())
+  clientId        String
+  amount          Float
+  month           String
+  note            String?
+  createdAt       DateTime  @default(now())
+  status          String    @default("paid")
   // ── Stripe linkage (webhook-created rows) ──
-  source          String   @default("manual") // manual | stripe
-  stripeInvoiceId String?  @unique
+  source          String    @default("manual") // manual | stripe
+  stripeInvoiceId String?   @unique
   paidAt          DateTime?
-  client    WdClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client          WdClient  @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, month])
   @@index([month])
@@ -1328,11 +1328,11 @@ model WdMessage {
   id          String    @id @default(cuid())
   clientId    String?
   phone       String?
-  channel     String    @default("sms")      // sms | email
+  channel     String    @default("sms") // sms | email
   direction   String    @default("outbound") // outbound | inbound
-  kind        String                          // reminder | dunning | approval | ai_reply | inbound
-  status      String    @default("draft")    // draft | sent | failed | skipped | received
-  subject     String?                         // email subject (channel=email)
+  kind        String // reminder | dunning | approval | ai_reply | inbound
+  status      String    @default("draft") // draft | sent | failed | skipped | received
+  subject     String? // email subject (channel=email)
   body        String
   aiGenerated Boolean   @default(false)
   meta        Json?
@@ -1737,29 +1737,29 @@ model CryptoDriveItem {
 }
 
 model VideoGeneration {
-  id           String    @id @default(cuid())
-  userId       String
-  prompt       String
-  model        String
-  tier         String
-  status       String    @default("queued")
-  creditsUsed  Int       @default(1)
-  costCents    Int       @default(0)
-  outputUrl    String?
-  thumbnailUrl String?
-  durationSecs Float?
-  resolution   String?
-  errorMessage String?
-  falRequestId String?
-  metadata     Json?
-  startedAt    DateTime?
-  completedAt  DateTime?
-  createdAt    DateTime  @default(now())
-  blobUrl      String?
-  narrationText     String?
-  narrationVoiceId  String?
-  narrationBlobUrl  String?
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String    @id @default(cuid())
+  userId           String
+  prompt           String
+  model            String
+  tier             String
+  status           String    @default("queued")
+  creditsUsed      Int       @default(1)
+  costCents        Int       @default(0)
+  outputUrl        String?
+  thumbnailUrl     String?
+  durationSecs     Float?
+  resolution       String?
+  errorMessage     String?
+  falRequestId     String?
+  metadata         Json?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  blobUrl          String?
+  narrationText    String?
+  narrationVoiceId String?
+  narrationBlobUrl String?
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([status])
@@ -2106,7 +2106,7 @@ model WhatsappScanJob {
   count         Int       @default(50)
   groupMode     String    @default("smart") // smart = group multi-angle; single = one listing per photo
   status        String    @default("queued") // queued|scraping|enqueued|failed
-  batchId       String?   // links to the BulkIngestJob rows this scan produced
+  batchId       String? // links to the BulkIngestJob rows this scan produced
   photosFound   Int       @default(0)
   groups        Int       @default(0)
   skipped       Int       @default(0)
@@ -3499,6 +3499,10 @@ model VaterVoiceClone {
 model YouTubeProject {
   id String @id @default(cuid())
 
+  // Tenant scoping (2026-06-11, pay-per-video launch). Nullable: legacy
+  // projects predate multi-tenancy and are admin-only via project-access.ts.
+  userId String?
+
   // Mode + source
   mode          String        @default("transcribe") // "transcribe" | "topic"
   sourceUrl     String?
@@ -3576,6 +3580,7 @@ model YouTubeProject {
   @@index([createdAt])
   @@index([sourceType])
   @@index([styleId])
+  @@index([userId])
 }
 
 // ── Vater Watcher — embedded Claude observer (2026-04-17) ────────────
@@ -3635,9 +3640,18 @@ model VaterSubscription {
   stripeCustomerId     String? @unique
   stripeSubscriptionId String? @unique
   stripePriceId        String?
-  stripeCreditGrantId  String? // current period's $250 grant
+  stripeCreditGrantId  String? // legacy ($288/mo credit-grant model) — unused since 2026-06
 
-  // Lifecycle state (mirrors Stripe.Subscription.Status, but limited to ones we care about)
+  // Card on file (pay-per-video model, set by setup-mode Checkout webhook)
+  defaultPaymentMethodId String?
+  cardBrand              String?
+  cardLast4              String?
+  cardExpMonth           Int?
+  cardExpYear            Int?
+  delinquentAt           DateTime? // set when an invoice fails; cleared on invoice.paid
+
+  // Lifecycle state: trialing = no card on file · active = card on file ·
+  // past_due = invoice failed (delinquent)
   status             String    @default("trialing") // trialing | active | past_due | canceled | none
   currentPeriodStart DateTime?
   currentPeriodEnd   DateTime?
@@ -3668,11 +3682,15 @@ model VaterUsage {
   ts                  DateTime @default(now())
   // Stripe sync
   stripeInvoiceItemId String?  @unique
+  // Stamped when the invoice containing this item finalizes+pays — unbilled
+  // accrual = rows with stripeInvoiceItemId set but stripeInvoiceId null
+  stripeInvoiceId     String?
   // Idempotency: when a route retries, we want the same key to dedupe
   idempotencyKey      String?  @unique
 
   @@index([userId, ts])
   @@index([userId, action, ts])
+  @@index([userId, stripeInvoiceId])
   @@index([projectId])
 }
 
@@ -3977,27 +3995,27 @@ model RevenueBusinessTotals {
 }
 
 model TradingAgentDecision {
-  id                  String   @id @default(cuid())
-  ticker              String
-  runDate             String
-  decision            String
-  rawDecision         String?
-  elapsedSeconds      Float?
-  fundamentalsReport  String?  @db.Text
-  sentimentReport     String?  @db.Text
-  newsReport          String?  @db.Text
-  marketReport        String?  @db.Text
-  bullHistory         String?  @db.Text
-  bearHistory         String?  @db.Text
-  investmentPlan      String?  @db.Text
-  traderPlan          String?  @db.Text
-  riskJudgeDecision   String?  @db.Text
-  finalTradeDecision  String?  @db.Text
-  realizedReturn      Float?
-  alphaVsSpy          Float?
-  jobId               String?
-  modelUsed           String?
-  createdAt           DateTime @default(now())
+  id                 String   @id @default(cuid())
+  ticker             String
+  runDate            String
+  decision           String
+  rawDecision        String?
+  elapsedSeconds     Float?
+  fundamentalsReport String?  @db.Text
+  sentimentReport    String?  @db.Text
+  newsReport         String?  @db.Text
+  marketReport       String?  @db.Text
+  bullHistory        String?  @db.Text
+  bearHistory        String?  @db.Text
+  investmentPlan     String?  @db.Text
+  traderPlan         String?  @db.Text
+  riskJudgeDecision  String?  @db.Text
+  finalTradeDecision String?  @db.Text
+  realizedReturn     Float?
+  alphaVsSpy         Float?
+  jobId              String?
+  modelUsed          String?
+  createdAt          DateTime @default(now())
 
   @@unique([ticker, runDate])
   @@index([ticker, createdAt])
@@ -4029,7 +4047,7 @@ model MapsPackRank {
   lat          Float
   lng          Float
   businessName String
-  position     Int?     // null = not in top 20
+  position     Int? // null = not in top 20
   totalResults Int?
   placeId      String?
   rating       Float?
@@ -4045,15 +4063,15 @@ model MapsPackRank {
 // AI Overview citation tracking — periodic check whether tolley.io URLs are
 // cited in Google's AI Overview block for target keywords.
 model AiOverviewCheck {
-  id            String   @id @default(cuid())
-  keyword       String
-  hasOverview   Boolean
-  tolleyCited   Boolean
-  citedDomains  String[] @default([])
-  competitorCount Int    @default(0)
-  overviewText  String?  @db.Text
-  rawJson       Json?
-  createdAt     DateTime @default(now())
+  id              String   @id @default(cuid())
+  keyword         String
+  hasOverview     Boolean
+  tolleyCited     Boolean
+  citedDomains    String[] @default([])
+  competitorCount Int      @default(0)
+  overviewText    String?  @db.Text
+  rawJson         Json?
+  createdAt       DateTime @default(now())
 
   @@index([keyword, createdAt])
   @@index([createdAt])
@@ -4080,27 +4098,27 @@ model MapsPackSnapshot {
 // Review-request automation — operator queues SMS/email asks to past clients
 // pointing at a GBP review URL. Tracks send + click for conversion analysis.
 model ReviewRequest {
-  id           String   @id @default(cuid())
+  id            String    @id @default(cuid())
   // Recipient — phone OR email is required
-  phone        String?
-  email        String?
+  phone         String?
+  email         String?
   recipientName String?
   // Source attribution
-  sourceType   String?  // "manual_paste" | "stripe_customer" | "lead" | "deal"
-  sourceId     String?
+  sourceType    String? // "manual_paste" | "stripe_customer" | "lead" | "deal"
+  sourceId      String?
   // Where the click goes
-  gbpKey       String   // "your_kc_homes" | "treasure_haul" | etc — keys defined in lib/reviews/gbps.ts
-  shortCode    String   @unique // /go/r/<shortCode> redirect target
+  gbpKey        String // "your_kc_homes" | "treasure_haul" | etc — keys defined in lib/reviews/gbps.ts
+  shortCode     String    @unique // /go/r/<shortCode> redirect target
   // Lifecycle
-  status       String   @default("queued") // queued | sent | clicked | bounced | failed
-  channel      String   // "sms" | "email"
-  message      String?  @db.Text
-  twilioSid    String?
-  errorMessage String?  @db.Text
-  sentAt       DateTime?
-  clickedAt    DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  status        String    @default("queued") // queued | sent | clicked | bounced | failed
+  channel       String // "sms" | "email"
+  message       String?   @db.Text
+  twilioSid     String?
+  errorMessage  String?   @db.Text
+  sentAt        DateTime?
+  clickedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([gbpKey, status, createdAt])
   @@index([phone])
@@ -4110,26 +4128,26 @@ model ReviewRequest {
 // Programmatic SEO neighborhood pages — generated via SerpAPI PAA + KG.
 // Public route at /real-estate-agent/[slug].
 model NeighborhoodPage {
-  id           String   @id @default(cuid())
-  slug         String   @unique
-  name         String   // "Independence MO" | "Lee's Summit MO"
-  city         String
-  state        String
-  zip          String?
-  lat          Float?
-  lng          Float?
+  id                 String    @id @default(cuid())
+  slug               String    @unique
+  name               String // "Independence MO" | "Lee's Summit MO"
+  city               String
+  state              String
+  zip                String?
+  lat                Float?
+  lng                Float?
   // Generated content
-  intro        String?  @db.Text
-  faqJson      Json?    // [{question, answer}]
-  relatedSearches String[] @default([])
-  schoolsJson  Json?    // {best, count, source}
+  intro              String?   @db.Text
+  faqJson            Json? // [{question, answer}]
+  relatedSearches    String[]  @default([])
+  schoolsJson        Json? // {best, count, source}
   knowledgeGraphJson Json?
   // Lifecycle
-  generatedAt  DateTime?
-  published    Boolean  @default(false)
-  serpapiQueriesUsed Int @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  generatedAt        DateTime?
+  published          Boolean   @default(false)
+  serpapiQueriesUsed Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@index([state, city])
   @@index([published, generatedAt])
@@ -4139,28 +4157,28 @@ model NeighborhoodPage {
 // scraping, enriched with SerpAPI heir + property lookups, fed into the
 // existing T-Agent dossier pipeline.
 model ProbateSignal {
-  id              String   @id @default(cuid())
-  source          String   // "legacy.com", "obittree.com", "casenet"
-  sourceUrl       String?  @db.Text
-  decedentName    String
-  decedentAge     Int?
-  obitDate        DateTime?
-  city            String?
-  state           String?
-  county          String?
-  zip             String?
+  id             String    @id @default(cuid())
+  source         String // "legacy.com", "obittree.com", "casenet"
+  sourceUrl      String?   @db.Text
+  decedentName   String
+  decedentAge    Int?
+  obitDate       DateTime?
+  city           String?
+  state          String?
+  county         String?
+  zip            String?
   // Enrichment
-  matchedAddress  String?
-  parcelId        String?
-  estimatedValue  Float?
-  heirsJson       Json?     // [{ name, relationship, profileUrl, source }]
-  serpapiHits     Int      @default(0)
+  matchedAddress String?
+  parcelId       String?
+  estimatedValue Float?
+  heirsJson      Json? // [{ name, relationship, profileUrl, source }]
+  serpapiHits    Int       @default(0)
   // Lead lifecycle
-  leadId          String?  // FK to existing Lead model when promoted
-  status          String   @default("discovered") // discovered | enriched | promoted | dismissed
-  notes           String?  @db.Text
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  leadId         String? // FK to existing Lead model when promoted
+  status         String    @default("discovered") // discovered | enriched | promoted | dismissed
+  notes          String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@unique([source, sourceUrl])
   @@index([status, createdAt])
@@ -4177,8 +4195,8 @@ model ProbateSignal {
 // promoted rows seed a Lead + the (now live) dossier owner-lookup pipeline.
 model DistressSignal {
   id           String   @id @default(cuid())
-  kind         String   // foreclosure | tax-sale | sheriff-sale | code-violation
-  source       String   // host the notice was found on
+  kind         String // foreclosure | tax-sale | sheriff-sale | code-violation
+  source       String // host the notice was found on
   sourceUrl    String?  @db.Text
   title        String   @db.Text
   snippet      String?  @db.Text
@@ -4187,7 +4205,7 @@ model DistressSignal {
   city         String?
   county       String?
   state        String?
-  leadId       String?  // FK to Lead when promoted
+  leadId       String? // FK to Lead when promoted
   status       String   @default("new") // new | reviewed | promoted | dismissed
   notes        String?  @db.Text
   createdAt    DateTime @default(now())
@@ -4208,11 +4226,11 @@ model DistressSignal {
 // ────────────────────────────────────────────────────────────────────────────
 model RoutineBrief {
   id        String    @id @default(cuid())
-  slug      String    // routine identifier, e.g. "revenue-health", "lead-followups"
+  slug      String // routine identifier, e.g. "revenue-health", "lead-followups"
   title     String
   body      String    @db.Text // markdown
   severity  String    @default("info") // info | action | alert
-  payload   Json?     // optional structured data (drafts, line items, links)
+  payload   Json? // optional structured data (drafts, line items, links)
   readAt    DateTime?
   emailedAt DateTime? // set when included in a daily digest email (null = pending)
   createdAt DateTime  @default(now())
@@ -4232,30 +4250,32 @@ model RoutineBrief {
 // status=approved touches — nothing in /hq sends anything itself.
 // ────────────────────────────────────────────────────────────────────────────
 model GrowthLead {
-  id           String        @id @default(cuid())
-  name         String
-  offer        String        // "site" | "automation" | "delivery" | "video"
-  category     String?
-  address      String?
-  city         String?
-  phone        String?
-  email        String?
-  emailSource  String?       // apollo | scraped | manual
-  ownerName    String?
-  website      String?
-  websiteScore Int?
-  websiteNotes String?
-  rating       Float?
-  reviews      Int?
-  placeId      String?       @unique
-  stage        String        @default("scraped") // scraped|enriched|demo_built|contacted|replied|booked|client|dead
-  score        Int?
-  demoUrl      String?
-  source       String        @default("serpapi")
-  notes        String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  touches      GrowthTouch[]
+  id            String        @id @default(cuid())
+  name          String
+  offer         String // "site" | "automation" | "delivery" | "video"
+  category      String?
+  address       String?
+  city          String?
+  phone         String?
+  email         String?
+  emailSource   String? // apollo | scraped | manual
+  ownerName     String?
+  website       String?
+  websiteScore  Int?
+  websiteNotes  String?
+  rating        Float?
+  reviews       Int?
+  placeId       String?       @unique
+  stage         String        @default("scraped") // scraped|enriched|demo_built|contacted|replied|booked|client|dead
+  score         Int?
+  demoUrl       String?
+  videoUrl      String? // public watch-page path, e.g. /v/<slug>
+  videoAssetUrl String? // Vercel Blob mp4 URL backing the watch page
+  source        String        @default("serpapi")
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  touches       GrowthTouch[]
 
   @@index([stage])
   @@index([offer, stage])
@@ -4266,7 +4286,7 @@ model GrowthTouch {
   id        String     @id @default(cuid())
   leadId    String
   lead      GrowthLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  channel   String     // email | sms | call | demo | note
+  channel   String // email | sms | call | demo | note
   direction String     @default("out") // out | in
   status    String     @default("draft") // draft | approved | sent | received | discarded
   subject   String?
@@ -4277,4 +4297,12 @@ model GrowthTouch {
 
   @@index([status])
   @@index([leadId, createdAt])
+}
+
+/// DB-backed rate limiting + lightweight locks (no Redis in stack).
+/// One row per (scope) key; consumed atomically via raw upsert in lib/rate-limit.ts.
+model RateLimitBucket {
+  key         String   @id
+  windowStart DateTime
+  count       Int      @default(0)
 }

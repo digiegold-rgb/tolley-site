@@ -104,6 +104,11 @@ export interface HqMoney {
     totalRevenue: number;
     newLeads: number;
   };
+  animate?: {
+    monthRevenue: number;
+    monthActions: number;
+    videoOfferClients: number;
+  };
 }
 
 export const STAGE_LABEL: Record<string, string> = {
