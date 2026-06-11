@@ -33,6 +33,8 @@ export interface HqLead {
   stage: string;
   score: number | null;
   demoUrl: string | null;
+  videoUrl: string | null;
+  videoAssetUrl: string | null;
   source: string;
   notes: string | null;
   createdAt: string;

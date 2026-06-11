@@ -105,6 +105,14 @@ export function HqLeadDrawer({ lead, saving, onClose, onSave }: Props) {
               )
             )}
             {factRow(
+              "Video",
+              lead.videoUrl && (
+                <a href={lead.videoUrl} target="_blank" rel="noreferrer" style={{ color: "#3a63af" }}>
+                  ▶ {lead.videoUrl}
+                </a>
+              )
+            )}
+            {factRow(
               "Source",
               `${lead.source}${lead.emailSource ? ` · email: ${lead.emailSource}` : ""}`
             )}
