@@ -124,7 +124,11 @@ type JobStatus = {
   status: "pending" | "running" | "done" | "failed" | string;
   phase: string;
   progress: number;
-  result?: { finalVideoUrl?: string } & Record<string, unknown>;
+  result?: {
+    finalVideoUrl?: string;
+    /** Worker returns a DGX-local filesystem path (we run on the DGX). */
+    finalVideoPath?: string;
+  } & Record<string, unknown>;
   error?: string;
 };
 
@@ -310,13 +314,18 @@ async function main() {
 
       // 2. Wait for TTS → scenes → compose to finish on the DGX.
       const job = await waitForJob(jobId, lead.name);
-      if (!job.result?.finalVideoUrl) {
-        throw new Error(`job ${jobId} finished without finalVideoUrl`);
+      const localPath = job.result?.finalVideoPath;
+      if (!job.result?.finalVideoUrl && !localPath) {
+        throw new Error(`job ${jobId} finished without finalVideoUrl/finalVideoPath`);
       }
 
-      // 3. Pull final.mp4 off the DGX and push it to Vercel Blob (public).
-      const buffer = await downloadFinalVideo(jobId);
-      console.log(`    downloaded final.mp4 (${(buffer.length / 1024 / 1024).toFixed(1)} MB)`);
+      // 3. Grab final.mp4 — straight off disk when the worker hands us its
+      // DGX-local path (this script runs on the DGX), else via the file API.
+      const buffer =
+        localPath && existsSync(localPath)
+          ? readFileSync(localPath)
+          : await downloadFinalVideo(jobId);
+      console.log(`    got final.mp4 (${(buffer.length / 1024 / 1024).toFixed(1)} MB)`);
       const blob = await put(`b2b-videos/${slug}.mp4`, buffer, { access: "public" });
       console.log(`    blob → ${blob.url}`);
 
