@@ -98,12 +98,15 @@ function firstNameOf(lead: GraphLead): string | null {
   return full ? full.split(/\s+/)[0] : null;
 }
 
+// Voice: matches Jared's real intro pattern from the corpus
+// ("Hi, this is Jared with the wash&dryer rental...") — no emoji, ends on a
+// where-question that presumes forward motion, not an if.
 function smsDraftBody(firstName: string | null): string {
-  const hi = firstName ? `Hi ${firstName}!` : "Hi!";
+  const hi = firstName ? `Hi ${firstName}, this` : "Hi, this";
   return (
-    `${hi} This is Tolley Rentals — thanks for your interest in our washer/dryer rentals. ` +
+    `${hi} is Jared with the Wash&Dry Rental — thanks for reaching out. ` +
     `We deliver, install, and handle all repairs for one flat monthly rate, no credit check. ` +
-    `Want me to check delivery availability for your address this week? Just reply here. 🙂`
+    `What part of town are you in? I'll check delivery availability for you this week.`
   );
 }
 

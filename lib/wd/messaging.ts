@@ -125,7 +125,7 @@ export async function draftWelcome(client: WdClient): Promise<string[]> {
         clientId: client.id,
         channel: "email",
         kind: "approval",
-        subject: "Welcome to Tolley Washer & Dryer Rental 🎉",
+        subject: "Welcome to Tolley Washer & Dryer Rental — you're all set",
         body:
           `Hi ${firstName(client)},\n\n` +
           `You're all set — your washer & dryer rental is active. Your card is billed automatically each month, ` +
