@@ -1,0 +1,166 @@
+/* ── Tolley Cleanouts — Deep Slate + Safety Orange ────────────── */
+/* Confident utilitarian look: flat panels, hazard-stripe accents, */
+/* industrial Oswald headings. Deliberately NOT the junkinjays     */
+/* neon-rust theme — no glow, no sparks.                           */
+
+.cleanouts-page {
+  --tc-bg: #0e141b;
+  --tc-panel: #141d27;
+  --tc-panel-2: #18222e;
+  --tc-line: rgba(148, 163, 184, 0.14);
+  --tc-orange: #ff7a1a;
+  --tc-orange-deep: #e5670f;
+  --tc-steel: #94a3b8;
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 0%, rgba(255, 122, 26, 0.05), transparent 70%),
+    var(--tc-bg);
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+/* Industrial display headings */
+.tc-display {
+  font-family: var(--font-oswald), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Hazard stripe — used as thin section/strip accents */
+.tc-hazard {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--tc-orange) 0 12px,
+    #0e141b 12px 24px
+  );
+}
+
+/* Sticky call/text strip */
+.tc-strip {
+  background: #10181f;
+  border-bottom: 1px solid var(--tc-line);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* Primary CTA — solid safety orange, square-shouldered */
+.tc-btn-primary {
+  background: var(--tc-orange);
+  color: #10181f;
+  font-family: var(--font-oswald), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+.tc-btn-primary:hover {
+  background: var(--tc-orange-deep);
+  transform: translateY(-1px);
+}
+
+/* Secondary CTA — slate outline */
+.tc-btn-secondary {
+  background: rgba(148, 163, 184, 0.06);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #e2e8f0;
+  font-family: var(--font-oswald), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.tc-btn-secondary:hover {
+  border-color: var(--tc-orange);
+  background: rgba(255, 122, 26, 0.08);
+}
+
+/* Flat slate panel cards */
+.tc-card {
+  background: var(--tc-panel);
+  border: 1px solid var(--tc-line);
+  border-radius: 0.5rem;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.tc-card:hover {
+  border-color: rgba(255, 122, 26, 0.45);
+  transform: translateY(-3px);
+}
+
+/* Static panel (form, footer blocks) — tc-card without the hover lift */
+.tc-form {
+  background: var(--tc-panel);
+  border: 1px solid var(--tc-line);
+  border-radius: 0.5rem;
+}
+
+/* Numbered step plate */
+.tc-step-num {
+  font-family: var(--font-oswald), sans-serif;
+  background: var(--tc-orange);
+  color: #10181f;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  border-radius: 0.25rem;
+}
+
+/* "Paid twice" differentiator — orange-edged plate */
+.tc-diff {
+  background: linear-gradient(135deg, rgba(255, 122, 26, 0.1), rgba(255, 122, 26, 0.03) 60%),
+    var(--tc-panel-2);
+  border: 1px solid rgba(255, 122, 26, 0.4);
+  border-radius: 0.5rem;
+}
+
+/* Section kicker label */
+.tc-kicker {
+  font-family: var(--font-oswald), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--tc-orange);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Form inputs */
+.tc-input {
+  background: #10181f;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 0.375rem;
+  color: #e2e8f0;
+  transition: border-color 0.2s ease;
+  width: 100%;
+}
+.tc-input:focus {
+  outline: none;
+  border-color: var(--tc-orange);
+}
+.tc-input::placeholder {
+  color: rgba(148, 163, 184, 0.5);
+}
+
+/* Section entrance */
+.tc-enter {
+  opacity: 0;
+  transform: translateY(22px);
+  animation: tc-fade-up 0.6s ease-out both;
+  animation-delay: var(--enter-delay, 0s);
+}
+@keyframes tc-fade-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-enter {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .tc-card:hover,
+  .tc-btn-primary:hover {
+    transform: none;
+  }
+}

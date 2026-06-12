@@ -1,5 +1,5 @@
 // Seed cold-email sequences as GrowthTouch DRAFTS (approve-send in /hq).
-// Usage (from tolley-site/): node --env-file=.env.local scripts/seed-sequences.mjs [--site N] [--delivery N] [--video N]
+// Usage (from tolley-site/): node --env-file=.env.local scripts/seed-sequences.mjs [--site N] [--delivery N] [--video N] [--cleanout N]
 // Idempotent: skips a lead that already has a seeded draft (meta.seq set).
 // HARD RULE: never seed stage=client (Buckeye, Wayne) — cold copy only for fresh prospects.
 import { PrismaClient } from "@prisma/client";
@@ -9,6 +9,7 @@ const arg = (k, d) => { const i = process.argv.indexOf(k); return i > -1 ? parse
 const SITE_N = arg("--site", 20);
 const DELIV_N = arg("--delivery", 30);
 const VIDEO_N = arg("--video", 20);
+const CLEAN_N = arg("--cleanout", 30);
 
 const cap = (s) => (s || "").replace(/\b\w/g, (c) => c.toUpperCase());
 const firstName = (l) => "there"; // owner name lands via Apollo enrichment; safe fallback now
@@ -42,6 +43,13 @@ const VIDEO = [
   { d: 13, subject: "closing this out", body: `No worries {{firstName}} — I'll assume the timing's not right and stop emailing. The video stays at {{videoUrl}} a little while longer if you ever want it. Either way, glad {{business}} is doing well in {{city}}.` },
 ];
 
+const CLEANOUT = [
+  { d: 0, subject: "unit cleanouts for {{business}} — one call, broom-clean", body: `Hi {{firstName}},\n\nI run Tolley Cleanouts here in the KC metro — estate and rental cleanouts. One call: we clear the unit, broom-clean it, and haul everything in the same visit.\n\nThe part people like best: anything with resale value comes off your bill. We resell it, you save.\n\nWhen's your next unit turning over?\n\n— Jared, Tolley Cleanouts · Independence, MO` },
+  { d: 4, subject: "re: unit cleanouts for {{business}}", body: `{{firstName}}, quick math on this one.\n\nEvery day a unit sits full of the last tenant's stuff is a day of rent you don't collect. We typically clear and broom-clean in one visit, so your crew can get straight to paint and carpet.\n\nQuotes are free — text me photos of the unit and I'll have a flat number back to you the same day. When's the next turnover on your calendar?` },
+  { d: 9, subject: "estate cleanouts too", body: `{{firstName}}, one more thing we handle that comes up a lot: full estate cleanouts.\n\nWhen a family or an attorney needs a whole house cleared, we do it respectfully — before and after photos, free walkthrough quote, and anything with resale value reduces the bill.\n\nIf you ever have a property or a client in that spot, I'm happy to take a look.` },
+  { d: 14, subject: "closing this out", body: `I'll leave it there, {{firstName}} — we keep a couple cleanout slots open each month for {{city}}. If one ever helps, I'm a text away.\n\nThanks for the time, and glad {{business}} is doing well.\n\n— Jared` },
+];
+
 async function seed(leads, steps, seqName) {
   let made = 0, skipped = 0;
   for (const l of leads) {
@@ -63,12 +71,15 @@ async function seed(leads, steps, seqName) {
 const siteLeads = await prisma.growthLead.findMany({ where: { offer: "site", stage: "demo_built" }, orderBy: { score: "desc" }, take: SITE_N });
 const delivLeads = await prisma.growthLead.findMany({ where: { offer: "delivery", stage: { notIn: ["client", "dead"] } }, orderBy: { score: "desc" }, take: DELIV_N });
 const videoLeads = await prisma.growthLead.findMany({ where: { offer: "video", stage: "demo_built", email: { not: null } }, orderBy: { score: "desc" }, take: VIDEO_N });
+const cleanLeads = await prisma.growthLead.findMany({ where: { offer: "cleanout", stage: { notIn: ["client", "dead"] }, email: { not: null } }, orderBy: { score: "desc" }, take: CLEAN_N });
 
 const r1 = await seed(siteLeads, SITE, "site-v1");
 const r2 = await seed(delivLeads, DELIVERY, "delivery-v1");
 const r3 = await seed(videoLeads, VIDEO, "video-v1");
+const r4 = await seed(cleanLeads, CLEANOUT, "cleanout-v1");
 console.log(`site-v1: ${r1.made} leads seeded (${r1.skipped} skipped) → ${r1.made * SITE.length} drafts`);
 console.log(`delivery-v1: ${r2.made} leads seeded (${r2.skipped} skipped) → ${r2.made * DELIVERY.length} drafts`);
 console.log(`video-v1: ${r3.made} leads seeded (${r3.skipped} skipped) → ${r3.made * VIDEO.length} drafts`);
+console.log(`cleanout-v1: ${r4.made} leads seeded (${r4.skipped} skipped) → ${r4.made * CLEANOUT.length} drafts`);
 console.log(`All drafts are status="draft" — approve in tolley.io/hq before any send.`);
 await prisma.$disconnect();

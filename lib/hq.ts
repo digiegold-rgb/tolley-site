@@ -18,7 +18,7 @@ export type HqStage = (typeof HQ_STAGES)[number];
 // not shown as a column to keep the board focused on the live pipeline.
 export const HQ_BOARD_STAGES = HQ_STAGES.filter((s) => s !== "dead");
 
-export const HQ_OFFERS = ["site", "automation", "delivery", "video"] as const;
+export const HQ_OFFERS = ["site", "automation", "delivery", "video", "listing", "cleanout"] as const;
 
 export const HQ_TOUCH_STATUSES = [
   "draft",

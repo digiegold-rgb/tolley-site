@@ -25,10 +25,13 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, sourceType, vendorName, purchaseDate, totalCost, estimatedRetail, itemCount, manifestUrl, notes, imageUrls } = body;
+  const { name, sourceType, vendorName, purchaseDate, totalCost, estimatedRetail, itemCount, manifestUrl, notes, imageUrls, status } = body;
 
-  if (!name || !totalCost) {
-    return NextResponse.json({ error: "name and totalCost required" }, { status: 400 });
+  // totalCost of 0 is valid — cleanout lots have no acquisition cost
+  // (service fee is service revenue; resale is pure margin).
+  const cost = typeof totalCost === "string" && totalCost.trim() !== "" ? Number(totalCost) : totalCost;
+  if (!name || typeof cost !== "number" || Number.isNaN(cost)) {
+    return NextResponse.json({ error: "name and totalCost (number) required" }, { status: 400 });
   }
 
   const lot = await prisma.sourceLot.create({
@@ -37,7 +40,8 @@ export async function POST(req: NextRequest) {
       sourceType: sourceType || "liquidation",
       vendorName: vendorName || null,
       purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
-      totalCost,
+      totalCost: cost,
+      ...(status ? { status } : {}),
       estimatedRetail: estimatedRetail || null,
       itemCount: itemCount || null,
       manifestUrl: manifestUrl || null,

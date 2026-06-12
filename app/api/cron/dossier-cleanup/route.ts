@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { checkMlsSync } from "@/lib/health/mls-sync-check";
 
 export const runtime = "nodejs";
 
@@ -28,6 +29,12 @@ export async function GET(req: NextRequest) {
   if (!cronOk && !syncOk) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Piggyback the MLS staleness healthcheck on this 15-min cron.
+  // Fire-and-forget — cleanup must finish regardless.
+  void checkMlsSync().catch((err) =>
+    console.error("[dossier-cleanup] MLS sync check failed", err),
+  );
 
   const now = new Date();
 

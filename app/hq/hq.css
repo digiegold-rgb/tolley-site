@@ -232,6 +232,8 @@
 .hq-admin .pill-offer-automation { background: #ede9fe; color: #6d28d9; }
 .hq-admin .pill-offer-delivery { background: #ffedd5; color: #c2410c; }
 .hq-admin .pill-offer-video { background: #fce7f3; color: #be185d; }
+.hq-admin .pill-offer-listing { background: #dcfce7; color: #15803d; }
+.hq-admin .pill-offer-cleanout { background: #ccfbf1; color: #0f766e; }
 .hq-admin .pill-score { background: #dcfce7; color: #15803d; }
 .hq-admin .pill-city { background: #f0f0f5; color: #3a3a3c; font-weight: 600; }
 .hq-admin .pill-status-draft { background: #fef9c3; color: #a16207; }
