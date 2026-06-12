@@ -91,7 +91,9 @@ async function dossierCandidates(
   limit: number,
   minScore: number,
 ): Promise<SeedCandidate[]> {
-  const farmZips = [...new Set(activeSubscribers().flatMap((s) => s.farmZips))];
+  const farmZips = [
+    ...new Set((await activeSubscribers()).flatMap((s) => s.farmZips)),
+  ];
   if (farmZips.length === 0) return [];
 
   const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);

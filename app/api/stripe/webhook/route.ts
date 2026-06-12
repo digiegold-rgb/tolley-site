@@ -31,6 +31,14 @@ import {
   isVideoOfferSubscription,
   fulfillVideoOfferSale,
 } from "@/lib/video-offer-subscription";
+// Self-serve KC Motivated Seller Digest ($199/mo founding / $299/mo). Same
+// narrow pattern as the video-offer handler — self-contained, can't affect
+// other product paths.
+import {
+  DIGEST_PRODUCT_METADATA,
+  isDigestPriceId,
+  syncDigestSubscription,
+} from "@/lib/digest-subscription";
 // Vater pay-per-video: setup-mode card capture + accrual invoice lifecycle.
 import {
   isVaterSetupSession,
@@ -102,6 +110,12 @@ export async function POST(request: Request) {
         // "Make it yours" video purchase (metadata.product=video_offer).
         if (isVideoOfferEvent(checkoutSession)) {
           await fulfillVideoOfferSale(checkoutSession);
+          break;
+        }
+
+        // KC Motivated Seller Digest signup (metadata.product=digest).
+        if (checkoutSession.metadata?.product === DIGEST_PRODUCT_METADATA) {
+          await syncDigestSubscription(checkoutSession);
           break;
         }
 
@@ -186,6 +200,12 @@ export async function POST(request: Request) {
         } else if (subscription.metadata?.product === VATER_PRODUCT_METADATA) {
           // Fallback: price ID not configured yet but metadata says vater
           await syncVaterSubscription(subscription);
+        } else if (
+          subscription.metadata?.product === DIGEST_PRODUCT_METADATA ||
+          isDigestPriceId(subPriceId)
+        ) {
+          // KC Motivated Seller Digest — lifecycle sync (active/paused/canceled).
+          await syncDigestSubscription(subscription);
         } else {
           await syncSubscriptionRecord(subscription);
         }

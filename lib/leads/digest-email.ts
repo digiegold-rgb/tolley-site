@@ -145,10 +145,12 @@ export interface SendDigestEmailOptions {
   weekOf: string; // human label e.g. "May 5, 2026"
   /** Optional one-line ops warning (e.g. stale MLS sync) shown above the cards. */
   warningLine?: string | null;
+  /** Optional one-click pause link rendered as a small footer link. */
+  unsubscribeUrl?: string | null;
 }
 
 export async function sendDigestEmail(opts: SendDigestEmailOptions): Promise<void> {
-  const { subscriber, leads, weekOf, warningLine } = opts;
+  const { subscriber, leads, weekOf, warningLine, unsubscribeUrl } = opts;
   const trialPrefix = subscriber.status === "trial" ? "[Trial] " : "";
   const subject = `${trialPrefix}KC Motivated-Seller Brief · ${weekOf} · ${leads.length} leads`;
   const scriptTpl = subscriber.customScriptTemplate || DEFAULT_SCRIPT;
@@ -177,6 +179,11 @@ export async function sendDigestEmail(opts: SendDigestEmailOptions): Promise<voi
   <div style="text-align:center;margin-top:16px;color:#777;font-size:11px">
     Curated personally by Jared Tolley · KC metro · Reply to this email anytime · <a href="${appUrl}/leads/dossier" style="color:#1a3a5c">View on tolley.io</a>
   </div>
+  ${
+    unsubscribeUrl
+      ? `<div style="text-align:center;margin-top:8px;font-size:10px"><a href="${unsubscribeUrl}" style="color:#999;text-decoration:underline">Pause your digest</a></div>`
+      : ""
+  }
 </div>
 </body></html>`;
 
@@ -195,7 +202,7 @@ ${leads
   .join("\n")}
 
 — Jared @ Tolley.io
-`;
+${unsubscribeUrl ? `\nPause your digest: ${unsubscribeUrl}\n` : ""}`;
 
   await getLeadsTransporter().sendMail({
     from: leadsEmailFrom,

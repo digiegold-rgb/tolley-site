@@ -1607,6 +1607,50 @@ model ArbitrageScan {
   @@index([status])
 }
 
+/// Retail Deal Scanner — big-box (Home Depot / Lowe's / Walmart) inventory
+/// scored for resale flip margin vs eBay sold comps. One row per SKU per
+/// retailer; pricing refreshes in place on re-scan, human status is preserved.
+model RetailDeal {
+  id              String    @id @default(cuid())
+  retailer        String // home_depot | lowes | walmart
+  retailerLabel   String
+  externalId      String // retailer SKU / product id
+  title           String
+  imageUrl        String?
+  productUrl      String?
+  brand           String?
+  model           String?
+  zip             String?
+  buyPrice        Float
+  originalPrice   Float?
+  savings         Float? // dollars off (original - buyPrice)
+  discountPct     Float? // % off original (primary deal signal)
+  promoType       String? // e.g. Special-Buy, Clearance
+  onClearance     Boolean   @default(false)
+  storeName       String?
+  inStockQty      Int?
+  resaleMedian    Float? // eBay resale comp (gross) — optional validation
+  resaleNetMedian Float? // after fees+shipping haircut
+  resaleSamples   Int       @default(0)
+  estProfit       Float? // resaleNetMedian - buyPrice (when comped)
+  marginPct       Float? // resale margin % (when comped)
+  status          String    @default("new") // new | sourced | dismissed | expired
+  productId       String? // set when sourced into a draft Product
+  alertedAt       DateTime?
+  sourcedAt       DateTime?
+  dismissedAt     DateTime?
+  firstSeenAt     DateTime  @default(now())
+  lastSeenAt      DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([retailer, externalId])
+  @@index([status, marginPct])
+  @@index([status, discountPct])
+  @@index([createdAt])
+  @@index([productId])
+}
+
 model CryptoTrade {
   id         String    @id @default(cuid())
   symbol     String
@@ -4305,4 +4349,25 @@ model RateLimitBucket {
   key         String   @id
   windowStart DateTime
   count       Int      @default(0)
+}
+
+/// KC Motivated Seller Digest — self-serve $199/mo (founding) / $299/mo agent
+/// subscription. Replaces the v1 hardcoded list in lib/leads/digest-subscribers.ts.
+/// Rows are created pending by /api/leads/digest/subscribe and flipped active
+/// by the Stripe webhook (lib/digest-subscription.ts). The Monday digest cron
+/// reads status in [active, trial].
+model DigestSubscriber {
+  id                   String   @id @default(cuid())
+  name                 String
+  email                String   @unique
+  farmZips             String[]
+  status               String   @default("pending") // pending|active|trial|paused|canceled
+  stripeCustomerId     String?  @unique
+  stripeSubscriptionId String?  @unique
+  customScriptTemplate String?
+  unsubscribeToken     String   @unique @default(cuid())
+  joinedAt             DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([status])
 }

@@ -1,13 +1,10 @@
 /**
  * GET /api/cron/leads-monday-digest
  *
- * Mondays 12:00 UTC (7am CT). For each active/trial subscriber in
- * lib/leads/digest-subscribers.ts, pick the top 10 motivated-seller dossiers
- * completed in the last 7 days that fall in their farm zip codes, render the
- * Monday brief, and send via Nodemailer SMTP.
- *
- * v1 deliberately has no Prisma model for subscribers — the hardcoded list
- * IS the database. When subscriber count >= 5, migrate.
+ * Mondays 12:00 UTC (7am CT). For each active/trial DigestSubscriber row
+ * (self-serve signups via /leads/digest + Stripe), pick the top 10
+ * motivated-seller dossiers completed in the last 7 days that fall in their
+ * farm zip codes, render the Monday brief, and send via Nodemailer SMTP.
  *
  * Auth: Authorization: Bearer ${CRON_SECRET}, OR x-sync-secret matches
  * SYNC_SECRET (lets Cordless trigger a manual "send today" via curl).
@@ -30,6 +27,14 @@ import { checkMlsSync, type MlsSyncStatus } from "@/lib/health/mls-sync-check";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
+
+// Base for the one-click pause link in the email footer (same resolution
+// chain as lib/leads/digest-email.ts).
+const appUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.AUTH_URL ||
+  process.env.NEXTAUTH_URL ||
+  "https://www.tolley.io";
 
 function authorized(req: NextRequest): boolean {
   const auth = req.headers.get("authorization");
@@ -150,7 +155,7 @@ async function handler(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const subs = activeSubscribers();
+  const subs = await activeSubscribers();
   const weekOf = weekOfLabel();
 
   // MLS freshness — stale data means the digest is built on dead listings.
@@ -190,7 +195,16 @@ async function handler(req: NextRequest) {
         });
         continue;
       }
-      await sendDigestEmail({ subscriber: sub, leads, weekOf, warningLine });
+      const unsubscribeUrl = sub.unsubscribeToken
+        ? `${appUrl}/api/leads/digest/unsubscribe?token=${encodeURIComponent(sub.unsubscribeToken)}`
+        : null;
+      await sendDigestEmail({
+        subscriber: sub,
+        leads,
+        weekOf,
+        warningLine,
+        unsubscribeUrl,
+      });
       results.push({
         subscriber: sub.name,
         email: sub.email,

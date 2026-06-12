@@ -1,0 +1,172 @@
+/* ── KC Motivated Seller Digest — editorial "Monday paper" theme ───────── */
+/* Sells to working agents: a cream broadsheet sheet (same navy/amber/green  */
+/* palette as the digest email itself) presented on the dark /leads shell.   */
+/* Fraunces serif headlines, confident and print-like — deliberately NOT     */
+/* the neon consumer look of the other tolley.io pages.                      */
+
+.digest-page {
+  --dg-paper: #f7f3ea;
+  --dg-paper-2: #fffdf8;
+  --dg-ink: #1f2933;
+  --dg-muted: #5b6672;
+  --dg-navy: #1a3a5c;
+  --dg-amber: #b7791f;
+  --dg-amber-soft: #fef0e6;
+  --dg-green: #1e8449;
+  --dg-line: #e2ddd2;
+  --dg-serif: var(--font-digest-serif), Georgia, "Times New Roman", serif;
+  color: var(--dg-ink);
+}
+
+/* The "sheet" — a paper page floating on the dark leads backdrop */
+.dg-sheet {
+  background: var(--dg-paper);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 30px 80px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.dg-serif {
+  font-family: var(--dg-serif);
+}
+
+/* Masthead rule — double line like a newspaper nameplate */
+.dg-rule {
+  border-top: 3px solid var(--dg-ink);
+  border-bottom: 1px solid var(--dg-ink);
+  height: 6px;
+}
+
+.dg-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--dg-amber);
+}
+
+.dg-h2 {
+  font-family: var(--dg-serif);
+  font-weight: 700;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  letter-spacing: -0.01em;
+  color: var(--dg-navy);
+}
+
+.dg-card {
+  background: var(--dg-paper-2);
+  border: 1px solid var(--dg-line);
+  border-radius: 10px;
+}
+
+.dg-btn {
+  display: inline-block;
+  background: var(--dg-navy);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 0.9rem 2rem;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+.dg-btn:hover:not(:disabled) {
+  background: #234a73;
+  transform: translateY(-1px);
+}
+.dg-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Score badge — same visual as the email */
+.dg-score {
+  background: var(--dg-green);
+  color: #fff;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Motivation flag pills — same visual as the email */
+.dg-flag {
+  background: var(--dg-amber-soft);
+  color: #9a4a00;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+/* Sample watermark band on the demo lead card */
+.dg-sample-band {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(183, 121, 31, 0.12) 0 10px,
+    transparent 10px 20px
+  );
+  border: 1px dashed rgba(183, 121, 31, 0.55);
+}
+
+/* ZIP picker chips */
+.dg-zip {
+  border: 1px solid var(--dg-line);
+  background: var(--dg-paper-2);
+  color: var(--dg-ink);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+}
+.dg-zip:hover {
+  border-color: var(--dg-navy);
+}
+.dg-zip[aria-pressed="true"] {
+  background: var(--dg-navy);
+  border-color: var(--dg-navy);
+  color: #fff;
+}
+.dg-zip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Form inputs */
+.dg-input {
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--dg-line);
+  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.95rem;
+  color: var(--dg-ink);
+  outline: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.dg-input:focus {
+  border-color: var(--dg-navy);
+  box-shadow: 0 0 0 3px rgba(26, 58, 92, 0.12);
+}
+.dg-input::placeholder {
+  color: #9aa3ad;
+}
+
+/* FAQ */
+.dg-faq {
+  border: 1px solid var(--dg-line);
+  background: var(--dg-paper-2);
+  border-radius: 10px;
+}
+.dg-faq summary {
+  cursor: pointer;
+  list-style: none;
+}
+.dg-faq summary::-webkit-details-marker {
+  display: none;
+}
