@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 import { prisma } from "@/lib/prisma";
 
 export interface SpendingEntry {

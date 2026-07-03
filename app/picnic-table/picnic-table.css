@@ -1,0 +1,110 @@
+/* ============================
+   PICNIC TABLE RENTAL
+   Forest green + warm tan/wood
+   ============================ */
+
+.picnic-page {
+  font-family: var(--font-nunito), sans-serif;
+}
+
+/* ---------- Wood-tone glow text ---------- */
+.pt-neon-text {
+  text-shadow:
+    0 0 10px rgba(196, 165, 110, 0.6),
+    0 0 28px rgba(196, 165, 110, 0.35),
+    0 0 56px rgba(196, 165, 110, 0.15);
+}
+
+/* ---------- CTA glow pulse ---------- */
+.pt-cta-glow {
+  animation: pt-btn-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes pt-btn-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 14px rgba(196, 165, 110, 0.35),
+      0 4px 18px rgba(196, 165, 110, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 32px rgba(196, 165, 110, 0.55),
+      0 4px 36px rgba(196, 165, 110, 0.3),
+      0 0 68px rgba(196, 165, 110, 0.12);
+  }
+}
+
+/* ---------- Card hover lift ---------- */
+.pt-card {
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.pt-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  border-color: rgba(196, 165, 110, 0.4);
+  box-shadow:
+    0 0 22px rgba(196, 165, 110, 0.2),
+    0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- Section entrance ---------- */
+.picnic-enter {
+  animation: pt-fade-up 0.7s ease-out both;
+  animation-delay: var(--enter-delay, 0s);
+}
+
+@keyframes pt-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Organic dot background ---------- */
+.pt-dots::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: radial-gradient(rgba(196, 165, 110, 0.4) 1.5px, transparent 1.5px);
+  background-size: 32px 32px;
+  mix-blend-mode: overlay;
+}
+
+/* ---------- Bullet ---------- */
+.pt-bullet {
+  margin-top: 6px;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 1px;
+  background: linear-gradient(135deg, #d4b87a, #c4a56e);
+  box-shadow: 0 0 6px rgba(196, 165, 110, 0.5);
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .pt-cta-glow {
+    animation: none;
+  }
+
+  .picnic-enter {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .pt-card:hover {
+    transform: none;
+  }
+}

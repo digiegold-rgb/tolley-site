@@ -1,9 +1,8 @@
-// @ts-nocheck — references removed Prisma models
+// Food API route
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-
-const VLLM_URL = process.env.VLLM_URL || "http://127.0.0.1:8355/v1";
+import { chatText, type ChatTextMessage } from "@/lib/food/ai-client";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -58,30 +57,26 @@ You can help with:
 
 Keep responses concise and practical. Use emojis sparingly.`;
 
-  const messages = [
+  const messages: ChatTextMessage[] = [
     { role: "system", content: systemPrompt },
-    ...(history || []).slice(-6),
+    ...((history || []).slice(-6) as ChatTextMessage[]),
     { role: "user", content: message },
   ];
 
   try {
-    const res = await fetch(`${VLLM_URL}/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "Qwen/Qwen3.5-35B-A3B-FP8",
-        messages,
-        temperature: 0.7,
-        max_tokens: 1000,
-      }),
-      signal: AbortSignal.timeout(60000),
+    const reply = await chatText({
+      task: "food-chat",
+      messages,
+      temperature: 0.7,
+      maxTokens: 1000,
     });
-
-    if (!res.ok) return NextResponse.json({ error: "AI unavailable" }, { status: 502 });
-    const data = await res.json();
-    const reply = data.choices?.[0]?.message?.content || "Sorry, I couldn't think of a response!";
-    return NextResponse.json({ reply });
-  } catch {
-    return NextResponse.json({ reply: "I'm having trouble connecting right now. Try again in a moment!" });
+    return NextResponse.json({
+      reply: reply || "Sorry, I couldn't think of a response!",
+    });
+  } catch (err) {
+    console.error("[food-chat] failed", err);
+    return NextResponse.json({
+      reply: "I'm having trouble connecting right now. Try again in a moment!",
+    });
   }
 }

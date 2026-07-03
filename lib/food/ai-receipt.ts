@@ -1,5 +1,4 @@
-const VLLM_URL = process.env.VLLM_URL || "http://127.0.0.1:8355/v1";
-const MODEL = "Qwen/Qwen3.5-35B-A3B-FP8";
+import { visionJSON } from "./ai-client";
 
 export interface ReceiptItem {
   name: string;
@@ -17,28 +16,7 @@ export interface ScannedReceipt {
   total: number;
 }
 
-export async function scanReceipt(
-  imageBase64: string,
-  mimeType: string
-): Promise<ScannedReceipt> {
-  const res = await fetch(`${VLLM_URL}/chat/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:${mimeType};base64,${imageBase64}`,
-              },
-            },
-            {
-              type: "text",
-              text: `Extract all line items from this store receipt. Identify the store name, date of purchase, each item with its quantity and price, plus subtotal, tax, and total.
+const RECEIPT_PROMPT = `Extract all line items from this store receipt. Identify the store name, date of purchase, each item with its quantity and price, plus subtotal, tax, and total.
 
 Return ONLY valid JSON:
 {
@@ -50,24 +28,21 @@ Return ONLY valid JSON:
   "total": 0.00
 }
 
-If quantity is not listed for an item, assume 1. If unit price is not shown separately, set it equal to totalPrice divided by qty.`,
-            },
-          ],
-        },
-      ],
-      temperature: 0.2,
-      max_tokens: 3000,
-    }),
-    signal: AbortSignal.timeout(60000),
+If quantity is not listed for an item, assume 1. If unit price is not shown separately, set it equal to totalPrice divided by qty.`;
+
+/**
+ * Scan a store receipt photo. Uses Gemini 2.5 Flash because Qwen3.5-35B-A3B-FP8
+ * is text-only and hangs on image_url requests (per feedback_vllm_qwen_text_only).
+ */
+export async function scanReceipt(
+  imageBase64: string,
+  mimeType: string
+): Promise<ScannedReceipt> {
+  return visionJSON<ScannedReceipt>({
+    task: "scan-receipt",
+    prompt: RECEIPT_PROMPT,
+    images: [{ base64: imageBase64, mimeType }],
+    temperature: 0.2,
+    maxTokens: 3000,
   });
-
-  const data = await res.json();
-  const content = data.choices?.[0]?.message?.content || "";
-  const jsonMatch = content.match(/\{[\s\S]*\}/);
-
-  if (!jsonMatch) {
-    throw new Error("Failed to parse receipt from AI response");
-  }
-
-  return JSON.parse(jsonMatch[0]) as ScannedReceipt;
 }

@@ -15,6 +15,10 @@ export type ListingCard = {
   summaryBullets?: string[];
   link?: string;
   source?: string;
+  // Optional vendor-card fields (used when type === "vendor").
+  name?: string;
+  tags?: string[];
+  meta?: string;
 };
 
 export type AskApiResponse = {

@@ -1,4 +1,4 @@
-import { MV_PRICE_DAY, MV_PRICE_WEEK, MV_PRICE_2WEEK, MV_CONTACT_PHONE } from "@/lib/moving";
+import { MV_PRICE_DAY, MV_PRICE_WEEK, MV_PRICE_2WEEK, MV_FACEBOOK_URL } from "@/lib/moving";
 
 const tiers = [
   { label: "Day", duration: "24 hours", price: MV_PRICE_DAY },
@@ -20,7 +20,9 @@ export function MovingPricing() {
         {tiers.map((tier) => (
           <a
             key={tier.label}
-            href={`tel:${MV_CONTACT_PHONE}`}
+            href={MV_FACEBOOK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="mv-card group flex flex-col items-center rounded-lg border border-emerald-500/20 bg-emerald-500/[0.04] p-5 text-center transition-all hover:border-emerald-500/50"
           >
             <span className="text-xs font-bold tracking-[0.3em] text-emerald-400/70 uppercase">
@@ -32,8 +34,8 @@ export function MovingPricing() {
             <span className="mt-1 text-xs font-light text-neutral-500">
               {tier.duration}
             </span>
-            <span className="mt-3 inline-block rounded bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400 uppercase transition group-hover:bg-emerald-500 group-hover:text-black">
-              Book Now
+            <span className="mt-3 inline-flex items-center gap-1.5 rounded bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400 uppercase transition group-hover:bg-emerald-500 group-hover:text-black">
+              Message on Facebook
             </span>
           </a>
         ))}
@@ -46,7 +48,7 @@ export function MovingPricing() {
         </h3>
         <ul className="mt-3 grid gap-2 sm:grid-cols-2">
           {[
-            "Call or text to reserve your date",
+            "Message us on Facebook to reserve your date",
             "Pick up or local delivery available",
             "Use for your move — easy labels included",
             "Return everything when you're done",

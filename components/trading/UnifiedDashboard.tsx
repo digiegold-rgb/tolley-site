@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import type { ResearchVerdict } from "@/lib/trading/aiResearch";
+import ResearchVerdictStrip from "./ResearchVerdictStrip";
+import ResearchConsensusBadge from "./ResearchConsensusBadge";
+import ResearchThisButton from "./ResearchThisButton";
 
 const ASSET_CLASSES = ["crypto", "stocks_conservative", "stocks_aggressive", "polymarket"] as const;
 type AssetClass = (typeof ASSET_CLASSES)[number];
@@ -47,9 +51,10 @@ interface EngineStatus {
 interface Props {
   initialSnapshots: Record<string, any>;
   initialCapital: { moneyIn: number; moneyOut: number };
+  initialVerdicts?: ResearchVerdict[];
 }
 
-export default function UnifiedDashboard({ initialSnapshots, initialCapital }: Props) {
+export default function UnifiedDashboard({ initialSnapshots, initialCapital, initialVerdicts = [] }: Props) {
   const [engines, setEngines] = useState<Record<string, EngineStatus>>({});
   const [capital, setCapital] = useState(initialCapital);
   const [loading, setLoading] = useState(true);
@@ -246,6 +251,29 @@ export default function UnifiedDashboard({ initialSnapshots, initialCapital }: P
         </div>
       </div>
 
+      {/* God Mode banner */}
+      <Link
+        href="/trading/god-mode"
+        className="block crypto-card group cursor-pointer transition-all hover:border-purple-500/30 border-purple-500/10 bg-gradient-to-r from-purple-500/5 to-transparent"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">&#x1F9FF;</span>
+            <div>
+              <h3 className="text-sm font-medium text-purple-300 group-hover:text-purple-200 transition-colors">
+                God Mode — Agent Swarm Visualization
+              </h3>
+              <p className="text-[10px] text-white/20">
+                4,000-agent simulations &bull; Real-time SSE &bull; Social dynamics &bull; Counterfactuals
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] text-purple-400/40 group-hover:text-purple-400/60 transition-colors">
+            Open &rarr;
+          </span>
+        </div>
+      </Link>
+
       {/* MiroFish simulation card */}
       <Link
         href="/trading/simulations"
@@ -305,6 +333,9 @@ export default function UnifiedDashboard({ initialSnapshots, initialCapital }: P
         </div>
       </Link>
 
+      {/* AI Research verdict strip — TradingAgents tier1 (research overlay) */}
+      <ResearchVerdictStrip verdicts={initialVerdicts} />
+
       {/* Engine cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {ASSET_CLASSES.map((ac) => {
@@ -320,11 +351,12 @@ export default function UnifiedDashboard({ initialSnapshots, initialCapital }: P
             : 0;
           const pnl = (engine.realized_pnl || 0) + (engine.unrealized_pnl || 0);
 
+          const isStockEngine = ac === "stocks_conservative" || ac === "stocks_aggressive";
           return (
+            <div key={ac} className="contents">
             <a
-              key={ac}
               href={`/trading/${ac}`}
-              className="crypto-card group cursor-pointer transition-all hover:border-amber-500/30"
+              className="crypto-card group cursor-pointer transition-all hover:border-amber-500/30 flex flex-col"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -439,6 +471,13 @@ export default function UnifiedDashboard({ initialSnapshots, initialCapital }: P
                 </span>
               </div>
             </a>
+            {isStockEngine && (
+              <div className="-mt-2 px-4 pb-3 space-y-2">
+                <ResearchConsensusBadge verdicts={initialVerdicts} />
+                <ResearchThisButton assetClass={ac} regime={regime} />
+              </div>
+            )}
+            </div>
           );
         })}
       </div>

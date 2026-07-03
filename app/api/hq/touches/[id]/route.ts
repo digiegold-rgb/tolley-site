@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
+import { sendLeadViaInstantly } from "@/lib/hq-instantly";
 
 export const runtime = "nodejs";
+
+// Lead stages earlier than "contacted" — a successful send advances the lead.
+const PRE_CONTACT_STAGES = ["scraped", "enriched", "demo_built"];
 
 // PATCH /api/hq/touches/[id]
 // { action: "approve" } → status=approved (sender cron picks these up later)
@@ -37,6 +41,57 @@ export async function PATCH(
         );
       }
       data.status = "approved";
+
+      // Email approvals SEND via Instantly. Offers without a live campaign
+      // fall back to the plain "approved" status above so nothing breaks.
+      if (existing.channel === "email") {
+        const lead = await prisma.growthLead.findUnique({
+          where: { id: existing.leadId },
+          select: {
+            id: true,
+            email: true,
+            offer: true,
+            name: true,
+            ownerName: true,
+            stage: true,
+          },
+        });
+
+        if (lead) {
+          let result: { ok: boolean; reason?: string; campaignId?: string };
+          try {
+            result = await sendLeadViaInstantly(lead);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error("[hq/touches PATCH] instantly send failed", err);
+            return NextResponse.json(
+              { error: "Send failed: " + message },
+              { status: 502 }
+            );
+          }
+
+          if (result.ok) {
+            data.status = "sent";
+            data.sentAt = new Date();
+            const existingMeta =
+              existing.meta && typeof existing.meta === "object"
+                ? (existing.meta as Record<string, unknown>)
+                : {};
+            data.meta = {
+              ...existingMeta,
+              instantly: true,
+              campaignId: result.campaignId,
+            };
+
+            if (PRE_CONTACT_STAGES.includes(lead.stage)) {
+              await prisma.growthLead.update({
+                where: { id: lead.id },
+                data: { stage: "contacted" },
+              });
+            }
+          }
+        }
+      }
     } else if (payload.action === "discard") {
       if (existing.status !== "draft" && existing.status !== "approved") {
         return NextResponse.json(

@@ -16,6 +16,7 @@ const NAV_LINKS = [
   { href: "/food/family", label: "Family", emoji: "👨‍👩‍👧‍👦" },
   { href: "/food/scan", label: "Scan", emoji: "📷" },
   { href: "/food/savings", label: "Savings", emoji: "💰" },
+  { href: "/food/compare", label: "Compare", emoji: "⚖️" },
   { href: "/food/analytics", label: "Analytics", emoji: "📊" },
 ];
 

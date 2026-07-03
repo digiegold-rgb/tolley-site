@@ -52,8 +52,42 @@ export function YouTubeCreationProgress({ project, onUpdate }: Props) {
   const isTopicMode = (project.mode || "transcribe") === "topic";
 
   const [retrying, setRetrying] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const startedAtRef = useRef<number>(Date.now());
+
+  const handleCancel = async () => {
+    const confirmed = window.confirm(
+      "⛔ Cancel this project?\n\n" +
+        "• The DGX worker will stop at the next pipeline stage boundary.\n" +
+        "• The project will roll back to the \"Needs context\" state so you can " +
+        "edit your goal/duration/style and restart from principles.\n" +
+        "• All work done so far (transcript, partial script, any scenes " +
+        "already generated) is preserved on disk.\n\n" +
+        "Click OK to kill.",
+    );
+    if (!confirmed) return;
+    setCancelling(true);
+    try {
+      const res = await fetch(`/api/vater/youtube/${project.id}/cancel`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error ?? `HTTP ${res.status}`);
+      }
+      if (data.project) onUpdate(data.project);
+    } catch (err) {
+      // Minimal error feedback — parent may surface a toast separately.
+      // eslint-disable-next-line no-alert
+      alert(
+        "Cancel failed: " +
+          (err instanceof Error ? err.message : String(err)),
+      );
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   // Reset elapsed counter when status changes
   useEffect(() => {
@@ -125,13 +159,29 @@ export function YouTubeCreationProgress({ project, onUpdate }: Props) {
                 ? "Pipeline failed"
                 : STATUS_LABELS[status] || status}
           </p>
-          <p className="text-[10px] text-zinc-600">
+          <p className="text-[10px] text-zinc-400">
             {isInFlight ? `Elapsed ${formatElapsed(elapsedMs)}` : null}
           </p>
         </div>
-        <span className="text-xs font-mono text-zinc-500">
-          {project.progress}%
-        </span>
+        <div className="flex items-center gap-3">
+          {/* Kill button — visible only while the pipeline is running. Worker
+              stops at next stage boundary, project status flips back to
+              transcribed so the user can re-edit the context form. */}
+          {isInFlight && (
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={cancelling}
+              title="Stop this project and restart from principles"
+              className="rounded-md border border-rose-500/50 bg-rose-500/10 px-3 py-1.5 text-[11px] font-semibold text-rose-300 shadow-[0_0_8px_rgba(244,63,94,0.25)] transition-all hover:border-rose-400 hover:bg-rose-500/20 hover:shadow-[0_0_14px_rgba(244,63,94,0.45)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {cancelling ? "Cancelling…" : "⛔ Kill"}
+            </button>
+          )}
+          <span className="text-xs font-mono text-zinc-400">
+            {project.progress}%
+          </span>
+        </div>
       </div>
 
       {/* Progress bar */}
@@ -153,35 +203,60 @@ export function YouTubeCreationProgress({ project, onUpdate }: Props) {
       <LiveLogFeed lines={extractRecentLogs(project.stepDetails)} />
 
 
-      {/* Phase list */}
+      {/* Phase list. The ACTIVE step gets:
+          - a neon-sky border + glow ring so it's visually obvious
+          - a "ripple" dot indicator (two pulsing rings) so the user knows
+            the pipeline is alive even when stdout is quiet
+          - slightly brighter copy */}
       <ol className="space-y-2">
         {visiblePhases.map((phase, idx) => {
           const state = phaseState(idx);
+          const active = state === "active";
           return (
             <li
               key={phase.status}
               className={`flex items-start gap-3 rounded-lg border p-3 transition-all ${
-                state === "active"
-                  ? "border-sky-400/40 bg-sky-400/5"
+                active
+                  ? "border-sky-400/60 bg-sky-400/10 shadow-[0_0_14px_rgba(56,189,248,0.30)] ring-1 ring-sky-400/30"
                   : state === "done"
-                    ? "border-emerald-500/20 bg-emerald-500/5"
+                    ? "border-emerald-500/30 bg-emerald-500/5"
                     : "border-zinc-800 bg-zinc-900/30 opacity-60"
               }`}
             >
-              <span className="mt-0.5 w-4 shrink-0 text-center">
+              <span className="relative mt-1 flex h-3 w-3 shrink-0 items-center justify-center">
                 {state === "done" ? (
-                  <span className="text-emerald-400">✓</span>
-                ) : state === "active" ? (
-                  <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-sky-400" />
+                  <span className="text-sm text-emerald-400">✓</span>
+                ) : active ? (
+                  <>
+                    {/* Double-ripple heartbeat — soft outer ring expands while
+                        the solid inner dot blinks, creates an unmistakable
+                        "alive" signal. */}
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)]" />
+                  </>
                 ) : (
                   <span className="inline-block h-2 w-2 rounded-full bg-zinc-700" />
                 )}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-zinc-200">
+                <p
+                  className={`text-xs font-semibold ${
+                    active ? "text-sky-200" : "text-zinc-200"
+                  }`}
+                >
                   {phase.label}
+                  {active && (
+                    <span className="ml-2 inline-flex items-center text-[9px] font-normal uppercase tracking-[0.15em] text-sky-300/80">
+                      <span className="mr-1 inline-block h-1 w-1 animate-pulse rounded-full bg-sky-300" />
+                      live · {formatElapsed(elapsedMs)}
+                    </span>
+                  )}
                 </p>
-                <p className="mt-0.5 text-[10px] text-zinc-500">
+                <p
+                  className={`mt-0.5 text-[10px] ${
+                    active ? "text-sky-200/90" : "text-zinc-300"
+                  }`}
+                >
                   {phase.description}
                 </p>
               </div>

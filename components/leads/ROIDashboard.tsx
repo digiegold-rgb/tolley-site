@@ -58,13 +58,21 @@ export default function ROIDashboard() {
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
 
+  const [error, setError] = useState<string | null>(null);
+
   const fetchData = useCallback(async () => {
+    setError(null);
     try {
       const res = await fetch(`/api/leads/analytics?days=${days}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setError(err?.error ?? `Server returned ${res.status}`);
+        return;
+      }
       const json = await res.json();
       setData(json);
-    } catch {
-      // silent
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error");
     } finally {
       setLoading(false);
     }
@@ -78,6 +86,24 @@ export default function ROIDashboard() {
     return (
       <div className="flex justify-center py-12">
         <div className="w-6 h-6 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 p-6 text-sm text-rose-200">
+        <div className="font-semibold">Couldn&apos;t load analytics</div>
+        <div className="mt-1 text-rose-200/80">{error}</div>
+        <button
+          onClick={() => {
+            setLoading(true);
+            fetchData();
+          }}
+          className="mt-3 rounded-lg border border-rose-400/40 bg-rose-500/15 px-3 py-1.5 text-xs font-medium text-rose-100 hover:bg-rose-500/25"
+        >
+          Retry
+        </button>
       </div>
     );
   }

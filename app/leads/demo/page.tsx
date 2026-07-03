@@ -125,7 +125,7 @@ export default function LeadsDemoPage() {
   const lead1 = SAMPLE_LEADS[0];
 
   return (
-    <div className="min-h-screen bg-[#06050a]">
+    <>
       {/* ── Hero ── */}
       <div className="border-b border-white/5 bg-gradient-to-b from-purple-950/20 to-transparent">
         <div className="mx-auto max-w-5xl px-4 py-16 text-center">
@@ -549,6 +549,6 @@ export default function LeadsDemoPage() {
           Sample data shown for demonstration purposes only. Not real people or properties. · T-Agent by Tolley.io
         </p>
       </div>
-    </div>
+    </>
   );
 }

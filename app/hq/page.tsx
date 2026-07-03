@@ -7,7 +7,12 @@ import { useToast } from "@/components/ui/Toast";
 import { HqBoard } from "@/components/hq/hq-board";
 import { HqLeadDrawer } from "@/components/hq/hq-lead-drawer";
 import { HqApprovalQueue } from "@/components/hq/hq-approval-queue";
+import {
+  HqLicenseReviews,
+  type HqLicenseReview,
+} from "@/components/hq/hq-license-reviews";
 import { HqMoney } from "@/components/hq/hq-money";
+import { HqEngineStatus } from "@/components/hq/hq-engine-status";
 import {
   STAGE_LABEL,
   readApiError,
@@ -36,6 +41,9 @@ export default function HqPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [money, setMoney] = useState<HqMoneyData | null>(null);
   const [moneyLoading, setMoneyLoading] = useState(false);
+  const [licenseReviews, setLicenseReviews] = useState<HqLicenseReview[]>([]);
+  const [licenseLoading, setLicenseLoading] = useState(false);
+  const [licenseBusyId, setLicenseBusyId] = useState<string | null>(null);
 
   // ─── Data loaders ───
   const loadLeads = useCallback(async () => {
@@ -61,6 +69,24 @@ export default function HqPage() {
       });
     } finally {
       setQueueLoading(false);
+    }
+  }, [toast]);
+
+  const loadLicenseReviews = useCallback(async () => {
+    setLicenseLoading(true);
+    try {
+      const r = await fetch("/api/hq/license-reviews");
+      if (!r.ok) throw new Error(await readApiError(r, "Failed to load license reviews"));
+      const d = await r.json();
+      setLicenseReviews(d.reviews);
+    } catch (err) {
+      toast({
+        title: "Failed to load license reviews",
+        description: err instanceof Error ? err.message : String(err),
+        variant: "error",
+      });
+    } finally {
+      setLicenseLoading(false);
     }
   }, [toast]);
 
@@ -108,8 +134,9 @@ export default function HqPage() {
     if (authed) {
       loadDrafts();
       loadMoney();
+      loadLicenseReviews();
     }
-  }, [authed, loadDrafts, loadMoney]);
+  }, [authed, loadDrafts, loadMoney, loadLicenseReviews]);
 
   // ─── Login ───
   async function handleLogin(e: React.FormEvent) {
@@ -155,6 +182,35 @@ export default function HqPage() {
       return false;
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ─── License review actions ───
+  async function resolveLicense(id: string, action: "approve" | "reject") {
+    setLicenseBusyId(id);
+    try {
+      const r = await fetch(`/api/hq/license-reviews/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!r.ok) throw new Error(await readApiError(r, "Update failed"));
+      toast({
+        title:
+          action === "approve"
+            ? "License approved — digest keeps flowing"
+            : "Rejected — subscription canceled",
+        variant: "success",
+      });
+      await loadLicenseReviews();
+    } catch (err) {
+      toast({
+        title: "License review failed",
+        description: err instanceof Error ? err.message : String(err),
+        variant: "error",
+      });
+    } finally {
+      setLicenseBusyId(null);
     }
   }
 
@@ -234,6 +290,7 @@ export default function HqPage() {
       <div className="topbar">
         <span className="title">Growth HQ — Pipeline</span>
         <div className="actions">
+          <HqEngineStatus />
           <button
             className="btn btn-sm"
             onClick={() => {
@@ -246,6 +303,7 @@ export default function HqPage() {
               );
               loadDrafts();
               loadMoney();
+              loadLicenseReviews();
             }}
           >
             ↻ Refresh
@@ -290,7 +348,10 @@ export default function HqPage() {
             className={`tab-btn ${tab === "approvals" ? "active" : ""}`}
             onClick={() => setTab("approvals")}
           >
-            Approvals{drafts.length > 0 ? ` (${drafts.length})` : ""}
+            Approvals
+            {drafts.length + licenseReviews.length > 0
+              ? ` (${drafts.length + licenseReviews.length})`
+              : ""}
           </button>
           <button
             className={`tab-btn ${tab === "money" ? "active" : ""}`}
@@ -320,15 +381,25 @@ export default function HqPage() {
         ) : tab === "money" ? (
           <HqMoney money={money} loading={moneyLoading} onRefresh={loadMoney} />
         ) : (
-          <HqApprovalQueue
-            touches={drafts}
-            loading={queueLoading}
-            busyId={busyId}
-            onRefresh={loadDrafts}
-            onApprove={(id) => patchTouch(id, { action: "approve" }, "Approved — sender cron will pick it up")}
-            onDiscard={(id) => patchTouch(id, { action: "discard" }, "Draft discarded")}
-            onSaveEdit={(id, subject, body) => patchTouch(id, { subject, body }, "Draft updated")}
-          />
+          <>
+            <HqLicenseReviews
+              reviews={licenseReviews}
+              loading={licenseLoading}
+              busyId={licenseBusyId}
+              onRefresh={loadLicenseReviews}
+              onApprove={(id) => resolveLicense(id, "approve")}
+              onReject={(id) => resolveLicense(id, "reject")}
+            />
+            <HqApprovalQueue
+              touches={drafts}
+              loading={queueLoading}
+              busyId={busyId}
+              onRefresh={loadDrafts}
+              onApprove={(id) => patchTouch(id, { action: "approve" }, "Approved — sender cron will pick it up")}
+              onDiscard={(id) => patchTouch(id, { action: "discard" }, "Draft discarded")}
+              onSaveEdit={(id, subject, body) => patchTouch(id, { subject, body }, "Draft updated")}
+            />
+          </>
         )}
       </div>
 

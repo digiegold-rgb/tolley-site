@@ -56,7 +56,7 @@ export function WdLeadForm() {
       });
 
       trackEvent("wd", "lead_submit", form.unit, { promo: form.promo });
-      gtagEvent("generate_lead", { value: form.unit === "bundle" ? 58 : 42, currency: "USD" });
+      gtagEvent("generate_lead", { value: 58, currency: "USD" });
       fbqEvent("Lead", { content_name: form.unit });
 
       setStatus("sent");
@@ -125,7 +125,6 @@ export function WdLeadForm() {
           className="wd-input w-full"
         >
           <option value="bundle">Washer + Dryer ($58/mo)</option>
-          <option value="washer">Washer Only ($42/mo)</option>
         </select>
 
         {promo ? (

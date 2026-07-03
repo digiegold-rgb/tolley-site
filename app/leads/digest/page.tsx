@@ -62,6 +62,10 @@ const FAQ = [
     q: "What does “founding rate” mean?",
     a: "The first 5 paying agents get $199/mo locked in for as long as they stay subscribed. After that, new subscriptions are $299/mo. That's the whole offer — no countdown timers, no fake scarcity.",
   },
+  {
+    q: "How does the free trial work?",
+    a: "Every new subscription starts with a 3-day free trial. You enter a card at checkout but it isn't charged until day 4 — cancel before then through the Stripe billing portal and you pay nothing. If your trial overlaps a Monday, you get that digest free.",
+  },
 ];
 
 function SampleLeadCard() {
@@ -147,7 +151,7 @@ export default function DigestLandingPage() {
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-4">
           <a href="#signup" className="dg-btn dg-serif text-lg">
-            Get the digest — $199/mo
+            Try it free for 3 days — then $199/mo
           </a>
           <a
             href="#sample"
@@ -220,6 +224,7 @@ export default function DigestLandingPage() {
               </span>
             </div>
             <ul className="mt-5 space-y-2 text-sm" style={{ color: "var(--dg-ink)" }}>
+              <li>✓ 3-day free trial — card isn&apos;t charged until day 4</li>
               <li>✓ 10 ranked leads in your farm ZIPs, every Monday 7am</li>
               <li>✓ Up to 7 farm ZIP codes</li>
               <li>✓ Owner contact info where research finds it</li>

@@ -1,4 +1,4 @@
-// @ts-nocheck — references removed Prisma models
+// Food API route
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   const kidFriendly = sp.get("kidFriendly");
   const maxTime = sp.get("maxTime");
   const page = Math.max(1, Number(sp.get("page")) || 1);
-  const limit = Math.min(100, Math.max(1, Number(sp.get("limit")) || 20));
+  const limit = Math.min(500, Math.max(1, Number(sp.get("limit")) || 20));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = { householdId: household.id };

@@ -24,15 +24,22 @@ export default async function CreditPage() {
   const session = await requireAdminPageSession("/credit");
   const dashboard = await fetchDashboard();
 
-  const latest = dashboard?.scores?.latest;
-  const bestScore = latest
-    ? Math.max(
-        latest.transunion || 0,
-        latest.equifax || 0,
-        latest.experian || 0
-      )
-    : 0;
+  const bestScore = dashboard?.scores?.bestScore || 0;
   const needPts = bestScore > 0 ? Math.max(0, 680 - bestScore) : 48;
+  const tu = dashboard?.scores?.perBureau?.transunion;
+  const asOf = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+  const freshLine =
+    tu?.date && tu?.ageDays != null
+      ? `TransUnion ${tu.value} as of ${new Date(
+          tu.date + "T00:00:00"
+        ).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        })} (${tu.ageDays}d ago)`
+      : "scores syncing…";
 
   return (
     <>
@@ -50,8 +57,9 @@ export default async function CreditPage() {
               <span className="ml-3 text-white/90">ROADMAP</span>
             </h1>
             <p className="mt-2 text-sm text-white/50">
-              Cordless (Tolley) | March 2026 | Goal: HELOC Approval at 680+
+              Cordless (Tolley) | {asOf} | Goal: HELOC Approval at 680+
             </p>
+            <p className="mt-1 text-xs text-white/35">{freshLine}</p>
             {needPts > 0 ? (
               <p className="mt-1">
                 <span className="rounded-full bg-amber-500/15 px-3 py-1 text-sm font-bold text-amber-400">

@@ -218,6 +218,10 @@
       "schedule": "0 3 * * *"
     },
     {
+      "path": "/api/cron/retail-deal-scanner",
+      "schedule": "0 8 * * 1,3,5"
+    },
+    {
       "path": "/api/cron/asin-backfill",
       "schedule": "0 6 * * 0"
     },
@@ -316,6 +320,10 @@
     {
       "path": "/api/cron/treasure-haul-daily",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/treasure-haul-cleanup",
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/treasure-haul-weekly",

@@ -1,5 +1,4 @@
-const VLLM_URL = process.env.VLLM_URL || "http://127.0.0.1:8355/v1";
-const MODEL = "Qwen/Qwen3.5-35B-A3B-FP8";
+import { chatJSON } from "./ai-client";
 
 export interface PantryItem {
   name: string;
@@ -81,32 +80,13 @@ Return ONLY a valid JSON array:
   "difficulty": "easy"
 }]`;
 
-  const userPrompt = `Here are my current pantry items:\n${pantryList}\n\nSuggest recipes I can make.`;
-
-  const res = await fetch(`${VLLM_URL}/chat/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 2500,
-    }),
-    signal: AbortSignal.timeout(60000),
+  const suggestions = await chatJSON<RecipeSuggestion[]>({
+    task: "suggest-from-pantry",
+    system: systemPrompt,
+    user: `Here are my current pantry items:\n${pantryList}\n\nSuggest recipes I can make.`,
+    temperature: 0.7,
+    maxTokens: 2500,
   });
-
-  const data = await res.json();
-  const content = data.choices?.[0]?.message?.content || "";
-  const jsonMatch = content.match(/\[[\s\S]*\]/);
-
-  if (!jsonMatch) {
-    throw new Error("Failed to parse recipe suggestions from AI response");
-  }
-
-  const suggestions: RecipeSuggestion[] = JSON.parse(jsonMatch[0]);
 
   // Ensure slugs exist
   for (const s of suggestions) {

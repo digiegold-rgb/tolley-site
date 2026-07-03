@@ -58,6 +58,36 @@ export type ReferenceStatusEntry = {
 
 export type ReferenceStatusMap = Record<string, ReferenceStatusEntry>;
 
+export type PipelineInstance = {
+  url: string;
+  role: "interactive" | "pipeline";
+  healthy: boolean;
+  vramFreeGb?: number;
+  vramTotalGb?: number;
+  comfyVersion?: string;
+  queueRunning?: number | null;
+  queuePending?: number | null;
+};
+
+export type PipelineActiveJob = {
+  jobId: string;
+  kind: string;
+  projectId?: string | null;
+  status: string;
+  phase: string;
+  progress: number;
+  updatedAt?: string;
+  lastLog?: string | null;
+};
+
+export type PipelineStatus = {
+  instances: {
+    primary?: PipelineInstance;
+    vater?: PipelineInstance;
+  };
+  activeJobs: PipelineActiveJob[];
+};
+
 export type StylePreset = {
   id: string;
   name: string;
@@ -68,6 +98,14 @@ export type VoiceClone = {
   name: string;
   sampleText?: string;
   language: string;
+};
+
+export type ElevenLabsVoice = {
+  voice_id: string;
+  name: string;
+  category?: string;
+  description?: string;
+  preview_url?: string;
 };
 
 export type FeedSampleItem = {
@@ -166,6 +204,7 @@ export type StyleSnapshot = {
     imageUrl: string | null;
     permanent: boolean;
     placeInEveryImage: boolean;
+    gender: string;
   }>;
 };
 
@@ -195,6 +234,10 @@ export type RunCreationInput = {
    *  stylePreset/consistency for fields it sets. Sparse — only keys the
    *  user explicitly set are honored; rest fall through to preset defaults. */
   style?: StyleSnapshot;
+  /** User-supplied script. When set, the worker skips principle extraction
+   *  and `_generate_script()` and uses this text verbatim for TTS + scene
+   *  planning. No min length enforced. */
+  scriptOverride?: string;
 };
 
 /**
@@ -244,6 +287,23 @@ export type SuggestGoalsInput = {
   channel?: string;
 };
 
+/**
+ * Title-suggest input. Used by the v2 Title step's three modes:
+ * - sample: caller passes user's `sampleTitles` to anchor tone.
+ * - style:  caller pulls reference transcripts off `styleSnapshot.referenceTranscripts`.
+ * - channel-video: caller transcribes via fetchSource first, then re-invokes
+ *   sample mode with the transcript-derived sample list.
+ *
+ * Stateless LLM call on the DGX side. Expected ~5-10s.
+ */
+export type SuggestTitlesInput = {
+  styleSnapshot: StyleSnapshot;
+  /** Anchor titles the user pasted (mode=sample) — required there, omitted for style mode. */
+  sampleTitles?: string[];
+  /** How many titles to return. DGX clamps to [1, 25]; default 5. */
+  count?: number;
+};
+
 export type FetchSourceInput = {
   projectId?: string;
   sourceUrl: string;
@@ -268,6 +328,18 @@ export type RegenSceneInput = {
   stylePreset?: string;
   customStylePrompt?: string;
   projectId?: string;
+  /** Character roster — when present, primary character's identity descriptor
+   *  is prepended server-side so manual regens stay identity-locked. */
+  characters?: Array<{
+    name: string;
+    description: string;
+    gender?: string;
+  }>;
+  /** Image renderer — defaults to "firered-local" for cartoon styles, lets
+   *  caller override with sdxl-local / gemini-1k / ideogram-* etc. Whatever
+   *  the project was originally generated with should be used here so the
+   *  regenerated scene matches the rest of the video. */
+  quality?: string;
 };
 
 export type RegenSceneResult = {
@@ -279,6 +351,81 @@ export type RegenSceneResult = {
   filePath: string;
   prompt: string;
   seed: number;
+};
+
+/**
+ * Image-to-video animation for ONE scene. Mirrors TubeGen.ai's
+ * POST /api/ai/animate-image. Sync — takes ~30-120s (Veo) or 90-300s (LTX).
+ */
+export type AnimationQuality =
+  | "turbo"
+  | "default"
+  | "default_1080p"
+  | "high"
+  | "kling-standard"
+  | "kling-pro"
+  | "kling-master"
+  | "luma"
+  | "ltx-local"
+  | "wan22-local"
+  | "modal-wan22"
+  | "modal-wan22-fast"
+  | "modal-wan22-narrative"
+  | "modal-wan22-narrative-fast"
+  | "modal-hunyuan-narrative"
+  | "modal-hunyuan-narrative-fast"
+  | "modal-easyanimate-anime";
+
+/** Wan2.2 sampler preset — picks cfg/shift/denoise/lora. `subtle` damps motion
+ * hard for narrative scenes (lady pushing snowball, close-ups, reflective
+ * beats). `normal` matches previous behavior. `bold` is reserved for explicit
+ * action beats. Honored only by the modal-wan22 / modal-wan22-fast backends. */
+export type MotionIntensity = "subtle" | "normal" | "bold";
+
+export type AnimateSceneInput = {
+  jobId: string;
+  sceneIdx: number;
+  /** Free-form motion text, TubeGen-style ("Slowly zoom in on the notebook"). */
+  animationPrompt: string;
+  /** When true, adds "hold camera still" suffix + sets cameraFixed on Kling. */
+  fixedCamera?: boolean;
+  /** Quality tier → maps to a specific model + resolution. */
+  quality?: AnimationQuality;
+  /** Explicit clip length in seconds (4-8). Overrides scene timing. */
+  duration?: number;
+  /** Scene start/end — server derives duration from these if `duration` omitted. */
+  sceneStartS?: number;
+  sceneEndS?: number;
+  aspectRatio?: "16:9" | "9:16" | "1:1";
+  /** Original SDXL prompt — logged for traceability, Veo ignores it. */
+  imagePrompt?: string;
+  /** Motion preset for Wan2.2 backends — subtle/normal/bold. Default normal. */
+  motionIntensity?: MotionIntensity;
+  /** FLF2V: reuse the start image as the end-frame so Wan2.2 clamps the
+   *  character's ending pose. Massive jitter killer on narrative scenes. */
+  holdStartPose?: boolean;
+};
+
+export type AnimateSceneResult = {
+  jobId: string;
+  sceneIdx: number;
+  /** 0 for the first animation, 1+ for re-rolls. */
+  version: number;
+  /** Relative URL like `/vater/file/<jobId>/scene/<idx>/video/<version>` */
+  url: string;
+  filePath: string;
+  durationSeconds: number;
+  quality: string;
+  model: string;
+  backend: "veo" | "ltx" | "kling";
+  /** USD cost of this clip. 0 for local LTX. */
+  cost: number;
+  elapsedSeconds?: number;
+  animationPrompt: string;
+  fixedCamera: boolean;
+  /** Echo of the motion preset that ran — matches what the sampler used. */
+  motionIntensity?: MotionIntensity;
+  holdStartPose?: boolean;
 };
 
 /** Re-compose an existing project with an edited VideoSpec. */
@@ -417,16 +564,28 @@ async function call<T>(
  * Raw response passthrough for binary file endpoints
  * (`/vater/file/{jobId}/{kind}` etc). Returns the live `Response` object so
  * the caller can stream it back to the browser.
+ *
+ * `range` is the value of the client's Range header (e.g. "bytes=0-1023") —
+ * forwarded upstream so the DGX returns 206 Partial Content with proper
+ * Content-Range / Content-Length headers. Without this the Remotion Player's
+ * <video> element can't seek and throws MediaPlaybackError.
  */
-async function callRaw(method: "GET", path: string): Promise<Response> {
+async function callRaw(
+  method: "GET",
+  path: string,
+  range?: string | null,
+): Promise<Response> {
   assertConfig();
   const url = `${BASE}${path}`;
+  const headers: Record<string, string> = { Authorization: `Bearer ${KEY}` };
+  if (range) headers.Range = range;
   const res = await fetch(url, {
     method,
-    headers: { Authorization: `Bearer ${KEY}` },
+    headers,
     cache: "no-store",
   });
-  if (!res.ok) {
+  // Accept 200 (full body) AND 206 (range response) — both are non-error.
+  if (!res.ok && res.status !== 206) {
     const text = await res.text().catch(() => "");
     throw new AutopilotError(res.status, path, text || res.statusText);
   }
@@ -468,6 +627,16 @@ export const autopilot = {
   runCreation: (input: RunCreationInput) =>
     call<{ jobId: string }>("POST", "/vater/run-creation", input),
 
+  /** Cooperatively cancel a running job. The worker checks the cancel flag
+   *  at each pipeline stage boundary and bails cleanly. Status ends as
+   *  "cancelled" (not "failed"). */
+  cancelJob: (input: { jobId: string }) =>
+    call<{ ok: boolean; jobId: string; wasRunning: boolean }>(
+      "POST",
+      "/vater/cancel-job",
+      input,
+    ),
+
   /** Async — TTS only via F5-TTS through ComfyUI. */
   tts: (input: TtsInput) =>
     call<{ jobId: string }>("POST", "/vater/tts", input),
@@ -479,6 +648,59 @@ export const autopilot = {
   /** Sync — regenerate ONE scene image for the editor. ~15-30s per call. */
   regenScene: (input: RegenSceneInput) =>
     call<RegenSceneResult>("POST", "/vater/regen-scene", input),
+
+  /** Async — kick off animate-scene and get an animateJobId back. Poll
+   *  `getJob(animateJobId)` until status === "done" / "failed". The long
+   *  i2v call (30-300s) exceeds CF's 100s tunnel timeout, so this had to
+   *  become async — see `_animate_scene_worker` on the DGX side. */
+  animateScene: (input: AnimateSceneInput) =>
+    call<{ animateJobId: string; jobId: string; sceneIdx: number }>(
+      "POST",
+      "/vater/animate-scene",
+      input,
+    ),
+
+  /** Async — animate ALL scenes of a project in one warm Modal container.
+   *  Cheaper than N separate animateScene calls (model loads once, not N times).
+   *  Returns animateAllJobId; poll getJob() until done. */
+  animateAllScenes: (input: {
+    jobId: string;
+    scenes: Array<{
+      sceneIdx: number;
+      animationPrompt?: string;
+      beatText?: string;
+      fixedCamera?: boolean;
+      motionIntensity?: MotionIntensity;
+      holdStartPose?: boolean;
+    }>;
+    quality:
+      | "modal-wan22"
+      | "modal-wan22-fast"
+      | "modal-wan22-narrative"
+      | "modal-wan22-narrative-fast"
+      | "modal-hunyuan-narrative"
+      | "modal-hunyuan-narrative-fast";
+    aspectRatio?: string;
+  }) =>
+    call<{ animateAllJobId: string; jobId: string; sceneCount: number }>(
+      "POST",
+      "/vater/animate-all-scenes",
+      input,
+    ),
+
+  /** Sync — LLM suggests an animationPrompt + fixedCamera for ONE scene
+   *  based on its image prompt + beat text. ~1-3s per call. */
+  planSceneAnimation: (input: {
+    jobId: string;
+    sceneIdx: number;
+    imagePrompt?: string;
+    beatText?: string;
+  }) =>
+    call<{
+      sceneIdx: number;
+      animationPrompt: string;
+      fixedCamera: boolean;
+    }>("POST", "/vater/plan-scene-animation", input),
 
   /** Async — re-compose the final MP4 from an edited VideoSpec. Returns a jobId. */
   composeVideo: (input: ComposeVideoInput) =>
@@ -506,6 +728,10 @@ export const autopilot = {
     return Array.isArray(data?.styles) ? data.styles : [];
   },
 
+  /** Live pipeline snapshot — both ComfyUI instances + active Vater jobs. */
+  getPipelineStatus: () =>
+    call<PipelineStatus>("GET", "/vater/pipeline-status"),
+
   /** Per-preset reference-image status from the shared reference library. */
   getReferenceStatus: async (): Promise<ReferenceStatusMap> => {
     const data = await call<{
@@ -523,6 +749,22 @@ export const autopilot = {
     );
     if (Array.isArray(data)) return data;
     return Array.isArray(data?.voices) ? data.voices : [];
+  },
+
+  /** List ElevenLabs voices on the authenticated account. Returns `{voices, error?}`
+   * — empty voices + error string when the key is missing or the upstream call failed. */
+  getElevenLabsVoices: async (): Promise<{
+    voices: ElevenLabsVoice[];
+    error?: string;
+  }> => {
+    const data = await call<{
+      voices?: ElevenLabsVoice[];
+      error?: string;
+    }>("GET", "/vater/voices/elevenlabs");
+    return {
+      voices: Array.isArray(data?.voices) ? data.voices : [],
+      error: typeof data?.error === "string" ? data.error : undefined,
+    };
   },
 
   /** Background-music catalog (CC-BY-4.0 Kevin MacLeod). */
@@ -550,12 +792,20 @@ export const autopilot = {
     callForm<{ name: string }>("/vater/voices", form),
 
   /** Stream a finished asset back through the proxy: kind = "audio" | "video" | `scene/${idx}`. */
-  fetchFile: (jobId: string, kind: string) =>
-    callRaw("GET", `/vater/file/${encodeURIComponent(jobId)}/${kind}`),
+  fetchFile: (jobId: string, kind: string, range?: string | null) =>
+    callRaw(
+      "GET",
+      `/vater/file/${encodeURIComponent(jobId)}/${kind}`,
+      range,
+    ),
 
   /** Stream a voice clone reference WAV back through the proxy. */
-  fetchVoiceFile: (name: string) =>
-    callRaw("GET", `/vater/file/voice/${encodeURIComponent(name)}`),
+  fetchVoiceFile: (name: string, range?: string | null) =>
+    callRaw(
+      "GET",
+      `/vater/file/voice/${encodeURIComponent(name)}`,
+      range,
+    ),
 
   /** Generate a YouTube thumbnail (1280×720 SDXL + ffmpeg text overlay). */
   generateThumbnail: (input: ThumbnailInput) =>
@@ -564,6 +814,9 @@ export const autopilot = {
   /** Re-run goal suggestions for a transcript (stateless LLM call, ~10-15s). */
   suggestGoals: (input: SuggestGoalsInput) =>
     call<{ suggestions: unknown[] }>("POST", "/vater/suggest-goals", input),
+
+  suggestTitles: (input: SuggestTitlesInput) =>
+    call<{ titles: string[] }>("POST", "/vater/suggest-titles", input),
 };
 
 export type AutopilotClient = typeof autopilot;

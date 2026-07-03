@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdminPageSession } from "@/lib/admin-auth";
 import UnifiedDashboard from "@/components/trading/UnifiedDashboard";
+import { getLatestVerdicts, type ResearchVerdict } from "@/lib/trading/aiResearch";
 import "../crypto/crypto.css";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,7 @@ export default async function TradingPage() {
 
   let snapshots: Record<string, any> = {};
   let capitalTotals = { moneyIn: 0, moneyOut: 0 };
+  let verdicts: ResearchVerdict[] = [];
 
   try {
     // Get latest snapshot for each asset class
@@ -62,6 +64,12 @@ export default async function TradingPage() {
     console.error("[trading] Failed to load data:", e);
   }
 
+  try {
+    verdicts = await getLatestVerdicts();
+  } catch (e) {
+    console.error("[trading] Failed to load research verdicts:", e);
+  }
+
   return (
     <div className="min-h-screen bg-[#06050a]">
       <div className="mx-auto max-w-7xl px-4 py-8">
@@ -72,6 +80,9 @@ export default async function TradingPage() {
             <span className="text-sm font-medium text-amber-400">Trading Platform</span>
           </div>
           <div className="flex items-center gap-3">
+            <a href="/trading/ai-research" className="text-xs text-amber-400/70 hover:text-amber-300 transition-colors">
+              AI Research
+            </a>
             <a href="/markets" className="text-xs text-white/40 hover:text-white/60 transition-colors">
               Markets
             </a>
@@ -93,6 +104,7 @@ export default async function TradingPage() {
         <UnifiedDashboard
           initialSnapshots={snapshots}
           initialCapital={capitalTotals}
+          initialVerdicts={verdicts}
         />
 
         <div className="mt-12 pt-6 border-t border-white/5 text-center">

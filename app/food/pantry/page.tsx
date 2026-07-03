@@ -35,6 +35,7 @@ export default function PantryPage() {
   const [items, setItems] = useState<PantryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeLocation, setActiveLocation] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [restockItems, setRestockItems] = useState<RestockItem[]>([]);
@@ -42,6 +43,27 @@ export default function PantryPage() {
   const [markingOut, setMarkingOut] = useState<string | null>(null);
   const [editingQty, setEditingQty] = useState<string | null>(null);
   const [editQtyValue, setEditQtyValue] = useState("");
+  const [editingName, setEditingName] = useState<string | null>(null);
+  const [editNameValue, setEditNameValue] = useState("");
+
+  const handleUpdateName = async (itemId: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) {
+      setEditingName(null);
+      return;
+    }
+    setItems((prev) => prev.map((i) => i.id === itemId ? { ...i, name: trimmed } : i));
+    setEditingName(null);
+    try {
+      await fetch(`/api/food/pantry/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+    } catch {
+      fetchItems();
+    }
+  };
 
   const handleUpdateQuantity = async (itemId: string, newQty: number) => {
     if (newQty < 0) newQty = 0;
@@ -148,7 +170,15 @@ export default function PantryPage() {
     }
   };
 
-  const filteredItems = activeLocation === "all" ? items : items.filter((i) => i.location === activeLocation);
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredItems = items.filter((i) => {
+    if (activeLocation !== "all" && i.location !== activeLocation) return false;
+    if (normalizedQuery) {
+      const haystack = `${i.name} ${i.category || ""}`.toLowerCase();
+      if (!haystack.includes(normalizedQuery)) return false;
+    }
+    return true;
+  });
 
   const locationCounts = LOCATIONS.reduce<Record<string, number>>((acc, loc) => {
     acc[loc.key] = items.filter((i) => i.location === loc.key).length;
@@ -342,6 +372,55 @@ export default function PantryPage() {
         </div>
       )}
 
+      {/* Search bar */}
+      <div
+        className="food-enter"
+        style={{ position: "relative", marginBottom: "0.75rem", "--enter-delay": "0.05s" } as React.CSSProperties}
+      >
+        <span
+          style={{
+            position: "absolute",
+            left: "0.875rem",
+            top: "50%",
+            transform: "translateY(-50%)",
+            fontSize: "0.95rem",
+            pointerEvents: "none",
+            opacity: 0.6,
+          }}
+        >
+          🔍
+        </span>
+        <input
+          className="food-input"
+          type="search"
+          placeholder="Search pantry… (e.g. mayonnaise)"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{ width: "100%", paddingLeft: "2.25rem", paddingRight: searchQuery ? "2.5rem" : "0.875rem" }}
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            aria-label="Clear search"
+            style={{
+              position: "absolute",
+              right: "0.625rem",
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "none",
+              border: "none",
+              color: "var(--food-text-secondary)",
+              cursor: "pointer",
+              fontSize: "1.1rem",
+              padding: "0.25rem 0.375rem",
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        )}
+      </div>
+
       {/* Location tabs */}
       <div
         className="food-enter"
@@ -372,28 +451,61 @@ export default function PantryPage() {
 
       {/* Pantry grid */}
       {filteredItems.length === 0 ? (
-        <div
-          className="food-card food-enter"
-          style={{ textAlign: "center", padding: "4rem 2rem", "--enter-delay": "0.15s" } as React.CSSProperties}
-        >
-          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>
-            {activeLocation === "all" ? "🗄️" : LOCATIONS.find((l) => l.key === activeLocation)?.emoji || "🗄️"}
+        normalizedQuery ? (
+          <div
+            className="food-card food-enter"
+            style={{ textAlign: "center", padding: "3rem 2rem", "--enter-delay": "0.15s" } as React.CSSProperties}
+          >
+            <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>🔎</div>
+            <h3 style={{ fontSize: "1.125rem", fontWeight: 600, color: "var(--food-text)", marginBottom: "0.375rem" }}>
+              No match for &ldquo;{searchQuery}&rdquo;
+            </h3>
+            <p style={{ color: "var(--food-text-secondary)", marginBottom: "1.25rem", fontSize: "0.875rem" }}>
+              Not in your {activeLocation === "all" ? "pantry" : LOCATIONS.find((l) => l.key === activeLocation)?.label.toLowerCase()}. Time to add it to the list?
+            </p>
+            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center", flexWrap: "wrap" }}>
+              <button
+                className="food-btn food-btn-secondary"
+                onClick={() => setSearchQuery("")}
+              >
+                Clear search
+              </button>
+              <button
+                className="food-btn food-btn-primary"
+                onClick={() => {
+                  setNewName(searchQuery);
+                  setShowAddForm(true);
+                  setSearchQuery("");
+                }}
+              >
+                + Add &ldquo;{searchQuery}&rdquo;
+              </button>
+            </div>
           </div>
-          <h3 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--food-text)", marginBottom: "0.5rem" }}>
-            {activeLocation === "all" ? "Your pantry is empty" : `Nothing in the ${LOCATIONS.find((l) => l.key === activeLocation)?.label.toLowerCase() || "pantry"}`}
-          </h3>
-          <p style={{ color: "var(--food-text-secondary)", marginBottom: "1.5rem" }}>
-            Add items manually or scan your groceries to populate your inventory.
-          </p>
-          <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", flexWrap: "wrap" }}>
-            <button className="food-btn food-btn-primary" onClick={() => setShowAddForm(true)}>
-              Add Item
-            </button>
-            <Link href="/food/scan" className="food-btn food-btn-secondary">
-              Scan Groceries
-            </Link>
+        ) : (
+          <div
+            className="food-card food-enter"
+            style={{ textAlign: "center", padding: "4rem 2rem", "--enter-delay": "0.15s" } as React.CSSProperties}
+          >
+            <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>
+              {activeLocation === "all" ? "🗄️" : LOCATIONS.find((l) => l.key === activeLocation)?.emoji || "🗄️"}
+            </div>
+            <h3 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--food-text)", marginBottom: "0.5rem" }}>
+              {activeLocation === "all" ? "Your pantry is empty" : `Nothing in the ${LOCATIONS.find((l) => l.key === activeLocation)?.label.toLowerCase() || "pantry"}`}
+            </h3>
+            <p style={{ color: "var(--food-text-secondary)", marginBottom: "1.5rem" }}>
+              Add items manually or scan your groceries to populate your inventory.
+            </p>
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", flexWrap: "wrap" }}>
+              <button className="food-btn food-btn-primary" onClick={() => setShowAddForm(true)}>
+                Add Item
+              </button>
+              <Link href="/food/scan" className="food-btn food-btn-secondary">
+                Scan Groceries
+              </Link>
+            </div>
           </div>
-        </div>
+        )
       ) : (
         <div
           style={{
@@ -413,10 +525,45 @@ export default function PantryPage() {
               } as React.CSSProperties}
             >
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.5rem" }}>
-                <div>
-                  <h3 style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--food-text)", marginBottom: "0.25rem" }}>
-                    {item.name}
-                  </h3>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {editingName === item.id ? (
+                    <input
+                      className="food-input"
+                      value={editNameValue}
+                      onChange={(e) => setEditNameValue(e.target.value)}
+                      onBlur={() => handleUpdateName(item.id, editNameValue)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleUpdateName(item.id, editNameValue);
+                        if (e.key === "Escape") setEditingName(null);
+                      }}
+                      autoFocus
+                      style={{
+                        fontSize: "0.9375rem",
+                        fontWeight: 600,
+                        padding: "0.25rem 0.5rem",
+                        marginBottom: "0.25rem",
+                        width: "100%",
+                      }}
+                    />
+                  ) : (
+                    <h3
+                      onClick={() => { setEditingName(item.id); setEditNameValue(item.name); }}
+                      title="Tap to rename"
+                      style={{
+                        fontSize: "0.9375rem",
+                        fontWeight: 600,
+                        color: "var(--food-text)",
+                        marginBottom: "0.25rem",
+                        cursor: "pointer",
+                        padding: "0.125rem 0.25rem",
+                        marginLeft: "-0.25rem",
+                        borderRadius: "0.25rem",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {item.name}
+                    </h3>
+                  )}
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8125rem", color: "var(--food-text-secondary)", marginTop: "0.25rem" }}>
                     {editingQty === item.id ? (
                       <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>

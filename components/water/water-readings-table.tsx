@@ -28,7 +28,7 @@ export function WaterReadingsTable({ readings, onDelete }: Props) {
   }
 
   return (
-    <div className="water-card overflow-x-auto">
+    <div className="water-card overflow-x-auto rounded-2xl">
       <table className="water-table">
         <thead>
           <tr>
@@ -42,9 +42,9 @@ export function WaterReadingsTable({ readings, onDelete }: Props) {
         <tbody>
           {readings.map((r) => (
             <tr key={r.id}>
-              <td className="whitespace-nowrap text-white/60">
+              <td className="whitespace-nowrap text-white/85">
                 {new Date(r.readingAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                <span className="ml-1 text-white/30 text-xs">
+                <span className="ml-1 text-xs text-white/35">
                   {new Date(r.readingAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                 </span>
               </td>
@@ -52,18 +52,33 @@ export function WaterReadingsTable({ readings, onDelete }: Props) {
                 const val = r[c.key] as number | null;
                 const status = getStatus(c.key, val);
                 return (
-                  <td key={c.key} style={{ color: val != null ? getStatusColor(status) : "rgba(255,255,255,0.2)" }}>
+                  <td
+                    key={c.key}
+                    style={{
+                      color: val != null ? getStatusColor(status) : "rgba(255,255,255,0.2)",
+                      fontFamily: "var(--font-jetbrains-mono), monospace",
+                      fontSize: "0.66rem",
+                    }}
+                  >
                     {val != null ? val : "—"}
                   </td>
                 );
               })}
-              <td className="text-white/60">{r.lsi != null ? r.lsi : "—"}</td>
-              <td className="text-xs text-white/30">{r.source}</td>
+              <td
+                className="text-white/75"
+                style={{
+                  fontFamily: "var(--font-jetbrains-mono), monospace",
+                  fontSize: "0.66rem",
+                }}
+              >
+                {r.lsi != null ? r.lsi : "—"}
+              </td>
+              <td className="text-xs text-white/40">{r.source}</td>
               <td>
                 {onDelete && (
                   <button
                     onClick={() => onDelete(r.id)}
-                    className="text-xs text-red-400/50 hover:text-red-400"
+                    className="text-xs text-red-400/60 transition hover:text-red-400"
                   >
                     Delete
                   </button>

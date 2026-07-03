@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Get Stripe processor token from xero-ledger
+    // Get Stripe processor token from ledger service
     const setupResp = await fetch(`${LEDGER_URL}/pay/ach-setup`, {
       method: "POST",
       headers: {

@@ -1,4 +1,4 @@
-export type ScannerName = "leads" | "arbitrage" | "products" | "unclaimed" | "markets";
+export type ScannerName = "leads" | "arbitrage" | "products" | "unclaimed" | "markets" | "pricing";
 
 export type ScannerStatus = "running" | "idle" | "error" | "paused";
 
@@ -51,6 +51,7 @@ export interface ScanDashboardData {
     products: { alerts: number; oosCount: number };
     unclaimed: { totalFound: number };
     markets: { signals: number; sentiment: string };
+    pricing: { productsScanned: number; matchesFound: number };
   };
 }
 
@@ -60,4 +61,5 @@ export const SCANNER_CONFIG: Record<ScannerName, { label: string; icon: string; 
   products: { label: "Product Sync", icon: "📦", schedule: "Daily 3:00 AM" },
   unclaimed: { label: "Unclaimed Scan", icon: "🔍", schedule: "Daily 1:30 AM" },
   markets: { label: "Market Intel", icon: "📊", schedule: "6:00 AM / 2:00 PM" },
+  pricing: { label: "Retail Price Scan", icon: "🏷️", schedule: "Daily 5:00 AM" },
 };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import Link from "next/link";
 import { formatPoolPrice, getManufacturerUrl } from "@/lib/pools";
 import { PoolsAddButton } from "./pools-add-button";
 
@@ -332,134 +333,160 @@ function TrackedProductCard({ product }: { product: Product }) {
   return (
     <div
       ref={viewRef}
-      className={`flex flex-col rounded-xl border p-3 ${
+      className={`pools-card flex flex-col overflow-hidden rounded-2xl border bg-white ${
         outOfStock
-          ? "border-slate-200 bg-slate-50 opacity-60 grayscale"
-          : "border-cyan-100 bg-cyan-50/30"
+          ? "border-slate-200 opacity-60 grayscale"
+          : "border-[rgba(6,182,212,0.2)]"
       }`}
     >
-      {/* Product image */}
-      {product.imageUrl && (
-        <div className="mb-2 flex items-center justify-center">
-          <img
-            src={product.imageUrl}
-            alt={product.name}
-            className="h-24 w-auto object-contain"
-            loading="lazy"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+      {/* Product image — clickable, cyan gradient tile */}
+      <Link href={`/pools/${encodeURIComponent(product.sku)}`} className="block">
+        <div className="flex h-[120px] items-center justify-center bg-gradient-to-br from-[#ecfeff] to-[#cffafe]">
+          {product.imageUrl ? (
+            <img
+              src={product.imageUrl}
+              alt={product.name}
+              className="h-full w-auto max-w-full object-contain p-2"
+              loading="lazy"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+          ) : (
+            <svg className="h-10 w-10 text-cyan-200" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v13.5A1.5 1.5 0 003.75 21z" />
+            </svg>
+          )}
+        </div>
+      </Link>
+
+      {/* Body — p-[14px] per spec */}
+      <div className="flex flex-1 flex-col p-[14px]">
+        {/* Status badges row */}
+        {(outOfStock || product.stockStatus === "low-stock" || (product.featured && !outOfStock)) && (
+          <div className="mb-1 flex flex-wrap gap-1">
+            {outOfStock && (
+              <span className="inline-flex items-center rounded-full bg-slate-400 px-2 py-0.5 text-[10px] font-semibold text-white">
+                Out of Stock
+              </span>
+            )}
+            {product.stockStatus === "low-stock" && (
+              <span className="inline-flex items-center rounded-full bg-yellow-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                Low Stock
+              </span>
+            )}
+            {product.featured && !outOfStock && product.stockStatus !== "low-stock" && (
+              <span className="inline-flex items-center rounded-full bg-cyan-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                Popular
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Product info */}
+        <div className="flex-1">
+          <Link href={`/pools/${encodeURIComponent(product.sku)}`} className="block hover:underline">
+            <h3 className="mb-1 text-[0.96rem] font-extrabold leading-tight text-[#164e63]">
+              {product.name}
+            </h3>
+          </Link>
+          {(product.brand || product.size) && (
+            <p className="mt-0.5 text-[10px] text-slate-500">
+              {[product.brand, product.size].filter(Boolean).join(" · ")}
+            </p>
+          )}
+          {/* Part numbers */}
+          <div className="mt-1 space-y-0.5 text-[10px] text-slate-400">
+            {product.mfgPart && (
+              <p>
+                Mfg#:{" "}
+                <a
+                  href={getManufacturerUrl(product.brand, product.mfgPart)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => trackPoolEvent(product.sku, "mfg_link", { brand: product.brand })}
+                  className="font-mono text-cyan-600 underline decoration-dotted hover:text-cyan-800"
+                  title="View on manufacturer site"
+                >
+                  {product.mfgPart}
+                </a>
+              </p>
+            )}
+            {product.upc && (
+              <p>
+                UPC:{" "}
+                <span className="font-mono text-slate-500">{product.upc}</span>
+              </p>
+            )}
+            <p>
+              SKU:{" "}
+              <span className="font-mono text-slate-500">{product.sku}</span>
+            </p>
+          </div>
+          {product.description && (
+            <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-slate-600">
+              {product.description}
+            </p>
+          )}
+          <Link
+            href={`/pools/${encodeURIComponent(product.sku)}`}
+            className="mt-1 inline-block text-[10px] font-semibold text-cyan-600 hover:text-cyan-800"
+          >
+            View full details &rarr;
+          </Link>
+          {product.specs && (
+            <details
+              className="mt-1"
+              onToggle={(e) => {
+                if ((e.target as HTMLDetailsElement).open) {
+                  trackPoolEvent(product.sku, "spec_expand");
+                }
+              }}
+            >
+              <summary className="cursor-pointer text-[10px] font-semibold text-cyan-600 hover:text-cyan-700">
+                Specs & Safety
+              </summary>
+              <p className="mt-0.5 whitespace-pre-line text-[10px] leading-snug text-slate-500">
+                {product.specs}
+              </p>
+            </details>
+          )}
+        </div>
+
+        {/* Pricing */}
+        <div className="mt-2 flex items-end gap-1">
+          <span className="text-[1.2rem] font-extrabold text-[#0e7490] mb-2">
+            {formatPoolPrice(product.price)}
+          </span>
+          {savings && product.retailPrice && product.retailPrice > product.price && (
+            <span className="mb-2 text-[10px] text-slate-400 line-through">
+              {formatPoolPrice(product.retailPrice)}
+            </span>
+          )}
+          {savings && (
+            <span className="pools-savings-badge ml-auto mb-2 rounded-full bg-cyan-500/12 px-2 py-0.5 text-[0.68rem] font-bold text-[#0e7490]">
+              Save ${savings}
+            </span>
+          )}
+        </div>
+        <p className="flex items-center gap-1 text-[10px] font-semibold text-emerald-700">
+          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0H6.375c-.621 0-1.125-.504-1.125-1.125v-3.659a3 3 0 00-.879-2.121l-1.308-1.308a1.125 1.125 0 01-.33-.795V6.375c0-.621.504-1.125 1.125-1.125H7.5m10.5 0H21a1.125 1.125 0 011.125 1.125v2.834c0 .3-.12.586-.33.795l-1.308 1.308a3 3 0 00-.879 2.121v3.659c0 .621-.504 1.125-1.125 1.125H18" />
+          </svg>
+          Free delivery included
+        </p>
+
+        {/* Add to cart — full-width, cyan pill w/ glow. Handler untouched. */}
+        <div
+          className="mt-[10px]"
+          onClick={() => { if (!outOfStock) trackPoolEvent(product.sku, "cart_add"); }}
+        >
+          <PoolsAddButton
+            productId={product.id}
+            name={product.name}
+            price={product.price}
+            imageUrl={product.imageUrl}
+            outOfStock={outOfStock}
           />
         </div>
-      )}
-
-      {/* Out of stock badge */}
-      {outOfStock && (
-        <span className="mb-1 inline-flex w-fit items-center rounded-full bg-slate-400 px-2 py-0.5 text-[10px] font-semibold text-white">
-          Out of Stock
-        </span>
-      )}
-
-      {/* Low stock badge */}
-      {product.stockStatus === "low-stock" && (
-        <span className="mb-1 inline-flex w-fit items-center rounded-full bg-yellow-500 px-2 py-0.5 text-[10px] font-semibold text-white">
-          Low Stock
-        </span>
-      )}
-
-      {/* Featured badge */}
-      {product.featured && !outOfStock && product.stockStatus !== "low-stock" && (
-        <span className="mb-1 inline-flex w-fit items-center rounded-full bg-cyan-600 px-2 py-0.5 text-[10px] font-semibold text-white">
-          Popular
-        </span>
-      )}
-
-      {/* Product info */}
-      <div className="flex-1">
-        <h3 className="text-xs font-bold leading-tight text-cyan-900">
-          {product.name}
-        </h3>
-        {(product.brand || product.size) && (
-          <p className="mt-0.5 text-[10px] text-slate-400">
-            {[product.brand, product.size].filter(Boolean).join(" · ")}
-          </p>
-        )}
-        {/* Part numbers */}
-        <div className="mt-1 space-y-0.5 text-[10px] text-slate-400">
-          {product.mfgPart && (
-            <p>
-              Mfg#:{" "}
-              <a
-                href={getManufacturerUrl(product.brand, product.mfgPart)}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackPoolEvent(product.sku, "mfg_link", { brand: product.brand })}
-                className="font-mono text-cyan-600 underline decoration-dotted hover:text-cyan-800"
-                title="View on manufacturer site"
-              >
-                {product.mfgPart}
-              </a>
-            </p>
-          )}
-          {product.upc && (
-            <p>
-              UPC:{" "}
-              <span className="font-mono text-slate-500">{product.upc}</span>
-            </p>
-          )}
-          <p>
-            SKU:{" "}
-            <span className="font-mono text-slate-500">{product.sku}</span>
-          </p>
-        </div>
-        {product.description && (
-          <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-slate-600">
-            {product.description}
-          </p>
-        )}
-        {product.specs && (
-          <details
-            className="mt-1"
-            onToggle={(e) => {
-              if ((e.target as HTMLDetailsElement).open) {
-                trackPoolEvent(product.sku, "spec_expand");
-              }
-            }}
-          >
-            <summary className="cursor-pointer text-[10px] font-semibold text-cyan-600 hover:text-cyan-700">
-              Specs & Safety
-            </summary>
-            <p className="mt-0.5 whitespace-pre-line text-[10px] leading-snug text-slate-500">
-              {product.specs}
-            </p>
-          </details>
-        )}
-      </div>
-
-      {/* Pricing */}
-      <div className="mt-2 flex items-end gap-1">
-        <span className="text-lg font-extrabold text-cyan-700">
-          {formatPoolPrice(product.price)}
-        </span>
-        {product.retailPrice && (
-          <span className="text-[10px] text-slate-400 line-through">
-            {formatPoolPrice(product.retailPrice)}
-          </span>
-        )}
-        {savings && (
-          <span className="pools-savings-badge ml-auto rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">
-            -${savings}
-          </span>
-        )}
-      </div>
-
-      {/* Add to cart — track via wrapper */}
-      <div onClick={() => { if (!outOfStock) trackPoolEvent(product.sku, "cart_add"); }}>
-        <PoolsAddButton
-          productId={product.id}
-          name={product.name}
-          price={product.price}
-          imageUrl={product.imageUrl}
-          outOfStock={outOfStock}
-        />
       </div>
     </div>
   );

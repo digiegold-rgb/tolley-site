@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed schema fields
 import { prisma } from "@/lib/prisma";
 import Stripe from "stripe";
 

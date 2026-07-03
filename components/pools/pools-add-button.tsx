@@ -26,7 +26,7 @@ export function PoolsAddButton({ productId, name, price, imageUrl, outOfStock }:
     return (
       <button
         disabled
-        className="mt-3 w-full cursor-not-allowed rounded-lg bg-slate-300 px-4 py-2.5 text-sm font-bold text-slate-500"
+        className="w-full cursor-not-allowed rounded-full bg-slate-300 px-4 py-2.5 text-[0.9rem] font-bold text-slate-500"
       >
         Out of Stock
       </button>
@@ -36,10 +36,10 @@ export function PoolsAddButton({ productId, name, price, imageUrl, outOfStock }:
   return (
     <button
       onClick={handleAdd}
-      className={`mt-3 w-full rounded-lg px-4 py-2.5 text-sm font-bold transition-all ${
+      className={`pools-glow w-full rounded-full px-4 py-2.5 text-[0.9rem] font-bold text-white transition-all ${
         added
-          ? "pools-splash bg-green-500 text-white"
-          : "bg-cyan-600 text-white hover:bg-cyan-700"
+          ? "pools-splash bg-emerald-500"
+          : "bg-cyan-500 hover:bg-cyan-600"
       }`}
     >
       {added ? "Added!" : "Add to Cart"}

@@ -63,6 +63,10 @@ import {
 import { SHOP_CATEGORIES } from "@/lib/shop";
 
 import { logInvocation } from "@/lib/mcp-analytics";
+import { SUBSITES, getSubsite, publicSubsites } from "@/lib/subsites";
+import { validateActionFields } from "@/lib/agent-manifest";
+import { notifyLeadAction } from "@/lib/lead-notify";
+import crypto from "node:crypto";
 
 const prisma = new PrismaClient();
 
@@ -466,5 +470,264 @@ export function registerTools(server: McpServer) {
         ],
       };
     }
+  );
+
+  // 10. list_subsites — generic discovery
+  server.tool(
+    "list_subsites",
+    "Returns every public subsite of tolley.io with its purpose, URL, and capabilities.",
+    {},
+    async () => {
+      log("list_subsites", {});
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                count: SUBSITES.length,
+                publicCount: publicSubsites().length,
+                subsites: SUBSITES.map((s) => ({
+                  name: s.name,
+                  title: s.title,
+                  purpose: s.purpose,
+                  url: `https://www.tolley.io${s.url}`,
+                  status: s.status,
+                  category: s.category,
+                  manifestUrl: `https://www.tolley.io/api/agent/${s.name}`,
+                  leadEndpoint: `https://www.tolley.io${s.leadEndpoint}`,
+                  shareEndpoint: `https://www.tolley.io${s.shareEndpoint}`,
+                  mcpTools: s.mcpTools,
+                })),
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  );
+
+  // 11. get_subsite_info — generic per-subsite lookup
+  server.tool(
+    "get_subsite_info",
+    "Fetch the manifest and live JSON snapshot for a named subsite (e.g. 'wd', 'trailer', 'food').",
+    {
+      name: z.string().describe("Subsite name slug (e.g. 'wd')"),
+      includeLiveData: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe("Fetch declared jsonEndpoints and inline the responses"),
+    },
+    async ({ name, includeLiveData }) => {
+      log("get_subsite_info", { name, includeLiveData });
+      const m = getSubsite(name);
+      if (!m) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({ error: `Unknown subsite: ${name}` }, null, 2),
+            },
+          ],
+          isError: true,
+        };
+      }
+      const snapshots: Record<string, unknown> = {};
+      if (includeLiveData && m.jsonEndpoints.length) {
+        await Promise.all(
+          m.jsonEndpoints.map(async (ep) => {
+            try {
+              const target = ep.startsWith("http")
+                ? ep
+                : `https://www.tolley.io${ep}`;
+              const r = await fetch(target, { cache: "no-store" });
+              if (r.ok) snapshots[ep] = await r.json();
+            } catch {
+              // ignore
+            }
+          }),
+        );
+      }
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                manifest: m,
+                fullUrl: `https://www.tolley.io${m.url}`,
+                manifestUrl: `https://www.tolley.io/api/agent/${m.name}`,
+                snapshots,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  );
+
+  // 12. submit_subsite_action — transactional verb dispatch
+  server.tool(
+    "submit_subsite_action",
+    "Submit a transactional action to any subsite (book, request quote, schedule, etc.). Returns a receiptToken you can poll via get_lead_status. List available actions per subsite with get_subsite_info.",
+    {
+      subsite: z.string().describe("Subsite name (e.g. 'wd', 'trailer', 'pools')"),
+      action: z.string().describe("Verb declared in the subsite manifest (e.g. 'book_trailer', 'request_wd_quote')"),
+      contact: z
+        .object({
+          email: z.string().optional(),
+          name: z.string().optional(),
+          phone: z.string().optional(),
+        })
+        .describe("At least one of email or phone is required"),
+      fields: z
+        .record(z.string(), z.unknown())
+        .optional()
+        .default({})
+        .describe("Structured fields per the action's spec; see manifest.actions[].fields"),
+    },
+    async ({ subsite, action, contact, fields }) => {
+      log("submit_subsite_action", { subsite, action, fields });
+      const m = getSubsite(subsite);
+      if (!m) {
+        return {
+          content: [
+            { type: "text" as const, text: JSON.stringify({ error: `Unknown subsite: ${subsite}` }, null, 2) },
+          ],
+          isError: true,
+        };
+      }
+      const verb = m.actions.find((a) => a.verb === action);
+      if (!verb) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  error: `Subsite '${subsite}' has no action '${action}'`,
+                  availableActions: m.actions.map((a) => ({ verb: a.verb, description: a.description })),
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
+      if (!contact.email && !contact.phone) {
+        return {
+          content: [
+            { type: "text" as const, text: JSON.stringify({ error: "contact.email or contact.phone required" }, null, 2) },
+          ],
+          isError: true,
+        };
+      }
+      const fieldsObj = (fields ?? {}) as Record<string, unknown>;
+      const err = validateActionFields(verb, fieldsObj);
+      if (err) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({ error: err, expected: verb.fields }, null, 2),
+            },
+          ],
+          isError: true,
+        };
+      }
+      const receiptToken = crypto.randomBytes(8).toString("base64url");
+      await prisma.leadAction.create({
+        data: {
+          receiptToken,
+          subsite,
+          action,
+          email: contact.email ?? null,
+          name: contact.name ?? null,
+          phone: contact.phone ?? null,
+          structured: fieldsObj as never,
+        },
+      });
+      notifyLeadAction({
+        subsite,
+        action,
+        email: contact.email,
+        name: contact.name,
+        phone: contact.phone,
+        fields: fieldsObj,
+        receiptToken,
+      });
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                receiptToken,
+                status: "new",
+                statusUrl: `https://www.tolley.io/api/lead/${receiptToken}`,
+                next: "Poll get_lead_status({receiptToken}) for updates. Status: new → acknowledged → contacted → quoted → won|lost.",
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  );
+
+  // 13. get_lead_status — receipt token follow-up
+  server.tool(
+    "get_lead_status",
+    "Check the status of an action submission. Status progresses: new → acknowledged → contacted → quoted → won|lost.",
+    {
+      receiptToken: z.string().describe("The receipt token returned by submit_subsite_action"),
+    },
+    async ({ receiptToken }) => {
+      log("get_lead_status", { receiptToken });
+      if (!/^[A-Za-z0-9_-]{4,64}$/.test(receiptToken)) {
+        return {
+          content: [
+            { type: "text" as const, text: JSON.stringify({ error: "Invalid receipt token" }, null, 2) },
+          ],
+          isError: true,
+        };
+      }
+      const row = await prisma.leadAction.findUnique({
+        where: { receiptToken },
+        select: {
+          receiptToken: true,
+          subsite: true,
+          action: true,
+          status: true,
+          statusNote: true,
+          statusUpdatedAt: true,
+          createdAt: true,
+        },
+      });
+      if (!row) {
+        return {
+          content: [
+            { type: "text" as const, text: JSON.stringify({ error: "Not found" }, null, 2) },
+          ],
+          isError: true,
+        };
+      }
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(row, null, 2),
+          },
+        ],
+      };
+    },
   );
 }

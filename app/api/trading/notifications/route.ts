@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminApiSession } from "@/lib/admin-auth";

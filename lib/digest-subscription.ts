@@ -116,9 +116,12 @@ export async function syncDigestSubscription(
 
   if (obj.object === "checkout.session") {
     const session = obj as Stripe.Checkout.Session;
-    // checkout.session.completed only fires on successful checkout — the
-    // subscription starts active (no trials are sold through this flow).
-    newStatus = "active";
+    // checkout.session.completed only fires on successful checkout. Every new
+    // subscription starts with a 3-day trial (trial_period_days on the
+    // checkout), so the row starts as "trial"; the subscription.updated event
+    // flips it to "active" when the trial converts. Both statuses receive the
+    // Monday digest.
+    newStatus = "trial";
     stripeCustomerId = asId(session.customer as string | { id: string } | null);
     stripeSubscriptionId = asId(
       session.subscription as string | { id: string } | null

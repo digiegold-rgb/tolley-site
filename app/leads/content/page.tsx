@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import ContentEditor from "@/components/content/ContentEditor";
 import PostPreview from "@/components/content/PostPreview";
+import { useToast } from "@/components/ui/Toast";
 
 /**
  * /leads/content — Content Hub
@@ -11,6 +12,7 @@ import PostPreview from "@/components/content/PostPreview";
  */
 export default function ContentHubPage() {
   const { data: session } = useSession();
+  const { toast } = useToast();
   const subscriberId = session?.user?.id ?? "default";
   const [generating, setGenerating] = useState(false);
   const [generatedBody, setGeneratedBody] = useState("");
@@ -22,19 +24,33 @@ export default function ContentHubPage() {
     setLoadingPosts(true);
     try {
       const res = await fetch("/api/content/posts?limit=10");
-      if (res.ok) {
-        const data = await res.json();
-        setRecentPosts(data.posts || []);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Couldn't load posts",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        return;
       }
-    } catch {
-      // silent
+      const data = await res.json();
+      setRecentPosts(data.posts || []);
+    } catch (err) {
+      toast({
+        title: "Network error loading posts",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
     } finally {
       setLoadingPosts(false);
     }
-  }, []);
+  }, [toast]);
 
-  // Load posts on mount
-  useState(() => { fetchPosts(); });
+  // Load posts on mount — the previous version used useState() instead of
+  // useEffect, which meant posts never actually loaded.
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
 
   const handleGenerate = async (data: {
     platform: string;
@@ -49,17 +65,29 @@ export default function ContentHubPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          subscriberId,
+          subscriberId: subscriberId || "default",
           saveDraft: false,
         }),
       });
-      if (res.ok) {
-        const result = await res.json();
-        setGeneratedBody(result.generated.body);
-        setGeneratedHashtags(result.generated.hashtags);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Generation failed",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        return;
       }
-    } catch {
-      // silent
+      const result = await res.json();
+      setGeneratedBody(result.generated.body);
+      setGeneratedHashtags(result.generated.hashtags);
+      toast({ title: "Content generated", variant: "success" });
+    } catch (err) {
+      toast({
+        title: "Network error",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
     } finally {
       setGenerating(false);
     }
@@ -83,53 +111,80 @@ export default function ContentHubPage() {
           scheduledAt: data.scheduledAt,
         }),
       });
-      if (res.ok) {
-        setGeneratedBody("");
-        setGeneratedHashtags([]);
-        fetchPosts();
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Couldn't save draft",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        return;
       }
-    } catch {
-      // silent
+      setGeneratedBody("");
+      setGeneratedHashtags([]);
+      toast({ title: "Draft saved", variant: "success" });
+      fetchPosts();
+    } catch (err) {
+      toast({
+        title: "Network error",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
     }
   };
 
   const handlePublish = async (id: string) => {
-    await fetch(`/api/content/posts/${id}/publish`, { method: "POST" });
-    fetchPosts();
+    try {
+      const res = await fetch(`/api/content/posts/${id}/publish`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Publish failed",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        return;
+      }
+      toast({ title: "Post published", variant: "success" });
+      fetchPosts();
+    } catch (err) {
+      toast({
+        title: "Network error",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
+    }
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/content/posts/${id}`, { method: "DELETE" });
-    fetchPosts();
+    try {
+      const res = await fetch(`/api/content/posts/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Delete failed",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        return;
+      }
+      toast({ title: "Post deleted", variant: "success" });
+      fetchPosts();
+    } catch (err) {
+      toast({
+        title: "Network error",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#06050a]">
-      <div className="mx-auto max-w-5xl px-4 py-8">
-        {/* Nav */}
-        <nav className="flex items-center gap-1 mb-6 flex-wrap">
-          <a href="/leads/dashboard" className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors">Leads</a>
-          <span className="text-white/20">/</span>
-          <a href="/leads/dossier" className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors">Dossiers</a>
-          <span className="text-white/20">/</span>
-          <a href="/leads/clients" className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors">Clients</a>
-          <span className="text-white/20">/</span>
-          <a href="/leads/conversations" className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors">Conversations</a>
-          <span className="text-white/20">/</span>
-          <a href="/leads/sequences" className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors">Sequences</a>
-          <span className="text-white/20">/</span>
-          <span className="rounded-lg px-3 py-1.5 text-sm font-medium text-white bg-white/10">Content</span>
-          <span className="text-white/20">/</span>
-          <a
-            href="/markets"
-            className="rounded-lg px-3 py-1.5 text-sm text-cyan-300/70 hover:text-cyan-200 hover:bg-cyan-500/10 transition-colors"
-          >
-            Markets
-          </a>
-        </nav>
-
-        {/* Sub-nav for content sections */}
-        <div className="flex gap-2 mb-6">
+    <>
+      {/* Sub-nav for content sections */}
+      <div className="flex gap-2 mb-6">
           <span className="rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 px-3 py-1 text-xs font-medium">Hub</span>
           <a href="/leads/content/posts" className="rounded-lg bg-white/5 text-white/40 px-3 py-1 text-xs hover:text-white/60 transition-colors">Posts</a>
           <a href="/leads/content/templates" className="rounded-lg bg-white/5 text-white/40 px-3 py-1 text-xs hover:text-white/60 transition-colors">Templates</a>
@@ -179,7 +234,6 @@ export default function ContentHubPage() {
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </>
   );
 }

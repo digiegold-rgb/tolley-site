@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { VIDEO_TIERS, type VideoTier } from "@/lib/video";
+import { VideoSpeedChips } from "@/components/ui/VideoSpeedChips";
 
 type Status = "idle" | "queued" | "generating" | "done" | "error";
 
@@ -9,6 +10,9 @@ interface ClarifyState {
   reason: string;
   message: string;
 }
+
+interface CritiqueIssue { type: string; severity: "minor" | "moderate" | "major"; description: string; }
+interface CritiqueResult { score: number; issues: CritiqueIssue[]; strengths: string[]; improvedPrompt: string; shouldRegenerate: boolean; summary: string; }
 
 export function VideoGenerator() {
   const [prompt, setPrompt] = useState("");
@@ -23,8 +27,24 @@ export function VideoGenerator() {
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [critique, setCritique] = useState<CritiqueResult | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const resultVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  async function runCritique(url: string) {
+    setReviewing(true); setCritique(null);
+    try {
+      const res = await fetch("/api/video/critique", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: url, originalPrompt: prompt, type: "video" }),
+      });
+      if (res.ok) setCritique(await res.json());
+    } catch { /* ignore */ }
+    finally { setReviewing(false); }
+  }
 
   const selectedTier = VIDEO_TIERS.find((t) => t.id === tier)!;
 
@@ -424,6 +444,7 @@ export function VideoGenerator() {
               Video ready!
             </p>
             <video
+              ref={resultVideoRef}
               src={resultUrl}
               controls
               autoPlay
@@ -431,26 +452,67 @@ export function VideoGenerator() {
               muted={!selectedTier.hasAudio}
               className="w-full max-w-lg rounded-lg border border-slate-700"
             />
-            <a
-              href={resultUrl}
-              download
-              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2 text-sm font-bold text-green-300 transition hover:bg-green-500/20"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
+            <VideoSpeedChips
+              videoRef={resultVideoRef}
+              className="mt-2 max-w-lg justify-end"
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <a
+                href={resultUrl}
+                download
+                className="inline-flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2 text-sm font-bold text-green-300 transition hover:bg-green-500/20"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
-                />
-              </svg>
-              Download MP4
-            </a>
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                Download MP4
+              </a>
+              {!critique && (
+                <button
+                  disabled={reviewing}
+                  onClick={() => runCritique(resultUrl)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm font-bold text-amber-300 transition hover:bg-amber-500/20 disabled:opacity-50"
+                >
+                  {reviewing ? "Reviewing..." : "AI Review"}
+                </button>
+              )}
+            </div>
+            {critique && (
+              <div className="mt-4 rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-left">
+                <div className="mb-3 flex items-center gap-3">
+                  <span className={`rounded-lg px-3 py-1 text-lg font-bold ${critique.score >= 7 ? "bg-green-500/20 text-green-400" : critique.score >= 4 ? "bg-amber-500/20 text-amber-400" : "bg-red-500/20 text-red-400"}`}>
+                    {critique.score}/10
+                  </span>
+                  <span className="text-sm text-slate-300">{critique.summary}</span>
+                </div>
+                {critique.issues.length > 0 && (
+                  <div className="mb-3">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Issues</p>
+                    {critique.issues.map((issue, i) => (
+                      <div key={i} className="flex items-start gap-2 border-b border-slate-700/50 py-2 text-xs last:border-b-0">
+                        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ${issue.severity === "major" ? "bg-red-500/20 text-red-400" : issue.severity === "moderate" ? "bg-orange-500/20 text-orange-400" : "bg-amber-500/20 text-amber-400"}`}>{issue.severity}</span>
+                        <span className="shrink-0 font-semibold text-purple-400">{issue.type}</span>
+                        <span className="text-slate-300">{issue.description}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {critique.strengths.length > 0 && (
+                  <div className="mb-3">
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Strengths</p>
+                    {critique.strengths.map((s, i) => <p key={i} className="text-xs text-green-400">{s}</p>)}
+                  </div>
+                )}
+                {critique.shouldRegenerate && critique.improvedPrompt && (
+                  <button
+                    onClick={() => { setPrompt(critique.improvedPrompt); setCritique(null); setStatus("idle"); setResultUrl(null); }}
+                    className="mt-2 w-full rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:brightness-110"
+                  >
+                    Apply Fix & Try Again
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 

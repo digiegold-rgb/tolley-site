@@ -59,6 +59,7 @@ export default function ScanDashboard({
     products: `${periodStats.products.alerts} alerts / ${periodStats.products.oosCount} OOS`,
     unclaimed: `${formatCurrency(periodStats.unclaimed.totalFound)} found`,
     markets: `${periodStats.markets.signals} signals / ${periodStats.markets.sentiment}`,
+    pricing: `${periodStats.pricing.productsScanned} scanned / ${periodStats.pricing.matchesFound} matches`,
   };
 
   // Build detail stats for scanner detail view
@@ -87,6 +88,11 @@ export default function ScanDashboard({
       active_signals: periodStats.markets.signals,
       sentiment: periodStats.markets.sentiment,
       data_points: 0,
+    },
+    pricing: {
+      products_scanned: periodStats.pricing.productsScanned,
+      matches_found: periodStats.pricing.matchesFound,
+      coverage: 0,
     },
   };
 

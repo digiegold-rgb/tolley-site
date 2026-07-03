@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -9,7 +8,8 @@ import { categorize } from '@/lib/account/categorizer';
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdminApiSession();
+    const check = await requireAdminApiSession();
+    if (!check.ok) return check.response;
 
     const formData = await request.formData();
     const file = formData.get('file');

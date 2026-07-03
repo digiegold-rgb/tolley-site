@@ -5,7 +5,7 @@
  * the dossier pipeline. Returns the job ID for redirect to detail page.
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth as getSession } from "@/auth";
 import { runDossierPipeline } from "@/lib/dossier/pipeline";
@@ -138,10 +138,18 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Fire-and-forget: start processing in the background
-  // The pipeline updates job status in DB; the detail page polls for updates
-  runDossierPipeline(job.id).catch((err) => {
-    console.error(`[dossier-address] Pipeline failed for job ${job.id}:`, err);
+  // Run the pipeline *after* the response is sent via Next.js `after()` —
+  // plain fire-and-forget on Vercel gets killed the moment we return. The
+  // detail page polls the GET endpoint for live progress updates.
+  after(async () => {
+    try {
+      await runDossierPipeline(job.id);
+    } catch (err) {
+      console.error(
+        `[dossier-address] Pipeline failed for job ${job.id}:`,
+        err
+      );
+    }
   });
 
   return NextResponse.json({

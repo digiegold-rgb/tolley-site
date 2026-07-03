@@ -1,180 +1,207 @@
-import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import LeadsDashboard from "@/components/leads/LeadsDashboard";
+import { prisma } from "@/lib/prisma";
+import AddressSearch from "@/components/leads/AddressSearch";
+import ActivityTracker from "@/components/leads/ActivityTracker";
+import TodayQueueWidget from "@/components/leads/cockpit/TodayQueueWidget";
+import OverdueTasksWidget from "@/components/leads/cockpit/OverdueTasksWidget";
+import LastSyncBar from "@/components/leads/cockpit/LastSyncBar";
+import PipelineKpis from "@/components/leads/cockpit/PipelineKpis";
+import HotLeadsList from "@/components/leads/cockpit/HotLeadsList";
+import QuickActionsGrid from "@/components/leads/cockpit/QuickActionsGrid";
+import AiChatPane from "@/components/leads/cockpit/AiChatPane";
+import SnapDropZone from "@/components/leads/cockpit/SnapDropZone";
 
-export const revalidate = 300;
+export const revalidate = 60;
 
 /**
- * /leads?key=SYNC_SECRET
+ * /leads — Cockpit landing (Phase 3).
  *
- * Auth via query param. Bookmark the full URL for quick access.
- * Falls back to shop admin cookie if no key provided.
+ * Replaces both the old pipeline-as-home and the 8-section kitchen-sink at
+ * /leads/dashboard. Three-column layout:
+ *   Left  — Today queue, Overdue tasks, Recent activity
+ *   Mid   — AI co-pilot, Snap drop zone, address search
+ *   Right — Pipeline KPIs, Hot leads, Quick actions
  */
-export default async function LeadsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ key?: string }>;
-}) {
-  const params = await searchParams;
-  const syncSecret = process.env.SYNC_SECRET;
-  const keyMatch = syncSecret && params.key === syncSecret;
+export default async function CockpitPage() {
+  const session = await auth();
+  const userId = session?.user?.id;
 
-  if (!keyMatch) {
-    redirect("/?err=unauthorized");
+  if (!userId) {
+    redirect("/login?callbackUrl=/leads");
   }
 
-  const [leads, stats, lastSync, listingCount] = await Promise.all([
-    prisma.lead.findMany({
-      where: { score: { gte: 20 } },
-      include: {
-        listing: {
-          select: {
-            id: true,
-            mlsId: true,
-            address: true,
-            city: true,
-            zip: true,
-            listPrice: true,
-            originalListPrice: true,
-            daysOnMarket: true,
-            beds: true,
-            baths: true,
-            sqft: true,
-            status: true,
-            listingUrl: true,
-            photoUrls: true,
-            listAgentName: true,
-            listOfficeName: true,
-            propertyType: true,
-            enrichment: {
-              select: {
-                buyScore: true,
-                buyScoreFactors: true,
-                nearestSchoolName: true,
-                nearestSchoolDist: true,
-                schoolsWithin3mi: true,
-                nearestHospitalName: true,
-                nearestHospitalDist: true,
-                nearestFireStationDist: true,
-                nearestParkName: true,
-                nearestParkDist: true,
-                parksWithin2mi: true,
-                nearestGroceryName: true,
-                nearestGroceryDist: true,
-                nearestAirportName: true,
-                nearestAirportDist: true,
-                restaurantsWithin1mi: true,
-                nearestCourthouseName: true,
-                nearestCourthouseDist: true,
-                nearestLibraryName: true,
-                nearestLibraryDist: true,
-                librariesWithin3mi: true,
-                countyName: true,
-                countyState: true,
-                estimatedAnnualTax: true,
-                estimatedMonthlyTax: true,
-                effectiveTaxRate: true,
-                taxBurdenRating: true,
-              },
+  const sub = await prisma.leadSubscriber.findUnique({
+    where: { userId },
+  });
+  if (!sub || sub.status !== "active") redirect("/leads/pricing");
+  if (!sub.onboarded) redirect("/leads/onboard");
+
+  // Gather all Cockpit data in a single Promise.all
+  const [hotLeads, statusCounts, overdueTasks, lastSync, listingCount, leadCount] =
+    await Promise.all([
+      prisma.lead.findMany({
+        where: {
+          score: { gte: 50 },
+          ...(sub.farmZips.length > 0
+            ? { listing: { zip: { in: sub.farmZips } } }
+            : {}),
+        },
+        include: {
+          listing: {
+            select: {
+              address: true,
+              city: true,
+              listPrice: true,
+              originalListPrice: true,
+              daysOnMarket: true,
             },
           },
         },
-      },
-      orderBy: [{ score: "desc" }, { createdAt: "desc" }],
-      take: 100,
-    }),
-    prisma.lead.groupBy({
-      by: ["status"],
-      _count: { id: true },
-      _sum: { referralFee: true },
-    }),
-    prisma.syncLog.findFirst({
-      where: { source: "mls_grid" },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.listing.count(),
-  ]);
+        orderBy: [{ score: "desc" }, { updatedAt: "desc" }],
+        take: 10,
+      }),
+      prisma.lead.groupBy({
+        by: ["status"],
+        where:
+          sub.farmZips.length > 0
+            ? { listing: { zip: { in: sub.farmZips } } }
+            : {},
+        _count: { id: true },
+      }),
+      prisma.crmTask.findMany({
+        where: {
+          subscriberId: sub.id,
+          status: "pending",
+          dueDate: { lt: new Date() },
+        },
+        orderBy: { dueDate: "asc" },
+        take: 10,
+      }),
+      prisma.syncLog.findFirst({
+        where: { source: "mls_grid" },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.listing.count(),
+      prisma.lead.count({
+        where: { score: { gte: 20 } },
+      }),
+    ]);
 
-  const serialized = leads.map((l) => ({
-    ...l,
-    createdAt: l.createdAt.toISOString(),
-    updatedAt: l.updatedAt.toISOString(),
-    contactedAt: l.contactedAt?.toISOString() ?? null,
-    closedAt: l.closedAt?.toISOString() ?? null,
+  // Shape data for widgets
+  const todayLeads = hotLeads.slice(0, 6).map((l) => {
+    const priceDropPct =
+      l.listing?.listPrice && l.listing?.originalListPrice
+        ? ((l.listing.originalListPrice - l.listing.listPrice) /
+            l.listing.originalListPrice) *
+          100
+        : null;
+    return {
+      id: l.id,
+      score: l.score,
+      status: l.status,
+      address: l.listing?.address ?? "(no address)",
+      city: l.listing?.city ?? null,
+      priceDropPct,
+      daysOnMarket: l.listing?.daysOnMarket ?? null,
+    };
+  });
+
+  const topHot = hotLeads.slice(0, 5).map((l) => ({
+    id: l.id,
+    score: l.score,
+    address: l.listing?.address ?? "(no address)",
+    city: l.listing?.city ?? null,
+    listPrice: l.listing?.listPrice ?? null,
+  }));
+
+  const kpiTiles = [
+    {
+      label: "new",
+      value: statusCounts.find((s) => s.status === "new")?._count.id ?? 0,
+    },
+    {
+      label: "contacted",
+      value: statusCounts.find((s) => s.status === "contacted")?._count.id ?? 0,
+      tone: "warning" as const,
+    },
+    {
+      label: "interested",
+      value: statusCounts.find((s) => s.status === "interested")?._count.id ?? 0,
+      tone: "good" as const,
+    },
+    {
+      label: "closed",
+      value: statusCounts.find((s) => s.status === "closed")?._count.id ?? 0,
+      tone: "good" as const,
+    },
+  ];
+
+  const serializedTasks = overdueTasks.map((t) => ({
+    id: t.id,
+    title: t.title,
+    dueDate: t.dueDate?.toISOString() ?? null,
+    priority: t.priority,
+    leadId: t.leadId,
   }));
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-2xl font-bold text-white">T-Agent Leads</h1>
-        <div className="flex gap-3">
-          <a
-            href="/leads/crm"
-            className="rounded-lg bg-orange-600/30 text-orange-300 px-4 py-2 text-sm hover:bg-orange-600/50"
-          >
-            CRM Board
-          </a>
-          <a
-            href={`/leads/dossier?key=${params.key}`}
-            className="rounded-lg bg-purple-600/30 text-purple-300 px-4 py-2 text-sm hover:bg-purple-600/50"
-          >
-            Dossiers
-          </a>
-          <a
-            href={`/leads/conversations?key=${params.key}`}
-            className="rounded-lg bg-white/10 px-4 py-2 text-sm text-white/60 hover:bg-white/20"
-          >
-            Conversations
-          </a>
-        </div>
-      </div>
+    <div className="relative space-y-5">
+      {/* Fresh pastel mesh — sits behind the cockpit, softens the dark shell */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -inset-x-6 -top-10 -z-10 h-[520px] opacity-70"
+        style={{
+          background:
+            "radial-gradient(60% 55% at 8% 10%, rgba(94,234,212,0.22) 0%, transparent 60%), radial-gradient(55% 60% at 92% 0%, rgba(196,181,253,0.22) 0%, transparent 60%), radial-gradient(45% 50% at 50% 80%, rgba(253,186,116,0.18) 0%, transparent 65%), radial-gradient(40% 45% at 30% 100%, rgba(125,211,252,0.18) 0%, transparent 65%)",
+          filter: "blur(24px)",
+        }}
+      />
 
-      {/* Sync info */}
-      <div className="flex flex-wrap gap-4 text-sm text-white/40 mb-6">
-        <span>
-          Last sync:{" "}
-          {lastSync
-            ? new Date(lastSync.createdAt).toLocaleString()
-            : "Never"}
-        </span>
-        <span>{listingCount.toLocaleString()} total listings</span>
-        {lastSync && (
-          <span>
-            {lastSync.recordsNew} new | {lastSync.error ? `Error: ${lastSync.error}` : "OK"}
-          </span>
-        )}
-      </div>
-
-      {/* Pipeline stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-        {stats.map((s) => (
-          <div
-            key={s.status}
-            className="rounded-lg bg-white/5 p-4 text-center"
-          >
-            <div className="text-2xl font-bold text-white">
-              {s._count.id}
-            </div>
-            <div className="text-xs text-white/50 capitalize">{s.status}</div>
-            {s._sum.referralFee ? (
-              <div className="text-xs text-green-400 mt-1">
-                ${s._sum.referralFee.toLocaleString()}
-              </div>
-            ) : null}
-          </div>
-        ))}
-      </div>
-
-      {leads.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-white/50 text-lg">No leads yet</p>
-          <p className="text-white/30 text-sm mt-2">
-            Run a sync first: POST /api/leads/sync?mode=active
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="bg-gradient-to-r from-white via-sky-100 to-violet-200 bg-clip-text text-3xl font-semibold tracking-tight text-transparent">
+            Cockpit
+          </h1>
+          <p className="mt-1 text-xs text-white/60">
+            Your command center ·{" "}
+            <span className="text-emerald-300">{sub.farmZips.length} zips</span>{" "}
+            ·{" "}
+            <span className="text-violet-300 capitalize">{sub.tier} tier</span>
           </p>
         </div>
-      )}
+        <LastSyncBar
+          lastSyncAt={lastSync?.createdAt.toISOString() ?? null}
+          listingCount={listingCount}
+          leadCount={leadCount}
+        />
+      </div>
 
-      <LeadsDashboard leads={serialized} />
+      <div className="grid gap-5 lg:grid-cols-12">
+        {/* Left column */}
+        <div className="space-y-5 lg:col-span-4">
+          <TodayQueueWidget
+            leads={todayLeads}
+            subtitle={`Top ${todayLeads.length} hot leads`}
+          />
+          <OverdueTasksWidget tasks={serializedTasks} />
+          <ActivityTracker />
+        </div>
+
+        {/* Middle column */}
+        <div className="space-y-5 lg:col-span-5">
+          <AiChatPane />
+          <SnapDropZone />
+          <AddressSearch />
+        </div>
+
+        {/* Right column */}
+        <div className="space-y-5 lg:col-span-3">
+          <PipelineKpis tiles={kpiTiles} />
+          <HotLeadsList leads={topHot} />
+          <QuickActionsGrid />
+        </div>
+      </div>
     </div>
   );
 }

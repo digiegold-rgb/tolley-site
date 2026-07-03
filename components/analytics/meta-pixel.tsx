@@ -2,7 +2,10 @@
 
 import Script from "next/script";
 
-const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+// .trim() defends against a stray trailing newline/space in the env var — without it
+// the value lands inside a JS string literal in the inline <Script> below and throws
+// "appendChild ... Invalid or unexpected token", killing the pixel on every page.
+const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim();
 
 /** Meta (Facebook) Pixel — only renders when NEXT_PUBLIC_META_PIXEL_ID is set */
 export function MetaPixel() {

@@ -1,7 +1,13 @@
 import { NextRequest } from "next/server";
 
-const LLM_URL = process.env.LLM_ENDPOINT || "https://vllm.tolley.io/v1/chat/completions";
-const LLM_MODEL = "Qwen/Qwen3.5-35B-A3B-FP8";
+// Public service-page chat. Env-driven so the model can be flipped per env
+// (Qwen3.5 default, Qwen3.6 opt-in via LLM_PUBLIC_CHAT_MODEL=Qwen/Qwen3.6-27B,
+// or any LiteLLM model). LLM_ENDPOINT kept for backward compat.
+const LLM_URL =
+  process.env.LLM_PUBLIC_CHAT_URL ||
+  process.env.LLM_ENDPOINT ||
+  "https://vllm.tolley.io/v1/chat/completions";
+const LLM_MODEL = process.env.LLM_PUBLIC_CHAT_MODEL || "Qwen/Qwen3.5-35B-A3B-FP8";
 
 const RATE_LIMIT_MAP = new Map<string, { count: number; reset: number }>();
 const MAX_PER_MIN = 10;

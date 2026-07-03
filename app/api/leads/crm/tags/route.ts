@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -29,7 +28,7 @@ export async function GET() {
       where: { subscriberId: sub.id },
       orderBy: { name: "asc" },
       include: {
-        _count: { select: { contacts: true } },
+        _count: { select: { ContactTag: true } },
       },
     });
 

@@ -6,7 +6,8 @@ import { getNextInvoiceNumber } from '@/lib/account/invoice-number';
 
 export async function GET() {
   try {
-    await requireAdminApiSession();
+    const check = await requireAdminApiSession();
+    if (!check.ok) return check.response;
 
     const number = await getNextInvoiceNumber();
     return NextResponse.json({ number });

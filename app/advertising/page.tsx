@@ -102,8 +102,9 @@ const WORKFLOW_STEPS = [
 
 export default function AdvertisingPage() {
   return (
-    <div className="min-h-screen bg-[#06050a]">
-      <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
+    <div className="relative min-h-screen bg-[#06050a]">
+      <div aria-hidden="true" className="hp-dot-grid pointer-events-none fixed inset-0 z-0" />
+      <div className="relative z-10 mx-auto max-w-6xl px-5 py-10 sm:px-8">
         {/* Nav */}
         <nav className="mb-10 flex items-center justify-between">
           <div className="flex items-center gap-3">

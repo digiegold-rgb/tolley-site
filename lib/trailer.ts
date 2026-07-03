@@ -1,8 +1,13 @@
 export const TR_CONTACT_PHONE = "913-283-3826";
 export const TR_CONTACT_EMAIL = "Jared@yourkchomes.com";
-export const TR_FACEBOOK_URL = "https://www.facebook.com/share/18HRnGFpCc/?mibextid=wwXIfr";
+export const TR_FACEBOOK_URL = "https://www.facebook.com/marketplace/item/1944162059646045/";
 export const TR_BRAND = "Trailer Rental";
 export const TR_COMPANY = "Your KC Homes LLC";
+
+export const TR_STRIPE_20FT_URL = "https://buy.stripe.com/eVq8wIeYm5RJdiu9RR18c0d";
+export const TR_STRIPE_18FT_URL = "https://buy.stripe.com/3cI8wIg2qdkb4LY6FF18c0e";
+export const TR_STRIPE_16FT_URL = "https://buy.stripe.com/6oUfZaeYm5RJ6U67JJ18c0f";
+export const TR_STRIPE_CAR_HAULER_URL = "https://buy.stripe.com/28EbIU6rQ3JB6U64xx18c0g";
 
 export const TR_TRAILERS = [
   {
@@ -10,7 +15,7 @@ export const TR_TRAILERS = [
     size: "20 ft",
     capacity: "7,000 lbs",
     axles: "Dual Axle",
-    pricing: { day: 98, week: 280, month: 840 },
+    pricing: { day: 98, week: 294, month: 998 },
     features: [
       "Detachable car ramps",
       "Wood deck floor",
@@ -26,14 +31,14 @@ export const TR_TRAILERS = [
       "/trailer/20/20-5.jpg",
       "/trailer/20/20-7.jpg",
     ],
-    facebookUrl: "https://www.facebook.com/share/18HRnGFpCc/?mibextid=wwXIfr",
+    facebookUrl: "https://www.facebook.com/marketplace/item/1944162059646045/",
   },
   {
     name: "18ft Dual Axle Utility",
     size: "18 ft",
     capacity: "7,000 lbs",
     axles: "Dual Axle",
-    pricing: { day: 98, week: 280, month: 840 },
+    pricing: { day: 98, week: 294, month: 998 },
     features: [
       "Detachable car ramps",
       "Wood deck floor",
@@ -50,7 +55,7 @@ export const TR_TRAILERS = [
       "/trailer/18/18-6.jpg",
       "/trailer/18/18-7.jpg",
     ],
-    facebookUrl: "https://www.facebook.com/share/1BgWyv6t1Q/?",
+    facebookUrl: "https://www.facebook.com/marketplace/item/1355273943436037/",
   },
   {
     name: "16ft Utility Trailer",

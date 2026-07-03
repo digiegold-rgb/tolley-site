@@ -20,7 +20,7 @@ export function MovingFooter() {
             </p>
           </div>
           <nav className="flex items-center gap-3 text-sm text-neutral-500">
-            <Link href="/trailer/terms" className="transition hover:text-emerald-400">
+            <Link href="/rental/terms" className="transition hover:text-emerald-400">
               Rental Terms
             </Link>
             <span className="text-neutral-700">|</span>

@@ -5,6 +5,7 @@ import Script from "next/script";
 
 type LineItem = { description: string; quantity: number; unitAmount: number; lineAmount: number };
 type Payment = { amount: number; paidAt: string; method: string | null };
+type Attachment = { id: string; fileName: string; mimeType: string; size: number; blobUrl: string };
 
 type InvoiceData = {
   invoiceNumber: string;
@@ -21,7 +22,20 @@ type InvoiceData = {
   stripePaymentLinkUrl: string | null;
   lineItems: LineItem[];
   payments: Payment[];
+  attachments: Attachment[];
 };
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function fileKindIcon(mime: string): string {
+  if (mime.startsWith("image/")) return "🖼️";
+  if (mime === "application/pdf") return "📄";
+  return "📎";
+}
 
 const PAY_API = process.env.NEXT_PUBLIC_PAY_API || "https://pay-api.tolley.io";
 
@@ -174,6 +188,47 @@ export default function PayClient({ invoice }: { invoice: InvoiceData }) {
           )}
         </div>
 
+        {invoice.attachments.length > 0 && (
+          <div className="rounded-2xl border border-white/14 bg-white/[0.03] p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-white/80">Supporting Documents</h2>
+              <span className="text-[0.65rem] text-white/40">
+                {invoice.attachments.length} file{invoice.attachments.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            <p className="text-xs text-white/40 mb-3">
+              These documents detail what you&apos;re paying for. Click to view or download.
+            </p>
+            <ul className="divide-y divide-white/[0.08]">
+              {invoice.attachments.map((a) => (
+                <li key={a.id} className="flex items-center gap-3 py-2.5">
+                  <span className="text-lg" aria-hidden="true">{fileKindIcon(a.mimeType)}</span>
+                  <div className="min-w-0 flex-1">
+                    <a
+                      href={a.blobUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm text-white hover:text-cyan-400 truncate block"
+                      title={a.fileName}
+                    >
+                      {a.fileName}
+                    </a>
+                    <p className="text-[11px] text-white/40">{formatBytes(a.size)}</p>
+                  </div>
+                  <a
+                    href={a.blobUrl}
+                    download={a.fileName}
+                    className="text-xs text-white/60 hover:text-white px-2 py-1 rounded bg-white/[0.06] hover:bg-white/[0.10] transition-colors"
+                    title="Download"
+                  >
+                    ↓
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* Payment buttons */}
         {!isPaid && (
           <div className="space-y-3">
@@ -183,7 +238,7 @@ export default function PayClient({ invoice }: { invoice: InvoiceData }) {
               disabled={achLoading || !plaidReady}
               className="w-full rounded-xl bg-green-600 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Pay by Bank (ACH) — Save ~2%
+              Pay by Bank (ACH)
             </button>
 
             {/* Card option */}
@@ -202,9 +257,6 @@ export default function PayClient({ invoice }: { invoice: InvoiceData }) {
               </p>
             )}
 
-            <p className="text-center text-[0.65rem] text-white/30">
-              ACH: 0.8% fee (capped at $5) | Card: 2.9% + $0.30
-            </p>
           </div>
         )}
 

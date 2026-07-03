@@ -2,11 +2,6 @@
  * Status, label, color, and pipeline-step constants for the vater/youtube
  * tubegen-quality rebuild. Mirrors the 15-value status flow defined in
  * `/home/jelly/.claude/plans/soft-coalescing-walrus.md`.
- *
- * NOTE for the UI agent: `ELEVENLABS_VOICES` is intentionally left as a
- * deprecated empty array so existing components compile until you replace it
- * with the live `/api/vater/voices` data. Remove it once `youtube-voice-picker`
- * has been switched to the new voice clone picker.
  */
 
 export const WORDS_PER_MINUTE = 150;
@@ -222,16 +217,25 @@ export const STYLE_PRESETS: StylePreset[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// DEPRECATED — TODO(ui-agent): replace with live data from `/api/vater/voices`
-// once the new voice clone panel ships. Kept here so existing components
-// (`youtube-voice-picker.tsx`) compile in the meantime.
+// Animation overlay types — mirror of Remotion OverlayCue (single source of
+// truth lives in content-autopilot/remotion/src/animations/types.ts).
+// These are used by the Next.js UI to type the scenesJson field.
 // ---------------------------------------------------------------------------
-export interface ElevenLabsVoice {
-  id: string;
-  name: string;
-  gender: "male" | "female" | "neutral";
-  accent: string;
+export interface SceneOverlayCue {
+  type: string;
+  trigger_offset_s?: number;
+  duration_s?: number;
+  position?: string | { x: string; y: string };
+  params?: Record<string, unknown>;
 }
 
-/** @deprecated UI agent will replace this with live voice clones from `/api/vater/voices`. */
-export const ELEVENLABS_VOICES: ElevenLabsVoice[] = [];
+export interface SceneWithOverlays {
+  idx: number;
+  beatText?: string;
+  startS?: number;
+  endS?: number;
+  imagePrompt?: string;
+  imageUrl?: string;
+  overlays?: SceneOverlayCue[];
+}
+

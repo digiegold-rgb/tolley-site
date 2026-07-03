@@ -21,6 +21,21 @@ type StyleWithRelations = YouTubeStyle & {
   customArtStyle: CustomArtStyle | null;
 };
 
+/**
+ * Pull the gender token from a character descriptor's first sentence.
+ * Descriptors are required to open with "A 2D cartoon [male|female|
+ * androgynous] character …" by the system prompt at vater.py:6029. We
+ * scan the first 200 chars to be tolerant of minor LLM variation.
+ */
+function parseGenderFromDescriptor(desc: string): string {
+  const head = desc.slice(0, 200).toLowerCase();
+  if (/\bandrogynous\b/.test(head)) return "androgynous";
+  if (/\bmale\b/.test(head) && !/\bfemale\b/.test(head)) return "male";
+  if (/\bfemale\b/.test(head) || /\b(woman|girl|lady)\b/.test(head)) return "female";
+  if (/\b(man|boy|gentleman)\b/.test(head)) return "male";
+  return "female";
+}
+
 type RefTranscript = {
   videoId?: string;
   url: string;
@@ -96,6 +111,9 @@ export function buildStyleSnapshot(style: StyleWithRelations): StyleSnapshot {
       imageUrl: c.imageUrl,
       permanent: c.permanent,
       placeInEveryImage: c.placeInEveryImage,
+      // Gender parsed at runtime from the descriptor's first sentence.
+      // Once the optional `gender` DB column is migrated, replace with c.gender.
+      gender: parseGenderFromDescriptor(c.description),
     })),
   };
 }

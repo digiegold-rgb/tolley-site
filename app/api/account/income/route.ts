@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApiSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
@@ -35,6 +34,10 @@ export async function GET(request: NextRequest) {
     where: {
       date: { gte: dateFrom, lte: dateTo },
       incomeSource: { not: null },
+      // Only count actual inbound money. A tagged incomeSource is not enough:
+      // purchases at marketplaces (Amazon, Uber, Walmart…) can carry a source
+      // tag too. RECEIVE = money in; SPEND = a purchase that must never inflate income.
+      type: "RECEIVE",
     },
     select: {
       incomeSource: true,

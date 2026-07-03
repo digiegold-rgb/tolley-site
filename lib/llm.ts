@@ -37,6 +37,7 @@ export async function chatCompletion(
   opts?: {
     maxTokens?: number;
     temperature?: number;
+    timeoutMs?: number;
     userId?: string;
     route?: string;
     type?: string;
@@ -74,7 +75,7 @@ export async function chatCompletion(
         max_tokens: opts?.maxTokens ?? 300,
         temperature: opts?.temperature ?? 0.7,
       }),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(opts?.timeoutMs ?? 30_000),
     });
 
     statusCode = res.status;

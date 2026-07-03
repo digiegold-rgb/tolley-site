@@ -1,8 +1,17 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { JetBrains_Mono, Sora } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AuthSessionProvider } from "@/components/providers/auth-session-provider";
+import { GA4 } from "@/components/analytics/ga4";
+import { MetaPixel } from "@/components/analytics/meta-pixel";
+import { MainSiteTracker } from "@/components/analytics/main-site-tracker";
+import { AgentDiscovery } from "@/components/agent/AgentDiscovery";
+import { VideoSpeedKeybinds } from "@/components/ui/VideoSpeedKeybinds";
+import {
+  StructuredData,
+  organizationSchema,
+  websiteSchema,
+} from "@/components/seo/structured-data";
 import "./globals.css";
 
 const sora = Sora({
@@ -29,64 +38,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <StructuredData data={organizationSchema} id="ld-organization" />
+        <StructuredData data={websiteSchema} id="ld-website" />
+      </head>
       <body className={`${sora.variable} ${jetBrainsMono.variable} antialiased`}>
         <AuthSessionProvider>
           {children}
+          <MainSiteTracker />
+          <AgentDiscovery />
+          <VideoSpeedKeybinds />
+          <GA4 />
+          <MetaPixel />
           <SpeedInsights />
-          <footer className="site-legal-footer fixed inset-x-0 bottom-4 z-40 flex items-center justify-center px-4">
-            <nav
-              aria-label="Legal links"
-              className="rounded-full border border-white/18 bg-black/35 px-4 py-2 backdrop-blur-xl"
-            >
-              <ul className="flex items-center gap-4 text-[0.7rem] tracking-[0.08em] text-white/72 uppercase">
-                <li>
-                  <Link className="transition hover:text-white" href="/privacy">
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li aria-hidden="true" className="text-white/45">
-                  |
-                </li>
-                <li>
-                  <Link className="transition hover:text-white" href="/terms">
-                    Terms &amp; Conditions
-                  </Link>
-                </li>
-                <li aria-hidden="true" className="text-white/45">
-                  |
-                </li>
-                <li>
-                  <Link className="transition hover:text-white" href="/wd">
-                    Wash &amp; Dry Rental
-                  </Link>
-                </li>
-                <li aria-hidden="true" className="text-white/45">
-                  |
-                </li>
-                <li>
-                  <Link className="transition hover:text-white" href="/trailer">
-                    Trailer Rental
-                  </Link>
-                </li>
-                <li aria-hidden="true" className="text-white/45">
-                  |
-                </li>
-                <li>
-                  <Link className="transition hover:text-white" href="/generator">
-                    Generator Rental
-                  </Link>
-                </li>
-                <li aria-hidden="true" className="text-white/45">
-                  |
-                </li>
-                <li>
-                  <Link className="transition hover:text-white" href="/pools">
-                    Pool Supplies
-                  </Link>
-                </li>
-              </ul>
-            </nav>
-          </footer>
         </AuthSessionProvider>
       </body>
     </html>

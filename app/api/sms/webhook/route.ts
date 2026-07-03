@@ -8,6 +8,8 @@ import {
   LEGAL_OPT_IN_MESSAGE,
 } from "@/lib/legal";
 import { incrementActivity } from "@/lib/activity-log";
+import { createWdDraft } from "@/lib/wd/messaging";
+import { buildWdAiReply } from "@/lib/wd/ai-reply";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -87,6 +89,46 @@ export async function POST(request: NextRequest) {
   }
 
   const isOptIn = LEGAL_OPT_IN_KEYWORDS.some((kw) => upperBody === kw);
+
+  // ── W/D rental customer? Route to the rental responder. ──
+  // Match the inbound number against a WdClient (last 10 digits). If it's a
+  // rental customer, we store the inbound + draft an AI reply grounded in their
+  // Stripe status for 1-click approve-send in /wd/admin (no auto-reply).
+  const fromDigits = from.replace(/\D/g, "").slice(-10);
+  if (fromDigits.length === 10) {
+    const wdClient = await prisma.wdClient.findFirst({
+      where: { active: true, phone: { contains: fromDigits.slice(-7) } },
+    });
+    // Guard against false matches on the 7-digit contains by confirming full 10.
+    if (wdClient && wdClient.phone && wdClient.phone.replace(/\D/g, "").slice(-10) === fromDigits) {
+      try {
+        await createWdDraft({
+          clientId: wdClient.id,
+          phone: from,
+          channel: "sms",
+          kind: "inbound",
+          direction: "inbound",
+          status: "received",
+          body,
+        });
+        const reply = await buildWdAiReply(wdClient, body);
+        await createWdDraft({
+          clientId: wdClient.id,
+          phone: from,
+          channel: "sms",
+          kind: "ai_reply",
+          direction: "outbound",
+          status: "draft",
+          aiGenerated: reply.aiGenerated,
+          body: reply.text,
+        });
+      } catch (err) {
+        console.error("[wd] inbound SMS handling failed", err);
+      }
+      // approve-send mode: no auto-reply; Tolley sends from /wd/admin.
+      return twimlResponse();
+    }
+  }
 
   // Find or create conversation
   let conversation = await prisma.smsConversation.findFirst({

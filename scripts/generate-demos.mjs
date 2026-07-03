@@ -81,7 +81,7 @@ const taken = new Set(
 
 // Top prospects still waiting on a demo. demoUrl=null makes this idempotent.
 const leads = await prisma.growthLead.findMany({
-  where: { offer, stage: "scraped", demoUrl: null },
+  where: { offer, stage: { in: ["scraped", "enriched"] }, demoUrl: null },
   orderBy: [{ score: "desc" }, { reviews: "desc" }, { createdAt: "asc" }],
   take: top,
 });

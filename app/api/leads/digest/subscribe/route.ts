@@ -18,11 +18,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
+import { notifyTelegram } from "@/lib/budget/notify";
 import {
   DIGEST_PRODUCT_METADATA,
   getDigestFoundingPrice,
 } from "@/lib/digest-subscription";
 import { coverageSummary, isCoveredZip } from "@/lib/leads/digest-coverage";
+import { verifyLicense, type LicenseState } from "@/lib/leads/license-verify";
 
 export const runtime = "nodejs";
 
@@ -33,6 +35,8 @@ interface SubscribeBody {
   name?: unknown;
   email?: unknown;
   farmZips?: unknown;
+  licenseState?: unknown;
+  licenseNumber?: unknown;
 }
 
 export async function POST(request: NextRequest) {
@@ -80,6 +84,37 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // License check — re-verified server-side so a direct POST can't skip the
+  // form's verification step. MO is checked live against the state registry;
+  // KS (and registry outages) fall through to manual review, which still
+  // proceeds to checkout — the 3-day trial covers us until a human verifies.
+  const licenseState =
+    body.licenseState === "MO" || body.licenseState === "KS"
+      ? (body.licenseState as LicenseState)
+      : null;
+  const licenseNumber =
+    typeof body.licenseNumber === "string" ? body.licenseNumber.trim().slice(0, 30) : "";
+  if (!licenseState || !licenseNumber) {
+    return NextResponse.json(
+      { error: "A Missouri or Kansas real estate license is required" },
+      { status: 400 }
+    );
+  }
+  const license = await verifyLicense(licenseState, licenseNumber);
+  if (license.status === "invalid") {
+    return NextResponse.json(
+      { error: license.reason ?? "We couldn't find an active license for that number" },
+      { status: 400 }
+    );
+  }
+  if (license.status === "manual_review") {
+    const tg = await notifyTelegram(
+      `🪪 Digest signup needs license review: ${name} (${email}) — ${licenseState} #${licenseNumber}` +
+        `\nApprove/reject in HQ → https://www.tolley.io/hq (Approvals tab)`
+    );
+    if (!tg.ok) console.warn("[digest/subscribe] license-review telegram failed:", tg.error);
+  }
+
   // Upsert by email. New signups start pending (the webhook activates them);
   // a returning agent who is already active just gets told so — never a
   // second Stripe subscription.
@@ -92,14 +127,20 @@ export async function POST(request: NextRequest) {
     if (existing && (existing.status === "active" || existing.status === "trial")) {
       return NextResponse.json({ alreadySubscribed: true });
     }
+    const licenseFields = {
+      licenseState,
+      licenseNumber,
+      licenseStatus: license.status,
+      licenseeName: license.licenseeName ?? null,
+    };
     subscriber = existing
       ? await prisma.digestSubscriber.update({
           where: { id: existing.id },
-          data: { name, farmZips },
+          data: { name, farmZips, ...licenseFields },
           select: { id: true, status: true },
         })
       : await prisma.digestSubscriber.create({
-          data: { name, email, farmZips, status: "pending" },
+          data: { name, email, farmZips, status: "pending", ...licenseFields },
           select: { id: true, status: true },
         });
   } catch (err) {
@@ -123,7 +164,7 @@ export async function POST(request: NextRequest) {
       line_items: [{ price: getDigestFoundingPrice(), quantity: 1 }],
       customer_email: email,
       metadata: meta,
-      subscription_data: { metadata: meta },
+      subscription_data: { metadata: meta, trial_period_days: 3 },
       billing_address_collection: "auto",
       allow_promotion_codes: false,
       success_url: `${origin}/leads/digest/welcome?session_id={CHECKOUT_SESSION_ID}`,

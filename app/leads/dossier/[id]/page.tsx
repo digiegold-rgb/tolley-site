@@ -3,7 +3,9 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import DossierView from "@/components/leads/DossierView";
 
-export const revalidate = 300;
+// Always fetch fresh — the client polls the GET API for live progress, but
+// the initial SSR render must reflect current pipeline state.
+export const revalidate = 0;
 
 export default async function DossierDetailPage({
   params,
@@ -16,7 +18,6 @@ export default async function DossierDetailPage({
   const { key } = await searchParams;
   const hasKeyAuth = key === process.env.SYNC_SECRET;
 
-  // Accept either sync key OR session auth
   if (!hasKeyAuth) {
     const session = await auth();
     if (!session?.user?.id) {
@@ -39,7 +40,6 @@ export default async function DossierDetailPage({
 
   if (!job) redirect("/leads/dossier");
 
-  // Serialize dates for client component
   const serializedJob = {
     ...job,
     createdAt: job.createdAt.toISOString(),
@@ -49,18 +49,16 @@ export default async function DossierDetailPage({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0a0a1a] to-[#1a1a2e] text-white">
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        <a
-          href="/leads/dossier"
-          className="text-sm text-blue-400 hover:underline mb-4 inline-block"
-        >
-          &larr; Back to dossiers
-        </a>
+    <>
+      <a
+        href="/leads/dossier"
+        className="text-sm text-blue-400 hover:underline mb-4 inline-block"
+      >
+        &larr; Back to dossiers
+      </a>
 
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <DossierView job={serializedJob as any} syncKey={key || ""} />
-      </div>
-    </div>
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      <DossierView job={serializedJob as any} syncKey={key || ""} />
+    </>
   );
 }

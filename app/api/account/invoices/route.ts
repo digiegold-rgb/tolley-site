@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -8,15 +7,22 @@ import { getNextInvoiceNumber } from '@/lib/account/invoice-number';
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdminApiSession();
+    const check = await requireAdminApiSession();
+    if (!check.ok) return check.response;
 
     const { searchParams } = request.nextUrl;
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)));
     const status = searchParams.get('status');
 
+    // Default: hide VOID rows from "All" — user wants voids gone, not lingering.
+    // Only show VOIDs if explicitly filtered to them (?status=VOID).
     const where: Record<string, unknown> = {};
-    if (status) where.status = status;
+    if (status) {
+      where.status = status;
+    } else {
+      where.status = { not: 'VOID' };
+    }
 
     const [invoices, total] = await Promise.all([
       prisma.invoice.findMany({
@@ -45,20 +51,36 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdminApiSession();
+    const check = await requireAdminApiSession();
+    if (!check.ok) return check.response;
 
     const body = await request.json();
-    const { contactId, dueDate, reference, notes, lineItems } = body;
+    const { contactId, dueDate, reference, notes, lineItems, invoiceNumber: overrideNumber } = body;
 
     if (!lineItems || !Array.isArray(lineItems) || lineItems.length === 0) {
       return NextResponse.json({ error: 'At least one line item is required' }, { status: 400 });
     }
 
-    const invoiceNumber = await getNextInvoiceNumber();
+    let invoiceNumber: string;
+    if (typeof overrideNumber === 'string' && overrideNumber.trim()) {
+      invoiceNumber = overrideNumber.trim();
+      const collide = await prisma.invoice.findUnique({
+        where: { invoiceNumber },
+        select: { id: true },
+      });
+      if (collide) {
+        return NextResponse.json(
+          { error: `Invoice number "${invoiceNumber}" is already used.` },
+          { status: 409 },
+        );
+      }
+    } else {
+      invoiceNumber = await getNextInvoiceNumber();
+    }
 
     let subTotal = 0;
     const processedItems = lineItems.map(
-      (item: { description: string; quantity?: number; unitAmount: number; accountId?: string }) => {
+      (item: { description: string; quantity?: number; unitAmount: number; accountId?: string }, index: number) => {
         const qty = item.quantity || 1;
         const lineAmount = qty * item.unitAmount;
         subTotal += lineAmount;
@@ -68,6 +90,7 @@ export async function POST(request: NextRequest) {
           unitAmount: item.unitAmount,
           lineAmount,
           accountId: item.accountId || null,
+          sortOrder: index,
         };
       },
     );

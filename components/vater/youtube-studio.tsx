@@ -1,21 +1,26 @@
 "use client";
 
 /**
- * YouTube Studio shell. Three tabs:
+ * YouTube Studio shell. Five tabs:
  *   - Transcribe: manual URL + RSS panel + projects list
  *   - Topic: tubegen-style topic form + topic-mode projects list
  *   - Voices: voice clone management
+ *   - Styles: reusable style documents (voice + characters + art + refs)
+ *   - Library: completed videos
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { Tabs, TabList, TabTrigger, TabPanel } from "@/components/ui/Tabs";
+import { useToast } from "@/components/ui/Toast";
+import { YouTubeRssPanel } from "./youtube-rss-panel";
 import { YouTubeImportTracker } from "./youtube-import-tracker";
 import { YouTubeProjectCard } from "./youtube-project-card";
 import { YouTubeProjectDetail } from "./youtube-project-detail";
-import { YouTubeRssPanel } from "./youtube-rss-panel";
 import { YouTubeTopicForm } from "./youtube-topic-form";
 import { YouTubeVoiceClonePanel } from "./youtube-voice-clone-panel";
 import { YouTubeLibrary } from "./youtube-library";
+import { StylesGallery } from "./styles/StylesGallery";
+import { VaterObserverSidebar } from "./VaterObserverSidebar";
 
 interface YouTubeProject {
   id: string;
@@ -54,13 +59,16 @@ interface YouTubeProject {
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
+  editedAt: string | null;
   thumbnailUrl: string | null;
 }
 
 export function YouTubeStudio() {
+  const { toast } = useToast();
   const [projects, setProjects] = useState<YouTubeProject[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const activeProject = projects.find((p) => p.id === activeId) || null;
 
@@ -70,9 +78,16 @@ export function YouTubeStudio() {
       if (res.ok) {
         const data = await res.json();
         setProjects(data.projects || []);
+        setFetchError(null);
+      } else {
+        setFetchError(`Could not load projects (HTTP ${res.status}).`);
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      setFetchError(
+        err instanceof Error
+          ? `Could not load projects: ${err.message}`
+          : "Could not load projects — network error.",
+      );
     } finally {
       setLoading(false);
     }
@@ -94,9 +109,40 @@ export function YouTubeStudio() {
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/vater/youtube/${id}`, { method: "DELETE" });
+    // Confirm server delete BEFORE optimistically removing from the list. A
+    // 5xx here used to silently ghost-delete projects (they'd reappear on
+    // next fetch) which caused users to re-create duplicates.
+    try {
+      const res = await fetch(`/api/vater/youtube/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        toast({
+          title: "Delete failed",
+          description: `Server returned HTTP ${res.status}. Try again.`,
+          variant: "error",
+        });
+        return;
+      }
+    } catch (err) {
+      toast({
+        title: "Delete failed",
+        description:
+          err instanceof Error ? err.message : "Network error — try again.",
+        variant: "error",
+      });
+      return;
+    }
     setProjects((prev) => prev.filter((p) => p.id !== id));
     if (activeId === id) setActiveId(null);
+  };
+
+  // Fired after the compose-route call succeeds in the final player.
+  // Flip status to match what the compose route writes server-side, so the
+  // card leaves the Library tab immediately. The /poll route will flip it
+  // back to `ready` + bump completedAt once the DGX finishes.
+  const handleRecomposeStart = (id: string) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, status: "editing" } : p)),
+    );
   };
 
   const transcribeProjects = projects.filter(
@@ -107,34 +153,40 @@ export function YouTubeStudio() {
 
   return (
     <div>
+      <VaterObserverSidebar activeJobId={activeProject?.autopilotJobId ?? null} />
       <div className="mb-6 flex items-center justify-between">
         <h2 className="vater-neon text-2xl font-bold tracking-wide">
           Content Studio
         </h2>
-        <div className="flex items-center gap-3">
-          <a
-            href="/vater/youtube/styles"
-            className="rounded-md border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
-            title="Manage reusable Styles — voice, references, characters, visual defaults"
-          >
-            🎨 Styles
-          </a>
-          <a
-            href="/vater/youtube/custom-art-styles"
-            className="rounded-md border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
-            title="Manage custom art styles — upload reference images, get a hex-coded descriptor"
-          >
-            🖌️ Art Styles
-          </a>
+        <div className="flex items-center gap-2">
           <span className="vater-badge">{projects.length} projects</span>
         </div>
       </div>
+
+      {fetchError ? (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+          <span className="text-amber-200">{fetchError}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setLoading(true);
+              setFetchError(null);
+              fetchProjects();
+            }}
+            className="rounded bg-amber-500/20 px-3 py-1 font-semibold text-amber-100 hover:bg-amber-500/30"
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
 
       <Tabs defaultValue="transcribe" syncUrl="tab" className="space-y-6">
         <TabList>
           <TabTrigger value="transcribe">Transcribe</TabTrigger>
           <TabTrigger value="topic">Topic</TabTrigger>
           <TabTrigger value="voices">Voices</TabTrigger>
+          <TabTrigger value="styles">Styles</TabTrigger>
+          <TabTrigger value="feeds">Feeds</TabTrigger>
           <TabTrigger value="library">
             Library
             {libraryProjects.length > 0 && (
@@ -152,8 +204,6 @@ export function YouTubeStudio() {
             onCreated={handleCreated}
           />
 
-          <YouTubeRssPanel onProjectCreated={handleCreated} />
-
           <ProjectsAndDetail
             loading={loading}
             projects={projects}
@@ -162,7 +212,8 @@ export function YouTubeStudio() {
             onSelect={setActiveId}
             onDelete={handleDelete}
             onUpdate={handleProjectUpdate}
-            emptyMessage="No projects yet. Paste a YouTube URL or add an RSS feed."
+            onRecomposeStart={handleRecomposeStart}
+            emptyMessage="No projects yet. Paste a YouTube URL above, or add a source in the Feeds tab."
           />
         </TabPanel>
 
@@ -181,6 +232,7 @@ export function YouTubeStudio() {
             onSelect={setActiveId}
             onDelete={handleDelete}
             onUpdate={handleProjectUpdate}
+            onRecomposeStart={handleRecomposeStart}
             emptyMessage="No topic-mode projects yet. Use the form above."
             transcribeOnlyHint
           />
@@ -198,6 +250,16 @@ export function YouTubeStudio() {
           <YouTubeVoiceClonePanel mode="manage" />
         </TabPanel>
 
+        {/* ----- Styles tab ----- */}
+        <TabPanel value="styles" className="space-y-6">
+          <StylesTabContent />
+        </TabPanel>
+
+        {/* ----- Feeds tab ----- */}
+        <TabPanel value="feeds" className="space-y-6">
+          <YouTubeRssPanel onProjectCreated={handleCreated} />
+        </TabPanel>
+
         {/* ----- Library tab ----- */}
         <TabPanel value="library" className="space-y-6">
           <div className="max-w-2xl">
@@ -213,10 +275,60 @@ export function YouTubeStudio() {
             <YouTubeLibrary
               projects={libraryProjects}
               onDelete={handleDelete}
+              onRecomposeStart={handleRecomposeStart}
             />
           )}
         </TabPanel>
       </Tabs>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Styles tab — client-side wrapper around StylesGallery
+// ---------------------------------------------------------------------------
+
+function StylesTabContent() {
+  const [styles, setStyles] = useState<Parameters<typeof StylesGallery>[0]["styles"]>([]);
+  const [stylesLoading, setStylesLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const r = await fetch("/api/vater/youtube/styles");
+        if (!r.ok) return;
+        const data = await r.json();
+        if (active) setStyles(data.styles ?? []);
+      } catch {
+        // ignore
+      } finally {
+        if (active) setStylesLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  if (stylesLoading) {
+    return (
+      <div className="vater-card p-6 text-center text-sm text-zinc-500">
+        Loading styles…
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center gap-3">
+        <a
+          href="/vater/youtube/custom-art-styles"
+          className="rounded-md border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
+          title="Manage custom art styles — upload reference images"
+        >
+          🖌️ Custom Art Styles
+        </a>
+      </div>
+      <StylesGallery styles={styles} userId="client" />
     </div>
   );
 }
@@ -233,6 +345,7 @@ function ProjectsAndDetail({
   onSelect,
   onDelete,
   onUpdate,
+  onRecomposeStart,
   emptyMessage,
   transcribeOnlyHint,
 }: {
@@ -243,6 +356,7 @@ function ProjectsAndDetail({
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onUpdate: (project: YouTubeProject) => void;
+  onRecomposeStart?: (id: string) => void;
   emptyMessage: string;
   transcribeOnlyHint?: boolean;
 }) {
@@ -272,6 +386,8 @@ function ProjectsAndDetail({
                 stylePreset: p.stylePreset,
                 mode: p.mode,
                 topic: p.topic,
+                scenesJson: p.scenesJson,
+                thumbnailUrl: p.thumbnailUrl,
               }}
               isActive={p.id === activeId}
               onClick={() => onSelect(p.id)}
@@ -286,6 +402,7 @@ function ProjectsAndDetail({
           <YouTubeProjectDetail
             project={activeProject}
             onUpdate={onUpdate}
+            onRecomposeStart={onRecomposeStart}
           />
         ) : (
           <div className="vater-card flex min-h-[400px] items-center justify-center p-8 text-center text-zinc-500">

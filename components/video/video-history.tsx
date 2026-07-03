@@ -16,6 +16,8 @@ interface Generation {
   errorMessage: string | null;
   createdAt: string;
   completedAt: string | null;
+  narrationBlobUrl?: string | null;
+  narrationVoiceId?: string | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -144,6 +146,15 @@ export function VideoHistory() {
                   </svg>
                   Download
                 </a>
+              )}
+
+              {gen.narrationBlobUrl && (
+                <div className="mt-3">
+                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-purple-300/70">
+                    Narration{gen.narrationVoiceId ? ` · ${gen.narrationVoiceId.replace(/_/g, " ")}` : ""}
+                  </div>
+                  <audio controls src={gen.narrationBlobUrl} className="w-full" preload="none" />
+                </div>
               )}
 
               {gen.status === "failed" && gen.errorMessage && (

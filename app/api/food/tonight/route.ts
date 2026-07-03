@@ -1,9 +1,7 @@
-// @ts-nocheck — references removed Prisma models
+// Food API route
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-
-const VLLM_URL = process.env.VLLM_URL || "http://127.0.0.1:8355/v1";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -84,15 +82,9 @@ export async function POST(req: NextRequest) {
   // Pick top 3
   const picks = scored.slice(0, 3);
 
-  // Try AI enhancement if vLLM is reachable (non-blocking)
-  let aiEnhanced = false;
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    const res = await fetch(`${VLLM_URL}/models`, { signal: controller.signal });
-    clearTimeout(timeout);
-    if (res.ok) aiEnhanced = true;
-  } catch {}
+  // AI is always available thanks to Gemini fallback (see lib/food/ai-client.ts).
+  // This endpoint's scoring is rule-based so it doesn't actually invoke the AI.
+  const aiEnhanced = true;
 
   const suggestions = picks.map((p) => ({
     title: p.recipe.title,

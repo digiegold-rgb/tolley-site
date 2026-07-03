@@ -77,23 +77,23 @@ export function TrailerFleet() {
                 ))}
               </ul>
               <div className="mt-5 flex gap-3">
-                <a
-                  href={`tel:${TR_CONTACT_PHONE}`}
-                  className="trailer-glow inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-black tracking-wide text-black uppercase transition-all hover:-translate-y-0.5"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                  </svg>
-                  Reserve
-                </a>
-                {trailer.facebookUrl && (
+                {trailer.facebookUrl ? (
                   <a
                     href={trailer.facebookUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center rounded-lg border border-neutral-700 bg-neutral-800/50 px-4 py-2.5 text-sm font-bold tracking-wide text-neutral-400 uppercase transition hover:border-amber-500/30 hover:text-white"
+                    className="trailer-glow inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-black tracking-wide text-black uppercase transition-all hover:-translate-y-0.5"
                   >
-                    Details
+                    Message on Facebook
+                  </a>
+                ) : (
+                  <a
+                    href={`tel:${TR_CONTACT_PHONE}`}
+                    data-track-event="phone_click"
+                    data-track-label="trailer_fleet"
+                    className="trailer-glow inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-black tracking-wide text-black uppercase transition-all hover:-translate-y-0.5"
+                  >
+                    Reserve
                   </a>
                 )}
               </div>

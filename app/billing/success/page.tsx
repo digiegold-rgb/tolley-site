@@ -21,21 +21,21 @@ export default async function BillingSuccessPage() {
         <h1 className="mt-3 text-2xl font-semibold text-white/95">You&apos;re subscribed.</h1>
         <p className="mt-2 text-sm leading-7 text-white/78">
           {subscribed
-            ? "Billing is active and your account is ready."
+            ? "Billing is active. Next step: set up your first agent."
             : "Your checkout is complete. Billing state is still syncing."}
         </p>
         <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+          <Link
+            href="/agents"
+            className="rounded-full border border-violet-200/45 bg-violet-300/20 px-4 py-2 text-xs font-semibold tracking-[0.1em] text-violet-50 uppercase transition hover:bg-violet-300/28"
+          >
+            Set Up Your Agent
+          </Link>
           <Link
             href="/leads/dashboard"
             className="rounded-full border border-white/22 bg-white/[0.07] px-4 py-2 text-xs font-semibold tracking-[0.1em] text-white uppercase transition hover:bg-white/[0.12]"
           >
             Go to Dashboard
-          </Link>
-          <Link
-            href="/pricing"
-            className="rounded-full border border-white/18 bg-black/25 px-4 py-2 text-xs font-semibold tracking-[0.1em] text-white/86 uppercase transition hover:bg-black/35"
-          >
-            Back to Pricing
           </Link>
         </div>
       </section>

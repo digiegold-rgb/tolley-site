@@ -1,4 +1,3 @@
-// @ts-nocheck — Xero models removed from schema (cancelled 3/21)
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
@@ -7,7 +6,8 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    await requireAdminApiSession();
+    const check = await requireAdminApiSession();
+    if (!check.ok) return check.response;
 
     const accounts = await prisma.ledgerAccount.findMany({
       orderBy: { code: 'asc' },

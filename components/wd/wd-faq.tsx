@@ -38,15 +38,15 @@ const faqs = [
 
 export function WdFaq() {
   return (
-    <section className="rounded-2xl bg-white p-6 shadow-lg shadow-blue-100/50 sm:p-8">
-      <h2 className="text-xl font-bold text-blue-900">FAQ</h2>
-      <div className="mt-4 space-y-3">
+    <section>
+      <h2 className="text-xl font-bold text-blue-900 sm:text-2xl">FAQ</h2>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
         {faqs.map((item) => (
           <div
             key={item.q}
-            className="wd-card rounded-xl border border-blue-100 bg-blue-50/30 p-5"
+            className="wd-card rounded-2xl border border-blue-100 bg-white p-6 shadow-sm shadow-blue-100/40"
           >
-            <h3 className="font-bold text-blue-900">{item.q}</h3>
+            <h3 className="text-base font-bold text-blue-900">{item.q}</h3>
             <p className="mt-2 text-sm leading-relaxed text-slate-600">
               {item.a}
             </p>

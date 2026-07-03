@@ -30,6 +30,17 @@ export async function createInvoicePaymentLink(invoice: InvoiceForLink) {
       invoiceId: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
     },
+    // CRITICAL: payment-link metadata does NOT propagate to the PaymentIntent.
+    // The webhook keys off paymentIntent.metadata.invoiceId, so without this the
+    // payment_intent.succeeded handler skips every invoice payment (the bug that
+    // left Wayne Clark's Stripe payments unreconciled). This stamps invoiceId
+    // onto every PaymentIntent the link creates.
+    payment_intent_data: {
+      metadata: {
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+      },
+    },
     after_completion: {
       type: 'redirect',
       redirect: {

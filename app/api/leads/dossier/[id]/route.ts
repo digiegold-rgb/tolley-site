@@ -7,7 +7,7 @@
  * Auth: x-sync-secret header OR NextAuth session
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { runDossierPipeline } from "@/lib/dossier/pipeline";
 
@@ -203,9 +203,17 @@ export async function POST(
     },
   });
 
-  // Fire-and-forget pipeline run
-  runDossierPipeline(newJob.id).catch((err) => {
-    console.error(`[dossier] re-run pipeline error for job ${newJob.id}:`, err);
+  // Run the pipeline *after* the response is sent via Next.js `after()` —
+  // plain fire-and-forget on Vercel gets killed the moment we return.
+  after(async () => {
+    try {
+      await runDossierPipeline(newJob.id);
+    } catch (err) {
+      console.error(
+        `[dossier] re-run pipeline error for job ${newJob.id}:`,
+        err
+      );
+    }
   });
 
   return NextResponse.json({

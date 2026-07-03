@@ -13,6 +13,8 @@ const SCANNER_DESCRIPTIONS: Record<ScannerName, string> = {
     "Scans MO, KS, and PA unclaimed property databases. Matches against known leads and common surnames for finder's fee opportunities.",
   markets:
     "Collects RSS feeds, FRED economic data, YouTube transcripts, and stock data. Generates buy/sell/hold signals for housing markets.",
+  pricing:
+    "Scrapes Leslie's, In The Swim, and Google Shopping for competitor retail prices. Dynamically adjusts pricing to undercut competitors while protecting margins.",
 };
 
 const SCANNER_STATS_CONFIG: Record<ScannerName, { labels: string[] }> = {
@@ -21,6 +23,7 @@ const SCANNER_STATS_CONFIG: Record<ScannerName, { labels: string[] }> = {
   products: { labels: ["Stock Alerts", "Out of Stock", "Products Tracked"] },
   unclaimed: { labels: ["Total Found", "States Scanned", "Matches"] },
   markets: { labels: ["Active Signals", "Sentiment", "Data Points"] },
+  pricing: { labels: ["Products Scanned", "Matches Found", "Coverage"] },
 };
 
 export default function ScanScannerDetail({

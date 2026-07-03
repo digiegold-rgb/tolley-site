@@ -59,6 +59,8 @@ export function GeneratorHero() {
             href={GEN_STRIPE_CHECKOUT_URL}
             target="_blank"
             rel="noopener noreferrer"
+            data-track-event="checkout_click"
+            data-track-label="generator_hero"
             className="gen-cta-glow inline-flex items-center gap-3 rounded-lg bg-yellow-400 px-8 py-3.5 text-lg font-black tracking-wide text-[#0a0e27] uppercase transition-all hover:-translate-y-0.5"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -68,6 +70,8 @@ export function GeneratorHero() {
           </a>
           <a
             href={`tel:${GEN_CONTACT_PHONE}`}
+            data-track-event="phone_click"
+            data-track-label="generator_hero"
             className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800/50 px-6 py-3.5 text-sm font-bold tracking-wide text-slate-300 uppercase transition-all hover:border-yellow-400/40 hover:text-white"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

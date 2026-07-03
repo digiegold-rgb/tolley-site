@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import PlatformCard, { ConnectPlatformButton } from "@/components/content/PlatformCard";
+import { useToast } from "@/components/ui/Toast";
 
 interface Connection {
   id: string;
@@ -21,6 +22,7 @@ const AVAILABLE_PLATFORMS = ["linkedin", "twitter"];
 
 export default function ContentSettingsPage() {
   const { data: session } = useSession();
+  const { toast } = useToast();
   const subscriberId = session?.user?.id ?? "default";
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,16 +32,27 @@ export default function ContentSettingsPage() {
     setLoading(true);
     try {
       const res = await fetch(`/api/content/platforms?subscriberId=${subscriberId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setConnections(data.connections || []);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Couldn't load connections",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        return;
       }
-    } catch {
-      // silent
+      const data = await res.json();
+      setConnections(data.connections || []);
+    } catch (err) {
+      toast({
+        title: "Network error",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
     } finally {
       setLoading(false);
     }
-  }, [subscriberId]);
+  }, [subscriberId, toast]);
 
   useEffect(() => {
     fetchConnections();
@@ -59,36 +72,60 @@ export default function ContentSettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ platform, subscriberId }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        // Redirect to OAuth flow
-        window.location.href = data.authUrl;
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Couldn't start OAuth flow",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        setConnecting(null);
+        return;
       }
-    } catch {
+      const data = await res.json();
+      // Redirect to OAuth flow
+      window.location.href = data.authUrl;
+    } catch (err) {
+      toast({
+        title: "Network error",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
       setConnecting(null);
     }
   };
 
   const handleDisconnect = async (id: string) => {
-    await fetch(`/api/content/platforms/${id}`, { method: "DELETE" });
-    fetchConnections();
+    try {
+      const res = await fetch(`/api/content/platforms/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Disconnect failed",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        return;
+      }
+      toast({ title: "Platform disconnected", variant: "success" });
+      fetchConnections();
+    } catch (err) {
+      toast({
+        title: "Network error",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
+    }
   };
 
   const connectedPlatforms = connections.map((c) => c.platform);
   const unconnectedPlatforms = AVAILABLE_PLATFORMS.filter((p) => !connectedPlatforms.includes(p));
 
   return (
-    <div className="min-h-screen bg-[#06050a]">
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        <nav className="flex items-center gap-1 mb-6 flex-wrap">
-          <a href="/leads/dashboard" className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors">Leads</a>
-          <span className="text-white/20">/</span>
-          <a href="/leads/content" className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors">Content</a>
-          <span className="text-white/20">/</span>
-          <span className="rounded-lg px-3 py-1.5 text-sm font-medium text-white bg-white/10">Settings</span>
-        </nav>
-
-        <div className="flex gap-2 mb-6">
+    <>
+      <div className="flex gap-2 mb-6">
           <a href="/leads/content" className="rounded-lg bg-white/5 text-white/40 px-3 py-1 text-xs hover:text-white/60 transition-colors">Hub</a>
           <a href="/leads/content/posts" className="rounded-lg bg-white/5 text-white/40 px-3 py-1 text-xs hover:text-white/60 transition-colors">Posts</a>
           <a href="/leads/content/templates" className="rounded-lg bg-white/5 text-white/40 px-3 py-1 text-xs hover:text-white/60 transition-colors">Templates</a>
@@ -162,7 +199,6 @@ export default function ContentSettingsPage() {
             </div>
           </>
         )}
-      </div>
-    </div>
+    </>
   );
 }

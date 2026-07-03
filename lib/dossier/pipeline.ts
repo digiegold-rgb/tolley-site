@@ -10,7 +10,7 @@
  * 6. Compute motivation score
  */
 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import type {
   DossierContext,
   DossierListing,
@@ -18,10 +18,219 @@ import type {
   DossierPluginResult,
   OwnerInfo,
   MotivationFlag,
+  SourceLink,
 } from "./types";
 import { getReadyPlugins } from "./plugins/registry";
+import { runSynthesis } from "./synthesis";
 
 const prisma = new PrismaClient();
+
+// ── Per-step execution detail (persisted into DossierJob.stepDetails) ──
+
+type StepStatus = "pending" | "running" | "success" | "failed" | "skipped";
+
+interface StepDetail {
+  status: StepStatus;
+  source: "worker" | "plugin";
+  tier?: number;
+  attempt?: number;
+  startedAt?: string;
+  finishedAt?: string;
+  durationMs?: number;
+  error?: string;
+  warnings?: string[];
+  confidence?: number;
+}
+
+type StepDetails = Record<string, StepDetail>;
+
+type Phase =
+  | "initializing"
+  | "health_check"
+  | "research_worker"
+  | "local_plugins"
+  | "aggregating"
+  | "done";
+
+/**
+ * PipelineTracker — owns all DB writes for a dossier job's progress state.
+ *
+ * Every mutation (phase change, step start, step finish) is flushed to the
+ * DossierJob row immediately so live-polling clients see real-time state.
+ * Writes are awaited serially to avoid race conditions on the JSON field.
+ */
+class PipelineTracker {
+  readonly jobId: string;
+  private stepDetails: StepDetails = {};
+  private stepsCompleted: string[] = [];
+  private stepsFailed: string[] = [];
+  private currentPhase: Phase = "initializing";
+  private currentStep: string | null = null;
+
+  constructor(jobId: string) {
+    this.jobId = jobId;
+  }
+
+  /** Mark a plugin/worker step as queued but not yet running. */
+  register(name: string, source: "worker" | "plugin", tier?: number) {
+    this.stepDetails[name] = {
+      status: "pending",
+      source,
+      tier,
+    };
+  }
+
+  /** Mark a step as running (sets startedAt). */
+  async start(name: string) {
+    const existing = this.stepDetails[name] ?? {
+      status: "pending" as StepStatus,
+      source: "plugin" as const,
+    };
+    this.stepDetails[name] = {
+      ...existing,
+      status: "running",
+      startedAt: new Date().toISOString(),
+    };
+    this.currentStep = name;
+    await this.flush({ updateCurrentStep: true });
+  }
+
+  /** Mark a step as completed successfully. */
+  async succeed(
+    name: string,
+    opts?: { durationMs?: number; warnings?: string[]; confidence?: number }
+  ) {
+    const existing = this.stepDetails[name];
+    const durationMs =
+      opts?.durationMs ??
+      (existing?.startedAt
+        ? Date.now() - new Date(existing.startedAt).getTime()
+        : undefined);
+    this.stepDetails[name] = {
+      ...(existing ?? { source: "plugin" }),
+      status: "success",
+      finishedAt: new Date().toISOString(),
+      durationMs,
+      warnings: opts?.warnings,
+      confidence: opts?.confidence,
+    };
+    if (!this.stepsCompleted.includes(name)) this.stepsCompleted.push(name);
+    await this.flush();
+  }
+
+  /** Mark a step as failed and record the error message. */
+  async fail(name: string, error: string, opts?: { attempt?: number }) {
+    const existing = this.stepDetails[name];
+    const durationMs = existing?.startedAt
+      ? Date.now() - new Date(existing.startedAt).getTime()
+      : undefined;
+    this.stepDetails[name] = {
+      ...(existing ?? { source: "plugin" }),
+      status: "failed",
+      finishedAt: new Date().toISOString(),
+      durationMs,
+      error: error.slice(0, 500),
+      attempt: opts?.attempt,
+    };
+    if (!this.stepsFailed.includes(name)) this.stepsFailed.push(name);
+    await this.flush();
+  }
+
+  /** Mark a step as skipped (e.g. no config, workflow excluded it). */
+  async skip(name: string, reason: string) {
+    this.stepDetails[name] = {
+      ...(this.stepDetails[name] ?? { source: "plugin" }),
+      status: "skipped",
+      error: reason,
+    };
+    await this.flush();
+  }
+
+  async setPhase(phase: Phase) {
+    this.currentPhase = phase;
+    await this.flush();
+  }
+
+  async setProgress(progress: number) {
+    await prisma.dossierJob.update({
+      where: { id: this.jobId },
+      data: { progress: Math.min(Math.max(progress, 0), 100) },
+    });
+  }
+
+  /** Write the current tracker state to the job row. */
+  private async flush(opts?: { updateCurrentStep?: boolean }) {
+    const data: Record<string, unknown> = {
+      stepDetails: this.stepDetails as unknown as object,
+      stepsCompleted: this.stepsCompleted,
+      stepsFailed: this.stepsFailed,
+      currentPhase: this.currentPhase,
+    };
+    if (opts?.updateCurrentStep && this.currentStep) {
+      data.currentStep = this.currentStep;
+    }
+    await prisma.dossierJob.update({
+      where: { id: this.jobId },
+      data,
+    });
+  }
+
+  /** Final flush used on pipeline completion. */
+  async finalize(opts: {
+    status: "complete" | "partial" | "failed";
+    errorMessage?: string;
+  }) {
+    this.currentPhase = "done";
+    this.currentStep = null;
+    await prisma.dossierJob.update({
+      where: { id: this.jobId },
+      data: {
+        status: opts.status,
+        progress: 100,
+        currentStep: null,
+        currentPhase: "done",
+        stepDetails: this.stepDetails as unknown as object,
+        stepsCompleted: this.stepsCompleted,
+        stepsFailed: this.stepsFailed,
+        errorMessage: opts.errorMessage ?? null,
+        completedAt: new Date(),
+      },
+    });
+  }
+
+  getCompleted(): string[] {
+    return [...this.stepsCompleted];
+  }
+
+  getFailed(): string[] {
+    return [...this.stepsFailed];
+  }
+}
+
+/** Ping a research worker health endpoint with a short timeout. */
+async function healthCheckResearchWorker(
+  url: string,
+  auth: string
+): Promise<{ ok: boolean; error?: string; latencyMs: number }> {
+  const start = Date.now();
+  try {
+    const res = await fetch(`${url}/health`, {
+      headers: { "x-auth-token": auth },
+      signal: AbortSignal.timeout(5000),
+    });
+    const latencyMs = Date.now() - start;
+    if (!res.ok) {
+      return { ok: false, error: `health returned ${res.status}`, latencyMs };
+    }
+    return { ok: true, latencyMs };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "network error",
+      latencyMs: Date.now() - start,
+    };
+  }
+}
 
 export async function runDossierPipeline(jobId: string): Promise<void> {
   // Load job + listing
@@ -41,8 +250,18 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
   // Mark running
   await prisma.dossierJob.update({
     where: { id: jobId },
-    data: { status: "running", startedAt: new Date() },
+    data: {
+      status: "running",
+      startedAt: new Date(),
+      currentPhase: "initializing",
+      stepDetails: {},
+      stepsCompleted: [],
+      stepsFailed: [],
+      errorMessage: null,
+    },
   });
+
+  const tracker = new PipelineTracker(jobId);
 
   // Extract useful fields from MLS rawData
   const raw = (job.listing.rawData || {}) as Record<string, unknown>;
@@ -89,8 +308,6 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
 
   const priorResults: Record<string, DossierPluginResult> = {};
   const knownOwners: OwnerInfo[] = [];
-  const stepsCompleted: string[] = [];
-  const stepsFailed: string[] = [];
 
   // Pre-seed known owners from user-provided or lead data
   if (seedOwnerName) {
@@ -131,48 +348,207 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
   } catch { /* no workflow config — run all scrapers */ }
 
   // ── DGX Research Worker (primary — uses Playwright browser automation) ──
-  const RESEARCH_WORKER_URL = process.env.RESEARCH_WORKER_URL; // e.g. http://localhost:8900 or tunnel URL
+  const RESEARCH_WORKER_URL = process.env.RESEARCH_WORKER_URL;
   const RESEARCH_AUTH = process.env.SYNC_SECRET || "";
 
+  tracker.register("dgx-research-worker", "worker");
+  await tracker.setProgress(5);
+
   if (RESEARCH_WORKER_URL) {
-    await prisma.dossierJob.update({
-      where: { id: jobId },
-      data: { currentStep: "dgx-research-worker", progress: 10 },
-    });
+    // ── Phase 1: Health precheck ──
+    // If the worker is unreachable there's no point burning a 5-minute
+    // timeout waiting on it. A fast fail here lets the local-plugin
+    // fallbacks start ~5 minutes earlier.
+    await tracker.setPhase("health_check");
+    tracker.register("health-check", "worker");
+    await tracker.start("health-check");
+    const health = await healthCheckResearchWorker(RESEARCH_WORKER_URL, RESEARCH_AUTH);
+    if (health.ok) {
+      await tracker.succeed("health-check", { durationMs: health.latencyMs });
+    } else {
+      await tracker.fail(
+        "health-check",
+        `research worker unreachable: ${health.error}`
+      );
+      // Also mark the main worker step as failed so the user sees the cause
+      await tracker.start("dgx-research-worker");
+      await tracker.fail(
+        "dgx-research-worker",
+        `skipped — health check failed (${health.error}). Falling back to local plugins.`
+      );
+    }
 
-    try {
-      console.log(`[Dossier] Calling DGX research worker: ${RESEARCH_WORKER_URL}/research`);
-      const workerRes = await fetch(`${RESEARCH_WORKER_URL}/research`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-auth-token": RESEARCH_AUTH,
-        },
-        body: JSON.stringify({
-          jobId,
-          address: listing.address,
-          city: listing.city,
-          state: listing.state,
-          zip: listing.zip,
-          county: job.listing.enrichment?.countyName || undefined,
-          lat: listing.lat,
-          lng: listing.lng,
-          listPrice: listing.listPrice,
-          ownerName: seedOwnerName,
-          enabledScrapers, // workflow-controlled scraper list
-        }),
-        signal: AbortSignal.timeout(300000), // 5 min timeout
-      });
+    if (health.ok) {
+      // ── Phase 2: Run the worker with one retry on transient failure ──
+      await tracker.setPhase("research_worker");
+      await tracker.start("dgx-research-worker");
+      await tracker.setProgress(10);
 
-      if (workerRes.ok) {
-        const workerData = await workerRes.json();
-        console.log(`[Dossier] Research worker returned: status=${workerData.status}, duration=${workerData.duration_ms}ms`);
+      const workerStart = Date.now();
+      let workerData: Record<string, unknown> | null = null;
+      let workerError: string | null = null;
+      let wasConflict = false;
+      let conflictJobId: string | null = null;
+
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          console.log(
+            `[Dossier] Calling DGX research worker (attempt ${attempt}): ${RESEARCH_WORKER_URL}/research`
+          );
+          const workerRes = await fetch(`${RESEARCH_WORKER_URL}/research`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-auth-token": RESEARCH_AUTH,
+            },
+            body: JSON.stringify({
+              jobId,
+              address: listing.address,
+              city: listing.city,
+              state: listing.state,
+              zip: listing.zip,
+              county: job.listing.enrichment?.countyName || undefined,
+              lat: listing.lat,
+              lng: listing.lng,
+              listPrice: listing.listPrice,
+              ownerName: seedOwnerName,
+              enabledScrapers,
+            }),
+            signal: AbortSignal.timeout(1_200_000), // 20 min — CBC + court + obit can take 5-10 min when an owner is found
+          });
+
+          if (workerRes.ok) {
+            workerData = (await workerRes.json()) as Record<string, unknown>;
+            workerError = null;
+            break;
+          }
+
+          const errText = await workerRes.text().catch(() => "");
+
+          // 409 = worker is already running a job for this address. Don't
+          // retry and don't mark as failed — this is expected behavior when
+          // the user re-runs research while a previous call is still in
+          // flight. Try to grab the conflicting jobId so we can fetch its
+          // results once it finishes.
+          if (workerRes.status === 409) {
+            wasConflict = true;
+            try {
+              const errJson = JSON.parse(errText) as { jobId?: string };
+              if (errJson.jobId) conflictJobId = errJson.jobId;
+            } catch {
+              /* response wasn't JSON, that's fine */
+            }
+            workerError = conflictJobId
+              ? `worker is already processing this address (existing job ${conflictJobId})`
+              : "worker is already processing this address";
+            console.warn(`[Dossier] ${workerError} — skipping worker phase`);
+            break;
+          }
+
+          workerError = `worker returned ${workerRes.status}: ${errText.slice(0, 200)}`;
+          console.error(`[Dossier] Research worker error: ${workerError}`);
+
+          // Only retry on 5xx (transient server error). 4xx won't improve.
+          if (workerRes.status < 500) break;
+        } catch (err) {
+          workerError = err instanceof Error ? err.message : "unknown error";
+          console.error(`[Dossier] Research worker attempt ${attempt} failed:`, err);
+        }
+
+        if (attempt < 2) {
+          // Short backoff before retry
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+      }
+
+      // ── Concurrency conflict — poll the existing job's results ──
+      // If the worker said "already processing", try polling for ~90 seconds
+      // to see if the conflicting job finishes and returns data we can use.
+      // This gives the user the worker's output instead of making them wait
+      // and re-run.
+      if (wasConflict && conflictJobId) {
+        console.log(
+          `[Dossier] Polling worker for conflict job ${conflictJobId}...`
+        );
+        const pollStart = Date.now();
+        const POLL_TIMEOUT_MS = 90_000;
+        const POLL_INTERVAL_MS = 3_000;
+
+        while (Date.now() - pollStart < POLL_TIMEOUT_MS) {
+          try {
+            const statusRes = await fetch(
+              `${RESEARCH_WORKER_URL}/research/${conflictJobId}`,
+              {
+                headers: { "x-auth-token": RESEARCH_AUTH },
+                signal: AbortSignal.timeout(10_000),
+              }
+            );
+            if (statusRes.ok) {
+              const statusData = (await statusRes.json()) as Record<string, unknown>;
+              const status = statusData.status as string | undefined;
+              if (
+                status === "complete" ||
+                status === "partial" ||
+                status === "done"
+              ) {
+                workerData = statusData;
+                workerError = null;
+                console.log(
+                  `[Dossier] Adopted results from conflict job ${conflictJobId}`
+                );
+                break;
+              }
+            }
+          } catch (err) {
+            console.warn(
+              `[Dossier] Poll for conflict job failed:`,
+              err instanceof Error ? err.message : err
+            );
+          }
+          await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+        }
+      }
+
+      const workerDuration = Date.now() - workerStart;
+
+      if (workerData) {
+        console.log(
+          `[Dossier] Research worker returned: status=${workerData.status}, duration=${workerDuration}ms`
+        );
+
+        const wd = workerData as {
+          status?: string;
+          owners?: OwnerInfo[];
+          courtRecords?: { type: string }[];
+          socialProfiles?: unknown[];
+          propertyHistory?: unknown[];
+          backgroundCheck?: { relatives?: string[] } | null;
+          obituaries?: unknown[];
+          property?: {
+            streetViewUrl?: string;
+            satelliteUrl?: string;
+            photos?: string[];
+            assessedValue?: number;
+            marketValue?: number;
+          };
+          sources?: (SourceLink & { category: string })[];
+          errors?: { scraper: string; error: string }[];
+          blockedSources?: unknown[];
+          motivationScore?: number;
+          motivationFlags?: string[];
+          intelligenceBrief?: string;
+          llmTokensUsed?: number;
+          duration_ms?: number;
+        };
 
         // Map worker results into plugin result format for downstream aggregation
-        // Property data → county-assessor result
-        if (workerData.owners?.length > 0) {
-          for (const owner of workerData.owners) {
-            if (!knownOwners.some((o: OwnerInfo) => o.name.toLowerCase() === owner.name.toLowerCase())) {
+        if (wd.owners && wd.owners.length > 0) {
+          for (const owner of wd.owners) {
+            if (
+              !knownOwners.some(
+                (o: OwnerInfo) => o.name.toLowerCase() === owner.name.toLowerCase()
+              )
+            ) {
               knownOwners.push(owner);
             }
           }
@@ -180,95 +556,119 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
             pluginName: "county-assessor",
             success: true,
             data: {
-              owners: workerData.owners,
-              rawEntityName: workerData.owners[0]?.name,
-              assessedValue: workerData.property?.assessedValue,
-              marketValue: workerData.property?.marketValue,
+              owners: wd.owners,
+              rawEntityName: wd.owners[0]?.name,
+              assessedValue: wd.property?.assessedValue,
+              marketValue: wd.property?.marketValue,
             },
-            sources: workerData.sources?.filter((s: { category: string }) => s.category === "property") || [],
+            sources:
+              wd.sources?.filter((s) => s.category === "property") || [],
             confidence: 0.8,
             warnings: [],
-            durationMs: workerData.duration_ms,
+            durationMs: wd.duration_ms ?? 0,
           };
-          stepsCompleted.push("county-assessor");
+          tracker.register("county-assessor", "worker");
+          await tracker.succeed("county-assessor", { confidence: 0.8 });
         }
 
-        // Court records
-        if (workerData.courtRecords?.length > 0) {
+        if (wd.courtRecords && wd.courtRecords.length > 0) {
           priorResults["court-records"] = {
             pluginName: "court-records",
             success: true,
-            data: { courtCases: workerData.courtRecords, liens: [], bankruptcies: [] },
-            sources: workerData.sources?.filter((s: { category: string }) => s.category === "legal") || [],
+            data: { courtCases: wd.courtRecords, liens: [], bankruptcies: [] },
+            sources: wd.sources?.filter((s) => s.category === "legal") || [],
             confidence: 0.7,
             warnings: [],
             durationMs: 0,
           };
-          stepsCompleted.push("court-records");
+          tracker.register("court-records", "worker");
+          await tracker.succeed("court-records", { confidence: 0.7 });
         }
 
-        // Social profiles
-        if (workerData.socialProfiles?.length > 0) {
+        if (wd.socialProfiles && wd.socialProfiles.length > 0) {
+          // Seed the worker's social profiles, but DELIBERATELY do not mark
+          // people-search as covered (no tracker.register/succeed here).
+          // Leaving it uncovered lets the local people-search plugin run its
+          // full pass — the live SerpAPI google-engine owner lookup
+          // (serpapiSearchProfiles, tag "dossier-people-search") plus Google
+          // CSE + Brave + manual skip-trace links. The plugin folds these seed
+          // profiles back in at the start of its run, so nothing is lost.
+          // Previously this block called tracker.succeed("people-search"),
+          // which put it in coveredSteps and filtered the plugin out entirely,
+          // silently zeroing the paid SerpAPI people-search path — the #1
+          // motivated-seller owner-identification lever (0 calls in 30 days).
           priorResults["people-search"] = {
             pluginName: "people-search",
             success: true,
-            data: { socialProfiles: workerData.socialProfiles, webMentions: [] },
-            sources: workerData.sources?.filter((s: { category: string }) => s.category === "social") || [],
+            data: { socialProfiles: wd.socialProfiles, webMentions: [] },
+            sources: wd.sources?.filter((s) => s.category === "social") || [],
             confidence: 0.6,
             warnings: [],
             durationMs: 0,
           };
-          stepsCompleted.push("people-search");
         }
 
-        // Property history
-        if (workerData.propertyHistory?.length > 0) {
+        if (wd.propertyHistory && wd.propertyHistory.length > 0) {
           priorResults["property-history"] = {
             pluginName: "property-history",
             success: true,
-            data: { deedHistory: workerData.propertyHistory },
-            sources: workerData.sources?.filter((s: { label: string }) => /zillow|redfin|realtor|homes/i.test(s.label)) || [],
+            data: { deedHistory: wd.propertyHistory },
+            sources:
+              wd.sources?.filter((s) =>
+                /zillow|redfin|realtor|homes/i.test(s.label)
+              ) || [],
             confidence: 0.7,
             warnings: [],
             durationMs: 0,
           };
-          stepsCompleted.push("property-history");
+          tracker.register("property-history", "worker");
+          await tracker.succeed("property-history", { confidence: 0.7 });
         }
 
-        // Background check + obituaries → skip-trace result
-        if (workerData.backgroundCheck || workerData.obituaries?.length > 0) {
+        if (wd.backgroundCheck || (wd.obituaries && wd.obituaries.length > 0)) {
           priorResults["skip-trace"] = {
             pluginName: "skip-trace",
             success: true,
             data: {
-              backgroundCheck: workerData.backgroundCheck,
-              obituaries: workerData.obituaries,
-              relatedPeople: workerData.backgroundCheck?.relatives?.map((r: string) => ({ name: r, relationship: "associate" })) || [],
+              backgroundCheck: wd.backgroundCheck,
+              obituaries: wd.obituaries,
+              relatedPeople:
+                wd.backgroundCheck?.relatives?.map((r: string) => ({
+                  name: r,
+                  relationship: "associate",
+                })) || [],
             },
-            sources: workerData.sources?.filter((s: { category: string }) => s.category === "people" || s.category === "obituary") || [],
+            sources:
+              wd.sources?.filter(
+                (s) => s.category === "people" || s.category === "obituary"
+              ) || [],
             confidence: 0.6,
             warnings: [],
             durationMs: 0,
           };
-          stepsCompleted.push("skip-trace");
+          tracker.register("skip-trace", "worker");
+          await tracker.succeed("skip-trace", { confidence: 0.6 });
         }
 
-        // Street view from property data
-        if (workerData.property?.streetViewUrl || workerData.property?.photos?.length > 0) {
+        if (
+          wd.property?.streetViewUrl ||
+          (wd.property?.photos && wd.property.photos.length > 0)
+        ) {
           priorResults["street-view"] = {
             pluginName: "street-view",
             success: true,
             data: {
-              streetViewUrl: workerData.property.streetViewUrl,
-              satelliteUrl: workerData.property.satelliteUrl,
-              neighborhoodPhotos: workerData.property.photos || [],
+              streetViewUrl: wd.property.streetViewUrl,
+              satelliteUrl: wd.property.satelliteUrl,
+              neighborhoodPhotos: wd.property.photos || [],
             },
             sources: [],
             confidence: 0.8,
             warnings: [],
             durationMs: 0,
           };
-          stepsCompleted.push("street-view");
+          tracker.register("street-view", "worker");
+          await tracker.succeed("street-view", { confidence: 0.8 });
         }
 
         // Store all worker sources as a meta result
@@ -276,57 +676,101 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
           pluginName: "dgx-research-worker",
           success: true,
           data: {
-            workerStatus: workerData.status,
-            allSources: workerData.sources,
-            allErrors: workerData.errors,
-            blockedSources: workerData.blockedSources || [],
-            motivationScore: workerData.motivationScore,
-            motivationFlags: workerData.motivationFlags,
-            intelligenceBrief: workerData.intelligenceBrief,
-            llmTokensUsed: workerData.llmTokensUsed,
+            workerStatus: wd.status,
+            allSources: wd.sources,
+            allErrors: wd.errors,
+            blockedSources: wd.blockedSources || [],
+            motivationScore: wd.motivationScore,
+            motivationFlags: wd.motivationFlags,
+            intelligenceBrief: wd.intelligenceBrief,
+            llmTokensUsed: wd.llmTokensUsed,
           },
-          sources: workerData.sources || [],
+          sources: wd.sources || [],
           confidence: 0.8,
-          warnings: workerData.errors?.map((e: { scraper: string; error: string }) => `${e.scraper}: ${e.error}`) || [],
-          durationMs: workerData.duration_ms,
+          warnings:
+            wd.errors?.map((e) => `${e.scraper}: ${e.error}`) || [],
+          durationMs: wd.duration_ms ?? workerDuration,
         };
-        stepsCompleted.push("dgx-research-worker");
+        await tracker.succeed("dgx-research-worker", {
+          durationMs: wd.duration_ms ?? workerDuration,
+          warnings: wd.errors?.map((e) => `${e.scraper}: ${e.error}`),
+          confidence: 0.8,
+        });
+      } else if (wasConflict) {
+        // Concurrency conflict and we couldn't adopt results — skip, don't fail
+        await tracker.skip(
+          "dgx-research-worker",
+          workerError ??
+            "another dossier run is already processing this address; local plugins will fill in"
+        );
       } else {
-        const errText = await workerRes.text().catch(() => "");
-        console.error(`[Dossier] Research worker error: ${workerRes.status} ${errText}`);
-        stepsFailed.push("dgx-research-worker");
+        await tracker.fail(
+          "dgx-research-worker",
+          workerError ?? "Unknown worker error"
+        );
       }
-    } catch (err) {
-      console.error(`[Dossier] Research worker call failed:`, err);
-      stepsFailed.push("dgx-research-worker");
     }
+  } else {
+    await tracker.skip(
+      "dgx-research-worker",
+      "RESEARCH_WORKER_URL env var not configured"
+    );
   }
 
   // ── Local plugins (fallback for any steps the worker didn't cover) ──
+  await tracker.setPhase("local_plugins");
+
   // Filter plugins by workflow config (if active)
   const workflowFilteredPlugins = enabledLocalPlugins
     ? plugins.filter((p) => enabledLocalPlugins!.has(p.name))
     : plugins;
 
   if (enabledLocalPlugins) {
-    const skipped = plugins.filter((p) => !enabledLocalPlugins!.has(p.name)).map((p) => p.name);
+    const skipped = plugins
+      .filter((p) => !enabledLocalPlugins!.has(p.name))
+      .map((p) => p.name);
     if (skipped.length > 0) {
       console.log(`[Dossier] Workflow skipping local plugins: ${skipped.join(", ")}`);
+      for (const name of skipped) {
+        await tracker.skip(name, "excluded by active workflow");
+      }
     }
   }
 
-  const coveredSteps = new Set(stepsCompleted);
-
   if (notReady.length > 0) {
     console.log(
-      `[Dossier] Skipping plugins missing config: ${notReady.map((n) => `${n.plugin.name} (needs: ${n.missing.join(", ")})`).join("; ")}`
+      `[Dossier] Skipping plugins missing config: ${notReady
+        .map((n) => `${n.plugin.name} (needs: ${n.missing.join(", ")})`)
+        .join("; ")}`
     );
+    for (const nr of notReady) {
+      await tracker.skip(
+        nr.plugin.name,
+        `missing required config: ${nr.missing.join(", ")}`
+      );
+    }
   }
 
-  // ── Phase 2: Tier-based parallel execution ──
+  const coveredSteps = new Set(tracker.getCompleted());
+
+  // ── Tier-based parallel execution ──
   const tiers = resolveExecutionTiers(workflowFilteredPlugins);
+
+  // Pre-register every plugin with its tier so the UI can group/order them
+  for (let tierIdx = 0; tierIdx < tiers.length; tierIdx++) {
+    for (const plugin of tiers[tierIdx]) {
+      if (!coveredSteps.has(plugin.name)) {
+        tracker.register(plugin.name, "plugin", tierIdx);
+      }
+    }
+  }
+
   let pluginsProcessed = 0;
-  const totalPlugins = workflowFilteredPlugins.length;
+  const totalPlugins = workflowFilteredPlugins.filter(
+    (p) => !coveredSteps.has(p.name)
+  ).length;
+  const progressBase = RESEARCH_WORKER_URL ? 50 : 15;
+  const progressRange = 95 - progressBase;
 
   for (let tierIdx = 0; tierIdx < tiers.length; tierIdx++) {
     const tier = tiers[tierIdx];
@@ -334,29 +778,21 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
 
     if (tierPlugins.length === 0) continue;
 
-    console.log(`[Dossier] Tier ${tierIdx}: running ${tierPlugins.map((p) => p.name).join(", ")} in parallel`);
+    console.log(
+      `[Dossier] Tier ${tierIdx}: running ${tierPlugins.map((p) => p.name).join(", ")} in parallel`
+    );
 
-    const tierResults = await Promise.allSettled(
+    await Promise.allSettled(
       tierPlugins.map(async (plugin) => {
-        pluginsProcessed++;
-        const progressPct = RESEARCH_WORKER_URL
-          ? 50 + Math.round((pluginsProcessed / totalPlugins) * 45)
-          : Math.round((pluginsProcessed / totalPlugins) * 95);
-
-        await prisma.dossierJob.update({
-          where: { id: jobId },
-          data: {
-            currentStep: plugin.name,
-            progress: Math.min(progressPct, 95),
-          },
-        });
-
+        await tracker.start(plugin.name);
         const context: DossierContext = {
           listing,
           priorResults,
           knownOwners: [...knownOwners],
           jobId,
           updateProgress: async (message: string) => {
+            // Context updates now only modify the currentStep label for the
+            // active plugin — tracker keeps the canonical step map.
             await prisma.dossierJob.update({
               where: { id: jobId },
               data: { currentStep: `${plugin.name}: ${message}` },
@@ -364,59 +800,73 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
           },
         };
 
-        console.log(`[Dossier] Running local plugin: ${plugin.name}`);
-        const result = await plugin.run(context);
-        return { plugin, result };
-      })
-    );
+        try {
+          console.log(`[Dossier] Running local plugin: ${plugin.name}`);
+          const result = await plugin.run(context);
+          priorResults[plugin.name] = result;
 
-    // Merge results from this tier before moving to next
-    for (const settled of tierResults) {
-      if (settled.status === "fulfilled") {
-        const { plugin, result } = settled.value;
-        priorResults[plugin.name] = result;
-
-        if (result.success && result.data.owners) {
-          const newOwners = result.data.owners as OwnerInfo[];
-          for (const owner of newOwners) {
-            if (!knownOwners.some((o) => o.name.toLowerCase() === owner.name.toLowerCase())) {
-              knownOwners.push(owner);
+          if (result.success && result.data.owners) {
+            const newOwners = result.data.owners as OwnerInfo[];
+            for (const owner of newOwners) {
+              if (
+                !knownOwners.some(
+                  (o) => o.name.toLowerCase() === owner.name.toLowerCase()
+                )
+              ) {
+                knownOwners.push(owner);
+              }
             }
           }
-        }
 
-        if (result.success && result.data.updatedOwners) {
-          const updated = result.data.updatedOwners as OwnerInfo[];
-          for (const upd of updated) {
-            const idx = knownOwners.findIndex((o) => o.name.toLowerCase() === upd.name.toLowerCase());
-            if (idx >= 0) knownOwners[idx] = { ...knownOwners[idx], ...upd };
+          if (result.success && result.data.updatedOwners) {
+            const updated = result.data.updatedOwners as OwnerInfo[];
+            for (const upd of updated) {
+              const idx = knownOwners.findIndex(
+                (o) => o.name.toLowerCase() === upd.name.toLowerCase()
+              );
+              if (idx >= 0) knownOwners[idx] = { ...knownOwners[idx], ...upd };
+            }
           }
-        }
 
-        if (result.success) {
-          stepsCompleted.push(plugin.name);
-        } else {
-          stepsFailed.push(plugin.name);
+          if (result.success) {
+            await tracker.succeed(plugin.name, {
+              durationMs: result.durationMs,
+              warnings: result.warnings?.length ? result.warnings : undefined,
+              confidence: result.confidence,
+            });
+          } else {
+            await tracker.fail(
+              plugin.name,
+              result.error ?? "plugin reported failure"
+            );
+          }
+        } catch (err) {
+          console.error(`[Dossier] Plugin ${plugin.name} crashed:`, err);
+          priorResults[plugin.name] = {
+            pluginName: plugin.name,
+            success: false,
+            error: err instanceof Error ? err.message : "Unknown error",
+            data: {},
+            sources: [],
+            confidence: 0,
+            warnings: [],
+            durationMs: 0,
+          };
+          await tracker.fail(
+            plugin.name,
+            err instanceof Error ? err.message : "Unknown crash"
+          );
+        } finally {
+          pluginsProcessed++;
+          const progressPct =
+            progressBase + Math.round((pluginsProcessed / Math.max(totalPlugins, 1)) * progressRange);
+          await tracker.setProgress(Math.min(progressPct, 95));
         }
-      } else {
-        // Promise rejected — plugin crashed
-        const pluginName = tierPlugins[tierResults.indexOf(settled)]?.name || "unknown";
-        const err = settled.reason;
-        console.error(`[Dossier] Plugin ${pluginName} crashed:`, err);
-        priorResults[pluginName] = {
-          pluginName,
-          success: false,
-          error: err instanceof Error ? err.message : "Unknown error",
-          data: {},
-          sources: [],
-          confidence: 0,
-          warnings: [],
-          durationMs: 0,
-        };
-        stepsFailed.push(pluginName);
-      }
-    }
+      })
+    );
   }
+
+  await tracker.setPhase("aggregating");
 
   // Compute motivation score
   const { score: motivationScore, flags: motivationFlags } = computeMotivation(
@@ -526,59 +976,249 @@ export async function runDossierPipeline(jobId: string): Promise<void> {
     }
   }
 
-  // Save result — cast arrays to JSON for Prisma Json fields
-  await prisma.dossierResult.create({
-    data: {
-      jobId,
-      owners: knownOwners.length > 0 ? JSON.parse(JSON.stringify(knownOwners)) : undefined,
-      entityType,
-      entityName,
-      courtCases: courtCases.length > 0 ? JSON.parse(JSON.stringify(courtCases)) : undefined,
-      liens: liens.length > 0 ? JSON.parse(JSON.stringify(liens)) : undefined,
-      bankruptcies: bankruptcies.length > 0 ? JSON.parse(JSON.stringify(bankruptcies)) : undefined,
-      taxRecords: taxRecords.length > 0 ? JSON.parse(JSON.stringify(taxRecords)) : undefined,
-      deedHistory: deedHistory.length > 0 ? JSON.parse(JSON.stringify(deedHistory)) : undefined,
-      socialProfiles: socialProfiles.length > 0 ? JSON.parse(JSON.stringify(socialProfiles)) : undefined,
-      webMentions: webMentions.length > 0 ? JSON.parse(JSON.stringify(webMentions)) : undefined,
-      relatedPeople: relatedPeople.length > 0 ? JSON.parse(JSON.stringify(relatedPeople)) : undefined,
-      streetViewUrl,
-      satelliteUrl,
-      neighborhoodPhotos,
-      motivationScore,
-      motivationFlags,
-      researchSummary,
-      financialData,
-      neighborhoodData,
-      permitData,
-      rentalData,
-      businessData,
-      environmentalData,
-      marketData,
-      customData,
-      pluginData: JSON.parse(JSON.stringify(pluginData)),
-    },
+  // Save result — upsert so concurrent pipeline runs for the same jobId
+  // merge instead of crashing with "Unique constraint failed on (jobId)".
+  // This happens when both the /api/leads/dossier after() handler AND the
+  // dossier-process cron pick up the same queued job simultaneously.
+  const resultData = {
+    // Use JsonNull (not undefined) so a re-run with no owner found CLEARS any prior
+    // value on upsert.update — undefined is a Prisma no-op and would leave stale
+    // (e.g. demo placeholder) owners in the row, leaking into the digest.
+    owners: knownOwners.length > 0 ? JSON.parse(JSON.stringify(knownOwners)) : Prisma.JsonNull,
+    entityType,
+    entityName,
+    courtCases: courtCases.length > 0 ? JSON.parse(JSON.stringify(courtCases)) : undefined,
+    liens: liens.length > 0 ? JSON.parse(JSON.stringify(liens)) : undefined,
+    bankruptcies: bankruptcies.length > 0 ? JSON.parse(JSON.stringify(bankruptcies)) : undefined,
+    taxRecords: taxRecords.length > 0 ? JSON.parse(JSON.stringify(taxRecords)) : undefined,
+    deedHistory: deedHistory.length > 0 ? JSON.parse(JSON.stringify(deedHistory)) : undefined,
+    socialProfiles: socialProfiles.length > 0 ? JSON.parse(JSON.stringify(socialProfiles)) : undefined,
+    webMentions: webMentions.length > 0 ? JSON.parse(JSON.stringify(webMentions)) : undefined,
+    relatedPeople: relatedPeople.length > 0 ? JSON.parse(JSON.stringify(relatedPeople)) : undefined,
+    streetViewUrl,
+    satelliteUrl,
+    neighborhoodPhotos,
+    motivationScore,
+    motivationFlags,
+    researchSummary,
+    financialData,
+    neighborhoodData,
+    permitData,
+    rentalData,
+    businessData,
+    environmentalData,
+    marketData,
+    customData,
+    pluginData: JSON.parse(JSON.stringify(pluginData)),
+  };
+  await prisma.dossierResult.upsert({
+    where: { jobId },
+    create: { jobId, ...resultData },
+    update: resultData,
   });
 
-  // Mark job complete
-  const finalStatus = stepsFailed.length === totalPlugins ? "failed"
-    : stepsFailed.length > 0 ? "partial"
-    : "complete";
+  // ── Pre-register synthesis step so the UI sees it from the start ──
+  // Synthesis is a long-running OpenManus call (60-90s when it works). We
+  // finalize the job BEFORE running it so the user gets a usable dossier
+  // even if Vercel kills the function mid-synthesis. Narrative is best-
+  // effort — the cron safety net won't reap a completed job.
+  tracker.register("synthesis-narrative", "worker");
+
+  // Mark job complete — classification:
+  // "failed"   = zero real data collected (every attempted step failed)
+  // "partial"  = some steps failed but core data exists
+  // "complete" = every attempted step succeeded
+  const completed = tracker.getCompleted();
+  const failed = tracker.getFailed();
+  const attempted = completed.length + failed.length;
+
+  const finalStatus =
+    attempted === 0 || completed.length === 0
+      ? "failed"
+      : failed.length > 0
+        ? "partial"
+        : "complete";
+
+  const errorMessage =
+    finalStatus === "failed"
+      ? failed.length > 0
+        ? `All attempted steps failed (${failed.join(", ")})`
+        : "No steps executed"
+      : undefined;
+
+  await tracker.finalize({ status: finalStatus, errorMessage });
+
+  console.log(
+    `[Dossier] Job ${jobId} ${finalStatus}: ${completed.length} completed, ${failed.length} failed`
+  );
+
+  // ── Post-finalization: best-effort synthesis narrative ──────
+  // Runs AFTER the job is marked terminal so the user can view the dossier
+  // regardless of whether synthesis completes. If Vercel kills the function
+  // mid-synthesis, the DossierResult is already persisted; the narrative
+  // just stays null until the user re-triggers research.
+  //
+  // We write synthesis state into stepDetails directly (not via tracker,
+  // since the tracker has already finalized the job). Success updates the
+  // DossierResult with narrativeReport; failure/skip updates stepDetails.
+  try {
+    const synStart = Date.now();
+
+    // Mark as running in the JSON map
+    await markSynthesisStatus(jobId, {
+      status: "running",
+      startedAt: new Date().toISOString(),
+    });
+
+    const synthesis = await runSynthesis(
+      {
+        jobId,
+        listing,
+        priorResults,
+        knownOwners,
+        motivationScore,
+        motivationFlags,
+        courtCases: courtCases as unknown as import("./types").CourtCase[],
+        liens: liens as unknown as import("./types").LienRecord[],
+        bankruptcies: bankruptcies as unknown as import("./types").BankruptcyRecord[],
+        taxRecords: taxRecords as unknown as import("./types").TaxRecord[],
+        deedHistory: deedHistory as unknown as import("./types").DeedRecord[],
+        financialData,
+        neighborhoodData,
+        marketData,
+        researchSummary,
+        entityType,
+        entityName,
+      },
+      // ── Critical: persist pending state IMMEDIATELY on task submission ──
+      // If Vercel kills this function during the 90s poll loop, the
+      // /api/cron/dossier-synthesis-poll cron needs the taskId to
+      // reconcile the eventually-completed Manus task. Writing the meta
+      // here (instead of after the poll returns) ensures the poll cron
+      // can always find orphaned tasks even when the function dies
+      // mid-poll.
+      async (taskId) => {
+        await prisma.dossierResult.update({
+          where: { jobId },
+          data: {
+            narrativeMeta: {
+              status: "pending",
+              taskId,
+              submittedAt: new Date().toISOString(),
+              inlineDurationMs: 0, // filled in if the poll completes
+            },
+          },
+        });
+      }
+    );
+
+    if (synthesis.success && synthesis.narrativeReport) {
+      await prisma.dossierResult.update({
+        where: { jobId },
+        data: {
+          narrativeReport: synthesis.narrativeReport,
+          narrativeMeta: {
+            status: "completed",
+            taskId: synthesis.taskId,
+            stepsUsed: synthesis.stepsUsed,
+            durationMs: synthesis.durationMs,
+            generatedAt: new Date().toISOString(),
+          },
+        },
+      });
+      await markSynthesisStatus(jobId, {
+        status: "success",
+        durationMs: synthesis.durationMs,
+        confidence: 0.85,
+      });
+    } else if (!synthesis.success && synthesis.taskId) {
+      // ── Inline timeout with a live Manus task ──────────────
+      // The 90s inline budget ran out but the task is still cooking on the
+      // DGX side (real runs take 6-9 min). Stash the taskId so the async
+      // poll cron (/api/cron/dossier-synthesis-poll) can finish the job by
+      // fetching the narrative when Manus actually completes.
+      //
+      // We still mark the step as "failed" in stepDetails (the inline call
+      // honestly did time out) — the poller will upgrade it to "success"
+      // when it writes the narrative back. narrativeMeta.status carries the
+      // real async lifecycle state.
+      await prisma.dossierResult.update({
+        where: { jobId },
+        data: {
+          narrativeMeta: {
+            status: "pending",
+            taskId: synthesis.taskId,
+            submittedAt: new Date().toISOString(),
+            inlineDurationMs: synthesis.durationMs,
+          },
+        },
+      });
+      await markSynthesisStatus(jobId, {
+        status: "failed",
+        durationMs: synthesis.durationMs,
+        error: `inline timed out, async reconciliation pending (taskId=${synthesis.taskId})`,
+      });
+    } else {
+      const err = synthesis.error ?? "synthesis returned no narrative";
+      const isSkip = /unreachable|not configured|skipped/i.test(err);
+      await markSynthesisStatus(jobId, {
+        status: isSkip ? "skipped" : "failed",
+        durationMs: Date.now() - synStart,
+        error: err,
+      });
+    }
+  } catch (err) {
+    // Never let synthesis errors derail anything — the dossier is already
+    // finalized and persisted.
+    console.error(`[Dossier] Post-finalize synthesis crashed for ${jobId}:`, err);
+    try {
+      await markSynthesisStatus(jobId, {
+        status: "failed",
+        error: err instanceof Error ? err.message : "unknown synthesis crash",
+      });
+    } catch {
+      /* tolerate DB errors during cleanup */
+    }
+  }
+}
+
+/**
+ * Write synthesis status into the DossierJob.stepDetails JSON without going
+ * through PipelineTracker (which has already finalized the job and would
+ * reset status/progress). Merges over the existing stepDetails map.
+ */
+async function markSynthesisStatus(
+  jobId: string,
+  patch: {
+    status: "running" | "success" | "failed" | "skipped";
+    startedAt?: string;
+    durationMs?: number;
+    error?: string;
+    confidence?: number;
+  }
+): Promise<void> {
+  const current = await prisma.dossierJob.findUnique({
+    where: { id: jobId },
+    select: { stepDetails: true },
+  });
+  const existing =
+    (current?.stepDetails as Record<string, Record<string, unknown>> | null) ?? {};
+  const prior = existing["synthesis-narrative"] ?? { source: "worker" };
+
+  const merged: Record<string, unknown> = {
+    ...prior,
+    ...patch,
+  };
+  if (patch.status === "success" || patch.status === "failed" || patch.status === "skipped") {
+    merged.finishedAt = new Date().toISOString();
+  }
+
+  existing["synthesis-narrative"] = merged;
 
   await prisma.dossierJob.update({
     where: { id: jobId },
-    data: {
-      status: finalStatus,
-      progress: 100,
-      currentStep: null,
-      stepsCompleted,
-      stepsFailed,
-      completedAt: new Date(),
-    },
+    data: { stepDetails: existing as unknown as object },
   });
-
-  console.log(
-    `[Dossier] Job ${jobId} ${finalStatus}: ${stepsCompleted.length} completed, ${stepsFailed.length} failed`
-  );
 }
 
 // ── Helpers ─────────────────────────────────────────────────

@@ -1,83 +1,141 @@
-/* ── Precision Transfer & Removal — Forest Green, Gold & Dark Theme ── */
+/* ── Precision Transfer & Removal — Premium Forest Green + Gold ── */
 
-:root {
-  --mp-green: #16a34a;
-  --mp-green-dark: #15803d;
-  --mp-gold: #eab308;
-  --mp-gold-dark: #ca8a04;
-  --mp-cream: #fefce8;
-  --mp-slate: #94a3b8;
+/* ── Dot grid background ── */
+.mp-dot-grid {
+  background-image: radial-gradient(rgba(22, 163, 74, 0.12) 1px, transparent 1px);
+  background-size: 24px 24px;
+  animation: mp-grid-breathe 8s ease-in-out infinite;
 }
 
-/* ── Green glow text ── */
-.mp-glow-text {
-  text-shadow:
-    0 0 10px rgba(22, 163, 74, 0.35),
-    0 0 24px rgba(22, 163, 74, 0.12);
+@keyframes mp-grid-breathe {
+  0%, 100% { opacity: 0.03; }
+  50% { opacity: 0.06; }
 }
 
-/* ── Gold accent glow text ── */
-.mp-gold-glow {
-  text-shadow:
-    0 0 8px rgba(234, 179, 8, 0.3),
-    0 0 20px rgba(234, 179, 8, 0.1);
+/* ── Animated gradient text (green → gold cycle) ── */
+.mp-gradient-text {
+  background: linear-gradient(90deg, #4ade80, #16a34a, #eab308, #22c55e, #16a34a, #4ade80);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: mp-gradient-shift 6s ease-in-out infinite;
 }
 
-/* ── Neon border ── */
-.mp-neon-border {
-  box-shadow:
-    inset 0 0 18px rgba(22, 163, 74, 0.08),
-    0 0 16px rgba(22, 163, 74, 0.1),
-    0 0 32px rgba(22, 163, 74, 0.05);
+@keyframes mp-gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 
-/* ── CTA glow pulse + bounce ── */
-.mp-cta-glow {
-  animation: mp-btn-glow 2.5s ease-in-out infinite, mp-bounce 2s ease-in-out infinite;
+/* ── Entrance animations ── */
+.mp-fade-up {
+  animation: mp-fade-in-up 0.7s ease-out both;
 }
 
-@keyframes mp-btn-glow {
-  0%, 100% {
-    box-shadow:
-      0 0 10px rgba(22, 163, 74, 0.35),
-      0 0 24px rgba(22, 163, 74, 0.12);
-  }
-  50% {
-    box-shadow:
-      0 0 20px rgba(22, 163, 74, 0.55),
-      0 0 44px rgba(22, 163, 74, 0.22);
-  }
+.mp-fade-up-d1 { animation-delay: 0.1s; }
+.mp-fade-up-d2 { animation-delay: 0.2s; }
+.mp-fade-up-d3 { animation-delay: 0.3s; }
+.mp-fade-up-d4 { animation-delay: 0.4s; }
+.mp-fade-up-d5 { animation-delay: 0.5s; }
+
+@keyframes mp-fade-in-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes mp-bounce {
-  0%, 100% { transform: translateY(0); }
-  25% { transform: translateY(-4px); }
-  50% { transform: translateY(0); }
-  75% { transform: translateY(-2px); }
+/* ── Mouse-follow glow for cards ── */
+.mp-glow-card {
+  position: relative;
+  overflow: hidden;
 }
 
-/* ── Secondary CTA wiggle ── */
-.mp-wiggle {
-  animation: mp-wiggle 3s ease-in-out infinite;
+.mp-glow-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background: radial-gradient(300px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(22, 163, 74, 0.1), transparent 70%);
+  pointer-events: none;
 }
 
-@keyframes mp-wiggle {
-  0%, 86%, 100% { transform: rotate(0deg); }
-  88% { transform: rotate(-1.5deg); }
-  90% { transform: rotate(1.5deg); }
-  92% { transform: rotate(-1deg); }
-  94% { transform: rotate(1deg); }
-  96% { transform: rotate(0deg); }
+.mp-glow-card:hover::after {
+  opacity: 1;
 }
 
-/* ── Subtle texture overlay ── */
+/* Gold variant */
+.mp-glow-card-gold::after {
+  background: radial-gradient(250px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(234, 179, 8, 0.08), transparent 70%);
+}
+
+/* ── Shimmer border for premium CTA ── */
+.mp-shimmer-border {
+  position: relative;
+}
+
+.mp-shimmer-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(90deg, transparent, rgba(22, 163, 74, 0.5), rgba(234, 179, 8, 0.3), transparent);
+  background-size: 200% 100%;
+  animation: mp-shimmer 3s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+@keyframes mp-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── CTA button glow ── */
+.mp-btn-glow {
+  box-shadow: 0 0 16px rgba(22, 163, 74, 0.3), 0 0 32px rgba(22, 163, 74, 0.1);
+  transition: all 0.3s ease;
+}
+
+.mp-btn-glow:hover {
+  box-shadow: 0 0 24px rgba(22, 163, 74, 0.5), 0 0 48px rgba(22, 163, 74, 0.2);
+  transform: scale(1.02);
+}
+
+.mp-btn-gold {
+  transition: all 0.3s ease;
+}
+
+.mp-btn-gold:hover {
+  box-shadow: 0 0 20px rgba(234, 179, 8, 0.25);
+  transform: scale(1.02);
+}
+
+/* ── Phone strip glassmorphism ── */
+.mp-phone-strip {
+  background: linear-gradient(90deg, rgba(22, 163, 74, 0.85), rgba(21, 128, 61, 0.9));
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 24px rgba(22, 163, 74, 0.25);
+}
+
+/* ── Hero background ── */
+.mp-hero-bg {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 20%, rgba(22, 163, 74, 0.06), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(234, 179, 8, 0.03), transparent 60%),
+    linear-gradient(180deg, #070d05 0%, #0a1208 50%, #070d05 100%);
+}
+
+/* ── Texture overlay ── */
 .mp-texture::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  opacity: 0.03;
+  opacity: 0.025;
   background-image:
     radial-gradient(rgba(22, 163, 74, 0.25) 0.5px, transparent 0.5px),
     radial-gradient(rgba(234, 179, 8, 0.15) 0.3px, transparent 0.3px);
@@ -86,195 +144,96 @@
   mix-blend-mode: overlay;
 }
 
-/* ── Floating leaf particles ── */
-.mp-leaf {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  border-radius: 0 50% 50% 50%;
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  opacity: 0;
-  animation: mp-leaf-float 4s ease-in-out infinite;
-}
-
-.mp-leaf:nth-child(1)  { left: 5%;  animation-delay: 0s; }
-.mp-leaf:nth-child(2)  { left: 15%; animation-delay: 0.5s; }
-.mp-leaf:nth-child(3)  { left: 25%; animation-delay: 1s; }
-.mp-leaf:nth-child(4)  { left: 35%; animation-delay: 1.5s; }
-.mp-leaf:nth-child(5)  { left: 45%; animation-delay: 2s; }
-.mp-leaf:nth-child(6)  { left: 55%; animation-delay: 2.5s; }
-.mp-leaf:nth-child(7)  { left: 65%; animation-delay: 3s; }
-.mp-leaf:nth-child(8)  { left: 75%; animation-delay: 3.5s; }
-.mp-leaf:nth-child(9)  { left: 85%; animation-delay: 0.25s; }
-.mp-leaf:nth-child(10) { left: 95%; animation-delay: 1.25s; }
-
-@keyframes mp-leaf-float {
-  0% {
-    opacity: 0.7;
-    transform: translateY(0) rotate(0deg) scale(1);
-  }
-  50% {
-    opacity: 0.5;
-    transform: translateY(-40px) rotate(45deg) scale(0.8);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-90px) translateX(15px) rotate(90deg) scale(0.3);
-  }
-}
-
-/* ── Card hover ── */
-.mp-card {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.mp-card:hover {
-  transform: translateY(-6px) scale(1.02);
-  box-shadow:
-    0 12px 40px rgba(22, 163, 74, 0.15),
-    0 0 20px rgba(234, 179, 8, 0.08);
-}
-
-.mp-card-gold:hover {
-  box-shadow:
-    0 12px 40px rgba(234, 179, 8, 0.15),
-    0 0 20px rgba(234, 179, 8, 0.1);
-}
-
-/* ── Section entrance ── */
-.mp-enter {
-  opacity: 0;
-  transform: translateY(28px);
-  animation: mp-fade-up 0.7s ease-out both;
-  animation-delay: var(--enter-delay, 0s);
-}
-
-@keyframes mp-fade-up {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* ── Section containers ── */
+.mp-glass-section {
+  border: 1px solid rgba(22, 163, 74, 0.1);
+  background: linear-gradient(160deg, rgba(22, 163, 74, 0.04), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(8px);
 }
 
 /* ── Service tag pill ── */
 .mp-tag {
-  background: linear-gradient(135deg, rgba(22, 163, 74, 0.15), rgba(22, 163, 74, 0.05));
-  border: 1px solid rgba(22, 163, 74, 0.25);
+  background: rgba(22, 163, 74, 0.08);
+  border: 1px solid rgba(22, 163, 74, 0.18);
   transition: all 0.25s ease;
 }
 
 .mp-tag:hover {
-  background: linear-gradient(135deg, rgba(22, 163, 74, 0.25), rgba(22, 163, 74, 0.1));
-  border-color: rgba(22, 163, 74, 0.4);
-  transform: translateY(-2px);
+  background: rgba(22, 163, 74, 0.15);
+  border-color: rgba(22, 163, 74, 0.35);
+  transform: translateY(-1px);
 }
 
-/* ── Phone strip ── */
-.mp-phone-strip {
-  background: linear-gradient(90deg, rgba(22, 163, 74, 0.95), rgba(21, 128, 61, 0.97));
-  box-shadow: 0 4px 20px rgba(22, 163, 74, 0.3);
+/* ── FAQ smooth accordion ── */
+.mp-accordion-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ── Hero ── */
-.mp-hero-bg {
-  background:
-    radial-gradient(ellipse 80% 60% at 50% 20%, rgba(22, 163, 74, 0.08), transparent 70%),
-    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(234, 179, 8, 0.04), transparent 60%),
-    linear-gradient(180deg, #070d05 0%, #0a1208 50%, #070d05 100%);
+.mp-accordion-body.mp-accordion-open {
+  grid-template-rows: 1fr;
 }
 
-/* ── Services section ── */
-.mp-section-services {
-  background:
-    radial-gradient(ellipse 60% 60% at 30% 70%, rgba(22, 163, 74, 0.05), transparent),
-    linear-gradient(180deg, transparent, rgba(22, 163, 74, 0.02), transparent);
-  border-radius: 1.5rem;
-  padding: 2rem 1.5rem;
+.mp-accordion-body > div {
+  overflow: hidden;
+  min-height: 0;
 }
 
-/* ── Why section ── */
-.mp-section-why {
-  background:
-    linear-gradient(160deg, rgba(234, 179, 8, 0.06), rgba(22, 163, 74, 0.08) 50%, rgba(234, 179, 8, 0.03)),
-    radial-gradient(ellipse 70% 50% at 50% 50%, rgba(234, 179, 8, 0.03), transparent);
-  border-radius: 1.5rem;
-  padding: 2rem 1.5rem;
-  border: 1px solid rgba(234, 179, 8, 0.08);
-}
-
-/* ── Gallery section ── */
-.mp-section-gallery {
-  background:
-    linear-gradient(135deg, rgba(22, 163, 74, 0.1), rgba(22, 163, 74, 0.03) 50%, transparent);
-  border-radius: 1.5rem;
-  padding: 2rem 1.5rem;
-  border: 1px solid rgba(22, 163, 74, 0.08);
-}
-
+/* ── Gallery placeholder ── */
 .mp-gallery-placeholder {
-  background: linear-gradient(135deg, rgba(22, 163, 74, 0.08), rgba(234, 179, 8, 0.04));
-  border: 2px dashed rgba(22, 163, 74, 0.2);
+  background: linear-gradient(135deg, rgba(22, 163, 74, 0.06), rgba(234, 179, 8, 0.03));
+  border: 1px dashed rgba(22, 163, 74, 0.15);
   transition: all 0.3s ease;
 }
 
 .mp-gallery-placeholder:hover {
-  border-color: rgba(22, 163, 74, 0.4);
-  background: linear-gradient(135deg, rgba(22, 163, 74, 0.12), rgba(234, 179, 8, 0.06));
+  border-color: rgba(22, 163, 74, 0.3);
+  background: linear-gradient(135deg, rgba(22, 163, 74, 0.1), rgba(234, 179, 8, 0.05));
 }
 
-/* ── FAQ ── */
-.mp-section-faq {
-  background:
-    radial-gradient(ellipse 50% 50% at 50% 0%, rgba(148, 163, 184, 0.04), transparent);
-}
-
-/* ── CTA block ── */
-.mp-cta-bg {
-  background:
-    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(234, 179, 8, 0.08), transparent 70%),
-    linear-gradient(135deg, rgba(22, 163, 74, 0.1), rgba(234, 179, 8, 0.05));
-  border: 1px solid rgba(22, 163, 74, 0.15);
-}
-
-/* ── Service area ── */
-.mp-section-area {
-  background:
-    linear-gradient(135deg, rgba(22, 163, 74, 0.1), rgba(234, 179, 8, 0.04));
-  border: 1px solid rgba(22, 163, 74, 0.1);
-}
-
-/* ── Quote bubble ── */
-.mp-quote {
-  background: linear-gradient(135deg, rgba(22, 163, 74, 0.06), rgba(234, 179, 8, 0.03));
-  border: 1px solid rgba(22, 163, 74, 0.12);
-  position: relative;
-}
-
-.mp-quote::before {
-  content: "\201C";
+/* ── Leaf particles ── */
+.mp-leaf {
   position: absolute;
-  top: -8px;
-  left: 16px;
-  font-size: 3rem;
-  color: rgba(22, 163, 74, 0.2);
-  line-height: 1;
-  font-family: Georgia, serif;
+  width: 6px;
+  height: 6px;
+  border-radius: 0 50% 50% 50%;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  opacity: 0;
+  animation: mp-leaf-float 5s ease-in-out infinite;
 }
 
+.mp-leaf:nth-child(1)  { left: 5%;  animation-delay: 0s; }
+.mp-leaf:nth-child(2)  { left: 15%; animation-delay: 0.7s; }
+.mp-leaf:nth-child(3)  { left: 25%; animation-delay: 1.4s; }
+.mp-leaf:nth-child(4)  { left: 40%; animation-delay: 2.1s; }
+.mp-leaf:nth-child(5)  { left: 55%; animation-delay: 0.35s; }
+.mp-leaf:nth-child(6)  { left: 65%; animation-delay: 1.05s; }
+.mp-leaf:nth-child(7)  { left: 75%; animation-delay: 1.75s; }
+.mp-leaf:nth-child(8)  { left: 90%; animation-delay: 2.45s; }
+
+@keyframes mp-leaf-float {
+  0% { opacity: 0.5; transform: translateY(0) rotate(0deg) scale(1); }
+  50% { opacity: 0.3; transform: translateY(-50px) rotate(45deg) scale(0.7); }
+  100% { opacity: 0; transform: translateY(-100px) translateX(12px) rotate(90deg) scale(0.2); }
+}
+
+/* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
+  .mp-gradient-text {
+    animation: none;
+    -webkit-text-fill-color: unset;
+    color: #16a34a;
+  }
+  .mp-fade-up,
   .mp-leaf,
-  .mp-card,
-  .mp-enter,
-  .mp-cta-glow,
-  .mp-wiggle {
+  .mp-shimmer-border::before,
+  .mp-dot-grid {
     animation: none;
   }
-  .mp-card:hover,
-  .mp-tag:hover {
-    transform: none;
-  }
-  .mp-enter {
-    opacity: 1;
-    transform: none;
-  }
+  .mp-fade-up { opacity: 1; transform: none; }
+  .mp-accordion-body { transition: none; }
+  .mp-btn-glow:hover,
+  .mp-btn-gold:hover,
+  .mp-tag:hover { transform: none; }
 }

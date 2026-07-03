@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import Image from "next/image";
+import { PhotoSourcePicker } from "./PhotoSourcePicker";
+import { uploadShopPhoto } from "@/lib/shop/upload-client";
 
 interface QuickCaptureProps {
   onSuccess: () => void;
@@ -19,10 +21,8 @@ export function QuickCapture({ onSuccess }: QuickCaptureProps) {
     suggestedCategory?: string;
     suggestedPrice?: { low: number; mid: number; high: number };
   } | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  function handleCapture(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  function handleCapture(fileList: FileList) {
+    const file = fileList[0];
     if (!file) return;
     setImageFile(file);
     const reader = new FileReader();
@@ -38,12 +38,8 @@ export function QuickCapture({ onSuccess }: QuickCaptureProps) {
     setStep("posting");
 
     try {
-      // Upload image
-      const formData = new FormData();
-      formData.append("file", imageFile);
-      const upRes = await fetch("/api/shop/upload", { method: "POST", body: formData });
-      if (!upRes.ok) throw new Error("Upload failed");
-      const { url } = await upRes.json();
+      // Upload image — client-direct to Blob to handle full-res photos
+      const url = await uploadShopPhoto(imageFile);
 
       // Create product
       const res = await fetch("/api/shop/products", {
@@ -86,23 +82,19 @@ export function QuickCapture({ onSuccess }: QuickCaptureProps) {
   if (step === "capture") {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center">
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={handleCapture}
-          className="hidden"
-        />
-        <button
-          onClick={() => fileRef.current?.click()}
-          className="shop-upload-zone mx-auto flex h-32 w-32 items-center justify-center rounded-2xl"
-        >
-          <div className="text-center">
-            <p className="text-4xl">📸</p>
-            <p className="mt-1 text-xs text-white/40">Snap & List</p>
-          </div>
-        </button>
+        <PhotoSourcePicker onFiles={handleCapture}>
+          {(openPicker) => (
+            <button
+              onClick={openPicker}
+              className="shop-upload-zone mx-auto flex h-32 w-32 items-center justify-center rounded-2xl"
+            >
+              <div className="text-center">
+                <p className="text-4xl">📸</p>
+                <p className="mt-1 text-xs text-white/40">Snap & List</p>
+              </div>
+            </button>
+          )}
+        </PhotoSourcePicker>
       </div>
     );
   }

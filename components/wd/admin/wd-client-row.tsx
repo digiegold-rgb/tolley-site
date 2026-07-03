@@ -34,6 +34,12 @@ export interface WdClientData {
   paidBy: string;
   payments: WdPayment[];
   split: RevenueSplit;
+  // Stripe-synced (optional — present once auto-sync runs)
+  pendingApproval?: boolean;
+  subscriptionStatus?: string | null;
+  currentPeriodEnd?: string | null;
+  lastPaymentStatus?: string | null;
+  dunningStage?: number;
 }
 
 interface Props {

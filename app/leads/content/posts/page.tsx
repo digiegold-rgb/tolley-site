@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import PostPreview from "@/components/content/PostPreview";
+import { useToast } from "@/components/ui/Toast";
 
 const STATUSES = ["all", "draft", "scheduled", "publishing", "published", "failed"];
 
 export default function PostsPage() {
+  const { toast } = useToast();
   const [posts, setPosts] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -19,46 +21,85 @@ export default function PostsPage() {
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (platformFilter) params.set("platform", platformFilter);
       const res = await fetch(`/api/content/posts?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setPosts(data.posts || []);
-        setTotal(data.total || 0);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Couldn't load posts",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        return;
       }
-    } catch {
-      // silent
+      const data = await res.json();
+      setPosts(data.posts || []);
+      setTotal(data.total || 0);
+    } catch (err) {
+      toast({
+        title: "Network error loading posts",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, platformFilter]);
+  }, [statusFilter, platformFilter, toast]);
 
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
 
   const handlePublish = async (id: string) => {
-    await fetch(`/api/content/posts/${id}/publish`, { method: "POST" });
-    fetchPosts();
+    try {
+      const res = await fetch(`/api/content/posts/${id}/publish`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Publish failed",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        return;
+      }
+      toast({ title: "Post published", variant: "success" });
+      fetchPosts();
+    } catch (err) {
+      toast({
+        title: "Network error",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
+    }
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/content/posts/${id}`, { method: "DELETE" });
-    fetchPosts();
+    try {
+      const res = await fetch(`/api/content/posts/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Delete failed",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        return;
+      }
+      toast({ title: "Post deleted", variant: "success" });
+      fetchPosts();
+    } catch (err) {
+      toast({
+        title: "Network error",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#06050a]">
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        {/* Nav */}
-        <nav className="flex items-center gap-1 mb-6 flex-wrap">
-          <a href="/leads/dashboard" className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors">Leads</a>
-          <span className="text-white/20">/</span>
-          <a href="/leads/content" className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors">Content</a>
-          <span className="text-white/20">/</span>
-          <span className="rounded-lg px-3 py-1.5 text-sm font-medium text-white bg-white/10">Posts</span>
-        </nav>
-
-        {/* Sub-nav */}
-        <div className="flex gap-2 mb-6">
+    <>
+      {/* Sub-nav */}
+      <div className="flex gap-2 mb-6">
           <a href="/leads/content" className="rounded-lg bg-white/5 text-white/40 px-3 py-1 text-xs hover:text-white/60 transition-colors">Hub</a>
           <span className="rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 px-3 py-1 text-xs font-medium">Posts</span>
           <a href="/leads/content/templates" className="rounded-lg bg-white/5 text-white/40 px-3 py-1 text-xs hover:text-white/60 transition-colors">Templates</a>
@@ -117,7 +158,6 @@ export default function PostsPage() {
             ))}
           </div>
         )}
-      </div>
-    </div>
+    </>
   );
 }

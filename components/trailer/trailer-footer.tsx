@@ -10,11 +10,11 @@ export function TrailerFooter() {
           <div>
             <p className="font-black tracking-wide text-white uppercase">{TR_COMPANY}</p>
             <p className="mt-1 text-sm font-light text-neutral-500">
-              <a href={`mailto:${TR_CONTACT_EMAIL}`} className="transition hover:text-amber-400">
+              <a href={`mailto:${TR_CONTACT_EMAIL}`} data-track-event="email_click" data-track-label="trailer_footer" className="transition hover:text-amber-400">
                 {TR_CONTACT_EMAIL}
               </a>
               {" \u00B7 "}
-              <a href={`tel:${TR_CONTACT_PHONE}`} className="transition hover:text-amber-400">
+              <a href={`tel:${TR_CONTACT_PHONE}`} data-track-event="phone_click" data-track-label="trailer_footer" className="transition hover:text-amber-400">
                 {TR_CONTACT_PHONE}
               </a>
             </p>
@@ -42,6 +42,14 @@ export function TrailerFooter() {
           </nav>
         </div>
         <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <div className="rounded-lg border border-teal-500/15 bg-teal-500/[0.04] px-4 py-2.5 text-center">
+            <p className="text-xs font-bold tracking-wider text-teal-400/70 uppercase">
+              See all rentals{" "}
+              <Link href="/rental" className="text-teal-400 transition hover:text-teal-300">
+                Browse rentals &rarr;
+              </Link>
+            </p>
+          </div>
           <div className="rounded-lg border border-amber-500/15 bg-amber-500/[0.04] px-4 py-2.5 text-center">
             <p className="text-xs font-bold tracking-wider text-amber-400/70 uppercase">
               Need a generator?{" "}

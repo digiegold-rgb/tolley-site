@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -35,7 +34,7 @@ export async function GET(
     const deal = await prisma.deal.findUnique({
       where: { id },
       include: {
-        lead: {
+        Lead: {
           select: {
             id: true,
             ownerName: true,
@@ -48,7 +47,7 @@ export async function GET(
             },
           },
         },
-        client: {
+        Client: {
           select: {
             id: true,
             firstName: true,
@@ -57,7 +56,7 @@ export async function GET(
             phone: true,
           },
         },
-        listing: {
+        Listing: {
           select: {
             id: true,
             address: true,
@@ -71,10 +70,10 @@ export async function GET(
             status: true,
           },
         },
-        tasks: {
+        CrmTask: {
           orderBy: { dueDate: "asc" },
         },
-        activities: {
+        CrmActivity: {
           orderBy: { createdAt: "desc" },
           take: 20,
         },
@@ -96,14 +95,14 @@ export async function GET(
         closedDate: deal.closedDate?.toISOString() ?? null,
         createdAt: deal.createdAt.toISOString(),
         updatedAt: deal.updatedAt.toISOString(),
-        tasks: deal.tasks.map((t) => ({
+        tasks: deal.CrmTask.map((t) => ({
           ...t,
           dueDate: t.dueDate?.toISOString() ?? null,
           completedAt: t.completedAt?.toISOString() ?? null,
           createdAt: t.createdAt.toISOString(),
           updatedAt: t.updatedAt.toISOString(),
         })),
-        activities: deal.activities.map((a) => ({
+        activities: deal.CrmActivity.map((a) => ({
           ...a,
           createdAt: a.createdAt.toISOString(),
         })),
@@ -191,10 +190,10 @@ export async function PATCH(
       where: { id },
       data,
       include: {
-        lead: { select: { id: true, ownerName: true } },
-        client: { select: { id: true, firstName: true, lastName: true } },
-        listing: { select: { id: true, address: true, listPrice: true } },
-        _count: { select: { tasks: true } },
+        Lead: { select: { id: true, ownerName: true } },
+        Client: { select: { id: true, firstName: true, lastName: true } },
+        Listing: { select: { id: true, address: true, listPrice: true } },
+        _count: { select: { CrmTask: true } },
       },
     });
 

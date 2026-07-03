@@ -1,4 +1,4 @@
-// @ts-nocheck — references removed Prisma models
+// Food API route
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";

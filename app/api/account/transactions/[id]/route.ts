@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -9,7 +8,8 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
-    await requireAdminApiSession();
+    const check = await requireAdminApiSession();
+    if (!check.ok) return check.response;
     const { id } = await context.params;
 
     const body = await request.json();

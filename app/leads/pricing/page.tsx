@@ -1,6 +1,10 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import LeadsPricingClient from "@/components/leads/LeadsPricingClient";
+import {
+  StructuredData,
+  tAgentSoftwareSchema,
+} from "@/components/seo/structured-data";
 
 export default async function LeadsPricingPage() {
   const session = await auth();
@@ -19,6 +23,7 @@ export default async function LeadsPricingPage() {
 
   return (
     <>
+      <StructuredData data={tAgentSoftwareSchema} id="ld-t-agent" />
       {/* Header */}
       <div className="text-center mb-12">
           <p className="text-xs tracking-[0.2em] text-purple-400/80 uppercase mb-3">

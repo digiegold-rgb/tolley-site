@@ -1,0 +1,162 @@
+/* ============================
+   CRAZY BIN STORE #2
+   Bold, fire-sale, liquidation vibe
+   ============================ */
+
+.crazybins-page {
+  --crazy-orange: #ff6b1a;
+  --crazy-orange-deep: #e8540a;
+  --crazy-red: #e63946;
+  --crazy-yellow: #ffd60a;
+  --crazy-yellow-deep: #ffc300;
+  --crazy-navy: #1d2d50;
+  --crazy-cream: #fff7ec;
+  --crazy-text: #1d2d50;
+  --crazy-text-soft: #5b6b85;
+  --crazy-fire-grad: linear-gradient(135deg, #ffd60a 0%, #ff6b1a 45%, #e63946 100%);
+  font-family: var(--font-nunito), "Inter", system-ui, sans-serif;
+  color: var(--crazy-text);
+  background: var(--crazy-cream);
+}
+
+/* ---------- Wave-text (per-character GSAP-free CSS) ---------- */
+.crazy-wave-char {
+  display: inline-block;
+  animation: crazy-wave 2.4s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+
+@keyframes crazy-wave {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  20% { transform: translateY(-6px) rotate(-2deg); }
+  40% { transform: translateY(0) rotate(0deg); }
+  60% { transform: translateY(-3px) rotate(1.5deg); }
+  80% { transform: translateY(0) rotate(0deg); }
+}
+
+/* ---------- Section entrance ---------- */
+.crazy-enter {
+  animation: crazy-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--enter-delay, 0s);
+}
+
+@keyframes crazy-fade-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Spinning fire ring ---------- */
+.crazy-spin-slow {
+  animation: crazy-spin 22s linear infinite;
+}
+
+@keyframes crazy-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Pulse for TODAY tile ---------- */
+.crazy-pulse {
+  animation: crazy-pulse 1.8s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(230, 57, 70, 0.45);
+}
+
+@keyframes crazy-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(230, 57, 70, 0.45); transform: scale(1); }
+  50% { box-shadow: 0 0 0 18px rgba(230, 57, 70, 0); transform: scale(1.02); }
+}
+
+/* ---------- Glow CTA ---------- */
+.crazy-glow {
+  position: relative;
+}
+.crazy-glow::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  background: var(--crazy-fire-grad);
+  border-radius: inherit;
+  filter: blur(14px);
+  opacity: 0.55;
+  z-index: -1;
+  transition: opacity .3s;
+}
+.crazy-glow:hover::before { opacity: 0.85; }
+
+/* ---------- Marquee ---------- */
+.crazy-marquee {
+  display: flex;
+  width: max-content;
+  animation: crazy-marquee 35s linear infinite;
+}
+.crazy-marquee-pause:hover .crazy-marquee {
+  animation-play-state: paused;
+}
+@keyframes crazy-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* ---------- Floating embers (background atmosphere) ---------- */
+.crazy-embers {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.crazy-ember {
+  position: absolute;
+  bottom: -10%;
+  left: var(--x, 50%);
+  width: var(--s, 8px);
+  height: var(--s, 8px);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--crazy-yellow) 0%, var(--crazy-orange) 60%, transparent 70%);
+  opacity: 0;
+  filter: blur(0.5px);
+  animation: crazy-ember-rise var(--dur, 9s) ease-in var(--delay, 0s) infinite;
+}
+@keyframes crazy-ember-rise {
+  0% { transform: translateY(0) translateX(0) scale(0.3); opacity: 0; }
+  10% { opacity: 0.85; }
+  60% { transform: translateY(-65vh) translateX(var(--drift, 30px)) scale(1); opacity: 0.55; }
+  100% { transform: translateY(-110vh) translateX(calc(var(--drift, 30px) * -0.8)) scale(0.2); opacity: 0; }
+}
+
+/* ---------- Tile hover ---------- */
+.crazy-tile {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+}
+.crazy-tile:hover {
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: 0 22px 44px rgba(255, 107, 26, 0.22), 0 8px 18px rgba(230, 57, 70, 0.15);
+}
+
+/* ---------- Marquee pause indicator ---------- */
+.crazy-marquee-shadow {
+  pointer-events: none;
+  position: absolute;
+  inset-block: 0;
+  width: 80px;
+  z-index: 2;
+}
+.crazy-marquee-shadow.left { left: 0; background: linear-gradient(to right, var(--crazy-cream), transparent); }
+.crazy-marquee-shadow.right { right: 0; background: linear-gradient(to left, var(--crazy-cream), transparent); }
+
+/* ---------- Sticky bottom address bar (mobile) ---------- */
+.crazy-sticky-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 50;
+  background: var(--crazy-navy);
+  color: white;
+  border-top: 3px solid var(--crazy-yellow);
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .crazy-wave-char,
+  .crazy-spin-slow,
+  .crazy-pulse,
+  .crazy-marquee,
+  .crazy-ember { animation: none !important; }
+}

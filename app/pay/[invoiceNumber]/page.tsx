@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
@@ -21,6 +20,10 @@ export default async function PayPage({
       contact: { select: { name: true, email: true } },
       lineItems: { select: { description: true, quantity: true, unitAmount: true, lineAmount: true } },
       payments: { select: { amount: true, paidAt: true, method: true } },
+      attachments: {
+        select: { id: true, fileName: true, mimeType: true, size: true, blobUrl: true },
+        orderBy: { uploadedAt: 'asc' },
+      },
     },
   });
 
@@ -52,6 +55,13 @@ export default async function PayPage({
             amount: p.amount,
             paidAt: p.paidAt.toISOString(),
             method: p.method,
+          })),
+          attachments: invoice.attachments.map((a) => ({
+            id: a.id,
+            fileName: a.fileName,
+            mimeType: a.mimeType,
+            size: a.size,
+            blobUrl: a.blobUrl,
           })),
         }}
       />

@@ -10,17 +10,17 @@ export function GeneratorFooter() {
           <div>
             <p className="font-black tracking-wide text-white uppercase">{GEN_COMPANY}</p>
             <p className="mt-1 text-sm font-light text-slate-500">
-              <a href={`mailto:${GEN_CONTACT_EMAIL}`} className="transition hover:text-yellow-400">
+              <a href={`mailto:${GEN_CONTACT_EMAIL}`} data-track-event="email_click" data-track-label="generator_footer" className="transition hover:text-yellow-400">
                 {GEN_CONTACT_EMAIL}
               </a>
               {" \u00B7 "}
-              <a href={`tel:${GEN_CONTACT_PHONE}`} className="transition hover:text-yellow-400">
+              <a href={`tel:${GEN_CONTACT_PHONE}`} data-track-event="phone_click" data-track-label="generator_footer" className="transition hover:text-yellow-400">
                 {GEN_CONTACT_PHONE}
               </a>
             </p>
           </div>
           <nav className="flex items-center gap-3 text-sm text-slate-500">
-            <Link href="/trailer/terms" className="transition hover:text-yellow-400">
+            <Link href="/rental/terms" className="transition hover:text-yellow-400">
               Rental Terms
             </Link>
             <span className="text-slate-700">|</span>
@@ -44,6 +44,14 @@ export function GeneratorFooter() {
 
         {/* Cross-sell */}
         <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <div className="rounded-lg border border-teal-500/15 bg-teal-500/[0.04] px-4 py-2.5 text-center">
+            <p className="text-xs font-bold tracking-wider text-teal-400/70 uppercase">
+              See all rentals{" "}
+              <Link href="/rental" className="text-teal-400 transition hover:text-teal-300">
+                Browse rentals &rarr;
+              </Link>
+            </p>
+          </div>
           <div className="rounded-lg border border-amber-500/15 bg-amber-500/[0.04] px-4 py-2.5 text-center">
             <p className="text-xs font-bold tracking-wider text-amber-400/70 uppercase">
               Need a trailer?{" "}

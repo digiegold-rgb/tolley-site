@@ -1,5 +1,4 @@
-const VLLM_URL = process.env.VLLM_URL || "http://127.0.0.1:8355/v1";
-const MODEL = "Qwen/Qwen3.5-35B-A3B-FP8";
+import { chatJSON } from "./ai-client";
 
 interface RecipeIngredient {
   name: string;
@@ -90,32 +89,14 @@ Return ONLY valid JSON with this exact structure:
       `Try to use these pantry items I already have: ${pantryItems.join(", ")}.`
     );
   }
-  const userPrompt = parts.join(" ");
 
-  const res = await fetch(`${VLLM_URL}/chat/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-    }),
-    signal: AbortSignal.timeout(60000),
+  const recipe = await chatJSON<GeneratedRecipe>({
+    task: "generate-recipe",
+    system: systemPrompt,
+    user: parts.join(" "),
+    temperature: 0.7,
+    maxTokens: 2000,
   });
-
-  const data = await res.json();
-  const content = data.choices?.[0]?.message?.content || "";
-  const jsonMatch = content.match(/\{[\s\S]*\}/);
-
-  if (!jsonMatch) {
-    throw new Error("Failed to parse recipe from AI response");
-  }
-
-  const recipe: GeneratedRecipe = JSON.parse(jsonMatch[0]);
 
   // Ensure slug is kebab-case derived from title
   if (!recipe.slug) {
@@ -155,30 +136,12 @@ All values should be numbers. Calories in kcal, macros in grams, sodium in mg.`;
     .map((i) => `${i.quantity} ${i.unit} ${i.name}`)
     .join("\n");
 
-  const userPrompt = `Estimate the total nutrition for these ingredients:\n${ingredientList}`;
-
-  const res = await fetch(`${VLLM_URL}/chat/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.3,
-      max_tokens: 500,
-    }),
-    signal: AbortSignal.timeout(30000),
+  return chatJSON<NutritionEstimate>({
+    task: "estimate-nutrition",
+    system: systemPrompt,
+    user: `Estimate the total nutrition for these ingredients:\n${ingredientList}`,
+    temperature: 0.3,
+    maxTokens: 500,
+    timeoutMs: 30000,
   });
-
-  const data = await res.json();
-  const content = data.choices?.[0]?.message?.content || "";
-  const jsonMatch = content.match(/\{[\s\S]*\}/);
-
-  if (!jsonMatch) {
-    throw new Error("Failed to parse nutrition estimate from AI response");
-  }
-
-  return JSON.parse(jsonMatch[0]) as NutritionEstimate;
 }

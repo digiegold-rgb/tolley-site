@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -34,10 +33,10 @@ export async function GET(request: NextRequest) {
     const deals = await prisma.deal.findMany({
       where,
       include: {
-        lead: { select: { id: true, ownerName: true } },
-        client: { select: { id: true, firstName: true, lastName: true } },
-        listing: { select: { id: true, address: true, listPrice: true } },
-        _count: { select: { tasks: true } },
+        Lead: { select: { id: true, ownerName: true } },
+        Client: { select: { id: true, firstName: true, lastName: true } },
+        Listing: { select: { id: true, address: true, listPrice: true } },
+        _count: { select: { CrmTask: true } },
       },
       orderBy: { updatedAt: "desc" },
     });
@@ -128,10 +127,10 @@ export async function POST(request: NextRequest) {
         ...(stage ? { stage } : {}),
       },
       include: {
-        lead: { select: { id: true, ownerName: true } },
-        client: { select: { id: true, firstName: true, lastName: true } },
-        listing: { select: { id: true, address: true, listPrice: true } },
-        _count: { select: { tasks: true } },
+        Lead: { select: { id: true, ownerName: true } },
+        Client: { select: { id: true, firstName: true, lastName: true } },
+        Listing: { select: { id: true, address: true, listPrice: true } },
+        _count: { select: { CrmTask: true } },
       },
     });
 

@@ -1,4 +1,4 @@
-// @ts-nocheck — references removed Prisma models
+// Food API route
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -40,6 +40,10 @@ export async function PATCH(request: NextRequest) {
     data.defaultServings = body.defaultServings
       ? Number(body.defaultServings)
       : 4;
+  if (Array.isArray(body.cuisinePreferences))
+    data.cuisinePreferences = body.cuisinePreferences.filter(
+      (c: unknown): c is string => typeof c === "string" && c.trim().length > 0
+    );
 
   const household = await prisma.foodHousehold.update({
     where: { id: existing.id },

@@ -18,6 +18,12 @@ export default async function AdminPage() {
           <p className="mt-2 text-sm text-white/72">
             Logged in as {session.email}. Admin allowlist enforced server-side.
           </p>
+          <a
+            href="/admin/routines"
+            className="mt-4 inline-flex items-center rounded-full bg-violet-500/20 px-4 py-1.5 text-xs font-medium text-violet-200 hover:bg-violet-500/30"
+          >
+            Routine Inbox — scheduled-agent briefs →
+          </a>
         </header>
 
         <OpenClawAdminConsole />

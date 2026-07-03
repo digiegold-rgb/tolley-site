@@ -32,6 +32,9 @@ interface SelectProps {
   value: string | null;
   onChange: (name: string) => void;
   disabled?: boolean;
+  /** When set, the voice was auto-populated from a Style document. Shows a
+   *  compact single-line display with a "change" link to expand the grid. */
+  autoPopulatedFrom?: string | null;
 }
 
 interface ManageProps {
@@ -85,6 +88,7 @@ export function YouTubeVoiceClonePanel(props: Props) {
         onChange={props.onChange}
         disabled={props.disabled}
         onRefresh={fetchVoices}
+        autoPopulatedFrom={props.autoPopulatedFrom}
       />
     );
   }
@@ -111,6 +115,7 @@ function SelectMode({
   onChange,
   disabled,
   onRefresh,
+  autoPopulatedFrom,
 }: {
   voices: VoiceClone[];
   loading: boolean;
@@ -119,7 +124,41 @@ function SelectMode({
   onChange: (name: string) => void;
   disabled?: boolean;
   onRefresh: () => void;
+  autoPopulatedFrom?: string | null;
 }) {
+  const [expanded, setExpanded] = useState(false);
+
+  // When a Style auto-populated the voice and the user hasn't expanded,
+  // show a compact single-line summary instead of the full grid.
+  if (autoPopulatedFrom && value && !expanded && !loading) {
+    const meta = getVoiceMeta(value);
+    return (
+      <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm">
+            <span aria-hidden="true">{meta?.emoji ?? "🎤"}</span>
+            <span className="font-semibold text-emerald-300">
+              {meta?.displayName ?? value}
+            </span>
+            <span className="text-[10px] text-zinc-500">
+              (from Style: {autoPopulatedFrom})
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="text-[11px] text-sky-400 underline-offset-2 hover:underline"
+          >
+            change
+          </button>
+        </div>
+        {meta?.character && (
+          <p className="mt-1 text-[10px] text-zinc-500">{meta.character}</p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="mb-2 flex items-center justify-between text-xs text-zinc-500">
@@ -169,7 +208,7 @@ function SelectMode({
                   {meta ? (
                     <Image
                       src={meta.avatarUrl}
-                      alt={`${meta.name} portrait`}
+                      alt={`${meta.displayName} portrait`}
                       fill
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
@@ -182,6 +221,11 @@ function SelectMode({
                       </span>
                     </div>
                   )}
+                  {isSelected && (
+                    <span className="absolute right-2 top-2 z-10 rounded-full bg-sky-500 px-2 py-0.5 text-[9px] font-bold text-white">
+                      ✓
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1 p-3">
                   <div className="flex items-center gap-1.5">
@@ -191,7 +235,7 @@ function SelectMode({
                         isSelected ? "text-sky-400" : "text-zinc-200"
                       }`}
                     >
-                      {voice.name}
+                      {meta?.displayName ?? voice.name}
                     </span>
                   </div>
                   {meta ? (

@@ -1,0 +1,286 @@
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/jelly/scripts/pool360-reauth.ts' imported from /home/jelly/
+    at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+    at moduleResolve (node:internal/modules/esm/resolve:859:10)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1774771202136:2:3744)
+    at resolveDirectory (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1774771202136:2:4243)
+    at resolveTsPaths (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1774771202136:2:4984)
+    at resolve (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1774771202136:2:5361)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/jelly/scripts/pool360-reauth.ts'
+}
+
+Node.js v22.22.0
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/jelly/scripts/pool360-reauth.ts' imported from /home/jelly/
+    at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+    at moduleResolve (node:internal/modules/esm/resolve:859:10)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1775376003760:2:3744)
+    at resolveDirectory (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1775376003760:2:4243)
+    at resolveTsPaths (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1775376003760:2:4984)
+    at resolve (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1775376003760:2:5361)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/jelly/scripts/pool360-reauth.ts'
+}
+
+Node.js v22.22.0
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/jelly/scripts/pool360-reauth.ts' imported from /home/jelly/
+    at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+    at moduleResolve (node:internal/modules/esm/resolve:859:10)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1775980804902:2:3744)
+    at resolveDirectory (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1775980804902:2:4243)
+    at resolveTsPaths (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1775980804902:2:4984)
+    at resolve (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1775980804902:2:5361)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/jelly/scripts/pool360-reauth.ts'
+}
+
+Node.js v22.22.0
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/jelly/scripts/pool360-reauth.ts' imported from /home/jelly/
+    at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+    at moduleResolve (node:internal/modules/esm/resolve:859:10)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1776585603339:2:3744)
+    at resolveDirectory (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1776585603339:2:4243)
+    at resolveTsPaths (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1776585603339:2:4984)
+    at resolve (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1776585603339:2:5361)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/jelly/scripts/pool360-reauth.ts'
+}
+
+Node.js v22.22.0
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/jelly/scripts/pool360-reauth.ts' imported from /home/jelly/
+    at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+    at moduleResolve (node:internal/modules/esm/resolve:859:10)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1777190404487:2:3744)
+    at resolveDirectory (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1777190404487:2:4243)
+    at resolveTsPaths (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1777190404487:2:4984)
+    at resolve (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1777190404487:2:5361)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/jelly/scripts/pool360-reauth.ts'
+}
+
+Node.js v22.22.0
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/jelly/scripts/pool360-reauth.ts' imported from /home/jelly/
+    at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+    at moduleResolve (node:internal/modules/esm/resolve:859:10)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1777795204336:2:3744)
+    at resolveDirectory (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1777795204336:2:4243)
+    at resolveTsPaths (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1777795204336:2:4984)
+    at resolve (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1777795204336:2:5361)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/jelly/scripts/pool360-reauth.ts'
+}
+
+Node.js v22.22.0
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/jelly/scripts/pool360-reauth.ts' imported from /home/jelly/
+    at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+    at moduleResolve (node:internal/modules/esm/resolve:859:10)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1778400006270:2:3744)
+    at resolveDirectory (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1778400006270:2:4243)
+    at resolveTsPaths (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1778400006270:2:4984)
+    at resolve (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/esm/index.mjs?1778400006270:2:5361)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/jelly/scripts/pool360-reauth.ts'
+}
+
+Node.js v22.22.0
+npm notice
+npm notice New major version of npm available! 10.9.4 -> 11.14.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.14.1
+npm notice To update run: npm install -g npm@11.14.1
+npm notice
+npm warn exec The following package was not found and will be installed: tsx@4.22.1
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/jelly/scripts/pool360-reauth.ts' imported from /home/jelly/
+    at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+    at moduleResolve (node:internal/modules/esm/resolve:859:10)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-BmBLtb39.mjs:2:6834)
+    at resolveDirectory (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-BmBLtb39.mjs:2:7921)
+    at resolveTsPaths (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-BmBLtb39.mjs:2:9377)
+    at resolve2 (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-BmBLtb39.mjs:2:10307)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/jelly/scripts/pool360-reauth.ts'
+}
+
+Node.js v22.22.0
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/jelly/scripts/pool360-reauth.ts' imported from /home/jelly/
+    at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+    at moduleResolve (node:internal/modules/esm/resolve:859:10)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-D_B8UL5H.mjs:2:8037)
+    at resolveDirectory (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-D_B8UL5H.mjs:2:9124)
+    at resolveTsPaths (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-D_B8UL5H.mjs:2:10581)
+    at resolve2 (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-D_B8UL5H.mjs:2:11864)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/jelly/scripts/pool360-reauth.ts'
+}
+
+Node.js v22.22.0
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/jelly/scripts/pool360-reauth.ts' imported from /home/jelly/
+    at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+    at moduleResolve (node:internal/modules/esm/resolve:859:10)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-D_B8UL5H.mjs:2:8037)
+    at resolveDirectory (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-D_B8UL5H.mjs:2:9124)
+    at resolveTsPaths (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-D_B8UL5H.mjs:2:10581)
+    at resolve2 (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-D_B8UL5H.mjs:2:11864)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/jelly/scripts/pool360-reauth.ts'
+}
+
+Node.js v22.22.0
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/jelly/scripts/pool360-reauth.ts' imported from /home/jelly/
+    at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+    at moduleResolve (node:internal/modules/esm/resolve:859:10)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:8141)
+    at resolveDirectory (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:9227)
+    at resolveTsPaths (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:10757)
+    at resolve2 (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:11938)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/jelly/scripts/pool360-reauth.ts'
+}
+
+Node.js v22.22.0
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/jelly/scripts/pool360-reauth.ts' imported from /home/jelly/
+    at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+    at moduleResolve (node:internal/modules/esm/resolve:859:10)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:8141)
+    at resolveDirectory (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:9227)
+    at resolveTsPaths (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:10757)
+    at resolve2 (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:11938)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/jelly/scripts/pool360-reauth.ts'
+}
+
+Node.js v22.22.0
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/jelly/scripts/pool360-reauth.ts' imported from /home/jelly/
+    at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+    at moduleResolve (node:internal/modules/esm/resolve:859:10)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:8141)
+    at resolveDirectory (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:9227)
+    at resolveTsPaths (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:10757)
+    at resolve2 (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:11938)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/jelly/scripts/pool360-reauth.ts'
+}
+
+Node.js v22.22.0
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/jelly/scripts/pool360-reauth.ts' imported from /home/jelly/
+    at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+    at moduleResolve (node:internal/modules/esm/resolve:859:10)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:8141)
+    at resolveDirectory (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:9227)
+    at resolveTsPaths (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:10757)
+    at resolve2 (file:///home/jelly/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:11938)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/jelly/scripts/pool360-reauth.ts'
+}
+
+Node.js v22.22.0

@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { DISCONTINUED_SKUS } from "@/lib/pool-discontinued-skus";
 import { logScanActivity, startScanRun, completeScanRun } from "@/lib/scan/log";
+import { getDynamicPriceForSku } from "@/lib/pools-pricing";
 
 interface SyncProduct {
   sku: string;
@@ -13,7 +14,7 @@ interface SyncProduct {
   mfgPart?: string;
 }
 
-const MARKUP = 1.45; // 45% markup — delivery baked in
+const MARKUP = 1.45; // 45% markup — delivery baked in (fallback)
 
 function calcSellingPrice(cost: number): number {
   return Math.round(cost * MARKUP);
@@ -77,7 +78,21 @@ export async function POST(request: NextRequest) {
 
         if (hasPrice) {
           // Full sync: price + stock
-          const sellingPrice = calcSellingPrice(p.price!);
+          // Try dynamic pricing (competitor-based), fall back to flat markup
+          const fallbackPrice = calcSellingPrice(p.price!);
+          let sellingPrice = fallbackPrice;
+          let retailPrice: number | null = null;
+
+          try {
+            const dynamic = await getDynamicPriceForSku(p.sku, p.price!, fallbackPrice);
+            if (dynamic) {
+              sellingPrice = dynamic.price;
+              retailPrice = dynamic.retailPrice;
+            }
+          } catch {
+            // Dynamic pricing failed — use flat markup
+          }
+
           await prisma.poolProduct.upsert({
             where: { sku: p.sku },
             create: {
@@ -86,6 +101,7 @@ export async function POST(request: NextRequest) {
               brand: p.brand || null,
               price: sellingPrice,
               costPrice: p.price!,
+              ...(retailPrice != null ? { retailPrice } : {}),
               imageUrl,
               mfgPart: p.mfgPart || null,
               lastSyncedAt: new Date(),
@@ -94,6 +110,7 @@ export async function POST(request: NextRequest) {
             update: {
               costPrice: p.price!,
               price: sellingPrice,
+              ...(retailPrice != null ? { retailPrice } : {}),
               lastSyncedAt: new Date(),
               ...(p.name ? { name: p.name } : {}),
               ...(p.brand ? { brand: p.brand } : {}),
@@ -103,19 +120,38 @@ export async function POST(request: NextRequest) {
             },
           });
         } else {
-          // Stock-only sync: update stock on existing products, skip unknown SKUs
+          // No price: update existing or create new with placeholder
           const existing = await prisma.poolProduct.findUnique({ where: { sku: p.sku } });
-          if (!existing) {
+          if (existing) {
+            await prisma.poolProduct.update({
+              where: { sku: p.sku },
+              data: {
+                lastSyncedAt: new Date(),
+                ...(p.name ? { name: p.name } : {}),
+                ...(p.brand ? { brand: p.brand } : {}),
+                ...(p.mfgPart ? { mfgPart: p.mfgPart } : {}),
+                ...stockData,
+              },
+            });
+          } else if (p.name) {
+            // New product from search — create with $0 price (hidden until priced)
+            await prisma.poolProduct.create({
+              data: {
+                sku: p.sku,
+                name: p.name,
+                brand: p.brand || null,
+                price: 0,
+                imageUrl: buildImageUrl(p.sku),
+                mfgPart: p.mfgPart || null,
+                status: "pending_price",
+                lastSyncedAt: new Date(),
+                ...stockData,
+              },
+            });
+          } else {
             skipped++;
             continue;
           }
-          await prisma.poolProduct.update({
-            where: { sku: p.sku },
-            data: {
-              lastSyncedAt: new Date(),
-              ...stockData,
-            },
-          });
         }
 
         if (hasPrice) {

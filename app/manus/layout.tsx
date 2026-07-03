@@ -24,6 +24,7 @@ export default function ManusLayout({
     <div className={`manus-page ${jetbrainsMono.variable}`}>
       <SiteTracker site="manus" />
       <div className="manus-scanline" />
+      <div aria-hidden="true" className="site-dot-grid-emerald pointer-events-none fixed inset-0 z-0" />
       {children}
     </div>
   );

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Poppins, Space_Grotesk, Inter } from "next/font/google";
 
 import { SiteTracker } from "@/components/analytics/site-tracker";
 import { GA4 } from "@/components/analytics/ga4";
@@ -10,6 +10,18 @@ const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800", "900"],
+});
+
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -57,7 +69,7 @@ export default function ClientLayout({
   };
 
   return (
-    <div className={`client-page ${poppins.variable}`}>
+    <div className={`client-page ${poppins.variable} ${spaceGrotesk.variable} ${inter.variable}`}>
       <SiteTracker site="client" />
       <GA4 />
       <MetaPixel />

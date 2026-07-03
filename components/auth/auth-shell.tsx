@@ -19,6 +19,7 @@ export function AuthShell({
 }: AuthShellProps) {
   return (
     <main className="portal-shell ambient-noise relative flex min-h-screen w-full items-center justify-center overflow-hidden px-5 py-10 sm:px-8">
+      <div aria-hidden="true" className="hp-dot-grid pointer-events-none fixed inset-0 z-0" />
       <div aria-hidden="true" className="portal-spotlight portal-spotlight-left" />
       <div aria-hidden="true" className="portal-spotlight portal-spotlight-right" />
 

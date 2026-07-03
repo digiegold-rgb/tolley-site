@@ -32,6 +32,7 @@ export async function PATCH(
     if (body.status !== undefined) data.status = body.status;
     if (body.featured !== undefined) data.featured = body.featured;
     if (body.sortOrder !== undefined) data.sortOrder = body.sortOrder;
+    if (body.priceOverride !== undefined) data.priceOverride = body.priceOverride;
 
     const product = await prisma.poolProduct.update({
       where: { id },

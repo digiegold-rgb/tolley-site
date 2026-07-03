@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 interface Ingredient {
@@ -27,7 +27,10 @@ export default function NewRecipePage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [error, setError] = useState("");
+  const [scanNotice, setScanNotice] = useState("");
+  const scanInputRef = useRef<HTMLInputElement>(null);
 
   // Form fields
   const [title, setTitle] = useState("");
@@ -39,8 +42,59 @@ export default function NewRecipePage() {
   const [servings, setServings] = useState("4");
   const [tags, setTags] = useState<string[]>([]);
   const [source, setSource] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [ingredients, setIngredients] = useState<Ingredient[]>([emptyIngredient()]);
   const [instructions, setInstructions] = useState<Instruction[]>([emptyInstruction(1)]);
+
+  // Hydrate fields from a scan handed off by /food/scan via sessionStorage.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = sessionStorage.getItem("foodScannedRecipe");
+    if (!raw) return;
+    sessionStorage.removeItem("foodScannedRecipe");
+    try {
+      const { parsed: p, imageUrl: scannedUrl } = JSON.parse(raw);
+      if (p.title) setTitle(p.title);
+      if (p.description) setDescription(p.description);
+      if (p.cuisine) setCuisine(p.cuisine);
+      if (p.mealType?.length) setMealType(p.mealType);
+      if (p.prepTime) setPrepTime(String(p.prepTime));
+      if (p.cookTime) setCookTime(String(p.cookTime));
+      if (p.servings) setServings(String(p.servings));
+      if (p.tags?.length) setTags(p.tags);
+      if (p.source) setSource(p.source);
+      if (scannedUrl) setImageUrl(scannedUrl);
+      if (p.ingredients?.length) {
+        setIngredients(
+          p.ingredients.map((ing: Partial<Ingredient>) => ({
+            name: ing.name || "",
+            quantity: ing.quantity ? String(ing.quantity) : "",
+            unit: ing.unit || "",
+            notes: ing.notes || "",
+          }))
+        );
+      }
+      if (p.instructions?.length) {
+        setInstructions(
+          p.instructions.map(
+            (
+              ins: { step?: number; text?: string; duration?: number },
+              i: number
+            ) => ({
+              step: i + 1,
+              text: ins.text || "",
+              duration: ins.duration ? String(ins.duration) : "",
+            })
+          )
+        );
+      }
+      setScanNotice(
+        "Recipe scanned! Review the fields below and edit anything that looks off before saving."
+      );
+    } catch {
+      // ignore malformed payload
+    }
+  }, []);
 
   const toggleMealType = (mt: string) => {
     setMealType((prev) => prev.includes(mt) ? prev.filter((m) => m !== mt) : [...prev, mt]);
@@ -96,6 +150,7 @@ export default function NewRecipePage() {
           servings: parseInt(servings) || 4,
           tags,
           source: source.trim() || undefined,
+          imageUrl: imageUrl || undefined,
           ingredients: ingredients.filter((ing) => ing.name.trim()),
           instructions: instructions.filter((ins) => ins.text.trim()).map((ins, idx) => ({
             ...ins,
@@ -116,6 +171,72 @@ export default function NewRecipePage() {
       setError("Something went wrong");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleScanFile = async (file: File) => {
+    setScanning(true);
+    setError("");
+    setScanNotice("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/food/recipes/scan", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to scan recipe");
+        return;
+      }
+
+      const p = data.parsed;
+      if (p.title) setTitle(p.title);
+      if (p.description) setDescription(p.description);
+      if (p.cuisine) setCuisine(p.cuisine);
+      if (p.mealType?.length) setMealType(p.mealType);
+      if (p.prepTime) setPrepTime(String(p.prepTime));
+      if (p.cookTime) setCookTime(String(p.cookTime));
+      if (p.servings) setServings(String(p.servings));
+      if (p.tags?.length) setTags(p.tags);
+      if (p.source) setSource(p.source);
+      if (data.imageUrl) setImageUrl(data.imageUrl);
+      if (p.ingredients?.length) {
+        setIngredients(
+          p.ingredients.map((ing: Partial<Ingredient>) => ({
+            name: ing.name || "",
+            quantity: ing.quantity ? String(ing.quantity) : "",
+            unit: ing.unit || "",
+            notes: ing.notes || "",
+          }))
+        );
+      }
+      if (p.instructions?.length) {
+        setInstructions(
+          p.instructions.map(
+            (
+              ins: { step?: number; text?: string; duration?: number },
+              i: number
+            ) => ({
+              step: i + 1,
+              text: ins.text || "",
+              duration: ins.duration ? String(ins.duration) : "",
+            })
+          )
+        );
+      }
+      setScanNotice(
+        "Recipe scanned! Review the fields below and edit anything that looks off before saving."
+      );
+    } catch {
+      setError("Failed to scan recipe");
+    } finally {
+      setScanning(false);
+      if (scanInputRef.current) scanInputRef.current.value = "";
     }
   };
 
@@ -165,15 +286,48 @@ export default function NewRecipePage() {
         <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--food-text)" }}>
           New Recipe
         </h1>
-        <button
-          className="food-btn food-btn-primary food-glow"
-          onClick={handleGenerateAI}
-          disabled={generating}
-          style={{ opacity: generating ? 0.7 : 1 }}
-        >
-          {generating ? "Generating..." : "Generate with AI"}
-        </button>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <input
+            ref={scanInputRef}
+            type="file"
+            accept="image/*"
+            onChange={(e) => e.target.files?.[0] && handleScanFile(e.target.files[0])}
+            style={{ display: "none" }}
+          />
+          <button
+            className="food-btn food-btn-mint food-glow"
+            onClick={() => scanInputRef.current?.click()}
+            disabled={scanning}
+            style={{ opacity: scanning ? 0.7 : 1 }}
+          >
+            {scanning ? "Scanning..." : "📷 Scan Recipe"}
+          </button>
+          <button
+            className="food-btn food-btn-primary food-glow"
+            onClick={handleGenerateAI}
+            disabled={generating}
+            style={{ opacity: generating ? 0.7 : 1 }}
+          >
+            {generating ? "Generating..." : "Generate with AI"}
+          </button>
+        </div>
       </div>
+
+      {scanNotice && (
+        <div
+          style={{
+            padding: "0.75rem 1rem",
+            borderRadius: "0.75rem",
+            background: "rgba(110, 231, 183, 0.12)",
+            border: "1px solid rgba(110, 231, 183, 0.35)",
+            color: "#047857",
+            fontSize: "0.875rem",
+            marginBottom: "1.5rem",
+          }}
+        >
+          {scanNotice}
+        </div>
+      )}
 
       {error && (
         <div

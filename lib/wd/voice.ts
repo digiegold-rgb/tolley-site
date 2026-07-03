@@ -4,4 +4,4 @@
  * lib/jared-voice.ts when the voice went platform-wide (2026-06-11).
  */
 
-export { JARED_SMS_VOICE, JARED_EMAIL_VOICE, jaredGreeting } from "@/lib/jared-voice";
+export { JARED_SMS_VOICE, JARED_SMS_SALES_VOICE, JARED_EMAIL_VOICE, jaredGreeting } from "@/lib/jared-voice";

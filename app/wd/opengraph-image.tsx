@@ -155,7 +155,7 @@ export default function OGImage() {
               display: "flex",
             }}
           >
-            $42/mo
+            $58/mo
           </span>
         </div>
 

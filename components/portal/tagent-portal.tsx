@@ -48,19 +48,29 @@ function normalizeCards(cards: AskApiResponse["cards"]): ListingCard[] {
   }
 
   return cards
-    .filter((card) => typeof card?.address === "string" && card.address.trim())
+    .filter((card) => {
+      // Listings need an address; vendor cards fall back to `name`.
+      const hasAddress = typeof card?.address === "string" && card.address.trim();
+      const hasName = typeof card?.name === "string" && card.name.trim();
+      return Boolean(hasAddress || hasName);
+    })
     .map((card) => ({
       type: typeof card.type === "string" ? card.type : "listing",
-      address: card.address.trim(),
+      address: typeof card.address === "string" ? card.address.trim() : "",
       price: typeof card.price === "number" ? card.price : null,
       beds: typeof card.beds === "number" ? card.beds : null,
       baths: typeof card.baths === "number" ? card.baths : null,
       sqft: typeof card.sqft === "number" ? card.sqft : null,
       summaryBullets: Array.isArray(card.summaryBullets)
-        ? card.summaryBullets.filter((item) => typeof item === "string")
+        ? card.summaryBullets.filter((item): item is string => typeof item === "string")
         : [],
       link: typeof card.link === "string" ? card.link : undefined,
       source: typeof card.source === "string" ? card.source : undefined,
+      name: typeof card.name === "string" ? card.name : undefined,
+      meta: typeof card.meta === "string" ? card.meta : undefined,
+      tags: Array.isArray(card.tags)
+        ? card.tags.filter((tag): tag is string => typeof tag === "string")
+        : undefined,
     }));
 }
 

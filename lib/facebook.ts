@@ -24,7 +24,11 @@ export const FB_PAGES: FbPageConfig[] = [
   { id: process.env.FACEBOOK_PAGE_ID_WD || "1060351927154451", name: "Wash & Dry Rental KC", tokenEnvKey: "FACEBOOK_PAGE_TOKEN_WD" },
   { id: process.env.FACEBOOK_PAGE_ID_MAIN || "775948235607331", name: "Wash&Dry Rental", tokenEnvKey: "FACEBOOK_PAGE_TOKEN_MAIN" },
   { id: process.env.FACEBOOK_PAGE_ID_RE || "230414410149647", name: "Your KC Homes", tokenEnvKey: "FACEBOOK_PAGE_TOKEN_RE" },
+  { id: process.env.FACEBOOK_PAGE_ID_TREASURE || "1156652300855210", name: "Ruthann's Treasure Haul", tokenEnvKey: "FACEBOOK_PAGE_TOKEN_TREASURE" },
 ];
+
+export const TREASURE_HAUL_PAGE_ID = "1156652300855210";
+export const TREASURE_HAUL_TOKEN_ENV_KEY = "FACEBOOK_PAGE_TOKEN_TREASURE";
 
 export function getPageToken(page: FbPageConfig): string | null {
   return process.env[page.tokenEnvKey] || null;
@@ -93,6 +97,44 @@ export async function validateToken(token: string): Promise<TokenDebugInfo> {
     );
     if (data.error) return { isValid: false, error: data.error.message };
     return { isValid: true, type: "user_or_page" };
+  } catch (e) {
+    return { isValid: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+interface DebugTokenResponse {
+  data?: {
+    is_valid?: boolean;
+    app_id?: string;
+    type?: string;
+    expires_at?: number; // unix seconds, 0 = never expires
+    data_access_expires_at?: number;
+    scopes?: string[];
+    error?: { message?: string; code?: number };
+  };
+}
+
+export async function debugToken(token: string): Promise<TokenDebugInfo> {
+  const appId = process.env.FACEBOOK_APP_ID;
+  const appSecret = process.env.FACEBOOK_APP_SECRET;
+  if (!appId || !appSecret) {
+    return { isValid: false, error: "FACEBOOK_APP_ID / FACEBOOK_APP_SECRET not configured" };
+  }
+  const appAccessToken = `${appId}|${appSecret}`;
+  try {
+    const res = await fbGet<DebugTokenResponse>("debug_token", appAccessToken, {
+      input_token: token,
+    });
+    const d = res.data;
+    if (!d) return { isValid: false, error: "Empty debug_token response" };
+    if (d.error) return { isValid: false, error: d.error.message || "Token error" };
+    return {
+      isValid: !!d.is_valid,
+      appId: d.app_id,
+      type: d.type,
+      expiresAt: d.expires_at,
+      scopes: d.scopes,
+    };
   } catch (e) {
     return { isValid: false, error: e instanceof Error ? e.message : "Unknown error" };
   }
@@ -395,6 +437,69 @@ export async function publishToPage(
     id: result.id,
     postUrl: `https://www.facebook.com/${result.id}`,
   };
+}
+
+// ── Carousel (multi-photo) Publishing ───────────────────────
+
+export interface CarouselItem {
+  imageUrl: string;
+  altCaption?: string;
+}
+
+/**
+ * Publish a carousel/multi-photo post by uploading each image as `published=false`,
+ * then creating a feed entry with the resulting media IDs in `attached_media`.
+ * Returns the feed post ID (not a single photo ID).
+ */
+export async function publishCarouselToPage(
+  pageId: string,
+  token: string,
+  items: CarouselItem[],
+  primaryCaption: string,
+): Promise<FbPublishResult> {
+  if (items.length === 0) {
+    throw new Error("publishCarouselToPage requires at least 1 item");
+  }
+  if (items.length === 1) {
+    return publishToPage(pageId, token, {
+      message: primaryCaption,
+      imageUrl: items[0].imageUrl,
+    });
+  }
+
+  const mediaIds: string[] = [];
+  for (const item of items) {
+    const res = await fbPost<{ id: string }>(`${pageId}/photos`, token, {
+      url: item.imageUrl,
+      caption: item.altCaption || "",
+      published: false,
+    });
+    if (!res.id) throw new Error("FB carousel: photo upload returned no id");
+    mediaIds.push(res.id);
+  }
+
+  const attached = mediaIds.map((id) => ({ media_fbid: id }));
+  const feed = await fbPost<{ id: string }>(`${pageId}/feed`, token, {
+    message: primaryCaption,
+    attached_media: attached,
+  });
+  return {
+    id: feed.id,
+    postUrl: `https://www.facebook.com/${feed.id}`,
+  };
+}
+
+/**
+ * Add a comment to an existing post. Used for placing the /go/<slug> outbound
+ * link in the first comment instead of the post body — FB's algorithm
+ * down-ranks posts with outbound links in the body, but ignores comments.
+ */
+export async function commentOnPost(
+  postId: string,
+  token: string,
+  message: string,
+): Promise<{ id: string }> {
+  return fbPost<{ id: string }>(`${postId}/comments`, token, { message });
 }
 
 // ── Delete Post ─────────────────────────────────────────────

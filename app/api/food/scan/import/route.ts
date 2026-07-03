@@ -1,9 +1,9 @@
-// @ts-nocheck — references removed Prisma models
+// Food API route
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { parseImportText, ImportedOrder } from "@/lib/food/ai-import";
-import { normalizeIngredient } from "@/lib/food/ingredient-taxonomy";
+import { parseImportText } from "@/lib/food/ai-import";
+import { ingestOrders } from "@/lib/food/import-ingest";
 import { after } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -35,63 +35,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create receipts + price entries in background
     after(async () => {
-      for (const order of orders) {
-        // Create receipt record
-        const receipt = await prisma.foodReceipt.create({
-          data: {
-            householdId: household.id,
-            imageUrl: "",
-            store: order.store || "Walmart",
-            purchaseDate: order.date ? new Date(order.date) : new Date(),
-            ocrResult: order as any,
-            total: order.total || null,
-            status: "completed",
-          },
-        });
-
-        // Create price entries + auto-add to pantry
-        for (const item of order.items) {
-          if (!item.name || !item.totalPrice) continue;
-          const { canonical } = normalizeIngredient(item.name);
-          await prisma.foodPriceEntry.create({
-            data: {
-              householdId: household.id,
-              itemName: item.name,
-              normalizedName: canonical,
-              store: order.store || "Walmart",
-              price: item.totalPrice,
-              pricePerUnit: item.unitPrice || null,
-              quantity: item.qty || 1,
-              purchaseDate: order.date ? new Date(order.date) : new Date(),
-              receiptId: receipt.id,
-            },
-          });
-          // Auto-add to pantry
-          const n = item.name.toLowerCase();
-          const location = /frozen|ice cream/.test(n) ? "freezer" : /milk|butter|cheese|yogurt|cream|egg|chicken|beef|pork|sausage|bacon|deli|fresh|refrigerat/.test(n) ? "fridge" : /spice|extract|vanilla|seasoning/.test(n) ? "spice_rack" : "pantry";
-          const existing = await prisma.foodPantryItem.findFirst({
-            where: { householdId: household.id, normalizedName: canonical },
-          });
-          if (existing) {
-            await prisma.foodPantryItem.update({
-              where: { id: existing.id },
-              data: { quantity: { increment: item.qty || 1 }, status: "in_stock" },
-            });
-          } else {
-            await prisma.foodPantryItem.create({
-              data: {
-                householdId: household.id,
-                name: item.name,
-                normalizedName: canonical,
-                quantity: item.qty || 1,
-                location,
-                status: "in_stock",
-              },
-            });
-          }
-        }
+      try {
+        await ingestOrders(household.id, orders, "Walmart");
+      } catch (err) {
+        console.error("[Food] Background ingest failed:", err);
       }
     });
 

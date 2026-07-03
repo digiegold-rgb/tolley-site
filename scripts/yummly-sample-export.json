@@ -1,0 +1,310 @@
+{
+  "exportedAt": "2024-12-15T00:00:00Z",
+  "source": "yummly-sample",
+  "recipes": [
+    {
+      "name": "Sheet Pan Lemon Garlic Chicken",
+      "description": "A one-pan weeknight winner with bright lemon, roasted veggies, and crispy chicken thighs.",
+      "ingredientLines": [
+        "2 lb bone-in chicken thighs",
+        "1 large lemon, sliced",
+        "6 cloves garlic, smashed",
+        "3 tbsp olive oil",
+        "1 tsp kosher salt",
+        "1/2 tsp black pepper",
+        "1 lb baby potatoes, halved",
+        "1 bunch asparagus, trimmed"
+      ],
+      "directions": [
+        "Preheat oven to 425F.",
+        "Toss chicken, lemon, garlic, oil, salt, and pepper on a sheet pan.",
+        "Add potatoes around the chicken and roast 25 minutes.",
+        "Add asparagus for the last 10 minutes. Serve hot."
+      ],
+      "prepTime": "PT15M",
+      "cookTime": "PT35M",
+      "servings": 4,
+      "sourceUrl": "https://www.yummly.com/recipe/sheet-pan-lemon-chicken",
+      "imageUrl": "https://example.com/images/lemon-chicken.jpg",
+      "tags": ["one-pan", "quick", "gluten-free"]
+    },
+    {
+      "name": "Classic Weeknight Spaghetti Bolognese",
+      "description": "Slow-simmered meat sauce with a rich tomato base. Freezer-friendly.",
+      "ingredientLines": [
+        "1 lb ground beef (85/15)",
+        "1 medium yellow onion, diced",
+        "3 cloves garlic, minced",
+        "1 28-oz can crushed tomatoes",
+        "2 tbsp tomato paste",
+        "1 tsp dried oregano",
+        "1/2 cup red wine (optional)",
+        "1 lb spaghetti",
+        "Parmesan for serving"
+      ],
+      "directions": [
+        "Brown ground beef over medium-high heat. Drain excess fat.",
+        "Add onion and garlic, cook until soft.",
+        "Stir in tomato paste, then add crushed tomatoes, oregano, and wine.",
+        "Simmer uncovered 25-30 minutes, stirring occasionally.",
+        "Cook pasta per package. Serve topped with sauce and parmesan."
+      ],
+      "prepTime": "PT10M",
+      "cookTime": "PT40M",
+      "servings": 6,
+      "cuisine": "Italian",
+      "tags": ["family-friendly", "freezer-friendly", "weeknight"]
+    },
+    {
+      "name": "Chicken Tortilla Soup",
+      "description": "",
+      "ingredientLines": [
+        "2 cups shredded rotisserie chicken",
+        "1 32-oz box chicken broth",
+        "1 can black beans, drained",
+        "1 can corn, drained",
+        "1 14-oz can diced tomatoes with green chiles",
+        "1 tsp cumin",
+        "1 tsp chili powder",
+        "Tortilla strips, lime, avocado, cilantro for serving"
+      ],
+      "directions": [
+        "Combine broth, beans, corn, tomatoes, and spices in a pot. Bring to a simmer.",
+        "Stir in shredded chicken and heat through, about 5 minutes.",
+        "Serve with tortilla strips, lime, avocado, and cilantro."
+      ],
+      "prepTime": "PT5M",
+      "cookTime": "PT15M",
+      "servings": 4,
+      "cuisine": "Mexican"
+    },
+    {
+      "name": "Baked Salmon with Dill Yogurt Sauce",
+      "ingredientLines": [
+        "4 6-oz salmon fillets",
+        "2 tbsp olive oil",
+        "1 tsp garlic powder",
+        "Salt and pepper to taste",
+        "1 cup plain Greek yogurt",
+        "2 tbsp fresh dill, chopped",
+        "1 tbsp lemon juice",
+        "1 small clove garlic, grated"
+      ],
+      "directions": [
+        "Preheat oven to 400F. Rub salmon with olive oil, garlic powder, salt, and pepper.",
+        "Bake on a lined sheet pan 12-15 minutes until cooked through.",
+        "Whisk yogurt, dill, lemon juice, and grated garlic for the sauce.",
+        "Serve salmon with a dollop of sauce."
+      ],
+      "prepTime": "PT5M",
+      "cookTime": "PT15M",
+      "servings": 4,
+      "cuisine": "Mediterranean",
+      "tags": ["gluten-free", "low-carb", "quick"]
+    },
+    {
+      "name": "Crockpot Pulled Pork",
+      "description": "Set it and forget it. Feeds a crowd.",
+      "ingredientLines": [
+        "4 lb pork shoulder",
+        "1 tbsp brown sugar",
+        "1 tbsp paprika",
+        "1 tsp garlic powder",
+        "1 tsp onion powder",
+        "1 tsp salt",
+        "1 cup BBQ sauce",
+        "1/2 cup chicken broth",
+        "Buns for serving"
+      ],
+      "directions": [
+        "Mix brown sugar and spices. Rub all over pork shoulder.",
+        "Place in crockpot with chicken broth. Cook on low 8 hours.",
+        "Shred with two forks, drain excess liquid, stir in BBQ sauce.",
+        "Serve on buns with coleslaw."
+      ],
+      "prepTime": "PT10M",
+      "cookTime": "PT480M",
+      "servings": 8,
+      "cuisine": "American",
+      "tags": ["slow-cooker", "make-ahead", "crowd-pleaser"]
+    },
+    {
+      "name": "Broccoli Cheddar Soup",
+      "ingredientLines": [
+        "1 tbsp butter",
+        "1 small onion, diced",
+        "3 cups fresh broccoli florets",
+        "3 cups chicken broth",
+        "1/4 cup flour",
+        "2 cups whole milk",
+        "2 cups sharp cheddar, shredded",
+        "Salt and pepper"
+      ],
+      "directions": [
+        "Saute onion in butter until soft.",
+        "Add broccoli and broth, simmer 10 minutes.",
+        "Whisk flour into milk, pour into pot, simmer until thickened.",
+        "Stir in cheddar off heat. Season to taste."
+      ],
+      "prepTime": "PT10M",
+      "cookTime": "PT25M",
+      "servings": 4,
+      "tags": ["kid-friendly", "vegetarian"]
+    },
+    {
+      "name": "Turkey Taco Skillet",
+      "description": "Low-carb taco bowl cooked in one skillet.",
+      "ingredientLines": [
+        "1 lb ground turkey",
+        "1 packet taco seasoning",
+        "1 can black beans, drained",
+        "1 cup frozen corn",
+        "1 can diced tomatoes",
+        "1 cup shredded lettuce",
+        "1/2 cup shredded cheese",
+        "Sour cream and salsa for serving"
+      ],
+      "directions": [
+        "Brown turkey in a large skillet.",
+        "Add taco seasoning, beans, corn, and tomatoes. Simmer 10 minutes.",
+        "Serve topped with lettuce, cheese, sour cream, and salsa."
+      ],
+      "prepTime": "PT5M",
+      "cookTime": "PT20M",
+      "servings": 4,
+      "cuisine": "Tex-Mex",
+      "tags": ["low-carb", "quick", "kid-friendly"]
+    },
+    {
+      "name": "Honey Garlic Glazed Pork Chops",
+      "ingredientLines": [
+        "4 boneless pork chops",
+        "3 tbsp honey",
+        "3 tbsp soy sauce",
+        "4 cloves garlic, minced",
+        "1 tbsp rice vinegar",
+        "2 tbsp olive oil",
+        "Salt and pepper"
+      ],
+      "directions": [
+        "Season pork chops with salt and pepper.",
+        "Sear in olive oil over medium-high 3-4 minutes per side.",
+        "Whisk honey, soy sauce, garlic, and vinegar. Pour into pan.",
+        "Simmer until glazed, flipping chops to coat. Serve with rice."
+      ],
+      "prepTime": "PT5M",
+      "cookTime": "PT15M",
+      "servings": 4,
+      "cuisine": "Asian",
+      "tags": ["quick", "weeknight"]
+    },
+    {
+      "name": "Vegetarian Chili",
+      "description": "Hearty three-bean chili, meatless but filling.",
+      "ingredientLines": [
+        "1 tbsp olive oil",
+        "1 onion, diced",
+        "1 bell pepper, diced",
+        "3 cloves garlic, minced",
+        "1 can black beans",
+        "1 can kidney beans",
+        "1 can pinto beans",
+        "1 28-oz can crushed tomatoes",
+        "2 tbsp chili powder",
+        "1 tsp cumin",
+        "1 tsp smoked paprika",
+        "1 tbsp cocoa powder (secret ingredient)"
+      ],
+      "directions": [
+        "Saute onion, pepper, and garlic until soft.",
+        "Add drained beans, tomatoes, and all spices including cocoa.",
+        "Simmer 30 minutes. Taste and adjust seasoning.",
+        "Serve with shredded cheese and sour cream."
+      ],
+      "prepTime": "PT10M",
+      "cookTime": "PT35M",
+      "servings": 6,
+      "cuisine": "American",
+      "tags": ["vegetarian", "freezer-friendly", "healthy"]
+    },
+    {
+      "name": "Banana Oat Pancakes",
+      "ingredientLines": [
+        "2 ripe bananas",
+        "2 eggs",
+        "1 cup rolled oats",
+        "1/2 tsp baking powder",
+        "1/2 tsp cinnamon",
+        "1/2 tsp vanilla extract",
+        "Butter for cooking"
+      ],
+      "directions": [
+        "Blend bananas, eggs, oats, baking powder, cinnamon, and vanilla until smooth.",
+        "Let batter rest 5 minutes.",
+        "Cook 1/4 cup scoops on a buttered griddle over medium heat.",
+        "Flip when bubbles form. Serve with maple syrup."
+      ],
+      "prepTime": "PT5M",
+      "cookTime": "PT10M",
+      "servings": 3,
+      "tags": ["breakfast", "gluten-free", "kid-friendly"]
+    },
+    {
+      "name": "Greek Chicken Bowls",
+      "description": "Meal-prep friendly Mediterranean bowls.",
+      "ingredientLines": [
+        "1 lb chicken breast, cubed",
+        "2 tbsp olive oil",
+        "1 tbsp Greek seasoning",
+        "1 cup cooked quinoa",
+        "1 cucumber, diced",
+        "1 cup cherry tomatoes, halved",
+        "1/2 red onion, thinly sliced",
+        "1/2 cup feta cheese",
+        "1/4 cup kalamata olives",
+        "Tzatziki for serving"
+      ],
+      "directions": [
+        "Toss chicken with olive oil and Greek seasoning.",
+        "Saute in a hot skillet 6-8 minutes until cooked through.",
+        "Assemble bowls with quinoa, chicken, veggies, feta, and olives.",
+        "Top with tzatziki."
+      ],
+      "prepTime": "PT15M",
+      "cookTime": "PT10M",
+      "servings": 4,
+      "cuisine": "Mediterranean",
+      "tags": ["meal-prep", "healthy", "gluten-free"]
+    },
+    {
+      "name": "Classic Beef Stew",
+      "description": "Rainy day comfort food.",
+      "ingredientLines": [
+        "2 lb beef chuck, cubed",
+        "3 tbsp flour",
+        "2 tbsp olive oil",
+        "1 onion, diced",
+        "3 carrots, sliced",
+        "3 celery stalks, sliced",
+        "1 lb baby potatoes",
+        "4 cups beef broth",
+        "2 tbsp tomato paste",
+        "1 tbsp Worcestershire sauce",
+        "1 tsp dried thyme",
+        "2 bay leaves"
+      ],
+      "directions": [
+        "Toss beef cubes in flour, salt, and pepper.",
+        "Brown in olive oil in batches. Remove.",
+        "Saute onion, then add everything back plus remaining ingredients.",
+        "Simmer covered 90 minutes until beef is tender.",
+        "Remove bay leaves before serving."
+      ],
+      "prepTime": "PT15M",
+      "cookTime": "PT90M",
+      "servings": 6,
+      "cuisine": "American",
+      "tags": ["comfort-food", "make-ahead", "cold-weather"]
+    }
+  ]
+}

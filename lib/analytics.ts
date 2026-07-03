@@ -14,6 +14,7 @@ export const TRACKED_SITES = [
   { id: "start", label: "Start Page", color: "#8b5cf6", path: "/start" },
   { id: "pools", label: "Pool Supplies", color: "#06b6d4", path: "/pools" },
   { id: "video", label: "AI Video", color: "#c084fc", path: "/video" },
+  { id: "cordport", label: "Cordport", color: "#f59e0b", path: "https://cordport.io" },
 ] as const;
 
 export type SiteId = (typeof TRACKED_SITES)[number]["id"];

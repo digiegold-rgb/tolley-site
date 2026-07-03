@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -65,8 +64,8 @@ export async function GET(
         leadWhere.pipelineStage = { in: filters.pipelineStages };
       }
       if (filters.tags && filters.tags.length > 0) {
-        leadWhere.tags = {
-          some: { tag: { name: { in: filters.tags } } },
+        leadWhere.ContactTag = {
+          some: { Tag: { name: { in: filters.tags } } },
         };
       }
       if (filters.sources && filters.sources.length > 0) {
@@ -110,11 +109,11 @@ export async function GET(
               status: true,
             },
           },
-          tags: { include: { tag: true } },
+          ContactTag: { include: { Tag: true } },
           _count: {
             select: {
-              tasks: { where: { status: "pending" } },
-              activities: true,
+              CrmTask: { where: { status: "pending" } },
+              CrmActivity: true,
             },
           },
         },
@@ -141,8 +140,8 @@ export async function GET(
         clientWhere.status = { in: filters.stages };
       }
       if (filters.tags && filters.tags.length > 0) {
-        clientWhere.tags = {
-          some: { tag: { name: { in: filters.tags } } },
+        clientWhere.ContactTag = {
+          some: { Tag: { name: { in: filters.tags } } },
         };
       }
       if (filters.minScore !== undefined && filters.minScore > 0) {
@@ -154,11 +153,11 @@ export async function GET(
       const clients = await prisma.client.findMany({
         where: clientWhere,
         include: {
-          tags: { include: { tag: true } },
+          ContactTag: { include: { Tag: true } },
           _count: {
             select: {
-              tasks: { where: { status: "pending" } },
-              activities: true,
+              CrmTask: { where: { status: "pending" } },
+              CrmActivity: true,
             },
           },
         },

@@ -24,55 +24,63 @@ const tags = [
 
 export function PoolsHero() {
   return (
-    <section className="relative bg-gradient-to-br from-cyan-600 via-cyan-500 to-sky-400 pb-20 sm:pb-24">
-      {/* Decorative background circles */}
+    <section className="relative overflow-hidden bg-gradient-to-br from-[#ecfeff] via-sky-50 to-[#cffafe] pb-20 sm:pb-24">
+      {/* Decorative water ripple background */}
       <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-white/10" />
-        <div className="absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-white/[0.07]" />
-        <div className="absolute top-1/3 right-1/4 h-40 w-40 rounded-full bg-white/5" />
-        <div className="absolute bottom-1/4 left-1/3 h-28 w-28 rounded-full bg-cyan-300/15" />
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-cyan-300/15" />
+        <div className="absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-sky-300/12" />
+        <div className="absolute top-1/3 right-1/4 h-40 w-40 rounded-full bg-cyan-200/20" />
+        <div className="absolute bottom-1/4 left-1/3 h-28 w-28 rounded-full bg-cyan-300/25" />
         {/* Spinning ring decoration */}
-        <div className="pools-spin-slow absolute top-16 right-[15%] h-48 w-48 rounded-full border-2 border-dashed border-white/10" />
-        {/* Ripple circle */}
-        <div className="pools-ripple absolute top-1/2 left-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/[0.06]" />
+        <div className="pools-spin-slow absolute top-16 right-[15%] h-48 w-48 rounded-full border-2 border-dashed border-cyan-400/25" />
+        {/* Ripple circles */}
+        <div className="pools-ripple absolute top-1/2 left-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-400/8" />
+        <div
+          className="pools-ripple absolute top-1/3 left-1/4 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-500/6"
+          style={{ animationDelay: "1.2s" }}
+        />
       </div>
 
       <div className="relative z-10 mx-auto max-w-6xl px-5 pt-12 sm:px-8 sm:pt-16">
-        <p className="text-sm font-semibold tracking-[0.3em] text-cyan-100 uppercase">
+        <p className="text-sm font-extrabold tracking-[0.3em] text-cyan-700 uppercase">
           {POOLS_COMPANY}
         </p>
 
-        <h1 className="mt-4 text-4xl font-extrabold text-white sm:text-5xl lg:text-6xl">
-          <WavyText text="Pool Supplies," />
+        <h1 className="mt-4 font-extrabold text-sky-900 text-4xl leading-[1.05] sm:text-5xl lg:text-[4rem]">
+          <WavyText text="Pool Supplies." />
           <br />
           <WavyText text="Delivered." />
         </h1>
 
-        <p className="mt-4 max-w-xl text-lg leading-relaxed text-cyan-50">
-          Contractor pricing. No retail markup. Straight to your door.
+        <p className="mt-4 max-w-xl text-base leading-relaxed text-sky-700/80 sm:text-lg">
+          Same-week delivery across Kansas City metro. Chemicals, equipment, and
+          everything in between.
         </p>
 
         <div className="mt-5 flex flex-wrap gap-2">
           {tags.map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-white/15 px-4 py-1.5 text-xs font-semibold tracking-wider text-white backdrop-blur-sm"
+              className="rounded-full bg-white/80 px-4 py-1.5 text-xs font-bold tracking-wider text-cyan-800 backdrop-blur-sm ring-1 ring-cyan-200/60"
             >
               {tag}
             </span>
           ))}
         </div>
 
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-8 flex flex-wrap items-center gap-3">
           <a
             href="#products"
-            className="pools-glow inline-flex items-center rounded-full bg-white px-8 py-3 text-sm font-bold text-cyan-700 shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+            className="pools-glow inline-flex items-center rounded-full bg-cyan-500 px-8 py-3 text-sm font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-cyan-600 hover:shadow-xl"
           >
             Shop Now
           </a>
+          <span className="inline-flex items-center rounded-full border-2 border-cyan-300/40 bg-white/40 px-8 py-3 text-sm font-bold text-cyan-800 backdrop-blur-sm">
+            Free delivery over $75
+          </span>
           <a
             href={`tel:${POOLS_CONTACT_PHONE}`}
-            className="inline-flex items-center rounded-full border-2 border-white/30 px-8 py-3 text-sm font-bold text-white transition-all hover:bg-white/10"
+            className="inline-flex items-center rounded-full border-2 border-cyan-300/40 px-6 py-3 text-sm font-bold text-cyan-800 transition-all hover:bg-white/60"
           >
             Call to Order
           </a>

@@ -10,6 +10,8 @@
  */
 export interface VoicePresetMeta {
   name: string;
+  /** Friendly display label shown in the UI (may differ from the raw filename stem). */
+  displayName: string;
   emoji: string;
   /** "Young casual American male" / "Deep older British female" etc. */
   character: string;
@@ -26,6 +28,7 @@ export interface VoicePresetMeta {
 export const VOICE_CATALOG: Record<string, VoicePresetMeta> = {
   Narrator: {
     name: "Narrator",
+    displayName: "Narrator",
     emoji: "🎙️",
     character: "Young casual American male",
     description:
@@ -35,6 +38,7 @@ export const VOICE_CATALOG: Record<string, VoicePresetMeta> = {
   },
   MorganDeep: {
     name: "MorganDeep",
+    displayName: "Morgan Deep",
     emoji: "🌊",
     character: "Deep authoritative older male",
     description:
@@ -44,6 +48,7 @@ export const VOICE_CATALOG: Record<string, VoicePresetMeta> = {
   },
   AttenboroughUK: {
     name: "AttenboroughUK",
+    displayName: "Attenborough UK",
     emoji: "🇬🇧",
     character: "Distinguished older British voice",
     description:
@@ -55,6 +60,7 @@ export const VOICE_CATALOG: Record<string, VoicePresetMeta> = {
   },
   NewsClear: {
     name: "NewsClear",
+    displayName: "News Clear",
     emoji: "📰",
     character: "Poised American newsreader",
     description: "Crisp, punchy, professional. Every word lands.",
@@ -63,6 +69,7 @@ export const VOICE_CATALOG: Record<string, VoicePresetMeta> = {
   },
   CalmFemale: {
     name: "CalmFemale",
+    displayName: "Calm Female",
     emoji: "🧘",
     character: "Soft-spoken female",
     description: "Gentle, measured, warm. Feels like a meditation app.",
@@ -71,6 +78,7 @@ export const VOICE_CATALOG: Record<string, VoicePresetMeta> = {
   },
   YoungCasual: {
     name: "YoungCasual",
+    displayName: "Young Casual",
     emoji: "☕",
     character: "Conversational young woman",
     description: "Light, casual, friendly. Like a cafe-chat explainer.",
@@ -78,16 +86,6 @@ export const VOICE_CATALOG: Record<string, VoicePresetMeta> = {
     avatarUrl: "/vater/voices/YoungCasual.webp",
     accuracyNote:
       "Voice is actually a female Pride and Prejudice reader, not the millennial male the label suggests.",
-  },
-  Sample: {
-    name: "Sample",
-    emoji: "⚠️",
-    character: "Placeholder — do not use",
-    description:
-      "1 second of silence from the original Task 1 placeholder. F5-TTS cannot clone from this.",
-    bestFor: "Nothing — pick any other voice",
-    avatarUrl: "/vater/voices/Sample.webp",
-    accuracyNote: "BROKEN placeholder. Pick any other voice.",
   },
 };
 

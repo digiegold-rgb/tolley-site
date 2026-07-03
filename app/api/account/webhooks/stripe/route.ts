@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -48,8 +47,13 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        if (invoice.status === 'PAID') {
-          console.log(`Invoice ${invoiceId} already paid, skipping`);
+        // Idempotency guard — Stripe may redeliver. Skip if we already recorded this paymentIntent.
+        const existingPayment = await prisma.invoicePayment.findFirst({
+          where: { reference: paymentIntent.id, method: 'stripe' },
+          select: { id: true },
+        });
+        if (existingPayment) {
+          console.log(`payment_intent ${paymentIntent.id} already recorded, skipping`);
           break;
         }
 

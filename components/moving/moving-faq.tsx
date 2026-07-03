@@ -15,11 +15,11 @@ const faqs = [
   },
   {
     q: "Do you deliver?",
-    a: `Local moves only. Call ${MV_CONTACT_PHONE} to coordinate pickup or delivery.`,
+    a: "Local moves only. Message us on Facebook to coordinate pickup or delivery.",
   },
   {
     q: "How do I book?",
-    a: `Call or text ${MV_CONTACT_PHONE}. We\u2019ll confirm availability and get you set up.`,
+    a: "Message us on Facebook Marketplace — tap the listing and hit Message. We'll confirm availability and get you set up.",
   },
   {
     q: "What if something gets damaged?",

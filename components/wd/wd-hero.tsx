@@ -22,7 +22,7 @@ const tags = ["Free Delivery & Install", "Kansas City Local", "Cancel Anytime"];
 
 export function WdHero() {
   return (
-    <section className="relative bg-gradient-to-br from-blue-700 via-blue-600 to-blue-400 pb-20 sm:pb-24">
+    <section className="relative overflow-hidden bg-gradient-to-br from-blue-700 via-blue-600 to-blue-400 pb-20 sm:pb-24">
       {/* Decorative background circles */}
       <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
         <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-white/10" />

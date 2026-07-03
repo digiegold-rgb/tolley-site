@@ -1,6 +1,10 @@
 import { Suspense } from "react";
 import { YouTubeHero } from "@/components/vater/youtube-hero";
 import { YouTubeStudio } from "@/components/vater/youtube-studio";
+import YouTubeBackdrop from "@/components/vater/youtube-backdrop";
+import { PipelineLiveStatus } from "@/components/vater/pipeline-live-status";
+import { LegacyV1Banner } from "@/components/animate/LegacyV1Banner";
+import { BetaAccessBanner } from "@/components/animate/BetaAccessBanner";
 
 export const metadata = {
   title: "YouTube | Vater Ventures — Faceless Content Machine",
@@ -11,6 +15,9 @@ export const metadata = {
 export default function YouTubePage() {
   return (
     <main>
+      <BetaAccessBanner />
+      <LegacyV1Banner />
+      <YouTubeBackdrop />
       <YouTubeHero />
       <div className="mx-auto max-w-7xl px-6 py-16">
         <div className="mb-8 max-w-3xl">
@@ -24,6 +31,9 @@ export default function YouTubePage() {
             Remotion compose render the final 16:9 MP4 — all on the DGX, no
             external API costs.
           </p>
+        </div>
+        <div className="mb-6">
+          <PipelineLiveStatus />
         </div>
         <Suspense
           fallback={

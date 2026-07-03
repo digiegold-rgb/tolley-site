@@ -2,8 +2,10 @@ export const PIPELINE_STAGES = [
   { id: "new", label: "New Lead", color: "blue" },
   { id: "contacted", label: "Contacted", color: "yellow" },
   { id: "interested", label: "Interested", color: "orange" },
+  { id: "showing", label: "Showing", color: "pink" },
   { id: "referred", label: "Referred", color: "purple" },
   { id: "closed", label: "Closed", color: "emerald" },
+  { id: "past_client", label: "Past Client", color: "teal" },
   { id: "dead", label: "Dead", color: "red" },
 ] as const;
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 import NarrprRichForm from "./NarrprRichForm";
 
 // ── Types ───────────────────────────────────────────────────
@@ -95,6 +96,26 @@ interface DossierResult {
   motivationScore: number | null;
   motivationFlags: string[];
   researchSummary: string | null;
+  // Long-form narrative synthesized by OpenManus after all plugins finish.
+  // Markdown with: Executive Summary, Owner/Motivation, Red Flags, ROI
+  // Snapshot, Neighborhood Context, Recommended Next Action. Null while
+  // synthesis is running asynchronously or if it soft-failed.
+  narrativeReport: string | null;
+  narrativeMeta: {
+    // Lifecycle: pending (submitted, awaiting async reconciliation) →
+    // completed | failed | skipped. Absent for rows created before the
+    // synthesis feature landed.
+    status?: "pending" | "completed" | "failed" | "skipped";
+    taskId?: string;
+    stepsUsed?: number;
+    durationMs?: number;
+    generatedAt?: string;
+    submittedAt?: string;
+    reconciledAt?: string;
+    reconciliationAgeMs?: number;
+    source?: "async-poll";
+    error?: string;
+  } | null;
   pluginData: Record<string, PluginOutput> | null;
   neighborhoodData: unknown;
   financialData: unknown;
@@ -130,17 +151,45 @@ interface Listing {
   leads: { score: number; status: string }[];
 }
 
+interface StepDetail {
+  status: "pending" | "running" | "success" | "failed" | "skipped";
+  source?: "worker" | "plugin";
+  tier?: number;
+  attempt?: number;
+  startedAt?: string;
+  finishedAt?: string;
+  durationMs?: number;
+  error?: string;
+  warnings?: string[];
+  confidence?: number;
+}
+
 interface DossierJob {
   id: string;
   status: string;
   progress: number;
   currentStep: string | null;
+  currentPhase?: string | null;
   stepsCompleted: string[];
   stepsFailed: string[];
+  stepDetails?: Record<string, StepDetail> | null;
+  errorMessage?: string | null;
   createdAt: string;
   completedAt: string | null;
   listing: Listing;
   result: DossierResult | null;
+}
+
+// ── Elapsed time helper for the live progress view ──────────
+
+function formatElapsed(ms: number): string {
+  if (ms < 0 || !Number.isFinite(ms)) return "—";
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ${seconds % 60}s`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ${minutes % 60}m`;
 }
 
 // ── Source type icons ────────────────────────────────────────
@@ -158,17 +207,80 @@ const SOURCE_ICONS: Record<string, string> = {
 
 // ── Section expand state ─────────────────────────────────
 
-type Section = "brief" | "owners" | "parcel" | "legal" | "history" | "social" | "photos" | "plugins" | "sources" | "neighborhood" | "financial" | "unclaimed" | "permits" | "rental" | "business" | "environmental" | "market" | "deepSocial" | "aiSummary" | "narrpr";
+type Section = "brief" | "narrative" | "owners" | "parcel" | "legal" | "history" | "social" | "photos" | "plugins" | "sources" | "neighborhood" | "financial" | "unclaimed" | "permits" | "rental" | "business" | "environmental" | "market" | "deepSocial" | "aiSummary" | "narrpr";
 
-export default function DossierView({ job, syncKey }: { job: DossierJob; syncKey: string }) {
+export default function DossierView({
+  job: initialJob,
+  syncKey,
+}: {
+  job: DossierJob;
+  syncKey: string;
+}) {
+  // Keep job in state so we can live-poll status while queued/running.
+  const [job, setJob] = useState<DossierJob>(initialJob);
   const [expanded, setExpanded] = useState<Set<Section>>(
-    new Set(["brief", "owners", "legal", "photos", "aiSummary"])
+    new Set(["narrative", "brief", "owners", "legal", "photos", "aiSummary"])
   );
   const [saving, setSaving] = useState(false);
   const [rerunning, setRerunning] = useState(false);
   const [manualOwnerName, setManualOwnerName] = useState("");
   const [manualPhone, setManualPhone] = useState("");
   const [manualEmail, setManualEmail] = useState("");
+  const [pollError, setPollError] = useState<string | null>(null);
+
+  // Poll for status while the job is still queued/running. Stops on
+  // terminal states (complete/partial/failed/cancelled) or after too many
+  // consecutive errors.
+  useEffect(() => {
+    if (job.status !== "queued" && job.status !== "running") return;
+
+    let cancelled = false;
+    let failures = 0;
+
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        const url = `/api/leads/dossier/${job.id}${syncKey ? `?key=${syncKey}` : ""}`;
+        const res = await fetch(url, {
+          headers: syncKey ? { "x-sync-secret": syncKey } : undefined,
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          failures++;
+          if (failures >= 3) {
+            setPollError(`Poll failed (${res.status}) — stopped retrying`);
+            return;
+          }
+          return;
+        }
+        failures = 0;
+        const data = await res.json();
+        if (cancelled || !data?.job) return;
+        setJob((prev) => ({
+          ...prev,
+          ...data.job,
+          listing: data.job.listing ?? prev.listing,
+          result: data.job.result ?? prev.result,
+        }));
+        setPollError(null);
+      } catch (err) {
+        failures++;
+        if (failures >= 3) {
+          setPollError(
+            err instanceof Error ? err.message : "Network error — stopped polling"
+          );
+        }
+      }
+    };
+
+    // Kick off an immediate poll, then every 2 seconds
+    void tick();
+    const id = setInterval(tick, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [job.id, job.status, syncKey]);
 
   function toggle(section: Section) {
     setExpanded((prev) => {
@@ -261,42 +373,13 @@ export default function DossierView({ job, syncKey }: { job: DossierJob; syncKey
     if (pd.sources) allSources.push(...pd.sources);
   }
 
-  // ── Not complete yet — show progress ──
+  // ── Not complete yet — show live-polling progress ──
   if (job.status === "running" || job.status === "queued") {
     return (
-      <div className="rounded-xl bg-white/5 border border-white/10 p-8 text-center">
-        <h2 className="text-2xl font-bold mb-2">{l.address}</h2>
-        <p className="text-white/40 mb-6">
-          {l.city} {l.zip} | MLS# {l.mlsId}
-        </p>
-
-        <div className="max-w-md mx-auto mb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-3 bg-white/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                style={{ width: `${job.progress}%` }}
-              />
-            </div>
-            <span className="text-lg font-bold tabular-nums text-blue-300">{job.progress}%</span>
-          </div>
-        </div>
-
-        {job.currentStep && (
-          <p className="text-blue-300 animate-pulse">{job.currentStep}</p>
-        )}
-
-        <p className="text-white/30 text-sm mt-4">
-          {job.status === "queued" ? "Waiting in queue..." : "Researching — this may take 30-60 minutes"}
-        </p>
-
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-6 rounded-lg bg-white/10 px-4 py-2 text-sm hover:bg-white/20"
-        >
-          Refresh
-        </button>
-      </div>
+      <LivePipelineProgress
+        job={job}
+        pollError={pollError}
+      />
     );
   }
 
@@ -412,6 +495,60 @@ export default function DossierView({ job, syncKey }: { job: DossierJob; syncKey
           </p>
         </div>
       )}
+
+      {/* ── Synthesis Narrative (OpenManus) ── */}
+      {r?.narrativeReport ? (
+        <CollapsibleSection
+          title="Investment Synthesis"
+          section="narrative"
+          expanded={expanded}
+          toggle={toggle}
+        >
+          <div className="prose prose-invert prose-sm max-w-none prose-headings:text-white/90 prose-headings:font-semibold prose-h2:text-base prose-h2:mt-5 prose-h2:mb-2 prose-p:text-white/75 prose-p:leading-relaxed prose-strong:text-white prose-li:text-white/75 prose-code:text-emerald-300 prose-code:bg-white/5 prose-code:px-1 prose-code:rounded">
+            <ReactMarkdown>{r.narrativeReport}</ReactMarkdown>
+          </div>
+          <p className="mt-3 text-[0.6rem] text-white/25 italic">
+            Synthesized by OpenManus on DGX Spark
+            {r.narrativeMeta?.stepsUsed
+              ? ` in ${r.narrativeMeta.stepsUsed} step${r.narrativeMeta.stepsUsed === 1 ? "" : "s"}`
+              : ""}
+            {r.narrativeMeta?.reconciliationAgeMs
+              ? ` (${Math.round(r.narrativeMeta.reconciliationAgeMs / 1000)}s, reconciled async)`
+              : r.narrativeMeta?.durationMs
+                ? ` (${Math.round(r.narrativeMeta.durationMs / 1000)}s)`
+                : ""}
+            . Verify all claims against source links and run the numbers yourself before acting.
+          </p>
+        </CollapsibleSection>
+      ) : r?.narrativeMeta?.status === "pending" ? (
+        <CollapsibleSection
+          title="Investment Synthesis"
+          section="narrative"
+          expanded={expanded}
+          toggle={toggle}
+        >
+          <div className="flex items-start gap-3 rounded-lg bg-amber-500/5 border border-amber-500/20 p-4">
+            <div className="mt-0.5 h-2 w-2 flex-none animate-pulse rounded-full bg-amber-400" />
+            <div className="text-sm text-white/70">
+              <p className="font-medium text-white/85">Analysis in progress</p>
+              <p className="mt-1 text-xs text-white/50">
+                OpenManus is synthesizing the investment narrative on DGX Spark.
+                Real runs take 6–9 minutes; a background poller will update this
+                section automatically when the task completes. Refresh in a few
+                minutes to see it.
+              </p>
+              {r.narrativeMeta.taskId && (
+                <p className="mt-2 font-mono text-[0.6rem] text-white/25">
+                  task {r.narrativeMeta.taskId} · submitted{" "}
+                  {r.narrativeMeta.submittedAt
+                    ? new Date(r.narrativeMeta.submittedAt).toLocaleTimeString()
+                    : "—"}
+                </p>
+              )}
+            </div>
+          </div>
+        </CollapsibleSection>
+      ) : null}
 
       {/* ── Intelligence Brief ── */}
       {r?.researchSummary && (
@@ -1447,4 +1584,364 @@ function timeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+// ── Live pipeline progress view ─────────────────────────────
+
+const PHASE_LABELS: Record<string, string> = {
+  initializing: "Initializing",
+  health_check: "Health check",
+  research_worker: "DGX research worker",
+  local_plugins: "Local plugins",
+  aggregating: "Aggregating results",
+  done: "Done",
+};
+
+const PHASE_ORDER = [
+  "initializing",
+  "health_check",
+  "research_worker",
+  "local_plugins",
+  "aggregating",
+  "done",
+];
+
+function LivePipelineProgress({
+  job,
+  pollError,
+}: {
+  job: DossierJob;
+  pollError: string | null;
+}) {
+  const l = job.listing;
+  const elapsedMs = Date.now() - new Date(job.createdAt).getTime();
+  const elapsedStr = formatElapsed(elapsedMs);
+
+  const details: Record<string, StepDetail> = job.stepDetails || {};
+  const entries = Object.entries(details);
+
+  // Group steps by source: worker vs plugin (tier)
+  const workerSteps = entries.filter(([, d]) => d.source === "worker");
+  const pluginSteps = entries.filter(([, d]) => d.source === "plugin" || !d.source);
+
+  // Group plugin steps by tier
+  const tierGroups = new Map<number, Array<[string, StepDetail]>>();
+  for (const entry of pluginSteps) {
+    const tier = entry[1].tier ?? 0;
+    if (!tierGroups.has(tier)) tierGroups.set(tier, []);
+    tierGroups.get(tier)!.push(entry);
+  }
+  const sortedTiers = [...tierGroups.entries()].sort((a, b) => a[0] - b[0]);
+
+  const counts = {
+    success: entries.filter(([, d]) => d.status === "success").length,
+    failed: entries.filter(([, d]) => d.status === "failed").length,
+    running: entries.filter(([, d]) => d.status === "running").length,
+    pending: entries.filter(([, d]) => d.status === "pending").length,
+    skipped: entries.filter(([, d]) => d.status === "skipped").length,
+  };
+
+  const currentPhase = job.currentPhase || "initializing";
+  const currentPhaseIdx = PHASE_ORDER.indexOf(currentPhase);
+
+  return (
+    <div className="space-y-4">
+      {/* Hero card */}
+      <div className="relative overflow-hidden rounded-2xl border border-sky-400/25 bg-gradient-to-br from-sky-500/10 via-violet-500/8 to-transparent p-6 shadow-xl shadow-sky-500/10">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 animate-pulse opacity-40"
+          style={{
+            background:
+              "radial-gradient(60% 50% at 50% 0%, rgba(56,189,248,0.18) 0%, transparent 70%)",
+            animationDuration: "3s",
+          }}
+        />
+
+        <div className="relative">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate text-2xl font-bold text-white">
+                {l.address}
+              </h2>
+              <p className="text-xs text-white/60">
+                {l.city} {l.zip} · MLS# {l.mlsId}
+              </p>
+            </div>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-cyan-500 text-white shadow-lg shadow-sky-500/40">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="animate-spin"
+                style={{ animationDuration: "2.5s" }}
+              >
+                <path d="M21 12a9 9 0 1 1-6.2-8.55" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Status + elapsed */}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-xs font-semibold text-sky-200">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-400" />
+              </span>
+              {job.status === "queued" ? "Queued" : "Running"}
+            </span>
+            <span className="text-xs text-white/60">· {elapsedStr} elapsed</span>
+            <span className="text-xs text-white/40">
+              · Phase: {PHASE_LABELS[currentPhase] || currentPhase}
+            </span>
+          </div>
+
+          {/* Progress bar */}
+          <div className="mt-4">
+            <div className="flex items-center gap-3">
+              <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-sky-400 via-cyan-400 to-emerald-400 transition-all duration-500"
+                  style={{
+                    width: `${Math.max(job.progress, job.status === "running" ? 5 : 2)}%`,
+                  }}
+                />
+                <div
+                  className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                  style={{ animationDuration: "2s" }}
+                />
+              </div>
+              <span className="text-lg font-bold tabular-nums text-sky-200">
+                {job.progress}%
+              </span>
+            </div>
+          </div>
+
+          {/* Current step */}
+          {job.currentStep && (
+            <p className="mt-3 truncate text-sm text-sky-200/90">
+              <span className="text-white/50">▸ </span>
+              {job.currentStep}
+            </p>
+          )}
+
+          {/* Counts */}
+          <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
+            {counts.success > 0 && (
+              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-emerald-200">
+                ✓ {counts.success} complete
+              </span>
+            )}
+            {counts.running > 0 && (
+              <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-0.5 text-sky-200">
+                ● {counts.running} running
+              </span>
+            )}
+            {counts.pending > 0 && (
+              <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-white/60">
+                ○ {counts.pending} pending
+              </span>
+            )}
+            {counts.failed > 0 && (
+              <span className="rounded-full border border-rose-400/30 bg-rose-400/10 px-2 py-0.5 text-rose-200">
+                ✗ {counts.failed} failed
+              </span>
+            )}
+            {counts.skipped > 0 && (
+              <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-white/50">
+                ⊘ {counts.skipped} skipped
+              </span>
+            )}
+          </div>
+
+          {pollError && (
+            <p className="mt-3 text-[11px] text-rose-300">
+              Poll error: {pollError}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Phase timeline */}
+      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+        <div className="mb-3 text-[10px] font-medium uppercase tracking-wider text-white/50">
+          Pipeline phases
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {PHASE_ORDER.filter((p) => p !== "done").map((phase, i) => {
+            const isPast = i < currentPhaseIdx;
+            const isCurrent = i === currentPhaseIdx;
+            return (
+              <div
+                key={phase}
+                className={`rounded-lg border px-3 py-1.5 text-[11px] font-medium transition-colors ${
+                  isPast
+                    ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+                    : isCurrent
+                      ? "border-sky-400/40 bg-sky-400/15 text-sky-100 shadow-sm shadow-sky-500/30"
+                      : "border-white/10 bg-white/5 text-white/40"
+                }`}
+              >
+                {isPast && <span className="mr-1">✓</span>}
+                {isCurrent && <span className="mr-1 animate-pulse">●</span>}
+                {PHASE_LABELS[phase] || phase}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Research worker group */}
+      {workerSteps.length > 0 && (
+        <StepGroup
+          title="DGX research worker"
+          subtitle="Primary data source — Playwright browser automation on DGX Spark"
+          entries={workerSteps}
+        />
+      )}
+
+      {/* Plugin tiers */}
+      {sortedTiers.map(([tier, tierEntries]) => (
+        <StepGroup
+          key={`tier-${tier}`}
+          title={`Local plugins — Tier ${tier}`}
+          subtitle={
+            tier === 0
+              ? "No dependencies — run first"
+              : `Depends on Tier ${tier - 1} results`
+          }
+          entries={tierEntries}
+        />
+      ))}
+    </div>
+  );
+}
+
+function StepGroup({
+  title,
+  subtitle,
+  entries,
+}: {
+  title: string;
+  subtitle: string;
+  entries: Array<[string, StepDetail]>;
+}) {
+  // Sort by: running first, then pending, then completed, then failed, then skipped
+  const statusOrder: Record<string, number> = {
+    running: 0,
+    pending: 1,
+    success: 2,
+    failed: 3,
+    skipped: 4,
+  };
+  const sorted = [...entries].sort((a, b) => {
+    const sa = statusOrder[a[1].status] ?? 5;
+    const sb = statusOrder[b[1].status] ?? 5;
+    if (sa !== sb) return sa - sb;
+    return a[0].localeCompare(b[0]);
+  });
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <div className="mb-3">
+        <div className="text-sm font-semibold text-white">{title}</div>
+        <div className="text-[11px] text-white/50">{subtitle}</div>
+      </div>
+      <div className="space-y-1.5">
+        {sorted.map(([name, detail]) => (
+          <StepRow key={name} name={name} detail={detail} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StepRow({ name, detail }: { name: string; detail: StepDetail }) {
+  const [showError, setShowError] = useState(false);
+
+  const icon = (() => {
+    switch (detail.status) {
+      case "success":
+        return <span className="text-emerald-300">✓</span>;
+      case "failed":
+        return <span className="text-rose-300">✗</span>;
+      case "skipped":
+        return <span className="text-white/40">⊘</span>;
+      case "running":
+        return (
+          <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border border-sky-300 border-t-transparent" />
+        );
+      case "pending":
+      default:
+        return <span className="text-white/30">○</span>;
+    }
+  })();
+
+  const rowClass = {
+    success: "border-emerald-400/20 bg-emerald-400/[0.04]",
+    failed: "border-rose-400/25 bg-rose-400/[0.05]",
+    skipped: "border-white/10 bg-white/[0.02] opacity-60",
+    running: "border-sky-400/30 bg-sky-400/[0.06] shadow-sm shadow-sky-500/10",
+    pending: "border-white/10 bg-white/[0.02]",
+  }[detail.status];
+
+  return (
+    <div
+      className={`rounded-lg border px-3 py-2 text-[12px] transition-colors ${rowClass}`}
+    >
+      <div className="flex items-center gap-2">
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+          {icon}
+        </span>
+        <span className="flex-1 truncate text-white/90">{name}</span>
+        {detail.durationMs != null && (
+          <span className="shrink-0 tabular-nums text-white/50">
+            {formatDuration(detail.durationMs)}
+          </span>
+        )}
+        {detail.confidence != null && detail.status === "success" && (
+          <span className="shrink-0 rounded-full border border-white/15 bg-white/5 px-1.5 py-0 text-[10px] text-white/60">
+            {Math.round(detail.confidence * 100)}%
+          </span>
+        )}
+        {(detail.error || (detail.warnings && detail.warnings.length > 0)) && (
+          <button
+            onClick={() => setShowError((v) => !v)}
+            className="shrink-0 text-[10px] text-white/50 hover:text-white/80"
+          >
+            {showError ? "hide" : "why?"}
+          </button>
+        )}
+      </div>
+      {showError && detail.error && (
+        <div className="mt-1.5 rounded border border-rose-400/20 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-200">
+          {detail.error}
+        </div>
+      )}
+      {showError && detail.warnings && detail.warnings.length > 0 && (
+        <div className="mt-1.5 space-y-0.5">
+          {detail.warnings.map((w, i) => (
+            <div
+              key={i}
+              className="rounded border border-amber-400/20 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200"
+            >
+              {w}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const s = ms / 1000;
+  if (s < 60) return `${s.toFixed(1)}s`;
+  const m = Math.floor(s / 60);
+  const rem = Math.round(s % 60);
+  return `${m}m ${rem}s`;
 }

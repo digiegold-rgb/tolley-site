@@ -4,7 +4,7 @@
 export const LM_COMPANY = "Red Alert Dispatch, LLC";
 export const LM_OWNER = "Jared";
 export const LM_PHONE = "(913) 283-3826";
-export const LM_PHONE_RAW = "9132833826";
+export const LM_PHONE_RAW = "+19132833826";
 export const LM_EMAIL = "Jared@yourkchomes.com";
 export const LM_LOCATION = "Independence, MO";
 export const LM_HOURS = "Weekdays, Weekends, Overnight";

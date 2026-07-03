@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
             email: true,
             phone: true,
             stage: true,
+            score: true,
           },
         },
       },

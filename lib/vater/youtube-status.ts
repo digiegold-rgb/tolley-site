@@ -95,51 +95,54 @@ export const CREATION_PHASES: readonly CreationPhase[] = [
   {
     status: "fetching",
     label: "Fetch",
-    description: "Downloading source media",
+    description: "yt-dlp downloads the source media (audio + metadata)",
     transcribeOnly: true,
   },
   {
     status: "transcribing",
     label: "Transcribe",
-    description: "Whisper large-v3 transcription",
+    description: "faster-whisper large-v3 transcription on DGX",
     transcribeOnly: true,
   },
   {
     status: "extracting_principles",
     label: "Principles",
-    description: "Extracting key claims from source",
+    description: "Kimi extracts key claims, facts, and angles",
     transcribeOnly: true,
   },
   {
     status: "scripting",
     label: "Script",
-    description: "Writing original long-form script",
+    description: "Writing original long-form script in your goal + voice",
   },
   {
     status: "verifying",
     label: "Verify",
-    description: "Checking script against principles",
+    description: "Cross-checks script against extracted principles",
     transcribeOnly: true,
   },
   {
     status: "generating_audio",
     label: "Voice",
-    description: "F5-TTS voice clone narration",
+    description:
+      "ElevenLabs or F5-TTS narration (routed by your selected style)",
   },
   {
     status: "aligning_captions",
     label: "Captions",
-    description: "Word-level forced alignment",
+    description: "WhisperX word-level forced alignment for karaoke",
   },
   {
     status: "generating_scenes",
     label: "Scenes",
-    description: "SDXL scene imagery (one per beat)",
+    description:
+      "FireRed / SDXL / Gemini scene imagery — one still per beat (5s)",
   },
   {
     status: "composing_video",
     label: "Compose",
-    description: "Remotion final render",
+    description:
+      "Remotion + ffmpeg stitch captions, music, stills into final MP4",
   },
 ] as const;
 
@@ -160,6 +163,8 @@ export function phaseToStatus(
 
     // ---- run-creation pipeline (vater.py emits both "running" and
     //      "ready" variants of every phase; map them to the same status) ----
+    case "starting_llm":
+      return "extracting_principles";
     case "extracting_principles":
     case "extracted":
       return "extracting_principles";
@@ -182,6 +187,7 @@ export function phaseToStatus(
     case "generating_scenes":
     case "rendering_scenes":
     case "scenes_ready":
+    case "annotating_overlays":
       return "generating_scenes";
     case "composing":
     case "composing_video":
@@ -203,4 +209,23 @@ export const WORDS_PER_MINUTE = 150;
 
 export function wordCountForDuration(minutes: number): number {
   return Math.round(minutes * WORDS_PER_MINUTE);
+}
+
+/**
+ * True when the baked `final.mp4` predates scene/animation edits — i.e. the
+ * editor preview (assembled live from per-scene files) will look different
+ * from the library's baked final MP4. UI uses this to surface a
+ * "re-compose to refresh final MP4" prompt.
+ *
+ * Only meaningful for `ready` projects: during compose the status is
+ * `composing_video`/`editing` and the preview+final drift is expected.
+ */
+export function isFinalMp4Stale(p: {
+  status: string;
+  editedAt: Date | string | null | undefined;
+  completedAt: Date | string | null | undefined;
+}): boolean {
+  if (p.status !== "ready") return false;
+  if (!p.editedAt || !p.completedAt) return false;
+  return new Date(p.editedAt).getTime() > new Date(p.completedAt).getTime();
 }

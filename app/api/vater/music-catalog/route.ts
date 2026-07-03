@@ -12,8 +12,14 @@ import {
   autopilot,
   AutopilotError,
 } from "@/lib/vater/autopilot-client";
+import { auth } from "@/auth";
 
 export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const tracks = await autopilot.fetchMusicCatalog();
     return NextResponse.json({ tracks });

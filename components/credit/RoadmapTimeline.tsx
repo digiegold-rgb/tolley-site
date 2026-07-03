@@ -12,43 +12,44 @@ const phases = [
     border: "border-red-500/40",
     bg: "bg-red-500/10",
     points: "+20-40 pts",
-    cash: "$4,300-5,300",
+    cash: "~$3,600",
     items: [
-      "Pay off wife's BankAmericard — $2,821",
-      "Pay down Cap One 0661 to <30% — $3,976 → $1,500",
-      "Call Zwicker for lump-sum — offer $2K-2.5K on PNC 8534",
-      "Verify Amex 5353 removed from all 3 bureaus",
+      { text: "Wife's BankAmericard — PAID IN FULL", done: true },
+      { text: "Cap One personal under 30% — now $279 (27%)", done: true },
+      { text: "Pay Spark business card 82% → under 10% (~$3,600 → $500) — #1 score lever", done: false },
+      { text: "Route furniture flips through the S-corp/LLC — start the income paper trail", done: false },
     ],
   },
   {
     id: "month1",
     label: "MONTH 1",
-    sublabel: "Settle Small Ones",
+    sublabel: "Legal First (deadline-driven)",
     color: "#f59e0b",
     glow: "shadow-[0_0_20px_rgba(245,158,11,0.3)]",
     border: "border-amber-500/40",
     bg: "bg-amber-500/10",
-    points: "+30-50 pts",
-    cash: "$2,100-3,300",
+    points: "Avoid judgment",
+    cash: "$1,000-1,500",
     items: [
-      "Settle Central Bank 8993 — offer $1K-1.5K on $3,353",
-      "Settle BofA 7331 — offer $1.1K-1.8K on $3,649",
-      "Follow up TransUnion dispute — filed 01/27, overdue",
+      { text: "⚖️ Central Bank — settle BEFORE 8/19 trial, pay-for-DELETE in writing ($1K-1.5K on $3,353)", done: false },
+      { text: "⚖️ Velocity — DON'T settle; make them prove standing (not even on your report)", done: false },
+      { text: "⚖️ BofA — answer/settle-to-delete when re-served ($1.1K-1.8K on $3,649)", done: false },
     ],
   },
   {
     id: "month2_3",
     label: "MONTH 2-3",
-    sublabel: "Mid-Tier Settlements",
+    sublabel: "Settle to DELETE + document income",
     color: "#eab308",
     glow: "shadow-[0_0_20px_rgba(234,179,8,0.3)]",
     border: "border-yellow-500/40",
     bg: "bg-yellow-500/10",
     points: "+40-60 pts",
-    cash: "$8,000-13,250",
+    cash: "$10,000-15,750",
     items: [
-      "Settle Apple Card 3063 — offer $3K-4.75K on $9,485",
-      "Settle PNC 9439 — offer $5K-8.5K on $16,912 — bundle w/ 8534",
+      { text: "Settle Apple/Goldman if served — $3K-4.75K on $9,485 (pay-for-delete)", done: false },
+      { text: "Settle PNC 8534 ($5,777, Zwicker) + bundle PNC 9439 ($16,912) — delete terms", done: false },
+      { text: "Pay yourself a W-2 salary from the S-corp — gold-standard provable income", done: false },
     ],
   },
   {
@@ -62,23 +63,25 @@ const phases = [
     points: "+30-50 pts",
     cash: "$7,000-11,000",
     items: [
-      "Settle Chase 2362 — offer $7K-11K on $22,472",
-      "Dispute settled accounts for removal — pay-for-delete",
+      { text: "Settle Chase/JPMCB — $7K-11K on $22,472 (pay-for-delete)", done: false },
+      { text: "Confirm every settled account reports DELETED, not just 'paid'", done: false },
+      { text: "Pay off the truck ($21,925) — drops the income bar ~$73K → ~$53K/yr", done: false },
     ],
   },
   {
-    id: "month6",
-    label: "MONTH 6",
-    sublabel: "Apply for HELOC",
+    id: "heloc",
+    label: "HELOC",
+    sublabel: "When both gates green",
     color: "#10b981",
     glow: "shadow-[0_0_20px_rgba(16,185,129,0.4)]",
     border: "border-emerald-500/40",
     bg: "bg-emerald-500/10",
-    points: "GOAL: 700+",
-    cash: "Equity Unlocked",
+    points: "FICO 680 + DTI 43%",
+    cash: "$85K-104K equity",
     items: [
-      "Apply for HELOC on Independence home — $128K equity",
-      "Use HELOC for PA move + reserves — bridge financing",
+      { text: "Apply once FICO ≥ 680 AND documented income covers DTI (~12mo income seasoning)", done: false },
+      { text: "Equity confirmed: $159K (value $370K − $210.7K) → $85K-104K borrowable", done: false },
+      { text: "Fallback: after PA move it becomes a rental → DSCR loan (qualifies off rent, no income docs)", done: false },
     ],
   },
 ];
@@ -156,11 +159,23 @@ export function RoadmapTimeline() {
 
         <ul className="mt-4 space-y-2">
           {phase.items.map((item, i) => (
-            <li key={i} className="flex items-start gap-2 text-sm text-white/75">
-              <span className="mt-1 text-xs" style={{ color: phase.color }}>
-                &#9656;
+            <li
+              key={i}
+              className={`flex items-start gap-2 text-sm ${
+                item.done ? "text-white/40" : "text-white/75"
+              }`}
+            >
+              <span
+                className="mt-0.5 text-xs"
+                style={{ color: item.done ? "#22c55e" : phase.color }}
+              >
+                {item.done ? "✓" : "▸"}
               </span>
-              <span className="font-medium">{item}</span>
+              <span
+                className={`font-medium ${item.done ? "line-through decoration-white/30" : ""}`}
+              >
+                {item.text}
+              </span>
             </li>
           ))}
         </ul>

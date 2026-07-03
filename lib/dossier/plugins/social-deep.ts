@@ -206,38 +206,47 @@ export const socialDeepPlugin: DossierPlugin = {
       backgroundSearchLinks.push(socialCatfishUrl);
 
       // ── Social media deep links ──────────────────────
-      // Facebook search by name + city
-      const fbSearchUrl = `https://www.facebook.com/search/people/?q=${encodeURIComponent(
-        `${firstName} ${lastName} ${city}`
+      // We route through Google site-restricted search because LinkedIn's
+      // internal /search/results/people/?keywords= and Facebook's own
+      // /search/people/?q= both return nothing for anonymous users. Google
+      // indexes public profiles on both sites, so the site: operator finds
+      // real profile URLs when the user clicks through. The people-search
+      // plugin already does an active Brave-backed lookup during its run
+      // and populates socialProfiles — these URLs are manual-click fallbacks
+      // for when the active search misses the right candidate.
+      const fbSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(
+        `site:facebook.com "${firstName} ${lastName}" ${city} ${state}`
       )}`;
       sources.push({
-        label: `Facebook — Search: ${owner.name} in ${city}`,
+        label: `Google → Facebook: ${owner.name} in ${city}`,
         url: fbSearchUrl,
-        type: "social",
+        type: "search",
       });
       socialDeepLinks.push(fbSearchUrl);
 
-      // Facebook search by email (if available)
+      // Facebook search by email (if available) — emails are unique enough
+      // that Google site-restricted search by email often hits a profile
+      // directly.
       if (email) {
-        const fbEmailUrl = `https://www.facebook.com/search/people/?q=${encodeURIComponent(
-          email
+        const fbEmailUrl = `https://www.google.com/search?q=${encodeURIComponent(
+          `site:facebook.com "${email}"`
         )}`;
         sources.push({
-          label: `Facebook — Search by email: ${email}`,
+          label: `Google → Facebook by email: ${email}`,
           url: fbEmailUrl,
-          type: "social",
+          type: "search",
         });
         socialDeepLinks.push(fbEmailUrl);
       }
 
-      // LinkedIn search
-      const linkedinUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(
-        `${firstName} ${lastName} ${city}`
+      // LinkedIn via Google site-restricted search
+      const linkedinUrl = `https://www.google.com/search?q=${encodeURIComponent(
+        `site:linkedin.com/in "${firstName} ${lastName}" ${city} ${state}`
       )}`;
       sources.push({
-        label: `LinkedIn — ${owner.name}`,
+        label: `Google → LinkedIn: ${owner.name}`,
         url: linkedinUrl,
-        type: "social",
+        type: "search",
       });
       socialDeepLinks.push(linkedinUrl);
 

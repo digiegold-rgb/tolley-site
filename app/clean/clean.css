@@ -1,0 +1,309 @@
+/* ── Tolley Haul & Clean — Deep Slate + Safety Orange, elevated ─────────── */
+/* Builds on the /cleanouts industrial system (Oswald, hazard stripes, flat  */
+/* slate panels) but adds real photography, layered scrims, a steel hairline */
+/* grid, and image-forward service cards. Confident, utilitarian, premium —  */
+/* no neon, no glow.                                                          */
+
+.clean-page {
+  --cl-bg: #0c1219;
+  --cl-bg-2: #0e141b;
+  --cl-panel: #141d27;
+  --cl-panel-2: #18222e;
+  --cl-line: rgba(148, 163, 184, 0.14);
+  --cl-line-strong: rgba(148, 163, 184, 0.28);
+  --cl-orange: #ff7a1a;
+  --cl-orange-deep: #e5670f;
+  --cl-orange-soft: rgba(255, 122, 26, 0.08);
+  --cl-steel: #94a3b8;
+  --cl-text: #e2e8f0;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% -5%, rgba(255, 122, 26, 0.07), transparent 70%),
+    linear-gradient(180deg, var(--cl-bg) 0%, var(--cl-bg-2) 40%, var(--cl-bg) 100%);
+  color: var(--cl-text);
+  min-height: 100vh;
+}
+
+/* Industrial display headings */
+.cl-display {
+  font-family: var(--font-oswald), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.02;
+}
+
+.cl-kicker {
+  font-family: var(--font-oswald), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--cl-orange);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* Hazard stripe accent */
+.cl-hazard {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--cl-orange) 0 12px,
+    #0c1219 12px 24px
+  );
+}
+
+/* Sticky call/text strip */
+.cl-strip {
+  background: rgba(12, 18, 25, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--cl-line);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* ── Hero ──────────────────────────────────────────────────────────────── */
+.cl-hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.cl-hero-img {
+  position: absolute;
+  inset: 0;
+  object-fit: cover;
+  z-index: -2;
+}
+.cl-hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(12, 18, 25, 0.72) 0%, rgba(12, 18, 25, 0.86) 55%, var(--cl-bg) 100%),
+    linear-gradient(90deg, rgba(12, 18, 25, 0.9) 0%, rgba(12, 18, 25, 0.25) 60%, rgba(12, 18, 25, 0.6) 100%);
+}
+/* faint steel grid over the hero */
+.cl-hero-grid {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, #000 30%, transparent 75%);
+}
+
+/* Trust chips */
+.cl-chip {
+  font-family: var(--font-oswald), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--cl-steel);
+  background: rgba(148, 163, 184, 0.07);
+  border: 1px solid var(--cl-line);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+.cl-chip::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 2px;
+  background: var(--cl-orange);
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+.cl-btn-primary {
+  background: var(--cl-orange);
+  color: #10181f;
+  font-family: var(--font-oswald), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 10px 30px -10px rgba(255, 122, 26, 0.6);
+  transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+.cl-btn-primary:hover {
+  background: var(--cl-orange-deep);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px -12px rgba(255, 122, 26, 0.7);
+}
+.cl-btn-secondary {
+  background: rgba(148, 163, 184, 0.06);
+  border: 1px solid var(--cl-line-strong);
+  color: var(--cl-text);
+  font-family: var(--font-oswald), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
+}
+.cl-btn-secondary:hover {
+  border-color: var(--cl-orange);
+  background: var(--cl-orange-soft);
+  transform: translateY(-2px);
+}
+
+/* ── Service cards (image-forward) ─────────────────────────────────────── */
+.cl-svc {
+  position: relative;
+  background: var(--cl-panel);
+  border: 1px solid var(--cl-line);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+}
+.cl-svc:hover {
+  border-color: rgba(255, 122, 26, 0.5);
+  transform: translateY(-4px);
+  box-shadow: 0 24px 50px -28px rgba(0, 0, 0, 0.9);
+}
+.cl-svc-media {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+}
+.cl-svc-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+.cl-svc:hover .cl-svc-media img {
+  transform: scale(1.05);
+}
+.cl-svc-media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 30%, rgba(20, 29, 39, 0.85) 100%);
+}
+.cl-svc-tag {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 2;
+  font-family: var(--font-oswald), sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #10181f;
+  background: var(--cl-orange);
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.6rem;
+}
+.cl-bullet {
+  flex: none;
+  margin-top: 0.45rem;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 1px;
+  background: var(--cl-orange);
+}
+
+/* Flat cards (steps, etc.) */
+.cl-card {
+  background: var(--cl-panel);
+  border: 1px solid var(--cl-line);
+  border-radius: 0.5rem;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.cl-card:hover {
+  border-color: rgba(255, 122, 26, 0.45);
+  transform: translateY(-3px);
+}
+.cl-step-num {
+  font-family: var(--font-oswald), sans-serif;
+  background: var(--cl-orange);
+  color: #10181f;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  border-radius: 0.25rem;
+}
+
+/* Gallery tile */
+.cl-shot {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  border: 1px solid var(--cl-line);
+  aspect-ratio: 4 / 3;
+}
+.cl-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+.cl-shot:hover img {
+  transform: scale(1.06);
+}
+
+/* Differentiator / pricing plate */
+.cl-plate {
+  background:
+    linear-gradient(135deg, rgba(255, 122, 26, 0.12), rgba(255, 122, 26, 0.03) 60%),
+    var(--cl-panel-2);
+  border: 1px solid rgba(255, 122, 26, 0.4);
+  border-radius: 0.75rem;
+}
+.cl-form {
+  background: var(--cl-panel);
+  border: 1px solid var(--cl-line);
+  border-radius: 0.75rem;
+}
+
+/* Price callout numerals */
+.cl-price {
+  font-family: var(--font-oswald), sans-serif;
+  font-weight: 700;
+  color: var(--cl-orange);
+  line-height: 1;
+}
+
+/* Inputs */
+.cl-input {
+  background: #0c1219;
+  border: 1px solid var(--cl-line-strong);
+  border-radius: 0.375rem;
+  color: var(--cl-text);
+  transition: border-color 0.2s ease;
+  width: 100%;
+}
+.cl-input:focus {
+  outline: none;
+  border-color: var(--cl-orange);
+}
+.cl-input::placeholder {
+  color: rgba(148, 163, 184, 0.5);
+}
+select.cl-input option {
+  background: #0c1219;
+  color: var(--cl-text);
+}
+
+/* Entrance */
+.cl-enter {
+  opacity: 0;
+  transform: translateY(22px);
+  animation: cl-fade-up 0.6s ease-out both;
+  animation-delay: var(--enter-delay, 0s);
+}
+@keyframes cl-fade-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cl-enter { animation: none; opacity: 1; transform: none; }
+  .cl-svc:hover, .cl-card:hover, .cl-btn-primary:hover, .cl-btn-secondary:hover { transform: none; }
+  .cl-svc:hover .cl-svc-media img, .cl-shot:hover img { transform: none; }
+}

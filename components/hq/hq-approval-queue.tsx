@@ -38,6 +38,40 @@ export function HqApprovalQueue({
     if (ok) setEditId(null);
   }
 
+  // Best-fit first; nulls sink to the bottom. Copy so we don't mutate props.
+  const sortedTouches = [...touches].sort((a, b) => {
+    const sa = a.lead.score;
+    const sb = b.lead.score;
+    if (sa == null && sb == null) return 0;
+    if (sa == null) return 1;
+    if (sb == null) return -1;
+    return sb - sa;
+  });
+
+  function scorePill(score: number | null) {
+    if (score == null) return null;
+    const colors =
+      score >= 80
+        ? { bg: "#e6f7ed", fg: "#137333" }
+        : score >= 60
+          ? { bg: "#fef7e0", fg: "#9a6700" }
+          : { bg: "#f1f3f4", fg: "#5f6368" };
+    return (
+      <span
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          padding: "1px 6px",
+          borderRadius: 10,
+          background: colors.bg,
+          color: colors.fg,
+        }}
+      >
+        fit {score}
+      </span>
+    );
+  }
+
   return (
     <div className="panel">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -57,13 +91,14 @@ export function HqApprovalQueue({
         </div>
       )}
 
-      {touches.map((t) => (
+      {sortedTouches.map((t) => (
         <div key={t.id} style={{ borderTop: "1px solid #eef0f2", padding: "10px 0" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
             <span className="pill pill-channel">
               {CHANNEL_ICON[t.channel] || ""} {t.channel}
             </span>
             <span style={{ fontSize: 12, fontWeight: 700 }}>{t.lead.name}</span>
+            {scorePill(t.lead.score)}
             <span className={`pill pill-offer-${t.lead.offer}`}>{t.lead.offer}</span>
             <span style={{ fontSize: 11, color: "#999" }}>
               {t.lead.city ? `${t.lead.city} · ` : ""}

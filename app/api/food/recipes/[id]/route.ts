@@ -1,7 +1,8 @@
-// @ts-nocheck — references removed Prisma models
+// Food API route
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { trackFoodEvent } from "@/lib/food/track";
 
 export async function GET(
   _request: NextRequest,
@@ -92,6 +93,11 @@ export async function PATCH(
       include: {
         cookLogs: { orderBy: { cookedAt: "desc" }, take: 20 },
       },
+    });
+
+    void trackFoodEvent(household.id, "cook_logged", {
+      recipeId: id,
+      rating: body.cookRating || body.rating || 3,
     });
 
     return NextResponse.json(recipe);

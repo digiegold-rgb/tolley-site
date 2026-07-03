@@ -17,6 +17,7 @@ const SCANNER_COLORS: Record<ScannerName, string> = {
   products: "text-cyan-400",
   unclaimed: "text-yellow-400",
   markets: "text-purple-400",
+  pricing: "text-orange-400",
 };
 
 export default function ScanActivityFeed({

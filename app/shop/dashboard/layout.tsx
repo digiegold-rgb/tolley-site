@@ -10,6 +10,13 @@ const NAV_ITEMS = [
   { href: "/shop/dashboard/trends", label: "Trends", icon: "🔥" },
   { href: "/shop/dashboard/arbitrage", label: "Arbitrage", icon: "💰" },
   { href: "/shop/dashboard/affiliates", label: "Affiliates", icon: "🔗" },
+  { href: "/shop/dashboard/amazon-subtags", label: "Amazon Subtags", icon: "🏷️" },
+  { href: "/shop/dashboard/serpapi/maps", label: "Maps Pack", icon: "📍" },
+  { href: "/shop/dashboard/serpapi/ai-overview", label: "AI Overview", icon: "🤖" },
+  { href: "/shop/dashboard/serpapi/probate", label: "Probate", icon: "⚖️" },
+  { href: "/shop/dashboard/serpapi/neighborhoods", label: "Neighborhoods", icon: "🏘️" },
+  { href: "/shop/dashboard/reviews", label: "Reviews", icon: "⭐" },
+  { href: "/shop/dashboard/tools", label: "Tools", icon: "🛠️" },
 ];
 
 export default function DashboardLayout({
@@ -144,12 +151,6 @@ export default function DashboardLayout({
               className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/40 hover:bg-white/5 hover:text-white/60"
             >
               <span>🛍️</span> Public Store
-            </Link>
-            <Link
-              href="/shop/admin"
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/40 hover:bg-white/5 hover:text-white/60"
-            >
-              <span>⚙️</span> Legacy Admin
             </Link>
           </div>
         </div>

@@ -1,4 +1,3 @@
-// @ts-nocheck — Xero models removed from schema (cancelled 3/21)
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
@@ -7,7 +6,8 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    await requireAdminApiSession();
+    const check = await requireAdminApiSession();
+    if (!check.ok) return check.response;
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -61,8 +61,20 @@ export async function GET() {
         where: { type: 'SPEND', date: { gte: monthStart } },
         _sum: { amount: true },
       }),
-      prisma.invoice.count({
+      prisma.invoice.findMany({
         where: { status: { in: ['SENT', 'OVERDUE'] } },
+        orderBy: [{ dueDate: 'asc' }, { issueDate: 'asc' }],
+        select: {
+          id: true,
+          invoiceNumber: true,
+          status: true,
+          issueDate: true,
+          dueDate: true,
+          total: true,
+          amountPaid: true,
+          amountDue: true,
+          contact: { select: { name: true } },
+        },
       }),
       prisma.ledgerTransaction.count({
         where: { needsReview: true },
@@ -118,15 +130,79 @@ export async function GET() {
       prisma.ledgerTransaction.findFirst({ orderBy: { date: 'desc' }, select: { date: true } }),
     ]);
 
+    // Freshness: per-account latest tx + most recent ingest timestamp
+    const lastIngest = await prisma.ledgerTransaction.findFirst({
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    });
+    const perAccountRaw = await prisma.ledgerTransaction.groupBy({
+      by: ['bankAccountId'],
+      where: { bankAccountId: { not: null } },
+      _max: { date: true },
+      _count: true,
+    });
+    const accountMeta = await prisma.ledgerAccount.findMany({
+      where: { id: { in: perAccountRaw.map((r) => r.bankAccountId!).filter(Boolean) } },
+      select: { id: true, name: true, plaidAccountId: true, xeroId: true },
+    });
+    const accountMetaById = new Map(accountMeta.map((a) => [a.id, a]));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const perAccountFreshness = perAccountRaw
+      .map((r) => {
+        const meta = accountMetaById.get(r.bankAccountId!);
+        const lastDate = r._max.date;
+        const daysStale = lastDate
+          ? Math.floor((today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
+          : null;
+        return {
+          name: meta?.name || 'Unknown',
+          lastTxDate: lastDate,
+          daysStale,
+          isPlaidLinked: Boolean(meta?.plaidAccountId),
+          txCount: r._count,
+        };
+      })
+      .sort((a, b) => (b.lastTxDate?.getTime() || 0) - (a.lastTxDate?.getTime() || 0));
+
     const revenueMTD = revenueAgg._sum.amount || 0;
     const expensesMTD = expenseAgg._sum.amount || 0;
+
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const unpaidItems = unpaidInvoices.map((inv) => {
+      const due = inv.amountDue > 0 ? inv.amountDue : inv.total - inv.amountPaid;
+      const isOverdue =
+        inv.status === 'OVERDUE' ||
+        (inv.dueDate ? new Date(inv.dueDate) < todayMidnight : false);
+      return {
+        id: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        status: inv.status,
+        issueDate: inv.issueDate,
+        dueDate: inv.dueDate,
+        amountDue: due,
+        contactName: inv.contact?.name ?? null,
+        isOverdue,
+      };
+    });
+
+    const totalDue = unpaidItems.reduce((sum, i) => sum + i.amountDue, 0);
+    const overdueItems = unpaidItems.filter((i) => i.isOverdue);
+    const overdueDue = overdueItems.reduce((sum, i) => sum + i.amountDue, 0);
 
     return NextResponse.json({
       // Current MTD
       revenueMTD,
       expensesMTD,
       netMTD: revenueMTD - expensesMTD,
-      unpaidInvoices,
+      unpaidInvoices: unpaidItems.length,
+      unpaidBreakdown: {
+        totalDue,
+        count: unpaidItems.length,
+        overdueDue,
+        overdueCount: overdueItems.length,
+        items: unpaidItems,
+      },
       uncategorizedTx,
       recentTransactions,
       // YTD
@@ -158,6 +234,10 @@ export async function GET() {
           oldest: oldestTx?.date || null,
           newest: newestTx?.date || null,
         },
+      },
+      freshness: {
+        lastIngestAt: lastIngest?.createdAt || null,
+        perAccount: perAccountFreshness,
       },
     });
   } catch (error: unknown) {

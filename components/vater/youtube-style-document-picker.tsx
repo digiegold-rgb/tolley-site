@@ -35,12 +35,14 @@ type StyleRow = {
   _count?: { characters: number };
 };
 
+export type { StyleRow };
+
 export function YouTubeStyleDocumentPicker({
   value,
   onChange,
 }: {
   value: string | null;
-  onChange: (id: string | null) => void;
+  onChange: (id: string | null, style: StyleRow | null) => void;
 }) {
   const [styles, setStyles] = useState<StyleRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +58,20 @@ export function YouTubeStyleDocumentPicker({
         }
         const data = await r.json();
         if (!active) return;
-        setStyles(data.styles ?? []);
+        const loaded: StyleRow[] = data.styles ?? [];
+        setStyles(loaded);
+        // Auto-select the last-used user Style so every new project inherits
+        // the user's defaults + characters without an extra click. Falls
+        // back to the first non-system Style on first visit.
+        if (value == null) {
+          const savedId = typeof window !== "undefined"
+            ? window.localStorage.getItem("vater:defaultStyleId")
+            : null;
+          const userStyles = loaded.filter((s) => !s.isSystem);
+          const match = savedId ? userStyles.find((s) => s.id === savedId) : null;
+          const pick = match ?? userStyles[0] ?? null;
+          if (pick) onChange(pick.id, pick);
+        }
       } catch (e) {
         if (!active) return;
         setError(e instanceof Error ? e.message : "load failed");
@@ -67,7 +82,17 @@ export function YouTubeStyleDocumentPicker({
     return () => {
       active = false;
     };
+    // `onChange` + `value` are form-controlled; we only want this probe once
+    // on mount (auto-default is a first-render concern). eslint-disable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Persist picks so "last used" restores on the next form open.
+  useEffect(() => {
+    if (value && typeof window !== "undefined") {
+      window.localStorage.setItem("vater:defaultStyleId", value);
+    }
+  }, [value]);
 
   // Only show user-owned (non-system) styles by default. System styles are
   // always available via the legacy picker below.
@@ -126,7 +151,7 @@ export function YouTubeStyleDocumentPicker({
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => onChange(null)}
+            onClick={() => onChange(null, null)}
             className={`rounded-md border px-3 py-1.5 text-xs transition ${
               value === null
                 ? "border-zinc-600 bg-zinc-800 text-zinc-200"
@@ -141,7 +166,7 @@ export function YouTubeStyleDocumentPicker({
               <button
                 key={s.id}
                 type="button"
-                onClick={() => onChange(isSelected ? null : s.id)}
+                onClick={() => onChange(isSelected ? null : s.id, isSelected ? null : s)}
                 className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition ${
                   isSelected
                     ? "border-emerald-500 bg-emerald-500/15 text-emerald-200"

@@ -1,0 +1,4 @@
+01/01/2026 10:30	01/01/2026 11:58	Business	6083 Cedar Hill Ln, Florence, KY, 41042	2154 New Albany Plaza, New Albany, IN, 47150	0.725	95.2	69.02	0	0	69.02	CarPlay	Business
+01/01/2026 11:17	01/01/2026 12:44	Business	2154 New Albany Plaza, New Albany, IN, 47150	901 County Rd 1250 S, Haubstadt, IN, 47639	0.725	98.1	71.12	0	0	71.12	CarPlay	Business
+01/01/2026 12:50	01/01/2026 17:16	Business	901 County Rd 1250 S, Haubstadt, IN, 47639	11630 Saline J Hwy, Nelson, MO, 65347	0.725	317.7	230.33	0	0	230.33	CarPlay	Business
+01/01/2026 17:25	01/01/2026 18:28	Business	11630 Saline J Hwy, Nelson, MO, 65347	11913 Mar Bec Trail, Independence, MO, 64052	0.725	75.3	54.59	0	0	54.59	CarPlay	Business

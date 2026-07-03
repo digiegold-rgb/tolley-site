@@ -10,8 +10,9 @@ export async function GET() {
   }
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [products, insights, engagementCounts, lastRunSnapshot] = await Promise.all([
+  const [products, insights, engagementCounts, lastRunSnapshot, competitorPriceCount, recentPriceChanges] = await Promise.all([
     prisma.poolProduct.findMany({
       where: { status: "active" },
       select: {
@@ -42,6 +43,14 @@ export async function GET() {
     prisma.poolStockSnapshot.findFirst({
       orderBy: { capturedAt: "desc" },
       select: { capturedAt: true },
+    }),
+    prisma.competitorPrice.groupBy({
+      by: ["sku"],
+      where: { scannedAt: { gte: sevenDaysAgo } },
+    }).then((r) => r.length),
+    prisma.priceChangeLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 50,
     }),
   ]);
 
@@ -157,6 +166,22 @@ export async function GET() {
       createdAt: i.createdAt.toISOString(),
     }));
 
+  // ─── Competitor coverage stats ───
+  const competitorGaps = perProduct.filter(
+    (p) => p.retail != null && p.cost != null && p.retail > p.sell
+  );
+  const avgCompetitorGap =
+    competitorGaps.length > 0
+      ? Math.round(
+          (competitorGaps.reduce(
+            (s, p) => s + ((p.retail! - p.sell) / p.retail!) * 100,
+            0
+          ) /
+            competitorGaps.length) *
+            10
+        ) / 10
+      : 0;
+
   return NextResponse.json({
     overview: {
       totalProducts: products.length,
@@ -167,12 +192,25 @@ export async function GET() {
       missingCost: products.length - withCost.length,
       totalEngagement,
       lastSnapshot: lastRunSnapshot?.capturedAt?.toISOString() || null,
+      competitorCoverage: competitorPriceCount,
+      avgCompetitorGap,
     },
     perProduct: perProduct.sort((a, b) => (b.marginPct ?? -999) - (a.marginPct ?? -999)),
     byBrand,
     byCategory,
     alerts,
     insights: sortedInsights,
+    recentPriceChanges: recentPriceChanges.map((c) => ({
+      id: c.id,
+      sku: c.sku,
+      oldPrice: c.oldPrice,
+      newPrice: c.newPrice,
+      costPrice: c.costPrice,
+      reason: c.reason,
+      competitors: c.competitors,
+      margin: c.margin,
+      createdAt: c.createdAt.toISOString(),
+    })),
   });
 }
 

@@ -36,6 +36,16 @@ export function CustomArtStyleGallery({ items }: { items: Item[] }) {
     if (!filelist) return;
     const arr = Array.from(filelist).slice(0, 5);
     setFiles(arr);
+    // Auto-fill name from the first file if user hasn't typed one yet.
+    // Strips extension + common screenshot prefix so "Screenshot 2026-04-14 at 7.02.52 PM"
+    // becomes a reasonable starting point the user can edit before submit.
+    if (!name.trim() && arr.length > 0) {
+      const stem = arr[0].name
+        .replace(/\.[a-z0-9]+$/i, "")
+        .replace(/^Screenshot[ _-]*\d{4}-\d{2}-\d{2}.*$/i, "Custom style")
+        .trim();
+      setName(stem || "Custom style");
+    }
   };
 
   const submit = async () => {
@@ -99,13 +109,25 @@ export function CustomArtStyleGallery({ items }: { items: Item[] }) {
       {creating ? (
         <div className="rounded-lg border border-sky-700 bg-sky-950/30 p-5 space-y-3">
           <h2 className="text-lg font-semibold text-zinc-100">Create custom art style</h2>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={busy}
-            placeholder="Style name (e.g. Finance Whiteboard)"
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-sky-500"
-          />
+          <div>
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-400">
+              Style name <span className="text-rose-400">*</span>
+            </label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={busy}
+              placeholder="e.g. Finance Whiteboard, Pixar Casual, Cartel Drone"
+              className={`w-full rounded-md border bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-sky-500 ${
+                !name.trim() && files.length >= 3
+                  ? "border-rose-700"
+                  : "border-zinc-700"
+              }`}
+            />
+            {!name.trim() && files.length >= 3 ? (
+              <p className="mt-1 text-xs text-rose-400">Name required to submit</p>
+            ) : null}
+          </div>
           <div>
             <input
               ref={fileInputRef}
@@ -134,24 +156,43 @@ export function CustomArtStyleGallery({ items }: { items: Item[] }) {
           {error && (
             <div className="rounded-md border border-rose-900 bg-rose-950/30 p-2 text-xs text-rose-300">{error}</div>
           )}
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={submit}
-              disabled={busy || !name.trim() || files.length < 3 || files.length > 5}
-              className="flex-1 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
-            >
-              {busy ? phase || "Working…" : "Upload + Analyze"}
-            </button>
-            <button
-              type="button"
-              onClick={reset}
-              disabled={busy}
-              className="rounded-md border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-          </div>
+          {(() => {
+            const missing: string[] = [];
+            if (!name.trim()) missing.push("name");
+            if (files.length < 3) missing.push(`${3 - files.length} more image${3 - files.length === 1 ? "" : "s"}`);
+            if (files.length > 5) missing.push("≤5 images (you have too many)");
+            const canSubmit = missing.length === 0 && !busy;
+            return (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!canSubmit) {
+                        setError(`Need: ${missing.join(", ")}`);
+                        return;
+                      }
+                      void submit();
+                    }}
+                    disabled={busy}
+                    className={`flex-1 rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${
+                      canSubmit ? "bg-sky-600 hover:bg-sky-500" : "bg-zinc-700 hover:bg-zinc-600 cursor-help"
+                    }`}
+                  >
+                    {busy ? phase || "Working…" : canSubmit ? "Upload + Analyze" : `Upload + Analyze (need: ${missing.join(", ")})`}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={reset}
+                    disabled={busy}
+                    className="rounded-md border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
           <p className="text-xs text-zinc-500">
             ~5-10s per image upload + ~5s Gemini Flash analysis. Free tier
             handles vision OK; falls back gracefully if the API errors.

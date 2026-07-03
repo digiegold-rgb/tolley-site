@@ -12,6 +12,7 @@ export default function CreditLayout({
 }) {
   return (
     <main className="credit-page portal-shell ambient-noise relative min-h-screen overflow-hidden px-5 py-8 sm:px-8">
+      <div aria-hidden="true" className="hp-dot-grid pointer-events-none fixed inset-0 z-0" />
       <div
         aria-hidden="true"
         className="portal-spotlight portal-spotlight-left"

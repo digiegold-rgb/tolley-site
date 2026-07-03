@@ -1,7 +1,10 @@
-// @ts-nocheck — references removed Prisma models
+// Food API route
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { chooseTopRecipe, type ScoreContext } from "@/lib/food/recipe-scorer";
+import { normalizeCuisine } from "@/lib/food/cuisines";
+import { trackFoodEvent } from "@/lib/food/track";
 
 // Creative "Try Something New" meal ideas — injected once a week
 const CREATIVE_IDEAS = [
@@ -55,6 +58,17 @@ export async function POST(request: NextRequest) {
   if (recipes.length === 0)
     return NextResponse.json({ error: "No recipes found. Add some recipes first!" }, { status: 400 });
 
+  const cuisinePrefs = (household.cuisinePreferences || []).map((c) => c.toLowerCase());
+
+  if (cuisinePrefs.length > 0) {
+    for (const pref of cuisinePrefs) {
+      const count = recipes.filter((r) => normalizeCuisine(r.cuisine) === pref).length;
+      if (count < 5) {
+        console.warn(`[food-plan] household=${household.id} cuisine=${pref} has only ${count} recipes — variety may be thin`);
+      }
+    }
+  }
+
   // Look back at LAST 4 WEEKS of plans to avoid repeats
   const fourWeeksAgo = new Date(plan.weekStart);
   fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
@@ -92,6 +106,14 @@ export async function POST(request: NextRequest) {
     (m) => m.role === "kid" || m.ageRange === "kid" || m.ageRange === "toddler" || m.ageRange === "teen"
   );
 
+  const dislikes = new Set<string>();
+  for (const m of household.members) {
+    for (const d of m.dislikes || []) {
+      const t = d.trim().toLowerCase();
+      if (t) dislikes.add(t);
+    }
+  }
+
   const byMeal = {
     breakfast: recipes.filter((r) => r.mealType.includes("breakfast")),
     lunch: recipes.filter((r) => r.mealType.includes("lunch") || r.mealType.includes("dinner")),
@@ -102,20 +124,16 @@ export async function POST(request: NextRequest) {
   const weekCuisines: string[] = [];
   const usedThisWeek = new Set<string>();
 
-  function pick(pool: typeof recipes, kidFriendly: boolean, newCuisine: boolean) {
-    if (pool.length === 0) return null;
-    const scored = pool.map((r) => {
-      let s = Math.random() * 20;
-      if (usedThisWeek.has(r.id)) s -= 200;
-      s -= (recentFreq.get(r.id) || 0) * 25;
-      s += (r.rating || 3) * 5;
-      if (kidFriendly && r.tags.includes("kid-friendly")) s += 12;
-      if (newCuisine && r.cuisine && !weekCuisines.includes(r.cuisine)) s += 15;
-      if ((r.prepTime || 0) + (r.cookTime || 0) <= 30) s += 3;
-      return { r, s };
-    });
-    scored.sort((a, b) => b.s - a.s);
-    return scored[0]?.r || null;
+  function ctx(kidFriendly: boolean, newCuisine: boolean): ScoreContext {
+    return {
+      kidFriendly,
+      newCuisine,
+      cuisinePreferences: cuisinePrefs,
+      usedThisWeek,
+      weekCuisines,
+      recentFreq,
+      dislikes,
+    };
   }
 
   // Creative idea: pick one not recently used
@@ -139,12 +157,12 @@ export async function POST(request: NextRequest) {
 
   for (let day = 0; day < 7; day++) {
     // Breakfast
-    const bf = byMeal.breakfast.length > 0 ? pick(byMeal.breakfast, hasKids, false) : null;
+    const bf = byMeal.breakfast.length > 0 ? chooseTopRecipe(byMeal.breakfast, ctx(hasKids, false)) : null;
     if (bf) { slots.push({ day, mealType: "breakfast", recipeId: bf.id }); usedThisWeek.add(bf.id); }
     else slots.push({ day, mealType: "breakfast", customMeal: bfFallback[day] });
 
     // Lunch
-    const ln = byMeal.lunch.length > 0 ? pick(byMeal.lunch, hasKids, false) : null;
+    const ln = byMeal.lunch.length > 0 ? chooseTopRecipe(byMeal.lunch, ctx(hasKids, false)) : null;
     if (ln) { slots.push({ day, mealType: "lunch", recipeId: ln.id }); usedThisWeek.add(ln.id); }
     else slots.push({ day, mealType: "lunch", customMeal: lunchFallback[day] });
 
@@ -152,13 +170,18 @@ export async function POST(request: NextRequest) {
     if (day === creativeDay && creativeIdea) {
       slots.push({ day, mealType: "dinner", customMeal: `* ${creativeIdea.title}`, notes: creativeIdea.desc });
     } else if (byMeal.dinner.length > 0) {
-      const dn = pick(byMeal.dinner, hasKids && day % 2 === 0, true);
-      if (dn) { slots.push({ day, mealType: "dinner", recipeId: dn.id }); usedThisWeek.add(dn.id); if (dn.cuisine) weekCuisines.push(dn.cuisine); }
+      const dn = chooseTopRecipe(byMeal.dinner, ctx(hasKids && day % 2 === 0, true));
+      if (dn) {
+        slots.push({ day, mealType: "dinner", recipeId: dn.id });
+        usedThisWeek.add(dn.id);
+        const c = normalizeCuisine(dn.cuisine);
+        if (c) weekCuisines.push(c);
+      }
     }
 
     // Weekend snack
     if (day >= 5 && byMeal.snack.length > 0) {
-      const sn = pick(byMeal.snack, hasKids, false);
+      const sn = chooseTopRecipe(byMeal.snack, ctx(hasKids, false));
       if (sn) { slots.push({ day, mealType: "snack", recipeId: sn.id }); usedThisWeek.add(sn.id); }
     }
   }
@@ -176,12 +199,19 @@ export async function POST(request: NextRequest) {
 
   await prisma.foodMealPlan.update({ where: { id: planId }, data: { status: "active" } });
 
+  void trackFoodEvent(household.id, "meal_plan_generated", {
+    planId,
+    totalMeals: created.length,
+    cuisinesUsed: [...new Set(weekCuisines)],
+  });
+
   return NextResponse.json({
     plan: { ...plan, status: "active", slots: created },
     summary: {
       totalMeals: created.length,
       creativeMeal: creativeIdea ? creativeIdea.title : null,
       cuisinesUsed: [...new Set(weekCuisines)],
+      cuisinePreferences: cuisinePrefs,
       recentWeeksChecked: recentPlans.length,
     },
   });

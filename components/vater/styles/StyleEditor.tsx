@@ -81,11 +81,14 @@ const VOICE_BACKENDS = [
 ] as const;
 
 const QUALITY_BACKENDS = [
-  { id: "sdxl-local", label: "SDXL Lightning (local, free, ~60s/scene)", needsKey: false, costPerScene: 0 },
-  { id: "sdxl-ipadapter", label: "SDXL + IP-Adapter (local, character-locked)", needsKey: false, costPerScene: 0 },
+  { id: "firered-local", label: "FireRed-Image-Edit-1.1 (local DGX, character-consistent, default)", needsKey: false, costPerScene: 0 },
+  { id: "firered-modal", label: "FireRed-Image-Edit-1.1 (Modal H100 BF16, ~$0.002/scene + $0.10 warmup)", needsKey: false, costPerScene: 0.002 },
+  { id: "firered-modal-fast", label: "FireRed-Image-Edit-1.1 (Modal H100 BF16 — alias of firered-modal)", needsKey: false, costPerScene: 0.002 },
+  { id: "gemini-1k", label: "Gemini Nano Banana 2 1K (cloud, ~$0.067/scene)", needsKey: true, envVar: "GEMINI_API_KEY", costPerScene: 0.067 },
+  { id: "gemini-2k", label: "Gemini Nano Banana Pro (cloud, ~$0.134/scene)", needsKey: true, envVar: "GEMINI_API_KEY", costPerScene: 0.134 },
+  { id: "sdxl-local", label: "SDXL Lightning (local, legacy — use FireRed instead)", needsKey: false, costPerScene: 0 },
+  { id: "sdxl-ipadapter", label: "SDXL + IP-Adapter (local, legacy — use FireRed instead)", needsKey: false, costPerScene: 0 },
   { id: "flux-schnell", label: "FLUX.1-schnell — NOT YET IMPLEMENTED (falls back to SDXL)", needsKey: false, costPerScene: 0 },
-  { id: "gemini-1k", label: "Gemini Nano Banana 2 1K (cloud, ~$0.04/scene)", needsKey: true, envVar: "GEMINI_API_KEY", costPerScene: 0.04 },
-  { id: "gemini-2k", label: "Gemini Nano Banana Pro (cloud, ~$0.06/scene)", needsKey: true, envVar: "GEMINI_API_KEY", costPerScene: 0.06 },
   { id: "ideogram-turbo", label: "Ideogram Turbo via fal.ai (~$0.02/scene)", needsKey: true, envVar: "FAL_KEY", costPerScene: 0.02 },
   { id: "ideogram-default", label: "Ideogram v2 via fal.ai (~$0.05/scene)", needsKey: true, envVar: "FAL_KEY", costPerScene: 0.05 },
   { id: "ideogram-quality", label: "Ideogram v3 via fal.ai (~$0.08/scene)", needsKey: true, envVar: "FAL_KEY", costPerScene: 0.08 },
@@ -103,12 +106,22 @@ const VISUAL_TYPES = [
   { id: "broll", label: "B-Roll (Storyblocks, Phase 4)" },
 ] as const;
 
+type ElevenLabsVoiceOption = {
+  voice_id: string;
+  name: string;
+  category?: string;
+  preview_url?: string;
+};
+
 export function StyleEditor({ initialStyle }: { initialStyle: Style }) {
   const router = useRouter();
   const [style, setStyle] = useState<Style>(initialStyle);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [elVoices, setElVoices] = useState<ElevenLabsVoiceOption[]>([]);
+  const [elVoicesError, setElVoicesError] = useState<string | null>(null);
+  const [elVoicesLoading, setElVoicesLoading] = useState(false);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingPatchRef = useRef<Partial<Style>>({});
@@ -152,6 +165,36 @@ export function StyleEditor({ initialStyle }: { initialStyle: Style }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Lazy-load ElevenLabs voices the first time the user picks the cloud backend.
+  useEffect(() => {
+    if (style.voiceBackend !== "elevenlabs") return;
+    if (elVoices.length > 0 || elVoicesLoading) return;
+    let cancelled = false;
+    setElVoicesLoading(true);
+    setElVoicesError(null);
+    fetch("/api/vater/voices/elevenlabs")
+      .then(async (r) => {
+        const data = await r.json();
+        if (cancelled) return;
+        if (!r.ok) {
+          setElVoicesError(data?.error || `HTTP ${r.status}`);
+          return;
+        }
+        setElVoices(Array.isArray(data?.voices) ? data.voices : []);
+        if (data?.error) setElVoicesError(data.error);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setElVoicesError(e instanceof Error ? e.message : "fetch failed");
+      })
+      .finally(() => {
+        if (!cancelled) setElVoicesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [style.voiceBackend, elVoices.length, elVoicesLoading]);
 
   async function refresh() {
     setRefreshing(true);
@@ -280,13 +323,61 @@ export function StyleEditor({ initialStyle }: { initialStyle: Style }) {
               </p>
             )}
           </Field>
-          <Field label="Voice name">
-            <input
-              value={style.voice}
-              onChange={(e) => setField("voice", e.target.value)}
-              disabled={style.isSystem}
-              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:border-sky-500"
-            />
+          <Field
+            label={
+              style.voiceBackend === "elevenlabs"
+                ? "ElevenLabs voice"
+                : "Voice clone name"
+            }
+          >
+            {style.voiceBackend === "elevenlabs" ? (
+              <>
+                <select
+                  value={style.voice}
+                  onChange={(e) => setField("voice", e.target.value)}
+                  disabled={style.isSystem || elVoicesLoading}
+                  className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:border-sky-500"
+                >
+                  {elVoicesLoading && <option value="">Loading voices…</option>}
+                  {!elVoicesLoading &&
+                    !elVoices.some((v) => v.voice_id === style.voice) && (
+                      <option value={style.voice}>
+                        {style.voice
+                          ? `${style.voice} (not in account)`
+                          : "— pick a voice —"}
+                      </option>
+                    )}
+                  {elVoices.map((v) => (
+                    <option key={v.voice_id} value={v.voice_id}>
+                      {v.name}
+                      {v.category ? ` · ${v.category}` : ""}
+                    </option>
+                  ))}
+                </select>
+                {elVoicesError && (
+                  <p className="mt-1 text-xs text-rose-400">
+                    Couldn&apos;t load voices: {elVoicesError}
+                  </p>
+                )}
+                {!elVoicesError &&
+                  !elVoicesLoading &&
+                  elVoices.length > 0 &&
+                  !elVoices.some((v) => v.voice_id === style.voice) && (
+                    <p className="mt-1 text-xs text-amber-400">
+                      Current value isn&apos;t a valid ElevenLabs voice_id —
+                      ElevenLabs will reject it and the render will fall back to
+                      F5-TTS. Pick a voice from the dropdown.
+                    </p>
+                  )}
+              </>
+            ) : (
+              <input
+                value={style.voice}
+                onChange={(e) => setField("voice", e.target.value)}
+                disabled={style.isSystem}
+                className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:border-sky-500"
+              />
+            )}
           </Field>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -357,10 +448,17 @@ export function StyleEditor({ initialStyle }: { initialStyle: Style }) {
               ];
               return (
                 <div className="mt-1 space-y-1">
-                  <p className="text-xs text-amber-400">
-                    ⚠️ Cloud backend. Requires {q.envVar} in autopilot env.
-                    Falls back to SDXL-local if unset or quota exceeded.
-                  </p>
+                  {q.needsKey && "envVar" in q ? (
+                    <p className="text-xs text-amber-400">
+                      ⚠️ Cloud backend. Requires {q.envVar} in autopilot env.
+                      Falls back to SDXL-local if unset or quota exceeded.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-amber-400">
+                      ⚡ Modal serverless GPU. Bursts off the DGX — no API
+                      key required (uses your Modal account).
+                    </p>
+                  )}
                   <div className="rounded-md border border-amber-900/40 bg-amber-950/20 p-2 text-xs">
                     <p className="font-semibold text-amber-300">
                       Estimated cost per project at {pacing}s/scene:

@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyPin, buildAdminCookie } from "@/lib/shop-auth";
+import { verifyPin, buildAdminCookie, validateShopAdmin } from "@/lib/shop-auth";
+
+export async function GET() {
+  const authenticated = await validateShopAdmin();
+  return NextResponse.json({ authenticated });
+}
 
 export async function POST(request: NextRequest) {
   try {

@@ -31,32 +31,61 @@ export const streetViewPlugin: DossierPlugin = {
     const { listing } = context;
     const sources: SourceLink[] = [];
     const warnings: string[] = [];
+    const address = listing.address;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 
-    if (!listing.lat || !listing.lng) {
-      return {
-        pluginName: "street-view",
-        success: false,
-        error: "No lat/lng available for property",
-        data: {},
-        sources: [],
-        confidence: 0,
-        warnings: [],
-        durationMs: Date.now() - start,
-      };
+    // ── Resolve coordinates ──
+    // Prefer whatever the listing shipped with. If missing, attempt a
+    // Google geocode (only if we have the API key). If that also fails,
+    // continue with address-only fallback — we can still emit useful
+    // clickable links even without static imagery.
+    let lat = listing.lat;
+    let lng = listing.lng;
+
+    if ((!lat || !lng) && apiKey) {
+      await context.updateProgress("Geocoding address for imagery...");
+      try {
+        const fullAddress = [
+          listing.address,
+          listing.city,
+          listing.state,
+          listing.zip,
+        ]
+          .filter(Boolean)
+          .join(", ");
+        const geoRes = await fetch(
+          `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(fullAddress)}&key=${apiKey}`,
+          { signal: AbortSignal.timeout(8000) }
+        );
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          const loc = geoData?.results?.[0]?.geometry?.location;
+          if (loc?.lat && loc?.lng) {
+            lat = loc.lat;
+            lng = loc.lng;
+            warnings.push(`Geocoded address to ${lat},${lng}`);
+          } else if (geoData?.status) {
+            warnings.push(`Geocoding returned status: ${geoData.status}`);
+          }
+        }
+      } catch (err) {
+        warnings.push(
+          `Geocoding failed: ${err instanceof Error ? err.message : "unknown error"}`
+        );
+      }
+    } else if (!lat || !lng) {
+      warnings.push(
+        "No lat/lng on listing and GOOGLE_MAPS_API_KEY not set — using address-based fallback links"
+      );
     }
 
     await context.updateProgress("Generating property imagery...");
-
-    const lat = listing.lat;
-    const lng = listing.lng;
-    const address = listing.address;
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 
     let streetViewUrl: string | null = null;
     let satelliteUrl: string | null = null;
     const neighborhoodPhotos: string[] = [];
 
-    if (apiKey) {
+    if (apiKey && lat && lng) {
       // ── Google Street View Static API ──
       streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${lat},${lng}&key=${apiKey}&fov=120`;
       // Verify the image exists (Google returns a "sorry" image if no coverage)
@@ -88,45 +117,65 @@ export const streetViewPlugin: DossierPlugin = {
           `https://maps.googleapis.com/maps/api/streetview?size=400x300&location=${lat},${lng}&heading=${heading}&key=${apiKey}&fov=90`
         );
       }
-    } else {
-      warnings.push("GOOGLE_MAPS_API_KEY not set — providing Google Maps links instead of static images");
+    } else if (!apiKey) {
+      warnings.push(
+        "GOOGLE_MAPS_API_KEY not set — providing Google Maps links instead of static images"
+      );
     }
 
-    // ── Always provide clickable map links (free, no API key needed) ──
+    // ── Always provide clickable map links ──
+    // Prefer coordinate-based URLs when available, otherwise fall back to
+    // address-based URLs so the links still work even without geocoding.
+    const fullAddress = [
+      listing.address,
+      listing.city,
+      listing.state,
+      listing.zip,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    const addressQuery = encodeURIComponent(fullAddress);
 
-    // Google Maps link
-    const gmapsUrl = `https://www.google.com/maps/place/${encodeURIComponent(address)}/@${lat},${lng},18z`;
+    // Google Maps link — address search works without coordinates
+    const gmapsUrl = lat && lng
+      ? `https://www.google.com/maps/place/${encodeURIComponent(address)}/@${lat},${lng},18z`
+      : `https://www.google.com/maps/search/?api=1&query=${addressQuery}`;
     sources.push({
       label: "Google Maps: property location",
       url: gmapsUrl,
       type: "map",
     });
 
-    // Google Maps satellite view
-    const gmapsSatUrl = `https://www.google.com/maps/@${lat},${lng},18z/data=!3m1!1e1`;
-    sources.push({
-      label: "Google Maps: satellite view",
-      url: gmapsSatUrl,
-      type: "map",
-    });
+    // Google Maps satellite view — coords preferred; address search falls
+    // back to regular view (Google can't force satellite without coords).
+    if (lat && lng) {
+      sources.push({
+        label: "Google Maps: satellite view",
+        url: `https://www.google.com/maps/@${lat},${lng},18z/data=!3m1!1e1`,
+        type: "map",
+      });
 
-    // Google Street View link
-    const gsvUrl = `https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m4!1e1!3m2!1s!2e0`;
-    sources.push({
-      label: "Google Street View: property",
-      url: gsvUrl,
-      type: "map",
-    });
+      sources.push({
+        label: "Google Street View: property",
+        url: `https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m4!1e1!3m2!1s!2e0`,
+        type: "map",
+      });
 
-    // Bing Maps bird's eye view
-    const bingUrl = `https://www.bing.com/maps?cp=${lat}~${lng}&lvl=18&style=b`;
-    sources.push({
-      label: "Bing Maps: bird's eye view",
-      url: bingUrl,
-      type: "map",
-    });
+      sources.push({
+        label: "Bing Maps: bird's eye view",
+        url: `https://www.bing.com/maps?cp=${lat}~${lng}&lvl=18&style=b`,
+        type: "map",
+      });
+    } else {
+      // Address-based street view link
+      sources.push({
+        label: "Google Street View (search by address)",
+        url: `https://www.google.com/maps/search/?api=1&query=${addressQuery}&basemap=satellite`,
+        type: "map",
+      });
+    }
 
-    // Zillow property page (often has photos)
+    // Zillow property page (works by address)
     const zillowUrl = `https://www.zillow.com/homes/${encodeURIComponent(
       `${address} ${listing.city || ""} ${listing.state || ""}`
     )}_rb/`;
@@ -136,7 +185,7 @@ export const streetViewPlugin: DossierPlugin = {
       type: "commercial",
     });
 
-    // Realtor.com (also has photos)
+    // Realtor.com (works by address)
     const realtorUrl = `https://www.realtor.com/realestateandhomes-search/${encodeURIComponent(
       `${address} ${listing.city || ""} ${listing.state || ""}`
     ).replace(/%20/g, "-")}`;
@@ -149,6 +198,12 @@ export const streetViewPlugin: DossierPlugin = {
     // ── Future: add aerial/drone imagery sources here ──
     // ── Future: add historical Street View comparison ──
 
+    // Confidence scaled by how much we were able to gather:
+    //   - static street view images: 0.9
+    //   - coords + clickable links but no images: 0.6
+    //   - address-only fallback links: 0.3
+    const confidence = streetViewUrl ? 0.9 : lat && lng ? 0.6 : 0.3;
+
     return {
       pluginName: "street-view",
       success: true,
@@ -158,9 +213,11 @@ export const streetViewPlugin: DossierPlugin = {
         neighborhoodPhotos,
         mlsPhotos: listing.photoUrls, // Pass through MLS photos
         googleMapsUrl: gmapsUrl,
+        resolvedLat: lat,
+        resolvedLng: lng,
       },
       sources,
-      confidence: streetViewUrl ? 0.9 : 0.5,
+      confidence,
       warnings,
       durationMs: Date.now() - start,
     };

@@ -58,14 +58,32 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-bold text-white">Overview</h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="shop-btn-primary rounded-lg px-4 py-2 text-sm"
-        >
-          {showForm ? "Cancel" : "+ Add Product"}
-        </button>
+        <div className="flex items-center gap-2">
+          {process.env.NEXT_PUBLIC_BULK_INGEST_ENABLED === "true" && (
+            <Link
+              href="/shop/admin/bulk-add"
+              className="rounded-lg border border-purple-400/40 bg-purple-500/10 px-4 py-2 text-sm font-semibold text-purple-200 hover:bg-purple-500/20"
+            >
+              ✨ + Add Product (Beta)
+            </Link>
+          )}
+          {process.env.NEXT_PUBLIC_WHATSAPP_SCAN_ENABLED === "true" && (
+            <Link
+              href="/shop/whatsapp"
+              className="rounded-lg border border-green-400/40 bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-200 hover:bg-green-500/20"
+            >
+              💬 Scan WhatsApp
+            </Link>
+          )}
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="shop-btn-primary rounded-lg px-4 py-2 text-sm"
+          >
+            {showForm ? "Cancel" : "+ Add Product"}
+          </button>
+        </div>
       </div>
 
       {showForm && (

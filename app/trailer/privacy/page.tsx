@@ -133,7 +133,7 @@ export default function TrailerPrivacyPage() {
           <p className="text-sm font-light leading-6 text-neutral-400">
             See our{" "}
             <Link
-              href="/trailer/terms"
+              href="/rental/terms"
               className="font-bold text-amber-400 underline decoration-amber-500/30 underline-offset-4 transition hover:text-amber-300"
             >
               Rental Terms &amp; Conditions

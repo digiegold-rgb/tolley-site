@@ -1,4 +1,3 @@
-// @ts-nocheck — Xero models removed from schema (cancelled 3/21)
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -73,7 +72,8 @@ async function buildPL(from?: string, to?: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdminApiSession();
+    const check = await requireAdminApiSession();
+    if (!check.ok) return check.response;
 
     const { searchParams } = request.nextUrl;
     const from = searchParams.get('from');

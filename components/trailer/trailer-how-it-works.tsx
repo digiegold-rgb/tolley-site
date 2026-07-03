@@ -1,8 +1,8 @@
 const steps = [
   {
     number: "01",
-    title: "Call Us",
-    description: "Give us a call to check availability and pick your trailer.",
+    title: "Message Us",
+    description: "Message us on Facebook Marketplace — we will confirm availability and get you set up.",
   },
   {
     number: "02",

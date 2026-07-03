@@ -77,6 +77,16 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/vater/youtube/v2",
+        destination: "/animate",
+        permanent: true,
+      },
+      {
+        source: "/vater/youtube/v2/:path*",
+        destination: "/animate/:path*",
+        permanent: true,
+      },
+      {
         source: "/pool",
         destination: "/pools",
         permanent: true,

@@ -26,9 +26,14 @@ interface Props {
   project: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdate: (project: any) => void;
+  onRecomposeStart?: (id: string) => void;
 }
 
-export function YouTubeProjectDetail({ project, onUpdate }: Props) {
+export function YouTubeProjectDetail({
+  project,
+  onUpdate,
+  onRecomposeStart,
+}: Props) {
   const status = project.status as YouTubeProjectStatus;
   const statusLabel = STATUS_LABELS[status] || status;
   const statusColor =
@@ -82,7 +87,12 @@ export function YouTubeProjectDetail({ project, onUpdate }: Props) {
       ) : isInFlight ? (
         <YouTubeCreationProgress project={project} onUpdate={onUpdate} />
       ) : isReady ? (
-        <YouTubeFinalPlayer project={project} />
+        <YouTubeFinalPlayer
+          project={project}
+          onRecomposeStart={
+            onRecomposeStart ? () => onRecomposeStart(project.id) : undefined
+          }
+        />
       ) : isFailed ? (
         <FailedView project={project} onUpdate={onUpdate} />
       ) : (

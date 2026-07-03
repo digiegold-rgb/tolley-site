@@ -34,7 +34,7 @@ async function main() {
         voiceBackend: "f5-tts",
         defaultWordCount: 1500,
         defaultAspectRatio: "16x9",
-        defaultQuality: "sdxl-local",
+        defaultQuality: "firered-local",
         defaultVisualType: "images",
         defaultAnimMode: "none",
         defaultConsistency: preset.id === "animated_explainer" ? 70 : 0,

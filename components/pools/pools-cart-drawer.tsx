@@ -42,7 +42,7 @@ export function PoolsCartDrawer() {
       {/* Floating cart button */}
       <button
         onClick={() => setOpen(true)}
-        className={`fixed right-5 bottom-20 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-cyan-600 text-white shadow-lg transition-all hover:bg-cyan-700 hover:scale-105 ${
+        className={`fixed right-5 bottom-20 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-cyan-500 text-white shadow-lg transition-all hover:bg-cyan-600 hover:scale-105 ${
           cartCount > 0 ? "pools-glow" : ""
         }`}
         aria-label={`Cart (${cartCount} items)`}
@@ -61,7 +61,7 @@ export function PoolsCartDrawer() {
           />
         </svg>
         {cartCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-cyan-700">
+          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-[#0e7490] shadow">
             {cartCount}
           </span>
         )}
@@ -82,8 +82,8 @@ export function PoolsCartDrawer() {
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-cyan-100 px-5 py-4">
-          <h2 className="text-lg font-bold text-cyan-900">
+        <div className="flex items-center justify-between border-b border-[rgba(6,182,212,0.2)] bg-gradient-to-r from-[#ecfeff] to-[#cffafe] px-5 py-4">
+          <h2 className="text-lg font-extrabold text-[#164e63]">
             Your Cart ({cartCount})
           </h2>
           <button
@@ -111,14 +111,14 @@ export function PoolsCartDrawer() {
               {cart.map((item) => (
                 <div
                   key={item.productId}
-                  className="flex items-center gap-3 rounded-xl border border-cyan-100 bg-cyan-50/30 p-3"
+                  className="flex items-center gap-3 rounded-2xl border border-[rgba(6,182,212,0.2)] bg-gradient-to-br from-[#ecfeff] to-[#cffafe]/50 p-3"
                 >
                   {/* Product info */}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-cyan-900">
+                    <p className="truncate text-sm font-extrabold text-[#164e63]">
                       {item.name}
                     </p>
-                    <p className="text-sm font-bold text-cyan-600">
+                    <p className="text-sm font-extrabold text-[#0e7490]">
                       {formatPoolPrice(item.price)}
                     </p>
                   </div>
@@ -163,20 +163,20 @@ export function PoolsCartDrawer() {
 
         {/* Footer */}
         {cart.length > 0 && (
-          <div className="border-t border-cyan-100 px-5 py-4 space-y-3">
+          <div className="border-t border-[rgba(6,182,212,0.2)] px-5 py-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-600">Subtotal</span>
-              <span className="text-lg font-bold text-cyan-900">
+              <span className="text-lg font-extrabold text-[#164e63]">
                 {formatPoolPrice(cartTotal)}
               </span>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               Delivery included in all prices. No extra fees.
             </p>
             <button
               onClick={handleCheckout}
               disabled={checking}
-              className="pools-glow w-full rounded-xl bg-cyan-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-cyan-700 disabled:opacity-50"
+              className="pools-glow w-full rounded-full bg-cyan-500 px-6 py-3.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-cyan-600 disabled:opacity-50"
             >
               {checking ? "Processing..." : "Checkout"}
             </button>

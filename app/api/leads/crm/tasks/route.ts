@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -59,21 +58,21 @@ export async function GET(request: NextRequest) {
     const tasks = await prisma.crmTask.findMany({
       where,
       include: {
-        lead: {
+        Lead: {
           select: {
             id: true,
             ownerName: true,
             listing: { select: { address: true } },
           },
         },
-        client: {
+        Client: {
           select: {
             id: true,
             firstName: true,
             lastName: true,
           },
         },
-        deal: {
+        Deal: {
           select: {
             id: true,
             title: true,
@@ -153,15 +152,15 @@ export async function POST(request: NextRequest) {
         ...(recurPattern ? { recurPattern } : {}),
       },
       include: {
-        lead: {
+        Lead: {
           select: {
             id: true,
             ownerName: true,
             listing: { select: { address: true } },
           },
         },
-        client: { select: { id: true, firstName: true, lastName: true } },
-        deal: { select: { id: true, title: true } },
+        Client: { select: { id: true, firstName: true, lastName: true } },
+        Deal: { select: { id: true, title: true } },
       },
     });
 
@@ -246,15 +245,15 @@ export async function PATCH(request: NextRequest) {
       where: { id },
       data,
       include: {
-        lead: {
+        Lead: {
           select: {
             id: true,
             ownerName: true,
             listing: { select: { address: true } },
           },
         },
-        client: { select: { id: true, firstName: true, lastName: true } },
-        deal: { select: { id: true, title: true } },
+        Client: { select: { id: true, firstName: true, lastName: true } },
+        Deal: { select: { id: true, title: true } },
       },
     });
 

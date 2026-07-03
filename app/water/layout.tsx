@@ -15,6 +15,7 @@ export default function WaterLayout({ children }: { children: React.ReactNode })
   return (
     <div className={`water-page ${nunito.variable}`}>
       <SiteTracker site="water" />
+      <div aria-hidden="true" className="site-dot-grid-cyan pointer-events-none fixed inset-0 z-0" />
       <main className="water-shell relative min-h-screen overflow-hidden px-4 py-6 sm:px-8 sm:py-8">
         <div aria-hidden className="water-spotlight water-spotlight-left" />
         <div aria-hidden className="water-spotlight water-spotlight-right" />

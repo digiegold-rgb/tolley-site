@@ -1,0 +1,171 @@
+/* ============================
+   RENTAL HUB
+   Charcoal + teal, neutral catalog
+   ============================ */
+
+.rental-page {
+  font-family: var(--font-poppins), sans-serif;
+}
+
+/* ---------- Teal glow text ---------- */
+.rent-neon-text {
+  text-shadow:
+    0 0 10px rgba(20, 184, 166, 0.6),
+    0 0 28px rgba(20, 184, 166, 0.35),
+    0 0 56px rgba(20, 184, 166, 0.15);
+}
+
+/* ---------- CTA glow pulse ---------- */
+.rent-cta-glow {
+  animation: rent-btn-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes rent-btn-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 14px rgba(20, 184, 166, 0.35),
+      0 4px 18px rgba(20, 184, 166, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 32px rgba(20, 184, 166, 0.55),
+      0 4px 36px rgba(20, 184, 166, 0.3),
+      0 0 68px rgba(20, 184, 166, 0.12);
+  }
+}
+
+/* ---------- Card hover lift ---------- */
+.rent-card {
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.rent-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow:
+    0 0 22px var(--card-glow, rgba(20, 184, 166, 0.2)),
+    0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- Section entrance ---------- */
+.rental-enter {
+  animation: rent-fade-up 0.7s ease-out both;
+  animation-delay: var(--enter-delay, 0s);
+}
+
+@keyframes rent-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Dot grid background ---------- */
+.rent-dots::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: radial-gradient(rgba(20, 184, 166, 0.4) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mix-blend-mode: overlay;
+}
+
+/* ---------- Hero bg gradient drift ---------- */
+.rent-hero-bg {
+  background: linear-gradient(135deg, #0e0e14 0%, #111820 40%, #0e1410 70%, #0e0e14 100%);
+  background-size: 300% 300%;
+  animation: rent-bg-drift 12s ease-in-out infinite;
+}
+
+@keyframes rent-bg-drift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ---------- Floating orbs ---------- */
+.rent-orb {
+  animation: rent-orb-float var(--orb-dur, 8s) ease-in-out infinite;
+  animation-delay: var(--orb-delay, 0s);
+}
+
+@keyframes rent-orb-float {
+  0%, 100% { transform: translateY(0) scale(1); opacity: var(--orb-opacity, 0.06); }
+  50% { transform: translateY(-24px) scale(1.08); opacity: calc(var(--orb-opacity, 0.06) * 1.6); }
+}
+
+/* ---------- Neon text flicker-in ---------- */
+.rent-neon-text {
+  animation: rent-neon-flicker 1.2s ease-out both;
+}
+
+@keyframes rent-neon-flicker {
+  0%   { opacity: 0; text-shadow: none; }
+  60%  { opacity: 1; text-shadow: 0 0 40px rgba(20,184,166,0.8), 0 0 80px rgba(20,184,166,0.4); }
+  80%  { opacity: 0.9; text-shadow: 0 0 8px rgba(20,184,166,0.3); }
+  100% { opacity: 1; text-shadow: 0 0 10px rgba(20,184,166,0.6), 0 0 28px rgba(20,184,166,0.35), 0 0 56px rgba(20,184,166,0.15); }
+}
+
+/* ---------- Badge scroll ticker ---------- */
+.rent-badge-track {
+  display: flex;
+  gap: 0.75rem;
+  animation: rent-badge-scroll 18s linear infinite;
+  width: max-content;
+}
+
+.rent-badge-wrap {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+@keyframes rent-badge-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ---------- Card category icon pulse ---------- */
+.rent-icon-pulse {
+  animation: rent-icon-breathe 3s ease-in-out infinite;
+}
+
+@keyframes rent-icon-breathe {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(20,184,166,0.3)); }
+  50%       { filter: drop-shadow(0 0 12px rgba(20,184,166,0.7)); }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .rent-cta-glow,
+  .rent-hero-bg,
+  .rent-orb,
+  .rent-neon-text,
+  .rent-badge-track,
+  .rent-icon-pulse {
+    animation: none;
+  }
+
+  .rental-enter {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .rent-card:hover {
+    transform: none;
+  }
+
+  .rent-neon-text {
+    opacity: 1;
+  }
+}

@@ -34,6 +34,8 @@ export async function GET(req: Request) {
         errorMessage: true,
         createdAt: true,
         completedAt: true,
+        narrationBlobUrl: true,
+        narrationVoiceId: true,
       },
     }),
     prisma.videoGeneration.count({ where: { userId: session.user.id } }),

@@ -62,16 +62,25 @@ export function WaterAdvisor({ latestReading }: Props) {
 
   return (
     <div className="water-card flex flex-col" style={{ minHeight: 320 }}>
-      <h3 className="mb-3 text-sm font-semibold text-white/60 uppercase tracking-wider">AI Pool Advisor</h3>
+      <h3
+        className="mb-3 uppercase text-white/50"
+        style={{
+          fontFamily: "var(--font-jetbrains-mono), monospace",
+          fontSize: "0.6rem",
+          letterSpacing: "0.16em",
+        }}
+      >
+        AI Pool Advisor
+      </h3>
 
-      {/* Quick actions */}
+      {/* Suggestion chips — per handoff spec */}
       {messages.length === 0 && (
         <div className="mb-3 flex flex-wrap gap-2">
           {QUICK_ACTIONS.map((qa) => (
             <button
               key={qa.label}
               onClick={() => sendMessage(qa.message)}
-              className="water-btn water-btn-secondary text-xs"
+              className="rounded-full border border-[rgba(0,229,199,0.12)] bg-[rgba(0,229,199,0.1)] px-3 py-1.5 text-xs text-[#00e5c7] transition hover:bg-[rgba(0,229,199,0.18)]"
             >
               {qa.label}
             </button>
@@ -81,20 +90,25 @@ export function WaterAdvisor({ latestReading }: Props) {
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto pr-1" style={{ maxHeight: 300 }}>
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            className={`rounded-lg px-3 py-2 text-sm ${
-              m.role === "user"
-                ? "ml-8 bg-[#00e5c7]/10 text-[#00e5c7]"
-                : "mr-4 bg-white/[0.04] text-white/80"
-            }`}
-          >
-            <div className="whitespace-pre-wrap">{m.content}</div>
-          </div>
-        ))}
+        {messages.map((m, i) =>
+          m.role === "user" ? (
+            <div
+              key={i}
+              className="ml-8 rounded-2xl border border-[rgba(0,229,199,0.18)] bg-[rgba(0,229,199,0.1)] px-4 py-3 text-sm leading-relaxed text-[#00e5c7]"
+            >
+              <div className="whitespace-pre-wrap">{m.content}</div>
+            </div>
+          ) : (
+            <div
+              key={i}
+              className="mr-4 rounded-2xl border border-[rgba(0,229,199,0.12)] bg-[rgba(10,20,30,0.75)] p-4 text-sm leading-relaxed text-white/85"
+            >
+              <div className="whitespace-pre-wrap">{m.content}</div>
+            </div>
+          )
+        )}
         {loading && (
-          <div className="mr-4 rounded-lg bg-white/[0.04] px-3 py-2 text-sm text-white/40">
+          <div className="mr-4 rounded-2xl border border-[rgba(0,229,199,0.12)] bg-[rgba(10,20,30,0.75)] p-4 text-sm text-white/40">
             Analyzing...
           </div>
         )}

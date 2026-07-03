@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { auth } from "@/auth";
@@ -60,16 +61,18 @@ const faqs = [
 ];
 
 export default async function PricingPage() {
+  redirect("/leads/pricing");
   const session = await auth();
   const isAuthenticated = Boolean(session?.user?.id);
   const billingState = session?.user?.id
-    ? await getUserBillingState(session.user.id)
+    ? await getUserBillingState(session!.user!.id!)
     : null;
   const currentTier = normalizePlanTier(billingState?.subscriptionTier);
   const priceIds = safePriceIds();
 
   return (
     <main className="portal-shell ambient-noise relative min-h-screen overflow-hidden px-5 py-10 sm:px-8">
+      <div aria-hidden="true" className="hp-dot-grid pointer-events-none fixed inset-0 z-0" />
       <div aria-hidden="true" className="portal-spotlight portal-spotlight-left" />
       <div aria-hidden="true" className="portal-spotlight portal-spotlight-right" />
 

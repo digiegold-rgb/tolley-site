@@ -43,13 +43,26 @@ export function WaterDashboard({ latestReading, recentReadings, seasonCosts, low
       <header className="water-card water-card-glow">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold sm:text-3xl">
+            <p
+              className="mb-2 uppercase text-white/45"
+              style={{
+                fontFamily: "var(--font-jetbrains-mono), monospace",
+                fontSize: "0.54rem",
+                letterSpacing: "0.16em",
+              }}
+            >
+              Chemistry Control
+            </p>
+            <h1 className="text-[1.8rem] font-bold leading-tight sm:text-[2.2rem]">
               <span className="bg-gradient-to-r from-[#00e5c7] via-[#0891b2] to-[#0077b6] bg-clip-text text-transparent">
-                POOL WATER
+                Pool Water
               </span>
-              <span className="ml-2 text-white/90">DASHBOARD</span>
+              <span className="ml-2 text-white/90">Dashboard</span>
             </h1>
-            <p className="mt-1 text-sm text-white/40">
+            <p
+              className="mt-1 text-[0.78rem] text-white/50"
+              style={{ fontFamily: "var(--font-sora), sans-serif" }}
+            >
               48,000 gal saltwater | Independence, MO
               {latestReading && (
                 <> | Last reading: {new Date(latestReading.readingAt).toLocaleDateString()}</>
@@ -69,9 +82,18 @@ export function WaterDashboard({ latestReading, recentReadings, seasonCosts, low
                 LSI {lsi} — {lsiInfo.label}
               </span>
             )}
-            <div className="rounded-xl border border-[#00e5c7]/20 bg-[#00e5c7]/5 px-4 py-2 text-center">
+            <div className="rounded-xl border border-[#00e5c7]/25 bg-[#00e5c7]/8 px-4 py-2 text-center">
               <p className="text-xl font-bold text-[#00e5c7]">${seasonCosts.toLocaleString()}</p>
-              <p className="text-[0.6rem] uppercase tracking-wider text-white/40">Season Cost</p>
+              <p
+                className="uppercase text-white/45"
+                style={{
+                  fontFamily: "var(--font-jetbrains-mono), monospace",
+                  fontSize: "0.54rem",
+                  letterSpacing: "0.16em",
+                }}
+              >
+                Season Cost
+              </p>
             </div>
           </div>
         </div>

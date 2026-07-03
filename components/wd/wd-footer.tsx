@@ -8,7 +8,7 @@ export function WdFooter() {
       <div className="border-t border-blue-200 pt-6">
         <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
           <div>
-            <p className="font-semibold text-blue-900">{WD_COMPANY}</p>
+            <p className="text-base font-bold text-blue-900">{WD_COMPANY}</p>
             <p className="mt-1 text-sm text-slate-500">
               <a
                 href={`mailto:${WD_CONTACT_EMAIL}`}

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import FoodAutoSync from "@/components/food/food-auto-sync";
 
 interface ScannedItem {
   name: string;
@@ -41,7 +43,15 @@ interface ImportSummary {
 }
 
 export default function ScanPage() {
-  const [activeTab, setActiveTab] = useState<"groceries" | "receipt" | "import">("groceries");
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"groceries" | "receipt" | "recipe" | "import">("groceries");
+
+  // Recipe scan state
+  const [recipeImage, setRecipeImage] = useState<File | null>(null);
+  const [recipePreview, setRecipePreview] = useState("");
+  const [recipeScanning, setRecipeScanning] = useState(false);
+  const [recipeError, setRecipeError] = useState("");
+  const recipeInputRef = useRef<HTMLInputElement>(null);
 
   // Grocery scan state
   const [groceryImage, setGroceryImage] = useState<File | null>(null);
@@ -106,6 +116,39 @@ export default function ScanPage() {
     setReceiptPreview(URL.createObjectURL(file));
     setReceiptResult(null);
     setSavedPrices(false);
+  };
+
+  const handleRecipeImage = (file: File) => {
+    setRecipeImage(file);
+    setRecipePreview(URL.createObjectURL(file));
+    setRecipeError("");
+  };
+
+  const handleRecipeScan = async () => {
+    if (!recipeImage) return;
+    setRecipeScanning(true);
+    setRecipeError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", recipeImage);
+
+      const res = await fetch("/api/food/recipes/scan", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        setRecipeError(data.error || "Failed to scan recipe");
+        return;
+      }
+      // Hand the parsed recipe to /food/recipes/new for review via sessionStorage.
+      sessionStorage.setItem(
+        "foodScannedRecipe",
+        JSON.stringify({ parsed: data.parsed, imageUrl: data.imageUrl })
+      );
+      router.push("/food/recipes/new?scanned=1");
+    } catch {
+      setRecipeError("Failed to scan recipe");
+    } finally {
+      setRecipeScanning(false);
+    }
   };
 
   const handleGroceryScan = async () => {
@@ -227,6 +270,13 @@ export default function ScanPage() {
           Scan Receipt
         </button>
         <button
+          className={`food-tab ${activeTab === "recipe" ? "active" : ""}`}
+          onClick={() => setActiveTab("recipe")}
+          style={{ flex: 1, textAlign: "center" }}
+        >
+          Scan Recipe
+        </button>
+        <button
           className={`food-tab ${activeTab === "import" ? "active" : ""}`}
           onClick={() => setActiveTab("import")}
           style={{ flex: 1, textAlign: "center" }}
@@ -251,7 +301,6 @@ export default function ScanPage() {
               ref={groceryInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               onChange={(e) => e.target.files?.[0] && handleGroceryImage(e.target.files[0])}
               style={{ display: "none" }}
             />
@@ -347,7 +396,6 @@ export default function ScanPage() {
               ref={receiptInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               onChange={(e) => e.target.files?.[0] && handleReceiptImage(e.target.files[0])}
               style={{ display: "none" }}
             />
@@ -475,14 +523,81 @@ export default function ScanPage() {
         </div>
       )}
 
+      {/* Recipe Scan */}
+      {activeTab === "recipe" && (
+        <div className="food-enter" style={{ "--enter-delay": "0.1s" } as React.CSSProperties}>
+          <div
+            className="food-upload-zone"
+            onClick={() => recipeInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("dragover"); }}
+            onDragLeave={(e) => e.currentTarget.classList.remove("dragover")}
+            onDrop={(e) => { e.currentTarget.classList.remove("dragover"); handleDrop(e, handleRecipeImage); }}
+            style={{ marginBottom: "1.5rem" }}
+          >
+            <input
+              ref={recipeInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => e.target.files?.[0] && handleRecipeImage(e.target.files[0])}
+              style={{ display: "none" }}
+            />
+            {recipePreview ? (
+              <img src={recipePreview} alt="Recipe preview" style={{ maxHeight: "240px", borderRadius: "0.5rem" }} />
+            ) : (
+              <div>
+                <div style={{ fontSize: "3rem", marginBottom: "0.75rem" }}>📖</div>
+                <p style={{ fontWeight: 500, color: "var(--food-text)", marginBottom: "0.25rem" }}>
+                  Snap a photo of any recipe
+                </p>
+                <p style={{ fontSize: "0.8125rem", color: "var(--food-text-secondary)" }}>
+                  Cookbook page, index card, magazine, printout, screenshot — we'll read it all
+                </p>
+              </div>
+            )}
+          </div>
+
+          {recipeError && (
+            <div
+              style={{
+                padding: "0.75rem 1rem",
+                borderRadius: "0.75rem",
+                background: "rgba(239, 68, 68, 0.1)",
+                border: "1px solid rgba(239, 68, 68, 0.2)",
+                color: "#dc2626",
+                fontSize: "0.875rem",
+                marginBottom: "1rem",
+              }}
+            >
+              {recipeError}
+            </div>
+          )}
+
+          {recipeImage && (
+            <button
+              className="food-btn food-btn-primary food-glow"
+              onClick={handleRecipeScan}
+              disabled={recipeScanning}
+              style={{ width: "100%", justifyContent: "center", opacity: recipeScanning ? 0.7 : 1 }}
+            >
+              {recipeScanning ? "Reading recipe..." : "Extract Recipe ✨"}
+            </button>
+          )}
+
+          <p style={{ fontSize: "0.8125rem", color: "var(--food-text-secondary)", marginTop: "1rem", textAlign: "center" }}>
+            After scanning you'll be able to review and edit before saving.
+          </p>
+        </div>
+      )}
+
       {/* Import History */}
       {activeTab === "import" && (
         <div className="food-enter" style={{ "--enter-delay": "0.1s" } as React.CSSProperties}>
+          <FoodAutoSync />
           <div className="food-card" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
-              <span style={{ fontSize: "1.5rem" }}>🛒</span>
+              <span style={{ fontSize: "1.5rem" }}>📋</span>
               <h2 style={{ fontSize: "1.125rem", fontWeight: 600, color: "var(--food-text)" }}>
-                Import Walmart Purchase History
+                Or paste Walmart / Sam&apos;s Club / Aldi history manually
               </h2>
             </div>
             <div style={{ fontSize: "0.8125rem", color: "var(--food-text-secondary)", marginBottom: "1rem", lineHeight: 1.6 }}>

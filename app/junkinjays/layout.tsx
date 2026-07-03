@@ -28,6 +28,7 @@ export default function JunkinjaysLayout({ children }: { children: React.ReactNo
     <div className={`junkinjays-page jj-rust ${russoOne.variable}`}>
       <SiteTracker site="junkinjays" />
       <JjSparks />
+      <div aria-hidden="true" className="site-dot-grid-orange pointer-events-none fixed inset-0 z-0" />
       {children}
     </div>
   );

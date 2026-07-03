@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import AiResearchPanel from "./AiResearchPanel";
 
-type Tab = "overview" | "strategies" | "trades" | "predictions" | "datafeeds" | "market" | "optimizer" | "workflow";
+type Tab = "overview" | "strategies" | "trades" | "predictions" | "datafeeds" | "market" | "optimizer" | "workflow" | "research";
 
 interface Snapshot {
   equity: number;
@@ -160,6 +161,11 @@ export default function AssetPortal({
       : null;
 
   const dataFeedCount = Object.values(dataSources).filter((s: any) => s?.fresh || s?.enabled).length;
+  const isStockEngine = assetClass === "stocks_conservative" || assetClass === "stocks_aggressive";
+  const tradingagentsContext = liveData?.tradingagents ?? null;
+  const taTickerCount = tradingagentsContext?.tickers
+    ? Object.keys(tradingagentsContext.tickers).length
+    : 0;
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "overview", label: "Overview" },
     { key: "strategies", label: "Strategies", count: strategies.length },
@@ -169,6 +175,9 @@ export default function AssetPortal({
     { key: "market", label: "Market Intel" },
     { key: "optimizer", label: "Optimizer" },
     { key: "workflow", label: "Workflow" },
+    ...(isStockEngine
+      ? ([{ key: "research" as Tab, label: "AI Research", count: taTickerCount || undefined }])
+      : []),
   ];
 
   const closedTrades = trades.filter((t) => t.status === "closed");
@@ -991,6 +1000,28 @@ export default function AssetPortal({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* AI RESEARCH TAB (stocks only) — TradingAgents Tauric multi-agent debate */}
+      {tab === "research" && isStockEngine && (
+        <div className="space-y-4">
+          <div className="crypto-card">
+            <h3 className="text-xs text-white/40 uppercase tracking-wider mb-2">
+              TradingAgents · Research Overlay
+            </h3>
+            <p className="text-xs text-white/40 mb-3">
+              Multi-agent LLM debate (4 analysts → bull/bear → trader → risk → portfolio mgr)
+              running on local Qwen3.6. Engine pulls these verdicts every 5 min into strategy
+              context as <code className="text-amber-400/80">tradingagents</code>.
+            </p>
+            {tradingagentsContext?.generated_at && (
+              <div className="text-[10px] text-white/30 mb-3">
+                Engine last fetched signals: {new Date(tradingagentsContext.generated_at).toLocaleString()}
+              </div>
+            )}
+          </div>
+          <AiResearchPanel />
         </div>
       )}
     </div>

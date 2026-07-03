@@ -43,6 +43,7 @@ export interface FBCampaign {
   effectiveStatus: string;
   objective: string;
   dailyBudget: number;
+  lifetimeBudget: number;
   budgetRemaining: number;
   startTime: string;
   stopTime?: string;
@@ -127,9 +128,9 @@ export async function getAccountOverview(days = 30): Promise<FBAccountOverview |
 }
 
 export async function listCampaigns(days = 30): Promise<FBCampaign[]> {
-  // Get campaign list
+  // Get campaign list — include lifetime_budget for lifetime-budgeted campaigns
   const campaigns = await fbGet<{ data: Array<Record<string, string>> }>(`/${AD_ACCOUNT_ID}/campaigns`, {
-    fields: "id,name,status,effective_status,objective,daily_budget,budget_remaining,start_time,stop_time",
+    fields: "id,name,status,effective_status,objective,daily_budget,lifetime_budget,budget_remaining,start_time,stop_time",
     limit: "25",
   });
 
@@ -146,15 +147,45 @@ export async function listCampaigns(days = 30): Promise<FBCampaign[]> {
     insightMap.set(row.campaign_id as string, row);
   }
 
+  // For campaigns with no campaign-level budget, roll up adset budgets
+  // (ABO campaigns set budgets at the adset level)
+  const activeCampaigns = (campaigns.data || []).filter(
+    (c) => !parseInt(c.daily_budget || "0", 10) && !parseInt(c.lifetime_budget || "0", 10)
+      && (c.effective_status === "ACTIVE" || c.status === "ACTIVE"),
+  );
+  const adsetBudgetMap = new Map<string, { dailyBudget: number; lifetimeBudget: number }>();
+  await Promise.all(activeCampaigns.map(async (c) => {
+    try {
+      const adsets = await fbGet<{ data: Array<Record<string, string>> }>(
+        `/${c.id}/adsets`,
+        { fields: "daily_budget,lifetime_budget,effective_status", limit: "10" },
+      );
+      let daily = 0, lifetime = 0;
+      for (const a of adsets.data || []) {
+        if (a.effective_status === "ACTIVE" || a.effective_status === "IN_PROCESS") {
+          daily += parseInt(a.daily_budget || "0", 10) / 100;
+          lifetime += parseInt(a.lifetime_budget || "0", 10) / 100;
+        }
+      }
+      adsetBudgetMap.set(c.id, { dailyBudget: daily, lifetimeBudget: lifetime });
+    } catch {
+      adsetBudgetMap.set(c.id, { dailyBudget: 0, lifetimeBudget: 0 });
+    }
+  }));
+
   return (campaigns.data || []).map((c) => {
     const ins = insightMap.get(c.id) || {};
+    const rolled = adsetBudgetMap.get(c.id);
+    const dailyBudget = parseInt(c.daily_budget || "0", 10) / 100 || rolled?.dailyBudget || 0;
+    const lifetimeBudget = parseInt(c.lifetime_budget || "0", 10) / 100 || rolled?.lifetimeBudget || 0;
     return {
       id: c.id,
       name: c.name,
       status: c.status,
       effectiveStatus: c.effective_status,
       objective: c.objective,
-      dailyBudget: parseInt(c.daily_budget || "0", 10) / 100,
+      dailyBudget,
+      lifetimeBudget,
       budgetRemaining: parseInt(c.budget_remaining || "0", 10) / 100,
       startTime: c.start_time,
       stopTime: c.stop_time || undefined,

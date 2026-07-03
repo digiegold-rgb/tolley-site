@@ -13,6 +13,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { logScanActivity } from "@/lib/scan/log";
+import { serpapiCall, serpapiKey } from "@/lib/serpapi";
 
 const GOOGLE_SEARCH_API_KEY = process.env.GOOGLE_SEARCH_API_KEY || "";
 const GOOGLE_SEARCH_ENGINE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID || "";
@@ -175,23 +176,104 @@ interface GoogleResult {
 }
 
 async function googleSearch(query: string, num = 5): Promise<GoogleResult[]> {
-  if (!GOOGLE_SEARCH_API_KEY || !GOOGLE_SEARCH_ENGINE_ID) return [];
-  try {
-    const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_SEARCH_API_KEY}&cx=${GOOGLE_SEARCH_ENGINE_ID}&q=${encodeURIComponent(query)}&num=${num}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) {
-      const err = await res.text().catch(() => "");
-      throw new Error(`Google API ${res.status}: ${err.slice(0, 200)}`);
+  // Tier 1: SerpAPI — structured, no IP rate limits.
+  if (serpapiKey()) {
+    try {
+      const result = await serpapiCall<{
+        organic_results?: { title?: string; snippet?: string; link?: string }[];
+      }>({
+        engine: "google",
+        integration: "shop-intelligence",
+        params: { q: query, num: String(num), hl: "en", gl: "us" },
+        timeoutMs: 12000,
+      });
+      if (result.ok && result.data) {
+        const items = Array.isArray(result.data.organic_results)
+          ? result.data.organic_results
+          : [];
+        if (items.length > 0) {
+          return items
+            .filter(
+              (i): i is { title: string; snippet?: string; link: string } =>
+                typeof i.title === "string" && typeof i.link === "string"
+            )
+            .slice(0, num)
+            .map((i) => ({
+              title: i.title,
+              link: i.link,
+              snippet: i.snippet ?? "",
+            }));
+        }
+      }
+      // Out of quota or 429 → fall through to CSE/Brave fallbacks.
+    } catch {
+      // Network glitch — fall through.
     }
-    const data = await res.json();
-    return (data.items || []).map((item: { title: string; snippet: string; link: string }) => ({
-      title: item.title,
-      snippet: item.snippet,
-      link: item.link,
-    }));
-  } catch (e) {
-    throw e; // Let caller handle — don't swallow
   }
+
+  // Tier 2: Google CSE if configured.
+  if (GOOGLE_SEARCH_API_KEY && GOOGLE_SEARCH_ENGINE_ID) {
+    try {
+      const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_SEARCH_API_KEY}&cx=${GOOGLE_SEARCH_ENGINE_ID}&q=${encodeURIComponent(query)}&num=${num}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      if (res.ok) {
+        const data = await res.json();
+        return (data.items || []).map((item: { title: string; snippet: string; link: string }) => ({
+          title: item.title,
+          snippet: item.snippet,
+          link: item.link,
+        }));
+      }
+    } catch {
+      // Fall through to Brave
+    }
+  }
+
+  // Tier 3: Brave HTML scrape — flaky under Vercel IPs, kept as last-ditch fallback.
+  return braveSearch(query, num);
+}
+
+const BRAVE_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15";
+
+async function braveSearch(query: string, num = 5): Promise<GoogleResult[]> {
+  const res = await fetch(`https://search.brave.com/search?q=${encodeURIComponent(query)}`, {
+    headers: { "User-Agent": BRAVE_UA, Accept: "text/html,application/xhtml+xml", "Accept-Language": "en-US,en;q=0.9" },
+    signal: AbortSignal.timeout(12000),
+  });
+  if (res.status === 429) throw new Error("Brave rate-limited (429)");
+  if (!res.ok) throw new Error(`Brave HTTP ${res.status}`);
+  const html = await res.text();
+
+  // Result anchors use shifting svelte hashes, so we anchor on the stable
+  // search-snippet-title div and walk backward for the nearest preceding
+  // <a href="..."> within 1500 chars, then forward for the snippet body.
+  const titlePattern = /<div[^>]+class="title search-snippet-title[^"]*"[^>]*title="([^"]+)"[^>]*>/g;
+  const hrefPattern = /<a[^>]+href="(https?:\/\/[^"]+)"/g;
+  const snippetPattern = /<div[^>]+class="snippet-description[^"]*"[^>]*>([\s\S]*?)<\/div>/;
+
+  const results: GoogleResult[] = [];
+  for (const titleMatch of html.matchAll(titlePattern)) {
+    const idx = titleMatch.index ?? 0;
+    const back = html.slice(Math.max(0, idx - 1500), idx);
+    let lastHref: string | null = null;
+    for (const hrefMatch of back.matchAll(hrefPattern)) lastHref = hrefMatch[1];
+    if (!lastHref) continue;
+    if (lastHref.includes("brave.com") || lastHref.includes("imgs.search.brave")) continue;
+    const forward = html.slice(idx, idx + 2000);
+    const snippetMatch = forward.match(snippetPattern);
+    const snippet = snippetMatch ? decodeHtmlEntities(stripTags(snippetMatch[1])).trim().slice(0, 240) : "";
+    results.push({ link: lastHref, title: decodeHtmlEntities(titleMatch[1]).trim(), snippet });
+    if (results.length >= num) break;
+  }
+  return results;
+}
+
+function stripTags(s: string): string { return s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " "); }
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)));
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -335,9 +417,9 @@ export async function runShopIntelligence(): Promise<IntelligenceResult> {
   await logProgress("EBAY_NICHE", `Done — ${result.sourcesScanned} scraped, ${ebaySignals} trend signals, ${result.snapshotsCaptured} snapshots`, { scraped: result.sourcesScanned, signals: ebaySignals });
 
   // ─── 2. GOOGLE TRENDS + REDDIT + UNCONVENTIONAL ───────
-  const hasGoogle = !!GOOGLE_SEARCH_API_KEY && !!GOOGLE_SEARCH_ENGINE_ID;
-
-  if (hasGoogle) {
+  // googleSearch() falls back to Brave HTML scraping when Google CSE is
+  // unavailable (broken cx, missing key, etc.), so this always runs.
+  {
     // Google trend queries
     await logProgress("GOOGLE", `Searching ${GOOGLE_TREND_QUERIES.length} rising demand queries...`);
     let googleHits = 0;
@@ -390,12 +472,6 @@ export async function runShopIntelligence(): Promise<IntelligenceResult> {
       }
     }
     await logProgress("UNCONVENTIONAL", `Done — ${unconvHits} sources found`, { hits: unconvHits });
-  } else {
-    const msg = "Google Search API not configured or disabled — skipping Google/Reddit/Unconventional scans. Enable at: https://console.developers.google.com/apis/api/customsearch.googleapis.com/overview";
-    await logProgress("GOOGLE", msg);
-    await logProgress("REDDIT", "Skipped (needs Google API)");
-    await logProgress("UNCONVENTIONAL", "Skipped (needs Google API)");
-    result.errors.push(msg);
   }
 
   // ─── 3. AI CROSS-REFERENCE ─────────────────────────────

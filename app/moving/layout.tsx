@@ -14,11 +14,28 @@ export const metadata: Metadata = {
   title: "Moving Supply Rental | Your KC Homes LLC",
   description:
     "Skip the cardboard. Rent 20 heavy-duty totes, 25 moving blankets, and rubber bands in one bundle. $38/day in Independence, MO. All payments accepted.",
+  keywords: [
+    "moving supply rental Kansas City",
+    "moving tote rental KC",
+    "reusable moving boxes Kansas City",
+    "moving blanket rental Independence MO",
+    "cheap moving supplies Kansas City",
+    "moving kit rental KC",
+    "moving supplies near me",
+  ],
   openGraph: {
     title: "Moving Supply Rental | Your KC Homes LLC",
     description:
       "Save hundreds on moving supplies. Reusable totes, blankets, and bands — one bundle, one price. Kansas City area.",
     type: "website",
+    url: "https://www.tolley.io/moving",
+  },
+  alternates: {
+    canonical: "https://www.tolley.io/moving",
+  },
+  other: {
+    "geo.region": "US-MO",
+    "geo.placename": "Independence",
   },
 };
 
@@ -26,6 +43,7 @@ export default function MovingLayout({ children }: { children: React.ReactNode }
   return (
     <div className={`moving-page mv-grid ${inter.variable}`}>
       <SiteTracker site="moving" />
+      <div aria-hidden="true" className="site-dot-grid-emerald pointer-events-none fixed inset-0 z-0" />
       {children}
       <MovingFooter />
     </div>

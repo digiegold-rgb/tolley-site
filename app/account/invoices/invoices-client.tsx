@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 const fmt = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -49,12 +49,34 @@ function StatusBadge({ status }: { status: InvoiceStatus }) {
 
 export default function InvoicesClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialStatus = searchParams.get('status') ?? '';
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [draftingId, setDraftingId] = useState<string | null>(null);
+  const [notice, setNotice] = useState('');
+
+  async function handleDraft(inv: Invoice, e: React.MouseEvent) {
+    e.stopPropagation();
+    setDraftingId(inv.id);
+    setNotice('');
+    setError('');
+    try {
+      const res = await fetch(`/api/account/invoices/${inv.id}/email-draft`, { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to create draft');
+      const dest = json.to ? ` (to ${json.to})` : '';
+      setNotice(`${inv.invoiceNumber}: draft saved in ${json.mailbox || 'jared@yourkchomes.com'}${dest}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error creating draft');
+    } finally {
+      setDraftingId(null);
+    }
+  }
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
@@ -88,6 +110,8 @@ export default function InvoicesClient() {
               onClick={() => {
                 setStatusFilter(tab.value);
                 setPage(1);
+                const qs = tab.value ? `?status=${tab.value}` : '';
+                router.replace(`/account/invoices${qs}`);
               }}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 statusFilter === tab.value
@@ -114,6 +138,13 @@ export default function InvoicesClient() {
         </div>
       )}
 
+      {/* Notice */}
+      {notice && (
+        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-emerald-400 text-sm">
+          {notice}
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl backdrop-blur-sm overflow-hidden">
         {loading ? (
@@ -132,6 +163,7 @@ export default function InvoicesClient() {
                   <th className="px-5 py-3 text-right">Total</th>
                   <th className="px-5 py-3 text-right">Amount Due</th>
                   <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.08]">
@@ -172,11 +204,29 @@ export default function InvoicesClient() {
                     <td className="px-5 py-3">
                       <StatusBadge status={inv.status} />
                     </td>
+                    <td className="px-5 py-3 text-right whitespace-nowrap">
+                      <a
+                        href={`/api/account/invoices/${inv.id}/pdf`}
+                        onClick={(e) => e.stopPropagation()}
+                        title={`Download ${inv.invoiceNumber} as PDF`}
+                        className="inline-block text-xs text-white/70 hover:text-white px-2 py-1 rounded bg-white/[0.06] hover:bg-white/[0.12] transition-colors"
+                      >
+                        ↓ PDF
+                      </a>
+                      <button
+                        onClick={(e) => handleDraft(inv, e)}
+                        disabled={draftingId === inv.id}
+                        title="Save Gmail draft (PDF attached) in jared@yourkchomes.com"
+                        className="ml-1.5 inline-block text-xs text-white/70 hover:text-white px-2 py-1 rounded bg-white/[0.06] hover:bg-white/[0.12] transition-colors disabled:opacity-40"
+                      >
+                        {draftingId === inv.id ? '…' : '✉ Draft'}
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {invoices.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-5 py-12 text-center text-white/30">
+                    <td colSpan={8} className="px-5 py-12 text-center text-white/30">
                       No invoices found
                     </td>
                   </tr>

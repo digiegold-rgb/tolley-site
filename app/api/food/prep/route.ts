@@ -1,9 +1,8 @@
-// @ts-nocheck — references removed Prisma models
+// Food API route
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-
-const VLLM_URL = process.env.VLLM_URL || "http://127.0.0.1:8355/v1";
+import { chatJSON } from "@/lib/food/ai-client";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -54,38 +53,14 @@ ${recipeSummaries.map((r) => `- ${r.title} (prep: ${r.prepTime ?? "?"}min, cook:
   Instructions: ${JSON.stringify(r.instructions)}`).join("\n\n")}`;
 
   try {
-    const res = await fetch(`${VLLM_URL}/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "Qwen/Qwen3.5-35B-A3B-FP8",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.3,
-        max_tokens: 4096,
-      }),
+    const plan = await chatJSON<Record<string, unknown>>({
+      task: "meal-prep-timeline",
+      system: systemPrompt,
+      user: userPrompt,
+      temperature: 0.3,
+      maxTokens: 4096,
+      timeoutMs: 90000,
     });
-
-    if (!res.ok) {
-      const text = await res.text();
-      return NextResponse.json(
-        { error: "vLLM request failed", detail: text },
-        { status: 502 }
-      );
-    }
-
-    const data = await res.json();
-    const content = data.choices?.[0]?.message?.content || "";
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch)
-      return NextResponse.json(
-        { error: "Failed to parse AI response", raw: content },
-        { status: 500 }
-      );
-
-    const plan = JSON.parse(jsonMatch[0]);
     return NextResponse.json(plan);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

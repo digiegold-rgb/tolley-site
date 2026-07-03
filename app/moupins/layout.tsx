@@ -14,6 +14,16 @@ export const metadata: Metadata = {
   title: "Precision Transfer & Removal | Junk Hauling & Moving | KC Metro",
   description:
     "Junk removal and moving services in Kansas City. Same-day removal, free quotes. Message 816-442-2483 for a free quote.",
+  keywords: [
+    "junk removal Kansas City",
+    "junk hauling Independence MO",
+    "same day junk removal KC",
+    "moving services Kansas City",
+    "appliance removal Kansas City",
+    "garage cleanout KC",
+    "junk removal near me",
+    "Precision Transfer Removal",
+  ],
   openGraph: {
     title: "Precision Transfer & Removal — Junk Hauling & Moving",
     description:
@@ -21,6 +31,13 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://www.tolley.io/moupins",
     images: [{ url: "/moupins/opengraph-image", width: 1200, height: 630 }],
+  },
+  alternates: {
+    canonical: "https://www.tolley.io/moupins",
+  },
+  other: {
+    "geo.region": "US-MO",
+    "geo.placename": "Independence",
   },
 };
 

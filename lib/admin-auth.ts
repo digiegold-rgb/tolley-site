@@ -21,6 +21,14 @@ function getAdminAllowlist() {
     .filter(Boolean);
 }
 
+function getVaterAdminAllowlist() {
+  const source = process.env.VATER_ADMIN_ALLOWLIST_EMAILS || "";
+  return source
+    .split(",")
+    .map((item) => normalizeEmail(item))
+    .filter(Boolean);
+}
+
 export function isAdminEmail(email?: string | null) {
   if (!email) {
     return false;
@@ -28,6 +36,17 @@ export function isAdminEmail(email?: string | null) {
   const normalized = normalizeEmail(email);
   const allowlist = getAdminAllowlist();
   return allowlist.includes(normalized);
+}
+
+export function isVaterAdminEmail(email?: string | null) {
+  if (!email) {
+    return false;
+  }
+  if (isAdminEmail(email)) {
+    return true;
+  }
+  const normalized = normalizeEmail(email);
+  return getVaterAdminAllowlist().includes(normalized);
 }
 
 export async function requireAdminPageSession(
@@ -73,6 +92,64 @@ export async function requireAdminApiSession(): Promise<
   }
 
   if (!isAdminEmail(email)) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "FORBIDDEN" }, { status: 403 }),
+    };
+  }
+
+  return {
+    ok: true,
+    session: {
+      userId,
+      email: normalizeEmail(email as string),
+    },
+  };
+}
+
+export async function requireVaterAdminPageSession(
+  callbackPath = "/vater/youtube",
+): Promise<AdminSession> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  const email = session?.user?.email;
+
+  if (!userId) {
+    redirect(`/login?callbackUrl=${encodeURIComponent(callbackPath)}`);
+  }
+
+  if (!isVaterAdminEmail(email)) {
+    redirect("/");
+  }
+
+  return {
+    userId,
+    email: normalizeEmail(email as string),
+  };
+}
+
+export async function requireVaterAdminApiSession(): Promise<
+  | {
+      ok: true;
+      session: AdminSession;
+    }
+  | {
+      ok: false;
+      response: NextResponse;
+    }
+> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  const email = session?.user?.email;
+
+  if (!userId) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "LOGIN_REQUIRED" }, { status: 401 }),
+    };
+  }
+
+  if (!isVaterAdminEmail(email)) {
     return {
       ok: false,
       response: NextResponse.json({ error: "FORBIDDEN" }, { status: 403 }),

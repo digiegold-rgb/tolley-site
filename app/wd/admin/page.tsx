@@ -6,6 +6,7 @@ import { WdSummaryPanel } from "@/components/wd/admin/wd-summary-panel";
 import { WdRepairsTable, type RepairItem } from "@/components/wd/admin/wd-repairs-table";
 import { WdCharts } from "@/components/wd/admin/wd-charts";
 import { WdAddClientModal } from "@/components/wd/admin/wd-add-client-modal";
+import { WdAutomationPanel } from "@/components/wd/admin/wd-automation-panel";
 import type { WdClientData } from "@/components/wd/admin/wd-client-row";
 
 type WdRole = "tolley";
@@ -231,6 +232,9 @@ export default function WdAdminPage() {
 
         {/* Summary */}
         <WdSummaryPanel clients={clients} />
+
+        {/* Stripe automation: sync, approvals, message drafts */}
+        {role === "tolley" && <WdAutomationPanel clients={clients} onChanged={refresh} />}
 
         {/* Spreadsheet */}
         <WdSpreadsheet

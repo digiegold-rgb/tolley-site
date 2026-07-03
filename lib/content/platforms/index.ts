@@ -6,13 +6,15 @@
  */
 
 import type { PlatformAdapter, PlatformType } from "../types";
+import { facebookAdapter } from "./facebook";
 import { linkedinAdapter } from "./linkedin";
 import { twitterAdapter } from "./twitter";
 
 const adapters: Partial<Record<PlatformType, PlatformAdapter>> = {
   linkedin: linkedinAdapter,
   twitter: twitterAdapter,
-  // Phase 2: facebook, instagram, youtube, tiktok
+  facebook: facebookAdapter,
+  // Phase 2: instagram, youtube, tiktok (handled by content-autopilot publishers)
 };
 
 export function getAdapter(platform: PlatformType): PlatformAdapter | null {

@@ -15,7 +15,6 @@ export default async function AgentDashboardPage({
   searchParams: Promise<{ key?: string }>;
 }) {
   const params = await searchParams;
-  const syncKey = params.key || "";
 
   const session = await auth();
   const userId = session?.user?.id;
@@ -36,13 +35,6 @@ export default async function AgentDashboardPage({
     redirect("/leads/onboard");
   }
 
-  // Build where clause from farm area
-  const listingWhere: Record<string, unknown> = {};
-  if (sub.farmZips.length > 0) {
-    listingWhere.zip = { in: sub.farmZips };
-  }
-
-  // Tier-based daily lead limit
   const dailyLimit =
     sub.tier === "team" ? 50 : sub.tier === "pro" ? 25 : 10;
 
@@ -109,7 +101,7 @@ export default async function AgentDashboardPage({
         },
       },
       orderBy: [{ score: "desc" }, { createdAt: "desc" }],
-      take: dailyLimit * 3, // show ~3 days of leads
+      take: dailyLimit * 3,
     }),
     prisma.lead.groupBy({
       by: ["status"],
@@ -131,161 +123,69 @@ export default async function AgentDashboardPage({
   }));
 
   return (
-    <div className="min-h-screen bg-[#06050a]">
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        {/* Nav */}
-        <nav className="flex items-center gap-1 mb-6 flex-wrap">
-          <span className="rounded-lg px-3 py-1.5 text-sm font-medium text-white bg-white/10">
-            Leads
+    <>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-2xl font-bold text-white">Your Leads</h1>
+        <div className="flex items-center gap-3">
+          <span className="rounded-full bg-purple-500/20 border border-purple-500/30 px-3 py-0.5 text-xs font-medium text-purple-300 capitalize">
+            {sub.tier}
           </span>
-          <span className="text-white/20">/</span>
           <a
-            href="/leads/dossier"
-            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+            href="/leads/onboard"
+            className="text-xs text-white/40 hover:text-white/60"
           >
-            Dossiers
+            Edit farm area
           </a>
-          <span className="text-white/20">/</span>
-          <a
-            href="/leads/clients"
-            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
-          >
-            Clients
-          </a>
-          <span className="text-white/20">/</span>
-          <a
-            href={`/leads/conversations${syncKey ? `?key=${syncKey}` : ""}`}
-            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
-          >
-            Conversations
-          </a>
-          <span className="text-white/20">/</span>
-          <a
-            href="/leads/sequences"
-            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
-          >
-            Sequences
-          </a>
-          <span className="text-white/20">/</span>
-          <a
-            href="/leads/connects"
-            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
-          >
-            Connects
-          </a>
-          <span className="text-white/20">/</span>
-          <a
-            href="/leads/content"
-            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
-          >
-            Content
-          </a>
-          <span className="text-white/20">/</span>
-          <a
-            href="/leads/analytics"
-            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
-          >
-            Analytics
-          </a>
-          <span className="text-white/20">/</span>
-          <a
-            href="/leads/workflow"
-            className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
-          >
-            Workflow
-          </a>
-          <span className="text-white/20">/</span>
-          <a
-            href="/leads/snap"
-            className="rounded-lg px-3 py-1.5 text-sm text-purple-300/70 hover:text-purple-200 hover:bg-purple-500/10 transition-colors"
-          >
-            Snap & Know
-          </a>
-          <span className="text-white/20">/</span>
-          <a
-            href="/leads/unclaimed"
-            className="rounded-lg px-3 py-1.5 text-sm text-emerald-300/70 hover:text-emerald-200 hover:bg-emerald-500/10 transition-colors"
-          >
-            Unclaimed $
-          </a>
-          <span className="text-white/20">/</span>
-          <a
-            href="/markets"
-            className="rounded-lg px-3 py-1.5 text-sm text-cyan-300/70 hover:text-cyan-200 hover:bg-cyan-500/10 transition-colors"
-          >
-            Markets
-          </a>
-        </nav>
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold text-white">Your Leads</h1>
-          <div className="flex items-center gap-3">
-            <span className="rounded-full bg-purple-500/20 border border-purple-500/30 px-3 py-0.5 text-xs font-medium text-purple-300 capitalize">
-              {sub.tier}
-            </span>
-            <a
-              href="/leads/onboard"
-              className="text-xs text-white/40 hover:text-white/60"
-            >
-              Edit farm area
-            </a>
-          </div>
         </div>
+      </div>
 
-        {/* Address lookup + Batch upload */}
-        <AddressSearch />
-        <BatchUpload />
+      <AddressSearch />
+      <BatchUpload />
+      <AutoResponderConfig />
 
-        {/* Speed-to-Lead Auto-Response */}
-        <AutoResponderConfig />
-
-        {/* Farm area info */}
-        <div className="flex flex-wrap gap-2 text-xs text-white/40 mb-6">
-          <span>{sub.farmZips.length} zip codes</span>
-          <span>|</span>
-          <span>{dailyLimit} leads/day</span>
-          <span>|</span>
-          <span>
-            {sub.smsUsed}/{sub.smsLimit} SMS used
-          </span>
-          {sub.specialties.length > 0 && (
-            <>
-              <span>|</span>
-              <span>{sub.specialties.join(", ")}</span>
-            </>
-          )}
-        </div>
-
-        {/* Daily activity tracker */}
-        <ActivityTracker />
-
-        {/* Pipeline stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-          {stats.map((s) => (
-            <div
-              key={s.status}
-              className="rounded-lg bg-white/5 p-4 text-center"
-            >
-              <div className="text-2xl font-bold text-white">
-                {s._count.id}
-              </div>
-              <div className="text-xs text-white/50 capitalize">{s.status}</div>
-            </div>
-          ))}
-        </div>
-
-        {leads.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-white/50 text-lg">No leads in your farm area yet</p>
-            <p className="text-white/30 text-sm mt-2">
-              Leads are refreshed daily. Check back tomorrow or expand your farm area.
-            </p>
-          </div>
-        ) : (
-          <LeadsDashboard leads={serialized} />
+      <div className="flex flex-wrap gap-2 text-xs text-white/40 mb-6">
+        <span>{sub.farmZips.length} zip codes</span>
+        <span>|</span>
+        <span>{dailyLimit} leads/day</span>
+        <span>|</span>
+        <span>
+          {sub.smsUsed}/{sub.smsLimit} SMS used
+        </span>
+        {sub.specialties.length > 0 && (
+          <>
+            <span>|</span>
+            <span>{sub.specialties.join(", ")}</span>
+          </>
         )}
       </div>
-    </div>
+
+      <ActivityTracker />
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+        {stats.map((s) => (
+          <div
+            key={s.status}
+            className="rounded-lg bg-white/5 p-4 text-center"
+          >
+            <div className="text-2xl font-bold text-white">
+              {s._count.id}
+            </div>
+            <div className="text-xs text-white/50 capitalize">{s.status}</div>
+          </div>
+        ))}
+      </div>
+
+      {leads.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-white/50 text-lg">No leads in your farm area yet</p>
+          <p className="text-white/30 text-sm mt-2">
+            Leads are refreshed daily. Check back tomorrow or expand your farm area.
+          </p>
+        </div>
+      ) : (
+        <LeadsDashboard leads={serialized} />
+      )}
+    </>
   );
 }

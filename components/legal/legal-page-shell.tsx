@@ -7,6 +7,7 @@ type LegalPageShellProps = {
 export function LegalPageShell({ title, subtitle, children }: LegalPageShellProps) {
   return (
     <main className="legal-page relative min-h-screen px-5 pt-10 pb-24 sm:px-8 sm:pt-14">
+      <div aria-hidden="true" className="hp-dot-grid pointer-events-none fixed inset-0 z-0" />
       <div aria-hidden="true" className="portal-spotlight portal-spotlight-left" />
       <div aria-hidden="true" className="portal-spotlight portal-spotlight-right" />
       <section className="legal-card relative mx-auto w-full max-w-4xl rounded-3xl p-6 sm:p-10">

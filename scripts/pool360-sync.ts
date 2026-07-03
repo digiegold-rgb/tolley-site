@@ -20,25 +20,50 @@ import path from "path";
 
 const POOL360_BASE = "https://www.pool360.com";
 
+// ALL Pool & Spa leaf categories — complete catalog coverage
 const CATEGORY_PATHS = [
-  // Chemicals
-  "/Catalog/pool-and-spa-products/pool-spa-chemicals/sanitizers/chlorine-sanitizers",
-  "/Catalog/pool-and-spa-products/pool-spa-chemicals/shock/chlorine-shock",
-  "/Catalog/pool-and-spa-products/pool-spa-chemicals/water-balancers/ph-increasers",
-  "/Catalog/pool-and-spa-products/pool-spa-chemicals/water-balancers/ph-decreasers",
-  "/Catalog/pool-and-spa-products/pool-spa-chemicals/algaecides/shop-all-algaecides",
+  // Chemicals (parent categories — Pool360 lists all sub-products)
+  "/Catalog/pool-and-spa-products/pool-spa-chemicals/sanitizers",
+  "/Catalog/pool-and-spa-products/pool-spa-chemicals/shock",
+  "/Catalog/pool-and-spa-products/pool-spa-chemicals/water-balancers",
+  "/Catalog/pool-and-spa-products/pool-spa-chemicals/algaecides",
+  "/Catalog/pool-and-spa-products/pool-spa-chemicals/specialty-other-chemicals",
   // Equipment
-  "/Catalog/pool-and-spa-products/pool-spa-equipment/pool-pumps/pumps",
-  "/Catalog/pool-and-spa-products/pool-spa-equipment/pool-filters/filters",
-  "/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-sanitizing-systems/salt-generators-cells",
-  "/Catalog/pool-and-spa-products/pool-spa-equipment/pool-heating-cooling/heaters",
-  // Maintenance
-  "/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/brushes",
-  "/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/skimmer-nets-leaf-rakes",
-  "/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/poles",
-  "/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/vacuums-heads",
-  "/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools/pool-hoses",
-  "/Catalog/pool-and-spa-products/maintenance-cleaning/water-testing-control/test-kits-strips",
+  "/Catalog/pool-and-spa-products/pool-spa-equipment/pool-pumps",
+  "/Catalog/pool-and-spa-products/pool-spa-equipment/pool-filters",
+  "/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-sanitizing-systems",
+  "/Catalog/pool-and-spa-products/pool-spa-equipment/pool-heating-cooling",
+  "/Catalog/pool-and-spa-products/pool-spa-equipment/automatic-pool-cleaners",
+  "/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-automatic-controls",
+  "/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-lighting",
+  // Maintenance & Cleaning
+  "/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools",
+  "/Catalog/pool-and-spa-products/maintenance-cleaning/filter-media-replacement-cartridges-grids",
+  "/Catalog/pool-and-spa-products/maintenance-cleaning/paints-patches",
+  "/Catalog/pool-and-spa-products/maintenance-cleaning/pool-covers",
+  "/Catalog/pool-and-spa-products/maintenance-cleaning/water-testing-control",
+  // Parts & Hardware
+  "/Catalog/pool-and-spa-products/pool-spa-parts-hardware/basic-repair-maintenance-parts",
+  "/Catalog/pool-and-spa-products/pool-spa-parts-hardware/pool-spa-equipment-parts",
+  "/Catalog/pool-and-spa-products/pool-spa-parts-hardware/skimmers-accessories",
+  "/Catalog/pool-and-spa-products/pool-spa-parts-hardware/return-inlet-fittings",
+  "/Catalog/pool-and-spa-products/pool-spa-parts-hardware/main-drains-outlets",
+  // Safety & Entry
+  "/Catalog/pool-and-spa-products/pool-safety-entry-accessibility/ladders-steps-hand-rails",
+  "/Catalog/pool-and-spa-products/pool-safety-entry-accessibility/pool-fence-deck-safety",
+  // Recreation
+  "/Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/recreation-equipment",
+  "/Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/diving-boards",
+  "/Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/slides",
+];
+
+// Catch-all searches for products that may not appear in category browsing
+const SEARCH_QUERIES = [
+  "pool salt",
+  "pool salt bag",
+  "opening kit",
+  "closing kit",
+  "winterizing",
 ];
 
 const MAX_LOAD_MORE = 20;
@@ -77,7 +102,7 @@ async function isAuthenticated(page: Page): Promise<boolean> {
     const resp = await page.evaluate(() =>
       fetch("/api/v1/sessions/current")
         .then((r) => r.json())
-        .then((j) => j.isAuthenticated === true)
+        .then((j) => !!(j.isAuthenticated === true || j.warehouse?.id))
         .catch(() => false)
     );
     return resp;
@@ -165,7 +190,16 @@ async function scrapeCategory(
   const url = `${POOL360_BASE}${categoryPath}`;
   console.log(`[scrape] Navigating to ${url}`);
   await page.goto(url, { waitUntil: "domcontentloaded" });
-  await randomDelay(2000, 3000);
+  // Wait for product cards to render (JS hydration) before extracting
+  try {
+    await page.waitForFunction(
+      () => document.body.innerText.includes("Product #:"),
+      { timeout: 15000 }
+    );
+  } catch {
+    console.warn(`[scrape] Timed out waiting for product content on ${categoryPath}`);
+  }
+  await randomDelay(1000, 2000);
 
   // Click "Load More" until all products are visible
   let loadMoreClicks = 0;
@@ -259,6 +293,98 @@ async function scrapeCategory(
   return products;
 }
 
+// ── Scrape Search Results ────────────────────────────────────────────────────
+
+async function scrapeSearch(
+  page: Page,
+  query: string
+): Promise<ScrapedProduct[]> {
+  const url = POOL360_BASE + "/Search?query=" + encodeURIComponent(query);
+  console.log("[search] Searching: " + query);
+  await page.goto(url, { waitUntil: "domcontentloaded" });
+  try {
+    await page.waitForFunction(
+      () => document.body.innerText.includes("Product #:"),
+      { timeout: 15000 }
+    );
+  } catch {
+    console.warn("[search] No results for: " + query);
+    return [];
+  }
+  await randomDelay(1000, 2000);
+
+  let loadMoreClicks = 0;
+  while (loadMoreClicks < 5) {
+    try {
+      const btn = page.locator('button:has-text("Load More"), a:has-text("Load More")');
+      const visible = await btn.isVisible({ timeout: 2000 });
+      if (!visible) break;
+      await btn.click();
+      loadMoreClicks++;
+      await randomDelay(2000, 4000);
+    } catch {
+      break;
+    }
+  }
+
+  const products = await page.evaluate(() => {
+    const results: {
+      sku: string; name: string; brand: string;
+      price?: number; stockQty?: number; mfgPart?: string;
+    }[] = [];
+    const bodyText = document.body.innerText;
+    const regexWithPrice =
+      /([A-Z][A-Z &\-']+)\n([^\n]+)\nProduct #:([A-Z0-9\-]+)\nMfg\. Part #:([^\n]+)\n\$([\d,]+\.\d{2})/g;
+    const matched = new Set<string>();
+    let match;
+    while ((match = regexWithPrice.exec(bodyText)) !== null) {
+      const sku = match[3].trim();
+      const afterMatch = bodyText.substring(match.index, match.index + 500);
+      const stockMatch = afterMatch.match(/\((\d+)\s+in stock\)/);
+      const outOfStockMatch = afterMatch.match(/\(Out of stock\)/);
+      const price = parseFloat(match[5].replace(",", ""));
+      if (isNaN(price) || price <= 0) continue;
+      matched.add(sku);
+      results.push({
+        sku, name: match[2].trim(), brand: match[1].trim(), price,
+        stockQty: stockMatch ? parseInt(stockMatch[1], 10) : outOfStockMatch ? 0 : undefined,
+        mfgPart: match[4].trim(),
+      });
+    }
+    // In search results, capture ALL products even without price/stock/brand
+    const regexSearch =
+      /([^\n]+)\nProduct #:([A-Z0-9\-]+)\nMfg\. Part #:([^\n]+)/g;
+    while ((match = regexSearch.exec(bodyText)) !== null) {
+      const sku = match[2].trim();
+      if (matched.has(sku)) continue;
+      const name = match[1].trim();
+      // Skip non-product lines (navigation, headers, etc.)
+      if (name.length < 3 || name.length > 200) continue;
+      if (/^(Sort|Filter|Home|Search|menu|Skip)/i.test(name)) continue;
+      // Check if line before name is an all-caps brand
+      const beforeIdx = match.index - 1;
+      const linesBefore = bodyText.substring(Math.max(0, beforeIdx - 60), beforeIdx).split("\n");
+      const maybeBrand = linesBefore[linesBefore.length - 1]?.trim() || "";
+      const brand = /^[A-Z][A-Z &\-'.]+$/.test(maybeBrand) ? maybeBrand : "";
+      const afterMatch = bodyText.substring(match.index, match.index + 500);
+      const stockMatch = afterMatch.match(/\((\d+)\s+in stock\)/);
+      const outOfStockMatch = afterMatch.match(/\(Out of stock\)/);
+      const priceMatch = afterMatch.match(/\$([\d,]+\.\d{2})/);
+      matched.add(sku);
+      results.push({
+        sku, name, brand,
+        price: priceMatch ? parseFloat(priceMatch[1].replace(",", "")) : undefined,
+        stockQty: stockMatch ? parseInt(stockMatch[1], 10) : outOfStockMatch ? 0 : undefined,
+        mfgPart: match[3].trim(),
+      });
+    }
+    return results;
+  });
+
+  console.log("[search] Found " + products.length + " products for: " + query);
+  return products;
+}
+
 // ── Sync to API ─────────────────────────────────────────────────────────────
 
 async function syncToApi(products: ScrapedProduct[]): Promise<void> {
@@ -302,7 +428,7 @@ async function main() {
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     viewport: { width: 1920, height: 1080 },
   });
-  const page = context.pages()[0] || (await context.newPage());
+  let page = context.pages()[0] || (await context.newPage());
 
   try {
     if (LOGIN_MODE) {
@@ -326,9 +452,48 @@ async function main() {
 
     const allProducts: ScrapedProduct[] = [];
 
+    let categoryErrors = 0;
     for (const categoryPath of CATEGORY_PATHS) {
-      const products = await scrapeCategory(page, categoryPath);
-      allProducts.push(...products);
+      try {
+        const products = await scrapeCategory(page, categoryPath);
+        allProducts.push(...products);
+      } catch (err) {
+        categoryErrors++;
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[scrape] ERROR in ${categoryPath}: ${msg}`);
+        // If the page/context crashed, try to recover with a fresh page
+        if (msg.includes("Target crashed") || msg.includes("Target closed")) {
+          console.log("[scrape] Browser crashed — attempting recovery...");
+          try {
+            const pages = context.pages();
+            for (const p of pages) {
+              try { await p.close(); } catch { /* ignore */ }
+            }
+            page = await context.newPage();
+            await page.goto(POOL360_BASE, { waitUntil: "domcontentloaded" });
+            await randomDelay(2000, 4000);
+            console.log("[scrape] Recovery successful — continuing sync.");
+          } catch (recoverErr) {
+            console.error("[scrape] Recovery failed — aborting category scrapes.");
+            break;
+          }
+        }
+      }
+      await randomDelay(2000, 5000);
+    }
+    if (categoryErrors > 0) {
+      console.warn(`[main] ${categoryErrors} category scrape(s) failed — partial sync.`);
+    }
+
+    // Search-based scraping for products not in category tree
+    for (const query of SEARCH_QUERIES) {
+      try {
+        const products = await scrapeSearch(page, query);
+        allProducts.push(...products);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[search] ERROR for "${query}": ${msg}`);
+      }
       await randomDelay(2000, 5000);
     }
 

@@ -23,7 +23,7 @@ export async function GET() {
     const wdSubs = subscriptions.data
       .filter((sub) => {
         const amount = getRaw(sub.items.data[0]?.price)?.unit_amount as number | undefined;
-        return amount === 4200 || amount === 5800;
+        return amount === 5800;
       })
       .map((sub) => {
         const customer = sub.customer as Stripe.Customer;

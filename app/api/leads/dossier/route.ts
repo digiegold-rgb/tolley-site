@@ -5,9 +5,10 @@
  * Auth: x-sync-secret header
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getPluginManifest } from "@/lib/dossier/plugins/registry";
+import { runDossierPipeline } from "@/lib/dossier/pipeline";
 import { auth as getSession } from "@/auth";
 
 const prisma = new PrismaClient();
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
   const activeListingIds = new Set(existingJobs.map((j) => j.listingId));
 
   // Create jobs for listings that don't already have active ones
-  const newJobs = [];
+  const newJobs: { id: string; listingId: string; status: string }[] = [];
   for (const listing of listings) {
     if (activeListingIds.has(listing.id)) continue;
 
@@ -94,6 +95,23 @@ export async function POST(req: NextRequest) {
       },
     });
     newJobs.push(job);
+  }
+
+  // Kick the pipeline for each new job *after* the response is sent using
+  // Next.js's `after()` — this keeps the serverless function alive on Vercel
+  // until the promise resolves, whereas a plain fire-and-forget would be
+  // killed the moment we return. The /api/cron/dossier-process cron still
+  // exists as a safety net for anything that slips through.
+  if (newJobs.length > 0) {
+    after(async () => {
+      await Promise.all(
+        newJobs.map((job) =>
+          runDossierPipeline(job.id).catch((err) => {
+            console.error(`[dossier] pipeline error for job ${job.id}:`, err);
+          })
+        )
+      );
+    });
   }
 
   return NextResponse.json({

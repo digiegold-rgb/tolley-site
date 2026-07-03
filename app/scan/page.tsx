@@ -18,6 +18,7 @@ const SCANNER_NAMES: ScannerName[] = [
   "products",
   "unclaimed",
   "markets",
+  "pricing",
 ];
 
 async function getScannerStates(): Promise<ScannerState[]> {
@@ -114,6 +115,7 @@ async function getPeriodStats() {
     unclaimedFunds,
     marketSignals,
     topSignal,
+    pricingSkus,
   ] = await Promise.all([
     prisma.lead.count({ where: { createdAt: { gte: dayAgo } } }),
     prisma.lead.count({ where: { score: { gte: 70 } } }),
@@ -138,6 +140,10 @@ async function getPeriodStats() {
       orderBy: { confidence: "desc" },
       select: { signal: true },
     }),
+    prisma.competitorPrice.groupBy({
+      by: ["sku"],
+      where: { scannedAt: { gte: dayAgo } },
+    }),
   ]);
 
   return {
@@ -146,6 +152,7 @@ async function getPeriodStats() {
     products: { alerts: prodAlerts, oosCount: oosProducts },
     unclaimed: { totalFound: unclaimedFunds._sum.amount ?? 0 },
     markets: { signals: marketSignals, sentiment: topSignal?.signal ?? "neutral" },
+    pricing: { productsScanned: pricingSkus.length, matchesFound: pricingSkus.length },
   };
 }
 

@@ -17,7 +17,7 @@ const fredoka = Fredoka({
 export const metadata: Metadata = {
   title: "Washer & Dryer Rental Kansas City | Free Delivery | Your KC Homes LLC",
   description:
-    "Affordable washer and dryer rentals in Kansas City. Free delivery and installation, maintenance included, no contracts. Serving Independence, Lee's Summit, Blue Springs, and the KC metro. Starting at $42/mo.",
+    "Affordable washer and dryer rentals in Kansas City. Free delivery and installation, maintenance included, no contracts. Serving Independence, Lee's Summit, Blue Springs, and the KC metro. $58/mo.",
   keywords: [
     "washer dryer rental Kansas City",
     "washer rental KC",
@@ -55,6 +55,7 @@ export default function WdLayout({ children }: { children: React.ReactNode }) {
       <MetaPixel />
       <EventTracker site="wd">
         <WdBubbles />
+        <div aria-hidden="true" className="site-dot-grid-blue pointer-events-none fixed inset-0 z-0" />
         {children}
         <WdFooter />
         <WdEmailBar />

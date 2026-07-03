@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import CampaignBuilder from "@/components/content/CampaignBuilder";
+import { useToast } from "@/components/ui/Toast";
 
 interface Campaign {
   id: string;
@@ -31,6 +32,7 @@ const PLATFORM_LABELS: Record<string, string> = {
 
 export default function CampaignsPage() {
   const { data: session } = useSession();
+  const { toast } = useToast();
   const subscriberId = session?.user?.id ?? "default";
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,16 +43,27 @@ export default function CampaignsPage() {
     setLoading(true);
     try {
       const res = await fetch("/api/content/campaigns");
-      if (res.ok) {
-        const data = await res.json();
-        setCampaigns(data.campaigns || []);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Couldn't load campaigns",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        return;
       }
-    } catch {
-      // silent
+      const data = await res.json();
+      setCampaigns(data.campaigns || []);
+    } catch (err) {
+      toast({
+        title: "Network error loading campaigns",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     fetchCampaigns();
@@ -64,43 +77,87 @@ export default function CampaignsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...data, subscriberId }),
       });
-      if (res.ok) {
-        setShowBuilder(false);
-        fetchCampaigns();
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Couldn't create campaign",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        return;
       }
-    } catch {
-      // silent
+      toast({ title: "Campaign created", variant: "success" });
+      setShowBuilder(false);
+      fetchCampaigns();
+    } catch (err) {
+      toast({
+        title: "Network error",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
     } finally {
       setSaving(false);
     }
   };
 
   const handleToggle = async (id: string, isActive: boolean) => {
-    await fetch(`/api/content/campaigns/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive }),
-    });
-    fetchCampaigns();
+    try {
+      const res = await fetch(`/api/content/campaigns/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Couldn't update campaign",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        return;
+      }
+      toast({
+        title: isActive ? "Campaign activated" : "Campaign paused",
+        variant: "success",
+      });
+      fetchCampaigns();
+    } catch (err) {
+      toast({
+        title: "Network error",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
+    }
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/content/campaigns/${id}`, { method: "DELETE" });
-    fetchCampaigns();
+    try {
+      const res = await fetch(`/api/content/campaigns/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Delete failed",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        return;
+      }
+      toast({ title: "Campaign deleted", variant: "success" });
+      fetchCampaigns();
+    } catch (err) {
+      toast({
+        title: "Network error",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#06050a]">
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        <nav className="flex items-center gap-1 mb-6 flex-wrap">
-          <a href="/leads/dashboard" className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors">Leads</a>
-          <span className="text-white/20">/</span>
-          <a href="/leads/content" className="rounded-lg px-3 py-1.5 text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors">Content</a>
-          <span className="text-white/20">/</span>
-          <span className="rounded-lg px-3 py-1.5 text-sm font-medium text-white bg-white/10">Campaigns</span>
-        </nav>
-
-        <div className="flex gap-2 mb-6">
+    <>
+      <div className="flex gap-2 mb-6">
           <a href="/leads/content" className="rounded-lg bg-white/5 text-white/40 px-3 py-1 text-xs hover:text-white/60 transition-colors">Hub</a>
           <a href="/leads/content/posts" className="rounded-lg bg-white/5 text-white/40 px-3 py-1 text-xs hover:text-white/60 transition-colors">Posts</a>
           <a href="/leads/content/templates" className="rounded-lg bg-white/5 text-white/40 px-3 py-1 text-xs hover:text-white/60 transition-colors">Templates</a>
@@ -183,7 +240,6 @@ export default function CampaignsPage() {
             ))}
           </div>
         )}
-      </div>
-    </div>
+    </>
   );
 }

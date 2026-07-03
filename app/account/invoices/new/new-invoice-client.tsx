@@ -1,12 +1,25 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { upload } from '@vercel/blob/client';
 
 const fmt = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
 });
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function fileKindIcon(mime: string): string {
+  if (mime.startsWith('image/')) return '🖼️';
+  if (mime === 'application/pdf') return '📄';
+  return '📎';
+}
 
 interface Contact {
   id: string;
@@ -37,11 +50,26 @@ export default function NewInvoiceClient() {
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
   const [reference, setReference] = useState('');
+  const [invoiceNumberOverride, setInvoiceNumberOverride] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { description: '', quantity: 1, unitAmount: 0, accountId: '' },
   ]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
+  const [savingStatus, setSavingStatus] = useState('');
   const [error, setError] = useState('');
+
+  function addFiles(files: FileList | File[]) {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    setPendingFiles((prev) => [...prev, ...list]);
+  }
+
+  function removeFile(index: number) {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  }
 
   const loadData = useCallback(async () => {
     const [contactsRes, accountsRes] = await Promise.all([
@@ -89,12 +117,14 @@ export default function NewInvoiceClient() {
   async function handleSave(andSend: boolean) {
     setError('');
     setSaving(true);
+    setSavingStatus('Creating invoice...');
 
     try {
       const validLines = lineItems.filter((l) => l.description.trim() && l.unitAmount > 0);
       if (validLines.length === 0) {
         setError('At least one line item with a description and amount is required.');
         setSaving(false);
+        setSavingStatus('');
         return;
       }
 
@@ -103,6 +133,7 @@ export default function NewInvoiceClient() {
         dueDate: dueDate || undefined,
         reference: reference || undefined,
         notes: notes || undefined,
+        invoiceNumber: invoiceNumberOverride.trim() || undefined,
         lineItems: validLines.map((l) => ({
           description: l.description,
           quantity: l.quantity,
@@ -124,7 +155,54 @@ export default function NewInvoiceClient() {
 
       const invoice = await res.json();
 
+      // Upload any staged attachments now that we have an invoiceId.
+      // Client-direct to Vercel Blob (bypasses the 4.5MB Serverless body limit),
+      // then POST JSON metadata to persist the InvoiceAttachment row.
+      if (pendingFiles.length > 0) {
+        for (let i = 0; i < pendingFiles.length; i++) {
+          const file = pendingFiles[i];
+          setSavingStatus(`Uploading attachment ${i + 1} of ${pendingFiles.length}...`);
+          try {
+            const safeName =
+              (file.name || 'attachment').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120) ||
+              'attachment';
+            const pathname = `invoices/${invoice.id}/${Date.now()}-${safeName}`;
+            const mimeType = file.type || 'application/octet-stream';
+
+            const blob = await upload(pathname, file, {
+              access: 'public',
+              handleUploadUrl: `/api/account/invoices/${invoice.id}/attachments/upload-token`,
+              contentType: mimeType,
+            });
+
+            const upRes = await fetch(
+              `/api/account/invoices/${invoice.id}/attachments`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  blobUrl: blob.url,
+                  fileName: file.name,
+                  mimeType,
+                  size: file.size,
+                }),
+              },
+            );
+            if (!upRes.ok) {
+              const upBody = await upRes.json().catch(() => ({}));
+              throw new Error(upBody?.error || `HTTP ${upRes.status}`);
+            }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Unknown error';
+            throw new Error(
+              `Invoice created but "${file.name}" failed to upload: ${msg}. Open the invoice to retry.`,
+            );
+          }
+        }
+      }
+
       if (andSend) {
+        setSavingStatus('Sending invoice...');
         const sendRes = await fetch(`/api/account/invoices/${invoice.id}/send`, {
           method: 'POST',
         });
@@ -138,8 +216,8 @@ export default function NewInvoiceClient() {
       router.push(`/account/invoices/${invoice.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error creating invoice');
-    } finally {
       setSaving(false);
+      setSavingStatus('');
     }
   }
 
@@ -201,15 +279,29 @@ export default function NewInvoiceClient() {
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs text-white/40 mb-1">Reference</label>
-          <input
-            type="text"
-            value={reference}
-            onChange={(e) => setReference(e.target.value)}
-            placeholder="PO number, project name, etc."
-            className="w-full bg-white/[0.06] border border-white/[0.12] rounded-lg text-white placeholder:text-white/30 px-3 py-2 text-sm"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs text-white/40 mb-1">
+              Invoice Number <span className="text-white/30">(optional override)</span>
+            </label>
+            <input
+              type="text"
+              value={invoiceNumberOverride}
+              onChange={(e) => setInvoiceNumberOverride(e.target.value)}
+              placeholder="auto-generated if blank (e.g. INV-147)"
+              className="w-full bg-white/[0.06] border border-white/[0.12] rounded-lg text-white placeholder:text-white/30 px-3 py-2 text-sm font-mono"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-white/40 mb-1">Reference</label>
+            <input
+              type="text"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+              placeholder="PO number, project name, etc."
+              className="w-full bg-white/[0.06] border border-white/[0.12] rounded-lg text-white placeholder:text-white/30 px-3 py-2 text-sm"
+            />
+          </div>
         </div>
 
         {/* Line Items */}
@@ -314,8 +406,93 @@ export default function NewInvoiceClient() {
           />
         </div>
 
+        {/* Attachments — staged client-side, uploaded after invoice is saved.
+            Clients see these on the public pay page. */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <label className="block text-xs text-white/60">Attachments</label>
+              <p className="text-[11px] text-white/40 mt-0.5">
+                Receipts, signed scans, supporting PDFs or images. Clients see these on the pay page.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={saving}
+              className="bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-black font-semibold rounded-lg px-3 py-1.5 text-sm transition-colors"
+            >
+              + Attach file
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                  addFiles(e.target.files);
+                }
+                if (fileInputRef.current) fileInputRef.current.value = '';
+              }}
+            />
+          </div>
+
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragActive(true);
+            }}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragActive(false);
+              if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                addFiles(e.dataTransfer.files);
+              }
+            }}
+            className={`rounded-lg border-2 border-dashed p-4 text-center text-xs transition-colors ${
+              dragActive
+                ? 'border-cyan-400 bg-cyan-500/10 text-cyan-300'
+                : 'border-white/[0.12] text-white/40'
+            }`}
+          >
+            {dragActive
+              ? 'Drop to attach'
+              : 'Drag & drop files here, or click "Attach file" above. PDF, JPEG, PNG, HEIC, WebP supported.'}
+          </div>
+
+          {pendingFiles.length > 0 && (
+            <ul className="mt-3 divide-y divide-white/[0.06] border border-white/[0.08] rounded-lg">
+              {pendingFiles.map((file, idx) => (
+                <li key={`${file.name}-${idx}`} className="flex items-center gap-3 px-3 py-2">
+                  <span className="text-lg" aria-hidden="true">{fileKindIcon(file.type)}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-white truncate" title={file.name}>{file.name}</p>
+                    <p className="text-[11px] text-white/40">{formatBytes(file.size)} · staged, will upload on save</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeFile(idx)}
+                    disabled={saving}
+                    className="text-xs text-red-400/60 hover:text-red-400 hover:bg-red-500/10 px-2 py-1 rounded transition-colors disabled:opacity-40"
+                    title="Remove"
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         {/* Actions */}
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex justify-end items-center gap-3 pt-2">
+          {savingStatus && (
+            <span className="text-xs text-white/50 mr-auto">{savingStatus}</span>
+          )}
           <button
             onClick={() => handleSave(false)}
             disabled={saving}

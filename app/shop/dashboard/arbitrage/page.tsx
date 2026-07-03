@@ -33,13 +33,17 @@ export default function ArbitragePage() {
   async function loadPairs() {
     setLoading(true);
     try {
-      // ArbitragePair is accessed via prisma directly — we'll use the scan endpoint info
-      const res = await fetch(`/api/shop/products?status=all&limit=0`);
+      const res = await fetch(`/api/vater/arbitrage?status=${encodeURIComponent(filter)}`, {
+        cache: "no-store",
+      });
       if (res.ok) {
-        // For now, show placeholder — arbitrage pairs come from the scanner
+        const data = await res.json();
+        setPairs(Array.isArray(data?.pairs) ? data.pairs : []);
+      } else {
+        setPairs([]);
       }
     } catch {
-      // silent
+      setPairs([]);
     }
     setLoading(false);
   }

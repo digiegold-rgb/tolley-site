@@ -17,10 +17,12 @@
  * port the animation library or switch the server render to `renderMedia` from
  * this same file.
  */
+import * as React from "react";
 import {
   AbsoluteFill,
   Audio,
   Img,
+  OffthreadVideo,
   Sequence,
   interpolate,
   useCurrentFrame,
@@ -101,6 +103,12 @@ function SceneRouter({
   scene: SceneSpec;
   durationFrames: number;
 }) {
+  // Animated scene ALWAYS wins — never replace a paid-for video clip with a
+  // smart-overlay text card. User feedback 2026-04-21: header overlays in the
+  // middle of a Short break the visual flow.
+  if (scene.mediaType === "video" && scene.videoUrl) {
+    return <SceneVideo src={scene.videoUrl} durationFrames={durationFrames} />;
+  }
   if (scene.isHeader && scene.headerData) {
     try {
       return <HeaderScene data={scene.headerData} durationFrames={durationFrames} />;
@@ -123,6 +131,54 @@ function SceneRouter({
     }
   }
   return <SceneImage src={scene.imageUrl} durationFrames={durationFrames} />;
+}
+
+// ---------------------------------------------------------------------------
+// Scene video — MP4 clip playback with the same fade-in/out as stills.
+// Used when a scene has been image-to-video animated via vater_i2v.
+// ---------------------------------------------------------------------------
+function SceneVideo({
+  src,
+  durationFrames,
+}: {
+  src: string;
+  durationFrames: number;
+}) {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const safeDuration = Math.max(2, durationFrames);
+  const maxFade = Math.floor((safeDuration - 1) / 2);
+  const fadeFrames =
+    maxFade >= 1 ? Math.min(Math.floor(FADE_SECONDS * fps), maxFade) : 0;
+  const opacity =
+    fadeFrames >= 1
+      ? interpolate(
+          frame,
+          [0, fadeFrames, safeDuration - fadeFrames, safeDuration],
+          [0, 1, 1, 0],
+          { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+        )
+      : 1;
+
+  return (
+    <AbsoluteFill style={{ opacity }}>
+      <OffthreadVideo
+        src={src}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+        }}
+        muted
+      />
+      <AbsoluteFill
+        style={{
+          background:
+            "linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0) 35%)",
+        }}
+      />
+    </AbsoluteFill>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -204,8 +260,49 @@ function SceneImage({
 }
 
 // ---------------------------------------------------------------------------
-// Karaoke captions — highlights the active word in a rolling window
+// PhraseCaptions — clean static subtitle bands, ~4.5s / 6-word phrases.
+// Matches the final-compose renderer in /content-autopilot/remotion so the
+// editor preview shows what the published video will actually look like.
 // ---------------------------------------------------------------------------
+
+const PHRASE_MAX_SECONDS = 4.5;
+const PHRASE_MAX_WORDS = 6;
+const SENTENCE_END_RE = /[.!?]["']?$/;
+
+type PhraseBlock = { text: string; start: number; end: number };
+
+function groupCaptionsIntoPhrases(
+  captions: VaterCompositionProps["captions"],
+): PhraseBlock[] {
+  const phrases: PhraseBlock[] = [];
+  let buf: string[] = [];
+  let bufStart: number | null = null;
+  let bufEnd = 0;
+
+  const flush = () => {
+    if (buf.length > 0 && bufStart !== null) {
+      phrases.push({ text: buf.join(" "), start: bufStart, end: bufEnd });
+    }
+    buf = [];
+    bufStart = null;
+    bufEnd = 0;
+  };
+
+  for (const w of captions) {
+    const word = (w.word || "").trim();
+    if (!word) continue;
+    if (bufStart === null) bufStart = w.start;
+    buf.push(word);
+    bufEnd = Math.max(bufEnd, w.end);
+    const atSentence = SENTENCE_END_RE.test(word);
+    const tooLong = bufEnd - bufStart >= PHRASE_MAX_SECONDS;
+    const tooMany = buf.length >= PHRASE_MAX_WORDS;
+    if (atSentence || tooLong || tooMany) flush();
+  }
+  flush();
+  return phrases;
+}
+
 function KaraokeCaptions({
   captions,
 }: {
@@ -216,63 +313,47 @@ function KaraokeCaptions({
   const { fps } = useVideoConfig();
   const t = frame / fps;
 
-  if (captions.length === 0) return null;
+  // Group words into phrase blocks ONCE per render (memoized).
+  const phrases = React.useMemo(() => groupCaptionsIntoPhrases(captions), [captions]);
+  const active = phrases.find((p) => p.start <= t && t < p.end);
+  if (!active) return null;
 
-  const windowStart = Math.max(0, t - CAPTION_WINDOW_SECONDS / 2);
-  const windowEnd = t + CAPTION_WINDOW_SECONDS / 2;
-  const visible = captions
-    .map((c, i) => ({ ...c, i }))
-    .filter((c) => c.end >= windowStart && c.start <= windowEnd);
-
-  if (visible.length === 0) return null;
+  // Soft fade-in over 150ms from the phrase's start
+  const elapsed = Math.max(0, t - active.start);
+  const fadeT = Math.min(1, elapsed / 0.15);
 
   return (
     <div
       style={{
         position: "absolute",
-        bottom: 96,
+        bottom: 120,
         left: 0,
         right: 0,
         display: "flex",
         justifyContent: "center",
         pointerEvents: "none",
+        opacity: fadeT,
       }}
     >
       <div
         style={{
-          maxWidth: "85%",
-          padding: "20px 36px",
-          background: "rgba(0,0,0,0.55)",
-          borderRadius: 18,
-          fontFamily:
-            "-apple-system, 'Segoe UI', system-ui, sans-serif",
-          fontSize: 56,
-          fontWeight: 700,
+          maxWidth: "82%",
+          padding: "0 24px",
+          fontFamily: "-apple-system, 'Segoe UI', system-ui, sans-serif",
+          fontSize: 60,
+          fontWeight: 800,
           color: "#fff",
-          textShadow: "0 2px 8px rgba(0,0,0,0.7)",
           textAlign: "center",
-          lineHeight: 1.2,
+          lineHeight: 1.15,
           letterSpacing: -0.5,
+          // Drop shadow + text stroke for readability against any background
+          textShadow:
+            "0 4px 12px rgba(0,0,0,0.85), 0 2px 4px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,0.6)",
+          WebkitTextStroke: "2px rgba(0,0,0,0.55)",
+          paintOrder: "stroke fill",
         }}
       >
-        {visible.map((w) => {
-          const isActive = w.start <= t && t < w.end;
-          const isPast = t >= w.end;
-          return (
-            <span
-              key={w.i}
-              style={{
-                display: "inline-block",
-                margin: "0 8px",
-                color: isActive ? "#ffd84a" : isPast ? "#bbb" : "#fff",
-                transform: isActive ? "scale(1.08)" : "scale(1)",
-                transition: "transform 80ms ease-out",
-              }}
-            >
-              {w.word}
-            </span>
-          );
-        })}
+        {active.text}
       </div>
     </div>
   );

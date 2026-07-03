@@ -1,6 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import dynamic from "next/dynamic";
+import AlertStrip from "./alert-strip";
+import GB10Status from "./gb10-status";
+
+const PulseTab = dynamic(() => import("./tabs/pulse"), { ssr: false });
+const SystemsTab = dynamic(() => import("./tabs/systems"), { ssr: false });
 import { TRACKED_SITES } from "@/lib/analytics";
 
 // ─── GA4 Types ────────────────────────────────────────────
@@ -80,6 +86,10 @@ interface AnalyticsData {
   topPaths: { path: string; count: number; site: string }[];
   recentActivity: { site: string; path: string; referrer: string | null; time: string; type: string }[];
   hourlyHeatmap: Record<string, number>;
+  geo?: {
+    topCountries: { code: string; count: number }[];
+    topCities: { name: string; count: number }[];
+  };
   usage: UsageData;
 }
 
@@ -189,7 +199,22 @@ interface StripeAnalyticsData {
   pastDueAlerts: { name: string; email: string; amount: number; since: string }[];
 }
 
-type DashTab = "overview" | "pools" | "stripe" | "video" | "leads";
+type DashTab = "pulse" | "systems" | "overview" | "search" | "pools" | "stripe" | "video" | "leads";
+
+// ─── Search Console Types ───────────────────────────────
+interface SearchConsoleData {
+  configured: boolean;
+  siteUrl: string;
+  range: { start: string; end: string };
+  totals: { clicks: number; impressions: number; ctr: number; position: number };
+  topQueries: { query: string; clicks: number; impressions: number; ctr: number; position: number }[];
+  topPages: { page: string; clicks: number; impressions: number; ctr: number; position: number }[];
+  byCountry: { country: string; clicks: number; impressions: number }[];
+  byDevice: { device: string; clicks: number; impressions: number }[];
+  daily: { date: string; clicks: number; impressions: number }[];
+  serviceAccountEmail: string | null;
+  error?: string;
+}
 
 // ─── Leads Types ────────────────────────────────────────
 interface LeadsAnalytics {
@@ -239,7 +264,10 @@ export default function AnalyticsDashboard() {
   const [videoLoading, setVideoLoading] = useState(false);
   const [leadsData, setLeadsData] = useState<LeadsAnalytics | null>(null);
   const [leadsLoading, setLeadsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<DashTab>("overview");
+  const [scData, setScData] = useState<SearchConsoleData | null>(null);
+  const [scLoading, setScLoading] = useState(false);
+  const [scDays, setScDays] = useState(28);
+  const [activeTab, setActiveTab] = useState<DashTab>("pulse");
   const [period, setPeriod] = useState(30);
   const [loading, setLoading] = useState(true);
   const [tooltip, setTooltip] = useState<Tooltip | null>(null);
@@ -332,6 +360,19 @@ export default function AnalyticsDashboard() {
     if (activeTab === "leads" && !leadsData && !leadsLoading) fetchLeadsData();
   }, [activeTab, leadsData, leadsLoading, fetchLeadsData]);
 
+  const fetchScData = useCallback(async (days: number) => {
+    setScLoading(true);
+    try {
+      const res = await fetch(`/api/analytics/search-console?days=${days}`);
+      if (res.ok) setScData(await res.json());
+    } catch { /* ignore */ }
+    setScLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "search" && !scData && !scLoading) fetchScData(scDays);
+  }, [activeTab, scData, scLoading, scDays, fetchScData]);
+
   const showTooltip = (e: React.MouseEvent, content: React.ReactNode) => {
     const rect = dashRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -344,23 +385,25 @@ export default function AnalyticsDashboard() {
 
   const hideTooltip = () => setTooltip(null);
 
-  if (loading && !data) {
+  if (loading && !data && activeTab !== "pulse" && activeTab !== "systems") {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-white/40 text-sm">Loading analytics...</div>
+      <div className="space-y-4">
+        <AlertStrip />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-white/40 text-sm">Loading analytics...</div>
+        </div>
       </div>
     );
   }
 
-  if (!data) {
-    return <div className="text-white/40 text-center py-12">No data available</div>;
-  }
-
-  const o = data.overview;
-  const u = data.usage;
+  // Default placeholders for legacy data — pulse/systems don't depend on it.
+  const o = data?.overview;
+  const u = data?.usage;
 
   return (
     <div ref={dashRef} className="relative space-y-6">
+      <AlertStrip />
+      <GB10Status />
       {/* Floating tooltip */}
       {tooltip && (
         <div
@@ -379,7 +422,7 @@ export default function AnalyticsDashboard() {
       {/* Tab bar */}
       <div className="flex items-center justify-between">
         <div className="flex gap-1 rounded-lg bg-white/5 p-1">
-          {(["overview", "pools", "stripe", "video", "leads"] as DashTab[]).map((tab) => (
+          {(["pulse", "systems", "overview", "search", "pools", "stripe", "video", "leads"] as DashTab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -389,7 +432,7 @@ export default function AnalyticsDashboard() {
                   : "text-white/50 hover:text-white hover:bg-white/10"
               }`}
             >
-              {tab === "pools" ? "Pools" : tab === "stripe" ? "Stripe / WD" : tab === "video" ? "Video" : tab === "leads" ? "Leads" : "Overview"}
+              {tab === "pulse" ? "⚡ Pulse" : tab === "systems" ? "Systems" : tab === "pools" ? "Pools" : tab === "stripe" ? "Stripe / WD" : tab === "video" ? "Video" : tab === "leads" ? "Leads" : tab === "search" ? "Search Console" : "Traffic"}
             </button>
           ))}
         </div>
@@ -452,7 +495,42 @@ export default function AnalyticsDashboard() {
             {leadsLoading ? "Loading..." : "Refresh"}
           </button>
         )}
+        {activeTab === "search" && (
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1 rounded-lg bg-white/5 p-1">
+              {[7, 28, 90].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => { setScDays(d); fetchScData(d); }}
+                  className={`rounded-md px-2 py-1 text-xs font-medium transition ${
+                    scDays === d ? "bg-purple-600 text-white" : "text-white/50 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  {d}d
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => fetchScData(scDays)}
+              disabled={scLoading}
+              className="rounded-md px-3 py-1.5 text-xs font-medium text-white/50 hover:text-white hover:bg-white/10 transition disabled:opacity-40"
+            >
+              {scLoading ? "Loading..." : "Refresh"}
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* ─── PULSE TAB (NEW DEFAULT) ─── */}
+      {activeTab === "pulse" && <PulseTab />}
+
+      {/* ─── SYSTEMS TAB (NEW) ─── */}
+      {activeTab === "systems" && <SystemsTab />}
+
+      {/* ─── SEARCH CONSOLE TAB ─── */}
+      {activeTab === "search" && (
+        <SearchConsoleTab data={scData} loading={scLoading} />
+      )}
 
       {/* ─── LEADS TAB ─── */}
       {activeTab === "leads" && (
@@ -759,13 +837,13 @@ export default function AnalyticsDashboard() {
         />
       )}
 
-      {/* ─── OVERVIEW TAB ─── */}
-      {activeTab === "overview" && <>
+      {/* ─── OVERVIEW (Traffic) TAB ─── */}
+      {activeTab === "overview" && data && o && u && <>
 
       {/* ─── Overview Stats ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Total Views" value={o.totalViews} prev={o.prevViews} />
-        <StatCard label="Unique Visitors" value={o.uniqueVisitors} prev={o.prevVisitors} />
+        <StatCard label="Distinct IPs (30d)" value={o.uniqueVisitors} prev={o.prevVisitors} />
         <StatCard label="Events / Clicks" value={o.totalEvents} prev={o.prevEvents} />
         <StatCard label="Active Sites" value={o.activeSites} />
       </div>
@@ -887,6 +965,87 @@ export default function AnalyticsDashboard() {
           )}
         </Panel>
       </div>
+
+      {/* ─── Two-column: Top Countries + Top Cities ─── */}
+      {data.geo && (
+        <div className="grid sm:grid-cols-2 gap-4">
+          <Panel title="Top Countries">
+            {data.geo.topCountries.length === 0 ? (
+              <p className="text-xs text-white/30">
+                No geo data yet. New views will be resolved by Vercel edge — give it a few hours.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {data.geo.topCountries.slice(0, 12).map((c) => (
+                  <div
+                    key={c.code}
+                    className="group flex items-center justify-between text-xs cursor-default"
+                    onMouseEnter={(e) =>
+                      showTooltip(
+                        e,
+                        <>{c.code}: <strong>{c.count}</strong> views</>,
+                      )
+                    }
+                    onMouseLeave={hideTooltip}
+                  >
+                    <span className="text-white/60 font-mono uppercase">{c.code}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-20 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-emerald-500/60 transition-all duration-500"
+                          style={{
+                            width: `${
+                              (c.count / (data.geo!.topCountries[0]?.count || 1)) * 100
+                            }%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-white/40 tabular-nums w-8 text-right">{c.count}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
+
+          <Panel title="Top Cities">
+            {data.geo.topCities.length === 0 ? (
+              <p className="text-xs text-white/30">No city data yet</p>
+            ) : (
+              <div className="space-y-2">
+                {data.geo.topCities.slice(0, 12).map((c) => (
+                  <div
+                    key={c.name}
+                    className="group flex items-center justify-between text-xs cursor-default"
+                    onMouseEnter={(e) =>
+                      showTooltip(
+                        e,
+                        <>{c.name}: <strong>{c.count}</strong> views</>,
+                      )
+                    }
+                    onMouseLeave={hideTooltip}
+                  >
+                    <span className="text-white/60 truncate">{c.name}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-20 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-cyan-500/60 transition-all duration-500"
+                          style={{
+                            width: `${
+                              (c.count / (data.geo!.topCities[0]?.count || 1)) * 100
+                            }%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-white/40 tabular-nums w-8 text-right">{c.count}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
+        </div>
+      )}
 
       {/* ─── API Call Types ─── */}
       {u.apiByType.length > 0 && (
@@ -1318,7 +1477,7 @@ function SiteCard({
             <div className="font-bold">{label}</div>
             <div>{site.views} views ({period}d)</div>
             <div>{site.events} events</div>
-            <div>{site.uniqueVisitors} unique visitors</div>
+            <div>{site.uniqueVisitors} distinct IPs</div>
             <div>Top source: {site.topReferrer}</div>
             {growth !== 0 && <div className={growth > 0 ? "text-green-400" : "text-red-400"}>
               {growth > 0 ? "\u2191" : "\u2193"}{Math.abs(growth)}% vs prev period
@@ -2207,6 +2366,192 @@ function GA4Section({
           </Panel>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Search Console Tab ────────────────────────────────────
+function SearchConsoleTab({
+  data,
+  loading,
+}: {
+  data: SearchConsoleData | null;
+  loading: boolean;
+}) {
+  if (loading && !data) {
+    return <div className="text-center text-white/40 py-12">Loading Search Console…</div>;
+  }
+  if (!data) {
+    return <div className="text-center text-white/40 py-12">No Search Console data.</div>;
+  }
+  if (!data.configured) {
+    return (
+      <Panel title="Search Console — not configured">
+        <p className="text-sm text-white/60">
+          Set <code className="text-purple-300">GA4_SERVICE_ACCOUNT_KEY</code> in
+          Vercel env. Same service account used for GA4.
+        </p>
+      </Panel>
+    );
+  }
+  if (data.error) {
+    return (
+      <Panel title="Search Console — error">
+        <p className="text-sm text-red-400 break-words">{data.error}</p>
+        {data.serviceAccountEmail && (
+          <p className="mt-3 text-xs text-white/50">
+            Add <code className="text-purple-300">{data.serviceAccountEmail}</code> as
+            a user in Search Console → Settings → Users and permissions for{" "}
+            <code className="text-purple-300">{data.siteUrl}</code>, then click Refresh.
+          </p>
+        )}
+      </Panel>
+    );
+  }
+
+  const t = data.totals;
+  const ctr = (t.ctr * 100).toFixed(2);
+  const pos = t.position.toFixed(1);
+  const maxImp = Math.max(...data.daily.map((d) => d.impressions), 1);
+  const maxClk = Math.max(...data.daily.map((d) => d.clicks), 1);
+
+  return (
+    <div className="space-y-4">
+      {/* Header with totals */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard label="Clicks" value={t.clicks} />
+        <StatCard label="Impressions" value={t.impressions} />
+        <StatCard label="CTR" value={`${ctr}%`} />
+        <StatCard label="Avg Position" value={pos} />
+      </div>
+
+      <div className="text-xs text-white/40">
+        {data.siteUrl} · {data.range.start} → {data.range.end}
+      </div>
+
+      {/* Daily impressions + clicks chart */}
+      <Panel title="Daily impressions & clicks">
+        {data.daily.length === 0 ? (
+          <p className="text-sm text-white/40">
+            No data for this range yet — Search Console takes 2-3 days to start
+            populating after pages are indexed. Check back tomorrow.
+          </p>
+        ) : (
+          <div className="h-32 flex items-end gap-px">
+            {data.daily.map((d) => (
+              <div key={d.date} className="flex-1 relative h-full" title={`${d.date}: ${d.clicks} clicks / ${d.impressions} impressions`}>
+                <div
+                  className="absolute bottom-0 left-0 right-0 bg-blue-500/30 rounded-t"
+                  style={{ height: `${(d.impressions / maxImp) * 100}%` }}
+                />
+                <div
+                  className="absolute bottom-0 left-0 right-0 bg-purple-500 rounded-t"
+                  style={{ height: `${(d.clicks / maxClk) * 50}%`, minHeight: d.clicks > 0 ? "2px" : "0" }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="mt-2 flex gap-3 text-xs text-white/40">
+          <span><span className="inline-block h-2 w-2 rounded bg-blue-500/40 mr-1" />Impressions</span>
+          <span><span className="inline-block h-2 w-2 rounded bg-purple-500 mr-1" />Clicks (scaled 2x)</span>
+        </div>
+      </Panel>
+
+      {/* Top queries + top pages side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Panel title="Top queries">
+          {data.topQueries.length === 0 ? (
+            <p className="text-sm text-white/40">No query data yet.</p>
+          ) : (
+            <div className="space-y-1 max-h-96 overflow-y-auto">
+              {data.topQueries.map((q) => (
+                <div key={q.query} className="flex items-center gap-3 text-xs py-1 border-b border-white/5 last:border-0">
+                  <span className="flex-1 text-white/80 truncate">{q.query}</span>
+                  <span className="text-white/60 tabular-nums w-12 text-right">{q.clicks} clk</span>
+                  <span className="text-white/40 tabular-nums w-16 text-right">{q.impressions} imp</span>
+                  <span className="text-white/40 tabular-nums w-12 text-right">#{q.position.toFixed(0)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Panel>
+
+        <Panel title="Top pages">
+          {data.topPages.length === 0 ? (
+            <p className="text-sm text-white/40">No page data yet.</p>
+          ) : (
+            <div className="space-y-1 max-h-96 overflow-y-auto">
+              {data.topPages.map((p) => {
+                let display = p.page;
+                try {
+                  const url = new URL(p.page);
+                  display = url.pathname || "/";
+                } catch { /* keep original */ }
+                return (
+                  <div key={p.page} className="flex items-center gap-3 text-xs py-1 border-b border-white/5 last:border-0">
+                    <a href={p.page} target="_blank" rel="noopener noreferrer" className="flex-1 text-purple-300 hover:text-purple-200 truncate">
+                      {display}
+                    </a>
+                    <span className="text-white/60 tabular-nums w-12 text-right">{p.clicks} clk</span>
+                    <span className="text-white/40 tabular-nums w-16 text-right">{p.impressions} imp</span>
+                    <span className="text-white/40 tabular-nums w-12 text-right">#{p.position.toFixed(0)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Panel>
+      </div>
+
+      {/* Country + device */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Panel title="By country">
+          {data.byCountry.length === 0 ? (
+            <p className="text-sm text-white/40">No country data yet.</p>
+          ) : (
+            <div className="space-y-1">
+              {data.byCountry.map((c) => {
+                const max = Math.max(...data.byCountry.map((x) => x.impressions), 1);
+                return (
+                  <div key={c.country} className="flex items-center gap-3 text-xs">
+                    <span className="w-12 uppercase text-white/70">{c.country}</span>
+                    <div className="flex-1 h-3 bg-white/5 rounded overflow-hidden">
+                      <div className="h-full bg-blue-500/60 rounded" style={{ width: `${(c.impressions / max) * 100}%` }} />
+                    </div>
+                    <span className="text-white/50 tabular-nums w-12 text-right">{c.clicks}/{c.impressions}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Panel>
+
+        <Panel title="By device">
+          {data.byDevice.length === 0 ? (
+            <p className="text-sm text-white/40">No device data yet.</p>
+          ) : (
+            <div className="space-y-1">
+              {data.byDevice.map((d) => {
+                const max = Math.max(...data.byDevice.map((x) => x.impressions), 1);
+                return (
+                  <div key={d.device} className="flex items-center gap-3 text-xs">
+                    <span className="w-16 capitalize text-white/70">{d.device.toLowerCase()}</span>
+                    <div className="flex-1 h-3 bg-white/5 rounded overflow-hidden">
+                      <div className="h-full bg-emerald-500/60 rounded" style={{ width: `${(d.impressions / max) * 100}%` }} />
+                    </div>
+                    <span className="text-white/50 tabular-nums w-12 text-right">{d.clicks}/{d.impressions}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Panel>
+      </div>
+
+      <div className="text-xs text-white/30 text-center pt-2">
+        Source: Google Search Console · {data.serviceAccountEmail && `auth: ${data.serviceAccountEmail}`}
+      </div>
     </div>
   );
 }

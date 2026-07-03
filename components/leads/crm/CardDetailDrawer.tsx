@@ -19,7 +19,10 @@ type TabId =
   | "activity"
   | "tasks"
   | "notes"
-  | "actions";
+  | "actions"
+  | "docs"
+  | "cma"
+  | "dossier";
 
 function timeAgo(dateStr: string): string {
   const now = Date.now();
@@ -244,12 +247,15 @@ export default function CardDetailDrawer({
   if (!lead) return null;
 
   const TABS: Array<{ id: TabId; label: string }> = [
+    { id: "activity", label: "Activity" },
     { id: "contact", label: "Contact" },
     { id: "property", label: "Property" },
-    { id: "tags", label: "Tags" },
-    { id: "activity", label: "Activity" },
-    { id: "tasks", label: "Tasks" },
     { id: "notes", label: "Notes" },
+    { id: "tasks", label: "Tasks" },
+    { id: "tags", label: "Tags" },
+    { id: "docs", label: "Docs" },
+    { id: "cma", label: "CMA" },
+    { id: "dossier", label: "Dossier" },
     { id: "actions", label: "Actions" },
   ];
 
@@ -637,6 +643,75 @@ export default function CardDetailDrawer({
                   Note History
                 </p>
                 <ActivityTimeline key={`notes-${refreshKey}`} leadId={lead.id} />
+              </div>
+            </div>
+          )}
+
+          {/* Docs — placeholder slot; real doc attachments will land here. */}
+          {activeTab === "docs" && (
+            <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
+              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-white/50">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <path d="M14 2v6h6" />
+                </svg>
+              </div>
+              <p className="text-sm text-white/70">No documents yet</p>
+              <p className="mt-1 text-xs text-white/40">
+                Contracts, disclosures, and inspection reports will appear here.
+              </p>
+            </div>
+          )}
+
+          {/* CMA — launches the comps flow for this listing. */}
+          {activeTab === "cma" && (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                <h3 className="text-sm font-medium text-white/80">Comps analysis</h3>
+                <p className="mt-1 text-xs text-white/50">
+                  {lead.listing?.address
+                    ? `Run a CMA for ${lead.listing.address}.`
+                    : "No linked listing — add one first."}
+                </p>
+                {lead.listing?.id && (
+                  <a
+                    href={`/leads/comps?listingId=${lead.listing.id}`}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20"
+                  >
+                    Run CMA →
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Dossier — launches/resumes the research pipeline. */}
+          {activeTab === "dossier" && (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                <h3 className="text-sm font-medium text-white/80">Research dossier</h3>
+                <p className="mt-1 text-xs text-white/50">
+                  Motivation score, owner history, court records, permits,
+                  environmental, financial, and AI summary — all in one report.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <a
+                    href={
+                      lead.listing?.address
+                        ? `/leads/dossier?address=${encodeURIComponent(lead.listing.address)}`
+                        : "/leads/dossier"
+                    }
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300 hover:bg-blue-500/20"
+                  >
+                    Build dossier →
+                  </a>
+                  <a
+                    href={`/leads/${lead.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70 hover:bg-white/10"
+                  >
+                    View existing
+                  </a>
+                </div>
               </div>
             </div>
           )}

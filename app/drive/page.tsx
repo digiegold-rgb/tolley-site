@@ -1,14 +1,61 @@
 import Link from "next/link";
 
-export const metadata = {
-  title: "Drive with Red Alert Dispatch | Earn 82% of Every Delivery",
-  description:
-    "KC delivery drivers: keep 82% of what clients pay. No signup fees. Same deliveries, way better pay.",
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Service",
+  name: "Red Alert Dispatch — Driver Program",
+  description: "Kansas City delivery drivers keep 82% of every delivery. No signup fees, instant pay via Stripe. AI-dispatched — better pay than Spark, Roadie, or GoShare.",
+  url: "https://www.tolley.io/drive",
+  telephone: "913-283-3826",
+  areaServed: [
+    { "@type": "City", name: "Independence", containedInPlace: { "@type": "State", name: "Missouri" } },
+    { "@type": "City", name: "Kansas City", containedInPlace: { "@type": "State", name: "Missouri" } },
+    { "@type": "City", name: "Lee's Summit", containedInPlace: { "@type": "State", name: "Missouri" } },
+  ],
+  provider: {
+    "@type": "Organization",
+    name: "Red Alert Dispatch",
+    url: "https://www.tolley.io/lastmile",
+  },
+};
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "How much do Red Alert Dispatch drivers earn?",
+      acceptedAnswer: { "@type": "Answer", text: "Drivers keep 82% of every delivery. Typical gig apps take 60% — we only take 18%, so you earn more per delivery." },
+    },
+    {
+      "@type": "Question",
+      name: "Is there a fee to sign up as a delivery driver?",
+      acceptedAnswer: { "@type": "Answer", text: "No signup fee — $0 to apply. GoShare charges $49. We charge nothing. You keep more from day one." },
+    },
+    {
+      "@type": "Question",
+      name: "How does Red Alert Dispatch compare to Spark or Roadie?",
+      acceptedAnswer: { "@type": "Answer", text: "Gig platforms take 40–60% per delivery. Red Alert takes only 18%, so you keep 82%. Instant pay via Stripe, no minimums, your schedule." },
+    },
+    {
+      "@type": "Question",
+      name: "How do drivers get dispatched?",
+      acceptedAnswer: { "@type": "Answer", text: "Get orders via text (SMS). Reply YES to accept. AI matching sends you orders closest to your location." },
+    },
+    {
+      "@type": "Question",
+      name: "What area does Red Alert Dispatch operate in?",
+      acceptedAnswer: { "@type": "Answer", text: "Kansas City metro only — local deliveries, local drivers, local support." },
+    },
+  ],
 };
 
 export default function DriverRecruitPage() {
   return (
     <main className="relative z-10 min-h-screen">
+      <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+      <script type="application/ld+json">{JSON.stringify(faqJsonLd)}</script>
       {/* Hero */}
       <section className="px-5 pt-16 pb-12 text-center">
         <h1 className="text-5xl sm:text-6xl font-extrabold text-white tracking-tight lm-neon-text">

@@ -51,6 +51,7 @@ export interface HqQueueTouch extends HqTouch {
     email: string | null;
     phone: string | null;
     stage: string;
+    score: number | null;
   };
 }
 

@@ -1,4 +1,3 @@
-// @ts-nocheck — references removed Prisma models
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -49,7 +48,7 @@ export async function POST(request: NextRequest) {
         ...(leadId ? { leadId } : {}),
         ...(clientId ? { clientId } : {}),
       },
-      include: { tag: true },
+      include: { Tag: true },
     });
 
     // Log activity

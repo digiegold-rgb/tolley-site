@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useToast } from "@/components/ui/Toast";
 
 interface AutoResponderData {
   id?: string;
@@ -39,6 +40,7 @@ const PROMPT_OPTIONS = [
 ];
 
 export default function AutoResponderConfig() {
+  const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -60,9 +62,23 @@ export default function AutoResponderConfig() {
   });
 
   useEffect(() => {
-    fetch("/api/leads/auto-responder")
-      .then((r) => r.json())
-      .then((data) => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/leads/auto-responder");
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          if (!cancelled) {
+            toast({
+              title: "Couldn't load auto-responder config",
+              description: err?.error ?? `Server returned ${res.status}`,
+              variant: "error",
+            });
+          }
+          return;
+        }
+        const data = await res.json();
+        if (cancelled) return;
         if (data.config) {
           setConfig({
             ...data.config,
@@ -71,10 +87,22 @@ export default function AutoResponderConfig() {
           });
         }
         if (data.limits) setLimits(data.limits);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+      } catch (err) {
+        if (!cancelled) {
+          toast({
+            title: "Network error",
+            description: err instanceof Error ? err.message : undefined,
+            variant: "error",
+          });
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [toast]);
 
   const save = async () => {
     setSaving(true);
@@ -84,10 +112,30 @@ export default function AutoResponderConfig() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: "Couldn't save auto-responder",
+          description: err?.error ?? `Server returned ${res.status}`,
+          variant: "error",
+        });
+        return;
+      }
       const data = await res.json();
-      if (data.config) setConfig({ ...data.config, notifyPhone: data.config.notifyPhone || "", notifyEmail: data.config.notifyEmail || "" });
-    } catch {
-      // silent
+      if (data.config) {
+        setConfig({
+          ...data.config,
+          notifyPhone: data.config.notifyPhone || "",
+          notifyEmail: data.config.notifyEmail || "",
+        });
+      }
+      toast({ title: "Auto-responder saved", variant: "success" });
+    } catch (err) {
+      toast({
+        title: "Network error",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "error",
+      });
     } finally {
       setSaving(false);
     }

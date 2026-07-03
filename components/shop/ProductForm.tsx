@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { SHOP_CATEGORIES } from "@/lib/shop";
 import { SOURCING_TYPES, CONDITIONS } from "@/lib/shop/types";
+import { PhotoSourcePicker } from "./PhotoSourcePicker";
+import { uploadShopPhoto } from "@/lib/shop/upload-client";
 
 interface ProductFormProps {
   onSuccess: () => void;
@@ -28,10 +30,9 @@ export function ProductForm({ onSuccess, onCancel, lotId }: ProductFormProps) {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [posting, setPosting] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
-  function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || []);
+  function handleFiles(fileList: FileList) {
+    const files = Array.from(fileList);
     setImageFiles((prev) => [...prev, ...files]);
     files.forEach((file) => {
       const reader = new FileReader();
@@ -53,17 +54,11 @@ export function ProductForm({ onSuccess, onCancel, lotId }: ProductFormProps) {
     setPosting(true);
 
     try {
-      // Upload images
+      // Upload images — client-direct to Vercel Blob to bypass the
+      // ~4.5MB serverless body limit that blocks full-res camera-roll photos.
       const imageUrls: string[] = [];
       for (const file of imageFiles) {
-        const formData = new FormData();
-        formData.append("file", file);
-        const upRes = await fetch("/api/shop/upload", {
-          method: "POST",
-          body: formData,
-        });
-        if (!upRes.ok) throw new Error("Upload failed");
-        const { url } = await upRes.json();
+        const url = await uploadShopPhoto(file);
         imageUrls.push(url);
       }
 
@@ -111,49 +106,45 @@ export function ProductForm({ onSuccess, onCancel, lotId }: ProductFormProps) {
 
       {/* Photo upload */}
       <div className="mt-3">
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          multiple
-          onChange={handleFiles}
-          className="hidden"
-        />
-        {imagePreviews.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {imagePreviews.map((src, i) => (
-              <div key={i} className="relative h-20 w-20 overflow-hidden rounded-lg">
-                <Image src={src} alt="" fill className="object-cover" />
+        <PhotoSourcePicker onFiles={handleFiles} multiple>
+          {(openPicker) =>
+            imagePreviews.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {imagePreviews.map((src, i) => (
+                  <div key={i} className="relative h-20 w-20 overflow-hidden rounded-lg">
+                    <Image src={src} alt="" fill className="object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(i)}
+                      className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-xs text-white"
+                    >
+                      x
+                    </button>
+                  </div>
+                ))}
                 <button
                   type="button"
-                  onClick={() => removeImage(i)}
-                  className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-xs text-white"
+                  onClick={openPicker}
+                  className="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-white/20 text-2xl text-white/30"
                 >
-                  x
+                  +
                 </button>
               </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-white/20 text-2xl text-white/30"
-            >
-              +
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="shop-upload-zone flex w-full items-center justify-center rounded-xl py-6"
-          >
-            <div className="text-center">
-              <p className="text-2xl">📷</p>
-              <p className="mt-1 text-xs text-white/40">Add photos</p>
-            </div>
-          </button>
-        )}
+            ) : (
+              <button
+                type="button"
+                onClick={openPicker}
+                className="shop-upload-zone flex w-full items-center justify-center rounded-xl py-6"
+              >
+                <div className="text-center">
+                  <p className="text-2xl">📷</p>
+                  <p className="mt-1 text-xs text-white/40">Add photos</p>
+                  <p className="mt-0.5 text-[0.65rem] text-white/30">Camera or camera roll</p>
+                </div>
+              </button>
+            )
+          }
+        </PhotoSourcePicker>
       </div>
 
       {/* Core fields */}

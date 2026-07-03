@@ -16,19 +16,16 @@ import type {
   DossierPluginResult,
   SourceLink,
 } from "../types";
-
-const VLLM_MODEL = "Qwen/Qwen3.5-35B-A3B-FP8";
+import { chatCompletion } from "@/lib/llm";
 
 interface GeneratedContent {
   propertySummary: string;
   socialPosts: {
     facebook: string;
     instagram: string;
-    linkedin: string;
     twitter: string;
   };
   smsTemplate: string;
-  dripEmails: Array<{ subject: string; body: string }>;
 }
 
 /**
@@ -157,72 +154,71 @@ export const contentGeneratePlugin: DossierPlugin = {
     const sources: SourceLink[] = [];
     const warnings: string[] = [];
 
-    const vllmBase = process.env.VLLM_URL || "http://127.0.0.1:8355/v1";
-
     await context.updateProgress("Building property context for content generation...");
 
     const propertySummaryText = buildContextSummary(context);
 
-    const systemPrompt = `You are a real estate marketing content writer. Given property data, generate JSON with exactly these keys:
+    // Trimmed scope — 2048 tokens at ~20 tok/s over the tunnel blew past
+    // Vercel's 300s function budget. Ask for a tight core pack (~600 tokens)
+    // that finishes in 30-45s. Users can regenerate fuller content on demand
+    // from the UI if they want more.
+    const systemPrompt = `You are a real estate marketing content writer. Return ONLY valid JSON matching this exact shape, no markdown fences, no extra text:
 
 {
-  "propertySummary": "2-3 sentence compelling property description highlighting key features and value proposition",
+  "propertySummary": "2-3 sentences, compelling, highlights value prop",
   "socialPosts": {
-    "facebook": "Engaging post with emojis, neighborhood highlights, call to action. 2-3 paragraphs.",
-    "instagram": "Visual-focused caption with relevant hashtags (10-15). Short punchy sentences.",
-    "linkedin": "Professional tone, investment angle or market insight. 1-2 paragraphs.",
-    "twitter": "Under 280 chars. Punchy with 2-3 hashtags."
+    "facebook": "1-2 paragraphs with emojis and a call to action",
+    "instagram": "Short punchy caption with 8-10 relevant hashtags",
+    "twitter": "Under 280 chars, 2-3 hashtags"
   },
-  "smsTemplate": "A2P compliant SMS under 160 characters total including opt-out. Must end with: Reply STOP to unsubscribe",
-  "dripEmails": [
-    { "subject": "Intro email subject", "body": "Friendly introduction referencing the property, under 150 words" },
-    { "subject": "Value prop subject", "body": "Market data or neighborhood highlights that add value, under 150 words" },
-    { "subject": "Follow-up subject", "body": "Soft follow-up with clear call to action, under 150 words" }
-  ]
+  "smsTemplate": "Under 160 chars total, ends with: Reply STOP to unsubscribe"
 }
 
 Rules:
-- Return ONLY valid JSON, no markdown fences, no extra text
-- SMS must be under 160 characters total and must include "Reply STOP to unsubscribe"
-- All content should feel authentic, not spammy
-- Reference specific property details (beds, baths, sqft, price, neighborhood) when available
-- Drip emails should progress: intro -> value -> follow-up
-- Do not fabricate details not present in the data`;
+- Reference real property details (beds/baths/sqft/price) when available
+- Don't fabricate details not in the input
+- Authentic tone, not spammy
+- SMS MUST end with "Reply STOP to unsubscribe" and be under 160 characters`;
 
     const userPrompt = `Generate marketing content for this property:\n\n${propertySummaryText}`;
 
     await context.updateProgress("Generating marketing content via AI...");
 
     let generatedContent: GeneratedContent;
-    let tokensUsed: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } = {};
+    let totalTokens = 0;
 
+    // Uses the shared chatCompletion helper (LLM_API_URL env var) — routes
+    // through the public Cloudflare tunnel to vLLM on DGX Spark. The old
+    // hardcoded 127.0.0.1:8355 fallback was unreachable from Vercel.
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 60000);
-
-      const response = await fetch(`${vllmBase}/chat/completions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: VLLM_MODEL,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
+      const response = await chatCompletion(
+        [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        {
+          // 800 tokens ≈ 40s on Qwen3.5-35B over the tunnel when warm.
+          // Hard cap at 30s: if vLLM is cold or backlogged, bail early
+          // rather than burning the Vercel function's 300s budget on one
+          // plugin. Content generation is nice-to-have, not critical — the
+          // dossier is useful without it, and the user can regenerate from
+          // the UI later.
+          maxTokens: 800,
           temperature: 0.7,
-          max_tokens: 2048,
-        }),
-        signal: controller.signal,
-      });
+          timeoutMs: 30_000,
+          route: "dossier/content-generate",
+          type: "dossier-content",
+          meta: { jobId: context.jobId },
+        }
+      );
 
-      clearTimeout(timeout);
+      totalTokens = response.tokensUsed;
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => "Unknown error");
+      if (!response.text) {
         return {
           pluginName: "content-generate",
           success: false,
-          error: `vLLM returned ${response.status}: ${errorText}`,
+          error: "LLM returned empty content",
           data: {},
           sources: [],
           confidence: 0,
@@ -231,36 +227,18 @@ Rules:
         };
       }
 
-      const result = await response.json();
-      const rawContent = result.choices?.[0]?.message?.content;
-      tokensUsed = result.usage || {};
-
-      if (!rawContent) {
-        return {
-          pluginName: "content-generate",
-          success: false,
-          error: "vLLM returned empty content",
-          data: {},
-          sources: [],
-          confidence: 0,
-          warnings: [],
-          durationMs: Date.now() - start,
-        };
-      }
-
-      const jsonStr = extractJson(rawContent);
+      const jsonStr = extractJson(response.text);
       generatedContent = JSON.parse(jsonStr) as GeneratedContent;
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : String(err);
+      const message = err instanceof Error ? err.message : String(err);
       const isTimeout =
         message.includes("abort") || message.includes("timeout");
       return {
         pluginName: "content-generate",
         success: false,
         error: isTimeout
-          ? "vLLM request timed out after 60 seconds"
-          : `vLLM request failed: ${message}`,
+          ? "LLM request timed out after 30s — vLLM may be cold or backlogged; content-generate will be skipped this run"
+          : `LLM request failed: ${message}`,
         data: {},
         sources: [],
         confidence: 0,
@@ -283,17 +261,10 @@ Rules:
         `SMS template is ${generatedContent.smsTemplate.length} chars (over 160 limit)`
       );
     }
-    if (
-      !generatedContent.dripEmails ||
-      !Array.isArray(generatedContent.dripEmails) ||
-      generatedContent.dripEmails.length < 3
-    ) {
-      warnings.push("LLM returned fewer than 3 drip emails");
-    }
 
     sources.push({
-      label: "AI Content — Local vLLM (Qwen3.5-35B)",
-      url: vllmBase,
+      label: "AI Content — vLLM (Qwen3.5-35B-A3B-FP8)",
+      url: process.env.LLM_API_URL || "vllm",
       type: "other",
       fetchedAt: new Date().toISOString(),
     });
@@ -303,7 +274,7 @@ Rules:
       success: true,
       data: {
         generatedContent,
-        llmTokensUsed: tokensUsed,
+        llmTokensUsed: totalTokens,
       },
       sources,
       confidence: 0.8,

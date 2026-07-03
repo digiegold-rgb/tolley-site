@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { ClientPortal } from "@/components/client/ClientPortal";
+import { CinematicPortal } from "@/components/client/v2/CinematicPortal";
 
 export const revalidate = 300;
 
@@ -19,7 +19,7 @@ export default async function ClientPage() {
   let snapshotHistory: SnapData[] = [];
   let signals: { id: string; signal: string; confidence: number; title: string; reasoning: string; scope: string; category: string; timeHorizon: string | null }[] = [];
   let dataPoints: { id: string; type: string; title: string; url?: string; summary: string | null; sentiment: number | null; signal: string | null; tags: string[]; publishedAt: string | null; createdAt: string }[] = [];
-  let listings: { id: string; mlsId: string; address: string; city: string | null; state: string | null; zip: string | null; listPrice: number | null; beds: number | null; baths: number | null; sqft: number | null; daysOnMarket: number | null; photoUrl: string | null; buyScore: number; propertyType: string | null }[] = [];
+  let listings: { id: string; mlsId: string; address: string; city: string | null; state: string | null; zip: string | null; listPrice: number | null; beds: number | null; baths: number | null; sqft: number | null; daysOnMarket: number | null; photoUrl: string | null; buyScore: number; propertyType: string | null; listingUrl: string | null }[] = [];
   let digest: { headline: string; keyChanges: unknown; riskFactors: unknown; opportunities: unknown; date: string } | null = null;
   let marketStats = { activeListings: 0, dataPoints: 0, activeSignals: 0, poiCount: 0, metroAreas: 12 };
   let listingsByCity: Record<string, number> = {};
@@ -83,6 +83,7 @@ export default async function ClientPage() {
             daysOnMarket: true,
             photoUrls: true,
             propertyType: true,
+            listingUrl: true,
             enrichment: { select: { buyScore: true } },
           },
           orderBy: [{ daysOnMarket: "asc" }],
@@ -168,6 +169,7 @@ export default async function ClientPage() {
       photoUrl: l.photoUrls?.[0] || null,
       propertyType: l.propertyType,
       buyScore: l.enrichment?.buyScore ?? 0,
+      listingUrl: l.listingUrl,
     }));
 
     if (rawDigest) {
@@ -199,14 +201,16 @@ export default async function ClientPage() {
     console.error("[client] Failed to load data:", e);
   }
 
+  // dataPoints + digest reserved for future cinematic sections
+  void dataPoints;
+  void digest;
+
   return (
-    <ClientPortal
+    <CinematicPortal
       snapshot={latestSnapshot}
       snapshots={snapshotHistory}
       signals={signals}
-      dataPoints={dataPoints}
       listings={listings}
-      digest={digest}
       marketStats={marketStats}
       listingsByCity={listingsByCity}
     />

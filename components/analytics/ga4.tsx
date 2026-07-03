@@ -2,7 +2,10 @@
 
 import Script from "next/script";
 
-const GA4_ID = process.env.NEXT_PUBLIC_GA4_ID;
+// .trim() defends against a stray trailing newline/space in the env var — without it
+// the value lands inside a JS string literal in the inline <Script> below and throws
+// "appendChild ... Invalid or unexpected token", killing the script on every page.
+const GA4_ID = process.env.NEXT_PUBLIC_GA4_ID?.trim();
 
 /** Google Analytics 4 — only renders when NEXT_PUBLIC_GA4_ID is set */
 export function GA4() {

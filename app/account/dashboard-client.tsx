@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import MileageTracker from '@/components/account/mileage-tracker';
 import {
   BarChart,
   Bar,
@@ -28,11 +29,39 @@ interface Transaction {
   bankAccount?: { name: string } | null;
 }
 
+interface UnpaidItem {
+  id: string;
+  invoiceNumber: string;
+  status: string;
+  issueDate: string;
+  dueDate: string | null;
+  amountDue: number;
+  contactName: string | null;
+  isOverdue: boolean;
+}
+
+interface UnpaidBreakdown {
+  totalDue: number;
+  count: number;
+  overdueDue: number;
+  overdueCount: number;
+  items: UnpaidItem[];
+}
+
+interface AccountFreshness {
+  name: string;
+  lastTxDate: string | null;
+  daysStale: number | null;
+  isPlaidLinked: boolean;
+  txCount: number;
+}
+
 interface Overview {
   revenueMTD: number;
   expensesMTD: number;
   netMTD: number;
   unpaidInvoices: number;
+  unpaidBreakdown?: UnpaidBreakdown;
   uncategorizedTx: number;
   recentTransactions: Transaction[];
   // YTD
@@ -58,6 +87,10 @@ interface Overview {
     totalContacts: number;
     totalInvoices: number;
     dateRange: { oldest: string | null; newest: string | null };
+  };
+  freshness?: {
+    lastIngestAt: string | null;
+    perAccount: AccountFreshness[];
   };
 }
 
@@ -96,27 +129,28 @@ export default function DashboardClient() {
     }
   }, []);
 
-  const syncXero = useCallback(async () => {
+  const triggerSync = useCallback(async () => {
     setSyncing(true);
     setSyncResult(null);
     try {
-      const res = await fetch('/api/account/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
+      const res = await fetch('/api/account/sync', { method: 'POST' });
       const json = await res.json();
       if (json.success) {
-        const t = json.totals;
-        setSyncResult(
-          `Synced: ${t.accounts} accounts, ${t.transactions} transactions, ${t.invoices} invoices, ${t.contacts} contacts`,
-        );
+        if (json.liveSync?.error) {
+          setSyncResult(
+            `Auto-sync runs daily 7:05 AM CT. Refreshed view from DB.`,
+          );
+        } else {
+          setSyncResult(
+            `Plaid pulled ${json.liveSync.added ?? 0} new transactions (${json.liveSync.total ?? 0} cached).`,
+          );
+        }
         fetchData();
       } else {
-        setSyncResult(`Sync error: ${json.error}`);
+        setSyncResult(`Refresh error: ${json.error || 'unknown'}`);
       }
     } catch (e) {
-      setSyncResult(`Sync failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      setSyncResult(`Refresh failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
     } finally {
       setSyncing(false);
     }
@@ -215,46 +249,56 @@ export default function DashboardClient() {
   return (
     <div className="space-y-6">
       {/* Sync Bar */}
-      <div className="flex items-center justify-between bg-white/[0.03] border border-white/[0.08] rounded-xl px-5 py-3">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between bg-white/[0.03] border border-white/[0.08] rounded-xl px-5 py-3 flex-wrap gap-3">
+        <div className="flex items-center gap-4 flex-wrap">
           <div className="text-xs text-white/40">
-            {data.dbStats.totalTransactions} transactions |{' '}
-            {data.dbStats.dateRange.oldest
-              ? new Date(data.dbStats.dateRange.oldest).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })
-              : '—'}{' '}
-            to{' '}
-            {data.dbStats.dateRange.newest
-              ? new Date(data.dbStats.dateRange.newest).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })
-              : '—'}
+            {data.dbStats.totalTransactions} transactions
           </div>
+          {data.freshness?.perAccount?.slice(0, 4).map((acct) => {
+            const stale = (acct.daysStale ?? 0) > 3 && acct.isPlaidLinked;
+            const veryStale = (acct.daysStale ?? 0) > 7;
+            const color = veryStale
+              ? 'text-red-400'
+              : stale
+                ? 'text-amber-400'
+                : 'text-emerald-400';
+            const dot = veryStale ? 'bg-red-400' : stale ? 'bg-amber-400' : 'bg-emerald-400';
+            return (
+              <div key={acct.name} className="flex items-center gap-1.5 text-xs">
+                <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+                <span className="text-white/70">{acct.name}</span>
+                <span className={color}>
+                  {acct.lastTxDate
+                    ? new Date(acct.lastTxDate).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })
+                    : '—'}
+                </span>
+              </div>
+            );
+          })}
           {syncResult && (
             <span
-              className={`text-xs ${syncResult.includes('error') || syncResult.includes('failed') ? 'text-red-400' : 'text-emerald-400'}`}
+              className={`text-xs ${syncResult.toLowerCase().includes('error') || syncResult.toLowerCase().includes('failed') ? 'text-red-400' : 'text-emerald-400'}`}
             >
               {syncResult}
             </span>
           )}
         </div>
         <button
-          onClick={syncXero}
+          onClick={triggerSync}
           disabled={syncing}
           className="flex items-center gap-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/30 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
+          title="Auto-sync runs daily at 7:05 AM CT via Plaid"
         >
           {syncing ? (
             <>
               <div className="h-3 w-3 animate-spin rounded-full border border-cyan-400 border-t-transparent" />
-              Syncing...
+              Refreshing...
             </>
           ) : (
-            'Sync from Xero'
+            'Refresh'
           )}
         </button>
       </div>
@@ -277,6 +321,9 @@ export default function DashboardClient() {
               <p className="text-[10px] text-white/30 mt-1">
                 {s.priorLabel}: {fmt.format(s.prior)}
               </p>
+            )}
+            {s.label === 'Unpaid Invoices' && data.unpaidBreakdown && data.unpaidBreakdown.count > 0 && (
+              <UnpaidByCustomerSplit breakdown={data.unpaidBreakdown} />
             )}
           </div>
         ))}
@@ -380,6 +427,9 @@ export default function DashboardClient() {
       {/* Reconciliation Status */}
       <ReconciliationCard />
 
+      {/* Mileage Tracker — IRS standard-mileage deduction */}
+      <MileageTracker />
+
       {/* Recent Transactions */}
       <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl backdrop-blur-sm overflow-hidden">
         <div className="flex items-center justify-between p-5 border-b border-white/[0.08]">
@@ -426,7 +476,7 @@ export default function DashboardClient() {
               {data.recentTransactions.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-5 py-8 text-center text-white/30">
-                    No transactions yet — click &quot;Sync from Xero&quot; to import
+                    No transactions yet — Plaid sync runs daily at 7:05 AM CT
                   </td>
                 </tr>
               )}
@@ -522,6 +572,40 @@ function ReconciliationCard() {
         {total} Stripe payouts checked against bank deposits
         {recon.lastRun ? ` \u00B7 Last run ${new Date(recon.lastRun).toLocaleString()}` : ''}
       </p>
+    </div>
+  );
+}
+
+function UnpaidByCustomerSplit({ breakdown }: { breakdown: UnpaidBreakdown }) {
+  // Group amountDue by contact name; sort by largest balance.
+  const byCustomer = new Map<string, { amount: number; count: number }>();
+  for (const item of breakdown.items) {
+    const name = item.contactName ?? 'No contact';
+    const cur = byCustomer.get(name) ?? { amount: 0, count: 0 };
+    cur.amount += item.amountDue;
+    cur.count += 1;
+    byCustomer.set(name, cur);
+  }
+  const rows = Array.from(byCustomer.entries())
+    .map(([name, v]) => ({ name, ...v }))
+    .sort((a, b) => b.amount - a.amount);
+
+  return (
+    <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-1">
+      <p className="text-[9px] uppercase tracking-wider text-white/40 mb-1">
+        Total {fmt.format(breakdown.totalDue)} due
+      </p>
+      {rows.map((r) => (
+        <div key={r.name} className="flex items-center justify-between gap-2 text-[11px]">
+          <span className="text-white/70 truncate">
+            {r.name}
+            {r.count > 1 && <span className="text-white/30"> ×{r.count}</span>}
+          </span>
+          <span className="text-amber-300 font-medium tabular-nums">
+            {fmt.format(r.amount)}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

@@ -2,17 +2,22 @@ import { redirect, notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { StyleEditor } from "@/components/vater/styles/StyleEditor";
+import { StyleEditorSimple } from "@/components/vater/styles/StyleEditorSimple";
 
 export const dynamic = "force-dynamic";
 
-type Ctx = { params: Promise<{ id: string }> };
+type Ctx = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ simple?: string }>;
+};
 
-export default async function StyleEditPage({ params }: Ctx) {
+export default async function StyleEditPage({ params, searchParams }: Ctx) {
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/api/auth/signin?callbackUrl=/vater/youtube/styles");
   }
   const { id } = await params;
+  const { simple } = await searchParams;
 
   const style = await prisma.youTubeStyle.findUnique({
     where: { id },
@@ -30,5 +35,14 @@ export default async function StyleEditPage({ params }: Ctx) {
     );
   }
 
-  return <StyleEditor initialStyle={JSON.parse(JSON.stringify(style))} />;
+  const serialized = JSON.parse(JSON.stringify(style));
+
+  // Default to simple view; ?simple=0 opts into the full editor
+  const useSimple = simple !== "0";
+
+  return useSimple ? (
+    <StyleEditorSimple initialStyle={serialized} />
+  ) : (
+    <StyleEditor initialStyle={serialized} />
+  );
 }
