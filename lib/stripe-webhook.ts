@@ -696,8 +696,16 @@ export async function fulfillShopSale(
         shippingAddress: shippingAddressJson ?? undefined,
         buyerName,
         buyerEmail,
+        buyerPhone,
         buyerLocation,
         fulfillment,
+        // Checkout doesn't ask for marketing consent today — defaults false
+        // per Amazon's opted-in-messaging rule (see ShopSale.marketingOptIn
+        // comment in schema.prisma). To collect real opt-ins here later, add
+        // a checkbox to the Stripe Checkout success/cancel flow or a custom
+        // field on the Checkout Session (Stripe supports `custom_fields`)
+        // and thread it through to this call.
+        marketingOptIn: false,
       },
     });
 

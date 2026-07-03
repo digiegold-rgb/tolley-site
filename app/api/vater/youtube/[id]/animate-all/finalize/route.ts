@@ -113,12 +113,15 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
       // Charge per succeeded scene at the customer price for the tier the
       // DGX actually used. Idempotent on (jobId, sceneIdx) — finalize can be
-      // re-called safely without double-charging.
+      // re-called safely without double-charging. Billed to the project OWNER,
+      // not the acting session — an admin assisting a customer must not pay
+      // for the customer's batch (mirrors poll/route.ts:490). Legacy null-owner
+      // projects are admin-only and skip billing.
       const price = getAnimationPrice(r.quality);
       const priceCents = price?.priceCents ?? 0;
-      if (priceCents > 0) {
+      if (priceCents > 0 && project.userId) {
         await recordUsage({
-          userId: session.user.id,
+          userId: project.userId,
           action: "animation",
           tier: r.quality,
           projectId: id,
@@ -126,7 +129,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
           overrideCostCents: priceCents,
         });
         chargedCents += priceCents;
-      } else {
+      } else if (priceCents <= 0) {
         console.error(
           `[vater-billing] no price for quality "${r.quality}" — scene ${r.sceneIdx} NOT charged`,
         );

@@ -24,6 +24,7 @@ import {
 import { pickOwnerInfo } from "@/lib/leads/owner-info";
 import { runSellerSeed, type SellerSeedResult } from "@/lib/leads/seller-seed";
 import { checkMlsSync, type MlsSyncStatus } from "@/lib/health/mls-sync-check";
+import { notifyTelegram } from "@/lib/budget/notify";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -84,7 +85,10 @@ async function leadsForSubscriber(
 
   const jobs = (await prisma.dossierJob.findMany({
     where: {
-      status: "done",
+      // Writers (lib/dossier/pipeline.ts) emit complete|partial|failed; a
+      // handful of legacy rows use "done". A "partial" job with a scored
+      // result (result isNot null below) is still a usable lead.
+      status: { in: ["complete", "done", "partial"] },
       createdAt: { gte: since },
       result: { isNot: null },
       listing: {
@@ -229,6 +233,20 @@ async function handler(req: NextRequest) {
     sent: sentCount,
     weekOf,
   });
+
+  // Never let an empty Monday be silent. If we have paying/trial subscribers
+  // but shipped 0 digests (no qualifying dossiers in anyone's farm zips), fire
+  // a Telegram alert so the dry pipeline surfaces instead of quietly no-op'ing
+  // for weeks. Awaited so it flushes before the serverless function returns.
+  if (subs.length > 0 && sentCount === 0) {
+    try {
+      await notifyTelegram(
+        `🔴 Monday digest shipped 0 of ${subs.length} subscribers — no qualifying dossiers in any farm zip this week. Lead producer is dry; investigate before next Monday.`,
+      );
+    } catch (err) {
+      console.error("[leads-monday-digest] empty-digest alert failed", err);
+    }
+  }
 
   // Seed the motivated-seller → listing pipeline from this week's signals.
   // Never let a seeding failure break the digest run itself.

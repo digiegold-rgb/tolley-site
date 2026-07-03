@@ -176,6 +176,18 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     throw err;
   }
 
+  // Persist the batch job id so the invoice-sweep reconciler can backfill
+  // charges if the client never calls /finalize (tab closed after kickoff).
+  // Overwrites any previous batch id — only the most recent batch is
+  // reconcile-tracked; finalized batches are already billed + idempotent.
+  await prisma.youTubeProject.update({
+    where: { id },
+    data: {
+      animateAllJobId: kickoff.animateAllJobId,
+      animateAllStartedAt: new Date(),
+    },
+  });
+
   // Return the animateAllJobId IMMEDIATELY. Frontend polls
   // /api/vater/jobs/<id> for progress/logs and calls
   // /api/vater/youtube/<id>/animate-all-finalize when status==done.

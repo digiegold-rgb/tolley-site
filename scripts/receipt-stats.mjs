@@ -16,19 +16,24 @@ const prisma = new PrismaClient();
 const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
 const [
-  goClicks,
+  goClickEvents,
   newLeads,
   digestNew,
   digestCanceled,
   digestActive,
   amazonRows,
   cleanoutQuotes,
+  hqDraftTouches,
+  hqApprovedUnsent,
 ] = await Promise.all([
-  // Affiliate /go redirects by source
-  prisma.siteEvent.groupBy({
-    by: ["label"],
+  // Affiliate /go redirects by source. isBot lives inside the `meta` JSON
+  // blob (not a queryable column — see lib/shop/click-classifier.ts), so we
+  // pull rows and filter in JS rather than groupBy, matching the pattern in
+  // app/api/shop/affiliate/click-quality/route.ts. Without this, bot traffic
+  // (100% of amazon_click volume as of 2026-07) drowns out real clicks.
+  prisma.siteEvent.findMany({
     where: { event: "go_redirect", createdAt: { gte: since } },
-    _count: true,
+    select: { label: true, meta: true },
   }).catch(() => []),
   prisma.growthLead.count({ where: { createdAt: { gte: since } } }),
   prisma.digestSubscriber?.count({
@@ -46,16 +51,33 @@ const [
   prisma.growthLead.count({
     where: { offer: "cleanout", source: "cleanouts-page", createdAt: { gte: since } },
   }),
+  // Approvals-waiting: outbound email drafts in /hq that Cordless could
+  // approve tonight, and approved-but-unsent (stuck in the sender queue).
+  prisma.growthTouch.count({
+    where: { status: "draft", channel: "email", direction: "out" },
+  }).catch(() => 0),
+  prisma.growthTouch.count({
+    where: { status: "approved", channel: "email", direction: "out" },
+  }).catch(() => 0),
 ]);
+
+const goClicks = {};
+for (const e of goClickEvents) {
+  if (e.meta?.isBot) continue; // drop bot/datacenter traffic
+  const label = e.label ?? "unknown";
+  goClicks[label] = (goClicks[label] ?? 0) + 1;
+}
 
 console.log(
   JSON.stringify({
-    goClicks: Object.fromEntries(goClicks.map((g) => [g.label ?? "unknown", g._count])),
-    goClicksTotal: goClicks.reduce((s, g) => s + g._count, 0),
+    goClicks,
+    goClicksTotal: Object.values(goClicks).reduce((s, n) => s + n, 0),
+    goClicksBotFiltered: goClickEvents.length - Object.values(goClicks).reduce((s, n) => s + n, 0),
     newLeads,
     digest: { new: digestNew, canceled: digestCanceled, active: digestActive },
     amazonImported: { profit: amazonRows._sum.profit ?? 0, rows: amazonRows._count },
     cleanoutQuotes,
+    hqApprovals: { drafts: hqDraftTouches, approvedUnsent: hqApprovedUnsent },
   }),
 );
 

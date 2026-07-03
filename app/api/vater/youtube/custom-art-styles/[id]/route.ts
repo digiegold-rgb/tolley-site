@@ -16,8 +16,10 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   const cas = await prisma.customArtStyle.findUnique({ where: { id } });
   if (!cas) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // 404 (not 403) for a foreign-but-existing style so we don't leak its
+  // existence — matches the project-access 404 policy.
   if (cas.userId && cas.userId !== session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   return NextResponse.json({ customArtStyle: cas });
 }
@@ -30,8 +32,10 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   const cas = await prisma.customArtStyle.findUnique({ where: { id } });
   if (!cas) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // 404 (not 403) for a foreign-but-existing style so we don't leak its
+  // existence — matches the project-access 404 policy.
   if (cas.userId && cas.userId !== session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   // Styles referencing this CAS get customArtStyleId set to NULL via the
   // schema's onDelete: SetNull. Safe to delete the CAS row.

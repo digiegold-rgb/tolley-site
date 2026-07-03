@@ -2035,6 +2035,11 @@ model Product {
   fbListingId         String?
   fbStatus            String?
   lastFbCheckAt       DateTime?
+  // Consecutive healthy live-mirror runs in which this product was NOT seen on
+  // Ruthann's FB seller dashboard. Reset to 0 on every sighting. When it
+  // crosses the threshold, the product is treated as removed-from-Marketplace
+  // (i.e. sold) and flipped to status="sold". See app/api/shop/fb-sync.
+  fbMissCount         Int               @default(0)
   shipPrice           Float?
   weightOz            Int?
   amazonAsin          String?
@@ -2542,6 +2547,12 @@ model ShopSale {
   shippingPaid    Float?
   shippingAddress Json?
   buyerEmail      String?
+  buyerPhone      String?
+  // Explicit "OK to text/message deals" consent — must default false. Amazon's
+  // opted-in-messaging rule (Apr 2026 policy update) requires affirmative
+  // opt-in, not silence, before a past buyer can be sent affiliate links via
+  // SMS/WhatsApp. See lib/amazon/subtags.ts (sms source) + Shared/amazon-push/.
+  marketingOptIn  Boolean   @default(false)
   fulfillment     String    @default("pending")
   trackingCarrier String?
   trackingNumber  String?
@@ -3614,6 +3625,16 @@ model YouTubeProject {
   publishedTo    String[]  @default([])
   editedAt       DateTime?
 
+  // ── Batch-animate reconcile anchor (2026-07-02) ─────────────────────
+  // The animate-all kickoff returns an animateAllJobId to the client, which
+  // bills per-scene ONLY when the client calls /animate-all/finalize. If the
+  // tab closes after kickoff the Modal batch still runs but never bills.
+  // Persisting the batch job id here lets the invoice-sweep reconciler find
+  // done-but-unfinalized batches and backfill `animall_<jobId>_<idx>` usage
+  // with the exact per-scene idempotency keys the client path uses.
+  animateAllJobId     String?
+  animateAllStartedAt DateTime?
+
   // ── TubeGen-parity Style document (2026-04-14) ──────────────────────
   // styleId is the new path. When NULL, the legacy stylePreset string above
   // remains the source of truth (back-compat with all existing rows).
@@ -3625,6 +3646,7 @@ model YouTubeProject {
   @@index([sourceType])
   @@index([styleId])
   @@index([userId])
+  @@index([animateAllStartedAt])
 }
 
 // ── Vater Watcher — embedded Claude observer (2026-04-17) ────────────
@@ -4362,6 +4384,10 @@ model DigestSubscriber {
   email                String   @unique
   farmZips             String[]
   status               String   @default("pending") // pending|active|trial|paused|canceled
+  licenseState         String? // MO | KS
+  licenseNumber        String?
+  licenseStatus        String   @default("unverified") // unverified|verified|manual_review|invalid
+  licenseeName         String? // name as the state registry has it
   stripeCustomerId     String?  @unique
   stripeSubscriptionId String?  @unique
   customScriptTemplate String?
@@ -4370,4 +4396,31 @@ model DigestSubscriber {
   updatedAt            DateTime @updatedAt
 
   @@index([status])
+}
+
+// Mileage tracking for IRS-compliant business-mileage deduction (MileIQ import)
+model MileageTrip {
+  id         String   @id @default(cuid())
+  startDate  DateTime
+  endDate    DateTime
+  category   String   // Business | Personal | Medical | Moving | Charity | Commute
+  purpose    String?  // MileIQ sub-purpose: Business, Airport/Travel, Errand/Supplies, Personal...
+  startAddr  String
+  stopAddr   String
+  rate       Float    @default(0)
+  miles      Float
+  milesValue Float    @default(0)
+  parking    Float    @default(0)
+  tolls      Float    @default(0)
+  total      Float    @default(0)
+  vehicle    String   @default("CarPlay")
+  notes      String?
+  year       Int
+  // dedupe key: startDate|stopAddr|miles  -> stable across re-imports
+  dedupeKey  String   @unique
+  createdAt  DateTime @default(now())
+
+  @@index([year])
+  @@index([category])
+  @@index([startDate])
 }

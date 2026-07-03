@@ -30,26 +30,50 @@ export async function PATCH(
   const { id } = await params;
   const body = await req.json();
 
+  // Buyer-contact fields live on ShopSale, not Product — pull them off the
+  // body before it hits product.update. See MarkSoldModal: all four are
+  // optional, so we only log a ShopSale row when the seller actually
+  // captured something (list-building infra, not a sales ledger for every
+  // sale).
+  const { buyerName, buyerPhone, buyerEmail, marketingOptIn, ...productBody } = body;
+
   // Recalculate totalCogs if cost fields change
-  if (body.costBasis !== undefined || body.shippingCost !== undefined) {
+  if (productBody.costBasis !== undefined || productBody.shippingCost !== undefined) {
     const existing = await prisma.product.findUnique({ where: { id } });
     if (existing) {
-      const costBasis = body.costBasis ?? existing.costBasis ?? 0;
-      const shippingCost = body.shippingCost ?? existing.shippingCost ?? 0;
-      body.totalCogs = costBasis + shippingCost || null;
+      const costBasis = productBody.costBasis ?? existing.costBasis ?? 0;
+      const shippingCost = productBody.shippingCost ?? existing.shippingCost ?? 0;
+      productBody.totalCogs = costBasis + shippingCost || null;
     }
   }
 
   // Set soldAt timestamp when marking sold
-  if (body.status === "sold" && !body.soldAt) {
-    body.soldAt = new Date();
+  if (productBody.status === "sold" && !productBody.soldAt) {
+    productBody.soldAt = new Date();
   }
 
   const product = await prisma.product.update({
     where: { id },
-    data: body,
+    data: productBody,
     include: { listings: true },
   });
+
+  const hasBuyerContact = !!(buyerName || buyerPhone || buyerEmail || marketingOptIn);
+  if (productBody.status === "sold" && hasBuyerContact) {
+    await prisma.shopSale.create({
+      data: {
+        productId: product.id,
+        platform: product.soldPlatform || "facebook",
+        title: product.title,
+        salePrice: product.soldPrice ?? product.targetPrice ?? 0,
+        buyerName: buyerName || null,
+        buyerPhone: buyerPhone || null,
+        buyerEmail: buyerEmail || null,
+        marketingOptIn: !!marketingOptIn,
+        soldAt: product.soldAt ?? new Date(),
+      },
+    });
+  }
 
   revalidatePath("/shop");
   return NextResponse.json(product);

@@ -93,8 +93,12 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     );
   }
 
+  // Bill the project OWNER, not the acting session (admin-assist safety —
+  // mirrors poll/route.ts:490). Legacy null-owner rows are admin-only.
+  const billingUserId = project.userId ?? session.user.id;
+
   // ── Billing gate (action "scene", 25¢): block BEFORE any DGX work ──
-  const budget = await checkBudget(session.user.id, "scene");
+  const budget = await checkBudget(billingUserId, "scene");
   if (!budget.allow) {
     return NextResponse.json(
       { error: "Billing check failed", budget },
@@ -169,18 +173,20 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   // ── Charge only after confirmed success (failed regens never charge) ──
   // try/catch: the user already has the new image — a billing hiccup must
   // not 500 the response (reconciler can backfill from the error log).
-  try {
-    await recordUsage({
-      userId: session.user.id,
-      action: "scene",
-      projectId: id,
-      idempotencyKey: `scene_regen_${project.autopilotJobId}_${sceneIdx}_v${result.version}`,
-    });
-  } catch (err) {
-    console.error(
-      `[vater/scene-regen] recordUsage failed project=${id} sceneIdx=${sceneIdx}`,
-      err,
-    );
+  if (project.userId) {
+    try {
+      await recordUsage({
+        userId: project.userId,
+        action: "scene",
+        projectId: id,
+        idempotencyKey: `scene_regen_${project.autopilotJobId}_${sceneIdx}_v${result.version}`,
+      });
+    } catch (err) {
+      console.error(
+        `[vater/scene-regen] recordUsage failed project=${id} sceneIdx=${sceneIdx}`,
+        err,
+      );
+    }
   }
 
   // Merge the new version into scenesJson[sceneIdx]. Prisma stores the

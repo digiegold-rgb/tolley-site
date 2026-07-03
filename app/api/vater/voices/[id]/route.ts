@@ -9,6 +9,7 @@
  * the schema agent adds one, this can be simplified.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 
 const BASE = (process.env.AUTOPILOT_URL || "").replace(/\/$/, "");
 const KEY = process.env.CONTENT_API_KEY || "";
@@ -16,6 +17,12 @@ const KEY = process.env.CONTENT_API_KEY || "";
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
+  // Auth-gate: this permanently deletes a voice clone on the DGX. Leaving it
+  // open let any anonymous caller wipe the shared voice library.
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const { id } = await ctx.params;
   if (!BASE || !KEY) {
     return NextResponse.json(

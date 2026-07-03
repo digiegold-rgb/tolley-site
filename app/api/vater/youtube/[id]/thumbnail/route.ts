@@ -134,8 +134,12 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
     );
   }
 
+  // Bill the project OWNER, not the acting session (admin-assist safety —
+  // mirrors poll/route.ts:490). Legacy null-owner rows are admin-only.
+  const billingUserId = project.userId ?? session.user.id;
+
   // ── Billing gate (action "thumbnail", 100¢): block BEFORE any DGX work ──
-  const budget = await checkBudget(session.user.id, "thumbnail");
+  const budget = await checkBudget(billingUserId, "thumbnail");
   if (!budget.allow) {
     return NextResponse.json(
       { error: "Billing check failed", budget },
@@ -186,15 +190,17 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
   // Each POST is a fresh generation, so the key is unique per call — it only
   // exists to make the Stripe InvoiceItem write retry-safe. try/catch: the
   // user already has their thumbnail, a billing hiccup must not 500.
-  try {
-    await recordUsage({
-      userId: session.user.id,
-      action: "thumbnail",
-      projectId: id,
-      idempotencyKey: `thumbnail_${id}_${Date.now()}`,
-    });
-  } catch (err) {
-    console.error(`[vater/thumbnail] recordUsage failed project=${id}`, err);
+  if (project.userId) {
+    try {
+      await recordUsage({
+        userId: project.userId,
+        action: "thumbnail",
+        projectId: id,
+        idempotencyKey: `thumbnail_${id}_${Date.now()}`,
+      });
+    } catch (err) {
+      console.error(`[vater/thumbnail] recordUsage failed project=${id}`, err);
+    }
   }
 
   // Store a proxy-safe URL so the frontend always goes through our route.

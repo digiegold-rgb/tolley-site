@@ -12,6 +12,7 @@
  * The param value is still the voice name.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { autopilot, AutopilotError } from "@/lib/vater/autopilot-client";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,13 @@ export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, ctx: Ctx) {
+  // Auth-gate: this streams voice-clone reference WAVs from the DGX behind a
+  // server-side bearer token. Leaving it open let anyone enumerate voice names
+  // and stream their audio. Sample playback is a signed-in studio action.
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const { id } = await ctx.params;
   const safe = id.replace(/[^a-zA-Z0-9_-]/g, "");
   if (!safe) {

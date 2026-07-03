@@ -195,10 +195,16 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   }
   const existing = scenes[sceneIdx] ?? ({} as SceneSpec);
 
+  // Bill the project OWNER, not the acting session. When a vater admin assists
+  // a customer's project, the customer pays — mirrors poll/route.ts:490.
+  // Legacy projects (userId null) are admin-only; gate + skip billing on the
+  // acting admin so support work on legacy rows still runs.
+  const billingUserId = project.userId ?? session.user.id;
+
   // ── Billing gate (pay-per-video): block BEFORE any DGX work ──
   const priceCents = getAnimationPriceCents(quality);
   const budget = await checkBudget(
-    session.user.id,
+    billingUserId,
     "animation",
     quality,
     priceCents,
@@ -298,14 +304,18 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     }
 
     // ── Charge only after confirmed success (failed renders never charge) ──
-    await recordUsage({
-      userId: session.user.id,
-      action: "animation",
-      tier: quality,
-      projectId: id,
-      idempotencyKey: `anim_${id}_${sceneIdx}_${animateJobIdForBilling}`,
-      overrideCostCents: priceCents,
-    });
+    // Billed to the project owner (billingUserId). Legacy null-owner projects
+    // are admin-only and skip billing, mirroring the poll route.
+    if (project.userId) {
+      await recordUsage({
+        userId: project.userId,
+        action: "animation",
+        tier: quality,
+        projectId: id,
+        idempotencyKey: `anim_${id}_${sceneIdx}_${animateJobIdForBilling}`,
+        overrideCostCents: priceCents,
+      });
+    }
 
     // Re-fetch scenesJson before writing: the poll above can run for many
     // minutes, and writing the stale array we read at request start would

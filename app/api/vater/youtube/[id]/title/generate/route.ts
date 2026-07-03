@@ -122,8 +122,11 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   // transcription charge is recorded by the poll route once the job is
   // confirmed done. sample/style are synchronous LLM generations charged
   // here on success (action "description", 10¢).
+  // Bill the project OWNER, not the acting session (admin-assist safety —
+  // mirrors poll/route.ts:490). Legacy null-owner rows are admin-only.
+  const billingUserId = project.userId ?? session.user.id;
   const budget = await checkBudget(
-    session.user.id,
+    billingUserId,
     mode === "channel" ? "transcription" : "description",
   );
   if (!budget.allow) {
@@ -268,18 +271,20 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
     // Charge only after confirmed success. try/catch: a billing hiccup must
     // not 500 a response the user already earned (reconciler backfills).
-    try {
-      await recordUsage({
-        userId: session.user.id,
-        action: "description",
-        projectId: id,
-        idempotencyKey: `title_sample_${id}_${Date.now()}`,
-      });
-    } catch (err) {
-      console.error(
-        `[vater/title/generate] recordUsage failed project=${id} mode=sample`,
-        err,
-      );
+    if (project.userId) {
+      try {
+        await recordUsage({
+          userId: project.userId,
+          action: "description",
+          projectId: id,
+          idempotencyKey: `title_sample_${id}_${Date.now()}`,
+        });
+      } catch (err) {
+        console.error(
+          `[vater/title/generate] recordUsage failed project=${id} mode=sample`,
+          err,
+        );
+      }
     }
 
     console.log(
@@ -322,18 +327,20 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   // Charge only after confirmed success. try/catch: a billing hiccup must
   // not 500 a response the user already earned (reconciler backfills).
-  try {
-    await recordUsage({
-      userId: session.user.id,
-      action: "description",
-      projectId: id,
-      idempotencyKey: `title_style_${id}_${Date.now()}`,
-    });
-  } catch (err) {
-    console.error(
-      `[vater/title/generate] recordUsage failed project=${id} mode=style`,
-      err,
-    );
+  if (project.userId) {
+    try {
+      await recordUsage({
+        userId: project.userId,
+        action: "description",
+        projectId: id,
+        idempotencyKey: `title_style_${id}_${Date.now()}`,
+      });
+    } catch (err) {
+      console.error(
+        `[vater/title/generate] recordUsage failed project=${id} mode=style`,
+        err,
+      );
+    }
   }
 
   console.log(

@@ -45,9 +45,11 @@ async function loadOwned(id: string, userId: string) {
     include: { characters: true, customArtStyle: true },
   });
   if (!style) return { error: "Not found", status: 404 as const };
-  // System styles are public-read; only owners can read user styles
+  // System styles are public-read; only owners can read user styles. Return
+  // 404 (not 403) for a foreign-but-existing style so we don't leak its
+  // existence — matches the project-access 404 policy.
   if (style.userId && style.userId !== userId) {
-    return { error: "Forbidden", status: 403 as const };
+    return { error: "Not found", status: 404 as const };
   }
   return { style };
 }

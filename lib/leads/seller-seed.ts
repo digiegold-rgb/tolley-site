@@ -102,7 +102,9 @@ async function dossierCandidates(
   // score floor and the zip union across all subscribers.
   const jobs = await prisma.dossierJob.findMany({
     where: {
-      status: "done",
+      // Writers emit complete|partial|failed; "done" is legacy. The result
+      // join below (motivationScore floor) guarantees a partial job is scored.
+      status: { in: ["complete", "done", "partial"] },
       createdAt: { gte: since },
       result: { is: { motivationScore: { gte: minScore } } },
       listing: { zip: { in: farmZips } },

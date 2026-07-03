@@ -107,8 +107,12 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     );
   }
 
+  // Bill the project OWNER, not the acting session (admin-assist safety —
+  // mirrors poll/route.ts:490). Legacy null-owner rows are admin-only.
+  const billingUserId = project.userId ?? session.user.id;
+
   // ── Billing gate (action "description", 10¢): block BEFORE the LLM call ──
-  const budget = await checkBudget(session.user.id, "description");
+  const budget = await checkBudget(billingUserId, "description");
   if (!budget.allow) {
     return NextResponse.json(
       { error: "Billing check failed", budget },
@@ -192,18 +196,20 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     // charge). Unique key per call — each POST is a fresh generation; the
     // key just makes the Stripe write retry-safe. try/catch: a billing
     // hiccup must not 500 a response the user already earned.
-    try {
-      await recordUsage({
-        userId: session.user.id,
-        action: "description",
-        projectId: id,
-        idempotencyKey: `social_${id}_${platform}_${Date.now()}`,
-      });
-    } catch (err) {
-      console.error(
-        `[vater/social-metadata] recordUsage failed project=${id} platform=${platform}`,
-        err,
-      );
+    if (project.userId) {
+      try {
+        await recordUsage({
+          userId: project.userId,
+          action: "description",
+          projectId: id,
+          idempotencyKey: `social_${id}_${platform}_${Date.now()}`,
+        });
+      } catch (err) {
+        console.error(
+          `[vater/social-metadata] recordUsage failed project=${id} platform=${platform}`,
+          err,
+        );
+      }
     }
 
     return NextResponse.json({
