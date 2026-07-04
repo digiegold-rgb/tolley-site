@@ -23,6 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/wd": 0.7,
     "/leads": 0.7,
     "/food": 0.7,
+    "/sales": 0.8,
     "/snap-and-know": 0.7,
     "/blog": 0.7,
     "/pools": 0.6,

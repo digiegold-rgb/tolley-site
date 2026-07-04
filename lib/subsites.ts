@@ -36,6 +36,7 @@ import { manifest as realEstateAgent } from "@/app/real-estate-agent/agent";
 import { manifest as rental } from "@/app/rental/agent";
 import { manifest as rentals } from "@/app/rentals/agent";
 import { manifest as results } from "@/app/results/agent";
+import { manifest as sales } from "@/app/sales/agent";
 import { manifest as scan } from "@/app/scan/agent";
 import { manifest as security } from "@/app/security/agent";
 import { manifest as shop } from "@/app/shop/agent";
@@ -83,6 +84,7 @@ export const SUBSITES: SubsiteManifest[] = [
   rental,
   rentals,
   results,
+  sales,
   scan,
   security,
   shop,
