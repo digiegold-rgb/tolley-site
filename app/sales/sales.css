@@ -1,22 +1,23 @@
 /* ── The Launchpad — Garage Workshop, Work-Order Ticket ──────────── */
 /* Angle: this is not a startup-slick SaaS page. It's a shop light left on   */
 /* after hours, a pegboard of tools, a carbon-copy work order on the bench. */
-/* Warm dark asphalt + amber work-light glow + literal paper ticket for the */
-/* intake form. Deliberately unpolished at the edges — no glass, no purple. */
+/* Charcoal/graphite shop floor + safety-orange task lighting + literal     */
+/* paper ticket for the intake form. Contractor-grade, professional, still  */
+/* working-class. No glass, no purple.                                     */
 
 .lp-page {
-  --lp-bg: #15110d;
-  --lp-bg-2: #1b140e;
-  --lp-panel: #211a13;
-  --lp-panel-2: #291f15;
-  --lp-line: rgba(214, 178, 122, 0.16);
-  --lp-amber: #f5a623;
-  --lp-amber-deep: #d3860f;
-  --lp-rust: #c1440e;
-  --lp-paper: #f3ead9;
-  --lp-paper-2: #e7d9b8;
-  --lp-ink: #221a10;
-  --lp-steel: #c9bca3;
+  --lp-bg: #141518;
+  --lp-bg-2: #1a1b1f;
+  --lp-panel: #1f2125;
+  --lp-panel-2: #26282f;
+  --lp-line: rgba(255, 255, 255, 0.09);
+  --lp-amber: #ff6a13;
+  --lp-amber-deep: #c9520a;
+  --lp-rust: #9a3410;
+  --lp-paper: #f5f5f2;
+  --lp-paper-2: #e7e7e2;
+  --lp-ink: #16171a;
+  --lp-steel: #a7abb2;
 
   background: var(--lp-bg);
   color: var(--lp-paper);
@@ -72,8 +73,8 @@
 /* ── Hero ─────────────────────────────────────────────────────────── */
 .lp-hero {
   background:
-    radial-gradient(ellipse 65% 50% at 50% -5%, rgba(245, 166, 35, 0.16), transparent 70%),
-    radial-gradient(ellipse 40% 30% at 85% 15%, rgba(193, 68, 14, 0.08), transparent 70%);
+    radial-gradient(ellipse 65% 50% at 50% -5%, rgba(255, 106, 19, 0.14), transparent 70%),
+    radial-gradient(ellipse 40% 30% at 85% 15%, rgba(154, 52, 16, 0.1), transparent 70%);
 }
 
 .lp-kicker {
@@ -89,7 +90,7 @@
   position: absolute;
   border-radius: 50%;
   filter: blur(60px);
-  background: radial-gradient(circle, rgba(245, 166, 35, 0.35), transparent 70%);
+  background: radial-gradient(circle, rgba(255, 106, 19, 0.3), transparent 70%);
   pointer-events: none;
 }
 
@@ -100,12 +101,12 @@
   font-family: var(--font-lp-display), sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  box-shadow: 0 3px 0 var(--lp-amber-deep), 0 10px 24px rgba(245, 166, 35, 0.25);
+  box-shadow: 0 3px 0 var(--lp-amber-deep), 0 10px 24px rgba(255, 106, 19, 0.22);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .lp-btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 5px 0 var(--lp-amber-deep), 0 14px 28px rgba(245, 166, 35, 0.32);
+  box-shadow: 0 5px 0 var(--lp-amber-deep), 0 14px 28px rgba(255, 106, 19, 0.3);
 }
 .lp-btn-primary:active {
   transform: translateY(1px);
@@ -114,7 +115,7 @@
 
 .lp-btn-secondary {
   background: transparent;
-  border: 1px solid rgba(243, 234, 217, 0.28);
+  border: 1px solid rgba(245, 245, 242, 0.24);
   color: var(--lp-paper);
   font-family: var(--font-lp-display), sans-serif;
   text-transform: uppercase;
@@ -123,7 +124,7 @@
 }
 .lp-btn-secondary:hover {
   border-color: var(--lp-amber);
-  background: rgba(245, 166, 35, 0.08);
+  background: rgba(255, 106, 19, 0.08);
 }
 
 /* ── Pull quote banner ────────────────────────────────────────────── */
@@ -148,7 +149,7 @@
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 .lp-tool-card:hover {
-  border-color: rgba(245, 166, 35, 0.5);
+  border-color: rgba(255, 106, 19, 0.45);
   transform: translateY(-3px);
 }
 
@@ -177,9 +178,9 @@
 
 /* Step 5 — the literal Buyout Button */
 .lp-step-buyout {
-  background: linear-gradient(160deg, rgba(245, 166, 35, 0.12), rgba(245, 166, 35, 0.03) 65%),
+  background: linear-gradient(160deg, rgba(255, 106, 19, 0.12), rgba(255, 106, 19, 0.03) 65%),
     var(--lp-panel-2);
-  border: 1px solid rgba(245, 166, 35, 0.45);
+  border: 1px solid rgba(255, 106, 19, 0.4);
 }
 
 .lp-buyout-button {
@@ -202,9 +203,9 @@
 /* ── Example plays — corkboard index cards ────────────────────────── */
 .lp-corkboard {
   background:
-    radial-gradient(rgba(0, 0, 0, 0.35) 1px, transparent 1px) 0 0 / 14px 14px,
-    #3a2c1c;
-  border: 1px solid rgba(0, 0, 0, 0.35);
+    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px) 0 0 / 14px 14px,
+    #1c1d21;
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 0.5rem;
 }
 
@@ -228,7 +229,7 @@
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  background: radial-gradient(circle at 32% 32%, #ff6b5a, #a52318 75%);
+  background: radial-gradient(circle at 32% 32%, #ff8a4d, #c9520a 75%);
   box-shadow: 0 3px 4px rgba(0, 0, 0, 0.45);
 }
 
@@ -239,16 +240,16 @@
   color: var(--lp-rust);
   font-size: 0.65rem;
   font-weight: 700;
-  border-bottom: 1px dashed rgba(34, 26, 16, 0.25);
+  border-bottom: 1px dashed rgba(22, 23, 26, 0.2);
 }
 
 /* ── Trust / handshake section ────────────────────────────────────── */
 .lp-stamp {
   width: 9.5rem;
   height: 9.5rem;
-  border: 3px double var(--lp-rust);
+  border: 3px double var(--lp-amber);
   border-radius: 50%;
-  color: var(--lp-rust);
+  color: var(--lp-amber);
   font-family: var(--font-lp-display), sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -291,7 +292,7 @@
 }
 
 .lp-ticket-head {
-  border-bottom: 2px dashed rgba(34, 26, 16, 0.25);
+  border-bottom: 2px dashed rgba(22, 23, 26, 0.2);
 }
 
 .lp-ticket-num {
@@ -304,14 +305,14 @@
   font-family: var(--font-jetbrains-mono), monospace;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  color: rgba(34, 26, 16, 0.6);
+  color: rgba(22, 23, 26, 0.6);
   font-size: 0.68rem;
   font-weight: 700;
 }
 
 .lp-input {
-  background: #fffdf7;
-  border: 1px solid rgba(34, 26, 16, 0.25);
+  background: #fdfdfc;
+  border: 1px solid rgba(22, 23, 26, 0.22);
   border-radius: 0.25rem;
   color: var(--lp-ink);
   width: 100%;
@@ -320,22 +321,22 @@
 .lp-input:focus {
   outline: none;
   border-color: var(--lp-rust);
-  box-shadow: 0 0 0 3px rgba(193, 68, 14, 0.12);
+  box-shadow: 0 0 0 3px rgba(154, 52, 16, 0.12);
 }
 .lp-input::placeholder {
-  color: rgba(34, 26, 16, 0.35);
+  color: rgba(22, 23, 26, 0.35);
 }
 
 .lp-check {
-  border: 1px solid rgba(34, 26, 16, 0.35);
+  border: 1px solid rgba(22, 23, 26, 0.3);
   border-radius: 0.2rem;
-  background: #fffdf7;
+  background: #fdfdfc;
   transition: border-color 0.2s ease, background-color 0.2s ease;
   cursor: pointer;
 }
 .lp-check:has(input:checked) {
   border-color: var(--lp-rust);
-  background: rgba(193, 68, 14, 0.08);
+  background: rgba(154, 52, 16, 0.08);
 }
 .lp-check input {
   accent-color: var(--lp-rust);
@@ -351,12 +352,67 @@
   transition: background-color 0.2s ease, transform 0.15s ease;
 }
 .lp-ticket-submit:hover:not(:disabled) {
-  background: #362617;
+  background: #2a2c31;
   transform: translateY(-1px);
 }
 .lp-ticket-submit:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+/* ── Receipts — proof-of-work photo cards ─────────────────────────── */
+.lp-receipts-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 640px) {
+  .lp-receipts-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.lp-receipt-card {
+  background: var(--lp-panel);
+  border: 1px solid var(--lp-line);
+  border-radius: 0.375rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.lp-receipt-card:hover {
+  border-color: rgba(255, 106, 19, 0.45);
+  transform: translateY(-3px);
+}
+
+.lp-receipt-shot {
+  display: block;
+  aspect-ratio: 16 / 10;
+  width: 100%;
+  object-fit: cover;
+  object-position: top;
+  border-bottom: 1px solid var(--lp-line);
+  background: var(--lp-bg-2);
+}
+
+.lp-receipt-live {
+  font-family: var(--font-jetbrains-mono), monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--lp-amber);
+}
+.lp-receipt-live::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--lp-amber);
+  margin-right: 0.4em;
+  box-shadow: 0 0 0 3px rgba(255, 106, 19, 0.22);
 }
 
 /* ── Entrance animation ────────────────────────────────────────────── */
@@ -381,6 +437,7 @@
   }
   .lp-tool-card:hover,
   .lp-index-card:hover,
+  .lp-receipt-card:hover,
   .lp-btn-primary:hover {
     transform: none;
   }

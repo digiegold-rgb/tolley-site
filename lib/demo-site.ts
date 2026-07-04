@@ -527,6 +527,17 @@ const THEMES: DemoTheme[] = [
 
 export const GENERIC_THEME = THEMES[THEMES.length - 1];
 
+/** {key,label} for every theme — powers the Launchpad Work Order category select. */
+export const DEMO_THEME_OPTIONS: { key: string; label: string }[] = THEMES.map(
+  (t) => ({ key: t.key, label: t.label }),
+);
+
+/** Look a theme up by its exact key (Storefront.category), generic fallback. */
+export function themeForKey(key: string | null | undefined): DemoTheme {
+  if (!key) return GENERIC_THEME;
+  return THEMES.find((t) => t.key === key) ?? GENERIC_THEME;
+}
+
 /** Pick the best theme for a lead's Google category string. */
 export function themeForCategory(category: string | null | undefined): DemoTheme {
   if (!category) return GENERIC_THEME;

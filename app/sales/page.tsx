@@ -1,3 +1,4 @@
+import Image from "next/image";
 import {
   LP_ARSENAL,
   LP_STEPS,
@@ -7,6 +8,54 @@ import {
   LP_PHONE_SMS,
 } from "@/lib/sales";
 import { LaunchpadIntakeForm } from "@/components/launchpad/intake-form";
+
+// Real businesses already running on Jared's rails. Screenshots captured
+// from the live pages — no invented numbers, only verified outcomes.
+interface LpReceipt {
+  name: string;
+  href: string;
+  shot: string;
+  outcome: string;
+}
+
+const LP_RECEIPTS: LpReceipt[] = [
+  {
+    name: "Crazy Bin Store #2",
+    href: "/crazybins",
+    shot: "/sales/receipts/crazybins.jpg",
+    outcome: "Client site built from their Facebook content.",
+  },
+  {
+    name: "13:13 Weddings & Events",
+    href: "/e-and-t",
+    shot: "/sales/receipts/e-and-t.jpg",
+    outcome: "Wedding planner's full site, built same-day from a brochure.",
+  },
+  {
+    name: "Tolley Cleanouts",
+    href: "/cleanouts",
+    shot: "/sales/receipts/cleanouts.jpg",
+    outcome: "Live service line with quote requests.",
+  },
+  {
+    name: "W/D Rentals",
+    href: "/wd",
+    shot: "/sales/receipts/wd.jpg",
+    outcome: "50 rental units, real monthly recurring revenue.",
+  },
+  {
+    name: "The Shop",
+    href: "/shop",
+    shot: "/sales/receipts/shop.jpg",
+    outcome: "595+ items sold through this pipeline.",
+  },
+  {
+    name: "Ruthann's Kitchen",
+    href: "/food",
+    shot: "/sales/receipts/food.jpg",
+    outcome: "Subscription product, live at $39/yr.",
+  },
+];
 
 export default function SalesPage() {
   return (
@@ -141,8 +190,43 @@ export default function SalesPage() {
           </div>
         </section>
 
+        {/* The Receipts — proof, not promises */}
+        <section className="lp-enter" style={{ "--enter-delay": "0.22s" } as React.CSSProperties}>
+          <p className="lp-kicker text-center">Proof, not promises</p>
+          <h2 className="lp-display mt-2 mb-2 text-center text-3xl text-[color:var(--lp-paper)] sm:text-4xl">
+            I&apos;ve Done This Before. These Are Live Right Now.
+          </h2>
+          <p className="mx-auto mb-8 max-w-xl text-center text-sm text-[color:var(--lp-steel)]">
+            Real businesses, running on the same rails you&apos;d be using. Click through — they&apos;re live.
+          </p>
+          <div className="lp-receipts-grid">
+            {LP_RECEIPTS.map((r) => (
+              <a
+                key={r.href}
+                href={r.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="lp-receipt-card"
+              >
+                <Image
+                  src={r.shot}
+                  alt={`${r.name} — live at tolley.io${r.href}`}
+                  width={1200}
+                  height={750}
+                  className="lp-receipt-shot"
+                />
+                <div className="flex flex-1 flex-col gap-1.5 p-4">
+                  <span className="lp-receipt-live">Live now</span>
+                  <h3 className="lp-display text-base text-[color:var(--lp-paper)]">{r.name}</h3>
+                  <p className="text-sm leading-relaxed text-[color:var(--lp-steel)]">{r.outcome}</p>
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
+
         {/* Trust / handshake */}
-        <section className="lp-enter" style={{ "--enter-delay": "0.25s" } as React.CSSProperties}>
+        <section className="lp-enter" style={{ "--enter-delay": "0.28s" } as React.CSSProperties}>
           <div className="lp-not-panel flex flex-col items-center gap-6 p-8 text-center sm:flex-row sm:text-left sm:p-12">
             <div className="lp-stamp shrink-0" aria-hidden="true">
               <span className="text-2xl leading-none">·</span>
@@ -168,7 +252,7 @@ export default function SalesPage() {
         </section>
 
         {/* Intake */}
-        <section id="intake" className="lp-enter scroll-mt-20" style={{ "--enter-delay": "0.3s" } as React.CSSProperties}>
+        <section id="intake" className="lp-enter scroll-mt-20" style={{ "--enter-delay": "0.33s" } as React.CSSProperties}>
           <p className="lp-kicker text-center">Start here</p>
           <h2 className="lp-display mt-2 mb-3 text-center text-3xl text-[color:var(--lp-paper)] sm:text-4xl">
             Fill Out the Work Order

@@ -503,6 +503,76 @@ model LeadAction {
   @@index([status, createdAt])
 }
 
+/// The Launchpad (tolley.io/sales) — a person Jared has taken on as an operator.
+/// Created `pending` the moment a Work Order is submitted (instant preview site);
+/// Jared flips the storefront live (`sellingEnabled`) after the handshake, which
+/// sets status `approved`. `userId` links the claimed NextAuth login (plain
+/// string, no FK, keeps the migration additive). `leadActionId` points back at
+/// the originating intake row.
+model Operator {
+  id              String      @id @default(cuid())
+  slug            String      @unique
+  name            String
+  email           String?
+  phone           String?
+  status          String      @default("pending") // pending | approved | paused | bought_out
+  userId          String? // claimed NextAuth user id (no FK — additive)
+  termsAcceptedAt DateTime?
+  approvedAt      DateTime?
+  leadActionId    String? // originating LeadAction (intake)
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  storefront      Storefront?
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+/// The operator's public one-page storefront rendered at /biz/<slug>. Themed
+/// via lib/demo-site.ts (`category` is a theme key). `sellingEnabled` is Jared's
+/// kill-switch: Buy buttons stay locked until he approves. `offerings` is a JSON
+/// array of {name, desc, priceCents, kind:"one_time"|"monthly"}.
+model Storefront {
+  id               String          @id @default(cuid())
+  operatorId       String          @unique
+  operator         Operator        @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  slug             String          @unique
+  businessName     String
+  category         String          @default("generic") // demo-site theme key
+  tagline          String?
+  about            String?
+  city             String?
+  phone            String?
+  offerings        Json            @default("[]") // [{name, desc, priceCents, kind}]
+  published        Boolean         @default(true)
+  sellingEnabled   Boolean         @default(false) // Jared's gate
+  stripeProductIds Json?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  sales            LaunchpadSale[]
+
+  @@index([published, createdAt])
+}
+
+/// A completed sale through an operator's storefront (webhook-filled from the
+/// Stripe checkout.session.completed with metadata.product="launchpad").
+model LaunchpadSale {
+  id              String     @id @default(cuid())
+  storefrontId    String
+  storefront      Storefront @relation(fields: [storefrontId], references: [id], onDelete: Cascade)
+  offeringName    String
+  amountCents     Int
+  kind            String // one_time | monthly
+  stripeSessionId String     @unique
+  buyerEmail      String?
+  buyerName       String?
+  buyerPhone      String?
+  createdAt       DateTime   @default(now())
+
+  @@index([storefrontId, createdAt])
+}
+
 /// Auto-minted share link for any subsite. Distinct from /go (hand-curated promo redirects).
 /// `/s/<token>` → 302 to `path` with `?ref=share&t=<token>`. Tracks click attribution per subsite.
 model ShareLink {

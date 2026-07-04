@@ -29,9 +29,49 @@ export const manifest: SubsiteManifest = {
           description: "The business idea, in the person's own words.",
           example: "I want to sell cleaning supply boxes to my neighbors monthly.",
         },
-        stopping: {
+        business_name: {
           type: "string",
           required: true,
+          description:
+            "What to call the business — becomes the storefront name and the /biz/<slug> URL. An instant preview site is provisioned from this.",
+          example: "Ridgeline Essentials Box",
+        },
+        category: {
+          type: "enum",
+          required: false,
+          enum: [
+            "generic",
+            "auto",
+            "nails",
+            "hair",
+            "lawn",
+            "plumber",
+            "bakery",
+            "restaurant",
+            "boutique",
+            "contractor",
+            "petgroomer",
+          ],
+          description:
+            "Business type — picks the storefront theme (palette, fonts, copy). Defaults to 'generic'.",
+        },
+        city: {
+          type: "string",
+          required: false,
+          description: "City the business serves. Shown on the storefront.",
+          example: "Independence, MO",
+        },
+        offerings: {
+          type: "string",
+          required: false,
+          description:
+            "JSON array (1-3) of what they sell: [{name, desc, priceCents, kind:'one_time'|'monthly'}]. If blank, a single placeholder offering is seeded from the idea text.",
+          example:
+            '[{"name":"Monthly Essentials Box","priceCents":4500,"kind":"monthly"}]',
+        },
+        stopping: {
+          type: "string",
+          required: false,
           description:
             "Comma-separated list of what's stopping them today. Judgment-free multi-select codes: no_license, no_bank, record, money, dont_know_how, other.",
           example: "no_license, no_bank",

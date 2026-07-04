@@ -1,0 +1,114 @@
+/* app/biz/biz.css — Launchpad-owned chrome for operator storefronts (/biz/<slug>).
+ *
+ * The storefront BODY is themed per trade via lib/demo-site.ts (each operator's
+ * site feels custom-built — the whole point). These classes style only the
+ * Launchpad framing that wraps every storefront: the top ribbon, the fresh-site
+ * banner, the locked-Buy chip, the demo notice, and the "Powered by" footer.
+ * All in the v2 brand palette: charcoal #141518 base, off-white type,
+ * safety-orange #FF6A13 accents. Do NOT reference app/sales/sales.css here —
+ * that file is owned by the design agent. Palette values are duplicated on
+ * purpose so /biz is self-contained. */
+
+.biz-chrome {
+  --biz-char: #141518;
+  --biz-char-2: #1c1e22;
+  --biz-char-3: #26282d;
+  --biz-ink: #f4f2ee;
+  --biz-ink-soft: #a7a49d;
+  --biz-orange: #ff6a13;
+  --biz-orange-soft: #ff8842;
+  --biz-border: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Top ribbon ── */
+.biz-ribbon {
+  background: var(--biz-char);
+  color: var(--biz-ink-soft);
+  border-bottom: 1px solid var(--biz-border);
+}
+.biz-ribbon-brand {
+  color: var(--biz-ink);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.biz-ribbon-dot {
+  color: var(--biz-orange);
+}
+.biz-ribbon a {
+  color: var(--biz-orange-soft);
+  text-decoration: none;
+}
+.biz-ribbon a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Fresh-site banner (?fresh=1) ── */
+.biz-fresh {
+  background: linear-gradient(120deg, #141518 0%, #201a12 60%, #2a1c0d 100%);
+  color: var(--biz-ink);
+  border-bottom: 1px solid rgba(255, 106, 19, 0.35);
+}
+.biz-fresh-badge {
+  background: var(--biz-orange);
+  color: #141518;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.biz-fresh-sub {
+  color: var(--biz-ink-soft);
+}
+
+/* ── Locked Buy chip (selling not enabled yet) ── */
+.biz-locked {
+  background: var(--biz-char-3);
+  color: var(--biz-ink-soft);
+  border: 1px solid var(--biz-border);
+  cursor: not-allowed;
+}
+.biz-locked-dot {
+  color: var(--biz-orange);
+}
+
+/* ── Live Buy button (charcoal/orange, overrides theme accent for consistency
+ *    of the commerce action across every storefront) ── */
+.biz-buy {
+  background: var(--biz-orange);
+  color: #141518;
+  font-weight: 800;
+  border: 1px solid transparent;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+.biz-buy:hover {
+  filter: brightness(1.06);
+}
+.biz-buy:active {
+  transform: translateY(1px);
+}
+.biz-buy:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* ── Demo notice + errors ── */
+.biz-notice {
+  background: var(--biz-char-2);
+  color: var(--biz-ink);
+  border: 1px solid rgba(255, 106, 19, 0.4);
+}
+
+/* ── Powered-by footer (the viral loop) ── */
+.biz-poweredby {
+  background: var(--biz-char);
+  color: var(--biz-ink-soft);
+  border-top: 1px solid var(--biz-border);
+}
+.biz-poweredby a {
+  color: var(--biz-orange-soft);
+  font-weight: 700;
+  text-decoration: none;
+}
+.biz-poweredby a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

@@ -31,6 +31,12 @@ import {
   isVideoOfferSubscription,
   fulfillVideoOfferSale,
 } from "@/lib/video-offer-subscription";
+// The Launchpad — a sale through an operator's /biz/<slug> storefront
+// (metadata.product="launchpad"). Same narrow, self-contained pattern.
+import {
+  isLaunchpadEvent,
+  fulfillLaunchpadSale,
+} from "@/lib/launchpad-subscription";
 // Self-serve KC Motivated Seller Digest ($199/mo founding / $299/mo). Same
 // narrow pattern as the video-offer handler — self-contained, can't affect
 // other product paths.
@@ -110,6 +116,12 @@ export async function POST(request: Request) {
         // "Make it yours" video purchase (metadata.product=video_offer).
         if (isVideoOfferEvent(checkoutSession)) {
           await fulfillVideoOfferSale(checkoutSession);
+          break;
+        }
+
+        // Launchpad storefront sale (metadata.product=launchpad).
+        if (isLaunchpadEvent(checkoutSession)) {
+          await fulfillLaunchpadSale(checkoutSession);
           break;
         }
 
