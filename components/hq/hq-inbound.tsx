@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { INBOUND_STATUS_LABEL, type HqInboundLead } from "./types";
 import { crossSell } from "@/lib/directory";
+import { draftInboundReply } from "@/lib/inbound-reply-draft";
 
 interface Props {
   leads: HqInboundLead[];
@@ -13,6 +14,7 @@ interface Props {
   onRefresh: () => void;
   onAdvance: (id: string, status: string) => void;
   onNote: (id: string, note: string) => Promise<boolean>;
+  onReply: (id: string, subject: string, body: string) => Promise<boolean>;
 }
 
 const LADDER = ["new", "acknowledged", "contacted", "quoted", "won", "lost"];
@@ -54,16 +56,34 @@ function LeadCard({
   busy,
   onAdvance,
   onNote,
+  onReply,
 }: {
   lead: HqInboundLead;
   busy: boolean;
   onAdvance: (id: string, status: string) => void;
   onNote: (id: string, note: string) => Promise<boolean>;
+  onReply: (id: string, subject: string, body: string) => Promise<boolean>;
 }) {
   const [note, setNote] = useState(lead.statusNote ?? "");
   const [editing, setEditing] = useState(false);
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replySubject, setReplySubject] = useState("");
+  const [replyBody, setReplyBody] = useState("");
+  const [replyArmed, setReplyArmed] = useState(false);
+  const [replySending, setReplySending] = useState(false);
   const fields = lead.structured ?? {};
   const upsell = crossSellHint(lead.subsite);
+  const canReply = !!lead.email && lead.status !== "won" && lead.status !== "lost";
+
+  const openReply = () => {
+    if (!replyOpen) {
+      const draft = draftInboundReply(lead);
+      setReplySubject(draft.subject);
+      setReplyBody(draft.body);
+    }
+    setReplyArmed(false);
+    setReplyOpen(!replyOpen);
+  };
 
   return (
     <div
@@ -163,8 +183,61 @@ function LeadCard({
         </div>
       )}
 
+      {/* reply — pre-drafted in Jared's voice; nothing sends until the
+          armed confirm button is tapped */}
+      {replyOpen && (
+        <div style={{ marginTop: 8, border: "1px solid #d1d1d6", borderRadius: 8, padding: 8, background: "#fafafa" }}>
+          <input
+            value={replySubject}
+            onChange={(e) => setReplySubject(e.target.value)}
+            style={{ width: "100%", fontSize: 12, padding: 6, border: "1px solid #d1d1d6", borderRadius: 6, boxSizing: "border-box", marginBottom: 6 }}
+            placeholder="Subject"
+          />
+          <textarea
+            value={replyBody}
+            onChange={(e) => setReplyBody(e.target.value)}
+            rows={8}
+            style={{ width: "100%", fontSize: 12, padding: 6, border: "1px solid #d1d1d6", borderRadius: 6, boxSizing: "border-box", fontFamily: "inherit" }}
+          />
+          <div style={{ marginTop: 6, display: "flex", gap: 6, alignItems: "center" }}>
+            {replyArmed ? (
+              <button
+                className="btn btn-sm btn-primary"
+                disabled={replySending || !replySubject.trim() || !replyBody.trim()}
+                style={{ background: "#c5221f", borderColor: "#c5221f" }}
+                onClick={async () => {
+                  setReplySending(true);
+                  const ok = await onReply(lead.id, replySubject, replyBody);
+                  setReplySending(false);
+                  if (ok) setReplyOpen(false);
+                  setReplyArmed(false);
+                }}
+              >
+                {replySending ? "Sending…" : `Really send to ${lead.email}`}
+              </button>
+            ) : (
+              <button
+                className="btn btn-sm btn-primary"
+                disabled={!replySubject.trim() || !replyBody.trim()}
+                onClick={() => setReplyArmed(true)}
+              >
+                Send reply
+              </button>
+            )}
+            <button className="btn btn-sm" onClick={() => { setReplyOpen(false); setReplyArmed(false); }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* actions */}
       <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {canReply && (
+          <button className="btn btn-sm" disabled={busy} onClick={openReply}>
+            {replyOpen ? "Hide reply" : "✉️ Reply"}
+          </button>
+        )}
         {(NEXT_STEP[lead.status] ?? []).map((step) => (
           <button
             key={step.status}
@@ -180,7 +253,7 @@ function LeadCard({
   );
 }
 
-export function HqInbound({ leads, counts, loading, busyId, onRefresh, onAdvance, onNote }: Props) {
+export function HqInbound({ leads, counts, loading, busyId, onRefresh, onAdvance, onNote, onReply }: Props) {
   const [subsiteFilter, setSubsiteFilter] = useState("all");
 
   const subsites = useMemo(
@@ -234,6 +307,7 @@ export function HqInbound({ leads, counts, loading, busyId, onRefresh, onAdvance
                     busy={busyId === lead.id}
                     onAdvance={onAdvance}
                     onNote={onNote}
+                    onReply={onReply}
                   />
                 ))}
               </div>

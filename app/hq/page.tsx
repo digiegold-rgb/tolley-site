@@ -152,6 +152,27 @@ export default function HqPage() {
     }
   }
 
+  async function replyInbound(id: string, subject: string, body: string): Promise<boolean> {
+    setInboundBusyId(id);
+    try {
+      const r = await fetch(`/api/hq/inbound/${id}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject, body }),
+      });
+      if (!r.ok) throw new Error(await readApiError(r, "Send failed"));
+      const d = await r.json();
+      toast({ title: "Reply sent", description: `Sent to ${d.to}` });
+      await loadInbound();
+      return true;
+    } catch (err) {
+      toast({ title: "Send failed", description: err instanceof Error ? err.message : String(err), variant: "error" });
+      return false;
+    } finally {
+      setInboundBusyId(null);
+    }
+  }
+
   const loadMoney = useCallback(async () => {
     setMoneyLoading(true);
     try {
@@ -468,6 +489,7 @@ export default function HqPage() {
             onRefresh={loadInbound}
             onAdvance={advanceInbound}
             onNote={noteInbound}
+            onReply={replyInbound}
           />
         ) : tab === "money" ? (
           <HqMoney money={money} loading={moneyLoading} onRefresh={loadMoney} />
