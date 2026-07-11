@@ -2,7 +2,10 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripeClient } from '@/lib/stripe';
-import { prisma } from '@/lib/prisma';
+import {
+  recordInvoicePaymentFromIntent,
+  recordInvoicePaymentFromSession,
+} from '@/lib/account/record-invoice-payment';
 import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
@@ -32,59 +35,31 @@ export async function POST(request: NextRequest) {
 
   try {
     switch (event.type) {
+      // A payment-link checkout fires both of these; the shared write-back is
+      // idempotent on the PaymentIntent id, so recording from whichever arrives
+      // first and skipping the rest is expected.
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        const invoiceId = paymentIntent.metadata?.invoiceId;
-
-        if (!invoiceId) {
-          console.log('payment_intent.succeeded without invoiceId metadata, skipping');
-          break;
+        const recorded = await recordInvoicePaymentFromIntent(paymentIntent);
+        if (!recorded) {
+          console.log(
+            `payment_intent.succeeded ${paymentIntent.id} not recorded (no matching invoice, zero amount, or already recorded)`,
+          );
         }
+        break;
+      }
 
-        const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
-        if (!invoice) {
-          console.error(`Invoice ${invoiceId} not found for payment_intent ${paymentIntent.id}`);
-          break;
+      // checkout.session.completed resolves the invoice by the stored payment
+      // link id even when the PaymentIntent carries no invoiceId metadata — the
+      // path that reconciles links created before the metadata fix.
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const recorded = await recordInvoicePaymentFromSession(session);
+        if (!recorded) {
+          console.log(
+            `checkout.session.completed ${session.id} not recorded (no matching invoice, unpaid, or already recorded)`,
+          );
         }
-
-        // Idempotency guard — Stripe may redeliver. Skip if we already recorded this paymentIntent.
-        const existingPayment = await prisma.invoicePayment.findFirst({
-          where: { reference: paymentIntent.id, method: 'stripe' },
-          select: { id: true },
-        });
-        if (existingPayment) {
-          console.log(`payment_intent ${paymentIntent.id} already recorded, skipping`);
-          break;
-        }
-
-        const amountReceived = paymentIntent.amount_received / 100;
-
-        await prisma.invoicePayment.create({
-          data: {
-            invoiceId,
-            amount: amountReceived,
-            method: 'stripe',
-            reference: paymentIntent.id,
-            notes: `Stripe payment ${paymentIntent.id}`,
-          },
-        });
-
-        const newAmountPaid = invoice.amountPaid + amountReceived;
-        const newAmountDue = Math.max(0, invoice.total - newAmountPaid);
-        const newStatus = newAmountDue <= 0.01 ? 'PAID' : invoice.status;
-
-        await prisma.invoice.update({
-          where: { id: invoiceId },
-          data: {
-            amountPaid: newAmountPaid,
-            amountDue: newAmountDue,
-            status: newStatus,
-            stripePaymentIntentId: paymentIntent.id,
-            paidAt: newStatus === 'PAID' ? new Date() : undefined,
-          },
-        });
-
-        console.log(`Invoice ${invoiceId} payment recorded: $${amountReceived}, status: ${newStatus}`);
         break;
       }
 

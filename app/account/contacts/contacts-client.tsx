@@ -270,8 +270,12 @@ export default function ContactsClient() {
               </thead>
               <tbody className="divide-y divide-white/[0.08]">
                 {contacts.map((c) => (
-                  <tr key={c.id} className="hover:bg-white/[0.04]">
-                    <td className="px-5 py-3 text-white font-medium">{c.name}</td>
+                  <tr
+                    key={c.id}
+                    className="hover:bg-white/[0.04] cursor-pointer"
+                    onClick={() => { window.location.href = `/account/contacts/${c.id}`; }}
+                  >
+                    <td className="px-5 py-3 text-cyan-400 font-medium hover:underline">{c.name}</td>
                     <td className="px-5 py-3 text-white/60">{c.email || '—'}</td>
                     <td className="px-5 py-3 text-white/60">{c.phone || '—'}</td>
                     <td className="px-5 py-3">
