@@ -1,4 +1,5 @@
 import { JJ_SERVICES, JJ_METALS, JJ_WHY, JJ_FAQ, JJ_PHONE, JJ_PHONE_TEL, JJ_AREA } from "@/lib/junkinjays";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { JjPageClient } from "@/components/junkinjays/jj-page-client";
 
 export default function JunkinjaysPage() {
@@ -217,6 +218,7 @@ export default function JunkinjaysPage() {
             <a href="/shop" className="hover:text-white/40">Shop</a>
           </div>
         </footer>
+      <MoreFromTolley currentSubsite="junkinjays" />
       </main>
     </JjPageClient>
   );

@@ -24,6 +24,7 @@ import {
   getDigestFoundingPrice,
 } from "@/lib/digest-subscription";
 import { coverageSummary, isCoveredZip } from "@/lib/leads/digest-coverage";
+import { rateLimitByIp } from "@/lib/rate-limit";
 import { verifyLicense, type LicenseState } from "@/lib/leads/license-verify";
 
 export const runtime = "nodejs";
@@ -40,6 +41,9 @@ interface SubscribeBody {
 }
 
 export async function POST(request: NextRequest) {
+  const limited = await rateLimitByIp(request, "digest:subscribe", 10, 3600);
+  if (limited) return limited;
+
   let body: SubscribeBody;
   try {
     body = (await request.json()) as SubscribeBody;

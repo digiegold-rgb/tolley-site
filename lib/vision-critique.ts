@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { assertPublicUrl } from "@/lib/net/assert-public-url";
 
 export interface CritiqueIssue {
   type: string;
@@ -55,7 +56,8 @@ export async function critiqueGeneration(
 
   const client = new Anthropic({ apiKey });
 
-  // Fetch the image and convert to base64 for Claude
+  // Fetch the image and convert to base64 for Claude (SSRF-guard the URL first).
+  await assertPublicUrl(imageUrl);
   const imgRes = await fetch(imageUrl);
   if (!imgRes.ok) throw new Error(`Failed to fetch image: ${imgRes.status}`);
   const buffer = Buffer.from(await imgRes.arrayBuffer());

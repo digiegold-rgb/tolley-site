@@ -9,6 +9,7 @@ const SOURCE_LABEL: Record<string, string> = {
   shop: "Shop product",
   realestate: "Real estate listing",
   vater: "Vater render",
+  launchpad: "Launchpad storefront",
 };
 
 export async function GET() {

@@ -119,3 +119,62 @@ export function buildObitQuery(target: ObitTarget): string {
   // Recent obituaries — Google freshness param `tbs=qdr:w` gives last 7 days.
   return `site:${target.site} "${target.region}" obituary`;
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Address resolution — turns a decedent name + city/state into a street
+// address so the signal→dossier bridge (which requires matchedAddress != null)
+// can run. Obituaries almost never carry a street address themselves, so the
+// address query targets people-search / property snippets where a street
+// address commonly appears inline.
+// ────────────────────────────────────────────────────────────────────────────
+
+const STREET_SUFFIX =
+  "(?:St|Street|Ave|Avenue|Blvd|Boulevard|Rd|Road|Dr|Drive|Ln|Lane|Ct|Court|Cir|Circle|Ter|Terrace|Pl|Place|Way|Trl|Trail|Pkwy|Parkway|Hwy|Highway|Loop|Pike|Run|Path|Cove|Cv|Sq|Square)";
+
+// e.g. "1234 NW 12th St", "805 S Main Street", "14021 E 40 Hwy"
+const STREET_ADDRESS_RX = new RegExp(
+  `\\b(\\d{1,6}\\s+(?:[NSEW]{1,2}\\s+)?(?:[A-Z0-9][A-Za-z0-9'.-]*\\s+){0,4}${STREET_SUFFIX})\\b\\.?`,
+  "i"
+);
+
+/**
+ * Best-effort street-address extractor from arbitrary search-result text.
+ * Returns a normalized `"<street>, <city>, <state>"` when a plausible US
+ * street address is present, else null. Pure — no network, unit-testable.
+ *
+ * Guards against obvious false positives (PO boxes, "1 of 3", bare years).
+ */
+export function extractStreetAddress(
+  text: string,
+  city?: string | null,
+  state?: string | null
+): string | null {
+  if (!text) return null;
+  // Drop PO boxes outright — never a residence we can dossier.
+  const cleaned = text.replace(/\bP\.?\s*O\.?\s*Box\b[^,.;]*/gi, " ");
+  const m = cleaned.match(STREET_ADDRESS_RX);
+  if (!m || !m[1]) return null;
+  let street = m[1].replace(/\s+/g, " ").trim().replace(/\.$/, "");
+  // Reject a lone year-like token ("2026 Obituary") or too-short streets.
+  if (/^\d{4}\s+\w+$/.test(street) && Number(street.split(/\s+/)[0]) > 1800) {
+    return null;
+  }
+  if (street.length < 6) return null;
+  const parts = [street];
+  if (city) parts.push(city);
+  if (state) parts.push(state);
+  return parts.join(", ");
+}
+
+/**
+ * Query that surfaces a decedent's residence address from people-search /
+ * property snippets. One query per signal — bounded cost.
+ */
+export function buildAddressQuery(
+  name: string,
+  city?: string | null,
+  state?: string | null
+): string {
+  const loc = [city, state].filter(Boolean).join(" ");
+  return `"${name}" ${loc} address (site:truepeoplesearch.com OR site:fastpeoplesearch.com OR site:whitepages.com OR site:spokeo.com)`.trim();
+}

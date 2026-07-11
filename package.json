@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "node scripts/audit-links.mjs && prisma generate && next build --webpack",
+    "audit:links": "node scripts/audit-links.mjs",
     "start": "next start",
     "lint": "eslint",
     "connector:start": "node connector/server.js",
@@ -58,7 +59,7 @@
     "stripe": "^20.3.1",
     "three": "^0.183.2",
     "twilio": "^5.12.2",
-    "xlsx": "^0.18.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.3.6"
   },
   "devDependencies": {

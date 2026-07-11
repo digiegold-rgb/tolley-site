@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { rateLimitByIp } from "@/lib/rate-limit";
 
 // Ungated, general-purpose chat straight to local Qwen3.6-27B on the DGX.
 // Backed by the same env we wired for the public chat layer:
@@ -29,6 +30,9 @@ function allow(ip: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  const limited = await rateLimitByIp(req, "qchat", 30, 60);
+  if (limited) return limited;
+
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
   if (!allow(ip)) {
     return Response.json({ error: "Too many messages. Please wait a moment." }, { status: 429 });

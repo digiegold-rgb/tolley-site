@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyWdPin, buildWdAdminCookie } from "@/lib/wd-auth";
+import { rateLimitByIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  const limited = await rateLimitByIp(request, "wd:auth", 5, 900);
+  if (limited) return limited;
+
   try {
     const { pin } = await request.json();
 

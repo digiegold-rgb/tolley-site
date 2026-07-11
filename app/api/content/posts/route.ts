@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminApiSession } from "@/lib/admin-auth";
+import { secretEquals } from "@/lib/secret-compare";
 
 /**
  * GET /api/content/posts — list posts (with filters)
  * POST /api/content/posts — create a draft post
+ *
+ * Auth: a signed-in admin session (the /animate publishing screen in the
+ * browser) OR the `x-sync-secret` header (DGX autopilot). The old `?key=`
+ * query-param path was removed — it leaked the shared secret into logs and
+ * would have shipped it in the browser bundle via NEXT_PUBLIC_AUTOPILOT_KEY.
  */
+async function authorizeRead(req: NextRequest): Promise<boolean> {
+  const syncSecret = process.env.SYNC_SECRET;
+  if (syncSecret && secretEquals(req.headers.get("x-sync-secret"), syncSecret)) {
+    return true;
+  }
+  const admin = await requireAdminApiSession();
+  return admin.ok;
+}
 
 export async function GET(req: NextRequest) {
-  const syncSecret = process.env.SYNC_SECRET;
-  const auth =
-    req.headers.get("x-sync-secret") ||
-    req.nextUrl.searchParams.get("key");
-  if (!syncSecret || auth !== syncSecret) {
+  if (!(await authorizeRead(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -40,9 +51,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const syncSecret = process.env.SYNC_SECRET;
-  const auth = req.headers.get("x-sync-secret");
-  if (!syncSecret || auth !== syncSecret) {
+  if (!(await authorizeRead(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

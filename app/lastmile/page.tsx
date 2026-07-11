@@ -1,4 +1,5 @@
 import { LmCta } from "@/components/lastmile/lm-cta";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { LmFleet } from "@/components/lastmile/lm-fleet";
 import { LmGallery } from "@/components/lastmile/lm-gallery";
 import { LmHero } from "@/components/lastmile/lm-hero";
@@ -98,6 +99,7 @@ export default function LastmilePage() {
           </section>
         </div>
       </div>
+      <MoreFromTolley currentSubsite="lastmile" />
     </main>
   );
 }

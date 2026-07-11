@@ -1,4 +1,5 @@
 import { validateShopAdmin } from "@/lib/shop-auth";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { prisma } from "@/lib/prisma";
 import { WaterNav } from "@/components/water/water-nav";
 import { WaterDashboard } from "@/components/water/water-dashboard";
@@ -31,6 +32,7 @@ export default async function WaterPage() {
         seasonCosts={seasonCosts}
         lowStockItems={JSON.parse(JSON.stringify(lowStock))}
       />
+      <MoreFromTolley currentSubsite="water" />
     </>
   );
 }

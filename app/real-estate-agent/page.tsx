@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
@@ -89,6 +90,7 @@ export default async function NeighborhoodIndex() {
           </section>
         )}
       </div>
+      <MoreFromTolley currentSubsite="real-estate-agent" />
     </main>
   );
 }

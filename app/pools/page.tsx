@@ -1,4 +1,5 @@
 import { PoolsHero } from "@/components/pools/pools-hero";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { PoolsHowItWorks } from "@/components/pools/pools-how-it-works";
 import { PoolsProducts } from "@/components/pools/pools-products";
 import { PoolsSavings } from "@/components/pools/pools-savings";
@@ -81,6 +82,7 @@ export default function PoolsPage() {
           <PoolsFaq />
         </div>
       </div>
+      <MoreFromTolley currentSubsite="pools" />
     </main>
   );
 }

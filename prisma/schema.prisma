@@ -466,17 +466,22 @@ model LeadSubscriber {
 }
 
 model EmailLead {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  source    String // "calculator", "audit", "newsletter", "resource", "market-analysis"
-  data      Json? // tool results, preferences, etc.
-  tags      String[]
-  optedIn   Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String?
+  source          String // "calculator", "audit", "newsletter", "resource", "market-analysis"
+  data            Json? // tool results, preferences, etc.
+  tags            String[]
+  optedIn         Boolean   @default(true)
+  // Triage workflow — surfaced in the /hq Inbox alongside LeadAction rows.
+  status          String    @default("new")
+  statusNote      String?
+  statusUpdatedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([source])
+  @@index([status])
   @@index([createdAt])
 }
 
@@ -1625,6 +1630,24 @@ model PoolStockSnapshot {
 
   @@index([sku, capturedAt])
   @@index([capturedAt])
+}
+
+model PoolOrder {
+  id              String    @id @default(cuid())
+  stripeSessionId String    @unique
+  status          String    @default("paid") // paid → delivered → refunded
+  amountTotal     Float
+  customerEmail   String?
+  customerName    String?
+  customerPhone   String?
+  shippingAddress Json?
+  items           Json // [{ productId, sku, name, quantity, unitPrice }]
+  deliveredAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
 }
 
 model ArbitragePair {
@@ -3125,9 +3148,36 @@ model AccountContact {
   updatedAt    DateTime            @updatedAt
   invoices     Invoice[]
   transactions LedgerTransaction[]
+  regularRuns  RegularRun[]
 
   @@index([name])
   @@index([status, isCustomer])
+}
+
+// A saved delivery-run template for a customer. Lets recurring runs (e.g. Wayne
+// Clark / Aramsco's granite drops) be re-billed in one click: pick the run and
+// a DRAFT invoice is generated pre-filled with the drop + miles * rate.
+model RegularRun {
+  id           String         @id @default(cuid())
+  contactId    String
+  label        String // short button label, e.g. "Gaumats — Grain Valley"
+  dropLocation String // becomes the invoice line description
+  // billingMode "MILEAGE": line = miles * rate ($/mi), e.g. Wayne/Aramsco.
+  // billingMode "FLAT":    line = a single flat charge (rate = default $), for
+  //                        weight-based clients (e.g. Guadalupe) where the $
+  //                        changes weekly — the default is edited before send.
+  billingMode  String         @default("MILEAGE")
+  miles        Float // default miles (MILEAGE mode); ignored/1 for FLAT
+  rate         Float          @default(3) // $ per mile (MILEAGE) or flat $ default (FLAT)
+  notes        String?
+  sortOrder    Int            @default(0)
+  active       Boolean        @default(true)
+  lastUsedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  contact      AccountContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId, active, sortOrder])
 }
 
 model CategorizationRule {
@@ -3148,18 +3198,23 @@ model CategorizationRule {
 }
 
 model ClientPortalSignup {
-  id        String   @id @default(cuid())
-  type      String
-  email     String?
-  phone     String?
-  role      String?
-  city      String?
-  zip       String?
-  ip        String?
-  referrer  String?
-  createdAt DateTime @default(now())
+  id              String    @id @default(cuid())
+  type            String
+  email           String?
+  phone           String?
+  role            String?
+  city            String?
+  zip             String?
+  ip              String?
+  referrer        String?
+  // Triage workflow — surfaced in the /hq Inbox alongside LeadAction rows.
+  status          String    @default("new")
+  statusNote      String?
+  statusUpdatedAt DateTime?
+  createdAt       DateTime  @default(now())
 
   @@index([email])
+  @@index([status])
   @@index([type, createdAt])
 }
 

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { WdHero } from "@/components/wd/wd-hero";
 import { WdHowItWorks } from "@/components/wd/wd-how-it-works";
 import { WdPricing } from "@/components/wd/wd-pricing";
@@ -101,10 +102,13 @@ export default function WdPage() {
     <main className="relative z-10 min-h-screen">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
       {/* FAQPage structured data */}
-      <script type="application/ld+json">{JSON.stringify(faqJsonLd)}</script>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd).replace(/</g, "\\u003c") }}
+      />
       <Suspense>
         <WdHero />
       </Suspense>
@@ -130,6 +134,7 @@ export default function WdPage() {
           <WdFaq />
         </div>
       </div>
+      <MoreFromTolley currentSubsite="wd" />
     </main>
   );
 }

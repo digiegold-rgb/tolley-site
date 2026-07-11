@@ -1,4 +1,5 @@
 import { TrailerHero } from "@/components/trailer/trailer-hero";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { TrailerFleet } from "@/components/trailer/trailer-fleet";
 import { TrailerHowItWorks } from "@/components/trailer/trailer-how-it-works";
 import { TrailerInfo } from "@/components/trailer/trailer-info";
@@ -84,6 +85,7 @@ export default function TrailerPage() {
           <TrailerFaq />
         </div>
       </div>
+      <MoreFromTolley currentSubsite="trailer" />
     </main>
   );
 }

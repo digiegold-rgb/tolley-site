@@ -1,4 +1,5 @@
 import { MovingHero } from "@/components/moving/moving-hero";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { MovingGallery } from "@/components/moving/moving-gallery";
 import { MovingBundle } from "@/components/moving/moving-bundle";
 import { MovingPricing } from "@/components/moving/moving-pricing";
@@ -87,6 +88,7 @@ export default function MovingPage() {
           <MovingFaq />
         </div>
       </div>
+      <MoreFromTolley currentSubsite="moving" />
     </main>
   );
 }

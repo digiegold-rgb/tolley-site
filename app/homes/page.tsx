@@ -1,4 +1,5 @@
 import { HomesHero } from "@/components/homes/homes-hero";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { HomesAgent } from "@/components/homes/homes-agent";
 import { HomesServices } from "@/components/homes/homes-services";
 
@@ -91,6 +92,7 @@ export default function HomesPage() {
           </section>
         </div>
       </div>
+      <MoreFromTolley currentSubsite="homes" />
     </main>
   );
 }

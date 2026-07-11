@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminApiSession } from "@/lib/admin-auth";
+import { secretEquals } from "@/lib/secret-compare";
 
 /**
  * GET /api/content/campaigns — list campaigns
  * POST /api/content/campaigns — create campaign
+ *
+ * Auth: admin session OR `x-sync-secret` header. The `?key=` query-param path
+ * was removed (secret-in-URL leak).
  */
+async function authorize(req: NextRequest): Promise<boolean> {
+  const syncSecret = process.env.SYNC_SECRET;
+  if (syncSecret && secretEquals(req.headers.get("x-sync-secret"), syncSecret)) {
+    return true;
+  }
+  const admin = await requireAdminApiSession();
+  return admin.ok;
+}
 
 export async function GET(req: NextRequest) {
-  const syncSecret = process.env.SYNC_SECRET;
-  const auth =
-    req.headers.get("x-sync-secret") ||
-    req.nextUrl.searchParams.get("key");
-  if (!syncSecret || auth !== syncSecret) {
+  if (!(await authorize(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -32,9 +41,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const syncSecret = process.env.SYNC_SECRET;
-  const auth = req.headers.get("x-sync-secret");
-  if (!syncSecret || auth !== syncSecret) {
+  if (!(await authorize(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

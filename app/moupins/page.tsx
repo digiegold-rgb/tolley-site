@@ -9,6 +9,7 @@ import {
   MP_GALLERY_PLACEHOLDERS,
 } from "@/lib/moupins";
 import { MpPageClient } from "@/components/moupins/mp-page-client";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { MpServiceCards } from "@/components/moupins/mp-service-cards";
 import { MpFaq } from "@/components/moupins/mp-faq";
 
@@ -320,6 +321,7 @@ export default function MoupinsPage() {
             <a href="/shop" className="transition hover:text-white/40">Shop</a>
           </div>
         </footer>
+      <MoreFromTolley currentSubsite="moupins" />
       </main>
     </MpPageClient>
   );

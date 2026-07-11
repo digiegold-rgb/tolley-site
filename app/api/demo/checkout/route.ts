@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
+import { rateLimitByIp } from "@/lib/rate-limit";
 import {
   DEMO_SITE_PRODUCT_METADATA,
   DEMO_SITE_SETUP_PRICE,
@@ -31,6 +32,9 @@ interface CheckoutBody {
 }
 
 export async function POST(request: NextRequest) {
+  const limited = await rateLimitByIp(request, "demo:checkout", 10, 3600);
+  if (limited) return limited;
+
   let body: CheckoutBody;
   try {
     body = (await request.json()) as CheckoutBody;

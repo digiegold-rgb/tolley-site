@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rateLimitByIp } from "@/lib/rate-limit";
 
 import type { SearchResponse, VendorRecommendation } from "@/types/search";
 
@@ -114,6 +115,8 @@ function buildMockResult(query: string): SearchResponse {
 }
 
 export async function POST(request: Request) {
+  const limited = await rateLimitByIp(request, "search", 30, 60);
+  if (limited) return limited;
   try {
     const payload = (await request.json()) as { query?: string };
     const query = payload.query?.trim();

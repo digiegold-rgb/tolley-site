@@ -36,11 +36,13 @@ export async function POST(request: NextRequest) {
 
   if (!from || !body) return twimlResponse();
 
-  // Validate Twilio signature
+  // Validate Twilio signature — FAIL CLOSED. When the auth token is configured
+  // (always in prod), a valid signature is mandatory; a missing or bad one is
+  // rejected. Only unauthenticated dev (no token) skips the check.
   const signature = request.headers.get("x-twilio-signature") || "";
   const webhookUrl = process.env.DISPATCH_SMS_WEBHOOK_URL || "https://www.tolley.io/api/dispatch/sms/webhook";
-  if (process.env.TWILIO_AUTH_TOKEN && signature) {
-    if (!validateTwilioSignature(webhookUrl, params, signature)) {
+  if (process.env.TWILIO_AUTH_TOKEN) {
+    if (!signature || !validateTwilioSignature(webhookUrl, params, signature)) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
     }
   }

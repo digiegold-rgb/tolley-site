@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { rateLimitByIp } from "@/lib/rate-limit";
 
 // Public service-page chat. Env-driven so the model can be flipped per env
 // (Qwen3.5 default, Qwen3.6 opt-in via LLM_PUBLIC_CHAT_MODEL=Qwen/Qwen3.6-27B,
@@ -214,6 +215,10 @@ KNOWLEDGE:
 };
 
 export async function POST(req: NextRequest) {
+  // Durable DB-backed backstop (the in-memory checkRate below resets on cold start).
+  const limited = await rateLimitByIp(req, "chat", 30, 60);
+  if (limited) return limited;
+
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   if (!checkRate(ip)) {
     return Response.json({ error: "Too many messages. Please wait a moment." }, { status: 429 });

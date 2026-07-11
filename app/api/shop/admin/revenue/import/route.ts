@@ -25,6 +25,9 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+  if (file.size > 15 * 1024 * 1024) {
+    return NextResponse.json({ error: "File too large (max 15 MB)" }, { status: 413 });
+  }
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const parsed = parseRevenueWorkbook(buffer, file.name);

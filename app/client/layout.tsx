@@ -73,10 +73,10 @@ export default function ClientLayout({
       <SiteTracker site="client" />
       <GA4 />
       <MetaPixel />
-      {/* JSON-LD: safe — hardcoded schema object, no user input */}
+      {/* JSON-LD: hardcoded schema object; `<` escaped for defense-in-depth */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
       {children}
     </div>

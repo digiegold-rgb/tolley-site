@@ -122,10 +122,15 @@ export async function serpapiCall<T = unknown>(
     };
   }
 
-  // Telemetry — fire and forget. Failures here must never bubble up to the
-  // caller; missing log rows are far less bad than crashing a dossier or cron.
-  void prisma.serpapiQuery
-    .create({
+  // Telemetry — AWAIT the write so every call is counted. A fire-and-forget
+  // insert is dropped when the serverless function freezes/terminates right
+  // after the caller returns (esp. inside `after()` cron bursts), which
+  // undercounted usage badly vs the SerpAPI account. The insert is cheap
+  // relative to the SerpAPI round-trip we just made, so awaiting adds
+  // negligible latency. A telemetry failure must still never bubble up to the
+  // caller — but we log it rather than swallow silently.
+  try {
+    await prisma.serpapiQuery.create({
       data: {
         integration: opts.integration,
         engine: opts.engine,
@@ -135,8 +140,13 @@ export async function serpapiCall<T = unknown>(
         status: result.status || null,
         error: result.error,
       },
-    })
-    .catch(() => {});
+    });
+  } catch (err) {
+    console.error("[serpapi] telemetry write failed", {
+      integration: opts.integration,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   return result;
 }

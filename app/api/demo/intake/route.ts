@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { rateLimitByIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,9 @@ function clean(value: unknown, max: number): string {
 }
 
 export async function POST(request: NextRequest) {
+  const limited = await rateLimitByIp(request, "demo:intake", 5, 3600);
+  if (limited) return limited;
+
   let body: IntakeBody;
   try {
     body = (await request.json()) as IntakeBody;

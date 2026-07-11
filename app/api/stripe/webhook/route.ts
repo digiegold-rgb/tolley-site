@@ -37,6 +37,12 @@ import {
   isLaunchpadEvent,
   fulfillLaunchpadSale,
 } from "@/lib/launchpad-subscription";
+// Pool supply order (metadata.source="pools"). Same narrow pattern.
+import { isPoolsEvent, fulfillPoolOrder } from "@/lib/pool-order";
+// Account invoice paid via a Stripe payment link (lib/account/stripe-payment-link.ts).
+// Self-contained write-back; resolves the invoice by metadata.invoiceId or the
+// stored payment-link id. Idempotent, so it can't affect any other product path.
+import { recordInvoicePaymentFromSession } from "@/lib/account/record-invoice-payment";
 // Self-serve KC Motivated Seller Digest ($199/mo founding / $299/mo). Same
 // narrow pattern as the video-offer handler — self-contained, can't affect
 // other product paths.
@@ -106,6 +112,12 @@ export async function POST(request: Request) {
 
         if (await fulfillVideoCredits(checkoutSession)) break;
         if (await fulfillShopSale(checkoutSession)) break;
+
+        // Pool supply order (metadata.source="pools") — local KC delivery.
+        if (isPoolsEvent(checkoutSession)) {
+          await fulfillPoolOrder(checkoutSession);
+          break;
+        }
 
         // Engine 1 "Make it live" site purchase (metadata.product=demo_site).
         if (isDemoSiteEvent(checkoutSession)) {
@@ -184,6 +196,11 @@ export async function POST(request: Request) {
             }
           }
         }
+
+        // Account invoice paid via Stripe payment link — post the payment and
+        // mark the invoice PAID. Resolves by metadata.invoiceId or the stored
+        // payment-link id, so pre-metadata-fix links reconcile too.
+        if (await recordInvoicePaymentFromSession(checkoutSession)) break;
 
         await syncCheckoutSession(checkoutSession);
         break;

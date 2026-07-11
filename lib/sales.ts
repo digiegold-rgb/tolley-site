@@ -113,6 +113,106 @@ export const LP_PLAYS: LpPlay[] = [
   },
 ];
 
+// ── Ready-to-Run Businesses ─────────────────────────────────────────
+// Pre-built distribution businesses waiting on an operator. The supplier
+// account, pricing, and (for live ones) the storefront already exist —
+// the pitch is distributor-direct: cut out the middleman, sell and
+// deliver, Jared handles everything else. `key` doubles as the interest
+// form's preselect value and the `business` enum in app/sales/agent.ts.
+export type LpReadyStatus = "live" | "launching" | "pipeline";
+
+export interface LpReadyBusiness {
+  key: string;
+  name: string;
+  status: LpReadyStatus;
+  statusLabel: string;
+  supplier: string;
+  pitch: string;
+  built: string[];
+  youDo: string;
+  href?: string;
+  shot?: string;
+  relatedHref?: string;
+  relatedLabel?: string;
+}
+
+export const LP_READY_BUSINESSES: LpReadyBusiness[] = [
+  {
+    key: "pool-supply",
+    name: "Pool Supply Delivery",
+    status: "live",
+    statusLabel: "Live — take over today",
+    supplier: "PoolCorp / Pool360 contractor account",
+    pitch:
+      "Contractor-tier chemicals, parts, and equipment delivered same-day in the KC metro. The storefront is already taking real orders.",
+    built: [
+      "PoolCorp / Pool360 contractor account",
+      "Live Stripe storefront, 30+ products",
+      "Daily stock + price sync from the warehouse",
+      "Delivery van already on the road",
+    ],
+    youDo: "You sell and deliver. I handle supplier, site, payments, books.",
+    href: "/pools",
+    shot: "/sales/ready/pools.jpg",
+  },
+  {
+    key: "home-essentials-box",
+    name: "Home Essentials Box",
+    status: "live",
+    statusLabel: "Live — take over today",
+    supplier: "Buckeye Cleaning wholesale account",
+    pitch:
+      "Monthly boxes of household essentials — paper towels, TP, hand soap, cleaners — at wholesale cost, delivered to the door. Subscriptions bill themselves.",
+    built: [
+      "Buckeye Cleaning wholesale account",
+      "Subscription storefront with Stripe billing",
+      "Three box tiers priced and live",
+      "Delivery route support",
+    ],
+    youDo: "You pack and deliver boxes. The subscriptions do the rest.",
+    href: "/biz/home-essentials-box",
+    shot: "/sales/ready/essentials.jpg",
+  },
+  {
+    key: "landscape-supply",
+    name: "Landscape Supply Direct",
+    status: "launching",
+    statusLabel: "Supplier connected — launching next",
+    supplier: "SiteOne Landscape Supply",
+    pitch:
+      "Trees, rock, mulch, irrigation, lighting at contractor pricing — direct to homeowners. A contractor marks this stuff up by the job; we do volume at a fraction. SiteOne's own trucks deliver.",
+    built: [
+      "SiteOne contractor-tier account",
+      "SiteOne delivery fleet — no van needed",
+      "Storefront build queued",
+    ],
+    youDo: "You sell. SiteOne delivers. I handle the rest.",
+  },
+  {
+    key: "hvac-supply",
+    name: "HVAC Equipment Supply",
+    status: "pipeline",
+    statusLabel: "In the pipeline",
+    supplier: "HRC distributor connection",
+    pitch:
+      "Furnaces, condensers, and parts at distributor pricing — sold to homeowners and independent contractors who are tired of big-box markup.",
+    built: [
+      "HRC distributor relationship",
+      "Playbook proven on the service side",
+    ],
+    youDo: "You sell and coordinate delivery / install partners.",
+    relatedHref: "/hvac",
+    relatedLabel: "The Cool Guys — the service side, live now",
+  },
+];
+
+export const LP_READY_ROLE_OPTIONS = [
+  { value: "run_business", label: "I want to run one of these" },
+  { value: "crew", label: "Join the crew — sales / delivery" },
+] as const;
+
+export const LP_OWN_IDEA_KEY = "own-idea";
+
 export interface LpStopOption {
   code: string;
   label: string;

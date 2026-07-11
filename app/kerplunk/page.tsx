@@ -1,4 +1,5 @@
 import { KerplunkHero } from "@/components/kerplunk/kerplunk-hero";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { KerplunkGallery } from "@/components/kerplunk/kerplunk-gallery";
 import { KerplunkPricing } from "@/components/kerplunk/kerplunk-pricing";
 import { KerplunkCrossSell } from "@/components/kerplunk/kerplunk-cross-sell";
@@ -23,6 +24,7 @@ export default function KerplunkPage() {
           <KerplunkFaq />
         </div>
       </div>
+      <MoreFromTolley currentSubsite="kerplunk" />
     </main>
   );
 }

@@ -640,7 +640,19 @@ function VideoModal({
   const [repurposePlatform, setRepurposePlatform] = useState<string>("linkedin");
   const [repurposeAt, setRepurposeAt] = useState<string>("");
 
-  const streamUrl = `${apiUrl}/api/videos/${encodeURIComponent(video.filename)}/stream?token=${encodeURIComponent(autopilotKey)}`;
+  // Mint a short-lived signed stream URL via the Bearer-authed endpoint, so the
+  // master key never rides in the <video src> query (logs/history/Referer leak).
+  const [streamUrl, setStreamUrl] = useState("");
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${apiUrl}/api/videos/${encodeURIComponent(video.filename)}/stream-url`, {
+      headers: { Authorization: `Bearer ${autopilotKey}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d?.url) setStreamUrl(`${apiUrl}${d.url}`); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [apiUrl, autopilotKey, video.filename]);
 
   // Find a pending queue entry for the activePlatform — that's the one we patch
   const activeEntry = videoQueue.find((q) => q.platform === activePlatform && q.status === "pending");

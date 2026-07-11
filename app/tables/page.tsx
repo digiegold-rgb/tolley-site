@@ -1,4 +1,5 @@
 import { TablesHero } from "@/components/tables/tables-hero";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { TablesGallery } from "@/components/tables/tables-gallery";
 import { TablesInventory } from "@/components/tables/tables-inventory";
 import { TablesPricing } from "@/components/tables/tables-pricing";
@@ -27,6 +28,7 @@ export default function TablesPage() {
           <TablesFaq />
         </div>
       </div>
+      <MoreFromTolley currentSubsite="tables" />
     </main>
   );
 }

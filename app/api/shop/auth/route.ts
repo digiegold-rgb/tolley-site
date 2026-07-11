@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyPin, buildAdminCookie, validateShopAdmin } from "@/lib/shop-auth";
+import { rateLimitByIp } from "@/lib/rate-limit";
 
 export async function GET() {
   const authenticated = await validateShopAdmin();
@@ -7,6 +8,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  // Brute-force lockout — 5 PIN attempts per IP per 15 min.
+  const limited = await rateLimitByIp(request, "shop:auth", 5, 900);
+  if (limited) return limited;
+
   try {
     const { pin } = await request.json();
 

@@ -1,4 +1,5 @@
 import { PicnicHero } from "@/components/picnic-table/picnic-hero";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { PicnicGallery } from "@/components/picnic-table/picnic-gallery";
 import { PicnicPricing } from "@/components/picnic-table/picnic-pricing";
 import { PicnicCrossSell } from "@/components/picnic-table/picnic-cross-sell";
@@ -23,6 +24,7 @@ export default function PicnicTablePage() {
           <PicnicFaq />
         </div>
       </div>
+      <MoreFromTolley currentSubsite="picnic-table" />
     </main>
   );
 }

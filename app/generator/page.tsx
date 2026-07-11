@@ -1,4 +1,5 @@
 import { GeneratorHero } from "@/components/generator/generator-hero";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { GeneratorGallery } from "@/components/generator/generator-gallery";
 import { GeneratorUses } from "@/components/generator/generator-uses";
 import { GeneratorSpecs } from "@/components/generator/generator-specs";
@@ -87,6 +88,7 @@ export default function GeneratorPage() {
           <GeneratorFaq />
         </div>
       </div>
+      <MoreFromTolley currentSubsite="generator" />
     </main>
   );
 }

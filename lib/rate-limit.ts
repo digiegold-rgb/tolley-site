@@ -62,6 +62,28 @@ export async function consumeRateLimit(
   };
 }
 
+/**
+ * One-liner guard for public routes. Keys on the caller IP (x-forwarded-for /
+ * x-real-ip on Vercel). Returns a 429 NextResponse when over budget, else null.
+ *
+ *   const limited = await rateLimitByIp(req, "lead:action", 5, 600);
+ *   if (limited) return limited;
+ */
+export async function rateLimitByIp(
+  req: Request,
+  name: string,
+  limit: number,
+  windowSeconds: number,
+): Promise<NextResponse | null> {
+  const xff = req.headers.get("x-forwarded-for");
+  const ip =
+    (xff ? xff.split(",")[0].trim() : null) ||
+    req.headers.get("x-real-ip") ||
+    "unknown";
+  const rl = await consumeRateLimit(`${name}:${ip}`, limit, windowSeconds);
+  return rl.allowed ? null : rateLimited(rl);
+}
+
 /** Release a mutex-style bucket immediately (use in finally blocks). */
 export async function releaseLock(key: string): Promise<void> {
   await prisma.rateLimitBucket.deleteMany({ where: { key } });

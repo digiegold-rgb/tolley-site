@@ -50,7 +50,7 @@ body {
 }
 
 /* Add bottom padding on pages that show the fixed footer (not standalone pages) */
-body:not(:has(.wd-page)):not(:has(.trailer-page)):not(:has(.generator-page)):not(:has(.homes-page)):not(:has(.hvac-page)):not(:has(.lastmile-page)):not(:has(.start-page)):not(:has(.junkinjays-page)):not(:has(.shop-page)):not(:has(.moving-page)):not(:has(.vater-page)):not(:has(.pools-page)):not(:has(.scan-page)):not(:has(.manus-page)):not(:has(.water-page)) {
+body:not(:has(.wd-page)):not(:has(.trailer-page)):not(:has(.generator-page)):not(:has(.homes-page)):not(:has(.hvac-page)):not(:has(.lastmile-page)):not(:has(.start-page)):not(:has(.circle-page)):not(:has(.junkinjays-page)):not(:has(.shop-page)):not(:has(.moving-page)):not(:has(.vater-page)):not(:has(.pools-page)):not(:has(.scan-page)):not(:has(.manus-page)):not(:has(.water-page)) {
   padding-bottom: 4.5rem;
 }
 
@@ -124,6 +124,34 @@ body:has(.start-page) {
 
 body:has(.start-page) .site-legal-footer {
   display: none;
+}
+
+/* Circle flywheel page overrides */
+body:has(.circle-page) {
+  background:
+    radial-gradient(60% 40% at 50% 0%, rgba(88, 26, 158, 0.3), transparent 70%),
+    radial-gradient(50% 35% at 50% 100%, rgba(30, 10, 60, 0.5), transparent 75%),
+    linear-gradient(180deg, #06050a 0%, #0a0812 100%);
+  color: #f8f3ff;
+}
+
+body:has(.circle-page) .site-legal-footer {
+  display: none;
+}
+
+@keyframes circle-orbit-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.circle-orbit {
+  animation: circle-orbit-spin 90s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .circle-orbit {
+    animation: none;
+  }
 }
 
 /* Junkin' Jay's page overrides */
