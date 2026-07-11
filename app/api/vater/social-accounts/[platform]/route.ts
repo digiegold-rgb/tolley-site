@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { SUPPORTED_PLATFORMS } from "../route";
+import { SUPPORTED_PLATFORMS } from "@/lib/vater-social";
 
 type Ctx = { params: Promise<{ platform: string }> };
 

@@ -9,6 +9,8 @@ import { ClipTrimmer } from "./components/ClipTrimmer";
 import { RecapVideo } from "./components/RecapVideo";
 import { FilesTab } from "./components/FilesTab";
 import { ReviewMode } from "./components/ReviewMode";
+import { StudioTab } from "./components/StudioTab";
+import { PeopleTab } from "./components/PeopleTab";
 import { Skeleton } from "./components/Skeleton";
 import { Toasts, useUndoable } from "./components/Toasts";
 import { ConfirmModal, ConfirmSpec } from "./components/ConfirmModal";
@@ -43,7 +45,9 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
   const [err, setErr] = useState("");
   const [aspect, setAspect] = useState<"16x9" | "9x16">("16x9");
   // Recaps tab: filter daily vs weekly, filter camera track, and inline title editing
-  const [kindFilter, setKindFilter] = useState<"all" | "daily" | "weekly">("all");
+  const [kindFilter, setKindFilter] = useState<"all" | "daily" | "weekly" | "monthly" | "event">("all");
+  // v2 editing styles (fetched once; powers the 🎭 re-edit picker on each card)
+  const [styleNames, setStyleNames] = useState<string[]>([]);
   const [sourceFilter, setSourceFilter] = useState<"all" | "dji" | "pool">("all");
   const [editingKey, setEditingKey] = useState<string | null>(null);  // "<period>|<kind>" being renamed
   const [titleDraft, setTitleDraft] = useState("");
@@ -58,7 +62,7 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
   const [photoDays, setPhotoDays] = useState<PhotoDay[]>([]);
   const [photoView, setPhotoView] = useState<"all" | "picked">("all");
   const [lightbox, setLightbox] = useState<{ url: string; title: string } | null>(null);
-  const [tab, setTab] = useState<"recaps" | "originals" | "photos" | "private" | "files" | "info" | "edit">("recaps");
+  const [tab, setTab] = useState<"recaps" | "originals" | "photos" | "private" | "files" | "info" | "edit" | "studio" | "people">("recaps");
   const [busy, setBusy] = useState<string>("");
   const [dispBusy, setDispBusy] = useState<string>("");
   // `url` = the source the player streams (prefer the light 720p webUrl). `dlUrl`
@@ -483,7 +487,7 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
     return Array.from(map.entries())
       .map(([key, items]) => {
         const [period, kind, source] = key.split("|");
-        return { period, kind: kind as "daily" | "weekly", source: source as "dji" | "pool", items };
+        return { period, kind: kind as import("./types").RecapKind, source: source as "dji" | "pool", items };
       })
       .sort((a, b) => (a.period < b.period ? 1 : -1));
   }, [status]);
@@ -502,6 +506,14 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
       }
     } catch { /* notifications optional */ }
   }
+
+  // v2 editing styles for the 🎭 re-edit picker (names only; details in Studio)
+  useEffect(() => {
+    fetch(`${apiBase}/styles`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => setStyleNames(Object.keys(j.styles || {})))
+      .catch(() => { /* picker just hides when unavailable */ });
+  }, [apiBase]);
 
   const pollJob = useCallback(async (jobId: string, meta: { period: string; kind: string; label: string }, onDone?: () => void) => {
     for (let i = 0; i < 1200; i++) {
@@ -575,6 +587,38 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
       },
     });
   }
+
+  // v2: re-edit an existing recap in a named editing style (cinematic/hype/…).
+  // Re-curates the same day's footage with the director's story-arc plan and
+  // republishes over the same file.
+  function restyleRecap(periodKey: string, kind: string, source: string, style: string) {
+    askConfirm({
+      title: `Re-edit in "${style}"?`,
+      body: `The AI re-edits this recap in the ${style} style — story-arc order, beat-synced pacing, matched music — and replaces the version on Plex. Same day's footage, new cut. (Pick "classic" to go back to the original chronological cut.)`,
+      confirmLabel: `Re-edit (${style})`,
+      onConfirm: async () => {
+        setErr("");
+        setJob({ id: "", period: periodKey, kind, label: `Re-editing in ${style}`, status: "running", pct: 2, stageLabel: "Planning the edit…", started: Date.now() });
+        setNowTs(Date.now());
+        try {
+          const r = await fetch(`${apiBase}/recap/restyle`, {
+            method: "POST", headers: authHeaders, body: JSON.stringify({ period: periodKey, kind, source, style }),
+          });
+          if (!r.ok) throw new Error(await r.text());
+          const { jobId } = await r.json();
+          await pollJob(jobId, { period: periodKey, kind, label: `Re-editing in ${style}` });
+        } catch (e: any) { setErr(`Re-edit failed: ${e.message}`); setJob(null); }
+      },
+    });
+  }
+
+  // Studio/People tabs start jobs through their own endpoints; this adopts the
+  // returned jobId into the shared progress bar + poller.
+  const adoptJob = useCallback((jobId: string, meta: { period: string; kind: string; label: string }) => {
+    setJob({ id: jobId, ...meta, status: "running", pct: 2, stageLabel: "Starting…", started: Date.now() });
+    setNowTs(Date.now());
+    pollJob(jobId, meta);
+  }, [pollJob]);
 
   // Save (or clear, when blank) a custom recap label. Optimistic: patch the
   // in-memory status immediately, re-sync from the server on failure.
@@ -882,6 +926,8 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
           </button>
           <button onClick={() => setTab("photos")} style={tab === "photos" ? S.tabActive : S.tab}>📷 Photos</button>
           <button onClick={() => setTab("edit")} style={tab === "edit" ? S.tabActive : S.tab}>✂️ Edit</button>
+          <button onClick={() => setTab("studio")} style={tab === "studio" ? S.tabActive : S.tab}>🎬 Studio</button>
+          <button onClick={() => setTab("people")} style={tab === "people" ? S.tabActive : S.tab}>👥 People</button>
           <button onClick={() => setTab("private")} style={tab === "private" ? S.tabActive : S.tab}>🔒 Private</button>
           <button onClick={() => setTab("files")} style={tab === "files" ? S.tabActive : S.tab}>Files</button>
           <button onClick={() => setTab("info")} style={tab === "info" ? S.tabActive : S.tab}>Info</button>
@@ -897,9 +943,9 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
           {tab === "recaps" && (
             <>
               <div style={S.kindToggle}>
-                {(["all", "daily", "weekly"] as const).map((k) => (
+                {([["all", "All"], ["daily", "Daily"], ["weekly", "Weekly"], ["monthly", "Monthly"], ["event", "🎉 Holidays"]] as const).map(([k, lbl]) => (
                   <button key={k} onClick={() => setKindFilter(k)} style={kindFilter === k ? S.aspectOn : S.aspectOff}>
-                    {k === "all" ? "All" : k === "daily" ? "Daily" : "Weekly"}
+                    {lbl}
                   </button>
                 ))}
               </div>
@@ -953,8 +999,12 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
           const folderOf = (p: typeof periods[number]) => p.items[0]?.folder || null;
           const inFolder = (f: string | null) =>
             folderFilter === "all" || (folderFilter === "none" ? !f : f === folderFilter);
+          const kindMatch = (k: string) =>
+            kindFilter === "all" ? true :
+            kindFilter === "monthly" ? (k === "monthly" || k === "monthlyreel") :
+            k === kindFilter;
           const shown = periods.filter((p) =>
-            (kindFilter === "all" || p.kind === kindFilter) &&
+            kindMatch(p.kind) &&
             (sourceFilter === "all" || p.source === sourceFilter) &&
             inCat(catOf(p)) && inFolder(folderOf(p)));
           return (
@@ -981,7 +1031,10 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
                 return (
                   <div key={cardKey} style={S.card}>
                     <div style={S.cardHead}>
-                      <span style={S.badge(kind === "weekly")}>{kind === "weekly" ? "Weekly" : "Daily"}</span>
+                      <span style={S.badge(kind !== "daily")}>
+                        {kind === "weekly" ? "Weekly" : kind === "monthly" ? "Monthly"
+                          : kind === "monthlyreel" ? "⚡ Highlights" : kind === "event" ? "🎉 Holiday" : "Daily"}
+                      </span>
                       {isPool && <span style={S.badge(false)}>🏊 Pool</span>}
                       {editing ? (
                         <input
@@ -1065,6 +1118,29 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
                             ⬆️ 9:16
                           </button>
                         )}
+                        {r && (r.category || "recap") === "recap" && styleNames.length > 0 && (
+                          <select
+                            value=""
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v) restyleRecap(r.periodKey || period, kind, r.source || "dji", v);
+                              e.currentTarget.value = "";
+                            }}
+                            style={{ ...S.smallBtn, paddingRight: 4, cursor: "pointer" } as any}
+                            title="Re-edit this recap in an AI editing style — story-arc order, beat-synced cuts, matched music. Same footage, new cut."
+                          >
+                            <option value="">🎭 Re-edit…</option>
+                            {styleNames.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        )}
+                        {r && (r.category || "recap") === "recap" && (
+                          <a
+                            href={`${apiBase}/recap/edl?period=${encodeURIComponent(r.periodKey || period)}&kind=${kind}&source=${r.source || "dji"}&fmt=fcpxml`}
+                            download
+                            style={S.smallBtn}
+                            title="Download this edit as FCPXML — opens in Final Cut Pro (originals referenced from the NAS) for manual polish"
+                          >🎞 FCP</a>
+                        )}
                         <button
                           onClick={() => regenerate(period, kind)}
                           disabled={busy === dayKey}
@@ -1082,6 +1158,9 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
           </>
           );
         })()}
+
+        {tab === "studio" && <StudioTab apiBase={apiBase} token={token} onJob={adoptJob} />}
+        {tab === "people" && <PeopleTab apiBase={apiBase} token={token} onJob={adoptJob} />}
 
         {tab === "originals" && (
           <div style={{ marginTop: 16 }}>

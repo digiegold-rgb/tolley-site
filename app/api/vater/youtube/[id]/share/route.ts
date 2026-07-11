@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { canAccessProject } from "@/lib/vater/project-access";
-import { SUPPORTED_PLATFORMS } from "../../../social-accounts/route";
+import { SUPPORTED_PLATFORMS } from "@/lib/vater-social";
 
 type Ctx = { params: Promise<{ id: string }> };
 

@@ -5,6 +5,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { autopilot, AutopilotError } from "@/lib/vater/autopilot-client";
+import { requireVaterAdminApiSession } from "@/lib/admin-auth";
+import { assertPublicUrl, UnsafeUrlError } from "@/lib/net/assert-public-url";
 import {
   detectFeedTypeFromUrl,
   type FeedType,
@@ -18,6 +20,8 @@ const VALID_TYPES: ReadonlySet<FeedType> = new Set([
 ]);
 
 export async function GET() {
+  const auth = await requireVaterAdminApiSession();
+  if (!auth.ok) return auth.response;
   const feeds = await prisma.vaterRssFeed.findMany({
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { items: true } } },
@@ -26,6 +30,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireVaterAdminApiSession();
+  if (!auth.ok) return auth.response;
+
   let body: {
     url?: string;
     feedType?: FeedType;
@@ -45,9 +52,13 @@ export async function POST(req: NextRequest) {
   if (!url) {
     return NextResponse.json({ error: "url is required" }, { status: 400 });
   }
+  // SSRF guard: http(s) + public IP only, before any server-side fetch.
   try {
-    new URL(url);
-  } catch {
+    await assertPublicUrl(url);
+  } catch (err) {
+    if (err instanceof UnsafeUrlError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
   }
 

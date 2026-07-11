@@ -16,22 +16,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
-
-export const SUPPORTED_PLATFORMS = [
-  "youtube",
-  "tiktok",
-  "instagram",
-  "facebook",
-  "pinterest",
-  "twitter",
-  "linkedin",
-] as const;
-
-export type SupportedPlatform = (typeof SUPPORTED_PLATFORMS)[number];
-
-function isSupported(p: string): p is SupportedPlatform {
-  return (SUPPORTED_PLATFORMS as readonly string[]).includes(p);
-}
+import {
+  SUPPORTED_PLATFORMS,
+  isSupportedPlatform as isSupported,
+} from "@/lib/vater-social";
 
 export async function GET() {
   const session = await auth();

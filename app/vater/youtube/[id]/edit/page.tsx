@@ -21,7 +21,7 @@ export default async function VaterYoutubeEditPage({
 }) {
   const session = await auth();
   if (!session?.user?.id) {
-    redirect("/signin?redirect=/vater/youtube");
+    redirect("/login?callbackUrl=/vater/youtube");
   }
 
   const { id } = await params;

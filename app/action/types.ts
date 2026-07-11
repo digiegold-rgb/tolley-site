@@ -4,8 +4,11 @@ export type RecapSource = "dji" | "pool";
 
 export type RecapCategory = "recap" | "reel" | "timelapse" | "season";
 
+export type RecapKind = "daily" | "weekly" | "monthly" | "monthlyreel" | "event";
+
 export type Recap = {
-  name: string; period: string; kind: "daily" | "weekly";
+  name: string; period: string; kind: RecapKind;
+  periodKey?: string;        // pipeline WORK key (differs for events/monthly reels)
   aspect: "16x9" | "9x16"; aspectLabel: string; sizeMB: number; mtime: string;
   category?: RecapCategory;  // recap | reel (Best Splashes/Critters) | timelapse | season
   key?: string;              // dashboard card key "<period>|<kind>|<source>"

@@ -5,10 +5,13 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireVaterAdminApiSession } from "@/lib/admin-auth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, ctx: Ctx) {
+  const auth = await requireVaterAdminApiSession();
+  if (!auth.ok) return auth.response;
   const { id } = await ctx.params;
   const feed = await prisma.vaterRssFeed.findUnique({
     where: { id },
@@ -32,6 +35,8 @@ const ALLOWED_PATCH_FIELDS = [
 ] as const;
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
+  const auth = await requireVaterAdminApiSession();
+  if (!auth.ok) return auth.response;
   const { id } = await ctx.params;
   let body: Record<string, unknown>;
   try {
@@ -66,6 +71,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 }
 
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
+  const auth = await requireVaterAdminApiSession();
+  if (!auth.ok) return auth.response;
   const { id } = await ctx.params;
   try {
     await prisma.vaterRssFeed.delete({ where: { id } });

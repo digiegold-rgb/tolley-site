@@ -81,8 +81,9 @@ interface SocialAccountsResp {
   byPlatform: Record<string, SocialAccount>;
 }
 
-const POSTS_AUTH_KEY =
-  typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_AUTOPILOT_KEY : undefined;
+// Auth is the admin session cookie (same-origin fetch sends it automatically).
+// The old NEXT_PUBLIC_AUTOPILOT_KEY path was removed — a write-capable secret
+// must never ship in the browser bundle.
 
 export function PublishingScreen(): React.ReactElement {
   const { t } = useTheme();
@@ -99,7 +100,6 @@ export function PublishingScreen(): React.ReactElement {
     try {
       const url = new URL('/api/content/posts', window.location.origin);
       url.searchParams.set('limit', '100');
-      if (POSTS_AUTH_KEY) url.searchParams.set('key', POSTS_AUTH_KEY);
       const res = await fetch(url.toString().replace(window.location.origin, ''), {
         cache: 'no-store',
       });
@@ -156,15 +156,11 @@ export function PublishingScreen(): React.ReactElement {
   }, [posts, filter]);
 
   const handleRetry = async (post: ContentPost) => {
-    if (!POSTS_AUTH_KEY) {
-      setPostsErr('Publishing queue unavailable — contact admin.');
-      return;
-    }
     setRetryingId(post.id);
     try {
       const res = await fetch('/api/content/posts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-sync-secret': POSTS_AUTH_KEY },
+        headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
         body: JSON.stringify({
           subscriberId: post.subscriberId,
