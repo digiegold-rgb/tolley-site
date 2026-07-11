@@ -122,7 +122,32 @@ export const STAGE_LABEL: Record<string, string> = {
   replied: "Replied",
   booked: "Booked",
   client: "Client",
+  do_not_contact: "Do Not Contact",
   dead: "Dead",
+};
+
+export interface HqInboundLead {
+  id: string;
+  receiptToken: string;
+  subsite: string;
+  action: string;
+  email: string | null;
+  name: string | null;
+  phone: string | null;
+  structured: Record<string, unknown> | null;
+  status: string;
+  statusNote: string | null;
+  statusUpdatedAt: string | null;
+  createdAt: string;
+}
+
+export const INBOUND_STATUS_LABEL: Record<string, string> = {
+  new: "New",
+  acknowledged: "Working",
+  contacted: "Contacted",
+  quoted: "Quoted",
+  won: "Won",
+  lost: "Lost",
 };
 
 export const CHANNEL_ICON: Record<string, string> = {

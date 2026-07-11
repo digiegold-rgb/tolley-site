@@ -13,15 +13,18 @@ import {
 } from "@/components/hq/hq-license-reviews";
 import { HqMoney } from "@/components/hq/hq-money";
 import { HqEngineStatus } from "@/components/hq/hq-engine-status";
+import { HqInbound } from "@/components/hq/hq-inbound";
+import { HqDnc } from "@/components/hq/hq-dnc";
 import {
   STAGE_LABEL,
   readApiError,
   type HqLead,
   type HqMoney as HqMoneyData,
   type HqQueueTouch,
+  type HqInboundLead,
 } from "@/components/hq/types";
 
-type Tab = "pipeline" | "approvals" | "money";
+type Tab = "pipeline" | "inbound" | "approvals" | "money" | "dnc";
 
 export default function HqPage() {
   const { toast } = useToast();
@@ -41,6 +44,10 @@ export default function HqPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [money, setMoney] = useState<HqMoneyData | null>(null);
   const [moneyLoading, setMoneyLoading] = useState(false);
+  const [inbound, setInbound] = useState<HqInboundLead[]>([]);
+  const [inboundCounts, setInboundCounts] = useState<Record<string, number>>({});
+  const [inboundLoading, setInboundLoading] = useState(false);
+  const [inboundBusyId, setInboundBusyId] = useState<string | null>(null);
   const [licenseReviews, setLicenseReviews] = useState<HqLicenseReview[]>([]);
   const [licenseLoading, setLicenseLoading] = useState(false);
   const [licenseBusyId, setLicenseBusyId] = useState<string | null>(null);
@@ -90,6 +97,61 @@ export default function HqPage() {
     }
   }, [toast]);
 
+  const loadInbound = useCallback(async () => {
+    setInboundLoading(true);
+    try {
+      const r = await fetch("/api/hq/inbound");
+      if (!r.ok) throw new Error(await readApiError(r, "Failed to load inbound"));
+      const d = await r.json();
+      setInbound(d.leads);
+      setInboundCounts(d.counts ?? {});
+    } catch (err) {
+      toast({
+        title: "Failed to load inbound leads",
+        description: err instanceof Error ? err.message : String(err),
+        variant: "error",
+      });
+    } finally {
+      setInboundLoading(false);
+    }
+  }, [toast]);
+
+  async function advanceInbound(id: string, status: string) {
+    setInboundBusyId(id);
+    try {
+      const r = await fetch(`/api/hq/inbound/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!r.ok) throw new Error(await readApiError(r, "Update failed"));
+      await loadInbound();
+    } catch (err) {
+      toast({ title: "Update failed", description: err instanceof Error ? err.message : String(err), variant: "error" });
+    } finally {
+      setInboundBusyId(null);
+    }
+  }
+
+  async function noteInbound(id: string, note: string): Promise<boolean> {
+    setInboundBusyId(id);
+    try {
+      const r = await fetch(`/api/hq/inbound/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note }),
+      });
+      if (!r.ok) throw new Error(await readApiError(r, "Save failed"));
+      await loadInbound();
+      return true;
+    } catch (err) {
+      toast({ title: "Save failed", description: err instanceof Error ? err.message : String(err), variant: "error" });
+      return false;
+    } finally {
+      setInboundBusyId(null);
+    }
+  }
+
   const loadMoney = useCallback(async () => {
     setMoneyLoading(true);
     try {
@@ -135,8 +197,9 @@ export default function HqPage() {
       loadDrafts();
       loadMoney();
       loadLicenseReviews();
+      loadInbound();
     }
-  }, [authed, loadDrafts, loadMoney, loadLicenseReviews]);
+  }, [authed, loadDrafts, loadMoney, loadLicenseReviews, loadInbound]);
 
   // ─── Login ───
   async function handleLogin(e: React.FormEvent) {
@@ -304,6 +367,7 @@ export default function HqPage() {
               loadDrafts();
               loadMoney();
               loadLicenseReviews();
+              loadInbound();
             }}
           >
             ↻ Refresh
@@ -345,6 +409,13 @@ export default function HqPage() {
             Pipeline
           </button>
           <button
+            className={`tab-btn ${tab === "inbound" ? "active" : ""}`}
+            onClick={() => setTab("inbound")}
+          >
+            Inbox
+            {inboundCounts.new ? ` (${inboundCounts.new})` : ""}
+          </button>
+          <button
             className={`tab-btn ${tab === "approvals" ? "active" : ""}`}
             onClick={() => setTab("approvals")}
           >
@@ -362,6 +433,16 @@ export default function HqPage() {
               ? ` (${money.wd.pastDue.length + money.wd.pendingApproval.length + money.invoices.open.length})`
               : ""}
           </button>
+          <button
+            className={`tab-btn ${tab === "dnc" ? "active" : ""}`}
+            onClick={() => setTab("dnc")}
+          >
+            Contacted / DNC
+            {(() => {
+              const n = leads.filter((l) => l.stage === "do_not_contact").length;
+              return n ? ` (${n})` : "";
+            })()}
+          </button>
           {tab === "pipeline" && (
             <select
               value={offerFilter}
@@ -378,8 +459,24 @@ export default function HqPage() {
 
         {tab === "pipeline" ? (
           <HqBoard leads={boardLeads} onSelect={setSelected} />
+        ) : tab === "inbound" ? (
+          <HqInbound
+            leads={inbound}
+            counts={inboundCounts}
+            loading={inboundLoading}
+            busyId={inboundBusyId}
+            onRefresh={loadInbound}
+            onAdvance={advanceInbound}
+            onNote={noteInbound}
+          />
         ) : tab === "money" ? (
           <HqMoney money={money} loading={moneyLoading} onRefresh={loadMoney} />
+        ) : tab === "dnc" ? (
+          <HqDnc
+            leads={leads}
+            busy={saving}
+            onMarkDnc={(id) => saveLead(id, { stage: "do_not_contact" })}
+          />
         ) : (
           <>
             <HqLicenseReviews

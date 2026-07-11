@@ -54,8 +54,20 @@ export async function PATCH(
             name: true,
             ownerName: true,
             stage: true,
+            demoUrl: true,
+            rating: true,
+            reviews: true,
+            category: true,
+            city: true,
           },
         });
+
+        if (lead && (lead.stage === "do_not_contact" || lead.stage === "dead")) {
+          return NextResponse.json(
+            { error: `Lead is marked ${lead.stage} — send blocked` },
+            { status: 400 }
+          );
+        }
 
         if (lead) {
           let result: { ok: boolean; reason?: string; campaignId?: string };

@@ -24,7 +24,33 @@ import { createHash, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { addToBlocklist } from "@/lib/instantly";
 import { notifyTelegram } from "@/lib/budget/notify";
+
+// Conservative opt-out phrases — a match flips the lead to do_not_contact and
+// blocks the email workspace-wide in Instantly. Deliberately excludes bare
+// "stop"/"no" to avoid false positives in normal replies.
+const OPT_OUT_PHRASES = [
+  "unsubscribe",
+  "remove me",
+  "take me off",
+  "opt me out",
+  "opt out",
+  "do not contact",
+  "don't contact",
+  "dont contact",
+  "stop emailing",
+  "stop contacting",
+  "no longer contact",
+  "not interested",
+  "no thanks",
+];
+
+function isOptOut(text: string | null): boolean {
+  if (!text) return false;
+  const t = text.toLowerCase();
+  return OPT_OUT_PHRASES.some((p) => t.includes(p));
+}
 
 export const runtime = "nodejs";
 
@@ -129,8 +155,23 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Only advance forward — never demote a booked/client lead to "replied".
-    if (lead.stage === "demo_built" || lead.stage === "contacted") {
+    const optedOut = isOptOut(replyBody) || isOptOut(subject);
+
+    if (optedOut) {
+      // Honor it everywhere: our pipeline (stage gates every send path) AND
+      // Instantly's workspace blocklist (survives lead re-imports).
+      await prisma.growthLead.update({
+        where: { id: lead.id },
+        data: { stage: "do_not_contact" },
+      });
+      try {
+        await addToBlocklist(email);
+      } catch (err) {
+        // Stage flip already protects our side; blocklist is belt-and-braces.
+        console.error("[instantly/webhook] blocklist add failed (non-fatal)", err);
+      }
+    } else if (lead.stage === "demo_built" || lead.stage === "contacted") {
+      // Only advance forward — never demote a booked/client lead to "replied".
       await prisma.growthLead.update({
         where: { id: lead.id },
         data: { stage: "replied" },
@@ -138,7 +179,9 @@ export async function POST(request: NextRequest) {
     }
 
     const tg = await notifyTelegram(
-      `📩 VIDEO lead replied: ${lead.name} — check /hq`
+      optedOut
+        ? `🚫 Opt-out honored: ${lead.name} (${email}) — moved to Do Not Contact + Instantly blocklist`
+        : `📩 Lead replied: ${lead.name} — check /hq`
     );
     if (!tg.ok) {
       console.warn("[instantly/webhook] telegram notify failed (non-fatal):", tg.error);

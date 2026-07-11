@@ -18,12 +18,31 @@
  * Meta requires a fast 200 — only the single Graph lead fetch is awaited.
  */
 
+import { createHmac, timingSafeEqual } from "node:crypto";
+
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/**
+ * Verify Meta's X-Hub-Signature-256 over the raw request body using the app
+ * secret. Returns true only on a valid HMAC. If no app secret is configured we
+ * cannot verify — reject (fail closed) rather than accept forged payloads.
+ */
+function verifyMetaSignature(rawBody: string, header: string | null): boolean {
+  const appSecret =
+    process.env.FACEBOOK_APP_SECRET || process.env.META_APP_SECRET;
+  if (!appSecret || !header || !header.startsWith("sha256=")) return false;
+  const expected = createHmac("sha256", appSecret).update(rawBody, "utf8").digest("hex");
+  const provided = header.slice("sha256=".length);
+  const a = Buffer.from(expected, "hex");
+  const b = Buffer.from(provided, "hex");
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
 
 const API_VERSION = process.env.FACEBOOK_API_VERSION || "v18.0";
 
@@ -232,9 +251,15 @@ async function processLeadgen(value: LeadgenChange): Promise<void> {
 
 // ─── POST — leadgen webhook events ───
 export async function POST(request: NextRequest) {
+  // Read the raw body first so we can verify the HMAC over the exact bytes.
+  const rawBody = await request.text();
+  if (!verifyMetaSignature(rawBody, request.headers.get("x-hub-signature-256"))) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+  }
+
   let body: { object?: string; entry?: Array<{ changes?: Array<{ field?: string; value?: LeadgenChange }> }> };
   try {
-    body = await request.json();
+    body = JSON.parse(rawBody);
   } catch (err) {
     console.error("[hq/meta-lead POST] unparseable body:", err);
     return NextResponse.json({ status: "ok" }); // 200 so Meta doesn't disable the subscription

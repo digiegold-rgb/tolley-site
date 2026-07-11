@@ -32,6 +32,11 @@ export async function sendLeadViaInstantly(lead: {
   offer: string;
   name: string | null;
   ownerName: string | null;
+  demoUrl?: string | null;
+  rating?: number | null;
+  reviews?: number | null;
+  category?: string | null;
+  city?: string | null;
 }): Promise<{ ok: boolean; reason?: string; campaignId?: string }> {
   const campaignId = campaignIdForOffer(lead.offer);
   if (!campaignId) {
@@ -46,7 +51,17 @@ export async function sendLeadViaInstantly(lead: {
       email: lead.email,
       firstName: lead.ownerName?.split(" ")[0],
       companyName: lead.name ?? undefined,
-      customVariables: {},
+      // Every var must ALWAYS be set — an unset {{var}} renders literally in
+      // the sent email. demo_url falls back to the network map.
+      customVariables: {
+        demo_url: lead.demoUrl
+          ? `https://www.tolley.io${lead.demoUrl}`
+          : "https://www.tolley.io/circle",
+        rating: lead.rating != null ? String(lead.rating) : "5",
+        reviews: lead.reviews != null ? String(lead.reviews) : "great",
+        category: lead.category?.trim() || "local business",
+        city: lead.city?.trim() || "Kansas City",
+      },
     },
   ]);
 

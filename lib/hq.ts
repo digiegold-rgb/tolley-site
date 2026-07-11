@@ -9,16 +9,31 @@ export const HQ_STAGES = [
   "replied",
   "booked",
   "client",
+  "do_not_contact",
   "dead",
 ] as const;
 
 export type HqStage = (typeof HQ_STAGES)[number];
 
-// Board columns — "dead" is reachable via the drawer's stage select but is
-// not shown as a column to keep the board focused on the live pipeline.
-export const HQ_BOARD_STAGES = HQ_STAGES.filter((s) => s !== "dead");
+// Board columns — "dead" and "do_not_contact" are reachable via the drawer's
+// stage select / DNC tab but not shown as columns, keeping the board focused
+// on the live pipeline.
+export const HQ_BOARD_STAGES = HQ_STAGES.filter((s) => s !== "dead" && s !== "do_not_contact");
 
 export const HQ_OFFERS = ["site", "automation", "delivery", "video", "listing", "cleanout"] as const;
+
+// Inbound LeadAction lifecycle ladder (rows arrive "new"; won/lost terminal).
+// Lives here — not in the route file — because a Next route.ts may only export
+// HTTP methods + segment config; exporting an arbitrary const from a route
+// poisons the Turbopack server bundle and 500s unrelated routes.
+export const INBOUND_STATUSES = [
+  "new",
+  "acknowledged",
+  "contacted",
+  "quoted",
+  "won",
+  "lost",
+] as const;
 
 export const HQ_TOUCH_STATUSES = [
   "draft",

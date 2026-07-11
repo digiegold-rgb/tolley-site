@@ -182,6 +182,20 @@ export async function addLeadsToCampaign(
 }
 
 /**
+ * POST /block-lists-entries — workspace-wide block list. A blocked email can
+ * never be pushed into any campaign again (Instantly enforces it), making
+ * opt-outs stick even if a lead re-enters the pipeline later.
+ */
+export async function addToBlocklist(email: string): Promise<void> {
+  if (!email) {
+    throw new InstantlyError("email is required", 0, "/block-lists-entries");
+  }
+  await call<Record<string, unknown>>("POST", "/block-lists-entries", {
+    bl_value: email.toLowerCase(),
+  });
+}
+
+/**
  * POST /leads/list — v2's lead search. We filter client-side on exact email
  * (case-insensitive) since the `search` param is fuzzy. Returns null when no
  * lead matches.

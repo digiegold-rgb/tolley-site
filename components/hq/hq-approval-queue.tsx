@@ -26,6 +26,41 @@ export function HqApprovalQueue({
   const [editId, setEditId] = useState<string | null>(null);
   const [editSubject, setEditSubject] = useState("");
   const [editBody, setEditBody] = useState("");
+  const [armedOffer, setArmedOffer] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkResult, setBulkResult] = useState<string | null>(null);
+
+  // One deliberate click sends the whole batch: first click arms, second fires.
+  async function bulkSend(offer: string) {
+    if (armedOffer !== offer) {
+      setArmedOffer(offer);
+      setBulkResult(null);
+      return;
+    }
+    setArmedOffer(null);
+    setBulkBusy(true);
+    try {
+      const res = await fetch("/api/hq/touches/bulk-approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ offer, count: 10 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setBulkResult(`⚠ ${data.error || res.status}`);
+      } else {
+        const failNote = data.failed?.length ? ` · ${data.failed.length} failed` : "";
+        setBulkResult(
+          `✓ ${data.sent.length} ${offer} leads pushed to Instantly (timed sequence takes it from here)${failNote}`,
+        );
+        onRefresh();
+      }
+    } catch (e) {
+      setBulkResult(`⚠ ${e instanceof Error ? e.message : "send failed"}`);
+    } finally {
+      setBulkBusy(false);
+    }
+  }
 
   function startEdit(t: HqQueueTouch) {
     setEditId(t.id);
@@ -79,10 +114,34 @@ export function HqApprovalQueue({
           Outreach drafts{" "}
           {touches.length > 0 && <span style={{ color: "#0d6efd" }}>({touches.length})</span>}
         </div>
-        <button className="btn btn-sm" onClick={onRefresh} disabled={loading}>
-          {loading ? "…" : "Refresh"}
-        </button>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <button
+            className="btn btn-sm"
+            style={{ background: armedOffer === "site" ? "#dc3545" : "#0d6efd", color: "#fff", fontWeight: 700 }}
+            onClick={() => bulkSend("site")}
+            disabled={bulkBusy || loading}
+          >
+            {bulkBusy ? "Sending…" : armedOffer === "site" ? "Confirm: send 10 site" : "⚡ Send top 10 site"}
+          </button>
+          <button
+            className="btn btn-sm"
+            style={{ background: armedOffer === "delivery" ? "#dc3545" : "#198754", color: "#fff", fontWeight: 700 }}
+            onClick={() => bulkSend("delivery")}
+            disabled={bulkBusy || loading}
+          >
+            {bulkBusy ? "Sending…" : armedOffer === "delivery" ? "Confirm: send 10 delivery" : "⚡ Send top 10 delivery"}
+          </button>
+          <button className="btn btn-sm" onClick={onRefresh} disabled={loading}>
+            {loading ? "…" : "Refresh"}
+          </button>
+        </div>
       </div>
+
+      {bulkResult && (
+        <div style={{ fontSize: 12, fontWeight: 600, padding: "6px 0", color: bulkResult.startsWith("✓") ? "#137333" : "#b00020" }}>
+          {bulkResult}
+        </div>
+      )}
 
       {touches.length === 0 && !loading && (
         <div style={{ fontSize: 13, color: "#999", padding: "8px 0" }}>

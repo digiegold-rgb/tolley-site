@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : "unknown";
     console.error("[hq/send-email] SMTP error:", msg);
-    return NextResponse.json({ error: `Send failed: ${msg}` }, { status: 500 });
+    return NextResponse.json({ error: "Email send failed" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, to, subject });
