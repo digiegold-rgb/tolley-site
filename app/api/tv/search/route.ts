@@ -57,6 +57,7 @@ export async function GET(req: Request) {
       results,
     });
   } catch (e: any) {
-    return NextResponse.json({ error: "proxy error", detail: String(e?.message || e) }, { status: 502 });
+    console.error("[tv] upstream error:", e);
+    return NextResponse.json({ error: "Upstream unavailable" }, { status: 502 });
   }
 }

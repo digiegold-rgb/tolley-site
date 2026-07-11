@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { TvDvr } from "./tv-dvr";
+
 type Result = {
   id: number;
   mediaType: "movie" | "tv";
@@ -209,7 +211,7 @@ function pill(active: boolean): React.CSSProperties {
 }
 
 export function TvClient() {
-  const [tab, setTab] = useState<"search" | "browse">("search");
+  const [tab, setTab] = useState<"search" | "browse" | "dvr">("search");
   const [pending, setPending] = useState<Record<number, boolean>>({});
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
@@ -366,6 +368,9 @@ export function TvClient() {
             <div onClick={() => setTab("browse")} style={pill(tab === "browse")}>
               🏆 Top by Year
             </div>
+            <div onClick={() => setTab("dvr")} style={pill(tab === "dvr")}>
+              📡 Live &amp; DVR
+            </div>
           </div>
 
           {tab === "search" ? (
@@ -385,7 +390,7 @@ export function TvClient() {
                 outline: "none",
               }}
             />
-          ) : (
+          ) : tab === "dvr" ? null : (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
               <select
                 value={year}
@@ -425,7 +430,11 @@ export function TvClient() {
       </header>
 
       <main style={{ maxWidth: 1140, margin: "0 auto", padding: "22px 20px 0" }}>
-        {tab === "search" ? (
+        {tab === "dvr" ? (
+          <div style={{ maxWidth: 640, margin: "0 auto" }}>
+            <TvDvr />
+          </div>
+        ) : tab === "search" ? (
           <>
             {loading && <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14 }}>Searching…</p>}
             {error && <p style={{ color: "#f87171", fontSize: 14 }}>⚠️ {error}</p>}
