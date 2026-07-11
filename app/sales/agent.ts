@@ -90,5 +90,38 @@ export const manifest: SubsiteManifest = {
         },
       },
     },
+    {
+      verb: "ready_business_interest",
+      description:
+        "Raise a hand for one of Jared's pre-built, ready-to-run businesses — supplier account, pricing, storefront, and logistics already built. Either take one over as the operator, or join the sales/delivery crew.",
+      fields: {
+        role: {
+          type: "enum",
+          required: true,
+          enum: ["run_business", "crew"],
+          description:
+            "Run one of the businesses, or join the sales/delivery crew.",
+        },
+        business: {
+          type: "enum",
+          required: true,
+          enum: [
+            "pool-supply",
+            "home-essentials-box",
+            "landscape-supply",
+            "hvac-supply",
+            "own-idea",
+          ],
+          description:
+            "Which ready-to-run business they want — or 'own-idea' to bring their own.",
+        },
+        notes: {
+          type: "string",
+          required: false,
+          description: "Anything else — availability, experience, questions.",
+          example: "I drive a truck weekends and know pools.",
+        },
+      },
+    },
   ],
 };

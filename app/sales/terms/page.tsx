@@ -11,7 +11,9 @@ export const metadata: Metadata = {
     "Plain-English terms for running a business on The Launchpad: the cut, the buyout, who owns what, and the kill-switch. No fine print.",
 };
 
-export const LAUNCHPAD_TERMS_UPDATED = "July 4, 2026";
+// NOTE: not exported — a page.tsx may only export the component + Next page
+// fields (metadata, etc.). An extra export corrupts the production bundle.
+const LAUNCHPAD_TERMS_UPDATED = "July 4, 2026";
 
 const SECTIONS: { h: string; p: string[] }[] = [
   {

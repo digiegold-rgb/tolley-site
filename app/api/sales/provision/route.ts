@@ -132,6 +132,27 @@ export async function POST(request: NextRequest) {
       select: { id: true, slug: true },
     });
 
+    // Fire-and-forget: queue a draft FB announcement in /social. Draft-only —
+    // nothing posts until Jared clicks "Post now". Must never fail provisioning.
+    prisma.socialPost
+      .create({
+        data: {
+          source: "launchpad",
+          sourceRefId: operator.slug,
+          mediaUrl: `https://www.tolley.io/biz/${operator.slug}/opengraph-image`,
+          mediaType: "image",
+          title: `New on The Launchpad: ${businessName}`,
+          caption:
+            `${businessName}${city ? ` (${city})` : ""} just launched on The Launchpad.\n\n` +
+            `Check it out → https://www.tolley.io/biz/${operator.slug}\n\n` +
+            `Want your own? https://www.tolley.io/sales`,
+          hashtags: ["#launchpad", "#smallbusiness", "#kansascity"],
+          platforms: ["facebook"],
+          status: "draft",
+        },
+      })
+      .catch((err) => console.warn("[sales/provision] social draft failed", err));
+
     // Fire-and-forget: tell Jared a new operator is waiting on the handshake.
     notifyTelegram(
       `🚀 *NEW LAUNCHPAD OPERATOR*: ${businessName}${city ? ` (${city})` : ""}\n` +

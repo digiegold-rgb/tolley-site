@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import {
   LP_ARSENAL,
   LP_STEPS,
@@ -8,6 +9,8 @@ import {
   LP_PHONE_SMS,
 } from "@/lib/sales";
 import { LaunchpadIntakeForm } from "@/components/launchpad/intake-form";
+import { ReadyBusinesses } from "@/components/launchpad/ready-businesses";
+import { ReadyInterestForm } from "@/components/launchpad/ready-interest-form";
 
 // Real businesses already running on Jared's rails. Screenshots captured
 // from the live pages — no invented numbers, only verified outcomes.
@@ -190,8 +193,36 @@ export default function SalesPage() {
           </div>
         </section>
 
-        {/* The Receipts — proof, not promises */}
+        {/* Ready-to-Run Businesses — takeover inventory */}
         <section className="lp-enter" style={{ "--enter-delay": "0.22s" } as React.CSSProperties}>
+          <p className="lp-kicker text-center">Cut out the middleman</p>
+          <h2 className="lp-display mt-2 mb-2 text-center text-3xl text-[color:var(--lp-paper)] sm:text-4xl">
+            Ready-to-Run Businesses
+          </h2>
+          <p className="mx-auto mb-8 max-w-2xl text-center text-sm text-[color:var(--lp-steel)]">
+            These aren&apos;t ideas — they&apos;re businesses waiting on an operator. Wholesale
+            accounts already open. Contractor-tier pricing already negotiated. Distributor
+            direct to the customer, no middleman markup. You sell and deliver — I handle
+            everything else.
+          </p>
+          <ReadyBusinesses />
+        </section>
+
+        {/* Claim Ticket — takeover / crew interest form */}
+        <section id="claim" className="lp-enter scroll-mt-20" style={{ "--enter-delay": "0.25s" } as React.CSSProperties}>
+          <p className="lp-kicker text-center">Two ways in</p>
+          <h2 className="lp-display mt-2 mb-3 text-center text-3xl text-[color:var(--lp-paper)] sm:text-4xl">
+            Run One. Or Join the Crew.
+          </h2>
+          <p className="mx-auto mb-9 max-w-md text-center text-sm text-[color:var(--lp-steel)]">
+            Want to take one of these over? Or just want work — selling, delivering, hustling?
+            Put your name on a ticket. I&apos;ll call you back.
+          </p>
+          <ReadyInterestForm />
+        </section>
+
+        {/* The Receipts — proof, not promises */}
+        <section className="lp-enter" style={{ "--enter-delay": "0.28s" } as React.CSSProperties}>
           <p className="lp-kicker text-center">Proof, not promises</p>
           <h2 className="lp-display mt-2 mb-2 text-center text-3xl text-[color:var(--lp-paper)] sm:text-4xl">
             I&apos;ve Done This Before. These Are Live Right Now.
@@ -226,7 +257,7 @@ export default function SalesPage() {
         </section>
 
         {/* Trust / handshake */}
-        <section className="lp-enter" style={{ "--enter-delay": "0.28s" } as React.CSSProperties}>
+        <section className="lp-enter" style={{ "--enter-delay": "0.32s" } as React.CSSProperties}>
           <div className="lp-not-panel flex flex-col items-center gap-6 p-8 text-center sm:flex-row sm:text-left sm:p-12">
             <div className="lp-stamp shrink-0" aria-hidden="true">
               <span className="text-2xl leading-none">·</span>
@@ -252,7 +283,7 @@ export default function SalesPage() {
         </section>
 
         {/* Intake */}
-        <section id="intake" className="lp-enter scroll-mt-20" style={{ "--enter-delay": "0.33s" } as React.CSSProperties}>
+        <section id="intake" className="lp-enter scroll-mt-20" style={{ "--enter-delay": "0.36s" } as React.CSSProperties}>
           <p className="lp-kicker text-center">Start here</p>
           <h2 className="lp-display mt-2 mb-3 text-center text-3xl text-[color:var(--lp-paper)] sm:text-4xl">
             Fill Out the Work Order
@@ -285,6 +316,7 @@ export default function SalesPage() {
           <a href="/start" className="hover:opacity-100">All Tolley.io</a>
         </div>
       </footer>
+      <MoreFromTolley currentSubsite="sales" />
     </main>
   );
 }

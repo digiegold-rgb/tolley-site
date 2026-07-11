@@ -371,6 +371,14 @@ export default async function StorefrontPage({
             Powered by <a href="/sales">The Launchpad</a> @ tolley.io — start a business
             with no license, no bank, no money.
           </p>
+          <a
+            className="biz-share"
+            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://www.tolley.io/biz/${slug}`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Share on Facebook
+          </a>
         </div>
       </div>
     </div>

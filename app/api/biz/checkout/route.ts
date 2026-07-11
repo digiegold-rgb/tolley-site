@@ -20,6 +20,7 @@ import type Stripe from "stripe";
 
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
+import { rateLimitByIp } from "@/lib/rate-limit";
 import {
   LAUNCHPAD_PRODUCT_METADATA,
   isDemoStorefrontSlug,
@@ -34,6 +35,9 @@ interface CheckoutBody {
 }
 
 export async function POST(request: NextRequest) {
+  const limited = await rateLimitByIp(request, "biz:checkout", 10, 3600);
+  if (limited) return limited;
+
   let body: CheckoutBody;
   try {
     body = (await request.json()) as CheckoutBody;
@@ -129,6 +133,8 @@ export async function POST(request: NextRequest) {
       metadata: meta,
       ...(isMonthly ? { subscription_data: { metadata: meta } } : {}),
       billing_address_collection: "auto",
+      // Operators deliver physical goods — collect where to send the order.
+      shipping_address_collection: { allowed_countries: ["US"] },
       phone_number_collection: { enabled: true },
       success_url: `${origin}/biz/${slug}?purchased=1`,
       cancel_url: `${origin}/biz/${slug}?checkout=cancelled`,
