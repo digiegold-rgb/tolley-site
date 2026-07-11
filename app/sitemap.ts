@@ -24,7 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/leads": 0.7,
     "/food": 0.7,
     "/sales": 0.8,
-    "/snap-and-know": 0.7,
+    "/scan": 0.7,
     "/blog": 0.7,
     "/pools": 0.6,
     "/water": 0.6,
@@ -53,7 +53,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const extras: MetadataRoute.Sitemap = [
     { url: `${BASE}/leads/pricing`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/leads/onboard`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
-    { url: `${BASE}/snap-and-know`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/shop/disclosure`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     {
       url: `${BASE}/shop/guides/best-kitchen-gadgets-under-50`,

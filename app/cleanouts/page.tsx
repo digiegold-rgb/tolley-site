@@ -8,6 +8,7 @@ import {
   TC_FAQ,
 } from "@/lib/cleanouts";
 import { CleanoutQuoteForm } from "@/components/cleanouts/quote-form";
+import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 
 export default function CleanoutsPage() {
   return (
@@ -165,6 +166,7 @@ export default function CleanoutsPage() {
           <a href="/shop" className="hover:text-white/40">Shop</a>
         </div>
       </footer>
+      <MoreFromTolley currentSubsite="cleanouts" />
     </main>
   );
 }

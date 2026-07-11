@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSubsite } from "@/lib/subsites";
 import { validateActionFields } from "@/lib/agent-manifest";
 import { notifyLeadAction } from "@/lib/lead-notify";
+import { rateLimitByIp } from "@/lib/rate-limit";
 import crypto from "node:crypto";
 
 export const runtime = "nodejs";
@@ -26,6 +27,10 @@ export const dynamic = "force-dynamic";
  * Public, unauthenticated. Validates fields against the manifest's action spec.
  */
 export async function POST(req: Request) {
+  // Public + fires Discord webhook + SMTP email per hit — throttle hard.
+  const limited = await rateLimitByIp(req, "lead:action", 5, 600);
+  if (limited) return limited;
+
   let body: {
     subsite?: string;
     action?: string;

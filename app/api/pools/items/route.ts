@@ -18,12 +18,18 @@ export async function GET(request: NextRequest) {
     where.category = category;
   }
 
-  const items = await prisma.poolProduct.findMany({
-    where,
-    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-  });
-
-  return NextResponse.json(items);
+  try {
+    const items = await prisma.poolProduct.findMany({
+      where,
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    });
+    return NextResponse.json(items, {
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
+  } catch (err) {
+    console.error("[pools/items GET]", err);
+    return NextResponse.json({ error: "Failed to load products" }, { status: 500 });
+  }
 }
 
 // POST /api/pools/items — create product (admin only)

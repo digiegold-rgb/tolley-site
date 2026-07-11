@@ -7,8 +7,12 @@ import type { SubsiteManifest } from "./agent-manifest";
 import { manifest as about } from "@/app/about/agent";
 import { manifest as advertising } from "@/app/advertising/agent";
 import { manifest as agents } from "@/app/agents/agent";
+import { manifest as animate } from "@/app/animate/agent";
 import { manifest as billing } from "@/app/billing/agent";
 import { manifest as blog } from "@/app/blog/agent";
+import { manifest as circle } from "@/app/circle/agent";
+import { manifest as cleanouts } from "@/app/cleanouts/agent";
+import { manifest as crazybins } from "@/app/crazybins/agent";
 import { manifest as client } from "@/app/client/agent";
 import { manifest as crypto } from "@/app/crypto/agent";
 import { manifest as dataRetention } from "@/app/data-retention/agent";
@@ -19,6 +23,7 @@ import { manifest as generator } from "@/app/generator/agent";
 import { manifest as go } from "@/app/go/agent";
 import { manifest as gpu } from "@/app/gpu/agent";
 import { manifest as homes } from "@/app/homes/agent";
+import { manifest as housing } from "@/app/housing/agent";
 import { manifest as hvac } from "@/app/hvac/agent";
 import { manifest as junkinjays } from "@/app/junkinjays/agent";
 import { manifest as kerplunk } from "@/app/kerplunk/agent";
@@ -55,9 +60,13 @@ export const SUBSITES: SubsiteManifest[] = [
   about,
   advertising,
   agents,
+  animate,
   billing,
   blog,
+  circle,
+  cleanouts,
   client,
+  crazybins,
   crypto,
   dataRetention,
   drive,
@@ -67,6 +76,7 @@ export const SUBSITES: SubsiteManifest[] = [
   go,
   gpu,
   homes,
+  housing,
   hvac,
   junkinjays,
   kerplunk,

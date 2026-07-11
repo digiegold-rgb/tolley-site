@@ -1,5 +1,9 @@
 import { NEWDAD_COURSE } from "@/lib/vater";
+import { EmailCaptureForm } from "@/components/tools/EmailCaptureForm";
 
+// The course itself hasn't shipped — the old "Get the Course" button was a
+// dead href="#" (CTO audit 2026-07-06). Capture demand instead; leads land in
+// the /hq Inbox via /api/email-capture.
 export function CourseNewdadCta() {
   return (
     <section className="relative z-10 mx-auto max-w-4xl px-6 py-16">
@@ -21,32 +25,21 @@ export function CourseNewdadCta() {
           <span className="text-4xl font-bold text-amber-400">
             ${NEWDAD_COURSE.price}
           </span>
-          <span className="text-slate-400">one-time payment</span>
+          <span className="text-slate-400">
+            founding price &mdash; locked in for the waitlist
+          </span>
         </div>
 
-        <a
-          href="#"
-          data-stripe-price="STRIPE_NEWDAD_PRICE_ID"
-          className="vater-cta mt-8"
-        >
-          Get the Course
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2.5}
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25"
-            />
-          </svg>
-        </a>
+        <EmailCaptureForm
+          source="vater-course-newdad"
+          ctaText="Join the Waitlist"
+          successMessage="You're on the list — founding price locked in."
+          className="mt-8 w-full max-w-md"
+        />
 
         <p className="mt-6 text-sm text-slate-500">
-          30-day money-back guarantee. No questions asked.
+          Launching soon. Waitlist members get first access at the founding
+          price.
         </p>
       </div>
     </section>

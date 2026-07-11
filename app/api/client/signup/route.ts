@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { notifyLead } from "@/lib/lead-notify";
 
 export const runtime = "nodejs";
 
@@ -50,6 +51,20 @@ export async function POST(request: NextRequest) {
         zip: (body.zip as string) || null,
         ip,
         referrer,
+      },
+    });
+
+    // Fire-and-forget owner notification (Discord + email) — these signups
+    // previously landed in the table with zero visibility.
+    notifyLead({
+      source: "client",
+      email: email || phone || "no-contact",
+      data: {
+        type,
+        phone,
+        role: record.role,
+        city: record.city,
+        zip: record.zip,
       },
     });
 

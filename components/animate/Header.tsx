@@ -377,14 +377,14 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
           )}
           {tab === 'security' && (
             <SettingsExternalLink
-              href="/account/security"
+              href="/settings"
               label="Manage on Account Settings →"
               description="Password, two-factor authentication, and active sessions are managed on your full account page."
             />
           )}
           {tab === 'team' && (
             <SettingsExternalLink
-              href="/account/team"
+              href="/settings"
               label="Manage on Account Settings →"
               description="Invite teammates, manage roles, and configure billing seats from your full account page."
             />

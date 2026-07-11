@@ -258,8 +258,11 @@ export default function LeadsSidebar({
       </div>
 
       <SidebarFooter>
+        {/* "Help & shortcuts" used to link /leads/_dev/primitives — a private
+            (_-prefixed) folder Next never routes, so it 404'd in prod. Point
+            at the T-Agent landing until a real help page exists. */}
         <a
-          href="/leads/_dev/primitives"
+          href="/leads"
           className="flex items-center gap-2 text-xs text-white/30 hover:text-white/60"
         >
           <span className="flex h-4 w-4 items-center justify-center">

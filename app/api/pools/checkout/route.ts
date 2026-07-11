@@ -54,9 +54,27 @@ export async function POST(request: NextRequest) {
       mode: "payment",
       payment_method_types: ["card"],
       line_items,
+      // The /pools promise is local delivery with a texted window — collect
+      // the address and phone we need to actually deliver.
+      shipping_address_collection: { allowed_countries: ["US"] },
+      phone_number_collection: { enabled: true },
       metadata: {
         source: "pools",
-        productIds: JSON.stringify(productIds),
+        // Stripe caps metadata values at 500 chars — omit rather than break
+        // checkout on oversized carts; fulfillment falls back to line items.
+        ...(() => {
+          const ids = JSON.stringify(productIds);
+          const compact = JSON.stringify(
+            items.map((i: { productId: string; quantity: number }) => ({
+              productId: i.productId,
+              quantity: i.quantity,
+            }))
+          );
+          return {
+            ...(ids.length <= 500 ? { productIds: ids } : {}),
+            ...(compact.length <= 500 ? { items: compact } : {}),
+          };
+        })(),
       },
       success_url: `${origin}/pools?purchased=true`,
       cancel_url: `${origin}/pools`,

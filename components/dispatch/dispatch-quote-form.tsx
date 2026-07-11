@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { EmailCaptureForm } from "@/components/tools/EmailCaptureForm";
+
 interface QuoteResult {
   distanceMi: number;
   durationMin: number;
@@ -266,9 +268,30 @@ export function DispatchQuoteForm() {
             </div>
           </div>
 
+          {/* Lead capture — the quote used to evaporate here (nothing was
+              stored); grab contact so the lead lands in /hq. */}
+          <div className="p-4 bg-gray-900/60 border border-gray-700 rounded-lg">
+            <div className="text-sm font-semibold text-gray-300">
+              Save this quote — we&apos;ll follow up
+            </div>
+            <EmailCaptureForm
+              source="dispatch"
+              ctaText="Email Me This Quote"
+              successMessage="Quote saved — we'll be in touch shortly."
+              className="mt-2"
+              data={{
+                pickup: quote.pickupAddress,
+                dropoff: quote.dropoffAddress,
+                price: quote.clientPrice,
+                distanceMi: quote.distanceMi,
+                urgency,
+              }}
+            />
+          </div>
+
           {/* CTA */}
           <a
-            href="/lastmile/dashboard/order"
+            href="/drive/dashboard/order"
             className="block w-full py-4 bg-red-600 hover:bg-red-700 text-white font-bold text-lg rounded-lg text-center transition-colors"
           >
             Book This Delivery

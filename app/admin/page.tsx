@@ -24,6 +24,31 @@ export default async function AdminPage() {
           >
             Routine Inbox — scheduled-agent briefs →
           </a>
+          {/* Internal dashboards — these pages had no inbound link anywhere
+              (URL-only reachable) until this strip. CTO audit 2026-07-06. */}
+          <nav className="mt-4 flex flex-wrap gap-2">
+            {[
+              ["/hq", "HQ CRM"],
+              ["/content", "Content"],
+              ["/social", "Social"],
+              ["/media", "Media"],
+              ["/manus", "Manus"],
+              ["/action", "Action Cam"],
+              ["/tv", "TV Requests"],
+              ["/credit", "Credit"],
+              ["/trading", "Trading"],
+              ["/gpu", "GPU"],
+              ["/chat", "Chat"],
+            ].map(([href, label]) => (
+              <a
+                key={href}
+                href={href}
+                className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-white/75 hover:bg-white/10"
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
         </header>
 
         <OpenClawAdminConsole />
