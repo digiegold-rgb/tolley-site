@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { HpNavbar } from "@/components/homepage/hp-navbar";
 import { HpHero } from "@/components/homepage/hp-hero";
+import { HpCircleBand } from "@/components/homepage/hp-circle-band";
 import { HpSocialProof } from "@/components/homepage/hp-social-proof";
 import { HpFeatures } from "@/components/homepage/hp-features";
 import { HpHowItWorks } from "@/components/homepage/hp-how-it-works";
@@ -21,6 +22,7 @@ export default async function Home() {
     <main className="homepage portal-shell ambient-noise relative min-h-screen overflow-hidden">
       <HpNavbar isAuthenticated={isAuthenticated} />
       <HpHero />
+      <HpCircleBand />
       <HpSocialProof />
       <HpFeatures />
       <HpHowItWorks />
@@ -37,6 +39,14 @@ export default async function Home() {
           className="rounded-full border border-white/18 bg-black/35 px-4 py-2 backdrop-blur-xl"
         >
           <ul className="flex items-center gap-4 text-[0.7rem] tracking-[0.08em] text-white/72 uppercase">
+            <li>
+              <Link className="font-semibold text-orange-300 transition hover:text-orange-200" href="/start">
+                All 40+ Services →
+              </Link>
+            </li>
+            <li aria-hidden="true" className="text-white/45">
+              |
+            </li>
             <li>
               <Link className="transition hover:text-white" href="/privacy">
                 Privacy Policy
