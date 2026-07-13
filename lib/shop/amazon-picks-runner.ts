@@ -21,6 +21,7 @@ import {
   formatAmazonPicksCaption,
   formatHaulFacebookCaption,
   formatHaulInstagramCaption,
+  mergeAmazonPicksStamp,
   pickAmazonPickProducts,
   pickHaulProducts,
   pickPrimaryImageUrl,
@@ -107,6 +108,23 @@ export async function runAmazonPicksCycle(opts: {
       where: { id: { in: promotedIds } },
       data: { haulPromotedAt: new Date() },
     });
+  }
+
+  // Same rotation stamp for picks mode — stored in postizPostIds JSON
+  // (per-product merge, so no schema migration) and read back by
+  // pickAmazonPickProducts' 30-day cooldown.
+  if (mode === "picks" && results.some((r) => r.ok && !r.skipped)) {
+    const promotedAt = new Date();
+    await Promise.all(
+      products.map((p) =>
+        prisma.product
+          .update({
+            where: { id: p.id },
+            data: { postizPostIds: mergeAmazonPicksStamp(p.postizPostIds, promotedAt) },
+          })
+          .catch(() => {}),
+      ),
+    );
   }
 
   return {

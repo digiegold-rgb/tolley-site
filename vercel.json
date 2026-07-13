@@ -326,6 +326,10 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/cron/estate-sale-alert",
+      "schedule": "30 * * * *"
+    },
+    {
       "path": "/api/cron/treasure-haul-weekly",
       "schedule": "0 15 * * 6"
     },

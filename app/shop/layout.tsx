@@ -224,6 +224,10 @@ export default async function ShopLayout({
               Terms
             </Link>
             <span className="text-white/20">|</span>
+            <Link href="/circle" className="transition hover:text-white/70">
+              The Circle
+            </Link>
+            <span className="text-white/20">|</span>
             <Link href="/start" className="transition hover:text-white/70">
               All Services
             </Link>

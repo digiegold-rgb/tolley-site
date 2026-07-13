@@ -13,6 +13,7 @@ import { manifest as blog } from "@/app/blog/agent";
 import { manifest as circle } from "@/app/circle/agent";
 import { manifest as cleanouts } from "@/app/cleanouts/agent";
 import { manifest as crazybins } from "@/app/crazybins/agent";
+import { manifest as estate } from "@/app/estate/agent";
 import { manifest as client } from "@/app/client/agent";
 import { manifest as crypto } from "@/app/crypto/agent";
 import { manifest as dataRetention } from "@/app/data-retention/agent";
@@ -67,6 +68,7 @@ export const SUBSITES: SubsiteManifest[] = [
   cleanouts,
   client,
   crazybins,
+  estate,
   crypto,
   dataRetention,
   drive,

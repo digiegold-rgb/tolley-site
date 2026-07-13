@@ -4549,3 +4549,31 @@ model MileageTrip {
   @@index([category])
   @@index([startDate])
 }
+
+// ── Tolley Estate Sales ──────────────────────────────────────────────
+// One row per estate sale event. Powers /estate + /estate/sales/[slug],
+// the address-release cron (vipNotifyAt → email blast to estate-alerts
+// list), and the past-sales social proof section. Address stays private
+// until addressPublishAt per industry convention.
+model EstateSale {
+  id               String    @id @default(cuid())
+  slug             String    @unique
+  title            String
+  areaLabel        String // public label, e.g. "Independence, MO"
+  address          String? // private until addressPublishAt
+  addressPublishAt DateTime? // public reveal (convention: 9am day before)
+  vipNotifyAt      DateTime? // email-list reveal (night before the public)
+  vipNotifiedAt    DateTime? // stamp set by the cron after the blast
+  days             Json // [{date:"2026-07-17",open:"08:00",close:"16:00",note?}]
+  startsAt         DateTime
+  endsAt           DateTime
+  status           String    @default("upcoming") // upcoming|live|done
+  description      String?
+  highlights       String[]
+  photos           String[]
+  grossTotal       Float?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status, startsAt])
+}

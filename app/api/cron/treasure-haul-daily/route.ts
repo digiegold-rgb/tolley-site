@@ -67,9 +67,33 @@ export async function GET(req: NextRequest) {
   //      (or never), oldest-unfeatured first so every item rotates through.
   //   3. Only fall back to single-product mode if the whole catalog has been
   //      exhausted (truly nothing to post).
+  // Mirror-freshness guard: `status="listed"` is only trustworthy while the
+  // FB Marketplace mirror is syncing (Ruthann deletes sold listings; the
+  // mirror's absence detection is what flips them to sold). If the last sync
+  // is >24h old, the backlog may be full of already-sold items — post only
+  // genuinely fresh uploads and alert instead of trusting stale inventory.
+  const freshest = await prisma.product.findFirst({
+    where: { lastFbCheckAt: { not: null } },
+    orderBy: { lastFbCheckAt: "desc" },
+    select: { lastFbCheckAt: true },
+  });
+  const mirrorAgeMs = freshest?.lastFbCheckAt
+    ? Date.now() - freshest.lastFbCheckAt.getTime()
+    : Number.POSITIVE_INFINITY;
+  const mirrorStale = mirrorAgeMs > 24 * 60 * 60 * 1000;
+  if (mirrorStale) {
+    await alertDiscord(
+      `daily digest: FB mirror is stale (last sync ${
+        Number.isFinite(mirrorAgeMs)
+          ? `${Math.round(mirrorAgeMs / 3_600_000)}h ago`
+          : "never"
+      }) — posting fresh uploads only. Check fb-draft-worker on the DGX.`,
+    );
+  }
+
   const recent = await pickRecentTreasureHaulProducts(DIGEST_MAX_ITEMS, 48);
   const need = Math.max(0, DIGEST_TARGET_ITEMS - recent.length);
-  const backfill = need > 0
+  const backfill = need > 0 && !mirrorStale
     ? await pickBackfillTreasureHaulProducts(
         need,
         BACKFILL_COOLDOWN_DAYS,
@@ -84,6 +108,16 @@ export async function GET(req: NextRequest) {
 
   if (products.length >= DIGEST_MIN_ITEMS) {
     return postDigest(page.id, token, products, variant);
+  }
+  if (mirrorStale) {
+    // Single-product fallback pulls from the (untrustworthy) backlog — skip.
+    return NextResponse.json({
+      ok: true,
+      skipped: "mirror stale and no fresh uploads — not posting from backlog",
+      mirrorAgeHours: Number.isFinite(mirrorAgeMs)
+        ? Math.round(mirrorAgeMs / 3_600_000)
+        : null,
+    });
   }
   return postSingle(page.id, token);
 }

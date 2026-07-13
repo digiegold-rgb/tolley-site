@@ -260,6 +260,18 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
     emoji: "🗑️",
     accent: "amber",
   },
+  estate: {
+    group: "Home Services",
+    tagline: "Full-service estate sales — free walkthrough, fast settlement",
+    bullets: [
+      "Next sale: Jul 17–18, Independence",
+      "We stage, price & advertise",
+      "Nothing goes to waste",
+    ],
+    emoji: "🏛️",
+    accent: "amber",
+    featured: true,
+  },
   crazybins: {
     group: "Shop & Food",
     tagline: "Liquidation bin store — 60–80% off retail",

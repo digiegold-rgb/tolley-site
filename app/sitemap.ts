@@ -18,6 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const priorityMap: Record<string, number> = {
     "/": 1.0,
     "/shop": 0.9,
+    "/estate": 0.9,
     "/real-estate-agent": 0.9,
     "/rental": 0.8,
     "/wd": 0.7,
@@ -62,6 +63,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  // Shop product pages — listed items only (sold pages stay live for old FB
+  // deep-links but don't need crawl budget).
+  const products = await prisma.product
+    .findMany({
+      where: {
+        status: "listed",
+        listings: { some: { platform: "shop", status: "active" } },
+        imageUrls: { isEmpty: false },
+      },
+      select: { id: true, updatedAt: true },
+    })
+    .catch(() => []);
+
+  const productRoutes: MetadataRoute.Sitemap = products.map((p) => ({
+    url: `${BASE}/shop/${p.id}`,
+    lastModified: p.updatedAt,
+    changeFrequency: "weekly" as const,
+    priority: 0.6,
+  }));
+
   const neighborhoods = await prisma.neighborhoodPage
     .findMany({
       where: { published: true },
@@ -79,5 +100,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Use publicSubsites for log so we don't surprise builds
   void publicSubsites;
 
-  return [homeRoute, ...subsiteRoutes, ...extras, ...neighborhoodRoutes];
+  return [
+    homeRoute,
+    ...subsiteRoutes,
+    ...extras,
+    ...productRoutes,
+    ...neighborhoodRoutes,
+  ];
 }

@@ -1,0 +1,194 @@
+/* ── Tolley Estate Sales — Auction-House Editorial ─────────────────── */
+/* Warm ink-brown dark, aged-brass accent, Fraunces serif display.      */
+/* Reads like a premium auction catalog — deliberately NOT the beige    */
+/* incumbent template and NOT the tech-dark of the rest of the family.  */
+
+.estate-page {
+  --es-ink: #171210;
+  --es-panel: #201915;
+  --es-panel-2: #281f1a;
+  --es-line: rgba(214, 188, 152, 0.16);
+  --es-brass: #c9a24b;
+  --es-brass-bright: #e4c06a;
+  --es-cream: #f3ead9;
+  --es-cream-dim: rgba(243, 234, 217, 0.62);
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -5%, rgba(201, 162, 75, 0.09), transparent 65%),
+    radial-gradient(ellipse 60% 40% at 85% 100%, rgba(201, 162, 75, 0.05), transparent 70%),
+    var(--es-ink);
+  color: var(--es-cream);
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Fine grain so the dark reads as paper, not screen */
+.estate-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+  z-index: 0;
+}
+
+/* Serif display voice */
+.es-display {
+  font-family: var(--font-fraunces), Georgia, serif;
+  letter-spacing: -0.01em;
+}
+.es-italic {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+}
+
+/* Kicker — small caps brass label with rule lines */
+.es-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--es-brass);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.es-kicker::before,
+.es-kicker::after {
+  content: "";
+  height: 1px;
+  width: 2rem;
+  background: linear-gradient(90deg, transparent, var(--es-brass));
+}
+.es-kicker::after {
+  background: linear-gradient(90deg, var(--es-brass), transparent);
+}
+
+/* Panels — catalog plates */
+.es-card {
+  background: var(--es-panel);
+  border: 1px solid var(--es-line);
+  border-radius: 0.375rem;
+  transition: border-color 0.25s ease, transform 0.25s ease;
+}
+.es-card:hover {
+  border-color: rgba(201, 162, 75, 0.5);
+  transform: translateY(-3px);
+}
+.es-panel {
+  background: var(--es-panel);
+  border: 1px solid var(--es-line);
+  border-radius: 0.375rem;
+}
+
+/* THIS WEEKEND sale plate — double-ruled like a catalog cover */
+.es-sale-plate {
+  background:
+    linear-gradient(160deg, rgba(201, 162, 75, 0.12), rgba(201, 162, 75, 0.02) 55%),
+    var(--es-panel-2);
+  border: 1px solid rgba(201, 162, 75, 0.55);
+  border-radius: 0.375rem;
+  position: relative;
+}
+.es-sale-plate::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 1px solid rgba(201, 162, 75, 0.25);
+  border-radius: 0.25rem;
+  pointer-events: none;
+}
+
+/* Primary CTA — solid brass */
+.es-btn-primary {
+  background: var(--es-brass);
+  color: #1c150f;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+.es-btn-primary:hover {
+  background: var(--es-brass-bright);
+  transform: translateY(-1px);
+}
+
+/* Secondary CTA — ruled outline */
+.es-btn-secondary {
+  background: rgba(201, 162, 75, 0.06);
+  border: 1px solid rgba(201, 162, 75, 0.45);
+  color: var(--es-cream);
+  border-radius: 0.25rem;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.es-btn-secondary:hover {
+  border-color: var(--es-brass);
+  background: rgba(201, 162, 75, 0.14);
+}
+
+/* Countdown digits */
+.es-count {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--es-brass-bright);
+}
+
+/* Form inputs */
+.es-input {
+  background: rgba(23, 18, 16, 0.7);
+  border: 1px solid rgba(214, 188, 152, 0.25);
+  border-radius: 0.25rem;
+  color: var(--es-cream);
+  width: 100%;
+  transition: border-color 0.2s ease;
+}
+.es-input:focus {
+  outline: none;
+  border-color: var(--es-brass);
+}
+.es-input::placeholder {
+  color: rgba(243, 234, 217, 0.35);
+}
+
+/* Ornamental divider — center diamond */
+.es-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--es-brass);
+}
+.es-divider::before,
+.es-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--es-line);
+}
+
+/* Section entrance */
+.es-enter {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: es-fade-up 0.7s ease-out both;
+  animation-delay: var(--enter-delay, 0s);
+}
+@keyframes es-fade-up {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .es-enter {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .es-card:hover,
+  .es-btn-primary:hover {
+    transform: none;
+  }
+}

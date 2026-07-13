@@ -225,20 +225,91 @@ export async function pickBackfillTreasureHaulProducts(
 /**
  * Pick top products by Page-attributable engagement over the last `windowDays`.
  * Used by the Saturday weekly highlight.
+ *
+ * Ranks on windowed SiteEvent activity (product_view ×1, amazon_click ×3,
+ * buy_click ×5; bot clicks excluded) so the "most-loved this week" post is
+ * actually about this week — lifetime counters made the same all-time winners
+ * repeat every Saturday. Items featured on the Page in the last 14 days are
+ * excluded; falls back to lifetime click ordering when the week was quiet.
  */
 export async function pickWeeklyTopProducts(
   limit: number,
   windowDays: number = 7,
 ): Promise<(Product & { listings: PlatformListing[] })[]> {
-  const _since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
-  void _since;
-  // Engagement signal: prefer goClicksFacebook, then goClicksDirect, then amazonClicks.
-  // We don't have time-windowed click tables; counters are lifetime, so we
-  // pull active products ordered by composite click score and return the top N.
-  const candidates = await prisma.product.findMany({
+  const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
+  const featuredCutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+
+  const [labelEvents, amazonEvents] = await Promise.all([
+    prisma.siteEvent
+      .groupBy({
+        by: ["event", "label"],
+        where: {
+          site: "shop",
+          event: { in: ["product_view", "buy_click"] },
+          label: { not: null },
+          createdAt: { gte: since },
+        },
+        _count: { _all: true },
+      })
+      .catch(() => []),
+    prisma.$queryRaw<{ pid: string; n: bigint }[]>`
+      SELECT meta->>'productId' AS pid, count(*) AS n
+      FROM "SiteEvent"
+      WHERE site = 'shop' AND event = 'amazon_click'
+        AND "createdAt" >= ${since}
+        AND meta->>'productId' IS NOT NULL
+        AND coalesce(meta->>'isBot', 'false') <> 'true'
+      GROUP BY 1
+    `.catch(() => [] as { pid: string; n: bigint }[]),
+  ]);
+
+  const score = new Map<string, number>();
+  for (const e of labelEvents) {
+    if (!e.label) continue;
+    const weight = e.event === "buy_click" ? 5 : 1;
+    score.set(e.label, (score.get(e.label) ?? 0) + weight * e._count._all);
+  }
+  for (const row of amazonEvents) {
+    score.set(row.pid, (score.get(row.pid) ?? 0) + 3 * Number(row.n));
+  }
+
+  const notRecentlyFeatured = {
+    OR: [{ syndicatedAt: null }, { syndicatedAt: { lt: featuredCutoff } }],
+  };
+
+  const rankedIds = [...score.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([id]) => id)
+    .slice(0, limit * 6);
+
+  const windowed =
+    rankedIds.length > 0
+      ? await prisma.product.findMany({
+          where: {
+            id: { in: rankedIds },
+            status: "listed",
+            listings: { some: { platform: "shop", status: "active" } },
+            ...notRecentlyFeatured,
+          },
+          include: { listings: true },
+        })
+      : [];
+  windowed.sort(
+    (a, b) => rankedIds.indexOf(a.id) - rankedIds.indexOf(b.id),
+  );
+
+  const picked = filterPostable(windowed).slice(0, limit);
+  if (picked.length >= limit) return picked;
+
+  // Quiet week — top up from lifetime click ordering (original behavior).
+  const fallback = await prisma.product.findMany({
     where: {
       status: "listed",
       listings: { some: { platform: "shop", status: "active" } },
+      ...(picked.length > 0
+        ? { id: { notIn: picked.map((p) => p.id) } }
+        : {}),
+      ...notRecentlyFeatured,
     },
     include: { listings: true },
     orderBy: [
@@ -248,12 +319,41 @@ export async function pickWeeklyTopProducts(
     ],
     take: limit * 4,
   });
-  return filterPostable(candidates).slice(0, limit);
+  return [...picked, ...filterPostable(fallback)].slice(0, limit);
+}
+
+/** Days a product waits after an Amazon-picks feature before it's eligible again. */
+const AMAZON_PICKS_COOLDOWN_DAYS = 30;
+
+/** Read the last Amazon-picks feature time stamped by the runner (ms epoch). */
+export function getAmazonPicksPromotedAt(postizPostIds: unknown): number | null {
+  if (!postizPostIds || typeof postizPostIds !== "object" || Array.isArray(postizPostIds)) {
+    return null;
+  }
+  const raw = (postizPostIds as Record<string, unknown>).amazonPicksAt;
+  if (typeof raw !== "string") return null;
+  const t = Date.parse(raw);
+  return Number.isNaN(t) ? null : t;
+}
+
+/** Merge the Amazon-picks feature stamp, preserving other postizPostIds keys. */
+export function mergeAmazonPicksStamp(
+  existing: unknown,
+  promotedAt: Date,
+): Prisma.InputJsonValue {
+  const base =
+    existing && typeof existing === "object" && !Array.isArray(existing)
+      ? (existing as Record<string, unknown>)
+      : {};
+  return { ...base, amazonPicksAt: promotedAt.toISOString() } as Prisma.InputJsonValue;
 }
 
 /**
- * Pick Amazon-affiliated products for the Sunday "Amazon picks" post.
- * Requires `amazonAsin` set; ordered by amazonClicks desc, then asinMatchedAt.
+ * Pick Amazon-affiliated products for the Sun/Tue/Fri "Amazon picks" post.
+ * Requires `amazonAsin` set. Rotates: never-featured first, then
+ * longest-since-featured (cooldown 30d), clicks as the tie-break — ordering
+ * purely by lifetime amazonClicks reposted the same top products' photos
+ * every cycle, which read as stale inventory on the Page.
  */
 export async function pickAmazonPickProducts(
   limit: number,
@@ -271,11 +371,26 @@ export async function pickAmazonPickProducts(
       { amazonClicks: "desc" },
       { asinMatchedAt: "desc" },
     ],
-    take: limit * 4,
+    take: limit * 12,
   });
   // Don't require an active shop listing — Amazon picks can include sold inventory.
-  return candidates
-    .filter((c) => c.imageUrls && c.imageUrls.length > 0 && c.amazonAsin)
+  const eligible = candidates.filter(
+    (c) => c.imageUrls && c.imageUrls.length > 0 && c.amazonAsin,
+  );
+  const cooldownMs = AMAZON_PICKS_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+  const offCooldown = eligible.filter((c) => {
+    const at = getAmazonPicksPromotedAt(c.postizPostIds);
+    return at === null || Date.now() - at > cooldownMs;
+  });
+  // If the whole catalog is on cooldown, post anyway (oldest-featured first)
+  // rather than skipping the slot.
+  const pool = offCooldown.length >= limit ? offCooldown : eligible;
+  return [...pool]
+    .sort(
+      (a, b) =>
+        (getAmazonPicksPromotedAt(a.postizPostIds) ?? 0) -
+        (getAmazonPicksPromotedAt(b.postizPostIds) ?? 0),
+    )
     .slice(0, limit);
 }
 
@@ -316,6 +431,7 @@ export function formatTreasureHaulCarouselCaption(opts: {
   lines.push("");
   lines.push("🛒 Shop the haul → https://www.tolley.io/shop?utm_source=facebook_brand_page&utm_medium=organic");
   lines.push("Local pickup in Kansas City · ships nationwide");
+  lines.push("📬 Want first dibs? Join the free drop list on the shop page — one email when fresh finds land.");
   lines.push("");
   lines.push("#treasurehaul #thrifting #vintagefinds #kansascity");
   return lines.join("\n");
@@ -344,7 +460,10 @@ export function formatAmazonPicksCaption(
   lines.push("🛍 This week's Amazon picks — handpicked by Ruthann:");
   lines.push("");
   for (const p of products) {
-    lines.push(`• ${p.title.trim()}`);
+    // Sold items are reposted ON PURPOSE (affiliate revenue) — say so, or
+    // followers read the repeat photos as stale inventory.
+    const soldNote = p.status === "sold" ? " (sold locally — still on Amazon ⬇)" : "";
+    lines.push(`• ${p.title.trim()}${soldNote}`);
   }
   lines.push("");
   lines.push("Full storefront → https://www.amazon.com/shop/digitaljared?ref_=tolley_brand_fb");
