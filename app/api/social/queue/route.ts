@@ -10,6 +10,7 @@ const SOURCE_LABEL: Record<string, string> = {
   realestate: "Real estate listing",
   vater: "Vater render",
   launchpad: "Launchpad storefront",
+  action: "🎥 Action Cam",
 };
 
 export async function GET() {

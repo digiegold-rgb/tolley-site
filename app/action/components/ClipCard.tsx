@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { S } from "../styles";
 import { Clip, Disposition, DISPOSITIONS, isShortClip } from "../types";
 
-export function ClipCard({ c, busy, privateView, previewSrc, fullSrc, thumbSrc, selectable, selected, onSelect, onLongPress, onExpand, onTag, onDelete, onTrim }: {
+export function ClipCard({ c, busy, privateView, previewSrc, fullSrc, thumbSrc, selectable, selected, onSelect, onLongPress, onExpand, onTag, onDelete, onTrim, onSocial }: {
   c: Clip; busy: boolean; privateView?: boolean;
   previewSrc?: string | null; fullSrc?: string | null; thumbSrc?: string | null;
   selectable?: boolean; selected?: boolean;
   onSelect?: () => void; onLongPress?: () => void;
   onExpand: () => void; onTag: (d: Disposition) => void; onDelete: () => void;
-  onTrim?: () => void;
+  onTrim?: () => void; onSocial?: () => void;
 }) {
   // Click the thumbnail to load an inline player right in the card. We prefer the
   // 720p web copy (fullSrc) because it carries AUDIO — the 480p preview proxy is
@@ -100,6 +100,13 @@ export function ClipCard({ c, busy, privateView, previewSrc, fullSrc, thumbSrc, 
             <span style={S.dispLbl}>{d.label}</span>
           </button>
         ))}
+        {onSocial && (
+          <button title="Push to Social — queue this clip for your social accounts (you post it from /social)"
+            disabled={busy || selectable} onClick={onSocial} style={S.dispOff}>
+            <span style={{ fontSize: 13 }}>📣</span>
+            <span style={S.dispLbl}>Social</span>
+          </button>
+        )}
         <button title="Delete permanently" disabled={busy || selectable} onClick={onDelete} style={S.dispDel}>🗑</button>
       </div>
       {busy && <div style={S.clipBusy}>saving…</div>}

@@ -15,6 +15,7 @@ import { Skeleton } from "./components/Skeleton";
 import { Toasts, useUndoable } from "./components/Toasts";
 import { ConfirmModal, ConfirmSpec } from "./components/ConfirmModal";
 import { PromptModal } from "./components/PromptModal";
+import { SocialPushModal, SocialPushTarget } from "./components/SocialPushModal";
 import {
   Clip, DayCoverage, Disposition, DISPOSITIONS, EditSlice, EditTimeline, Folders, JobRecord, JobState,
   OriginalsDay, PhotoDay, Recap, Status, TrimPlan,
@@ -119,6 +120,22 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
   // Folder-name prompt: { cardKey } => move that recap into the new folder; {} => just create it.
   const [folderPrompt, setFolderPrompt] = useState<{ cardKey?: string } | null>(null);
   const fileUrl = (u: string) => `${apiBase}${u}`;
+  // 📣 Push-to-Social modal target. Media URLs in the target ALWAYS use the public
+  // Cloudflare base (API) — never apiBase, which can be the Tailscale LAN path the
+  // social platforms can't reach when they pull the video.
+  const [socialPush, setSocialPush] = useState<SocialPushTarget | null>(null);
+  const clipSocialTarget = (c: Clip, day: string): SocialPushTarget | null => {
+    const media = c.webUrl || c.url;   // prefer the 720p web copy — raw DJI is 4K-square and huge
+    if (!media) return null;
+    return {
+      title: `${dayLabel(day)} — action cam`,
+      mediaUrl: `${API}${media}`,
+      thumbnailUrl: c.thumbUrl ? `${API}${c.thumbUrl}` : undefined,
+      sourceRefId: c.name,
+      hint: `Behind-the-scenes DJI action-cam clip of me working and exploring, filmed ${dayLabel(day)}. First-person, upbeat, high-energy.`,
+      warmUrl: c.webUrl ? fileUrl(c.webUrl) : undefined,
+    };
+  };
 
   // One health probe of the direct Tailscale path. 6s timeout (the first cold
   // MagicDNS+TLS handshake can be slow — 2.5s was too aggressive and would wrongly
@@ -1078,6 +1095,20 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
                         {r && (
                           <a href={fileUrl(r.url)} download style={S.smallBtn}>↓ Save</a>
                         )}
+                        {r && (
+                          <button
+                            onClick={() => setSocialPush({
+                              title: r.title || `${period} ${kind === "daily" ? "Daily Adventure" : kind}`,
+                              mediaUrl: `${API}${r.url}`,
+                              thumbnailUrl: r.thumbUrl ? `${API}${r.thumbUrl}` : undefined,
+                              sourceRefId: r.key || `${period}|${kind}|${r.source || "dji"}|${r.aspect}`,
+                              hint: `Action-cam highlight reel "${r.title || period}" (${r.aspectLabel}) — real moments from my DJI camera, upbeat and positive.`,
+                            })}
+                            style={S.smallBtn}
+                            aria-label={`Push recap ${r.title || period} to social media`}
+                            title="Push to Social — queue this recap for your social accounts. Nothing posts until you hit Post now on /social."
+                          >📣 Social</button>
+                        )}
                         {/* Move into a user folder (or make a new one for this card) */}
                         <select
                           value={r?.folder || ""}
@@ -1317,6 +1348,7 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
                         onExpand={() => c.url && setPlaying({ url: fileUrl(c.webUrl || c.url), dlUrl: fileUrl(c.url), title: c.name })}
                         onTag={(disp) => setDisposition(c.name, disp)}
                         onTrim={() => setTrimming(c)}
+                        onSocial={() => { const t = clipSocialTarget(c, d.day); if (t) setSocialPush(t); }}
                         onDelete={() => deleteUndoable(c.name)} />
                     ))}
                   </div>
@@ -1504,6 +1536,7 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
                       thumbSrc={c.thumbUrl ? fileUrl(c.thumbUrl) : null}
                       onExpand={() => c.url && setPlaying({ url: fileUrl(c.webUrl || c.url), dlUrl: fileUrl(c.url), title: c.name })}
                       onTag={(disp) => setDisposition(c.name, disp)}
+                      onSocial={() => { const t = clipSocialTarget(c, d.day); if (t) setSocialPush(t); }}
                       onDelete={() => deleteUndoable(c.name)} />
                   ))}
                 </div>
@@ -1743,6 +1776,9 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
             onClose={() => setFolderPrompt(null)}
           />
         )}
+
+        {/* 📣 push a video into the /social queue (posting stays manual over there) */}
+        {socialPush && <SocialPushModal target={socialPush} onClose={() => setSocialPush(null)} />}
 
         {/* undo toasts for deletes */}
         <Toasts toasts={toasts} onUndo={undo} />

@@ -23,7 +23,7 @@ interface CreateBody {
   hashtags?: string[];
   platforms: string[];
   scheduledAt?: string;
-  source?: "manual" | "shop" | "realestate" | "vater";
+  source?: "manual" | "shop" | "realestate" | "vater" | "action";
   sourceRefId?: string;
 }
 

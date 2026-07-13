@@ -45,7 +45,7 @@ interface ConnectionStatus {
 
 interface QueueItem {
   id: string;
-  source: "manual" | "shop" | "realestate" | "vater" | "cron";
+  source: "manual" | "shop" | "realestate" | "vater" | "cron" | "action";
   sourceLabel: string;
   mediaUrl?: string;
   thumbnailUrl?: string;
