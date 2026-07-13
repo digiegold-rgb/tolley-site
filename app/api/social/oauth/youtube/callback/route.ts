@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApiSession } from "@/lib/admin-auth";
+import { saveStoredToken } from "@/lib/social/token-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -83,6 +84,23 @@ export async function GET(request: NextRequest) {
   }
 
   const refreshToken = tokens.refresh_token;
+
+  // Persist to the DB token store — lib/social/youtube.ts reads this first, so
+  // the re-auth is live immediately with no env paste and no redeploy.
+  let saved = true;
+  let saveError = "";
+  try {
+    await saveStoredToken("youtube", {
+      accessToken: tokens.access_token ?? "",
+      refreshToken,
+      accountId: "youtube-admin",
+      username: channelTitle,
+      scopes: ["youtube.upload", "youtube", "youtube.readonly"],
+    });
+  } catch (err) {
+    saved = false;
+    saveError = err instanceof Error ? err.message : "unknown";
+  }
   const escaped = refreshToken.replace(/[<>&"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
   const html = `<!doctype html>
@@ -97,8 +115,10 @@ export async function GET(request: NextRequest) {
   .muted { color: rgba(255,255,255,0.5); font-size: 13px; }
   pre { background: #000; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 12px; overflow-x: auto; font-size: 12px; user-select: all; }
   .ok { color: #34d399; font-weight: 600; }
+  .warn { color: #fbbf24; }
   a { color: #34d399; }
   .step { margin-top: 16px; }
+  details { margin-top: 16px; }
   button { background: #34d399; color: #000; border: 0; border-radius: 8px; padding: 8px 14px; font-weight: 700; cursor: pointer; }
 </style>
 </head>
@@ -106,22 +126,19 @@ export async function GET(request: NextRequest) {
   <div class="card">
     <h1>YouTube re-auth complete <span class="ok">✓</span></h1>
     <p class="muted">Connected channel: <strong>${channelTitle}</strong></p>
+    ${saved
+      ? `<p><span class="ok">Token saved automatically</span> — YouTube posting works right now. Nothing to paste, no redeploy.</p>`
+      : `<p><span class="warn">⚠ Auto-save failed (${saveError.replace(/[<>&"]/g, "")})</span> — use the manual steps below.</p>`}
 
-    <div class="step">
-      <p><strong>Step 1 — copy this refresh token:</strong></p>
-      <pre id="rt">${escaped}</pre>
-      <button onclick="navigator.clipboard.writeText(document.getElementById('rt').innerText); this.innerText='Copied ✓'">Copy refresh token</button>
-    </div>
-
-    <div class="step">
-      <p><strong>Step 2 — paste it into Vercel env:</strong> on your terminal, run:</p>
-      <pre>printf '%s' "&lt;paste-refresh-token-here&gt;" | npx vercel env rm YOUTUBE_REFRESH_TOKEN production --yes 2&gt;/dev/null; printf '%s' "&lt;paste&gt;" | npx vercel env add YOUTUBE_REFRESH_TOKEN production</pre>
-    </div>
-
-    <div class="step">
-      <p><strong>Step 3 — redeploy:</strong></p>
-      <pre>cd ~/tolley-site &amp;&amp; npx vercel --prod --yes</pre>
-    </div>
+    <details ${saved ? "" : "open"}>
+      <summary class="muted">Manual fallback (only if auto-save failed)</summary>
+      <div class="step">
+        <p><strong>Copy this refresh token:</strong></p>
+        <pre id="rt">${escaped}</pre>
+        <button onclick="navigator.clipboard.writeText(document.getElementById('rt').innerText); this.innerText='Copied ✓'">Copy refresh token</button>
+        <p>Then: <code>npx vercel env add YOUTUBE_REFRESH_TOKEN production</code> (use printf, no trailing newline) and redeploy.</p>
+      </div>
+    </details>
 
     <p class="muted" style="margin-top: 24px;"><a href="/social">← back to /social</a></p>
   </div>

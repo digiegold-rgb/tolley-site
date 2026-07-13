@@ -1,4 +1,5 @@
 import { combineCaptionAndTags, type PostInput, type PostResult } from "./types";
+import { getStoredToken } from "./token-store";
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const UPLOAD_URL = "https://www.googleapis.com/upload/youtube/v3/videos";
@@ -16,9 +17,12 @@ const UPLOAD_URL = "https://www.googleapis.com/upload/youtube/v3/videos";
  *   YOUTUBE_CATEGORY_ID      default "22" (People & Blogs)
  */
 export async function postYouTube(input: PostInput): Promise<PostResult> {
-  const clientId = process.env.YOUTUBE_CLIENT_ID;
-  const clientSecret = process.env.YOUTUBE_CLIENT_SECRET;
-  const refreshToken = process.env.YOUTUBE_REFRESH_TOKEN;
+  const clientId = process.env.YOUTUBE_CLIENT_ID?.trim();
+  const clientSecret = process.env.YOUTUBE_CLIENT_SECRET?.trim();
+  // Fresh token from the DB (saved by /api/social/oauth/youtube re-auth) wins;
+  // the env var is the legacy fallback and may be stale.
+  const stored = await getStoredToken("youtube");
+  const refreshToken = stored?.refreshToken || process.env.YOUTUBE_REFRESH_TOKEN?.trim();
 
   if (!clientId || !clientSecret || !refreshToken) {
     return { ok: false, error: "YouTube not connected — see playbook step 1 (re-auth)" };

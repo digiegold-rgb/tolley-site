@@ -1,4 +1,5 @@
 import { combineCaptionAndTags, type PostInput, type PostResult } from "./types";
+import { getStoredToken } from "./token-store";
 
 const API_VERSION = process.env.FACEBOOK_API_VERSION || "v18.0";
 const FB_API = "https://graph.facebook.com";
@@ -14,8 +15,13 @@ const FB_API = "https://graph.facebook.com";
  * instagram_content_publish + pages_read_engagement scopes.
  */
 export async function postInstagram(input: PostInput): Promise<PostResult> {
-  const igUserId = process.env.INSTAGRAM_BUSINESS_ID;
+  const igUserId = process.env.INSTAGRAM_BUSINESS_ID?.trim();
+  // A token re-authed through /api/social/oauth/facebook (with instagram_basic +
+  // instagram_content_publish) is stored in the DB and wins; the env tokens are
+  // legacy fallbacks that lack the IG publish scopes (error #10).
+  const stored = await getStoredToken("instagram");
   const token =
+    stored?.accessToken ||
     process.env.INSTAGRAM_PAGE_TOKEN ||
     process.env.FACEBOOK_PAGE_TOKEN_TREASURE ||
     process.env.FACEBOOK_PAGE_TOKEN_MAIN;
