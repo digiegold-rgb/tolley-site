@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApiSession } from "@/lib/admin-auth";
 import { saveStoredToken } from "@/lib/social/token-store";
@@ -6,6 +7,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const GRAPH = "https://graph.facebook.com/v18.0";
+
+const esc = (s: unknown) => String(s)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
 /**
  * Final hop of the Facebook/Instagram OAuth round trip.
@@ -22,8 +27,16 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const fbError = request.nextUrl.searchParams.get("error_description")
     || request.nextUrl.searchParams.get("error");
-  if (fbError) return new NextResponse(`OAuth error: ${fbError}`, { status: 400 });
+  if (fbError) return new NextResponse(`OAuth error: ${esc(fbError)}`, { status: 400 });
   if (!code) return new NextResponse("Missing code", { status: 400 });
+
+  // CSRF guard: the state must match the cookie set by /start.
+  const state = request.nextUrl.searchParams.get("state");
+  const stateCookie = request.cookies.get("fb_oauth_state")?.value;
+  if (!state || !stateCookie || state.length !== stateCookie.length
+    || !timingSafeEqual(Buffer.from(state), Buffer.from(stateCookie))) {
+    return new NextResponse("State mismatch — start over at /api/social/oauth/facebook/start", { status: 400 });
+  }
 
   const appId = process.env.FACEBOOK_APP_ID?.trim();
   const appSecret = process.env.FACEBOOK_APP_SECRET?.trim();
@@ -81,12 +94,12 @@ export async function GET(request: NextRequest) {
       pageId: igPage.id,
       pageName: igPage.name,
     });
-    headline = `<p><span class="ok">Token saved automatically</span> — Instagram Reels posting works right now via page <strong>${igPage.name}</strong> → IG account <strong>${igPage.instagram_business_account?.id ?? "?"}</strong>. Nothing to paste, no redeploy.</p>`;
+    headline = `<p><span class="ok">Token saved automatically</span> — Instagram Reels posting works right now via page <strong>${esc(igPage.name)}</strong> → IG account <strong>${esc(igPage.instagram_business_account?.id ?? "?")}</strong>. Nothing to paste, no redeploy.</p>`;
   } else {
     headline = `<p><span class="warn">⚠ No page in this login has a linked Instagram business account.</span> Link the IG account to a Facebook page (IG app → Settings → Sharing to other apps) and run this again.</p>`;
   }
   for (const p of pages) {
-    rows.push(`<tr><td>${p.name}</td><td>${p.id}</td><td>${p.instagram_business_account?.id ?? "—"}</td></tr>`);
+    rows.push(`<tr><td>${esc(p.name)}</td><td>${esc(p.id)}</td><td>${esc(p.instagram_business_account?.id ?? "—")}</td></tr>`);
   }
 
   const html = `<!doctype html>

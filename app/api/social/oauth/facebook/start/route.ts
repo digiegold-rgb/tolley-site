@@ -23,6 +23,16 @@ export async function GET(request: Request) {
   const redirectUri = `${origin}/api/social/oauth/facebook/callback`;
   const state = crypto.randomUUID();
 
+  const res = NextResponse.redirect(buildDialogUrl(appId, redirectUri, state));
+  // CSRF guard: callback rejects unless FB echoes this exact state back.
+  res.cookies.set("fb_oauth_state", state, {
+    httpOnly: true, secure: true, sameSite: "lax",
+    path: "/api/social/oauth/facebook", maxAge: 600,
+  });
+  return res;
+}
+
+function buildDialogUrl(appId: string, redirectUri: string, state: string) {
   const params = new URLSearchParams({
     client_id: appId,
     redirect_uri: redirectUri,
@@ -39,5 +49,5 @@ export async function GET(request: Request) {
     state,
   });
 
-  return NextResponse.redirect(`https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`);
+  return `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`;
 }

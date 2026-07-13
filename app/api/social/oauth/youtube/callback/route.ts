@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApiSession } from "@/lib/admin-auth";
 import { saveStoredToken } from "@/lib/social/token-store";
@@ -22,10 +23,18 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const error = request.nextUrl.searchParams.get("error");
   if (error) {
-    return new NextResponse(`OAuth error: ${error}`, { status: 400 });
+    return new NextResponse(`OAuth error: ${error.replace(/[<>&"]/g, "")}`, { status: 400 });
   }
   if (!code) {
     return new NextResponse("Missing code", { status: 400 });
+  }
+
+  // CSRF guard: the state must match the cookie set by /start.
+  const state = request.nextUrl.searchParams.get("state");
+  const stateCookie = request.cookies.get("yt_oauth_state")?.value;
+  if (!state || !stateCookie || state.length !== stateCookie.length
+    || !timingSafeEqual(Buffer.from(state), Buffer.from(stateCookie))) {
+    return new NextResponse("State mismatch — start over at /api/social/oauth/youtube/start", { status: 400 });
   }
 
   const clientId = process.env.YOUTUBE_CLIENT_ID;
@@ -125,7 +134,7 @@ export async function GET(request: NextRequest) {
 <body>
   <div class="card">
     <h1>YouTube re-auth complete <span class="ok">✓</span></h1>
-    <p class="muted">Connected channel: <strong>${channelTitle}</strong></p>
+    <p class="muted">Connected channel: <strong>${channelTitle.replace(/[<>&"]/g, (c) => `&#${c.charCodeAt(0)};`)}</strong></p>
     ${saved
       ? `<p><span class="ok">Token saved automatically</span> — YouTube posting works right now. Nothing to paste, no redeploy.</p>`
       : `<p><span class="warn">⚠ Auto-save failed (${saveError.replace(/[<>&"]/g, "")})</span> — use the manual steps below.</p>`}

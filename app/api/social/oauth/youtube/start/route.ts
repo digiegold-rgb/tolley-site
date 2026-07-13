@@ -35,5 +35,11 @@ export async function GET(request: Request) {
   });
 
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-  return NextResponse.redirect(authUrl);
+  const res = NextResponse.redirect(authUrl);
+  // CSRF guard: callback rejects unless Google echoes this exact state back.
+  res.cookies.set("yt_oauth_state", state, {
+    httpOnly: true, secure: true, sameSite: "lax",
+    path: "/api/social/oauth/youtube", maxAge: 600,
+  });
+  return res;
 }
