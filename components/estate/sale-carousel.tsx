@@ -17,13 +17,21 @@ type Slide = { kind: "video"; src: string } | { kind: "photo"; src: string };
 const AUTOPLAY_MS = 4500;
 
 export default function SaleCarousel({ sale }: { sale: SaleCarouselData }) {
-  const slides: Slide[] = [
-    ...(sale.videoUrl ? [{ kind: "video" as const, src: sale.videoUrl }] : []),
-    ...sale.photos.map((src) => ({ kind: "photo" as const, src })),
-  ];
+  // Lead with the best photo, put the walkthrough video second (prominent but
+  // not blocking), then the rest — so the front page opens on a real find and
+  // the carousel starts rotating immediately.
+  const photoSlides: Slide[] = sale.photos.map((src) => ({ kind: "photo" as const, src }));
+  const slides: Slide[] = sale.videoUrl
+    ? [
+        ...photoSlides.slice(0, 1),
+        { kind: "video" as const, src: sale.videoUrl },
+        ...photoSlides.slice(1),
+      ]
+    : photoSlides;
 
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const touchX = useRef<number | null>(null);
 
@@ -36,16 +44,20 @@ export default function SaleCarousel({ sale }: { sale: SaleCarouselData }) {
   const current = slides[index];
   const onVideoSlide = current?.kind === "video";
 
-  // Auto-advance — paused on hover, on the video slide, or when the tab is hidden.
+  // Auto-advance — paused on hover or while the video is actively playing.
+  // If the visitor never presses play, it glides past the video after a beat.
   useEffect(() => {
-    if (paused || onVideoSlide || count <= 1) return;
+    if (paused || videoPlaying || count <= 1) return;
     const id = setInterval(() => setIndex((i) => (i + 1) % count), AUTOPLAY_MS);
     return () => clearInterval(id);
-  }, [paused, onVideoSlide, count, index]);
+  }, [paused, videoPlaying, count, index]);
 
   // Stop the video whenever we navigate away from its slide.
   useEffect(() => {
-    if (!onVideoSlide && videoRef.current) videoRef.current.pause();
+    if (!onVideoSlide && videoRef.current) {
+      videoRef.current.pause();
+      setVideoPlaying(false);
+    }
   }, [onVideoSlide]);
 
   if (count === 0) return null;
@@ -83,6 +95,9 @@ export default function SaleCarousel({ sale }: { sale: SaleCarouselData }) {
               playsInline
               preload="metadata"
               poster={sale.photos[0]}
+              onPlay={() => setVideoPlaying(true)}
+              onPause={() => setVideoPlaying(false)}
+              onEnded={() => setVideoPlaying(false)}
               className="h-full w-full bg-black object-contain"
             >
               <source src={current.src} type="video/mp4" />
