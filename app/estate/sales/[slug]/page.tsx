@@ -140,10 +140,38 @@ export default async function EstateSalePage({
           </div>
         )}
 
+        {/* Walkthrough video — an easy way to feel the sale before you come */}
+        {sale.videoUrl && (
+          <div className="mt-8">
+            <p className="es-kicker">Take a walk through</p>
+            <p className="mt-2 text-sm" style={{ color: "var(--es-cream-dim)" }}>
+              A quick look inside — press play and see what&apos;s waiting.
+            </p>
+            <div
+              className="mt-4 overflow-hidden rounded"
+              style={{ background: "var(--es-panel)" }}
+            >
+              <video
+                controls
+                playsInline
+                preload="metadata"
+                className="mx-auto max-h-[80vh] w-auto"
+              >
+                <source src={sale.videoUrl} type="video/mp4" />
+              </video>
+            </div>
+          </div>
+        )}
+
         {/* Photo gallery — populated as photos land */}
         {sale.photos.length > 0 ? (
           <div className="mt-8">
             <p className="es-kicker">The finds</p>
+            <p className="mt-2 text-sm" style={{ color: "var(--es-brass-bright)" }}>
+              📸 New photos added every day — Facebook only shows a few, so the full
+              gallery lives here. Check back daily; fresh finds keep landing right up to
+              sale day.
+            </p>
             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {sale.photos.map((url, i) => (
                 <div key={url} className="relative aspect-square overflow-hidden rounded" style={{ background: "var(--es-panel)" }}>

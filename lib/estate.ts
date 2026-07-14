@@ -78,6 +78,10 @@ export const ES_FAQ = [
     a: "Cash and all major cards. Shoppers never get turned away over payment.",
   },
   {
+    q: "Can I make an offer on something?",
+    a: "Yes — on any item, right down to the drapes. Everything in the home is for sale, and we present every offer to the owner. If you love it, make an offer.",
+  },
+  {
     q: "Do I need to clean or organize first?",
     a: "No — please don't! Things you'd throw away often sell. Take what the family is keeping, then leave the rest exactly where it is. Staging and organizing is our job.",
   },
