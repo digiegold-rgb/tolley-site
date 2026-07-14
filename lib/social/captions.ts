@@ -95,7 +95,7 @@ function buildPrompt(req: CaptionRequest): string {
     "- CAPTION: first sentence is a HOOK (a question, a bold claim, or the best quote). 2-3 sentences total. Written in first person as the operator.",
     "- ABSOLUTELY NO emojis or special symbols anywhere. Plain text only.",
     "- Do NOT include hashtags inside the caption; they go in the separate list.",
-    "- 6-12 hashtags mixing niche (from the actual content) and reach.",
+    "- MAXIMUM 4 hashtags. Pick the 4 highest-impact: 2 niche (from the actual content) + 2 reach. Fewer is fine.",
     "",
     "Return strictly JSON with this exact shape (no prose, no code fences):",
     `{"title": "...", "caption": "...", "hashtags": ["#tag1", "#tag2", ...]}`,
@@ -187,7 +187,8 @@ export async function generateCaption(req: CaptionRequest): Promise<CaptionRespo
     .map((h: string) => stripEmoji(h))
     .filter((h: string) => h.length > 1)
     .map((h: string) => (h.startsWith("#") ? h : `#${h}`))
-    .slice(0, 15);
+    // Jared's hard rule: 4 hashtags max, enforced here regardless of model output.
+    .slice(0, 4);
 
   let caption = stripEmoji(parsed.caption);
   // Every caption routes viewers somewhere we can actually help them.
