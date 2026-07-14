@@ -10,7 +10,9 @@ import { generateCaption, type CaptionPlatform } from "@/lib/social/captions";
 // until "Post now" is clicked on /social.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+// Caption drafts may block ~20s on the DGX whisper transcript before the LLM
+// call, so this route needs more headroom than the default.
+export const maxDuration = 60;
 
 const VALID_PLATFORMS = new Set([
   "youtube",
@@ -36,6 +38,7 @@ type Body = {
   platforms?: string[];
   topic?: string;
   hint?: string;
+  relPath?: string; // action-api relative path — enables the whisper transcript
   // queue
   mediaUrl?: string;
   thumbnailUrl?: string;
@@ -61,9 +64,36 @@ export async function POST(request: NextRequest) {
     const platforms = (body.platforms ?? []).filter((p): p is CaptionPlatform =>
       CAPTION_PLATFORMS.has(p as CaptionPlatform),
     );
+    // Transcribe the audio FIRST so the title/caption hook off what's actually
+    // said in the clip. The action-api caches transcripts and blocks up to 20s
+    // while whisper runs; if it's still building we draft without it and the
+    // client can redraft once it's ready.
+    let transcript: string | undefined;
+    let transcriptPending = false;
+    if (body.relPath) {
+      try {
+        const tRes = await fetch(
+          `${MEDIA_PREFIX}transcript?path=${encodeURIComponent(body.relPath)}&wait=20`,
+          { signal: AbortSignal.timeout(28_000), cache: "no-store" },
+        );
+        if (tRes.status === 202) {
+          transcriptPending = true;
+        } else if (tRes.ok) {
+          const t = (await tRes.json()) as { text?: string };
+          if (t.text && t.text.trim().length > 10) transcript = t.text.trim();
+        }
+      } catch {
+        /* transcript is best-effort — caption gen proceeds without it */
+      }
+    }
     try {
-      const result = await generateCaption({ platforms, hint: body.hint, topic: body.topic });
-      return NextResponse.json(result);
+      const result = await generateCaption({
+        platforms,
+        hint: body.hint,
+        topic: body.topic,
+        transcript,
+      });
+      return NextResponse.json({ ...result, transcriptPending });
     } catch (err) {
       const message = err instanceof Error ? err.message : "caption gen failed";
       return NextResponse.json({ error: message }, { status: 502 });

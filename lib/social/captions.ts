@@ -1,13 +1,15 @@
 /**
- * Caption + hashtag generator for /social.
+ * Caption + title + hashtag generator for /social.
  *
  * Routes through the LiteLLM gateway on the DGX (LITELLM_API_URL) using
  * model "Qwen/Qwen3.6-27B" — local, free, no Modal/Kimi cost. Matches the
  * routing other tolley-site code uses (lib/budget/llm.ts).
  *
- * Per platform we ask for distinct phrasing: TikTok punchy hooks,
- * Instagram visual + emoji, YouTube SEO + chapters, Facebook conversational,
- * Pinterest keyword-dense.
+ * When a transcript of the video's audio is supplied, the copy is grounded in
+ * what's ACTUALLY said/happening — the title is a fun content-driven hook, the
+ * caption opens with a hook line pulled from the moment. No emojis anywhere
+ * (they break the TikTok Selenium poster and read as spam), and every caption
+ * ends with the CTA link so viewers get routed to https://tolley.io/start.
  */
 
 const LLM_BASE = process.env.LITELLM_API_URL || process.env.LLM_API_URL || "";
@@ -17,6 +19,7 @@ const LLM_MODEL_FALLBACK =
   process.env.LITELLM_MODEL || process.env.LLM_MODEL || "fallback/kimi-k2-turbo";
 
 const FETCH_TIMEOUT_MS = 25_000;
+const CTA_URL = "https://tolley.io/start";
 
 export type CaptionPlatform =
   | "youtube"
@@ -29,27 +32,40 @@ export interface CaptionRequest {
   platforms: CaptionPlatform[];
   hint?: string;
   topic?: string;
+  transcript?: string;
 }
 
 export interface CaptionResponse {
+  title: string;
   caption: string;
   hashtags: string[];
   perPlatform?: Partial<Record<CaptionPlatform, string>>;
   modelUsed: string;
+  transcriptUsed: boolean;
 }
 
 const PLATFORM_GUIDANCE: Record<CaptionPlatform, string> = {
   tiktok:
     "TikTok: 1-2 punchy hooks, casual tone, ≤150 chars, no fluff. Use a question or a stat as the hook.",
   instagram:
-    "Instagram: 2-3 short paragraphs, visual storytelling, light emoji, ≤300 chars before the hashtag block.",
+    "Instagram: 2-3 short paragraphs, visual storytelling, ≤300 chars before the hashtag block. No emoji.",
   youtube:
     "YouTube: SEO-driven, lead with the keyword, 1-2 sentences, ≤200 chars; assume the title carries the hook.",
   facebook:
-    "Facebook: conversational, slightly longer (2-4 sentences), no emoji unless natural. Asks the viewer to comment.",
+    "Facebook: conversational, slightly longer (2-4 sentences), no emoji. Asks the viewer to comment.",
   pinterest:
     "Pinterest: keyword-dense, descriptive, no hype, ≤300 chars. Mention the use-case and audience explicitly.",
 };
+
+// Kill emoji + pictographs + variation selectors/ZWJ. Everything outside the
+// BMP goes too (ChromeDriver send_keys can't type astral chars — TikTok poster).
+export function stripEmoji(text: string): string {
+  return text
+    .replace(/[\u{10000}-\u{10FFFF}]/gu, "")
+    .replace(/[\u2600-\u27BF\u2B00-\u2BFF\uFE00-\uFE0F\u200D\u20E3]/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
 
 function buildPrompt(req: CaptionRequest): string {
   const platforms = req.platforms.length > 0 ? req.platforms : (["facebook"] as const);
@@ -58,17 +74,31 @@ function buildPrompt(req: CaptionRequest): string {
     .join("\n");
 
   return [
-    "You are a social-media copywriter for a multi-business operator (real estate, rentals, deliveries, e-commerce in Kansas City).",
-    "Write ONE shared caption that works across the platforms below, plus a single block of 6-12 hashtags.",
+    "You are a social-media copywriter for a hands-on multi-business operator (real estate, rentals, deliveries, e-commerce, DIY builds in Kansas City).",
+    "Your job: ONE fun scroll-stopping TITLE, ONE shared CAPTION, and a hashtag block for the video described below.",
+    "",
+    req.transcript
+      ? [
+          "TRANSCRIPT of the video's audio (this is what actually happens — build the title and caption from THIS, not from generic filler):",
+          `"""${req.transcript.slice(0, 4000)}"""`,
+        ].join("\n")
+      : "No transcript available — use the context lines below.",
     "",
     "Platforms and their style requirements:",
     guidance,
     "",
-    req.topic ? `Topic / context: ${req.topic}` : "",
+    req.topic ? `Context: ${req.topic}` : "",
     req.hint ? `Tone / angle hint from operator: ${req.hint}` : "",
     "",
+    "Hard rules:",
+    "- TITLE: ≤55 chars, specific and fun, pulled from the best moment/quote in the transcript. Never mention the camera brand, the date, or the word 'video'.",
+    "- CAPTION: first sentence is a HOOK (a question, a bold claim, or the best quote). 2-3 sentences total. Written in first person as the operator.",
+    "- ABSOLUTELY NO emojis or special symbols anywhere. Plain text only.",
+    "- Do NOT include hashtags inside the caption; they go in the separate list.",
+    "- 6-12 hashtags mixing niche (from the actual content) and reach.",
+    "",
     "Return strictly JSON with this exact shape (no prose, no code fences):",
-    `{"caption": "...", "hashtags": ["#tag1", "#tag2", ...]}`,
+    `{"title": "...", "caption": "...", "hashtags": ["#tag1", "#tag2", ...]}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -77,7 +107,7 @@ function buildPrompt(req: CaptionRequest): string {
 async function chatJSON(
   prompt: string,
   model: string,
-): Promise<{ caption?: string; hashtags?: string[] } | null> {
+): Promise<{ title?: string; caption?: string; hashtags?: string[] } | null> {
   if (!LLM_BASE || !LLM_KEY) return null;
 
   const res = await fetch(`${LLM_BASE}/chat/completions`, {
@@ -154,12 +184,24 @@ export async function generateCaption(req: CaptionRequest): Promise<CaptionRespo
 
   const hashtags = (parsed.hashtags ?? [])
     .filter((h: unknown): h is string => typeof h === "string" && h.length > 0)
+    .map((h: string) => stripEmoji(h))
+    .filter((h: string) => h.length > 1)
     .map((h: string) => (h.startsWith("#") ? h : `#${h}`))
     .slice(0, 15);
 
+  let caption = stripEmoji(parsed.caption);
+  // Every caption routes viewers somewhere we can actually help them.
+  if (!caption.includes("tolley.io")) {
+    caption = `${caption}\n\nMore at ${CTA_URL}`;
+  }
+
+  const title = stripEmoji(parsed.title || "").slice(0, 80);
+
   return {
-    caption: parsed.caption,
+    title,
+    caption,
     hashtags,
     modelUsed,
+    transcriptUsed: Boolean(req.transcript),
   };
 }

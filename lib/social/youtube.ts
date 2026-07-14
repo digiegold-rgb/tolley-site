@@ -78,6 +78,35 @@ export async function postYouTube(input: PostInput): Promise<PostResult> {
     return { ok: false, error: `YouTube upload ${res.status}: ${text.slice(0, 200)}` };
   }
   const json = (await res.json()) as { id: string };
+
+  // Best-effort custom thumbnail (the action-api /socialthumb burns the title
+  // over a real frame). Needs "custom thumbnails" enabled on the channel
+  // (phone-verified) — a failure here never fails the post.
+  if (input.thumbnailUrl) {
+    try {
+      const tRes = await fetch(input.thumbnailUrl, { signal: AbortSignal.timeout(30_000) });
+      if (tRes.ok) {
+        const jpg = Buffer.from(await tRes.arrayBuffer());
+        const up = await fetch(
+          `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${json.id}`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken.token}`,
+              "Content-Type": tRes.headers.get("content-type") || "image/jpeg",
+            },
+            body: jpg,
+          },
+        );
+        if (!up.ok) {
+          console.warn(`[youtube] thumbnails.set ${up.status}: ${(await up.text()).slice(0, 200)}`);
+        }
+      }
+    } catch (err) {
+      console.warn("[youtube] thumbnail upload failed:", err);
+    }
+  }
+
   return {
     ok: true,
     externalId: json.id,

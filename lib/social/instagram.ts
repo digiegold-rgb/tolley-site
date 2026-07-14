@@ -44,6 +44,15 @@ export async function postInstagram(input: PostInput): Promise<PostResult> {
   if (input.mediaType === "video") {
     containerParams.set("media_type", "REELS");
     containerParams.set("video_url", input.mediaUrl);
+    // Reel cover with the title card burned in. Reels are vertical, so if the
+    // thumb is an action-api /socialthumb URL, flip its crop to vertical.
+    if (input.thumbnailUrl) {
+      try {
+        const cu = new URL(input.thumbnailUrl);
+        if (cu.pathname === "/socialthumb") cu.searchParams.set("fmt", "vertical");
+        containerParams.set("cover_url", cu.toString());
+      } catch { /* leave cover unset on a malformed URL */ }
+    }
   } else {
     containerParams.set("image_url", input.mediaUrl);
   }

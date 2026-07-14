@@ -13,6 +13,8 @@ export type SocialPushTarget = {
   sourceRefId: string;
   hint: string;          // context line fed to the caption generator
   warmUrls?: string[];   // renditions to pre-warm so platform pulls don't hit a cold cache
+  relPath?: string;      // action-api relative path — enables whisper transcript + title thumbs
+  socialRendition?: boolean; // build /social?title= media URLs at queue time (clips)
 };
 
 const PLATFORMS: { id: string; label: string }[] = [
@@ -28,17 +30,23 @@ const CAPTION_PLATFORMS = new Set(["youtube", "tiktok", "instagram", "facebook",
 
 export function SocialPushModal({ target, onClose }: { target: SocialPushTarget; onClose: () => void }) {
   const [selected, setSelected] = useState<Set<string>>(new Set(PLATFORMS.map((p) => p.id)));
+  const [title, setTitle] = useState(target.title);
   const [caption, setCaption] = useState("");
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [drafting, setDrafting] = useState(false);
+  const [draftNote, setDraftNote] = useState("");
   const [pushing, setPushing] = useState(false);
   const [queuedId, setQueuedId] = useState<string | null>(null);
   const [err, setErr] = useState("");
   const draftedFor = useRef<string | null>(null);
+  const redraftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Pre-warm the publish renditions: a 2-byte ranged GET per variant makes the
-  // action API build the cached copies in the background, so a platform pulling
-  // the URL minutes later gets the hot 1080p rendition instead of raw 4K.
+  const apiOrigin = (() => {
+    try { return new URL(target.mediaUrl).origin; } catch { return ""; }
+  })();
+
+  // Pre-warm the untitled publish renditions immediately (they double as the
+  // fallback the API serves while a titled build is still running).
   useEffect(() => {
     if (!target.warmUrls?.length) return;
     const ctrl = new AbortController();
@@ -50,10 +58,33 @@ export function SocialPushModal({ target, onClose }: { target: SocialPushTarget;
     return () => ctrl.abort();
   }, [target.warmUrls]);
 
-  // Auto-draft the caption once per target (editable afterwards).
-  const draft = async () => {
+  // Once a title is settled (drafted or hand-edited), pre-warm the TITLED
+  // renditions + cover thumbs so the platform pulls hit a hot cache. Debounced
+  // so keystrokes don't spam the DGX with transcode jobs.
+  useEffect(() => {
+    if (!target.socialRendition || !target.relPath || !apiOrigin || !title.trim()) return;
+    const t = setTimeout(() => {
+      const enc = encodeURIComponent;
+      const base = `${apiOrigin}/social?path=${enc(target.relPath!)}`;
+      const thumb = `${apiOrigin}/socialthumb?path=${enc(target.relPath!)}`;
+      for (const u of [`${base}&fmt=wide&title=${enc(title)}`, `${base}&fmt=vertical&title=${enc(title)}`]) {
+        fetch(u, { headers: { Range: "bytes=0-1" } }).then((r) => r.body?.cancel()).catch(() => {});
+      }
+      for (const u of [`${thumb}&fmt=wide&title=${enc(title)}`, `${thumb}&fmt=vertical&title=${enc(title)}`]) {
+        fetch(u).then((r) => r.body?.cancel()).catch(() => {});
+      }
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [title, target.socialRendition, target.relPath, apiOrigin]);
+
+  // Auto-draft the title + caption once per target (editable afterwards).
+  // The route transcribes the clip's audio first (whisper on the DGX) so the
+  // copy hooks off what's actually said; if the transcript is still building
+  // we auto-redraft once it should be ready.
+  const draft = async (isAutoRetry = false) => {
     setDrafting(true);
     setErr("");
+    setDraftNote(isAutoRetry ? "Transcript ready — redrafting…" : "Transcribing audio + drafting…");
     try {
       const r = await fetch("/api/action/social-push", {
         method: "POST",
@@ -63,20 +94,30 @@ export function SocialPushModal({ target, onClose }: { target: SocialPushTarget;
           platforms: [...selected].filter((p) => CAPTION_PLATFORMS.has(p)),
           topic: target.title,
           hint: target.hint,
+          relPath: target.relPath,
         }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d?.error || `caption ${r.status}`);
       setCaption(d.caption || "");
       setHashtags(Array.isArray(d.hashtags) ? d.hashtags : []);
+      if (d.title) setTitle(d.title);
+      if (d.transcriptPending && !isAutoRetry) {
+        setDraftNote("Audio still transcribing — will redraft with the transcript in a moment…");
+        redraftTimer.current = setTimeout(() => void draft(true), 12_000);
+      } else {
+        setDraftNote(d.transcriptUsed ? "Drafted from the audio transcript." : "");
+      }
     } catch (e: any) {
       setErr(`Caption draft failed (${e.message}) — write one below or retry.`);
+      setDraftNote("");
     } finally { setDrafting(false); }
   };
   useEffect(() => {
     if (draftedFor.current === target.sourceRefId) return;
     draftedFor.current = target.sourceRefId;
     draft();
+    return () => { if (redraftTimer.current) clearTimeout(redraftTimer.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target.sourceRefId]);
 
@@ -92,14 +133,24 @@ export function SocialPushModal({ target, onClose }: { target: SocialPushTarget;
     setPushing(true);
     setErr("");
     try {
+      const enc = encodeURIComponent;
+      const finalTitle = title.trim() || target.title;
+      // Clips queue the TITLED publish rendition; the post route swaps
+      // fmt per platform (vertical for TikTok/IG, wide for the rest).
+      const mediaUrl = target.socialRendition && target.relPath && apiOrigin
+        ? `${apiOrigin}/social?path=${enc(target.relPath)}&fmt=wide&title=${enc(finalTitle)}`
+        : target.mediaUrl;
+      const thumbnailUrl = target.relPath && apiOrigin
+        ? `${apiOrigin}/socialthumb?path=${enc(target.relPath)}&fmt=wide&title=${enc(finalTitle)}`
+        : target.thumbnailUrl;
       const r = await fetch("/api/action/social-push", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           op: "queue",
-          mediaUrl: target.mediaUrl,
-          thumbnailUrl: target.thumbnailUrl,
-          title: target.title,
+          mediaUrl,
+          thumbnailUrl,
+          title: finalTitle,
           caption,
           hashtags,
           platforms: [...selected],
@@ -148,6 +199,19 @@ export function SocialPushModal({ target, onClose }: { target: SocialPushTarget;
               ))}
             </div>
 
+            <input
+              value={drafting && !title ? "Drafting title…" : title}
+              disabled={drafting}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Title (burned into the first 3s + used as YouTube title)"
+              style={{
+                width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.18)", borderRadius: 10, color: "white",
+                fontSize: 14, fontWeight: 700, padding: "10px 12px", outline: "none",
+                fontFamily: "inherit", marginBottom: 8, opacity: drafting ? 0.6 : 1,
+              }}
+            />
+
             <textarea
               value={drafting ? "Drafting caption…" : caption}
               disabled={drafting}
@@ -166,12 +230,13 @@ export function SocialPushModal({ target, onClose }: { target: SocialPushTarget;
                 {hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ")}
               </div>
             )}
+            {draftNote && <div style={{ marginTop: 8, fontSize: 12.5, color: "#a7f3d0" }}>{draftNote}</div>}
             {err && <div style={{ marginTop: 8, fontSize: 12.5, color: "#fca5a5" }}>{err}</div>}
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 14 }}>
-              <button onClick={draft} disabled={drafting} style={{ ...S.smallBtn, cursor: "pointer", background: "transparent", opacity: drafting ? 0.5 : 1 }}
-                title="Re-draft the caption + hashtags with Qwen (local, free)">
-                ♻ Redraft caption
+              <button onClick={() => void draft()} disabled={drafting} style={{ ...S.smallBtn, cursor: "pointer", background: "transparent", opacity: drafting ? 0.5 : 1 }}
+                title="Re-draft the title + caption from the audio transcript (Qwen, local, free)">
+                ♻ Redraft
               </button>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={onClose} style={{ ...S.smallBtn, minHeight: 42, cursor: "pointer", background: "transparent" }}>Cancel</button>

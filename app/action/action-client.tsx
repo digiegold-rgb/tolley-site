@@ -131,16 +131,24 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
     // wide 16:9 for YouTube/FB, vertical 9:16 for TikTok/IG.
     const media = c.socialUrl ? `${c.socialUrl}&fmt=wide` : c.url;
     if (!media) return null;
+    // relPath feeds the whisper transcript (title/caption grounded in the
+    // audio) and the title-card cover thumbs; the modal rebuilds the final
+    // mediaUrl as /social?...&title=<generated title> at queue time.
+    const relPath = c.socialUrl
+      ? new URLSearchParams(c.socialUrl.split("?")[1] ?? "").get("path") ?? undefined
+      : undefined;
     return {
       title: `${dayLabel(day)} — action cam`,
       mediaUrl: `${API}${media}`,
       thumbnailUrl: c.thumbUrl ? `${API}${c.thumbUrl}` : undefined,
       sourceRefId: c.name,
-      hint: `Behind-the-scenes DJI action-cam clip of me working and exploring, filmed ${dayLabel(day)}. First-person, upbeat, high-energy.`,
+      hint: `Behind-the-scenes clip of me working and exploring, filmed ${dayLabel(day)}. First-person, upbeat, high-energy.`,
       // Pre-warm BOTH crops so the platform pulls hit a hot cache.
       warmUrls: c.socialUrl
         ? [fileUrl(`${c.socialUrl}&fmt=wide`), fileUrl(`${c.socialUrl}&fmt=vertical`)]
         : undefined,
+      relPath,
+      socialRendition: Boolean(relPath),
     };
   };
 
@@ -1109,7 +1117,10 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
                               mediaUrl: `${API}${r.url}`,
                               thumbnailUrl: r.thumbUrl ? `${API}${r.thumbUrl}` : undefined,
                               sourceRefId: r.key || `${period}|${kind}|${r.source || "dji"}|${r.aspect}`,
-                              hint: `Action-cam highlight reel "${r.title || period}" (${r.aspectLabel}) — real moments from my DJI camera, upbeat and positive.`,
+                              hint: `Action-cam highlight reel "${r.title || period}" (${r.aspectLabel}) — real moments, upbeat and positive.`,
+                              // transcript-grounded captions + title-card cover thumb;
+                              // recaps keep their full-quality /file mediaUrl (no re-crop)
+                              relPath: new URLSearchParams(r.url.split("?")[1] ?? "").get("path") ?? undefined,
                             })}
                             style={S.smallBtn}
                             aria-label={`Push recap ${r.title || period} to social media`}
