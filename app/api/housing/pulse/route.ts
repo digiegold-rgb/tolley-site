@@ -23,15 +23,19 @@ export async function POST(request: NextRequest) {
 
   const { statcard, ...pulse } = body as Record<string, unknown> & { statcard?: string };
   const json = JSON.stringify(pulse);
+  // allowOverwrite: with addRandomSuffix off, a second push to the same path
+  // (every day after day one) otherwise throws "blob already exists" → 500
   await put(LATEST_PATH, json, {
     access: "public",
     addRandomSuffix: false,
+    allowOverwrite: true,
     contentType: "application/json",
     cacheControlMaxAge: 300,
   });
   await put(`housing/pulse-${pulse.date}.json`, json, {
     access: "public",
     addRandomSuffix: false,
+    allowOverwrite: true,
     contentType: "application/json",
   });
 
@@ -41,6 +45,7 @@ export async function POST(request: NextRequest) {
     const blob = await put(STATCARD_PATH, buf, {
       access: "public",
       addRandomSuffix: false,
+      allowOverwrite: true,
       contentType: "image/png",
       cacheControlMaxAge: 300,
     });

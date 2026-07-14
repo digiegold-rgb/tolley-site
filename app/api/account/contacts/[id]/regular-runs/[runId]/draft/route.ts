@@ -3,7 +3,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApiSession } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
-import { getNextInvoiceNumber } from '@/lib/account/invoice-number';
+import { getNextInvoiceNumber, getNextBuckeyeInvoiceNumber } from '@/lib/account/invoice-number';
 
 // POST /api/account/contacts/[id]/regular-runs/[runId]/draft
 // One-click: generate a DRAFT invoice pre-filled from this saved run.
@@ -26,9 +26,10 @@ export async function POST(
 
     const contact = await prisma.accountContact.findUnique({
       where: { id: contactId },
-      select: { id: true },
+      select: { id: true, name: true },
     });
     if (!contact) return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
+    const isBuckeye = /buckeye/i.test(contact.name);
 
     const body = await request.json().catch(() => ({}));
 
@@ -83,7 +84,9 @@ export async function POST(
       ? 'Weight-based billing — adjust the amount to this week\'s weight/weight limit before sending.'
       : null;
 
-    const invoiceNumber = await getNextInvoiceNumber();
+    const invoiceNumber = isBuckeye
+      ? await getNextBuckeyeInvoiceNumber()
+      : await getNextInvoiceNumber();
 
     const invoice = await prisma.invoice.create({
       data: {

@@ -59,6 +59,11 @@ export function AskJaredForm() {
             zip: zip.trim() || undefined,
             address: address.trim() || undefined,
             notes: notes.trim() || undefined,
+            // traffic-source attribution (?ref=pinterest / ?ref=circle) — shows
+            // in /hq lead details; extra fields pass manifest validation
+            ref:
+              new URLSearchParams(window.location.search).get("ref") ||
+              undefined,
           },
         }),
       });

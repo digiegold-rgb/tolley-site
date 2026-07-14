@@ -35,6 +35,7 @@ interface LineItem {
 
 export interface SendInvoiceEmailOptions {
   to: string;
+  cc?: string | string[];
   contactName: string | null;
   invoiceNumber: string;
   issueDate: Date;
@@ -66,6 +67,7 @@ export async function sendInvoiceEmail(
 ): Promise<void> {
   const {
     to,
+    cc,
     contactName,
     invoiceNumber,
     issueDate,
@@ -195,9 +197,15 @@ Pay: ${payPageUrl}
 ${attachmentCount > 0 ? `\n${attachmentCount} supporting document${attachmentCount === 1 ? "" : "s"} attached — view at ${payPageUrl}\n` : ""}${notes ? `\nNotes: ${notes}\n` : ""}
 — Your KC Homes LLC`;
 
+  const ccList = (Array.isArray(cc) ? cc : cc ? [cc] : [])
+    .flatMap((c) => c.split(/[,;]/))
+    .map((c) => c.trim())
+    .filter(Boolean);
+
   await getTransporter().sendMail({
     from: emailFrom,
     to,
+    ...(ccList.length ? { cc: ccList } : {}),
     subject: `Invoice ${invoiceNumber} from Your KC Homes LLC — ${fmt.format(amountDue || total)}`,
     text,
     html,

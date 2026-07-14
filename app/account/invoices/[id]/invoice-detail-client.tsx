@@ -122,6 +122,10 @@ export default function InvoiceDetailClient({ invoiceId }: { invoiceId: string }
   const [editLines, setEditLines] = useState<EditLine[]>([]);
   const dragIndex = useRef<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
+  // Send panel: lets the user review/edit the recipient and add CC before send.
+  const [sendPanel, setSendPanel] = useState<null | 'send' | 'resend'>(null);
+  const [sendTo, setSendTo] = useState('');
+  const [sendCc, setSendCc] = useState('');
 
   function startEdit() {
     if (!invoice) return;
@@ -183,26 +187,40 @@ export default function InvoiceDetailClient({ invoiceId }: { invoiceId: string }
     fetchInvoice();
   }, [fetchInvoice]);
 
+  // Open the send panel, pre-filling the recipient with the contact's email.
+  function openSendPanel(mode: 'send' | 'resend') {
+    setError('');
+    setSuccessMessage('');
+    setSendTo(invoice?.contact?.email || '');
+    setSendCc('');
+    setSendPanel(mode);
+  }
+
   async function handleSend(mode: 'send' | 'resend' = 'send') {
-    if (mode === 'resend') {
-      const toEmail = invoice?.contact?.email;
-      if (!toEmail) {
-        setError('Contact has no email on file');
-        return;
-      }
-      if (!confirm(`Resend invoice ${invoice?.invoiceNumber} to ${toEmail}?`)) return;
+    const to = sendTo.trim();
+    const cc = sendCc.trim();
+    if (!to) {
+      setError('Enter a recipient email address to send to.');
+      return;
     }
     setActionLoading(mode);
     setSuccessMessage('');
     setError('');
     try {
-      const res = await fetch(`/api/account/invoices/${invoiceId}/send`, { method: 'POST' });
+      const res = await fetch(`/api/account/invoices/${invoiceId}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, cc }),
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to send');
       if (json.emailSent) {
+        const ccNote =
+          Array.isArray(json.cc) && json.cc.length ? ` (cc: ${json.cc.join(', ')})` : '';
         setSuccessMessage(
-          `Invoice emailed to ${json.contactEmail}${mode === 'resend' ? ' (resent)' : ''}.`,
+          `Invoice emailed to ${json.contactEmail}${ccNote}${mode === 'resend' ? ' (resent)' : ''}.`,
         );
+        setSendPanel(null);
       } else if (json.emailError) {
         setError(`Payment link ready, but email failed: ${json.emailError}`);
       }
@@ -380,6 +398,65 @@ export default function InvoiceDetailClient({ invoiceId }: { invoiceId: string }
 
   return (
     <div className="max-w-4xl space-y-6">
+      {sendPanel && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => actionLoading === '' && setSendPanel(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-white/10 bg-neutral-900 p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <h3 className="text-white font-semibold text-lg">
+                {sendPanel === 'resend' ? 'Resend' : 'Send'} {invoice.invoiceNumber}
+              </h3>
+              <p className="text-white/50 text-sm mt-1">
+                Review the recipient and add anyone to CC before it goes out.
+              </p>
+            </div>
+            <label className="block">
+              <span className="text-xs uppercase tracking-wide text-white/40">To</span>
+              <input
+                type="email"
+                value={sendTo}
+                onChange={(e) => setSendTo(e.target.value)}
+                placeholder="recipient@example.com"
+                className="mt-1 w-full rounded-lg bg-white/[0.06] border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs uppercase tracking-wide text-white/40">
+                CC <span className="text-white/25 normal-case">(comma-separated, optional)</span>
+              </span>
+              <input
+                type="text"
+                value={sendCc}
+                onChange={(e) => setSendCc(e.target.value)}
+                placeholder="alicia@example.com, me@example.com"
+                className="mt-1 w-full rounded-lg bg-white/[0.06] border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400"
+              />
+            </label>
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                onClick={() => setSendPanel(null)}
+                disabled={!!actionLoading}
+                className="rounded-lg px-3 py-1.5 text-sm text-white/70 hover:text-white disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleSend(sendPanel)}
+                disabled={!!actionLoading}
+                className="rounded-lg bg-cyan-500 hover:bg-cyan-400 px-4 py-1.5 text-sm font-semibold text-black transition-colors disabled:opacity-50"
+              >
+                {actionLoading ? 'Sending…' : sendPanel === 'resend' ? 'Resend now' : 'Send now'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
           {error}
@@ -449,7 +526,7 @@ export default function InvoiceDetailClient({ invoiceId }: { invoiceId: string }
                 {editing ? 'Cancel Edit' : 'Edit'}
               </button>
               <button
-                onClick={() => handleSend('send')}
+                onClick={() => openSendPanel('send')}
                 disabled={!!actionLoading}
                 className="bg-cyan-500 hover:bg-cyan-400 text-black font-semibold rounded-lg px-3 py-1.5 text-sm transition-colors disabled:opacity-50"
               >
@@ -460,12 +537,12 @@ export default function InvoiceDetailClient({ invoiceId }: { invoiceId: string }
           {(invoice.status === 'SENT' || invoice.status === 'OVERDUE') && (
             <>
               <button
-                onClick={() => handleSend('resend')}
-                disabled={!!actionLoading || !invoice.contact?.email}
+                onClick={() => openSendPanel('resend')}
+                disabled={!!actionLoading}
                 title={
                   invoice.contact?.email
                     ? `Resend to ${invoice.contact.email}`
-                    : 'Contact has no email'
+                    : 'Set a recipient and resend'
                 }
                 className="bg-white/[0.08] hover:bg-white/[0.12] text-white rounded-lg px-3 py-1.5 text-sm transition-colors disabled:opacity-50"
               >

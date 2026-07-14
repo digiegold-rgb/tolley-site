@@ -35,6 +35,10 @@ const DUE_DAYS = 14;
 
 const DRY = process.argv.includes('--dry-run');
 const FORCE = process.argv.includes('--force');
+// --refresh: daily-safe rebuild. Replaces the current week's auto-draft in place
+// (reusing the SAME invoice number) when new slips have been dropped, and is a
+// clean no-op when nothing changed or the invoice has already been sent.
+const REFRESH = process.argv.includes('--refresh');
 
 function argVal(flag: string): string | null {
   const i = process.argv.indexOf(flag);
@@ -112,22 +116,71 @@ function roundMiles(m: number): number {
 
 // ----- Google Maps helpers (same URL patterns as lib/dispatch/geocode.ts)
 const geoCache = new Map<string, Geo | null>();
-async function geocode(address: string): Promise<Geo | null> {
-  if (geoCache.has(address)) return geoCache.get(address)!;
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${MAPS_KEY}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-  let out: Geo | null = null;
-  if (res.ok) {
+async function geocodeGoogle(address: string): Promise<Geo | null> {
+  if (!MAPS_KEY) return null;
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${MAPS_KEY}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
     const data = await res.json();
     const r = data.results?.[0];
-    if (r) out = { lat: r.geometry.location.lat, lng: r.geometry.location.lng, formattedAddress: r.formatted_address };
-  }
+    if (r) return { lat: r.geometry.location.lat, lng: r.geometry.location.lng, formattedAddress: r.formatted_address };
+  } catch { /* fall through to free provider */ }
+  return null;
+}
+
+// Packing-slip addresses often carry "ATTN: <name/dept>" lines and hard newlines
+// that break the free geocoder — strip them down to the mailing address.
+function cleanAddress(a: string): string {
+  return a
+    .replace(/\r?\n/g, ' ')
+    .replace(/ATTN[:\s][^0-9]*/i, '') // drop "ATTN: Name /Dept" up to the street number
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Free fallback geocoder (OpenStreetMap Nominatim). Used when Google is unavailable
+// (e.g. Cloud billing disabled). Usage policy: <=1 req/sec + a real User-Agent.
+let nominatimLast = 0;
+async function nominatimQuery(q: string): Promise<Geo | null> {
+  const wait = 1100 - (Date.now() - nominatimLast);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  nominatimLast = Date.now();
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=us`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'tolley-buckeye-invoice/1.0 (jared@yourkchomes.com)' },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const r = Array.isArray(data) ? data[0] : null;
+    if (r) return { lat: parseFloat(r.lat), lng: parseFloat(r.lon), formattedAddress: r.display_name };
+  } catch { /* no geocode available */ }
+  return null;
+}
+
+async function geocodeNominatim(address: string): Promise<Geo | null> {
+  const cleaned = cleanAddress(address);
+  const hit = await nominatimQuery(cleaned);
+  if (hit) return hit;
+  // Fallback: a misspelled street (e.g. "COMMERICIAL") won't match — geocode the ZIP
+  // centroid so the stop still gets ~accurate mileage instead of a blank $0 line.
+  const zip = cleaned.match(/\b(\d{5})\b/)?.[1];
+  if (zip) return nominatimQuery(`${zip}, USA`);
+  return null;
+}
+
+async function geocode(address: string): Promise<Geo | null> {
+  if (geoCache.has(address)) return geoCache.get(address)!;
+  let out = await geocodeGoogle(address);
+  if (!out) out = await geocodeNominatim(address);
   geoCache.set(address, out);
   return out;
 }
 
 /** Full driving-distance matrix (miles) over points; chunks to stay <=100 elements/request. */
-async function distanceMatrix(points: Geo[]): Promise<number[][]> {
+async function distanceMatrixGoogle(points: Geo[]): Promise<number[][]> {
   const n = points.length;
   const out: number[][] = Array.from({ length: n }, () => new Array(n).fill(0));
   const destStr = points.map((p) => `${p.lat},${p.lng}`).join('|');
@@ -149,6 +202,25 @@ async function distanceMatrix(points: Geo[]): Promise<number[][]> {
     });
   }
   return out;
+}
+
+// Free fallback router (public OSRM). Returns a full driving-distance matrix in miles.
+async function distanceMatrixOSRM(points: Geo[]): Promise<number[][]> {
+  const coords = points.map((p) => `${p.lng},${p.lat}`).join(';');
+  const url = `https://router.project-osrm.org/table/v1/driving/${coords}?annotations=distance`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+  if (!res.ok) throw new Error(`OSRM HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.code !== 'Ok' || !Array.isArray(data.distances)) throw new Error(`OSRM code ${data.code}`);
+  return data.distances.map((row: (number | null)[]) => row.map((m) => (m == null ? Infinity : m / 1609.34)));
+}
+
+async function distanceMatrix(points: Geo[]): Promise<number[][]> {
+  if (MAPS_KEY) {
+    try { return await distanceMatrixGoogle(points); }
+    catch (e) { log(`Google Distance Matrix unavailable (${(e as Error).message}); using free OSRM router.`); }
+  }
+  return distanceMatrixOSRM(points);
 }
 
 /**
@@ -343,20 +415,50 @@ async function attachPackingSlips(invoiceId: string, files: string[]) {
 
 // ----- main
 async function main() {
-  if (!MAPS_KEY) throw new Error('GOOGLE_MAPS_API_KEY not loaded (.env.local)');
+  if (!MAPS_KEY) log('GOOGLE_MAPS_API_KEY not set — using free Nominatim + OSRM providers.');
 
   const week = argVal('--week') || isoWeekKey();
   const statePath = argVal('--file') || join(STATE_DIR, `week-${week}.json`);
   if (!existsSync(statePath)) throw new Error(`State file not found: ${statePath}`);
   const state = JSON.parse(readFileSync(statePath, 'utf8'));
 
-  if (state.builtInvoiceId && !FORCE) {
-    log(`Week ${week} already built invoice ${state.builtInvoiceNumber} (${state.builtInvoiceId}). Use --force to rebuild.`);
-    return;
-  }
-
   const slips: Slip[] = state.slips || [];
   if (!slips.length) { log(`No slips in ${statePath}; nothing to build.`); return; }
+
+  // Signature of the current slip set. Lets the nightly --refresh run skip cleanly
+  // when nothing new was dropped (no duplicate Telegram ping, no pointless Blob
+  // re-upload) and rebuild only when the batch actually changed.
+  const slipsSig = JSON.stringify(
+    slips.map((s) => [s.shipDate || '', s.shipToName, s.shipToAddress, s.sourceFile]).sort(),
+  );
+
+  if (state.builtInvoiceId) {
+    const existing = await prisma.invoice.findUnique({
+      where: { id: state.builtInvoiceId },
+      select: { status: true, invoiceNumber: true },
+    });
+    if (!existing) {
+      // Draft was deleted out from under us — forget it and rebuild fresh.
+      delete state.builtInvoiceId; delete state.builtInvoiceNumber;
+    } else if (existing.status !== 'DRAFT') {
+      // Already sent / finalized this week — never clobber it.
+      log(`Week ${week} invoice ${existing.invoiceNumber} is ${existing.status} (not a draft) — leaving it alone. Nothing to do.`);
+      return;
+    } else if (!FORCE && !REFRESH) {
+      log(`Week ${week} already built draft ${existing.invoiceNumber}. Use --refresh (or --force) to rebuild.`);
+      return;
+    } else if (REFRESH && !FORCE && state.builtSlipsSig === slipsSig) {
+      log(`Week ${week} draft ${existing.invoiceNumber} already reflects all ${slips.length} slip(s) — no change, skipping.`);
+      return;
+    } else {
+      // Replace the auto-draft in place: delete it (cascades line items + attachments)
+      // so the rebuild REUSES the same invoice number (INV-148 stays INV-148) instead
+      // of piling up a new number every night.
+      await prisma.invoice.delete({ where: { id: state.builtInvoiceId } });
+      log(`Replaced prior draft ${existing.invoiceNumber} (${state.builtInvoiceId}).`);
+      delete state.builtInvoiceId; delete state.builtInvoiceNumber;
+    }
+  }
 
   // Group by ship date; dedupe identical (name+addr) within a date. Null-date slips
   // can't be routed -> collect for manual handling.
@@ -511,6 +613,7 @@ async function main() {
   // Mark the week built so the Sunday timer never double-creates (Alicia de-dupes invoices).
   state.builtInvoiceId = invoice.id;
   state.builtInvoiceNumber = invoice.invoiceNumber;
+  state.builtSlipsSig = slipsSig;
   state.builtAt = new Date().toISOString();
   writeFileSync(statePath, JSON.stringify(state, null, 2));
 

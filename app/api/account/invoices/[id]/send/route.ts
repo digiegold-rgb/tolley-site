@@ -8,11 +8,40 @@ import { sendInvoiceEmail } from '@/lib/account/invoice-email';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export async function POST(_request: NextRequest, context: RouteContext) {
   try {
     const check = await requireAdminApiSession();
     if (!check.ok) return check.response;
     const { id } = await context.params;
+
+    // Optional per-send overrides from the UI: edit the recipient, add CC.
+    // Body may be empty (cron / resend button) — default to the contact email.
+    const body = await _request.json().catch(() => ({}));
+    const toOverride =
+      typeof body?.to === 'string' && body.to.trim() ? body.to.trim() : null;
+    const ccList: string[] = (
+      typeof body?.cc === 'string'
+        ? body.cc
+        : Array.isArray(body?.cc)
+          ? body.cc.join(',')
+          : ''
+    )
+      .split(/[,;]/)
+      .map((s: string) => s.trim())
+      .filter(Boolean);
+
+    const badEmails = [
+      ...(toOverride ? [toOverride] : []),
+      ...ccList,
+    ].filter((e) => !EMAIL_RE.test(e));
+    if (badEmails.length) {
+      return NextResponse.json(
+        { error: `Invalid email address: ${badEmails.join(', ')}` },
+        { status: 400 },
+      );
+    }
 
     const invoice = await prisma.invoice.findUnique({
       where: { id },
@@ -58,11 +87,16 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     let emailSent = false;
     let emailError: string | null = null;
 
-    if (invoice.contact?.email) {
+    // Recipient: an explicit override from the send panel wins, otherwise the
+    // contact's email on file.
+    const recipient = toOverride || invoice.contact?.email || null;
+
+    if (recipient) {
       try {
         await sendInvoiceEmail({
-          to: invoice.contact.email,
-          contactName: invoice.contact.name || null,
+          to: recipient,
+          cc: ccList.length ? ccList : undefined,
+          contactName: invoice.contact?.name || null,
           invoiceNumber: invoice.invoiceNumber,
           issueDate: invoice.issueDate,
           dueDate: invoice.dueDate,
@@ -102,7 +136,8 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       paymentLinkUrl,
       emailSent,
       emailError,
-      contactEmail: invoice.contact?.email || null,
+      contactEmail: recipient,
+      cc: ccList,
     });
   } catch (error: unknown) {
     if (error instanceof Response) throw error;
