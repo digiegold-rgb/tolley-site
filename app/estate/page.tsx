@@ -4,6 +4,7 @@ import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { EmailCaptureForm } from "@/components/tools/EmailCaptureForm";
 import { EstateQuoteForm } from "@/components/estate/quote-form";
 import SaleCard, { type SaleCardData } from "@/components/estate/sale-card";
+import SaleCarousel from "@/components/estate/sale-carousel";
 import {
   ES_PHONE,
   ES_PHONE_TEL,
@@ -115,6 +116,8 @@ function buildJsonLd(upcoming: SaleRow[]) {
 export default async function EstatePage() {
   const { upcoming, past } = await fetchSales();
   const jsonLd = buildJsonLd(upcoming);
+  // Feature the soonest upcoming sale that already has photos in the hero carousel.
+  const featured = upcoming.find((s) => s.photos.length > 0);
 
   return (
     <main className="relative z-10 min-h-screen">
@@ -175,6 +178,24 @@ export default async function EstatePage() {
       </section>
 
       <div className="mx-auto max-w-6xl space-y-20 px-5 pb-20 sm:px-8">
+        {/* Featured sale carousel — photos + walkthrough video, front and center */}
+        {featured && (
+          <section
+            className="es-enter -mt-6 scroll-mt-24"
+            style={{ "--enter-delay": "0.02s" } as React.CSSProperties}
+          >
+            <SaleCarousel
+              sale={{
+                slug: featured.slug,
+                title: featured.title,
+                areaLabel: featured.areaLabel,
+                photos: featured.photos,
+                videoUrl: featured.videoUrl,
+              }}
+            />
+          </section>
+        )}
+
         {/* Upcoming sale(s) */}
         {upcoming.length > 0 && (
           <section
