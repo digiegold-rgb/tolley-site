@@ -10,6 +10,18 @@ export interface SaleCarouselData {
   areaLabel: string;
   photos: string[];
   videoUrl: string | null;
+  photosUpdatedAt: string | null; // ISO — shown as "Updated …"
+}
+
+function fmtUpdated(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  if (sameDay) return `Updated today · ${time}`;
+  return `Updated ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
 }
 
 type Slide = { kind: "video"; src: string } | { kind: "photo"; src: string };
@@ -70,8 +82,15 @@ export default function SaleCarousel({ sale }: { sale: SaleCarouselData }) {
     >
       <div className="relative z-10">
         <div className="mb-3 flex items-center justify-between gap-3 px-1">
-          <p className="es-kicker">The finds — new photos daily</p>
-          <span className="text-xs" style={{ color: "var(--es-cream-dim)" }}>
+          <div className="min-w-0">
+            <p className="es-kicker">The finds — new photos daily</p>
+            {fmtUpdated(sale.photosUpdatedAt) && (
+              <p className="mt-1 text-xs" style={{ color: "var(--es-brass-bright)" }}>
+                🕒 {fmtUpdated(sale.photosUpdatedAt)}
+              </p>
+            )}
+          </div>
+          <span className="shrink-0 text-xs" style={{ color: "var(--es-cream-dim)" }}>
             {index + 1} / {count}
           </span>
         </div>

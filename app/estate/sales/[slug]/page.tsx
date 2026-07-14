@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { EmailCaptureForm } from "@/components/tools/EmailCaptureForm";
 import SaleCard, { type SaleCardData } from "@/components/estate/sale-card";
 import { ES_PHONE, ES_PHONE_TEL } from "@/lib/estate";
+import KeepShopping from "@/components/estate/keep-shopping";
 
 export const revalidate = 300;
 
@@ -166,7 +167,22 @@ export default async function EstateSalePage({
         {/* Photo gallery — populated as photos land */}
         {sale.photos.length > 0 ? (
           <div className="mt-8">
-            <p className="es-kicker">The finds</p>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <p className="es-kicker">The finds</p>
+              {sale.photosUpdatedAt && (
+                <p className="text-xs" style={{ color: "var(--es-brass-bright)" }}>
+                  🕒 Updated{" "}
+                  {sale.photosUpdatedAt.toLocaleString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                    timeZone: "America/Chicago",
+                  })}{" "}
+                  CT
+                </p>
+              )}
+            </div>
             <p className="mt-2 text-sm" style={{ color: "var(--es-brass-bright)" }}>
               📸 New photos added every day — Facebook only shows a few, so the full
               gallery lives here. Check back daily; fresh finds keep landing right up to
@@ -197,6 +213,11 @@ export default async function EstateSalePage({
             </p>
           </div>
         ) : null}
+
+        {/* Can't-make-it capture → the rest of Tolley */}
+        <div className="mt-8">
+          <KeepShopping />
+        </div>
 
         {/* Capture */}
         <div className="es-panel mt-8 p-7 text-center" id="alerts">

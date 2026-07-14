@@ -5,6 +5,7 @@ import { EmailCaptureForm } from "@/components/tools/EmailCaptureForm";
 import { EstateQuoteForm } from "@/components/estate/quote-form";
 import SaleCard, { type SaleCardData } from "@/components/estate/sale-card";
 import SaleCarousel from "@/components/estate/sale-carousel";
+import KeepShopping from "@/components/estate/keep-shopping";
 import {
   ES_PHONE,
   ES_PHONE_TEL,
@@ -191,6 +192,7 @@ export default async function EstatePage() {
                 areaLabel: featured.areaLabel,
                 photos: featured.photos,
                 videoUrl: featured.videoUrl,
+                photosUpdatedAt: featured.photosUpdatedAt?.toISOString() ?? null,
               }}
             />
           </section>
@@ -208,6 +210,16 @@ export default async function EstatePage() {
                 <SaleCard key={sale.id} sale={toCardData(sale)} />
               ))}
             </div>
+          </section>
+        )}
+
+        {/* Capture the estate-sale traffic — can't-make-it shoppers → the rest of Tolley */}
+        {featured && (
+          <section
+            className="es-enter scroll-mt-24"
+            style={{ "--enter-delay": "0.08s" } as React.CSSProperties}
+          >
+            <KeepShopping />
           </section>
         )}
 

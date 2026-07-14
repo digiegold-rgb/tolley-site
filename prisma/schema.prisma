@@ -4571,6 +4571,7 @@ model EstateSale {
   description      String?
   highlights       String[]
   photos           String[]
+  photosUpdatedAt  DateTime? // last time the gallery changed — shown as "Updated …"
   videoUrl         String? // walkthrough video (blob URL), shown atop the gallery
   grossTotal       Float?
   createdAt        DateTime  @default(now())
