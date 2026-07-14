@@ -125,7 +125,11 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
   // social platforms can't reach when they pull the video.
   const [socialPush, setSocialPush] = useState<SocialPushTarget | null>(null);
   const clipSocialTarget = (c: Clip, day: string): SocialPushTarget | null => {
-    const media = c.webUrl || c.url;   // prefer the 720p web copy — raw DJI is 4K-square and huge
+    // PUBLISH-grade 1080p rendition cut from the ORIGINAL — never the 720p
+    // webclip preview (platforms re-compress; feeding them the preview is how
+    // posts come out looking like mud). postOne() swaps fmt per platform:
+    // wide 16:9 for YouTube/FB, vertical 9:16 for TikTok/IG.
+    const media = c.socialUrl ? `${c.socialUrl}&fmt=wide` : c.url;
     if (!media) return null;
     return {
       title: `${dayLabel(day)} — action cam`,
@@ -133,7 +137,10 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
       thumbnailUrl: c.thumbUrl ? `${API}${c.thumbUrl}` : undefined,
       sourceRefId: c.name,
       hint: `Behind-the-scenes DJI action-cam clip of me working and exploring, filmed ${dayLabel(day)}. First-person, upbeat, high-energy.`,
-      warmUrl: c.webUrl ? fileUrl(c.webUrl) : undefined,
+      // Pre-warm BOTH crops so the platform pulls hit a hot cache.
+      warmUrls: c.socialUrl
+        ? [fileUrl(`${c.socialUrl}&fmt=wide`), fileUrl(`${c.socialUrl}&fmt=vertical`)]
+        : undefined,
     };
   };
 

@@ -12,7 +12,7 @@ export type SocialPushTarget = {
   thumbnailUrl?: string;
   sourceRefId: string;
   hint: string;          // context line fed to the caption generator
-  warmUrl?: string;      // 720p web copy to pre-warm so platform pulls don't hit a cold cache
+  warmUrls?: string[];   // renditions to pre-warm so platform pulls don't hit a cold cache
 };
 
 const PLATFORMS: { id: string; label: string }[] = [
@@ -36,17 +36,19 @@ export function SocialPushModal({ target, onClose }: { target: SocialPushTarget;
   const [err, setErr] = useState("");
   const draftedFor = useRef<string | null>(null);
 
-  // Pre-warm the 720p web copy: a 2-byte ranged GET makes the action API build
-  // the cached web version in the background, so a platform pulling the URL
-  // minutes later gets the light transcode instead of a cold-cache raw file.
+  // Pre-warm the publish renditions: a 2-byte ranged GET per variant makes the
+  // action API build the cached copies in the background, so a platform pulling
+  // the URL minutes later gets the hot 1080p rendition instead of raw 4K.
   useEffect(() => {
-    if (!target.warmUrl) return;
+    if (!target.warmUrls?.length) return;
     const ctrl = new AbortController();
-    fetch(target.warmUrl, { headers: { Range: "bytes=0-1" }, signal: ctrl.signal })
-      .then((r) => r.body?.cancel())
-      .catch(() => { /* best-effort */ });
+    for (const u of target.warmUrls) {
+      fetch(u, { headers: { Range: "bytes=0-1" }, signal: ctrl.signal })
+        .then((r) => r.body?.cancel())
+        .catch(() => { /* best-effort */ });
+    }
     return () => ctrl.abort();
-  }, [target.warmUrl]);
+  }, [target.warmUrls]);
 
   // Auto-draft the caption once per target (editable afterwards).
   const draft = async () => {

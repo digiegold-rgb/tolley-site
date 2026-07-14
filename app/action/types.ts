@@ -45,7 +45,7 @@ export type Status = {
 
 export type Disposition = "recap" | "keep" | "work" | "private";
 
-export type Clip = { name: string; durationS: number; status: string; disposition: Disposition; reviewed: boolean; url: string | null; webUrl?: string | null; previewUrl?: string | null; thumbUrl?: string | null; trimmed?: boolean };
+export type Clip = { name: string; durationS: number; status: string; disposition: Disposition; reviewed: boolean; url: string | null; webUrl?: string | null; socialUrl?: string | null; previewUrl?: string | null; thumbUrl?: string | null; trimmed?: boolean };
 
 export type SeqRange = { from: number; to: number; count: number };
 
