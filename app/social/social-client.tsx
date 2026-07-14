@@ -209,6 +209,16 @@ function QueueTab({
     void load();
   }, [load, refreshAt]);
 
+  // Live feedback while a post is in flight: the API call runs server-side
+  // for 60-90s (TikTok drives a real browser on the DGX), so poll until no
+  // row is "posting" anymore — the row then flips to posted/failed on its own.
+  const anyPosting = items.some((i) => i.status === "posting");
+  useEffect(() => {
+    if (!anyPosting) return;
+    const t = setInterval(() => void load(), 5000);
+    return () => clearInterval(t);
+  }, [anyPosting, load]);
+
   return (
     <div className="space-y-5">
       <UploadCard onUploaded={bumpRefresh} connections={connections} />
@@ -420,6 +430,10 @@ function QueueRow({ item, onChanged }: { item: QueueItem; onChanged: () => void 
   const [retrying, setRetrying] = useState(false);
   const retry = async () => {
     setRetrying(true);
+    // The API flips the row to "posting" up front but runs for 60-90s; reload
+    // the list shortly after firing so the pulsing pill (and the poll loop in
+    // QueueTab) picks it up instead of the button silently showing "…".
+    setTimeout(onChanged, 1500);
     try {
       await fetch(`/api/social/post`, {
         method: "POST",
