@@ -78,7 +78,9 @@ export async function POST(request: NextRequest) {
   await prisma.socialPost.update({
     where: { id: post.id },
     data: {
-      status: allOk ? "posted" : successCount > 0 ? "posted" : "failed",
+      // Partial success must stay "failed" — "posted" hides the Retry button
+      // and the failed legs (ERROR: externalIds) become unreachable in the UI.
+      status: allOk ? "posted" : "failed",
       postedAt: successCount > 0 ? new Date() : null,
       externalIds: existingExternals,
       errorMessage: errors.length > 0 ? errors.join(" | ") : null,
