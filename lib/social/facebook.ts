@@ -3,15 +3,34 @@ import { combineCaptionAndTags, type PostInput, type PostResult } from "./types"
 const API_VERSION = process.env.FACEBOOK_API_VERSION || "v18.0";
 const FB_API = "https://graph.facebook.com";
 
-function pickPageAndToken(): { pageId: string; token: string } | null {
-  // Default to Treasure Haul (Ruthann's brand-hub) for /social posts.
-  // Override with SOCIAL_FACEBOOK_PAGE_ID + SOCIAL_FACEBOOK_PAGE_TOKEN_ENV.
+// Which FB page a post lands on depends on which business it came from.
+// The Graph API cannot post to a personal profile (Meta removed that in 2018),
+// so "action" needs its own page configured via FACEBOOK_PAGE_ID_ACTION —
+// until then action-cam FB posts fail loudly instead of landing on the wrong brand.
+const SOURCE_ENV_SUFFIX: Record<string, string> = {
+  shop: "TREASURE",
+  treasure: "TREASURE",
+  realestate: "RE",
+  wd: "WD",
+  action: "ACTION",
+};
+
+function pickPageAndToken(source?: string): { pageId: string; token: string } | null {
+  // Global override wins: SOCIAL_FACEBOOK_PAGE_ID + SOCIAL_FACEBOOK_PAGE_TOKEN_ENV.
   const overridePageId = process.env.SOCIAL_FACEBOOK_PAGE_ID;
   const overrideTokenEnv = process.env.SOCIAL_FACEBOOK_PAGE_TOKEN_ENV;
   if (overridePageId && overrideTokenEnv) {
     const token = process.env[overrideTokenEnv];
     if (token) return { pageId: overridePageId, token };
   }
+  const suffix = SOURCE_ENV_SUFFIX[source ?? ""];
+  if (suffix) {
+    const pageId = process.env[`FACEBOOK_PAGE_ID_${suffix}`];
+    const token = process.env[`FACEBOOK_PAGE_TOKEN_${suffix}`];
+    if (pageId && token) return { pageId, token };
+    return null; // source has a designated page but it isn't configured — don't fall back to another brand
+  }
+  // Unrouted sources (manual uploads, crons) keep the Treasure Haul default.
   const pageId = process.env.FACEBOOK_PAGE_ID_TREASURE;
   const token = process.env.FACEBOOK_PAGE_TOKEN_TREASURE;
   if (pageId && token) return { pageId, token };
@@ -19,9 +38,12 @@ function pickPageAndToken(): { pageId: string; token: string } | null {
 }
 
 export async function postFacebook(input: PostInput): Promise<PostResult> {
-  const cfg = pickPageAndToken();
+  const cfg = pickPageAndToken(input.source);
   if (!cfg) {
-    return { ok: false, error: "Facebook not connected (no page token)" };
+    return {
+      ok: false,
+      error: `Facebook: no page configured for source "${input.source ?? "unknown"}" (set FACEBOOK_PAGE_ID_${SOURCE_ENV_SUFFIX[input.source ?? ""] ?? "…"} + token; personal profiles can't be posted to via API)`,
+    };
   }
 
   const description = combineCaptionAndTags(input);

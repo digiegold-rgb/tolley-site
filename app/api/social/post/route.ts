@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
 
   const input: PostInput = {
     id: post.id,
+    source: post.source,
     mediaUrl: post.mediaUrl,
     mediaType: post.mediaType as PostInput["mediaType"],
     thumbnailUrl: post.thumbnailUrl,

@@ -81,6 +81,7 @@ export async function POST(
     let success = 0;
     const input: PostInput = {
       id: post.id,
+      source: "shop",
       mediaUrl: post.mediaUrl,
       mediaType: "video",
       title: product.title,

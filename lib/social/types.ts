@@ -17,6 +17,7 @@ export const ALL_PLATFORMS: Platform[] = [
 
 export interface PostInput {
   id: string; // SocialPost.id
+  source?: string; // SocialPost.source — drives per-brand account routing (e.g. FB page)
   mediaUrl: string;
   mediaType: "video" | "image" | "carousel";
   thumbnailUrl?: string | null;
