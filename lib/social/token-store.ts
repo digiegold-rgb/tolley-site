@@ -16,14 +16,18 @@ const ADMIN_SUBSCRIBER = "social-suite";
 
 export async function getStoredToken(
   platform: string,
-): Promise<{ accessToken: string; refreshToken: string | null } | null> {
+): Promise<{ accessToken: string; refreshToken: string | null; accountId: string | null } | null> {
   try {
     const row = await prisma.platformConnection.findFirst({
       where: { subscriberId: ADMIN_SUBSCRIBER, platform, status: "active" },
       orderBy: { updatedAt: "desc" },
     });
     if (!row) return null;
-    return { accessToken: row.accessToken, refreshToken: row.refreshToken };
+    return {
+      accessToken: row.accessToken,
+      refreshToken: row.refreshToken,
+      accountId: row.platformAccountId,
+    };
   } catch {
     return null; // never let a store hiccup break a post — env fallback covers it
   }

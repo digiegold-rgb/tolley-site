@@ -15,11 +15,12 @@ const FB_API = "https://graph.facebook.com";
  * instagram_content_publish + pages_read_engagement scopes.
  */
 export async function postInstagram(input: PostInput): Promise<PostResult> {
-  const igUserId = process.env.INSTAGRAM_BUSINESS_ID?.trim();
-  // A token re-authed through /api/social/oauth/facebook (with instagram_basic +
-  // instagram_content_publish) is stored in the DB and wins; the env tokens are
-  // legacy fallbacks that lack the IG publish scopes (error #10).
+  // A token re-authed with instagram_basic + instagram_content_publish is
+  // stored in the DB and wins; the env tokens are legacy fallbacks that lack
+  // the IG publish scopes (error #10). The stored row's accountId is the IG
+  // user id granted during OAuth, so env INSTAGRAM_BUSINESS_ID is optional.
   const stored = await getStoredToken("instagram");
+  const igUserId = process.env.INSTAGRAM_BUSINESS_ID?.trim() || stored?.accountId;
   const token =
     stored?.accessToken ||
     process.env.INSTAGRAM_PAGE_TOKEN ||
