@@ -35,9 +35,19 @@ export async function postYouTube(input: PostInput): Promise<PostResult> {
   if (!accessToken.ok) return accessToken;
 
   // Stream media from the blob URL into the YouTube resumable upload.
-  const mediaRes = await fetch(input.mediaUrl);
+  const mediaRes = await fetch(input.mediaUrl, { signal: AbortSignal.timeout(90_000) });
   if (!mediaRes.ok || !mediaRes.body) {
     return { ok: false, error: `Could not fetch media (${mediaRes.status})` };
+  }
+  // Whole file + multipart body both live in memory — a raw 4K original
+  // (800MB+) OOMs/times out the function. Renditions are ~100-150MB.
+  const contentLength = Number(mediaRes.headers.get("content-length") || 0);
+  if (contentLength > 512 * 1024 * 1024) {
+    void mediaRes.body.cancel().catch(() => {});
+    return {
+      ok: false,
+      error: `media too large for serverless upload (${Math.round(contentLength / 1e6)}MB > 512MB) — likely a raw-original fallback; Retry once the rendition is built`,
+    };
   }
   const buffer = Buffer.from(await mediaRes.arrayBuffer());
   const contentType = mediaRes.headers.get("content-type") || "video/mp4";
@@ -71,6 +81,9 @@ export async function postYouTube(input: PostInput): Promise<PostResult> {
       "Content-Type": `multipart/related; boundary=${boundary}`,
     },
     body,
+    // A stalled upload must error (recorded, next platforms still run) rather
+    // than ride out maxDuration and strand the row in "posting".
+    signal: AbortSignal.timeout(150_000),
   });
 
   if (!res.ok) {

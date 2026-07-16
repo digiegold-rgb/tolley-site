@@ -16,6 +16,27 @@ const VALID: Set<Platform> = new Set([
   "backatyou",
 ]);
 
+// Action-cam /social renditions build in the background on the DGX; while one
+// is cold, action-api serves the RAW 4K original as a fallback. Buffering that
+// (800MB+) kills this function mid-run and strands the row in "posting"
+// (7/15). The X-Social-Rendition header says what a fetch would actually get.
+async function actionRenditionBlocker(mediaUrl: string): Promise<string | null> {
+  if (!mediaUrl.startsWith("https://action-api.tolley.io/social?")) return null;
+  try {
+    const res = await fetch(mediaUrl, {
+      headers: { Range: "bytes=0-1" },
+      signal: AbortSignal.timeout(20_000),
+    });
+    void res.body?.cancel().catch(() => {});
+    if (res.headers.get("x-social-rendition") === "raw") {
+      return "Publish rendition is still building on action-api (raw original would be served) — wait ~2 minutes and Retry";
+    }
+  } catch {
+    // Readiness check is best-effort; let the platform legs surface real errors.
+  }
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   const auth = await requireAdminApiSession();
   if (!auth.ok) return auth.response;
@@ -55,6 +76,18 @@ export async function POST(request: NextRequest) {
     hashtags: post.hashtags,
   };
 
+  const blocker = await actionRenditionBlocker(post.mediaUrl);
+  if (blocker) {
+    await prisma.socialPost.update({
+      where: { id: post.id },
+      data: { status: "failed", errorMessage: blocker },
+    });
+    return NextResponse.json(
+      { id: post.id, successCount: 0, failureCount: targets.length, errors: [blocker] },
+      { status: 409 },
+    );
+  }
+
   const errors: string[] = [];
   let successCount = 0;
 
@@ -64,7 +97,15 @@ export async function POST(request: NextRequest) {
       successCount += 1;
       continue;
     }
-    const result = await postOne(platform, input);
+    let result: Awaited<ReturnType<typeof postOne>>;
+    try {
+      result = await postOne(platform, input);
+    } catch (err) {
+      result = {
+        ok: false,
+        error: err instanceof Error ? err.message.slice(0, 300) : "unexpected error",
+      };
+    }
     if (result.ok) {
       existingExternals[platform] = result.url || result.externalId;
       successCount += 1;
@@ -72,6 +113,12 @@ export async function POST(request: NextRequest) {
       existingExternals[platform] = `ERROR: ${result.error}`;
       errors.push(`${platform}: ${result.error}`);
     }
+    // Persist after every platform so a mid-run kill can't lose finished legs
+    // and Retry only re-fires what actually failed.
+    await prisma.socialPost.update({
+      where: { id: post.id },
+      data: { externalIds: existingExternals },
+    });
   }
 
   const allOk = errors.length === 0 && successCount === targets.length;
