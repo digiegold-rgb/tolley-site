@@ -17,6 +17,7 @@ import { advanceJob } from "@/lib/research/jobs";
 import type { ResearchAnswer } from "@/lib/research/prompt";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 function slimAnswer(job: {
   id: string;

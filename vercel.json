@@ -149,15 +149,6 @@
     },
     "app/api/cron/shop/enrich-pending-descriptions/route.ts": {
       "maxDuration": 300
-    },
-    "app/api/research/route.ts": {
-      "maxDuration": 60
-    },
-    "app/api/research/[id]/route.ts": {
-      "maxDuration": 30
-    },
-    "app/api/cron/research-poll/route.ts": {
-      "maxDuration": 120
     }
   },
   "git": {
