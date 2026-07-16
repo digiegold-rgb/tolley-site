@@ -13,7 +13,9 @@ import { prisma } from "@/lib/prisma";
 import { advanceJob } from "@/lib/research/jobs";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+// A v2 cloud pipeline re-run (2 grounded rounds + verification) takes
+// ~110-130s — the cron must be able to finish one inline.
+export const maxDuration = 300;
 
 const MAX_PER_RUN = 10;
 
@@ -39,8 +41,8 @@ export async function GET(req: NextRequest) {
   });
 
   const results: Array<{ jobId: string; from: string; to: string }> = [];
-  // A cloud pipeline re-run takes ~90s — at most one per cron tick keeps
-  // this function inside its 120s budget; the next tick takes the next.
+  // A cloud pipeline re-run takes ~2min — at most one per cron tick keeps
+  // this function inside its budget; the next tick takes the next.
   let cloudRuns = 0;
   for (const job of jobs) {
     try {
