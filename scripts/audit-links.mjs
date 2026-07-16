@@ -45,6 +45,7 @@ const ORPHAN_ALLOWLIST = new Set([
   "/media",
   "/tv",
   "/research", // PIN-gated deep-research search, owner tool like /tv
+  "/signature", // owner tool — animated email signature preview/installer
 ]);
 // Hrefs that resolve outside the app/ page tree but are real.
 const VIRTUAL_PATHS = [

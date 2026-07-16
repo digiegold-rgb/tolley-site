@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="80" viewBox="0 0 340 80" fill="none">
+  <!-- Your KC Homes wordmark — matches public/homes/signature/logo.gif -->
+  <g>
+    <path d="M11 37 L35 15 L59 37" stroke="#10233d" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M17 35 V55 H53 V35" stroke="#10233d" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="30" y="41" width="10" height="14" rx="1.5" fill="#0ea5e9"/>
+    <circle cx="49" cy="19" r="5" fill="#0ea5e9"/>
+  </g>
+  <text x="78" y="42" font-family="Sora, Arial, sans-serif" font-size="27" font-weight="800" letter-spacing="0.5" fill="#10233d">YOUR <tspan fill="#0ea5e9">KC</tspan> HOMES</text>
+  <text x="79" y="60" font-family="Sora, Arial, sans-serif" font-size="10.5" font-weight="600" letter-spacing="4.6" fill="#7b8794">JARED TOLLEY &#183; REALTOR&#174;</text>
+</svg>
