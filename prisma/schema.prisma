@@ -4528,8 +4528,8 @@ model MileageTrip {
   id         String   @id @default(cuid())
   startDate  DateTime
   endDate    DateTime
-  category   String   // Business | Personal | Medical | Moving | Charity | Commute
-  purpose    String?  // MileIQ sub-purpose: Business, Airport/Travel, Errand/Supplies, Personal...
+  category   String // Business | Personal | Medical | Moving | Charity | Commute
+  purpose    String? // MileIQ sub-purpose: Business, Airport/Travel, Errand/Supplies, Personal...
   startAddr  String
   stopAddr   String
   rate       Float    @default(0)
@@ -4578,4 +4578,37 @@ model EstateSale {
   updatedAt        DateTime  @updatedAt
 
   @@index([status, startsAt])
+}
+
+// ── Deep Research Search ─────────────────────────────────────────────
+// One row per research question submitted at /research. Two-lane model:
+// Lane 1 answers instantly from completed rows (exact queryNormalized
+// match, later Qdrant semantic match); Lane 2 submits the question to
+// OpenManus on the DGX and live-polls progress. Mirrors DossierJob's
+// live-polling fields (progress/currentPhase/stepDetails).
+model ResearchJob {
+  id              String    @id @default(cuid())
+  query           String
+  queryNormalized String // lowercase/trim/collapsed whitespace — Lane-1 exact match key
+  status          String    @default("queued") // queued|submitted|running|verifying|completed|failed
+  progress        Int       @default(0)
+  currentPhase    String? // searching|reading|verifying|scoring|done
+  currentStep     String? // human label, e.g. "Reading sources (3/8)"
+  stepDetails     Json? // [{i, tool, label, at}] parsed from Manus steps
+  manusTaskId     String?
+  verifyTaskId    String?
+  etaSeconds      Int?
+  confidence      Int? // final 0-100, capped by verification verdicts
+  result          Json? // {answerMarkdown, claims:[{text, sources:[{url,title,quote}], verified, confidence}], overallConfidence, unverifiedNotes}
+  errorMessage    String?
+  cacheHits       Int       @default(0)
+  qdrantPointId   String?
+  requestedBy     String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([queryNormalized, status])
 }

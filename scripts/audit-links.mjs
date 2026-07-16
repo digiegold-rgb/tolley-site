@@ -44,6 +44,7 @@ const ORPHAN_ALLOWLIST = new Set([
   "/manus",
   "/media",
   "/tv",
+  "/research", // PIN-gated deep-research search, owner tool like /tv
 ]);
 // Hrefs that resolve outside the app/ page tree but are real.
 const VIRTUAL_PATHS = [
