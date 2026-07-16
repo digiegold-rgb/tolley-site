@@ -2246,3 +2246,109 @@ Call log:
 [main] Session died after 5 consecutive failures. Relaunching...
 [main] Session relaunched. Continuing from product 48
 [main] Done. Enriched: 4, Failed: 46 of 50
+[main] Pool360 Product Enrichment (API) — 2026-07-12T12:00:02.901Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3201
+[main] Products to enrich: 52
+[main] Browser session started
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 5
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 10
+[ok] CAR-801-9693 — desc, specs, feat
+[ok] HYD-801-2814 — desc, specs, feat
+[ok] TOR-38-7000 — desc, specs, sds, feat
+[ok] HYD-801-2816 — desc, specs
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 23
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 28
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 33
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 38
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 43
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 48
+[ok] HYD-801-2813 — desc, specs
+[ok] RGL-50-4093 — desc, specs, upc, feat
+[main] Done. Enriched: 6, Failed: 46 of 52
+[main] Pool360 Product Enrichment (API) — 2026-07-13T12:00:02.469Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3201
+[main] Products to enrich: 46
+[main] Browser session started
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 5
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 10
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 15
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 20
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 25
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 30
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 35
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 40
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 45
+[main] Done. Enriched: 0, Failed: 46 of 46
+[main] Pool360 Product Enrichment (API) — 2026-07-14T12:00:03.257Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3201
+[main] Products to enrich: 48
+[main] Browser session started
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 5
+[ok] LCH-50-1015 — desc, specs, upc, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 12
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 17
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 22
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 27
+[ok] KTC-45-7858 — desc, specs, upc, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 37
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 42
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 47
+[main] Done. Enriched: 2, Failed: 46 of 48
+[main] Pool360 Product Enrichment (API) — 2026-07-15T12:00:02.846Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3201
+[main] Products to enrich: 95
+[main] Browser session started
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 5
+[ok] LAT-801-1512 — desc, specs, sds
+[ok] NVS-06-0001 — desc, specs
+[ok] RGL-50-0025 — desc, specs, upc, sds, feat
+[ok] LAT-801-2562 — desc, specs
+[ok] QQQ-50-9701 — desc, specs, feat
+[ok] PRO-50-4378 — desc, specs
+[ok] AEY-50-0000 — desc, specs, upc, sds, feat
+[ok] SHA-50-1005 — desc, specs
+[ok] LAT-801-0068 — desc, specs, sds, feat
+[ok] SRS-35-0162 — desc, specs, upc, feat
+[ok] LAT-801-011 — desc, specs
+[ok] LAT-801-9888 — desc, specs
+[ok] LAT-801-9889 — desc, specs
+[ok] MEG-80-1323 — desc, specs
+[ok] MEG-80-1322 — desc, specs
+[ok] MEG-80-1329 — desc, specs
+[ok] LAT-801-2550 — desc, specs
+[ok] GLD-45-905 — desc, specs, upc, sds, feat
+[ok] WCM-70-0000 — desc, specs, feat
+[ok] CEL-75-9024 — desc, specs
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 80
+[main] Done. Enriched: 49, Failed: 46 of 95

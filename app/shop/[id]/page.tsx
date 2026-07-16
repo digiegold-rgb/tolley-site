@@ -7,6 +7,12 @@ import { EmailCaptureForm } from "@/components/tools/EmailCaptureForm";
 import ProductPageView from "@/components/shop/ProductPageView";
 import ShopCard from "@/components/shop/ShopCard";
 import type { Prisma } from "@prisma/client";
+import shortsMap from "@/lib/shop/shorts-map.json";
+
+// ASIN -> latest posted YouTube Short (synced from the DGX growth-engine
+// ledger by scripts/sync-shorts-map.mjs at deploy time)
+const SHORTS: Record<string, { v: string; title: string; at: string }> =
+  shortsMap as Record<string, { v: string; title: string; at: string }>;
 
 export const revalidate = 300;
 
@@ -206,6 +212,25 @@ export default async function ProductPage({
         amazonEnabled
         amazonTag={amazonTag}
       />
+
+      {/* Video short — embeds the product's YouTube Short when one exists */}
+      {product.amazonAsin && SHORTS[product.amazonAsin] && (
+        <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4">
+          <p className="mb-3 text-sm font-semibold text-white">
+            ▶️ See it in action
+          </p>
+          <div className="mx-auto aspect-[9/16] w-full max-w-[320px] overflow-hidden rounded-lg">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${SHORTS[product.amazonAsin].v}`}
+              title={`${product.title} — video short`}
+              className="h-full w-full"
+              allow="accelerometer; encrypted-media; picture-in-picture"
+              allowFullScreen
+              loading="lazy"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Drop list — every FB deep-link lands here; capture before they bounce */}
       <div className="mt-6 rounded-xl border border-pink-500/25 bg-pink-500/[0.06] px-4 py-4">

@@ -12024,3 +12024,416 @@ npm warn exec The following package was not found and will be installed: tsx@4.2
   "errors": []
 }
 [main] Done.
+[main] Pool360 Sync — 2026-07-12T09:00:02.912Z
+[main] Browser profile: /home/jelly/.pool360-profile
+[main] Fully authenticated — will sync prices + stock.
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/sanitizers
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/sanitizers
+[scrape] Found 0 products in sanitizers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/shock
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/shock
+[scrape] Found 0 products in shock
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/water-balancers
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/water-balancers
+[scrape] Found 0 products in water-balancers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/algaecides
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/algaecides
+[scrape] Found 0 products in algaecides
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/specialty-other-chemicals
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/specialty-other-chemicals
+[scrape] Found 0 products in specialty-other-chemicals
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-pumps
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-pumps
+[scrape] Found 0 products in pool-pumps
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-filters
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-filters
+[scrape] Found 0 products in pool-filters
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-sanitizing-systems
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-sanitizing-systems
+[scrape] Found 0 products in pool-spa-sanitizing-systems
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-heating-cooling
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-heating-cooling
+[scrape] Found 0 products in pool-heating-cooling
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/automatic-pool-cleaners
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/automatic-pool-cleaners
+[scrape] Found 0 products in automatic-pool-cleaners
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-automatic-controls
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-automatic-controls
+[scrape] Found 0 products in pool-spa-automatic-controls
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-lighting
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-lighting
+[scrape] Found 0 products in pool-spa-lighting
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools
+[scrape] Found 0 products in cleaning-tools
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/filter-media-replacement-cartridges-grids
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/filter-media-replacement-cartridges-grids
+[scrape] Found 0 products in filter-media-replacement-cartridges-grids
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/paints-patches
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/paints-patches
+[scrape] Found 0 products in paints-patches
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/pool-covers
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/pool-covers
+[scrape] Found 0 products in pool-covers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/water-testing-control
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/water-testing-control
+[scrape] Found 0 products in water-testing-control
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/basic-repair-maintenance-parts
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/basic-repair-maintenance-parts
+[scrape] Found 0 products in basic-repair-maintenance-parts
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/pool-spa-equipment-parts
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/pool-spa-equipment-parts
+[scrape] Found 0 products in pool-spa-equipment-parts
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/skimmers-accessories
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/skimmers-accessories
+[scrape] Found 0 products in skimmers-accessories
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/return-inlet-fittings
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/return-inlet-fittings
+[scrape] Found 0 products in return-inlet-fittings
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/main-drains-outlets
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/main-drains-outlets
+[scrape] Found 0 products in main-drains-outlets
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-safety-entry-accessibility/ladders-steps-hand-rails
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-safety-entry-accessibility/ladders-steps-hand-rails
+[scrape] Found 0 products in ladders-steps-hand-rails
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-safety-entry-accessibility/pool-fence-deck-safety
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-safety-entry-accessibility/pool-fence-deck-safety
+[scrape] Found 0 products in pool-fence-deck-safety
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/recreation-equipment
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/recreation-equipment
+[scrape] Found 0 products in recreation-equipment
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/diving-boards
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/diving-boards
+[scrape] Found 0 products in diving-boards
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/slides
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/slides
+[scrape] Found 0 products in slides
+[search] Searching: pool salt
+[search] Found 65 products for: pool salt
+[search] Searching: pool salt bag
+[search] Found 54 products for: pool salt bag
+[search] Searching: opening kit
+[search] Found 72 products for: opening kit
+[search] Searching: closing kit
+[search] Found 67 products for: closing kit
+[search] Searching: winterizing
+[search] Found 60 products for: winterizing
+[main] Total: 318 scraped, 298 unique SKUs
+[sync] Sending 298 products to https://www.tolley.io/api/pools/sync
+[sync] Result: {
+  "created": 0,
+  "updated": 296,
+  "skipped": 2,
+  "errors": []
+}
+[main] Done.
+npm warn exec The following package was not found and will be installed: tsx@4.23.1
+[main] Pool360 Sync — 2026-07-13T09:00:02.934Z
+[main] Browser profile: /home/jelly/.pool360-profile
+[main] Fully authenticated — will sync prices + stock.
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/sanitizers
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/sanitizers
+[scrape] Found 0 products in sanitizers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/shock
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/shock
+[scrape] Found 0 products in shock
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/water-balancers
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/water-balancers
+[scrape] Found 0 products in water-balancers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/algaecides
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/algaecides
+[scrape] Found 0 products in algaecides
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/specialty-other-chemicals
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/specialty-other-chemicals
+[scrape] Found 0 products in specialty-other-chemicals
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-pumps
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-pumps
+[scrape] Found 0 products in pool-pumps
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-filters
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-filters
+[scrape] Found 0 products in pool-filters
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-sanitizing-systems
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-sanitizing-systems
+[scrape] Found 0 products in pool-spa-sanitizing-systems
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-heating-cooling
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-heating-cooling
+[scrape] Found 0 products in pool-heating-cooling
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/automatic-pool-cleaners
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/automatic-pool-cleaners
+[scrape] Found 0 products in automatic-pool-cleaners
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-automatic-controls
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-automatic-controls
+[scrape] Found 0 products in pool-spa-automatic-controls
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-lighting
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-lighting
+[scrape] Found 0 products in pool-spa-lighting
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools
+[scrape] Found 0 products in cleaning-tools
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/filter-media-replacement-cartridges-grids
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/filter-media-replacement-cartridges-grids
+[scrape] Found 0 products in filter-media-replacement-cartridges-grids
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/paints-patches
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/paints-patches
+[scrape] Found 0 products in paints-patches
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/pool-covers
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/pool-covers
+[scrape] Found 0 products in pool-covers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/water-testing-control
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/water-testing-control
+[scrape] Found 0 products in water-testing-control
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/basic-repair-maintenance-parts
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/basic-repair-maintenance-parts
+[scrape] Found 0 products in basic-repair-maintenance-parts
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/pool-spa-equipment-parts
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/pool-spa-equipment-parts
+[scrape] Found 0 products in pool-spa-equipment-parts
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/skimmers-accessories
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/skimmers-accessories
+[scrape] Found 0 products in skimmers-accessories
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/return-inlet-fittings
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/return-inlet-fittings
+[scrape] Found 0 products in return-inlet-fittings
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/main-drains-outlets
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/main-drains-outlets
+[scrape] Found 0 products in main-drains-outlets
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-safety-entry-accessibility/ladders-steps-hand-rails
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-safety-entry-accessibility/ladders-steps-hand-rails
+[scrape] Found 0 products in ladders-steps-hand-rails
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-safety-entry-accessibility/pool-fence-deck-safety
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-safety-entry-accessibility/pool-fence-deck-safety
+[scrape] Found 0 products in pool-fence-deck-safety
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/recreation-equipment
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/recreation-equipment
+[scrape] Found 0 products in recreation-equipment
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/diving-boards
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/diving-boards
+[scrape] Found 0 products in diving-boards
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/slides
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/slides
+[scrape] Found 0 products in slides
+[search] Searching: pool salt
+[search] Found 66 products for: pool salt
+[search] Searching: pool salt bag
+[search] Found 54 products for: pool salt bag
+[search] Searching: opening kit
+[search] Found 72 products for: opening kit
+[search] Searching: closing kit
+[search] Found 67 products for: closing kit
+[search] Searching: winterizing
+[search] Found 60 products for: winterizing
+[main] Total: 319 scraped, 300 unique SKUs
+[sync] Sending 300 products to https://www.tolley.io/api/pools/sync
+[sync] Result: {
+  "created": 0,
+  "updated": 298,
+  "skipped": 2,
+  "errors": []
+}
+[main] Done.
+[main] Pool360 Sync — 2026-07-14T09:00:03.023Z
+[main] Browser profile: /home/jelly/.pool360-profile
+[main] Fully authenticated — will sync prices + stock.
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/sanitizers
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/sanitizers
+[scrape] Found 0 products in sanitizers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/shock
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/shock
+[scrape] Found 0 products in shock
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/water-balancers
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/water-balancers
+[scrape] Found 0 products in water-balancers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/algaecides
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/algaecides
+[scrape] Found 0 products in algaecides
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/specialty-other-chemicals
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/specialty-other-chemicals
+[scrape] Found 0 products in specialty-other-chemicals
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-pumps
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-pumps
+[scrape] Found 0 products in pool-pumps
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-filters
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-filters
+[scrape] Found 0 products in pool-filters
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-sanitizing-systems
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-sanitizing-systems
+[scrape] Found 0 products in pool-spa-sanitizing-systems
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-heating-cooling
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-heating-cooling
+[scrape] Found 0 products in pool-heating-cooling
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/automatic-pool-cleaners
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/automatic-pool-cleaners
+[scrape] Found 0 products in automatic-pool-cleaners
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-automatic-controls
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-automatic-controls
+[scrape] Found 0 products in pool-spa-automatic-controls
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-lighting
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-lighting
+[scrape] Found 0 products in pool-spa-lighting
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools
+[scrape] Found 0 products in cleaning-tools
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/filter-media-replacement-cartridges-grids
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/filter-media-replacement-cartridges-grids
+[scrape] Found 0 products in filter-media-replacement-cartridges-grids
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/paints-patches
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/paints-patches
+[scrape] Found 0 products in paints-patches
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/pool-covers
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/pool-covers
+[scrape] Found 0 products in pool-covers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/water-testing-control
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/water-testing-control
+[scrape] Found 0 products in water-testing-control
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/basic-repair-maintenance-parts
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/basic-repair-maintenance-parts
+[scrape] Found 0 products in basic-repair-maintenance-parts
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/pool-spa-equipment-parts
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/pool-spa-equipment-parts
+[scrape] Found 0 products in pool-spa-equipment-parts
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/skimmers-accessories
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/skimmers-accessories
+[scrape] Found 0 products in skimmers-accessories
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/return-inlet-fittings
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/return-inlet-fittings
+[scrape] Found 0 products in return-inlet-fittings
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/main-drains-outlets
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/main-drains-outlets
+[scrape] Found 0 products in main-drains-outlets
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-safety-entry-accessibility/ladders-steps-hand-rails
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-safety-entry-accessibility/ladders-steps-hand-rails
+[scrape] Found 0 products in ladders-steps-hand-rails
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-safety-entry-accessibility/pool-fence-deck-safety
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-safety-entry-accessibility/pool-fence-deck-safety
+[scrape] Found 0 products in pool-fence-deck-safety
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/recreation-equipment
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/recreation-equipment
+[scrape] Found 0 products in recreation-equipment
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/diving-boards
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/diving-boards
+[scrape] Found 0 products in diving-boards
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/slides
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/slides
+[scrape] Found 0 products in slides
+[search] Searching: pool salt
+[search] Found 66 products for: pool salt
+[search] Searching: pool salt bag
+[search] Found 54 products for: pool salt bag
+[search] Searching: opening kit
+[search] Found 72 products for: opening kit
+[search] Searching: closing kit
+[search] Found 67 products for: closing kit
+[search] Searching: winterizing
+[search] Found 61 products for: winterizing
+[main] Total: 320 scraped, 301 unique SKUs
+[sync] Sending 301 products to https://www.tolley.io/api/pools/sync
+[sync] Result: {
+  "created": 0,
+  "updated": 299,
+  "skipped": 2,
+  "errors": []
+}
+[main] Done.
+[main] Pool360 Sync — 2026-07-15T09:00:03.221Z
+[main] Browser profile: /home/jelly/.pool360-profile
+[main] Fully authenticated — will sync prices + stock.
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/sanitizers
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/sanitizers
+[scrape] Found 0 products in sanitizers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/shock
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/shock
+[scrape] Found 0 products in shock
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/water-balancers
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/water-balancers
+[scrape] Found 0 products in water-balancers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/algaecides
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/algaecides
+[scrape] Found 0 products in algaecides
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-chemicals/specialty-other-chemicals
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-chemicals/specialty-other-chemicals
+[scrape] Found 0 products in specialty-other-chemicals
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-pumps
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-pumps
+[scrape] Found 0 products in pool-pumps
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-filters
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-filters
+[scrape] Found 0 products in pool-filters
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-sanitizing-systems
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-sanitizing-systems
+[scrape] Found 0 products in pool-spa-sanitizing-systems
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-heating-cooling
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-heating-cooling
+[scrape] Found 0 products in pool-heating-cooling
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/automatic-pool-cleaners
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/automatic-pool-cleaners
+[scrape] Found 0 products in automatic-pool-cleaners
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-automatic-controls
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-automatic-controls
+[scrape] Found 0 products in pool-spa-automatic-controls
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-lighting
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-equipment/pool-spa-lighting
+[scrape] Found 0 products in pool-spa-lighting
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/cleaning-tools
+[scrape] Found 0 products in cleaning-tools
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/filter-media-replacement-cartridges-grids
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/filter-media-replacement-cartridges-grids
+[scrape] Found 0 products in filter-media-replacement-cartridges-grids
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/paints-patches
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/paints-patches
+[scrape] Found 0 products in paints-patches
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/pool-covers
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/pool-covers
+[scrape] Found 0 products in pool-covers
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/maintenance-cleaning/water-testing-control
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/maintenance-cleaning/water-testing-control
+[scrape] Found 0 products in water-testing-control
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/basic-repair-maintenance-parts
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/basic-repair-maintenance-parts
+[scrape] Found 0 products in basic-repair-maintenance-parts
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/pool-spa-equipment-parts
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/pool-spa-equipment-parts
+[scrape] Found 0 products in pool-spa-equipment-parts
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/skimmers-accessories
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/skimmers-accessories
+[scrape] Found 0 products in skimmers-accessories
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/return-inlet-fittings
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/return-inlet-fittings
+[scrape] Found 0 products in return-inlet-fittings
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-spa-parts-hardware/main-drains-outlets
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-spa-parts-hardware/main-drains-outlets
+[scrape] Found 0 products in main-drains-outlets
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-safety-entry-accessibility/ladders-steps-hand-rails
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-safety-entry-accessibility/ladders-steps-hand-rails
+[scrape] Found 0 products in ladders-steps-hand-rails
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/pool-safety-entry-accessibility/pool-fence-deck-safety
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/pool-safety-entry-accessibility/pool-fence-deck-safety
+[scrape] Found 0 products in pool-fence-deck-safety
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/recreation-equipment
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/recreation-equipment
+[scrape] Found 0 products in recreation-equipment
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/diving-boards
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/diving-boards
+[scrape] Found 0 products in diving-boards
+[scrape] Navigating to https://www.pool360.com/Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/slides
+[scrape] Timed out waiting for product content on /Catalog/pool-and-spa-products/aquatic-exercise-recreation-toys/slides
+[scrape] Found 0 products in slides
+[search] Searching: pool salt
+[search] Found 67 products for: pool salt
+[search] Searching: pool salt bag
+[search] Found 54 products for: pool salt bag
+[search] Searching: opening kit
+[search] Found 72 products for: opening kit
+[search] Searching: closing kit
+[search] Found 67 products for: closing kit
+[search] Searching: winterizing
+[search] Found 61 products for: winterizing
+[main] Total: 321 scraped, 302 unique SKUs
+[sync] Sending 302 products to https://www.tolley.io/api/pools/sync
+[sync] Result: {
+  "created": 0,
+  "updated": 300,
+  "skipped": 2,
+  "errors": []
+}
+[main] Done.

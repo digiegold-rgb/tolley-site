@@ -14,6 +14,7 @@ export interface StepDetail {
 
 export interface JobProgress {
   status: string;
+  engine?: "gemini" | "manus";
   progress: number;
   currentPhase: string | null;
   currentStep: string | null;
@@ -38,6 +39,8 @@ const TOOL_LABELS: Record<string, string> = {
   python_execute: "synthesizer",
   terminate: "wrap-up",
   agent: "reasoning",
+  gemini_grounded_search: "Google Search grounding",
+  url_verifier: "citation re-fetch + quote check",
 };
 
 function fmtEta(s: number | null): string {
@@ -139,7 +142,7 @@ export function ResearchProgress({ job }: { job: JobProgress }) {
             color: "#93c5fd",
           }}
         >
-          OpenManus agent · DGX Spark
+          {job.engine === "manus" ? "OpenManus agent · DGX Spark" : "Gemini · Google-grounded cloud"}
         </span>
         <span
           style={{

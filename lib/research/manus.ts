@@ -249,6 +249,10 @@ export interface VerifyVerdict {
   url: string;
   supported: boolean | "unreachable";
   evidence_quote?: string;
+  /** Final URL after redirects (grounding URIs are redirect links). */
+  resolved_url?: string;
+  /** <title> of the resolved page, for display. */
+  resolved_title?: string;
 }
 
 export function extractVerifyJson(result: string | null | undefined): VerifyVerdict[] | null {

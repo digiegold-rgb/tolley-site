@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
   const results: Array<{ jobId: string; from: string; to: string }> = [];
   for (const job of jobs) {
     try {
-      const advanced = await advanceJob(job);
+      const advanced = await advanceJob(job, { runCloud: true });
       results.push({ jobId: job.id, from: job.status, to: advanced.status });
     } catch (err) {
       console.error(`[research-poll] advance failed for ${job.id}:`, err);

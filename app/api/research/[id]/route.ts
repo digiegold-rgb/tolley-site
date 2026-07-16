@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateShopAdmin } from "@/lib/shop-auth";
-import { advanceJob } from "@/lib/research/jobs";
+import { RESEARCH_ENGINE, advanceJob } from "@/lib/research/jobs";
 import type { ResearchAnswer } from "@/lib/research/prompt";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +38,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   return NextResponse.json({
     jobId: advanced.id,
     query: advanced.query,
+    engine: advanced.manusTaskId ? "manus" : RESEARCH_ENGINE,
     status: advanced.status,
     progress: advanced.progress,
     currentPhase: advanced.currentPhase,

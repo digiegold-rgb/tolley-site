@@ -9,11 +9,11 @@
  *           poll already has a taskId.
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateShopAdmin } from "@/lib/shop-auth";
 import { normalizeQuery } from "@/lib/research/manus";
-import { advanceJob } from "@/lib/research/jobs";
+import { RESEARCH_ENGINE, advanceJob, runCloudPipeline } from "@/lib/research/jobs";
 import type { ResearchAnswer } from "@/lib/research/prompt";
 
 export const dynamic = "force-dynamic";
@@ -106,10 +106,16 @@ export async function POST(req: NextRequest) {
     data: { query, queryNormalized: normalized, requestedBy: "shop-admin" },
   });
 
-  // Kick the DGX submission inline (fast — one POST). advanceJob respects
-  // the concurrency cap; if the DGX is busy the job stays queued and the
-  // cron promotes it when a slot frees.
-  const started = await advanceJob(job);
+  if (RESEARCH_ENGINE === "gemini") {
+    // Run the ~10-40s cloud pipeline after the response is sent (after(),
+    // never fire-and-forget — Vercel kills floating promises). The 2s
+    // poller sees progress via the row updates the pipeline writes.
+    after(() => runCloudPipeline(job.id));
+    return NextResponse.json({ jobId: job.id, status: "running", engine: "gemini" });
+  }
 
-  return NextResponse.json({ jobId: started.id, status: started.status });
+  // DGX engine: submission is one fast POST; run it inline so the first
+  // poll already has a taskId. Concurrency cap keeps the DGX sane.
+  const started = await advanceJob(job);
+  return NextResponse.json({ jobId: started.id, status: started.status, engine: "manus" });
 }
