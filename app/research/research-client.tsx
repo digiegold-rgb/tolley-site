@@ -182,7 +182,8 @@ export function ResearchClient() {
           </h1>
           <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>
             Ask anything. Known answers are instant — new questions get a live,
-            source-verified research run on the DGX.
+            Google-grounded research run with every citation re-checked against
+            the source page.
           </p>
         </div>
 
