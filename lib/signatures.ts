@@ -67,10 +67,10 @@ export function buildSignatureHtml(p: SignaturePerson): string {
 <td valign="middle" style="padding:16px 6px 16px 18px;font-family:Arial,Helvetica,sans-serif;">
 <table cellpadding="0" cellspacing="0" border="0" role="presentation">
 <tr><td style="padding:0 0 8px 0;"><a href="${p.websiteUrl}" target="_blank" style="text-decoration:none;"><img src="${B}/logo.gif" width="170" height="40" alt="${p.company}" style="display:block;border:0;width:170px;height:40px;" /></a></td></tr>
-<tr><td style="font-size:19px;font-weight:bold;color:#10233d;padding:0 0 3px 0;">${p.name}&nbsp;<img src="${B}/badge.png" width="15" height="15" alt="Verified" style="border:0;width:15px;height:15px;vertical-align:middle;" /></td></tr>
+<tr><td style="font-size:19px;font-weight:bold;color:#10233d;padding:0 0 3px 0;">${p.name}&nbsp;<img src="${B}/badge.png" width="15" height="15" alt="Verified" style="display:inline-block;border:0;width:15px;height:15px;vertical-align:middle;" /></td></tr>
 <tr><td style="font-size:12.5px;color:#5b6b7f;padding:0 0 7px 0;">${p.title} &middot; ${p.company}</td></tr>
 ${p.brokerage ? `<tr><td style="font-size:11px;color:#93a1b1;padding:0 0 8px 0;">${p.brokerage}</td></tr>` : ""}
-<tr><td style="font-size:12.5px;color:#33415c;padding:0 0 2px 0;"><img src="${B}/icon-ph.png" width="12" height="12" alt="" style="border:0;width:12px;height:12px;vertical-align:middle;" />&nbsp;<a href="tel:+1${p.phone.replace(/[^0-9]/g, "")}" style="color:#33415c;text-decoration:none;">${p.phone}</a></td></tr>
+<tr><td style="font-size:12.5px;color:#33415c;padding:0 0 2px 0;"><img src="${B}/icon-ph.png" width="12" height="12" alt="" style="display:inline-block;border:0;width:12px;height:12px;vertical-align:middle;" />&nbsp;<a href="tel:+1${p.phone.replace(/[^0-9]/g, "")}" style="color:#33415c;text-decoration:none;">${p.phone}</a></td></tr>
 <tr><td style="font-size:12.5px;color:#33415c;padding:0 0 2px 0;"><a href="mailto:${p.email}" style="color:#33415c;text-decoration:none;">${p.email}</a></td></tr>
 <tr><td style="font-size:12.5px;padding:0;"><a href="${p.websiteUrl}" target="_blank" style="color:#0ea5e9;font-weight:bold;text-decoration:none;">${p.websiteLabel}</a></td></tr>
 </table>
