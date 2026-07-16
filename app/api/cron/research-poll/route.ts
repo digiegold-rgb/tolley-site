@@ -39,9 +39,15 @@ export async function GET(req: NextRequest) {
   });
 
   const results: Array<{ jobId: string; from: string; to: string }> = [];
+  // A cloud pipeline re-run takes ~90s — at most one per cron tick keeps
+  // this function inside its 120s budget; the next tick takes the next.
+  let cloudRuns = 0;
   for (const job of jobs) {
     try {
-      const advanced = await advanceJob(job, { runCloud: true });
+      const runCloud = cloudRuns < 1;
+      const wasQueued = job.status === "queued";
+      const advanced = await advanceJob(job, { runCloud });
+      if (wasQueued && runCloud && advanced.status !== "queued" && !advanced.manusTaskId) cloudRuns++;
       results.push({ jobId: job.id, from: job.status, to: advanced.status });
     } catch (err) {
       console.error(`[research-poll] advance failed for ${job.id}:`, err);

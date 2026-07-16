@@ -17,7 +17,9 @@ import { RESEARCH_ENGINE, advanceJob, runCloudPipeline } from "@/lib/research/jo
 import type { ResearchAnswer } from "@/lib/research/prompt";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// The after() cloud pipeline (grounded Gemini ~50s + citation re-fetch
+// ~40s) runs inside this function's lifetime.
+export const maxDuration = 300;
 
 function slimAnswer(job: {
   id: string;

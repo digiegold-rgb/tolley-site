@@ -9,10 +9,11 @@
  * that lets the answer page honestly show ✓ verified per claim.
  */
 
+import { inflateSync } from "node:zlib";
 import type { VerifyVerdict } from "./manus";
 import type { ResearchAnswer, ResearchClaim } from "./prompt";
 
-const FETCH_TIMEOUT_MS = 10_000;
+const FETCH_TIMEOUT_MS = 15_000;
 const CONCURRENCY = 4;
 // Plain browser UA — Google's grounding-redirect endpoint (and plenty of
 // manufacturer sites) 404/403 on anything that doesn't look like a browser.
@@ -70,7 +71,15 @@ async function fetchPage(url: string): Promise<FetchedPage | null> {
     });
     if (!res.ok) return null;
     const ctype = res.headers.get("content-type") ?? "";
-    if (ctype.includes("pdf") || ctype.includes("octet-stream")) return null; // can't quote-check binaries
+    if (ctype.includes("pdf") || ctype.includes("octet-stream") || /\.pdf(\?|$)/i.test(res.url || url)) {
+      // Datasheets are usually PDFs — extract what text we can rather
+      // than writing the source off as unverifiable.
+      const buf = Buffer.from(await res.arrayBuffer());
+      const text = pdfToText(buf);
+      if (!text) return null;
+      const name = (res.url || url).split("/").pop()?.split("?")[0] ?? "PDF datasheet";
+      return { text, finalUrl: res.url || url, title: decodeURIComponent(name) };
+    }
     const html = await res.text();
     const title = html.match(/<title[^>]*>([\s\S]{0,300}?)<\/title>/i)?.[1]?.trim() ?? "";
     return {
@@ -81,6 +90,48 @@ async function fetchPage(url: string): Promise<FetchedPage | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Dependency-free best-effort PDF text extraction: inflate FlateDecode
+ * streams and keep printable runs, plus any plaintext already in the
+ * file. Not layout-aware — but token/shingle matching only needs the
+ * words (grade codes, percentages, names) to be present somewhere.
+ */
+function pdfToText(buf: Buffer): string | null {
+  if (buf.length < 100 || buf.subarray(0, 5).toString("latin1") !== "%PDF-") return null;
+  const pieces: string[] = [printableRuns(buf)];
+  const raw = buf.toString("latin1");
+  let idx = 0;
+  for (let guard = 0; guard < 500; guard++) {
+    const start = raw.indexOf("stream", idx);
+    if (start < 0) break;
+    let dataStart = start + 6;
+    if (raw[dataStart] === "\r") dataStart++;
+    if (raw[dataStart] === "\n") dataStart++;
+    const end = raw.indexOf("endstream", dataStart);
+    if (end < 0) break;
+    try {
+      const inflated = inflateSync(buf.subarray(dataStart, end));
+      pieces.push(printableRuns(inflated));
+    } catch {
+      // not flate-compressed (or encrypted) — skip this stream
+    }
+    idx = end + 9;
+  }
+  const text = normalize(pieces.join(" "));
+  return text.length > 50 ? text : null;
+}
+
+function printableRuns(buf: Buffer): string {
+  const runs = buf
+    .toString("latin1")
+    .match(/[\x20-\x7e]{4,}/g);
+  if (!runs) return "";
+  // Strip PDF operators/dict noise, keep word-ish runs.
+  return runs
+    .map((r) => r.replace(/[()<>[\]{}\\/]/g, " "))
+    .join(" ");
 }
 
 /**
@@ -114,14 +165,18 @@ function checkSupport(pageText: string, quote: string | undefined, claimText: st
   for (const sh of shingles(claimText, 5)) {
     if (pageText.includes(sh)) return true;
   }
-  // Paraphrased claims: require most of the hard facts (codes, figures,
-  // names) to appear on the page.
+  // Paraphrased claims: require the hard facts (codes, figures, names)
+  // to appear on the page — at least 2 and at least 40% of them.
   const tokens = distinctiveTokens(claimText);
-  if (tokens.length >= 2) {
-    const found = tokens.filter((t) => pageText.includes(t)).length;
-    return found / tokens.length >= 0.6;
-  }
-  return false;
+  return tokenCoverage(pageText, tokens) >= coverageThreshold(tokens.length);
+}
+
+function coverageThreshold(tokenCount: number): number {
+  return tokenCount >= 2 ? Math.max(2, Math.ceil(tokenCount * 0.4)) : Infinity;
+}
+
+function tokenCoverage(pageText: string, tokens: string[]): number {
+  return tokens.filter((t) => pageText.includes(t)).length;
 }
 
 /**
@@ -164,6 +219,32 @@ export async function verifyClaims(claims: ResearchClaim[]): Promise<VerifyVerdi
       })
     );
     verdicts.push(...settled);
+  }
+
+  // Second pass: a synthesized claim (e.g. a comparison-table row) merges
+  // facts from several pages, so no single page contains enough of its
+  // tokens. If the UNION of the claim's reachable cited pages covers the
+  // tokens, credit the sources that contributed.
+  for (let ci = 0; ci < claims.length; ci++) {
+    const mine = verdicts.filter((v) => v.claim_index === ci);
+    if (mine.some((v) => v.supported === true)) continue;
+    const reachable = mine.filter((v) => v.supported === false);
+    if (reachable.length < 2) continue;
+    const tokens = distinctiveTokens(claims[ci].text);
+    const threshold = coverageThreshold(tokens.length);
+    if (!isFinite(threshold)) continue;
+    const pages = await Promise.all(reachable.map((v) => getPage(v.url)));
+    const covered = new Set<string>();
+    for (const page of pages) {
+      if (!page) continue;
+      for (const t of tokens) if (page.text.includes(t)) covered.add(t);
+    }
+    if (covered.size >= threshold) {
+      for (let i = 0; i < reachable.length; i++) {
+        const page = pages[i];
+        if (page && tokenCoverage(page.text, tokens) > 0) reachable[i].supported = true;
+      }
+    }
   }
   return verdicts;
 }

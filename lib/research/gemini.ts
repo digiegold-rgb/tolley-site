@@ -151,11 +151,16 @@ function buildClaimsFromGrounding(
   }
 
   const usable = [...bySegment.values()]
-    .filter(
-      (s) =>
-        (s.segment?.text ?? "").trim().length >= 40 &&
+    .filter((s) => {
+      const text = (s.segment?.text ?? "").trim();
+      // Substantive spans only — skip headings/fragments that carry no
+      // checkable facts.
+      return (
+        text.length >= 60 &&
+        /\d|[A-Z]{2,}/.test(text) &&
         (s.groundingChunkIndices?.length ?? 0) > 0
-    )
+      );
+    })
     .sort(
       (a, b) =>
         (b.segment?.text?.length ?? 0) + (b.groundingChunkIndices?.length ?? 0) * 50 -
