@@ -33,7 +33,7 @@ import {
 } from "./manus";
 import type { ResearchAnswer } from "./prompt";
 import { buildResearchPrompt, buildVerifyPrompt } from "./prompt";
-import { runGeminiResearch } from "./gemini";
+import { runGeminiExpansion, runGeminiResearch } from "./gemini";
 import { applyWebVerdicts, verifyClaims } from "./verify";
 
 /** Which engine runs new research jobs. */
@@ -80,10 +80,10 @@ export async function runCloudPipeline(jobId: string): Promise<ResearchJob> {
     data: {
       status: "running",
       startedAt: new Date(),
-      etaSeconds: 45,
+      etaSeconds: 120,
       progress: 10,
       currentPhase: "searching",
-      currentStep: "Searching Google + reading sources (Gemini grounded)",
+      currentStep: "Round 1 — searching Google + reading sources (Gemini grounded)",
       stepDetails: [{ i: 0, tool: "gemini_grounded_search", label: "Grounded search + synthesis" }],
     },
   });
@@ -109,6 +109,34 @@ export async function runCloudPipeline(jobId: string): Promise<ResearchJob> {
         completedAt: new Date(),
       },
     });
+  }
+
+  // Round 2 — self-expansion: hypothesize what round 1 missed and hunt
+  // evidence for each candidate, incl. native-language searches. Merged
+  // as an appendix with its own claims (verified in the same pass below).
+  await prisma.researchJob.update({
+    where: { id: jobId },
+    data: {
+      progress: 45,
+      currentPhase: "reading",
+      currentStep: "Round 2 — hunting what round 1 missed (incl. non-English sources)",
+      stepDetails: [
+        ...searchQueries.map((q, i) => ({ i, tool: "gemini_grounded_search", label: `Searched: ${q}` })),
+        { i: searchQueries.length, tool: "gemini_grounded_search", label: "Expansion sweep: missed candidates + regional languages" },
+      ],
+    },
+  });
+  const expansion = await runGeminiExpansion(job.query, answer.answerMarkdown);
+  if (expansion && expansion.answer.answerMarkdown.length > 50) {
+    answer = {
+      ...answer,
+      answerMarkdown:
+        answer.answerMarkdown +
+        "\n\n---\n\n# Second-pass sweep\n\n" +
+        expansion.answer.answerMarkdown,
+      claims: [...answer.claims, ...expansion.answer.claims],
+    };
+    searchQueries = [...searchQueries, ...expansion.searchQueries];
   }
 
   if (!VERIFY_ENABLED || answer.claims.length === 0) {

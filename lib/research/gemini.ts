@@ -37,7 +37,36 @@ Requirements:
 - Base every factual statement on pages you found through search. If something cannot be confirmed, say so explicitly in a final "What could not be verified" section — never fill gaps silently from prior knowledge.
 - Prefer primary sources: manufacturer pages, official datasheets, standards bodies, then reputable databases and distributors.
 - Answer in markdown. Use a comparison table when comparing products/options. Include concrete numbers (specs, percentages, model codes) wherever the sources give them.
+- Structure the answer in two tiers wherever the question asks who/what/which:
+  ## Verified — options you found real documentation for (each with its source linked inline)
+  ## Possible — leads that are hinted at (mentioned in passing, category pages, model knowledge) but lack hard documentation; say for each what evidence is missing
 - Be decisive: end with a short "Bottom line" section naming the best answer(s).`;
+}
+
+/**
+ * Round 2 — self-expansion. The model uses its OWN prior knowledge as a
+ * hypothesis list ("who else might make this that round 1 missed?"),
+ * then searches for hard evidence per candidate — including non-English
+ * queries, because many producers (Chinese, Russian, Japanese, Korean,
+ * German) barely surface in English-language results.
+ */
+function buildExpansionPrompt(query: string, firstAnswer: string): string {
+  return `You are a research analyst with Google Search access doing a SECOND-PASS sweep. A first-pass answer to the question below already exists. Your only job is to find what it MISSED.
+
+QUESTION: "${query}"
+
+FIRST-PASS ANSWER (do not repeat its content):
+---
+${firstAnswer.slice(0, 6000)}
+---
+
+Do this:
+1. From your own prior knowledge, list every additional plausible candidate answer the first pass did not mention (manufacturers, products, options, jurisdictions — whatever fits the question). Treat these strictly as hypotheses to check, not facts.
+2. Search for hard documentation for EACH candidate. Where a candidate is likely from a non-English-speaking region, ALSO search in that language/script (e.g. Chinese 丁腈橡胶 for rubber makers, Russian, Japanese, Korean, German terms). Regional sites often never appear in English queries.
+3. Report in markdown with exactly two sections:
+   ## Additional verified findings — candidates you found real documentation for, each with concrete specs/facts and the source linked inline
+   ## Possible leads (no hard documentation) — candidates that are hinted at (category pages, trade listings, passing mentions, or purely your model knowledge); for each say ONE line: what it likely is and what evidence is missing
+If a section is empty, write "None found." under it. Do not restate the first-pass findings.`;
 }
 
 interface GroundingChunk {
@@ -68,10 +97,37 @@ export interface GroundedResult {
 }
 
 export async function runGeminiResearch(query: string): Promise<GroundedResult> {
+  return runGroundedCall(buildGroundedPrompt(query), { minAnswerChars: 200, requireClaims: true });
+}
+
+/**
+ * Round 2: hypothesize what round 1 missed (LLM prior knowledge as
+ * candidate list), hunt evidence per candidate incl. native-language
+ * searches. Empty results are fine — not every question has more to find.
+ */
+export async function runGeminiExpansion(
+  query: string,
+  firstAnswer: string
+): Promise<GroundedResult | null> {
+  try {
+    return await runGroundedCall(buildExpansionPrompt(query, firstAnswer), {
+      minAnswerChars: 30,
+      requireClaims: false,
+    });
+  } catch {
+    // Expansion is best-effort — a failed round 2 never sinks the answer.
+    return null;
+  }
+}
+
+async function runGroundedCall(
+  prompt: string,
+  opts: { minAnswerChars: number; requireClaims: boolean }
+): Promise<GroundedResult> {
   if (!GEMINI_KEY) throw new Error("GEMINI_API_KEY not configured");
 
   const body = {
-    contents: [{ role: "user", parts: [{ text: buildGroundedPrompt(query) }] }],
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
     tools: [{ google_search: {} }],
     generationConfig: {
       temperature: 0.2,
@@ -100,7 +156,7 @@ export async function runGeminiResearch(query: string): Promise<GroundedResult> 
 
   const candidate = data.candidates?.[0];
   const text = (candidate?.content?.parts ?? []).map((p) => p.text ?? "").join("").trim();
-  if (text.length < 200) {
+  if (text.length < opts.minAnswerChars) {
     throw new Error(`Gemini returned an unusably short answer (${text.length} chars, finish=${candidate?.finishReason})`);
   }
 
@@ -108,7 +164,7 @@ export async function runGeminiResearch(query: string): Promise<GroundedResult> 
   const chunks = meta?.groundingChunks ?? [];
   const supports = meta?.groundingSupports ?? [];
   const claims = buildClaimsFromGrounding(supports, chunks);
-  if (claims.length === 0) {
+  if (opts.requireClaims && claims.length === 0) {
     throw new Error("Gemini answered without grounding citations — refusing to ship an unsourced answer");
   }
 
