@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import nodemailer from "nodemailer";
 import { prisma } from "@/lib/prisma";
+import {
+  FROM,
+  OWNER_EMAIL,
+  buildSaleAddressEmail,
+  getTransporter,
+  sentTag,
+} from "@/lib/estate-alert-email";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -15,44 +21,11 @@ export const maxDuration = 60;
  * This list is opt-in ("get the address the night before") — it's the one
  * customer-facing send that IS the product, so it fires automatically once
  * Jared has put the address on the sale row (that act is his approval).
+ *
+ * Anyone who joins AFTER this blast is covered by the signup autoresponder in
+ * /api/email-capture; both senders tag recipients with sentTag(slug) so nobody
+ * gets the same sale's address twice.
  */
-
-const OWNER_EMAIL = process.env.LEAD_OWNER_EMAIL || "digiegold@gmail.com";
-const FROM = process.env.EMAIL_FROM || "Tolley Estate Sales <leads@tolley.io>";
-
-function getTransporter() {
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_SERVER_HOST || "localhost",
-    port: Number(process.env.EMAIL_SERVER_PORT || 587),
-    secure: Number(process.env.EMAIL_SERVER_PORT || 587) === 465,
-    auth: {
-      user: process.env.EMAIL_SERVER_USER || "",
-      pass: process.env.EMAIL_SERVER_PASSWORD || "",
-    },
-  });
-}
-
-interface SaleDay {
-  date: string;
-  open: string;
-  close: string;
-  note?: string;
-}
-
-function fmtDay(d: SaleDay): string {
-  const day = new Date(`${d.date}T12:00:00`).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-  const hr = (t: string) => {
-    const [h, m] = t.split(":").map(Number);
-    const ampm = h >= 12 ? "pm" : "am";
-    const hh = h % 12 || 12;
-    return m ? `${hh}:${String(m).padStart(2, "0")}${ampm}` : `${hh}${ampm}`;
-  };
-  return `${day}: ${hr(d.open)}–${hr(d.close)}${d.note ? ` (${d.note})` : ""}`;
-}
 
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -89,44 +62,33 @@ export async function GET(req: NextRequest) {
       continue;
     }
 
+    const tag = sentTag(sale.slug);
     const subscribers = await prisma.emailLead.findMany({
-      where: { source: "estate-alerts", optedIn: true },
-      select: { email: true },
+      where: {
+        source: "estate-alerts",
+        optedIn: true,
+        NOT: { tags: { has: tag } },
+      },
+      select: { id: true, email: true },
     });
     const bcc = subscribers.map((s) => s.email);
 
-    const days = ((sale.days as unknown as SaleDay[]) ?? []).map(fmtDay).join("\n");
-    const saleUrl = `https://www.tolley.io/estate/sales/${sale.slug}`;
-    const text = [
-      `You're on the early list — here's the address before the public gets it.`,
-      ``,
-      `${sale.title}`,
-      `📍 ${sale.address}`,
-      ``,
-      days,
-      ``,
-      sale.description ?? "",
-      ``,
-      `Photos & details: ${saleUrl}`,
-      ``,
-      `Cash and all major cards accepted. See you there!`,
-      `— Jared, Tolley Estate Sales · tolley.io/estate`,
-      ``,
-      `(You're getting this because you joined the list at tolley.io/estate. Reply "stop" and we'll take you off.)`,
-    ].join("\n");
+    const { subject, text } = buildSaleAddressEmail(sale, "blast");
 
     try {
-      await transporter.sendMail({
-        from: FROM,
-        to: OWNER_EMAIL,
-        bcc,
-        subject: `📍 Address inside: ${sale.title} — ${((sale.days as unknown as SaleDay[]) ?? [])[0]?.date ?? ""}`,
-        text,
-      });
-      await prisma.estateSale.update({
-        where: { id: sale.id },
-        data: { vipNotifiedAt: new Date() },
-      });
+      await transporter.sendMail({ from: FROM, to: OWNER_EMAIL, bcc, subject, text });
+      await prisma.$transaction([
+        ...subscribers.map((s) =>
+          prisma.emailLead.update({
+            where: { id: s.id },
+            data: { tags: { push: tag } },
+          }),
+        ),
+        prisma.estateSale.update({
+          where: { id: sale.id },
+          data: { vipNotifiedAt: new Date() },
+        }),
+      ]);
       results[sale.slug] = `sent-to-${bcc.length}-subscribers`;
     } catch (err) {
       console.error(`[estate-alert] send failed for ${sale.slug}:`, err);

@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notifyLead } from "@/lib/lead-notify";
+import { sendEstateAddressIfRevealed } from "@/lib/estate-alert-autoresponder";
 
 export const runtime = "nodejs";
 
@@ -51,6 +52,14 @@ export async function POST(request: Request) {
     });
 
     notifyLead({ source, email, name, data, isNew });
+
+    // Estate-alerts joiners expect the address, not a wait. The cron only
+    // blasts once per sale, so anyone joining after that blast is covered here.
+    // after() so a slow SMTP hop never delays (or fails) the signup response —
+    // the lead is already committed above.
+    if (source === "estate-alerts") {
+      after(() => sendEstateAddressIfRevealed(lead.id, email));
+    }
 
     return NextResponse.json({ ok: true, id: lead.id, isNew });
   } catch (error) {
