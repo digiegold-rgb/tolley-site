@@ -17,6 +17,9 @@ export const FROM = process.env.EMAIL_FROM || "Tolley Estate Sales <leads@tolley
 /** Tag stamped on an EmailLead once it has been sent a given sale's address. */
 export const sentTag = (slug: string) => `estate-alert-sent:${slug}`;
 
+/** Tag stamped on an EmailLead once it has been sent a given sale's announcement teaser. */
+export const announcedTag = (slug: string) => `estate-announced:${slug}`;
+
 export function getTransporter() {
   return nodemailer.createTransport({
     host: process.env.EMAIL_SERVER_HOST || "localhost",
@@ -91,6 +94,47 @@ export function buildSaleAddressEmail(
 
   return {
     subject: `📍 Address inside: ${sale.title} — ${days[0]?.date ?? ""}`,
+    text,
+  };
+}
+
+/**
+ * New-sale teaser — NO address. Fires once when a sale goes up with photos.
+ * List policy: exactly two automated touches per sale — this teaser and the
+ * address drop above. Nothing else, ever.
+ */
+export function buildSaleAnnouncementEmail(sale: EstateSale): {
+  subject: string;
+  text: string;
+} {
+  const days = saleDays(sale);
+  const saleUrl = `https://www.tolley.io/estate/sales/${sale.slug}`;
+
+  const text = [
+    `New sale on the books — you're hearing it first.`,
+    ``,
+    sale.title,
+    `📍 ${sale.areaLabel} (exact address lands in your inbox the night before — you're on the list)`,
+    ``,
+    days.map(fmtDay).join("\n"),
+    ``,
+    `Photos are up now and more land every day: ${saleUrl}`,
+    ``,
+    `Every form of payment accepted. See you there!`,
+    `— Jared, Tolley Estate Sales · tolley.io/estate`,
+    ``,
+    `(You're getting this because you joined the list at tolley.io/estate. Reply "stop" and we'll take you off. Two emails per sale — this one and the address — that's it.)`,
+  ].join("\n");
+
+  const firstDay = days[0]
+    ? new Date(`${days[0].date}T12:00:00`).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
+    : "";
+
+  return {
+    subject: `🏛️ Next sale: ${sale.title}${firstDay ? ` — ${firstDay}` : ""}`,
     text,
   };
 }

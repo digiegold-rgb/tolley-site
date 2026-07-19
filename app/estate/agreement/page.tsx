@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ES_PHONE, ES_PHONE_TEL } from "@/lib/estate";
+import {
+  AGREEMENT_VERSION,
+  AGREEMENT_FIELDS,
+  AGREEMENT_CLAUSES,
+  AGREEMENT_SIGNATURES,
+} from "@/lib/estate-agreement";
+import { PrintAgreementButton } from "@/components/estate/print-agreement-button";
 
 export const metadata: Metadata = {
   title: "Client Agreement | Tolley Estate Sales",
   description:
-    "The Tolley Estate Sales client agreement, published in plain English. Read every term before you sign — commission, unsold items, settlement timing, all of it.",
+    "The Tolley Estate Sales client agreement, published in plain English — plus the actual fill-in-the-blank contract you can read, download, and print before anyone visits.",
   alternates: { canonical: "https://www.tolley.io/estate/agreement" },
 };
 
@@ -53,17 +60,29 @@ const SECTIONS = [
   },
 ] as const;
 
+function BlankLine({ wide }: { wide?: boolean }) {
+  return (
+    <span
+      className={`inline-block border-b border-neutral-400 align-baseline ${
+        wide ? "w-full" : "min-w-[12rem] flex-1"
+      }`}
+    >
+      &nbsp;
+    </span>
+  );
+}
+
 export default function EstateAgreementPage() {
   return (
-    <main className="relative z-10 min-h-screen px-5 pb-20 sm:px-8">
-      <div className="mx-auto max-w-2xl">
-        <nav className="pt-6 text-xs" style={{ color: "var(--es-cream-dim)" }}>
+    <main className="relative z-10 min-h-screen px-5 pb-20 sm:px-8 print:p-0">
+      <div className="mx-auto max-w-2xl print:max-w-none">
+        <nav className="pt-6 text-xs print:hidden" style={{ color: "var(--es-cream-dim)" }}>
           <Link href="/estate" className="hover:underline">
             ← Tolley Estate Sales
           </Link>
         </nav>
 
-        <header className="mt-10 text-center">
+        <header className="mt-10 text-center print:hidden">
           <p className="es-kicker justify-center">Published in plain English</p>
           <h1 className="es-display mt-4 text-3xl font-semibold sm:text-4xl">
             The Client Agreement
@@ -71,12 +90,19 @@ export default function EstateAgreementPage() {
           <p className="mx-auto mt-4 max-w-lg text-sm" style={{ color: "var(--es-cream-dim)" }}>
             Most estate sale companies make you ask. We publish ours — because
             you shouldn&apos;t have to sign something you couldn&apos;t read
-            first. This is the plain-English version of every term in the
-            contract you&apos;d sign.
+            first. The plain-English version is below, and under it the actual
+            contract: when you&apos;re ready, we just fill in the blanks
+            together.
           </p>
+          <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <a href="#contract" className="es-btn-primary px-6 py-3 text-sm">
+              Read the actual contract
+            </a>
+            <PrintAgreementButton />
+          </div>
         </header>
 
-        <div className="mt-10 space-y-4">
+        <div className="mt-10 space-y-4 print:hidden">
           {SECTIONS.map((s, i) => (
             <section key={s.title} className="es-panel p-6">
               <h2 className="es-display text-lg" style={{ color: "var(--es-brass-bright)" }}>
@@ -89,7 +115,110 @@ export default function EstateAgreementPage() {
           ))}
         </div>
 
-        <div className="es-sale-plate mt-10 p-8 text-center">
+        {/* The actual contract — paper-styled on screen, the print target */}
+        <section id="contract" className="mt-14 scroll-mt-24 print:mt-0">
+          <div className="mb-4 text-center print:hidden">
+            <p className="es-kicker justify-center">The actual contract</p>
+            <p className="mx-auto mt-3 max-w-lg text-sm" style={{ color: "var(--es-cream-dim)" }}>
+              This is the document we sign at your kitchen table. Read it now,
+              download it, show it to whoever you trust — the blanks are the
+              only thing that changes.
+            </p>
+          </div>
+
+          <div className="rounded bg-white p-8 text-neutral-900 shadow-lg sm:p-12 print:rounded-none print:p-0 print:shadow-none">
+            <div className="text-center">
+              <h2 className="text-xl font-bold tracking-wide">
+                ESTATE SALE SERVICES AGREEMENT
+              </h2>
+              <p className="mt-1 text-sm text-neutral-600">
+                Tolley Estate Sales · operated by Your KC Homes LLC · Independence, Missouri ·{" "}
+                {ES_PHONE}
+              </p>
+              <p className="mt-1 text-xs text-neutral-500">
+                Version {AGREEMENT_VERSION} — published at tolley.io/estate/agreement
+              </p>
+            </div>
+
+            {/* Fill-in header block */}
+            <div className="mt-8 space-y-4 text-sm">
+              {AGREEMENT_FIELDS.map((f) => (
+                <div key={f.label} className="flex flex-wrap items-baseline gap-x-2 break-inside-avoid">
+                  <span className="font-semibold">{f.label}:</span>
+                  <BlankLine wide={f.wide} />
+                  {f.hint && (
+                    <span className="w-full text-xs italic text-neutral-500">{f.hint}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Clauses */}
+            <ol className="mt-8 space-y-5 text-sm leading-relaxed">
+              {AGREEMENT_CLAUSES.map((c, i) => (
+                <li key={c.title} className="break-inside-avoid">
+                  <p>
+                    <span className="font-bold">
+                      {i + 1}. {c.title}.
+                    </span>{" "}
+                    {c.body}
+                  </p>
+                  {c.options && (
+                    <ul className="mt-3 space-y-2 pl-1">
+                      {c.options.map((opt) => (
+                        <li key={opt} className="flex items-start gap-3">
+                          <span className="mt-0.5 inline-block h-4 w-4 shrink-0 border border-neutral-500" />
+                          <span>{opt}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ol>
+
+            {/* Appendix A */}
+            <div className="mt-8 break-inside-avoid text-sm">
+              <p className="font-bold">Appendix A — Reserved items (minimum prices)</p>
+              <div className="mt-3 space-y-4">
+                {[1, 2, 3, 4].map((n) => (
+                  <div key={n} className="flex items-baseline gap-2">
+                    <span className="text-neutral-500">{n}.</span>
+                    <BlankLine wide />
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-xs italic text-neutral-500">
+                attach a second sheet if needed — reserves must be listed before staging begins
+              </p>
+            </div>
+
+            {/* Signatures */}
+            <div className="mt-10 grid gap-8 break-inside-avoid sm:grid-cols-2">
+              {AGREEMENT_SIGNATURES.map((s) => (
+                <div key={s.label} className="text-sm">
+                  <div className="border-b border-neutral-500 pb-8">&nbsp;</div>
+                  <p className="mt-2 font-semibold">{s.label}</p>
+                  <div className="mt-6 flex items-baseline gap-2">
+                    <span className="text-neutral-600">Date:</span>
+                    <BlankLine />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-10 text-center text-[10px] text-neutral-400">
+              Tolley Estate Sales · Your KC Homes LLC · Independence, MO · tolley.io/estate ·{" "}
+              {ES_PHONE}
+            </p>
+          </div>
+
+          <div className="mt-6 text-center print:hidden">
+            <PrintAgreementButton />
+          </div>
+        </section>
+
+        <div className="es-sale-plate mt-12 p-8 text-center print:hidden">
           <p className="es-display relative z-10 text-xl">
             Ready to walk the house?
           </p>
@@ -107,8 +236,8 @@ export default function EstateAgreementPage() {
           </div>
         </div>
 
-        <p className="mt-8 text-center text-xs" style={{ color: "rgba(243,234,217,0.35)" }}>
-          This page summarizes standard terms for transparency; the signed
+        <p className="mt-8 text-center text-xs print:hidden" style={{ color: "rgba(243,234,217,0.35)" }}>
+          This page publishes our standard terms for transparency; the signed
           agreement is the binding document. Tolley Estate Sales is operated by
           Your KC Homes LLC, Independence, MO.
         </p>

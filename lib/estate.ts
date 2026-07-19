@@ -96,7 +96,7 @@ export const ES_FAQ = [
   },
   {
     q: "Can I read the contract before you even visit?",
-    a: "Yes — the whole agreement is published at tolley.io/estate/agreement. When you're ready, we literally just fill in the blanks together. You should never have to sign something you couldn't read first.",
+    a: "Yes — the whole agreement is published at tolley.io/estate/agreement, including the actual fill-in-the-blank contract, and you can download or print a copy right from the page. When you're ready, we literally just fill in the blanks together. You should never have to sign something you couldn't read first.",
   },
   {
     q: "Can I make an offer on something?",

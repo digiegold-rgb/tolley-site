@@ -4564,6 +4564,7 @@ model EstateSale {
   addressPublishAt DateTime? // public reveal (convention: 9am day before)
   vipNotifyAt      DateTime? // email-list reveal (night before the public)
   vipNotifiedAt    DateTime? // stamp set by the cron after the blast
+  announcedAt      DateTime? // stamp set by the cron after the new-sale teaser blast (no address)
   days             Json // [{date:"2026-07-17",open:"08:00",close:"16:00",note?}]
   startsAt         DateTime
   endsAt           DateTime

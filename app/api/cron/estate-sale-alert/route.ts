@@ -3,7 +3,9 @@ import { prisma } from "@/lib/prisma";
 import {
   FROM,
   OWNER_EMAIL,
+  announcedTag,
   buildSaleAddressEmail,
+  buildSaleAnnouncementEmail,
   getTransporter,
   sentTag,
 } from "@/lib/estate-alert-email";
@@ -96,5 +98,59 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, checked: due.length, results });
+  // Pass 2 — new-sale announcement teaser (no address). Fires once per sale,
+  // as soon as the row exists with photos and the VIP reveal is still ahead.
+  // Jared creating the sale row with photos is the approval, mirroring the
+  // address-drop arming model. List policy: two touches per sale, total.
+  const toAnnounce = await prisma.estateSale.findMany({
+    where: {
+      status: "upcoming",
+      announcedAt: null,
+      startsAt: { gt: now },
+      photos: { isEmpty: false },
+      OR: [{ vipNotifyAt: null }, { vipNotifyAt: { gt: now } }],
+    },
+  });
+
+  for (const sale of toAnnounce) {
+    const tag = announcedTag(sale.slug);
+    const subscribers = await prisma.emailLead.findMany({
+      where: {
+        source: "estate-alerts",
+        optedIn: true,
+        NOT: { tags: { has: tag } },
+      },
+      select: { id: true, email: true },
+    });
+    const bcc = subscribers.map((s) => s.email);
+    const { subject, text } = buildSaleAnnouncementEmail(sale);
+
+    try {
+      await transporter.sendMail({ from: FROM, to: OWNER_EMAIL, bcc, subject, text });
+      await prisma.$transaction([
+        ...subscribers.map((s) =>
+          prisma.emailLead.update({
+            where: { id: s.id },
+            data: { tags: { push: tag } },
+          }),
+        ),
+        prisma.estateSale.update({
+          where: { id: sale.id },
+          data: { announcedAt: new Date() },
+        }),
+      ]);
+      results[`announce:${sale.slug}`] = `sent-to-${bcc.length}-subscribers`;
+    } catch (err) {
+      console.error(`[estate-alert] announce failed for ${sale.slug}:`, err);
+      results[`announce:${sale.slug}`] =
+        `error: ${err instanceof Error ? err.message : "unknown"}`;
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    checked: due.length,
+    announced: toAnnounce.length,
+    results,
+  });
 }

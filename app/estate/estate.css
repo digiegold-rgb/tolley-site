@@ -217,3 +217,18 @@
   background: rgba(23, 18, 16, 0.92);
   color: var(--es-brass-bright);
 }
+
+/* Print: the agreement page prints as a clean white letter-size contract */
+@media print {
+  .estate-page {
+    background: #fff !important;
+    color: #171210;
+  }
+  .estate-page::before {
+    display: none;
+  }
+  @page {
+    size: letter;
+    margin: 0.75in;
+  }
+}
