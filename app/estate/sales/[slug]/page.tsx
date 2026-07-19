@@ -57,8 +57,11 @@ export default async function EstateSalePage({
   const sale = await fetchSale(slug);
   if (!sale) notFound();
 
+  // Done sales never expose an address — family privacy outlives the reveal window.
   const published =
-    sale.addressPublishAt !== null && sale.addressPublishAt.getTime() <= Date.now();
+    sale.status !== "done" &&
+    sale.addressPublishAt !== null &&
+    sale.addressPublishAt.getTime() <= Date.now();
   const cardData: SaleCardData = {
     slug: sale.slug,
     title: sale.title,

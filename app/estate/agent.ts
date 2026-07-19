@@ -19,7 +19,7 @@ export const manifest: SubsiteManifest = {
   skipJsonLd: true,
   serviceArea: "Kansas City metro (Independence, Blue Springs, Lee's Summit, KCMO)",
   availability:
-    "Next sale: Fri–Sat July 17–18, 2026, 8am–4pm, Independence MO. Free seller walkthroughs booked within days.",
+    "Booking estate sale clients now — free walkthroughs within days, 1–2 sales run per month in Independence MO. Next public sale announced on the page and the email list.",
   actions: [
     {
       verb: "request_estate_consult",

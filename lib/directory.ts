@@ -262,11 +262,11 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
   },
   estate: {
     group: "Home Services",
-    tagline: "Full-service estate sales — free walkthrough, fast settlement",
+    tagline: "Boutique estate sales in Independence — free walkthrough, fast settlement",
     bullets: [
-      "Next sale: Jul 17–18, Independence",
-      "We stage, price & advertise",
-      "Nothing goes to waste",
+      "$5,000+ first sale — booking next clients",
+      "Zero upfront · every form of payment",
+      "We empty it, sell it, and can list the house",
     ],
     emoji: "🏛️",
     accent: "amber",

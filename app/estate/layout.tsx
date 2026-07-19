@@ -11,9 +11,9 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Tolley Estate Sales — Full-Service Estate Sales in Kansas City",
+  title: "Tolley Estate Sales — Boutique Estate Sale Company in Independence, MO",
   description:
-    "Estate sales done right in Independence & the KC metro. Free walkthrough, we stage, price, advertise, and run the sale — then you get an itemized settlement fast. Next sale: July 17–18. Call/text 913-283-3826.",
+    "Independence's boutique, family-run estate sale company. Free walkthrough, zero upfront cost, every form of payment, a contract you can read online first — and an itemized settlement fast. Our first sale grossed $5,000+ in one weekend. Call/text 913-283-3826.",
   keywords: [
     "estate sale company Independence MO",
     "estate sales Kansas City",
@@ -23,9 +23,9 @@ export const metadata: Metadata = {
     "estate sale this weekend Kansas City",
   ],
   openGraph: {
-    title: "Tolley Estate Sales — Kansas City",
+    title: "Tolley Estate Sales — Independence, MO",
     description:
-      "Full-service estate sales: free walkthrough, real marketing, fast settlement. Next sale July 17–18, Independence MO.",
+      "Boutique full-service estate sales: free walkthrough, zero upfront, real marketing, fast settlement. $5,000+ first sale — now booking.",
     type: "website",
     url: "https://www.tolley.io/estate",
   },

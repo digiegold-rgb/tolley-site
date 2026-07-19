@@ -29,6 +29,14 @@ export const ES_STEPS = [
 
 export const ES_DIFFS = [
   {
+    title: "Small on purpose",
+    desc: "We're a boutique, family-run company that only takes sales close to home — Independence and the neighborhoods right around it. One or two sales a month, done right, by the same two people you met at the walkthrough.",
+  },
+  {
+    title: "Simple to work with",
+    desc: "One walkthrough, one plain-English agreement you can read online before we ever visit, and blanks we fill in together at the kitchen table. No binders, no fine print, no surprise fees.",
+  },
+  {
     title: "We already sell for a living",
     desc: "Our resale operation reaches thousands of KC buyers every week on Facebook Marketplace alone. Your sale doesn't start from zero — it starts with an audience.",
   },
@@ -47,6 +55,7 @@ export const ES_DIFFS = [
 ] as const;
 
 export const ES_ADVERTISED_ON = [
+  { name: "EstateSales.NET", note: "the #1 estate sale site in the country — every sale gets a full listing" },
   { name: "Our buyer network", note: "thousands of KC buyers who already shop with us weekly" },
   { name: "Facebook", note: "Marketplace, Events, and every KC estate & garage sale group" },
   { name: "gsalr network", note: "one listing syndicates to YardSaleSearch, GarageSaleFinder + more" },
@@ -75,7 +84,19 @@ export const ES_FAQ = [
   },
   {
     q: "What payment do shoppers use at the sale?",
-    a: "Cash and all major cards. Shoppers never get turned away over payment.",
+    a: "Every form of payment: cash, all major cards, tap-to-pay, Venmo. Nobody gets turned away over payment — which means nothing you're selling gets left behind over payment either.",
+  },
+  {
+    q: "How did your last sale do?",
+    a: "Our July sale in Independence grossed over $5,000 in two days and sold the home down to the walls — hundreds of shoppers came through. The family paid nothing up front and got an itemized settlement. We'd love to show you the numbers at your walkthrough.",
+  },
+  {
+    q: "What area do you serve?",
+    a: "Independence and the neighborhoods right around it. We stay hyper-local on purpose — it's how we keep sales personal, staffed by owners, and marketed to shoppers who can actually show up.",
+  },
+  {
+    q: "Can I read the contract before you even visit?",
+    a: "Yes — the whole agreement is published at tolley.io/estate/agreement. When you're ready, we literally just fill in the blanks together. You should never have to sign something you couldn't read first.",
   },
   {
     q: "Can I make an offer on something?",

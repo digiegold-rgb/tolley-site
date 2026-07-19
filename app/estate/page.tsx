@@ -47,8 +47,11 @@ async function fetchSales() {
 type SaleRow = Awaited<ReturnType<typeof fetchSales>>["upcoming"][number];
 
 function toCardData(sale: SaleRow): SaleCardData {
+  // Done sales never expose an address — family privacy outlives the reveal window.
   const published =
-    sale.addressPublishAt !== null && sale.addressPublishAt.getTime() <= Date.now();
+    sale.status !== "done" &&
+    sale.addressPublishAt !== null &&
+    sale.addressPublishAt.getTime() <= Date.now();
   return {
     slug: sale.slug,
     title: sale.title,
@@ -71,8 +74,11 @@ function buildJsonLd(upcoming: SaleRow[]) {
     url: `${BASE}/estate`,
     telephone: "+1-913-283-3826",
     description:
-      "Full-service estate sales in Independence and the Kansas City metro: free walkthrough, staging, research-backed pricing, real marketing, fast itemized settlement.",
-    areaServed: "Kansas City metro",
+      "Boutique, family-run estate sale company in Independence, MO: free walkthrough, staging, research-backed pricing, real marketing, every form of payment, fast itemized settlement. Zero upfront cost.",
+    areaServed: [
+      { "@type": "City", name: "Independence", containedInPlace: { "@type": "State", name: "Missouri" } },
+      "Kansas City metro",
+    ],
     address: {
       "@type": "PostalAddress",
       addressLocality: "Independence",
@@ -179,6 +185,53 @@ export default async function EstatePage() {
       </section>
 
       <div className="mx-auto max-w-6xl space-y-20 px-5 pb-20 sm:px-8">
+        {/* Proof band — real results from completed sales */}
+        {past.length > 0 && (
+          <section
+            className="es-enter -mt-4 scroll-mt-24"
+            style={{ "--enter-delay": "0.02s" } as React.CSSProperties}
+          >
+            <div className="es-panel p-7 text-center sm:p-9">
+              <p className="es-kicker justify-center">Real results</p>
+              <div className="mt-5 grid gap-6 sm:grid-cols-3">
+                <div>
+                  <p className="es-display text-3xl font-semibold sm:text-4xl" style={{ color: "var(--es-brass-bright)" }}>
+                    ${Math.round(past.reduce((sum, s) => sum + (s.grossTotal ?? 0), 0)).toLocaleString("en-US")}+
+                  </p>
+                  <p className="mt-1 text-sm" style={{ color: "var(--es-cream-dim)" }}>
+                    gross in {past.length === 1 ? "one weekend" : `${past.length} sales`}
+                  </p>
+                </div>
+                <div>
+                  <p className="es-display text-3xl font-semibold sm:text-4xl" style={{ color: "var(--es-brass-bright)" }}>
+                    2 days
+                  </p>
+                  <p className="mt-1 text-sm" style={{ color: "var(--es-cream-dim)" }}>
+                    sold down to the walls
+                  </p>
+                </div>
+                <div>
+                  <p className="es-display text-3xl font-semibold sm:text-4xl" style={{ color: "var(--es-brass-bright)" }}>
+                    $0
+                  </p>
+                  <p className="mt-1 text-sm" style={{ color: "var(--es-cream-dim)" }}>
+                    up front from the family — ever
+                  </p>
+                </div>
+              </div>
+              <p className="mt-5 text-sm" style={{ color: "var(--es-cream-dim)" }}>
+                <Link
+                  href={`/estate/sales/${past[0].slug}`}
+                  className="underline underline-offset-2"
+                  style={{ color: "var(--es-brass)" }}
+                >
+                  See our latest sale — photos, video, the whole thing →
+                </Link>
+              </p>
+            </div>
+          </section>
+        )}
+
         {/* Featured sale carousel — photos + walkthrough video, front and center */}
         {featured && (
           <section
@@ -198,8 +251,8 @@ export default async function EstatePage() {
           </section>
         )}
 
-        {/* Upcoming sale(s) */}
-        {upcoming.length > 0 && (
+        {/* Upcoming sale(s) — or the between-sales capture panel */}
+        {upcoming.length > 0 ? (
           <section
             id="sales"
             className="es-enter scroll-mt-24"
@@ -211,17 +264,36 @@ export default async function EstatePage() {
               ))}
             </div>
           </section>
+        ) : (
+          <section
+            id="sales"
+            className="es-enter scroll-mt-24"
+            style={{ "--enter-delay": "0.05s" } as React.CSSProperties}
+          >
+            <div className="es-panel p-7 text-center sm:p-9">
+              <p className="es-kicker justify-center">Next sale</p>
+              <h2 className="es-display mt-3 text-2xl sm:text-3xl">
+                The next sale is being scheduled now
+              </h2>
+              <p className="mx-auto mt-3 max-w-xl text-sm" style={{ color: "var(--es-cream-dim)" }}>
+                We run one or two sales a month, right here in Independence. Join
+                the early list below and the next address lands in your inbox the
+                night before the public gets it.
+              </p>
+              <a href="#alerts" className="es-btn-primary mt-6 inline-block px-7 py-3">
+                Get on the early list
+              </a>
+            </div>
+          </section>
         )}
 
         {/* Capture the estate-sale traffic — can't-make-it shoppers → the rest of Tolley */}
-        {featured && (
-          <section
-            className="es-enter scroll-mt-24"
-            style={{ "--enter-delay": "0.08s" } as React.CSSProperties}
-          >
-            <KeepShopping />
-          </section>
-        )}
+        <section
+          className="es-enter scroll-mt-24"
+          style={{ "--enter-delay": "0.08s" } as React.CSSProperties}
+        >
+          <KeepShopping />
+        </section>
 
         {/* VIP list */}
         <section
@@ -282,9 +354,10 @@ export default async function EstatePage() {
               Not our first day selling
             </h2>
             <p className="mx-auto mt-3 max-w-2xl text-base" style={{ color: "var(--es-cream-dim)" }}>
-              Estate sales are new for us as a service — selling isn&apos;t. We run a
-              resale operation that reaches thousands of Kansas City buyers every
-              single week. Your sale plugs straight into that machine.
+              Our first sale grossed over $5,000 in two days and sold the home
+              down to the walls. Behind it is a resale operation that reaches
+              thousands of Kansas City buyers every single week — your sale
+              plugs straight into that machine.
             </p>
           </div>
           <div className="mt-9 grid gap-4 sm:grid-cols-2">
@@ -298,6 +371,28 @@ export default async function EstatePage() {
                 </p>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* Selling the house too? — the real-estate capture */}
+        <section className="es-enter" style={{ "--enter-delay": "0.22s" } as React.CSSProperties}>
+          <div className="es-panel p-8 text-center sm:p-10">
+            <p className="es-kicker justify-center">One call does it all</p>
+            <h2 className="es-display mt-3 text-2xl sm:text-3xl">
+              Selling the house too?
+            </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-base" style={{ color: "var(--es-cream-dim)" }}>
+              Jared is a licensed Kansas City real estate agent. We can run the
+              estate sale, leave the home broom-clean, and list it — one team,
+              one timeline, no juggling three companies while you&apos;re already
+              dealing with enough.
+            </p>
+            <Link
+              href="/homes?ref=estate"
+              className="es-btn-secondary mt-6 inline-block px-7 py-3"
+            >
+              Talk about the house
+            </Link>
           </div>
         </section>
 
@@ -338,6 +433,11 @@ export default async function EstatePage() {
                     {sale.areaLabel} ·{" "}
                     {sale.startsAt.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
                   </p>
+                  {sale.grossTotal != null && sale.grossTotal > 0 && (
+                    <p className="mt-2 text-sm font-semibold" style={{ color: "var(--es-brass-bright)" }}>
+                      ${Math.round(sale.grossTotal).toLocaleString("en-US")}+ weekend · sold to the walls
+                    </p>
+                  )}
                 </Link>
               ))}
             </div>
