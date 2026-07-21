@@ -20,7 +20,7 @@ export type HqStage = (typeof HQ_STAGES)[number];
 // on the live pipeline.
 export const HQ_BOARD_STAGES = HQ_STAGES.filter((s) => s !== "dead" && s !== "do_not_contact");
 
-export const HQ_OFFERS = ["site", "automation", "delivery", "video", "listing", "cleanout"] as const;
+export const HQ_OFFERS = ["site", "automation", "delivery", "video", "listing", "cleanout", "estate"] as const;
 
 // Inbound LeadAction lifecycle ladder (rows arrive "new"; won/lost terminal).
 // Lives here — not in the route file — because a Next route.ts may only export

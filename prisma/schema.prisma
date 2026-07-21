@@ -4575,10 +4575,82 @@ model EstateSale {
   photosUpdatedAt  DateTime? // last time the gallery changed — shown as "Updated …"
   videoUrl         String? // walkthrough video (blob URL), shown atop the gallery
   grossTotal       Float?
+  checklist        Json? // per-sale playbook checkboxes (ESTATE-PLAYBOOK §5), e.g. {esn:true,...}
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+  leads            EstateLead[]
 
   @@index([status, startsAt])
+}
+
+/// Estate seller-lead pipeline (families who need a sale run) — /hq Estates tab.
+/// Separate from GrowthLead: the seller journey (inquiry→walkthrough→signed→
+/// scheduled→done|lost) doesn't fit the B2B board stages. B2B referral partners
+/// (attorneys etc.) live in GrowthLead with offer "estate" instead.
+model EstateLead {
+  id            String      @id @default(cuid())
+  name          String
+  phone         String?
+  email         String?
+  address       String?
+  city          String      @default("Independence")
+  source        String      @default("manual") // inbound|circle|referral|fb|esn|probate|manual
+  stage         String      @default("inquiry") // inquiry|walkthrough|signed|scheduled|done|lost
+  notes         String?     @db.Text
+  walkthroughAt DateTime?
+  saleId        String?
+  sale          EstateSale? @relation(fields: [saleId], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([stage])
+  @@index([createdAt])
+}
+
+// ── YouTube channel analytics (/hq Stats tab) ────────────────────────
+// Daily snapshots pulled by /api/cron/youtube-stats from the YouTube Data +
+// Analytics APIs (channel @yourkchome). `pipeline` attributes each video to
+// the DGX pipeline that made it; the DGX pushes that map via
+// POST /api/hq/stats/videos (x-sync-secret).
+model YouTubeVideo {
+  videoId     String             @id
+  title       String
+  publishedAt DateTime
+  durationSec Int?
+  pipeline    String             @default("other") // shorts|housing|listings|estate|other
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  stats       YouTubeVideoStat[]
+}
+
+model YouTubeVideoStat {
+  id                      String       @id @default(cuid())
+  videoId                 String
+  video                   YouTubeVideo @relation(fields: [videoId], references: [videoId], onDelete: Cascade)
+  day                     DateTime // snapshot date (UTC midnight)
+  views                   Int          @default(0)
+  likes                   Int          @default(0)
+  comments                Int          @default(0)
+  estimatedMinutesWatched Float?
+  avgViewDurationSec      Float?
+  avgViewPct              Float?
+  subsGained              Int?
+  impressions             Int? // not exposed by the Analytics API — stays null (UI shows n/a)
+  ctr                     Float? // same caveat
+  pulledAt                DateTime     @default(now())
+
+  @@unique([videoId, day])
+  @@index([day])
+}
+
+/// One-click "Analyze" recaps generated in the /hq Stats tab (Gemini).
+model HqStatsAnalysis {
+  id        String   @id @default(cuid())
+  markdown  String   @db.Text
+  inputHash String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 // ── Deep Research Search ─────────────────────────────────────────────

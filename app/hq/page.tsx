@@ -15,6 +15,8 @@ import { HqMoney } from "@/components/hq/hq-money";
 import { HqEngineStatus } from "@/components/hq/hq-engine-status";
 import { HqInbound } from "@/components/hq/hq-inbound";
 import { HqDnc } from "@/components/hq/hq-dnc";
+import { HqStats } from "@/components/hq/hq-stats";
+import { HqEstates } from "@/components/hq/hq-estates";
 import {
   STAGE_LABEL,
   readApiError,
@@ -24,7 +26,7 @@ import {
   type HqInboundLead,
 } from "@/components/hq/types";
 
-type Tab = "pipeline" | "inbound" | "approvals" | "money" | "dnc";
+type Tab = "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats";
 
 export default function HqPage() {
   const { toast } = useToast();
@@ -455,6 +457,18 @@ export default function HqPage() {
               : ""}
           </button>
           <button
+            className={`tab-btn ${tab === "estates" ? "active" : ""}`}
+            onClick={() => setTab("estates")}
+          >
+            Estates
+          </button>
+          <button
+            className={`tab-btn ${tab === "stats" ? "active" : ""}`}
+            onClick={() => setTab("stats")}
+          >
+            Stats
+          </button>
+          <button
             className={`tab-btn ${tab === "dnc" ? "active" : ""}`}
             onClick={() => setTab("dnc")}
           >
@@ -493,6 +507,10 @@ export default function HqPage() {
           />
         ) : tab === "money" ? (
           <HqMoney money={money} loading={moneyLoading} onRefresh={loadMoney} />
+        ) : tab === "estates" ? (
+          <HqEstates />
+        ) : tab === "stats" ? (
+          <HqStats />
         ) : tab === "dnc" ? (
           <HqDnc
             leads={leads}
