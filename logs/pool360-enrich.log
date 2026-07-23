@@ -2352,3 +2352,213 @@ Call log:
 [main] Session died after 5 consecutive failures. Relaunching...
 [main] Session relaunched. Continuing from product 80
 [main] Done. Enriched: 49, Failed: 46 of 95
+[main] Pool360 Product Enrichment (API) — 2026-07-16T12:00:03.161Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3201
+[main] Products to enrich: 71
+[main] Browser session started
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 5
+[ok] SPG-451-2004 — desc, specs, upc, feat
+[ok] BTH-37-1020 — desc, specs
+[ok] AAA-50-1000 — desc, specs, upc
+[ok] EZF-53-1083 — desc, specs, sds, feat
+[ok] NUL-50-1868 — desc, specs, upc, feat
+[ok] JCK-50-7043 — desc, specs, sds, feat
+[ok] AAA-50-3024 — desc, specs, upc
+[ok] AAA-50-0345 — desc, specs
+[ok] AAA-50-3463 — desc, specs, upc
+[ok] AAA-50-3465 — desc, specs, upc, feat
+[ok] AAA-50-3464 — desc, specs
+[ok] OCB-53-7002 — desc, specs, sds, feat
+[ok] BEH-50-0003 — desc, specs, sds
+[ok] OSS-45-0001 — desc, specs
+[ok] AAA-45-8002 — desc, specs
+[ok] AAA-45-8609 — desc, specs
+[ok] BSP-591-0051 — desc, specs
+[ok] CII-37-5603 — desc, specs, upc
+[ok] LOS-50-1115 — desc, specs, sds
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 44
+[ok] ERW-53-8000 — desc, specs, upc
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 57
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 62
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 67
+[main] Done. Enriched: 25, Failed: 46 of 71
+[main] Pool360 Product Enrichment (API) — 2026-07-17T12:00:02.644Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3201
+[main] Products to enrich: 55
+[main] Browser session started
+[ok] EZC-50-1099 — desc, specs, upc, sds, feat
+[ok] EZC-50-1210 — desc, specs, upc, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 10
+[ok] RGL-50-4580 — desc, specs, upc, sds, feat
+[ok] RGL-50-4585 — desc, specs, upc, sds, feat
+[ok] RGL-50-4598 — desc, specs, upc, sds, feat
+[ok] RGL-50-2855 — desc, specs, upc, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 25
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 30
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 35
+[ok] NAT-50-8002 — desc, specs, upc, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 41
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 46
+[ok] RGL-50-5310 — desc, specs, upc
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 52
+[ok] LAT-801-1280 — desc, specs
+[main] Done. Enriched: 9, Failed: 46 of 55
+[main] Pool360 Product Enrichment (API) — 2026-07-18T12:00:02.690Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3201
+[main] Products to enrich: 47
+[main] Browser session started
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 5
+[ok] LAT-801-7120 — desc, specs
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 12
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 17
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 22
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 27
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 32
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 37
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 42
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 47
+[main] Done. Enriched: 1, Failed: 46 of 47
+[main] Pool360 Product Enrichment (API) — 2026-07-19T12:00:02.434Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3201
+[main] Products to enrich: 47
+[main] Browser session started
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 5
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 10
+[ok] HGH-50-8025 — desc, specs, upc, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 16
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 21
+[ok] ACH-50-2006 — desc, specs, upc, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 29
+[ok] COM-45-2109 — desc, specs, upc, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 36
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 41
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 46
+[main] Done. Enriched: 3, Failed: 44 of 47
+npm notice
+npm notice New major version of npm available! 10.9.4 -> 12.0.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.1
+npm notice To update run: npm install -g npm@12.0.1
+npm notice
+[main] Pool360 Product Enrichment (API) — 2026-07-20T12:00:02.942Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3201
+[main] Products to enrich: 46
+[main] Browser session started
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 5
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 10
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 15
+[ok] CTM-25-8149 — desc, specs, upc, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 21
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 26
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 31
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 36
+[ok] SRS-35-0150 — desc, specs, upc, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 43
+[main] Done. Enriched: 2, Failed: 44 of 46
+[main] Pool360 Product Enrichment (API) — 2026-07-21T12:00:03.166Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3201
+[main] Products to enrich: 46
+[main] Browser session started
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 5
+[ok] HGH-50-0015 — desc, specs, upc, sds, feat
+[ok] HGH-50-0030 — desc, specs, upc, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 17
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 22
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 27
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 32
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 37
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 42
+[main] Done. Enriched: 2, Failed: 44 of 46
+[main] Pool360 Product Enrichment (API) — 2026-07-22T12:00:03.197Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3201
+[main] Products to enrich: 44
+[main] Browser session started
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 5
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 10
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 15
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 20
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 25
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 30
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 35
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 40
+[main] Done. Enriched: 0, Failed: 44 of 44
+[main] Pool360 Product Enrichment (API) — 2026-07-23T12:00:02.871Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3201
+[main] Products to enrich: 44
+[main] Browser session started
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 5
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 10
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 15
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 20
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 25
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 30
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 35
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 40
+[main] Done. Enriched: 0, Failed: 44 of 44

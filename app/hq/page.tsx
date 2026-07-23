@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { HQ_BOARD_STAGES, HQ_OFFERS } from "@/lib/hq";
 import { useToast } from "@/components/ui/Toast";
@@ -17,6 +18,7 @@ import { HqInbound } from "@/components/hq/hq-inbound";
 import { HqDnc } from "@/components/hq/hq-dnc";
 import { HqStats } from "@/components/hq/hq-stats";
 import { HqEstates } from "@/components/hq/hq-estates";
+import { HqEmpireMap } from "@/components/hq/hq-empire-map";
 import {
   HqMustComplete,
   type MustCompleteItem,
@@ -30,9 +32,24 @@ import {
   type HqInboundLead,
 } from "@/components/hq/types";
 
-type Tab = "must" | "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats";
+type Tab = "empire" | "must" | "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats";
+
+const TABS: readonly Tab[] = ["empire", "must", "pipeline", "inbound", "approvals", "money", "dnc", "estates", "stats"];
+
+function isTab(v: string | null): v is Tab {
+  return v != null && (TABS as readonly string[]).includes(v);
+}
 
 export default function HqPage() {
+  // useSearchParams (for ?tab= deep links) requires a Suspense boundary at build.
+  return (
+    <Suspense fallback={null}>
+      <HqPageInner />
+    </Suspense>
+  );
+}
+
+function HqPageInner() {
   const { toast } = useToast();
 
   const [checking, setChecking] = useState(true);
@@ -40,7 +57,14 @@ export default function HqPage() {
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState("");
 
-  const [tab, setTab] = useState<Tab>("must");
+  const searchParams = useSearchParams();
+  const urlTab = searchParams.get("tab");
+  const [tab, setTab] = useState<Tab>(isTab(urlTab) ? urlTab : "empire");
+
+  // Keep the URL shareable — replaceState avoids a Next navigation/remount.
+  useEffect(() => {
+    window.history.replaceState(null, "", tab === "empire" ? "/hq" : `/hq?tab=${tab}`);
+  }, [tab]);
   const [mustOpen, setMustOpen] = useState<MustCompleteItem[]>([]);
   const [mustDone, setMustDone] = useState<MustCompleteItem[]>([]);
   const [mustLoading, setMustLoading] = useState(false);
@@ -475,6 +499,17 @@ export default function HqPage() {
         {/* Tab bar + offer filter */}
         <div className="tab-bar" style={{ alignItems: "center" }}>
           <button
+            className={`tab-btn ${tab === "empire" ? "active" : ""}`}
+            onClick={() => setTab("empire")}
+            style={
+              tab === "empire"
+                ? { background: "linear-gradient(135deg, #0f766e, #134e4a)", boxShadow: "0 2px 6px rgba(15, 118, 110, 0.35)" }
+                : undefined
+            }
+          >
+            🗺️ Empire
+          </button>
+          <button
             className={`tab-btn ${tab === "must" ? "active" : ""}`}
             onClick={() => setTab("must")}
             style={
@@ -553,7 +588,9 @@ export default function HqPage() {
           )}
         </div>
 
-        {tab === "must" ? (
+        {tab === "empire" ? (
+          <HqEmpireMap />
+        ) : tab === "must" ? (
           <HqMustComplete
             open={mustOpen}
             done={mustDone}

@@ -4709,3 +4709,17 @@ model MustCompleteItem {
 
   @@index([status, sortOrder])
 }
+
+// ── Empire Map (/hq Empire tab) ──────────────────────────────────────
+// Twice-daily DGX health snapshot pushed by ~/dgx-services/empire-collector/
+// collect.mjs via POST /api/hq/empire/sync (x-sync-secret). One JSON blob per
+// push; lib/empire-map.ts reads the latest and merges it with site-side
+// signals. Rows older than 30 days are pruned by the sync route.
+model EmpireSnapshot {
+  id        String   @id @default(cuid())
+  source    String   @default("dgx")
+  payload   Json
+  createdAt DateTime @default(now())
+
+  @@index([source, createdAt])
+}

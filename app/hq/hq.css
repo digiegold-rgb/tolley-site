@@ -384,3 +384,34 @@
 .hq-admin ::-webkit-scrollbar-thumb:hover {
   background: #a1a1a6;
 }
+
+/* ── Empire Map tab (dark island inside the light admin shell) ─────── */
+.hq-admin .empire-island {
+  background: #0a0e14;
+  color: #e5edf5;
+  font-size: 13px;
+  border-radius: 14px;
+  border: 1px solid #141c28;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+.hq-admin .empire-island .react-flow__attribution { display: none; }
+
+@keyframes empire-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.82); }
+}
+@keyframes empire-breathe {
+  0%, 100% { box-shadow: 0 0 4px rgba(239, 68, 68, 0.35); }
+  50% { box-shadow: 0 0 16px rgba(239, 68, 68, 0.75); }
+}
+@keyframes empire-flash-ring {
+  0% { outline: 2px solid rgba(45, 212, 167, 0.9); outline-offset: 4px; }
+  100% { outline: 2px solid rgba(45, 212, 167, 0); outline-offset: 10px; }
+}
+.hq-admin .empire-island .empire-dot-pulse { animation: empire-pulse 2.4s ease-in-out infinite; }
+.hq-admin .empire-island .empire-dot-breathe { animation: empire-breathe 2.8s ease-in-out infinite; }
+.hq-admin .empire-island .empire-flash { animation: empire-flash-ring 2.4s ease-out 1; border-radius: 10px; }
+.hq-admin .empire-island.empire-no-motion .empire-dot-pulse,
+.hq-admin .empire-island.empire-no-motion .empire-dot-breathe,
+.hq-admin .empire-island.empire-no-motion .empire-flash { animation: none; }
