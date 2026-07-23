@@ -98,6 +98,24 @@ export async function GET(request: NextRequest) {
   } else {
     headline = `<p><span class="warn">⚠ No page in this login has a linked Instagram business account.</span> Link the IG account to a Facebook page (IG app → Settings → Sharing to other apps) and run this again.</p>`;
   }
+  // Persist EVERY granted page's own token under facebook_page:<id> so pages
+  // without a linked IG account (e.g. Tolley Estate Sales) are usable too. The
+  // DGX pulls these via /api/social/fb-page-token to drive page posting.
+  for (const p of pages) {
+    try {
+      await saveStoredToken(`facebook_page:${p.id}`, {
+        accessToken: p.access_token,
+        accountId: p.id,
+        username: p.name,
+        scopes: ["pages_manage_posts", "pages_read_engagement"],
+        pageId: p.id,
+        pageName: p.name,
+      });
+    } catch {
+      /* one bad page never fails the whole re-auth */
+    }
+  }
+
   for (const p of pages) {
     rows.push(`<tr><td>${esc(p.name)}</td><td>${esc(p.id)}</td><td>${esc(p.instagram_business_account?.id ?? "—")}</td></tr>`);
   }
