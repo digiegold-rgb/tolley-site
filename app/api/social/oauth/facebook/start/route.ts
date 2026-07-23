@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminApiSession } from "@/lib/admin-auth";
+import { secretEquals } from "@/lib/secret-compare";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,8 +12,17 @@ export const dynamic = "force-dynamic";
  * posting fails with Graph error (#10).
  */
 export async function GET(request: Request) {
-  const auth = await requireAdminApiSession();
-  if (!auth.ok) return auth.response;
+  // Admin session OR a one-time ?key=<SYNC_SECRET> magic link. The key path
+  // lets a single link work in Ruthann's browser (where SHE is logged into
+  // Facebook) without also needing a tolley.io admin PIN in that same browser.
+  // Starting the flow isn't sensitive — the callback still validates state and
+  // only stores tokens for whoever actually completes FB's own consent.
+  const key = new URL(request.url).searchParams.get("key");
+  const keyOk = !!key && !!process.env.SYNC_SECRET && secretEquals(key, process.env.SYNC_SECRET);
+  if (!keyOk) {
+    const auth = await requireAdminApiSession();
+    if (!auth.ok) return auth.response;
+  }
 
   const appId = process.env.FACEBOOK_APP_ID?.trim();
   if (!appId) {
