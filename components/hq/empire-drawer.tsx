@@ -4,18 +4,22 @@
 // when a node is clicked. Shows status, timing, metrics, and the raw signal.
 
 import { useEffect } from "react";
-import type { EmpireNodeDef, EmpireLane } from "@/lib/empire-catalog";
-import type { EmpireNodeHealth } from "@/lib/empire-map";
+import { EMPIRE_EDGES, EMPIRE_NODES, type EmpireNodeDef, type EmpireLane } from "@/lib/empire-catalog";
+import type { EmpireNodeHealth, EmpirePayload } from "@/lib/empire-map";
 import { STATUS_CONFIG, relTime } from "@/components/hq/empire-node";
 
 interface EmpireDrawerProps {
   def: EmpireNodeDef;
   lane: EmpireLane;
   health: EmpireNodeHealth | undefined;
+  payload: EmpirePayload | null;
+  onSelect: (id: string) => void;
   onClose: () => void;
 }
 
-export function EmpireDrawer({ def, lane, health, onClose }: EmpireDrawerProps) {
+const NODE_DEFS = new Map(EMPIRE_NODES.map((n) => [n.id, n]));
+
+export function EmpireDrawer({ def, lane, health, payload, onSelect, onClose }: EmpireDrawerProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -26,6 +30,9 @@ export function EmpireDrawer({ def, lane, health, onClose }: EmpireDrawerProps) 
 
   const status = health?.status ?? "missing";
   const cfg = STATUS_CONFIG[status];
+
+  const inbound = EMPIRE_EDGES.filter((e) => e.target === def.id);
+  const outbound = EMPIRE_EDGES.filter((e) => e.source === def.id);
 
   return (
     <div
@@ -83,6 +90,26 @@ export function EmpireDrawer({ def, lane, health, onClose }: EmpireDrawerProps) 
           </div>
         ) : null}
 
+        {/* Connections — spelled out, tap to jump */}
+        {inbound.length || outbound.length ? (
+          <div>
+            <SectionTitle>Connections</SectionTitle>
+            <div className="space-y-1">
+              {inbound.map((e) => (
+                <ConnRow key={e.id} dir="in" otherId={e.source} kind={e.kind} payload={payload} onSelect={onSelect} />
+              ))}
+              {outbound.map((e) => (
+                <ConnRow key={e.id} dir="out" otherId={e.target} kind={e.kind} payload={payload} onSelect={onSelect} />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <SectionTitle>Connections</SectionTitle>
+            <p className="text-xs text-[#7a8699]">standalone — no wired connections yet</p>
+          </div>
+        )}
+
         {/* Static context */}
         {def.note ? (
           <div>
@@ -111,6 +138,40 @@ export function EmpireDrawer({ def, lane, health, onClose }: EmpireDrawerProps) 
         ) : null}
       </div>
     </div>
+  );
+}
+
+const EDGE_KIND_COLOR: Record<string, string> = { flow: "#2dd4a7", data: "#38bdf8", money: "#22c55e" };
+
+function ConnRow({
+  dir,
+  otherId,
+  kind,
+  payload,
+  onSelect,
+}: {
+  dir: "in" | "out";
+  otherId: string;
+  kind: string;
+  payload: EmpirePayload | null;
+  onSelect: (id: string) => void;
+}) {
+  const other = NODE_DEFS.get(otherId);
+  if (!other) return null;
+  const otherStatus = payload?.nodes[otherId]?.status ?? "missing";
+  const dotColor = STATUS_CONFIG[otherStatus].color;
+  return (
+    <button
+      onClick={() => onSelect(otherId)}
+      className="flex w-full items-center gap-2 rounded-md border border-transparent px-1.5 py-1 text-left hover:border-[#1e2733] hover:bg-[#111722]"
+    >
+      <span className="w-8 shrink-0 font-mono text-[10px]" style={{ color: EDGE_KIND_COLOR[kind] ?? "#7a8699" }}>
+        {dir === "in" ? "→ in" : "out →"}
+      </span>
+      <span className="text-sm leading-none">{other.icon}</span>
+      <span className="min-w-0 flex-1 truncate text-xs text-[#cdd8e4]">{other.label}</span>
+      <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: dotColor }} />
+    </button>
   );
 }
 

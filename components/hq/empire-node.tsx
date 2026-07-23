@@ -18,6 +18,7 @@ export interface EmpireFlowNodeData {
   statusWord: string;
   timeText: string; // "ran 3h ago" | "not built" | …
   flash: boolean; // one-shot ring when status changed on refresh
+  dim: boolean; // focus mode active and this node isn't in the neighborhood
   [key: string]: unknown;
 }
 
@@ -63,7 +64,8 @@ export function EmpireNodeComponent({ data, selected }: NodeProps<Node<EmpireFlo
           border: `1px solid ${selected ? cfg.color : "#1e2733"}`,
           borderLeft: `3px solid ${dimmed ? "#2a3646" : data.accent}`,
           boxShadow: !dimmed && cfg.glow ? cfg.glow : "none",
-          opacity: dimmed ? 0.55 : 1,
+          opacity: data.dim ? 0.22 : dimmed ? 0.55 : 1,
+          transition: "opacity 160ms ease",
         }}
       >
         <div className="flex h-full flex-col justify-between px-3 py-2.5">

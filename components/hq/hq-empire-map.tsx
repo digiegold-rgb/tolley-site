@@ -38,11 +38,11 @@ import {
 } from "@/components/hq/empire-node";
 import { EmpireDrawer } from "@/components/hq/empire-drawer";
 
-const GAP_X = 44;
-const GAP_Y = 34;
+const GAP_X = 52;
+const GAP_Y = 46;
 const LANE_PAD_X = 20;
 const LANE_HEADER = 34;
-const LANE_GAP = 26;
+const LANE_GAP = 40;
 
 const EDGE_COLORS: Record<string, string> = { flow: "#2dd4a7", data: "#38bdf8", money: "#22c55e" };
 
@@ -50,6 +50,15 @@ const nodeTypes = { empireNode: EmpireNodeComponent, empireLane: EmpireLaneCompo
 
 const defsById = new Map<string, EmpireNodeDef>(EMPIRE_NODES.map((n) => [n.id, n]));
 const laneById = new Map(EMPIRE_LANES.map((l) => [l.id, l]));
+
+// Adjacency for focus mode — hover/select a node and only its edges light up.
+const neighborsById = new Map<string, Set<string>>();
+for (const e of EMPIRE_EDGES) {
+  if (!neighborsById.has(e.source)) neighborsById.set(e.source, new Set());
+  if (!neighborsById.has(e.target)) neighborsById.set(e.target, new Set());
+  neighborsById.get(e.source)!.add(e.target);
+  neighborsById.get(e.target)!.add(e.source);
+}
 
 // Worst-of ordering for the lane rollup dot.
 const SEVERITY: EmpireStatus[] = ["broken", "stale", "missing", "paused", "killed", "running", "working"];
@@ -98,7 +107,7 @@ function timeText(def: EmpireNodeDef, payload: EmpirePayload | null): string {
   return h.lastRun ? `ran ${relTime(h.lastRun)}` : "never ran";
 }
 
-function buildNodes(payload: EmpirePayload | null, flashIds: Set<string>): Node[] {
+function buildNodes(payload: EmpirePayload | null, flashIds: Set<string>, focusId: string | null): Node[] {
   const laneNodes: Node<EmpireLaneNodeData>[] = EMPIRE_LANES.map((lane) => {
     const children = EMPIRE_NODES.filter((n) => n.lane === lane.id);
     const statuses = children.map((n) => payload?.nodes[n.id]?.status ?? "missing");
@@ -130,6 +139,7 @@ function buildNodes(payload: EmpirePayload | null, flashIds: Set<string>): Node[
   const cardNodes: Node<EmpireFlowNodeData>[] = EMPIRE_NODES.map((def) => {
     const h = payload?.nodes[def.id];
     const status = h?.status ?? "missing";
+    const dim = focusId != null && def.id !== focusId && !neighborsById.get(focusId)?.has(def.id);
     return {
       id: def.id,
       type: "empireNode",
@@ -145,6 +155,7 @@ function buildNodes(payload: EmpirePayload | null, flashIds: Set<string>): Node[
         statusWord: payload ? statusWord(status) : "loading",
         timeText: timeText(def, payload),
         flash: flashIds.has(def.id),
+        dim,
       },
       draggable: false,
       connectable: false,
@@ -154,18 +165,31 @@ function buildNodes(payload: EmpirePayload | null, flashIds: Set<string>): Node[
   return [...laneNodes, ...cardNodes];
 }
 
-function buildEdges(payload: EmpirePayload | null, reducedMotion: boolean): Edge[] {
+function buildEdges(payload: EmpirePayload | null, reducedMotion: boolean, focusId: string | null): Edge[] {
   return EMPIRE_EDGES.map((e) => {
     const srcStatus = payload?.nodes[e.source]?.status;
     const dead = srcStatus === "killed" || srcStatus === "missing" || srcStatus === "broken" || srcStatus === "paused";
     const color = dead ? "#3a4453" : EDGE_COLORS[e.kind];
+    const focused = focusId != null && (e.source === focusId || e.target === focusId);
+    const unfocused = focusId != null && !focused;
+    // Resting map stays calm (faint lines); focus lights the node's own edges
+    // up bright, thicker, and ABOVE the cards so the path is unmistakable.
     return {
       id: e.id,
       source: e.source,
       target: e.target,
-      animated: !dead && !reducedMotion,
-      style: { stroke: color, strokeWidth: 1.5, opacity: dead ? 0.35 : 0.55, strokeDasharray: dead ? "3 4" : "none" },
-      markerEnd: { type: MarkerType.ArrowClosed, color, width: 14, height: 14 },
+      type: "smoothstep",
+      pathOptions: { borderRadius: 14 },
+      animated: focused ? !reducedMotion : false,
+      zIndex: focused ? 1200 : 0,
+      style: {
+        stroke: color,
+        strokeWidth: focused ? 2.75 : 1.5,
+        opacity: focused ? 1 : unfocused ? 0.05 : dead ? 0.14 : 0.24,
+        strokeDasharray: dead ? "3 4" : "none",
+        transition: "opacity 160ms ease, stroke-width 160ms ease",
+      },
+      markerEnd: { type: MarkerType.ArrowClosed, color, width: focused ? 18 : 14, height: focused ? 18 : 14 },
     };
   });
 }
@@ -174,6 +198,7 @@ function HqEmpireMapInner() {
   const [payload, setPayload] = useState<EmpirePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
   const prevStatuses = useRef<Map<string, EmpireStatus>>(new Map());
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
@@ -215,8 +240,9 @@ function HqEmpireMapInner() {
     return () => clearInterval(t);
   }, [load]);
 
-  const nodes = useMemo(() => buildNodes(payload, flashIds), [payload, flashIds]);
-  const edges = useMemo(() => buildEdges(payload, reducedMotion), [payload, reducedMotion]);
+  const focusId = hoveredId ?? selectedId;
+  const nodes = useMemo(() => buildNodes(payload, flashIds, focusId), [payload, flashIds, focusId]);
+  const edges = useMemo(() => buildEdges(payload, reducedMotion, focusId), [payload, reducedMotion, focusId]);
 
   const rollup = useMemo(() => {
     if (!payload) return null;
@@ -253,6 +279,9 @@ function HqEmpireMapInner() {
           </span>
         )}
         {error && <span className="font-mono text-[10px] text-[#ef4444]">refresh failed: {error}</span>}
+        <span className="hidden font-mono text-[9.5px] text-[#4b5b6e] lg:inline">
+          hover / tap a node to trace its connections
+        </span>
         <button
           onClick={load}
           className="ml-auto rounded-md border border-[#1e2733] px-2.5 py-1 font-mono text-[10px] text-[#7a8699] hover:border-[#2dd4a7] hover:text-[#2dd4a7]"
@@ -278,6 +307,10 @@ function HqEmpireMapInner() {
           onNodeClick={(_, n) => {
             if (defsById.has(n.id)) setSelectedId(n.id);
           }}
+          onNodeMouseEnter={(_, n) => {
+            if (defsById.has(n.id)) setHoveredId(n.id);
+          }}
+          onNodeMouseLeave={() => setHoveredId(null)}
           onPaneClick={() => setSelectedId(null)}
           proOptions={{ hideAttribution: true }}
         >
@@ -303,6 +336,8 @@ function HqEmpireMapInner() {
             def={selectedDef}
             lane={laneById.get(selectedDef.lane)!}
             health={payload?.nodes[selectedDef.id]}
+            payload={payload}
+            onSelect={(id) => setSelectedId(id)}
             onClose={() => setSelectedId(null)}
           />
         )}
