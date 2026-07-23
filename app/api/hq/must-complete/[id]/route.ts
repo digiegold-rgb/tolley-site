@@ -46,6 +46,23 @@ export async function PATCH(
   if (typeof body.title === "string" && body.title.trim()) data.title = body.title.trim();
   if (typeof body.detail === "string") data.detail = body.detail.trim() || null;
   if (typeof body.afterNote === "string") data.afterNote = body.afterNote.trim() || null;
+  if (typeof body.command === "string") data.command = body.command.trim() || null;
+  if (typeof body.priority === "string" && ["red", "yellow", "green"].includes(body.priority)) {
+    data.priority = body.priority;
+  }
+  if (typeof body.category === "string" && body.category.trim()) data.category = body.category.trim();
+  if (Array.isArray(body.links)) {
+    data.links = body.links
+      .filter(
+        (l): l is { label: string; url: string } =>
+          !!l &&
+          typeof l === "object" &&
+          typeof (l as { label?: unknown }).label === "string" &&
+          typeof (l as { url?: unknown }).url === "string" &&
+          /^(https?:|tel:|mailto:)/.test((l as { url: string }).url),
+      )
+      .map((l) => ({ label: l.label.slice(0, 120), url: l.url }));
+  }
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
