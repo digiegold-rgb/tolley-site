@@ -18,6 +18,10 @@ import { HqDnc } from "@/components/hq/hq-dnc";
 import { HqStats } from "@/components/hq/hq-stats";
 import { HqEstates } from "@/components/hq/hq-estates";
 import {
+  HqMustComplete,
+  type MustCompleteItem,
+} from "@/components/hq/hq-must-complete";
+import {
   STAGE_LABEL,
   readApiError,
   type HqLead,
@@ -26,7 +30,7 @@ import {
   type HqInboundLead,
 } from "@/components/hq/types";
 
-type Tab = "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats";
+type Tab = "must" | "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats";
 
 export default function HqPage() {
   const { toast } = useToast();
@@ -36,7 +40,11 @@ export default function HqPage() {
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState("");
 
-  const [tab, setTab] = useState<Tab>("pipeline");
+  const [tab, setTab] = useState<Tab>("must");
+  const [mustOpen, setMustOpen] = useState<MustCompleteItem[]>([]);
+  const [mustDone, setMustDone] = useState<MustCompleteItem[]>([]);
+  const [mustLoading, setMustLoading] = useState(false);
+  const [mustBusyId, setMustBusyId] = useState<string | null>(null);
   const [leads, setLeads] = useState<HqLead[]>([]);
   const [drafts, setDrafts] = useState<HqQueueTouch[]>([]);
   const [offerFilter, setOfferFilter] = useState<string>("all");
@@ -175,6 +183,45 @@ export default function HqPage() {
     }
   }
 
+  const loadMust = useCallback(async () => {
+    setMustLoading(true);
+    try {
+      const r = await fetch("/api/hq/must-complete");
+      if (!r.ok) throw new Error(await readApiError(r, "Failed to load Must Complete queue"));
+      const d = await r.json();
+      setMustOpen(d.open);
+      setMustDone(d.done);
+    } catch (err) {
+      toast({
+        title: "Failed to load Must Complete queue",
+        description: err instanceof Error ? err.message : String(err),
+        variant: "error",
+      });
+    } finally {
+      setMustLoading(false);
+    }
+  }, [toast]);
+
+  async function setMustStatus(id: string, status: "open" | "done" | "dismissed"): Promise<boolean> {
+    setMustBusyId(id);
+    try {
+      const r = await fetch(`/api/hq/must-complete/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!r.ok) throw new Error(await readApiError(r, "Update failed"));
+      if (status === "done") toast({ title: "Checked off ✓", variant: "success" });
+      await loadMust();
+      return true;
+    } catch (err) {
+      toast({ title: "Update failed", description: err instanceof Error ? err.message : String(err), variant: "error" });
+      return false;
+    } finally {
+      setMustBusyId(null);
+    }
+  }
+
   const loadMoney = useCallback(async () => {
     setMoneyLoading(true);
     try {
@@ -217,12 +264,13 @@ export default function HqPage() {
 
   useEffect(() => {
     if (authed) {
+      loadMust();
       loadDrafts();
       loadMoney();
       loadLicenseReviews();
       loadInbound();
     }
-  }, [authed, loadDrafts, loadMoney, loadLicenseReviews, loadInbound]);
+  }, [authed, loadMust, loadDrafts, loadMoney, loadLicenseReviews, loadInbound]);
 
   // ─── Login ───
   async function handleLogin(e: React.FormEvent) {
@@ -387,6 +435,7 @@ export default function HqPage() {
                   variant: "error",
                 })
               );
+              loadMust();
               loadDrafts();
               loadMoney();
               loadLicenseReviews();
@@ -425,6 +474,18 @@ export default function HqPage() {
 
         {/* Tab bar + offer filter */}
         <div className="tab-bar" style={{ alignItems: "center" }}>
+          <button
+            className={`tab-btn ${tab === "must" ? "active" : ""}`}
+            onClick={() => setTab("must")}
+            style={
+              tab === "must"
+                ? { background: "linear-gradient(135deg, #dc2626, #b91c1c)", boxShadow: "0 2px 6px rgba(220, 38, 38, 0.3)" }
+                : undefined
+            }
+          >
+            🎯 Must Complete
+            {mustOpen.length ? ` (${mustOpen.length})` : ""}
+          </button>
           <button
             className={`tab-btn ${tab === "pipeline" ? "active" : ""}`}
             onClick={() => setTab("pipeline")}
@@ -492,7 +553,16 @@ export default function HqPage() {
           )}
         </div>
 
-        {tab === "pipeline" ? (
+        {tab === "must" ? (
+          <HqMustComplete
+            open={mustOpen}
+            done={mustDone}
+            loading={mustLoading}
+            busyId={mustBusyId}
+            onRefresh={loadMust}
+            onSetStatus={setMustStatus}
+          />
+        ) : tab === "pipeline" ? (
           <HqBoard leads={boardLeads} onSelect={setSelected} />
         ) : tab === "inbound" ? (
           <HqInbound

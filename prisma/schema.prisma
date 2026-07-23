@@ -4685,3 +4685,27 @@ model ResearchJob {
   @@index([status, createdAt])
   @@index([queryNormalized, status])
 }
+
+// ── "Must Complete" queue (/hq Must Complete tab) ────────────────────
+// Every task that genuinely needs Jared's hands — logins, consent clicks,
+// phone calls, decisions. Ordered by sortOrder. Agents append new blockers
+// via POST /api/hq/must-complete (x-sync-secret); Jared checks items off
+// in /hq. This is the canonical successor to ~/business-os/JARED-LIST.md.
+model MustCompleteItem {
+  id          String    @id @default(cuid())
+  sortOrder   Int // ascending display order; new items append at max+10
+  priority    String    @default("red") // red = blocks money/rot | yellow = this week | green = when convenient
+  category    String    @default("general") // billing|estate|social|money|growth|decision|infra|amazon|signups|general
+  title       String
+  detail      String?   @db.Text // why it matters + exact steps (plain text, newlines preserved)
+  links       Json      @default("[]") // [{label,url}] — the clickable steps
+  command     String?   @db.Text // copy-paste terminal command, if the step is a paste
+  afterNote   String? // what to tell Claude once done, so the machine side fires
+  status      String    @default("open") // open|done|dismissed
+  source      String    @default("claude") // which session/agent queued it
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, sortOrder])
+}
