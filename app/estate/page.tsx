@@ -11,6 +11,7 @@ import {
   ES_PHONE_TEL,
   ES_PHONE_SMS,
   ES_AREA,
+  ES_FACEBOOK,
   ES_STEPS,
   ES_DIFFS,
   ES_ADVERTISED_ON,
@@ -73,6 +74,7 @@ function buildJsonLd(upcoming: SaleRow[]) {
     name: "Tolley Estate Sales",
     url: `${BASE}/estate`,
     telephone: "+1-913-283-3826",
+    sameAs: [ES_FACEBOOK],
     description:
       "Boutique, family-run estate sale company in Independence, MO: free walkthrough, staging, research-backed pricing, real marketing, every form of payment, fast itemized settlement. Zero upfront cost.",
     areaServed: [
@@ -513,6 +515,20 @@ export default async function EstatePage() {
           Operated by Your KC Homes LLC · Part of{" "}
           <a href="https://www.tolley.io/circle" className="underline underline-offset-2">
             the Tolley circle
+          </a>
+        </p>
+        <p className="mt-4 text-sm">
+          <a
+            href={ES_FACEBOOK}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 underline underline-offset-2"
+            style={{ color: "var(--es-brass)" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z" />
+            </svg>
+            Follow Tolley Estate Sales on Facebook
           </a>
         </p>
         <div className="mt-4 flex flex-wrap justify-center gap-3 text-xs" style={{ color: "rgba(243,234,217,0.4)" }}>

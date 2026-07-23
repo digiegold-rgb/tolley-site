@@ -8,6 +8,7 @@ export const ES_PHONE = "913-283-3826";
 export const ES_PHONE_TEL = "tel:+19132833826";
 export const ES_PHONE_SMS = "sms:+19132833826";
 export const ES_AREA = "Independence & the Kansas City metro";
+export const ES_FACEBOOK = "https://www.facebook.com/profile.php?id=61588760760750";
 
 export const ES_STEPS = [
   {
