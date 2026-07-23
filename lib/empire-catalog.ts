@@ -97,7 +97,7 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "biz-animate", label: "Animate Studio", lane: "jared-biz", row: 1, col: 4, kind: "business", icon: "🎨", signal: "db:views:animate", cadenceMin: 2 * week, href: "/animate", note: "$25 pay-per-video, Stripe auto-invoice." },
 
   // ── JARED — CONTENT & DISTRIBUTION ───────────────────────────────────────
-  { id: "pipe-shorts", label: "Growth Shorts v3", lane: "jared-content", row: 0, col: 0, kind: "pipeline", icon: "🎬", signal: "dgx:timer:growth-shorts", cadenceMin: day, note: "Kling 2.5 via fal.ai · ~$7.40/video." },
+  { id: "pipe-shorts", label: "Growth Shorts v3", lane: "jared-content", row: 0, col: 0, kind: "pipeline", icon: "🎬", signal: "dgx:timer:growth-shorts", cadenceMin: day, note: "Kling 2.5 via fal.ai · ~$7.40/video. Timer paused 7/21 pending Gemini billing fix — auto-greens when re-enabled." },
   { id: "pipe-lipsync", label: "Shorts Lip-sync v4", lane: "jared-content", row: 1, col: 0, kind: "pipeline", icon: "👄", signal: "manual:paused", note: "Built + gated; timer paused until billing test." },
   { id: "pipe-kchousing", label: "KC Housing Daily", lane: "jared-content", row: 0, col: 1, kind: "pipeline", icon: "🏘️", signal: "dgx:unit:housing-hub", cadenceMin: day, href: "/housing" },
   { id: "pipe-newhomes", label: "New KC Homes Today", lane: "jared-content", row: 1, col: 1, kind: "pipeline", icon: "🆕", signal: "dgx:unit:listings-video", cadenceMin: day, note: "Faceless long-form YT, daily 10:30." },

@@ -319,11 +319,13 @@ function resolveDgxSignal(
     if (u.activeState === "active" && u.subState === "running") {
       return { status: "running", lastRun: iso(u.lastRun), ageMin: age, detail: "service active", metrics };
     }
+    // A timer with no next run was disabled on the box — that's a deliberate
+    // pause, not a failure. Red stays reserved for actual failures.
     return {
-      status: unscheduled ? "broken" : bucket(age, cadenceMin, failed),
+      status: unscheduled && !failed ? "paused" : bucket(age, cadenceMin, failed),
       lastRun: iso(u.lastRun),
       ageMin: age,
-      detail: unscheduled ? "timer has NO next run scheduled" : failed ? `unit failed (${u.result}, exit ${u.exitStatus})` : `exit ${u.exitStatus ?? 0}`,
+      detail: unscheduled ? "timer disabled — no next run scheduled" : failed ? `unit failed (${u.result}, exit ${u.exitStatus})` : `exit ${u.exitStatus ?? 0}`,
       metrics,
     };
   }
