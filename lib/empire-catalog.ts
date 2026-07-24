@@ -129,6 +129,7 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "fun-telegram", label: "Telegram Pings", lane: "jared-funnel", row: 0, col: 5, kind: "channel", icon: "✈️", signal: "dgx:unit:daily-receipt", cadenceMin: day, note: "Daily receipt 07:00 + lead/reply pings." },
   { id: "conn-instantly", label: "Instantly API", lane: "jared-funnel", row: 1, col: 3, kind: "service", icon: "🔑", signal: "dgx:conn:instantly-api" },
   { id: "conn-telegram", label: "TG Bot Token", lane: "jared-funnel", row: 1, col: 5, kind: "service", icon: "🔑", signal: "dgx:conn:telegram-bot" },
+  { id: "fun-fbautoreply", label: "FB Auto-Reply", lane: "jared-funnel", row: 1, col: 4, kind: "service", icon: "🤖", signal: "dgx:timer:fb-auto-reply", cadenceMin: 10, note: "Messenger FAQ bot — polls all pages every 2 min, answers pricing/delivery/phone, Telegram-pings every reply." },
 
   // ── RUTHANN ──────────────────────────────────────────────────────────────
   { id: "ruth-kitchen", label: "Ruthann's Kitchen", lane: "ruthann", row: 0, col: 0, kind: "business", icon: "🍲", signal: "cron:/api/cron/food-trial-ending", href: "/food", note: "$39/yr." },
