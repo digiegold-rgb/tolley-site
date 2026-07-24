@@ -28,6 +28,7 @@ import {
   alertDiscord,
 } from "@/lib/shop/treasure-haul-post";
 import { amazonAffiliateUrl } from "@/lib/shop";
+import { getStoredToken } from "@/lib/social/token-store";
 import { prisma } from "@/lib/prisma";
 import type { Product, PlatformListing } from "@prisma/client";
 
@@ -183,8 +184,14 @@ async function postInstagram(
   products: (Product & { listings: PlatformListing[] })[],
   mode: CycleMode,
 ): Promise<PlatformResult> {
-  const igUserId = process.env.INSTAGRAM_BUSINESS_ID;
+  // Prefer the token the Facebook/Instagram OAuth callback saved to the DB
+  // (saveStoredToken("instagram", { accountId: <IG business id>, ... })) so a
+  // single re-auth click wires both the token AND the business id — no env
+  // paste, no redeploy. Fall back to env for older manual setups.
+  const stored = await getStoredToken("instagram");
+  const igUserId = stored?.accountId || process.env.INSTAGRAM_BUSINESS_ID;
   const token =
+    stored?.accessToken ||
     process.env.INSTAGRAM_PAGE_TOKEN ||
     process.env.FACEBOOK_PAGE_TOKEN_TREASURE ||
     process.env.FACEBOOK_PAGE_TOKEN_MAIN;
@@ -193,7 +200,8 @@ async function postInstagram(
     return {
       platform: "instagram",
       ok: false,
-      error: "Instagram not connected (need INSTAGRAM_BUSINESS_ID + page token)",
+      error:
+        "Instagram not connected — run the Facebook/Instagram re-auth (tolley.io/api/social/oauth/facebook/start) with the IG account selected",
     };
   }
 
