@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateShopAdmin } from "@/lib/shop-auth";
+import { secretEquals } from "@/lib/secret-compare";
 
 export async function GET(req: NextRequest) {
+  // Sourcing/lot economics are internal — admin cookie or x-sync-secret.
+  // Flagged public in the 3/22 audit; fixed 7/23.
+  const secret = req.headers.get("x-sync-secret");
+  const machineOk = Boolean(secret && secretEquals(secret, process.env.SYNC_SECRET));
+  if (!machineOk && !(await validateShopAdmin())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
 
