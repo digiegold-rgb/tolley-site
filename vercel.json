@@ -322,6 +322,10 @@
       "schedule": "0 15 * * *"
     },
     {
+      "path": "/api/cron/treasure-haul-spotlight",
+      "schedule": "0 1 * * 2-6"
+    },
+    {
       "path": "/api/cron/treasure-haul-cleanup",
       "schedule": "0 * * * *"
     },

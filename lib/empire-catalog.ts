@@ -134,6 +134,7 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "ruth-shop", label: "/shop Mirror", lane: "ruthann", row: 0, col: 2, kind: "page", icon: "🏪", signal: "db:views:shop", cadenceMin: 2 * day, href: "/shop" },
   { id: "ruth-fbclean", label: "FB Cleanup Bot", lane: "ruthann", row: 0, col: 3, kind: "pipeline", icon: "🧹", signal: "dgx:unit:ruthann-fb-cleanup", cadenceMin: week },
   { id: "conn-fb-treasure", label: "FB Publish Token", lane: "ruthann", row: 1, col: 1, kind: "service", icon: "🔑", signal: "dgx:conn:fb-treasure-publish", note: "Deep probe: starts (and abandons) a real reel upload — catches identity checkpoints a /me check misses." },
+  { id: "conn-th-pace", label: "TH Post Pace", lane: "ruthann", row: 1, col: 2, kind: "service", icon: "📈", signal: "dgx:conn:fb-treasure-pace", note: "Published posts last 7d vs the 30/week target — red only if the machine stalls (<7)." },
 
   // ── OUTSIDE CLIENTS ──────────────────────────────────────────────────────
   { id: "cli-crazybins", label: "Crazy Bin Store #2", lane: "clients", row: 0, col: 0, kind: "page", icon: "🗑️", signal: "db:views:crazybins", cadenceMin: week, href: "/crazybins" },

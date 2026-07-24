@@ -124,5 +124,6 @@ export const CRONS: CronEntry[] = [
   { path: "/api/cron/budget-digest", schedule: "0 2 * * *", cadenceMin: day, description: "Daily budget digest" },
   { path: "/api/cron/shop/enrich-pending-descriptions", schedule: "*/30 * * * *", cadenceMin: 30, description: "Shop AI description enrichment" },
   { path: "/api/cron/treasure-haul-daily", schedule: "0 13 * * *", cadenceMin: day, description: "Treasure Haul FB post" },
+  { path: "/api/cron/treasure-haul-spotlight", schedule: "0 1 * * 2-6", cadenceMin: 2 * day, description: "Treasure Haul evening spotlight (Mon–Fri CT) — closes the 30/wk gap" },
   { path: "/api/cron/fb-token-health", schedule: "0 14 * * 1", cadenceMin: 7 * day, description: "Weekly FB token expiry check" },
 ];
