@@ -98,6 +98,8 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "biz-passive", label: "Seller Digest $199/mo", lane: "jared-biz", row: 1, col: 2, kind: "business", icon: "💌", signal: "db:passive", cadenceMin: 2 * week, href: "/leads" },
   { id: "biz-launchpad", label: "Launchpad V2", lane: "jared-biz", row: 1, col: 3, kind: "business", icon: "🚀", signal: "db:views:launchpad", cadenceMin: week, href: "/start", note: "SerpAPI quota exhausted." },
   { id: "biz-animate", label: "Animate Studio", lane: "jared-biz", row: 1, col: 4, kind: "business", icon: "🎨", signal: "db:views:animate", cadenceMin: 2 * week, href: "/animate", note: "$25 pay-per-video, Stripe auto-invoice." },
+  { id: "conn-wd-pace", label: "W&D FB Pace", lane: "jared-biz", row: 2, col: 1, kind: "service", icon: "📈", signal: "dgx:conn:fb-wd-pace", note: "Published posts last 7d vs 30/wk — fb-daily-post generator (4/day Mon–Sat)." },
+  { id: "conn-kchomes-pace", label: "KC Homes FB Pace", lane: "jared-biz", row: 2, col: 3, kind: "service", icon: "📈", signal: "dgx:conn:fb-kchomes-pace", note: "Published posts last 7d vs 30/wk — BAY statcard + daily-post + listings video leg." },
 
   // ── JARED — CONTENT & DISTRIBUTION ───────────────────────────────────────
   { id: "pipe-shorts", label: "Product Shorts (Wan)", lane: "jared-content", row: 0, col: 0, kind: "pipeline", icon: "🎬", signal: "dgx:timer:growth-shorts", cadenceMin: day, note: "Cheap Modal/Wan 2x-motion recipe · ~$1.40/video · 2/day 10:00 → YT + Treasure Haul FB." },
@@ -197,6 +199,8 @@ export const EMPIRE_EDGES: EmpireEdgeDef[] = [
   { id: "e-connstripe-xero", source: "conn-stripe", target: "inf-xero", kind: "data" },
   { id: "e-conngemini-shorts", source: "conn-gemini", target: "pipe-shorts", kind: "data" },
   { id: "e-connel-shorts", source: "conn-elevenlabs", target: "pipe-shorts", kind: "data" },
+  { id: "e-wdpace-wd", source: "conn-wd-pace", target: "biz-wd", kind: "data" },
+  { id: "e-kchomespace-re", source: "conn-kchomes-pace", target: "biz-realestate", kind: "data" },
 
   // Businesses feeding pipelines
   { id: "e-re-kchousing", source: "biz-realestate", target: "pipe-kchousing", kind: "data" },
