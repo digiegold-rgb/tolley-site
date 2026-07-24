@@ -10,6 +10,9 @@
 //   "dgx:docker:<name>"   docker .State.Status — running = "running"
 //   "dgx:file:<key>"      state-file mtime                                (needs cadenceMin)
 //   "dgx:fleet:<key>"     field from ~/.cache/fleet-status.json
+//   "dgx:conn:<key>"      external connection calibration (publish tokens, login
+//                         sessions, API keys) — probed every collector run by
+//                         connections.mjs; broken conns auto-queue to Must Complete
 //   "dgx:backup"          parsed /var/log/dgx-backup.log verdict (local NAS tier)
 //   "dgx:backup-offsite"  GCS offsite tier verdict from the same log
 //   "dgx:self"            freshness of the DGX snapshot itself (the canary node)
@@ -97,7 +100,7 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "biz-animate", label: "Animate Studio", lane: "jared-biz", row: 1, col: 4, kind: "business", icon: "🎨", signal: "db:views:animate", cadenceMin: 2 * week, href: "/animate", note: "$25 pay-per-video, Stripe auto-invoice." },
 
   // ── JARED — CONTENT & DISTRIBUTION ───────────────────────────────────────
-  { id: "pipe-shorts", label: "Growth Shorts v3", lane: "jared-content", row: 0, col: 0, kind: "pipeline", icon: "🎬", signal: "dgx:timer:growth-shorts", cadenceMin: day, note: "Kling 2.5 via fal.ai · ~$7.40/video. Timer paused 7/21 pending Gemini billing fix — auto-greens when re-enabled." },
+  { id: "pipe-shorts", label: "Product Shorts (Wan)", lane: "jared-content", row: 0, col: 0, kind: "pipeline", icon: "🎬", signal: "dgx:timer:growth-shorts", cadenceMin: day, note: "Cheap Modal/Wan 2x-motion recipe · ~$1.40/video · 2/day 10:00 → YT + Treasure Haul FB." },
   { id: "pipe-lipsync", label: "Shorts Lip-sync v4", lane: "jared-content", row: 1, col: 0, kind: "pipeline", icon: "👄", signal: "manual:paused", note: "Built + gated; timer paused until billing test." },
   { id: "pipe-kchousing", label: "KC Housing Daily", lane: "jared-content", row: 0, col: 1, kind: "pipeline", icon: "🏘️", signal: "dgx:unit:housing-hub", cadenceMin: day, href: "/housing" },
   { id: "pipe-newhomes", label: "New KC Homes Today", lane: "jared-content", row: 1, col: 1, kind: "pipeline", icon: "🆕", signal: "dgx:unit:listings-video", cadenceMin: day, note: "Faceless long-form YT, daily 10:30." },
@@ -109,8 +112,10 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "pipe-backatyou", label: "Back At You → LI", lane: "jared-content", row: 1, col: 5, kind: "pipeline", icon: "💼", signal: "dgx:file:backatyou", cadenceMin: 2 * day, note: "Only LinkedIn pipe — posts the stat card." },
   { id: "chan-youtube", label: "YouTube", lane: "jared-content", row: 0, col: 4, kind: "channel", icon: "▶️", signal: "db:youtube", cadenceMin: day, note: "@yourkchome · stats cron 11:30 UTC." },
   { id: "chan-facebook", label: "Facebook Pages", lane: "jared-content", row: 0, col: 5, kind: "channel", icon: "📘", signal: "cron:/api/cron/fb-sync" },
-  { id: "chan-instagram", label: "Instagram", lane: "jared-content", row: 0, col: 6, kind: "channel", icon: "📸", signal: "manual:broken:dead token — Blob fix ready, needs re-auth" },
+  { id: "chan-instagram", label: "Instagram", lane: "jared-content", row: 0, col: 6, kind: "channel", icon: "📸", signal: "dgx:conn:ig-publish", note: "Live token probe — Blob fix ready once re-authed." },
   { id: "chan-tiktok", label: "TikTok", lane: "jared-content", row: 1, col: 6, kind: "channel", icon: "🎵", signal: "manual:broken:posts stuck \"Only me\" until review clears" },
+  { id: "conn-yt-upload", label: "YT Upload Token", lane: "jared-content", row: 2, col: 4, kind: "service", icon: "🔑", signal: "dgx:conn:yt-upload", note: "OAuth refresh + channels.list, calibrated nightly." },
+  { id: "conn-pinterest", label: "Pinterest Session", lane: "jared-content", row: 2, col: 5, kind: "service", icon: "🔑", signal: "dgx:conn:pinterest-session", note: "logged_in state of :9107 Selenium session." },
 
   // ── JARED — FUNNEL ───────────────────────────────────────────────────────
   { id: "fun-site", label: "tolley.io", lane: "jared-funnel", row: 0, col: 0, kind: "page", icon: "🌐", signal: "db:views:any", cadenceMin: 720, href: "/" },
@@ -120,12 +125,15 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "fun-outbound", label: "Instantly Outbound", lane: "jared-funnel", row: 0, col: 3, kind: "pipeline", icon: "⚡", signal: "db:touches", cadenceMin: week, note: "Site + delivery + estate campaigns. Jared pulls the trigger." },
   { id: "fun-replies", label: "Reply Webhook", lane: "jared-funnel", row: 0, col: 4, kind: "service", icon: "💬", signal: "dgx:unit:growth-replies", cadenceMin: 120, note: "Instantly → tolley.io → GrowthTouch + DNC detection." },
   { id: "fun-telegram", label: "Telegram Pings", lane: "jared-funnel", row: 0, col: 5, kind: "channel", icon: "✈️", signal: "dgx:unit:daily-receipt", cadenceMin: day, note: "Daily receipt 07:00 + lead/reply pings." },
+  { id: "conn-instantly", label: "Instantly API", lane: "jared-funnel", row: 1, col: 3, kind: "service", icon: "🔑", signal: "dgx:conn:instantly-api" },
+  { id: "conn-telegram", label: "TG Bot Token", lane: "jared-funnel", row: 1, col: 5, kind: "service", icon: "🔑", signal: "dgx:conn:telegram-bot" },
 
   // ── RUTHANN ──────────────────────────────────────────────────────────────
   { id: "ruth-kitchen", label: "Ruthann's Kitchen", lane: "ruthann", row: 0, col: 0, kind: "business", icon: "🍲", signal: "cron:/api/cron/food-trial-ending", href: "/food", note: "$39/yr." },
   { id: "ruth-treasure", label: "Treasure Haul (FB)", lane: "ruthann", row: 0, col: 1, kind: "channel", icon: "💎", signal: "cron:/api/cron/treasure-haul-daily", note: "FB page ↔ /shop mirror." },
   { id: "ruth-shop", label: "/shop Mirror", lane: "ruthann", row: 0, col: 2, kind: "page", icon: "🏪", signal: "db:views:shop", cadenceMin: 2 * day, href: "/shop" },
   { id: "ruth-fbclean", label: "FB Cleanup Bot", lane: "ruthann", row: 0, col: 3, kind: "pipeline", icon: "🧹", signal: "dgx:unit:ruthann-fb-cleanup", cadenceMin: week },
+  { id: "conn-fb-treasure", label: "FB Publish Token", lane: "ruthann", row: 1, col: 1, kind: "service", icon: "🔑", signal: "dgx:conn:fb-treasure-publish", note: "Deep probe: starts (and abandons) a real reel upload — catches identity checkpoints a /me check misses." },
 
   // ── OUTSIDE CLIENTS ──────────────────────────────────────────────────────
   { id: "cli-crazybins", label: "Crazy Bin Store #2", lane: "clients", row: 0, col: 0, kind: "page", icon: "🗑️", signal: "db:views:crazybins", cadenceMin: week, href: "/crazybins" },
@@ -151,6 +159,10 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "inf-selfheal", label: "Fleet Selfheal", lane: "infra", row: 1, col: 5, kind: "service", icon: "🩹", signal: "dgx:unit:fleet-selfheal", cadenceMin: 30 },
   { id: "inf-xero", label: "Xero Ledger + Plaid", lane: "infra", row: 0, col: 6, kind: "service", icon: "📒", signal: "cron:/api/cron/budget-plaid-sync", note: ":8920 on DGX + Vercel budget crons." },
   { id: "inf-vercel", label: "Vercel Crons", lane: "infra", row: 1, col: 6, kind: "infra", icon: "▲", signal: "cron:rollup", note: "All tolley.io scheduled jobs, rolled up." },
+  { id: "conn-site", label: "tolley.io Reach", lane: "infra", row: 2, col: 0, kind: "service", icon: "🔑", signal: "dgx:conn:tolley-site", note: "Reachability probed FROM the DGX." },
+  { id: "conn-elevenlabs", label: "ElevenLabs API", lane: "infra", row: 2, col: 1, kind: "service", icon: "🔑", signal: "dgx:conn:elevenlabs-api" },
+  { id: "conn-gemini", label: "Gemini API", lane: "infra", row: 2, col: 3, kind: "service", icon: "🔑", signal: "dgx:conn:gemini-api" },
+  { id: "conn-stripe", label: "Stripe API", lane: "infra", row: 2, col: 6, kind: "service", icon: "🔑", signal: "dgx:conn:stripe-api" },
 ];
 
 export const EMPIRE_EDGES: EmpireEdgeDef[] = [
@@ -173,6 +185,17 @@ export const EMPIRE_EDGES: EmpireEdgeDef[] = [
   { id: "e-backatyou-fb", source: "pipe-backatyou", target: "chan-facebook", kind: "flow" },
   { id: "e-pinterest-site", source: "pipe-pinterest", target: "fun-site", kind: "flow" },
   { id: "e-treasure-fb", source: "ruth-treasure", target: "chan-facebook", kind: "flow" },
+  { id: "e-shorts-treasure", source: "pipe-shorts", target: "ruth-treasure", kind: "flow" },
+
+  // Connection calibration → what each unblocks (nightly deep probes)
+  { id: "e-connfb-treasure", source: "conn-fb-treasure", target: "ruth-treasure", kind: "data" },
+  { id: "e-connyt-yt", source: "conn-yt-upload", target: "chan-youtube", kind: "data" },
+  { id: "e-connpin-pinterest", source: "conn-pinterest", target: "pipe-pinterest", kind: "data" },
+  { id: "e-conninstantly-outbound", source: "conn-instantly", target: "fun-outbound", kind: "data" },
+  { id: "e-conntg-telegram", source: "conn-telegram", target: "fun-telegram", kind: "data" },
+  { id: "e-connstripe-xero", source: "conn-stripe", target: "inf-xero", kind: "data" },
+  { id: "e-conngemini-shorts", source: "conn-gemini", target: "pipe-shorts", kind: "data" },
+  { id: "e-connel-shorts", source: "conn-elevenlabs", target: "pipe-shorts", kind: "data" },
 
   // Businesses feeding pipelines
   { id: "e-re-kchousing", source: "biz-realestate", target: "pipe-kchousing", kind: "data" },

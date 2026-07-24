@@ -35,6 +35,15 @@ interface DgxSnapshot {
     offsite: { ok: boolean; lastError: string | null };
   };
   fleet?: Record<string, string>;
+  // Nightly connection calibration — deep probes of external tokens/sessions
+  // (FB publish, IG/YT tokens, Pinterest login, API keys). See connections.mjs.
+  connections?: Record<string, {
+    ok: boolean;
+    detail?: string | null;
+    hint?: string | null;
+    latencyMs?: number | null;
+    checkedAt?: string | null;
+  }>;
 }
 
 export interface EmpireMetric {
@@ -328,6 +337,20 @@ function resolveDgxSignal(
       detail: unscheduled ? "timer disabled — no next run scheduled" : failed ? `unit failed (${u.result}, exit ${u.exitStatus})` : `exit ${u.exitStatus ?? 0}`,
       metrics,
     };
+  }
+  if (signal.startsWith("dgx:conn:")) {
+    const c = snap.connections?.[signal.slice(9)];
+    if (!c) return { ...none, detail: "connection not calibrated yet" };
+    const when = c.checkedAt ?? snap.generatedAt;
+    return c.ok
+      ? { status: "working", lastRun: iso(when), ageMin: ageMinutes(when), detail: c.detail ?? "connection OK" }
+      : {
+          status: "broken",
+          lastRun: iso(when),
+          ageMin: ageMinutes(when),
+          detail: c.detail ?? "connection failed",
+          metrics: c.hint ? [{ label: "Fix", value: c.hint }] : undefined,
+        };
   }
   if (signal.startsWith("dgx:port:")) {
     const p = snap.ports?.[signal.slice(9)];
