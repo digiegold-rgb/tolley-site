@@ -19,6 +19,7 @@ import { HqDnc } from "@/components/hq/hq-dnc";
 import { HqStats } from "@/components/hq/hq-stats";
 import { HqEstates } from "@/components/hq/hq-estates";
 import { HqEmpireMap } from "@/components/hq/hq-empire-map";
+import { HqFbChats } from "@/components/hq/hq-fb-chats";
 import {
   HqMustComplete,
   type MustCompleteItem,
@@ -32,9 +33,9 @@ import {
   type HqInboundLead,
 } from "@/components/hq/types";
 
-type Tab = "empire" | "must" | "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats";
+type Tab = "empire" | "must" | "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats" | "chats";
 
-const TABS: readonly Tab[] = ["empire", "must", "pipeline", "inbound", "approvals", "money", "dnc", "estates", "stats"];
+const TABS: readonly Tab[] = ["empire", "must", "pipeline", "inbound", "approvals", "money", "dnc", "estates", "stats", "chats"];
 
 function isTab(v: string | null): v is Tab {
   return v != null && (TABS as readonly string[]).includes(v);
@@ -565,6 +566,12 @@ function HqPageInner() {
             Stats
           </button>
           <button
+            className={`tab-btn ${tab === "chats" ? "active" : ""}`}
+            onClick={() => setTab("chats")}
+          >
+            Chats
+          </button>
+          <button
             className={`tab-btn ${tab === "dnc" ? "active" : ""}`}
             onClick={() => setTab("dnc")}
           >
@@ -618,6 +625,8 @@ function HqPageInner() {
           <HqEstates />
         ) : tab === "stats" ? (
           <HqStats />
+        ) : tab === "chats" ? (
+          <HqFbChats />
         ) : tab === "dnc" ? (
           <HqDnc
             leads={leads}
