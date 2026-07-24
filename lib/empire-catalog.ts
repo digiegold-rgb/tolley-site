@@ -98,7 +98,7 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "biz-passive", label: "Seller Digest $199/mo", lane: "jared-biz", row: 1, col: 2, kind: "business", icon: "💌", signal: "db:passive", cadenceMin: 2 * week, href: "/leads" },
   { id: "biz-launchpad", label: "Launchpad V2", lane: "jared-biz", row: 1, col: 3, kind: "business", icon: "🚀", signal: "db:views:launchpad", cadenceMin: week, href: "/start", note: "SerpAPI quota exhausted." },
   { id: "biz-animate", label: "Animate Studio", lane: "jared-biz", row: 1, col: 4, kind: "business", icon: "🎨", signal: "db:views:animate", cadenceMin: 2 * week, href: "/animate", note: "$25 pay-per-video, Stripe auto-invoice." },
-  { id: "conn-wd-pace", label: "W&D FB Pace", lane: "jared-biz", row: 2, col: 1, kind: "service", icon: "📈", signal: "dgx:conn:fb-wd-pace", note: "Published posts last 7d vs 30/wk — fb-daily-post generator (4/day Mon–Sat)." },
+  { id: "conn-wd-pace", label: "W&D FB Pace", lane: "jared-biz", row: 2, col: 1, kind: "service", icon: "📈", signal: "dgx:conn:fb-wd-pace", note: "Published posts last 7d vs 30/wk — fb-daily-post generator, 7 days (4/day + Fri/Sat party post) = 30." },
   { id: "conn-kchomes-pace", label: "KC Homes FB Pace", lane: "jared-biz", row: 2, col: 3, kind: "service", icon: "📈", signal: "dgx:conn:fb-kchomes-pace", note: "Published posts last 7d vs 30/wk — BAY statcard + daily-post + listings video leg." },
 
   // ── JARED — CONTENT & DISTRIBUTION ───────────────────────────────────────
