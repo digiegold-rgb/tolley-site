@@ -118,6 +118,7 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "chan-tiktok", label: "TikTok", lane: "jared-content", row: 1, col: 6, kind: "channel", icon: "🎵", signal: "manual:broken:posts stuck \"Only me\" until review clears" },
   { id: "conn-yt-upload", label: "YT Upload Token", lane: "jared-content", row: 2, col: 4, kind: "service", icon: "🔑", signal: "dgx:conn:yt-upload", note: "OAuth refresh + channels.list, calibrated nightly." },
   { id: "conn-pinterest", label: "Pinterest Session", lane: "jared-content", row: 2, col: 5, kind: "service", icon: "🔑", signal: "dgx:conn:pinterest-session", note: "logged_in state of :9107 Selenium session." },
+  { id: "pipe-pinfeatured", label: "Featured-Home Pins", lane: "jared-content", row: 2, col: 6, kind: "pipeline", icon: "📌", signal: "dgx:timer:pin-featured", cadenceMin: 720, note: "2x daily (15:30 + 19:30): re-pins FB-featured homes, 3/run, fresh angles + captions → tolley.io/housing." },
 
   // ── JARED — FUNNEL ───────────────────────────────────────────────────────
   { id: "fun-site", label: "tolley.io", lane: "jared-funnel", row: 0, col: 0, kind: "page", icon: "🌐", signal: "db:views:any", cadenceMin: 720, href: "/" },
@@ -188,6 +189,8 @@ export const EMPIRE_EDGES: EmpireEdgeDef[] = [
   { id: "e-social-tiktok", source: "pipe-social", target: "chan-tiktok", kind: "flow" },
   { id: "e-backatyou-fb", source: "pipe-backatyou", target: "chan-facebook", kind: "flow" },
   { id: "e-pinterest-site", source: "pipe-pinterest", target: "fun-site", kind: "flow" },
+  { id: "e-newhomes-pinfeatured", source: "pipe-newhomes", target: "pipe-pinfeatured", kind: "data" },
+  { id: "e-pinfeatured-site", source: "pipe-pinfeatured", target: "fun-site", kind: "flow" },
   { id: "e-treasure-fb", source: "ruth-treasure", target: "chan-facebook", kind: "flow" },
   { id: "e-shorts-treasure", source: "pipe-shorts", target: "ruth-treasure", kind: "flow" },
 
