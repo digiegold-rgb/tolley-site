@@ -140,6 +140,7 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "ruth-fbclean", label: "FB Cleanup Bot", lane: "ruthann", row: 0, col: 3, kind: "pipeline", icon: "🧹", signal: "dgx:unit:ruthann-fb-cleanup", cadenceMin: week },
   { id: "conn-fb-treasure", label: "FB Publish Token", lane: "ruthann", row: 1, col: 1, kind: "service", icon: "🔑", signal: "dgx:conn:fb-treasure-publish", note: "Deep probe: starts (and abandons) a real reel upload — catches identity checkpoints a /me check misses." },
   { id: "conn-th-pace", label: "TH Post Pace", lane: "ruthann", row: 1, col: 2, kind: "service", icon: "📈", signal: "dgx:conn:fb-treasure-pace", note: "Published posts last 7d vs the 30/week target — red only if the machine stalls (<7)." },
+  { id: "ruth-treasurepins", label: "Treasure Pins", lane: "ruthann", row: 1, col: 3, kind: "pipeline", icon: "💎", signal: "dgx:timer:treasure-pins", cadenceMin: 720, href: "https://www.pinterest.com/jaredtolley/", note: "2x daily (12:30 + 17:30): listed /shop finds → 'Treasure Haul Finds' Pinterest board, product-page links, 45d rotation." },
 
   // ── OUTSIDE CLIENTS ──────────────────────────────────────────────────────
   { id: "cli-crazybins", label: "Crazy Bin Store #2", lane: "clients", row: 0, col: 0, kind: "page", icon: "🗑️", signal: "db:views:crazybins", cadenceMin: week, href: "/crazybins" },
@@ -211,6 +212,8 @@ export const EMPIRE_EDGES: EmpireEdgeDef[] = [
   { id: "e-re-kchousing", source: "biz-realestate", target: "pipe-kchousing", kind: "data" },
   { id: "e-re-newhomes", source: "biz-realestate", target: "pipe-newhomes", kind: "data" },
   { id: "e-shop-treasure", source: "biz-shop", target: "ruth-shop", kind: "data" },
+  { id: "e-shop-treasurepins", source: "ruth-shop", target: "ruth-treasurepins", kind: "data" },
+  { id: "e-treasurepins-site", source: "ruth-treasurepins", target: "fun-site", kind: "flow" },
 
   // Channels → funnel (the marquee chain)
   { id: "e-yt-circle", source: "chan-youtube", target: "fun-circle", kind: "flow" },
