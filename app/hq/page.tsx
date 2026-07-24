@@ -20,6 +20,7 @@ import { HqStats } from "@/components/hq/hq-stats";
 import { HqEstates } from "@/components/hq/hq-estates";
 import { HqEmpireMap } from "@/components/hq/hq-empire-map";
 import { HqFbChats } from "@/components/hq/hq-fb-chats";
+import { HqChannelScoreboard } from "@/components/hq/hq-channel-scoreboard";
 import {
   HqMustComplete,
   type MustCompleteItem,
@@ -624,7 +625,10 @@ function HqPageInner() {
         ) : tab === "estates" ? (
           <HqEstates />
         ) : tab === "stats" ? (
-          <HqStats />
+          <>
+            <HqChannelScoreboard />
+            <HqStats />
+          </>
         ) : tab === "chats" ? (
           <HqFbChats />
         ) : tab === "dnc" ? (

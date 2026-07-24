@@ -110,7 +110,7 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "pipe-social", label: "Social Suite", lane: "jared-content", row: 1, col: 2, kind: "pipeline", icon: "📱", signal: "cron:/api/cron/content-publish", href: "/social" },
   { id: "pipe-vater", label: "Vater / YT Factory", lane: "jared-content", row: 0, col: 3, kind: "pipeline", icon: "🎥", signal: "cron:/api/cron/vater-rss-poll", cadenceMin: 2 * day, href: "/vater", note: "RSS heartbeat only ticks on new items — judged on a 2-day window, not the 15-min poll." },
   { id: "pipe-trend", label: "Trend Arbitrage", lane: "jared-content", row: 1, col: 3, kind: "pipeline", icon: "📉", signal: "manual:killed", note: "Killed 7/23 — underperformed. Code intact." },
-  { id: "pipe-pinterest", label: "Pinterest", lane: "jared-content", row: 1, col: 4, kind: "pipeline", icon: "📌", signal: "dgx:unit:pinterest-service", cadenceMin: day, note: "Logged out 7/12 — re-login on JARED-LIST." },
+  { id: "pipe-pinterest", label: "Pinterest", lane: "jared-content", row: 1, col: 4, kind: "pipeline", icon: "📌", signal: "dgx:unit:pinterest-service", cadenceMin: day, href: "https://www.pinterest.com/jaredtolley/", note: "Self-healing since 7/23: auto re-login with stored creds. :9107 Selenium, verified publishes." },
   { id: "pipe-backatyou", label: "Back At You → LI", lane: "jared-content", row: 1, col: 5, kind: "pipeline", icon: "💼", signal: "dgx:file:backatyou", cadenceMin: 2 * day, note: "Only LinkedIn pipe — posts the stat card." },
   { id: "chan-youtube", label: "YouTube", lane: "jared-content", row: 0, col: 4, kind: "channel", icon: "▶️", signal: "db:youtube", cadenceMin: day, note: "@yourkchome · stats cron 11:30 UTC." },
   { id: "chan-facebook", label: "Facebook Pages", lane: "jared-content", row: 0, col: 5, kind: "channel", icon: "📘", signal: "cron:/api/cron/fb-sync" },
@@ -118,7 +118,8 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "chan-tiktok", label: "TikTok", lane: "jared-content", row: 1, col: 6, kind: "channel", icon: "🎵", signal: "manual:broken:posts stuck \"Only me\" until review clears" },
   { id: "conn-yt-upload", label: "YT Upload Token", lane: "jared-content", row: 2, col: 4, kind: "service", icon: "🔑", signal: "dgx:conn:yt-upload", note: "OAuth refresh + channels.list, calibrated nightly." },
   { id: "conn-pinterest", label: "Pinterest Session", lane: "jared-content", row: 2, col: 5, kind: "service", icon: "🔑", signal: "dgx:conn:pinterest-session", note: "logged_in state of :9107 Selenium session." },
-  { id: "pipe-pinfeatured", label: "Featured-Home Pins", lane: "jared-content", row: 2, col: 6, kind: "pipeline", icon: "📌", signal: "dgx:timer:pin-featured", cadenceMin: 720, note: "2x daily (15:30 + 19:30): re-pins FB-featured homes, 3/run, fresh angles + captions → tolley.io/housing." },
+  { id: "pipe-pinfeatured", label: "Featured-Home Pins", lane: "jared-content", row: 2, col: 6, kind: "pipeline", icon: "📌", signal: "dgx:timer:pin-featured", cadenceMin: 720, href: "https://www.pinterest.com/jaredtolley/", note: "2x daily (15:30 + 19:30): re-pins FB-featured homes, 3/run, fresh angles + captions → tolley.io/housing." },
+  { id: "conn-pin-pace", label: "Pin Pace", lane: "jared-content", row: 2, col: 3, kind: "service", icon: "📈", signal: "dgx:conn:pinterest-pace", href: "https://www.pinterest.com/jaredtolley/", note: "Verified pins last 7d from the :9107 publish ledger vs ~90/wk target (statcard + listings + featured + products + socialite). Red = machine stalled → auto-queues to Must Complete." },
 
   // ── JARED — FUNNEL ───────────────────────────────────────────────────────
   { id: "fun-site", label: "tolley.io", lane: "jared-funnel", row: 0, col: 0, kind: "page", icon: "🌐", signal: "db:views:any", cadenceMin: 720, href: "/" },
