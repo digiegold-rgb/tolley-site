@@ -311,8 +311,12 @@ async function postPinterest(
   products: (Product & { listings: PlatformListing[] })[],
   mode: CycleMode,
 ): Promise<PlatformResult> {
-  const token = process.env.PINTEREST_ACCESS_TOKEN;
-  const boardId = process.env.PINTEREST_DEFAULT_BOARD;
+  // The Pinterest OAuth callback saves the access token to the DB store
+  // (platform="pinterest", accountId=<default board id>), so a single connect
+  // click wires everything with no env paste. Fall back to env.
+  const stored = await getStoredToken("pinterest");
+  const token = stored?.accessToken || process.env.PINTEREST_ACCESS_TOKEN;
+  const boardId = stored?.accountId || process.env.PINTEREST_DEFAULT_BOARD;
   if (!token || !boardId) {
     return {
       platform: "pinterest",
