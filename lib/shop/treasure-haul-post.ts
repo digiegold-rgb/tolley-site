@@ -424,12 +424,23 @@ export function formatTreasureHaulCarouselCaption(opts: {
         : `✨ Most-loved finds this week — top ${products.length} based on clicks + DMs:`;
 
   const lines: string[] = [intro, ""];
+  let anyAmazon = false;
   for (const p of products) {
     const t = p.title.trim();
     lines.push(`• ${t}`);
+    // If this find is an Amazon-affiliated product, drop its DIRECT affiliate
+    // link right under it (body, not the dead first-comment).
+    const url = p.amazonAsin ? amazonAffiliateUrl(p.amazonAsin, null, "brand_fb") : null;
+    if (url) {
+      lines.push(`  🛒 ${url}`);
+      anyAmazon = true;
+    }
   }
   lines.push("");
   lines.push("🛒 Shop the haul → https://www.tolley.io/shop?utm_source=facebook_brand_page&utm_medium=organic");
+  if (anyAmazon) {
+    lines.push("As an Amazon Associate I earn from qualifying purchases.");
+  }
   lines.push("Local pickup in Kansas City · ships nationwide");
   lines.push("📬 Want first dibs? Join the free drop list on the shop page — one email when fresh finds land.");
   lines.push("");
@@ -464,6 +475,10 @@ export function formatAmazonPicksCaption(
     // followers read the repeat photos as stale inventory.
     const soldNote = p.status === "sold" ? " (sold locally — still on Amazon ⬇)" : "";
     lines.push(`• ${p.title.trim()}${soldNote}`);
+    // Direct affiliate link in the BODY (the first-comment can't post — page
+    // token lacks pages_manage_engagement). This is the main monetization path.
+    const url = p.amazonAsin ? amazonAffiliateUrl(p.amazonAsin, null, "brand_fb") : null;
+    if (url) lines.push(`  🛒 ${url}`);
   }
   lines.push("");
   lines.push("Full storefront → https://www.amazon.com/shop/digitaljared?ref_=tolley_brand_fb");
@@ -553,8 +568,16 @@ export function formatHaulFacebookCaption(
     `🛒 Amazon Haul — every pick under $${HAUL_LIMIT_USD}, hand-picked by Ruthann:`,
   );
   lines.push("");
+  const haulTag = encodeURIComponent(
+    process.env.AMAZON_HAUL_TAG || process.env.AMAZON_AFFILIATE_TAG || "tolley-shop-20",
+  );
   for (const p of products) {
     lines.push(`• ${p.title.trim()}`);
+    // Direct affiliate link in the BODY (first-comment can't post — page token
+    // lacks pages_manage_engagement). Main monetization path for FB traffic.
+    if (p.amazonAsin) {
+      lines.push(`  🛒 https://www.amazon.com/dp/${p.amazonAsin}?tag=${haulTag}`);
+    }
   }
   lines.push("");
   lines.push(`Full Haul storefront → ${STOREFRONT_URL}?ref_=tolley_haul_fb`);
