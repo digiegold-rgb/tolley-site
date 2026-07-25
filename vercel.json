@@ -342,6 +342,10 @@
       "schedule": "0 16 * * 0,2,5"
     },
     {
+      "path": "/api/cron/treasure-haul-guess-price",
+      "schedule": "0 22 * * 5,6"
+    },
+    {
       "path": "/api/cron/haul-flag",
       "schedule": "30 4 * * *"
     },

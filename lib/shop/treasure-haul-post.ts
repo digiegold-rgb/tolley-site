@@ -83,6 +83,8 @@ export function formatTreasureHaulCaption(input: TreasureHaulCaptionInput): stri
   parts.push(`🛍 Storefront: ${STOREFRONT_URL}?ref_=tolley_brand_fb`);
 
   parts.push("");
+  parts.push(FOLLOW_CTA);
+  parts.push("");
   const tags = ["#treasurehaul", "#thrifting", "#vintagefinds", "#kansascity"];
   const cat = categoryHashtag(product.category);
   if (cat) tags.push(cat);
@@ -375,7 +377,7 @@ export async function pickAmazonPickProducts(
   });
   // Don't require an active shop listing — Amazon picks can include sold inventory.
   const eligible = candidates.filter(
-    (c) => c.imageUrls && c.imageUrls.length > 0 && c.amazonAsin,
+    (c) => c.imageUrls && c.imageUrls.length > 0 && c.amazonAsin && !isOffSeasonHoliday(c),
   );
   const cooldownMs = AMAZON_PICKS_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
   const offCooldown = eligible.filter((c) => {
@@ -399,12 +401,32 @@ function filterPostable(
 ): (Product & { listings: PlatformListing[] })[] {
   return candidates.filter((c) => {
     if (!c.imageUrls || c.imageUrls.length === 0) return false;
+    if (isOffSeasonHoliday(c)) return false;
     const hasPrice =
       c.targetPrice !== null ||
       c.listings.some((l) => l.price && l.status !== "removed");
     return hasPrice;
   });
 }
+
+// Seasonality (2026-07-25): Christmas items were going out in July ("festive
+// find" #christmasstyle) and sit in the bottom engagement tier. Month-gated
+// Jun–Sep, not a blanket ban — holiday inventory becomes an asset from October.
+const HOLIDAY_RE =
+  /\b(christmas|xmas|santa|reindeer|snowman|nutcracker|advent|ornaments?|stockings?|garland|mistletoe|wreaths?|elf|elves|hanukkah|menorah|festive|holiday)\b/i;
+
+export function isOffSeasonHoliday(
+  p: Pick<Product, "title" | "category" | "description">,
+): boolean {
+  const month = new Date().getMonth(); // 0-indexed: 5=Jun … 8=Sep
+  if (month < 5 || month > 8) return false;
+  return HOLIDAY_RE.test(
+    `${p.title ?? ""} ${p.category ?? ""} ${(p.description ?? "").slice(0, 300)}`,
+  );
+}
+
+/** Follow-CTA appended to every brand-Page caption: converts Reels reach into followers. */
+const FOLLOW_CTA = "➕ Follow Ruthann's Treasure Haul — new KC finds daily";
 
 /**
  * Caption for a multi-product carousel (digest or weekly highlight).
@@ -443,6 +465,7 @@ export function formatTreasureHaulCarouselCaption(opts: {
   }
   lines.push("Local pickup in Kansas City · ships nationwide");
   lines.push("📬 Want first dibs? Join the free drop list on the shop page — one email when fresh finds land.");
+  lines.push(FOLLOW_CTA);
   lines.push("");
   lines.push("#treasurehaul #thrifting #vintagefinds #kansascity");
   return lines.join("\n");
@@ -484,6 +507,8 @@ export function formatAmazonPicksCaption(
   lines.push("Full storefront → https://www.amazon.com/shop/digitaljared?ref_=tolley_brand_fb");
   lines.push("");
   lines.push("As an Amazon Associate I earn from qualifying purchases. Same Prime shipping you already love. 🛒");
+  lines.push("");
+  lines.push(FOLLOW_CTA);
   lines.push("");
   lines.push("#amazonfinds #amazonstorefront #treasurehaul #amazonassociate");
   return lines.join("\n");
@@ -556,7 +581,7 @@ export async function pickHaulProducts(
     take: limit * 3,
   });
   return candidates
-    .filter((c) => c.imageUrls && c.imageUrls.length > 0 && c.amazonAsin)
+    .filter((c) => c.imageUrls && c.imageUrls.length > 0 && c.amazonAsin && !isOffSeasonHoliday(c))
     .slice(0, limit);
 }
 
@@ -585,6 +610,8 @@ export function formatHaulFacebookCaption(
   lines.push(
     "As an Amazon Associate I earn from qualifying purchases — and Amazon may award a one-time first-purchase bounty on Haul orders. Prime shipping. 🛒",
   );
+  lines.push("");
+  lines.push(FOLLOW_CTA);
   lines.push("");
   lines.push("#amazonhaul #amazonfinds #under20 #treasurehaul #amazonassociate");
   return lines.join("\n");
