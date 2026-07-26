@@ -85,7 +85,7 @@ export function formatTreasureHaulCaption(input: TreasureHaulCaptionInput): stri
   parts.push("");
   parts.push(FOLLOW_CTA);
   parts.push("");
-  const tags = ["#treasurehaul", "#thrifting", "#vintagefinds", "#kansascity"];
+  const tags = ["#treasurehaul", "#thrifting", "#vintagefinds", "#kansascity", seasonalHashtag()];
   const cat = categoryHashtag(product.category);
   if (cat) tags.push(cat);
   parts.push(tags.join(" "));
@@ -428,6 +428,16 @@ export function isOffSeasonHoliday(
 /** Follow-CTA appended to every brand-Page caption: converts Reels reach into followers. */
 const FOLLOW_CTA = "➕ Follow Ruthann's Treasure Haul — new KC finds daily";
 
+/** Season-rotating discovery hashtag (Jared 7/25: "#summerplans those are good ones"). */
+export function seasonalHashtag(now: Date = new Date()): string {
+  const m = now.getMonth(); // 0-indexed
+  if (m >= 5 && m <= 7) return "#summerplans"; // Jun–Aug
+  if (m >= 8 && m <= 10) return "#fallvibes"; // Sep–Nov
+  if (m === 11) return "#giftideas"; // Dec
+  if (m <= 1) return "#cozyseason"; // Jan–Feb
+  return "#springrefresh"; // Mar–May
+}
+
 /**
  * Caption for a multi-product carousel (digest or weekly highlight).
  * Returns the primary post body. Use `buildBrandPageGoComment` for the
@@ -467,7 +477,7 @@ export function formatTreasureHaulCarouselCaption(opts: {
   lines.push("📬 Want first dibs? Join the free drop list on the shop page — one email when fresh finds land.");
   lines.push(FOLLOW_CTA);
   lines.push("");
-  lines.push("#treasurehaul #thrifting #vintagefinds #kansascity");
+  lines.push(`#treasurehaul #thrifting #vintagefinds #kansascity ${seasonalHashtag()}`);
   return lines.join("\n");
 }
 
@@ -510,7 +520,7 @@ export function formatAmazonPicksCaption(
   lines.push("");
   lines.push(FOLLOW_CTA);
   lines.push("");
-  lines.push("#amazonfinds #amazonstorefront #treasurehaul #amazonassociate");
+  lines.push(`#amazonfinds #amazonstorefront #treasurehaul #amazonassociate ${seasonalHashtag()}`);
   return lines.join("\n");
 }
 
@@ -613,7 +623,7 @@ export function formatHaulFacebookCaption(
   lines.push("");
   lines.push(FOLLOW_CTA);
   lines.push("");
-  lines.push("#amazonhaul #amazonfinds #under20 #treasurehaul #amazonassociate");
+  lines.push(`#amazonhaul #amazonfinds #under20 #treasurehaul #amazonassociate ${seasonalHashtag()}`);
   return lines.join("\n");
 }
 
