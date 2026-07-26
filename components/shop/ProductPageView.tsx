@@ -179,6 +179,20 @@ export default function ProductPageView({
             />
           </div>
 
+          {!isSold && (
+            <p className="mt-2 text-xs text-white/55">
+              Questions, or want to make an offer?{" "}
+              <a
+                href={`mailto:support@tolley.io?subject=${encodeURIComponent(
+                  `Question about: ${item.title}`,
+                )}`}
+                className="font-medium text-orange-300 underline underline-offset-2 hover:text-orange-200"
+              >
+                Email us about this item
+              </a>
+            </p>
+          )}
+
           <p className="mt-1 text-[0.65rem] text-white/40">
             Local pickup in the Kansas City metro · ← → to flip photos
           </p>

@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notifyLead } from "@/lib/lead-notify";
 import { sendEstateAddressIfRevealed } from "@/lib/estate-alert-autoresponder";
+import { sendDropWelcome } from "@/lib/shop/drop-autoresponder";
 
 export const runtime = "nodejs";
 
@@ -59,6 +60,14 @@ export async function POST(request: Request) {
     // the lead is already committed above.
     if (source === "estate-alerts") {
       after(() => sendEstateAddressIfRevealed(lead.id, email));
+    }
+
+    // Drop-list joiners get the current haul immediately — the form promises an
+    // email and this is the one that keeps it. Deliberately NOT gated on isNew:
+    // the WELCOME_TAG is the real dedup guard, so anyone who signed up during
+    // the period when nothing sent gets healed if they ever resubmit.
+    if (source === "shop-drops") {
+      after(() => sendDropWelcome(lead.id, email));
     }
 
     return NextResponse.json({ ok: true, id: lead.id, isNew });

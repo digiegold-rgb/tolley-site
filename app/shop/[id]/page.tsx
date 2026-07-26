@@ -235,15 +235,16 @@ export default async function ProductPage({
       {/* Drop list — every FB deep-link lands here; capture before they bounce */}
       <div className="mt-6 rounded-xl border border-pink-500/25 bg-pink-500/[0.06] px-4 py-4">
         <p className="text-sm font-semibold text-white">
-          📦 New haul drops weekly — get first dibs
+          📦 See every new find — not just the ones Facebook shows you
         </p>
         <p className="mt-1 text-xs text-white/55">
-          One email when fresh finds land. No spam, unsubscribe anytime.
+          One email a week with every new arrival, priced and ready to buy.
+          Unsubscribe anytime.
         </p>
         <EmailCaptureForm
           source="shop-drops"
           ctaText="Get the drop list"
-          successMessage="You're on the list — first dibs on the next haul."
+          successMessage="You're in — check your inbox, we just sent you what's in stock."
           className="mt-3 max-w-md"
         />
       </div>
