@@ -149,10 +149,17 @@ const money = (n: number | null) =>
 
 /** Signed unsubscribe token — avoids a schema migration for a token column. */
 export function unsubToken(email: string): string {
-  const secret =
-    process.env.CRON_SECRET || process.env.NEXTAUTH_SECRET || "treasure-haul";
+  const secret = process.env.CRON_SECRET || process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    // Without a real secret the token is guessable and anyone could
+    // unsubscribe anyone. CRON_SECRET is set in Vercel production; this only
+    // trips in a misconfigured environment, and it should be loud when it does.
+    console.error(
+      "[drop-email] CRON_SECRET/NEXTAUTH_SECRET unset — unsubscribe tokens are NOT secure",
+    );
+  }
   return crypto
-    .createHmac("sha256", secret)
+    .createHmac("sha256", secret || "treasure-haul-insecure-fallback")
     .update(email.toLowerCase())
     .digest("hex")
     .slice(0, 32);

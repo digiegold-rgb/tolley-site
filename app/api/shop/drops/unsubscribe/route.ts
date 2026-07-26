@@ -1,8 +1,31 @@
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { REPLY_TO, unsubToken } from "@/lib/shop/drop-email";
 
 export const runtime = "nodejs";
+
+/**
+ * The email is attacker-controlled input reflected into the response body, so
+ * it is escaped before it ever reaches the HTML. The HMAC gate above makes a
+ * crafted address impractical to reach this far, but "unreachable today"
+ * is not a reason to interpolate raw input into markup.
+ */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Constant-time compare so the token can't be recovered by timing. */
+function tokenMatches(provided: string, expected: string): boolean {
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 /**
  * GET /api/shop/drops/unsubscribe?e=<email>&t=<token>
@@ -44,7 +67,7 @@ export async function GET(req: NextRequest) {
   const email = (url.searchParams.get("e") || "").trim().toLowerCase();
   const token = (url.searchParams.get("t") || "").trim();
 
-  if (!email || !token || token !== unsubToken(email)) {
+  if (!email || !token || !tokenMatches(token, unsubToken(email))) {
     return page("Link not valid", "That unsubscribe link is missing or expired. Reply to any of our emails and we'll take you off the list by hand.", 404);
   }
 
@@ -57,7 +80,7 @@ export async function GET(req: NextRequest) {
 
   return page(
     "You're unsubscribed",
-    `We won't email <strong>${email}</strong> about new drops again. The shop stays open at <a href="https://www.tolley.io/shop" style="color:#9a4a00">tolley.io/shop</a> whenever you want to browse.`,
+    `We won't email <strong>${escapeHtml(email)}</strong> about new drops again. The shop stays open at <a href="https://www.tolley.io/shop" style="color:#9a4a00">tolley.io/shop</a> whenever you want to browse.`,
     200,
   );
 }
