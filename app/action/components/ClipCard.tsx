@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { S } from "../styles";
 import { Clip, Disposition, DISPOSITIONS, isShortClip } from "../types";
 
-export function ClipCard({ c, busy, privateView, previewSrc, fullSrc, thumbSrc, selectable, selected, onSelect, onLongPress, onExpand, onTag, onDelete, onTrim, onSocial }: {
+export function ClipCard({ c, busy, privateView, previewSrc, fullSrc, thumbSrc, selectable, selected, onSelect, onLongPress, onExpand, onTag, onDelete, onTrim, onSocial, onExport, onRestore }: {
   c: Clip; busy: boolean; privateView?: boolean;
   previewSrc?: string | null; fullSrc?: string | null; thumbSrc?: string | null;
   selectable?: boolean; selected?: boolean;
   onSelect?: () => void; onLongPress?: () => void;
   onExpand: () => void; onTag: (d: Disposition) => void; onDelete: () => void;
   onTrim?: () => void; onSocial?: () => void;
+  onExport?: () => void; onRestore?: () => void;
 }) {
   // Click the thumbnail to load an inline player right in the card. We prefer the
   // 720p web copy (fullSrc) because it carries AUDIO — the 480p preview proxy is
@@ -54,6 +55,48 @@ export function ClipCard({ c, busy, privateView, previewSrc, fullSrc, thumbSrc, 
     if (selectable) { onSelect?.(); return; }
     if (inlineSrc) setOpen(true); else onExpand();
   };
+
+  // The file is no longer on the NAS. Render an honest placeholder card instead of a
+  // dead player — and keep it in the grid, because a clip that silently vanishes is the
+  // exact confusion this replaces. Exported = you have a verified copy; missing = we
+  // genuinely don't know where it went, so we don't pretend you're covered.
+  if (c.exported || c.missing) {
+    const gone = c.exported
+      ? { icon: "📦", label: "Exported to your storage", tone: "#22c55e",
+          when: c.exportedTs, note: c.exportedTo,
+          hint: c.exportedVia === "dashboard"
+            ? "Released from here after your copy was size-verified. Recoverable from the trash for 7 days."
+            : "Recorded as exported." }
+      : { icon: "⚠️", label: "File not on the NAS", tone: "#f59e0b",
+          when: c.missingSince, note: null,
+          hint: "This clip's file is gone from the archive — moved or deleted outside the dashboard. If you moved it to your Mac, that copy is now the only one." };
+    return (
+      <div style={{ ...S.clipCard, opacity: 0.92, border: `1px solid ${gone.tone}44` }}>
+        <div style={{ ...S.clipThumbWrap, display: "flex", alignItems: "center",
+          justifyContent: "center", background: "#18181b", minHeight: 96,
+          flexDirection: "column", gap: 6, padding: 10, textAlign: "center" }}>
+          <span style={{ fontSize: 26 }}>{gone.icon}</span>
+          <span style={{ color: gone.tone, fontSize: 12, fontWeight: 700 }}>{gone.label}</span>
+          <span style={{ color: "#a1a1aa", fontSize: 10, lineHeight: 1.35 }}>{gone.hint}</span>
+        </div>
+        <div style={S.clipName} title={c.name}>{c.name}</div>
+        <div style={{ ...S.dispRow, justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ color: "#71717a", fontSize: 10 }}>
+            {gone.when ? new Date(gone.when).toLocaleString() : ""}
+            {gone.note ? ` → ${gone.note}` : ""}
+          </span>
+          {onRestore && (
+            <button title="Bring this clip back from the trash (only works inside the 7-day grace window)"
+              disabled={busy} onClick={onRestore} style={S.dispOff}>
+              <span style={{ fontSize: 13 }}>↩︎</span>
+              <span style={S.dispLbl}>Restore</span>
+            </button>
+          )}
+        </div>
+        {busy && <div style={S.clipBusy}>working…</div>}
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -105,6 +148,13 @@ export function ClipCard({ c, busy, privateView, previewSrc, fullSrc, thumbSrc, 
             disabled={busy || selectable} onClick={onSocial} style={S.dispOff}>
             <span style={{ fontSize: 13 }}>📣</span>
             <span style={S.dispLbl}>Social</span>
+          </button>
+        )}
+        {onExport && (
+          <button title="Download this clip to your computer, then free the space here — the copy is size-checked before anything is released, and the original stays recoverable for 7 days"
+            disabled={busy || selectable} onClick={onExport} style={S.dispOff}>
+            <span style={{ fontSize: 13 }}>📦</span>
+            <span style={S.dispLbl}>Export</span>
           </button>
         )}
         <button title="Delete permanently" disabled={busy || selectable} onClick={onDelete} style={S.dispDel}>🗑</button>

@@ -317,6 +317,75 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
     );
   }
 
+  // --- Export: take a clip to your own storage, then release it here ---------
+  // Two deliberate steps. Step 1 downloads the raw file (Content-Disposition forces a
+  // real save). Step 2 releases it, and the API refuses unless the byte count you send
+  // matches the original exactly — that is what stops a half-finished download from
+  // costing you the footage. The original goes to the 7-day trash, not the void, and
+  // the clip stays on the dashboard as an 📦 Exported card so nothing silently vanishes.
+  async function exportClip(c: Clip) {
+    if (!c.url) { setErr(`${c.name}: no file to export`); return; }
+    setDispBusy(c.name);
+    try {
+      const r = await fetch(`${apiBase}/clip/checksum?name=${encodeURIComponent(c.name)}`,
+        { headers: authHeaders, cache: "no-store" });
+      if (!r.ok) throw new Error(`checksum ${r.status}`);
+      const { bytes } = await r.json();
+      const mb = (bytes / 1e6).toFixed(0);
+
+      // Kick off the download first — releasing before it lands would be backwards.
+      window.location.href = dlUrl(fileUrl(c.url));
+
+      const ok = window.confirm(
+        `Downloading ${c.name} (${mb} MB).\n\n` +
+        `Click OK only AFTER the download finishes, to free the space on the DGX.\n\n` +
+        `The file moves to the 7-day trash (restorable) and the clip stays listed as ` +
+        `"Exported". Click Cancel to keep it here — you'll still have your copy.`,
+      );
+      if (!ok) return;
+
+      const rel = await fetch(`${apiBase}/clip/release`, {
+        method: "POST", headers: authHeaders,
+        body: JSON.stringify({ name: c.name, bytes, note: "downloaded from /action" }),
+      });
+      if (!rel.ok) throw new Error((await rel.json().catch(() => ({}))).detail || `${rel.status}`);
+      loadOriginals(); loadPrivate();
+    } catch (e) {
+      setErr(`Export ${c.name} failed: ${(e as Error).message}`);
+    } finally { setDispBusy(""); }
+  }
+
+  // Re-sync the registry with the filesystem — the manual trigger for the same self-heal
+  // that runs on every ingest. Use it right after moving files over SMB.
+  async function rescanDisk() {
+    setDispBusy("__rescan");
+    try {
+      const r = await fetch(`${apiBase}/reconcile`, { method: "POST", headers: authHeaders });
+      if (!r.ok) throw new Error(`${r.status}`);
+      const d = await r.json();
+      const added = (d.reindexed || []).length, gone = (d.markedExported || []).length;
+      setErr(added || gone
+        ? `Rescan: ${added} clip(s) re-indexed, ${gone} now flagged as no longer on the NAS.`
+        : "Rescan: everything already matches the disk.");
+      loadOriginals(); loadPrivate();
+    } catch (e) {
+      setErr(`Rescan failed: ${(e as Error).message}`);
+    } finally { setDispBusy(""); }
+  }
+
+  async function restoreClip(name: string) {
+    setDispBusy(name);
+    try {
+      const r = await fetch(`${apiBase}/clip/restore`, {
+        method: "POST", headers: authHeaders, body: JSON.stringify({ name }),
+      });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || `${r.status}`);
+      loadOriginals(); loadPrivate();
+    } catch (e) {
+      setErr(`Restore ${name} failed: ${(e as Error).message}`);
+    } finally { setDispBusy(""); }
+  }
+
   // --- Auto-trim: slim originals to their scored keepers, reclaim SSD ---------
   const loadCandidates = useCallback(async () => {
     try {
@@ -1235,6 +1304,10 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
                 style={selectMode ? S.aspectOn : S.smallBtn}>
                 {selectMode ? "✕ Cancel select" : "☑ Select"}
               </button>
+              <button onClick={rescanDisk} disabled={!!dispBusy} style={S.smallBtn}
+                title="Re-sync with what's actually on the NAS. Run this after moving files over the network — anything new gets indexed, and anything whose file left is marked instead of just disappearing.">
+                🔄 Rescan disk
+              </button>
               {selectedDays.size > 0 && (
                 <button onClick={startWeeklyFromDays} disabled={!!job && job.status === "running"} style={S.dayBtn}
                   title="Merge the checked days into one weekly-style recap and push it to Plex now. Those days count as recapped, so the automatic weekly skips them.">
@@ -1372,6 +1445,8 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
                         onTag={(disp) => setDisposition(c.name, disp)}
                         onTrim={() => setTrimming(c)}
                         onSocial={() => { const t = clipSocialTarget(c, d.day); if (t) setSocialPush(t); }}
+                        onExport={() => exportClip(c)}
+                        onRestore={() => restoreClip(c.name)}
                         onDelete={() => deleteUndoable(c.name)} />
                     ))}
                   </div>
@@ -1560,6 +1635,8 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
                       onExpand={() => c.url && setPlaying({ url: fileUrl(c.webUrl || c.url), dlUrl: fileUrl(c.url), title: c.name })}
                       onTag={(disp) => setDisposition(c.name, disp)}
                       onSocial={() => { const t = clipSocialTarget(c, d.day); if (t) setSocialPush(t); }}
+                      onExport={() => exportClip(c)}
+                      onRestore={() => restoreClip(c.name)}
                       onDelete={() => deleteUndoable(c.name)} />
                   ))}
                 </div>

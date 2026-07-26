@@ -45,7 +45,14 @@ export type Status = {
 
 export type Disposition = "recap" | "keep" | "work" | "private";
 
-export type Clip = { name: string; durationS: number; status: string; disposition: Disposition; reviewed: boolean; url: string | null; webUrl?: string | null; socialUrl?: string | null; previewUrl?: string | null; thumbUrl?: string | null; trimmed?: boolean };
+export type Clip = { name: string; durationS: number; status: string; disposition: Disposition; reviewed: boolean; url: string | null; webUrl?: string | null; socialUrl?: string | null; previewUrl?: string | null; thumbUrl?: string | null; trimmed?: boolean;
+  // Clips with no file on the NAS. They stay listed on purpose — a clip that silently
+  // disappears is worse than one labelled honestly.
+  //   exported = you released it to your own storage (size-verified first)
+  //   missing  = the file just isn't here; we do NOT claim you have a copy
+  exported?: boolean; missing?: boolean; missingSince?: string | null;
+  exportedTs?: string | null; exportedVia?: string | null; exportedTo?: string | null;
+  exportedBytes?: number | null; exportedSha1?: string | null };
 
 export type SeqRange = { from: number; to: number; count: number };
 
