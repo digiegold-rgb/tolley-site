@@ -56,10 +56,22 @@ const NAME_FROM_TITLE_RX =
  *   "Mary Doe, 87, of Independence MO"
  * Returns null if no high-confidence name is detected.
  */
+/**
+ * Trailing words that are part of the page title, never part of the person's
+ * name. Without this, a title like "John Richard Berning Obituary" — no
+ * parenthetical date range to stop the match — yields the decedent name
+ * "John Richard Berning Obituary", which then propagates into the Lead's
+ * ownerName and out onto a mail-merge. Capitalized, so the all-lowercase
+ * guard below never catches them.
+ */
+const TITLE_SUFFIX_RX =
+  /\s+(?:Obituary|Obituaries|Obit|Memorial|Memoriam|Death\s+Notice|Funeral|Tribute|Condolences)\b.*$/i;
+
 function extractName(title: string): string | null {
   const m = title.match(NAME_FROM_TITLE_RX);
   if (!m || !m[1]) return null;
-  const name = m[1].trim();
+  const name = m[1].replace(TITLE_SUFFIX_RX, "").trim();
+  if (!name) return null;
   // Reject if too few or too many words (filters "Obituaries In Kansas City")
   const words = name.split(/\s+/);
   if (words.length < 2 || words.length > 5) return null;

@@ -29,6 +29,8 @@ export interface SerpapiCallOptions {
   params: Record<string, string>;
   timeoutMs?: number;
   costUnits?: number;
+  /** Skip the monthly per-integration budget cap (use only for manual admin "Run now" buttons). */
+  ignoreBudget?: boolean;
 }
 
 export interface SerpapiCallResult<T = unknown> {
@@ -38,6 +40,107 @@ export interface SerpapiCallResult<T = unknown> {
   error: string | null;
   rateLimited: boolean;
   outOfQuota: boolean;
+  /** True when the call was blocked locally by the monthly per-integration cap. */
+  budgetBlocked?: boolean;
+}
+
+// ── Monthly per-integration budget caps ─────────────────────────────────────
+//
+// The account is Starter: 1,000 successful searches/month, resetting on the
+// 5th. Twice in a row we hit that ceiling before month end, and both times the
+// cause was the same: an uncapped DAILY monitor quietly ate a quarter of the
+// budget while the revenue integrations got nothing. In the 2026-07 cycle
+// ai-overview-check alone burned 260 calls to record zero citations (751
+// checks all-time, 0 ever cited) while dossier-people-search — the integration
+// that actually produces seller leads — made 0 calls.
+//
+// So: every integration declares a ceiling here, and serpapiCall() refuses to
+// spend past it. A monitor can no longer starve a money-maker. Caps sum to
+// ~950, leaving ~50 headroom for ad-hoc admin lookups.
+//
+// Unlisted integrations get DEFAULT_CAP so a new caller can't silently
+// bypass the budget by not registering itself.
+export const MONTHLY_CAPS: Record<string, number> = {
+  // Revenue: finds property owners → seller leads. The priority claim.
+  "dossier-people-search": 300,
+  // Revenue: Amazon affiliate links on /shop + Treasure Haul products.
+  "asin-backfill": 130,
+  "asin-backfill-lens": 20,
+  "shop-bulk-ingest": 70,
+  // Revenue: owner names for KC-metro counties we cannot scrape (Jackson).
+  "county-assessor-owner": 120,
+  // Lead engines: real output, keep funded.
+  "probate-scan": 90,
+  "probate-enrich": 60,
+  "probate-address": 45,
+  "distress-scan": 30,
+  "deal-scanner": 40,
+  "deal-scanner-enrich": 40,
+  "deal-scanner-comp": 20,
+  "shop-intelligence": 20,
+  // Monitors: throttled to monthly. These report a constant value; checking
+  // them daily buys nothing but bill.
+  "ai-overview-check": 24,
+  "maps-pack-track": 32,
+  // Enough to re-harvest all 24 seeds once after the `num` param fix, plus
+  // headroom. Every prior run returned 200 with an empty PAA block, so these
+  // pages have never had content — this budget is for the retry, and should
+  // be cut back to ~20 once they are actually publishing.
+  "neighborhood-gen": 30,
+};
+
+const DEFAULT_CAP = 25;
+
+export function monthlyCapFor(integration: string): number {
+  return MONTHLY_CAPS[integration] ?? DEFAULT_CAP;
+}
+
+/**
+ * Start of the current SerpAPI billing cycle.
+ *
+ * SerpAPI resets on the plan renewal day (the 5th), NOT the 1st of the
+ * calendar month. Counting from the 1st would under-count for the first
+ * days of a cycle and let integrations overspend right after reset.
+ */
+export function billingCycleStart(now = new Date()): Date {
+  const RENEWAL_DAY = 5;
+  const d = new Date(now);
+  if (d.getUTCDate() >= RENEWAL_DAY) {
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), RENEWAL_DAY));
+  }
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, RENEWAL_DAY));
+}
+
+/** Successful (billed) calls this cycle for one integration. */
+export async function cycleUsage(integration: string): Promise<number> {
+  return prisma.serpapiQuery.count({
+    where: {
+      integration,
+      success: true,
+      createdAt: { gte: billingCycleStart() },
+    },
+  });
+}
+
+/** Per-integration usage vs cap for the current cycle — powers the admin view. */
+export async function budgetReport(): Promise<
+  { integration: string; used: number; cap: number; pct: number }[]
+> {
+  const since = billingCycleStart();
+  const rows = await prisma.serpapiQuery.groupBy({
+    by: ["integration"],
+    where: { success: true, createdAt: { gte: since } },
+    _count: { _all: true },
+  });
+  const used = new Map(rows.map((r) => [r.integration, r._count._all]));
+  const names = new Set([...Object.keys(MONTHLY_CAPS), ...used.keys()]);
+  return Array.from(names)
+    .map((integration) => {
+      const u = used.get(integration) ?? 0;
+      const cap = monthlyCapFor(integration);
+      return { integration, used: u, cap, pct: cap > 0 ? Math.round((u / cap) * 100) : 0 };
+    })
+    .sort((a, b) => b.pct - a.pct);
 }
 
 function isOutOfQuotaError(body: unknown): boolean {
@@ -64,6 +167,40 @@ export async function serpapiCall<T = unknown>(
       rateLimited: false,
       outOfQuota: false,
     };
+  }
+
+  // Budget gate — refuse to spend past this integration's monthly ceiling.
+  // Checked BEFORE the network call so a runaway monitor costs nothing. The
+  // count query is cheap and indexed on (integration, createdAt).
+  if (!opts.ignoreBudget) {
+    const cap = monthlyCapFor(opts.integration);
+    try {
+      const used = await cycleUsage(opts.integration);
+      if (used >= cap) {
+        console.warn("[serpapi] monthly cap reached — call skipped", {
+          integration: opts.integration,
+          used,
+          cap,
+        });
+        return {
+          ok: false,
+          status: 0,
+          data: null,
+          error: `Monthly SerpAPI budget reached for "${opts.integration}" (${used}/${cap})`,
+          rateLimited: false,
+          outOfQuota: false,
+          budgetBlocked: true,
+        };
+      }
+    } catch (err) {
+      // If the budget check itself fails we let the call through rather than
+      // hard-blocking every integration on a transient DB hiccup — the account
+      // ceiling is still the ultimate backstop.
+      console.error("[serpapi] budget check failed, allowing call", {
+        integration: opts.integration,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   const url = new URL(SERPAPI_BASE);

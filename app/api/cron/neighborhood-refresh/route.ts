@@ -35,12 +35,27 @@ async function handler(req: NextRequest) {
   }
 
   after(async () => {
-    const stale = await prisma.neighborhoodPage.findMany({
-      where: { generatedAt: { not: null } },
-      orderBy: { generatedAt: "asc" },
+    // Pages that have never produced publishable content come FIRST — those
+    // are the ones costing us pages in the index. Previously this ordered
+    // purely by generatedAt, so 24 blank pages were cycled forever at ~20
+    // queries/month while none of them ever went live.
+    const unpublished = await prisma.neighborhoodPage.findMany({
+      where: { published: false },
+      orderBy: [{ generatedAt: "asc" }, { createdAt: "asc" }],
       take: REFRESH_LIMIT,
       select: { slug: true },
     });
+    const remaining = REFRESH_LIMIT - unpublished.length;
+    const stalePublished =
+      remaining > 0
+        ? await prisma.neighborhoodPage.findMany({
+            where: { published: true },
+            orderBy: { generatedAt: "asc" },
+            take: remaining,
+            select: { slug: true },
+          })
+        : [];
+    const stale = [...unpublished, ...stalePublished];
     let ok = 0;
     let errors = 0;
     for (const s of stale) {

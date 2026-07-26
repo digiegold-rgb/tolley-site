@@ -14,6 +14,35 @@ function getToken(): string {
   return token;
 }
 
+/**
+ * Days until the Regrid token expires — negative when already expired,
+ * null when the token isn't a decodable JWT.
+ *
+ * Regrid issues short-lived (~30 day) JWTs. Ours lapsed on 2026-04-10 and
+ * nothing noticed for 106 days: every parcel lookup 401'd, every dossier
+ * fell through to a county portal it can't scrape, and the whole
+ * owner-name → people-search → seller-lead chain quietly produced nothing.
+ * A credential this load-bearing has to announce its own death, so
+ * tokenStatus() is surfaced in the plugin warnings and the /api/health check.
+ */
+export function tokenStatus(): { valid: boolean; expiresAt: Date | null; daysLeft: number | null } {
+  const raw = process.env.REGRID_API_TOKEN;
+  if (!raw) return { valid: false, expiresAt: null, daysLeft: null };
+  const parts = raw.trim().split(".");
+  if (parts.length !== 3) return { valid: true, expiresAt: null, daysLeft: null };
+  try {
+    const payload = JSON.parse(
+      Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")
+    ) as { exp?: number };
+    if (typeof payload.exp !== "number") return { valid: true, expiresAt: null, daysLeft: null };
+    const expiresAt = new Date(payload.exp * 1000);
+    const daysLeft = Math.floor((expiresAt.getTime() - Date.now()) / 86_400_000);
+    return { valid: daysLeft > 0, expiresAt, daysLeft };
+  } catch {
+    return { valid: true, expiresAt: null, daysLeft: null };
+  }
+}
+
 function buildUrl(path: string, params?: Record<string, string>): string {
   const url = new URL(`${REGRID_BASE}${path}`);
   url.searchParams.set("token", getToken());

@@ -19,8 +19,10 @@ import {
   lookupByAddress,
   lookupByPoint,
   searchByOwner,
+  tokenStatus,
   type ParsedParcel,
 } from "@/lib/regrid";
+import { notifyRoutineBrief } from "@/lib/routine-notify";
 
 export const regridPlugin: DossierPlugin = {
   name: "regrid",
@@ -39,6 +41,41 @@ export const regridPlugin: DossierPlugin = {
     const { listing, knownOwners } = context;
     const sources: SourceLink[] = [];
     const warnings: string[] = [];
+
+    // Fail loudly on an expired token instead of burning the whole plugin run
+    // on calls that will all 401. This exact condition ran silently for 106
+    // days and zeroed every downstream owner lookup.
+    const tok = tokenStatus();
+    if (!tok.valid) {
+      const expiredOn = tok.expiresAt ? tok.expiresAt.toISOString().slice(0, 10) : "unknown date";
+      const msg =
+        tok.expiresAt === null
+          ? "REGRID_API_TOKEN is missing."
+          : `REGRID_API_TOKEN expired ${expiredOn} (${Math.abs(tok.daysLeft ?? 0)} days ago).`;
+
+      notifyRoutineBrief({
+        slug: "regrid-token-expired",
+        title: "Regrid token expired — dossier owner lookups degraded",
+        body: `${msg}\n\nEvery parcel lookup is returning 401, so dossiers fall back to the paid SerpAPI owner search. Renew at https://app.regrid.com/account and update REGRID_API_TOKEN in Vercel + .env.local.`,
+        severity: "action",
+        email: true,
+      });
+
+      return {
+        pluginName: "regrid",
+        success: false,
+        error: msg,
+        data: {},
+        sources: [],
+        confidence: 0,
+        warnings: [`${msg} Falling back to county assessor + SerpAPI owner search.`],
+        durationMs: Date.now() - start,
+      };
+    }
+
+    if (tok.daysLeft !== null && tok.daysLeft <= 7) {
+      warnings.push(`REGRID_API_TOKEN expires in ${tok.daysLeft} day(s) — renew soon.`);
+    }
 
     await context.updateProgress("Querying Regrid parcel database...");
 

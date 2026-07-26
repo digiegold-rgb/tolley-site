@@ -74,11 +74,16 @@ export async function generateOne(
   // Pick a query that surfaces real-estate-relevant PAA. "[Name] real estate"
   // tends to return question content like "Is X a good place to live?" /
   // "What's the cost of living in X?" — exactly what we want for FAQ schema.
+  // NOTE: `num` is deliberately NOT sent. Google suppresses the People Also
+  // Ask and Related Searches blocks on requests that override result count,
+  // and those two blocks are the entire point of this call — with `num: "10"`
+  // set, all 24 seeded pages harvested 0 questions across three months of
+  // runs while still reporting HTTP 200.
   const q = `${page.name} real estate`;
   const result = await serpapiCall<SerpResponse>({
     engine: "google",
     integration: "neighborhood-gen",
-    params: { q, hl: "en", gl: "us", num: "10" },
+    params: { q, hl: "en", gl: "us" },
     timeoutMs: 15000,
   });
 
@@ -119,6 +124,25 @@ export async function generateOne(
     if (overview.length > 60) intro = overview.slice(0, 600);
   }
 
+  // A 200 response that carried no usable content is a FAILED harvest, not a
+  // successful generation. Treating it as success is what hid this for three
+  // months: every run stamped generatedAt, wiped the previous intro/FAQ back
+  // to empty, incremented the query counter, and left published=false — so the
+  // weekly refresh cron kept paying to overwrite nothing with nothing, and the
+  // dashboard showed 24 "generated" pages that were all blank.
+  //
+  // Bail out before writing so existing content survives a bad run and the
+  // page stays in the refresh queue instead of looking done.
+  const harvestedNothing = faq.length === 0 && !intro && relatedSearches.length === 0;
+  if (harvestedNothing) {
+    return {
+      ok: false,
+      error:
+        "SerpAPI returned no related_questions, knowledge_graph, or related_searches — nothing to publish",
+      queriesUsed: 1,
+    };
+  }
+
   await prisma.neighborhoodPage.update({
     where: { slug },
     data: {
@@ -129,7 +153,10 @@ export async function generateOne(
         ? { title: kg.title ?? null, type: kg.type ?? null }
         : Prisma.JsonNull,
       generatedAt: new Date(),
-      published: faq.length >= 3, // auto-publish if we got real content
+      // Auto-publish only with enough substance to be worth indexing. Thin
+      // pages are an SEO liability, not a neutral one — an empty page ranks
+      // nothing and drags sitewide quality.
+      published: faq.length >= 3,
       serpapiQueriesUsed: { increment: 1 },
     },
   });

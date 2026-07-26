@@ -18,13 +18,20 @@ export interface ZipPoint {
   label: string;
 }
 
-// Independence MO + close-in KC metro. 4 points = current granularity sweet
-// spot — enough to detect rank drift across the metro without blowing budget.
+// Independence MO + close-in KC MO. Trimmed from 4 points to 3 on 2026-07-26:
+// Olathe KS (66062) was dropped because it sits in Johnson County KS, outside
+// the actual service area, and returned a null position on every keyword for
+// three months — we were paying to confirm we don't rank in a market we don't
+// work. 8 keywords × 3 zips = 24 calls, run monthly (see vercel.json).
+//
+// Worth knowing before adding points back: across 1,036 observations only 6.8%
+// found a tracked business at all. That is not a tracking-granularity problem,
+// it's a "Your KC Homes has no verified Google Business Profile" problem. More
+// grid points cannot fix it; a GBP can.
 export const ZIP_GRID: ZipPoint[] = [
   { zip: "64052", lat: 39.0769, lng: -94.4147, label: "Independence MO (city center)" },
   { zip: "64055", lat: 39.0467, lng: -94.3661, label: "Independence MO (east)" },
   { zip: "64111", lat: 39.0507, lng: -94.5905, label: "Westport KC MO" },
-  { zip: "66062", lat: 38.8814, lng: -94.7375, label: "Olathe KS" },
 ];
 
 export interface TrackedKeyword {

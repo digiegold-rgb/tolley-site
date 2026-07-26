@@ -6,7 +6,11 @@ import {
   enrichRecentDiscovered,
 } from "@/lib/serpapi/probate-runner";
 
-export const maxDuration = 120;
+// 300s, not 120s: discovery (6 throttled targets) plus enrichment (6 signals ×
+// up to 2 queries) now includes 1.2s spacing and a 1.5s retry back-off. A slow
+// run could otherwise exceed the limit mid-`after()`, which truncates silently
+// and loses the scan for that day.
+export const maxDuration = 300;
 
 function authorized(req: NextRequest): boolean {
   const auth = req.headers.get("authorization");

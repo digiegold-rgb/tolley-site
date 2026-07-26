@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateShopAdmin } from "@/lib/shop-auth";
+import { promoteDistressSignal } from "@/lib/serpapi/promote-to-lead";
 
 export async function PATCH(
   req: NextRequest,
@@ -18,6 +19,20 @@ export async function PATCH(
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+  }
+
+  // See the probate handler — promotion must create the Lead, not just set a
+  // status string. Idempotent via the signal's leadId back-link.
+  if (data.status === "promoted") {
+    if (typeof data.notes === "string") {
+      await prisma.distressSignal.update({ where: { id }, data: { notes: data.notes } });
+    }
+    const result = await promoteDistressSignal(id);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error ?? "Promotion failed" }, { status: 500 });
+    }
+    const signal = await prisma.distressSignal.findUnique({ where: { id } });
+    return NextResponse.json({ signal, leadId: result.leadId, deduped: result.deduped ?? false });
   }
 
   const updated = await prisma.distressSignal.update({ where: { id }, data });

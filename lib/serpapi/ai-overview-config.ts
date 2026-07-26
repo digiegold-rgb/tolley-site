@@ -7,7 +7,17 @@
  *   - tolley.io (or a sub-property domain) was cited
  *   - which competitor domains showed up
  *
- * Keep TRACKED_QUERIES small. At default 12 queries × daily = ~360 q/mo.
+ * Cadence: MONTHLY (vercel.json, 7th at 08:00 UTC), not daily.
+ *
+ * This ran daily from 2026-05-05 to 2026-07-26 — 751 checks, 24% of the entire
+ * SerpAPI budget — and recorded ZERO citations across every keyword, every
+ * single day. Citation status for a site this size moves on a scale of months,
+ * so a daily poll bought 30 identical answers per keyword per month at the
+ * expense of the integrations that actually generate leads. 12 queries × 1 run
+ * = 12/mo, capped at 24 in lib/serpapi.ts to leave room for a manual re-run.
+ *
+ * If a citation ever does land, tighten the cadence then — the tracker earns
+ * more frequency by producing a non-zero result, not by default.
  */
 
 export interface TrackedAiQuery {

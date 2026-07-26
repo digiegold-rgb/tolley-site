@@ -17,6 +17,52 @@ interface OrganicResult {
   date?: string;
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Pause between consecutive SerpAPI calls in a burst. */
+const THROTTLE_MS = 1200;
+/** Back-off before the single retry on a transport-level failure. */
+const RETRY_BACKOFF_MS = 1500;
+
+/**
+ * One SerpAPI call with a single retry on transport failure.
+ *
+ * The probate scanners ran at 79–88% success while the distress scanner —
+ * same engine, same targets shape — ran at 95%, and the only difference was
+ * that distress throttled and retried from day one. Probate fired every
+ * target back-to-back with no gap, so timeouts and rate-limit rejections got
+ * logged as hard failures. Note these were never billed (SerpAPI charges only
+ * successful searches) but they cost real leads: a failed obituary scan is a
+ * day of that source's listings never seen.
+ *
+ * Quota exhaustion and local budget blocks are NOT retried — retrying a
+ * definite "no" just wastes wall-clock inside a cron.
+ */
+async function callWithRetry<T>(
+  integration: string,
+  params: Record<string, string>,
+  timeoutMs: number
+) {
+  let result = await serpapiCall<T>({
+    engine: "google",
+    integration,
+    params,
+    timeoutMs,
+  });
+
+  if (!result.ok && !result.outOfQuota && !result.budgetBlocked) {
+    await sleep(RETRY_BACKOFF_MS);
+    result = await serpapiCall<T>({
+      engine: "google",
+      integration,
+      params,
+      timeoutMs,
+    });
+  }
+
+  return result;
+}
+
 interface DiscoverySummary {
   scanned: number;
   newSignals: number;
@@ -28,18 +74,17 @@ interface DiscoverySummary {
  * ProbateSignal rows created.
  */
 async function scanTarget(target: ObitTarget): Promise<DiscoverySummary> {
-  const result = await serpapiCall<{ organic_results?: OrganicResult[] }>({
-    engine: "google",
-    integration: "probate-scan",
-    params: {
+  const result = await callWithRetry<{ organic_results?: OrganicResult[] }>(
+    "probate-scan",
+    {
       q: buildObitQuery(target),
       num: "10",
       tbs: "qdr:w", // last 7 days
       hl: "en",
       gl: "us",
     },
-    timeoutMs: 15000,
-  });
+    15000
+  );
 
   if (!result.ok || !result.data) {
     return { scanned: 0, newSignals: 0, duplicates: 0 };
@@ -84,7 +129,8 @@ async function scanTarget(target: ObitTarget): Promise<DiscoverySummary> {
 
 export async function runProbateDiscovery() {
   const totals = { scanned: 0, newSignals: 0, duplicates: 0 };
-  for (const target of OBIT_TARGETS) {
+  for (let i = 0; i < OBIT_TARGETS.length; i += 1) {
+    const target = OBIT_TARGETS[i];
     try {
       const r = await scanTarget(target);
       totals.scanned += r.scanned;
@@ -93,6 +139,9 @@ export async function runProbateDiscovery() {
     } catch (err) {
       console.error("[probate-scan]", target.site, target.region, err);
     }
+    // Space the burst out. Six site-restricted queries fired back-to-back is
+    // what tripped rate-limiting/captcha and dragged this scanner to 84%.
+    if (i < OBIT_TARGETS.length - 1) await sleep(THROTTLE_MS);
   }
   return totals;
 }
@@ -191,12 +240,11 @@ export async function enrichProbateSignal(signalId: string): Promise<boolean> {
   // 1. Heir query — also mined for a free address before we spend a 2nd query.
   if (needHeirs) {
     const q = `"${signal.decedentName}" survived by ${signal.city ?? ""} ${signal.state ?? ""}`.trim();
-    const result = await serpapiCall<{ organic_results?: KnowledgeGraphPerson[] }>({
-      engine: "google",
-      integration: "probate-enrich",
-      params: { q, num: "5", hl: "en", gl: "us" },
-      timeoutMs: 12000,
-    });
+    const result = await callWithRetry<{ organic_results?: KnowledgeGraphPerson[] }>(
+      "probate-enrich",
+      { q, num: "5", hl: "en", gl: "us" },
+      12000
+    );
     queries += 1;
     if (result.ok && result.data) {
       const items = Array.isArray(result.data.organic_results)
@@ -212,13 +260,14 @@ export async function enrichProbateSignal(signalId: string): Promise<boolean> {
 
   // 2. Dedicated address query — only if we still have no address.
   if (needAddress && !matchedAddress) {
+    // Second call for the same signal — space it from the heir query above.
+    if (queries > 0) await sleep(THROTTLE_MS);
     const q = buildAddressQuery(signal.decedentName, signal.city, signal.state);
-    const result = await serpapiCall<{ organic_results?: KnowledgeGraphPerson[] }>({
-      engine: "google",
-      integration: "probate-address",
-      params: { q, num: "5", hl: "en", gl: "us" },
-      timeoutMs: 12000,
-    });
+    const result = await callWithRetry<{ organic_results?: KnowledgeGraphPerson[] }>(
+      "probate-address",
+      { q, num: "5", hl: "en", gl: "us" },
+      12000
+    );
     queries += 1;
     if (result.ok && result.data) {
       const items = Array.isArray(result.data.organic_results)
@@ -246,13 +295,15 @@ export async function enrichRecentDiscovered(limit: number = 6) {
     select: { id: true },
   });
   let enriched = 0;
-  for (const r of recent) {
+  for (let i = 0; i < recent.length; i += 1) {
+    const r = recent[i];
     try {
       const ok = await enrichProbateSignal(r.id);
       if (ok) enriched += 1;
     } catch (err) {
       console.error("[probate-enrich]", r.id, err);
     }
+    if (i < recent.length - 1) await sleep(THROTTLE_MS);
   }
   return { processed: recent.length, enriched };
 }
@@ -274,13 +325,15 @@ export async function backfillMatchedAddresses(limit: number = 10) {
     select: { id: true },
   });
   let resolved = 0;
-  for (const r of rows) {
+  for (let i = 0; i < rows.length; i += 1) {
+    const r = rows[i];
     try {
       const ok = await enrichProbateSignal(r.id);
       if (ok) resolved += 1;
     } catch (err) {
       console.error("[probate-address-backfill]", r.id, err);
     }
+    if (i < rows.length - 1) await sleep(THROTTLE_MS);
   }
   return { processed: rows.length, resolved };
 }

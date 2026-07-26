@@ -9,6 +9,7 @@
  */
 
 import type { DossierPlugin, DossierContext, DossierPluginResult, OwnerInfo, SourceLink } from "../types";
+import { serpapiCall, serpapiKey } from "@/lib/serpapi";
 
 // ── County assessor URL templates ───────────────────────────
 // Each county has different search interfaces. We build deep links
@@ -240,6 +241,36 @@ export const countyAssessorPlugin: DossierPlugin = {
       warnings.push(`${countyConfig.name} County requires JavaScript rendering — click the link to search manually`);
     }
 
+    // ── SerpAPI owner lookup (paid fallback) ──
+    // Jackson County — which covers Independence and most of KC MO, i.e. the
+    // bulk of our listings — is a JS-rendered ASP.NET portal we cannot scrape.
+    // Regrid was supposed to cover that gap, but when its token lapses (it did,
+    // 2026-04-10 → 2026-07-26) EVERY dossier silently produced zero owners, and
+    // people-search then early-returns before spending a single SerpAPI call.
+    // That one broken credential zeroed the highest-value integration we have.
+    //
+    // So we no longer depend on a single owner source: when scraping yields
+    // nothing, buy the answer. Property-record aggregators surface owner names
+    // in their meta descriptions, which is exactly what a SERP snippet returns.
+    // Confidence is capped below a real scrape — these are leads to verify, not
+    // record-of-title.
+    if (owners.length === 0) {
+      await context.updateProgress("Searching public records for owner name...");
+      try {
+        const serpOwners = await serpapiOwnerLookup(listing, countyConfig, parcelNumber);
+        if (serpOwners.length > 0) {
+          owners.push(...serpOwners);
+          warnings.push(
+            `Owner name(s) inferred from public-record search results, not a county scrape — verify against the assessor link before contacting.`
+          );
+        }
+      } catch (err) {
+        warnings.push(
+          `Owner search failed: ${err instanceof Error ? err.message : "unknown error"}`
+        );
+      }
+    }
+
     // If scraping didn't work, provide targeted search links
     if (owners.length === 0) {
       await context.updateProgress("Building targeted search links...");
@@ -448,6 +479,135 @@ function parseJohnsonCounty(html: string): { ownerName: string; assessedValue: n
     assessedValue: assessedMatch ? parseInt(assessedMatch[1].replace(/,/g, "")) : null,
     mailingAddress: mailingMatch ? mailingMatch[1].trim() : null,
   };
+}
+
+// ── SerpAPI owner lookup ────────────────────────────────────
+//
+// Domains that publish "Owner: <name>" style text in the page description,
+// which is what lands in a SERP snippet. Restricting to these keeps the
+// name-extraction regex honest — a generic web search returns realtor
+// listings and Zillow pages whose snippets are full of agent names, and
+// mistaking the listing agent for the owner is worse than returning nothing.
+const OWNER_RECORD_DOMAINS = [
+  "rehold.com",
+  "homemetry.com",
+  "propertyshark.com",
+  "blockshopper.com",
+  "ownerly.com",
+  "nuwber.com",
+  "fastpeoplesearch.com",
+  "truepeoplesearch.com",
+];
+
+/** Words that mean the "name" we matched is not a person. */
+const NON_NAME_TOKENS = [
+  "county", "assessor", "property", "records", "search", "owner", "address",
+  "street", "avenue", "drive", "road", "lane", "court", "circle", "place",
+  "real", "estate", "realty", "homes", "house", "sale", "sold", "zillow",
+  "redfin", "trulia", "realtor", "listing", "agent", "broker", "mls",
+  "value", "tax", "parcel", "map", "view", "photos", "bedroom", "bath",
+];
+
+function looksLikePersonName(candidate: string): boolean {
+  const parts = candidate.trim().split(/\s+/);
+  if (parts.length < 2 || parts.length > 4) return false;
+  const lower = candidate.toLowerCase();
+  if (NON_NAME_TOKENS.some((t) => lower.includes(t))) return false;
+  if (/\d/.test(candidate)) return false;
+  // Each part must be a capitalized alphabetic token (allow O'Brien, Smith-Jones).
+  return parts.every((p) => /^[A-Z][a-zA-Z'’-]{1,}$/.test(p));
+}
+
+/**
+ * Extract likely owner names from SERP titles/snippets.
+ *
+ * Aggregator snippets read like "Owner: John A Smith" or
+ * "... is owned by Jane Doe and Robert Doe". We look for those explicit
+ * markers only — free-floating capitalized pairs are far too noisy.
+ */
+function extractOwnerNames(text: string): string[] {
+  const found: string[] = [];
+  const patterns = [
+    /(?:owner|owned by|owner name|current owner|property owner)\s*(?:is|:|-)?\s*([A-Z][a-zA-Z'’-]+(?:\s+[A-Z][a-zA-Z'’-]+){1,3})/gi,
+    /([A-Z][a-zA-Z'’-]+(?:\s+[A-Z][a-zA-Z'’-]+){1,3})\s+(?:is the owner|owns this|purchased this)/g,
+  ];
+  for (const re of patterns) {
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      const candidate = m[1]?.trim();
+      if (candidate && looksLikePersonName(candidate)) found.push(candidate);
+    }
+  }
+  return found;
+}
+
+/**
+ * Buy owner names from search when the county portal can't be scraped.
+ *
+ * Costs at most 2 SerpAPI calls per property (parcel query only fires when we
+ * have a parcel number and the address query came up empty). Both are gated by
+ * the "county-assessor-owner" monthly cap in lib/serpapi.ts, so a runaway
+ * dossier batch cannot drain the account.
+ */
+async function serpapiOwnerLookup(
+  listing: { address: string | null; city: string | null; state: string | null; zip: string | null },
+  county: CountyConfig,
+  parcelNumber: string | null
+): Promise<OwnerInfo[]> {
+  if (!serpapiKey()) return [];
+  const street = listing.address?.replace(/,.*$/, "").trim();
+  if (!street || !listing.city) return [];
+
+  const siteFilter = OWNER_RECORD_DOMAINS.map((d) => `site:${d}`).join(" OR ");
+  const state = listing.state || county.state;
+
+  const queries: string[] = [
+    `"${street}" "${listing.city}" ${state} owner (${siteFilter})`,
+  ];
+  if (parcelNumber) {
+    queries.push(`"${parcelNumber}" ${county.name} County ${county.state} property owner`);
+  }
+
+  const collected = new Map<string, { name: string; url: string }>();
+
+  for (const q of queries) {
+    const res = await serpapiCall<{
+      organic_results?: { title?: string; snippet?: string; link?: string }[];
+    }>({
+      engine: "google",
+      integration: "county-assessor-owner",
+      params: { q, num: "10", google_domain: "google.com", hl: "en", gl: "us" },
+      timeoutMs: 15000,
+    });
+
+    // Budget cap or quota exhaustion — stop trying, don't burn the second query.
+    if (res.budgetBlocked || res.outOfQuota) break;
+    if (!res.ok || !res.data?.organic_results) continue;
+
+    for (const r of res.data.organic_results) {
+      const text = `${r.title ?? ""} — ${r.snippet ?? ""}`;
+      for (const name of extractOwnerNames(text)) {
+        const key = name.toLowerCase();
+        if (!collected.has(key)) collected.set(key, { name, url: r.link ?? "" });
+      }
+    }
+
+    if (collected.size > 0) break; // first query answered it; skip the parcel query
+  }
+
+  // Cap at 3 — beyond that we're almost certainly picking up neighbours or
+  // prior owners from the same aggregator page.
+  return Array.from(collected.values())
+    .slice(0, 3)
+    .map((c, i) => ({
+      name: normalizePersonName(c.name),
+      role: i === 0 ? ("owner" as const) : ("co-owner" as const),
+      sourceUrl: c.url || undefined,
+      // Deliberately below the 0.8 a real county scrape earns: this is an
+      // inference from a search snippet and downstream scoring should treat
+      // it as such.
+      confidence: 0.55,
+    }));
 }
 
 function parseOwnerName(raw: string): OwnerInfo[] {
