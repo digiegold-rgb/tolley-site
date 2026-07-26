@@ -55,8 +55,13 @@ export interface SerpapiCallResult<T = unknown> {
 // that actually produces seller leads — made 0 calls.
 //
 // So: every integration declares a ceiling here, and serpapiCall() refuses to
-// spend past it. A monitor can no longer starve a money-maker. Caps sum to
-// ~950, leaving ~50 headroom for ad-hoc admin lookups.
+// spend past it. A monitor can no longer starve a money-maker.
+//
+// The caps below sum to 962. That is deliberate and load-bearing: if the sum
+// exceeded the 1,000/month plan limit, a greedy integration could still drain
+// the account before a quieter one ever ran, which is exactly the failure this
+// table exists to prevent. Keep the sum under 1,000 when editing — the
+// remaining ~38 is headroom for ad-hoc admin lookups.
 //
 // Unlisted integrations get DEFAULT_CAP so a new caller can't silently
 // bypass the budget by not registering itself.
@@ -64,29 +69,29 @@ export const MONTHLY_CAPS: Record<string, number> = {
   // Revenue: finds property owners → seller leads. The priority claim.
   "dossier-people-search": 300,
   // Revenue: Amazon affiliate links on /shop + Treasure Haul products.
-  "asin-backfill": 130,
-  "asin-backfill-lens": 20,
-  "shop-bulk-ingest": 70,
+  "asin-backfill": 120,
+  "asin-backfill-lens": 15,
+  "shop-bulk-ingest": 60,
   // Revenue: owner names for KC-metro counties we cannot scrape (Jackson).
-  "county-assessor-owner": 120,
+  "county-assessor-owner": 90,
   // Lead engines: real output, keep funded.
   "probate-scan": 90,
-  "probate-enrich": 60,
-  "probate-address": 45,
+  "probate-enrich": 50,
+  "probate-address": 40,
   "distress-scan": 30,
-  "deal-scanner": 40,
-  "deal-scanner-enrich": 40,
+  "deal-scanner": 30,
+  "deal-scanner-enrich": 30,
   "deal-scanner-comp": 20,
-  "shop-intelligence": 20,
+  "shop-intelligence": 15,
   // Monitors: throttled to monthly. These report a constant value; checking
-  // them daily buys nothing but bill.
+  // them daily buys nothing but bill. Each cap leaves room for one manual
+  // re-run above the scheduled cost (12 and 24 respectively).
   "ai-overview-check": 24,
-  "maps-pack-track": 32,
-  // Enough to re-harvest all 24 seeds once after the `num` param fix, plus
-  // headroom. Every prior run returned 200 with an empty PAA block, so these
-  // pages have never had content — this budget is for the retry, and should
-  // be cut back to ~20 once they are actually publishing.
-  "neighborhood-gen": 30,
+  "maps-pack-track": 28,
+  // Enough to re-harvest all 24 seeds once after the `num` param fix. Every
+  // prior run returned 200 with an empty PAA block, so these pages have never
+  // had content — this budget is for the retry.
+  "neighborhood-gen": 20,
 };
 
 const DEFAULT_CAP = 25;
