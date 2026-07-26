@@ -9,9 +9,6 @@
     "app/api/cron/pools-intelligence/route.ts": {
       "maxDuration": 120
     },
-    "app/api/cron/probate-scan/route.ts": {
-      "maxDuration": 300
-    },
     "app/api/cron/content-publish/route.ts": {
       "maxDuration": 120
     },
@@ -383,6 +380,10 @@
     {
       "path": "/api/cron/youtube-stats",
       "schedule": "30 11 * * *"
+    },
+    {
+      "path": "/api/cron/treasure-haul-drop-email",
+      "schedule": "0 16 * * 4"
     }
   ]
 }
