@@ -120,6 +120,11 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
   // Folder-name prompt: { cardKey } => move that recap into the new folder; {} => just create it.
   const [folderPrompt, setFolderPrompt] = useState<{ cardKey?: string } | null>(null);
   const fileUrl = (u: string) => `${apiBase}${u}`;
+  // Force a real "save to Downloads". The HTML `download` attribute is IGNORED by
+  // browsers on cross-origin URLs, and the API lives on a different origin than this
+  // page (action-api.tolley.io / the tailnet host) — so Save used to just open a
+  // player tab. `download=1` makes the API send Content-Disposition: attachment.
+  const dlUrl = (u: string) => `${u}${u.includes("?") ? "&" : "?"}download=1`;
   // 📣 Push-to-Social modal target. Media URLs in the target ALWAYS use the public
   // Cloudflare base (API) — never apiBase, which can be the Tailscale LAN path the
   // social platforms can't reach when they pull the video.
@@ -1108,7 +1113,7 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
                       <span style={S.meta}>{r ? `${r.aspectLabel} · ${r.sizeMB} MB` : ""}</span>
                       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
                         {r && (
-                          <a href={fileUrl(r.url)} download style={S.smallBtn}>↓ Save</a>
+                          <a href={dlUrl(fileUrl(r.url))} download style={S.smallBtn}>↓ Save</a>
                         )}
                         {r && (
                           <button
@@ -1738,7 +1743,7 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
               <div style={S.modalHead}>
                 <span style={S.modalTitle}>🎬 {playing.title}</span>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <a href={playing.dlUrl || playing.url} download style={S.smallBtn}>↓ Save (full quality)</a>
+                  <a href={dlUrl(playing.dlUrl || playing.url)} download style={S.smallBtn}>↓ Save (full quality)</a>
                   <button onClick={() => setPlaying(null)} style={S.smallBtn}>✕ Close</button>
                 </div>
               </div>
@@ -1754,7 +1759,7 @@ export function ActionDashboard({ token = "" }: { token?: string }) {
               <div style={S.modalHead}>
                 <span style={S.modalTitle}>📷 {lightbox.title}</span>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <a href={lightbox.url} download style={S.smallBtn}>↓ Save</a>
+                  <a href={dlUrl(lightbox.url)} download style={S.smallBtn}>↓ Save</a>
                   <button onClick={() => setLightbox(null)} style={S.smallBtn}>✕ Close</button>
                 </div>
               </div>

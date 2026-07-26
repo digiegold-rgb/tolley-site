@@ -131,7 +131,10 @@ export function FilesTab({ apiBase, token }: { apiBase: string; token: string })
               </button>
               <span style={S.fsMeta}>{e.sizeMB != null ? `${e.sizeMB} MB` : ""}</span>
               <div style={S.fsActions}>
-                {!e.isDir && <a href={`${apiBase}/file?path=${encodeURIComponent(e.rel)}`} download style={S.fsAct} aria-label={`Download ${e.name}`} title={`Download ${e.name}`}>↓</a>}
+                {/* download=1 forces Content-Disposition: attachment. The bare `download`
+                    attribute is ignored cross-origin (API is a different host), which made
+                    this open a player tab instead of saving. */}
+                {!e.isDir && <a href={`${apiBase}/file?path=${encodeURIComponent(e.rel)}&download=1`} download style={S.fsAct} aria-label={`Download ${e.name}`} title={`Download ${e.name}`}>↓</a>}
                 <button onClick={() => setPrompt({ kind: "move", src: e.rel })} disabled={fsBusy} style={S.fsAct} aria-label={`Move ${e.name}`}>Move</button>
                 {isProtectedRoot(fsPath, e.name) ? (
                   <button disabled style={{ ...S.fsAct, color: "#52525b", cursor: "not-allowed" }}
