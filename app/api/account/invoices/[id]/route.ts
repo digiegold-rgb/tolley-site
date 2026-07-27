@@ -107,6 +107,21 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       updateData.amountDue = subTotal - existing.amountPaid;
     }
 
+    // A status flip must settle the money fields with it. A status-only PATCH
+    // used to leave amountPaid=0 / amountDue=total / paidAt=null on PAID rows —
+    // the source of the pre-2026-07-27 A/R corruption.
+    if (typeof status === 'string' && status !== existing.status) {
+      const effectiveTotal = (updateData.total as number | undefined) ?? existing.total;
+      if (status === 'PAID') {
+        updateData.amountPaid = effectiveTotal;
+        updateData.amountDue = 0;
+        updateData.paidAt = existing.paidAt ?? new Date();
+      } else if (existing.status === 'PAID') {
+        updateData.amountDue = effectiveTotal - existing.amountPaid;
+        updateData.paidAt = existing.amountPaid > 0 ? existing.paidAt : null;
+      }
+    }
+
     const invoice = await prisma.invoice.update({
       where: { id },
       data: updateData,
