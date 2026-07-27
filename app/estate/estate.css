@@ -218,6 +218,142 @@
   color: var(--es-brass-bright);
 }
 
+/* ── THE CATALOG ───────────────────────────────────────────────────── */
+/* Sale archive rendered as an auction catalog: numbered lot plates,     */
+/* brass hairlines, letterpress spacing. Estate sales inherit auction    */
+/* heritage — nobody else in KC leans on it.                            */
+
+/* Result plate — the proof numbers, struck like a title page */
+.es-result {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  border: 1px solid var(--es-line);
+  background: linear-gradient(180deg, var(--es-panel-2), var(--es-panel));
+}
+.es-result > div {
+  padding: 1.6rem 1.25rem;
+  text-align: center;
+  border-right: 1px solid var(--es-line);
+}
+.es-result > div:last-child { border-right: 0; }
+.es-result dt {
+  font-size: 0.62rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--es-brass);
+  margin-bottom: 0.6rem;
+}
+.es-result dd {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 1.85rem;
+  line-height: 1;
+  color: var(--es-cream);
+}
+
+/* Lot plate — a catalog entry, not a thumbnail */
+.es-lot {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  background: var(--es-panel);
+  border: 1px solid var(--es-line);
+  cursor: zoom-in;
+  transition: border-color 0.35s ease, transform 0.35s ease;
+}
+.es-lot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1), filter 0.5s ease;
+  filter: saturate(0.92);
+}
+.es-lot:hover { border-color: rgba(201, 162, 75, 0.55); }
+.es-lot:hover img { transform: scale(1.05); filter: saturate(1.05); }
+.es-lot::after {
+  /* brass wash from the base so lot numerals stay legible on any photo */
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 42%;
+  background: linear-gradient(to top, rgba(17, 13, 11, 0.85), transparent);
+  pointer-events: none;
+}
+.es-lot-num {
+  position: absolute;
+  left: 0.7rem;
+  bottom: 0.55rem;
+  z-index: 1;
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.16em;
+  color: var(--es-brass-bright);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+}
+
+/* Lightbox — full-plate viewing */
+.es-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(12, 9, 8, 0.96);
+  backdrop-filter: blur(6px);
+  animation: es-fade 0.22s ease;
+}
+@keyframes es-fade { from { opacity: 0; } to { opacity: 1; } }
+.es-lightbox img {
+  max-width: 100%;
+  max-height: 84vh;
+  object-fit: contain;
+  border: 1px solid var(--es-line);
+}
+
+/* Booking — appointment chips */
+.es-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.6rem 0.15rem;
+  min-width: 4rem;
+  background: var(--es-panel);
+  border: 1px solid var(--es-line);
+  color: var(--es-cream-dim);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-size: 0.72rem;
+}
+.es-chip:hover { border-color: rgba(201, 162, 75, 0.5); color: var(--es-cream); }
+.es-chip[aria-pressed="true"] {
+  background: linear-gradient(180deg, rgba(201, 162, 75, 0.22), rgba(201, 162, 75, 0.08));
+  border-color: var(--es-brass);
+  color: var(--es-cream);
+}
+.es-chip .es-chip-d {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 1.15rem;
+  line-height: 1.1;
+  color: var(--es-cream);
+}
+
+/* Staggered plate reveal on load */
+@keyframes es-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.es-rise { animation: es-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .es-rise { animation: none; }
+  .es-lot img, .es-lot { transition: none; }
+  .es-lightbox { animation: none; }
+}
+
 /* Print: the agreement page prints as a clean white letter-size contract */
 @media print {
   .estate-page {

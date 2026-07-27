@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { EmailCaptureForm } from "@/components/tools/EmailCaptureForm";
 import { EstateQuoteForm } from "@/components/estate/quote-form";
+import { WalkthroughBooking } from "@/components/estate/walkthrough-booking";
 import SaleCard, { type SaleCardData } from "@/components/estate/sale-card";
 import SaleCarousel from "@/components/estate/sale-carousel";
 import KeepShopping from "@/components/estate/keep-shopping";
@@ -443,6 +444,14 @@ export default async function EstatePage() {
                 </Link>
               ))}
             </div>
+            <div className="mt-8 text-center">
+              <Link href="/estate/our-work" className="es-btn-secondary inline-block px-6 py-3 text-sm">
+                See every photo from our last sale →
+              </Link>
+              <p className="mt-3 text-xs" style={{ color: "rgba(243,234,217,0.4)" }}>
+                All 46 lots and the walkthrough video — nothing cherry-picked.
+              </p>
+            </div>
           </section>
         )}
 
@@ -487,17 +496,18 @@ export default async function EstatePage() {
           style={{ "--enter-delay": "0.35s" } as React.CSSProperties}
         >
           <div className="mx-auto max-w-2xl">
-            <div className="text-center">
-              <p className="es-kicker justify-center">Free walkthrough</p>
-              <h2 className="es-display mt-3 mb-3 text-3xl sm:text-4xl">
-                Tell us about the home
-              </h2>
-              <p className="mb-8 text-sm" style={{ color: "var(--es-cream-dim)" }}>
-                Jared calls or texts back, usually the same day. No pressure, no
-                obligation — just a plan and a number.
-              </p>
-            </div>
-            <EstateQuoteForm />
+            <WalkthroughBooking />
+            <details className="mt-6">
+              <summary
+                className="cursor-pointer text-center text-xs hover:underline"
+                style={{ color: "rgba(243,234,217,0.45)" }}
+              >
+                Not ready to pick a day? Just tell us about the home instead.
+              </summary>
+              <div className="mt-5">
+                <EstateQuoteForm />
+              </div>
+            </details>
           </div>
         </section>
       </div>
@@ -532,6 +542,7 @@ export default async function EstatePage() {
           </a>
         </p>
         <div className="mt-4 flex flex-wrap justify-center gap-3 text-xs" style={{ color: "rgba(243,234,217,0.4)" }}>
+          <Link href="/estate/our-work" className="hover:underline">Our Work</Link>
           <Link href="/estate/agreement" className="hover:underline">Client Agreement</Link>
           <Link href="/estate/privacy" className="hover:underline">Privacy</Link>
           <Link href="/estate/terms" className="hover:underline">Terms</Link>
