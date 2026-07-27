@@ -28,7 +28,7 @@ const SECTIONS = [
   },
   {
     title: "What it costs",
-    body: "Nothing up front. Our commission is 30% of gross sale proceeds — most Kansas City companies charge 35% to 50% — written into your agreement before we begin. It covers staging, pricing research, photography, advertising, staffing, and payment processing. There is no minimum sale size, and if the sale never happens you owe us nothing. Any add-on services (haul-away, cleanout, dumpster) are itemized separately and agreed in writing before they happen.",
+    body: "Nothing up front, and our commission is the only number you'll see. It's 30% of gross sale proceeds — most Kansas City companies charge 35% to 50% and then bill hauling and cleanout on top of it. Ours covers staging, pricing research, photography, all advertising, staffing, payment processing, donation delivery with receipts, hauling the unsold items, and leaving the home broom-clean. There is no minimum sale size, and if the sale never happens you owe us nothing. The only thing ever quoted separately is dumpster or hazardous-material disposal beyond ordinary household contents — agreed in writing before any work starts.",
   },
   {
     title: "Who prices things",
@@ -40,7 +40,7 @@ const SECTIONS = [
   },
   {
     title: "What happens to unsold items",
-    body: "Your choice, decided up front in the agreement: (a) returned to you, (b) donated with receipts collected for your taxes, (c) hauled away for an agreed fee, or (d) consigned into our resale channels — we keep selling them for you online and you receive the agreed share as they sell.",
+    body: "Your choice, decided up front in the agreement, and every option is included in the commission: (a) returned to you, (b) donated with receipts collected for your taxes, (c) hauled away with the home left broom-clean, or (d) consigned into our resale channels — we keep selling them for you online and you receive the agreed share as they sell.",
   },
   {
     title: "When you get paid",

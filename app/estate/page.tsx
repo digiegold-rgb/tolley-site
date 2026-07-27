@@ -15,6 +15,7 @@ import {
   ES_FACEBOOK,
   ES_STEPS,
   ES_DIFFS,
+  ES_INCLUDED,
   ES_ADVERTISED_ON,
   ES_FAQ,
 } from "@/lib/estate";
@@ -375,6 +376,35 @@ export default async function EstatePage() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* What 30% covers — the no-brainer. Competitors bill most of this
+            as itemized extras on top of a 35–50% commission. */}
+        <section className="es-enter" style={{ "--enter-delay": "0.2s" } as React.CSSProperties}>
+          <div className="text-center">
+            <p className="es-kicker justify-center">All of it included</p>
+            <h2 className="es-display mt-3 text-3xl sm:text-4xl">
+              One number. <span className="es-italic">Nothing else.</span>
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-sm" style={{ color: "var(--es-cream-dim)" }}>
+              Our 30% covers everything below. Most companies here charge 35–50%
+              and then bill hauling, cleanout, and staging on top of it.
+            </p>
+          </div>
+          <ul className="mt-8 grid gap-x-8 gap-y-4 sm:grid-cols-2">
+            {ES_INCLUDED.map((item) => (
+              <li key={item.label} className="flex gap-3 border-b pb-3" style={{ borderColor: "var(--es-line)" }}>
+                <span aria-hidden="true" style={{ color: "var(--es-brass)" }}>✦</span>
+                <div>
+                  <p className="text-sm" style={{ color: "var(--es-cream)" }}>{item.label}</p>
+                  <p className="mt-0.5 text-xs" style={{ color: "var(--es-cream-dim)" }}>{item.note}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-6 text-center text-sm es-italic" style={{ color: "var(--es-brass-bright)" }}>
+            And everything&apos;s negotiable — tell us what you need.
+          </p>
         </section>
 
         {/* Selling the house too? — the real-estate capture */}

@@ -47,7 +47,7 @@ export const AGREEMENT_CLAUSES: AgreementClause[] = [
   },
   {
     title: "Compensation",
-    body: "The Client pays nothing up front. The Company earns the Commission stated above, calculated on gross sale proceeds. The Commission covers staging, pricing research, photography, advertising, sale staffing, and payment processing. There is no minimum sale size and no fee if the sale is never held. Add-on services (haul-away, cleanout, dumpster) are itemized and agreed in writing before they happen.",
+    body: "The Client pays nothing up front. The Company earns the Commission stated above, calculated on gross sale proceeds, and that is the Company's only charge. The Commission covers staging, pricing research, photography, all advertising, sale staffing, payment processing, donation delivery with receipts, removal of unsold items, and leaving the Property broom-clean. There is no minimum sale size and no fee if the sale is never held. Should the Property require dumpster service or hazardous-material disposal beyond ordinary household contents, that cost is quoted and agreed in writing before any work begins.",
   },
   {
     title: "Pricing & reserves",
@@ -67,7 +67,7 @@ export const AGREEMENT_CLAUSES: AgreementClause[] = [
     options: [
       "(a) Returned to the Client as-is.",
       "(b) Donated, with receipts collected and delivered to the Client.",
-      "(c) Hauled away for the fee agreed in writing.",
+      "(c) Hauled away and the Property left broom-clean, at no additional charge.",
       "(d) Consigned into the Company's resale channels — the Company keeps selling them for the Client online, remitting the agreed share as items sell.",
     ],
   },

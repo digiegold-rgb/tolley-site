@@ -55,7 +55,7 @@ export const ES_DIFFS = [
   },
   {
     title: "Nothing goes to waste",
-    desc: "Unsold items can flow straight into our own resale shop — so leftovers keep earning for you instead of heading to a dumpster. Ask about our cleanout add-on for a broom-clean finish.",
+    desc: "Unsold items flow straight into our own resale shop — so leftovers keep earning for you instead of heading to a dumpster. And when the sale's over we leave the house broom-clean, at no charge.",
   },
 ] as const;
 
@@ -70,10 +70,29 @@ export const ES_ADVERTISED_ON = [
   { name: "Street signs + video", note: "20 directional signs and short-form video no other company bothers with" },
 ] as const;
 
+/**
+ * What the 30% covers. Jared's rule: give away everything that isn't a hard
+ * cost, and say so plainly — the pitch is "there's no way we wouldn't go with
+ * these guys." Most KC companies bill cleanout, hauling, and staging as
+ * itemized extras on top of a 35–50% commission.
+ */
+export const ES_INCLUDED = [
+  { label: "Walkthrough & estimate", note: "No charge, no obligation, usually same week" },
+  { label: "Staging & setup", note: "We unpack, sort, and set the whole home" },
+  { label: "Real pricing research", note: "Priced against actual sold comps, not guesses" },
+  { label: "Professional photography", note: "Every room, every notable item" },
+  { label: "All advertising", note: "EstateSales.NET, Facebook, Craigslist, Nextdoor, signs, our buyer list" },
+  { label: "Staffing the sale", note: "We run the doors, the floor, and checkout" },
+  { label: "Card & tap payments", note: "Processing fees are ours, not yours" },
+  { label: "Donation hauling", note: "Hauled and delivered, receipts back to you for taxes" },
+  { label: "Broom-clean cleanout", note: "House emptied and swept when we're done" },
+  { label: "Itemized settlement", note: "Full accounting, paid in days not weeks" },
+] as const;
+
 export const ES_FAQ = [
   {
     q: "What does it cost to hire you?",
-    a: "Nothing up front — ever. Our commission is 30% of what the sale brings in. Most Kansas City companies charge 35% to 50%, so that's real money back to your family, and it's written into the agreement before we touch a thing. Staging, pricing research, photography, advertising, signs, and staffing the doors are all included. The walkthrough is free.",
+    a: "Nothing up front — ever. Our commission is 30% of what the sale brings in, and that's the only number. Most Kansas City companies charge 35% to 50% and then bill hauling, cleanout, and staging on top. Everything is included with us: staging, pricing research, photography, all the advertising, signs, staffing, card processing, donation hauling with receipts, and a broom-clean cleanout at the end. The walkthrough is free, and everything's negotiable — tell us what you need.",
   },
   {
     q: "When do you share the sale address?",
@@ -81,7 +100,7 @@ export const ES_FAQ = [
   },
   {
     q: "What happens to things that don't sell?",
-    a: "Your choice, agreed up front: return to the family, donate with receipts for your taxes, haul-away, or — what makes us different — we can keep selling them for you through our own resale shop so leftovers keep earning.",
+    a: "Your choice, agreed up front, and all of it is included: return to the family, donated with receipts for your taxes, hauled away, or — what makes us different — we keep selling them for you through our own resale shop so leftovers keep earning. We leave the house broom-clean either way. Most companies bill hauling and cleanout as extras; we don't.",
   },
   {
     q: "How fast do I get paid?",
