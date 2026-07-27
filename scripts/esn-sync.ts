@@ -37,33 +37,54 @@ async function isSignedIn(page: Page): Promise<boolean> {
   return !/\/sign-in/.test(page.url());
 }
 
+/**
+ * Interactive sign-in. ESN runs reCAPTCHA v3, which scores a scripted headless
+ * login as a bot and then returns a *fake* "Email Address and/or Password was
+ * incorrect" error rather than saying so (verified 2026-07-27: the same
+ * password signed in fine by hand seconds later). So we don't script the
+ * credential entry at all — we open a real window, the human signs in, and we
+ * keep the cookie jar. Same approach as scripts/pool360-sync.ts.
+ */
 async function login(page: Page) {
-  const password = process.env.ESN_PASSWORD;
-  if (!password) throw new Error("ESN_PASSWORD not set — pass it inline for this run only");
+  console.log("\n  A browser window is opening on this machine's desktop.");
+  console.log("  Sign in there as", EMAIL, "— by hand, like normal.");
+  console.log("  Leave the window alone once you're in; this will detect it.\n");
 
-  console.log("[esn] signing in as", EMAIL);
   await page.goto("https://www.estatesales.net/sign-in", { waitUntil: "domcontentloaded" });
-  await PAUSE(page);
 
-  const email = page.locator('input[type="email"], input[name*="mail" i], #email').first();
-  const pass = page.locator('input[type="password"], input[name*="ass" i], #password').first();
-  await email.waitFor({ timeout: 30_000 });
-  await email.fill(EMAIL);
-  await PAUSE(page);
-  await pass.fill(password);
-  await PAUSE(page);
-
-  await page
-    .locator('button[type="submit"], input[type="submit"], button:has-text("Sign In")')
-    .first()
-    .click();
-  await page.waitForLoadState("networkidle", { timeout: 60_000 }).catch(() => {});
-  await PAUSE(page);
+  const deadline = Date.now() + 5 * 60_000;
+  while (Date.now() < deadline) {
+    await page.waitForTimeout(3000);
+    if (!/\/sign-in/.test(page.url())) break;
+    const left = Math.ceil((deadline - Date.now()) / 1000);
+    if (left % 30 === 0) console.log(`  …still waiting (${left}s left)`);
+  }
 
   if (/\/sign-in/.test(page.url())) {
-    throw new Error(`still on sign-in after submit — check for a captcha/2FA. url=${page.url()}`);
+    // Dump what the page is actually showing rather than guessing — a wrong
+    // password, a captcha, and a device check all look identical from here.
+    fs.mkdirSync(OUT_DIR, { recursive: true });
+    const shot = path.join(OUT_DIR, "signin-failure.png");
+    await page.screenshot({ path: shot, fullPage: true }).catch(() => {});
+    const diag = await page.evaluate(() => {
+      const txt = (document.body.innerText || "").replace(/\n{2,}/g, "\n").slice(0, 2500);
+      const errs = Array.from(
+        document.querySelectorAll('[class*="error" i],[class*="alert" i],[role="alert"],.validation-summary-errors')
+      )
+        .map((e) => (e.textContent || "").trim())
+        .filter(Boolean);
+      const captcha = /recaptcha|hcaptcha|cf-turnstile/i.test(document.documentElement.innerHTML);
+      return { errs, captcha, txt };
+    });
+    console.log("\n===== SIGN-IN DIAGNOSTIC =====");
+    console.log("captcha present on page:", diag.captcha);
+    console.log("error elements:", diag.errs.length ? diag.errs : "(none found)");
+    console.log("--- visible page text ---\n" + diag.txt);
+    console.log("screenshot:", shot);
+    console.log("==============================\n");
+    throw new Error(`timed out waiting for sign-in. url=${page.url()}`);
   }
-  console.log("[esn] signed in. session saved to", PROFILE_DIR);
+  console.log("[esn] sign-in detected.");
 }
 
 /** Record a page: screenshot + visible text + the links/forms on it. */
@@ -97,8 +118,11 @@ async function main() {
   const args = process.argv.slice(2);
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
+  // --login opens a real window (reCAPTCHA v3 scores headless as a bot);
+  // every later run is headless off the saved session.
+  const interactive = args.includes("--login");
   const ctx: BrowserContext = await chromium.launchPersistentContext(PROFILE_DIR, {
-    headless: true,
+    headless: !interactive,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
     userAgent: UA,
     viewport: { width: 1920, height: 1080 },
@@ -107,10 +131,12 @@ async function main() {
 
   try {
     if (!(await isSignedIn(page))) {
-      if (!args.includes("--login") && !process.env.ESN_PASSWORD) {
-        throw new Error("not signed in — rerun with ESN_PASSWORD=... --login");
+      if (!interactive) {
+        throw new Error("not signed in — rerun with --login (opens a window to sign in by hand)");
       }
       await login(page);
+      if (!(await isSignedIn(page))) throw new Error("sign-in didn't complete");
+      console.log("[esn] signed in. session saved to", PROFILE_DIR);
     } else {
       console.log("[esn] existing session is still good");
     }
@@ -121,17 +147,30 @@ async function main() {
       return;
     }
 
-    // Account map: the pages we actually operate out of.
-    const targets: Array<[string, string]> = [
-      ["https://www.estatesales.net/account", "account-home"],
-      ["https://www.estatesales.net/account/company", "company-profile"],
-      ["https://www.estatesales.net/account/sales", "my-sales"],
-      ["https://www.estatesales.net/account/leads", "client-leads"],
-      ["https://www.estatesales.net/account/marketplace", "marketplace"],
-    ];
-    for (const [url, slug] of targets) {
+    // DISCOVER the account, don't assume it. Land on /account, read the real
+    // navigation off the page, then follow those links. Guessing deep URLs
+    // (/account/leads, /account/marketplace, ...) was wrong: they 404, and
+    // hammering invented paths is exactly what bot detection looks for.
+    const home = await capture(page, "https://www.estatesales.net/account", "account-home");
+
+    const nav = home.links
+      .filter((l) => /estatesales\.net\/(account|company|my)/i.test(l.href))
+      .filter((l, i, a) => a.findIndex((x) => x.href === l.href) === i)
+      .filter((l) => l.href !== home.url);
+
+    console.log(`\n[esn] ${nav.length} real account links found on /account:`);
+    for (const l of nav) console.log(`   ${l.text}  →  ${l.href}`);
+
+    if (!nav.length) {
+      console.log("[esn] none found — check account-home.png/.json to see the real page.");
+      return;
+    }
+
+    // Follow only what the page actually offered.
+    for (const l of nav) {
+      const slug = l.href.split("/").filter(Boolean).slice(2).join("-").slice(0, 60) || "page";
       try {
-        await capture(page, url, slug);
+        await capture(page, l.href, slug);
       } catch (e) {
         console.log(`[esn] ${slug} failed: ${(e as Error).message}`);
       }
