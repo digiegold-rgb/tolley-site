@@ -533,6 +533,8 @@ export default async function EstatePage() {
         </p>
         <div className="mt-4 flex flex-wrap justify-center gap-3 text-xs" style={{ color: "rgba(243,234,217,0.4)" }}>
           <Link href="/estate/agreement" className="hover:underline">Client Agreement</Link>
+          <Link href="/estate/privacy" className="hover:underline">Privacy</Link>
+          <Link href="/estate/terms" className="hover:underline">Terms</Link>
           <Link href="/cleanouts" className="hover:underline">Cleanouts</Link>
           <Link href="/shop" className="hover:underline">Shop</Link>
           <Link href="/homes" className="hover:underline">Real Estate</Link>

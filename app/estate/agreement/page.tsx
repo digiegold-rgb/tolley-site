@@ -28,7 +28,7 @@ const SECTIONS = [
   },
   {
     title: "What it costs",
-    body: "Nothing up front. We are paid a commission — an agreed percentage of gross sale proceeds, written into your agreement before we begin. The commission covers staging, pricing research, photography, advertising, staffing, and payment processing. Any add-on services (haul-away, cleanout, dumpster) are itemized separately and agreed in writing before they happen.",
+    body: "Nothing up front. Our commission is 30% of gross sale proceeds — most Kansas City companies charge 35% to 50% — written into your agreement before we begin. It covers staging, pricing research, photography, advertising, staffing, and payment processing. There is no minimum sale size, and if the sale never happens you owe us nothing. Any add-on services (haul-away, cleanout, dumpster) are itemized separately and agreed in writing before they happen.",
   },
   {
     title: "Who prices things",
@@ -99,6 +99,13 @@ export default function EstateAgreementPage() {
               Read the actual contract
             </a>
             <PrintAgreementButton />
+            <a
+              href="/estate/tolley-estate-sales-agreement.pdf"
+              download
+              className="es-btn-secondary px-6 py-3 text-sm"
+            >
+              Download PDF
+            </a>
           </div>
         </header>
 

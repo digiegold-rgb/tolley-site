@@ -30,8 +30,12 @@ export const ES_STEPS = [
 
 export const ES_DIFFS = [
   {
-    title: "Small on purpose",
-    desc: "We're a boutique, family-run company that only takes sales close to home — Independence and the neighborhoods right around it. One or two sales a month, done right, by the same two people you met at the walkthrough.",
+    title: "No minimum. Really.",
+    desc: "Most Kansas City companies won't take your sale unless they think it'll gross $5,000 to $10,000. We will. If it's a full house or one modest ranch's worth of a lifetime, we'll run it — and we'll tell you honestly at the walkthrough what we think it'll bring.",
+  },
+  {
+    title: "Owner-run, every sale",
+    desc: "One or two sales a month, done right, by the same two people you met at the walkthrough. We serve the whole Kansas City metro, and you get the owners at your door — not a crew you've never met.",
   },
   {
     title: "Simple to work with",
@@ -69,7 +73,7 @@ export const ES_ADVERTISED_ON = [
 export const ES_FAQ = [
   {
     q: "What does it cost to hire you?",
-    a: "Nothing up front — ever. We work on commission, agreed in writing before we touch a thing. Every home is different (size, condition, what's in it), so the walkthrough is where we give you a real number. The walkthrough is free and everything is negotiable.",
+    a: "Nothing up front — ever. Our commission is 30% of what the sale brings in. Most Kansas City companies charge 35% to 50%, so that's real money back to your family, and it's written into the agreement before we touch a thing. Staging, pricing research, photography, advertising, signs, and staffing the doors are all included. The walkthrough is free.",
   },
   {
     q: "When do you share the sale address?",
@@ -93,7 +97,15 @@ export const ES_FAQ = [
   },
   {
     q: "What area do you serve?",
-    a: "Independence and the neighborhoods right around it. We stay hyper-local on purpose — it's how we keep sales personal, staffed by owners, and marketed to shoppers who can actually show up.",
+    a: "The whole Kansas City metro, both sides of the state line. We're based in Independence, so eastern Jackson County is home turf, but we'll travel for the right sale — just ask.",
+  },
+  {
+    q: "Is there a minimum sale size?",
+    a: "No. Most companies in Kansas City want to see $5,000 to $10,000 of estimated gross before they'll take a job, which leaves a lot of families with nowhere to turn. We don't have a minimum. Call us even if you think it's too small — especially then.",
+  },
+  {
+    q: "How soon can you start?",
+    a: "Usually this week. We keep our schedule to one or two sales a month specifically so we're not booking you six weeks out. Call or text and we'll come walk the house — often the same day.",
   },
   {
     q: "Can I read the contract before you even visit?",

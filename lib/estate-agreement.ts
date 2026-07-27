@@ -29,7 +29,7 @@ export const AGREEMENT_FIELDS: AgreementField[] = [
   { label: "Sale dates", hint: "up to 3 consecutive days" },
   { label: "Doors open / close", hint: "e.g. 8:00 am – 4:00 pm" },
   { label: "Staging begins" },
-  { label: "Commission", hint: "% of gross sale proceeds" },
+  { label: "Commission", hint: "% of gross sale proceeds — standard is 30%" },
   { label: "Settlement due", hint: "business days after the sale ends" },
 ];
 
@@ -47,7 +47,7 @@ export const AGREEMENT_CLAUSES: AgreementClause[] = [
   },
   {
     title: "Compensation",
-    body: "The Client pays nothing up front. The Company earns the Commission stated above, calculated on gross sale proceeds. The Commission covers staging, pricing research, photography, advertising, sale staffing, and payment processing. Add-on services (haul-away, cleanout, dumpster) are itemized and agreed in writing before they happen.",
+    body: "The Client pays nothing up front. The Company earns the Commission stated above, calculated on gross sale proceeds. The Commission covers staging, pricing research, photography, advertising, sale staffing, and payment processing. There is no minimum sale size and no fee if the sale is never held. Add-on services (haul-away, cleanout, dumpster) are itemized and agreed in writing before they happen.",
   },
   {
     title: "Pricing & reserves",

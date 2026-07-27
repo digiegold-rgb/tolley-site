@@ -25,7 +25,11 @@ export const ESTATE_LEAD_SOURCES = [
 // + the two cron-email arming steps. Stored on EstateSale.checklist as
 // { [key]: boolean }.
 export const ESTATE_CHECKLIST_ITEMS = [
-  { key: "esn", label: "EstateSales.NET listing ($99)" },
+  { key: "esn", label: "EstateSales.NET listing ($64 on Bronze)" },
+  {
+    key: "esnEmailCutoff",
+    label: "ESN listing live ≥48h before doors — misses the subscriber email otherwise",
+  },
   { key: "gsalr", label: "gsalr.com (free, syndicates)" },
   { key: "craigslist", label: "Craigslist — garage & estate" },
   { key: "nextdoor", label: "Nextdoor post" },
