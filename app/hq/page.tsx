@@ -17,6 +17,7 @@ import { HqEngineStatus } from "@/components/hq/hq-engine-status";
 import { HqInbound } from "@/components/hq/hq-inbound";
 import { HqDnc } from "@/components/hq/hq-dnc";
 import { HqStats } from "@/components/hq/hq-stats";
+import { HqEsnKit } from "@/components/hq/hq-esn-kit";
 import { HqEstates } from "@/components/hq/hq-estates";
 import { HqEmpireMap } from "@/components/hq/hq-empire-map";
 import { HqFbChats } from "@/components/hq/hq-fb-chats";
@@ -623,7 +624,10 @@ function HqPageInner() {
         ) : tab === "money" ? (
           <HqMoney money={money} loading={moneyLoading} onRefresh={loadMoney} />
         ) : tab === "estates" ? (
-          <HqEstates />
+          <>
+            <HqEsnKit />
+            <HqEstates />
+          </>
         ) : tab === "stats" ? (
           <>
             <HqChannelScoreboard />
