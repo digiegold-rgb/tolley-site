@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import { prisma } from '@/lib/prisma';
+import { getStripeClient } from '@/lib/stripe';
 
 /**
  * Write-back for account invoices paid via a Stripe payment link (the links
@@ -22,6 +23,7 @@ type ResolvedInvoice = {
   total: number;
   amountPaid: number;
   status: string;
+  stripePaymentLinkId: string | null;
 };
 
 const INVOICE_SELECT = {
@@ -29,6 +31,7 @@ const INVOICE_SELECT = {
   total: true,
   amountPaid: true,
   status: true,
+  stripePaymentLinkId: true,
 } as const;
 
 // Resolve the account Invoice a payment belongs to. Prefers the invoiceId
@@ -99,6 +102,22 @@ async function applyPayment(
   console.log(
     `[invoice-payment] ${invoice.id} recorded $${amount} via ${paymentIntentId}, status: ${isPaid ? 'PAID' : invoice.status}`,
   );
+
+  // A settled invoice must not keep an active payment link — links minted
+  // before the completed_sessions limit accept repeat payments forever
+  // (Wayne Clark's double charges). Best-effort: the payment is already
+  // recorded, so a deactivation failure only logs.
+  if (isPaid && invoice.stripePaymentLinkId) {
+    try {
+      await getStripeClient().paymentLinks.update(invoice.stripePaymentLinkId, { active: false });
+      console.log(`[invoice-payment] deactivated payment link ${invoice.stripePaymentLinkId}`);
+    } catch (err) {
+      console.error(
+        `[invoice-payment] failed to deactivate link ${invoice.stripePaymentLinkId}:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
   return true;
 }
 

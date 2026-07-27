@@ -105,6 +105,26 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       updateData.subTotal = subTotal;
       updateData.total = subTotal;
       updateData.amountDue = subTotal - existing.amountPaid;
+
+      // A payment link's price is frozen at mint time and the send route reuses
+      // any stored link — so a total change must retire the old link or the
+      // customer pays the stale amount (Wayne Clark paid $84 twice against a
+      // $33 invoice). Next send mints a fresh link at the new total.
+      if (subTotal !== existing.total && existing.stripePaymentLinkId) {
+        try {
+          const { getStripeClient } = await import('@/lib/stripe');
+          await getStripeClient().paymentLinks.update(existing.stripePaymentLinkId, {
+            active: false,
+          });
+        } catch (err) {
+          console.error(
+            `[invoice-patch] failed to deactivate stale link ${existing.stripePaymentLinkId}:`,
+            err instanceof Error ? err.message : err,
+          );
+        }
+        updateData.stripePaymentLinkId = null;
+        updateData.stripePaymentLinkUrl = null;
+      }
     }
 
     // A status flip must settle the money fields with it. A status-only PATCH

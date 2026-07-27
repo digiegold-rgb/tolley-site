@@ -26,6 +26,10 @@ export async function createInvoicePaymentLink(invoice: InvoiceForLink) {
 
   const paymentLink = await stripe.paymentLinks.create({
     line_items: [{ price: price.id, quantity: 1 }],
+    // Payment links are reusable forever by default — Wayne Clark paid INV-0144
+    // and INV-0304 twice each through still-active links. One completed
+    // checkout must deactivate the link.
+    restrictions: { completed_sessions: { limit: 1 } },
     metadata: {
       invoiceId: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
