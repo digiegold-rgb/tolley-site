@@ -1,5 +1,6 @@
-// AI P&L ledger — total cash invested in the AI venture vs actual cash it has
-// returned (ads, affiliate, promotions, subscriptions to AI products ONLY).
+// AI P&L ledger — cash invested in the AI venture over the LAST YEAR
+// (~Aug 2025 onward, the Anthropic/DGX era) vs actual cash it has returned
+// (ads, affiliate, promotions, subscriptions to AI products ONLY).
 // Compiled 2026-07-28 from a three-way audit: Gmail receipts, Stripe (all 1,073
 // lifetime charges), and local records (Modal CLI billing, Neon DB, memory).
 // Product sales (shop flips, estate sales, W/D rent, cleaning) are excluded from
@@ -21,7 +22,8 @@ export const AI_SPEND: PnlLine[] = [
   { label: "DGX Spark (GB10)", amount: 2500, kind: "verified", note: "Hardware, user-stated purchase price" },
   { label: "Claude Code (Anthropic)", amount: 1200, kind: "estimated", note: "$100/mo × ~12 mo — no receipts in Gmail; adjust when console total is pulled" },
   // Regrid: $0 — free month only, never paid (Jared confirmed 7/28; Gmail agrees: no payment receipt ever)
-  { label: "Gmail-receipted SaaS", amount: 757, kind: "verified", note: "Gemini auto-reload $100 (4×$25 Mastercard, NOT free credit) · Instantly $94 · Motion $228 · Repurpose $166.83 (Stripe #2335-2248, 2/6/24) · X Premium+ $168 (Stripe #2033-7791, 2/15/24)" },
+  // 2024 charges excluded per Jared 7/28 (last-year window only): Motion $228, Repurpose $166.83, X Premium+ $168
+  { label: "Gemini API + Instantly", amount: 194, kind: "verified", note: "Gemini auto-reload $100 (4×$25 Mastercard, NOT free credit — auto-reload is ON) · Instantly $94 (Jun–Jul)" },
   { label: "Paid ads (FB + Google)", amount: 430, kind: "verified", note: "$348 FB ad account lifetime + $82 Google Ads; all ads currently off" },
   { label: "ChatGPT", amount: 240, kind: "verified", note: "$20/mo × 12 mo, user-stated" },
   { label: "Modal (GPU compute)", amount: 177, kind: "verified", note: "CLI billing Feb–Jul 2026; July alone $137 (92% of $150 cap) — all Wan video renders" },
