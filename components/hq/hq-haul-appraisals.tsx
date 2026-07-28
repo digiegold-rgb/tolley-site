@@ -165,7 +165,7 @@ export function HqHaulAppraisals() {
                       <th style={{ padding: "4px 10px", whiteSpace: "nowrap" }}>Est value</th>
                       <th style={{ padding: "4px 10px" }}>Conf</th>
                       <th style={{ padding: "4px 10px", whiteSpace: "nowrap" }}>Web price ~</th>
-                      <th style={{ padding: "4px 0" }}>Photos</th>
+                      <th style={{ padding: "4px 0", whiteSpace: "nowrap" }}>In photos #</th>
                     </tr>
                   </thead>
                   <tbody>
