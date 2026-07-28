@@ -31,6 +31,77 @@ interface AmazonOrganic {
   relevance_score?: unknown;
 }
 
+/**
+ * Normalize a product title for catalog lookup.
+ *
+ * Strips the UI chrome the FB Marketplace mirror scrapes into titles
+ * ("Continue Delete draft ...", "All listings Hide ...") so a relist matches
+ * the original row it was copied from.
+ */
+export function normalizeTitle(title: string | null | undefined): string {
+  return (title ?? "")
+    .toLowerCase()
+    .replace(/\b(continue|delete draft|all listings|hide|this listing is being reviewed\.?|ty)\b/g, "")
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * A title is only specific enough to trust for a catalog match if it has real
+ * substance. "fan" or "shoes" would collide across unrelated products; three
+ * words and 12 characters is the floor.
+ */
+function isSpecificEnough(norm: string): boolean {
+  return norm.length >= 12 && norm.split(" ").length >= 3;
+}
+
+/**
+ * Free lookup against ASINs we already resolved.
+ *
+ * Ruthann relists the same inventory constantly — the Momcozy bottle washer
+ * that went out with no link on 7/28 already had `B0CWLHKQNT` on 61 other
+ * rows. 30% of the unmatched backlog is answerable from our own catalog, so
+ * this runs FIRST and a hit costs nothing.
+ */
+export async function matchFromCatalog(
+  products: AsinMatchable[],
+): Promise<number> {
+  const targets = products.filter(
+    (p) => !p.amazonAsin && isSpecificEnough(normalizeTitle(p.title)),
+  );
+  if (targets.length === 0) return 0;
+
+  const known = await prisma.product.findMany({
+    where: { amazonAsin: { not: null } },
+    select: { title: true, amazonAsin: true },
+  });
+  const index = new Map<string, string>();
+  for (const k of known) {
+    const norm = normalizeTitle(k.title);
+    if (isSpecificEnough(norm) && k.amazonAsin && !index.has(norm)) {
+      index.set(norm, k.amazonAsin);
+    }
+  }
+
+  let hits = 0;
+  for (const p of targets) {
+    const asin = index.get(normalizeTitle(p.title));
+    if (!asin) continue;
+    try {
+      await prisma.product.update({
+        where: { id: p.id },
+        data: { amazonAsin: asin, asinMatchScore: null, asinMatchedAt: new Date() },
+      });
+      p.amazonAsin = asin;
+      hits += 1;
+    } catch {
+      // best-effort
+    }
+  }
+  return hits;
+}
+
 /** Text search against Amazon. Returns `outOfQuota` so callers can stop early. */
 async function findAsinByText(query: string, integration: string) {
   const result = await serpapiCall<{ organic_results?: AmazonOrganic[] }>({
@@ -70,9 +141,10 @@ function firstImageUrl(imageUrls: unknown): string | null {
 }
 
 export interface MatchSummary {
+  /** Resolved for free from our own already-matched catalog (no SerpAPI call). */
+  fromCatalog: number;
   attempted: number;
   matched: number;
-  matchedByLens: number;
   missed: number;
   errored: number;
   stoppedEarly: boolean;
@@ -93,13 +165,16 @@ export async function matchAsins(
 ): Promise<MatchSummary> {
   const useLens = opts.lens !== false;
   const summary: MatchSummary = {
+    fromCatalog: 0,
     attempted: 0,
     matched: 0,
-    matchedByLens: 0,
     missed: 0,
     errored: 0,
     stoppedEarly: false,
   };
+
+  // Free pass first — never pay for an ASIN we already know.
+  summary.fromCatalog = await matchFromCatalog(products);
 
   for (const p of products) {
     if (p.amazonAsin) continue;
@@ -152,7 +227,6 @@ export async function matchAsins(
       // Mutate in place so the caller's caption sees the new link.
       p.amazonAsin = asin;
       summary.matched += 1;
-      if (score === null) summary.matchedByLens += 1;
     } catch {
       summary.errored += 1;
     }
