@@ -8,6 +8,7 @@ import {
   mergeTreasureHaulPostId,
   alertDiscord,
 } from "@/lib/shop/treasure-haul-post";
+import { ensureAsinsForPost } from "@/lib/shop/asin-match";
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 
@@ -68,6 +69,8 @@ export async function GET(req: NextRequest) {
   if (!imageUrl) {
     return NextResponse.json({ ok: true, skipped: "picked product has no image", productId: product.id });
   }
+
+  await ensureAsinsForPost([product]);
 
   const caption = formatTreasureHaulCaption({ product, listings: product.listings });
   let result;

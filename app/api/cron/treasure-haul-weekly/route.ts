@@ -15,6 +15,7 @@ import {
   mergeTreasureHaulPostId,
   alertDiscord,
 } from "@/lib/shop/treasure-haul-post";
+import { ensureAsinsForPost } from "@/lib/shop/asin-match";
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 
@@ -67,6 +68,8 @@ export async function GET(req: NextRequest) {
   if (items.length === 0) {
     return NextResponse.json({ ok: true, skipped: "no products with usable images" });
   }
+
+  await ensureAsinsForPost(products);
 
   const caption = formatTreasureHaulCarouselCaption({
     variant: "weekly_highlight",

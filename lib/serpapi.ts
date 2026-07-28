@@ -57,11 +57,11 @@ export interface SerpapiCallResult<T = unknown> {
 // So: every integration declares a ceiling here, and serpapiCall() refuses to
 // spend past it. A monitor can no longer starve a money-maker.
 //
-// The caps below sum to 962. That is deliberate and load-bearing: if the sum
+// The caps below sum to 964. That is deliberate and load-bearing: if the sum
 // exceeded the 1,000/month plan limit, a greedy integration could still drain
 // the account before a quieter one ever ran, which is exactly the failure this
 // table exists to prevent. Keep the sum under 1,000 when editing — the
-// remaining ~38 is headroom for ad-hoc admin lookups.
+// remaining ~36 is headroom for ad-hoc admin lookups.
 //
 // Unlisted integrations get DEFAULT_CAP so a new caller can't silently
 // bypass the budget by not registering itself.
@@ -69,8 +69,18 @@ export const MONTHLY_CAPS: Record<string, number> = {
   // Revenue: finds property owners → seller leads. The priority claim.
   "dossier-people-search": 300,
   // Revenue: Amazon affiliate links on /shop + Treasure Haul products.
-  "asin-backfill": 120,
-  "asin-backfill-lens": 15,
+  //
+  // Split into two claims on 2026-07-28. The single "asin-backfill" pot was
+  // spent in `createdAt desc` order on whatever happened to be unmatched, so
+  // the products that actually went out on the Page had no affiliate link
+  // while budget went to backlog items nobody ever saw. "asin-post-jit" is a
+  // RESERVE the background sweep cannot touch: it only fires for products
+  // that are being published right now, which is the highest-value call we
+  // can make — a link on a live post beats a link on dormant inventory.
+  "asin-post-jit": 100,
+  "asin-post-jit-lens": 15,
+  "asin-backfill": 30,
+  "asin-backfill-lens": 10,
   "shop-bulk-ingest": 60,
   // Revenue: owner names for KC-metro counties we cannot scrape (Jackson).
   "county-assessor-owner": 90,
@@ -84,9 +94,12 @@ export const MONTHLY_CAPS: Record<string, number> = {
   "deal-scanner-comp": 20,
   "shop-intelligence": 15,
   // Monitors: throttled to monthly. These report a constant value; checking
-  // them daily buys nothing but bill. Each cap leaves room for one manual
-  // re-run above the scheduled cost (12 and 24 respectively).
-  "ai-overview-check": 24,
+  // them daily buys nothing but bill.
+  // Cut 24 → 6 on 2026-07-28. 751 checks all-time, `tolleyCited` true on
+  // exactly ZERO of them — it has never once recorded the thing it exists to
+  // detect. Kept alive at one monthly pulse; the reclaimed calls went to
+  // asin-post-jit, which produces affiliate links on live posts.
+  "ai-overview-check": 6,
   "maps-pack-track": 28,
   // Enough to re-harvest all 24 seeds once after the `num` param fix. Every
   // prior run returned 200 with an empty PAA block, so these pages have never

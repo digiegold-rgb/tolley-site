@@ -19,6 +19,7 @@ import {
   mergeTreasureHaulPostId,
   alertDiscord,
 } from "@/lib/shop/treasure-haul-post";
+import { ensureAsinsForPost } from "@/lib/shop/asin-match";
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 
@@ -139,6 +140,12 @@ async function postDigest(
     return postSingle(pageId, token);
   }
 
+  // Resolve Amazon links for these exact items BEFORE the caption is built.
+  // The weekly sweep runs on `createdAt desc` and routinely hadn't reached
+  // the items in today's carousel yet, so posts went out with no affiliate
+  // link at all. Best-effort — a miss just means the caption omits the link.
+  await ensureAsinsForPost(products);
+
   const caption = formatTreasureHaulCarouselCaption({
     variant,
     products,
@@ -207,6 +214,8 @@ async function postSingle(pageId: string, token: string) {
       productId: product.id,
     });
   }
+
+  await ensureAsinsForPost([product]);
 
   const caption = formatTreasureHaulCaption({ product, listings: product.listings });
 

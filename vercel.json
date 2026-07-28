@@ -219,7 +219,7 @@
     },
     {
       "path": "/api/cron/asin-backfill",
-      "schedule": "0 6 * * 0"
+      "schedule": "0 6 * * *"
     },
     {
       "path": "/api/cron/maps-pack-track",
