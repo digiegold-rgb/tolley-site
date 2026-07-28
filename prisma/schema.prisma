@@ -4556,8 +4556,8 @@ model MileageTrip {
 // list), and the past-sales social proof section. Address stays private
 // until addressPublishAt per industry convention.
 model EstateSale {
-  id               String    @id @default(cuid())
-  slug             String    @unique
+  id               String       @id @default(cuid())
+  slug             String       @unique
   title            String
   areaLabel        String // public label, e.g. "Independence, MO"
   address          String? // private until addressPublishAt
@@ -4568,7 +4568,7 @@ model EstateSale {
   days             Json // [{date:"2026-07-17",open:"08:00",close:"16:00",note?}]
   startsAt         DateTime
   endsAt           DateTime
-  status           String    @default("upcoming") // upcoming|live|done
+  status           String       @default("upcoming") // upcoming|live|done
   description      String?
   highlights       String[]
   photos           String[]
@@ -4576,8 +4576,8 @@ model EstateSale {
   videoUrl         String? // walkthrough video (blob URL), shown atop the gallery
   grossTotal       Float?
   checklist        Json? // per-sale playbook checkboxes (ESTATE-PLAYBOOK §5), e.g. {esn:true,...}
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
   leads            EstateLead[]
 
   @@index([status, startsAt])
@@ -4722,4 +4722,37 @@ model EmpireSnapshot {
   createdAt DateTime @default(now())
 
   @@index([source, createdAt])
+}
+
+// ── Contact Vault (phone-keyed personal address books) ────────────────
+// Jared's + Ruthann's exported phone contacts, merged and normalized. Keyed on
+// phoneE164 and NEVER on name: the names in these exports are Jared's own
+// shorthand ("Ada -WD") and collide across the population, so they are
+// reference data only. Written by ~/business-os/bin/vault-ingest.mjs via
+// POST /api/hq/contact-vault (x-sync-secret). Read by the Meta audience sync
+// and any future invite channel. Suppression here is global and permanent —
+// opting out on one channel removes someone from every channel.
+model ContactVaultEntry {
+  id             String    @id @default(cuid())
+  phoneE164      String    @unique // THE key. +1XXXXXXXXXX
+  displayName    String? // reference only, never a match key
+  emails         String[]  @default([])
+  org            String?
+  sources        String[]  @default([]) // ["jared"] | ["ruthann"] | both
+  isPerson       Boolean   @default(true) // false = business/toll-free line
+  areaCode       String?
+  isKcMetro      Boolean   @default(false) // 816/913/660/573/785/417/620
+  linkedType     String? // wd_client | estate_lead | growth_lead | sms_known | lead_action
+  linkedId       String?
+  relationship   String    @default("unknown") // customer | recent_2way | known | business
+  suppressed     Boolean   @default(false)
+  suppressedAt   DateTime?
+  suppressReason String?
+  invites        Json      @default("{}") // per-channel history: { "meta_ca": {...}, "email": {...} }
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([suppressed, isPerson])
+  @@index([isKcMetro])
+  @@index([linkedType])
 }

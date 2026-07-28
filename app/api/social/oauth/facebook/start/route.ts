@@ -55,6 +55,12 @@ function buildDialogUrl(appId: string, redirectUri: string, state: string) {
       "pages_manage_posts",
       "publish_video",
       "business_management",
+      // ads_* are NOT optional: the callback overwrites FACEBOOK_USER_TOKEN, and
+      // lib/facebook-ads.ts (adspend, fb-ads, markets routes) needs them. The
+      // original ads token was minted by hand in Graph API Explorer, so omitting
+      // these here meant any re-auth silently killed all ads reads/writes.
+      "ads_management",
+      "ads_read",
     ].join(","),
     state,
   });

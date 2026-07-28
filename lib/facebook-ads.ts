@@ -4,9 +4,19 @@
  */
 
 const USER_TOKEN = process.env.FACEBOOK_USER_TOKEN || "";
-const AD_ACCOUNT_ID = process.env.FACEBOOK_AD_ACCOUNT_ID || "act_1452652738964455";
+// No fallback on purpose. The old default (act_1452652738964455 "Your KC Homes")
+// is account_status 3 = UNSETTLED, so an unset env var silently pointed every
+// read AND every write (updateCampaignBudget/Status) at a delinquent account.
+// Live account is act_10152225914756508 (Mastercard *7255). Fail loud instead.
+const AD_ACCOUNT_ID = process.env.FACEBOOK_AD_ACCOUNT_ID || "";
 const API_VERSION = process.env.FACEBOOK_API_VERSION || "v18.0";
 const BASE = `https://graph.facebook.com/${API_VERSION}`;
+
+/** Callers hit `/${AD_ACCOUNT_ID}/...` — an empty id would silently request `//insights`. */
+function requireAdAccount(): string {
+  if (!AD_ACCOUNT_ID) throw new Error("FACEBOOK_AD_ACCOUNT_ID not set — refusing to guess an ad account");
+  return AD_ACCOUNT_ID;
+}
 
 async function fbGet<T = unknown>(path: string, params: Record<string, string> = {}): Promise<T> {
   const url = new URL(`${BASE}${path}`);
@@ -108,7 +118,7 @@ function datePreset(days: number): string {
 // ─── Public API ───
 
 export async function getAccountOverview(days = 30): Promise<FBAccountOverview | null> {
-  const data = await fbGet<{ data: Array<Record<string, string>> }>(`/${AD_ACCOUNT_ID}/insights`, {
+  const data = await fbGet<{ data: Array<Record<string, string>> }>(`/${requireAdAccount()}/insights`, {
     fields: "impressions,clicks,spend,actions,ctr,cpc,reach,frequency",
     date_preset: datePreset(days),
   });
@@ -129,13 +139,13 @@ export async function getAccountOverview(days = 30): Promise<FBAccountOverview |
 
 export async function listCampaigns(days = 30): Promise<FBCampaign[]> {
   // Get campaign list — include lifetime_budget for lifetime-budgeted campaigns
-  const campaigns = await fbGet<{ data: Array<Record<string, string>> }>(`/${AD_ACCOUNT_ID}/campaigns`, {
+  const campaigns = await fbGet<{ data: Array<Record<string, string>> }>(`/${requireAdAccount()}/campaigns`, {
     fields: "id,name,status,effective_status,objective,daily_budget,lifetime_budget,budget_remaining,start_time,stop_time",
     limit: "25",
   });
 
   // Get insights per campaign
-  const insights = await fbGet<{ data: Array<Record<string, unknown>> }>(`/${AD_ACCOUNT_ID}/insights`, {
+  const insights = await fbGet<{ data: Array<Record<string, unknown>> }>(`/${requireAdAccount()}/insights`, {
     fields: "campaign_id,campaign_name,impressions,clicks,spend,actions,ctr,cpc",
     level: "campaign",
     date_preset: datePreset(days),
@@ -219,7 +229,7 @@ export async function getCampaignInsights(campaignId: string, days = 30): Promis
 }
 
 export async function getDailyAccountMetrics(days = 30): Promise<FBDailyMetric[]> {
-  const data = await fbGet<{ data: Array<Record<string, unknown>> }>(`/${AD_ACCOUNT_ID}/insights`, {
+  const data = await fbGet<{ data: Array<Record<string, unknown>> }>(`/${requireAdAccount()}/insights`, {
     fields: "impressions,clicks,spend,actions,ctr,cpc",
     time_increment: "1",
     date_preset: datePreset(days),
@@ -296,7 +306,7 @@ export async function updateCampaignBudget(campaignId: string, dailyBudgetCents:
 
 export async function getAccountBilling(): Promise<string | null> {
   try {
-    const data = await fbGet<Record<string, unknown>>(`/${AD_ACCOUNT_ID}`, {
+    const data = await fbGet<Record<string, unknown>>(`/${requireAdAccount()}`, {
       fields: "funding_source_details,currency",
     });
     const details = data.funding_source_details as Record<string, unknown> | undefined;
