@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminApiSession } from "@/lib/admin-auth";
 import { backAtYouHealth } from "@/lib/social/backatyou";
+import { tiktokServiceHealth } from "@/lib/social/tiktok";
 
 export const dynamic = "force-dynamic";
 
@@ -112,14 +113,30 @@ function checkYouTube(): ConnectionStatus {
   };
 }
 
-function checkTikTok(): ConnectionStatus {
+async function checkTikTok(): Promise<ConnectionStatus> {
   // Prefer the DGX Selenium service when configured — it bypasses the
-  // multi-week video.publish review for the official API.
+  // multi-week video.publish review for the official API. Actually ping it:
+  // env presence alone showed "connected" for 11 days while every post died.
   if (process.env.TIKTOK_SERVICE_URL && process.env.TIKTOK_SERVICE_API_KEY) {
+    const health = await tiktokServiceHealth();
+    if (!health.ok) {
+      return {
+        platform: "tiktok",
+        state: "error",
+        message: health.error || "DGX TikTok service unreachable",
+      };
+    }
+    const accounts = health.accounts ?? {};
+    const summary = Object.entries(accounts)
+      .map(([name, a]) =>
+        a.logged_in ? `${name} ✓ (${a.days_left}d)` : `${name} ✗ needs login`,
+      )
+      .join(", ");
+    const anyLoggedIn = Object.values(accounts).some((a) => a.logged_in);
     return {
       platform: "tiktok",
-      state: "connected",
-      account: "Via DGX Selenium service",
+      state: anyLoggedIn || health.logged_in ? "connected" : "expired",
+      account: summary || "Via DGX Selenium service",
     };
   }
   const accessToken = process.env.TIKTOK_ACCESS_TOKEN;
@@ -166,7 +183,7 @@ export async function GET() {
 
   const connections: ConnectionStatus[] = await Promise.all([
     Promise.resolve(checkYouTube()),
-    Promise.resolve(checkTikTok()),
+    checkTikTok(),
     Promise.resolve(checkInstagram()),
     Promise.resolve(checkFacebook()),
     Promise.resolve(checkPinterest()),

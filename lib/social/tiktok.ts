@@ -6,12 +6,55 @@ const REFRESH_URL = `${TT_API}/oauth/token/`;
 const SERVICE_URL = process.env.TIKTOK_SERVICE_URL;
 const SERVICE_API_KEY = process.env.TIKTOK_SERVICE_API_KEY;
 
+// Which TikTok account a post lands on depends on which business it came from.
+// "action" (DJI action cam) stays on the personal account; everything else —
+// shop/treasure/estate content and unrouted crons — goes to the
+// @yourkchomes Business account (mirrors facebook.ts pickPageAndToken).
+const SOURCE_ACCOUNT: Record<string, string> = {
+  action: "personal",
+};
+
+function pickTikTokAccount(source?: string): string {
+  return SOURCE_ACCOUNT[source ?? ""] ?? "yourkchomes";
+}
+
+/**
+ * Best-effort: drop the (vertical) video + caption into the NAS outbox via the
+ * DGX service so Jared can always upload from the iPhone Files app even when
+ * the browser leg fails. Returns the smb:// path or null.
+ */
+async function stageToNAS(input: PostInput, account: string): Promise<string | null> {
+  if (!SERVICE_URL || !SERVICE_API_KEY) return null;
+  try {
+    const res = await fetch(`${SERVICE_URL}/stage`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": SERVICE_API_KEY,
+      },
+      body: JSON.stringify({
+        caption: combineCaptionAndTags(input).slice(0, 2200),
+        mediaUrl: input.mediaUrl,
+        account,
+        slug: input.title || input.id,
+      }),
+      // Local-network download of a ~250MB rendition — usually well under a minute.
+      signal: AbortSignal.timeout(120_000),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { ok: boolean; smb?: string };
+    return json.ok && json.smb ? json.smb : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Call the DGX-side Selenium service (lib/social/tiktok-service) that drives
  * tiktok.com/creator-center/upload via Chromium. Returns a PostResult so the
  * /social fan-out can treat it identically to the official API path.
  */
-async function postViaDGXService(input: PostInput): Promise<PostResult> {
+async function postViaDGXService(input: PostInput, account: string): Promise<PostResult> {
   if (!SERVICE_URL || !SERVICE_API_KEY) {
     return { ok: false, error: "TikTok service URL/key not set" };
   }
@@ -25,6 +68,7 @@ async function postViaDGXService(input: PostInput): Promise<PostResult> {
       body: JSON.stringify({
         caption: combineCaptionAndTags(input).slice(0, 2200),
         mediaUrl: input.mediaUrl,
+        account,
       }),
       // Selenium upload + caption + post takes 30-60s typically.
       signal: AbortSignal.timeout(180_000),
@@ -50,6 +94,7 @@ async function postViaDGXService(input: PostInput): Promise<PostResult> {
 export async function tiktokServiceHealth(): Promise<{
   ok: boolean;
   logged_in?: boolean;
+  accounts?: Record<string, { logged_in: boolean; days_left: number | null }>;
   error?: string;
 }> {
   if (!SERVICE_URL || !SERVICE_API_KEY) return { ok: false, error: "no service URL/key" };
@@ -59,7 +104,11 @@ export async function tiktokServiceHealth(): Promise<{
       signal: AbortSignal.timeout(8_000),
     });
     if (!res.ok) return { ok: false, error: `health ${res.status}` };
-    return (await res.json()) as { ok: boolean; logged_in?: boolean };
+    return (await res.json()) as {
+      ok: boolean;
+      logged_in?: boolean;
+      accounts?: Record<string, { logged_in: boolean; days_left: number | null }>;
+    };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "unreachable" };
   }
@@ -86,7 +135,18 @@ export async function postTikTok(input: PostInput): Promise<PostResult> {
   // Prefer the DGX Selenium service (works today) over the official API
   // (gated behind multi-week app review for video.publish).
   if (SERVICE_URL && SERVICE_API_KEY) {
-    return postViaDGXService(input);
+    const account = pickTikTokAccount(input.source);
+    // Stage to the NAS outbox first — whatever happens next, the phone-upload
+    // fallback exists.
+    const staged = await stageToNAS(input, account);
+    const result = await postViaDGXService(input, account);
+    if (!result.ok && staged) {
+      return {
+        ok: false,
+        error: `${result.error} — video staged for phone upload: ${staged}`,
+      };
+    }
+    return result;
   }
 
   const clientKey = process.env.TIKTOK_CLIENT_KEY;
