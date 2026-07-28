@@ -34,7 +34,7 @@ interface HaulAppraisalBody {
   totals: { low: number; high: number; itemCount: number; photoCount: number };
   standouts: string[];
   summary: string;
-  comps: Array<{ query: string; count: number; medianPrice: number; avgPrice: number }>;
+  comps: Array<{ query: string; medianPrice: number; priceLow?: number; priceHigh?: number; note?: string }>;
   senderText?: string;
   error?: string;
 }
@@ -48,8 +48,21 @@ export async function POST(req: NextRequest) {
   if (!body?.pageId || !body?.senderId || !Array.isArray(body.photoUrls)) {
     return NextResponse.json({ error: "pageId, senderId, photoUrls required" }, { status: 400 });
   }
-  const row = await prisma.siteEvent.create({
-    data: {
+  // Idempotent per haul: a re-run of the DGX appraiser (retry, state reset)
+  // replaces the existing report instead of duplicating the card.
+  const existing = body.conversationId && body.receivedAt
+    ? await prisma.siteEvent.findFirst({
+        where: {
+          event: "haul_appraisal",
+          AND: [
+            { meta: { path: ["conversationId"], equals: body.conversationId } },
+            { meta: { path: ["receivedAt"], equals: body.receivedAt } },
+          ],
+        },
+        select: { id: true },
+      })
+    : null;
+  const data = {
       site: "hq",
       path: "/hq?tab=hauls",
       event: "haul_appraisal",
@@ -79,9 +92,11 @@ export async function POST(req: NextRequest) {
         senderText: (body.senderText ?? "").slice(0, 500),
         error: body.error?.slice(0, 400) ?? null,
       },
-    },
-  });
-  return NextResponse.json({ ok: true, id: row.id });
+  };
+  const row = existing
+    ? await prisma.siteEvent.update({ where: { id: existing.id }, data })
+    : await prisma.siteEvent.create({ data });
+  return NextResponse.json({ ok: true, id: row.id, updated: !!existing });
 }
 
 export async function GET(req: NextRequest) {

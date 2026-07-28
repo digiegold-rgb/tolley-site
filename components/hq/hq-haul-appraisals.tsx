@@ -27,7 +27,7 @@ interface HaulRow {
   totals: { low: number; high: number; itemCount: number; photoCount: number } | null;
   standouts: string[];
   summary: string;
-  comps: Array<{ query: string; count: number; medianPrice: number; avgPrice: number }>;
+  comps: Array<{ query: string; medianPrice: number; priceLow?: number; priceHigh?: number; note?: string }>;
   senderText: string;
   error: string | null;
 }
@@ -164,7 +164,7 @@ export function HqHaulAppraisals() {
                       <th style={{ padding: "4px 10px" }}>Cond</th>
                       <th style={{ padding: "4px 10px", whiteSpace: "nowrap" }}>Est value</th>
                       <th style={{ padding: "4px 10px" }}>Conf</th>
-                      <th style={{ padding: "4px 10px", whiteSpace: "nowrap" }}>eBay sold ~</th>
+                      <th style={{ padding: "4px 10px", whiteSpace: "nowrap" }}>Web price ~</th>
                       <th style={{ padding: "4px 0" }}>Photos</th>
                     </tr>
                   </thead>
@@ -194,8 +194,8 @@ export function HqHaulAppraisals() {
                             <td style={{ padding: "5px 10px", opacity: 0.7 }}>
                               {Math.round(it.confidence * 100)}%
                             </td>
-                            <td style={{ padding: "5px 10px", whiteSpace: "nowrap" }}>
-                              {comp ? `$${comp.medianPrice} (${comp.count})` : "—"}
+                            <td style={{ padding: "5px 10px", whiteSpace: "nowrap" }} title={comp?.note}>
+                              {comp ? `$${comp.medianPrice}` : "—"}
                             </td>
                             <td style={{ padding: "5px 0", opacity: 0.6, fontSize: "0.78rem" }}>
                               {(it.photoIndexes ?? []).join(", ")}
