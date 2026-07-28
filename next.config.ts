@@ -48,6 +48,34 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // Short Messenger auto-reply links — keep the UTM attribution off the
+      // visible URL. FB's scraper follows the 302, so previews come from the
+      // destination page's OG tags.
+      {
+        source: "/m/wd",
+        destination: "/rental?utm_source=messenger&utm_medium=auto_reply",
+        permanent: false,
+      },
+      {
+        source: "/m/kc",
+        destination: "/housing?utm_source=messenger&utm_medium=auto_reply",
+        permanent: false,
+      },
+      {
+        source: "/m/haul",
+        destination: "/shop?utm_source=messenger&utm_medium=auto_reply",
+        permanent: false,
+      },
+      {
+        source: "/m/estate",
+        destination: "/estate?utm_source=messenger&utm_medium=auto_reply",
+        permanent: false,
+      },
+      {
+        source: "/m/start",
+        destination: "/start?utm_source=messenger&utm_medium=auto_reply",
+        permanent: false,
+      },
       {
         source: "/trailers/:path*",
         destination: "/trailer/:path*",
