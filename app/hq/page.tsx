@@ -14,6 +14,7 @@ import {
 } from "@/components/hq/hq-license-reviews";
 import { HqMoney } from "@/components/hq/hq-money";
 import { HqEngineStatus } from "@/components/hq/hq-engine-status";
+import { HqAiPnl } from "@/components/hq/hq-ai-pnl";
 import { HqInbound } from "@/components/hq/hq-inbound";
 import { HqDnc } from "@/components/hq/hq-dnc";
 import { HqStats } from "@/components/hq/hq-stats";
@@ -452,6 +453,7 @@ function HqPageInner() {
       <div className="topbar">
         <span className="title">Growth HQ — Pipeline</span>
         <div className="actions">
+          <HqAiPnl />
           <HqEngineStatus />
           <button
             className="btn btn-sm"
