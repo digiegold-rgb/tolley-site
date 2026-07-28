@@ -123,6 +123,17 @@ async function findAsinByText(query: string, integration: string) {
   for (const item of organic) {
     if (typeof item.asin !== "string") continue;
     if (!/^[A-Z0-9]{10}$/.test(item.asin)) continue;
+
+    // Relevance guard. Amazon returns *something* for almost any query, and
+    // `relevance_score` is never present on this engine (every stored
+    // asinMatchScore is null), so taking the first organic result unchecked
+    // linked thrift and rental inventory — "Folding Picnic Table Rental",
+    // "Tri-fuel Firman Generator for rent" — to unrelated Amazon products.
+    // A wrong affiliate link is worse than none: it burns the click and
+    // misrepresents the item.
+    const amazonTitle = typeof item.title === "string" ? item.title : "";
+    if (!titlesOverlap(query, amazonTitle)) continue;
+
     return {
       hit: {
         asin: item.asin,
@@ -132,6 +143,45 @@ async function findAsinByText(query: string, integration: string) {
     };
   }
   return { hit: null, stop: false };
+}
+
+/** Tokens too common in listing titles to count as evidence of a match. */
+const STOPWORDS = new Set([
+  "the", "and", "for", "with", "new", "used", "size", "set", "pack", "inch",
+  "black", "white", "blue", "red", "green", "gray", "grey", "large", "small",
+  "medium", "kids", "womens", "mens", "rental", "rent", "listing", "draft",
+]);
+
+/** Crude singular/plural fold so "ponchos" matches Amazon's "poncho". */
+function stem(token: string): string {
+  return token.length > 3 && token.endsWith("s") ? token.slice(0, -1) : token;
+}
+
+function significantTokens(text: string): Set<string> {
+  return new Set(
+    normalizeTitle(text)
+      .split(" ")
+      .filter((t) => t.length >= 3 && !STOPWORDS.has(t))
+      .map(stem),
+  );
+}
+
+/**
+ * True when the Amazon result plausibly IS the product we searched for.
+ *
+ * Two shared significant tokens is the bar. A proportional rule was tried
+ * first and was too loose on two-word titles — it matched "Rain Boots" to
+ * "Rain Ponchos" on the strength of "rain" alone. The single-token exception
+ * only covers queries that are one word to begin with (a bare brand name).
+ */
+export function titlesOverlap(ours: string, theirs: string): boolean {
+  const a = significantTokens(ours);
+  const b = significantTokens(theirs);
+  if (a.size === 0 || b.size === 0) return false;
+  let shared = 0;
+  for (const t of a) if (b.has(t)) shared += 1;
+  if (a.size === 1) return shared >= 1;
+  return shared >= 2;
 }
 
 function firstImageUrl(imageUrls: unknown): string | null {
