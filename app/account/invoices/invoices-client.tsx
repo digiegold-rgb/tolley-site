@@ -22,9 +22,19 @@ interface Invoice {
   contact: { id: string; name: string; email: string | null } | null;
 }
 
+interface ContactRow {
+  id: string;
+  name: string;
+  email: string | null;
+  _count: { invoices: number };
+}
+
 // Special tab value: shows saved delivery-run templates instead of an invoice
 // status filter, so recurring runs can be billed without leaving Invoices.
 const REGULAR_RUNS = 'REGULAR_RUNS';
+
+// Resending a PAID or VOID invoice is rejected server-side; don't offer it.
+const RESENDABLE: InvoiceStatus[] = ['DRAFT', 'SENT', 'OVERDUE'];
 
 const statusTabs: { label: string; value: string }[] = [
   { label: 'All', value: '' },
@@ -65,6 +75,81 @@ export default function InvoicesClient() {
   const [draftingId, setDraftingId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
 
+  // ── Contact filter + bulk resend ──────────────────────────────────────────
+  const [contacts, setContacts] = useState<ContactRow[]>([]);
+  const [contactId, setContactId] = useState(searchParams.get('contactId') ?? '');
+  const [contactQuery, setContactQuery] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirmResend, setConfirmResend] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/account/contacts');
+        if (!res.ok) return;
+        const json = await res.json();
+        setContacts(
+          (json.contacts as ContactRow[]).filter((c) => c._count.invoices > 0),
+        );
+      } catch {
+        /* sidebar is a filter convenience — a failure here must not break the list */
+      }
+    })();
+  }, []);
+
+  const resendable = invoices.filter((i) => RESENDABLE.includes(i.status));
+  const selectedIds = resendable.filter((i) => selected.has(i.id)).map((i) => i.id);
+  const allSelected = resendable.length > 0 && selectedIds.length === resendable.length;
+
+  function toggleOne(id: string) {
+    setConfirmResend(false);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setConfirmResend(false);
+    setSelected(allSelected ? new Set() : new Set(resendable.map((i) => i.id)));
+  }
+
+  async function handleResend() {
+    setResending(true);
+    setConfirmResend(false);
+    setNotice('');
+    setError('');
+    try {
+      const res = await fetch('/api/account/invoices/bulk-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Bulk resend failed');
+
+      const failures = (json.results as { invoiceNumber: string | null; emailSent: boolean; error: string | null }[])
+        .filter((r) => !r.emailSent);
+      setNotice(
+        `Resent ${json.sent} invoice${json.sent === 1 ? '' : 's'}.` +
+          (failures.length
+            ? ` ${failures.length} failed: ${failures
+                .map((f) => `${f.invoiceNumber || '?'} (${f.error})`)
+                .join(', ')}`
+            : ''),
+      );
+      setSelected(new Set());
+      fetchInvoices();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error resending');
+    } finally {
+      setResending(false);
+    }
+  }
+
   async function handleDraft(inv: Invoice, e: React.MouseEvent) {
     e.stopPropagation();
     setDraftingId(inv.id);
@@ -89,6 +174,7 @@ export default function InvoicesClient() {
     try {
       const params = new URLSearchParams({ page: String(page), limit: '20' });
       if (statusFilter) params.set('status', statusFilter);
+      if (contactId) params.set('contactId', contactId);
       const res = await fetch(`/api/account/invoices?${params}`);
       if (!res.ok) throw new Error('Failed to load invoices');
       const json = await res.json();
@@ -99,25 +185,97 @@ export default function InvoicesClient() {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter]);
+  }, [page, statusFilter, contactId]);
 
   useEffect(() => {
     fetchInvoices();
   }, [fetchInvoices]);
 
+  // Never carry a selection across a filter or page change — you'd be resending
+  // invoices you can no longer see.
+  useEffect(() => {
+    setSelected(new Set());
+    setConfirmResend(false);
+  }, [page, statusFilter, contactId]);
+
+  function syncUrl(nextStatus: string, nextContactId: string) {
+    const qs = new URLSearchParams();
+    if (nextStatus) qs.set('status', nextStatus);
+    if (nextContactId) qs.set('contactId', nextContactId);
+    const s = qs.toString();
+    router.replace(`/account/invoices${s ? `?${s}` : ''}`);
+  }
+
+  const visibleContacts = contacts.filter((c) =>
+    c.name.toLowerCase().includes(contactQuery.trim().toLowerCase()),
+  );
+  const activeContact = contacts.find((c) => c.id === contactId) || null;
+
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col lg:flex-row gap-4 items-start">
+      {/* Contact filter — scope the list to one customer before selecting rows */}
+      <aside className="w-full lg:w-60 lg:shrink-0 bg-white/[0.04] border border-white/[0.08] rounded-xl backdrop-blur-sm overflow-hidden">
+        <div className="px-3 pt-3 pb-2">
+          <div className="text-xs uppercase tracking-wider text-white/40 mb-2">Contact</div>
+          <input
+            value={contactQuery}
+            onChange={(e) => setContactQuery(e.target.value)}
+            placeholder="Search contacts…"
+            className="w-full bg-white/[0.06] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-cyan-500/50"
+          />
+        </div>
+        <div className="max-h-[28rem] overflow-y-auto pb-2">
+          <button
+            onClick={() => {
+              setContactId('');
+              setPage(1);
+              syncUrl(statusFilter, '');
+            }}
+            className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+              contactId === ''
+                ? 'bg-cyan-500/20 text-cyan-400'
+                : 'text-white/70 hover:bg-white/[0.06]'
+            }`}
+          >
+            All contacts
+          </button>
+          {visibleContacts.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => {
+                setContactId(c.id);
+                setPage(1);
+                syncUrl(statusFilter, c.id);
+              }}
+              className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 transition-colors ${
+                contactId === c.id
+                  ? 'bg-cyan-500/20 text-cyan-400'
+                  : 'text-white/70 hover:bg-white/[0.06]'
+              }`}
+            >
+              <span className="truncate">{c.name}</span>
+              <span className="shrink-0 text-xs text-white/30 font-mono">
+                {c._count.invoices}
+              </span>
+            </button>
+          ))}
+          {visibleContacts.length === 0 && contactQuery && (
+            <div className="px-3 py-3 text-xs text-white/30">No match</div>
+          )}
+        </div>
+      </aside>
+
+      <div className="flex-1 min-w-0 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
           {statusTabs.map((tab) => (
             <button
               key={tab.value}
               onClick={() => {
                 setStatusFilter(tab.value);
                 setPage(1);
-                const qs = tab.value ? `?status=${tab.value}` : '';
-                router.replace(`/account/invoices${qs}`);
+                syncUrl(tab.value, contactId);
               }}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 statusFilter === tab.value
@@ -136,6 +294,49 @@ export default function InvoicesClient() {
           New Invoice
         </Link>
       </div>
+
+      {/* Selection / resend bar */}
+      {statusFilter !== REGULAR_RUNS && selectedIds.length > 0 && (
+        <div className="bg-cyan-500/[0.08] border border-cyan-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="text-sm text-white/80">
+            <span className="font-semibold text-cyan-300">{selectedIds.length}</span>{' '}
+            selected
+            {activeContact ? ` · ${activeContact.name}` : ''}
+            {confirmResend && (
+              <span className="text-amber-300">
+                {' '}— this emails {selectedIds.length === 1 ? 'it' : 'them'} to the
+                contact{selectedIds.length === 1 ? '' : 's'} on file. Confirm?
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setSelected(new Set());
+                setConfirmResend(false);
+              }}
+              className="text-xs text-white/50 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
+            >
+              Clear
+            </button>
+            <button
+              onClick={() => (confirmResend ? handleResend() : setConfirmResend(true))}
+              disabled={resending}
+              className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50 ${
+                confirmResend
+                  ? 'bg-amber-400 hover:bg-amber-300 text-black'
+                  : 'bg-cyan-500 hover:bg-cyan-400 text-black'
+              }`}
+            >
+              {resending
+                ? 'Sending…'
+                : confirmResend
+                  ? `Yes, resend ${selectedIds.length}`
+                  : `Resend ${selectedIds.length}`}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Error */}
       {error && (
@@ -166,6 +367,16 @@ export default function InvoicesClient() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-white/40 text-xs uppercase tracking-wider border-b border-white/[0.08]">
+                  <th className="pl-5 pr-2 py-3 w-8">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleAll}
+                      disabled={resendable.length === 0}
+                      title="Select all resendable invoices on this page"
+                      className="h-4 w-4 rounded border-white/20 bg-white/[0.06] accent-cyan-500 disabled:opacity-30"
+                    />
+                  </th>
                   <th className="px-5 py-3">Invoice #</th>
                   <th className="px-5 py-3">Contact</th>
                   <th className="px-5 py-3">Date</th>
@@ -181,8 +392,24 @@ export default function InvoicesClient() {
                   <tr
                     key={inv.id}
                     onClick={() => router.push(`/account/invoices/${inv.id}`)}
-                    className="hover:bg-white/[0.04] cursor-pointer"
+                    className={`cursor-pointer ${
+                      selected.has(inv.id) ? 'bg-cyan-500/[0.07]' : 'hover:bg-white/[0.04]'
+                    }`}
                   >
+                    <td className="pl-5 pr-2 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selected.has(inv.id)}
+                        onChange={() => toggleOne(inv.id)}
+                        disabled={!RESENDABLE.includes(inv.status)}
+                        title={
+                          RESENDABLE.includes(inv.status)
+                            ? 'Select to resend'
+                            : `${inv.status} invoices cannot be resent`
+                        }
+                        className="h-4 w-4 rounded border-white/20 bg-white/[0.06] accent-cyan-500 disabled:opacity-20"
+                      />
+                    </td>
                     <td className="px-5 py-3 text-cyan-400 font-mono text-xs">
                       {inv.invoiceNumber}
                     </td>
@@ -236,7 +463,7 @@ export default function InvoicesClient() {
                 ))}
                 {invoices.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-5 py-12 text-center text-white/30">
+                    <td colSpan={9} className="px-5 py-12 text-center text-white/30">
                       No invoices found
                     </td>
                   </tr>
@@ -270,6 +497,7 @@ export default function InvoicesClient() {
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }

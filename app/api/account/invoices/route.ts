@@ -14,10 +14,14 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)));
     const status = searchParams.get('status');
+    const contactId = searchParams.get('contactId');
 
     // Default: hide VOID rows from "All" — user wants voids gone, not lingering.
     // Only show VOIDs if explicitly filtered to them (?status=VOID).
     const where: Record<string, unknown> = {};
+    // Scope to one customer so e.g. Wayne's invoices aren't interleaved with
+    // Buckeye's when picking a batch to resend.
+    if (contactId) where.contactId = contactId;
     if (status) {
       where.status = status;
     } else {
