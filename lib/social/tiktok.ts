@@ -7,15 +7,17 @@ const SERVICE_URL = process.env.TIKTOK_SERVICE_URL;
 const SERVICE_API_KEY = process.env.TIKTOK_SERVICE_API_KEY;
 
 // Which TikTok account a post lands on depends on which business it came from.
-// "action" (DJI action cam) stays on the personal account; everything else —
-// shop/treasure/estate content and unrouted crons — goes to the
-// @yourkchomes Business account (mirrors facebook.ts pickPageAndToken).
-const SOURCE_ACCOUNT: Record<string, string> = {
-  action: "personal",
-};
+// Everything currently routes to the @yourkchomes Business account: it is the
+// only session the DGX service can hold. The personal account's cookie was
+// destroyed by TikTok's add-a-sandbox-user flow (it redirects through
+// /logout), and re-login is gated behind a drag-puzzle CAPTCHA that cannot be
+// automated. Restore `action: "personal"` here once that session is back.
+const SOURCE_ACCOUNT: Record<string, string> = {};
+
+const DEFAULT_ACCOUNT = "yourkchomes";
 
 function pickTikTokAccount(source?: string): string {
-  return SOURCE_ACCOUNT[source ?? ""] ?? "yourkchomes";
+  return SOURCE_ACCOUNT[source ?? ""] ?? DEFAULT_ACCOUNT;
 }
 
 /**
