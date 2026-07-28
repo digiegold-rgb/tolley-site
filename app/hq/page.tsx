@@ -21,6 +21,7 @@ import { HqEsnKit } from "@/components/hq/hq-esn-kit";
 import { HqEstates } from "@/components/hq/hq-estates";
 import { HqEmpireMap } from "@/components/hq/hq-empire-map";
 import { HqFbChats } from "@/components/hq/hq-fb-chats";
+import { HqHaulAppraisals } from "@/components/hq/hq-haul-appraisals";
 import { HqChannelScoreboard } from "@/components/hq/hq-channel-scoreboard";
 import {
   HqMustComplete,
@@ -35,9 +36,9 @@ import {
   type HqInboundLead,
 } from "@/components/hq/types";
 
-type Tab = "empire" | "must" | "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats" | "chats";
+type Tab = "empire" | "must" | "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats" | "chats" | "hauls";
 
-const TABS: readonly Tab[] = ["empire", "must", "pipeline", "inbound", "approvals", "money", "dnc", "estates", "stats", "chats"];
+const TABS: readonly Tab[] = ["empire", "must", "pipeline", "inbound", "approvals", "money", "dnc", "estates", "stats", "chats", "hauls"];
 
 function isTab(v: string | null): v is Tab {
   return v != null && (TABS as readonly string[]).includes(v);
@@ -574,6 +575,12 @@ function HqPageInner() {
             Chats
           </button>
           <button
+            className={`tab-btn ${tab === "hauls" ? "active" : ""}`}
+            onClick={() => setTab("hauls")}
+          >
+            💎 Hauls
+          </button>
+          <button
             className={`tab-btn ${tab === "dnc" ? "active" : ""}`}
             onClick={() => setTab("dnc")}
           >
@@ -635,6 +642,8 @@ function HqPageInner() {
           </>
         ) : tab === "chats" ? (
           <HqFbChats />
+        ) : tab === "hauls" ? (
+          <HqHaulAppraisals />
         ) : tab === "dnc" ? (
           <HqDnc
             leads={leads}
