@@ -30,7 +30,12 @@ export const regridPlugin: DossierPlugin = {
   description:
     "Structured parcel data: owner names, assessed values, vacancy, absentee detection, zoning, QOZ, lot size",
   category: "ownership",
-  enabled: true,
+  // PAUSED 2026-07-27: Regrid API plan is $375/mo — too expensive for now.
+  // Token expired 2026-04-10 and was never renewed. Owner lookups fall back to
+  // county-assessor + SerpAPI. To resume: re-subscribe at app.regrid.com,
+  // set REGRID_API_TOKEN in Vercel + .env.local, flip this to true,
+  // and restore the /api/cron/regrid-scan entry in vercel.json.
+  enabled: false,
   priority: 5,
   estimatedDuration: "5-15 sec",
   requiredConfig: ["REGRID_API_TOKEN"],
