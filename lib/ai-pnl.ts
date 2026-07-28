@@ -20,8 +20,8 @@ export const AI_PNL_AS_OF = "2026-07-28";
 export const AI_SPEND: PnlLine[] = [
   { label: "DGX Spark (GB10)", amount: 2500, kind: "verified", note: "Hardware, user-stated purchase price" },
   { label: "Claude Code (Anthropic)", amount: 1200, kind: "estimated", note: "$100/mo × ~12 mo — no receipts in Gmail; adjust when console total is pulled" },
-  { label: "Regrid", amount: 1500, kind: "estimated", note: "$375/mo × ~4 mo (Mar–Jul 2026), paused 7/27; token was dead 106 of those days" },
-  { label: "Gmail-receipted SaaS", amount: 757, kind: "verified", note: "Google Cloud/Gemini $100 · Instantly $94 · Motion $228 · Repurpose $167 · X Premium $168" },
+  // Regrid: $0 — free month only, never paid (Jared confirmed 7/28; Gmail agrees: no payment receipt ever)
+  { label: "Gmail-receipted SaaS", amount: 757, kind: "verified", note: "Gemini auto-reload $100 (4×$25 Mastercard, NOT free credit) · Instantly $94 · Motion $228 · Repurpose $166.83 (Stripe #2335-2248, 2/6/24) · X Premium+ $168 (Stripe #2033-7791, 2/15/24)" },
   { label: "Paid ads (FB + Google)", amount: 430, kind: "verified", note: "$348 FB ad account lifetime + $82 Google Ads; all ads currently off" },
   { label: "ChatGPT", amount: 240, kind: "verified", note: "$20/mo × 12 mo, user-stated" },
   { label: "Modal (GPU compute)", amount: 177, kind: "verified", note: "CLI billing Feb–Jul 2026; July alone $137 (92% of $150 cap) — all Wan video renders" },
