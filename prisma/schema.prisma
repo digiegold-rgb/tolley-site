@@ -4756,3 +4756,38 @@ model ContactVaultEntry {
   @@index([isKcMetro])
   @@index([linkedType])
 }
+
+// ── Post Ledger (/hq Posts tab) ───────────────────────────────────────
+// ONE append-only row per (run × channel) for every automated posting job in
+// the empire. Written by DGX jobs via POST /api/hq/post-log (x-sync-secret)
+// using the shared emitters in ~/growth-engine/lib/postlog.{py,mjs,sh}.
+//
+// WHY THIS EXISTS: before 2026-07-28 each job kept its own log file, so a dead
+// channel was invisible — Instagram's token was revoked 7/24 and 86 consecutive
+// posts failed silently for 4 days because nothing compared "what fired" to
+// "what should have fired". A log alone cannot catch that: a job that dies
+// writes nothing, and silence looks identical to success. So this table is only
+// half the system — lib/post-schedule.ts declares the EXPECTED cadence and the
+// Posts tab reds out any channel whose window closed with no row here.
+//
+// runId groups every channel of a single run (one short fans out to 8 rows).
+model PostLogEntry {
+  id        String   @id @default(cuid())
+  job       String // growth-shorts | fb-daily-post | pin-circle | wd-listings | ...
+  runId     String // groups all channels of one fan-out
+  channel   String // x | bsky | fb | ig | pin | tt | yt | threads | marketplace | craigslist
+  account   String? // yourkchomes | ruthanntolley | haul.tolley.io — WHICH identity posted
+  business  String? // haul | ykh | wd | estate | food
+  status    String // ok | fail | skipped
+  title     String? // what was posted, for the human reading the tab
+  url       String? // permalink to the live post — the only real proof it published
+  error     String?  @db.Text
+  costCents Int      @default(0) // measured API spend, not estimated (X = 21)
+  firedAt   DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([firedAt])
+  @@index([job, firedAt])
+  @@index([channel, firedAt])
+  @@index([runId])
+}

@@ -114,19 +114,35 @@ export function monthlyCapFor(integration: string): number {
 }
 
 /**
+ * Day of month the SerpAPI plan renews — NOT the 1st of the calendar month.
+ *
+ * 🔴 THIS MOVES. Using SerpAPI's "Renew Early" button resets the credits
+ * immediately and re-dates the renewal to that day. Jared renewed early on
+ * 2026-07-28, moving it from the 5th to the 28th. If this constant is stale,
+ * every budget check counts the PREVIOUS cycle's spend against the new caps
+ * and refuses every call — the failure looks like "all integrations maxed"
+ * the moment credits are actually full. Update it whenever you renew early.
+ */
+const RENEWAL_DAY = 28;
+
+/**
  * Start of the current SerpAPI billing cycle.
  *
- * SerpAPI resets on the plan renewal day (the 5th), NOT the 1st of the
- * calendar month. Counting from the 1st would under-count for the first
- * days of a cycle and let integrations overspend right after reset.
+ * Counting from the 1st would under-count for the first days of a cycle and
+ * let integrations overspend right after reset.
  */
 export function billingCycleStart(now = new Date()): Date {
-  const RENEWAL_DAY = 5;
   const d = new Date(now);
-  if (d.getUTCDate() >= RENEWAL_DAY) {
-    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), RENEWAL_DAY));
+  // Clamp for short months: a renewal day of 30 lands on Feb 28.
+  const daysInMonth = (y: number, m: number) => new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth();
+  const thisMonthDay = Math.min(RENEWAL_DAY, daysInMonth(y, m));
+  if (d.getUTCDate() >= thisMonthDay) {
+    return new Date(Date.UTC(y, m, thisMonthDay));
   }
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, RENEWAL_DAY));
+  const prevDay = Math.min(RENEWAL_DAY, daysInMonth(y, m - 1));
+  return new Date(Date.UTC(y, m - 1, prevDay));
 }
 
 /** Successful (billed) calls this cycle for one integration. */
