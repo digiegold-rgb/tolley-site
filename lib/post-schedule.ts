@@ -35,7 +35,9 @@ export const SCHEDULED_JOBS: ScheduledJob[] = [
     unit: "growth-shorts.timer",
     staleAfterHours: 30,
     channels: [
-      { channel: "yt", account: "yourkchome", business: "haul" },
+      // Moved off @yourkchome 2026-07-29 — product shorts now post to the
+      // dedicated Ruthann's Treasure Hauls channel (UCqSvlHgO3bKON29JJ5Jw-7g).
+      { channel: "yt", account: "ruthanns-treasure-hauls", business: "haul" },
       { channel: "fb", account: "ruthanns-treasure-haul", business: "haul" },
       { channel: "ig", account: "ruthanntolley", business: "haul" },
       { channel: "pin", account: "tolley", business: "haul" },
@@ -109,6 +111,17 @@ export const SCHEDULED_JOBS: ScheduledJob[] = [
     staleAfterHours: 5 * 24,
     channels: [
       { channel: "marketplace", account: "yourkchomes", business: "wd" },
+      { channel: "fb", account: "yourkchomes", business: "wd" },
+    ],
+  },
+  {
+    job: "wd-weekly-video",
+    label: "W/D weekly persona video",
+    schedule: "Mon 12:30 (draft until AUTOPOST)",
+    unit: "wd-weekly-video.timer",
+    staleAfterHours: 9 * 24, // weekly + weekend grace
+    channels: [
+      { channel: "yt", account: "yourkchome", business: "wd" },
       { channel: "fb", account: "yourkchomes", business: "wd" },
     ],
   },
