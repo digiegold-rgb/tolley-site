@@ -19,6 +19,7 @@
  */
 
 import type { NextRequest } from "next/server";
+import { createHmac } from "crypto";
 
 const BOT_UA =
   /bot|crawl|spider|slurp|bingbot|googlebot|facebookexternalhit|meta-externalagent|twitterbot|linkedinbot|pinterest|whatsapp|telegram|discordbot|curl\/|wget\/|python-requests|java-http|go-http|okhttp|postman|insomnia|headlesschrome|phantomjs|axios|preview|fetch/i;
@@ -36,6 +37,15 @@ export function getClientIp(req: NextRequest | Request): string | null {
   const xri = req.headers.get("x-real-ip");
   if (xri) return xri.trim();
   return null;
+}
+
+// Same scheme as /api/analytics: HMAC-SHA256 with ANALYTICS_IP_SALT so click
+// events dedupe against the same hash space. Null when the salt is unset.
+export function maybeHashIp(ip: string | null): string | null {
+  if (!ip) return null;
+  const salt = process.env.ANALYTICS_IP_SALT;
+  if (!salt) return null;
+  return createHmac("sha256", salt).update(ip).digest("hex");
 }
 
 export async function classifyClick(

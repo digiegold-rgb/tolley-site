@@ -2,7 +2,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { EmailCaptureForm } from "@/components/tools/EmailCaptureForm";
-import { timeAgo, TREASURE_HAUL_FB_URL } from "@/lib/shop";
+import { timeAgo, TREASURE_HAUL_FB_URL, resolveAmazonTag } from "@/lib/shop";
 import {
   parseShopFilters,
   buildPrismaWhere,
@@ -215,7 +215,7 @@ export default async function ShopPage({
   // the affiliate tag via resolveAmazonTag() with a hardcoded production
   // fallback, so the button works even if the env var is unset.
   const amazonEnabled = true;
-  const amazonTag = process.env.AMAZON_AFFILIATE_TAG || "tolley-shop-20";
+  const amazonTag = resolveAmazonTag();
 
   const [items, bannerReviews, categoryCounts, lastFbSyncAt] = await Promise.all([
     fetchItems(filters, baseWhere),

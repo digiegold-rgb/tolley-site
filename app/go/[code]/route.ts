@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { amazonAffiliateUrl, tiktokShopUrl } from "@/lib/shop";
-import { classifyClick } from "@/lib/shop/click-classifier";
+import { classifyClick, maybeHashIp } from "@/lib/shop/click-classifier";
 import { ensureSubtagsLoaded } from "@/lib/amazon/subtags";
 
 export const runtime = "nodejs";
@@ -35,6 +35,15 @@ const SRC_TO_FIELD: Record<
   google_business: "goClicksDirect",
   pin: "goClicksPinterest",
   pinterest: "goClicksPinterest",
+  // No dedicated columns for these yet — bucket into Direct; revenue-side
+  // attribution lives in the Amazon subtag resolved from the same src.
+  x: "goClicksDirect",
+  twitter: "goClicksDirect",
+  bsky: "goClicksDirect",
+  bluesky: "goClicksDirect",
+  threads: "goClicksDirect",
+  email: "goClicksDirect",
+  drop_email: "goClicksDirect",
 };
 
 export async function GET(
@@ -55,6 +64,17 @@ export async function GET(
     .catch(() => null);
 
   if (product) {
+    const destination =
+      platform === "tiktok" && product.tiktokShopId
+        ? "tiktok"
+        : platform === "amazon" && product.amazonAsin
+          ? "amazon"
+          : product.status === "sold"
+            ? product.amazonAsin
+              ? "amazon"
+              : "shop_index"
+            : "shop_detail";
+
     prisma.siteEvent
       .create({
         data: {
@@ -64,28 +84,23 @@ export async function GET(
           label: src || null,
           userAgent: click.ua,
           ip: click.ip,
+          ipHash: maybeHashIp(click.ip),
           meta: {
             productId: product.id,
             src: src || null,
             platform: platform || null,
             isBot: click.isBot,
             botReason: click.reason,
-            destination:
-              platform === "tiktok" && product.tiktokShopId
-                ? "tiktok"
-                : platform === "amazon" && product.amazonAsin
-                  ? "amazon"
-                  : product.status === "sold"
-                    ? product.amazonAsin
-                      ? "amazon"
-                      : "shop_index"
-                    : "shop_detail",
+            destination,
           },
         },
       })
       .catch(() => {});
 
-    if (!click.isBot) {
+    // goClicks* feed the affiliate stats totals — only count clicks that
+    // actually leave for a monetizable destination. Internal /shop navigation
+    // was inflating these counters and masking how little real traffic exists.
+    if (!click.isBot && (destination === "amazon" || destination === "tiktok")) {
       const field = SRC_TO_FIELD[src] ?? "goClicksDirect";
       prisma.product
         .update({ where: { id: product.id }, data: { [field]: { increment: 1 } } })
@@ -126,6 +141,7 @@ export async function GET(
           label: link.network,
           userAgent: click.ua,
           ip: click.ip,
+          ipHash: maybeHashIp(click.ip),
           meta: {
             shortCode: code,
             network: link.network,

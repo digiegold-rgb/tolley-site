@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { amazonAffiliateUrl } from "@/lib/shop";
+import { amazonAffiliateUrl, resolveAmazonTag } from "@/lib/shop";
 import type { Product, PlatformListing, Prisma } from "@prisma/client";
 
 const STOREFRONT_URL =
@@ -514,7 +514,7 @@ export function formatAmazonPicksCaption(
     if (url) lines.push(`  🛒 ${url}`);
   }
   lines.push("");
-  lines.push("Full storefront → https://www.amazon.com/shop/digitaljared?ref_=tolley_brand_fb");
+  lines.push(`Full storefront → https://www.amazon.com/shop/digitaljared?tag=${resolveAmazonTag(null, "brand_fb")}`);
   lines.push("");
   lines.push("As an Amazon Associate I earn from qualifying purchases. Same Prime shipping you already love. 🛒");
   lines.push("");
@@ -604,7 +604,7 @@ export function formatHaulFacebookCaption(
   );
   lines.push("");
   const haulTag = encodeURIComponent(
-    process.env.AMAZON_HAUL_TAG || process.env.AMAZON_AFFILIATE_TAG || "tolley-shop-20",
+    process.env.AMAZON_HAUL_TAG || resolveAmazonTag(),
   );
   for (const p of products) {
     lines.push(`• ${p.title.trim()}`);
@@ -670,7 +670,7 @@ export function buildHaulPicksGoComment(
   for (const p of products) {
     if (!p.amazonAsin) continue;
     const url = `https://www.amazon.com/dp/${p.amazonAsin}?tag=${encodeURIComponent(
-      process.env.AMAZON_HAUL_TAG || process.env.AMAZON_AFFILIATE_TAG || "tolley-shop-20",
+      process.env.AMAZON_HAUL_TAG || resolveAmazonTag(),
     )}`;
     lines.push(`• ${p.title.trim().slice(0, 70)} → ${url}`);
   }

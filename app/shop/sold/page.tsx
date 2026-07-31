@@ -1,3 +1,4 @@
+import { resolveAmazonTag } from "@/lib/shop";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
@@ -110,7 +111,7 @@ export default async function SoldPage({
   // physical item, the affiliate click still earns commission and Ruthann's
   // fans browse the sold gallery for inspiration.
   const amazonEnabled = true;
-  const amazonTag = process.env.AMAZON_AFFILIATE_TAG || "tolley-shop-20";
+  const amazonTag = resolveAmazonTag();
 
   // Cold empty state only when the catalog itself is empty — keep filter UI
   // visible whenever there are sold items, even if the current filter has 0 hits.

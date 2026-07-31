@@ -1,3 +1,4 @@
+import { resolveAmazonTag } from "@/lib/shop";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
@@ -46,7 +47,7 @@ export default async function HaulPage() {
     price: p.listings[0]?.price ?? p.targetPrice ?? 0,
   }));
 
-  const amazonTag = process.env.AMAZON_HAUL_TAG || process.env.AMAZON_AFFILIATE_TAG || "tolley-shop-20";
+  const amazonTag = process.env.AMAZON_HAUL_TAG || resolveAmazonTag();
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">

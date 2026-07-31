@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { amazonAffiliateUrl } from "@/lib/shop";
-import { classifyClick } from "@/lib/shop/click-classifier";
+import { classifyClick, maybeHashIp } from "@/lib/shop/click-classifier";
 import { ensureSubtagsLoaded } from "@/lib/amazon/subtags";
 
 export const runtime = "nodejs";
@@ -43,6 +43,7 @@ export async function GET(
         label: src,
         userAgent: click.ua,
         ip: click.ip,
+        ipHash: maybeHashIp(click.ip),
         meta: {
           asin,
           src,

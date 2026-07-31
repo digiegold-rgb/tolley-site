@@ -9,6 +9,7 @@
  * Configure via AMAZON_STOREFRONT_URL env var; defaults to the production
  * vanity so this works out of the box.
  */
+import { AMAZON_AFFILIATE_TAG_FALLBACK } from "@/lib/shop";
 
 const STOREFRONT_URL =
   process.env.AMAZON_STOREFRONT_URL || "https://www.amazon.com/shop/digitaljared";
@@ -59,7 +60,7 @@ export default function AmazonStorefrontEmbed({
           {highlights.slice(0, 6).map((h) => (
             <a
               key={h.asin}
-              href={`https://www.amazon.com/dp/${h.asin}?tag=tolley-shop-20`}
+              href={`https://www.amazon.com/dp/${h.asin}?tag=${AMAZON_AFFILIATE_TAG_FALLBACK}`}
               target="_blank"
               rel="nofollow sponsored noopener noreferrer"
               className="group block rounded-lg border border-white/5 bg-black/30 p-2 transition hover:border-amber-300/40"

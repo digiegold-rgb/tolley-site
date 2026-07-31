@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { SHOP_CATEGORIES } from "@/lib/shop";
+import { SHOP_CATEGORIES, AMAZON_AFFILIATE_TAG_FALLBACK } from "@/lib/shop";
 import { CONDITIONS } from "@/lib/shop/types";
 import { PhotoSourcePicker } from "./PhotoSourcePicker";
 import { uploadShopPhoto } from "@/lib/shop/upload-client";
@@ -599,7 +599,7 @@ export function EditProductModal({
                   : "Cross-list now"}
             </button>
             <a
-              href={`https://www.amazon.com/s?${new URLSearchParams({ k: title.trim(), tag: "tolley-shop-20" }).toString()}`}
+              href={`https://www.amazon.com/s?${new URLSearchParams({ k: title.trim(), tag: AMAZON_AFFILIATE_TAG_FALLBACK }).toString()}`}
               target="_blank"
               rel="nofollow sponsored noopener noreferrer"
               className="rounded-md border border-amber-400/30 bg-[#FF9900]/15 px-3 py-1.5 text-[0.7rem] font-semibold text-amber-200 hover:bg-[#FF9900]/25"

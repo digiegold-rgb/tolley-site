@@ -134,13 +134,12 @@ export async function selectDropProducts(opts: {
 }
 
 /**
- * Mirrors buildShopLink in lib/shop/treasure-haul-post.ts: prefer the tracked
- * /go short link, fall back to the direct product URL. Only 87 of 247 listed
- * products have a goSlug, so the fallback is the common path — utm params
- * carry attribution there.
+ * Email links must NEVER route through /go — that route can 302 straight to
+ * Amazon (sold or platform=amazon products), and the Associates Operating
+ * Agreement bans Special Links in email including via redirects. Always land
+ * on the /shop product page; the on-page Buy button is the compliant hop.
  */
 export function buildDropLink(p: Pick<DropProduct, "id" | "goSlug">): string {
-  if (p.goSlug) return `https://www.tolley.io/go/${p.goSlug}?src=email`;
   return `https://www.tolley.io/shop/${p.id}?utm_source=drop_email&utm_medium=email`;
 }
 

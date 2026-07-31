@@ -18,6 +18,19 @@ import {
 } from "@/lib/shop";
 import { trackEvent } from "@/components/analytics/site-tracker";
 
+/**
+ * Visitors arriving from a social/email leg carry ?utm_source= on the page
+ * URL. Propagating it into the redirect's ?src= lets the Amazon subtag (and
+ * click event) attribute the sale to the originating channel instead of
+ * flattening everything to "shop". Read at click time (not render) so SSR
+ * markup stays stable.
+ */
+function clickSrc(): string {
+  if (typeof window === "undefined") return "shop";
+  const utm = new URLSearchParams(window.location.search).get("utm_source");
+  return utm && /^[a-z0-9_]{1,24}$/i.test(utm) ? utm.toLowerCase() : "shop";
+}
+
 interface Props {
   itemId?: string | null;
   title?: string | null;
@@ -124,7 +137,10 @@ export default function BuyButton({
       {hasAmazon && (
         <a
           href={`/api/shop/amazon/${itemId}?src=shop`}
-          onClick={() => trackBuy("amazon_direct")}
+          onClick={(e) => {
+            trackBuy("amazon_direct");
+            e.currentTarget.href = `/api/shop/amazon/${itemId}?src=${clickSrc()}`;
+          }}
           target="_blank"
           rel="nofollow sponsored noopener noreferrer"
           className={`block w-full rounded-md bg-[#FF9900] ${padY} text-center ${text} font-semibold text-black hover:bg-[#ffb13a]`}
@@ -141,7 +157,12 @@ export default function BuyButton({
               ? `${fallbackUrl}?src=shop`
               : fallbackUrl
           }
-          onClick={() => trackBuy("amazon_search")}
+          onClick={(e) => {
+            trackBuy("amazon_search");
+            if (fallbackUrl.startsWith("/api/")) {
+              e.currentTarget.href = `${fallbackUrl}?src=${clickSrc()}`;
+            }
+          }}
           target="_blank"
           rel="nofollow sponsored noopener noreferrer"
           className={`block w-full rounded-md bg-[#FF9900]/85 ${padY} text-center ${text} font-semibold text-black hover:bg-[#ffb13a]`}

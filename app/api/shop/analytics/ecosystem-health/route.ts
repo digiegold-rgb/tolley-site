@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateShopAdmin } from "@/lib/shop-auth";
+import { resolveAmazonTag } from "@/lib/shop";
 
 export const runtime = "nodejs";
 
@@ -80,7 +81,7 @@ export async function GET() {
         ? safeSubtagLookup("brand_fb")
         : null,
       gbp: process.env.AMAZON_SUBTAGS_JSON ? safeSubtagLookup("gbp") : null,
-      master: process.env.AMAZON_AFFILIATE_TAG ?? "tolley-shop-20",
+      master: resolveAmazonTag(),
     },
   });
 }

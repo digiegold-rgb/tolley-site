@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { formatPrice } from "@/lib/shop";
+import { formatPrice, AMAZON_AFFILIATE_TAG_FALLBACK } from "@/lib/shop";
 import ProductDetailModal, { type DetailItem } from "./ProductDetailModal";
 
 export interface VideoTileProduct extends DetailItem {
@@ -94,7 +94,7 @@ export default function VideoTile({ product }: { product: VideoTileProduct }) {
           item={product}
           onClose={() => setOpen(false)}
           amazonEnabled
-          amazonTag="tolley-shop-20"
+          amazonTag={AMAZON_AFFILIATE_TAG_FALLBACK}
         />
       )}
     </>

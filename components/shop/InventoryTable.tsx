@@ -6,7 +6,7 @@ import { PlatformBadge, StatusBadge } from "./PlatformBadge";
 import { CrossPostModal } from "./CrossPostModal";
 import { EditProductModal } from "./EditProductModal";
 import { MarkSoldModal } from "./MarkSoldModal";
-import { formatPrice, timeAgo } from "@/lib/shop";
+import { formatPrice, timeAgo, AMAZON_AFFILIATE_TAG_FALLBACK } from "@/lib/shop";
 
 interface ProductListing {
   id: string;
@@ -389,7 +389,7 @@ export function InventoryTable({
                         Cross-post
                       </button>
                       <a
-                        href={`https://www.amazon.com/s?${new URLSearchParams({ k: product.title, tag: "tolley-shop-20" }).toString()}`}
+                        href={`https://www.amazon.com/s?${new URLSearchParams({ k: product.title, tag: AMAZON_AFFILIATE_TAG_FALLBACK }).toString()}`}
                         target="_blank"
                         rel="nofollow sponsored noopener noreferrer"
                         className="rounded-lg border border-amber-400/30 bg-[#FF9900]/15 px-2.5 py-1 text-xs text-amber-200 hover:bg-[#FF9900]/25"

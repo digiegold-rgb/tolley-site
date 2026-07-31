@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { amazonSearchUrl } from "@/lib/shop";
+import { classifyClick, maybeHashIp } from "@/lib/shop/click-classifier";
 
 export const runtime = "nodejs";
 
@@ -53,14 +54,39 @@ export async function GET(
     return NextResponse.json({ error: "No search query" }, { status: 404 });
   }
 
-  if (isProduct) {
-    await prisma.product
-      .update({ where: { id }, data: { amazonSearchClicks: { increment: 1 } } })
-      .catch(() => {});
-  } else {
-    await prisma.shopItem
-      .update({ where: { id }, data: { amazonSearchClicks: { increment: 1 } } })
-      .catch(() => {});
+  const click = await classifyClick(request);
+
+  prisma.siteEvent
+    .create({
+      data: {
+        site: "shop",
+        path: `/api/shop/amazon/search/${id}`,
+        event: "amazon_search_click",
+        label: src,
+        userAgent: click.ua,
+        ip: click.ip,
+        ipHash: maybeHashIp(click.ip),
+        meta: {
+          src,
+          query,
+          isBot: click.isBot,
+          botReason: click.reason,
+          productId: isProduct ? id : null,
+        },
+      },
+    })
+    .catch(() => {});
+
+  if (!click.isBot) {
+    if (isProduct) {
+      await prisma.product
+        .update({ where: { id }, data: { amazonSearchClicks: { increment: 1 } } })
+        .catch(() => {});
+    } else {
+      await prisma.shopItem
+        .update({ where: { id }, data: { amazonSearchClicks: { increment: 1 } } })
+        .catch(() => {});
+    }
   }
 
   return NextResponse.redirect(url, 302);

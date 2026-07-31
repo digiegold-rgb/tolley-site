@@ -36,6 +36,10 @@ export type AmazonSubtagSource =
   | "bounty"
   | "haul"
   | "sms"
+  | "x"
+  | "bluesky"
+  | "threads"
+  | "email"
   | "direct";
 
 // `brand_fb` distinguishes Ruthann's Treasure Haul brand Page traffic from
@@ -68,6 +72,20 @@ const SOURCE_CANONICAL: Record<string, string> = {
   amazon_haul: "haul",
   sms: "sms",
   whatsapp: "sms",
+  // X/Bluesky/Threads legs post tolley.io/shop links; the on-site Buy button
+  // propagates the origin so revenue can be attributed once each subtag is
+  // registered (tolley-x-20 pending registration as of 2026-07-30). Until
+  // then these resolve to the master tag — safe, just unattributed.
+  x: "x",
+  twitter: "x",
+  bsky: "bluesky",
+  bluesky: "bluesky",
+  threads: "threads",
+  // Traffic that arrived from the drop email onto the site, then clicked
+  // Buy on Amazon. The Amazon link itself lives on the website (compliant);
+  // this only labels the click's origin.
+  email: "email",
+  drop_email: "email",
   direct: "direct",
 };
 
@@ -172,6 +190,10 @@ export const SUBTAG_CANONICAL_SOURCES: { source: string; description: string }[]
   { source: "shop", description: "tolley.io/shop on-site Buy on Amazon" },
   { source: "bounty", description: "Amazon Bounty (Prime / Audible / KU)" },
   { source: "haul", description: "Amazon Haul $4 first-purchase bounty (sub-$20 products)" },
+  { source: "x", description: "X/Twitter posts (via tolley.io/shop)" },
+  { source: "bluesky", description: "Bluesky posts (via tolley.io/shop)" },
+  { source: "threads", description: "Threads posts (via tolley.io/shop)" },
+  { source: "email", description: "Drop-email arrivals clicking Buy on-site" },
   { source: "direct", description: "Type-in / unknown referrer" },
 ];
 

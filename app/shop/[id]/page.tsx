@@ -1,3 +1,4 @@
+import { resolveAmazonTag } from "@/lib/shop";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -132,7 +133,7 @@ export default async function ProductPage({
   if (!product || product.imageUrls.length === 0) notFound();
 
   const price = productPrice(product);
-  const amazonTag = process.env.AMAZON_AFFILIATE_TAG || "tolley-shop-20";
+  const amazonTag = resolveAmazonTag();
 
   // Related finds — same category first, newest listed as filler. Internal
   // links here are also what lets Google crawl the catalog from any product.
