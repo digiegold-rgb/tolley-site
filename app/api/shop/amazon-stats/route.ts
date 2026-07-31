@@ -181,6 +181,62 @@ export async function POST(req: NextRequest) {
     select: { id: true, itemsShipped: true },
   });
 
+  // Divergence alarm — the check that would have caught a dead tracking ID
+  // months earlier. Amazon's click count should always be >= our on-site
+  // count (direct caption links on YT/FB/Pin never touch our redirects). If
+  // Amazon reports far FEWER clicks than we measured ourselves, the tag is
+  // not crediting — escalate to the Must Complete queue (deduped on title).
+  if (typeof payload.clicksMTD === "number") {
+    try {
+      const monthStart = new Date();
+      monthStart.setUTCDate(1);
+      monthStart.setUTCHours(0, 0, 0, 0);
+      const ourRealMTD = await prisma.siteEvent.count({
+        where: {
+          event: "amazon_click",
+          createdAt: { gte: monthStart },
+          meta: { path: ["isBot"], equals: false },
+        },
+      });
+      const diverged =
+        ourRealMTD >= 10 && payload.clicksMTD < ourRealMTD * 0.5;
+      if (diverged) {
+        const title = "🚨 Amazon click divergence — tag may not be crediting";
+        const open = await prisma.mustCompleteItem.findFirst({
+          where: { title, status: "open" },
+          select: { id: true },
+        });
+        if (!open) {
+          const max = await prisma.mustCompleteItem.aggregate({
+            _min: { sortOrder: true },
+          });
+          await prisma.mustCompleteItem.create({
+            data: {
+              sortOrder: (max._min.sortOrder ?? 10) - 10,
+              priority: "red",
+              category: "amazon",
+              title,
+              detail:
+                `Amazon Associates reports ${payload.clicksMTD} clicks MTD but our own bot-filtered ` +
+                `count is ${ourRealMTD}. Amazon should always see MORE than us (direct caption links ` +
+                `bypass our redirects). Verify every emitted tracking ID exists in Associates Central ` +
+                `→ Account → Manage Tracking IDs, starting with the master tag.`,
+              links: [
+                {
+                  label: "Manage Tracking IDs",
+                  url: "https://affiliate-program.amazon.com/home/account/tag/manage",
+                },
+              ],
+              source: "amazon-stats-divergence",
+            },
+          });
+        }
+      }
+    } catch {
+      // alarm is best-effort — never fail the snapshot ingest over it
+    }
+  }
+
   // Tier auto-activation. Conservative — only flip ON when we observe a
   // confirmed shipped count crossing the gate. We never auto-flip OFF here
   // (Amazon could 30-day rollover us back below 10; we want manual review).
