@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { HqVideoCosts } from "./hq-video-costs";
 
 // Posts tab — did every automated channel actually fire?
 //
@@ -159,6 +160,9 @@ export function HqPosts() {
           Refresh
         </button>
       </div>
+
+      {/* ── What the videos cost (all-time, unpruned — see hq-video-costs) ── */}
+      <HqVideoCosts />
 
       {/* ── Channel health, problems first ── */}
       <h3 style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "#6e6e73", margin: "0 0 10px" }}>

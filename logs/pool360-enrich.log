@@ -2805,3 +2805,50 @@ npm notice
 [main] Progress: 400/500 (358 enriched, 42 failed)
 [ok] CHP-50-1002 — desc, specs, sds, feat
 [main] Done. Enriched: 454, Failed: 46 of 500
+[main] Pool360 Product Enrichment (API) — 2026-07-31T12:00:03.350Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3206
+[main] Products to enrich: 500
+[main] Browser session started
+[ok] CAR-801-9137 — desc, specs, feat
+[ok] ICS-37-2670 — desc, specs, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 11
+[ok] MOV-05-1007 — desc, specs, upc, sds, feat
+[ok] LAS-56-3104 — desc, specs, upc, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 22
+[ok] LAT-801-9333 — desc, specs
+[ok] CEL-801-1000 — desc, specs, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 30
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 35
+[ok] CEL-801-1001 — desc, specs, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 44
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 49
+[ok] LEC-45-2031 — desc, specs, upc, sds, feat
+[ok] LEC-45-2032 — desc, specs, upc, sds, feat
+[ok] PUR-15-1329 — desc, specs, upc, sds, feat
+[ok] RAI-40-2069 — desc, specs, upc, feat
+[ok] PSL-40-0342 — desc, specs, upc, sds, feat
+[ok] NAT-47-0080 — desc, specs, upc, feat
+[ok] PSL-40-0364 — desc, specs, upc, feat
+[ok] SWL-40-0950 — desc, specs, upc, feat
+[ok] JCK-45-807 — desc, specs, upc
+[ok] JCK-45-829 — desc, specs
+[ok] JCK-45-830 — desc, specs, feat
+[ok] PSL-40-0550 — desc, specs, upc, feat
+[ok] AAA-50-7673 — desc, specs, upc
+[main] Progress: 100/500 (55 enriched, 45 failed)
+[ok] PSL-401-1031 — desc, specs, upc
+[main] Progress: 200/500 (152 enriched, 48 failed)
+[ok] LGP-10-1028 — desc, specs, upc, feat
+[fail] SPG-401-0005 — page.evaluate: SyntaxError: Unexpected token 'P', "Product not found." is not valid JSON
+[main] Progress: 300/500 (246 enriched, 54 failed)
+[ok] PSL-47-0600 — desc, specs, upc, feat
+[main] Progress: 400/500 (343 enriched, 57 failed)
+[ok] HAY-15-735 — desc, specs, upc, sds, feat
+[main] Done. Enriched: 443, Failed: 57 of 500

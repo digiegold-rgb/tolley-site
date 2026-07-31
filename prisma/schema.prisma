@@ -4791,3 +4791,35 @@ model PostLogEntry {
   @@index([channel, firedAt])
   @@index([runId])
 }
+
+// What every video actually cost to make. PostLogEntry above is 90-day-pruned
+// and only knows POSTING spend, so it can never answer "what have we spent on
+// video, ever" — this table is never pruned and is the all-time answer.
+//
+// Components are split because they age at different rates: clips and lipsync
+// are what the render pipeline measured and wrote to its own ledger, script is
+// a per-video estimate constant (Kimi K3 has no per-call billing readout), tts
+// is 0 by construction (IndexTTS-2 is local, ElevenLabs is a flat plan). The
+// `estimated` flag marks any row where a component came from a constant rather
+// than the pipeline's own number, so the UI can label the total honestly.
+model VideoCost {
+  id           String   @id @default(cuid())
+  videoKey     String   @unique // absolute render path — stable across re-pushes
+  pipeline     String // shorts | housing | listings | wd | estate | other
+  title        String?
+  template     String?
+  status       String   @default("draft") // draft | posted
+  url          String? // first live permalink, for clicking through from /hq
+  clipsCents   Int      @default(0) // Wan/Modal AI clips — measured
+  lipsyncCents Int      @default(0) // fal Kling lip-sync — measured
+  scriptCents  Int      @default(0) // Kimi K3 storyboard — estimate constant
+  ttsCents     Int      @default(0) // local IndexTTS-2 = 0 by construction
+  postCents    Int      @default(0) // X API post-with-URL, 21c, only when it fired
+  estimated    Boolean  @default(false)
+  renderedAt   DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([renderedAt])
+  @@index([pipeline, renderedAt])
+}
