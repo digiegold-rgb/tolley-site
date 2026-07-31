@@ -1,26 +1,84 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AI_PNL_AS_OF,
   AI_SPEND,
-  AI_SPEND_TOTAL,
-  AI_SPEND_VERIFIED,
   AI_EARNED_TOTAL,
-  AI_NET,
   AI_ASSISTED_REVENUE,
+  type PnlLine,
 } from "@/lib/ai-pnl";
 
 // Topbar pill: the honest AI number. Total cash invested in the AI venture,
 // minus actual cash it has returned (ads/affiliate/promos/AI subscriptions —
-// NOT product sales). Click for the full ledger. Data lives in lib/ai-pnl.ts.
+// NOT product sales). Click for the full ledger.
+//
+// Static baseline lives in lib/ai-pnl.ts; providers the DGX collector tracks
+// (fal, modal, neon, anthropic, openai…) are overridden daily by live rows
+// from /api/hq/ai-spend, so those numbers stay current without a redeploy.
+
+type LiveRow = {
+  provider: string;
+  label: string;
+  amountCents: number;
+  kind: string;
+  note: string | null;
+  asOf: string;
+};
 
 const fmt = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 export function HqAiPnl() {
   const [open, setOpen] = useState(false);
-  const net = AI_NET;
+  const [live, setLive] = useState<LiveRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/hq/ai-spend")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d && Array.isArray(d.rows)) setLive(d.rows);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const { lines, spendTotal, spendVerified, liveAsOf } = useMemo(() => {
+    const byProvider = new Map(live.map((r) => [r.provider, r]));
+    const merged: (PnlLine & { live?: boolean })[] = AI_SPEND.map((l) => {
+      const row = l.provider ? byProvider.get(l.provider) : undefined;
+      if (!row) return l;
+      byProvider.delete(l.provider!);
+      return {
+        ...l,
+        label: row.label || l.label,
+        amount: Math.round(row.amountCents / 100),
+        kind: row.kind === "estimated" ? "estimated" : "verified",
+        note: row.note ?? l.note,
+        live: true,
+      };
+    });
+    // Providers the collector knows about but the baseline doesn't yet.
+    for (const row of byProvider.values()) {
+      merged.push({
+        provider: row.provider,
+        label: row.label,
+        amount: Math.round(row.amountCents / 100),
+        kind: row.kind === "estimated" ? "estimated" : "verified",
+        note: row.note ?? "",
+        live: true,
+      });
+    }
+    const total = merged.reduce((s, l) => s + l.amount, 0);
+    const verified = merged.filter((l) => l.kind === "verified").reduce((s, l) => s + l.amount, 0);
+    const newest = live.reduce<string | null>((m, r) => (!m || r.asOf > m ? r.asOf : m), null);
+    return { lines: merged, spendTotal: total, spendVerified: verified, liveAsOf: newest };
+  }, [live]);
+
+  const net = AI_EARNED_TOTAL - spendTotal;
 
   return (
     <div style={{ position: "relative" }}>
@@ -38,7 +96,7 @@ export function HqAiPnl() {
           background: net < 0 ? "#cf222e" : "#2da44e",
           boxShadow: `0 0 0 3px ${net < 0 ? "#cf222e22" : "#2da44e22"}`,
         }} />
-        AI: {fmt(AI_SPEND_TOTAL)} − {fmt(AI_EARNED_TOTAL)}
+        AI: {fmt(spendTotal)} − {fmt(AI_EARNED_TOTAL)}
         <span style={{ color: net < 0 ? "#cf222e" : "#2da44e" }}>= {fmt(net)}</span>
       </button>
 
@@ -51,26 +109,31 @@ export function HqAiPnl() {
         }}>
           <div style={{ fontWeight: 700, marginBottom: 2 }}>AI P&amp;L — the real number</div>
           <div style={{ color: "#8c959f", fontSize: 11, marginBottom: 8 }}>
-            audited {AI_PNL_AS_OF} · Gmail + Stripe (1,073 charges) + Modal CLI + Neon DB
+            baseline {AI_PNL_AS_OF}
+            {liveAsOf
+              ? ` · live rows ${liveAsOf.slice(0, 10)} (● = auto-updated daily)`
+              : " · live rows unavailable"}
           </div>
 
           <div style={{ fontWeight: 600, margin: "6px 0 2px" }}>Invested</div>
-          {AI_SPEND.map((l) => (
+          {lines.map((l) => (
             <div key={l.label} title={l.note}
               style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", gap: 8 }}>
               <span style={{ color: "#6e7781" }}>
                 {l.label}
                 {l.kind === "estimated" && <span style={{ color: "#d4a017" }}> ~</span>}
+                {l.live && <span style={{ color: "#2da44e", fontSize: 9, verticalAlign: "middle" }}> ●</span>}
               </span>
               <span style={{ fontWeight: 500 }}>{fmt(l.amount)}</span>
             </div>
           ))}
           <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0",
             borderTop: "1px solid #eee", fontWeight: 700 }}>
-            <span>Total invested</span><span>{fmt(AI_SPEND_TOTAL)}</span>
+            <span>Total invested</span><span>{fmt(spendTotal)}</span>
           </div>
           <div style={{ color: "#8c959f", fontSize: 11 }}>
-            {fmt(AI_SPEND_VERIFIED)} verified · rest estimated (~) — no Anthropic/card receipts reachable
+            {fmt(spendVerified)} verified · rest estimated (~). Anthropic anchored to console
+            total 7/31; OpenAI is a user estimate until an Admin key lands
           </div>
 
           <div style={{ fontWeight: 600, margin: "10px 0 2px" }}>Actual cash made from AI</div>
@@ -86,7 +149,7 @@ export function HqAiPnl() {
           <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0",
             borderTop: "2px solid #1f2328", marginTop: 8, fontWeight: 800, fontSize: 14 }}>
             <span>Net</span>
-            <span style={{ color: AI_NET < 0 ? "#cf222e" : "#2da44e" }}>{fmt(AI_NET)}</span>
+            <span style={{ color: net < 0 ? "#cf222e" : "#2da44e" }}>{fmt(net)}</span>
           </div>
 
           <div style={{ color: "#8c959f", fontSize: 11, marginTop: 6 }}>

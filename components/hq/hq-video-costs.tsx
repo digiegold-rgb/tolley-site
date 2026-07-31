@@ -25,8 +25,18 @@ interface VideoRow {
   totalCents: number;
   clipsCents: number;
   lipsyncCents: number;
+  imageCents: number;
   scriptCents: number;
   postCents: number;
+}
+
+interface LiveBill {
+  provider: string;
+  label: string;
+  amountCents: number;
+  kind: string;
+  note: string | null;
+  asOf: string;
 }
 
 interface Payload {
@@ -38,6 +48,7 @@ interface Payload {
   breakdown: {
     clipsCents: number;
     lipsyncCents: number;
+    imageCents: number;
     scriptCents: number;
     ttsCents: number;
     postCents: number;
@@ -59,6 +70,7 @@ const PIPELINE_LABEL: Record<string, string> = {
 const COMPONENT_LABEL: Record<string, string> = {
   clipsCents: "AI clips (Wan/Modal)",
   lipsyncCents: "Lip-sync (fal)",
+  imageCents: "Photos (Nano Banana, est)",
   scriptCents: "Storyboard (Kimi K3, est)",
   ttsCents: "Voice (local TTS)",
   postCents: "Posting (X API)",
@@ -83,6 +95,7 @@ function monthLabel(m: string): string {
 
 export function HqVideoCosts() {
   const [data, setData] = useState<Payload | null>(null);
+  const [bills, setBills] = useState<LiveBill[]>([]);
   const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState("");
 
@@ -99,6 +112,14 @@ export function HqVideoCosts() {
 
   useEffect(() => {
     void load();
+    // Real provider bills (pushed daily by the DGX collector) — shown beside the
+    // renderer estimates so the two numbers can disagree honestly.
+    fetch("/api/hq/ai-spend")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && Array.isArray(d.rows)) setBills(d.rows);
+      })
+      .catch(() => {});
   }, [load]);
 
   if (error) {
@@ -150,9 +171,10 @@ export function HqVideoCosts() {
           <div style={{ fontSize: 11, color: "#6e6e73" }}>{data.thisMonth.count} videos</div>
         </div>
         <div style={{ flex: 1, minWidth: 200, fontSize: 11, color: "#6e6e73" }}>
-          Clips and lip-sync are the render pipeline&apos;s measured numbers. Storyboard is a
-          flat per-video estimate and local renders count as $0 — {money(data.estimatedCents)} of
-          the total carries an estimated component.
+          These are the renderer&apos;s own per-call estimates — the happy path only. They do
+          NOT include Modal warm pools, retries, failed renders, volumes or the Kimi endpoint;
+          the &quot;Real provider bills&quot; strip below is what the card actually gets charged.
+          {" "}{money(data.estimatedCents)} of the total carries an estimated component.
         </div>
         <button
           onClick={() => void load()}
@@ -161,6 +183,23 @@ export function HqVideoCosts() {
           Refresh
         </button>
       </div>
+
+      {/* ── Real provider bills — billed truth beside the estimates ── */}
+      {bills.length > 0 && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14, alignItems: "stretch" }}>
+          {bills
+            .filter((b) => ["modal", "fal", "neon"].includes(b.provider))
+            .map((b) => (
+              <div key={b.provider} title={b.note ?? ""} style={{ border: "1px solid #d9c9f5", borderRadius: 10, padding: "8px 14px", background: "#fbf9ff", maxWidth: 340 }}>
+                <div style={{ fontSize: 11, color: "#6e6e73" }}>
+                  💳 {b.label} — real bill{b.kind === "estimated" ? " (est)" : ""}
+                </div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: "#4a2a8a" }}>{money(b.amountCents)} lifetime</div>
+                {b.note && <div style={{ fontSize: 10, color: "#6e6e73", marginTop: 2 }}>{b.note}</div>}
+              </div>
+            ))}
+        </div>
+      )}
 
       {/* ── Per pipeline + per component ── */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
@@ -199,7 +238,7 @@ export function HqVideoCosts() {
 
       {/* ── Per-video price ── */}
       <div style={{ border: "1px solid #e5e5ea", borderRadius: 10, background: "#fff", overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 620 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 680 }}>
           <thead>
             <tr style={{ background: "#fafafa", textAlign: "left" }}>
               <th style={{ padding: "8px 12px", fontWeight: 600, color: "#6e6e73" }}>Video</th>
@@ -207,6 +246,7 @@ export function HqVideoCosts() {
               <th style={{ padding: "8px 12px", fontWeight: 600, color: "#6e6e73" }}>Rendered</th>
               <th style={{ padding: "8px 12px", fontWeight: 600, color: "#6e6e73", textAlign: "right" }}>Clips</th>
               <th style={{ padding: "8px 12px", fontWeight: 600, color: "#6e6e73", textAlign: "right" }}>Lip-sync</th>
+              <th style={{ padding: "8px 12px", fontWeight: 600, color: "#6e6e73", textAlign: "right" }}>Photos</th>
               <th style={{ padding: "8px 12px", fontWeight: 600, color: "#6e6e73", textAlign: "right" }}>Script</th>
               <th style={{ padding: "8px 12px", fontWeight: 600, color: "#6e6e73", textAlign: "right" }}>Post</th>
               <th style={{ padding: "8px 12px", fontWeight: 600, color: "#6e6e73", textAlign: "right" }}>Total</th>
@@ -235,6 +275,7 @@ export function HqVideoCosts() {
                 <td style={{ padding: "8px 12px", color: "#6e6e73" }}>{shortDate(v.renderedAt)}</td>
                 <td style={{ padding: "8px 12px", textAlign: "right", color: "#6e6e73" }}>{money(v.clipsCents)}</td>
                 <td style={{ padding: "8px 12px", textAlign: "right", color: "#6e6e73" }}>{money(v.lipsyncCents)}</td>
+                <td style={{ padding: "8px 12px", textAlign: "right", color: "#6e6e73" }}>{money(v.imageCents)}</td>
                 <td style={{ padding: "8px 12px", textAlign: "right", color: "#6e6e73" }}>{money(v.scriptCents)}</td>
                 <td style={{ padding: "8px 12px", textAlign: "right", color: "#6e6e73" }}>{money(v.postCents)}</td>
                 <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700 }}>

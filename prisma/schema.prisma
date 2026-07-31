@@ -4802,6 +4802,21 @@ model PostLogEntry {
 // is 0 by construction (IndexTTS-2 is local, ElevenLabs is a flat plan). The
 // `estimated` flag marks any row where a component came from a constant rather
 // than the pipeline's own number, so the UI can label the total honestly.
+// Live AI-spend rows — one per provider (fal, modal, neon, anthropic, openai…),
+// pushed daily by the DGX collector (~/growth-engine/ai-spend/collect-ai-spend.mjs).
+// The /hq AI P&L pill merges these over the static baseline in lib/ai-pnl.ts.
+model AiSpendLive {
+  id         String   @id @default(cuid())
+  provider   String   @unique // matches PnlLine.provider in lib/ai-pnl.ts
+  label      String
+  amountCents Int     @default(0) // lifetime cash out, USD cents
+  kind       String   @default("verified") // verified | estimated
+  note       String?
+  asOf       DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
 model VideoCost {
   id           String   @id @default(cuid())
   videoKey     String   @unique // absolute render path — stable across re-pushes
@@ -4812,6 +4827,7 @@ model VideoCost {
   url          String? // first live permalink, for clicking through from /hq
   clipsCents   Int      @default(0) // Wan/Modal AI clips — measured
   lipsyncCents Int      @default(0) // fal Kling lip-sync — measured
+  imageCents   Int      @default(0) // Nano Banana 2 keyframe photos — estimate/frame
   scriptCents  Int      @default(0) // Kimi K3 storyboard — estimate constant
   ttsCents     Int      @default(0) // local IndexTTS-2 = 0 by construction
   postCents    Int      @default(0) // X API post-with-URL, 21c, only when it fired

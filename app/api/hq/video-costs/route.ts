@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
       url: str(item.url, 600),
       clipsCents: cents(item.clipsCents),
       lipsyncCents: cents(item.lipsyncCents),
+      imageCents: cents(item.imageCents),
       scriptCents: cents(item.scriptCents),
       ttsCents: cents(item.ttsCents),
       postCents: cents(item.postCents),
@@ -92,6 +93,7 @@ interface Row {
   url: string | null;
   clipsCents: number;
   lipsyncCents: number;
+  imageCents: number;
   scriptCents: number;
   ttsCents: number;
   postCents: number;
@@ -100,7 +102,7 @@ interface Row {
 }
 
 function total(r: Row): number {
-  return r.clipsCents + r.lipsyncCents + r.scriptCents + r.ttsCents + r.postCents;
+  return r.clipsCents + r.lipsyncCents + r.imageCents + r.scriptCents + r.ttsCents + r.postCents;
 }
 
 // GET /api/hq/video-costs?limit=60 — all-time grand total plus the rollups that
@@ -120,7 +122,7 @@ export async function GET(request: NextRequest) {
       orderBy: { renderedAt: "desc" },
       select: {
         videoKey: true, pipeline: true, title: true, template: true, status: true,
-        url: true, clipsCents: true, lipsyncCents: true, scriptCents: true,
+        url: true, clipsCents: true, lipsyncCents: true, imageCents: true, scriptCents: true,
         ttsCents: true, postCents: true, estimated: true, renderedAt: true,
       },
     })) as Row[];
@@ -128,7 +130,7 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
 
-    const breakdown = { clipsCents: 0, lipsyncCents: 0, scriptCents: 0, ttsCents: 0, postCents: 0 };
+    const breakdown = { clipsCents: 0, lipsyncCents: 0, imageCents: 0, scriptCents: 0, ttsCents: 0, postCents: 0 };
     const byPipeline = new Map<string, { pipeline: string; cents: number; count: number }>();
     const byMonth = new Map<string, { month: string; cents: number; count: number }>();
     let grandTotalCents = 0;
@@ -142,6 +144,7 @@ export async function GET(request: NextRequest) {
       if (r.estimated) estimatedCents += t;
       breakdown.clipsCents += r.clipsCents;
       breakdown.lipsyncCents += r.lipsyncCents;
+      breakdown.imageCents += r.imageCents;
       breakdown.scriptCents += r.scriptCents;
       breakdown.ttsCents += r.ttsCents;
       breakdown.postCents += r.postCents;
@@ -184,6 +187,7 @@ export async function GET(request: NextRequest) {
         totalCents: total(r),
         clipsCents: r.clipsCents,
         lipsyncCents: r.lipsyncCents,
+        imageCents: r.imageCents,
         scriptCents: r.scriptCents,
         postCents: r.postCents,
       })),
