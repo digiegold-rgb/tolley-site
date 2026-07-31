@@ -2722,3 +2722,86 @@ npm notice
 [main] Progress: 400/500 (384 enriched, 16 failed)
 [ok] SPG-40-0002 — desc, specs, upc, feat
 [main] Done. Enriched: 482, Failed: 18 of 500
+[main] Pool360 Product Enrichment (API) — 2026-07-29T12:00:02.662Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3204
+[main] Products to enrich: 500
+[main] Browser session started
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 5
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 10
+[ok] JON-50-1000 — desc, specs
+[ok] PPP-50-0015 — desc, specs, upc, feat
+[ok] HAY-06-0112 — desc, specs, upc, sds, feat
+[ok] LAS-56-3107 — desc, specs, upc, feat
+[ok] LNC-50-8581 — desc, specs, feat
+[ok] AAA-50-7674 — desc, specs, upc, sds, feat
+[ok] AAA-50-0014 — desc, specs, upc, sds, feat
+[ok] LAT-801-0105 — desc, specs
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 27
+[ok] CAR-801-9563 — desc, specs, feat
+[ok] PPO-40-1006 — desc, specs, feat
+[ok] LAT-801-7180 — desc, specs
+[ok] GEP-151-0006 — desc, specs
+[ok] PSL-40-0358 — desc, specs, upc, feat
+[ok] SKM-40-2797 — desc, specs, upc, sds
+[ok] PSL-40-4096 — desc, specs, upc, feat
+[ok] PSL-40-0351 — desc, specs, upc, feat
+[ok] PSL-40-531 — desc, specs, upc, feat
+[ok] PSL-40-0436 — desc, specs, upc, feat
+[ok] SPG-40-2038 — desc, specs, upc, feat
+[ok] SPG-40-2034 — desc, specs, upc, feat
+[main] Progress: 100/500 (80 enriched, 20 failed)
+[ok] SWL-40-1169 — desc, specs, upc, feat
+[main] Progress: 200/500 (177 enriched, 23 failed)
+[ok] LAM-47-7041 — desc, specs, upc
+[fail] ACL-45-1971 — page.evaluate: SyntaxError: Unexpected token 'P', "Product not found." is not valid JSON
+[main] Progress: 300/500 (271 enriched, 29 failed)
+[ok] WTL-20-0991 — desc, specs, upc
+[main] Progress: 400/500 (368 enriched, 32 failed)
+[ok] RHM-15-7127 — desc, specs, upc, sds, feat
+[main] Done. Enriched: 465, Failed: 35 of 500
+[main] Pool360 Product Enrichment (API) — 2026-07-30T12:00:02.715Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3205
+[main] Products to enrich: 500
+[main] Browser session started
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 5
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 10
+[ok] LAS-56-3106 — desc, specs, upc, feat
+[ok] NUL-50-2741 — desc, specs, upc, feat
+[ok] ISP-801-1673 — desc, specs, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 24
+[ok] ACL-45-1971 — desc, specs, upc, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 31
+[ok] PTY-40-2012 — desc, specs, upc
+[ok] LAM-47-1029 — desc, specs, upc, feat
+[ok] PON-40-7007 — desc, specs
+[ok] WTL-20-0992 — desc, specs, upc
+[ok] WTL-40-0109 — desc, specs, upc
+[ok] HAY-15-685 — desc, specs, upc, sds, feat
+[ok] HAY-15-750 — desc, specs, upc, sds, feat
+[ok] HAY-15-749 — desc, specs, upc, sds, feat
+[ok] HAY-10-0103 — desc, specs, upc, sds, feat
+[ok] HAY-10-0104 — desc, specs, upc, sds, feat
+[ok] HAY-10-0101 — desc, specs, upc, sds, feat
+[ok] CHT-10-1005 — desc, specs, upc, sds, feat
+[ok] CHT-10-1006 — desc, specs, upc, sds, feat
+[ok] HAY-10-0003 — desc, specs, upc, sds, feat
+[ok] HAY-10-0017 — desc, specs, upc, sds, feat
+[ok] SOG-40-8004 — desc, specs, upc
+[main] Progress: 100/500 (68 enriched, 32 failed)
+[ok] PAC-45-1562 — desc, specs, upc, sds, feat
+[main] Progress: 200/500 (167 enriched, 33 failed)
+[ok] PUR-15-2010 — desc, specs, upc, sds, feat
+[main] Progress: 300/500 (262 enriched, 38 failed)
+[ok] PTM-50-1553 — desc, specs, upc, sds
+[main] Progress: 400/500 (358 enriched, 42 failed)
+[ok] CHP-50-1002 — desc, specs, sds, feat
+[main] Done. Enriched: 454, Failed: 46 of 500

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateShopAdmin } from "@/lib/shop-auth";
+import { secretEquals } from "@/lib/secret-compare";
 import { revalidatePath } from "next/cache";
 
 export async function GET(
@@ -22,8 +23,11 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const isAdmin = await validateShopAdmin();
-  if (!isAdmin) {
+  // Admin cookie OR x-sync-secret — DGX pipelines (e.g. the TikTok draft-ID
+  // write-back) need a machine path, same convention as /api/shop/products GET.
+  const secret = req.headers.get("x-sync-secret");
+  const machineAuthed = !!secret && secretEquals(secret, process.env.SYNC_SECRET);
+  if (!machineAuthed && !(await validateShopAdmin())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

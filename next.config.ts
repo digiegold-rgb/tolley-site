@@ -48,6 +48,12 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // TikTok Shop command center lives as an /hq tab.
+      {
+        source: "/tikshop",
+        destination: "/hq?tab=tiktok",
+        permanent: false,
+      },
       // Short Messenger auto-reply links — keep the UTM attribution off the
       // visible URL. FB's scraper follows the 302, so previews come from the
       // destination page's OG tags.
