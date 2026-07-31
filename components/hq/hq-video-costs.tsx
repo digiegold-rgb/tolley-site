@@ -72,7 +72,7 @@ const COMPONENT_LABEL: Record<string, string> = {
   lipsyncCents: "Lip-sync (fal)",
   imageCents: "Photos (Nano Banana, est)",
   scriptCents: "Storyboard (Kimi K3, est)",
-  ttsCents: "Voice (local TTS)",
+  ttsCents: "Voice (ElevenLabs / local TTS)",
   postCents: "Posting (X API)",
 };
 
