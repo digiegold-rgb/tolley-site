@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { SmsOptedOutError } from "@/lib/sms-optout";
 import { sendSms } from "@/lib/twilio";
 import { chatCompletion } from "@/lib/llm";
 import { getSystemPrompt, DEFAULT_PROMPT_ID } from "@/lib/sms-prompts";
@@ -156,6 +157,12 @@ ${e?.nearestSchoolName ? `Nearest school: ${e.nearestSchoolName}` : ""}`;
     sid = await sendSms(phone, textToSend);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "unknown";
+    // A suppressed recipient is a policy block, not a server fault — say so,
+    // so callers log "opted out" rather than retrying against a 500.
+    if (err instanceof SmsOptedOutError) {
+      console.warn("[sms/send] suppressed:", msg);
+      return NextResponse.json({ error: msg, suppressed: true }, { status: 403 });
+    }
     console.error("[sms/send] Twilio error:", msg);
     return NextResponse.json({ error: `Send failed: ${msg}` }, { status: 500 });
   }
