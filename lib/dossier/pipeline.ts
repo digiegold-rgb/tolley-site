@@ -1318,6 +1318,26 @@ function computeMotivation(
   const remarks = (typeof raw.PublicRemarks === "string" ? raw.PublicRemarks : "").toLowerCase();
   const ownership = (typeof raw.Ownership === "string" ? raw.Ownership : "").toLowerCase();
 
+  // ── Signal origin (signal-dossier-bridge) ──
+  // Listings bridged from ProbateSignal/DistressSignal carry their origin in
+  // rawData.signal — a court filing or distress report, not a keyword guess —
+  // so the score must reflect it even when no plugin independently re-finds it.
+  const signalOrigin = typeof raw.signal === "string" ? raw.signal : "";
+  if (signalOrigin === "probate") {
+    if (!flags.includes("estate_probate")) { flags.push("estate_probate"); score += 20; }
+  } else if (signalOrigin === "distress") {
+    const kind = (typeof raw.kind === "string" ? raw.kind : "").toLowerCase();
+    if (/code|violation/.test(kind)) {
+      if (!flags.includes("code_violation")) { flags.push("code_violation"); score += 15; }
+    } else if (/tax/.test(kind)) {
+      if (!flags.includes("tax_lien")) { flags.push("tax_lien"); score += 15; }
+    } else if (/vacan/.test(kind)) {
+      if (!flags.includes("vacant")) { flags.push("vacant"); score += 15; }
+    } else {
+      score += 10;
+    }
+  }
+
   // Estate / probate keywords in remarks
   if (/\b(estate|probate|heir|inherited|deceased|personal representative|executor)\b/.test(remarks)) {
     if (!flags.includes("estate_probate")) { flags.push("estate_probate"); score += 15; }

@@ -123,6 +123,29 @@ async function distressCandidates(limit: number): Promise<Candidate[]> {
 }
 
 /**
+ * Free US Census geocoder — probate/distress signals arrive without zips, and
+ * the Monday digest filters listings by subscriber farm zips, so an unzipped
+ * listing can never reach a digest. Fail-open: on any error the zip stays null.
+ */
+async function censusZip(address: string): Promise<string | null> {
+  try {
+    const url =
+      "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress" +
+      "?benchmark=Public_AR_Current&format=json&address=" +
+      encodeURIComponent(address);
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      result?: { addressMatches?: Array<{ addressComponents?: { zip?: string } }> };
+    };
+    const zip = data.result?.addressMatches?.[0]?.addressComponents?.zip;
+    return zip && /^\d{5}$/.test(zip) ? zip : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Find-or-create the Listing for a signal, then queue a DossierJob if one does
  * not already exist for that listing. Returns the created ids, or null if the
  * signal was already bridged (listing already has a dossier job).
@@ -140,6 +163,7 @@ async function bridgeOne(
     if (existing.dossierJobs.length > 0) return null; // already bridged
     listingId = existing.id;
   } else {
+    const zip = c.zip ?? (await censusZip(c.address));
     const listing = await prisma.listing.create({
       data: {
         mlsId: c.mlsId,
@@ -147,7 +171,7 @@ async function bridgeOne(
         address: c.address,
         city: c.city ?? undefined,
         state: c.state ?? "MO",
-        zip: c.zip ?? undefined,
+        zip: zip ?? undefined,
         listPrice: c.listPrice ?? undefined,
         source: "signal",
         rawData: c.raw,
