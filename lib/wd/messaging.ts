@@ -10,6 +10,7 @@
 import type { WdClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { isOptedOut } from "@/lib/sms-optout";
 import { sendSms } from "@/lib/twilio";
 import { sendWdEmail, wdEmailHtml } from "@/lib/wd/email";
 import { WD_STRIPE_PORTAL_URL, WD_CONTACT_PHONE } from "@/lib/wd";
@@ -72,6 +73,18 @@ export async function sendWdMessage(messageId: string): Promise<{ ok: boolean; e
     if (msg.channel === "sms") {
       const to = toE164(msg.phone || msg.client?.phone);
       if (!to) throw new Error("no valid phone");
+      // Opt-out ledger is authoritative — a suppressed number is never texted.
+      if (await isOptedOut(to)) {
+        console.warn(`[wd] SKIP sms ${messageId}: ${to} opted out`);
+        await prisma.wdMessage.update({
+          where: { id: messageId },
+          data: {
+            status: "suppressed",
+            meta: { ...(msg.meta as object), suppressed: "sms_opt_out" },
+          },
+        });
+        return { ok: false, error: "recipient opted out of SMS" };
+      }
       await sendSms(to, msg.body);
     } else {
       const to = msg.client?.email;

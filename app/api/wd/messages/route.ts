@@ -8,6 +8,9 @@ export const runtime = "nodejs";
 /**
  * GET /api/wd/messages — list customer messages for the admin inbox.
  * ?status=draft (default) | sent | received | all
+ *
+ * The draft view also carries failed and suppressed rows — a message the
+ * opt-out guard blocked has to stay visible, not vanish from the queue.
  */
 export async function GET(request: NextRequest) {
   const { authed } = await validateWdAdmin();
@@ -17,7 +20,11 @@ export async function GET(request: NextRequest) {
 
   const status = new URL(request.url).searchParams.get("status") || "draft";
   const where =
-    status === "all" ? {} : status === "draft" ? { status: { in: ["draft", "failed"] } } : { status };
+    status === "all"
+      ? {}
+      : status === "draft"
+        ? { status: { in: ["draft", "failed", "suppressed"] } }
+        : { status };
 
   const messages = await prisma.wdMessage.findMany({
     where,

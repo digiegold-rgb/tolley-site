@@ -7,6 +7,12 @@ import {
   LEGAL_OPT_IN_KEYWORDS,
   LEGAL_OPT_IN_MESSAGE,
 } from "@/lib/legal";
+import {
+  classifySmsKeyword,
+  isOptedOut,
+  recordOptIn,
+  recordOptOut,
+} from "@/lib/sms-optout";
 import { incrementActivity } from "@/lib/activity-log";
 import { createWdDraft } from "@/lib/wd/messaging";
 import { buildWdAiReply } from "@/lib/wd/ai-reply";
@@ -71,25 +77,35 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Handle compliance keywords
+  // ── Compliance keywords ──
+  // Matched leniently (case, punctuation and trailing words ignored) so
+  // "STOP.", "stop please" and "Stop!" all opt out. See lib/sms-optout.
   const upperBody = body.toUpperCase().trim();
+  const keyword = classifySmsKeyword(body);
 
-  if (upperBody === "STOP" || upperBody === "UNSUBSCRIBE" || upperBody === "CANCEL" || upperBody === "QUIT") {
-    await prisma.smsConversation.updateMany({
-      where: { phoneNumber: from },
-      data: { status: "opted_out" },
-    });
+  if (keyword === "stop") {
+    await recordOptOut(from, { keyword: body.slice(0, 40), source: "sms_keyword", body });
     // Twilio handles STOP automatically, but we track it
     return twimlResponse();
   }
 
-  if (upperBody === "HELP" || upperBody === "INFO") {
+  if (keyword === "help") {
     return twimlResponse(
       "T-Agent AI assistant. Reply STOP to unsubscribe. For support: support@tolley.io"
     );
   }
 
-  const isOptIn = LEGAL_OPT_IN_KEYWORDS.some((kw) => upperBody === kw);
+  // Only an explicit START/UNSTOP/YES re-subscribes. Any other message from an
+  // opted-out number is recorded but never answered.
+  if (keyword === "start") {
+    await recordOptIn(from, { keyword: body.slice(0, 40), source: "sms_keyword" });
+  } else if (await isOptedOut(from)) {
+    console.warn("[sms] inbound from opted-out number, no reply sent:", from);
+    return twimlResponse();
+  }
+
+  const isOptIn =
+    keyword === "start" || LEGAL_OPT_IN_KEYWORDS.some((kw) => upperBody === kw);
 
   // ── W/D rental customer? Route to the rental responder. ──
   // Match the inbound number against a WdClient (last 10 digits). If it's a
@@ -148,7 +164,7 @@ export async function POST(request: NextRequest) {
 
     // First message from new number — send opt-in confirmation
     if (isOptIn) {
-      const sid = await sendSms(from, LEGAL_OPT_IN_MESSAGE);
+      const sid = await sendSms(from, LEGAL_OPT_IN_MESSAGE, { complianceReply: true });
       await prisma.smsMessage.create({
         data: {
           conversationId: conversation.id,
@@ -166,13 +182,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Re-activate if they opted out and are texting again
-  if (conversation.status === "opted_out") {
-    await prisma.smsConversation.update({
-      where: { id: conversation.id },
-      data: { status: "active" },
-    });
-  }
+  // NOTE: no implicit re-activation here. Texting again is not consent —
+  // only an explicit START/UNSTOP/YES (handled above) clears an opt-out.
 
   // Collect media URLs
   const mediaUrls: string[] = [];

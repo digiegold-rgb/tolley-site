@@ -617,6 +617,25 @@ model SmsConversation {
   @@index([status, lastMessageAt])
 }
 
+// Cross-channel SMS opt-out ledger. Authoritative for every outbound SMS path
+// (W/D messaging, dispatch, sequences, growth engine). Keyed on the E.164 phone
+// so a STOP applies to the number, not to one conversation. Rows are never
+// deleted — a START flips optedOut back to false and stamps optedInAt.
+model SmsOptOut {
+  id          String    @id @default(cuid())
+  phone       String    @unique
+  optedOut    Boolean   @default(true)
+  source      String    @default("sms_keyword")
+  keyword     String?
+  lastBody    String?
+  optedOutAt  DateTime? @default(now())
+  optedInAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([optedOut])
+}
+
 model SmsMessage {
   id             String          @id @default(cuid())
   conversationId String

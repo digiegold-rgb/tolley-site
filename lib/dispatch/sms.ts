@@ -1,7 +1,21 @@
+import { isOptedOut } from "@/lib/sms-optout";
 import { sendSms } from "@/lib/twilio";
 import type { DeliveryOrder, DeliveryDriver } from "@prisma/client";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.tolley.io";
+
+/**
+ * Send a dispatch SMS unless the number has opted out. Returns the message SID,
+ * or null when suppressed. The opt-out check fails closed — an unreadable
+ * ledger suppresses the send rather than risking a non-compliant text.
+ */
+async function sendDispatchSms(phone: string, body: string): Promise<string | null> {
+  if (await isOptedOut(phone)) {
+    console.warn(`[dispatch] SKIP sms to ${phone}: opted out`);
+    return null;
+  }
+  return sendSms(phone, body);
+}
 
 export async function notifyDriversOfOrder(
   order: DeliveryOrder,
@@ -19,8 +33,8 @@ export async function notifyDriversOfOrder(
       `Reply YES to accept | NO to skip`;
 
     try {
-      const sid = await sendSms(driver.phone, msg);
-      sids.push(sid);
+      const sid = await sendDispatchSms(driver.phone, msg);
+      if (sid) sids.push(sid);
     } catch (err) {
       console.error(`[dispatch] Failed SMS to ${driver.name}:`, err);
     }
@@ -30,7 +44,7 @@ export async function notifyDriversOfOrder(
 }
 
 export async function notifyDriverOrderTaken(phone: string): Promise<void> {
-  await sendSms(phone, "Order has been accepted by another driver.").catch(
+  await sendDispatchSms(phone, "Order has been accepted by another driver.").catch(
     () => {}
   );
 }
@@ -43,7 +57,7 @@ export async function notifyClientAccepted(
 ): Promise<void> {
   const trackUrl = `${SITE_URL}/drive/track/${orderNumber}`;
   const eta = etaMin ? `ETA ${etaMin} min` : "";
-  await sendSms(
+  await sendDispatchSms(
     clientPhone,
     `✅ Driver ${driverName} accepted your delivery!${eta ? ` ${eta}` : ""}\n` +
       `Track: ${trackUrl}`
@@ -68,7 +82,7 @@ export async function notifyClientStatusUpdate(
   if (!msg) return;
 
   const trackUrl = `${SITE_URL}/drive/track/${orderNumber}`;
-  await sendSms(
+  await sendDispatchSms(
     clientPhone,
     `${msg}${extra ? `\n${extra}` : ""}\nTrack: ${trackUrl}`
   ).catch(() => {});
@@ -86,14 +100,14 @@ export async function notifyDriverStatusPrompt(
   };
 
   const msg = prompts[action];
-  if (msg) await sendSms(driverPhone, msg).catch(() => {});
+  if (msg) await sendDispatchSms(driverPhone, msg).catch(() => {});
 }
 
 export async function notifyClientNoMatch(
   clientPhone: string,
   orderNumber: string
 ): Promise<void> {
-  await sendSms(
+  await sendDispatchSms(
     clientPhone,
     `⏳ We're still working on finding a driver for order ${orderNumber}. ` +
       `We've expanded the search area. You'll get an update shortly.`
@@ -106,7 +120,7 @@ export async function notifyAdminEscalation(
   const adminPhone = process.env.ADMIN_PHONE;
   if (!adminPhone) return;
 
-  await sendSms(
+  await sendDispatchSms(
     adminPhone,
     `🚨 DISPATCH ESCALATION: Order ${order.orderNumber} unmatched after ${order.matchAttempts} attempts.\n` +
       `${order.pickupAddress} → ${order.dropoffAddress}\n` +
