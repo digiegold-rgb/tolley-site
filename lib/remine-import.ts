@@ -302,10 +302,11 @@ export async function importRemineRecords(records: RemineRecord[]): Promise<Impo
         if (record.ownerName) remineData.ownerName = record.ownerName;
         if (record.associatedPersons) remineData.remineAssociatedPersons = record.associatedPersons;
 
-        // Update listing rawData
+        // Update listing rawData; stamp lastSynced so freshness probes see
+        // matched re-imports, not just newly created listings
         await prisma.listing.update({
           where: { id: matchedListing.id },
-          data: { rawData: JSON.parse(JSON.stringify(remineData)) },
+          data: { rawData: JSON.parse(JSON.stringify(remineData)), lastSynced: new Date() },
         });
 
         // Update lead with owner info if available
