@@ -4858,3 +4858,23 @@ model VideoCost {
   @@index([renderedAt])
   @@index([pipeline, renderedAt])
 }
+
+// Per-channel view/subscriber history behind the /hq Posts-tab view counter.
+// Pushed hourly by the DGX (~/growth-engine/view-counter/collect.mjs). One row
+// per channel per UTC day carrying up to three facts: totalViews = lifetime
+// cumulative counter as of pulledAt (YouTube only — FB pages have no lifetime
+// counter), dayViews = platform-reported views for exactly that day (YT
+// Analytics / FB page_video_views), subscribers = subs/followers at pull time.
+// Windows (30/90/365d) are computed at read time in /api/hq/view-counter.
+model ChannelViewStat {
+  id          String   @id @default(cuid())
+  channelKey  String // yt-ykh | yt-ruthann | fb-treasure | fb-wd | fb-main | fb-re
+  day         DateTime // UTC midnight of the day this row describes
+  totalViews  BigInt?
+  dayViews    Int?
+  subscribers Int?
+  pulledAt    DateTime @default(now())
+
+  @@unique([channelKey, day])
+  @@index([channelKey, day])
+}

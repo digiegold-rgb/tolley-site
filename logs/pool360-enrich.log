@@ -2852,3 +2852,53 @@ npm notice
 [main] Progress: 400/500 (343 enriched, 57 failed)
 [ok] HAY-15-735 — desc, specs, upc, sds, feat
 [main] Done. Enriched: 443, Failed: 57 of 500
+[main] Pool360 Product Enrichment (API) — 2026-08-01T12:00:02.583Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3206
+[main] Products to enrich: 269
+[main] Browser session started
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 5
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 10
+[ok] VTL-50-0860 — desc, specs, upc, sds, feat
+[ok] VTL-50-0861 — desc, specs, upc, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 20
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 25
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 30
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 35
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 40
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 45
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 50
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 55
+[ok] SPG-401-0005 — desc, specs, upc
+[ok] HAY-10-3238 — desc, specs, upc, sds, feat
+[ok] TLD-10-2051 — desc, specs, upc, sds
+[ok] LAM-47-4329 — desc, specs, upc, feat
+[ok] PSL-40-2042 — desc, specs, upc, feat
+[ok] PUR-10-0448 — desc, specs, upc, sds, feat
+[ok] PUR-10-2007 — desc, specs, upc, sds, feat
+[ok] PUR-10-2017 — desc, specs, upc, sds, feat
+[ok] PUR-10-2018 — desc, specs, upc, sds, feat
+[ok] PUR-10-2019 — desc, specs, upc, sds, feat
+[ok] PUR-10-2034 — desc, specs, upc, sds, feat
+[ok] PUR-10-628 — desc, specs, upc, sds, feat
+[ok] PUR-10-448 — desc, specs, upc, sds, feat
+[ok] PUR-10-418 — desc, specs, upc, sds
+[ok] PUR-10-413 — desc, specs, upc, sds, feat
+[ok] PUR-10-412 — desc, specs, upc, sds, feat
+[ok] PUR-10-645 — desc, specs, upc, sds
+[ok] PUR-10-644 — desc, specs, upc, sds, feat
+[main] Progress: 100/269 (45 enriched, 55 failed)
+[ok] RGL-50-2762 — desc, specs, upc, sds, feat
+[main] Progress: 200/269 (145 enriched, 55 failed)
+[ok] PSL-40-2045 — desc, specs, upc, feat
+[main] Done. Enriched: 214, Failed: 55 of 269

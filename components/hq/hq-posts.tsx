@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { HqVideoCosts } from "./hq-video-costs";
+import { HqViewCounter } from "./hq-view-counter";
 
 // Posts tab — did every automated channel actually fire?
 //
@@ -123,6 +124,9 @@ export function HqPosts() {
 
   return (
     <div style={{ padding: "4px 0 40px" }}>
+      {/* ── Live view counter across every channel ── */}
+      <HqViewCounter />
+
       {/* ── Headline: is anything dark right now? ── */}
       <div
         style={{
