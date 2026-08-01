@@ -1,4 +1,6 @@
-import { HM_URE_URL, HM_CONTACT_PHONE, HM_SERVICE_AREAS } from "@/lib/homes";
+import Link from "next/link";
+
+import { HM_HOME_SEARCH_URL, HM_CONTACT_PHONE, HM_SERVICE_AREAS } from "@/lib/homes";
 
 export function HomesHero() {
   return (
@@ -40,17 +42,15 @@ export function HomesHero() {
         </div>
 
         <div className="mt-8 flex flex-wrap items-center gap-4">
-          <a
-            href={HM_URE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href={HM_HOME_SEARCH_URL}
             className="homes-glow inline-flex items-center gap-3 rounded-lg bg-sky-500 px-8 py-3.5 text-lg font-extrabold tracking-wide text-white uppercase transition-all hover:-translate-y-0.5"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
-            Search Homes
-          </a>
+            Find Me a Home
+          </Link>
           <a
             href={`tel:${HM_CONTACT_PHONE}`}
             className="inline-flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800/50 px-6 py-3.5 text-sm font-bold tracking-wide text-neutral-300 uppercase transition-all hover:border-sky-500/40 hover:text-white"

@@ -3,8 +3,10 @@ export const HM_CONTACT_EMAIL = "Jared@yourkchomes.com";
 export const HM_COMPANY = "Your KC Homes LLC";
 export const HM_BROKERAGE = "United Real Estate Kansas City";
 export const HM_AGENT_NAME = "Jared Tolley";
-export const HM_URE_URL =
-  "https://jaredtolley.unitedrealestatekansascity.com/index.html";
+// The old United Real Estate agent page (jaredtolley.unitedrealestatekansascity.com)
+// went 404. There is no IDX search on tolley.io, so buyer CTAs land on the
+// /housing lead form — its "Looking to buy" intent routes straight to Jared.
+export const HM_HOME_SEARCH_URL = "/housing#ask";
 
 export const HM_SERVICE_AREAS = [
   "Kansas City",

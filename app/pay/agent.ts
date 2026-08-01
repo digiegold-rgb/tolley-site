@@ -6,6 +6,7 @@ export const manifest: SubsiteManifest = {
   purpose: "Stripe-backed checkout for Tolley.io tenants, clients, and one-off invoices — ACH or card, instant receipts.",
   url: "/pay",
   schemaType: "WebPage",
+  skipSitemap: true, // /pay itself has no page — only /pay/<invoiceNumber>
   jsonEndpoints: [],
   leadEndpoint: "/api/email-capture",
   leadSource: "pay",

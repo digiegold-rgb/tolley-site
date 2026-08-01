@@ -40,7 +40,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 1.0,
   };
 
-  const subsiteRoutes: MetadataRoute.Sitemap = SUBSITES.map((s) => ({
+  const subsiteRoutes: MetadataRoute.Sitemap = SUBSITES.filter((s) => !s.skipSitemap).map((s) => ({
     url: `${BASE}${s.url}`,
     lastModified: now,
     changeFrequency:

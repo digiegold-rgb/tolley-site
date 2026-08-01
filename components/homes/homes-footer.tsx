@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { HM_AGENT_NAME, HM_COMPANY, HM_CONTACT_EMAIL, HM_CONTACT_PHONE, HM_URE_URL } from "@/lib/homes";
+import { HM_AGENT_NAME, HM_COMPANY, HM_CONTACT_EMAIL, HM_CONTACT_PHONE, HM_HOME_SEARCH_URL } from "@/lib/homes";
 
 export function HomesFooter() {
   return (
@@ -21,14 +21,9 @@ export function HomesFooter() {
             </p>
           </div>
           <nav className="flex items-center gap-3 text-sm text-neutral-500">
-            <a
-              href={HM_URE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="transition hover:text-sky-400"
-            >
-              Search Homes
-            </a>
+            <Link href={HM_HOME_SEARCH_URL} className="transition hover:text-sky-400">
+              Find a Home
+            </Link>
             <span className="text-neutral-700">|</span>
             <Link href="/trailer" className="transition hover:text-sky-400">
               Trailer Rental

@@ -66,6 +66,11 @@ export const SubsiteManifestSchema = z.object({
   category: z.enum(["marketing", "product", "misc"]),
   status: z.enum(["public", "auth"]),
   skipJsonLd: z.boolean().optional(),
+  // Set on subsites whose `url` is a prefix for dynamic children rather than a
+  // page of its own (e.g. /go/<code>, /pay/<invoice>). The manifest still lists
+  // them for agent discovery; the sitemap skips them so crawlers aren't sent to
+  // a bare path that legitimately 404s.
+  skipSitemap: z.boolean().optional(),
   keywords: z.array(z.string()).optional(),
 
   // New: transactional + structured commerce data
