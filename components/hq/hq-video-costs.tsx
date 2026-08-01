@@ -10,8 +10,11 @@ import { useCallback, useEffect, useState } from "react";
 //
 // Clips and lip-sync are the render pipeline's own measurements. Storyboard is
 // a per-video estimate constant (Kimi K3 bills no per-call readout) and local
-// renders are $0 because nothing metered ran — rows carrying either are flagged
-// so the total never pretends to be an invoice.
+// renders are $0 because nothing metered ran — rows carrying either are flagged.
+// A monthly "overhead" row (pipeline: overhead) carries the slice of the real
+// Modal bill no shipped video claims — retries, warm pools, experiments — so
+// the grand total reconciles to `modal billing report` (full scope, per Jared
+// 7/31: "it makes more sense to me to see the full scope costs").
 
 interface VideoRow {
   videoKey: string;
@@ -52,6 +55,7 @@ interface Payload {
     scriptCents: number;
     ttsCents: number;
     postCents: number;
+    overheadCents: number;
   };
   byPipeline: { pipeline: string; cents: number; count: number }[];
   byMonth: { month: string; cents: number; count: number }[];
@@ -65,6 +69,7 @@ const PIPELINE_LABEL: Record<string, string> = {
   wd: "🧺 Washer/Dryer",
   estate: "🏛 Estate sales",
   other: "Other",
+  overhead: "⚙️ Modal GPU overhead",
 };
 
 const COMPONENT_LABEL: Record<string, string> = {
@@ -74,6 +79,7 @@ const COMPONENT_LABEL: Record<string, string> = {
   scriptCents: "Storyboard (Kimi K3, est)",
   ttsCents: "Voice (ElevenLabs / local TTS)",
   postCents: "Posting (X API)",
+  overheadCents: "Modal overhead (retries/experiments, real bill)",
 };
 
 function money(cents: number): string {
@@ -160,7 +166,7 @@ export function HqVideoCosts() {
             {money(data.grandTotalCents)}
           </div>
           <div style={{ fontSize: 11, color: "#6e6e73" }}>
-            {data.videoCount} videos · {money(data.avgCents)} avg
+            {data.videoCount} videos · {money(data.avgCents)} avg all-in
           </div>
         </div>
         <div style={{ borderLeft: "1px solid #d9c9f5", paddingLeft: 22 }}>
@@ -171,9 +177,9 @@ export function HqVideoCosts() {
           <div style={{ fontSize: 11, color: "#6e6e73" }}>{data.thisMonth.count} videos</div>
         </div>
         <div style={{ flex: 1, minWidth: 200, fontSize: 11, color: "#6e6e73" }}>
-          These are the renderer&apos;s own per-call estimates — the happy path only. They do
-          NOT include Modal warm pools, retries, failed renders, volumes or the Kimi endpoint;
-          the &quot;Real provider bills&quot; strip below is what the card actually gets charged.
+          Full-scope: per-video renderer estimates PLUS a monthly &quot;Modal GPU overhead&quot;
+          row (real metered bill minus what shipped videos claim — retries, warm pools,
+          experiments), so this total reconciles to the actual Modal bill.
           {" "}{money(data.estimatedCents)} of the total carries an estimated component.
         </div>
         <button
@@ -208,7 +214,9 @@ export function HqVideoCosts() {
             <div style={{ fontSize: 11, color: "#6e6e73" }}>{PIPELINE_LABEL[p.pipeline] ?? p.pipeline}</div>
             <div style={{ fontSize: 17, fontWeight: 700 }}>{money(p.cents)}</div>
             <div style={{ fontSize: 10, color: "#6e6e73" }}>
-              {p.count} videos · {money(Math.round(p.cents / p.count))} each
+              {p.pipeline === "overhead"
+                ? `${p.count} months · real bill remainder`
+                : `${p.count} videos · ${money(Math.round(p.cents / p.count))} each`}
             </div>
           </div>
         ))}

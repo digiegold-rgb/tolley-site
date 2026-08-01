@@ -6,7 +6,10 @@ import { secretEquals } from "@/lib/secret-compare";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const PIPELINES = ["shorts", "housing", "listings", "wd", "estate", "other"] as const;
+// "overhead" is not a video: one synthetic row per month carrying the slice of
+// the real Modal bill (retries, warm pools, experiments) that no shipped video
+// accounts for. It counts toward every cents total but never toward video counts.
+const PIPELINES = ["shorts", "housing", "listings", "wd", "estate", "other", "overhead"] as const;
 type Pipeline = (typeof PIPELINES)[number];
 
 function isPipeline(v: unknown): v is Pipeline {
@@ -130,7 +133,7 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
 
-    const breakdown = { clipsCents: 0, lipsyncCents: 0, imageCents: 0, scriptCents: 0, ttsCents: 0, postCents: 0 };
+    const breakdown = { clipsCents: 0, lipsyncCents: 0, imageCents: 0, scriptCents: 0, ttsCents: 0, postCents: 0, overheadCents: 0 };
     const byPipeline = new Map<string, { pipeline: string; cents: number; count: number }>();
     const byMonth = new Map<string, { month: string; cents: number; count: number }>();
     let grandTotalCents = 0;
@@ -140,36 +143,47 @@ export async function GET(request: NextRequest) {
 
     for (const r of rows) {
       const t = total(r);
+      const isVideo = r.pipeline !== "overhead";
       grandTotalCents += t;
       if (r.estimated) estimatedCents += t;
-      breakdown.clipsCents += r.clipsCents;
-      breakdown.lipsyncCents += r.lipsyncCents;
-      breakdown.imageCents += r.imageCents;
-      breakdown.scriptCents += r.scriptCents;
-      breakdown.ttsCents += r.ttsCents;
-      breakdown.postCents += r.postCents;
+      if (isVideo) {
+        breakdown.clipsCents += r.clipsCents;
+        breakdown.lipsyncCents += r.lipsyncCents;
+        breakdown.imageCents += r.imageCents;
+        breakdown.scriptCents += r.scriptCents;
+        breakdown.ttsCents += r.ttsCents;
+        breakdown.postCents += r.postCents;
+      } else {
+        breakdown.overheadCents += t;
+      }
 
       const p = byPipeline.get(r.pipeline) ?? { pipeline: r.pipeline, cents: 0, count: 0 };
       p.cents += t;
       p.count += 1;
       byPipeline.set(r.pipeline, p);
 
+      // Month/this-month cents include overhead (that's the point of full-scope
+      // totals); counts stay videos-only so "N videos" never counts a bill row.
       const m = r.renderedAt.toISOString().slice(0, 7);
       const mm = byMonth.get(m) ?? { month: m, cents: 0, count: 0 };
       mm.cents += t;
-      mm.count += 1;
+      if (isVideo) mm.count += 1;
       byMonth.set(m, mm);
 
       if (m === monthKey) {
         thisMonthCents += t;
-        thisMonthCount += 1;
+        if (isVideo) thisMonthCount += 1;
       }
     }
 
+    const videoCount = rows.filter((r) => r.pipeline !== "overhead").length;
+
     return NextResponse.json({
       grandTotalCents,
-      videoCount: rows.length,
-      avgCents: rows.length ? Math.round(grandTotalCents / rows.length) : 0,
+      videoCount,
+      // All-in average: full-scope spend (overhead included) over shipped videos —
+      // "what does one video really cost us", not the happy-path recipe number.
+      avgCents: videoCount ? Math.round(grandTotalCents / videoCount) : 0,
       estimatedCents,
       thisMonth: { month: monthKey, cents: thisMonthCents, count: thisMonthCount },
       breakdown,
