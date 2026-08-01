@@ -13,7 +13,6 @@ const VALID: Set<Platform> = new Set([
   "instagram",
   "facebook",
   "pinterest",
-  "backatyou",
 ]);
 
 // Action-cam /social renditions build in the background on the DGX; while one

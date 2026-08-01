@@ -36,15 +36,24 @@ async function getPulse(): Promise<{ pulse: Pulse | null; statcardUrl: string | 
   }
 }
 
-function ytEmbedUrl(url: string): string | null {
-  const m = url.match(/(?:shorts\/|watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
-  return m ? `https://www.youtube.com/embed/${m[1]}` : null;
+function VideoBriefLink({ url }: { url: string }) {
+  return (
+    <p className="mt-4 text-center text-sm">
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="opacity-70 underline underline-offset-2 hover:opacity-100"
+      >
+        ▶ Watch today&apos;s 60-second video brief
+      </a>
+    </p>
+  );
 }
 
 export default async function HousingPage() {
   const { pulse, statcardUrl } = await getPulse();
-  const valuationUrl = process.env.NEXT_PUBLIC_HOUSING_VALUATION_URL || "";
-  const embed = pulse?.links?.youtube_url ? ytEmbedUrl(pulse.links.youtube_url) : null;
+  const youtubeUrl = pulse?.links?.youtube_url || null;
   const dateLabel = pulse
     ? new Date(`${pulse.date}T12:00:00`).toLocaleDateString("en-US", {
         weekday: "long",
@@ -69,18 +78,8 @@ export default async function HousingPage() {
         </p>
       </header>
 
-      {/* Video / stat card */}
-      {embed ? (
-        <div className="mx-auto mt-8 aspect-[9/16] w-full max-w-[360px] overflow-hidden rounded-2xl border border-zinc-200 shadow-lg dark:border-zinc-800">
-          <iframe
-            src={embed}
-            title="Today's KC housing market update"
-            className="h-full w-full"
-            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-      ) : statcardUrl ? (
+      {/* Stat card */}
+      {statcardUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={statcardUrl}
@@ -88,6 +87,9 @@ export default async function HousingPage() {
           className="mx-auto mt-8 w-full max-w-[360px] rounded-2xl border border-zinc-200 shadow-lg dark:border-zinc-800"
         />
       ) : null}
+
+      {/* Video brief link — sits under the stat card when there is one */}
+      {youtubeUrl && statcardUrl ? <VideoBriefLink url={youtubeUrl} /> : null}
 
       {/* Stat tiles */}
       {pulse?.brief.stat_card?.length ? (
@@ -104,6 +106,9 @@ export default async function HousingPage() {
           ))}
         </div>
       ) : null}
+
+      {/* Video brief link — falls here when there is no stat card above */}
+      {youtubeUrl && !statcardUrl ? <VideoBriefLink url={youtubeUrl} /> : null}
 
       {/* Bullets */}
       {pulse ? (
@@ -161,19 +166,6 @@ export default async function HousingPage() {
         <div className="mt-6">
           <AskJaredForm />
         </div>
-        {valuationUrl ? (
-          <p className="mt-5 text-center text-sm">
-            Want an instant estimate instead?{" "}
-            <a
-              href={valuationUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold text-blue-600 underline underline-offset-2"
-            >
-              Get a free home valuation →
-            </a>
-          </p>
-        ) : null}
       </section>
 
       <div className="mt-14">

@@ -1,4 +1,3 @@
-import { postBackAtYou } from "./backatyou";
 import { postFacebook } from "./facebook";
 import { postInstagram } from "./instagram";
 import { postPinterest } from "./pinterest";
@@ -12,7 +11,6 @@ const POSTERS: Record<Platform, (input: PostInput) => Promise<PostResult>> = {
   instagram: postInstagram,
   facebook: postFacebook,
   pinterest: postPinterest,
-  backatyou: postBackAtYou,
 };
 
 // Action-cam /social renditions come in two publish-grade 1080p crops cut from

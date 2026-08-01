@@ -8,8 +8,7 @@ type Platform =
   | "tiktok"
   | "instagram"
   | "facebook"
-  | "pinterest"
-  | "backatyou";
+  | "pinterest";
 
 const PLATFORMS: Platform[] = [
   "youtube",
@@ -17,7 +16,6 @@ const PLATFORMS: Platform[] = [
   "instagram",
   "facebook",
   "pinterest",
-  "backatyou",
 ];
 
 const PLATFORM_LABEL: Record<Platform, string> = {
@@ -26,7 +24,6 @@ const PLATFORM_LABEL: Record<Platform, string> = {
   instagram: "Instagram",
   facebook: "Facebook",
   pinterest: "Pinterest",
-  backatyou: "Back At You",
 };
 
 const STATE_DOT: Record<"connected" | "missing" | "expired" | "error", string> = {
@@ -580,7 +577,6 @@ const PLATFORM_TINT: Record<Platform, string> = {
   youtube: "bg-red-600/20 text-red-300",
   tiktok: "bg-zinc-600/20 text-zinc-200",
   pinterest: "bg-rose-600/20 text-rose-300",
-  backatyou: "bg-orange-600/20 text-orange-300",
 };
 
 function RecentRow({ post }: { post: RecentPost }) {
@@ -856,7 +852,7 @@ const RECIPES: Partial<Record<Platform, Recipe>> = {
     title: "Connect Pinterest",
     steps: [
       {
-        text: "Pinterest currently runs as a DGX-side cron 3×/day. Wrapping it as a tolley.io-callable service like Back At You is queued for next session.",
+        text: "Pinterest currently runs as a DGX-side cron 3×/day. Wrapping it as a tolley.io-callable service is queued for next session.",
       },
       {
         text: "Until then: posts continue from jared@yourkchomes via the existing autoposter; Recent posts tab shows them when token is added to Vercel.",
@@ -874,18 +870,7 @@ const RECIPES: Partial<Record<Platform, Recipe>> = {
         hrefLabel: "Apply for TikTok dev app",
       },
       {
-        text: "Workaround: a Selenium-based DGX service like Back At You. Queued for next session — your tiktok.env login is ready to wire.",
-      },
-    ],
-  },
-  backatyou: {
-    title: "Back At You",
-    steps: [
-      {
-        text: "Live via DGX-side service at bay.tolley.io. First post triggers Selenium login automatically.",
-      },
-      {
-        text: "If login breaks (BAY redesigns the UI), update creds at /home/jelly/dgx-services/backatyou-service/.env and `systemctl --user restart backatyou-service`.",
+        text: "Workaround: a Selenium-based DGX service. Queued for next session — your tiktok.env login is ready to wire.",
       },
     ],
   },

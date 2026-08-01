@@ -20,7 +20,6 @@ const VALID_PLATFORMS = new Set([
   "instagram",
   "facebook",
   "pinterest",
-  "backatyou",
 ]);
 const CAPTION_PLATFORMS = new Set<CaptionPlatform>([
   "youtube",

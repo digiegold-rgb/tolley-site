@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApiSession } from "@/lib/admin-auth";
-import { backAtYouHealth } from "@/lib/social/backatyou";
 import { tiktokServiceHealth } from "@/lib/social/tiktok";
 import { pinterestServiceHealth } from "@/lib/social/pinterest";
 import { FB_PAGES, getPageToken } from "@/lib/facebook";
@@ -137,23 +136,12 @@ async function testPinterest(): Promise<TestResult> {
   return { ok: true, account: json.username ? `@${json.username}` : "Pinterest" };
 }
 
-async function testBackAtYou(): Promise<TestResult> {
-  const h = await backAtYouHealth();
-  if (!h.ok) return { ok: false, detail: h.error || "BAY service unreachable" };
-  return {
-    ok: true,
-    account: h.logged_in ? "Session warm" : "Service ready",
-    detail: "Selenium driver up; first post triggers login",
-  };
-}
-
 const TESTERS: Record<string, () => Promise<TestResult>> = {
   facebook: testFacebook,
   instagram: testInstagram,
   youtube: testYouTube,
   tiktok: testTikTok,
   pinterest: testPinterest,
-  backatyou: testBackAtYou,
 };
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ platform: string }> }) {

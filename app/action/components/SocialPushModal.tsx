@@ -23,9 +23,7 @@ const PLATFORMS: { id: string; label: string }[] = [
   { id: "instagram", label: "📸 Instagram" },
   { id: "facebook", label: "👥 Facebook" },
   { id: "pinterest", label: "📌 Pinterest" },
-  { id: "backatyou", label: "🏠 Back At You" },
 ];
-// The caption generator only knows these five (backatyou reuses the FB voice).
 const CAPTION_PLATFORMS = new Set(["youtube", "tiktok", "instagram", "facebook", "pinterest"]);
 
 export function SocialPushModal({ target, onClose }: { target: SocialPushTarget; onClose: () => void }) {

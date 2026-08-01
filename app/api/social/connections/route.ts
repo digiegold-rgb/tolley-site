@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireAdminApiSession } from "@/lib/admin-auth";
-import { backAtYouHealth } from "@/lib/social/backatyou";
 import { tiktokServiceHealth } from "@/lib/social/tiktok";
 
 export const dynamic = "force-dynamic";
@@ -10,8 +9,7 @@ type Platform =
   | "tiktok"
   | "instagram"
   | "facebook"
-  | "pinterest"
-  | "backatyou";
+  | "pinterest";
 
 interface ConnectionStatus {
   platform: Platform;
@@ -154,29 +152,6 @@ async function checkTikTok(): Promise<ConnectionStatus> {
   };
 }
 
-async function checkBackAtYou(): Promise<ConnectionStatus> {
-  if (!process.env.BACKATYOU_API_KEY) {
-    return {
-      platform: "backatyou",
-      state: "missing",
-      message: "BACKATYOU_API_KEY not set in Vercel env",
-    };
-  }
-  const health = await backAtYouHealth();
-  if (!health.ok) {
-    return {
-      platform: "backatyou",
-      state: "error",
-      message: health.error || "Service unreachable",
-    };
-  }
-  return {
-    platform: "backatyou",
-    state: "connected",
-    account: health.logged_in ? "Session warm" : "Service ready (will login on first post)",
-  };
-}
-
 export async function GET() {
   const auth = await requireAdminApiSession();
   if (!auth.ok) return auth.response;
@@ -187,7 +162,6 @@ export async function GET() {
     Promise.resolve(checkInstagram()),
     Promise.resolve(checkFacebook()),
     Promise.resolve(checkPinterest()),
-    checkBackAtYou(),
   ]);
 
   return NextResponse.json({ connections });

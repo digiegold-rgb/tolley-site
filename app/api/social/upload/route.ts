@@ -11,7 +11,6 @@ const VALID_PLATFORMS = new Set([
   "instagram",
   "facebook",
   "pinterest",
-  "backatyou",
 ]);
 
 interface CreateBody {

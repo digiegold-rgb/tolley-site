@@ -3,8 +3,7 @@ export type Platform =
   | "tiktok"
   | "instagram"
   | "facebook"
-  | "pinterest"
-  | "backatyou";
+  | "pinterest";
 
 export const ALL_PLATFORMS: Platform[] = [
   "youtube",
@@ -12,7 +11,6 @@ export const ALL_PLATFORMS: Platform[] = [
   "instagram",
   "facebook",
   "pinterest",
-  "backatyou",
 ];
 
 export interface PostInput {
