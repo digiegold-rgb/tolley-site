@@ -102,7 +102,9 @@ export async function GET() {
       const lifetimeViews =
         latestSnap?.totalViews !== null && latestSnap?.totalViews !== undefined
           ? Number(latestSnap.totalViews)
-          : dailies.reduce((s, r) => s + (r.dayViews ?? 0), 0) || null;
+          : dailies.length
+            ? dailies.reduce((s, r) => s + (r.dayViews ?? 0), 0)
+            : null;
 
       const latestSubs = subs[subs.length - 1]?.subscribers ?? null;
       const subAt = (daysAgo: number): number | null => {
