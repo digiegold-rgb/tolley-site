@@ -70,6 +70,15 @@ interface WindowStat {
 
 const WINDOWS = [30, 90, 365] as const;
 
+// YouTube's public API rounds subscriberCount to 3 significant figures above
+// 1,000 — an 18,800→18,700 "drop" can be a single real unsubscribe crossing a
+// rounding boundary, or nothing at all. Return the granularity so the UI can
+// stop rendering one-granule swings as if they were measured churn.
+function subRoundingFor(platform: string, subs: number | null): number {
+  if (platform !== "youtube" || subs === null || subs < 1000) return 1;
+  return 10 ** (Math.floor(Math.log10(subs)) - 2);
+}
+
 // GET /api/hq/view-counter — everything the counter UI renders. Per channel:
 // lifetime views, subscribers with 1d/7d deltas, and 30/90/365d view windows.
 // Window math prefers the exact method available per platform: cumulative
@@ -162,6 +171,17 @@ export async function GET() {
         windows[`d${days}`] = { views: null, partial: true, since: null };
       }
 
+      // How current the *view* numbers are, which is not how recently we polled:
+      // YouTube Analytics publishes a day roughly 3 days late, so a 30d window
+      // built from its daily series really ends 3 days ago. Surface that rather
+      // than letting an hourly "updated 5m ago" imply the views are live.
+      const lastDaily = dailies[dailies.length - 1]?.day ?? null;
+      const lastSnapDay = latestSnap?.day ?? null;
+      const viewsThrough =
+        lastDaily && lastSnapDay
+          ? new Date(Math.max(lastDaily.getTime(), lastSnapDay.getTime()))
+          : (lastDaily ?? lastSnapDay);
+
       return {
         key: cfg.key,
         platform: cfg.platform,
@@ -172,7 +192,9 @@ export async function GET() {
         subscribers: latestSubs,
         subDelta1d: latestSubs !== null && sub1d !== null ? latestSubs - sub1d : null,
         subDelta7d: latestSubs !== null && sub7d !== null ? latestSubs - sub7d : null,
+        subRounding: subRoundingFor(cfg.platform, latestSubs),
         windows,
+        viewsThrough: viewsThrough ? viewsThrough.toISOString().slice(0, 10) : null,
         lastPulledAt: hist.length ? hist[hist.length - 1].pulledAt.toISOString() : null,
       };
     });

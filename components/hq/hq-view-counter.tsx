@@ -19,7 +19,9 @@ interface Channel {
   subscribers: number | null;
   subDelta1d: number | null;
   subDelta7d: number | null;
+  subRounding: number;
   windows: Record<string, WindowStat>;
+  viewsThrough: string | null;
   lastPulledAt: string | null;
 }
 
@@ -90,8 +92,18 @@ function Odometer({ value, size }: { value: number; size: number }) {
   );
 }
 
-function SubDelta({ delta, period }: { delta: number | null; period: string }) {
+function SubDelta({ delta, period, rounding = 1 }: { delta: number | null; period: string; rounding?: number }) {
   if (delta === null) return null;
+  // A swing no bigger than the platform's own reporting granularity carries no
+  // information — showing it in alarm-red invites chasing churn that never
+  // happened. Render it grey and labelled as rounding instead.
+  if (rounding > 1 && Math.abs(delta) <= rounding) {
+    return (
+      <span style={{ color: "#8e8e93", fontWeight: 600 }}>
+        ±{rounding.toLocaleString()} rounding
+      </span>
+    );
+  }
   const color = delta > 0 ? "#0a7d32" : delta < 0 ? "#b3261e" : "#8e8e93";
   const arrow = delta > 0 ? "▲" : delta < 0 ? "▼" : "—";
   return (
@@ -99,6 +111,16 @@ function SubDelta({ delta, period }: { delta: number | null; period: string }) {
       {arrow} {Math.abs(delta).toLocaleString()} {period}
     </span>
   );
+}
+
+/** Whole days between an ISO date (UTC midnight) and today, or null. */
+function daysBehind(isoDay: string | null): number | null {
+  if (!isoDay) return null;
+  const then = Date.parse(`${isoDay}T00:00:00Z`);
+  if (Number.isNaN(then)) return null;
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return Math.max(0, Math.round((todayUtc - then) / 86400000));
 }
 
 function ago(iso: string): string {
@@ -232,6 +254,15 @@ export function HqViewCounter() {
               {v.since && (
                 <div style={{ fontSize: 10, color: "#8a5300", marginTop: 2 }}>since {v.since}</div>
               )}
+              {(() => {
+                const behind = daysBehind(c.viewsThrough);
+                if (behind === null || behind < 2) return null;
+                return (
+                  <div style={{ fontSize: 10, color: "#8a5300", marginTop: 2 }}>
+                    views through {c.viewsThrough} · {behind}d platform lag
+                  </div>
+                );
+              })()}
               <div style={{ fontSize: 12, color: "#3c3c43", marginTop: 8, display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
                 <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
                   {c.subscribers !== null ? c.subscribers.toLocaleString() : "—"}
@@ -239,7 +270,11 @@ export function HqViewCounter() {
                 <span style={{ fontSize: 10, color: "#8e8e93" }}>
                   {c.platform === "youtube" ? "subs" : "followers"}
                 </span>
-                <SubDelta delta={c.subDelta7d ?? c.subDelta1d} period={c.subDelta7d !== null ? "7d" : "1d"} />
+                <SubDelta
+                  delta={c.subDelta7d ?? c.subDelta1d}
+                  period={c.subDelta7d !== null ? "7d" : "1d"}
+                  rounding={c.subRounding ?? 1}
+                />
               </div>
             </a>
           );

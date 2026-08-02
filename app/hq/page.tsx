@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 import { HQ_BOARD_STAGES, HQ_OFFERS } from "@/lib/hq";
 import { useToast } from "@/components/ui/Toast";
+import { HqBk } from "@/components/hq/hq-bk";
 import { HqBoard } from "@/components/hq/hq-board";
 import { HqLeadDrawer } from "@/components/hq/hq-lead-drawer";
 import { HqApprovalQueue } from "@/components/hq/hq-approval-queue";
@@ -39,9 +40,9 @@ import {
   type HqInboundLead,
 } from "@/components/hq/types";
 
-type Tab = "empire" | "must" | "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats" | "chats" | "hauls" | "posts" | "tiktok";
+type Tab = "empire" | "must" | "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats" | "chats" | "hauls" | "posts" | "tiktok" | "bk";
 
-const TABS: readonly Tab[] = ["empire", "must", "pipeline", "inbound", "approvals", "money", "dnc", "estates", "stats", "chats", "hauls", "posts", "tiktok"];
+const TABS: readonly Tab[] = ["empire", "must", "pipeline", "inbound", "approvals", "money", "dnc", "estates", "stats", "chats", "hauls", "posts", "tiktok", "bk"];
 
 function isTab(v: string | null): v is Tab {
   return v != null && (TABS as readonly string[]).includes(v);
@@ -597,6 +598,13 @@ function HqPageInner() {
             🛍 TikTok
           </button>
           <button
+            className={`tab-btn ${tab === "bk" ? "active" : ""}`}
+            onClick={() => setTab("bk")}
+            style={tab === "bk" ? { background: "linear-gradient(135deg,#0a2540,#0071e3)", color: "#fff", borderColor: "#0071e3" } : undefined}
+          >
+            ⚡ BK
+          </button>
+          <button
             className={`tab-btn ${tab === "dnc" ? "active" : ""}`}
             onClick={() => setTab("dnc")}
           >
@@ -664,6 +672,8 @@ function HqPageInner() {
           <HqPosts />
         ) : tab === "tiktok" ? (
           <HqTiktokShop />
+        ) : tab === "bk" ? (
+          <HqBk />
         ) : tab === "dnc" ? (
           <HqDnc
             leads={leads}
