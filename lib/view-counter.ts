@@ -49,13 +49,6 @@ export const VIEW_CHANNELS: readonly ViewChannel[] = [
     url: "https://www.facebook.com/1060351927154451",
   },
   {
-    key: "fb-main",
-    platform: "facebook",
-    label: "Wash&Dry Rental (legacy)",
-    note: "old W&D page",
-    url: "https://www.facebook.com/775948235607331",
-  },
-  {
     key: "fb-re",
     platform: "facebook",
     label: "Your KC Homes",

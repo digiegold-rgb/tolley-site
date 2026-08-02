@@ -130,14 +130,22 @@ export const SCHEDULED_JOBS: ScheduledJob[] = [
   },
   {
     job: "wd-weekly-video",
-    label: "W/D weekly persona video",
-    schedule: "Mon 12:30 (draft until AUTOPOST)",
-    unit: "wd-weekly-video.timer",
-    staleAfterHours: 9 * 24, // weekly + weekend grace
+    label: "W/D daily persona video",
+    schedule: "Daily 12:30",
+    unit: "wd-weekly-video.timer", // cadence weekly→daily 8/1, unit name kept
+    staleAfterHours: 30,
     channels: [
       { channel: "yt", account: "yourkchome", business: "wd" },
-      { channel: "fb", account: "yourkchomes", business: "wd" },
+      { channel: "fb", account: "washdry-kc", business: "wd" },
     ],
+  },
+  {
+    job: "estate-video",
+    label: "Estate daily persona video",
+    schedule: "Daily 08:00",
+    unit: "estate-video.timer",
+    staleAfterHours: 30,
+    channels: [{ channel: "fb", account: "estate", business: "estate" }],
   },
 ];
 

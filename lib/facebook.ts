@@ -22,7 +22,6 @@ export interface FbPageConfig {
 
 export const FB_PAGES: FbPageConfig[] = [
   { id: process.env.FACEBOOK_PAGE_ID_WD || "1060351927154451", name: "Wash & Dry Rental KC", tokenEnvKey: "FACEBOOK_PAGE_TOKEN_WD" },
-  { id: process.env.FACEBOOK_PAGE_ID_MAIN || "775948235607331", name: "Wash&Dry Rental", tokenEnvKey: "FACEBOOK_PAGE_TOKEN_MAIN" },
   { id: process.env.FACEBOOK_PAGE_ID_RE || "230414410149647", name: "Your KC Homes", tokenEnvKey: "FACEBOOK_PAGE_TOKEN_RE" },
   { id: process.env.FACEBOOK_PAGE_ID_TREASURE || "1156652300855210", name: "Ruthann's Treasure Haul", tokenEnvKey: "FACEBOOK_PAGE_TOKEN_TREASURE" },
 ];
