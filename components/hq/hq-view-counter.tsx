@@ -22,7 +22,18 @@ interface Channel {
   subRounding: number;
   windows: Record<string, WindowStat>;
   viewsThrough: string | null;
+  live: LiveStat | null;
   lastPulledAt: string | null;
+}
+
+/** Near-realtime counts on recent uploads — bypasses YouTube's ~3d Analytics lag. */
+interface LiveStat {
+  h24: { views: number; videos: number };
+  d7: { views: number; videos: number };
+  topTitle: string | null;
+  topViews: number | null;
+  topVideoId: string | null;
+  asOf: string;
 }
 
 interface Payload {
@@ -110,6 +121,56 @@ function SubDelta({ delta, period, rounding = 1 }: { delta: number | null; perio
     <span style={{ color, fontWeight: 700 }}>
       {arrow} {Math.abs(delta).toLocaleString()} {period}
     </span>
+  );
+}
+
+/**
+ * The un-lagged half of the card. The big number above it is YouTube Analytics
+ * and runs ~3 days behind; this is per-video counts pulled hourly, so a Short
+ * posted this morning shows up here immediately. Labelled "on new uploads"
+ * because it counts views on recent videos, not all views received recently.
+ */
+function LiveStrip({ live }: { live: LiveStat }) {
+  const { h24, d7 } = live;
+  return (
+    <div
+      style={{
+        marginTop: 8, paddingTop: 8, borderTop: "1px dashed #e5e5ea",
+        fontSize: 11, color: "#3c3c43", lineHeight: 1.5,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+        <span
+          style={{
+            fontSize: 9, fontWeight: 800, letterSpacing: 0.4, padding: "1px 5px",
+            borderRadius: 4, background: "#e8f8ee", color: "#0a7d32", whiteSpace: "nowrap",
+          }}
+        >
+          ● LIVE
+        </span>
+        <span style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums", fontSize: 13 }}>
+          {h24.views.toLocaleString()}
+        </span>
+        <span style={{ color: "#8e8e93" }}>
+          on {h24.videos} upload{h24.videos === 1 ? "" : "s"} · 24h
+        </span>
+      </div>
+      <div style={{ color: "#8e8e93", marginTop: 2 }}>
+        7d uploads: <strong style={{ color: "#3c3c43" }}>{d7.views.toLocaleString()}</strong> on{" "}
+        {d7.videos} video{d7.videos === 1 ? "" : "s"}
+      </div>
+      {live.topTitle && live.topViews !== null && (
+        <div
+          style={{
+            color: "#8e8e93", marginTop: 2, overflow: "hidden",
+            textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}
+          title={live.topTitle}
+        >
+          top: {live.topViews.toLocaleString()} — {live.topTitle}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -263,6 +324,7 @@ export function HqViewCounter() {
                   </div>
                 );
               })()}
+              {c.live && <LiveStrip live={c.live} />}
               <div style={{ fontSize: 12, color: "#3c3c43", marginTop: 8, display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
                 <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
                   {c.subscribers !== null ? c.subscribers.toLocaleString() : "—"}

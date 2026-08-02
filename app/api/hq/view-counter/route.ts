@@ -28,11 +28,33 @@ export async function POST(request: NextRequest) {
   }
 
   let upserted = 0;
+  let videos = 0;
   let skipped = 0;
   for (const raw of body) {
     if (!raw || typeof raw !== "object") { skipped++; continue; }
     const item = raw as Record<string, unknown>;
     const channelKey = typeof item.channelKey === "string" ? item.channelKey : "";
+
+    // Per-video rows are distinguished by carrying a videoId; everything else
+    // is a day row. One endpoint, one push, two tables.
+    if (typeof item.videoId === "string" && item.videoId) {
+      const publishedMs = Date.parse(String(item.publishedAt ?? ""));
+      if (!CHANNEL_KEYS.has(channelKey) || Number.isNaN(publishedMs)) { skipped++; continue; }
+      const data = {
+        title: String(item.title ?? "").slice(0, 300),
+        publishedAt: new Date(publishedMs),
+        views: BigInt(Math.max(0, Math.round(Number(item.views ?? 0)))),
+        pulledAt: new Date(),
+      };
+      await prisma.channelVideoStat.upsert({
+        where: { channelKey_videoId: { channelKey, videoId: item.videoId } },
+        create: { channelKey, videoId: item.videoId, ...data },
+        update: data,
+      });
+      videos++;
+      continue;
+    }
+
     const dayRaw = typeof item.day === "string" ? item.day : "";
     const dayMs = Date.parse(dayRaw);
     if (!CHANNEL_KEYS.has(channelKey) || Number.isNaN(dayMs)) { skipped++; continue; }
@@ -59,7 +81,7 @@ export async function POST(request: NextRequest) {
     upserted++;
   }
 
-  return NextResponse.json({ ok: true, upserted, skipped });
+  return NextResponse.json({ ok: true, upserted, videos, skipped });
 }
 
 interface WindowStat {
@@ -98,6 +120,22 @@ export async function GET() {
       const list = byChannel.get(r.channelKey) ?? [];
       list.push(r);
       byChannel.set(r.channelKey, list);
+    }
+
+    // Near-realtime side: views on recent uploads, straight from the Data API.
+    // This is deliberately "views ON uploads from the last N days", NOT "views
+    // received in the last N days" — a play on a 2-year-old video is not
+    // counted. It tracks the lagged windows closely only because this channel's
+    // traffic is overwhelmingly on fresh content.
+    const vidRows = await prisma.channelVideoStat.findMany({
+      where: { publishedAt: { gte: new Date(Date.now() - 8 * 86400_000) } },
+      orderBy: { publishedAt: "desc" },
+    });
+    const vidsByChannel = new Map<string, typeof vidRows>();
+    for (const v of vidRows) {
+      const list = vidsByChannel.get(v.channelKey) ?? [];
+      list.push(v);
+      vidsByChannel.set(v.channelKey, list);
     }
 
     const now = Date.now();
@@ -182,6 +220,20 @@ export async function GET() {
           ? new Date(Math.max(lastDaily.getTime(), lastSnapDay.getTime()))
           : (lastDaily ?? lastSnapDay);
 
+      const vids = vidsByChannel.get(cfg.key) ?? [];
+      const liveFor = (hours: number) => {
+        const since = now - hours * 3600_000;
+        const inRange = vids.filter((v) => v.publishedAt.getTime() >= since);
+        return {
+          views: inRange.reduce((s, v) => s + Number(v.views), 0),
+          videos: inRange.length,
+        };
+      };
+      const top = vids.reduce<(typeof vids)[number] | null>(
+        (best, v) => (best === null || Number(v.views) > Number(best.views) ? v : best),
+        null,
+      );
+
       return {
         key: cfg.key,
         platform: cfg.platform,
@@ -195,6 +247,18 @@ export async function GET() {
         subRounding: subRoundingFor(cfg.platform, latestSubs),
         windows,
         viewsThrough: viewsThrough ? viewsThrough.toISOString().slice(0, 10) : null,
+        live: vids.length
+          ? {
+              h24: liveFor(24),
+              d7: liveFor(24 * 7),
+              topTitle: top?.title ?? null,
+              topViews: top ? Number(top.views) : null,
+              topVideoId: top?.videoId ?? null,
+              asOf: new Date(
+                vids.reduce((m, v) => Math.max(m, v.pulledAt.getTime()), 0),
+              ).toISOString(),
+            }
+          : null,
         lastPulledAt: hist.length ? hist[hist.length - 1].pulledAt.toISOString() : null,
       };
     });

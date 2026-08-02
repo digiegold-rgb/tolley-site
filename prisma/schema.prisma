@@ -4878,3 +4878,22 @@ model ChannelViewStat {
   @@unique([channelKey, day])
   @@index([channelKey, day])
 }
+
+// Per-video view counts for recent uploads. YouTube Analytics (which feeds
+// ChannelViewStat.dayViews) publishes a day ~3 days late, but the Data API's
+// per-video viewCount is near-realtime — this table is what lets /hq show
+// "views on today's uploads" instead of making Jared wait 3 days to see that
+// a morning Short landed. Only the trailing RECENT_DAYS of uploads are kept
+// current; older rows age out of the collector's refresh set and go stale.
+model ChannelVideoStat {
+  id          String   @id @default(cuid())
+  channelKey  String
+  videoId     String
+  title       String
+  publishedAt DateTime
+  views       BigInt   @default(0)
+  pulledAt    DateTime @default(now())
+
+  @@unique([channelKey, videoId])
+  @@index([channelKey, publishedAt])
+}
