@@ -10,7 +10,7 @@
 
 export interface ViewChannel {
   key: string;
-  platform: "youtube" | "facebook";
+  platform: "youtube" | "facebook" | "tiktok";
   label: string;
   note?: string; // secondary line on the card
   url: string;
@@ -47,6 +47,13 @@ export const VIEW_CHANNELS: readonly ViewChannel[] = [
     label: "Wash & Dry Rental KC",
     note: "washer/dryer rentals",
     url: "https://www.facebook.com/1060351927154451",
+  },
+  {
+    key: "tt-jared",
+    platform: "tiktok",
+    label: "Treasure Huals",
+    note: "haul shorts · TT shop",
+    url: "https://www.tiktok.com/@digitaljared",
   },
   {
     key: "fb-re",

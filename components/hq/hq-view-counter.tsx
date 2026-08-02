@@ -11,7 +11,7 @@ interface WindowStat { views: number | null; partial: boolean; since: string | n
 
 interface Channel {
   key: string;
-  platform: "youtube" | "facebook";
+  platform: "youtube" | "facebook" | "tiktok";
   label: string;
   note: string | null;
   url: string;
@@ -41,6 +41,7 @@ const WINDOW_LABELS: Record<WindowKey, string> = {
 const PLATFORM_BADGE: Record<string, { label: string; bg: string; fg: string }> = {
   youtube: { label: "▶ YouTube", bg: "#fdecea", fg: "#c4302b" },
   facebook: { label: "ⓕ Facebook", bg: "#e7f0fd", fg: "#1877f2" },
+  tiktok: { label: "♪ TikTok", bg: "#e6fafa", fg: "#0d8a84" },
 };
 
 /** One rolling digit column, 0–9 stacked; translateY slides to the value. */
