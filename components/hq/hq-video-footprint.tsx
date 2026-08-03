@@ -56,6 +56,9 @@ interface Payload {
     videosAll: number;
     videos30: number;
     tempBytes30: number;
+    genBytesAll: number;
+    sourceBytesAll: number;
+    genBytes30: number;
   };
   priorTotals: { bytesAll?: number } | null;
   savings?: {
@@ -67,6 +70,18 @@ interface Payload {
     tiers: Tier[];
     maxSavings: number;
     maxSavingsTier: string | null;
+    voiceSavings: number;
+    localVoiceVideos: number;
+    lifetime?: {
+      videos: number;
+      clipsLogged: number;
+      attempts: number;
+      ourSpend: number;
+      maxSavings: number;
+      likeForLikeSavings: number;
+      likeForLikeTier: string | null;
+      error?: string;
+    };
     error?: string;
   };
 }
@@ -134,6 +149,11 @@ export function HqVideoFootprint() {
           <div style={{ fontSize: 26, fontWeight: 600, letterSpacing: -0.5 }}>{size(t.bytesAll)}</div>
           <div style={{ fontSize: 11, color: "#6e6e73" }}>
             total on disk · {t.filesAll.toLocaleString()} files · {t.videosAll} videos
+          </div>
+          {/* The headline is NOT "how much video we generated" — most of the
+              bytes are downloaded source audio the pipelines consume. */}
+          <div style={{ fontSize: 11, color: "#8e8e93", marginTop: 2 }}>
+            {size(t.genBytesAll)} generated · {size(t.sourceBytesAll)} downloaded source
           </div>
         </div>
         <div>
@@ -231,9 +251,38 @@ export function HqVideoFootprint() {
                 ))}
             </tbody>
           </table>
+          {/* Voice is a separate saving the per-clip comparison cannot see:
+              every video needs narration, and the local clone replaced a
+              per-video ElevenLabs charge. */}
+          {s.voiceSavings > 0 && (
+            <div style={{ fontSize: 12, marginTop: 10, padding: "8px 10px", background: "#f5f5f7", borderRadius: 8 }}>
+              Voice clone (IndexTTS-2 / F5) replaced ElevenLabs on{" "}
+              <strong>{s.localVoiceVideos}</strong> videos —{" "}
+              <strong style={{ color: "#1a7f37" }}>{money(s.voiceSavings)}</strong> more saved,
+              on top of the clip savings above.
+            </div>
+          )}
+
+          {s.lifetime && !s.lifetime.error && (
+            <div style={{ fontSize: 12, marginTop: 10, padding: "10px 12px", background: "#eef7f0", border: "1px solid #c6e3cf", borderRadius: 8 }}>
+              <strong>Lifetime:</strong> {s.lifetime.videos} videos ·{" "}
+              {s.lifetime.attempts.toLocaleString()} attempts · we paid{" "}
+              <strong>{money(s.lifetime.ourSpend)}</strong> · saved{" "}
+              <strong style={{ color: "#1a7f37" }}>
+                {money(s.lifetime.likeForLikeSavings)}
+              </strong>{" "}
+              vs {s.lifetime.likeForLikeTier}, up to{" "}
+              <strong style={{ color: "#1a7f37" }}>{money(s.lifetime.maxSavings)}</strong> vs top tier.
+            </div>
+          )}
+
           <div style={{ fontSize: 11, color: "#6e6e73", marginTop: 8 }}>
-            Our figure is billed Modal cash plus $0 local compute — it excludes DGX hardware
-            amortisation and electricity, which are real but already sunk.
+            Our figure is billed Modal cash <em>including</em> the overhead row (retries, cold
+            starts, experiments) — excluding it would flatter the savings, since the attempts
+            number already assumes those runs happened. It still excludes DGX hardware
+            amortisation and electricity, which are real but already sunk. Listings videos
+            (&ldquo;New KC Homes Today&rdquo;) are local ffmpeg with zero AI clips, so they add
+            volume but contribute nothing to the clip savings.
           </div>
         </>
       )}
