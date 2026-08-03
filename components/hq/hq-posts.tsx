@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { HqVideoCosts } from "./hq-video-costs";
+import { HqVideoFootprint } from "./hq-video-footprint";
 import { HqViewCounter } from "./hq-view-counter";
 
 // Posts tab — did every automated channel actually fire?
@@ -167,6 +168,11 @@ export function HqPosts() {
 
       {/* ── What the videos cost (all-time, unpruned — see hq-video-costs) ── */}
       <HqVideoCosts />
+
+      {/* ── What they occupy on disk, and what self-hosting saves. Sits after
+           spend on purpose: it reconciles the same renders from the other side,
+           counting what never reached the ledger at all. ── */}
+      <HqVideoFootprint />
 
       {/* ── Channel health, problems first ── */}
       <h3 style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "#6e6e73", margin: "0 0 10px" }}>
