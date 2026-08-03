@@ -84,6 +84,16 @@ interface Payload {
     };
     error?: string;
   };
+  fullstack?: {
+    rows: { step: string; ours: number; theirs: number; saved: number; basis: string }[];
+    ourSpend: number;
+    rentedCost: number;
+    saved: number;
+    multiple: number | null;
+    llmTier: string;
+    llmTokens: { inMtok: number; outMtok: number; uptimeDays: number } | null;
+    error?: string;
+  };
 }
 
 const GB = 1024 ** 3;
@@ -130,6 +140,7 @@ export function HqVideoFootprint() {
   const t = data.totals;
   const grew = data.priorTotals?.bytesAll ? t.bytesAll - data.priorTotals.bytesAll : null;
   const s = data.savings;
+  const fs = data.fullstack;
 
   return (
     <div style={{ marginBottom: 28 }}>
@@ -273,6 +284,65 @@ export function HqVideoFootprint() {
               </strong>{" "}
               vs {s.lifetime.likeForLikeTier}, up to{" "}
               <strong style={{ color: "#1a7f37" }}>{money(s.lifetime.maxSavings)}</strong> vs top tier.
+            </div>
+          )}
+
+          {/* The whole stack, not just the clips. This is the number that answers
+              "what would somebody with no hardware pay for the same output?" */}
+          {fs && !fs.error && fs.rows?.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                Every step, priced as if we rented it
+              </div>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #e5e5ea", color: "#6e6e73", fontSize: 11 }}>
+                    <th style={{ ...CELL, textAlign: "left" }}>Pipeline step</th>
+                    <th style={NUM}>We pay</th>
+                    <th style={NUM}>Rented</th>
+                    <th style={NUM}>Saved</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fs.rows
+                    .slice()
+                    .sort((a, b) => b.saved - a.saved)
+                    .map((r) => (
+                      <tr key={r.step} style={{ borderBottom: "1px solid #f2f2f7" }}>
+                        <td style={{ ...CELL, color: r.saved === 0 ? "#8e8e93" : undefined }}>
+                          {r.step}
+                          {r.saved === 0 && (
+                            <span style={{ fontSize: 10, marginLeft: 6 }}>already rented</span>
+                          )}
+                        </td>
+                        <td style={{ ...NUM, color: "#6e6e73" }}>{money(r.ours)}</td>
+                        <td style={NUM}>{money(r.theirs)}</td>
+                        <td style={{ ...NUM, fontWeight: 600, color: r.saved ? "#1a7f37" : "#c7c7cc" }}>
+                          {r.saved ? money(r.saved) : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  <tr style={{ borderTop: "2px solid #e5e5ea", fontWeight: 700 }}>
+                    <td style={CELL}>Total / month</td>
+                    <td style={NUM}>{money(fs.ourSpend)}</td>
+                    <td style={NUM}>{money(fs.rentedCost)}</td>
+                    <td style={{ ...NUM, color: "#1a7f37" }}>{money(fs.saved)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div style={{ fontSize: 11, color: "#6e6e73", marginTop: 6 }}>
+                Renting the whole stack costs <strong>{fs.multiple}×</strong> what we pay
+                {fs.llmTokens && (
+                  <>
+                    {" "}— including{" "}
+                    <strong>
+                      {fs.llmTokens.inMtok}M in / {fs.llmTokens.outMtok}M out
+                    </strong>{" "}
+                    of agent LLM tokens a month on local vLLM, priced at the {fs.llmTier}
+                  </>
+                )}
+                .
+              </div>
             </div>
           )}
 
