@@ -30,6 +30,10 @@ export async function GET(request: Request) {
       "https://www.googleapis.com/auth/youtube.readonly",
       // /hq Stats tab — /api/cron/youtube-stats pulls per-video watch metrics
       "https://www.googleapis.com/auth/yt-analytics.readonly",
+      // Top-comment affiliate links (YT_COMMENT) and playlist/branding writes.
+      // Added 2026-08-03 with the @yourkchomes channel so one consent covers
+      // everything — without it, comments 403 and need a second re-auth.
+      "https://www.googleapis.com/auth/youtube.force-ssl",
     ].join(" "),
     access_type: "offline",
     prompt: "consent", // forces refresh_token to be issued every time

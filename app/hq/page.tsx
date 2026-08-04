@@ -614,6 +614,18 @@ function HqPageInner() {
               return n ? ` (${n})` : "";
             })()}
           </button>
+          {/* Research briefs — static PDFs in /public/research, opened in a new tab.
+              Not a Tab state: these are read-once documents, not dashboard views. */}
+          <a
+            className="tab-btn"
+            href="/research/youtube-video-length-2026.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Research: what video length is actually correct for YouTube (Aug 2026)"
+            style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            📄 YT Length Study
+          </a>
           {tab === "pipeline" && (
             <select
               value={offerFilter}

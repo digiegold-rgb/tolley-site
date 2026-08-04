@@ -19,11 +19,23 @@ export interface ViewChannel {
 
 export const VIEW_CHANNELS: readonly ViewChannel[] = [
   {
+    key: "yt-dgd",
+    platform: "youtube",
+    label: "Digital Gold Diggers",
+    note: "animated series · trailer live 8/3",
+    url: "https://www.youtube.com/@digitalgold-diggers",
+    contentSince: "2026-08-03",
+  },
+  {
+    // Was pointed at @yourkchome (now crypto again) AND the collector was
+    // pulling this card's numbers from the @digitalgold token — so this card
+    // never showed KC Homes at all. Both fixed 2026-08-03.
     key: "yt-ykh",
     platform: "youtube",
     label: "Your KC Homes",
     note: "KC news · listings · W&D",
-    url: "https://www.youtube.com/@yourkchome",
+    url: "https://www.youtube.com/@yourkchomes",
+    contentSince: "2026-08-03",
   },
   {
     key: "yt-ruthann",

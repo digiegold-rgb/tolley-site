@@ -14,6 +14,34 @@ import { prisma } from "@/lib/prisma";
  */
 const ADMIN_SUBSCRIBER = "social-suite";
 
+/**
+ * Every active connection for a platform, newest first.
+ *
+ * getStoredToken() returns only the most recently updated row, which is right
+ * for posting (one "current" account) but wrong for reporting: after the
+ * @yourkchomes cutover there are two live YouTube channels, and reading just
+ * the newest silently dropped the legacy channel's stats off /hq. Readers that
+ * need per-channel accuracy iterate this instead.
+ */
+export async function getStoredTokens(
+  platform: string,
+): Promise<Array<{ accessToken: string; refreshToken: string | null; accountId: string | null; username: string | null }>> {
+  try {
+    const rows = await prisma.platformConnection.findMany({
+      where: { subscriberId: ADMIN_SUBSCRIBER, platform, status: "active" },
+      orderBy: { updatedAt: "desc" },
+    });
+    return rows.map((r) => ({
+      accessToken: r.accessToken,
+      refreshToken: r.refreshToken,
+      accountId: r.platformAccountId,
+      username: r.platformUsername,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function getStoredToken(
   platform: string,
 ): Promise<{ accessToken: string; refreshToken: string | null; accountId: string | null } | null> {

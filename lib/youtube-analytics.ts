@@ -32,13 +32,24 @@ export interface VideoWatchMetrics {
   subsGained: number;
 }
 
-export async function getYouTubeAccessToken(): Promise<
+/**
+ * Exchange a refresh token for an access token.
+ *
+ * Pass `refreshTokenOverride` to target a SPECIFIC channel — without it this
+ * resolves to whichever connection was refreshed most recently, which is what
+ * silently re-pointed /hq at @yourkchomes the moment that channel was
+ * authorized. Reporting code should enumerate getStoredTokens("youtube") and
+ * pass each token explicitly.
+ */
+export async function getYouTubeAccessToken(refreshTokenOverride?: string | null): Promise<
   { ok: true; token: string } | { ok: false; error: string }
 > {
   const clientId = process.env.YOUTUBE_CLIENT_ID?.trim();
   const clientSecret = process.env.YOUTUBE_CLIENT_SECRET?.trim();
-  const stored = await getStoredToken("youtube");
-  const refreshToken = stored?.refreshToken || process.env.YOUTUBE_REFRESH_TOKEN?.trim();
+  const stored = refreshTokenOverride ? null : await getStoredToken("youtube");
+  const refreshToken = refreshTokenOverride
+    || stored?.refreshToken
+    || process.env.YOUTUBE_REFRESH_TOKEN?.trim();
 
   if (!clientId || !clientSecret || !refreshToken) {
     return { ok: false, error: "YouTube not connected — run the /api/social/oauth/youtube/start re-auth" };
@@ -60,6 +71,17 @@ export async function getYouTubeAccessToken(): Promise<
   }
   const json = (await res.json()) as { access_token: string };
   return { ok: true, token: json.access_token };
+}
+
+/** Which channel a token actually controls — used to tag snapshots per channel. */
+export async function getChannelIdentity(token: string): Promise<{ id: string; title: string }> {
+  const json = await dataApi(token, "channels", { part: "snippet", mine: "true" }) as {
+    items?: Array<{ id: string; snippet?: { title?: string; customUrl?: string } }>;
+  };
+  const it = json.items?.[0];
+  if (!it) throw new Error("token controls no channel");
+  const handle = it.snippet?.customUrl ? ` (${it.snippet.customUrl})` : "";
+  return { id: it.id, title: `${it.snippet?.title ?? it.id}${handle}` };
 }
 
 /** "PT1M28S" → 88. Returns null on anything unparsable. */
