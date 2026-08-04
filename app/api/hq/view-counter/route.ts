@@ -161,8 +161,13 @@ export async function GET() {
       // 2026-08-03), the older rows belong to the PREVIOUS channel, and
       // comparing against them reports a catastrophic fake loss — the card
       // showed "-18,700 subs in 1d" purely because the account changed.
-      const subsForDelta = contentSinceMs
-        ? subs.filter((r) => r.day.getTime() >= contentSinceMs)
+      // A repoint can happen mid-day, so contentSince (a content-history date)
+      // is too coarse to fix this — subsSince is the explicit baseline.
+      const subsSinceMs = cfg.subsSince
+        ? Date.parse(cfg.subsSince)
+        : contentSinceMs;
+      const subsForDelta = subsSinceMs
+        ? subs.filter((r) => r.day.getTime() >= subsSinceMs)
         : subs;
       const subAt = (daysAgo: number): number | null => {
         const cutoff = now - daysAgo * 86400_000;

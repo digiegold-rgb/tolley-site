@@ -15,6 +15,15 @@ export interface ViewChannel {
   note?: string; // secondary line on the card
   url: string;
   contentSince?: string; // ISO date
+  /**
+   * Ignore stored subscriber history before this date when computing deltas.
+   * Set this when a card is REPOINTED at a different channel: the rows already
+   * in the table belong to the previous account, and differencing against them
+   * reports a fake collapse (yt-ykh showed "-18,700 subs in 1d" the moment it
+   * moved off @digitalgold). Views history is left alone — only the delta
+   * baseline moves.
+   */
+  subsSince?: string; // ISO date
 }
 
 export const VIEW_CHANNELS: readonly ViewChannel[] = [
@@ -36,6 +45,7 @@ export const VIEW_CHANNELS: readonly ViewChannel[] = [
     note: "KC news · listings · W&D",
     url: "https://www.youtube.com/@yourkchomes",
     contentSince: "2026-08-03",
+    subsSince: "2026-08-04",
   },
   {
     key: "yt-ruthann",
