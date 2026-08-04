@@ -4,8 +4,15 @@
 // .hq-admin shell: owner-lane bands, live status node cards, animated flow
 // edges, click-to-drawer. Data: GET /api/hq/empire (60s refetch); the DGX side
 // refreshes 2×/day via the empire-collector push.
+//
+// Phones get the list instead of the canvas. React Flow renders the whole
+// 1920×1944px board as one transformed layer — 78 node cards, 54 SVG edges, a
+// MiniMap redrawing all of them, and 55 infinite dot animations — which iOS
+// Safari backs with a full-size tile buffer and then kills the tab for OOM
+// (renders, reloads, renders, dies). At the 0.17 zoom a 390px viewport forces,
+// the canvas was unreadable anyway; the list is the better phone view.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   ReactFlow,
   Background,
@@ -194,22 +201,92 @@ function buildEdges(payload: EmpirePayload | null, reducedMotion: boolean, focus
   });
 }
 
+// Phone breakpoint for the canvas → list swap. Matches the width below which
+// fitView squashes the board past readability.
+const NARROW_QUERY = "(max-width: 820px)";
+
+function useMediaQuery(query: string): boolean {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const mq = window.matchMedia(query);
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    },
+    [query]
+  );
+  // Server snapshot is false — the map only ever renders behind the client-side
+  // auth check, so there is no server pass to disagree with.
+  return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches, () => false);
+}
+
+// Phone view: the same node health, grouped by lane, as plain rows. No canvas,
+// no MiniMap, no edge SVG — tap a row for the same drawer the map opens.
+function EmpireList({
+  payload,
+  onSelect,
+}: {
+  payload: EmpirePayload | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="h-full overflow-y-auto px-3 py-3">
+      {EMPIRE_LANES.map((lane) => {
+        const nodes = EMPIRE_NODES.filter((n) => n.lane === lane.id);
+        return (
+          <div key={lane.id} className="mb-4 last:mb-0">
+            <div
+              className="mb-1.5 border-l-[3px] pl-2 font-mono text-[10px] font-bold tracking-[0.18em]"
+              style={{ borderColor: lane.accent, color: lane.accent }}
+            >
+              {lane.label}
+            </div>
+            <div className="overflow-hidden rounded-lg border border-[#1e2733]">
+              {nodes.map((def, i) => {
+                const status = payload?.nodes[def.id]?.status ?? "missing";
+                const cfg = STATUS_CONFIG[status];
+                return (
+                  <button
+                    key={def.id}
+                    onClick={() => onSelect(def.id)}
+                    className={`flex w-full items-center gap-2.5 bg-[#111722] px-3 py-2.5 text-left ${
+                      i > 0 ? "border-t border-[#141c28]" : ""
+                    }`}
+                  >
+                    <span className="text-base leading-none">{def.icon}</span>
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[#e5edf5]">
+                      {def.label}
+                    </span>
+                    <span className="shrink-0 font-mono text-[10px]" style={{ color: cfg.color }}>
+                      {cfg.symbol} {payload ? cfg.label : "…"}
+                    </span>
+                    <span
+                      className="inline-block h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: cfg.color }}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function HqEmpireMapInner() {
   const [payload, setPayload] = useState<EmpirePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [reducedMotion, setReducedMotion] = useState(false);
   const prevStatuses = useRef<Map<string, EmpireStatus>>(new Map());
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReducedMotion(mq.matches);
-    const onChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const narrow = useMediaQuery(NARROW_QUERY);
+  // Escape hatch — the canvas is one tap away if you really want it on a phone.
+  const [forceCanvas, setForceCanvas] = useState(false);
+  const showList = narrow && !forceCanvas;
 
   const load = useCallback(async () => {
     try {
@@ -241,8 +318,14 @@ function HqEmpireMapInner() {
   }, [load]);
 
   const focusId = hoveredId ?? selectedId;
-  const nodes = useMemo(() => buildNodes(payload, flashIds, focusId), [payload, flashIds, focusId]);
-  const edges = useMemo(() => buildEdges(payload, reducedMotion, focusId), [payload, reducedMotion, focusId]);
+  const nodes = useMemo(
+    () => (showList ? [] : buildNodes(payload, flashIds, focusId)),
+    [showList, payload, flashIds, focusId]
+  );
+  const edges = useMemo(
+    () => (showList ? [] : buildEdges(payload, reducedMotion, focusId)),
+    [showList, payload, reducedMotion, focusId]
+  );
 
   const rollup = useMemo(() => {
     if (!payload) return null;
@@ -282,16 +365,30 @@ function HqEmpireMapInner() {
         <span className="hidden font-mono text-[9.5px] text-[#4b5b6e] lg:inline">
           hover / tap a node to trace its connections
         </span>
-        <button
-          onClick={load}
-          className="ml-auto rounded-md border border-[#1e2733] px-2.5 py-1 font-mono text-[10px] text-[#7a8699] hover:border-[#2dd4a7] hover:text-[#2dd4a7]"
-        >
-          ↻ refresh
-        </button>
+        <div className="ml-auto flex items-center gap-1.5">
+          {narrow && (
+            <button
+              onClick={() => setForceCanvas((v) => !v)}
+              className="rounded-md border border-[#1e2733] px-2.5 py-1 font-mono text-[10px] text-[#7a8699] hover:border-[#2dd4a7] hover:text-[#2dd4a7]"
+              title="The canvas is heavy on phones — it can crash the tab"
+            >
+              {forceCanvas ? "≡ list" : "⬚ map"}
+            </button>
+          )}
+          <button
+            onClick={load}
+            className="rounded-md border border-[#1e2733] px-2.5 py-1 font-mono text-[10px] text-[#7a8699] hover:border-[#2dd4a7] hover:text-[#2dd4a7]"
+          >
+            ↻ refresh
+          </button>
+        </div>
       </div>
 
-      {/* Canvas + drawer */}
-      <div className="relative" style={{ height: "max(560px, calc(100vh - 320px))" }}>
+      {/* Canvas (or the phone list) + drawer */}
+      <div className="relative" style={{ height: "max(420px, calc(100vh - 320px))" }}>
+        {showList ? (
+          <EmpireList payload={payload} onSelect={setSelectedId} />
+        ) : (
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -330,6 +427,7 @@ function HqEmpireMapInner() {
             zoomable
           />
         </ReactFlow>
+        )}
 
         {selectedDef && (
           <EmpireDrawer

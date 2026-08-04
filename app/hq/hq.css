@@ -14,6 +14,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   padding: 10px 16px;
   background: #1d1d1f;
   color: #fff;
@@ -32,11 +34,15 @@
   display: flex;
   gap: 6px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 /* ─── Tab Bar ─── */
+/* wrap, don't spill — 14 tabs at ~70px each is 1170px of buttons, and without
+   this the whole document is that wide on a phone. */
 .hq-admin .tab-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 12px;
   padding: 4px 0;
@@ -415,3 +421,12 @@
 .hq-admin .empire-island.empire-no-motion .empire-dot-pulse,
 .hq-admin .empire-island.empire-no-motion .empire-dot-breathe,
 .hq-admin .empire-island.empire-no-motion .empire-flash { animation: none; }
+
+/* Phones: no perpetual repaints. empire-breathe animates box-shadow, so each of
+   the 19 broken-status dots repainted every frame inside the scaled canvas
+   layer — cheap on a desktop GPU, part of what killed the tab on iOS. */
+@media (max-width: 820px) {
+  .hq-admin .empire-island .empire-dot-pulse,
+  .hq-admin .empire-island .empire-dot-breathe,
+  .hq-admin .empire-island .empire-flash { animation: none; }
+}
