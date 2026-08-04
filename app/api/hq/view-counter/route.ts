@@ -153,17 +153,25 @@ export async function GET() {
             ? dailies.reduce((s, r) => s + (r.dayViews ?? 0), 0)
             : null;
 
+      const contentSinceMs = cfg.contentSince ? Date.parse(cfg.contentSince) : null;
+
       const latestSubs = subs[subs.length - 1]?.subscribers ?? null;
+      // Subscriber deltas must never reach back past contentSince. When a card
+      // is repointed at a different channel (yt-ykh moved off @digitalgold on
+      // 2026-08-03), the older rows belong to the PREVIOUS channel, and
+      // comparing against them reports a catastrophic fake loss — the card
+      // showed "-18,700 subs in 1d" purely because the account changed.
+      const subsForDelta = contentSinceMs
+        ? subs.filter((r) => r.day.getTime() >= contentSinceMs)
+        : subs;
       const subAt = (daysAgo: number): number | null => {
         const cutoff = now - daysAgo * 86400_000;
         // last reading at or before the cutoff — the honest "what was it then"
-        const past = subs.filter((r) => r.day.getTime() <= cutoff);
+        const past = subsForDelta.filter((r) => r.day.getTime() <= cutoff);
         return past[past.length - 1]?.subscribers ?? null;
       };
       const sub1d = subAt(1);
       const sub7d = subAt(7);
-
-      const contentSinceMs = cfg.contentSince ? Date.parse(cfg.contentSince) : null;
 
       const windows: Record<string, WindowStat> = {};
       for (const days of WINDOWS) {
