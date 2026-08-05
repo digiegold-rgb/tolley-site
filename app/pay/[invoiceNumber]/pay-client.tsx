@@ -155,18 +155,40 @@ export default function PayClient({ invoice }: { invoice: InvoiceData }) {
             {invoice.lineItems.map((li, i) => (
               <div key={i} className="flex justify-between py-1.5 text-sm">
                 <div>
-                  <span className="text-white/80">{li.description}</span>
+                  <span className={li.lineAmount < 0 ? "text-amber-400" : "text-white/80"}>
+                    {li.description}
+                  </span>
                   {li.quantity !== 1 && (
                     <span className="text-white/40 ml-2">x{li.quantity}</span>
                   )}
                 </div>
-                <span className="text-white/80">{fmt.format(li.lineAmount)}</span>
+                <span className={li.lineAmount < 0 ? "text-amber-400" : "text-white/80"}>
+                  {fmt.format(li.lineAmount)}
+                </span>
               </div>
             ))}
           </div>
 
           {/* Totals */}
           <div className="border-t border-white/10 pt-3 space-y-1">
+            {(() => {
+              const credit = invoice.lineItems
+                .filter((li) => li.lineAmount < 0)
+                .reduce((s, li) => s + li.lineAmount, 0);
+              if (credit >= 0) return null;
+              return (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-white/40">Items</span>
+                    <span className="text-white/80">{fmt.format(invoice.subTotal - credit)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-amber-400">Credit applied</span>
+                    <span className="text-amber-400">{fmt.format(credit)}</span>
+                  </div>
+                </>
+              );
+            })()}
             <div className="flex justify-between text-sm">
               <span className="text-white/40">Subtotal</span>
               <span className="text-white/80">{fmt.format(invoice.subTotal)}</span>

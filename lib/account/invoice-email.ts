@@ -99,13 +99,31 @@ export async function sendInvoiceEmail(
     .map(
       (li) => `
       <tr>
-        <td style="padding:10px 8px;border-bottom:1px solid #eee;">${escape(li.description)}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;${li.lineAmount < 0 ? "color:#b45309;" : ""}">${escape(li.description)}</td>
         <td align="right" style="padding:10px 8px;border-bottom:1px solid #eee;color:#666;">${li.quantity}</td>
         <td align="right" style="padding:10px 8px;border-bottom:1px solid #eee;color:#666;">${fmt.format(li.unitAmount)}</td>
-        <td align="right" style="padding:10px 8px;border-bottom:1px solid #eee;font-weight:600;">${fmt.format(li.lineAmount)}</td>
+        <td align="right" style="padding:10px 8px;border-bottom:1px solid #eee;font-weight:600;${li.lineAmount < 0 ? "color:#b45309;" : ""}">${fmt.format(li.lineAmount)}</td>
       </tr>`,
     )
     .join("");
+
+  // When credit lines exist, show the customer the full story:
+  // items total → credit → what they actually owe.
+  const creditTotal = lineItems
+    .filter((li) => li.lineAmount < 0)
+    .reduce((s, li) => s + li.lineAmount, 0);
+  const itemsTotal = subTotal - creditTotal;
+  const creditRowsHtml =
+    creditTotal < 0
+      ? `<tr>
+              <td style="color:#888;padding:4px 0;">Items</td>
+              <td align="right" style="padding:4px 0;">${fmt.format(itemsTotal)}</td>
+            </tr>
+            <tr>
+              <td style="color:#b45309;padding:4px 0;">Credit applied</td>
+              <td align="right" style="padding:4px 0;color:#b45309;">${fmt.format(creditTotal)}</td>
+            </tr>`
+      : "";
 
   const html = `<!doctype html>
 <html>
@@ -146,6 +164,7 @@ export async function sendInvoiceEmail(
         </td></tr>
         <tr><td style="padding:16px 32px;">
           <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="font-size:14px;">
+            ${creditRowsHtml}
             <tr>
               <td style="color:#888;padding:4px 0;">Subtotal</td>
               <td align="right" style="padding:4px 0;">${fmt.format(subTotal)}</td>
@@ -190,7 +209,7 @@ Due: ${due}
 
 ${lineItems.map((li) => `${li.description} — ${li.quantity} × ${fmt.format(li.unitAmount)} = ${fmt.format(li.lineAmount)}`).join("\n")}
 
-Subtotal: ${fmt.format(subTotal)}
+${creditTotal < 0 ? `Items: ${fmt.format(itemsTotal)}\nCredit applied: ${fmt.format(creditTotal)}\n` : ""}Subtotal: ${fmt.format(subTotal)}
 Amount Due: ${fmt.format(amountDue || total)}
 
 Pay: ${payPageUrl}

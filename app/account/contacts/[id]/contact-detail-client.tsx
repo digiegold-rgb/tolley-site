@@ -29,6 +29,7 @@ interface Contact {
   id: string;
   name: string;
   email: string | null;
+  ccEmails: string | null;
   phone: string | null;
   address: string | null;
   city: string | null;
@@ -85,6 +86,31 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<RunForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+
+  // invoice CC editor
+  const [ccEditing, setCcEditing] = useState(false);
+  const [ccDraft, setCcDraft] = useState('');
+  const [ccSaving, setCcSaving] = useState(false);
+
+  async function saveCc() {
+    setCcSaving(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/account/contacts/${contactId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ccEmails: ccDraft }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to save CC');
+      setContact((prev) => (prev ? { ...prev, ccEmails: json.contact.ccEmails } : prev));
+      setCcEditing(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error');
+    } finally {
+      setCcSaving(false);
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -268,6 +294,48 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
             <div className="text-sm text-white/50 mt-0.5">
               {contact.email || '—'}
               {contact.phone ? ` · ${contact.phone}` : ''}
+            </div>
+            <div className="text-sm text-white/50 mt-1 flex items-center gap-2 flex-wrap">
+              {ccEditing ? (
+                <>
+                  <span className="text-white/40 text-xs">Invoice CC:</span>
+                  <input
+                    className={`${inputCls} !w-72 !py-1 !text-xs`}
+                    value={ccDraft}
+                    onChange={(e) => setCcDraft(e.target.value)}
+                    placeholder="cc1@example.com, cc2@example.com"
+                    autoFocus
+                  />
+                  <button
+                    onClick={saveCc}
+                    disabled={ccSaving}
+                    className="text-xs text-cyan-400 hover:underline disabled:opacity-50"
+                  >
+                    {ccSaving ? 'Saving…' : 'Save'}
+                  </button>
+                  <button
+                    onClick={() => setCcEditing(false)}
+                    className="text-xs text-white/40 hover:underline"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="text-white/40 text-xs">
+                    Invoice CC: {contact.ccEmails || 'none'}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setCcDraft(contact.ccEmails || '');
+                      setCcEditing(true);
+                    }}
+                    className="text-xs text-cyan-400 hover:underline"
+                  >
+                    edit
+                  </button>
+                </>
+              )}
             </div>
           </div>
           <div className="flex gap-1">

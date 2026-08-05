@@ -50,6 +50,7 @@ const GREY = rgb(0.4, 0.4, 0.4);
 const LIGHT = rgb(0.6, 0.6, 0.6);
 const RULE = rgb(0.9, 0.9, 0.92);
 const GREEN = rgb(0.02, 0.588, 0.412);
+const AMBER = rgb(0.706, 0.325, 0.035); // #b45309 — credit lines
 
 const PAGE_W = 612; // 8.5in
 const PAGE_H = 792; // 11in
@@ -217,12 +218,17 @@ export async function buildInvoicePdf(inv: InvoicePdfData): Promise<Uint8Array> 
     if (y === PAGE_H - MARGIN) drawTableHeader(); // fresh page got a header
 
     const rowTop = y;
+    const isCredit = li.lineAmount < 0;
     descLines.forEach((dl, i) => {
-      text(dl, xDesc, rowTop - i * 12, { size: 10 });
+      text(dl, xDesc, rowTop - i * 12, { size: 10, ...(isCredit ? { color: AMBER } : {}) });
     });
     text(String(li.quantity), xQtyR, rowTop, { size: 10, color: GREY, align: 'right' });
     text(fmt.format(li.unitAmount), xUnitR, rowTop, { size: 10, color: GREY, align: 'right' });
-    text(fmt.format(li.lineAmount), xAmountR, rowTop, { size: 10, align: 'right' });
+    text(fmt.format(li.lineAmount), xAmountR, rowTop, {
+      size: 10,
+      align: 'right',
+      ...(isCredit ? { color: AMBER } : {}),
+    });
 
     y = rowTop - rowHeight;
     page.drawLine({
@@ -240,6 +246,20 @@ export async function buildInvoicePdf(inv: InvoicePdfData): Promise<Uint8Array> 
   y -= 12;
   const totalsLeftX = PAGE_W - MARGIN - 230; // 328 — label left edge
   const totalsValueX = xAmountR; // 558 — value right edge
+
+  // When credit lines exist, spell out items → credit → subtotal so the
+  // customer sees exactly what was credited and what they actually owe.
+  const creditTotal = inv.lineItems
+    .filter((li) => li.lineAmount < 0)
+    .reduce((s, li) => s + li.lineAmount, 0);
+  if (creditTotal < 0) {
+    text('Items', totalsLeftX, y, { size: 10, color: GREY });
+    text(fmt.format(inv.subTotal - creditTotal), totalsValueX, y, { size: 10, align: 'right' });
+    y -= 16;
+    text('Credit applied', totalsLeftX, y, { size: 10, color: AMBER });
+    text(fmt.format(creditTotal), totalsValueX, y, { size: 10, color: AMBER, align: 'right' });
+    y -= 16;
+  }
 
   text('Subtotal', totalsLeftX, y, { size: 10, color: GREY });
   text(fmt.format(inv.subTotal), totalsValueX, y, { size: 10, align: 'right' });

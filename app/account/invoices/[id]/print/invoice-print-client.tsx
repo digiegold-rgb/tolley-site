@@ -260,14 +260,16 @@ export default function InvoicePrintClient({ invoiceId }: { invoiceId: string })
             <tbody>
               {invoice.lineItems.map((item) => (
                 <tr key={item.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '10px 0' }}>{item.description}</td>
+                  <td style={{ padding: '10px 0', ...(item.lineAmount < 0 ? { color: '#b45309' } : {}) }}>
+                    {item.description}
+                  </td>
                   <td style={{ padding: '10px 0', textAlign: 'center', color: '#666' }}>
                     {item.quantity}
                   </td>
                   <td style={{ padding: '10px 0', textAlign: 'right', color: '#666', fontFamily: 'monospace' }}>
                     {fmt.format(item.unitAmount)}
                   </td>
-                  <td style={{ padding: '10px 0', textAlign: 'right', fontFamily: 'monospace' }}>
+                  <td style={{ padding: '10px 0', textAlign: 'right', fontFamily: 'monospace', ...(item.lineAmount < 0 ? { color: '#b45309' } : {}) }}>
                     {fmt.format(item.lineAmount)}
                   </td>
                 </tr>
@@ -278,6 +280,24 @@ export default function InvoicePrintClient({ invoiceId }: { invoiceId: string })
           {/* Totals */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '30px' }}>
             <div style={{ width: '250px' }}>
+              {(() => {
+                const credit = invoice.lineItems
+                  .filter((li) => li.lineAmount < 0)
+                  .reduce((s, li) => s + li.lineAmount, 0);
+                if (credit >= 0) return null;
+                return (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px' }}>
+                      <span style={{ color: '#666' }}>Items</span>
+                      <span style={{ fontFamily: 'monospace' }}>{fmt.format(invoice.subTotal - credit)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px' }}>
+                      <span style={{ color: '#b45309' }}>Credit applied</span>
+                      <span style={{ fontFamily: 'monospace', color: '#b45309' }}>{fmt.format(credit)}</span>
+                    </div>
+                  </>
+                );
+              })()}
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px' }}>
                 <span style={{ color: '#666' }}>Subtotal</span>
                 <span style={{ fontFamily: 'monospace' }}>{fmt.format(invoice.subTotal)}</span>

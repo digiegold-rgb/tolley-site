@@ -51,6 +51,7 @@ interface Contact {
   id: string;
   name: string;
   email: string | null;
+  ccEmails: string | null;
   phone: string | null;
   address: string | null;
   city: string | null;
@@ -157,6 +158,12 @@ export default function InvoiceDetailClient({ invoiceId }: { invoiceId: string }
   }
   function addLine() {
     setEditLines((prev) => [...prev, { description: '', quantity: 0, unitAmount: 2.8, accountId: null }]);
+  }
+  // A credit is just a negative line — qty 1 × a negative rate. Saving a
+  // changed total auto-retires the old Stripe link (PATCH route), so the next
+  // send mints a fresh link at the after-credit amount.
+  function addCredit() {
+    setEditLines((prev) => [...prev, { description: 'Credit — ', quantity: 1, unitAmount: 0, accountId: null }]);
   }
   function moveLine(from: number, to: number) {
     if (from === to || from < 0 || to < 0) return;
@@ -429,6 +436,11 @@ export default function InvoiceDetailClient({ invoiceId }: { invoiceId: string }
               <span className="text-xs uppercase tracking-wide text-white/40">
                 CC <span className="text-white/25 normal-case">(comma-separated, optional)</span>
               </span>
+              {invoice?.contact?.ccEmails && (
+                <span className="block text-xs text-cyan-400/80 mt-0.5">
+                  Always CC&apos;d for {invoice.contact.name}: {invoice.contact.ccEmails}
+                </span>
+              )}
               <input
                 type="text"
                 value={sendCc}
@@ -682,12 +694,21 @@ export default function InvoiceDetailClient({ invoiceId }: { invoiceId: string }
               <p className="text-white/40 text-xs uppercase tracking-wider">
                 Line Items — drag the ⠿ handle to reorder
               </p>
-              <button
-                onClick={addLine}
-                className="text-cyan-400 hover:text-cyan-300 text-xs font-medium"
-              >
-                + Add line
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={addLine}
+                  className="text-cyan-400 hover:text-cyan-300 text-xs font-medium"
+                >
+                  + Add line
+                </button>
+                <button
+                  onClick={addCredit}
+                  title="Add a credit line (enter the credit as a negative rate, e.g. -25)"
+                  className="text-amber-400 hover:text-amber-300 text-xs font-medium"
+                >
+                  + Add credit
+                </button>
+              </div>
             </div>
             <div className="space-y-1.5">
               {editLines.map((l, i) => (
@@ -759,17 +780,40 @@ export default function InvoiceDetailClient({ invoiceId }: { invoiceId: string }
                 </div>
               ))}
             </div>
-            <div className="flex justify-end mt-3 text-sm">
-              <span className="text-white/60 mr-3">Subtotal</span>
-              <span className="text-white font-mono w-28 text-right">
-                {fmt.format(
-                  editLines.reduce(
-                    (s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitAmount) || 0),
-                    0,
-                  ),
-                )}
-              </span>
-            </div>
+            {(() => {
+              const amounts = editLines.map(
+                (l) => (Number(l.quantity) || 0) * (Number(l.unitAmount) || 0),
+              );
+              const items = amounts.filter((a) => a > 0).reduce((s, a) => s + a, 0);
+              const credits = amounts.filter((a) => a < 0).reduce((s, a) => s + a, 0);
+              const total = items + credits;
+              return (
+                <div className="mt-3 space-y-1 text-sm">
+                  {credits < 0 && (
+                    <>
+                      <div className="flex justify-end">
+                        <span className="text-white/60 mr-3">Items</span>
+                        <span className="text-white font-mono w-28 text-right">
+                          {fmt.format(items)}
+                        </span>
+                      </div>
+                      <div className="flex justify-end">
+                        <span className="text-amber-400 mr-3">Credit</span>
+                        <span className="text-amber-400 font-mono w-28 text-right">
+                          {fmt.format(credits)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex justify-end">
+                    <span className="text-white/60 mr-3">
+                      {credits < 0 ? 'Total after credit' : 'Subtotal'}
+                    </span>
+                    <span className="text-white font-mono w-28 text-right">{fmt.format(total)}</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -786,7 +830,9 @@ export default function InvoiceDetailClient({ invoiceId }: { invoiceId: string }
               <tbody className="divide-y divide-white/[0.06]">
                 {invoice.lineItems.map((item) => (
                   <tr key={item.id}>
-                    <td className="py-2.5 text-white">{item.description}</td>
+                    <td className={`py-2.5 ${item.lineAmount < 0 ? 'text-amber-400' : 'text-white'}`}>
+                      {item.description}
+                    </td>
                     <td className="py-2.5 text-center text-white/60">{item.quantity}</td>
                     <td className="py-2.5 text-right text-white/60 font-mono">
                       {fmt.format(item.unitAmount)}
@@ -794,7 +840,9 @@ export default function InvoiceDetailClient({ invoiceId }: { invoiceId: string }
                     <td className="py-2.5 text-white/40 text-xs">
                       {item.account ? `${item.account.code} — ${item.account.name}` : '—'}
                     </td>
-                    <td className="py-2.5 text-right text-white font-mono">
+                    <td
+                      className={`py-2.5 text-right font-mono ${item.lineAmount < 0 ? 'text-amber-400' : 'text-white'}`}
+                    >
                       {fmt.format(item.lineAmount)}
                     </td>
                   </tr>
@@ -807,6 +855,26 @@ export default function InvoiceDetailClient({ invoiceId }: { invoiceId: string }
         {/* Totals */}
         <div className="flex justify-end mt-4">
           <div className="w-64 space-y-1">
+            {(() => {
+              const credits = invoice.lineItems
+                .filter((li) => li.lineAmount < 0)
+                .reduce((s, li) => s + li.lineAmount, 0);
+              if (credits >= 0) return null;
+              return (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-white/60">Items</span>
+                    <span className="text-white font-mono">
+                      {fmt.format(invoice.subTotal - credits)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-amber-400">Credit</span>
+                    <span className="text-amber-400 font-mono">{fmt.format(credits)}</span>
+                  </div>
+                </>
+              );
+            })()}
             <div className="flex justify-between text-sm">
               <span className="text-white/60">Subtotal</span>
               <span className="text-white font-mono">{fmt.format(invoice.subTotal)}</span>

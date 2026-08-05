@@ -3155,6 +3155,9 @@ model AccountContact {
   xeroId       String?             @unique
   name         String
   email        String?
+  // Comma/semicolon-separated emails CC'd on every invoice send for this
+  // contact (single send AND bulk resend both route through sendInvoiceById).
+  ccEmails     String?
   phone        String?
   address      String?
   city         String?
@@ -4632,14 +4635,22 @@ model EstateLead {
 // the DGX pipeline that made it; the DGX pushes that map via
 // POST /api/hq/stats/videos (x-sync-secret).
 model YouTubeVideo {
-  videoId     String             @id
-  title       String
-  publishedAt DateTime
-  durationSec Int?
-  pipeline    String             @default("other") // shorts|housing|listings|estate|other
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  stats       YouTubeVideoStat[]
+  videoId      String             @id
+  title        String
+  publishedAt  DateTime
+  durationSec  Int?
+  pipeline     String             @default("other") // shorts|housing|listings|estate|other
+  // Which channel this video lives on. Added 2026-08-03 with the @yourkchomes
+  // cutover: the stats cron used to pull whichever OAuth token was most
+  // recently refreshed, so a re-auth silently swapped which channel /hq was
+  // reporting. Now every connected channel is snapshotted and tagged.
+  channelId    String?
+  channelTitle String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  stats        YouTubeVideoStat[]
+
+  @@index([channelId])
 }
 
 model YouTubeVideoStat {

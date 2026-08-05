@@ -34,7 +34,7 @@ export async function sendInvoiceById(
   const invoice = await prisma.invoice.findUnique({
     where: { id },
     include: {
-      contact: { select: { name: true, email: true } },
+      contact: { select: { name: true, email: true, ccEmails: true } },
       lineItems: true,
       _count: { select: { attachments: true } },
     },
@@ -64,7 +64,14 @@ export async function sendInvoiceById(
     });
   }
 
-  const ccList = options.cc ?? [];
+  // Contact-level CC (e.g. Buckeye's Kanwh) applies to EVERY send — single,
+  // bulk resend, and any future automated path — merged with per-send extras.
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const contactCc = (invoice.contact?.ccEmails ?? '')
+    .split(/[,;]/)
+    .map((e) => e.trim())
+    .filter((e) => EMAIL_RE.test(e));
+  const ccList = [...new Set([...contactCc, ...(options.cc ?? [])])];
   const recipient = options.to?.trim() || invoice.contact?.email || null;
 
   let emailSent = false;
