@@ -4908,3 +4908,32 @@ model ChannelVideoStat {
   @@unique([channelKey, videoId])
   @@index([channelKey, publishedAt])
 }
+
+// ── Vater "what's new" banner + estimated cost counter (2026-08-05) ──
+// One row per studio update (render / feature / example). Newest row drives
+// the green pulsing banner on the /animate dashboard and the Library strip.
+// Written by the DGX via POST /api/vater/latest (bearer CONTENT_API_KEY).
+model VaterUpdate {
+  id        String   @id @default(cuid())
+  message   String   @db.Text
+  kind      String   @default("render") // render | feature | example
+  projectId String?
+  url       String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Singleton (id="vater-costs") estimate of everything spent on Vater work —
+// Claude tokens + per-provider dollars. Monitoring only; variance expected.
+model VaterCostSnapshot {
+  id           String   @id @default("vater-costs")
+  claudeTokens Float    @default(0)
+  claudeUsd    Float    @default(0)
+  modalUsd     Float    @default(0)
+  geminiUsd    Float    @default(0)
+  falUsd       Float    @default(0)
+  otherUsd     Float    @default(0)
+  note         String?
+  updatedAt    DateTime @updatedAt
+}

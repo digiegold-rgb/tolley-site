@@ -17,6 +17,7 @@ import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { RetryError } from '../../primitives';
+import { LatestUpdateStrip } from '../../LatestUpdate';
 import { YouTubeLibrary } from '@/components/vater/youtube-library';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -80,6 +81,7 @@ export function Library(): React.ReactElement {
 
   return (
     <div>
+      <LatestUpdateStrip />
       <div
         style={{
           display: 'flex',

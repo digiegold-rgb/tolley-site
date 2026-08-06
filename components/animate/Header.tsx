@@ -19,6 +19,7 @@ import { JELLY_TOKENS } from './tokens';
 import { useTheme, useRoute } from './theme-context';
 import { Icon } from './Icon';
 import { VBtn } from './primitives';
+import { VaterCostPill } from './LatestUpdate';
 
 function formatDollars(cents: number | null | undefined): string {
   if (typeof cents !== 'number' || !Number.isFinite(cents)) return '—';
@@ -113,6 +114,7 @@ export function Header(): React.ReactElement {
           zIndex: 90,
         }}
       >
+        <VaterCostPill />
         <VBtn
           size="sm"
           onClick={() => setRoute('pricing')}

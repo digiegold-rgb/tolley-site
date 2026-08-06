@@ -12,6 +12,7 @@ import { Icon, type IconName } from '../Icon';
 import { VBtn, VCard } from '../primitives';
 import { Footer } from '../Footer';
 import { StylePickerModal } from './dashboard/StylePickerModal';
+import { LatestUpdateBanner } from '../LatestUpdate';
 
 interface KpiTile {
   label: string;
@@ -104,6 +105,10 @@ export function DashboardScreen(): React.ReactElement {
         <p style={{ fontSize: 14, color: t.textSecondary, margin: '4px 0 0' }}>
           Create and manage your video styles and voice clones
         </p>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <LatestUpdateBanner />
       </div>
 
       {/* Hero Cards */}
