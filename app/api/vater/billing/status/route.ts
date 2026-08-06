@@ -23,6 +23,7 @@ import {
   VATER_INCLUDED_USAGE_CENTS,
   VATER_TRIAL_CAPS,
 } from "@/lib/vater-subscription";
+import { isVaterStudioEmail } from "@/lib/admin-auth";
 import { getUnbilledCents } from "@/lib/vater/billing/finalize-invoice";
 import { getCurrentPeriod } from "@/lib/vater/billing/period";
 
@@ -42,8 +43,13 @@ export async function GET() {
     getUnbilledCents(userId),
   ]);
 
-  const isTrial = !sub || sub.status === "trialing" || sub.status === "none";
-  const delinquent = sub?.status === "past_due" || Boolean(sub?.delinquentAt);
+  // Studio full-access accounts never meter — report them as neither trial
+  // nor delinquent so the UI stops prompting for a card it will never charge.
+  const unmetered = isVaterStudioEmail(session.user.email);
+  const isTrial =
+    !unmetered && (!sub || sub.status === "trialing" || sub.status === "none");
+  const delinquent =
+    !unmetered && (sub?.status === "past_due" || Boolean(sub?.delinquentAt));
 
   return NextResponse.json({
     subscription: sub

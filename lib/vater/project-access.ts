@@ -4,13 +4,14 @@
  * Tenant isolation for YouTubeProject (added 2026-06-11 for the public
  * pay-per-video launch). Rules:
  *   - project.userId === session user → allowed (owner)
- *   - project.userId is NULL (legacy, pre-multi-tenancy) → vater admins only
+ *   - project.userId is NULL (legacy, pre-multi-tenancy) → studio full-access
+ *     users only (site/vater admins + VATER_STUDIO_ALLOWLIST_EMAILS)
  *   - anything else → treated as not-found (404, never 403 — don't leak
  *     project existence)
  */
 
 import { prisma } from "@/lib/prisma";
-import { isVaterAdminEmail } from "@/lib/admin-auth";
+import { isVaterStudioEmail } from "@/lib/admin-auth";
 import type { Prisma } from "@prisma/client";
 
 export function canAccessProject(
@@ -19,9 +20,9 @@ export function canAccessProject(
   sessionEmail: string | null | undefined,
 ): boolean {
   if (projectUserId === sessionUserId) return true;
-  if (projectUserId === null) return isVaterAdminEmail(sessionEmail);
+  if (projectUserId === null) return isVaterStudioEmail(sessionEmail);
   // Admins can also reach customer projects (support).
-  return isVaterAdminEmail(sessionEmail);
+  return isVaterStudioEmail(sessionEmail);
 }
 
 /** Prisma where-clause scoping a project list to what the session may see. */
@@ -29,7 +30,7 @@ export function scopedProjectWhere(
   sessionUserId: string,
   sessionEmail: string | null | undefined,
 ): Prisma.YouTubeProjectWhereInput {
-  if (isVaterAdminEmail(sessionEmail)) return {}; // admins see everything
+  if (isVaterStudioEmail(sessionEmail)) return {}; // admins see everything
   return { userId: sessionUserId };
 }
 

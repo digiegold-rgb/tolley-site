@@ -17,8 +17,22 @@ import {
   type VaterAction,
   type VaterTier,
 } from "@/lib/vater-subscription";
+import { isVaterStudioEmail } from "@/lib/admin-auth";
 import { checkTrialCaps, type TrialCapResult } from "./check-trial-caps";
 import { getCurrentPeriod } from "./period";
+
+/**
+ * Studio full-access users (owner + VATER_STUDIO_ALLOWLIST_EMAILS) generate
+ * without trial caps, card, or spend ceiling. Work runs on the DGX at ~$0
+ * marginal cost for these accounts, so there is nothing to bill.
+ */
+async function hasUnmeteredStudioAccess(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  return isVaterStudioEmail(user?.email);
+}
 
 export type BudgetReason =
   | "trial_cap_reached"
@@ -46,6 +60,11 @@ export async function checkBudget(
 ): Promise<BudgetCheckResult> {
   const costCents =
     overrideCostCents ?? getActionPrice(action, tier).costCents;
+
+  // 0. Unmetered studio access — skips caps, card requirement and spend cap.
+  if (await hasUnmeteredStudioAccess(userId)) {
+    return { allow: true, costCents: 0, isTrial: false };
+  }
 
   // 1. Resolve card-on-file state FIRST — trial caps only apply to users
   // without a card. (Checking caps unconditionally would lock out paying
