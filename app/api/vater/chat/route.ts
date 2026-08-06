@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { requireVaterAdminApiSession } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 
@@ -82,10 +82,10 @@ ${liveContext}
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // Admin-only: the system prompt injects live arbitrage/business data that
+  // belongs to the owner, not to studio users or ordinary customers.
+  const adminAuth = await requireVaterAdminApiSession();
+  if (!adminAuth.ok) return adminAuth.response;
   try {
     const body = (await request.json()) as ChatRequest;
 
