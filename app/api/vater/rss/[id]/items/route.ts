@@ -6,10 +6,13 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireVaterAdminApiSession } from "@/lib/admin-auth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(req: NextRequest, ctx: Ctx) {
+  const auth = await requireVaterAdminApiSession();
+  if (!auth.ok) return auth.response;
   const { id } = await ctx.params;
   const limitRaw = Number(req.nextUrl.searchParams.get("limit") ?? "50");
   const limit = Math.min(

@@ -78,14 +78,16 @@ export const EDITOR_STEPS = [
 
 export type EditorStepLabel = (typeof EDITOR_STEPS)[number];
 
+// Aligned with lib/vater/pricing.ts FLAT_ACTION_PRICES (the billed truth).
+// Title + soundtrack are not billable actions — shown as included.
 export const SECTION_PRICES = {
-  title: '$2',
-  script: '$5',
-  voiceover: '$8',
-  visuals: '$0.50/scene',
-  soundtrack: '$5',
-  thumbnail: '$3',
-  description: '$1',
+  title: 'included',
+  script: '$0.05',
+  voiceover: '$0.20/min',
+  visuals: '$0.25/scene',
+  soundtrack: 'included',
+  thumbnail: '$1',
+  description: '$0.10',
 } as const;
 
 export type SectionPriceKey = keyof typeof SECTION_PRICES;
