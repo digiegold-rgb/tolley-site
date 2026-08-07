@@ -454,9 +454,10 @@ export async function POST(req: NextRequest) {
       fbStatus: row.fbStatus,
       lastFbCheckAt: now,
     };
-    // Backfill the FB listing ID on first sight — once set, don't overwrite,
-    // since the GraphQL response can occasionally drop a listing during edits.
-    if (row.fbListingId && !product.fbListingId) {
+    // The mirror's listing ID is ground truth. FB renews/relists items under
+    // new IDs, so a stored ID that differs from the snapshot is stale —
+    // overwrite it. (Rows missing an ID leave the stored one untouched.)
+    if (row.fbListingId && product.fbListingId !== row.fbListingId) {
       data.fbListingId = row.fbListingId;
     }
     // Seen on FB this run — clear any accumulated absence misses. Only write
