@@ -10,7 +10,7 @@
 
 export interface ViewChannel {
   key: string;
-  platform: "youtube" | "facebook" | "tiktok";
+  platform: "youtube" | "facebook" | "tiktok" | "x" | "bluesky";
   label: string;
   note?: string; // secondary line on the card
   url: string;
@@ -76,6 +76,17 @@ export const VIEW_CHANNELS: readonly ViewChannel[] = [
     label: "Treasure Huals",
     note: "haul shorts · TT shop",
     url: "https://www.tiktok.com/@digitaljared",
+  },
+  {
+    // Scraped from the shared Claude Browser profile (same one-time-login
+    // pattern as tt-jared). No contentSince: the account may have tweets older
+    // than tracking, so windows honestly show "since tracking began" instead
+    // of claiming lifetime = window.
+    key: "x-ykh",
+    platform: "x",
+    label: "Your KC Homes",
+    note: "KC content · affiliate links",
+    url: "https://x.com/yourkchomes",
   },
   {
     key: "fb-re",

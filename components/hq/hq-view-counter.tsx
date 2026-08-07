@@ -11,7 +11,7 @@ interface WindowStat { views: number | null; partial: boolean; since: string | n
 
 interface Channel {
   key: string;
-  platform: "youtube" | "facebook" | "tiktok";
+  platform: "youtube" | "facebook" | "tiktok" | "x" | "bluesky";
   label: string;
   note: string | null;
   url: string;
@@ -51,11 +51,16 @@ const WINDOW_LABELS: Record<WindowKey, string> = {
   lifetime: "All-time",
 };
 
-const PLATFORM_BADGE: Record<string, { label: string; bg: string; fg: string }> = {
-  youtube: { label: "▶ YouTube", bg: "#fdecea", fg: "#c4302b" },
-  facebook: { label: "ⓕ Facebook", bg: "#e7f0fd", fg: "#1877f2" },
-  tiktok: { label: "♪ TikTok", bg: "#e6fafa", fg: "#0d8a84" },
+// cardBg/cardBorder tint the whole card so platforms read as groups at a
+// glance even after the views-sort interleaves them.
+const PLATFORM_BADGE: Record<string, { label: string; bg: string; fg: string; cardBg: string; cardBorder: string }> = {
+  youtube: { label: "▶ YouTube", bg: "#fdecea", fg: "#c4302b", cardBg: "#fff6f5", cardBorder: "#f5dcd9" },
+  facebook: { label: "ⓕ Facebook", bg: "#e7f0fd", fg: "#1877f2", cardBg: "#f3f7fe", cardBorder: "#d9e6fa" },
+  tiktok: { label: "♪ TikTok", bg: "#e6fafa", fg: "#0d8a84", cardBg: "#f0fbfa", cardBorder: "#d2efec" },
+  x: { label: "𝕏", bg: "#e9e9ee", fg: "#0f1419", cardBg: "#f6f6f8", cardBorder: "#e0e0e6" },
+  bluesky: { label: "🦋 Bluesky", bg: "#e3f3fe", fg: "#1185fe", cardBg: "#eefaff", cardBorder: "#cfeafb" },
 };
+const FALLBACK_BADGE = { label: "•", bg: "#eee", fg: "#333", cardBg: "#fff", cardBorder: "#e5e5ea" };
 
 /** One rolling digit column, 0–9 stacked; translateY slides to the value. */
 function Digit({ d, height }: { d: number; height: number }) {
@@ -287,7 +292,7 @@ export function HqViewCounter() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 10 }}>
         {sorted.map((c) => {
           const v = channelViews(c);
-          const badge = PLATFORM_BADGE[c.platform];
+          const badge = PLATFORM_BADGE[c.platform] ?? FALLBACK_BADGE;
           return (
             <a
               key={c.key}
@@ -295,8 +300,8 @@ export function HqViewCounter() {
               target="_blank"
               rel="noopener noreferrer"
               style={{
-                border: "1px solid #e5e5ea", borderRadius: 12, padding: "12px 14px",
-                background: "#fff", textDecoration: "none", color: "inherit", display: "block",
+                border: `1px solid ${badge.cardBorder}`, borderRadius: 12, padding: "12px 14px",
+                background: badge.cardBg, textDecoration: "none", color: "inherit", display: "block",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
