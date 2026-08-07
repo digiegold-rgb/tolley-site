@@ -78,6 +78,15 @@ export const VIEW_CHANNELS: readonly ViewChannel[] = [
     url: "https://www.tiktok.com/@digitaljared",
   },
   {
+    // Bluesky has no view metric — this card is followers-only by design.
+    key: "bsky-ykh",
+    platform: "bluesky",
+    label: "Your KC Homes",
+    note: "KC content mirror",
+    url: "https://bsky.app/profile/yourkchomes.bsky.social",
+    contentSince: "2026-08-06",
+  },
+  {
     // Scraped from the shared Claude Browser profile (same one-time-login
     // pattern as tt-jared). No contentSince: the account may have tweets older
     // than tracking, so windows honestly show "since tracking began" instead
