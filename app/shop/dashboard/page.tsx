@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { InventoryTable } from "@/components/shop/InventoryTable";
+import { RepriceTracker } from "@/components/shop/RepriceTracker";
 import { ProductForm } from "@/components/shop/ProductForm";
 import { PLATFORMS } from "@/lib/shop/types";
 
@@ -85,6 +86,8 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      <RepriceTracker />
 
       {showForm && (
         <div className="mt-4">

@@ -25,6 +25,7 @@ const [
   cleanoutQuotes,
   hqDraftTouches,
   hqApprovedUnsent,
+  repriceEvents,
 ] = await Promise.all([
   // Affiliate /go redirects by source. isBot lives inside the `meta` JSON
   // blob (not a queryable column — see lib/shop/click-classifier.ts), so we
@@ -59,6 +60,13 @@ const [
   prisma.growthTouch.count({
     where: { status: "approved", channel: "email", direction: "out" },
   }).catch(() => 0),
+  // Nightly FB Marketplace repricer (fb-draft-worker) — what dropped
+  // overnight. Table may not exist on older schemas; degrade to [].
+  prisma.repriceEvent.findMany({
+    where: { runAt: { gte: since } },
+    orderBy: { runAt: "desc" },
+    take: 300,
+  }).catch(() => []),
 ]);
 
 const goClicks = {};
@@ -78,6 +86,20 @@ console.log(
     amazonImported: { profit: amazonRows._sum.profit ?? 0, rows: amazonRows._count },
     cleanoutQuotes,
     hqApprovals: { drafts: hqDraftTouches, approvedUnsent: hqApprovedUnsent },
+    reprice: (() => {
+      const dropped = repriceEvents.filter((e) => e.status === "dropped");
+      return {
+        dropped: dropped.length,
+        gone: repriceEvents.filter((e) => e.status === "gone").length,
+        failed: repriceEvents.filter((e) => e.status === "failed").length,
+        totalDiscount: Math.round(dropped.reduce((s2, e) => s2 + (e.fromPrice - e.toPrice), 0)),
+        samples: dropped.slice(0, 3).map((e) => ({
+          title: e.title,
+          from: Math.round(e.fromPrice),
+          to: Math.round(e.toPrice),
+        })),
+      };
+    })(),
   }),
 );
 
