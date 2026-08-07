@@ -3754,6 +3754,12 @@ model YouTubeProject {
   scenesJson     Json? // [{idx, beatText, startS, endS, imagePrompt, imageUrl}]
   finalVideoUrl  String?
 
+  // Real generation cost (2026-08-07) — per-provider breakdown pushed by
+  // the DGX on job completion: {totalUsd, modalUsd, geminiUsd, falUsd,
+  // otherUsd, llmUsd, estimated, byStage, updatedAt}. Shown on the
+  // Library card + lightbox. Real cash only; Claude tokens excluded.
+  costJson Json?
+
   // Status
   status         String    @default("draft")
   progress       Int       @default(0)
@@ -4936,4 +4942,18 @@ model VaterCostSnapshot {
   otherUsd     Float    @default(0)
   note         String?
   updatedAt    DateTime @updatedAt
+}
+
+model RepriceEvent {
+  id        String   @id @default(cuid())
+  productId String?
+  title     String
+  fromPrice Float
+  toPrice   Float
+  // dropped | gone | failed
+  status    String   @default("dropped")
+  runAt     DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([runAt])
 }

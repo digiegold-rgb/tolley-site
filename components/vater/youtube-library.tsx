@@ -6,6 +6,7 @@ import { YouTubeFinalPlayer } from "./youtube-final-player";
 import { YouTubeShareModal } from "./youtube-share-modal";
 import { getStylePreset } from "@/lib/vater/style-presets";
 import { isFinalMp4Stale } from "@/lib/vater/youtube-status";
+import { parseVideoCost, formatUsd, costProviderRows } from "@/lib/vater/video-cost";
 
 interface LibraryProject {
   id: string;
@@ -27,6 +28,7 @@ interface LibraryProject {
   targetDuration: number;
   status: string;
   editedAt: string | null;
+  costJson?: unknown;
 }
 
 interface Props {
@@ -184,6 +186,7 @@ function LibraryCard({
 
   const scenes = Array.isArray(project.scenesJson) ? project.scenesJson : [];
   const sceneCount = scenes.length;
+  const cost = parseVideoCost(project.costJson);
   // Prefer the first scene's image as the card thumbnail so the preview
   // actually represents the video, not a random cinematic preset sample.
   const firstSceneImage =
@@ -340,6 +343,23 @@ function LibraryCard({
             <span className="text-zinc-700">·</span>
           )}
           <span>{dateStr}</span>
+          {cost && (
+            <>
+              <span className="text-zinc-700">·</span>
+              <span
+                className="font-medium text-emerald-500/90"
+                title={
+                  `Total generation cost${cost.estimated ? " (contains estimates)" : ""}\n` +
+                  costProviderRows(cost)
+                    .map((r) => `${r.label}: ${formatUsd(r.usd)}`)
+                    .join("\n")
+                }
+              >
+                {formatUsd(cost.totalUsd ?? 0)}
+                {cost.estimated ? " est" : ""}
+              </span>
+            </>
+          )}
         </div>
 
         {/* Actions */}

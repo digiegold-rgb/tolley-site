@@ -239,6 +239,14 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       data.verificationReport =
         result.verificationReport as Prisma.InputJsonValue;
     }
+    // Real per-video generation cost (DGX pushes result.costs on job
+    // completion — per-provider breakdown for the Library card/lightbox).
+    {
+      const costs = (result as unknown as { costs?: unknown }).costs;
+      if (costs && typeof costs === "object") {
+        data.costJson = costs as Prisma.InputJsonValue;
+      }
+    }
     // -- audio: accept audioUrl OR derive from audioPath ------------------
     // The DGX worker sometimes returns an absolute fs path under `audioPath`
     // (e.g. `/home/jelly/content-autopilot/_work/<jobId>/final.wav`). If we

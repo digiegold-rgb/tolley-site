@@ -207,44 +207,120 @@ function fmtTokens(n: number): string {
   return String(Math.round(n));
 }
 
-/** Header pill: estimated total Vater spend. Monitoring only. */
+/** Header pill: all-time Vater spend with a hover breakdown popover.
+ *
+ * The number is REAL cash (Modal + Gemini + fal + other, fed by
+ * ledger.jsonl rollups the DGX pushes after every render). Claude tokens
+ * ride the Max plan and are shown as a count at $0 — never folded into
+ * the headline (Jared's cost-counter convention, 2026-08-06).
+ */
 export function VaterCostPill(): React.ReactElement | null {
   const { t } = useTheme();
   const data = useVaterLatest();
+  const [open, setOpen] = React.useState(false);
   const c = data?.costs;
   if (!c) return null;
   const totalUsd = c.claudeUsd + c.modalUsd + c.geminiUsd + c.falUsd + c.otherUsd;
-  const title = [
-    `Estimated Vater build+production spend (variance expected):`,
-    `Claude ~${fmtTokens(c.claudeTokens)} tokens ≈ $${c.claudeUsd.toFixed(2)}`,
-    `Modal $${c.modalUsd.toFixed(2)} · Gemini $${c.geminiUsd.toFixed(2)} · fal $${c.falUsd.toFixed(2)} · other $${c.otherUsd.toFixed(2)}`,
-    c.note ? `Note: ${c.note}` : '',
-    `Updated ${timeAgo(c.updatedAt)}`,
-  ]
-    .filter(Boolean)
-    .join('\n');
+  const rows: { label: string; value: string; dim?: boolean }[] = [
+    { label: 'Modal GPU (stills + animation)', value: `$${c.modalUsd.toFixed(2)}` },
+    { label: 'Gemini (images + vision)', value: `$${c.geminiUsd.toFixed(2)}` },
+    { label: 'fal.ai (Kling/Luma clips)', value: `$${c.falUsd.toFixed(2)}` },
+    { label: 'Other (hosted LLM, misc APIs)', value: `$${c.otherUsd.toFixed(2)}` },
+    {
+      label: `Claude ~${fmtTokens(c.claudeTokens)} tokens (Max plan)`,
+      value: c.claudeUsd > 0 ? `$${c.claudeUsd.toFixed(2)}` : '$0.00',
+      dim: true,
+    },
+  ];
   return (
     <div
-      title={title}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '6px 12px',
-        borderRadius: JELLY_TOKENS.radius.full,
-        border: `1px solid ${t.border}`,
-        fontSize: 12,
-        color: t.textSecondary,
-        fontFamily: JELLY_TOKENS.font,
-        cursor: 'default',
-        whiteSpace: 'nowrap',
-      }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      style={{ position: 'relative', display: 'flex' }}
     >
-      <span style={{ color: GREEN, fontWeight: 700 }}>≈</span>
-      <span>
-        ${totalUsd.toFixed(2)} · {fmtTokens(c.claudeTokens)} tok
-      </span>
-      <span style={{ opacity: 0.6, fontSize: 10 }}>est.</span>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '6px 12px',
+          borderRadius: JELLY_TOKENS.radius.full,
+          border: `1px solid ${t.border}`,
+          fontSize: 12,
+          color: t.textSecondary,
+          fontFamily: JELLY_TOKENS.font,
+          cursor: 'default',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <span style={{ color: GREEN, fontWeight: 700 }}>≈</span>
+        <span>
+          ${totalUsd.toFixed(2)} · {fmtTokens(c.claudeTokens)} tok
+        </span>
+        <span style={{ opacity: 0.6, fontSize: 10 }}>est.</span>
+      </div>
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            right: 0,
+            zIndex: 120,
+            minWidth: 280,
+            padding: '12px 14px',
+            borderRadius: JELLY_TOKENS.radius.lg,
+            border: `1px solid ${t.border}`,
+            background: t.card,
+            boxShadow: JELLY_TOKENS.shadow4,
+            fontFamily: JELLY_TOKENS.font,
+            fontSize: 12,
+            color: t.text,
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>
+            All-time Vater spend — ${totalUsd.toFixed(2)}
+          </div>
+          {rows.map((r) => (
+            <div
+              key={r.label}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 16,
+                padding: '3px 0',
+                color: r.dim ? t.textSecondary : t.text,
+              }}
+            >
+              <span>{r.label}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                {r.value}
+              </span>
+            </div>
+          ))}
+          <div
+            style={{
+              marginTop: 8,
+              paddingTop: 8,
+              borderTop: `1px solid ${t.border}`,
+              color: t.textSecondary,
+              fontSize: 11,
+              lineHeight: 1.5,
+            }}
+          >
+            Real cash across every provider, auto-pushed after each render
+            and reconciled against provider dashboards. Per-video totals
+            live on each Library card.
+            {c.note ? (
+              <>
+                <br />
+                Note: {c.note}
+              </>
+            ) : null}
+            <br />
+            Updated {timeAgo(c.updatedAt)}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

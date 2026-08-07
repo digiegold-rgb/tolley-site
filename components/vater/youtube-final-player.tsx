@@ -24,6 +24,7 @@ import { useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { VideoSpeedChips } from "@/components/ui/VideoSpeedChips";
 import { isFinalMp4Stale } from "@/lib/vater/youtube-status";
+import { parseVideoCost, formatUsd, costProviderRows } from "@/lib/vater/video-cost";
 import { YouTubeShareModal } from "./youtube-share-modal";
 
 interface VerificationReport {
@@ -52,6 +53,7 @@ interface ProjectShape {
   autopilotJobId: string | null;
   status?: string;
   editedAt?: string | null;
+  costJson?: unknown;
 }
 
 interface Props {
@@ -140,6 +142,7 @@ export function YouTubeFinalPlayer({ project, onRecomposeStart }: Props) {
   const videoSrc = `/api/vater/youtube/${project.id}/video`;
   const downloadHref = `${videoSrc}?download=1`;
 
+  const videoCost = parseVideoCost(project.costJson);
   const sceneCount = Array.isArray(project.scenesJson)
     ? project.scenesJson.length
     : 0;
@@ -274,6 +277,17 @@ export function YouTubeFinalPlayer({ project, onRecomposeStart }: Props) {
         <MetaChip label="Scenes" value={sceneCount.toString()} />
         <MetaChip label="Script" value={`${scriptWordCount.toLocaleString()} words`} />
         <MetaChip label="Verify" value={verificationLabel} tone={verificationTone} />
+        {videoCost && (
+          <span
+            title={costProviderRows(videoCost)
+              .map((r) => `${r.label}: ${formatUsd(r.usd)}`)
+              .join("\n")}
+            className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-300"
+          >
+            Cost {formatUsd(videoCost.totalUsd ?? 0)}
+            {videoCost.estimated ? " est" : ""}
+          </span>
+        )}
         <span className="text-zinc-400">
           Created{" "}
           {new Date(project.completedAt || project.createdAt).toLocaleDateString(undefined, {
