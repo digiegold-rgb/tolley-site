@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { YouTubeFinalPlayer } from "./youtube-final-player";
 import { YouTubeShareModal } from "./youtube-share-modal";
 import { getStylePreset } from "@/lib/vater/style-presets";
-import { isFinalMp4Stale } from "@/lib/vater/youtube-status";
+import { isFinalMp4Stale, finalVideoPlaybackUrl } from "@/lib/vater/youtube-status";
 import { parseVideoCost, formatUsd, costProviderRows } from "@/lib/vater/video-cost";
 
 interface LibraryProject {
@@ -29,6 +29,7 @@ interface LibraryProject {
   status: string;
   editedAt: string | null;
   costJson?: unknown;
+  finalVideoUrl?: string | null;
 }
 
 interface Props {
@@ -194,8 +195,8 @@ function LibraryCard({
     null;
   const stale = isFinalMp4Stale(project);
 
-  const videoSrc = `/api/vater/youtube/${project.id}/video`;
-  const downloadHref = `${videoSrc}?download=1`;
+  const videoSrc = finalVideoPlaybackUrl(project);
+  const downloadHref = `/api/vater/youtube/${project.id}/video?download=1`;
   const [hoverPreview, setHoverPreview] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);

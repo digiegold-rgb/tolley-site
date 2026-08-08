@@ -212,6 +212,45 @@ export function wordCountForDuration(minutes: number): number {
 }
 
 /**
+ * Resolve the URL a `<video>` element should actually load for a project.
+ *
+ * Finals rendered after 2026-08-07 live on Vercel Blob (`*.blob.vercel-
+ * storage.com`), a global edge CDN with proper Range support. When that's
+ * the case we point the player STRAIGHT at the blob so every seek/buffer
+ * request hits the CDN edge — NOT the `/api/vater/youtube/[id]/video`
+ * proxy, which runs auth() + a Prisma lookup + a 302 redirect on every
+ * single Range request the browser makes (dozens per playthrough, each
+ * with serverless cold-start latency). That per-range serverless hop is
+ * what made playback stutter/re-buffer on external connections.
+ *
+ * Legacy finals still stored behind the DGX Cloudflare tunnel have a
+ * relative `finalVideoUrl` (`/vater/file/<jobId>/video`); those keep using
+ * the proxy route, which re-wraps the tunnel fetch with the server-side
+ * bearer.
+ *
+ * The blob URL is public-but-unguessable (same model as b2b-videos/), and
+ * the proxy route already 302-redirects to this exact URL — so serving it
+ * directly exposes nothing that wasn't already visible in the Network tab.
+ */
+export function finalVideoPlaybackUrl(p: {
+  id: string;
+  finalVideoUrl?: string | null;
+}): string {
+  const proxy = `/api/vater/youtube/${p.id}/video`;
+  const url = p.finalVideoUrl;
+  if (url && url.startsWith("https://")) {
+    try {
+      if (new URL(url).hostname.endsWith(".blob.vercel-storage.com")) {
+        return url;
+      }
+    } catch {
+      /* malformed — fall back to the proxy */
+    }
+  }
+  return proxy;
+}
+
+/**
  * True when the baked `final.mp4` predates scene/animation edits — i.e. the
  * editor preview (assembled live from per-scene files) will look different
  * from the library's baked final MP4. UI uses this to surface a

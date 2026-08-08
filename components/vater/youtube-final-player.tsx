@@ -23,7 +23,7 @@
 import { useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { VideoSpeedChips } from "@/components/ui/VideoSpeedChips";
-import { isFinalMp4Stale } from "@/lib/vater/youtube-status";
+import { isFinalMp4Stale, finalVideoPlaybackUrl } from "@/lib/vater/youtube-status";
 import { parseVideoCost, formatUsd, costProviderRows } from "@/lib/vater/video-cost";
 import { YouTubeShareModal } from "./youtube-share-modal";
 
@@ -54,6 +54,7 @@ interface ProjectShape {
   status?: string;
   editedAt?: string | null;
   costJson?: unknown;
+  finalVideoUrl?: string | null;
 }
 
 interface Props {
@@ -139,8 +140,11 @@ export function YouTubeFinalPlayer({ project, onRecomposeStart }: Props) {
     }
   };
 
-  const videoSrc = `/api/vater/youtube/${project.id}/video`;
-  const downloadHref = `${videoSrc}?download=1`;
+  // Play straight from the Blob CDN when the final lives there (no per-Range
+  // serverless redirect); the proxy route stays the download path so the file
+  // saves with a clean human-readable name.
+  const videoSrc = finalVideoPlaybackUrl(project);
+  const downloadHref = `/api/vater/youtube/${project.id}/video?download=1`;
 
   const videoCost = parseVideoCost(project.costJson);
   const sceneCount = Array.isArray(project.scenesJson)
