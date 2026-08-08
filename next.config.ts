@@ -10,6 +10,11 @@ const cspReportOnly = [
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://maps.googleapis.com https://va.vercel-scripts.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
+  // Vater/Jelly Studio finals stream from the Vercel Blob CDN
+  // (*.blob.vercel-storage.com); allow it explicitly so promoting this CSP to
+  // enforcing does not break Library playback (media falls back to default-src
+  // 'self' otherwise). blob:/data: cover local previews.
+  "media-src 'self' blob: data: https://*.blob.vercel-storage.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "connect-src 'self' https: wss:",
   "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com https://www.facebook.com",
