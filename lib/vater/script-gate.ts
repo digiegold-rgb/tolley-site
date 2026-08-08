@@ -70,6 +70,22 @@ export async function startRunCreation(
     );
   }
 
+  // A project-level voice is always a local clone name ("Monroe"), never an
+  // ElevenLabs voice id. Styles saved before the local-only voice roster
+  // still carry voiceBackend "elevenlabs" + an EL id, and sending a local
+  // name to that backend 404s the whole render at the TTS step. The voice we
+  // actually send decides the backend, so drop the style's EL routing and
+  // tuning params whenever the project overrides the voice.
+  const projectVoiceOverride =
+    !!project.voiceName && project.voiceName !== styleSnapshot?.voice;
+  if (projectVoiceOverride && styleSnapshot) {
+    styleSnapshot = {
+      ...styleSnapshot,
+      voice: project.voiceName!,
+      voiceBackend: "f5-tts",
+    };
+  }
+
   // Hybrid render window: animate the first N seconds, Ken Burns the rest.
   // `defaultAnimUntilS` isn't on StyleSnapshot — the DGX reads it out of the
   // style dict by key, so widen through `unknown` the way /context does.
