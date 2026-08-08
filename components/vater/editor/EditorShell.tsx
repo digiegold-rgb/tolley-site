@@ -706,7 +706,7 @@ export function EditorShell({ project: initialProject }: Props) {
             <p className="text-[10px] text-zinc-600">
               Last rendered MP4:{" "}
               <a
-                href={`/api/vater/youtube/${initialProject.id}/video`}
+                href={`/api/vater/youtube/${initialProject.id}/video?download=1`}
                 target="_blank"
                 rel="noreferrer"
                 className="underline-offset-2 hover:underline"

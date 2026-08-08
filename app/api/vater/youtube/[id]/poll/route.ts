@@ -395,7 +395,13 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       };
       const finalPath = anyResult.finalVideoUrl || anyResult.finalVideoPath;
       if (finalPath) {
-        if (finalPath.startsWith("/vater/file/")) {
+        if (finalPath.startsWith("https://")) {
+          // Blob-hosted final (uploaded DGX-side) — store the CDN URL as-is.
+          data.finalVideoUrl = finalPath;
+        } else if (project.finalVideoUrl?.startsWith("https://")) {
+          // Never downgrade a blob URL to a DGX proxy path (a stale re-poll
+          // of an old done job would otherwise clobber backfilled rows).
+        } else if (finalPath.startsWith("/vater/file/")) {
           data.finalVideoUrl = finalPath;
         } else {
           const m = finalPath.match(/\/([0-9a-fA-F]+)\/final\.mp4$/);

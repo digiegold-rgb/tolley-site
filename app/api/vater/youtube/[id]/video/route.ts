@@ -48,6 +48,21 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   }
   const download = req.nextUrl.searchParams.get("download") === "1";
 
+  // Blob-hosted finals: play straight from the CDN (proper Range support,
+  // no tunnel, no serverless 60s cap). The route stays the auth gate; the
+  // blob URL itself is public-but-unguessable, same model as b2b-videos/.
+  if (project.finalVideoUrl?.startsWith("https://")) {
+    try {
+      const url = new URL(project.finalVideoUrl);
+      if (url.hostname.endsWith(".blob.vercel-storage.com")) {
+        if (download) url.searchParams.set("download", "1");
+        return NextResponse.redirect(url.toString(), 302);
+      }
+    } catch {
+      // malformed URL — fall through to the DGX proxy path
+    }
+  }
+
   // Resolve a jobId we can call /vater/file/<jobId>/video with.
   let jobId: string | null = null;
   if (project.finalVideoUrl) {
