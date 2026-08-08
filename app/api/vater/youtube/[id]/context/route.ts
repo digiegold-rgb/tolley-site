@@ -72,6 +72,10 @@ interface ContextBody {
    *  principle extraction + script generation. No min length enforced.
    *  Goal becomes optional metadata when this is provided. */
   scriptOverride?: string;
+  /** Script-review gate: stop the worker after the script is written so a
+   *  human can edit + approve it before any generation spend. The render is
+   *  kicked later by /approve-script with the approved text as scriptOverride. */
+  stopAfterScript?: boolean;
 }
 
 export async function POST(req: NextRequest, ctx: Ctx) {
@@ -329,13 +333,22 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     const effectiveImageQuality =
       userImageQuality ?? (cloudRental ? "firered-modal" : undefined);
 
+    // Hybrid render window — animate the first N seconds, Ken Burns the rest.
+    // Lives on the project row (set from the Script Review intake form) and
+    // rides to the DGX inside the style snapshot as `defaultAnimUntilS`.
+    const animUntilS =
+      typeof project.animUntilS === "number" && project.animUntilS > 0
+        ? project.animUntilS
+        : null;
+
     const styleWithAnim: StyleSnapshot | undefined =
-      animMode !== "none" || cloudRental || effectiveImageQuality
+      animMode !== "none" || cloudRental || effectiveImageQuality || animUntilS
         ? ({
             ...(styleSnapshot ?? {}),
             ...(animMode !== "none"
               ? { defaultAnimMode: animMode, animQuality: effectiveAnimQuality }
               : {}),
+            ...(animUntilS ? { defaultAnimUntilS: animUntilS } : {}),
             ...(effectiveImageQuality
               ? { defaultQuality: effectiveImageQuality }
               : {}),
@@ -366,6 +379,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       videoBackend: videoBackend as RunCreationInput["videoBackend"],
       style: styleWithAnim,
       ...(scriptOverride ? { scriptOverride } : {}),
+      ...(body.stopAfterScript === true ? { stopAfterScript: true } : {}),
     });
 
     const withJob = await prisma.youTubeProject.update({

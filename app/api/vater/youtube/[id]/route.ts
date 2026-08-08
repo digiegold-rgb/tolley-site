@@ -50,10 +50,33 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     "sourceTitle",
     "sourceChannel",
     "customStylePrompt",
+    // Publish stage (2026-08-08) — metadata staged in the Script Review
+    // screen and sent verbatim to videos.insert on upload.
+    "publishTitle",
+    "description",
+    "tags",
+    "thumbnailConcept",
+    // Hybrid render window: animate the first N seconds, Ken Burns the rest.
+    "animUntilS",
   ];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
     if (body[key] !== undefined) data[key] = body[key];
+  }
+
+  // `tags` is a scalar list — a non-array would 500 inside Prisma, so
+  // normalise here and surface the bad input instead.
+  if (data.tags !== undefined) {
+    if (!Array.isArray(data.tags)) {
+      return NextResponse.json(
+        { error: "tags must be an array of strings" },
+        { status: 400 },
+      );
+    }
+    data.tags = (data.tags as unknown[])
+      .filter((t): t is string => typeof t === "string")
+      .map((t) => t.trim())
+      .filter(Boolean);
   }
 
   if (data.targetDuration) {

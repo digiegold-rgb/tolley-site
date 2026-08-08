@@ -57,6 +57,12 @@ function mapPhaseToStatus(
 ): YouTubeProjectStatus {
   if (job.status === "failed") return "failed";
 
+  // `stopAfterScript` runs park at the `script_ready` phase and report
+  // done — but the project is NOT finished, it's resting in the human
+  // approval gate. Check this before the done-branch below, which would
+  // otherwise read "a result with no final video" as `ready`.
+  if (job.phase === "script_ready") return "awaiting_script_approval";
+
   if (job.status === "done") {
     // Disambiguate fetch-source vs run-creation based on the result shape.
     // Accept both `finalVideoUrl` (preferred) and `finalVideoPath` (legacy
@@ -201,7 +207,48 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   }> = [];
   let generatedSceneCount = 0;
 
-  if (job.status === "done") {
+  // ── Script-review gate ─────────────────────────────────────────────────
+  // A `stopAfterScript` run ends here with the draft script in `result` and
+  // nothing generated yet. Persist the draft so the Script Review screen has
+  // something to edit — but NEVER overwrite a script a human has already
+  // touched: once the project reaches this gate the row is the source of
+  // truth, and a re-poll of the same done job must not undo their edits.
+  const atScriptGate = nextStatus === "awaiting_script_approval";
+  if (atScriptGate) {
+    const result = (job.result ?? {}) as RunCreationResult;
+    const humanOwnsScript =
+      project.scriptApprovedAt !== null ||
+      currentStatus === "awaiting_script_approval";
+    const persisted = !!result.script && !humanOwnsScript;
+    if (persisted) {
+      data.script = result.script;
+      if (result.scriptMeta) {
+        data.scriptMeta = result.scriptMeta as Prisma.InputJsonValue;
+      }
+    }
+    if (result.sourcePrinciples !== undefined) {
+      data.sourcePrinciples = result.sourcePrinciples as Prisma.InputJsonValue;
+    }
+    data.errorMessage = null;
+    // The script WAS generated on the DGX even though no video exists yet —
+    // bill it now, because the second (approved) run submits the text as a
+    // user-supplied scriptOverride and is deliberately not charged for it.
+    // Only on the poll that actually landed it: this project keeps polling
+    // while it rests at the gate, and re-pushing the (idempotent) charge on
+    // every tick would be a pointless Stripe write each time.
+    if (persisted) {
+      pendingCharges.push({
+        action: "script",
+        costCents: FLAT_ACTION_PRICES.script.priceCents,
+        idempotencyKey: `script_${project.autopilotJobId}`,
+      });
+      console.log(
+        `[vater/poll] project=${id} job=${project.autopilotJobId} SCRIPT READY — awaiting human approval (${result.script?.length ?? 0}c)`,
+      );
+    }
+  }
+
+  if (job.status === "done" && !atScriptGate) {
     data.errorMessage = null;
     data.completedAt = new Date();
     data.progress = 100;

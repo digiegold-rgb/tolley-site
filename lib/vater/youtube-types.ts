@@ -27,6 +27,7 @@ export type YouTubeProjectStatus =
   | "scripting"
   | "verifying"
   | "scripted"
+  | "awaiting_script_approval"
   | "generating_audio"
   | "aligning_captions"
   | "generating_scenes"
@@ -44,6 +45,7 @@ export const STATUS_LABELS: Record<YouTubeProjectStatus, string> = {
   scripting: "Writing script...",
   verifying: "Verifying script...",
   scripted: "Script ready",
+  awaiting_script_approval: "Script review",
   generating_audio: "Generating voice...",
   aligning_captions: "Aligning captions...",
   generating_scenes: "Generating scenes...",
@@ -63,6 +65,7 @@ export const STATUS_COLORS: Record<YouTubeProjectStatus, string> = {
   scripting: `text-yellow-400 bg-yellow-400/10 ${PULSE}`,
   verifying: `text-yellow-400 bg-yellow-400/10 ${PULSE}`,
   scripted: "text-emerald-400 bg-emerald-400/10",
+  awaiting_script_approval: "text-violet-400 bg-violet-400/10",
   generating_audio: `text-yellow-400 bg-yellow-400/10 ${PULSE}`,
   aligning_captions: `text-yellow-400 bg-yellow-400/10 ${PULSE}`,
   generating_scenes: `text-yellow-400 bg-yellow-400/10 ${PULSE}`,

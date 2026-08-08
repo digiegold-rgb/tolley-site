@@ -102,13 +102,23 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
 // POST — generate a new thumbnail via the DGX pipeline
 // ---------------------------------------------------------------------------
 
-export async function POST(_req: NextRequest, ctx: Ctx) {
+interface ThumbnailBody {
+  /** Scene to depict, from a /thumbnail-concepts card. */
+  conceptPrompt?: string;
+  /** Burned-in text — two words max, already clamped by the concepts route. */
+  overlayText?: string;
+}
+
+export async function POST(req: NextRequest, ctx: Ctx) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await ctx.params;
+
+  // Body is optional — the legacy Thumbnail step posts nothing at all.
+  const body = (await req.json().catch(() => ({}))) as ThumbnailBody;
 
   const project = await prisma.youTubeProject.findUnique({ where: { id } });
   if (
@@ -160,11 +170,25 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
     }
   }
 
+  const conceptPrompt =
+    typeof body.conceptPrompt === "string" && body.conceptPrompt.trim()
+      ? body.conceptPrompt.trim()
+      : undefined;
+  const overlayText =
+    typeof body.overlayText === "string" && body.overlayText.trim()
+      ? body.overlayText.trim()
+      : undefined;
+
   const input: ThumbnailInput = {
     jobId: project.autopilotJobId,
-    title: project.sourceTitle ?? project.topic ?? "Untitled",
+    // The publish-stage title is what the video will actually be called, so
+    // prefer it over the reference video's title when one has been staged.
+    title:
+      project.publishTitle ?? project.sourceTitle ?? project.topic ?? "Untitled",
     stylePreset: project.stylePreset ?? "cinematic",
     ...(sceneImageUrl ? { sceneImageUrl } : {}),
+    ...(conceptPrompt ? { conceptPrompt } : {}),
+    ...(overlayText ? { overlayText } : {}),
   };
 
   let result: { thumbnailUrl: string };

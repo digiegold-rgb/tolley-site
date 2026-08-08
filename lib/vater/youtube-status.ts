@@ -18,6 +18,7 @@ export type YouTubeProjectStatus =
   | "scripting"
   | "verifying"
   | "scripted"
+  | "awaiting_script_approval"
   | "generating_audio"
   | "aligning_captions"
   | "generating_scenes"
@@ -35,6 +36,7 @@ export const STATUS_LABELS: Record<YouTubeProjectStatus, string> = {
   scripting: "Writing script...",
   verifying: "Verifying script...",
   scripted: "Script ready",
+  awaiting_script_approval: "Script review",
   generating_audio: "Generating voice...",
   aligning_captions: "Aligning captions...",
   generating_scenes: "Generating scenes...",
@@ -53,6 +55,7 @@ export const STATUS_COLORS: Record<YouTubeProjectStatus, string> = {
   scripting: "text-yellow-400 bg-yellow-400/10 animate-pulse",
   verifying: "text-yellow-400 bg-yellow-400/10 animate-pulse",
   scripted: "text-sky-400 bg-sky-400/10",
+  awaiting_script_approval: "text-violet-400 bg-violet-400/10",
   generating_audio: "text-yellow-400 bg-yellow-400/10 animate-pulse",
   aligning_captions: "text-yellow-400 bg-yellow-400/10 animate-pulse",
   generating_scenes: "text-yellow-400 bg-yellow-400/10 animate-pulse",
@@ -116,6 +119,12 @@ export const CREATION_PHASES: readonly CreationPhase[] = [
     description: "Writing original long-form script in your goal + voice",
   },
   {
+    status: "awaiting_script_approval",
+    label: "Review",
+    description:
+      "Human approval gate — nothing is generated until the script is approved",
+  },
+  {
     status: "verifying",
     label: "Verify",
     description: "Cross-checks script against extracted principles",
@@ -171,6 +180,10 @@ export function phaseToStatus(
     case "scripting":
     case "scripted":
       return "scripting";
+    // `stopAfterScript` runs end here: the worker parks after the `scripted`
+    // checkpoint and waits for a human to approve in the Script Review screen.
+    case "script_ready":
+      return "awaiting_script_approval";
     case "verifying":
     case "verified":
       return "verifying";

@@ -238,6 +238,11 @@ export type RunCreationInput = {
    *  and `_generate_script()` and uses this text verbatim for TTS + scene
    *  planning. No min length enforced. */
   scriptOverride?: string;
+  /** Script-review gate: the worker returns right after the `scripted`
+   *  checkpoint with phase `script_ready` and the draft script in `result`,
+   *  spending nothing on audio/images. The render is kicked separately by
+   *  /approve-script re-calling this endpoint with `scriptOverride`. */
+  stopAfterScript?: boolean;
 };
 
 /**
@@ -275,6 +280,12 @@ export type ThumbnailInput = {
   title: string;
   stylePreset: string;
   sceneImageUrl?: string;
+  /** Scene the thumbnail should depict, from a Gemini-generated concept.
+   *  Must describe something that actually happens in the video. */
+  conceptPrompt?: string;
+  /** Burned-in thumbnail text. Two words maximum — the concept generator
+   *  enforces it, this just carries the chosen text through to the DGX. */
+  overlayText?: string;
 };
 
 export type ThumbnailResult = {

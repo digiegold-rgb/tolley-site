@@ -27,6 +27,7 @@ import { ObserverSlot } from './ObserverSlot';
 import { BetaAccessBanner } from './BetaAccessBanner';
 import { DashboardScreen } from './screens/DashboardScreen';
 import { ProjectShell } from './screens/editor/ProjectShell';
+import { ScriptReviewScreen } from './screens/review/ScriptReviewScreen';
 import { Library } from './screens/studio/Library';
 import { Voices } from './screens/studio/Voices';
 import { Feeds } from './screens/studio/Feeds';
@@ -308,6 +309,7 @@ function renderScreen(
       return selectedProjectId
         ? <ProjectShell projectId={selectedProjectId} />
         : <DashboardScreen />;
+    case 'script-review': return <ScriptReviewScreen />;
     // Legacy 'studio' tab is split into standalone sidebar routes. Keep
     // the key as a backwards-compat alias that lands on Library.
     case 'studio':

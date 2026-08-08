@@ -29,6 +29,14 @@ interface CreateBody {
   url?: string;
   rssItemId?: string;
   targetDuration?: number;
+  // Script Review intake (2026-08-08) — all optional, legacy callers unaffected.
+  // Set here rather than PATCHed afterwards so the row is complete before the
+  // transcript lands and the Script Review screen auto-continues to scripting.
+  styleId?: string;
+  voiceName?: string;
+  goal?: string;
+  /** Animate the first N seconds, Ken Burns the remainder. */
+  animUntilS?: number;
 }
 
 export async function POST(req: Request) {
@@ -99,6 +107,32 @@ export async function POST(req: Request) {
       ? Math.min(30, Math.max(1, Math.round(body.targetDuration)))
       : 10;
 
+  // Optional style — must exist and be system-owned or ours (same rule as
+  // /new-from-style). A bad id is a 400/403/404, never a silently styleless
+  // project the user then has to debug at render time.
+  let styleId: string | null = null;
+  if (body.styleId !== undefined) {
+    if (typeof body.styleId !== "string" || !body.styleId.trim()) {
+      return NextResponse.json({ error: "Invalid styleId" }, { status: 400 });
+    }
+    const style = await prisma.youTubeStyle.findUnique({
+      where: { id: body.styleId },
+      select: { id: true, userId: true, isSystem: true },
+    });
+    if (!style) {
+      return NextResponse.json({ error: "Style not found" }, { status: 404 });
+    }
+    if (!style.isSystem && style.userId && style.userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    styleId = style.id;
+  }
+
+  const animUntilS =
+    typeof body.animUntilS === "number" && body.animUntilS > 0
+      ? Math.round(body.animUntilS)
+      : null;
+
   const project = await prisma.youTubeProject.create({
     data: {
       userId: session.user.id,
@@ -111,6 +145,16 @@ export async function POST(req: Request) {
       targetWordCount: wordCountForDuration(duration),
       status: "fetching",
       progress: 5,
+      styleId,
+      animUntilS,
+      voiceName:
+        typeof body.voiceName === "string" && body.voiceName.trim()
+          ? body.voiceName.trim()
+          : null,
+      goal:
+        typeof body.goal === "string" && body.goal.trim()
+          ? body.goal.trim()
+          : null,
     },
   });
 
