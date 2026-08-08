@@ -7,6 +7,7 @@ import {
 } from "@/lib/legal";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/security" },
   title: "Information Security Policy | T-Agent",
   description:
     "Information Security Policy for Your KC Homes LLC, covering access control, encryption, network security, incident response, and third-party integrations.",

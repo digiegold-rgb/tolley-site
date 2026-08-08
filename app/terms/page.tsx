@@ -11,6 +11,7 @@ import {
 } from "@/lib/legal";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/terms" },
   title: "Terms & Conditions | T-Agent",
   description:
     "Terms and Conditions for T-Agent | Real Estate Unlocked by Tolley AI, including SMS A2P messaging disclosures.",

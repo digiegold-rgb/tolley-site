@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApiSession } from "@/lib/admin-auth";
+import { verifyOauthLinkToken } from "@/lib/oauth-link-token";
 import { saveStoredToken } from "@/lib/social/token-store";
 
 export const runtime = "nodejs";
@@ -21,8 +22,15 @@ const esc = (s: unknown) => String(s)
  * first, so IG posting works immediately with no env paste and no redeploy.
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAdminApiSession();
-  if (!auth.ok) return new NextResponse("Login required", { status: 401 });
+  // Admin session OR the signed short-lived cookie the gated /start route set.
+  // The hard session requirement broke the magic-link flow (Ruthann's browser
+  // has FB but no tolley admin session) — the link cookie proves the flow
+  // started through the gated start without weakening the gate.
+  const linkOk = verifyOauthLinkToken("facebook", request.cookies.get("fb_oauth_link")?.value);
+  if (!linkOk) {
+    const auth = await requireAdminApiSession();
+    if (!auth.ok) return new NextResponse("Login required", { status: 401 });
+  }
 
   const code = request.nextUrl.searchParams.get("code");
   const fbError = request.nextUrl.searchParams.get("error_description")

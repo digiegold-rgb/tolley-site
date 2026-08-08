@@ -14,6 +14,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/rental" },
   title: "Rentals | Your KC Homes LLC",
   description:
     "Rent generators, trailers, tables, chairs, picnic tables, washer/dryer, moving supplies, and Giant Kerplunk in Independence, MO. Kansas City area delivery available.",

@@ -5,6 +5,7 @@ import AnalyticsDashboard from "@/components/analytics/analytics-dashboard";
 export const revalidate = 0;
 
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "tolley.io | Analytics",
   description: "Unified analytics dashboard for all tolley.io sites.",
 };

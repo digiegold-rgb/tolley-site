@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminApiSession } from "@/lib/admin-auth";
-import { secretEquals } from "@/lib/secret-compare";
+import { mintOauthLinkToken, verifyOauthLinkToken } from "@/lib/oauth-link-token";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,14 +12,13 @@ export const dynamic = "force-dynamic";
  * posting fails with Graph error (#10).
  */
 export async function GET(request: Request) {
-  // Admin session OR a one-time ?key=<SYNC_SECRET> magic link. The key path
-  // lets a single link work in Ruthann's browser (where SHE is logged into
-  // Facebook) without also needing a tolley.io admin PIN in that same browser.
-  // Starting the flow isn't sensitive — the callback still validates state and
-  // only stores tokens for whoever actually completes FB's own consent.
-  const key = new URL(request.url).searchParams.get("key");
-  const keyOk = !!key && !!process.env.SYNC_SECRET && secretEquals(key, process.env.SYNC_SECRET);
-  if (!keyOk) {
+  // Admin session OR a short-lived ?t=<link token> magic link (minted at
+  // /api/social/oauth/link). The link path lets a single link work in
+  // Ruthann's browser (where SHE is logged into Facebook) without also needing
+  // a tolley.io admin PIN — and unlike the old ?key=<SYNC_SECRET> form, the
+  // token expires instead of parking the permanent secret in access logs.
+  const linkOk = verifyOauthLinkToken("facebook", new URL(request.url).searchParams.get("t"));
+  if (!linkOk) {
     const auth = await requireAdminApiSession();
     if (!auth.ok) return auth.response;
   }
@@ -36,6 +35,12 @@ export async function GET(request: Request) {
   const res = NextResponse.redirect(buildDialogUrl(appId, redirectUri, state));
   // CSRF guard: callback rejects unless FB echoes this exact state back.
   res.cookies.set("fb_oauth_state", state, {
+    httpOnly: true, secure: true, sameSite: "lax",
+    path: "/api/social/oauth/facebook", maxAge: 600,
+  });
+  // Proves to the callback that this flow started through this gated route —
+  // lets a magic-link browser (no admin session) finish the round trip.
+  res.cookies.set("fb_oauth_link", mintOauthLinkToken("facebook", 10 * 60 * 1000), {
     httpOnly: true, secure: true, sameSite: "lax",
     path: "/api/social/oauth/facebook", maxAge: 600,
   });

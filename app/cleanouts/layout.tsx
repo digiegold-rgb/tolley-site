@@ -10,6 +10,7 @@ const oswald = Oswald({
 });
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/cleanouts" },
   title: "Tolley Cleanouts — Estate & Rental Cleanouts in Kansas City",
   description:
     "Estate, rental, and garage cleanouts in the KC metro. One call: we clear the unit, broom-clean it, haul everything — and anything with resale value comes off your bill. Free quotes: call/text 913-283-3826.",

@@ -26,6 +26,47 @@ const columns = [
   },
 ];
 
+// Every public subsite, grouped — the homepage is the one page that links to
+// all of them, so several of these routes have no other inbound link.
+const directory = [
+  {
+    heading: "Rentals",
+    links: [
+      { label: "All Rentals", href: "/rental" },
+      { label: "Washer & Dryer", href: "/wd" },
+      { label: "Trailers", href: "/trailer" },
+      { label: "Generators", href: "/generator" },
+      { label: "Tables & Chairs", href: "/tables" },
+      { label: "Picnic Tables", href: "/picnic-table" },
+      { label: "Giant Kerplunk", href: "/kerplunk" },
+    ],
+  },
+  {
+    heading: "Home Services",
+    links: [
+      { label: "Cleanouts", href: "/cleanouts" },
+      { label: "Moving & Hauling", href: "/moving" },
+      { label: "Scrap Pickup", href: "/junkinjays" },
+      { label: "HVAC", href: "/hvac" },
+      { label: "Pool Supplies", href: "/pools" },
+      { label: "Last-Mile Delivery", href: "/lastmile" },
+    ],
+  },
+  {
+    heading: "Real Estate & More",
+    links: [
+      { label: "KC Homes", href: "/homes" },
+      { label: "Work With an Agent", href: "/real-estate-agent" },
+      { label: "Estate Sales", href: "/estate" },
+      { label: "Shop", href: "/shop" },
+      { label: "Free Tools", href: "/tools" },
+      { label: "Blog", href: "/blog" },
+      { label: "The Circle", href: "/circle" },
+      { label: "About", href: "/about" },
+    ],
+  },
+];
+
 export function HpFooter() {
   return (
     <footer className="relative z-10 border-t border-white/10 px-5 pt-12 pb-8 sm:px-8">
@@ -84,6 +125,34 @@ export function HpFooter() {
             </ul>
           </div>
         ))}
+      </div>
+
+      {/* More from Tolley — compact directory so every subsite has an inbound link */}
+      <div className="mx-auto mt-10 max-w-6xl border-t border-white/[0.07] pt-8">
+        <p className="text-[0.68rem] font-semibold tracking-[0.14em] text-white/45 uppercase">
+          More from Tolley
+        </p>
+        <div className="mt-4 grid gap-6 sm:grid-cols-3">
+          {directory.map((col) => (
+            <div key={col.heading}>
+              <p className="text-[0.62rem] tracking-[0.12em] text-white/35 uppercase">
+                {col.heading}
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {col.links.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-[0.7rem] text-white/40 transition hover:text-white/75"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
       </div>
     </footer>
   );

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminApiSession } from "@/lib/admin-auth";
+import { verifyOauthLinkToken } from "@/lib/oauth-link-token";
 import { saveStoredToken } from "@/lib/social/token-store";
 
 export const runtime = "nodejs";
@@ -21,6 +23,15 @@ function html(body: string) {
 }
 
 export async function GET(request: NextRequest) {
+  // Admin session OR the signed short-lived cookie the gated /start route set —
+  // this route writes live tokens into the shared store, so it must prove the
+  // flow began through an authorized start (magic-link browsers have no session).
+  const linkOk = verifyOauthLinkToken("pinterest", request.cookies.get("pin_oauth_link")?.value);
+  if (!linkOk) {
+    const auth = await requireAdminApiSession();
+    if (!auth.ok) return new NextResponse("Login required", { status: 401 });
+  }
+
   const code = request.nextUrl.searchParams.get("code");
   const state = request.nextUrl.searchParams.get("state");
   const cookieState = request.cookies.get("pin_oauth_state")?.value;

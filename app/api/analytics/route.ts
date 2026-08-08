@@ -9,8 +9,6 @@ import { auth } from "@/auth";
 const ALLOWED_ORIGINS = new Set([
   "https://tolley.io",
   "https://www.tolley.io",
-  "https://cordport.io",
-  "https://www.cordport.io",
 ]);
 
 function isOriginAllowed(origin: string | null): boolean {

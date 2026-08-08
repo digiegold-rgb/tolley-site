@@ -1,5 +1,6 @@
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
+import { secretEquals } from "@/lib/secret-compare";
 
 /**
  * Shared-secret bearer auth for the DGX-side vater-observer MCP server.
@@ -21,7 +22,7 @@ export function validateObserverBearer(req: NextRequest): {
   }
   const header = req.headers.get("authorization") || "";
   const [scheme, token] = header.split(" ");
-  if (scheme !== "Bearer" || !token || token.trim() !== expected) {
+  if (scheme !== "Bearer" || !token || !secretEquals(token.trim(), expected)) {
     return {
       ok: false,
       response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),

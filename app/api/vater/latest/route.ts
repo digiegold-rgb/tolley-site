@@ -15,6 +15,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { isVaterStudioEmail } from "@/lib/admin-auth";
+import { secretEquals } from "@/lib/secret-compare";
 
 export const runtime = "nodejs";
 
@@ -42,7 +43,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const bearer = req.headers.get("authorization") ?? "";
   const key = process.env.CONTENT_API_KEY;
-  if (!key || bearer !== `Bearer ${key}`) {
+  if (!key || !secretEquals(bearer, `Bearer ${key}`)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

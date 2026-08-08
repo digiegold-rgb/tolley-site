@@ -21,7 +21,9 @@ export async function validateShopAdmin(): Promise<boolean> {
 export function getExpectedToken(): string {
   const pin = process.env.SHOP_ADMIN_PIN;
   if (!pin) throw new Error("SHOP_ADMIN_PIN not set");
-  const secret = process.env.AUTH_SECRET || "";
+  const secret = process.env.AUTH_SECRET;
+  // Fail loud: HMAC-ing with "" would make the cookie derivable from the PIN alone.
+  if (!secret) throw new Error("AUTH_SECRET not set — shop admin cookie needs it");
   return createHmac("sha256", secret).update(`shop-admin:${pin}`).digest("base64url");
 }
 

@@ -17,6 +17,9 @@ const cspReportOnly = [
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
+  // Without a report destination, report-only mode collects nothing —
+  // /api/csp-report samples violations so promotion to enforcing has data.
+  "report-uri /api/csp-report",
 ].join("; ");
 
 const securityHeaders = [
@@ -160,6 +163,12 @@ const nextConfig: NextConfig = {
       {
         source: "/pool",
         destination: "/pools",
+        permanent: true,
+      },
+      {
+        // Real visitors type this (6 hits/90d in SiteView) and got a 404.
+        source: "/estates",
+        destination: "/estate",
         permanent: true,
       },
       {

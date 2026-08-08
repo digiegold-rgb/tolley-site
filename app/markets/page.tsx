@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 600;
 
 export const metadata = {
+  alternates: { canonical: "https://www.tolley.io/markets" },
   title: "Market Intelligence | T-Agent by Tolley.io",
   description: "Real-time housing market intelligence — AI-analyzed YouTube transcripts, stock data, economic indicators, and news. Powered by T-Agent.",
 };

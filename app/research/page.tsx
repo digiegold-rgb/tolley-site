@@ -4,6 +4,7 @@ import { ResearchClient } from "./research-client";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "Deep Research — tolley.io",
   description:
     "Ask any question. Cached answers are instant; new questions get a live AI deep-research run with cited, verified sources.",

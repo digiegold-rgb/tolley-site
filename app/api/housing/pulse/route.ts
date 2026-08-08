@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put, list } from "@vercel/blob";
+import { secretEquals } from "@/lib/secret-compare";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -13,7 +14,7 @@ const STATCARD_PATH = "housing/statcard-latest.png";
  * Body: pulse JSON; optional `statcard` = base64 PNG stored alongside.
  */
 export async function POST(request: NextRequest) {
-  if (!SYNC_SECRET || request.headers.get("x-sync-secret") !== SYNC_SECRET) {
+  if (!SYNC_SECRET || !secretEquals(request.headers.get("x-sync-secret"), SYNC_SECRET)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const body = await request.json().catch(() => null);

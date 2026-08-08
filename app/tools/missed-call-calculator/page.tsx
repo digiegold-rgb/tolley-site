@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { MissedCallCalculator } from "@/components/tools/MissedCallCalculator";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/tools/missed-call-calculator" },
   title: "Missed Call Revenue Calculator | T-Agent",
   description: "Find out exactly how much revenue you're losing to missed calls and voicemails every month. Free calculator for real estate agents.",
   openGraph: {

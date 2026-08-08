@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PhonePresenceAudit } from "@/components/tools/PhonePresenceAudit";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/tools/phone-presence-audit" },
   title: "Phone Presence Audit | T-Agent",
   description: "Score your inbound call experience across 5 competency areas. Free 10-minute assessment for real estate agents.",
   openGraph: {

@@ -149,6 +149,7 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "cli-buckeye-build", label: "Buckeye Invoice", lane: "clients", row: 0, col: 4, kind: "pipeline", icon: "🔨", signal: "dgx:unit:buckeye-build", cadenceMin: 2 * day, note: "Weekly draft Sun 20:00 → AP Alicia Borden." },
   { id: "cli-buckeye-recon", label: "Buckeye Reconcile", lane: "clients", row: 0, col: 5, kind: "pipeline", icon: "⚖️", signal: "dgx:unit:buckeye-reconcile", cadenceMin: week + day, note: "Bluevine deposits, Saturdays." },
   { id: "cli-stripe-recon", label: "Stripe Reconcile", lane: "clients", row: 0, col: 6, kind: "pipeline", icon: "💳", signal: "dgx:unit:stripe-invoice-reconcile", cadenceMin: day, note: "Daily 08:00 · INV-0144 $51 credit next." },
+  { id: "cli-onepay", label: "OnePay Statements", lane: "clients", row: 1, col: 6, kind: "pipeline", icon: "🏦", signal: "dgx:unit:onepay-statements", cadenceMin: 32 * day, note: "Monthly pull, needs Jared's OTP within 5 min — failed silently 8/5 before this node existed." },
 
   // ── INFRA ────────────────────────────────────────────────────────────────
   { id: "inf-dgx", label: "DGX Spark", lane: "infra", row: 0, col: 0, kind: "infra", icon: "🖥️", signal: "dgx:self", cadenceMin: 900, note: "GB10 Blackwell 128GB — pushes this map 2×/day." },

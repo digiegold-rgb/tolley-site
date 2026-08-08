@@ -13,6 +13,7 @@ const fredoka = Fredoka({
 });
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/kerplunk" },
   title: "Giant Kerplunk Rental | Your KC Homes LLC",
   description:
     "Rent a life-sized Giant Kerplunk game in Independence, MO. $18/day with $30 deposit. The ultimate party game for all ages. Delivery available at $2/mile.",

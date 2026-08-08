@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { secretEquals } from "@/lib/secret-compare";
 import { advanceJob } from "@/lib/research/jobs";
 
 export const dynamic = "force-dynamic";
@@ -21,9 +22,9 @@ const MAX_PER_RUN = 10;
 
 function isAuthorized(req: NextRequest): boolean {
   const auth = req.headers.get("authorization");
-  if (auth === `Bearer ${process.env.CRON_SECRET}`) return true;
+  if (process.env.CRON_SECRET && secretEquals(auth, `Bearer ${process.env.CRON_SECRET}`)) return true;
   const sync = req.headers.get("x-sync-secret");
-  if (sync && sync === process.env.SYNC_SECRET) return true;
+  if (sync && secretEquals(sync, process.env.SYNC_SECRET)) return true;
   return false;
 }
 

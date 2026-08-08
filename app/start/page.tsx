@@ -5,6 +5,7 @@ import { SiteTracker } from "@/components/analytics/site-tracker";
 import { directoryByGroup, type DirectoryEntry } from "@/lib/directory";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/start" },
   title: "tolley.io | All Services",
   description:
     "Real estate, rentals, home services, hauling, delivery, AI tools, and a way to start your own business — all from tolley.io in Kansas City.",

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
+import { secretEquals } from "@/lib/secret-compare";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -21,7 +22,7 @@ function isPipeline(v: unknown): v is (typeof PIPELINES)[number] {
 export async function POST(request: NextRequest) {
   const syncSecret = process.env.SYNC_SECRET;
   const authHeader = request.headers.get("x-sync-secret");
-  if (!syncSecret || authHeader !== syncSecret) {
+  if (!syncSecret || !secretEquals(authHeader, syncSecret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

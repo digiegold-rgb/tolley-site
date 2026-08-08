@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { notifyTelegram } from "@/lib/budget/notify";
+import { rateLimitByIp } from "@/lib/rate-limit";
 import { themeForKey } from "@/lib/demo-site";
 import {
   slugify,
@@ -56,6 +57,8 @@ async function uniqueSlug(base: string): Promise<string> {
 }
 
 export async function POST(request: NextRequest) {
+  const limited = await rateLimitByIp(request, "sales:provision", 5, 3600);
+  if (limited) return limited;
   let body: ProvisionBody;
   try {
     body = (await request.json()) as ProvisionBody;

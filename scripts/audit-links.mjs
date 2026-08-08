@@ -166,8 +166,14 @@ const orphans = topLevel.filter(
 // ── check 3: registered urls must have a page ───────────────────────────────
 // A manifest may advertise a namespace (e.g. /go, /pay) whose only routes are
 // nested handlers/dynamic pages — accept those too.
+// Registry entries whose page was deliberately removed but whose URL still
+// resolves via a next.config redirect. Add CONSCIOUSLY, with a reason.
+const REGISTRY_REDIRECT_ALLOWLIST = new Set([
+  "/crypto", // dead page removed 2026-08-07; 301 → /trading/crypto in next.config.ts
+]);
 const registry404 = [];
 for (const [url, src] of registeredUrls) {
+  if (REGISTRY_REDIRECT_ALLOWLIST.has(url.replace(/\/$/, "") || "/")) continue;
   const path = url.replace(/\/$/, "") || "/";
   const hasPage = pageMatchers.some((m) => m.re.test(path));
   const hasNested =

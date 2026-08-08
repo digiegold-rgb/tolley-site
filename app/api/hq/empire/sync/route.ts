@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { secretEquals } from "@/lib/secret-compare";
 import type { Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
@@ -17,7 +18,7 @@ const RETENTION_DAYS = 30;
 export async function POST(request: NextRequest) {
   const syncSecret = process.env.SYNC_SECRET;
   const authHeader = request.headers.get("x-sync-secret");
-  if (!syncSecret || authHeader !== syncSecret) {
+  if (!syncSecret || !secretEquals(authHeader, syncSecret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -7,6 +7,7 @@ import {
 } from "@/lib/legal";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/data-retention" },
   title: "Data Retention & Disposal Policy | T-Agent",
   description:
     "Data Retention and Disposal Policy for Your KC Homes LLC, covering retention schedules, disposal procedures, and compliance with applicable laws.",

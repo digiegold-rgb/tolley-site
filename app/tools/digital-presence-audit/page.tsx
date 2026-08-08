@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DigitalPresenceAudit } from "@/components/tools/DigitalPresenceAudit";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/tools/digital-presence-audit" },
   title: "Digital Presence Audit | T-Agent",
   description: "Score your online presence across 6 channels. Free 3-minute assessment for real estate agents — instant results, no email required.",
   openGraph: {

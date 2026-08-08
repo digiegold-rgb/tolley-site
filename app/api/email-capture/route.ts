@@ -2,6 +2,7 @@ import { NextResponse, after } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notifyLead } from "@/lib/lead-notify";
+import { rateLimitByIp } from "@/lib/rate-limit";
 import { sendEstateAddressIfRevealed } from "@/lib/estate-alert-autoresponder";
 import { sendDropWelcome } from "@/lib/shop/drop-autoresponder";
 
@@ -14,6 +15,8 @@ export const runtime = "nodejs";
  * Body: { email, name?, source, data? }
  */
 export async function POST(request: Request) {
+  const limited = await rateLimitByIp(request, "email-capture", 10, 3600);
+  if (limited) return limited;
   try {
     const { email, name, source, data } = await request.json() as {
       email?: string;

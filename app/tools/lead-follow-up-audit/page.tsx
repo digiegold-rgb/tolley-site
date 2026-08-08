@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { LeadFollowUpAudit } from "@/components/tools/LeadFollowUpAudit";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/tools/lead-follow-up-audit" },
   title: "Lead Follow-Up Self Audit | T-Agent",
   description: "Score your lead follow-up strategy across 10 dimensions. Free 2-minute assessment for real estate agents — no email required.",
   openGraph: {

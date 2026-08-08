@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notifyLead } from "@/lib/lead-notify";
+import { rateLimitByIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  const limited = await rateLimitByIp(request, "client:signup", 5, 3600);
+  if (limited) return limited;
   let body: Record<string, unknown>;
   try {
     body = await request.json();

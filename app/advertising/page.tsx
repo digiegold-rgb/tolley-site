@@ -3,6 +3,7 @@ import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import Link from "next/link";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/advertising" },
   title: "Advertising Platform | T-Agent by Tolley.io",
   description:
     "T-Agent provides AI-powered Google Ads campaign management, budget optimization, keyword analytics, and performance reporting for real estate professionals.",

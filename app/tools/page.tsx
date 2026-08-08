@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/tools" },
   title: "Free Tools for Real Estate Agents | T-Agent",
   description: "Free calculators and assessments for real estate agents. Score your follow-up strategy, calculate missed call revenue, and audit your digital presence.",
 };

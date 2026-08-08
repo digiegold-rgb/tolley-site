@@ -12,8 +12,11 @@ import {
   autopilot,
   AutopilotError,
 } from "@/lib/vater/autopilot-client";
+import { requireVaterProxyAuth } from "@/lib/vater/proxy-auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const gate = await requireVaterProxyAuth(req);
+  if (!gate.ok) return gate.response;
   try {
     const voices = await autopilot.getVoices();
     return NextResponse.json({ voices });
@@ -39,6 +42,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const gate = await requireVaterProxyAuth(req);
+  if (!gate.ok) return gate.response;
+
   let inForm: FormData;
   try {
     inForm = await req.formData();

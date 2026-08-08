@@ -9,6 +9,7 @@ import {
 } from "@/lib/legal";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/privacy" },
   title: "Privacy Policy | T-Agent",
   description:
     "Privacy Policy for T-Agent | Real Estate Unlocked by Tolley AI, including SMS/mobile data handling and consent protections.",

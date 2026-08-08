@@ -10,6 +10,7 @@ const oswald = Oswald({
 });
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/cleanouts" },
   title: "Tolley Haul & Clean — Cleanouts, Junk Removal, Moving & Hauling in KC",
   description:
     "One call clears it, moves it, or hauls it. Junk & trash removal, estate and rental cleanouts, furniture moving, and car / truck / equipment transport across the Kansas City metro — plus trailer rental. Run by a licensed MO agent. Free quotes, $3/mile delivery. Call or text 913-283-3826.",

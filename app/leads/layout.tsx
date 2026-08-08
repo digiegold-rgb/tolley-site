@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import LeadsSidebar from "@/components/leads/LeadsSidebar";
@@ -8,6 +9,14 @@ import {
   LeadsRightRailSlot,
 } from "@/components/leads/LeadsRightRail";
 import { ToastProvider } from "@/components/ui/Toast";
+
+// ~45 pages under /leads are app internals; noindex here keeps them all out
+// of search. The two marketing pages (/leads/pricing, /leads/onboard) opt
+// back in with their own metadata.robots.
+export const metadata: Metadata = {
+  title: "T-Agent Leads | Tolley",
+  robots: { index: false, follow: false },
+};
 
 /**
  * T-Agent shell. Phase 2: sidebar + topbar + content + optional right rail.

@@ -8,6 +8,7 @@ import { CircleFlywheel, type FlywheelGroup } from "./circle-flywheel";
 import { CircleRouter } from "./circle-router";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/circle" },
   title: "The Tolley Circle | one link, the whole network",
   description:
     "One hook, one link, every service: real estate, rentals, home services, hauling, delivery, shop, food, and AI tools — all connected through one Kansas City hub.",

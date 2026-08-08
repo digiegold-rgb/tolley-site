@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { publicSubsites, SUBSITES } from "@/lib/subsites";
+import { blogPosts } from "@/lib/blog-posts";
 
 const BASE = "https://www.tolley.io";
 
@@ -40,7 +41,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 1.0,
   };
 
-  const subsiteRoutes: MetadataRoute.Sitemap = SUBSITES.filter((s) => !s.skipSitemap).map((s) => ({
+  // Registry entries that must NOT be submitted to crawlers: /water is
+  // noindex (contradictory signal), /crypto 301s into robots-blocked
+  // /trading, and the rest render login walls — submitting them tells Google
+  // the site is mostly auth-gated dashboards.
+  const sitemapExclude = new Set([
+    "/water",
+    "/crypto",
+    "/agents",
+    "/client",
+    "/food",
+    "/leads",
+    "/scan",
+    "/video",
+  ]);
+
+  const subsiteRoutes: MetadataRoute.Sitemap = SUBSITES.filter(
+    (s) => !s.skipSitemap && !sitemapExclude.has(s.url),
+  ).map((s) => ({
     url: `${BASE}${s.url}`,
     lastModified: now,
     changeFrequency:
@@ -61,7 +79,40 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.8,
     },
+    // Real content pages that were missing while login walls got submitted.
+    { url: `${BASE}/shop/haul`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
+    { url: `${BASE}/shop/reviews`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${BASE}/shop/sold`, lastModified: now, changeFrequency: "weekly", priority: 0.4 },
+    { url: `${BASE}/shop/videos`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${BASE}/estate/our-work`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${BASE}/tools/missed-call-calculator`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/tools/lead-follow-up-audit`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/tools/digital-presence-audit`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/tools/phone-presence-audit`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
   ];
+
+  // Blog posts — 10 static articles that were invisible to crawlers.
+  const blogRoutes: MetadataRoute.Sitemap = blogPosts.map((p) => ({
+    url: `${BASE}/blog/${p.slug}`,
+    lastModified: now,
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+
+  // Estate sale pages (public teasers; addresses stay gated by publish time).
+  const estateSales = await prisma.estateSale
+    .findMany({
+      where: { status: { in: ["upcoming", "live", "done"] } },
+      select: { slug: true, updatedAt: true },
+    })
+    .catch(() => []);
+
+  const estateRoutes: MetadataRoute.Sitemap = estateSales.map((s) => ({
+    url: `${BASE}/estate/sales/${s.slug}`,
+    lastModified: s.updatedAt ?? now,
+    changeFrequency: "daily" as const,
+    priority: 0.8,
+  }));
 
   // Shop product pages — listed items only (sold pages stay live for old FB
   // deep-links but don't need crawl budget).
@@ -104,6 +155,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     homeRoute,
     ...subsiteRoutes,
     ...extras,
+    ...blogRoutes,
+    ...estateRoutes,
     ...productRoutes,
     ...neighborhoodRoutes,
   ];

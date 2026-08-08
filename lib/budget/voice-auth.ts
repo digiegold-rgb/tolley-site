@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { secretEquals } from "@/lib/secret-compare";
 
 export function checkVoiceBearer(req: Request):
   | { ok: true }
@@ -15,7 +16,7 @@ export function checkVoiceBearer(req: Request):
   }
   const header = req.headers.get("authorization") || "";
   const provided = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!provided || provided !== expected) {
+  if (!provided || !secretEquals(provided, expected)) {
     return {
       ok: false,
       response: NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 }),

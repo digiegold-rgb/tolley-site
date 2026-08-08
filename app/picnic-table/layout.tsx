@@ -13,6 +13,7 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/picnic-table" },
   title: "Picnic Table Rental | Your KC Homes LLC",
   description:
     "Rent a folding picnic table in Independence, MO. $28/day with $30 deposit. Perfect for cookouts, parties, and outdoor events. Delivery available at $2/mile.",

@@ -65,7 +65,9 @@ async function uploadOne(filePath: string, projectId: string): Promise<string> {
       allowOverwrite: true,
       contentType: "video/mp4",
     });
-    return blob.url;
+    // Version query busts browser caches when a re-compose overwrites the
+    // same pathname (Blob's edge cache purges on overwrite; browsers don't).
+    return `${blob.url}?v=${Date.now()}`;
   } finally {
     try { unlinkSync(tmp); } catch { /* tmp cleanup best-effort */ }
   }

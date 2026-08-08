@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import { requireAdminPageSession } from "@/lib/admin-auth";
 import { RentalsAdminClient } from "./rentals-admin-client";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Rentals Admin | Your KC Homes",
+  description: "Internal booking management for rentals.",
+  robots: { index: false, follow: false },
+};
 
 export default async function RentalsAdminPage() {
   const session = await requireAdminPageSession("/rentals/admin");

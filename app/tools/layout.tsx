@@ -1,5 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
+
+export const metadata: Metadata = {
+  title: "Free Tools for Local Businesses | Tolley",
+  description:
+    "Free calculators and audits for local business owners — score your lead follow-up, price out missed calls, and grade your digital and phone presence.",
+};
 
 export default function ToolsLayout({ children }: { children: ReactNode }) {
   return (

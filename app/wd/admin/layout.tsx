@@ -1,19 +1,12 @@
-"use client";
+import type { Metadata } from "next";
+import { WdAdminShell } from "./wd-admin-shell";
 
-import { useEffect } from "react";
-import "./admin.css";
+export const metadata: Metadata = {
+  title: "Washer & Dryer Admin | Your KC Homes",
+  description: "Internal washer/dryer rental admin — subscriptions, deliveries, and billing.",
+  robots: { index: false, follow: false },
+};
 
 export default function WdAdminLayout({ children }: { children: React.ReactNode }) {
-  // Hide bubbles and footer from parent WD layout
-  useEffect(() => {
-    const parent = document.querySelector(".wd-page");
-    if (parent) {
-      parent.classList.add("wd-admin-active");
-    }
-    return () => {
-      parent?.classList.remove("wd-admin-active");
-    };
-  }, []);
-
-  return <div className="wd-admin">{children}</div>;
+  return <WdAdminShell>{children}</WdAdminShell>;
 }

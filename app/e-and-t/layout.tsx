@@ -29,6 +29,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/e-and-t" },
   title: "13:13 Weddings & Events — Faith. Hope. Love.",
   description:
     "Kansas City wedding coordination, planning, and officiant services led by Emily & Trevor Hawk. Faith-led, day-of perfect, every couple cared for.",

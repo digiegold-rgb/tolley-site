@@ -1,3 +1,13 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "T-Agent Leads Pricing — AI Lead Management for Real Estate Agents",
+  description:
+    "Subscription tiers for T-Agent Leads: AI-scored seller leads, dossiers, and follow-up for KC real estate agents.",
+  robots: { index: true, follow: true },
+  alternates: { canonical: "https://www.tolley.io/leads/pricing" },
+};
+
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import LeadsPricingClient from "@/components/leads/LeadsPricingClient";

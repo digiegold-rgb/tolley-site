@@ -11,6 +11,7 @@ const russoOne = Russo_One({
 });
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/junkinjays" },
   title: "Junkin' Jay's | Scrap Metal Pickup & Junk Hauling | KC Metro",
   description:
     "Scrap metal pickup and junk hauling in Kansas City. Appliances, car parts, batteries, copper, brass, aluminum. Free quotes — call/text 816-206-2897.",

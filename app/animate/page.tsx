@@ -14,6 +14,7 @@ import { AnimateLanding } from "@/components/animate/landing/AnimateLanding";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/animate" },
   title: "Jelly Studio — Type a topic. Publish a video.",
   description:
     "Faceless video studio: script, cloned voiceover, cinematic scenes, real motion and 5-platform publishing. No subscription — pay per video, ~$25 each. First video free.",

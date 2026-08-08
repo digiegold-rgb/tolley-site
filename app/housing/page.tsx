@@ -5,6 +5,7 @@ import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/housing" },
   title: "KC Housing Daily — Kansas City Market Pulse | Tolley.io",
   description:
     "Fresh daily Kansas City housing-market update: mortgage rates, KC metro prices, Independence hyperlocal stats, and a straight answer about your home from a local agent.",

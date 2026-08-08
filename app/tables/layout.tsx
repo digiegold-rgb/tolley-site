@@ -13,6 +13,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/tables" },
   title: "Tables & Chairs Rental | Your KC Homes LLC",
   description:
     "Rent folding tables and chairs in Independence, MO. Round, 6ft, 8ft, and 4ft adjustable tables — $5/day each. Chairs $5/day. Bundle deals available. $30 deposit. Delivery $2/mile.",

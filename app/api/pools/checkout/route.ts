@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
+import { rateLimitByIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  const limited = await rateLimitByIp(request, "pools:checkout", 10, 3600);
+  if (limited) return limited;
   try {
     const { items } = await request.json();
 

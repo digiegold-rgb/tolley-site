@@ -10,6 +10,7 @@ const russoOne = Russo_One({
 });
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/scan" },
   title: "Scan Command Center | Tolley.io",
   description:
     "24/7 autonomous scanning dashboard — leads, arbitrage, products, unclaimed funds, and market intel.",

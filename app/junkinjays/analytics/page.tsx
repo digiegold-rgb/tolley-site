@@ -1,9 +1,17 @@
+import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import JjAnalyticsDashboard from "@/components/junkinjays/jj-analytics";
 
 export const revalidate = 0;
+
+export const metadata: Metadata = {
+  title: "Junkin' Jay's Analytics",
+  description: "Internal traffic and lead analytics for Junkin' Jay's.",
+  alternates: { canonical: "https://www.tolley.io/junkinjays/analytics" },
+  robots: { index: false, follow: false },
+};
 
 export default async function JjAnalyticsPage() {
   const session = await auth();

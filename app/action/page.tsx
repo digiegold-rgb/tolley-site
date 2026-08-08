@@ -4,6 +4,7 @@ import { ActionDashboard } from "./action-client";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "Action Cam — tolley.io",
   description: "Auto-edited adventure recaps from the DJI Action 6, organized and ready for Plex + social.",
 };
