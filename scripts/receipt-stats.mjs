@@ -26,6 +26,8 @@ const [
   hqDraftTouches,
   hqApprovedUnsent,
   repriceEvents,
+  amazonClickEvents,
+  mustComplete,
 ] = await Promise.all([
   // Affiliate /go redirects by source. isBot lives inside the `meta` JSON
   // blob (not a queryable column — see lib/shop/click-classifier.ts), so we
@@ -67,6 +69,22 @@ const [
     orderBy: { runAt: "desc" },
     take: 300,
   }).catch(() => []),
+  // Outbound Amazon clicks (direct + search fallback). Same meta.isBot
+  // filtering story as go_redirect above.
+  prisma.siteEvent.findMany({
+    where: {
+      event: { in: ["amazon_click", "amazon_search_click"] },
+      createdAt: { gte: since },
+    },
+    select: { label: true, meta: true },
+  }).catch(() => []),
+  // Money Loop: the top open Must Complete items, red first — the receipt
+  // surfaces at most 3 as "your 15 minutes".
+  prisma.mustCompleteItem.findMany({
+    where: { status: "open" },
+    orderBy: [{ sortOrder: "asc" }],
+    select: { title: true, priority: true, sortOrder: true },
+  }).catch(() => []),
 ]);
 
 const goClicks = {};
@@ -76,11 +94,34 @@ for (const e of goClickEvents) {
   goClicks[label] = (goClicks[label] ?? 0) + 1;
 }
 
+let amazonClicksReal = 0;
+let amazonClicksBot = 0;
+for (const e of amazonClickEvents) {
+  if (e.meta?.isBot) amazonClicksBot += 1;
+  else amazonClicksReal += 1;
+}
+
+const PRIORITY_RANK = { red: 0, yellow: 1, green: 2 };
+const fifteenMinutes = mustComplete
+  .sort(
+    (a, b) =>
+      (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3) ||
+      a.sortOrder - b.sortOrder,
+  )
+  .slice(0, 3)
+  .map((i) => ({ title: i.title, priority: i.priority }));
+
 console.log(
   JSON.stringify({
     goClicks,
     goClicksTotal: Object.values(goClicks).reduce((s, n) => s + n, 0),
     goClicksBotFiltered: goClickEvents.length - Object.values(goClicks).reduce((s, n) => s + n, 0),
+    amazonClicks: { real: amazonClicksReal, bot: amazonClicksBot },
+    fifteenMinutes,
+    mustCompleteOpen: {
+      red: mustComplete.filter((i) => i.priority === "red").length,
+      total: mustComplete.length,
+    },
     newLeads,
     digest: { new: digestNew, canceled: digestCanceled, active: digestActive },
     amazonImported: { profit: amazonRows._sum.profit ?? 0, rows: amazonRows._count },
