@@ -314,6 +314,7 @@ export async function POST(req: NextRequest) {
       sourcingType: true,
       soldAt: true,
       targetPrice: true,
+      imageUrls: true,
       listings: {
         where: { platform: "shop" },
         select: { id: true, price: true, status: true },
@@ -345,6 +346,7 @@ export async function POST(req: NextRequest) {
   let unmatched = 0;
   let autoCreated = 0;
   let autoCreatedWithPhoto = 0;
+  let photoBackfilled = 0;
   let autoCreateErrors = 0;
   let blocked = 0;
   const priceChangeSamples: Array<{
@@ -362,6 +364,10 @@ export async function POST(req: NextRequest) {
   // rehost (no LLM call inline — that runs in `after()`), so we can take
   // larger bites without blowing the function budget.
   const MAX_AUTO_CREATE_PER_REQUEST = mode === "backfill-sold" ? 80 : 30;
+  // Photo backfill is a 15s-timeout CDN fetch per product — cap per request so
+  // a large photoless backlog drains over successive mirror runs instead of
+  // timing out this function.
+  const MAX_PHOTO_BACKFILL_PER_REQUEST = 10;
 
   for (const row of payload.rows) {
     if (!row?.title) continue;
@@ -423,6 +429,7 @@ export async function POST(req: NextRequest) {
               // miss counter at 0 since we just saw this listing live.
               sourcingType: "fb_mirror",
               fbMissCount: 0,
+              imageUrls: [],
               soldAt: isBackfillSold
                 ? parseListedDate(row.listedOn) ?? new Date()
                 : null,
@@ -505,6 +512,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Photo backfill: a matched live product with no photo gets the listing's
+    // real FB photo rehosted to Blob. Heals mirror products whose Amazon-
+    // screenshot images were purged AND manual uploads that were never
+    // photographed — the Marketplace listing photo is ground truth for both.
+    if (
+      !didMarkSold &&
+      product.imageUrls.length === 0 &&
+      row.photoUrl &&
+      photoBackfilled < MAX_PHOTO_BACKFILL_PER_REQUEST
+    ) {
+      const blobUrl = await rehostFbPhoto(row.photoUrl, product.id);
+      if (blobUrl) {
+        data.imageUrls = [blobUrl];
+        photoBackfilled++;
+      }
+    }
+
     // Skip the write if nothing actually changed — fbStatus already matches,
     // we have an ID already, and nothing else changed. Saves DB round-trips
     // on steady-state runs where everything is already in sync.
@@ -513,6 +537,7 @@ export async function POST(req: NextRequest) {
       !didUpdatePrice &&
       !didResetMiss &&
       !data.fbListingId &&
+      !data.imageUrls &&
       product.fbStatus === row.fbStatus
     ) {
       continue;
@@ -736,6 +761,7 @@ export async function POST(req: NextRequest) {
     unmatched,
     autoCreated,
     autoCreatedWithPhoto,
+    photoBackfilled,
     autoCreateErrors,
     autoCreatedSamples,
     unmatchedSamples,

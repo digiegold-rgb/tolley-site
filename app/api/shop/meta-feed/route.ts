@@ -15,10 +15,11 @@ export const dynamic = "force-dynamic";
  *
  * Quality gate mirrors selectDropProducts in lib/shop/drop-email.ts:
  *   status/targetPrice/photo — only live, priced, photographed items
- *   sourcingType != fb_mirror — mirror-scraped imageUrls are Amazon page
- *     SCREENSHOTS (price/Prime/cart visible); uploading those to a Meta
- *     catalog is a commerce-policy strike waiting to happen
  *   isSendableTitle — rejects mirror scrape junk titles
+ * fb_mirror products ARE included: the 2026-08-07 image audit found 12 whose
+ * imageUrls were Amazon page screenshots (purged → they fall out via the
+ * photoless filter until fb-sync's photo backfill rehosts the real listing
+ * photo); the remaining 63 carry the listing's own photo.
  *
  * Sold/phantom products drop out of the feed on Meta's next scheduled fetch.
  * If META_FEED_KEY is set, the fetch URL must carry ?key=<value>.
@@ -61,9 +62,6 @@ export async function GET(req: NextRequest) {
     where: {
       status: "listed",
       targetPrice: { gt: 0 },
-      // fb_mirror exclusion happens in JS below — `NOT {sourcingType: ...}`
-      // in Prisma compiles to SQL `NOT (col = ...)`, which drops NULL rows
-      // (manual/shop uploads have sourcingType NULL).
       NOT: { imageUrls: { isEmpty: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -74,14 +72,12 @@ export async function GET(req: NextRequest) {
       description: true,
       targetPrice: true,
       imageUrls: true,
-      sourcingType: true,
       condition: true,
     },
   });
 
   const lines = [HEADER.join(",")];
   for (const p of rows) {
-    if (p.sourcingType === "fb_mirror") continue;
     if (!isSendableTitle(p.title)) continue;
     const image = p.imageUrls.find((u) => /^https?:\/\//.test(u));
     if (!image) continue;
