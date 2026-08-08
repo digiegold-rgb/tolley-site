@@ -12,7 +12,7 @@ export async function GET() {
 
   return NextResponse.json({
     key: process.env.SYNC_SECRET || "",
-    autopilotKey: "autopilot-portal-2026",
+    autopilotKey: process.env.CONTENT_API_KEY || "",
     autopilotUrl: "https://content-api.tolley.io",
     autopilotTailscale: "http://100.81.82.79:8096",
   });

@@ -207,7 +207,7 @@ export function ContentPortal() {
   const [apiUrl, setApiUrl] = useState("https://content-api.tolley.io");
   const [isLocal, setIsLocal] = useState(false);
   const [syncKey, setSyncKey] = useState("");
-  const [autopilotKey, setAutopilotKey] = useState("autopilot-portal-2026");
+  const [autopilotKey, setAutopilotKey] = useState("");
 
   // Data
   const [status, setStatus] = useState<StatusData | null>(null);
@@ -235,20 +235,20 @@ export function ContentPortal() {
   // Upload state
   const [tusUrl, setTusUrl] = useState("https://upload.tolley.io/files/");
 
-  // Bootstrap: get auth keys + detect network
+  // Bootstrap: get auth keys (admin-gated — the autopilot key must never be
+  // hardcoded here: this is a client bundle, anything literal ships publicly),
+  // then detect network with the fetched key.
   useEffect(() => {
     fetch("/api/content/portal-auth")
       .then((r) => r.json())
       .then((d) => {
         if (d.key) setSyncKey(d.key);
         if (d.autopilotKey) setAutopilotKey(d.autopilotKey);
+        return fetch("http://100.81.82.79:8096/api/status", {
+          headers: { Authorization: `Bearer ${d.autopilotKey || ""}` },
+          signal: AbortSignal.timeout(2000),
+        });
       })
-      .catch(() => {});
-
-    fetch("http://100.81.82.79:8096/api/status", {
-      headers: { Authorization: "Bearer autopilot-portal-2026" },
-      signal: AbortSignal.timeout(2000),
-    })
       .then((r) => {
         if (r.ok) {
           setApiUrl("http://100.81.82.79:8096");
