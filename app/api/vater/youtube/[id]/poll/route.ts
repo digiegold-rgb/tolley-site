@@ -241,10 +241,21 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     }
     // Real per-video generation cost (DGX pushes result.costs on job
     // completion — per-provider breakdown for the Library card/lightbox).
+    // Billing-report true-ups get reconciled into costJson after the fact
+    // (byStage.reconciliation); a re-poll of a done job must not revert
+    // that to the raw wall×rate capture, which runs ~40% low.
     {
       const costs = (result as unknown as { costs?: unknown }).costs;
       if (costs && typeof costs === "object") {
-        data.costJson = costs as Prisma.InputJsonValue;
+        const existing = project.costJson as {
+          byStage?: Record<string, unknown>;
+        } | null;
+        const incoming = costs as { byStage?: Record<string, unknown> };
+        const keepReconciled =
+          existing?.byStage?.reconciliation && !incoming.byStage?.reconciliation;
+        if (!keepReconciled) {
+          data.costJson = costs as Prisma.InputJsonValue;
+        }
       }
     }
     // -- audio: accept audioUrl OR derive from audioPath ------------------
