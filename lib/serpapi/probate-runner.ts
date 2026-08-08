@@ -9,6 +9,7 @@ import {
   extractStreetAddress,
   type ObitTarget,
 } from "@/lib/serpapi/probate-config";
+import { parseSurvivedBy } from "@/lib/leads/heir-name";
 
 interface OrganicResult {
   title?: string;
@@ -153,9 +154,6 @@ interface KnowledgeGraphPerson {
   snippet?: string;
 }
 
-const SURVIVED_RX =
-  /survived by[^.]*?\b(?:his|her|their)?\s*(wife|husband|son|sons|daughter|daughters|children|brother|sister|mother|father|grandchildren)?[^.]*?([A-Z][a-zA-Z'.\- ]{2,40}(?:\s+[A-Z][a-zA-Z'.\- ]{2,40}){1,2})/i;
-
 // Type alias (not interface) so the array satisfies Prisma's InputJsonValue.
 type Heir = {
   name: string;
@@ -168,18 +166,18 @@ function extractHeirs(
   decedentName: string
 ): Heir[] {
   const heirs: Heir[] = [];
+  const seen = new Set<string>();
   for (const item of items) {
     const snippet = `${item.title ?? ""} ${item.snippet ?? ""}`;
-    const m = snippet.match(SURVIVED_RX);
-    if (m && m[2]) {
-      const name = m[2].trim();
-      if (name.toLowerCase() !== decedentName.toLowerCase()) {
-        heirs.push({
-          name,
-          relationship: m[1] ?? null,
-          source: typeof item.link === "string" ? item.link : "unknown",
-        });
-      }
+    for (const parsed of parseSurvivedBy(snippet, decedentName)) {
+      const key = parsed.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      heirs.push({
+        name: parsed.name,
+        relationship: parsed.relationship,
+        source: typeof item.link === "string" ? item.link : "unknown",
+      });
     }
   }
   return heirs.slice(0, 5);

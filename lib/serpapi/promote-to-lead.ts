@@ -18,10 +18,11 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { isPersonName, salvageHeirName } from "@/lib/leads/heir-name";
+import { probateLeadScore, type ProbateScoreFactors } from "@/lib/leads/probate-score";
 
-/** Motivation scores. Distress is a harder signal than probate — someone is
- *  already on a legal clock — so it opens higher. */
-const SCORE_PROBATE = 70;
+/** Distress is a harder signal than probate — someone is already on a legal
+ *  clock — so it opens higher. Probate scores are computed per-lead. */
 const SCORE_DISTRESS = 80;
 
 export interface PromoteResult {
@@ -71,6 +72,18 @@ export async function promoteProbateSignal(signalId: string): Promise<PromoteRes
   const heirs = Array.isArray(signal.heirsJson)
     ? (signal.heirsJson as { name?: string; relationship?: string }[])
     : [];
+  // A callable heir must be a validated person name. Legacy rows hold raw
+  // relationship phrases ("her loving husband Wendell") — salvage what we can.
+  const heirContact =
+    heirs
+      .map((h) =>
+        isPersonName(h?.name)
+          ? h!.name!
+          : h?.name
+            ? salvageHeirName(h.name, signal.decedentName)?.name ?? null
+            : null,
+      )
+      .find(Boolean) ?? null;
   const heirNames = heirs.map((h) => h?.name).filter(Boolean).join(", ");
 
   const locality = [signal.city, signal.state].filter(Boolean).join(", ");
@@ -87,21 +100,29 @@ export async function promoteProbateSignal(signalId: string): Promise<PromoteRes
     .filter(Boolean)
     .join("\n");
 
+  const signalDate = signal.obitDate ?? signal.createdAt;
+  const scoreFactors: ProbateScoreFactors = {
+    signal: "probate",
+    hasAddress: Boolean(signal.matchedAddress),
+    hasHeirContact: heirContact != null,
+    hasPhone: false,
+    estimatedValue: signal.estimatedValue ?? null,
+    signalAgeDays: signalDate
+      ? Math.max(0, Math.round((Date.now() - signalDate.getTime()) / 86_400_000))
+      : null,
+  };
+
   try {
     const lead = await prisma.lead.create({
       data: {
         source: "probate-scan",
         status: "new",
         pipelineStage: "new_lead",
-        score: SCORE_PROBATE,
-        scoreFactors: {
-          signal: "probate",
-          hasAddress: Boolean(signal.matchedAddress),
-          hasHeirs: heirs.length > 0,
-          estimatedValue: signal.estimatedValue ?? null,
-        },
-        // The heir is who you can actually talk to; the decedent is not.
-        ownerName: heirs[0]?.name ?? signal.decedentName,
+        score: probateLeadScore(scoreFactors),
+        scoreFactors,
+        // The heir is who you can actually talk to; the decedent is not —
+        // but only a validated person name goes here, never a phrase.
+        ownerName: heirContact ?? signal.decedentName,
         notes,
         parcelId: signal.parcelId ?? null,
       },
