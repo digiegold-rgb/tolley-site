@@ -12,6 +12,7 @@ import type { SceneSpec } from "@/lib/vater/video-spec";
 import { canAccessProject } from "@/lib/vater/project-access";
 import { getAnimationPrice } from "@/lib/vater/pricing";
 import { recordUsage } from "@/lib/vater/billing/record-usage";
+import { mergeVideoCost } from "@/lib/vater/video-cost";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -73,7 +74,13 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   // fresh as possible (the batch can run 1-2 hours — see scene/animate race).
   const project = await prisma.youTubeProject.findUnique({
     where: { id },
-    select: { id: true, userId: true, scenesJson: true, status: true },
+    select: {
+      id: true,
+      userId: true,
+      scenesJson: true,
+      status: true,
+      costJson: true,
+    },
   });
   if (
     !project ||
@@ -137,12 +144,22 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     }
   }
 
+  // Fold this revision pass's real cost into the video's cumulative
+  // costJson (library card = total production cost across every part).
+  // Idempotent per animateAllJobId — re-calling finalize can't double-count.
+  const mergedCost = mergeVideoCost(
+    project.costJson,
+    (job.result as { costs?: unknown } | null)?.costs,
+    animateAllJobId,
+  );
+
   await prisma.youTubeProject.update({
     where: { id },
     data: {
       scenesJson: scenes as unknown as object,
       editedAt: new Date(),
       status: project.status === "ready" ? "editing" : project.status,
+      ...(mergedCost ? { costJson: mergedCost as unknown as object } : {}),
     },
   });
 

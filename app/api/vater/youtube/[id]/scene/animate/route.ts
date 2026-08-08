@@ -35,6 +35,7 @@ import {
 import type { SceneSpec } from "@/lib/vater/video-spec";
 import { canAccessProject } from "@/lib/vater/project-access";
 import { getAnimationPriceCents } from "@/lib/vater/pricing";
+import { mergeVideoCost } from "@/lib/vater/video-cost";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
 import { recordUsage } from "@/lib/vater/billing/record-usage";
 import {
@@ -322,7 +323,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     // clobber every concurrent edit to OTHER scenes. Merge only [sceneIdx].
     const fresh = await prisma.youTubeProject.findUnique({
       where: { id },
-      select: { scenesJson: true, status: true },
+      select: { scenesJson: true, status: true, costJson: true },
     });
     const freshScenes: SceneSpec[] = Array.isArray(fresh?.scenesJson)
       ? (fresh.scenesJson as unknown as SceneSpec[]).slice()
@@ -357,6 +358,15 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       imageUrl: freshExisting.imageUrl ?? "",
     };
 
+    // Fold this regen's real cost into the video's cumulative costJson
+    // (library card = total production cost across every part). Idempotent
+    // per animateJobId — a retry of this route can't double-count.
+    const mergedCost = mergeVideoCost(
+      fresh?.costJson,
+      (result as { costs?: unknown }).costs,
+      animateJobIdForBilling,
+    );
+
     const currentStatus = fresh?.status ?? project.status;
     const updated = await prisma.youTubeProject.update({
       where: { id },
@@ -364,6 +374,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         scenesJson: nextScenes as unknown as object,
         editedAt: new Date(),
         status: currentStatus === "ready" ? "editing" : currentStatus,
+        ...(mergedCost ? { costJson: mergedCost as unknown as object } : {}),
       },
       select: {
         id: true,

@@ -18,6 +18,10 @@ export interface VideoCostJson {
   llmUsd?: number;
   estimated?: boolean;
   byStage?: Record<string, VideoCostStage>;
+  // Per-job contributions already folded into the totals above. Keyed by
+  // DGX job id — the merge idempotency ledger, so re-polls of a done job
+  // can't double-count it.
+  byJob?: Record<string, number>;
   updatedAt?: string;
 }
 
@@ -35,6 +39,55 @@ export function parseVideoCost(raw: unknown): VideoCostJson | null {
 export function formatUsd(n: number): string {
   if (n > 0 && n < 0.01) return "<$0.01";
   return `$${n.toFixed(2)}`;
+}
+
+const round4 = (n: number) => Math.round(n * 10000) / 10000;
+
+/**
+ * Fold one finished job's costs into a video's cumulative costJson so the
+ * library card shows total production cost across every part — the full
+ * render plus later editor revision passes (regen / animate-all).
+ * Idempotent per jobId via byJob: re-polls and finalize retries return
+ * null instead of double-counting. Returns null when there is nothing new
+ * to persist.
+ */
+export function mergeVideoCost(
+  existingRaw: unknown,
+  incomingRaw: unknown,
+  jobId: string,
+): VideoCostJson | null {
+  const incoming = parseVideoCost(incomingRaw);
+  if (!incoming || !((incoming.totalUsd ?? 0) > 0)) return null;
+  const existing = parseVideoCost(existingRaw);
+  if (!existing) {
+    return { ...incoming, byJob: { [jobId]: round4(incoming.totalUsd ?? 0) } };
+  }
+  if (existing.byJob?.[jobId] !== undefined) return null;
+
+  const byStage: Record<string, VideoCostStage> = { ...(existing.byStage ?? {}) };
+  for (const [k, v] of Object.entries(incoming.byStage ?? {})) {
+    const prev = byStage[k];
+    byStage[k] = prev
+      ? {
+          ...v,
+          usd: round4((prev.usd ?? 0) + (v.usd ?? 0)),
+          calls: (prev.calls ?? 0) + (v.calls ?? 0),
+        }
+      : v;
+  }
+  return {
+    ...existing,
+    totalUsd: round4((existing.totalUsd ?? 0) + (incoming.totalUsd ?? 0)),
+    modalUsd: round4((existing.modalUsd ?? 0) + (incoming.modalUsd ?? 0)),
+    geminiUsd: round4((existing.geminiUsd ?? 0) + (incoming.geminiUsd ?? 0)),
+    falUsd: round4((existing.falUsd ?? 0) + (incoming.falUsd ?? 0)),
+    otherUsd: round4((existing.otherUsd ?? 0) + (incoming.otherUsd ?? 0)),
+    llmUsd: round4((existing.llmUsd ?? 0) + (incoming.llmUsd ?? 0)),
+    estimated: Boolean(existing.estimated || incoming.estimated),
+    byStage,
+    byJob: { ...(existing.byJob ?? {}), [jobId]: round4(incoming.totalUsd ?? 0) },
+    updatedAt: incoming.updatedAt ?? new Date().toISOString(),
+  };
 }
 
 /** Non-zero provider rows for breakdown UIs, largest first. */

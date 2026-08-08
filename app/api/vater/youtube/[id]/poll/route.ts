@@ -34,6 +34,7 @@ import {
   phaseToStatus,
   type YouTubeProjectStatus,
 } from "@/lib/vater/youtube-status";
+import { mergeVideoCost } from "@/lib/vater/video-cost";
 import { auth } from "@/auth";
 import { canAccessProject } from "@/lib/vater/project-access";
 import { recordUsage } from "@/lib/vater/billing/record-usage";
@@ -241,21 +242,20 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     }
     // Real per-video generation cost (DGX pushes result.costs on job
     // completion — per-provider breakdown for the Library card/lightbox).
-    // Billing-report true-ups get reconciled into costJson after the fact
-    // (byStage.reconciliation); a re-poll of a done job must not revert
-    // that to the raw wall×rate capture, which runs ~40% low.
+    // Costs are CUMULATIVE across every part of production — full render
+    // plus later revision passes — and billing-report true-ups get
+    // reconciled in after the fact, so fold this job in additively.
+    // mergeVideoCost is idempotent per jobId: a re-poll of a done job
+    // returns null and cannot double-count or clobber reconciled numbers.
     {
       const costs = (result as unknown as { costs?: unknown }).costs;
       if (costs && typeof costs === "object") {
-        const existing = project.costJson as {
-          byStage?: Record<string, unknown>;
-        } | null;
-        const incoming = costs as { byStage?: Record<string, unknown> };
-        const keepReconciled =
-          existing?.byStage?.reconciliation && !incoming.byStage?.reconciliation;
-        if (!keepReconciled) {
-          data.costJson = costs as Prisma.InputJsonValue;
-        }
+        const merged = mergeVideoCost(
+          project.costJson,
+          costs,
+          project.autopilotJobId,
+        );
+        if (merged) data.costJson = merged as Prisma.InputJsonValue;
       }
     }
     // -- audio: accept audioUrl OR derive from audioPath ------------------
