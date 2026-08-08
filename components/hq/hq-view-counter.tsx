@@ -313,10 +313,27 @@ export function HqViewCounter() {
                 </span>
               </div>
               {c.note && <div style={{ fontSize: 10, color: "#8e8e93", marginBottom: 6 }}>{c.note}</div>}
-              <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>
-                {v.views !== null ? v.views.toLocaleString() : "—"}
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#8e8e93", marginLeft: 6 }}>views</span>
-              </div>
+              {(() => {
+                // Day one of tracking a snapshot-based channel (TikTok/X): no
+                // window delta exists yet, but lifetime does. A bare "—" reads
+                // as broken — show the all-time number, honestly labeled,
+                // until the first day-over-day delta lands.
+                const fallback = v.views === null && c.lifetimeViews !== null;
+                const shown = v.views ?? c.lifetimeViews;
+                return (
+                  <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>
+                    {shown !== null ? shown.toLocaleString() : "—"}
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#8e8e93", marginLeft: 6 }}>
+                      {fallback ? "views · all-time" : "views"}
+                    </span>
+                  </div>
+                );
+              })()}
+              {v.views === null && c.lifetimeViews !== null && (
+                <div style={{ fontSize: 10, color: "#8a5300", marginTop: 2 }}>
+                  {WINDOW_LABELS[win]} splits start after day 2 of tracking
+                </div>
+              )}
               {v.since && (
                 <div style={{ fontSize: 10, color: "#8a5300", marginTop: 2 }}>since {v.since}</div>
               )}

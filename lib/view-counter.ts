@@ -79,12 +79,16 @@ export const VIEW_CHANNELS: readonly ViewChannel[] = [
   },
   {
     // Bluesky has no view metric — this card is followers-only by design.
-    key: "bsky-ykh",
+    // The REAL account (found 2026-08-08): Tolley's Treasure Hauls,
+    // haul.tolley.io custom-domain handle, posting since 7/28 via
+    // post-short.py fanout. The planned "yourkchomes.bsky.social" account
+    // was a duplicate that never existed — don't resurrect it.
+    key: "bsky-haul",
     platform: "bluesky",
-    label: "Your KC Homes",
-    note: "KC content mirror",
-    url: "https://bsky.app/profile/yourkchomes.bsky.social",
-    contentSince: "2026-08-06",
+    label: "Treasure Hauls",
+    note: "haul shorts mirror",
+    url: "https://bsky.app/profile/haul.tolley.io",
+    contentSince: "2026-07-28",
   },
   {
     // Scraped from the shared Claude Browser profile (same one-time-login
