@@ -94,7 +94,7 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "biz-delivery", label: "1099 Delivery", lane: "jared-biz", row: 0, col: 4, kind: "business", icon: "📦", signal: "cron:/api/cron/dispatch-match", href: "/drive" },
   { id: "biz-shop", label: "Shop / Reselling", lane: "jared-biz", row: 0, col: 5, kind: "business", icon: "🛒", signal: "cron:/api/cron/shop-intelligence", href: "/shop" },
   { id: "biz-trading", label: "Trading Engine", lane: "jared-biz", row: 1, col: 0, kind: "business", icon: "📈", signal: "dgx:unit:trading-sync", cadenceMin: 10, href: "/trading" },
-  { id: "biz-pools", label: "Pools", lane: "jared-biz", row: 1, col: 1, kind: "business", icon: "🏊", signal: "dgx:unit:pool360-sync", cadenceMin: day, href: "/pools" },
+  { id: "biz-pools", label: "Pools", lane: "jared-biz", row: 1, col: 1, kind: "business", icon: "🏊", signal: "manual:paused", href: "/pools", note: "Paused 8/7 (Jared: dead weight) — pool360-sync scraper timing out on 0 SKUs. Flip signal back to dgx:unit:pool360-sync to revive." },
   { id: "biz-passive", label: "Seller Digest $199/mo", lane: "jared-biz", row: 1, col: 2, kind: "business", icon: "💌", signal: "db:passive", cadenceMin: 2 * week, href: "/leads" },
   { id: "biz-launchpad", label: "Launchpad V2", lane: "jared-biz", row: 1, col: 3, kind: "business", icon: "🚀", signal: "db:views:launchpad", cadenceMin: week, href: "/start", note: "SerpAPI quota exhausted." },
   { id: "biz-animate", label: "Animate Studio", lane: "jared-biz", row: 1, col: 4, kind: "business", icon: "🎨", signal: "db:views:animate", cadenceMin: 2 * week, href: "/animate", note: "$25 pay-per-video, Stripe auto-invoice." },
