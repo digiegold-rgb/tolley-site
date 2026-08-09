@@ -78,15 +78,16 @@ export const VIEW_CHANNELS: readonly ViewChannel[] = [
     url: "https://www.tiktok.com/@digitaljared",
   },
   {
-    // Bluesky has no view metric — this card is followers-only by design.
-    // The REAL account (found 2026-08-08): Tolley's Treasure Hauls,
-    // haul.tolley.io custom-domain handle, posting since 7/28 via
-    // post-short.py fanout. The planned "yourkchomes.bsky.social" account
-    // was a duplicate that never existed — don't resurrect it.
+    // Bluesky has no view metric, so this card's headline is cumulative LIKES
+    // (summed from the author feed in collect.mjs). The REAL account (found
+    // 2026-08-08): Tolley's Treasure Hauls, haul.tolley.io custom-domain
+    // handle, posting since 7/28 via post-short.py fanout. The planned
+    // "yourkchomes.bsky.social" account was a duplicate that never existed —
+    // don't resurrect it.
     key: "bsky-haul",
     platform: "bluesky",
     label: "Treasure Hauls",
-    note: "haul shorts mirror",
+    note: "haul shorts mirror · likes (no views on Bluesky)",
     url: "https://bsky.app/profile/haul.tolley.io",
     contentSince: "2026-07-28",
   },

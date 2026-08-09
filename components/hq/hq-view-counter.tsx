@@ -314,6 +314,8 @@ export function HqViewCounter() {
               </div>
               {c.note && <div style={{ fontSize: 10, color: "#8e8e93", marginBottom: 6 }}>{c.note}</div>}
               {(() => {
+                // Bluesky has no view metric — its headline number is likes.
+                const metric = c.platform === "bluesky" ? "likes" : "views";
                 // Day one of tracking a snapshot-based channel (TikTok/X): no
                 // window delta exists yet, but lifetime does. A bare "—" reads
                 // as broken — show the all-time number, honestly labeled,
@@ -324,7 +326,7 @@ export function HqViewCounter() {
                   <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>
                     {shown !== null ? shown.toLocaleString() : "—"}
                     <span style={{ fontSize: 11, fontWeight: 600, color: "#8e8e93", marginLeft: 6 }}>
-                      {fallback ? "views · all-time" : "views"}
+                      {fallback ? `${metric} · all-time` : metric}
                     </span>
                   </div>
                 );

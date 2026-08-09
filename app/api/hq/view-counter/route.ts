@@ -276,18 +276,21 @@ export async function GET() {
       };
     });
 
+    // Bluesky's stored number is LIKES, not views — keep it out of the
+    // empire-wide "total views" so the headline stays a true view count.
+    const viewChannels = channels.filter((c) => c.platform !== "bluesky");
     const totals: Record<string, { views: number; partial: boolean }> = {};
     for (const days of WINDOWS) {
       const k = `d${days}`;
       totals[k] = {
-        views: channels.reduce((s, c) => s + (c.windows[k]?.views ?? 0), 0),
-        partial: channels.some((c) => c.windows[k]?.partial && (c.windows[k]?.views ?? 0) > 0),
+        views: viewChannels.reduce((s, c) => s + (c.windows[k]?.views ?? 0), 0),
+        partial: viewChannels.some((c) => c.windows[k]?.partial && (c.windows[k]?.views ?? 0) > 0),
       };
     }
     totals.lifetime = {
-      views: channels.reduce((s, c) => s + (c.lifetimeViews ?? 0), 0),
+      views: viewChannels.reduce((s, c) => s + (c.lifetimeViews ?? 0), 0),
       // FB "lifetime" is only as old as its daily history — always flag it.
-      partial: channels.some((c) => c.platform === "facebook" && (c.lifetimeViews ?? 0) > 0),
+      partial: viewChannels.some((c) => c.platform === "facebook" && (c.lifetimeViews ?? 0) > 0),
     };
 
     return NextResponse.json({
