@@ -31,6 +31,7 @@ const STUDIO_ONLY_ALLOWED = [
  * is a second, independent lock on the financial data specifically.
  */
 const STUDIO_ONLY_DENIED = [
+  "/api/vater/direct/runner",
   "/api/vater/budget",
   "/api/vater/observer",
   "/api/vater/rss",

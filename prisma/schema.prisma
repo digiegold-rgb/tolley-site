@@ -3934,6 +3934,37 @@ model VaterObserverProposal {
   @@index([projectId, status, createdAt])
 }
 
+// ── Vater Direct (2026-08-09) ─────────────────────────────────────────
+// Trey's dictation lane: a brief dictated in the studio becomes a job the
+// DGX-side vater-direct-runner claims and feeds to headless Claude. Agent
+// questions and Trey's replies round-trip through VaterDirectMessage.
+
+model VaterDirectJob {
+  id              String   @id @default(cuid())
+  status          String   @default("queued") // queued | running | awaiting_reply | done | failed | canceled
+  claudeSessionId String?  @db.VarChar(64)
+  createdByEmail  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  messages VaterDirectMessage[]
+
+  @@index([status, createdAt])
+}
+
+model VaterDirectMessage {
+  id                String         @id @default(cuid())
+  jobId             String
+  job               VaterDirectJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  role              String // trey | agent | system
+  kind              String         @default("text") // text | question | result | error
+  text              String         @db.Text
+  deliveredToRunner Boolean        @default(false)
+  createdAt         DateTime       @default(now())
+
+  @@index([jobId, createdAt])
+}
+
 // ── Vater Studio billing (2026-04-26) ─────────────────────────────────
 // Pure dollar-denominated, NO credits. Mirrors Claude.ai usage UX.
 //

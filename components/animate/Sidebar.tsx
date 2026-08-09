@@ -20,6 +20,7 @@ interface NavItemDef {
 
 const NAV_ITEMS: NavItemDef[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { id: 'direct', label: 'Direct', icon: 'sparkle' },
   { id: 'script-review', label: 'Script Review', icon: 'scriptReview' },
   { id: 'library', label: 'Library', icon: 'videoEditor' },
   { id: 'queue', label: 'Queue', icon: 'history' },

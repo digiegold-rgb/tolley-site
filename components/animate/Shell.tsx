@@ -30,6 +30,7 @@ import { ProjectShell } from './screens/editor/ProjectShell';
 import { ScriptReviewScreen } from './screens/review/ScriptReviewScreen';
 import { CourseScreen } from './screens/course/CourseScreen';
 import { Library } from './screens/studio/Library';
+import { DirectScreen } from './screens/studio/DirectScreen';
 import { Voices } from './screens/studio/Voices';
 import { Feeds } from './screens/studio/Feeds';
 import { Queue } from './screens/studio/Queue';
@@ -311,6 +312,7 @@ function renderScreen(
         ? <ProjectShell projectId={selectedProjectId} />
         : <DashboardScreen />;
     case 'script-review': return <ScriptReviewScreen />;
+    case 'direct': return <DirectScreen />;
     // Legacy 'studio' tab is split into standalone sidebar routes. Keep
     // the key as a backwards-compat alias that lands on Library.
     case 'studio':
