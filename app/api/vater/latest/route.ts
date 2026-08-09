@@ -42,39 +42,28 @@ export async function GET() {
     }),
   ]);
 
-  // Billed price = "Compute (at cost)" + "Render Operations" (finished
-  // minutes x OPS_RATE). Computed here rather than in the client so the
-  // dashboard pill and the invoice can never disagree.
+  // ONE number for the studio: everything spent on compute (at cost) plus
+  // the render-operations fee. Compute is ALL cash out, not just what landed
+  // on a finished video — anything less makes the headline shrink and hides
+  // real spend (Jared 8/8: "I just want one number").
   const opsRatePerMinute = getOpsRate();
   const r2 = (n: number) => Math.round(n * 100) / 100;
-  let computeUsd = 0;
   let minutes = 0;
   for (const p of finished) {
-    const c = p.costJson as { totalUsd?: number } | null;
-    computeUsd += Number(c?.totalUsd ?? 0);
     minutes += Math.max(0, Number(p.audioDuration ?? 0)) / 60;
   }
-  const opsUsd = r2(minutes * opsRatePerMinute);
-  // Cash actually spent across ALL Vater work — the ledger rollup, which
-  // includes spend the billed number can't see: unfinished/cancelled runs,
-  // dev + test renders, and the pre-2026-08-07 era before per-video capture.
-  // This number must never silently shrink, so it is reported alongside the
-  // billed figure rather than replaced by it.
-  const spentUsd = r2(
+  const computeUsd = r2(
     (costs?.claudeUsd ?? 0) + (costs?.modalUsd ?? 0) + (costs?.geminiUsd ?? 0) +
     (costs?.falUsd ?? 0) + (costs?.otherUsd ?? 0),
   );
-  const billedUsd = r2(r2(computeUsd) + opsUsd);
+  const opsUsd = r2(minutes * opsRatePerMinute);
   const billing = {
     opsRatePerMinute,
     minutes: r2(minutes),
     videos: finished.length,
-    computeUsd: r2(computeUsd),
+    computeUsd,
     opsUsd,
-    totalUsd: billedUsd,
-    spentUsd,
-    /** Spend not attached to a finished video (unfinished, cancelled, dev). */
-    unbilledUsd: r2(Math.max(0, spentUsd - r2(computeUsd))),
+    totalUsd: r2(computeUsd + opsUsd),
   };
 
   return NextResponse.json({ updates, costs, billing });

@@ -9,7 +9,6 @@ import { isFinalMp4Stale, finalVideoPlaybackUrl } from "@/lib/vater/youtube-stat
 import {
   parseVideoCost,
   formatUsd,
-  costProviderRows,
   buildVideoBilling,
   DEFAULT_OPS_RATE_PER_MIN,
 } from "@/lib/vater/video-cost";
@@ -391,15 +390,9 @@ function LibraryCard({
                 <span
                   className="font-medium text-emerald-500/90"
                   title={
-                    `Billed price${cost.estimated ? " (compute contains estimates)" : ""}\n` +
-                    `Compute (at cost): ${formatUsd(bill.computeUsd)}\n` +
-                    `Render Operations: ${formatUsd(bill.opsUsd)} ` +
-                    `(${bill.minutes.toFixed(2)} min x ${formatUsd(opsRatePerMinute ?? DEFAULT_OPS_RATE_PER_MIN)}/min)\n` +
-                    `Total: ${formatUsd(bill.totalUsd)} — ${formatUsd(bill.effectiveUsdPerMinute)}/min\n\n` +
-                    `Compute breakdown:\n` +
-                    costProviderRows(cost)
-                      .map((r) => `${r.label}: ${formatUsd(r.usd)}`)
-                      .join("\n")
+                    `Compute  ${formatUsd(bill.computeUsd)}\n` +
+                    `Render operations  ${formatUsd(bill.opsUsd)}\n` +
+                    `Total  ${formatUsd(bill.totalUsd)}`
                   }
                 >
                   {formatUsd(bill.totalUsd)}

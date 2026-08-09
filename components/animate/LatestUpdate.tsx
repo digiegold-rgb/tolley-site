@@ -46,8 +46,6 @@ interface VaterBilling {
   computeUsd: number;
   opsUsd: number;
   totalUsd: number;
-  spentUsd: number;
-  unbilledUsd: number;
 }
 
 interface LatestPayload {
@@ -229,32 +227,23 @@ export function VaterCostPill(): React.ReactElement | null {
   const c = data?.costs;
   const b = data?.billing;
   if (!c) return null;
-  // Show BOTH numbers. Billed alone is smaller than cash out (it can only
-  // see finished videos), and replacing spend with it made the headline drop
-  // ~$24 overnight — a total must never silently shrink.
-  const spendUsd = b?.spentUsd ?? (c.claudeUsd + c.modalUsd + c.geminiUsd + c.falUsd + c.otherUsd);
-  const totalUsd = spendUsd;
+  // ONE number: compute at cost + render operations. Simple one-line rows
+  // behind it — no rate math, no parentheses (Jared 8/8).
+  const totalUsd =
+    b?.totalUsd ?? c.claudeUsd + c.modalUsd + c.geminiUsd + c.falUsd + c.otherUsd;
   const rows: { label: string; value: string; dim?: boolean }[] = b
     ? [
-        { label: `BILLED — ${b.videos} finished video${b.videos === 1 ? '' : 's'}`, value: `$${b.totalUsd.toFixed(2)}` },
-        { label: '   Compute (at cost)', value: `$${b.computeUsd.toFixed(2)}`, dim: true },
-        {
-          label: `   Render Operations (${b.minutes.toFixed(1)} min x $${b.opsRatePerMinute.toFixed(2)}/min)`,
-          value: `$${b.opsUsd.toFixed(2)}`,
-          dim: true,
-        },
-        { label: 'CASH SPENT (everything)', value: `$${b.spentUsd.toFixed(2)}` },
-        { label: '   Not on a finished video (in-progress, cancelled, tests)', value: `$${b.unbilledUsd.toFixed(2)}`, dim: true },
-        { label: '   Modal GPU (stills + animation)', value: `$${c.modalUsd.toFixed(2)}`, dim: true },
-        { label: '   Gemini (images + vision)', value: `$${c.geminiUsd.toFixed(2)}`, dim: true },
-        { label: '   fal.ai (Kling/Luma clips)', value: `$${c.falUsd.toFixed(2)}`, dim: true },
-        { label: '   Other (hosted LLM, misc APIs)', value: `$${c.otherUsd.toFixed(2)}`, dim: true },
+        { label: 'Compute', value: `$${b.computeUsd.toFixed(2)}` },
+        { label: 'Render operations', value: `$${b.opsUsd.toFixed(2)}` },
+        { label: 'Total', value: `$${b.totalUsd.toFixed(2)}` },
+        { label: 'Videos', value: String(b.videos), dim: true },
+        { label: 'Minutes', value: b.minutes.toFixed(1), dim: true },
       ]
     : [
-        { label: 'Modal GPU (stills + animation)', value: `$${c.modalUsd.toFixed(2)}` },
-        { label: 'Gemini (images + vision)', value: `$${c.geminiUsd.toFixed(2)}` },
-        { label: 'fal.ai (Kling/Luma clips)', value: `$${c.falUsd.toFixed(2)}` },
-        { label: 'Other (hosted LLM, misc APIs)', value: `$${c.otherUsd.toFixed(2)}` },
+        { label: 'Modal GPU', value: `$${c.modalUsd.toFixed(2)}` },
+        { label: 'Gemini', value: `$${c.geminiUsd.toFixed(2)}` },
+        { label: 'fal.ai', value: `$${c.falUsd.toFixed(2)}` },
+        { label: 'Other', value: `$${c.otherUsd.toFixed(2)}` },
       ];
   return (
     <div
@@ -278,10 +267,7 @@ export function VaterCostPill(): React.ReactElement | null {
         }}
       >
         <span style={{ color: GREEN, fontWeight: 700 }}>≈</span>
-        <span>
-          ${totalUsd.toFixed(2)} spent
-          {b ? <span style={{ opacity: 0.7 }}> · ${b.totalUsd.toFixed(2)} billed</span> : null}
-        </span>
+        <span>${totalUsd.toFixed(2)}</span>
         <span style={{ opacity: 0.6, fontSize: 10 }}>est.</span>
       </div>
       {open && (

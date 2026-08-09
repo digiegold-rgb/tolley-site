@@ -316,27 +316,22 @@ export function YouTubeFinalPlayer({ project, onRecomposeStart }: Props) {
           return (
             <>
               <span
-                title={
-                  `Compute (at cost) — passed through unchanged\n` +
-                  costProviderRows(videoCost)
-                    .map((r) => `${r.label}: ${formatUsd(r.usd)}`)
-                    .join("\n")
-                }
+                title={costProviderRows(videoCost)
+                  .map((r) => `${r.label}  ${formatUsd(r.usd)}`)
+                  .join("\n")}
                 className="inline-flex items-center gap-1 rounded-full border border-zinc-600/50 bg-zinc-700/20 px-2 py-0.5 font-medium text-zinc-300"
               >
                 Compute {formatUsd(bill.computeUsd)}
                 {videoCost.estimated ? " est" : ""}
               </span>
               <span
-                title={`${bill.minutes.toFixed(2)} finished min x ${formatUsd(
-                  opsRatePerMinute ?? DEFAULT_OPS_RATE_PER_MIN,
-                )}/min`}
+                title={`${bill.minutes.toFixed(1)} min`}
                 className="inline-flex items-center gap-1 rounded-full border border-zinc-600/50 bg-zinc-700/20 px-2 py-0.5 font-medium text-zinc-300"
               >
                 Ops {formatUsd(bill.opsUsd)}
               </span>
               <span
-                title={`Billed price — ${formatUsd(bill.effectiveUsdPerMinute)} per finished minute`}
+                title={`${formatUsd(bill.effectiveUsdPerMinute)} per minute`}
                 className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-300"
               >
                 Total {formatUsd(bill.totalUsd)}
