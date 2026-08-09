@@ -280,7 +280,7 @@ export async function GET() {
     // headline stays a true view count: Bluesky's number is LIKES, and
     // LinkedIn's is IMPRESSIONS (a feed-appearance count, not a watch).
     const viewChannels = channels.filter(
-      (c) => c.platform !== "bluesky" && c.platform !== "linkedin");
+      (c) => c.platform !== "bluesky" && c.platform !== "linkedin" && c.platform !== "pinterest");
     const totals: Record<string, { views: number; partial: boolean }> = {};
     for (const days of WINDOWS) {
       const k = `d${days}`;

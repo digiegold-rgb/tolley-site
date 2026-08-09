@@ -643,6 +643,28 @@ export const autopilot = {
   makeShort: (input: { projectId: string; videoUrl: string; maxSeconds?: number }) =>
     call<{ jobId: string }>("POST", "/vater/make-short", input),
 
+  /** Async — chaptered course-lesson script generation (financial-literacy
+   *  course lane). Poll getJob(); result.chapters on done. Local LLM, ~$0. */
+  courseScript: (input: {
+    lessonId: string;
+    order: number;
+    title: string;
+    description: string;
+    module?: string;
+    prevTitle?: string;
+    nextTitle?: string;
+    chapters?: number;
+    chapterWords?: number;
+  }) => call<{ jobId: string }>("POST", "/vater/course-script", input),
+
+  /** Async — stitch rendered segment finals into a lesson master (ffmpeg
+   *  concat, stream-copy). Poll getJob(); result.finalVideoUrl on done. */
+  concatVideos: (input: {
+    lessonId: string;
+    segments: Array<{ jobId?: string; path?: string; url?: string }>;
+    projectKey?: string;
+  }) => call<{ jobId: string }>("POST", "/vater/concat-videos", input),
+
   /** Cooperatively cancel a running job. The worker checks the cancel flag
    *  at each pipeline stage boundary and bails cleanly. Status ends as
    *  "cancelled" (not "failed"). */

@@ -3705,6 +3705,12 @@ model YouTubeProject {
   // projects predate multi-tenancy and are admin-only via project-access.ts.
   userId String?
 
+  // Product lane (2026-08-09, financial-literacy course). "youtube" rows are
+  // the normal studio lane; "course-segment" rows are chapter renders owned by
+  // a CourseLesson and must never appear in the YouTube Library or the
+  // /api/vater/latest cost rollup.
+  projectType String @default("youtube") // "youtube" | "course-segment"
+
   // Mode + source
   mode          String        @default("transcribe") // "transcribe" | "topic"
   sourceUrl     String?
@@ -3823,6 +3829,75 @@ model YouTubeProject {
   @@index([styleId])
   @@index([userId])
   @@index([animateAllStartedAt])
+  @@index([projectType])
+}
+
+// ── Vater Financial Literacy Course (2026-08-09) ─────────────────────
+// Separate product lane from the YouTube pipeline. A Course holds ordered
+// CourseLessons; each lesson's ~25-min video is produced as 6 chapter
+// segments (YouTubeProject rows with projectType "course-segment") rendered
+// sequentially through the existing run-creation pipeline, then concatenated
+// on the DGX. Durable state lives here — vater_jobs.json evicts finished jobs.
+model Course {
+  id            String                 @id @default(cuid())
+  slug          String                 @unique // "financial-literacy"
+  title         String
+  status        String                 @default("draft") // "draft" | "producing" | "live"
+  stripePriceId String? // Phase 3 paywall; unset until Jared creates the price
+  lessons       CourseLesson[]
+  broadcasts    CourseBroadcastDraft[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+}
+
+model CourseLesson {
+  id          String @id @default(cuid())
+  courseId    String
+  course      Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  order       Int // 1-based lesson number
+  title       String
+  description String
+
+  // planned | script_requested | script_ready | approved | rendering |
+  // concat | ready | failed
+  status String @default("planned")
+
+  // Chaptered script doc from the DGX course-script job (edited in the tab):
+  // { chapters: [{idx, title, text, wordCount}], meta }
+  scriptDocJson    Json?
+  scriptApprovedAt DateTime? // the structural human gate — nothing renders before this
+  scriptJobId      String? // DGX course-script job id
+
+  // Segment render chain. One entry per chapter:
+  // [{idx, projectId, jobId, status, videoUrl, durationS, costUsd}]
+  segmentsJson   Json?
+  currentSegment Int? // 0-based index of the segment currently rendering
+  concatJobId    String? // DGX concat-videos job id
+  finalVideoUrl  String?
+  durationS      Float?
+  costJson       Json? // all-in rollup across segments (mergeVideoCost shape)
+  errorMessage   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([courseId, order])
+  @@index([status])
+}
+
+// Biweekly promo/teaching email drafts (Phase 4). The cron generator writes
+// rows here and STOPS — no transport is imported on that path; a human sends.
+model CourseBroadcastDraft {
+  id        String    @id @default(cuid())
+  courseId  String
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  subject   String
+  html      String
+  status    String    @default("draft") // "draft" | "sent"
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+
+  @@index([courseId, status])
 }
 
 // ── Vater Watcher — embedded Claude observer (2026-04-17) ────────────

@@ -11,7 +11,7 @@ interface WindowStat { views: number | null; partial: boolean; since: string | n
 
 interface Channel {
   key: string;
-  platform: "youtube" | "facebook" | "tiktok" | "x" | "bluesky" | "linkedin";
+  platform: "youtube" | "facebook" | "tiktok" | "x" | "bluesky" | "linkedin" | "pinterest";
   label: string;
   note: string | null;
   url: string;
@@ -60,6 +60,7 @@ const PLATFORM_BADGE: Record<string, { label: string; bg: string; fg: string; ca
   x: { label: "𝕏", bg: "#e9e9ee", fg: "#0f1419", cardBg: "#f6f6f8", cardBorder: "#e0e0e6" },
   bluesky: { label: "🦋 Bluesky", bg: "#e3f3fe", fg: "#1185fe", cardBg: "#eefaff", cardBorder: "#cfeafb" },
   linkedin: { label: "in LinkedIn", bg: "#e2edfb", fg: "#0a66c2", cardBg: "#f1f6fd", cardBorder: "#d3e3f7" },
+  pinterest: { label: "P Pinterest", bg: "#fce8e9", fg: "#e60023", cardBg: "#fef4f5", cardBorder: "#f7d6d9" },
 };
 const FALLBACK_BADGE = { label: "•", bg: "#eee", fg: "#333", cardBg: "#fff", cardBorder: "#e5e5ea" };
 
@@ -319,7 +320,7 @@ export function HqViewCounter() {
                 // LinkedIn reports impressions, everything else is views.
                 const metric =
                   c.platform === "bluesky" ? "likes"
-                  : c.platform === "linkedin" ? "impressions"
+                  : c.platform === "linkedin" || c.platform === "pinterest" ? "impressions"
                   : "views";
                 // Day one of tracking a snapshot-based channel (TikTok/X): no
                 // window delta exists yet, but lifetime does. A bare "—" reads

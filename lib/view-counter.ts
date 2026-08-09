@@ -10,7 +10,7 @@
 
 export interface ViewChannel {
   key: string;
-  platform: "youtube" | "facebook" | "tiktok" | "x" | "bluesky" | "linkedin";
+  platform: "youtube" | "facebook" | "tiktok" | "x" | "bluesky" | "linkedin" | "pinterest";
   label: string;
   note?: string; // secondary line on the card
   url: string;
@@ -102,6 +102,26 @@ export const VIEW_CHANNELS: readonly ViewChannel[] = [
     label: "Jared Tolley",
     note: "post impressions · weekly digest",
     url: "https://www.linkedin.com/in/jared-tolley/recent-activity/all/",
+  },
+  {
+    // Pinterest impressions scraped from the logged-in analytics dashboard
+    // (v5 API blocked on trial activation). Daily series like FB/LinkedIn.
+    // "homes" = @yourkchomes account. Board-level split (Estates) comes once
+    // per-board data appears; today the account cards carry everything.
+    key: "pi-homes",
+    platform: "pinterest",
+    label: "Your KC Homes",
+    note: "impressions · Pinterest analytics",
+    url: "https://www.pinterest.com/yourkchomes/",
+  },
+  {
+    // "hauls" = @digiegold (Treasure Hauls); currently includes the
+    // "KC Estate Sale Finds" board until Estates is split to its own card.
+    key: "pi-hauls",
+    platform: "pinterest",
+    label: "Treasure Hauls",
+    note: "impressions · incl. estate board for now",
+    url: "https://www.pinterest.com/digiegold/",
   },
   {
     // Scraped from the shared Claude Browser profile (same one-time-login

@@ -16,8 +16,16 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Course segments (projectType "course-segment") are chapter renders owned
+  // by a CourseLesson — they never appear in the YouTube lane. The cost pill
+  // in /api/vater/latest deliberately stays all-in across both lanes.
   const projects = await prisma.youTubeProject.findMany({
-    where: scopedProjectWhere(session.user.id, session.user.email),
+    where: {
+      AND: [
+        scopedProjectWhere(session.user.id, session.user.email),
+        { projectType: "youtube" },
+      ],
+    },
     orderBy: { createdAt: "desc" },
   });
 

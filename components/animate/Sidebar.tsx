@@ -39,7 +39,7 @@ const NAV_ITEMS: NavItemDef[] = [
 
 const SECONDARY_ITEMS: NavItemDef[] = [
   { id: 'discord', label: 'Discord Bot', icon: 'help' },
-  { id: 'course', label: 'Course', icon: 'course', stub: true },
+  { id: 'course', label: 'Course Studio', icon: 'course' },
   { id: 'affiliate', label: 'Affiliate', icon: 'affiliate', stub: true },
 ];
 

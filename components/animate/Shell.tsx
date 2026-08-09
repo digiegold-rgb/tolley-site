@@ -28,6 +28,7 @@ import { BetaAccessBanner } from './BetaAccessBanner';
 import { DashboardScreen } from './screens/DashboardScreen';
 import { ProjectShell } from './screens/editor/ProjectShell';
 import { ScriptReviewScreen } from './screens/review/ScriptReviewScreen';
+import { CourseScreen } from './screens/course/CourseScreen';
 import { Library } from './screens/studio/Library';
 import { Voices } from './screens/studio/Voices';
 import { Feeds } from './screens/studio/Feeds';
@@ -345,7 +346,7 @@ function renderScreen(
         : <VideoEditorScreen />;
     case 'learning-center': return <LearningCenterScreen />;
     case 'pricing': return <PricingScreen />;
-    case 'course': return <ComingSoonScreen route="course (Discord redirect — wire later)" />;
+    case 'course': return <CourseScreen />;
     case 'affiliate': return <ComingSoonScreen route="affiliate" />;
     default: return <ComingSoonScreen route={route} />;
   }
