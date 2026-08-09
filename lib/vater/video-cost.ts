@@ -108,8 +108,10 @@ export function costProviderRows(c: VideoCostJson): { label: string; usd: number
 // via lib/vater/billing/ops-fee.ts and hand it to the client, so changing the
 // rate never needs a deploy and never touches the compute calculation.
 
-/** Fallback used only when a client renders before the rate has loaded. */
-export const DEFAULT_OPS_RATE_PER_MIN = 1.0;
+/** Fallback used only when a client renders before the fetched rate lands.
+ *  Kept EQUAL to the configured rate (35c/rendered min) so a slow fetch can
+ *  never flash a price that was never real. */
+export const DEFAULT_OPS_RATE_PER_MIN = 0.35;
 
 export interface VideoBilling {
   minutes: number;

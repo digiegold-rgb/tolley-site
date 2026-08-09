@@ -10,13 +10,16 @@
  *
  * OPS_RATE lives in ~/vater-studio/VATER-SETTINGS.env as
  * VATER_OPS_RATE_PER_MIN (dollars per finished minute) so the rate can change
- * without touching billing logic. Falls back to 1.00/min when unset.
+ * without touching billing logic. Falls back to 0.35/min when unset.
  */
 import "server-only";
 import { readFileSync } from "node:fs";
 
 const SETTINGS_PATH = "/home/jelly/vater-studio/VATER-SETTINGS.env";
-const DEFAULT_OPS_RATE = 1.0;
+// 35 cents per rendered minute — the actual rate (Jared 2026-08-08).
+// Config still wins; this only applies if VATER_OPS_RATE_PER_MIN is missing,
+// and it must MATCH the real rate so a missing config never invents a price.
+const DEFAULT_OPS_RATE = 0.35;
 
 let cached: { rate: number; at: number } | null = null;
 

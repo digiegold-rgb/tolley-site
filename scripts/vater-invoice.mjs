@@ -9,7 +9,7 @@
  *
  * OPS_RATE lives in ~/vater-studio/VATER-SETTINGS.env as
  * VATER_OPS_RATE_PER_MIN (dollars per finished minute) so the rate changes
- * without touching billing logic. Defaults to 1.00/min if unset.
+ * without touching billing logic. Defaults to 0.35/min if unset.
  *
  *   node scripts/vater-invoice.mjs                       # invoice, all ready videos
  *   node scripts/vater-invoice.mjs --summary             # per-video breakdown
@@ -22,7 +22,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const SETTINGS = '/home/jelly/vater-studio/VATER-SETTINGS.env';
-const DEFAULT_OPS_RATE = 1.0;
+const DEFAULT_OPS_RATE = 0.35; // 35c per rendered minute; config still wins
 
 const argv = process.argv.slice(2);
 const arg = (f) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : undefined; };
