@@ -6,7 +6,7 @@
  * shared by three consumers:
  *   - LatestUpdateBanner  — top of DashboardScreen (full banner)
  *   - LatestUpdateStrip   — Library header (compact one-liner)
- *   - VaterCostPill       — Header top-right (≈$ · tokens, estimate only)
+ *   - VaterCostPill       — Header top-right (≈$ spend, estimate only)
  *
  * "Seen" state is per-browser via localStorage: the dot keeps blinking until
  * the user clicks the banner, then it goes steady for that update id.
@@ -30,7 +30,6 @@ interface VaterUpdateRow {
 }
 
 interface VaterCosts {
-  claudeTokens: number;
   claudeUsd: number;
   modalUsd: number;
   geminiUsd: number;
@@ -201,18 +200,15 @@ export function LatestUpdateStrip(): React.ReactElement | null {
   );
 }
 
-function fmtTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
-  return String(Math.round(n));
-}
-
 /** Header pill: all-time Vater spend with a hover breakdown popover.
  *
  * The number is REAL cash (Modal + Gemini + fal + other, fed by
- * ledger.jsonl rollups the DGX pushes after every render). Claude tokens
- * ride the Max plan and are shown as a count at $0 — never folded into
- * the headline (Jared's cost-counter convention, 2026-08-06).
+ * ledger.jsonl rollups the DGX pushes after every render).
+ *
+ * Token counts were REMOVED 2026-08-08 (Jared: "the tokens used lets just
+ * kill that part, it will never update correctly it doesnt matter") — they
+ * rode the Max plan at $0, never affected the headline, and the count was
+ * an unreliable ±30% estimate. Dollars and the stage breakdown only.
  */
 export function VaterCostPill(): React.ReactElement | null {
   const { t } = useTheme();
@@ -226,11 +222,6 @@ export function VaterCostPill(): React.ReactElement | null {
     { label: 'Gemini (images + vision)', value: `$${c.geminiUsd.toFixed(2)}` },
     { label: 'fal.ai (Kling/Luma clips)', value: `$${c.falUsd.toFixed(2)}` },
     { label: 'Other (hosted LLM, misc APIs)', value: `$${c.otherUsd.toFixed(2)}` },
-    {
-      label: `Claude ~${fmtTokens(c.claudeTokens)} tokens (Max plan)`,
-      value: c.claudeUsd > 0 ? `$${c.claudeUsd.toFixed(2)}` : '$0.00',
-      dim: true,
-    },
   ];
   return (
     <div
@@ -254,9 +245,7 @@ export function VaterCostPill(): React.ReactElement | null {
         }}
       >
         <span style={{ color: GREEN, fontWeight: 700 }}>≈</span>
-        <span>
-          ${totalUsd.toFixed(2)} · {fmtTokens(c.claudeTokens)} tok
-        </span>
+        <span>${totalUsd.toFixed(2)}</span>
         <span style={{ opacity: 0.6, fontSize: 10 }}>est.</span>
       </div>
       {open && (

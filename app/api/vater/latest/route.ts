@@ -4,7 +4,7 @@
  * GET  (studio session) → { updates: VaterUpdate[≤10 newest], costs }
  * POST (bearer CONTENT_API_KEY — the DGX pusher) →
  *   { update?: { message, kind?, projectId?, url? },
- *     costs?:  { claudeTokens?, claudeUsd?, modalUsd?, geminiUsd?, falUsd?, otherUsd?, note? },
+ *     costs?:  { claudeUsd?, modalUsd?, geminiUsd?, falUsd?, otherUsd?, note? },
  *     costsMode?: "set" | "add" }   // default "set" (absolute totals)
  *
  * Costs are estimates for monitoring only — the UI labels them as such.
@@ -20,7 +20,6 @@ import { secretEquals } from "@/lib/secret-compare";
 export const runtime = "nodejs";
 
 const COST_FIELDS = [
-  "claudeTokens",
   "claudeUsd",
   "modalUsd",
   "geminiUsd",
