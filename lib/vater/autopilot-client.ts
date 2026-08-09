@@ -661,7 +661,7 @@ export const autopilot = {
    *  concat, stream-copy). Poll getJob(); result.finalVideoUrl on done. */
   concatVideos: (input: {
     lessonId: string;
-    segments: Array<{ jobId?: string; path?: string; url?: string }>;
+    segments: Array<{ jobId?: string; url?: string }>;
     projectKey?: string;
   }) => call<{ jobId: string }>("POST", "/vater/concat-videos", input),
 
