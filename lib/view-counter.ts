@@ -10,7 +10,7 @@
 
 export interface ViewChannel {
   key: string;
-  platform: "youtube" | "facebook" | "tiktok" | "x" | "bluesky";
+  platform: "youtube" | "facebook" | "tiktok" | "x" | "bluesky" | "linkedin";
   label: string;
   note?: string; // secondary line on the card
   url: string;
@@ -90,6 +90,18 @@ export const VIEW_CHANNELS: readonly ViewChannel[] = [
     note: "haul shorts mirror · likes (no views on Bluesky)",
     url: "https://bsky.app/profile/haul.tolley.io",
     contentSince: "2026-07-28",
+  },
+  {
+    // LinkedIn has no public metrics API — the number here is weekly POST
+    // IMPRESSIONS parsed from LinkedIn's own emailed digest to
+    // jared@yourkchomes.com (collect.mjs → li-impressions.py over IMAP).
+    // Stored as a summed daily series like Facebook: 30d ≈ last ~4 weekly
+    // digests, so no lifetime counter and no contentSince trickery.
+    key: "li-jared",
+    platform: "linkedin",
+    label: "Jared Tolley",
+    note: "post impressions · weekly digest",
+    url: "https://www.linkedin.com/in/jared-tolley/recent-activity/all/",
   },
   {
     // Scraped from the shared Claude Browser profile (same one-time-login
