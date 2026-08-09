@@ -55,5 +55,11 @@ export async function POST(req: NextRequest) {
   if (res.count === 0) {
     return NextResponse.json({ error: "Already claimed" }, { status: 409 });
   }
+  // The brief travels inside the claimed job payload — mark it delivered so
+  // a later awaiting_reply poll never re-serves it as if it were the answer.
+  await prisma.vaterDirectMessage.updateMany({
+    where: { jobId, role: "trey", deliveredToRunner: false },
+    data: { deliveredToRunner: true },
+  });
   return NextResponse.json({ ok: true });
 }
