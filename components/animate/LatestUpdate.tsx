@@ -46,6 +46,7 @@ interface VaterBilling {
   computeUsd: number;
   opsUsd: number;
   totalUsd: number;
+  breakdown?: { key: string; label: string; usd: number }[];
 }
 
 interface LatestPayload {
@@ -227,17 +228,22 @@ export function VaterCostPill(): React.ReactElement | null {
   const c = data?.costs;
   const b = data?.billing;
   if (!c) return null;
-  // ONE number: compute at cost + render operations. Simple one-line rows
-  // behind it — no rate math, no parentheses (Jared 8/8).
+  // ONE number on the tab: compute at cost + render operations. The popover
+  // carries the full breakdown — every cost category, plain one-liners, no
+  // parentheses. Rows come from the server so a new category (a notebook
+  // run, a new provider) appears here without touching this component.
   const totalUsd =
     b?.totalUsd ?? c.claudeUsd + c.modalUsd + c.geminiUsd + c.falUsd + c.otherUsd;
   const rows: { label: string; value: string; dim?: boolean }[] = b
     ? [
+        ...(b.breakdown ?? []).map((row) => ({
+          label: row.label,
+          value: `$${row.usd.toFixed(2)}`,
+          dim: true,
+        })),
         { label: 'Compute', value: `$${b.computeUsd.toFixed(2)}` },
         { label: 'Render operations', value: `$${b.opsUsd.toFixed(2)}` },
         { label: 'Total', value: `$${b.totalUsd.toFixed(2)}` },
-        { label: 'Videos', value: String(b.videos), dim: true },
-        { label: 'Minutes', value: b.minutes.toFixed(1), dim: true },
       ]
     : [
         { label: 'Modal GPU', value: `$${c.modalUsd.toFixed(2)}` },
