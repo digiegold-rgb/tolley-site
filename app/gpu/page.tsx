@@ -162,6 +162,90 @@ const gpus: Gpu[] = [
   },
 ];
 
+type VideoModel = {
+  name: string;
+  nickname: string;
+  emoji: string;
+  access: "open" | "api" | "ours";
+  rate: string;
+  rateNote: string;
+  dayCost: string;
+  dayBar: number;
+  monthCost: string;
+  quality: string;
+  qualityBar: number;
+  note: string;
+  color: string;
+  gradient: string;
+  badge?: string;
+  warn?: string;
+  isPick?: boolean;
+  isCurrent?: boolean;
+};
+
+// "Day" = our real production day: 6 videos ≈ 60 clips ≈ 300 generated seconds (measured Aug 8)
+const videoModels: VideoModel[] = [
+  {
+    name: "Wan 2.2", nickname: "What We Run Today", emoji: "🧊",
+    access: "ours", rate: "~$0.05 / 5s clip", rateNote: "480p · 8-step · L40S on Modal · self-hosted weights",
+    dayCost: "$4–8", dayBar: 5, monthCost: "~$120–240", quality: "Good enough", qualityBar: 55,
+    note: "Open weights on our own Modal containers. Aug 8 at old settings (720p + retry gates) burned $69 real — the slashed config kills that.",
+    color: "#22d3ee", gradient: "linear-gradient(135deg, #22d3ee, #06b6d4)",
+    badge: "✅ LIVE NOW", isCurrent: true,
+  },
+  {
+    name: "Wan 2.7", nickname: "The Free Upgrade", emoji: "🏆",
+    access: "open", rate: "~$0.05 / 5s clip", rateNote: "SAME GPU cost as Wan 2.2 — same L40S, same apps, new checkpoint",
+    dayCost: "$4–8", dayBar: 5, monthCost: "~$120–240", quality: "Best open-source", qualityBar: 80,
+    note: "NOT an API. Open weights, Apr 2026 — download, drop onto the exact same Modal L40S apps. First/last-frame control, multi-image refs, leads Wan-Bench 2.0. Quality up, bill unchanged.",
+    color: "#10b981", gradient: "linear-gradient(135deg, #10b981, #059669)",
+    badge: "🔥 THE UPGRADE PICK", isPick: true,
+  },
+  {
+    name: "LTX-2.3", nickname: "The Audio Native", emoji: "🎵",
+    access: "open", rate: "~$0.03–0.12 / clip", rateNote: "Lightweight · FP8 · self-hosted",
+    dayCost: "$3–6", dayBar: 4, monthCost: "~$90–180", quality: "Solid", qualityBar: 60,
+    note: "Only open model doing audio + video in ONE pass. Biggest LoRA ecosystem. Different look — would need motion-recipe recalibration.",
+    color: "#a855f7", gradient: "linear-gradient(135deg, #a855f7, #7c3aed)",
+  },
+  {
+    name: "HunyuanVideo 1.5", nickname: "The Efficient One", emoji: "🐉",
+    access: "open", rate: "~$0.14 / 5s clip", rateNote: "8.3B distilled · L40S · self-hosted",
+    dayCost: "$4–7", dayBar: 5, monthCost: "~$120–210", quality: "Strong motion", qualityBar: 68,
+    note: "The open-source reference for prompt adherence + motion. Cheaper per step, but a full pipeline retune to switch looks.",
+    color: "#f59e0b", gradient: "linear-gradient(135deg, #f59e0b, #d97706)",
+  },
+  {
+    name: "Veo 3.1 Lite", nickname: "The Cheap Closed One", emoji: "🪶",
+    access: "api", rate: "$0.03–0.05 / sec", rateNote: "Google API · 720p–1080p · audio included",
+    dayCost: "$9–15", dayBar: 10, monthCost: "~$270–450", quality: "Very good", qualityBar: 78,
+    note: "Cheapest credible closed tier — only ~2x our self-host cost, audio baked in. The rational paid lever IF one ever comes back.",
+    color: "#3b82f6", gradient: "linear-gradient(135deg, #3b82f6, #2563eb)",
+  },
+  {
+    name: "Kling 3.0", nickname: "The Lip-Sync Killer", emoji: "💋",
+    access: "api", rate: "$0.09–0.14 / sec", rateNote: "1080p · per-character lip-sync BUILT IN",
+    dayCost: "$27–42", dayBar: 25, monthCost: "~$800–1,260", quality: "Top-tier", qualityBar: 90,
+    note: "Highest Elo among broadly-available flagships. Real pitch: deletes the entire lip-sync pipeline stage. Still ~6x our daily budget.",
+    color: "#ec4899", gradient: "linear-gradient(135deg, #ec4899, #db2777)",
+  },
+  {
+    name: "Sora 2", nickname: "The Dead End", emoji: "💀",
+    access: "api", rate: "$0.10 / sec · Pro $0.70", rateNote: "OpenAI API",
+    dayCost: "$30–210", dayBar: 28, monthCost: "~$900+", quality: "Top-tier", qualityBar: 88,
+    note: "OpenAI is REMOVING the sora-2 video API on Sept 24, 2026. Do not build anything on it.",
+    color: "#ef4444", gradient: "linear-gradient(135deg, #ef4444, #dc2626)",
+    warn: "⚠️ API DIES SEPT 24",
+  },
+  {
+    name: "Veo 3.1 Standard", nickname: "The Commercial King", emoji: "👑",
+    access: "api", rate: "$0.40 / sec · 4K $0.60", rateNote: "Google API · native 48kHz audio · 4K",
+    dayCost: "$120–180", dayBar: 100, monthCost: "~$3,600+", quality: "Best on Earth", qualityBar: 100,
+    note: "The quality ceiling. Priced for TV commercials, not 6 shorts a day. One day here = a month of our whole video operation.",
+    color: "#f97316", gradient: "linear-gradient(135deg, #f97316, #ea580c)",
+  },
+];
+
 export default function GPUPowerTower() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const toggle = (name: string) => setExpanded(p => ({ ...p, [name]: !p[name] }));
@@ -364,6 +448,104 @@ export default function GPUPowerTower() {
           </div>
           <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(34,211,238,0.08)", border: "1px solid rgba(34,211,238,0.2)", borderRadius: 10, display: "inline-block" }}>
             <span style={{ color: "#22d3ee", fontWeight: 800, fontSize: 13 }}>The Spark runs 30 AI agents 24/7 for $1.04/day in electricity.<br/>That&apos;s $31/month. No cloud bills. No API keys. Tolley Style. 🔥</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ============ VIDEO MODEL TOWER ============ */}
+      <div style={{ textAlign: "center", margin: "48px 0 6px", position: "relative", zIndex: 2 }}>
+        <div style={{ fontSize: 44, marginBottom: 2 }}>🎬</div>
+        <h1 style={{ fontSize: 30, fontWeight: 900, margin: 0, background: "linear-gradient(90deg, #22d3ee, #10b981, #a855f7, #f59e0b, #3b82f6, #ec4899, #ef4444, #f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", letterSpacing: -1 }}>VIDEO MODEL TOWER</h1>
+        <p style={{ fontSize: 14, color: "#94a3b8", margin: "6px 0 2px 0", fontWeight: 600 }}>Same GPUs — which MODEL do you run on them? Cheap to insane ⬇️</p>
+        <p style={{ fontSize: 10, color: "#475569", margin: "2px 0 0 0", lineHeight: 1.5 }}>
+          Priced off REAL production: one full day = 6 videos ≈ 60 clips ≈ 300 generated seconds (measured Aug 8, 2026)<br/>
+          🟢 OPEN WEIGHTS = download the model, run it on YOUR rented GPU · 🔴 API = pay per second, their servers, their rules
+        </p>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 540, margin: "16px auto 0", position: "relative", zIndex: 2 }}>
+        {videoModels.map((m, i) => (
+          <div key={m.name} style={{
+            background: m.isPick ? "rgba(16,185,129,0.07)" : m.isCurrent ? "rgba(34,211,238,0.06)" : "rgba(255,255,255,0.03)",
+            border: `2px solid ${m.isPick ? "rgba(16,185,129,0.55)" : m.isCurrent ? "rgba(34,211,238,0.5)" : m.color + "33"}`,
+            borderRadius: 18, padding: "14px 16px 16px", position: "relative", overflow: "hidden",
+            animation: m.isPick ? "sparkGlow 3s ease-in-out infinite" : `slideUp ${0.3 + i * 0.07}s ease-out`,
+          }}>
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: m.isPick ? 4 : 3, background: m.gradient, borderRadius: "18px 18px 0 0" }} />
+            <div style={{ display: "flex", gap: 6, position: "absolute", top: 10, right: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              {m.badge && <span style={{ fontSize: 9, fontWeight: 700, background: m.isPick ? "rgba(16,185,129,0.18)" : "rgba(34,211,238,0.15)", color: m.isPick ? "#10b981" : "#22d3ee", padding: "2px 7px", borderRadius: 6, border: `1px solid ${m.isPick ? "rgba(16,185,129,0.3)" : "rgba(34,211,238,0.3)"}` }}>{m.badge}</span>}
+              {m.warn && <span style={{ fontSize: 9, fontWeight: 700, background: "rgba(239,68,68,0.15)", color: "#ef4444", padding: "2px 7px", borderRadius: 6, border: "1px solid rgba(239,68,68,0.25)" }}>{m.warn}</span>}
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase", padding: "2px 7px", borderRadius: 6,
+                background: m.access === "api" ? "rgba(239,68,68,0.15)" : "rgba(16,185,129,0.15)",
+                color: m.access === "api" ? "#ef4444" : "#10b981",
+                border: `1px solid ${m.access === "api" ? "rgba(239,68,68,0.25)" : "rgba(16,185,129,0.25)"}` }}>
+                {m.access === "api" ? "🔴 API" : "🟢 OPEN WEIGHTS"}
+              </span>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, marginTop: 14 }}>
+              <span style={{ fontSize: 30 }}>{m.emoji}</span>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: m.color, lineHeight: 1.1 }}>{m.name}</div>
+                <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600, fontStyle: "italic" }}>&quot;{m.nickname}&quot;</div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                <span style={{ fontSize: 12, color: "#e2e8f0", fontWeight: 700 }}>💸 Our production day: <span style={{ color: m.color }}>{m.dayCost}</span></span>
+                <span style={{ fontSize: 10, color: "#64748b", fontWeight: 600 }}>{m.monthCost} / month</span>
+              </div>
+              <div style={{ height: 12, background: "rgba(255,255,255,0.06)", borderRadius: 8, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${m.dayBar}%`, background: m.gradient, borderRadius: 8, boxShadow: `0 0 14px ${m.color}55`, animation: "barGrow 1.2s ease-out" }} />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700 }}>✨ Quality: {m.quality}</span>
+              </div>
+              <div style={{ height: 8, background: "rgba(255,255,255,0.06)", borderRadius: 8, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${m.qualityBar}%`, background: "linear-gradient(90deg, #64748b, #e2e8f0)", borderRadius: 8, animation: "barGrow 1.2s ease-out" }} />
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 11, padding: "10px 12px", gridColumn: "1 / -1" }}>
+                <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>🏷️ The Rate</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>{m.rate}</div>
+                <div style={{ fontSize: 9, color: "#94a3b8", marginTop: 2, lineHeight: 1.4 }}>{m.rateNote}</div>
+              </div>
+              <div style={{ background: m.isPick ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.04)", border: m.isPick ? "1px solid rgba(16,185,129,0.2)" : "none", borderRadius: 11, padding: "10px 12px", gridColumn: "1 / -1", fontSize: 11, color: "#94a3b8", lineHeight: 1.6 }}>
+                <span style={{ color: m.color, fontWeight: 700 }}>💡 </span>{m.note}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <div style={{ textAlign: "center", padding: "20px 16px", background: "linear-gradient(135deg, rgba(16,185,129,0.1), rgba(34,211,238,0.05), rgba(249,115,22,0.08))", border: "2px solid rgba(16,185,129,0.3)", borderRadius: 18 }}>
+          <div style={{ fontSize: 36, marginBottom: 6 }}>🧾</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#10b981", marginBottom: 8 }}>The Real Receipt — Aug 8, 2026</div>
+          <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.8, textAlign: "left", maxWidth: 440, margin: "0 auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <span>🔥 <span style={{ color: "#ef4444", fontWeight: 700 }}>Wan 2.2 old settings</span> (720p + retries)</span>
+              <span style={{ fontWeight: 800, color: "#fff" }}>$69.12 real</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <span>🧊 <span style={{ color: "#22d3ee", fontWeight: 700 }}>Wan 2.2 slashed</span> (480p, gates off)</span>
+              <span style={{ fontWeight: 800, color: "#fff" }}>~$5/day</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", background: "rgba(16,185,129,0.06)", borderRadius: 6, paddingLeft: 6, paddingRight: 6, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <span>🏆 <span style={{ color: "#10b981", fontWeight: 700 }}>Wan 2.7 swap</span> (better model, same GPU)</span>
+              <span style={{ fontWeight: 800, color: "#10b981" }}>~$5/day — $0 extra</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
+              <span>👑 <span style={{ color: "#f97316", fontWeight: 700 }}>Veo Standard</span> same day</span>
+              <span style={{ fontWeight: 800, color: "#fff" }}>$120–180/day</span>
+            </div>
+          </div>
+          <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 10, display: "inline-block" }}>
+            <span style={{ color: "#10b981", fontWeight: 800, fontSize: 13 }}>Wan 2.7 is NOT an API. It&apos;s open weights — same L40S, same Modal apps, same bill.<br/>Swap the checkpoint, keep the price, upgrade the quality. 🔥</span>
           </div>
         </div>
       </div>
