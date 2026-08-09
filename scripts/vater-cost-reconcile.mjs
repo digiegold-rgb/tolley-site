@@ -15,6 +15,16 @@
  * jobId counted, which is also what stops the site's additive mergeVideoCost
  * from double-counting on a later poll.
  *
+ * ⚠️ vater_jobs.json is NOT an append-only ledger — vater.py prunes it to the
+ * newest 40 finished jobs (perf fix for the 15MB re-serialize stall). A job
+ * that ages out of the file must NOT age out of the project's cost: byJob in
+ * the DB is the durable record, so we MERGE file-derived amounts over the
+ * existing byJob instead of rebuilding it. File wins for jobs it still has
+ * (handles corrections); jobs it no longer has keep their recorded amount,
+ * with byJobStage remembering which stage each belonged to. A total may only
+ * ever go down when the file corrects a still-visible job — never because
+ * history rotated away. (First regression 8/9: crossover $14.13 -> $5.97.)
+ *
  *   node scripts/vater-cost-reconcile.mjs                 # every project
  *   node scripts/vater-cost-reconcile.mjs --project <id>  # one project
  *   node scripts/vater-cost-reconcile.mjs --dry-run
@@ -87,15 +97,29 @@ const projects = await prisma.youTubeProject.findMany({
 let changed = 0;
 for (const p of projects) {
   const mine = jobsForProject(p.id, p.autopilotJobId);
-  const byJob = {};
-  const byStage = {};
+  const fileByJob = {};
+  const fileStage = {};
   for (const j of mine) {
     const c = jobCost(j);
     if (!c) continue;
-    byJob[j.id] = Number(c.toFixed(4));
-    const s = stageOf(j);
+    fileByJob[j.id] = Number(c.toFixed(4));
+    fileStage[j.id] = stageOf(j);
+  }
+
+  const prevByJob = p.costJson?.byJob && typeof p.costJson.byJob === 'object' ? p.costJson.byJob : {};
+  const prevStage = p.costJson?.byJobStage && typeof p.costJson.byJobStage === 'object' ? p.costJson.byJobStage : {};
+
+  const byJob = {};
+  const byJobStage = {};
+  const byStage = {};
+  for (const [jid, usdRaw] of Object.entries({ ...prevByJob, ...fileByJob })) {
+    const usd = Number(usdRaw);
+    if (!(usd > 0)) continue;
+    byJob[jid] = Number(usd.toFixed(4));
+    const s = fileStage[jid] ?? prevStage[jid] ?? 'prior';
+    byJobStage[jid] = s;
     byStage[s] ??= { usd: 0, calls: 0 };
-    byStage[s].usd = Number((byStage[s].usd + c).toFixed(4));
+    byStage[s].usd = Number((byStage[s].usd + byJob[jid]).toFixed(4));
     byStage[s].calls += 1;
   }
   const total = Number(Object.values(byJob).reduce((a, b) => a + b, 0).toFixed(2));
@@ -121,6 +145,7 @@ for (const p of projects) {
         totalUsd: total,
         byStage,
         byJob,
+        byJobStage,
         estimated: true,
         reconciledAt: new Date().toISOString(),
         reconciledBy: 'vater-cost-reconcile',
