@@ -20,11 +20,17 @@
  *   - Audio-only <audio> preview removed — video already has audio.
  */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { VideoSpeedChips } from "@/components/ui/VideoSpeedChips";
 import { isFinalMp4Stale, finalVideoPlaybackUrl } from "@/lib/vater/youtube-status";
-import { parseVideoCost, formatUsd, costProviderRows } from "@/lib/vater/video-cost";
+import {
+  parseVideoCost,
+  formatUsd,
+  costProviderRows,
+  buildVideoBilling,
+  DEFAULT_OPS_RATE_PER_MIN,
+} from "@/lib/vater/video-cost";
 import { YouTubeShareModal } from "./youtube-share-modal";
 
 interface VerificationReport {
@@ -69,6 +75,26 @@ interface Props {
 
 export function YouTubeFinalPlayer({ project, onRecomposeStart }: Props) {
   const { toast } = useToast();
+  // Ops rate is server config (VATER_OPS_RATE_PER_MIN) — fetched, never
+  // hardcoded, so the rate can change without a deploy.
+  const [opsRatePerMinute, setOpsRatePerMinute] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/vater/latest", { cache: "no-store" });
+        if (!r.ok) return;
+        const j = (await r.json()) as { billing?: { opsRatePerMinute?: number } };
+        const v = j?.billing?.opsRatePerMinute;
+        if (!cancelled && typeof v === "number") setOpsRatePerMinute(v);
+      } catch {
+        /* default rate */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [showFabrications, setShowFabrications] = useState(false);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(
@@ -281,17 +307,43 @@ export function YouTubeFinalPlayer({ project, onRecomposeStart }: Props) {
         <MetaChip label="Scenes" value={sceneCount.toString()} />
         <MetaChip label="Script" value={`${scriptWordCount.toLocaleString()} words`} />
         <MetaChip label="Verify" value={verificationLabel} tone={verificationTone} />
-        {videoCost && (
-          <span
-            title={costProviderRows(videoCost)
-              .map((r) => `${r.label}: ${formatUsd(r.usd)}`)
-              .join("\n")}
-            className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-300"
-          >
-            Cost {formatUsd(videoCost.totalUsd ?? 0)}
-            {videoCost.estimated ? " est" : ""}
-          </span>
-        )}
+        {videoCost && (() => {
+          const bill = buildVideoBilling(
+            videoCost.totalUsd ?? 0,
+            project.audioDuration,
+            opsRatePerMinute ?? DEFAULT_OPS_RATE_PER_MIN,
+          );
+          return (
+            <>
+              <span
+                title={
+                  `Compute (at cost) — passed through unchanged\n` +
+                  costProviderRows(videoCost)
+                    .map((r) => `${r.label}: ${formatUsd(r.usd)}`)
+                    .join("\n")
+                }
+                className="inline-flex items-center gap-1 rounded-full border border-zinc-600/50 bg-zinc-700/20 px-2 py-0.5 font-medium text-zinc-300"
+              >
+                Compute {formatUsd(bill.computeUsd)}
+                {videoCost.estimated ? " est" : ""}
+              </span>
+              <span
+                title={`${bill.minutes.toFixed(2)} finished min x ${formatUsd(
+                  opsRatePerMinute ?? DEFAULT_OPS_RATE_PER_MIN,
+                )}/min`}
+                className="inline-flex items-center gap-1 rounded-full border border-zinc-600/50 bg-zinc-700/20 px-2 py-0.5 font-medium text-zinc-300"
+              >
+                Ops {formatUsd(bill.opsUsd)}
+              </span>
+              <span
+                title={`Billed price — ${formatUsd(bill.effectiveUsdPerMinute)} per finished minute`}
+                className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-300"
+              >
+                Total {formatUsd(bill.totalUsd)}
+              </span>
+            </>
+          );
+        })()}
         <span className="text-zinc-400">
           Created{" "}
           {new Date(project.completedAt || project.createdAt).toLocaleDateString(undefined, {

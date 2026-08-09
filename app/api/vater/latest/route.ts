@@ -16,6 +16,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { isVaterStudioEmail } from "@/lib/admin-auth";
 import { secretEquals } from "@/lib/secret-compare";
+import { getOpsRate } from "@/lib/vater/billing/ops-fee";
 
 export const runtime = "nodejs";
 
@@ -32,11 +33,38 @@ export async function GET() {
   if (!session?.user?.id || !isVaterStudioEmail(session.user.email)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const [updates, costs] = await Promise.all([
+  const [updates, costs, finished] = await Promise.all([
     prisma.vaterUpdate.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
     prisma.vaterCostSnapshot.findUnique({ where: { id: "vater-costs" } }),
+    prisma.youTubeProject.findMany({
+      where: { status: "ready", finalVideoUrl: { not: null } },
+      select: { audioDuration: true, costJson: true },
+    }),
   ]);
-  return NextResponse.json({ updates, costs });
+
+  // Billed price = "Compute (at cost)" + "Render Operations" (finished
+  // minutes x OPS_RATE). Computed here rather than in the client so the
+  // dashboard pill and the invoice can never disagree.
+  const opsRatePerMinute = getOpsRate();
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  let computeUsd = 0;
+  let minutes = 0;
+  for (const p of finished) {
+    const c = p.costJson as { totalUsd?: number } | null;
+    computeUsd += Number(c?.totalUsd ?? 0);
+    minutes += Math.max(0, Number(p.audioDuration ?? 0)) / 60;
+  }
+  const opsUsd = r2(minutes * opsRatePerMinute);
+  const billing = {
+    opsRatePerMinute,
+    minutes: r2(minutes),
+    videos: finished.length,
+    computeUsd: r2(computeUsd),
+    opsUsd,
+    totalUsd: r2(r2(computeUsd) + opsUsd),
+  };
+
+  return NextResponse.json({ updates, costs, billing });
 }
 
 export async function POST(req: Request) {

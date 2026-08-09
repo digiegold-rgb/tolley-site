@@ -100,3 +100,42 @@ export function costProviderRows(c: VideoCostJson): { label: string; usd: number
   ].filter((r) => r.usd > 0);
   return rows.sort((a, b) => b.usd - a.usd);
 }
+
+// ── Billed price = "Compute (at cost)" + "Render Operations" ──────────────
+// Compute is the pass-through spend above. Render Operations is
+// finished_video_minutes x OPS_RATE (the margin). The rate is config, not
+// code (VATER_OPS_RATE_PER_MIN in VATER-SETTINGS.env) — server routes read it
+// via lib/vater/billing/ops-fee.ts and hand it to the client, so changing the
+// rate never needs a deploy and never touches the compute calculation.
+
+/** Fallback used only when a client renders before the rate has loaded. */
+export const DEFAULT_OPS_RATE_PER_MIN = 1.0;
+
+export interface VideoBilling {
+  minutes: number;
+  computeUsd: number;
+  opsUsd: number;
+  totalUsd: number;
+  effectiveUsdPerMinute: number;
+}
+
+/** Billed price for one finished video. `computeUsd` is passed through
+ *  untouched — this only adds the operations line on top. */
+export function buildVideoBilling(
+  computeUsd: number,
+  durationSeconds: number | null | undefined,
+  opsRatePerMinute: number = DEFAULT_OPS_RATE_PER_MIN,
+): VideoBilling {
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const minutes = Math.max(0, Number(durationSeconds) || 0) / 60;
+  const compute = r2(computeUsd || 0);
+  const ops = r2(minutes * opsRatePerMinute);
+  const total = r2(compute + ops);
+  return {
+    minutes: Math.round(minutes * 100) / 100,
+    computeUsd: compute,
+    opsUsd: ops,
+    totalUsd: total,
+    effectiveUsdPerMinute: minutes > 0 ? r2(total / minutes) : 0,
+  };
+}

@@ -6,7 +6,13 @@ import { YouTubeFinalPlayer } from "./youtube-final-player";
 import { YouTubeShareModal } from "./youtube-share-modal";
 import { getStylePreset } from "@/lib/vater/style-presets";
 import { isFinalMp4Stale, finalVideoPlaybackUrl } from "@/lib/vater/youtube-status";
-import { parseVideoCost, formatUsd, costProviderRows } from "@/lib/vater/video-cost";
+import {
+  parseVideoCost,
+  formatUsd,
+  costProviderRows,
+  buildVideoBilling,
+  DEFAULT_OPS_RATE_PER_MIN,
+} from "@/lib/vater/video-cost";
 
 interface LibraryProject {
   id: string;
@@ -46,8 +52,33 @@ function formatDuration(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+/** Ops rate comes from server config (VATER_OPS_RATE_PER_MIN), never a
+ *  client constant, so changing the rate needs no deploy. */
+function useOpsRate(): number | null {
+  const [rate, setRate] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/vater/latest", { cache: "no-store" });
+        if (!r.ok) return;
+        const j = (await r.json()) as { billing?: { opsRatePerMinute?: number } };
+        const v = j?.billing?.opsRatePerMinute;
+        if (!cancelled && typeof v === "number") setRate(v);
+      } catch {
+        /* fall back to the default rate */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return rate;
+}
+
 export function YouTubeLibrary({ projects, onDelete, onRecomposeStart }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const opsRatePerMinute = useOpsRate();
 
   const activeProject = projects.find((p) => p.id === activeId) ?? null;
 
@@ -69,6 +100,7 @@ export function YouTubeLibrary({ projects, onDelete, onRecomposeStart }: Props) 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-8">
         {projects.map((p) => (
           <LibraryCard
+            opsRatePerMinute={opsRatePerMinute}
             key={p.id}
             project={p}
             isActive={p.id === activeId}
@@ -172,11 +204,13 @@ function LibraryCard({
   isActive,
   onSelect,
   onDelete,
+  opsRatePerMinute,
 }: {
   project: LibraryProject;
   isActive: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  opsRatePerMinute: number | null;
 }) {
   const preset = getStylePreset(project.stylePreset ?? "cinematic");
   const title =
@@ -344,23 +378,36 @@ function LibraryCard({
             <span className="text-zinc-700">·</span>
           )}
           <span>{dateStr}</span>
-          {cost && (
-            <>
-              <span className="text-zinc-700">·</span>
-              <span
-                className="font-medium text-emerald-500/90"
-                title={
-                  `Total generation cost${cost.estimated ? " (contains estimates)" : ""}\n` +
-                  costProviderRows(cost)
-                    .map((r) => `${r.label}: ${formatUsd(r.usd)}`)
-                    .join("\n")
-                }
-              >
-                {formatUsd(cost.totalUsd ?? 0)}
-                {cost.estimated ? " est" : ""}
-              </span>
-            </>
-          )}
+          {cost && (() => {
+            // Billed price = compute (at cost) + render operations.
+            const bill = buildVideoBilling(
+              cost.totalUsd ?? 0,
+              project.audioDuration,
+              opsRatePerMinute ?? DEFAULT_OPS_RATE_PER_MIN,
+            );
+            return (
+              <>
+                <span className="text-zinc-700">·</span>
+                <span
+                  className="font-medium text-emerald-500/90"
+                  title={
+                    `Billed price${cost.estimated ? " (compute contains estimates)" : ""}\n` +
+                    `Compute (at cost): ${formatUsd(bill.computeUsd)}\n` +
+                    `Render Operations: ${formatUsd(bill.opsUsd)} ` +
+                    `(${bill.minutes.toFixed(2)} min x ${formatUsd(opsRatePerMinute ?? DEFAULT_OPS_RATE_PER_MIN)}/min)\n` +
+                    `Total: ${formatUsd(bill.totalUsd)} — ${formatUsd(bill.effectiveUsdPerMinute)}/min\n\n` +
+                    `Compute breakdown:\n` +
+                    costProviderRows(cost)
+                      .map((r) => `${r.label}: ${formatUsd(r.usd)}`)
+                      .join("\n")
+                  }
+                >
+                  {formatUsd(bill.totalUsd)}
+                  {cost.estimated ? " est" : ""}
+                </span>
+              </>
+            );
+          })()}
         </div>
 
         {/* Actions */}

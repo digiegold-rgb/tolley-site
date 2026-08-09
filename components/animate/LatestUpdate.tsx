@@ -39,9 +39,19 @@ interface VaterCosts {
   updatedAt: string;
 }
 
+interface VaterBilling {
+  opsRatePerMinute: number;
+  minutes: number;
+  videos: number;
+  computeUsd: number;
+  opsUsd: number;
+  totalUsd: number;
+}
+
 interface LatestPayload {
   updates: VaterUpdateRow[];
   costs: VaterCosts | null;
+  billing?: VaterBilling | null;
 }
 
 export function useVaterLatest(): LatestPayload | null {
@@ -215,14 +225,31 @@ export function VaterCostPill(): React.ReactElement | null {
   const data = useVaterLatest();
   const [open, setOpen] = React.useState(false);
   const c = data?.costs;
+  const b = data?.billing;
   if (!c) return null;
-  const totalUsd = c.claudeUsd + c.modalUsd + c.geminiUsd + c.falUsd + c.otherUsd;
-  const rows: { label: string; value: string; dim?: boolean }[] = [
-    { label: 'Modal GPU (stills + animation)', value: `$${c.modalUsd.toFixed(2)}` },
-    { label: 'Gemini (images + vision)', value: `$${c.geminiUsd.toFixed(2)}` },
-    { label: 'fal.ai (Kling/Luma clips)', value: `$${c.falUsd.toFixed(2)}` },
-    { label: 'Other (hosted LLM, misc APIs)', value: `$${c.otherUsd.toFixed(2)}` },
-  ];
+  // Headline is the BILLED price (compute at cost + render operations) when
+  // the server has computed it; otherwise fall back to raw spend.
+  const spendUsd = c.claudeUsd + c.modalUsd + c.geminiUsd + c.falUsd + c.otherUsd;
+  const totalUsd = b ? b.totalUsd : spendUsd;
+  const rows: { label: string; value: string; dim?: boolean }[] = b
+    ? [
+        { label: 'Compute (at cost)', value: `$${b.computeUsd.toFixed(2)}` },
+        {
+          label: `Render Operations (${b.minutes.toFixed(1)} min x $${b.opsRatePerMinute.toFixed(2)}/min)`,
+          value: `$${b.opsUsd.toFixed(2)}`,
+        },
+        { label: `— across ${b.videos} finished video${b.videos === 1 ? '' : 's'}`, value: '', dim: true },
+        { label: 'Modal GPU (stills + animation)', value: `$${c.modalUsd.toFixed(2)}`, dim: true },
+        { label: 'Gemini (images + vision)', value: `$${c.geminiUsd.toFixed(2)}`, dim: true },
+        { label: 'fal.ai (Kling/Luma clips)', value: `$${c.falUsd.toFixed(2)}`, dim: true },
+        { label: 'Other (hosted LLM, misc APIs)', value: `$${c.otherUsd.toFixed(2)}`, dim: true },
+      ]
+    : [
+        { label: 'Modal GPU (stills + animation)', value: `$${c.modalUsd.toFixed(2)}` },
+        { label: 'Gemini (images + vision)', value: `$${c.geminiUsd.toFixed(2)}` },
+        { label: 'fal.ai (Kling/Luma clips)', value: `$${c.falUsd.toFixed(2)}` },
+        { label: 'Other (hosted LLM, misc APIs)', value: `$${c.otherUsd.toFixed(2)}` },
+      ];
   return (
     <div
       onMouseEnter={() => setOpen(true)}
