@@ -189,17 +189,25 @@ const videoModels: VideoModel[] = [
     name: "Wan 2.2", nickname: "What We Run Today", emoji: "🧊",
     access: "ours", rate: "~$0.05 / 5s clip", rateNote: "480p · 8-step · L40S on Modal · self-hosted weights",
     dayCost: "$4–8", dayBar: 5, monthCost: "~$120–240", quality: "Good enough", qualityBar: 55,
-    note: "Open weights on our own Modal containers. Aug 8 at old settings (720p + retry gates) burned $69 real — the slashed config kills that.",
+    note: "Open weights on our own Modal containers — and still THE open-source frontier: nothing newer is downloadable (see The Mirage below). Aug 8 at old settings (720p + retry gates) burned $69 real — the slashed config kills that.",
     color: "#22d3ee", gradient: "linear-gradient(135deg, #22d3ee, #06b6d4)",
     badge: "✅ LIVE NOW", isCurrent: true,
   },
   {
-    name: "Wan 2.7", nickname: "The Free Upgrade", emoji: "🏆",
-    access: "open", rate: "~$0.05 / 5s clip", rateNote: "SAME GPU cost as Wan 2.2 — same L40S, same apps, new checkpoint",
-    dayCost: "$4–8", dayBar: 5, monthCost: "~$120–240", quality: "Best open-source", qualityBar: 80,
-    note: "NOT an API. Open weights, Apr 2026 — download, drop onto the exact same Modal L40S apps. First/last-frame control, multi-image refs, leads Wan-Bench 2.0. Quality up, bill unchanged.",
+    name: "Wan2.2-S2V", nickname: "The One-Step Talker", emoji: "🗣️",
+    access: "open", rate: "~$0.05 / 5s clip", rateNote: "Same L40S, same Modal apps — audio encoder + one 14B checkpoint",
+    dayCost: "$4–8", dayBar: 5, monthCost: "~$120–240", quality: "Talking-video native", qualityBar: 72,
+    note: "The REAL free upgrade. Speech-to-video: keyframe + voice audio → talking clip in ONE pass. Today that takes two stages (animate, then lip-sync). Open weights by the Wan team, proven GGUF quants, weights already staged in our volume.",
     color: "#10b981", gradient: "linear-gradient(135deg, #10b981, #059669)",
     badge: "🔥 THE UPGRADE PICK", isPick: true,
+  },
+  {
+    name: "Wan 2.5 / 2.6 / 2.7", nickname: "The Mirage", emoji: "🌫️",
+    access: "api", rate: "API-only", rateNote: "Alibaba stopped publishing weights after 2.2",
+    dayCost: "n/a", dayBar: 2, monthCost: "n/a", quality: "Unverifiable", qualityBar: 30,
+    note: "Fact-check (Aug 8): every 'Wan 2.7 open source download' site is SEO bait with no official release behind it. The official Wan-AI repo's newest open weights are all Wan 2.2 line. If a page says otherwise, it's selling something.",
+    color: "#64748b", gradient: "linear-gradient(135deg, #64748b, #475569)",
+    warn: "🚫 NOT DOWNLOADABLE",
   },
   {
     name: "LTX-2.3", nickname: "The Audio Native", emoji: "🎵",
@@ -536,7 +544,7 @@ export default function GPUPowerTower() {
               <span style={{ fontWeight: 800, color: "#fff" }}>~$5/day</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", background: "rgba(16,185,129,0.06)", borderRadius: 6, paddingLeft: 6, paddingRight: 6, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <span>🏆 <span style={{ color: "#10b981", fontWeight: 700 }}>Wan 2.7 swap</span> (better model, same GPU)</span>
+              <span>🗣️ <span style={{ color: "#10b981", fontWeight: 700 }}>Wan2.2-S2V swap</span> (talking video, one pass)</span>
               <span style={{ fontWeight: 800, color: "#10b981" }}>~$5/day — $0 extra</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
@@ -545,7 +553,7 @@ export default function GPUPowerTower() {
             </div>
           </div>
           <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 10, display: "inline-block" }}>
-            <span style={{ color: "#10b981", fontWeight: 800, fontSize: 13 }}>Wan 2.7 is NOT an API. It&apos;s open weights — same L40S, same Modal apps, same bill.<br/>Swap the checkpoint, keep the price, upgrade the quality. 🔥</span>
+            <span style={{ color: "#10b981", fontWeight: 800, fontSize: 13 }}>Plot twist: &quot;Wan 2.7 open source&quot; is SEO vapor — everything after 2.2 went API-only.<br/>Wan 2.2, the model we already run, IS the open-source frontier.<br/>The real free upgrade is Wan2.2-S2V: talking video in one pass, weights already staged. 🔥</span>
           </div>
         </div>
       </div>
