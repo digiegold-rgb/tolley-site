@@ -58,6 +58,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     "thumbnailConcept",
     // Hybrid render window: animate the first N seconds, Ken Burns the rest.
     "animUntilS",
+    // Short-form promo (2026-08-09) — user-edited caption for cross-posting.
+    "shortDescription",
   ];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {

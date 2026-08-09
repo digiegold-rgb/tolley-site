@@ -8,6 +8,7 @@ import {
 import { auth } from "@/auth";
 import { scopedProjectWhere } from "@/lib/vater/project-access";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
+import { extractYouTubeVideoId } from "@/lib/vater/video-id";
 
 export async function GET() {
   const session = await auth();
@@ -37,6 +38,8 @@ interface CreateBody {
   goal?: string;
   /** Animate the first N seconds, Ken Burns the remainder. */
   animUntilS?: number;
+  /** Set true to bypass the reused-reference warning (409) and proceed. */
+  allowReusedSource?: boolean;
 }
 
 export async function POST(req: Request) {
@@ -88,6 +91,74 @@ export async function POST(req: Request) {
 
   if (!sourceUrl) {
     return NextResponse.json({ error: "No source resolved" }, { status: 400 });
+  }
+
+  // ── Reused-reference warning (2026-08-09, Trey's request) ──────────────
+  // If this reference video was already used — as the source of an earlier
+  // project or as a style reference — warn instead of silently making a
+  // near-duplicate. The client re-submits with `allowReusedSource: true`
+  // to bypass after showing the warning.
+  if (!body.allowReusedSource) {
+    const videoId = extractYouTubeVideoId(sourceUrl);
+    const priorUses: Array<{
+      kind: "project" | "style";
+      id: string;
+      title: string;
+      status?: string;
+      usedAt?: string;
+    }> = [];
+
+    const priorProjects = await prisma.youTubeProject.findMany({
+      where: {
+        ...scopedProjectWhere(session.user.id, session.user.email),
+        sourceUrl: videoId ? { contains: videoId } : sourceUrl,
+      },
+      select: {
+        id: true,
+        sourceTitle: true,
+        topic: true,
+        status: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    });
+    for (const p of priorProjects) {
+      priorUses.push({
+        kind: "project",
+        id: p.id,
+        title: p.sourceTitle ?? p.topic ?? "(untitled project)",
+        status: p.status,
+        usedAt: p.createdAt.toISOString(),
+      });
+    }
+
+    // Style references live in a JSON column — the per-user style count is
+    // small, so scan in JS rather than fighting Prisma JSON filters.
+    const styles = await prisma.youTubeStyle.findMany({
+      where: { userId: session.user.id },
+      select: { id: true, name: true, referenceTranscripts: true },
+    });
+    for (const s of styles) {
+      const refs = Array.isArray(s.referenceTranscripts)
+        ? (s.referenceTranscripts as Array<{ videoId?: string; url?: string }>)
+        : [];
+      const hit = refs.some(
+        (r) =>
+          (videoId && r?.videoId === videoId) ||
+          (r?.url && r.url === sourceUrl),
+      );
+      if (hit) {
+        priorUses.push({ kind: "style", id: s.id, title: s.name });
+      }
+    }
+
+    if (priorUses.length > 0) {
+      return NextResponse.json(
+        { error: "reference_already_used", priorUses },
+        { status: 409 },
+      );
+    }
   }
 
   // Billing gate: transcribe-mode creation kicks off a transcription on the

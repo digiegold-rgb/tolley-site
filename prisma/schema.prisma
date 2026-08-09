@@ -3796,6 +3796,10 @@ model YouTubeProject {
   thumbnailConcept String?
   youtubeVideoId   String?
   publishedAt      DateTime?
+  // Short-form promo cut (2026-08-09) — vertical preview advertising the
+  // long-form + its cross-post description (links the published YouTube URL).
+  shortVideoUrl    String?
+  shortDescription String?
 
   // ── Batch-animate reconcile anchor (2026-07-02) ─────────────────────
   // The animate-all kickoff returns an animateAllJobId to the client, which

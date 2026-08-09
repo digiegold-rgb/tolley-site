@@ -230,7 +230,178 @@ export function PublishPanel({
         }
         onChanged={onChanged}
       />
+
+      <ShortPromoSection project={project} onChanged={onChanged} />
     </div>
+  );
+}
+
+/* ─── Short-form promo ─── */
+
+function ShortPromoSection({
+  project,
+  onChanged,
+}: {
+  project: ReviewProject;
+  onChanged: () => void;
+}): React.ReactElement {
+  const { t } = useTheme();
+  const [cutting, setCutting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [caption, setCaption] = React.useState(project.shortDescription ?? '');
+  const [savingCaption, setSavingCaption] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+
+  React.useEffect(() => {
+    setCaption(project.shortDescription ?? '');
+  }, [project.shortDescription]);
+
+  const cut = async (): Promise<void> => {
+    setError(null);
+    setCutting(true);
+    try {
+      const res = await fetch(`/api/vater/youtube/${project.id}/short`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ maxSeconds: 30 }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not cut the short');
+    } finally {
+      setCutting(false);
+    }
+  };
+
+  const saveCaption = async (): Promise<void> => {
+    setSavingCaption(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/vater/youtube/${project.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shortDescription: caption }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save caption');
+    } finally {
+      setSavingCaption(false);
+    }
+  };
+
+  const copyCaption = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(caption);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard denied — user can select manually */
+    }
+  };
+
+  return (
+    <VCard variant="flat" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <SectionHeader
+        icon="sparkle"
+        title="Short-form promo"
+        description="A ~30s vertical cut of the hook, ready to cross-post everywhere to advertise the long-form. Publish to YouTube first so the caption carries the real link."
+        actionLabel={
+          cutting
+            ? 'Cutting…'
+            : project.shortVideoUrl
+              ? 'Re-cut'
+              : 'Cut short preview'
+        }
+        onAction={project.finalVideoUrl ? () => void cut() : undefined}
+      />
+
+      {!project.finalVideoUrl && (
+        <div style={{ fontSize: 13, color: t.textSecondary }}>
+          Render the long-form first — the short is cut from the finished video.
+        </div>
+      )}
+
+      {project.shortVideoUrl && (
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <video
+            src={project.shortVideoUrl}
+            controls
+            style={{
+              width: 180,
+              aspectRatio: '9 / 16',
+              borderRadius: JELLY_TOKENS.radius.md,
+              background: '#000',
+              flex: '0 0 auto',
+            }}
+          />
+          <div
+            style={{
+              flex: '1 1 260px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+            }}
+          >
+            <div
+              style={{ fontSize: 13, fontWeight: 500, color: t.textSecondary }}
+            >
+              Cross-post caption
+              {project.youtubeVideoId
+                ? ' (links the published video)'
+                : ' — re-cut after publishing to bake in the real link'}
+            </div>
+            <textarea
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              rows={7}
+              style={{
+                width: '100%',
+                fontSize: 14,
+                lineHeight: 1.6,
+                fontFamily: JELLY_TOKENS.font,
+                border: `1px solid ${t.border}`,
+                borderRadius: JELLY_TOKENS.radius.md,
+                background: t.card,
+                color: t.text,
+                outline: 'none',
+                boxSizing: 'border-box',
+                padding: 12,
+                resize: 'vertical',
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <VBtn
+                variant="outlined"
+                size="sm"
+                onClick={() => void saveCaption()}
+                disabled={savingCaption || caption === (project.shortDescription ?? '')}
+              >
+                {savingCaption ? 'Saving…' : 'Save caption'}
+              </VBtn>
+              <VBtn variant="ghost" size="sm" onClick={() => void copyCaption()}>
+                {copied ? 'Copied!' : 'Copy caption'}
+              </VBtn>
+              <a
+                href={project.shortVideoUrl}
+                download
+                style={{ alignSelf: 'center', fontSize: 13, color: t.textSecondary }}
+              >
+                Download MP4
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error && <RetryError message={error} />}
+    </VCard>
   );
 }
 

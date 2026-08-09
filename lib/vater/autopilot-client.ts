@@ -638,6 +638,11 @@ export const autopilot = {
   runCreation: (input: RunCreationInput) =>
     call<{ jobId: string }>("POST", "/vater/run-creation", input),
 
+  /** Async — cut a vertical 9:16 promo short from a finished long-form.
+   *  Poll getJob(); result.shortVideoUrl on done. Pure ffmpeg, no GPU. */
+  makeShort: (input: { projectId: string; videoUrl: string; maxSeconds?: number }) =>
+    call<{ jobId: string }>("POST", "/vater/make-short", input),
+
   /** Cooperatively cancel a running job. The worker checks the cancel flag
    *  at each pipeline stage boundary and bails cleanly. Status ends as
    *  "cancelled" (not "failed"). */

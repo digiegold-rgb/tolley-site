@@ -55,6 +55,8 @@ export interface ReviewProject {
   thumbnailConcept: string | null;
   youtubeVideoId: string | null;
   publishedAt: string | null;
+  shortVideoUrl: string | null;
+  shortDescription: string | null;
   errorMessage: string | null;
   createdAt: string;
 }
@@ -63,6 +65,15 @@ interface StyleOption {
   id: string;
   name: string;
   isSystem: boolean;
+}
+
+/** One prior use of a reference video, from the 409 reused-reference gate. */
+interface PriorUse {
+  kind: 'project' | 'style';
+  id: string;
+  title: string;
+  status?: string;
+  usedAt?: string;
 }
 
 export type ReviewStage =
@@ -361,6 +372,9 @@ function IntakeForm({
   const [styleId, setStyleId] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [reusedWarning, setReusedWarning] = React.useState<PriorUse[] | null>(
+    null,
+  );
 
   const loadStyles = React.useCallback(async () => {
     try {
@@ -383,8 +397,9 @@ function IntakeForm({
     void loadStyles();
   }, [loadStyles]);
 
-  const submit = async (): Promise<void> => {
+  const submit = async (allowReusedSource = false): Promise<void> => {
     setError(null);
+    if (allowReusedSource) setReusedWarning(null);
     const targetDuration = Number.parseInt(minutes, 10);
     const animUntilS = Number.parseInt(animUntil, 10);
     if (!/^https?:\/\/.+\..+/.test(url.trim())) {
@@ -416,16 +431,25 @@ function IntakeForm({
           // pipeline marker either way, so store at least 1s of intent.
           animUntilS: Math.max(1, animUntilS),
           styleId,
+          ...(allowReusedSource ? { allowReusedSource: true } : {}),
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         project?: ReviewProject;
         error?: string;
         detail?: string;
+        priorUses?: PriorUse[];
       };
+      // Reused-reference gate: the API refuses with a 409 listing where this
+      // video was used before. Show the warning and offer an explicit bypass.
+      if (res.status === 409 && data.error === 'reference_already_used') {
+        setReusedWarning(data.priorUses ?? []);
+        return;
+      }
       if (!res.ok || !data.project) {
         throw new Error(data.detail || data.error || `HTTP ${res.status}`);
       }
+      setReusedWarning(null);
       onCreated(data.project);
       setUrl('');
     } catch (err) {
@@ -505,11 +529,60 @@ function IntakeForm({
 
       {error && <RetryError message={error} />}
 
-      <div>
-        <VBtn onClick={() => void submit()} disabled={submitting} icon="sparkle">
-          {submitting ? 'Starting…' : 'Transcribe & write script'}
-        </VBtn>
-      </div>
+      {reusedWarning && (
+        <div
+          style={{
+            border: '1px solid #eab308',
+            background: 'rgba(234, 179, 8, 0.08)',
+            borderRadius: 10,
+            padding: 14,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}
+        >
+          <div style={{ fontWeight: 600 }}>
+            ⚠ You&apos;ve used this reference video before
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18, color: t.textSecondary }}>
+            {reusedWarning.map((u) => (
+              <li key={`${u.kind}-${u.id}`}>
+                {u.kind === 'project' ? (
+                  <>
+                    Source of project “{u.title}”
+                    {u.status ? ` (${u.status})` : ''}
+                    {u.usedAt
+                      ? ` — ${new Date(u.usedAt).toLocaleDateString()}`
+                      : ''}
+                  </>
+                ) : (
+                  <>Style reference in “{u.title}”</>
+                )}
+              </li>
+            ))}
+          </ul>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <VBtn
+              onClick={() => void submit(true)}
+              disabled={submitting}
+              icon="sparkle"
+            >
+              {submitting ? 'Starting…' : 'Use it anyway'}
+            </VBtn>
+            <VBtn variant="ghost" onClick={() => setReusedWarning(null)}>
+              Cancel
+            </VBtn>
+          </div>
+        </div>
+      )}
+
+      {!reusedWarning && (
+        <div>
+          <VBtn onClick={() => void submit()} disabled={submitting} icon="sparkle">
+            {submitting ? 'Starting…' : 'Transcribe & write script'}
+          </VBtn>
+        </div>
+      )}
     </VCard>
   );
 }
