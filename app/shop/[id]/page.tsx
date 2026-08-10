@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { EmailCaptureForm } from "@/components/tools/EmailCaptureForm";
 import ProductPageView from "@/components/shop/ProductPageView";
+import { ViewContentPixel } from "@/components/shop/view-content-pixel";
 import ShopCard from "@/components/shop/ShopCard";
 import type { Prisma } from "@prisma/client";
 import shortsMap from "@/lib/shop/shorts-map.json";
@@ -166,6 +167,7 @@ export default async function ProductPage({
 
   return (
     <div>
+      <ViewContentPixel id={product.id} name={product.title} value={price} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
