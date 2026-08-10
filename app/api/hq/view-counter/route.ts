@@ -140,7 +140,14 @@ export async function GET() {
 
     const now = Date.now();
     const channels = VIEW_CHANNELS.map((cfg) => {
-      const hist = byChannel.get(cfg.key) ?? [];
+      // rowsSince: hard clamp for repointed cards — rows before it belong to a
+      // different account entirely (see lib/view-counter.ts). Without this the
+      // 30/90d windows baseline against the old account's lifetime snapshot
+      // and report an enormous fake collapse (yt-ykh: 239 - 4,416,902).
+      const rowsSinceMs = cfg.rowsSince ? Date.parse(cfg.rowsSince) : null;
+      const hist = (byChannel.get(cfg.key) ?? []).filter(
+        (r) => !rowsSinceMs || r.day.getTime() >= rowsSinceMs,
+      );
       const snaps = hist.filter((r) => r.totalViews !== null);
       const dailies = hist.filter((r) => r.dayViews !== null);
       const subs = hist.filter((r) => r.subscribers !== null);

@@ -24,6 +24,15 @@ export interface ViewChannel {
    * baseline moves.
    */
   subsSince?: string; // ISO date
+  /**
+   * Ignore ALL stored rows before this date. The stronger form of subsSince,
+   * for the same repoint problem hitting the VIEW windows: yt-ykh's pre-8/4
+   * rows are @digitalgold's snapshots (4.42M lifetime), so the 30/90d window
+   * baseline differenced across the repoint and reported ~-4.4M views. The
+   * mislabeled rows stay in the table (harmless, invisible) — @digitalgold's
+   * real history lives under its own key now.
+   */
+  rowsSince?: string; // ISO date
 }
 
 export const VIEW_CHANNELS: readonly ViewChannel[] = [
@@ -46,6 +55,17 @@ export const VIEW_CHANNELS: readonly ViewChannel[] = [
     url: "https://www.youtube.com/@yourkchomes",
     contentSince: "2026-08-03",
     subsSince: "2026-08-04",
+    rowsSince: "2026-08-04",
+  },
+  {
+    // The legacy 4.42M-view channel. Its numbers sat mislabeled on the
+    // yt-ykh card until 2026-08-03; now it has its own honest card. Dormant,
+    // so expect flat views — the point is the odometer keeps the 4.4M.
+    key: "yt-dgold",
+    platform: "youtube",
+    label: "Digital Gold",
+    note: "legacy library · dormant",
+    url: "https://www.youtube.com/@digitalgold",
   },
   {
     key: "yt-ruthann",
