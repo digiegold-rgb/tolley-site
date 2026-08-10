@@ -35,12 +35,12 @@ const NAV_ITEMS: NavItemDef[] = [
   { id: 'styles', label: 'Styles', icon: 'styles' },
   { id: 'project-history', label: 'Project History', icon: 'history' },
   { id: 'video-editor', label: 'Video Editor', icon: 'videoEditor' },
+  { id: 'course', label: 'Course Studio', icon: 'course' },
   { id: 'learning-center', label: 'Learning Center', icon: 'learning', stub: true },
 ];
 
 const SECONDARY_ITEMS: NavItemDef[] = [
   { id: 'discord', label: 'Discord Bot', icon: 'help' },
-  { id: 'course', label: 'Course Studio', icon: 'course' },
   { id: 'affiliate', label: 'Affiliate', icon: 'affiliate', stub: true },
 ];
 

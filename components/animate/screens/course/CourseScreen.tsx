@@ -46,6 +46,106 @@ const MODULES: Array<{ name: string; from: number; to: number }> = [
 
 const fmtUsd = (n: number) => `$${n.toFixed(2)}`;
 
+interface ClipRow {
+  url: string;
+  name: string;
+  sceneIdx: number;
+  variant: number;
+  current: boolean;
+  sizeBytes: number;
+  sourceProject: string;
+}
+
+/* Reusable b-roll takes from render experiments (kling/wan alternates etc.),
+ * served off the Blob CDN. Collapsed by default — 50+ videos should not eat
+ * bandwidth until Trey opens the drawer. */
+function ClipLibrary(): React.ReactElement | null {
+  const { t } = useTheme();
+  const [open, setOpen] = React.useState(false);
+  const [clips, setClips] = React.useState<ClipRow[] | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!open || clips !== null) return;
+    void (async () => {
+      try {
+        const res = await fetch('/api/vater/course/clips');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setClips(Array.isArray(data.clips) ? data.clips : []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'network error');
+      }
+    })();
+  }, [open, clips]);
+
+  return (
+    <div>
+      <VCard
+        variant="flat"
+        onClick={() => setOpen((o) => !o)}
+        style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}
+      >
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>Clip Library</div>
+          <div style={{ fontSize: 12, color: t.textSecondary, marginTop: 2 }}>
+            Animated host takes from render experiments — reusable as course b-roll.
+            {clips ? ` ${clips.length} clips.` : ''}
+          </div>
+        </div>
+        <span style={{ fontSize: 12, color: t.textSecondary }}>{open ? 'Hide' : 'Show'}</span>
+      </VCard>
+      {open && (
+        <div style={{ marginTop: 10 }}>
+          {error && <div style={{ fontSize: 12, color: JELLY_TOKENS.error as string }}>{error}</div>}
+          {!clips && !error && (
+            <div style={{ fontSize: 12, color: t.textSecondary, padding: 8 }}>Loading clips…</div>
+          )}
+          {clips && clips.length === 0 && (
+            <div style={{ fontSize: 12, color: t.textSecondary, padding: 8 }}>
+              No clips published yet.
+            </div>
+          )}
+          {clips && clips.length > 0 && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                gap: 10,
+              }}
+            >
+              {clips.map((c) => (
+                <VCard key={c.url} variant="flat" style={{ padding: 8 }}>
+                  <video
+                    src={c.url}
+                    controls
+                    preload="none"
+                    style={{ width: '100%', borderRadius: JELLY_TOKENS.radius.md, display: 'block' }}
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                    <div style={{ flex: 1, fontSize: 11, color: t.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      Scene {c.sceneIdx}
+                      {c.current ? ' · shipped take' : ` · alt v${c.variant}`}
+                      {` · ${(c.sizeBytes / 1048576).toFixed(1)}MB`}
+                    </div>
+                    <a
+                      href={c.url}
+                      download={c.name}
+                      style={{ fontSize: 11, color: JELLY_TOKENS.brand as string, textDecoration: 'none', flexShrink: 0 }}
+                    >
+                      Download
+                    </a>
+                  </div>
+                </VCard>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function lessonCost(l: CourseLessonRow): number | null {
   const c = l.costJson as { totalUsd?: number } | null;
   return typeof c?.totalUsd === 'number' ? c.totalUsd : null;
@@ -257,6 +357,8 @@ export function CourseScreen(): React.ReactElement {
           );
         })
       )}
+
+      {course && !selected && <ClipLibrary />}
     </div>
   );
 }
