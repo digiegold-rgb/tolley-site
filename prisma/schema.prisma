@@ -5086,6 +5086,11 @@ model VaterPayment {
   method    String   @default("zelle")
   note      String?
   createdAt DateTime @default(now())
+  // All-time billing state captured the instant this payment was recorded
+  // ({ computeUsd, opsUsd, totalUsd, minutes, videos, breakdown[] }). The
+  // "new since last payment" breakdown is current − this baseline, so Trey
+  // can see what the fresh charge is made of instead of one bare number.
+  snapshotJson Json?
 }
 
 model RepriceEvent {

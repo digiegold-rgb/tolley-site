@@ -16,7 +16,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { isVaterStudioEmail } from "@/lib/admin-auth";
 import { secretEquals } from "@/lib/secret-compare";
-import { getVaterBillingSummary } from "@/lib/vater/billing/summary";
+import { getVaterBillingSummary, recordVaterPayment } from "@/lib/vater/billing/summary";
 
 export const runtime = "nodejs";
 
@@ -37,60 +37,15 @@ export async function GET() {
   // fee. Compute is ALL cash out, not just spend attached to a finished
   // video — anything less makes the headline smaller than the known spend.
   // Totals live in getVaterBillingSummary (shared with /api/hq/vater-payment).
-  const [updates, allCosts, billingCore] = await Promise.all([
+  const [updates, billingCore] = await Promise.all([
     prisma.vaterUpdate.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
-    prisma.youTubeProject.findMany({ select: { costJson: true } }),
     getVaterBillingSummary(),
   ]);
   const { summary, costs } = billingCore;
-  const r2 = (n: number) => Math.round(n * 100) / 100;
-  const { computeUsd } = summary;
 
-  // Breakdown is derived from the per-video stage records, so a category we
-  // add later (a notebook run, a new provider) appears on its own without a
-  // code change here. Unknown keys get a title-cased label.
-  const STAGE_LABELS: Record<string, string> = {
-    anim: "Animation",
-    fal_anim: "fal / Kling",
-    reanimate: "Re-animation",
-    stills: "Stills",
-    render: "Render",
-    modal_overhead: "Modal cold starts",
-    llm: "LLM",
-    gemini: "Gemini",
-    tts: "Voice",
-    compose: "Compose",
-    duplicate_run: "Duplicate runs",
-    reconciliation: "Billing true-ups",
-  };
-  const stageTotals = new Map<string, number>();
-  for (const proj of allCosts) {
-    const cj = proj.costJson as { byStage?: Record<string, { usd?: number }> } | null;
-    for (const [key, v] of Object.entries(cj?.byStage ?? {})) {
-      const usd = Number(v?.usd ?? 0);
-      if (!usd) continue;
-      stageTotals.set(key, (stageTotals.get(key) ?? 0) + usd);
-    }
-  }
-  const breakdown = [...stageTotals.entries()]
-    .map(([key, usd]) => ({
-      key,
-      label:
-        STAGE_LABELS[key] ??
-        key.replace(/_/g, " ").replace(/^./, (ch) => ch.toUpperCase()),
-      usd: r2(usd),
-    }))
-    .filter((row) => row.usd > 0)
-    .sort((a, b) => b.usd - a.usd);
-  // Spend the per-video records can't see (pre-capture era, dev/test runs).
-  const attributed = r2(breakdown.reduce((a, row) => a + row.usd, 0));
-  if (computeUsd - attributed > 0.01) {
-    breakdown.push({ key: "other", label: "Other", usd: r2(computeUsd - attributed) });
-  }
-
-  // totalUsd is the ALL-TIME bill and never resets. Payments received
-  // (Zelle) accumulate separately; what Trey owes right now is dueUsd.
-  const billing = { ...summary, breakdown };
+  // Breakdown (all-time + "new since the last payment") is computed inside
+  // getVaterBillingSummary so the pill and /hq can never disagree.
+  const billing = summary;
 
   return NextResponse.json({ updates, costs, billing });
 }
@@ -163,17 +118,17 @@ export async function POST(req: Request) {
     if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
       return NextResponse.json({ error: "payment.amountUsd must be > 0" }, { status: 400 });
     }
-    const created = await prisma.vaterPayment.create({
-      data: {
-        amountUsd: Math.round(amountUsd * 100) / 100,
-        method: (body.payment.method || "zelle").slice(0, 40),
-        note: typeof body.payment.note === "string" ? body.payment.note.slice(0, 300) : null,
-      },
+    // recordVaterPayment snapshots the all-time state first, so the NEXT
+    // due amount can be broken down by category instead of one bare number.
+    const { payment, summary } = await recordVaterPayment({
+      amountUsd,
+      method: body.payment.method,
+      note: body.payment.note ?? null,
     });
-    const agg = await prisma.vaterPayment.aggregate({ _sum: { amountUsd: true } });
     results.payment = {
-      ...created,
-      paidUsdAllTime: Math.round((agg._sum.amountUsd ?? 0) * 100) / 100,
+      ...payment,
+      paidUsdAllTime: summary.paidUsd,
+      dueUsd: summary.dueUsd,
     };
   }
 

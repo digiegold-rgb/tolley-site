@@ -2,7 +2,8 @@
  * /api/hq/vater-payment — Trey's render bill from the /hq side.
  *
  * GET  → { summary, payments[≤20 newest] } (billing totals via the shared
- *        getVaterBillingSummary helper — same numbers as the /animate pill)
+ *        getVaterBillingSummary helper — same numbers as the /animate pill;
+ *        summary.since carries the category breakdown of the current due)
  * POST → record a payment RECEIVED (Zelle landed). Body:
  *        { amountUsd?: number, method?: string, note?: string }
  *        amountUsd omitted = pay off the full current due (the weekly
@@ -17,7 +18,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { secretEquals } from "@/lib/secret-compare";
-import { getVaterBillingSummary } from "@/lib/vater/billing/summary";
+import { getVaterBillingSummary, recordVaterPayment } from "@/lib/vater/billing/summary";
 import { validateWdAdmin } from "@/lib/wd-auth";
 
 export const runtime = "nodejs";
@@ -65,13 +66,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const payment = await prisma.vaterPayment.create({
-    data: {
-      amountUsd,
-      method: (body.method || "zelle").slice(0, 40),
-      note: typeof body.note === "string" ? body.note.slice(0, 300) : null,
-    },
+  // Snapshots the all-time state as this payment's baseline, so the summary
+  // that comes back already carries a category breakdown of the NEW due.
+  const { payment, summary: fresh } = await recordVaterPayment({
+    amountUsd,
+    method: body.method,
+    note: body.note ?? null,
   });
-  const { summary: fresh } = await getVaterBillingSummary();
   return NextResponse.json({ ok: true, payment, summary: fresh });
 }

@@ -39,6 +39,12 @@ interface VaterCosts {
   updatedAt: string;
 }
 
+interface BreakdownRow {
+  key: string;
+  label: string;
+  usd: number;
+}
+
 interface VaterBilling {
   opsRatePerMinute: number;
   minutes: number;
@@ -48,7 +54,16 @@ interface VaterBilling {
   totalUsd: number;
   paidUsd?: number;
   dueUsd?: number;
-  breakdown?: { key: string; label: string; usd: number }[];
+  breakdown?: BreakdownRow[];
+  since?: {
+    from: string | null;
+    basis: 'snapshot' | 'activity' | 'all-time';
+    computeUsd: number;
+    opsUsd: number;
+    totalUsd: number;
+    carryoverUsd: number;
+    rows: BreakdownRow[];
+  } | null;
 }
 
 interface LatestPayload {
@@ -238,6 +253,20 @@ export function VaterCostPill(): React.ReactElement | null {
     b?.totalUsd ?? c.claudeUsd + c.modalUsd + c.geminiUsd + c.falUsd + c.otherUsd;
   const paidUsd = b?.paidUsd ?? 0;
   const dueUsd = b?.dueUsd ?? Math.max(0, totalUsd - paidUsd);
+  // Two stacks in the popover: what the CURRENT DUE is made of (the number
+  // that resets when Jared records a Zelle), then the all-time history. The
+  // due rows come from the server already reconciled — they sum to dueUsd.
+  const since = b?.since ?? null;
+  const dueRows: { label: string; value: string; dim?: boolean }[] = since
+    ? [
+        ...since.rows.map((row) => ({
+          label: row.label,
+          value: `${row.usd < 0 ? '−' : ''}$${Math.abs(row.usd).toFixed(2)}`,
+          dim: true,
+        })),
+        { label: 'Current due', value: `$${dueUsd.toFixed(2)}` },
+      ]
+    : [];
   const rows: { label: string; value: string; dim?: boolean }[] = b
     ? [
         ...(b.breakdown ?? []).map((row) => ({
@@ -249,7 +278,6 @@ export function VaterCostPill(): React.ReactElement | null {
         { label: 'Render operations', value: `$${b.opsUsd.toFixed(2)}` },
         { label: 'All-time total', value: `$${b.totalUsd.toFixed(2)}` },
         { label: 'Paid', value: `−$${paidUsd.toFixed(2)}` },
-        { label: 'Current due', value: `$${dueUsd.toFixed(2)}` },
       ]
     : [
         { label: 'Modal GPU', value: `$${c.modalUsd.toFixed(2)}` },
@@ -257,6 +285,11 @@ export function VaterCostPill(): React.ReactElement | null {
         { label: 'fal.ai', value: `$${c.falUsd.toFixed(2)}` },
         { label: 'Other', value: `$${c.otherUsd.toFixed(2)}` },
       ];
+  const sinceLabel = since
+    ? since.from
+      ? `New since last payment (${timeAgo(since.from)})`
+      : 'What makes up this bill'
+    : '';
   return (
     <div
       onMouseEnter={() => setOpen(true)}
@@ -303,6 +336,53 @@ export function VaterCostPill(): React.ReactElement | null {
           <div style={{ fontWeight: 600, marginBottom: 8 }}>
             Current due — ${dueUsd.toFixed(2)} · All-time ${totalUsd.toFixed(2)}
           </div>
+          {dueRows.length > 0 && (
+            <>
+              <div
+                style={{
+                  fontSize: 10,
+                  letterSpacing: 0.6,
+                  textTransform: 'uppercase',
+                  color: GREEN,
+                  fontWeight: 700,
+                  marginBottom: 4,
+                }}
+              >
+                {sinceLabel}
+              </div>
+              {dueRows.map((r) => (
+                <div
+                  key={`due-${r.label}`}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 16,
+                    padding: '3px 0',
+                    color: r.dim ? t.textSecondary : t.text,
+                  }}
+                >
+                  <span>{r.label}</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                    {r.value}
+                  </span>
+                </div>
+              ))}
+              <div
+                style={{
+                  fontSize: 10,
+                  letterSpacing: 0.6,
+                  textTransform: 'uppercase',
+                  color: t.textSecondary,
+                  fontWeight: 700,
+                  margin: '10px 0 4px',
+                  paddingTop: 8,
+                  borderTop: `1px solid ${t.border}`,
+                }}
+              >
+                All time
+              </div>
+            </>
+          )}
           {rows.map((r) => (
             <div
               key={r.label}

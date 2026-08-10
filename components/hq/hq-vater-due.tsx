@@ -13,12 +13,33 @@ import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { readApiError } from "./types";
 
+interface BreakdownRow {
+  key: string;
+  label: string;
+  usd: number;
+}
+
 interface VaterDueSummary {
   totalUsd: number;
   paidUsd: number;
   dueUsd: number;
   videos: number;
   minutes: number;
+  /** Category breakdown of the CURRENT due — recomputed after every Zelle. */
+  since?: {
+    from: string | null;
+    basis: "snapshot" | "activity" | "all-time";
+    totalUsd: number;
+    carryoverUsd: number;
+    rows: BreakdownRow[];
+  } | null;
+}
+
+function sinceLabel(since: VaterDueSummary["since"]): string {
+  if (!since) return "";
+  if (!since.from) return "What makes up this bill";
+  const d = new Date(since.from);
+  return `New since ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
 }
 
 export function HqVaterDue() {
@@ -27,6 +48,7 @@ export function HqVaterDue() {
   const [amount, setAmount] = useState<string>("");
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [showRows, setShowRows] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -77,13 +99,11 @@ export function HqVaterDue() {
     }
   };
 
+  const dueRows = summary.since?.rows ?? [];
+
   return (
     <div
       style={{
-        display: "flex",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: 12,
         padding: "10px 14px",
         marginBottom: 14,
         border: "1px solid #d1d1d6",
@@ -92,6 +112,14 @@ export function HqVaterDue() {
         fontSize: 13,
       }}
     >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 12,
+        }}
+      >
       <strong>Trey render bill</strong>
       <span style={{ color: "#3a3a3c" }}>
         All-time <strong>${summary.totalUsd.toFixed(2)}</strong>
@@ -162,6 +190,73 @@ export function HqVaterDue() {
           <span style={{ fontSize: 12, color: "#15803d", fontWeight: 600 }}>Paid up ✓</span>
         )}
       </span>
+      </div>
+      {dueRows.length > 0 && (
+        <div style={{ marginTop: 8, borderTop: "1px solid #f0f0f2", paddingTop: 8 }}>
+          <button
+            onClick={() => setShowRows((v) => !v)}
+            style={{
+              padding: 0,
+              border: "none",
+              background: "none",
+              cursor: "pointer",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: 0.5,
+              textTransform: "uppercase",
+              color: "#6b7280",
+            }}
+          >
+            {showRows ? "▾" : "▸"} {sinceLabel(summary.since)} — where the $
+            {summary.dueUsd.toFixed(2)} went
+          </button>
+          {showRows && (
+            <div style={{ marginTop: 6, maxWidth: 420 }}>
+              {dueRows.map((row) => (
+                <div
+                  key={row.key}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 16,
+                    padding: "2px 0",
+                    fontSize: 12,
+                    color: "#3a3a3c",
+                  }}
+                >
+                  <span>{row.label}</span>
+                  <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
+                    {row.usd < 0 ? "−" : ""}${Math.abs(row.usd).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  padding: "4px 0 0",
+                  marginTop: 4,
+                  borderTop: "1px solid #f0f0f2",
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+              >
+                <span>Current due</span>
+                <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                  ${summary.dueUsd.toFixed(2)}
+                </span>
+              </div>
+              {summary.since?.basis === "activity" && (
+                <div style={{ marginTop: 6, fontSize: 11, color: "#9ca3af" }}>
+                  Attributed by render activity — the last payment predates
+                  snapshotting. The next Zelle makes this exact.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
