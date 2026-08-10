@@ -40,6 +40,22 @@ const HEADER = [
   "brand",
 ] as const;
 
+/**
+ * Meta rejects vehicles in e-commerce catalogs (they require a separate
+ * vehicle-type catalog). Mirror vehicle titles follow Marketplace's
+ * "<year> <make> ..." format; body-style suffixes catch retitled ones.
+ */
+const VEHICLE_MAKES =
+  "gmc|chevrolet|chevy|ford|toyota|honda|nissan|dodge|ram|jeep|buick|cadillac|chrysler|hyundai|kia|subaru|mazda|volkswagen|vw|bmw|mercedes|lexus|acura|infiniti|pontiac|saturn|mercury|lincoln|oldsmobile|mitsubishi|volvo|audi";
+const VEHICLE_TITLE = new RegExp(
+  `(^(19|20)\\d{2}\\s+(${VEHICLE_MAKES})\\b)|\\b(sport utility 4d|sedan 4d|coupe 2d|pickup [24]d|minivan 4d)\\b`,
+  "i",
+);
+
+function isVehicleTitle(title: string): boolean {
+  return VEHICLE_TITLE.test(title);
+}
+
 /** Meta accepts exactly: new | refurbished | used. Unknown → used (honest floor). */
 function metaCondition(raw: string | null): string {
   if (raw && /refurb/i.test(raw)) return "refurbished";
@@ -79,6 +95,7 @@ export async function GET(req: NextRequest) {
   const lines = [HEADER.join(",")];
   for (const p of rows) {
     if (!isSendableTitle(p.title)) continue;
+    if (isVehicleTitle(p.title)) continue;
     const image = p.imageUrls.find((u) => /^https?:\/\//.test(u));
     if (!image) continue;
     lines.push(
