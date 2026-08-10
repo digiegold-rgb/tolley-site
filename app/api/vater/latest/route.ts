@@ -16,7 +16,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { isVaterStudioEmail } from "@/lib/admin-auth";
 import { secretEquals } from "@/lib/secret-compare";
-import { getOpsRate } from "@/lib/vater/billing/ops-fee";
+import { getVaterBillingSummary } from "@/lib/vater/billing/summary";
 
 export const runtime = "nodejs";
 
@@ -33,31 +33,18 @@ export async function GET() {
   if (!session?.user?.id || !isVaterStudioEmail(session.user.email)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const [updates, costs, finished, allCosts, paidAgg] = await Promise.all([
-    prisma.vaterUpdate.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
-    prisma.vaterCostSnapshot.findUnique({ where: { id: "vater-costs" } }),
-    prisma.youTubeProject.findMany({
-      where: { status: "ready", finalVideoUrl: { not: null } },
-      select: { audioDuration: true, costJson: true },
-    }),
-    prisma.youTubeProject.findMany({ select: { costJson: true } }),
-    prisma.vaterPayment.aggregate({ _sum: { amountUsd: true } }),
-  ]);
-
   // ONE number for the studio: all compute at cost + the render-operations
   // fee. Compute is ALL cash out, not just spend attached to a finished
   // video — anything less makes the headline smaller than the known spend.
-  const opsRatePerMinute = getOpsRate();
+  // Totals live in getVaterBillingSummary (shared with /api/hq/vater-payment).
+  const [updates, allCosts, billingCore] = await Promise.all([
+    prisma.vaterUpdate.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
+    prisma.youTubeProject.findMany({ select: { costJson: true } }),
+    getVaterBillingSummary(),
+  ]);
+  const { summary, costs } = billingCore;
   const r2 = (n: number) => Math.round(n * 100) / 100;
-  let minutes = 0;
-  for (const p of finished) {
-    minutes += Math.max(0, Number(p.audioDuration ?? 0)) / 60;
-  }
-  const computeUsd = r2(
-    (costs?.claudeUsd ?? 0) + (costs?.modalUsd ?? 0) + (costs?.geminiUsd ?? 0) +
-    (costs?.falUsd ?? 0) + (costs?.otherUsd ?? 0),
-  );
-  const opsUsd = r2(minutes * opsRatePerMinute);
+  const { computeUsd } = summary;
 
   // Breakdown is derived from the per-video stage records, so a category we
   // add later (a notebook run, a new provider) appears on its own without a
@@ -102,20 +89,8 @@ export async function GET() {
   }
 
   // totalUsd is the ALL-TIME bill and never resets. Payments received
-  // (Zelle) accumulate separately; what Trey owes right now is the gap.
-  const totalUsd = r2(computeUsd + opsUsd);
-  const paidUsd = r2(paidAgg._sum.amountUsd ?? 0);
-  const billing = {
-    opsRatePerMinute,
-    minutes: r2(minutes),
-    videos: finished.length,
-    computeUsd,
-    opsUsd,
-    totalUsd,
-    paidUsd,
-    dueUsd: r2(Math.max(0, totalUsd - paidUsd)),
-    breakdown,
-  };
+  // (Zelle) accumulate separately; what Trey owes right now is dueUsd.
+  const billing = { ...summary, breakdown };
 
   return NextResponse.json({ updates, costs, billing });
 }

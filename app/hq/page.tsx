@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { HQ_BOARD_STAGES, HQ_OFFERS } from "@/lib/hq";
 import { useToast } from "@/components/ui/Toast";
 import { HqBk } from "@/components/hq/hq-bk";
+import { HqVaterDue } from "@/components/hq/hq-vater-due";
 import { HqBoard } from "@/components/hq/hq-board";
 import { HqLeadDrawer } from "@/components/hq/hq-lead-drawer";
 import { HqApprovalQueue } from "@/components/hq/hq-approval-queue";
@@ -643,14 +644,17 @@ function HqPageInner() {
         {tab === "empire" ? (
           <HqEmpireMap />
         ) : tab === "must" ? (
-          <HqMustComplete
-            open={mustOpen}
-            done={mustDone}
-            loading={mustLoading}
-            busyId={mustBusyId}
-            onRefresh={loadMust}
-            onSetStatus={setMustStatus}
-          />
+          <>
+            <HqVaterDue />
+            <HqMustComplete
+              open={mustOpen}
+              done={mustDone}
+              loading={mustLoading}
+              busyId={mustBusyId}
+              onRefresh={loadMust}
+              onSetStatus={setMustStatus}
+            />
+          </>
         ) : tab === "pipeline" ? (
           <HqBoard leads={boardLeads} onSelect={setSelected} />
         ) : tab === "inbound" ? (
