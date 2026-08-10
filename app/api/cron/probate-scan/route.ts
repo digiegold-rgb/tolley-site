@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { serpapiKey } from "@/lib/serpapi";
+import { notifyRoutineBrief } from "@/lib/routine-notify";
 import {
   runProbateDiscovery,
   enrichRecentDiscovered,
@@ -30,9 +32,43 @@ async function handler(req: NextRequest) {
 
   after(async () => {
     try {
+      const runStart = new Date();
       const discovery = await runProbateDiscovery();
       const enrichment = await enrichRecentDiscovered(6);
       console.log("[probate-scan] done", { discovery, enrichment });
+
+      // Feed Cordless, same rail as distress-scan: signals rotting unseen in
+      // the dashboard were the funnel's choke point (651 discovered → 40 ever
+      // promoted). Only push when there's something new to act on.
+      if (discovery.newSignals > 0) {
+        const fresh = await prisma.probateSignal.findMany({
+          where: { createdAt: { gte: runStart } },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        });
+        const lines = fresh.map((s) => {
+          const who = [s.decedentName, s.decedentAge ? `(${s.decedentAge})` : null]
+            .filter(Boolean)
+            .join(" ");
+          const where = [s.city, s.county].filter(Boolean).join(", ");
+          return `• ${who || "Unnamed"} — ${where || s.source}`;
+        });
+        if (discovery.newSignals > fresh.length) {
+          lines.push(`…and ${discovery.newSignals - fresh.length} more`);
+        }
+        lines.push(
+          "\nReview + promote: https://www.tolley.io/shop/dashboard/serpapi/probate"
+        );
+        notifyRoutineBrief({
+          slug: "probate-scan",
+          title: `🕊️ ${discovery.newSignals} new probate signal${
+            discovery.newSignals === 1 ? "" : "s"
+          }`,
+          body: lines.join("\n"),
+          severity: "action",
+          email: true,
+        });
+      }
     } catch (err) {
       console.error("[probate-scan] failed", err);
     }
