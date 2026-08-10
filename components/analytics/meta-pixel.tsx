@@ -31,7 +31,7 @@ export function MetaPixel() {
 /** Fire a Meta Pixel event (no-op if pixel not loaded) */
 export function fbqEvent(
   eventName: string,
-  params?: Record<string, string | number | boolean>,
+  params?: Record<string, string | number | boolean | string[]>,
 ) {
   if (typeof window !== "undefined" && typeof window.fbq === "function") {
     window.fbq("track", eventName, params);
