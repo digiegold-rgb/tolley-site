@@ -1,34 +1,34 @@
 'use client';
 
-/* ScriptReviewScreen — the human gate between "reference video in" and
- * "money spent on a render".
+/* ScriptReviewScreen — the human gate between "a script" and "money spent on
+ * a render".
  *
- * Pipeline the screen drives, left to right:
- *   1. Intake     — paste a reference YouTube URL. POST /api/vater/youtube
- *                   creates the project and starts yt-dlp + whisper.
- *   2. Transcript — when the row reaches `transcribed`, the poll loop fires
- *                   POST /[id]/script-from-reference, which runs the DGX
- *                   worker with `stopAfterScript`. It writes a script and
- *                   stops; nothing is rendered.
- *   3. Review     — the row rests in `awaiting_script_approval`. Jared edits
- *                   the script here and clicks Approve & Animate, which is
- *                   the ONLY thing that starts generation spend.
- *   4. Publish    — once `ready`, the publish panel stages title/description/
- *                   tags/thumbnail and uploads to YouTube on an explicit click.
+ * Rewritten 2026-08-10 (Trey): the reference-video lane is GONE. Trey supplies
+ * the script himself, so there is nothing to download, nothing to transcribe,
+ * and no LLM scripting pass to pay for. The screen is now:
  *
- * Inline styles only (v2 shell convention). The reused legacy pieces —
- * YouTubeScriptEditor here, the metadata editor's inputs in PublishPanel —
- * keep their Tailwind, matching the precedent set by the other v2 screens.
+ *   1. Intake  — paste or upload the script. POST /api/vater/youtube/from-script
+ *                creates the project ALREADY PARKED at the approval gate. No
+ *                DGX call, no spend.
+ *   2. Review  — the row rests in `awaiting_script_approval`. Trey reads,
+ *                edits, and saves the script here (saves are versioned), then
+ *                clicks Approve & Animate — the ONLY thing that starts spend.
+ *   3. Publish — once `ready`, the publish panel stages title/description/
+ *                tags/thumbnail and uploads to YouTube on an explicit click.
+ *
+ * Style is no longer a picker: every video ships in the locked "Jeff Whitfield
+ * 3-D style" (lib/vater/locked-style.ts). The screen shows what it's bound to
+ * and refuses to hide a missing style behind a silent fallback.
+ *
+ * Inline styles only (v2 shell convention).
  */
 
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VBtn, VCard, VInput, RetryError, SectionHeader } from '../../primitives';
-import { YouTubeScriptEditor } from '@/components/vater/youtube-script-editor';
 import {
   IN_FLIGHT_STATUSES,
-  WORDS_PER_MINUTE,
   type YouTubeProjectStatus,
 } from '@/lib/vater/youtube-status';
 import { PublishPanel } from './PublishPanel';
@@ -69,19 +69,25 @@ export interface ScriptVersion {
   script: string;
 }
 
-interface StyleOption {
+interface LockedStyle {
   id: string;
   name: string;
-  isSystem: boolean;
+  voice: string;
+  customArtStyleName: string | null;
+  characterNames: string[];
 }
 
-/** One prior use of a reference video, from the 409 reused-reference gate. */
-interface PriorUse {
-  kind: 'project' | 'style';
-  id: string;
-  title: string;
-  status?: string;
-  usedAt?: string;
+/* Monroe's measured long-form pace (standing spec §5) — runtime comes from the
+ * script's word count, never from stretching scenes. */
+const WORDS_PER_MINUTE = 185;
+
+const wordsIn = (s: string): number => s.split(/\s+/).filter(Boolean).length;
+
+function runtimeLabel(words: number): string {
+  const totalSeconds = Math.round((words / WORDS_PER_MINUTE) * 60);
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
 export type ReviewStage =
@@ -187,13 +193,8 @@ export function ScriptReviewScreen(): React.ReactElement {
   }, [visible, selectedId]);
 
   /* ── Poll loop ──────────────────────────────────────────────────────────
-   * Two jobs per tick: advance every in-flight project's DGX job through the
-   * poll route, and auto-continue any intake project whose transcript just
-   * landed. `continuing` guards against a second kickoff while the first
-   * request is still in the air (the route's status gate covers the rest). */
-  const continuing = React.useRef<Set<string>>(new Set());
-  const [autoError, setAutoError] = React.useState<string | null>(null);
-
+   * Only renders are in flight now — the script arrives with the project, so
+   * there is no transcript to wait on and nothing to auto-continue. */
   const inFlightIds = React.useMemo(
     () =>
       (projects ?? [])
@@ -206,22 +207,12 @@ export function ScriptReviewScreen(): React.ReactElement {
     [projects],
   );
 
-  const pendingScriptIds = React.useMemo(
-    () =>
-      (projects ?? [])
-        .filter((p) => p.animUntilS !== null && p.status === 'transcribed')
-        .map((p) => p.id),
-    [projects],
-  );
+  const busy = inFlightIds.length > 0;
 
-  const busy = inFlightIds.length > 0 || pendingScriptIds.length > 0;
-
-  // The tick reads the id lists through refs so a project-list refresh
-  // doesn't tear down and re-arm the interval on every pass.
+  // The tick reads the id list through a ref so a project-list refresh doesn't
+  // tear down and re-arm the interval on every pass.
   const inFlightRef = React.useRef(inFlightIds);
-  const pendingRef = React.useRef(pendingScriptIds);
   inFlightRef.current = inFlightIds;
-  pendingRef.current = pendingScriptIds;
 
   React.useEffect(() => {
     if (!busy) return;
@@ -235,34 +226,6 @@ export function ScriptReviewScreen(): React.ReactElement {
         } catch {
           // Best-effort: the list refresh below is what the UI renders from,
           // and its failures surface in the load-error banner.
-        }
-      }
-      for (const id of pendingRef.current) {
-        if (cancelled) return;
-        if (continuing.current.has(id)) continue;
-        continuing.current.add(id);
-        try {
-          const res = await fetch(
-            `/api/vater/youtube/${id}/script-from-reference`,
-            { method: 'POST' },
-          );
-          if (!res.ok && res.status !== 409) {
-            const data = (await res.json().catch(() => ({}))) as {
-              error?: string;
-              detail?: string;
-            };
-            setAutoError(
-              `Could not start the script: ${data.detail || data.error || `HTTP ${res.status}`}`,
-            );
-          } else if (res.ok) {
-            setAutoError(null);
-          }
-        } catch (err) {
-          setAutoError(
-            err instanceof Error ? err.message : 'Could not start the script',
-          );
-        } finally {
-          continuing.current.delete(id);
         }
       }
       if (cancelled) return;
@@ -283,12 +246,12 @@ export function ScriptReviewScreen(): React.ReactElement {
       <div>
         <div style={{ fontSize: 28, fontWeight: 700 }}>Script Review</div>
         <div style={{ fontSize: 14, color: t.textSecondary, marginTop: 4 }}>
-          Reference video in, script out, you approve it — only then does
+          Your script in, edited and saved here, you approve it — only then does
           anything render.
         </div>
       </div>
 
-      <IntakeForm
+      <ScriptIntake
         onCreated={(project) => {
           setProjects((prev) => (prev ? [project, ...prev] : [project]));
           setSelectedId(project.id);
@@ -296,7 +259,6 @@ export function ScriptReviewScreen(): React.ReactElement {
       />
 
       {loadError && <RetryError message={loadError} onRetry={() => void refresh()} />}
-      {autoError && <RetryError message={autoError} variant="banner" />}
 
       <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 320px', minWidth: 300, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -333,8 +295,7 @@ export function ScriptReviewScreen(): React.ReactElement {
           )}
           {projects !== null && visible.length === 0 && (
             <VCard variant="flat" style={{ fontSize: 13, color: t.textSecondary }}>
-              Nothing in the pipeline yet. Paste a reference video above to
-              start one.
+              Nothing in the pipeline yet. Paste a script above to start one.
             </VCard>
           )}
           {visible.map((p) => (
@@ -365,103 +326,154 @@ export function ScriptReviewScreen(): React.ReactElement {
   );
 }
 
+/* ─── Locked style card ───────────────────────────────────────────────────
+ * There is exactly one style now. This is a status readout, not a control:
+ * it exists so a missing/renamed style row is visible BEFORE Trey spends a
+ * render finding out, not so a different look can be chosen. */
+
+function LockedStyleCard(): React.ReactElement {
+  const { t } = useTheme();
+  const [style, setStyle] = React.useState<LockedStyle | null>(null);
+  const [expected, setExpected] = React.useState('Jeff Whitfield 3-D style');
+  const [loaded, setLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch('/api/vater/youtube/locked-style');
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          style: LockedStyle | null;
+          expectedName: string;
+        };
+        if (cancelled) return;
+        setStyle(data.style);
+        if (data.expectedName) setExpected(data.expectedName);
+      } catch {
+        /* the intake POST surfaces a real error if the style is truly gone */
+      } finally {
+        if (!cancelled) setLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const missing = loaded && !style;
+
+  return (
+    <div
+      style={{
+        border: `1px solid ${missing ? JELLY_TOKENS.error : t.border}`,
+        background: missing ? 'rgba(239, 68, 68, 0.06)' : t.cardAlt,
+        borderRadius: JELLY_TOKENS.radius.md,
+        padding: 14,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+      }}
+    >
+      <div style={{ fontSize: 11, color: t.textSecondary, letterSpacing: 0.3 }}>
+        VIDEO STYLE — LOCKED
+      </div>
+      <div style={{ fontSize: 15, fontWeight: 600, color: t.text }}>
+        {style?.name || expected}
+      </div>
+      {missing ? (
+        <div style={{ fontSize: 12, color: JELLY_TOKENS.error }}>
+          No “{expected}” style found on this account. Create it in Styles —
+          rendering is blocked until it exists.
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, color: t.textSecondary, lineHeight: 1.6 }}>
+          {style
+            ? `${style.characterNames.join(' · ') || 'Jeff Whitfield'} · voice ${style.voice}${
+                style.customArtStyleName ? ` · ${style.customArtStyleName}` : ''
+              }`
+            : 'Jeff Whitfield · voice Monroe · Finance Pixar 3D'}
+          <br />
+          Every video uses this style. Backgrounds and wardrobe vary scene to
+          scene; Jeff is the host, Linda appears when the script calls for her.
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Intake ─── */
 
-function IntakeForm({
+function ScriptIntake({
   onCreated,
 }: {
   onCreated: (project: ReviewProject) => void;
 }): React.ReactElement {
   const { t } = useTheme();
-  const [url, setUrl] = React.useState('');
-  const [minutes, setMinutes] = React.useState('4');
+  const [title, setTitle] = React.useState('');
+  const [script, setScript] = React.useState('');
   const [animUntil, setAnimUntil] = React.useState('120');
-  const [styles, setStyles] = React.useState<StyleOption[] | null>(null);
-  const [styleId, setStyleId] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [reusedWarning, setReusedWarning] = React.useState<PriorUse[] | null>(
-    null,
-  );
+  const fileRef = React.useRef<HTMLInputElement | null>(null);
 
-  const loadStyles = React.useCallback(async () => {
-    try {
-      const res = await fetch('/api/vater/youtube/styles');
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
-      const data = (await res.json()) as { styles: StyleOption[] };
-      setStyles(data.styles);
-      // The list arrives user-styles-first, most recently edited first — so
-      // the head of it is the style this user is actually working in.
-      if (data.styles.length > 0) setStyleId((prev) => prev || data.styles[0].id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load styles');
-    }
-  }, []);
+  const words = React.useMemo(() => wordsIn(script), [script]);
 
-  React.useEffect(() => {
-    void loadStyles();
-  }, [loadStyles]);
-
-  const submit = async (allowReusedSource = false): Promise<void> => {
+  const readFile = async (file: File): Promise<void> => {
     setError(null);
-    if (allowReusedSource) setReusedWarning(null);
-    const targetDuration = Number.parseInt(minutes, 10);
-    const animUntilS = Number.parseInt(animUntil, 10);
-    if (!/^https?:\/\/.+\..+/.test(url.trim())) {
-      setError('Paste a full reference video URL (https://…).');
+    if (file.size > 2 * 1024 * 1024) {
+      setError('That file is over 2 MB — paste the text instead.');
       return;
     }
-    if (!Number.isFinite(targetDuration) || targetDuration < 1) {
-      setError('Target length must be at least 1 minute.');
+    try {
+      const text = await file.text();
+      setScript(text.trim());
+      if (!title.trim()) {
+        setTitle(file.name.replace(/\.(txt|md|markdown|rtf)$/i, '').slice(0, 120));
+      }
+    } catch {
+      setError('Could not read that file. Paste the text instead.');
+    }
+  };
+
+  const submit = async (): Promise<void> => {
+    setError(null);
+    const animUntilS = Number.parseInt(animUntil, 10);
+    if (words < 20) {
+      setError(`Paste a script first — this is only ${words} words.`);
       return;
     }
     if (!Number.isFinite(animUntilS) || animUntilS < 0) {
       setError('Animate-first must be 0 seconds or more.');
       return;
     }
-    if (!styleId) {
-      setError('Pick a style — it carries the voice and the look.');
-      return;
-    }
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/vater/youtube', {
+      const res = await fetch('/api/vater/youtube/from-script', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          url: url.trim(),
-          targetDuration,
+          script: script.trim(),
+          title: title.trim() || undefined,
           // A zero here means "no animation at all"; the column stays the
           // pipeline marker either way, so store at least 1s of intent.
           animUntilS: Math.max(1, animUntilS),
-          styleId,
-          ...(allowReusedSource ? { allowReusedSource: true } : {}),
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         project?: ReviewProject;
         error?: string;
         detail?: string;
-        priorUses?: PriorUse[];
       };
-      // Reused-reference gate: the API refuses with a 409 listing where this
-      // video was used before. Show the warning and offer an explicit bypass.
-      if (res.status === 409 && data.error === 'reference_already_used') {
-        setReusedWarning(data.priorUses ?? []);
-        return;
-      }
       if (!res.ok || !data.project) {
         throw new Error(data.detail || data.error || `HTTP ${res.status}`);
       }
-      setReusedWarning(null);
       onCreated(data.project);
-      setUrl('');
+      setScript('');
+      setTitle('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start the video');
+      setError(err instanceof Error ? err.message : 'Could not create the project');
     } finally {
       setSubmitting(false);
     }
@@ -471,126 +483,105 @@ function IntakeForm({
     <VCard variant="flat" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <SectionHeader
         icon="scriptReview"
-        title="New video from reference"
-        description="Transcribes the reference, writes an original script, then waits for you."
+        title="New video from your script"
+        description="Paste or upload the script you want animated. It lands at the approval gate — nothing renders until you say so."
       />
 
       <VInput
-        label="Reference video URL"
-        value={url}
-        onChange={setUrl}
-        placeholder="https://youtu.be/…"
+        label="Video title"
+        value={title}
+        onChange={setTitle}
+        placeholder="Optional — defaults to the script's first line"
       />
 
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-        <VInput
-          label="Target length (minutes)"
-          value={minutes}
-          onChange={setMinutes}
-          style={{ flex: '1 1 160px' }}
-          helper={`≈ ${(Number.parseInt(minutes, 10) || 0) * WORDS_PER_MINUTE} words`}
+      <div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            gap: 12,
+            marginBottom: 6,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 500, color: t.textSecondary }}>
+            Script
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 12, color: t.textSecondary }}>
+              {words.toLocaleString()} words · ≈ {runtimeLabel(words)}
+            </span>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: JELLY_TOKENS.brand,
+                fontFamily: JELLY_TOKENS.font,
+                fontSize: 12,
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              Upload .txt / .md
+            </button>
+          </div>
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".txt,.md,.markdown,text/plain,text/markdown"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void readFile(file);
+            e.target.value = '';
+          }}
         />
+        <textarea
+          value={script}
+          onChange={(e) => setScript(e.target.value)}
+          placeholder="Paste the full narration script here…"
+          spellCheck
+          style={{
+            width: '100%',
+            minHeight: 240,
+            resize: 'vertical',
+            fontSize: 14,
+            lineHeight: 1.7,
+            fontFamily: JELLY_TOKENS.font,
+            border: `1px solid ${t.border}`,
+            borderRadius: JELLY_TOKENS.radius.md,
+            background: t.card,
+            color: t.text,
+            outline: 'none',
+            boxSizing: 'border-box',
+            padding: 14,
+          }}
+        />
+      </div>
+
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <VInput
           label="Animate first (seconds)"
           value={animUntil}
           onChange={setAnimUntil}
-          style={{ flex: '1 1 160px' }}
+          style={{ flex: '1 1 180px' }}
           helper="Rest of the video runs as Ken Burns stills"
         />
-        <div style={{ flex: '1 1 200px' }}>
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 500,
-              color: t.textSecondary,
-              marginBottom: 6,
-            }}
-          >
-            Style
-          </div>
-          <select
-            value={styleId}
-            onChange={(e) => setStyleId(e.target.value)}
-            style={{
-              width: '100%',
-              fontSize: 16,
-              fontFamily: JELLY_TOKENS.font,
-              border: `1px solid ${t.border}`,
-              borderRadius: JELLY_TOKENS.radius.md,
-              background: t.card,
-              color: t.text,
-              outline: 'none',
-              boxSizing: 'border-box',
-              padding: 14,
-            }}
-          >
-            {styles === null && <option value="">Loading…</option>}
-            {styles?.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-                {s.isSystem ? ' (system)' : ''}
-              </option>
-            ))}
-          </select>
+        <div style={{ flex: '2 1 300px' }}>
+          <LockedStyleCard />
         </div>
       </div>
 
       {error && <RetryError message={error} />}
 
-      {reusedWarning && (
-        <div
-          style={{
-            border: '1px solid #eab308',
-            background: 'rgba(234, 179, 8, 0.08)',
-            borderRadius: 10,
-            padding: 14,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 10,
-          }}
-        >
-          <div style={{ fontWeight: 600 }}>
-            ⚠ You&apos;ve used this reference video before
-          </div>
-          <ul style={{ margin: 0, paddingLeft: 18, color: t.textSecondary }}>
-            {reusedWarning.map((u) => (
-              <li key={`${u.kind}-${u.id}`}>
-                {u.kind === 'project' ? (
-                  <>
-                    Source of project “{u.title}”
-                    {u.status ? ` (${u.status})` : ''}
-                    {u.usedAt
-                      ? ` — ${new Date(u.usedAt).toLocaleDateString()}`
-                      : ''}
-                  </>
-                ) : (
-                  <>Style reference in “{u.title}”</>
-                )}
-              </li>
-            ))}
-          </ul>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <VBtn
-              onClick={() => void submit(true)}
-              disabled={submitting}
-              icon="sparkle"
-            >
-              {submitting ? 'Starting…' : 'Use it anyway'}
-            </VBtn>
-            <VBtn variant="ghost" onClick={() => setReusedWarning(null)}>
-              Cancel
-            </VBtn>
-          </div>
-        </div>
-      )}
-
-      {!reusedWarning && (
-        <div>
-          <VBtn onClick={() => void submit()} disabled={submitting} icon="sparkle">
-            {submitting ? 'Starting…' : 'Transcribe & write script'}
-          </VBtn>
-        </div>
-      )}
+      <div>
+        <VBtn onClick={() => void submit()} disabled={submitting} icon="sparkle">
+          {submitting ? 'Adding…' : 'Add script to review'}
+        </VBtn>
+      </div>
     </VCard>
   );
 }
@@ -655,9 +646,9 @@ function PipelineRow({
             {project.progress}%
           </span>
         )}
-        {project.sourceChannel && (
+        {project.script && (
           <span style={{ fontSize: 11, color: t.textSecondary }}>
-            {project.sourceChannel}
+            {wordsIn(project.script).toLocaleString()}w
           </span>
         )}
       </div>
@@ -694,14 +685,14 @@ function DetailPanel({
       {(stage === 'preparing' || stage === 'rendering' || stage === 'failed') && (
         <VCard variant="flat" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ fontSize: 15, fontWeight: 600 }}>
-            {project.sourceTitle || project.sourceUrl || 'Untitled'}
+            {project.publishTitle || project.sourceTitle || 'Untitled'}
           </div>
           <div style={{ fontSize: 13, color: t.textSecondary }}>
             {stage === 'failed'
               ? 'This project failed — the error is above.'
               : stage === 'rendering'
                 ? `Rendering the approved script — ${project.progress}% done.`
-                : 'Transcribing the reference and writing the script. The review panel opens here when it is ready.'}
+                : 'Getting this project ready. The review panel opens here when it is.'}
           </div>
           {project.script && (
             <div
@@ -736,70 +727,39 @@ function ReviewPanel({
   onChanged: () => void;
 }): React.ReactElement {
   const { t } = useTheme();
-  const [script, setScript] = React.useState(project.script ?? '');
-  // Bumped when a history entry is restored — remounts the editor so its
-  // mount-seeded internal state picks up the restored text.
-  const [restoreNonce, setRestoreNonce] = React.useState(0);
+  /* `saved` is the text the server currently holds; `draft` is what's in the
+   * box. Approve sends the DRAFT, so an unsaved edit can never silently
+   * render the older text — but the button says so out loud too. */
+  const [saved, setSaved] = React.useState(project.script ?? '');
+  const [draft, setDraft] = React.useState(project.script ?? '');
   const [saving, setSaving] = React.useState(false);
-  const [regenerating, setRegenerating] = React.useState(false);
   const [approving, setApproving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [saved, setSaved] = React.useState(false);
+  const [justSaved, setJustSaved] = React.useState(false);
 
-  const words = React.useMemo(
-    () => script.split(/\s+/).filter(Boolean).length,
-    [script],
-  );
-  const runtimeMin = words / WORDS_PER_MINUTE;
+  const words = React.useMemo(() => wordsIn(draft), [draft]);
+  const dirty = draft !== saved;
 
-  const save = async (next: string): Promise<void> => {
+  const save = async (): Promise<void> => {
     setError(null);
     setSaving(true);
     try {
       const res = await fetch(`/api/vater/youtube/${project.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script: next }),
+        body: JSON.stringify({ script: draft }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(data.error || `HTTP ${res.status}`);
       }
-      setScript(next);
-      setSaved(true);
+      setSaved(draft);
+      setJustSaved(true);
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save the script');
     } finally {
       setSaving(false);
-    }
-  };
-
-  /* Regenerate = run the DGX scripting stage again, still stopping before any
-   * render. The new draft replaces this one when it lands — the poll route
-   * only protects an edited script once the row is back at the gate. */
-  const regenerate = async (): Promise<void> => {
-    setError(null);
-    setRegenerating(true);
-    try {
-      const res = await fetch(
-        `/api/vater/youtube/${project.id}/script-from-reference`,
-        { method: 'POST' },
-      );
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as {
-          error?: string;
-          detail?: string;
-        };
-        throw new Error(data.detail || data.error || `HTTP ${res.status}`);
-      }
-      onChanged();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Could not regenerate the script',
-      );
-    } finally {
-      setRegenerating(false);
     }
   };
 
@@ -810,7 +770,7 @@ function ReviewPanel({
       const res = await fetch(`/api/vater/youtube/${project.id}/approve-script`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script }),
+        body: JSON.stringify({ script: draft }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as {
@@ -831,16 +791,13 @@ function ReviewPanel({
     <VCard variant="flat" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <SectionHeader
         icon="scriptReview"
-        title={project.sourceTitle || 'Script review'}
-        description="Edit freely. Nothing is generated until you approve."
+        title={project.publishTitle || project.sourceTitle || 'Script review'}
+        description="Edit freely and save. Nothing is generated until you approve."
       />
 
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 13 }}>
         <Stat label="Words" value={words.toLocaleString()} />
-        <Stat
-          label="Estimated runtime"
-          value={`${Math.floor(runtimeMin)}m ${Math.round((runtimeMin % 1) * 60)}s`}
-        />
+        <Stat label="Estimated runtime" value={runtimeLabel(words)} />
         <Stat
           label="Animated window"
           value={project.animUntilS ? `first ${project.animUntilS}s` : 'stills only'}
@@ -848,17 +805,14 @@ function ReviewPanel({
       </div>
 
       {(project.scriptVersions?.length ?? 0) > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, flexWrap: 'wrap' }}>
           <span style={{ color: t.textSecondary }}>History</span>
           <select
             value=""
             onChange={(e) => {
               const idx = Number(e.target.value);
               const entry = project.scriptVersions?.[idx];
-              if (entry) {
-                setScript(entry.script);
-                setRestoreNonce((n) => n + 1);
-              }
+              if (entry) setDraft(entry.script);
             }}
             style={{
               fontSize: 12,
@@ -885,7 +839,7 @@ function ReviewPanel({
                     hour: 'numeric',
                     minute: '2-digit',
                   })}{' '}
-                  · {v.script.split(/\s+/).filter(Boolean).length}w
+                  · {wordsIn(v.script)}w
                 </option>
               ))}
           </select>
@@ -895,29 +849,51 @@ function ReviewPanel({
         </div>
       )}
 
-      <YouTubeScriptEditor
-        key={restoreNonce}
-        script={script}
-        targetWordCount={project.targetWordCount || project.targetDuration * WORDS_PER_MINUTE}
-        onSave={(next) => void save(next)}
-        onRegenerate={() => void regenerate()}
-        isRegenerating={regenerating}
+      <textarea
+        value={draft}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          setJustSaved(false);
+        }}
+        spellCheck
+        style={{
+          width: '100%',
+          minHeight: 380,
+          resize: 'vertical',
+          fontSize: 14,
+          lineHeight: 1.75,
+          fontFamily: JELLY_TOKENS.font,
+          border: `1px solid ${dirty ? JELLY_TOKENS.brandOutline : t.border}`,
+          borderRadius: JELLY_TOKENS.radius.md,
+          background: t.card,
+          color: t.text,
+          outline: 'none',
+          boxSizing: 'border-box',
+          padding: 16,
+        }}
       />
 
       {error && <RetryError message={error} />}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <VBtn
+          variant="ghost"
+          onClick={() => void save()}
+          disabled={saving || approving || !dirty}
+        >
+          {saving ? 'Saving…' : dirty ? 'Save script' : 'Saved'}
+        </VBtn>
+        <VBtn
           onClick={() => void approve()}
-          disabled={approving || saving || regenerating || words === 0}
+          disabled={approving || saving || words === 0}
           icon="play"
         >
           {approving ? 'Starting render…' : 'Approve & Animate'}
         </VBtn>
         <span style={{ fontSize: 12, color: t.textSecondary }}>
-          {saving
-            ? 'Saving…'
-            : saved
+          {dirty
+            ? 'Unsaved edits — Approve sends the text in the box above.'
+            : justSaved
               ? 'Saved. Approving sends this exact text to the renderer.'
               : 'Approving sends the text above to the renderer.'}
         </span>

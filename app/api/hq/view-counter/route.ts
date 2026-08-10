@@ -191,9 +191,13 @@ export async function GET() {
 
         // Exact when a lifetime snapshot exists from before the window opened.
         const baseline = snaps.filter((r) => r.day.getTime() <= startMs).pop();
+        // max(0): a lifetime counter can shrink (deleted videos, a slightly
+        // short scrape passing the 98% guard) — tt-jared's did, and its
+        // -52K window dragged the empire d30 TOTAL negative, which the
+        // odometer clamps to a flat 0. Views received can never be < 0.
         if (baseline && latestSnap) {
           windows[`d${days}`] = {
-            views: Number(latestSnap.totalViews) - Number(baseline.totalViews),
+            views: Math.max(0, Number(latestSnap.totalViews) - Number(baseline.totalViews)),
             partial: false,
             since: null,
           };
@@ -220,7 +224,7 @@ export async function GET() {
         const firstSnap = snaps[0];
         if (firstSnap && latestSnap && firstSnap.id !== latestSnap.id) {
           windows[`d${days}`] = {
-            views: Number(latestSnap.totalViews) - Number(firstSnap.totalViews),
+            views: Math.max(0, Number(latestSnap.totalViews) - Number(firstSnap.totalViews)),
             partial: true,
             since: firstSnap.day.toISOString().slice(0, 10),
           };

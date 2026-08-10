@@ -203,14 +203,29 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): React.ReactEleme
         </VBtn>
       </div>
 
-      {/* Nav */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      {/* Nav — scrolls independently of the header + CTA, which stay pinned.
+       * `minHeight: 0` is load-bearing: without it a flex child refuses to
+       * shrink below its content height and the overflow never engages, so
+       * the tail of the nav (Course Studio, Discord) was unreachable on
+       * short viewports. */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          scrollbarWidth: 'thin',
+          scrollbarColor: `${t.border} transparent`,
+        }}
+      >
         <div>
           {filterStubs(NAV_ITEMS).map((item) => (
             <NavItem key={item.id} item={item} />
           ))}
         </div>
-        <div style={{ flex: 1 }} />
+        <div style={{ flex: 1, minHeight: 8 }} />
         <div style={{ marginBottom: 16 }}>
           {filterStubs(SECONDARY_ITEMS).map((item) => (
             <NavItem key={item.id} item={item} />

@@ -22,17 +22,35 @@ type StyleWithRelations = YouTubeStyle & {
 };
 
 /**
- * Pull the gender token from a character descriptor's first sentence.
- * Descriptors are required to open with "A 2D cartoon [male|female|
- * androgynous] character …" by the system prompt at vater.py:6029. We
- * scan the first 200 chars to be tolerant of minor LLM variation.
+ * Pull the gender token from a character descriptor's first sentences.
+ * Descriptors are *supposed* to open with "A 2D cartoon [male|female|
+ * androgynous] character …" (vater.py's casting prompt), but hand-authored
+ * and legacy descriptors routinely don't — Jeff Whitfield's opens
+ * "middle-aged, with warm peachy-tan skin. He has …", which matched none of
+ * the old noun patterns and fell through to the "female" default. vater.py
+ * turns this into a hard prompt prefix ("A 2D cartoon female character."), so
+ * a wrong read fights the descriptor in every single scene image.
+ *
+ * PRONOUNS are the reliable signal in these descriptors, so they count.
+ * Word boundaries keep "woman" from matching \bman\b and "She" from matching
+ * \bhe\b; when a descriptor carries both (e.g. a comparison to a spouse), the
+ * FIRST gendered token wins, since descriptors lead with their own subject.
  */
+const FEMALE_TOKENS = /\bfemale\b|\b(?:woman|girl|lady|she|her|hers)\b/;
+const MALE_TOKENS = /\bmale\b|\b(?:man|boy|gentleman|he|his|him)\b/;
+const ANY_GENDER_TOKEN =
+  /\b(female|woman|girl|lady|she|her|hers|male|man|boy|gentleman|he|his|him)\b/;
+
 function parseGenderFromDescriptor(desc: string): string {
-  const head = desc.slice(0, 200).toLowerCase();
+  const head = desc.slice(0, 300).toLowerCase();
   if (/\bandrogynous\b/.test(head)) return "androgynous";
-  if (/\bmale\b/.test(head) && !/\bfemale\b/.test(head)) return "male";
-  if (/\bfemale\b/.test(head) || /\b(woman|girl|lady)\b/.test(head)) return "female";
-  if (/\b(man|boy|gentleman)\b/.test(head)) return "male";
+  const female = FEMALE_TOKENS.test(head);
+  const male = MALE_TOKENS.test(head);
+  if (female !== male) return female ? "female" : "male";
+  const first = head.match(ANY_GENDER_TOKEN);
+  if (first) {
+    return FEMALE_TOKENS.test(first[1]) ? "female" : "male";
+  }
   return "female";
 }
 
@@ -104,16 +122,24 @@ export function buildStyleSnapshot(style: StyleWithRelations): StyleSnapshot {
           referenceImageUrls: style.customArtStyle.referenceImageUrls,
         }
       : null,
-    characters: style.characters.map((c) => ({
-      id: c.id,
-      name: c.name,
-      description: c.description,
-      imageUrl: c.imageUrl,
-      permanent: c.permanent,
-      placeInEveryImage: c.placeInEveryImage,
-      // Gender parsed at runtime from the descriptor's first sentence.
-      // Once the optional `gender` DB column is migrated, replace with c.gender.
-      gender: parseGenderFromDescriptor(c.description),
-    })),
+    // Order is load-bearing, not cosmetic: vater.py treats characters[0] as
+    // the show's HOST and force-injects that identity. Prisma's
+    // `include: { characters: true }` has no ORDER BY, so without this the
+    // host could silently become whichever row Postgres happened to return
+    // first — e.g. Linda hosting a video instead of Jeff. Oldest-first makes
+    // the founding character the host on every style.
+    characters: [...style.characters]
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        imageUrl: c.imageUrl,
+        permanent: c.permanent,
+        placeInEveryImage: c.placeInEveryImage,
+        // Gender parsed at runtime from the descriptor's first sentence.
+        // Once the optional `gender` DB column is migrated, replace with c.gender.
+        gender: parseGenderFromDescriptor(c.description),
+      })),
   };
 }
