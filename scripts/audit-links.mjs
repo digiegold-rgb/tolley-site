@@ -33,6 +33,8 @@ const ORPHAN_ALLOWLIST = new Set([
   "/demo", // /demo/[slug] operator previews are sent 1:1
   "/v", // /v/[slug] video-offer pages are sent 1:1
   "/results", // share-link landing (redirects to /start)
+  "/checkout", // Meta Shop checkout-on-website landing — only Meta links here
+
   "/login", // auth entry; linked via redirects/headers, not always static href
   "/signup",
   "/settings",
