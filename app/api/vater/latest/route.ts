@@ -33,7 +33,7 @@ export async function GET() {
   if (!session?.user?.id || !isVaterStudioEmail(session.user.email)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const [updates, costs, finished, allCosts] = await Promise.all([
+  const [updates, costs, finished, allCosts, paidAgg] = await Promise.all([
     prisma.vaterUpdate.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
     prisma.vaterCostSnapshot.findUnique({ where: { id: "vater-costs" } }),
     prisma.youTubeProject.findMany({
@@ -41,6 +41,7 @@ export async function GET() {
       select: { audioDuration: true, costJson: true },
     }),
     prisma.youTubeProject.findMany({ select: { costJson: true } }),
+    prisma.vaterPayment.aggregate({ _sum: { amountUsd: true } }),
   ]);
 
   // ONE number for the studio: all compute at cost + the render-operations
@@ -100,13 +101,19 @@ export async function GET() {
     breakdown.push({ key: "other", label: "Other", usd: r2(computeUsd - attributed) });
   }
 
+  // totalUsd is the ALL-TIME bill and never resets. Payments received
+  // (Zelle) accumulate separately; what Trey owes right now is the gap.
+  const totalUsd = r2(computeUsd + opsUsd);
+  const paidUsd = r2(paidAgg._sum.amountUsd ?? 0);
   const billing = {
     opsRatePerMinute,
     minutes: r2(minutes),
     videos: finished.length,
     computeUsd,
     opsUsd,
-    totalUsd: r2(computeUsd + opsUsd),
+    totalUsd,
+    paidUsd,
+    dueUsd: r2(Math.max(0, totalUsd - paidUsd)),
     breakdown,
   };
 
@@ -124,6 +131,7 @@ export async function POST(req: Request) {
     update?: { message?: string; kind?: string; projectId?: string; url?: string };
     costs?: Partial<Record<(typeof COST_FIELDS)[number], number>> & { note?: string };
     costsMode?: "set" | "add";
+    payment?: { amountUsd?: number; method?: string; note?: string };
   };
   try {
     body = await req.json();
@@ -131,7 +139,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const results: { update?: unknown; costs?: unknown } = {};
+  const results: { update?: unknown; costs?: unknown; payment?: unknown } = {};
 
   if (body.update) {
     const message = String(body.update.message ?? "").trim();
@@ -175,8 +183,27 @@ export async function POST(req: Request) {
     });
   }
 
-  if (!body.update && !body.costs) {
-    return NextResponse.json({ error: "Nothing to do — pass update and/or costs" }, { status: 400 });
+  if (body.payment) {
+    const amountUsd = Number(body.payment.amountUsd);
+    if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
+      return NextResponse.json({ error: "payment.amountUsd must be > 0" }, { status: 400 });
+    }
+    const created = await prisma.vaterPayment.create({
+      data: {
+        amountUsd: Math.round(amountUsd * 100) / 100,
+        method: (body.payment.method || "zelle").slice(0, 40),
+        note: typeof body.payment.note === "string" ? body.payment.note.slice(0, 300) : null,
+      },
+    });
+    const agg = await prisma.vaterPayment.aggregate({ _sum: { amountUsd: true } });
+    results.payment = {
+      ...created,
+      paidUsdAllTime: Math.round((agg._sum.amountUsd ?? 0) * 100) / 100,
+    };
+  }
+
+  if (!body.update && !body.costs && !body.payment) {
+    return NextResponse.json({ error: "Nothing to do — pass update, costs, and/or payment" }, { status: 400 });
   }
   return NextResponse.json({ ok: true, ...results });
 }

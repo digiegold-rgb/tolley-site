@@ -5078,6 +5078,16 @@ model VaterCostSnapshot {
   updatedAt    DateTime @updatedAt
 }
 
+// Payments received against the Vater render bill (Zelle etc). Current due
+// = billing.totalUsd − sum(payments); the all-time total never resets.
+model VaterPayment {
+  id        String   @id @default(cuid())
+  amountUsd Float
+  method    String   @default("zelle")
+  note      String?
+  createdAt DateTime @default(now())
+}
+
 model RepriceEvent {
   id        String   @id @default(cuid())
   productId String?

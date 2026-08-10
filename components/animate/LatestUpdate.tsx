@@ -46,6 +46,8 @@ interface VaterBilling {
   computeUsd: number;
   opsUsd: number;
   totalUsd: number;
+  paidUsd?: number;
+  dueUsd?: number;
   breakdown?: { key: string; label: string; usd: number }[];
 }
 
@@ -234,6 +236,8 @@ export function VaterCostPill(): React.ReactElement | null {
   // run, a new provider) appears here without touching this component.
   const totalUsd =
     b?.totalUsd ?? c.claudeUsd + c.modalUsd + c.geminiUsd + c.falUsd + c.otherUsd;
+  const paidUsd = b?.paidUsd ?? 0;
+  const dueUsd = b?.dueUsd ?? Math.max(0, totalUsd - paidUsd);
   const rows: { label: string; value: string; dim?: boolean }[] = b
     ? [
         ...(b.breakdown ?? []).map((row) => ({
@@ -243,7 +247,9 @@ export function VaterCostPill(): React.ReactElement | null {
         })),
         { label: 'Compute', value: `$${b.computeUsd.toFixed(2)}` },
         { label: 'Render operations', value: `$${b.opsUsd.toFixed(2)}` },
-        { label: 'Total', value: `$${b.totalUsd.toFixed(2)}` },
+        { label: 'All-time total', value: `$${b.totalUsd.toFixed(2)}` },
+        { label: 'Paid', value: `−$${paidUsd.toFixed(2)}` },
+        { label: 'Current due', value: `$${dueUsd.toFixed(2)}` },
       ]
     : [
         { label: 'Modal GPU', value: `$${c.modalUsd.toFixed(2)}` },
@@ -273,8 +279,8 @@ export function VaterCostPill(): React.ReactElement | null {
         }}
       >
         <span style={{ color: GREEN, fontWeight: 700 }}>≈</span>
-        <span>${totalUsd.toFixed(2)}</span>
-        <span style={{ opacity: 0.6, fontSize: 10 }}>est.</span>
+        <span>${dueUsd.toFixed(2)}</span>
+        <span style={{ opacity: 0.6, fontSize: 10 }}>due</span>
       </div>
       {open && (
         <div
@@ -295,7 +301,7 @@ export function VaterCostPill(): React.ReactElement | null {
           }}
         >
           <div style={{ fontWeight: 600, marginBottom: 8 }}>
-            All-time Vater spend — ${totalUsd.toFixed(2)}
+            Current due — ${dueUsd.toFixed(2)} · All-time ${totalUsd.toFixed(2)}
           </div>
           {rows.map((r) => (
             <div
