@@ -3750,6 +3750,11 @@ model YouTubeProject {
   sourcePrinciples   Json?
   script             String?
   scriptMeta         Json?
+  // Append-only script history (standing spec rule 7, 2026-08-09):
+  // [{ts, source: "generated"|"edited"|"approved", script}], capped at 20.
+  // Written by poll (generated draft lands), PATCH (inline edit), and
+  // approve-script. The `script` column stays the single live source of truth.
+  scriptVersions     Json?
   verifiedScript     Boolean @default(false)
   verificationReport Json?
 

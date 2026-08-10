@@ -59,6 +59,14 @@ export interface ReviewProject {
   shortDescription: string | null;
   errorMessage: string | null;
   createdAt: string;
+  /** Append-only script history (standing spec rule 7), oldest first. */
+  scriptVersions: ScriptVersion[] | null;
+}
+
+export interface ScriptVersion {
+  ts: string;
+  source: 'generated' | 'edited' | 'approved';
+  script: string;
 }
 
 interface StyleOption {
@@ -729,6 +737,9 @@ function ReviewPanel({
 }): React.ReactElement {
   const { t } = useTheme();
   const [script, setScript] = React.useState(project.script ?? '');
+  // Bumped when a history entry is restored — remounts the editor so its
+  // mount-seeded internal state picks up the restored text.
+  const [restoreNonce, setRestoreNonce] = React.useState(0);
   const [saving, setSaving] = React.useState(false);
   const [regenerating, setRegenerating] = React.useState(false);
   const [approving, setApproving] = React.useState(false);
@@ -836,7 +847,56 @@ function ReviewPanel({
         />
       </div>
 
+      {(project.scriptVersions?.length ?? 0) > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+          <span style={{ color: t.textSecondary }}>History</span>
+          <select
+            value=""
+            onChange={(e) => {
+              const idx = Number(e.target.value);
+              const entry = project.scriptVersions?.[idx];
+              if (entry) {
+                setScript(entry.script);
+                setRestoreNonce((n) => n + 1);
+              }
+            }}
+            style={{
+              fontSize: 12,
+              padding: '4px 8px',
+              borderRadius: 6,
+              border: `1px solid ${t.border}`,
+              background: t.cardAlt,
+              color: t.text,
+              maxWidth: 320,
+            }}
+          >
+            <option value="" disabled>
+              Restore a previous version…
+            </option>
+            {project.scriptVersions!
+              .map((v, i) => ({ v, i }))
+              .reverse()
+              .map(({ v, i }) => (
+                <option key={`${v.ts}-${i}`} value={i}>
+                  v{i + 1} · {v.source} ·{' '}
+                  {new Date(v.ts).toLocaleString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}{' '}
+                  · {v.script.split(/\s+/).filter(Boolean).length}w
+                </option>
+              ))}
+          </select>
+          <span style={{ color: t.textSecondary }}>
+            Loads into the editor — Save to keep it.
+          </span>
+        </div>
+      )}
+
       <YouTubeScriptEditor
+        key={restoreNonce}
         script={script}
         targetWordCount={project.targetWordCount || project.targetDuration * WORDS_PER_MINUTE}
         onSave={(next) => void save(next)}

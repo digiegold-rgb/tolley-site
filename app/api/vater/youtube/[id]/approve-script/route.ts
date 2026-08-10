@@ -22,6 +22,7 @@ import { startRunCreation, ScriptGateError } from "@/lib/vater/script-gate";
 import { auth } from "@/auth";
 import { canAccessProject } from "@/lib/vater/project-access";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
+import { appendScriptVersion } from "@/lib/vater/script-versions";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -95,6 +96,11 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     where: { id },
     data: {
       script,
+      scriptVersions: appendScriptVersion(
+        project.scriptVersions,
+        "approved",
+        script,
+      ),
       scriptApprovedAt: new Date(),
       targetWordCount: wordCount,
       scriptMeta: {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { wordCountForDuration } from "@/lib/vater/youtube-types";
+import { appendScriptVersion } from "@/lib/vater/script-versions";
 import { auth } from "@/auth";
 import {
   canAccessProject,
@@ -83,6 +84,20 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   if (data.targetDuration) {
     data.targetWordCount = wordCountForDuration(data.targetDuration as number);
+  }
+
+  // Version history (standing spec rule 7): every inline script save appends;
+  // the no-op guard in appendScriptVersion absorbs repeat saves of the same text.
+  if (typeof data.script === "string") {
+    const existing = await prisma.youTubeProject.findUnique({
+      where: { id },
+      select: { scriptVersions: true },
+    });
+    data.scriptVersions = appendScriptVersion(
+      existing?.scriptVersions,
+      "edited",
+      data.script,
+    );
   }
 
   const project = await prisma.youTubeProject.update({

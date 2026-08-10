@@ -35,6 +35,7 @@ import {
   type YouTubeProjectStatus,
 } from "@/lib/vater/youtube-status";
 import { mergeVideoCost } from "@/lib/vater/video-cost";
+import { appendScriptVersion } from "@/lib/vater/script-versions";
 import { auth } from "@/auth";
 import { canAccessProject } from "@/lib/vater/project-access";
 import { recordUsage } from "@/lib/vater/billing/record-usage";
@@ -225,6 +226,14 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       if (result.scriptMeta) {
         data.scriptMeta = result.scriptMeta as Prisma.InputJsonValue;
       }
+      // Version history (standing spec rule 7): record the generated draft
+      // the moment it lands. Human-owned re-polls never reach this branch,
+      // so history can't be polluted by re-serving the same done job.
+      data.scriptVersions = appendScriptVersion(
+        project.scriptVersions,
+        "generated",
+        result.script!,
+      );
     }
     if (result.sourcePrinciples !== undefined) {
       data.sourcePrinciples = result.sourcePrinciples as Prisma.InputJsonValue;
