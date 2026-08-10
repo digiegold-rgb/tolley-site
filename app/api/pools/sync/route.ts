@@ -22,11 +22,15 @@ function calcSellingPrice(cost: number): number {
 
 function buildImageUrl(sku: string): string | null {
   // Pool360 CDN pattern: /insite/Product/Images/{AA}/{A-}/{50}/{SKU}_medium.jpg
+  // dir3 is always the first TWO chars of the middle segment (CTM-251-x → /25/, not /251/).
+  // Best-effort guess for new products only — some images carry a "-1" index suffix the
+  // pattern can't predict, so existing rows are corrected against the Pool360 product API
+  // and never overwritten here (see update branch below).
   const parts = sku.split("-");
   if (parts.length < 3 || parts[0].length < 3) return null;
   const dir1 = parts[0].substring(0, 2);
   const dir2 = parts[0].substring(2) + "-";
-  const dir3 = parts[1];
+  const dir3 = parts[1].substring(0, 2);
   return `https://poolimages.azureedge.net/insite/Product/Images/${dir1}/${dir2}/${dir3}/${sku}_medium.jpg`;
 }
 
@@ -114,7 +118,6 @@ export async function POST(request: NextRequest) {
               lastSyncedAt: new Date(),
               ...(p.name ? { name: p.name } : {}),
               ...(p.brand ? { brand: p.brand } : {}),
-              ...(imageUrl && { imageUrl }),
               ...(p.mfgPart ? { mfgPart: p.mfgPart } : {}),
               ...stockData,
             },
