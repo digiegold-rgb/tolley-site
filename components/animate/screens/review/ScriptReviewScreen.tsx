@@ -28,6 +28,7 @@ import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VBtn, VCard, VInput, RetryError, SectionHeader } from '../../primitives';
 import {
+  CREATION_PHASES,
   IN_FLIGHT_STATUSES,
   type YouTubeProjectStatus,
 } from '@/lib/vater/youtube-status';
@@ -61,6 +62,18 @@ export interface ReviewProject {
   createdAt: string;
   /** Append-only script history (standing spec rule 7), oldest first. */
   scriptVersions: ScriptVersion[] | null;
+  /** Live worker state, refreshed by the 5s poll. Drives the rolling log. */
+  stepDetails: StepDetails | null;
+}
+
+/** What `/api/vater/youtube/[id]/poll` writes onto the row each tick. */
+export interface StepDetails {
+  phase?: string | null;
+  jobId?: string | null;
+  progress?: number | null;
+  jobStatus?: string | null;
+  /** Rolling tail of worker log lines, oldest first. */
+  logs?: string[] | null;
 }
 
 export interface ScriptVersion {
@@ -656,6 +669,237 @@ function PipelineRow({
   );
 }
 
+/* ─── Live render progress ───────────────────────────────────────────────
+ * Trey 2026-08-10: one line with a green dot gave no feel for what a render
+ * was doing — a 111-scene job looked identical at scene 3 and scene 90. This
+ * shows the phase ladder, the step running NOW, the step before it, and a
+ * rolling tail of worker lines. Data is `stepDetails`, refreshed by the same
+ * 5s poll that already drives the status pill; nothing new is fetched.
+ */
+
+/** Worker lines look like "21:18:48 scenes: scene 8/11 done". */
+function parseLogLine(raw: string): {
+  time: string | null;
+  tag: string | null;
+  text: string;
+} {
+  const m = /^(\d{2}:\d{2}:\d{2})\s+(?:([a-z0-9_-]+):\s*)?(.*)$/i.exec(raw.trim());
+  if (!m) return { time: null, tag: null, text: raw.trim() };
+  return { time: m[1], tag: m[2] ?? null, text: m[3] };
+}
+
+function RenderProgress({
+  project,
+}: {
+  project: ReviewProject;
+}): React.ReactElement {
+  const { t } = useTheme();
+  const details = project.stepDetails ?? null;
+  const logs = React.useMemo(
+    () => (Array.isArray(details?.logs) ? details!.logs!.filter(Boolean) : []),
+    [details],
+  );
+
+  // Newest last, so the current step is the tail.
+  const current = logs.length ? logs[logs.length - 1] : null;
+  const prior = logs.length > 1 ? logs[logs.length - 2] : null;
+
+  // Keep the rolling log pinned to the newest line as it grows.
+  const scrollRef = React.useRef<HTMLDivElement | null>(null);
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [logs.length]);
+
+  const phase = details?.phase ?? null;
+  const pct = Math.max(0, Math.min(100, project.progress ?? 0));
+
+  // Where we are on the ladder. `status` is the authority; phase is a label.
+  const ladder = CREATION_PHASES.filter((p) => !p.transcribeOnly);
+  const activeIdx = ladder.findIndex((p) => p.status === project.status);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Progress bar */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: 12,
+            color: t.textSecondary,
+          }}
+        >
+          <span style={{ fontWeight: 600, color: t.text }}>
+            {phase ? phase.replace(/_/g, ' ') : 'working'}
+          </span>
+          <span>{pct}%</span>
+        </div>
+        <div
+          style={{
+            height: 6,
+            borderRadius: 999,
+            background: t.cardAlt,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              width: `${pct}%`,
+              height: '100%',
+              background: JELLY_TOKENS.brand,
+              transition: 'width 400ms ease',
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Phase ladder */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {ladder.map((p, i) => {
+          const done = activeIdx >= 0 && i < activeIdx;
+          const active = i === activeIdx;
+          return (
+            <span
+              key={p.status}
+              title={p.description}
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                padding: '2px 8px',
+                borderRadius: JELLY_TOKENS.radius.pill,
+                color: active ? '#fff' : done ? t.textSecondary : t.textDisabled,
+                background: active
+                  ? JELLY_TOKENS.brand
+                  : done
+                    ? t.cardAlt
+                    : 'transparent',
+                border: `1px solid ${active ? 'transparent' : t.border}`,
+              }}
+            >
+              {p.label}
+            </span>
+          );
+        })}
+      </div>
+
+      {/* Now / previous */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <StepLine label="Now" raw={current} emphasis />
+        <StepLine label="Before" raw={prior} />
+      </div>
+
+      {/* Rolling log */}
+      <div>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: t.textSecondary,
+            marginBottom: 4,
+          }}
+        >
+          Worker log
+        </div>
+        <div
+          ref={scrollRef}
+          style={{
+            maxHeight: 200,
+            overflowY: 'auto',
+            background: t.cardAlt,
+            borderRadius: JELLY_TOKENS.radius.md,
+            padding: 10,
+            fontFamily:
+              'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+            fontSize: 11,
+            lineHeight: 1.7,
+            color: t.textSecondary,
+          }}
+        >
+          {logs.length === 0 ? (
+            <span style={{ opacity: 0.7 }}>
+              No worker lines yet — the first one lands within a few seconds of
+              the render starting.
+            </span>
+          ) : (
+            logs.map((line, i) => {
+              const { time, tag, text } = parseLogLine(line);
+              return (
+                <div key={`${i}-${line}`} style={{ display: 'flex', gap: 8 }}>
+                  {time && (
+                    <span style={{ opacity: 0.55, flexShrink: 0 }}>{time}</span>
+                  )}
+                  {tag && (
+                    <span
+                      style={{
+                        color: JELLY_TOKENS.brand,
+                        flexShrink: 0,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  )}
+                  <span style={{ color: t.text }}>{text}</span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StepLine({
+  label,
+  raw,
+  emphasis = false,
+}: {
+  label: string;
+  raw: string | null;
+  emphasis?: boolean;
+}): React.ReactElement {
+  const { t } = useTheme();
+  const { time, tag, text } = raw
+    ? parseLogLine(raw)
+    : { time: null, tag: null, text: '—' };
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+      <span
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: 0.4,
+          color: t.textDisabled,
+          width: 46,
+          flexShrink: 0,
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: emphasis ? 13 : 12,
+          fontWeight: emphasis ? 600 : 400,
+          color: emphasis ? t.text : t.textSecondary,
+        }}
+      >
+        {tag && (
+          <span style={{ color: JELLY_TOKENS.brand }}>{tag}: </span>
+        )}
+        {text}
+      </span>
+      {time && (
+        <span style={{ fontSize: 10, color: t.textDisabled, marginLeft: 'auto' }}>
+          {time}
+        </span>
+      )}
+    </div>
+  );
+}
+
 /* ─── Detail ─── */
 
 function DetailPanel({
@@ -689,11 +933,15 @@ function DetailPanel({
           </div>
           <div style={{ fontSize: 13, color: t.textSecondary }}>
             {stage === 'failed'
-              ? 'This project failed — the error is above.'
+              ? 'This project failed — the error is above. The log below is what the worker did before it stopped.'
               : stage === 'rendering'
-                ? `Rendering the approved script — ${project.progress}% done.`
+                ? 'Rendering the approved script.'
                 : 'Getting this project ready. The review panel opens here when it is.'}
           </div>
+
+          {/* Rolling step log. Shown on failure too — the last lines before a
+           * stop are the fastest way to see WHERE it died. */}
+          <RenderProgress project={project} />
           {project.script && (
             <div
               style={{

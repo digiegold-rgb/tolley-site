@@ -172,11 +172,15 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   // Build the Prisma update payload (typed via Prisma.YouTubeProjectUpdateInput
   // so the JSON fields stay strict).
   // -------------------------------------------------------------------------
-  // Keep the last 6 log lines in stepDetails so the UI has something to show
-  // even if it only reads the project row (not the `job` field from the
+  // Keep a rolling tail of log lines in stepDetails so the UI has something to
+  // show even if it only reads the project row (not the `job` field from the
   // poll response). The full buffer is still returned alongside under `job`.
+  //
+  // 6 → 60 (2026-08-10, Trey): six lines is a status blip, not a feel for what
+  // the render is doing. A 100+ scene job emits a line per scene, so 60 keeps
+  // roughly the last few minutes of work visible in the rolling log.
   const recentLogs = Array.isArray(job.logs)
-    ? job.logs.slice(-6)
+    ? job.logs.slice(-60)
     : [];
 
   const data: Prisma.YouTubeProjectUpdateInput = {
