@@ -519,6 +519,14 @@ function HqPageInner() {
           >
             🗺️ Empire
           </button>
+          <a
+            className="tab-btn"
+            href="/generate"
+            style={{ textDecoration: "none" }}
+            title="Quick Generate — prompt → image / video (Gemini + Wan2.2)"
+          >
+            ✨ Generate
+          </a>
           <button
             className={`tab-btn ${tab === "must" ? "active" : ""}`}
             onClick={() => setTab("must")}
