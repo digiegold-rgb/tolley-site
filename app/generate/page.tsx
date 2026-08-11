@@ -28,6 +28,7 @@ export default function GeneratePage() {
   const [seconds, setSeconds] = useState(4);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [refFiles, setRefFiles] = useState<File[]>([]);
   const [stage, setStage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
@@ -56,12 +57,15 @@ export default function GeneratePage() {
         kind: mode === "t2i" ? "image" : "video",
         prompt, aspect, seconds,
       };
-      if (mode === "i2v" || mode === "v2v") {
-        if (mode === "i2v" && !imageFile) throw new Error("pick an image first");
-        if (mode === "v2v" && !videoFile) throw new Error("pick a video first");
-        setStage("uploading…");
-        if (imageFile) body.image_ref = await uploadDirect(imageFile);
-        if (mode === "v2v" && videoFile) body.video_ref = await uploadDirect(videoFile);
+      if (mode === "i2v" && !imageFile) throw new Error("pick an image first");
+      if (mode === "v2v" && !videoFile) throw new Error("pick a video first");
+      if (imageFile || videoFile || refFiles.length) setStage("uploading…");
+      if ((mode === "i2v" || mode === "v2v") && imageFile) body.image_ref = await uploadDirect(imageFile);
+      if (mode === "v2v" && videoFile) body.video_ref = await uploadDirect(videoFile);
+      if (mode !== "i2v" && refFiles.length) {
+        const ids: string[] = [];
+        for (const f of refFiles.slice(0, 6)) ids.push(await uploadDirect(f));
+        body.ref_ids = ids;
       }
       setStage("submitting…");
       const r = await fetch("/api/admin/quickgen", {
@@ -122,6 +126,20 @@ export default function GeneratePage() {
             : "Optional: describe the character/style — or upload an identity image below"
           }
           style={{ ...box, width: "100%", padding: 12, fontSize: 14, resize: "vertical", marginBottom: 12 }} />
+        <p style={{ color: "#6b7386", fontSize: 12, margin: "0 0 10px" }}>
+          {mode === "t2i" && "Prompt → image. Optional: reference images below keep an exact face/style."}
+          {mode === "t2v" && "Prompt → keyframe → ≤5s clip. Optional: reference images keep an exact face/style."}
+          {mode === "i2v" && "Your image + a motion prompt → ≤5s clip. The image IS the first frame."}
+          {mode === "v2v" && "Your video drives the motion (Animate-2). Identity comes from the image, the references, or the prompt."}
+        </p>
+        {mode !== "i2v" && (
+          <label style={{ display: "block", fontSize: 13, color: "#8b93a7", marginBottom: 10 }}>
+            Reference images (optional, up to 6):{" "}
+            <input type="file" accept="image/*" multiple disabled={busy}
+              onChange={(e) => setRefFiles(Array.from(e.target.files ?? []))} style={{ color: "#e8eaf0" }} />
+            {refFiles.length > 0 && <span style={{ marginLeft: 6 }}>{refFiles.length} selected</span>}
+          </label>
+        )}
         {(needImage || wantImage) && (
           <label style={{ display: "block", fontSize: 13, color: "#8b93a7", marginBottom: 10 }}>
             {mode === "v2v" ? "Identity image (optional — prompt generates one otherwise): " : "Image to animate: "}
