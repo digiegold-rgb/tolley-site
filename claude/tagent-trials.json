@@ -1,0 +1,4 @@
+{
+  "_comment": "DGX cron writes this file daily (future work). Routine slot 3 reads it to draft nurture emails at trial day 3/7/12. Schema: array of {user_id, email, name, trial_started_at, trial_ends_at, features_used: string[], last_active_at}.",
+  "trials": []
+}
