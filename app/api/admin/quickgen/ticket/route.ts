@@ -10,5 +10,13 @@ export async function POST() {
     method: "POST",
     headers: { "x-api-key": process.env.QUICKGEN_API_KEY || "" },
   });
-  return NextResponse.json(await r.json(), { status: r.status });
+  const text = await r.text();
+  try {
+    return NextResponse.json(JSON.parse(text), { status: r.status });
+  } catch {
+    return NextResponse.json(
+      { error: `upstream ${r.status}: ${text.slice(0, 300)}` },
+      { status: 502 },
+    );
+  }
 }

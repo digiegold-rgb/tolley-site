@@ -9,5 +9,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     headers: { "x-api-key": process.env.QUICKGEN_API_KEY || "" },
     cache: "no-store",
   });
-  return NextResponse.json(await r.json(), { status: r.status });
+  const text = await r.text();
+  try {
+    return NextResponse.json(JSON.parse(text), { status: r.status });
+  } catch {
+    return NextResponse.json(
+      { error: `upstream ${r.status}: ${text.slice(0, 300)}` },
+      { status: 502 },
+    );
+  }
 }

@@ -16,5 +16,13 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify(body),
   });
-  return NextResponse.json(await r.json(), { status: r.status });
+  const text = await r.text();
+  try {
+    return NextResponse.json(JSON.parse(text), { status: r.status });
+  } catch {
+    return NextResponse.json(
+      { error: `upstream ${r.status}: ${text.slice(0, 300)}` },
+      { status: 502 },
+    );
+  }
 }

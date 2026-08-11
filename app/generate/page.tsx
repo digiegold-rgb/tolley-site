@@ -8,6 +8,13 @@
 // Large files upload straight to quickgen.tolley.io on one-time tickets.
 import { useEffect, useRef, useState } from "react";
 
+async function readJson(r: Response): Promise<Record<string, unknown>> {
+  const text = await r.text();
+  try { return JSON.parse(text); } catch {
+    throw new Error(`server sent ${r.status} ${r.statusText || ""}: ${text.slice(0, 160) || "(empty)"}`);
+  }
+}
+
 const MODES = [
   { id: "t2i", label: "Text → Image" },
   { id: "t2v", label: "Text → Video" },
@@ -120,12 +127,12 @@ export default function GeneratePage() {
   async function uploadDirect(file: File): Promise<string> {
     const t = await fetch("/api/admin/quickgen/ticket", { method: "POST" });
     if (t.status === 401) throw new Error("Not authorized — log in at /hq first, then come back.");
-    const { ticket } = await t.json();
+    const { ticket } = await readJson(t) as { ticket?: string };
     if (!ticket) throw new Error("could not get an upload ticket");
     const fd = new FormData();
     fd.append("file", file);
     const up = await fetch(`https://quickgen.tolley.io/upload?ticket=${ticket}`, { method: "POST", body: fd });
-    const uj = await up.json();
+    const uj = await readJson(up) as { upload_id?: string; detail?: string };
     if (!up.ok || !uj.upload_id) throw new Error(uj.detail || "upload failed");
     return uj.upload_id;
   }
@@ -154,12 +161,17 @@ export default function GeneratePage() {
         body: JSON.stringify(body),
       });
       if (r.status === 401) throw new Error("Not authorized — log in at /hq first, then come back.");
-      const j = await r.json();
+      const j = await readJson(r) as { job_id?: string; error?: string };
       if (!r.ok || !j.job_id) throw new Error(j.error || "submit failed");
       setStage("queued");
       poll.current = setInterval(async () => {
         const s = await fetch(`/api/admin/quickgen/${j.job_id}`, { cache: "no-store" });
-        const sj = await s.json();
+        let sj: { status?: string; stage?: string; error?: string };
+        try { sj = await readJson(s) as typeof sj; } catch (pe) {
+          if (poll.current) clearInterval(poll.current);
+          setStage(null); setError(pe instanceof Error ? pe.message : String(pe));
+          return;
+        }
         if (sj.status === "done") {
           if (poll.current) clearInterval(poll.current);
           setStage(null);
