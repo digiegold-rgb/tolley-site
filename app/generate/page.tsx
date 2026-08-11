@@ -69,6 +69,37 @@ function DgxLight() {
   );
 }
 
+type RecentJob = { id: string; kind: string; mime: string; prompt: string; created: number };
+
+// Everything ever generated, newest first — results live on the DGX and
+// stream back through the admin gate, so this survives page reloads.
+function RecentGallery({ refreshKey }: { refreshKey: number }) {
+  const [jobs, setJobs] = useState<RecentJob[]>([]);
+  useEffect(() => {
+    fetch("/api/admin/quickgen/recent", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { jobs: [] }))
+      .then((j) => setJobs(j.jobs ?? []))
+      .catch(() => {});
+  }, [refreshKey]);
+  if (!jobs.length) return null;
+  return (
+    <div style={{ marginTop: 32 }}>
+      <h2 style={{ fontSize: 15, color: "#8b93a7", marginBottom: 10 }}>Recent generations</h2>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+        {jobs.map((j) => (
+          <a key={j.id} href={`/api/admin/quickgen/${j.id}/result`} target="_blank" rel="noreferrer"
+            title={j.prompt} style={{ display: "block", borderRadius: 8, overflow: "hidden", background: "#141826", border: "1px solid #2a2f3d" }}>
+            {j.mime?.startsWith("video")
+              ? <video src={`/api/admin/quickgen/${j.id}/result`} muted preload="metadata" style={{ width: "100%", aspectRatio: "9/16", objectFit: "cover", display: "block" }} />
+              : /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={`/api/admin/quickgen/${j.id}/result`} alt={j.prompt} loading="lazy" style={{ width: "100%", aspectRatio: "9/16", objectFit: "cover", display: "block" }} />}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function GeneratePage() {
   const [mode, setMode] = useState<Mode>("t2i");
   const [prompt, setPrompt] = useState("");
@@ -81,6 +112,7 @@ export default function GeneratePage() {
   const [error, setError] = useState<string | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [resultIsVideo, setResultIsVideo] = useState(false);
+  const [galleryKey, setGalleryKey] = useState(0);
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => () => { if (poll.current) clearInterval(poll.current); }, []);
@@ -133,6 +165,7 @@ export default function GeneratePage() {
           setStage(null);
           setResultIsVideo(mode !== "t2i");
           setResultUrl(`/api/admin/quickgen/${j.job_id}/result`);
+          setGalleryKey((k) => k + 1);
         } else if (sj.status === "error") {
           if (poll.current) clearInterval(poll.current);
           setStage(null); setError(sj.error || "generation failed");
@@ -233,6 +266,7 @@ export default function GeneratePage() {
               style={{ display: "inline-block", marginTop: 10, color: "#5b8cff", fontSize: 14 }}>Download</a>
           </div>
         )}
+        <RecentGallery refreshKey={galleryKey} />
       </div>
     </main>
   );
