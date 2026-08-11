@@ -527,6 +527,14 @@ function HqPageInner() {
           >
             ✨ Generate
           </a>
+          <a
+            className="tab-btn"
+            href="/persona"
+            style={{ textDecoration: "none" }}
+            title="Persona Editor — edit her description, wardrobe, and face yourself"
+          >
+            💃 Persona
+          </a>
           <button
             className={`tab-btn ${tab === "must" ? "active" : ""}`}
             onClick={() => setTab("must")}
