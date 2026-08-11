@@ -21,6 +21,54 @@ const box: React.CSSProperties = {
   background: "#141826", color: "#e8eaf0",
 };
 
+type DgxStatus = {
+  busy: boolean;
+  active: { lane: string; runningMin: number | null; etaMin: number | null }[];
+  freeAtEpoch: number | null;
+  nextSlot: { epoch: number; lane: string } | null;
+};
+
+function fmtTime(epoch: number) {
+  return new Date(epoch * 1000).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+// Red/green DGX light (2026-08-11, Jared: "last thing I want to do is lock up
+// the machine because it was being used for a lady render"). Polls every 30s.
+function DgxLight() {
+  const [st, setSt] = useState<DgxStatus | null>(null);
+  useEffect(() => {
+    let dead = false;
+    const load = async () => {
+      try {
+        const r = await fetch("/api/admin/quickgen/dgx", { cache: "no-store" });
+        if (r.ok && !dead) setSt(await r.json());
+      } catch { /* leave last reading */ }
+    };
+    load();
+    const t = setInterval(load, 30000);
+    return () => { dead = true; clearInterval(t); };
+  }, []);
+  if (!st) return null;
+  const dot = (c: string) => (
+    <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 5, background: c, marginRight: 8, boxShadow: `0 0 8px ${c}` }} />
+  );
+  if (st.busy) {
+    const lanes = st.active.map((a) =>
+      `${a.lane}${a.runningMin !== null ? ` (${a.runningMin}m in${a.etaMin !== null ? `, ~${a.etaMin}m left` : ""})` : ""}`).join(" + ");
+    return (
+      <p style={{ background: "#2a1518", border: "1px solid #5c2a31", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#ffb4b4", marginBottom: 16 }}>
+        {dot("#ff5b5b")}<b>DGX busy</b> — {lanes}.{" "}
+        {st.freeAtEpoch ? `Est. free ~${fmtTime(st.freeAtEpoch)}.` : ""} Generating now may slow or starve a Lady render.
+      </p>
+    );
+  }
+  return (
+    <p style={{ background: "#12241a", border: "1px solid #235c3a", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#9be8b8", marginBottom: 16 }}>
+      {dot("#3ddc84")}<b>DGX free</b> — all yours{st.nextSlot ? ` until ${fmtTime(st.nextSlot.epoch)} (${st.nextSlot.lane} render slot)` : ""}.
+    </p>
+  );
+}
+
 export default function GeneratePage() {
   const [mode, setMode] = useState<Mode>("t2i");
   const [prompt, setPrompt] = useState("");
@@ -107,9 +155,10 @@ export default function GeneratePage() {
     <main style={{ minHeight: "100vh", background: "#0b0d12", color: "#e8eaf0", display: "flex", justifyContent: "center", padding: "48px 16px", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ width: "100%", maxWidth: 600 }}>
         <h1 style={{ fontSize: 22, marginBottom: 4 }}>Quick Generate</h1>
-        <p style={{ color: "#8b93a7", fontSize: 13, marginBottom: 20 }}>
+        <p style={{ color: "#8b93a7", fontSize: 13, marginBottom: 16 }}>
           The daily-video engines with none of the pipeline. Clips are ≤5s.
         </p>
+        <DgxLight />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
           {MODES.map((m) => (
             <button key={m.id} onClick={() => setMode(m.id)} disabled={busy}
