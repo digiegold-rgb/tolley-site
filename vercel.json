@@ -380,6 +380,10 @@
     {
       "path": "/api/cron/treasure-haul-drop-email",
       "schedule": "0 16 * * 4"
+    },
+    {
+      "path": "/api/cron/city-rank-track",
+      "schedule": "0 9 9 * *"
     }
   ]
 }

@@ -28,30 +28,100 @@ const rows = readFileSync(`${DIR}/verified.jsonl`, "utf8")
   .filter((r) => r.ok);
 
 /**
- * Shelves are keyword-derived: `Product.category` is null on most of the
- * Marketplace-mirrored rows, so the title is the only reliable signal.
- * Order matters — the first match wins, so put narrow buckets first.
+ * Shelves are assigned from Amazon's own browse taxonomy, scraped per ASIN by
+ * storefront-breadcrumbs.mjs. Title keywords proved unreliable — "Lightweight"
+ * in a hair-dryer title filed it under Home & Lighting.
+ *
+ * Each rule keys off the root department; `subs` patterns run against the full
+ * breadcrumb ladder for roots that span several shelves. A null default means
+ * the root alone is not enough — those land in Needs review, never guessed.
  */
-const SHELVES = [
-  ["Kitchen & Coffee", /kettle|coffee|espresso|blender|mixer|air fryer|cookware|pan\b|knife|kitchen|slushie|ice cream|frother|mug|utensil|cutting board|toaster|instant pot/i],
-  ["Cleaning & Laundry", /scrubber|steamer|vacuum|mop|cleaner|laundry|detergent|spin brush|washer|sanitiz|lint/i],
-  ["Home & Lighting", /light|lamp|ceiling|recessed|fixture|pillow|blanket|curtain|rug|shelf|storage|organizer|decor|furniture|bed frame|mattress|sofa|chair|fan\b|ventilat/i],
-  ["Baby & Kids", /baby|toddler|kids|infant|stroller|bassinet|crib|nursery|lego|toy|playset|flash cards|diaper/i],
-  ["Beauty & Personal Care", /hair dryer|facial|skin|beauty|makeup|razor|toothbrush|massag|serum|nail|shampoo/i],
-  ["Fitness & Outdoors", /yoga|pilates|fitness|exercise|dumbbell|resistance|bike|camping|tent|crossbow|hiking|workout|treadmill/i],
-  ["Tools & Garage", /tool|drill|saw|wrench|tile cutter|ladder|ramp|garage|automotive|car radio|battery|jack\b|compressor|welder/i],
-  ["Tech & Gadgets", /ring light|speaker|headphone|charger|camera|monitor|keyboard|tablet|audio|bluetooth|usb|projector|radio/i],
+const NEEDS_REVIEW = "Needs review";
+const CATEGORY_RULES = [
+  { root: /^Beauty & Personal Care$/, def: "Beauty & Personal Care" },
+  {
+    root: /^Home & Kitchen$/,
+    subs: [
+      [/Kitchen & Dining|Small Appliance/i, "Kitchen & Coffee"],
+      [/Vacuums & Floor Care|Irons & Steamers|Laundry|Cleaning Supplies|Trash,/i, "Cleaning & Laundry"],
+    ],
+    def: "Home & Lighting",
+  },
+  { root: /^Kitchen & Dining$/, def: "Kitchen & Coffee" },
+  {
+    root: /^Tools & Home Improvement$/,
+    subs: [[/Lighting & Ceiling Fans|Light Bulbs/i, "Home & Lighting"]],
+    def: "Tools & Garage",
+  },
+  { root: /^Automotive$/, def: "Tools & Garage" },
+  { root: /^Industrial & Scientific$/, subs: [[/Janitorial/i, "Cleaning & Laundry"]], def: "Tools & Garage" },
+  {
+    root: /^(Electronics|Computers & Accessories|Cell Phones & Accessories|Camera & Photo|Video Games)$/,
+    def: "Tech & Gadgets",
+  },
+  { root: /^Office Products$/, subs: [[/Office Electronics/i, "Tech & Gadgets"]], def: null },
+  { root: /^(Toys & Games|Baby Products|Baby)$/, def: "Baby & Kids" },
+  { root: /^Sports & Outdoors$/, def: "Fitness & Outdoors" },
+  {
+    root: /^Health & Household$/,
+    subs: [
+      [/Household Supplies|Laundry|Cleaning/i, "Cleaning & Laundry"],
+      [/Baby & Child Care/i, "Baby & Kids"],
+      [/Personal Care|Oral Care|Shaving|Nail Care|Skin Care|Wellness & Relaxation/i, "Beauty & Personal Care"],
+      [/Sports Nutrition/i, "Fitness & Outdoors"],
+    ],
+    def: null,
+  },
+  {
+    root: /^Appliances$/,
+    subs: [
+      [/Washer|Dryer|Laundry/i, "Cleaning & Laundry"],
+      [/Refriger|Freezer|Ice Maker|Range|Oven|Cooktop|Microwave|Beverage|Wine/i, "Kitchen & Coffee"],
+    ],
+    def: null,
+  },
+  {
+    root: /^Patio, Lawn & Garden$/,
+    subs: [
+      [/Outdoor Power|Generator|Snow Removal|Pressure Washer/i, "Tools & Garage"],
+      [/Grills & Outdoor Cooking/i, "Kitchen & Coffee"],
+      [/Patio Furniture|Outdoor D[ée]cor|Outdoor Lighting/i, "Home & Lighting"],
+    ],
+    def: null,
+  },
+  // Real departments with no dedicated shelf → the eclectic shelf, by design.
+  {
+    root: /^(Pet Supplies|Musical Instruments|Arts, Crafts & Sewing|Clothing, Shoes & Jewelry|Collectibles|Sports Collectibles|Books|Movies & TV|CDs & Vinyl)/,
+    def: "Treasure Haul Finds",
+  },
+  { root: /^Grocery & Gourmet Food$/, subs: [[/Coffee/i, "Kitchen & Coffee"]], def: "Treasure Haul Finds" },
 ];
 
+const crumbsByAsin = new Map(
+  readFileSync(`${DIR}/breadcrumbs.jsonl`, "utf8")
+    .split("\n")
+    .filter((l) => l.trim())
+    .map((l) => JSON.parse(l))
+    .filter((r) => r.ok)
+    .map((r) => [r.asin, r])
+);
+
 const shelfFor = (r) => {
-  const hay = `${r.title_amazon ?? ""} ${r.title ?? ""}`;
-  return SHELVES.find(([, re]) => re.test(hay))?.[0] ?? "Treasure Haul Finds";
+  const cat = crumbsByAsin.get(r.asin);
+  const ladder = cat?.breadcrumbs ?? (cat?.bsrRoot ? [cat.bsrRoot] : null);
+  if (!ladder) return { shelf: NEEDS_REVIEW, ladder: null };
+  const rule = CATEGORY_RULES.find((c) => c.root.test(ladder[0]));
+  if (!rule) return { shelf: NEEDS_REVIEW, ladder };
+  const rest = ladder.slice(1).join(" › ");
+  const sub = rule.subs?.find(([re]) => re.test(rest));
+  return { shelf: sub?.[1] ?? rule.def ?? NEEDS_REVIEW, ladder };
 };
 
 // Sub-$12 items rarely clear a meaningful commission and clutter the shelves.
-const kept = rows
+// One row per ASIN — retried checkpoint lines can duplicate.
+const kept = [...new Map(rows.map((r) => [r.asin, r])).values()]
   .filter((r) => (r.price ?? 0) >= MIN_PRICE)
-  .map((r) => ({ ...r, shelf: shelfFor(r) }))
+  .map((r) => ({ ...r, ...shelfFor(r) }))
   .sort((a, b) => b.soldCount - a.soldCount || (b.price ?? 0) - (a.price ?? 0));
 
 const grouped = kept.reduce((m, r) => {
@@ -62,14 +132,23 @@ const grouped = kept.reduce((m, r) => {
 const esc = (s) =>
   String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-const shelfOrder = Object.entries(grouped).sort((a, b) => b[1].length - a[1].length);
+// Needs review is a holding pen, not a shelf — always render it last.
+const shelfOrder = Object.entries(grouped).sort(
+  (a, b) =>
+    (a[0] === NEEDS_REVIEW) - (b[0] === NEEDS_REVIEW) || b[1].length - a[1].length
+);
 
-let md = `# Amazon Storefront — add sheet\n\n${kept.length} verified-live products across ${shelfOrder.length} Idea Lists.\n\n`;
+const shelfCount = shelfOrder.filter(([s]) => s !== NEEDS_REVIEW).length;
+
+let md = `# Amazon Storefront — add sheet\n\n${kept.length} verified-live products across ${shelfCount} Idea Lists, shelved by Amazon's own browse category.\n\n`;
 for (const [shelf, items] of shelfOrder) {
   md += `## ${shelf} (${items.length})\n\n`;
+  if (shelf === NEEDS_REVIEW)
+    md += `_Category was missing or ambiguous — eyeball these before adding; don't shelve blind._\n\n`;
   for (const r of items) {
     const demand = r.soldCount > 0 ? ` — **sold ${r.soldCount}× on FB**` : "";
-    md += `- [\`${r.asin}\`](https://www.amazon.com/dp/${r.asin}) ${esc((r.title_amazon ?? r.title ?? "").slice(0, 90))}${r.price ? ` — $${r.price}` : ""}${demand}\n`;
+    const cat = r.ladder ? ` — _${esc(r.ladder.join(" › "))}_` : "";
+    md += `- [\`${r.asin}\`](https://www.amazon.com/dp/${r.asin}) ${esc((r.title_amazon ?? r.title ?? "").slice(0, 90))}${r.price ? ` — $${r.price}` : ""}${demand}${cat}\n`;
   }
   md += "\n";
 }
@@ -190,6 +269,13 @@ input[type=checkbox]{
   background:var(--proof-soft); color:var(--proof); border-radius:99px;
   padding:.14rem .48rem; font-size:.73rem; font-weight:650;
 }
+.cat{color:var(--faint);font-size:.73rem}
+section.review .tag{border-top-color:var(--acc)}
+section.review .tag h2{color:var(--acc)}
+.review-note{
+  margin:0 0 .8rem; padding:.55rem .75rem; font-size:.83rem; color:var(--mut);
+  background:var(--acc-soft); border-radius:8px;
+}
 .empty{color:var(--mut);padding:2rem 0;display:none}
 footer{border-top:1px solid var(--line);margin-top:2.5rem;padding-top:1.2rem;color:var(--mut);font-size:.85rem}
 footer code{font-family:ui-monospace,monospace;color:var(--acc);overflow-wrap:anywhere}
@@ -199,13 +285,13 @@ footer code{font-family:ui-monospace,monospace;color:var(--acc);overflow-wrap:an
 <header>
   <p class="eyebrow">Stocking run · amazon.com/shop/digitaljared</p>
   <h1>${kept.length} products to shelve</h1>
-  <p class="lede">Every item here is <b>live on Amazon right now</b> and is the new equivalent of something that <b>already sold on your Marketplace</b>. Open a row, then use <b>Add to List</b> on the Amazon page. Ticks save on this device.</p>
+  <p class="lede">Every item here is <b>live on Amazon right now</b> and is the new equivalent of something that <b>already sold on your Marketplace</b>. Shelves come from <b>Amazon's own browse category</b> (shown under each item). Open a row, then use <b>Add to List</b> on the Amazon page. Ticks save on this device.</p>
 </header>
 
 <div class="rail">
   <div class="rail-top">
     <span class="count"><b id="n">0</b> / ${kept.length} shelved</span>
-    <span class="rail-note">${shelfOrder.length} Idea Lists · $${Math.round(totalValue).toLocaleString("en-US")} catalog value</span>
+    <span class="rail-note">${shelfCount} Idea Lists · $${Math.round(totalValue).toLocaleString("en-US")} catalog value</span>
   </div>
   <div class="track"><div class="fill" id="fill"></div></div>
 </div>
@@ -218,12 +304,13 @@ footer code{font-family:ui-monospace,monospace;color:var(--acc);overflow-wrap:an
 
 ${shelfOrder
   .map(
-    ([shelf, items]) => `<section data-shelf="${esc(shelf)}">
+    ([shelf, items]) => `<section data-shelf="${esc(shelf)}"${shelf === NEEDS_REVIEW ? ' class="review"' : ""}>
   <div class="tag">
     <h2>${esc(shelf)}</h2>
     <span class="n">${items.length}</span>
     <button class="copy" data-asins="${items.map((r) => r.asin).join(" ")}">Copy ASINs</button>
   </div>
+  ${shelf === NEEDS_REVIEW ? `<p class="review-note">Amazon category was missing or ambiguous for these — eyeball each one and pick its shelf yourself; nothing here was guessed.</p>` : ""}
   <ul>${items
     .map(
       (r) => `<li data-a="${r.asin}" data-s="${esc((r.title_amazon ?? r.title ?? "").toLowerCase())} ${r.asin.toLowerCase()}">
@@ -232,7 +319,7 @@ ${shelfOrder
         <span class="name"><a href="https://www.amazon.com/dp/${r.asin}" target="_blank" rel="noopener">${esc((r.title_amazon ?? r.title ?? r.asin).slice(0, 118))}</a></span>
         <div class="sub">
           <span class="asin">${r.asin}</span>${r.price ? `<span class="price">$${r.price.toFixed(2)}</span>` : ""}${r.rating ? `<span>★ ${r.rating}</span>` : ""}
-          <span class="chip">sold ${r.soldCount}× on FB</span>
+          <span class="chip">sold ${r.soldCount}× on FB</span>${r.ladder ? `<span class="cat">${esc(r.ladder.slice(0, 3).join(" › "))}</span>` : ""}
         </div>
       </div>
     </li>`

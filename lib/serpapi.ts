@@ -67,7 +67,9 @@ export interface SerpapiCallResult<T = unknown> {
 // bypass the budget by not registering itself.
 export const MONTHLY_CAPS: Record<string, number> = {
   // Revenue: finds property owners → seller leads. The priority claim.
-  "dossier-people-search": 300,
+  // Trimmed 300 → 230 on 2026-08-11 to fund city-rank-track (Jared's call:
+  // monthly rank sweep for the 33-city listings-video funnel).
+  "dossier-people-search": 230,
   // Revenue: Amazon affiliate links on /shop + Treasure Haul products.
   //
   // Split into two claims on 2026-07-28. The single "asin-backfill" pot was
@@ -101,6 +103,9 @@ export const MONTHLY_CAPS: Record<string, number> = {
   // asin-post-jit, which produces affiliate links on live posts.
   "ai-overview-check": 6,
   "maps-pack-track": 28,
+  // Monthly sweep: 33 listings-video cities × (google + youtube) = 66 calls,
+  // +4 slack for smoke tests/retries. Funded by the dossier trim above.
+  "city-rank-track": 70,
   // Enough to re-harvest all 24 seeds once after the `num` param fix. Every
   // prior run returned 200 with an empty PAA block, so these pages have never
   // had content — this budget is for the retry.

@@ -4413,6 +4413,24 @@ model MapsPackRank {
   @@index([createdAt])
 }
 
+// City rank tracker — monthly SerpAPI sweep answering "do our per-city
+// listings videos/pages actually rank for their city's searches?" One row per
+// city × engine × sweep. position null = not found in the results scanned.
+model CityRankStat {
+  id        String   @id @default(cuid())
+  city      String
+  st        String
+  engine    String // google | youtube
+  query     String
+  position  Int?
+  foundUrl  String?
+  videoId   String?
+  checkedAt DateTime @default(now())
+
+  @@index([city, engine, checkedAt])
+  @@index([checkedAt])
+}
+
 // AI Overview citation tracking — periodic check whether tolley.io URLs are
 // cited in Google's AI Overview block for target keywords.
 model AiOverviewCheck {
@@ -4953,6 +4971,7 @@ model PostLogEntry {
   url       String? // permalink to the live post — the only real proof it published
   error     String?  @db.Text
   costCents Int      @default(0) // measured API spend, not estimated (X = 21)
+  videoKey  String? // absolute render path — joins VideoCost for render spend
   firedAt   DateTime @default(now())
   createdAt DateTime @default(now())
 

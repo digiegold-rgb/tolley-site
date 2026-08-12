@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
           title: str(e?.title, 300) ?? runTitle,
           url: str(e?.url, 600),
           error: str(e?.error, 2000),
+          videoKey: str(e?.videoKey, 600),
           costCents: Number.isFinite(cost) && cost > 0 ? Math.round(cost) : 0,
           firedAt: Number.isNaN(fired.getTime()) ? new Date() : fired,
         },
@@ -151,9 +152,36 @@ export async function GET(request: NextRequest) {
       if (e.costCents > 0) costByChannel[e.channel] = (costByChannel[e.channel] ?? 0) + e.costCents;
     }
 
+    // Render spend: join VideoCost by videoKey so a run card can show what the
+    // video cost to MAKE next to what it cost to POST.
+    const videoKeys = [...new Set(entries.map((e) => e.videoKey).filter((k): k is string => !!k))];
+    const renderByKey = new Map<string, { cents: number; estimated: boolean }>();
+    if (videoKeys.length) {
+      const costs = await prisma.videoCost.findMany({ where: { videoKey: { in: videoKeys } } });
+      for (const c of costs) {
+        renderByKey.set(c.videoKey, {
+          cents: c.clipsCents + c.lipsyncCents + c.imageCents + c.scriptCents + c.ttsCents + c.postCents,
+          estimated: c.estimated,
+        });
+      }
+    }
+    const runsOut = Array.from(runs.values()).map((r) => {
+      const keys = [...new Set(r.channels.map((e) => e.videoKey).filter((k): k is string => !!k))];
+      let renderCents = 0;
+      let renderEstimated = false;
+      for (const k of keys) {
+        const rc = renderByKey.get(k);
+        if (rc) {
+          renderCents += rc.cents;
+          renderEstimated = renderEstimated || rc.estimated;
+        }
+      }
+      return { ...r, renderCents, renderEstimated };
+    });
+
     return NextResponse.json({
       days,
-      runs: Array.from(runs.values()).sort((a, b) => b.firedAt.localeCompare(a.firedAt)),
+      runs: runsOut.sort((a, b) => b.firedAt.localeCompare(a.firedAt)),
       health,
       summary: {
         posts: entries.length,

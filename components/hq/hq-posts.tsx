@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { HqVideoCosts } from "./hq-video-costs";
 import { HqVideoFootprint } from "./hq-video-footprint";
 import { HqViewCounter } from "./hq-view-counter";
+import HqCityRanks from "./hq-city-ranks";
 
 // Posts tab — did every automated channel actually fire?
 //
@@ -28,6 +29,8 @@ interface RunRow {
   title: string | null;
   firedAt: string;
   costCents: number;
+  renderCents?: number;
+  renderEstimated?: boolean;
   channels: ChannelEntry[];
 }
 
@@ -127,6 +130,9 @@ export function HqPosts() {
     <div style={{ padding: "4px 0 40px" }}>
       {/* ── Live view counter across every channel ── */}
       <HqViewCounter />
+
+      {/* ── Monthly city search-rank sweep (renders after first sweep) ── */}
+      <HqCityRanks />
 
       {/* ── Headline: is anything dark right now? ── */}
       <div
@@ -252,8 +258,13 @@ export function HqPosts() {
                 <span style={{ fontWeight: 600, fontSize: 14, flex: 1, minWidth: 180 }}>
                   {run.title ?? run.job}
                 </span>
+                {(run.renderCents ?? 0) > 0 && (
+                  <span style={{ fontSize: 12, color: "#6e6e73" }} title="What the video cost to make (VideoCost ledger)">
+                    render {run.renderEstimated ? "~" : ""}{money(run.renderCents!)}
+                  </span>
+                )}
                 {run.costCents > 0 && (
-                  <span style={{ fontSize: 12, color: "#6e6e73" }}>{money(run.costCents)}</span>
+                  <span style={{ fontSize: 12, color: "#6e6e73" }} title="Posting API spend">posting {money(run.costCents)}</span>
                 )}
                 <span style={{ fontSize: 11, color: "#8e8e93" }}>{ago(run.firedAt)}</span>
               </div>
