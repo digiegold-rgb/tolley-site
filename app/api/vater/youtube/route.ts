@@ -9,6 +9,7 @@ import { auth } from "@/auth";
 import { scopedProjectWhere } from "@/lib/vater/project-access";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
 import { extractYouTubeVideoId } from "@/lib/vater/video-id";
+import { ensureVideoNumbers } from "@/lib/vater/video-number";
 
 export async function GET() {
   const session = await auth();
@@ -28,6 +29,10 @@ export async function GET() {
     },
     orderBy: { createdAt: "desc" },
   });
+
+  // Lazy per-owner "#N — " numbering (Trey 2026-08-12) — covers every
+  // creation path, including headless DGX scripts that bypass these routes.
+  await ensureVideoNumbers(projects);
 
   return NextResponse.json({ projects });
 }
