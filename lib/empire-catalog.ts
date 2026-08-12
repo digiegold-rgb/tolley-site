@@ -125,10 +125,7 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "fun-circle", label: "The Circle", lane: "jared-funnel", row: 0, col: 1, kind: "page", icon: "⭕", signal: "db:circle", cadenceMin: day, href: "/circle", note: "The flywheel. Watch leads-by-ref here." },
   { id: "fun-start", label: "/start Registry", lane: "jared-funnel", row: 1, col: 1, kind: "page", icon: "🧭", signal: "db:views:start", cadenceMin: 2 * day, href: "/start" },
   { id: "fun-inbox", label: "/hq Inbox", lane: "jared-funnel", row: 0, col: 2, kind: "page", icon: "📥", signal: "db:inbox", cadenceMin: 3 * day, href: "/hq?tab=inbound" },
-  { id: "fun-outbound", label: "Instantly Outbound", lane: "jared-funnel", row: 0, col: 3, kind: "pipeline", icon: "⚡", signal: "db:touches", cadenceMin: week, note: "Site + delivery + estate campaigns. Jared pulls the trigger." },
-  { id: "fun-replies", label: "Reply Webhook", lane: "jared-funnel", row: 0, col: 4, kind: "service", icon: "💬", signal: "dgx:unit:growth-replies", cadenceMin: 120, note: "Instantly → tolley.io → GrowthTouch + DNC detection." },
   { id: "fun-telegram", label: "Telegram Pings", lane: "jared-funnel", row: 0, col: 5, kind: "channel", icon: "✈️", signal: "dgx:unit:daily-receipt", cadenceMin: day, note: "Daily receipt 07:00 + lead/reply pings." },
-  { id: "conn-instantly", label: "Instantly API", lane: "jared-funnel", row: 1, col: 3, kind: "service", icon: "🔑", signal: "dgx:conn:instantly-api" },
   { id: "conn-telegram", label: "TG Bot Token", lane: "jared-funnel", row: 1, col: 5, kind: "service", icon: "🔑", signal: "dgx:conn:telegram-bot" },
   { id: "fun-fbautoreply", label: "FB Auto-Reply", lane: "jared-funnel", row: 1, col: 4, kind: "service", icon: "🤖", signal: "dgx:timer:fb-auto-reply", cadenceMin: 10, note: "Messenger FAQ bot — polls all pages every 2 min, answers pricing/delivery/phone, Telegram-pings every reply." },
 
@@ -199,7 +196,6 @@ export const EMPIRE_EDGES: EmpireEdgeDef[] = [
   { id: "e-connfb-treasure", source: "conn-fb-treasure", target: "ruth-treasure", kind: "data" },
   { id: "e-connyt-yt", source: "conn-yt-upload", target: "chan-youtube", kind: "data" },
   { id: "e-connpin-pinterest", source: "conn-pinterest", target: "pipe-pinterest", kind: "data" },
-  { id: "e-conninstantly-outbound", source: "conn-instantly", target: "fun-outbound", kind: "data" },
   { id: "e-conntg-telegram", source: "conn-telegram", target: "fun-telegram", kind: "data" },
   { id: "e-connstripe-xero", source: "conn-stripe", target: "inf-xero", kind: "data" },
   { id: "e-conngemini-shorts", source: "conn-gemini", target: "pipe-shorts", kind: "data" },
@@ -220,10 +216,6 @@ export const EMPIRE_EDGES: EmpireEdgeDef[] = [
   { id: "e-circle-start", source: "fun-circle", target: "fun-start", kind: "flow" },
   { id: "e-start-inbox", source: "fun-start", target: "fun-inbox", kind: "flow" },
   { id: "e-site-inbox", source: "fun-site", target: "fun-inbox", kind: "flow" },
-  { id: "e-inbox-outbound", source: "fun-inbox", target: "fun-outbound", kind: "flow" },
-  { id: "e-outbound-replies", source: "fun-outbound", target: "fun-replies", kind: "flow" },
-  { id: "e-replies-inbox", source: "fun-replies", target: "fun-inbox", kind: "flow" },
-  { id: "e-replies-telegram", source: "fun-replies", target: "fun-telegram", kind: "flow" },
 
   // Funnel → businesses
   { id: "e-inbox-estate", source: "fun-inbox", target: "biz-estate", kind: "flow" },

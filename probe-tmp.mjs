@@ -1,0 +1,12 @@
+import { PrismaClient } from '@prisma/client';
+const p = new PrismaClient();
+const matched = await p.product.count({ where: { amazonAsin: { not: null } } });
+const matchedListed = await p.product.count({ where: { amazonAsin: { not: null }, status: 'listed' } });
+console.log({ productsWithAsin: matched, listedWithAsin: matchedListed });
+const sample = await p.product.findMany({ where: { amazonAsin: { not: null } }, select: { title:true, amazonAsin:true, asinMatchScore:true, status:true, category:true }, take: 15, orderBy: { asinMatchScore: 'desc' } });
+console.table(sample);
+const cache = await p.amazonProductCache.count();
+console.log({ amazonProductCache: cache });
+const listedSample = await p.product.findMany({ where: { status:'listed' }, select:{ title:true, category:true, brand:true, targetPrice:true, amazonAsin:true }, take: 20 });
+console.table(listedSample);
+await p.$disconnect();

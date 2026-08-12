@@ -3128,3 +3128,29 @@ npm warn exec The following package was not found and will be installed: tsx@4.2
 [main] Session died after 5 consecutive failures. Relaunching...
 [main] Session relaunched. Continuing from product 56
 [main] Done. Enriched: 5, Failed: 54 of 59
+[main] Pool360 Product Enrichment (API) — 2026-08-11T12:00:05.159Z
+[main] Mode: un-enriched, limit: 500
+[main] Total products: 3209
+[main] Products to enrich: 60
+[main] Browser session started
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 5
+[ok] LAT-801-9307 — desc, specs
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 15
+[ok] SRS-35-0160 — desc, specs, upc, feat
+[ok] NDS-37-1233 — desc, specs, upc, feat
+[ok] LCH-50-0010 — desc, specs, upc, sds, feat
+[ok] HAV-50-9001 — desc, specs, upc, sds, feat
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 32
+[ok] JON-50-1050 — desc, specs
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 41
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 46
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 51
+[main] Session died after 5 consecutive failures. Relaunching...
+[main] Session relaunched. Continuing from product 56
+[main] Done. Enriched: 6, Failed: 54 of 60
