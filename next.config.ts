@@ -68,6 +68,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      // Static client portal pages live in public/<addr>/index.html; Next only
+      // serves public files at their literal path, so map the bare route.
+      {
+        source: "/4332",
+        destination: "/4332/index.html",
+      },
+    ];
+  },
   async redirects() {
     return [
       // TikTok Shop command center lives as an /hq tab.

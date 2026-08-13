@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>4332 S Dover Ave | Tolley.io</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={theme:{extend:{colors:{navy:'#1e293b',accent:'#2563eb'}}}}</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+body{font-family:'Inter',system-ui,sans-serif;background:#f8fafc}
+.mono{font-family:'JetBrains Mono',monospace}
+.tab-btn{transition:all .15s}
+.tab-btn.active{background:#1e293b;color:#fff}
+.tab-btn:not(.active){background:#e2e8f0;color:#64748b}
+.editable{cursor:pointer;border-bottom:1px dashed #cbd5e1;transition:background .15s}
+.editable:hover{background:#eff6ff}
+.editable:focus{outline:none;border:2px solid #2563eb;border-radius:3px;background:#eff6ff}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+.green-bar{border-left:3px solid #22c55e}
+.gray-bar{border-left:3px solid #e2e8f0}
+.fade-in{animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media print{.no-print{display:none!important}}
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- PASSWORD GATE -->
+<div id="gate" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-700 px-4">
+  <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+    <div class="text-3xl font-extrabold text-slate-900 mb-1">Tolley.io</div>
+    <div class="text-sm text-slate-500 mb-6">Client Portal — 4332 S Dover Ave</div>
+    <input id="pw" type="password" placeholder="Enter access code" class="w-full px-4 py-3 border-2 border-slate-200 rounded-lg text-center text-lg focus:border-blue-500 focus:outline-none mb-4" onkeydown="if(event.key==='Enter')checkPW()">
+    <button onclick="checkPW()" class="w-full bg-slate-900 text-white py-3 rounded-lg font-bold hover:bg-slate-800 transition">Enter</button>
+    <div id="pw-err" class="text-red-500 text-sm mt-2 hidden">Incorrect code. Please try again.</div>
+    <div class="text-xs text-slate-400 mt-4">Prepared by Jared Tolley | Your KC Homes LLC</div>
+  </div>
+</div>
+
+<!-- MAIN APP (hidden until auth) -->
+<div id="app" class="hidden">
+
+  <!-- HEADER -->
+  <header class="bg-gradient-to-r from-slate-900 to-slate-800 text-white py-4 px-4 no-print">
+    <div class="max-w-4xl mx-auto">
+      <div class="flex justify-between items-center flex-wrap gap-2">
+        <div>
+          <div class="text-xl font-extrabold tracking-tight">4332 S Dover Ave</div>
+          <div class="text-slate-400 text-sm">Independence, MO 64055 · Listed $250,000 · MLS# 2635974</div>
+        </div>
+        <div class="text-right text-xs text-slate-400">
+          <div class="font-bold text-emerald-400">Tolley.io</div>
+          Your KC Homes LLC
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <nav class="bg-white border-b sticky top-0 z-50 no-print">
+    <div class="max-w-4xl mx-auto flex overflow-x-auto">
+      <button class="tab-btn active px-4 py-3 text-xs font-bold rounded-t-lg whitespace-nowrap" onclick="showTab('overview')">Overview</button>
+      <button class="tab-btn px-4 py-3 text-xs font-bold rounded-t-lg whitespace-nowrap" onclick="showTab('disclosure')">Disclosure</button>
+      <button class="tab-btn px-4 py-3 text-xs font-bold rounded-t-lg whitespace-nowrap" onclick="showTab('buyer')">Buyer Calculator</button>
+      <button class="tab-btn px-4 py-3 text-xs font-bold rounded-t-lg whitespace-nowrap" onclick="showTab('seller')">Seller Net Sheet</button>
+    </div>
+  </nav>
+
+  <main class="max-w-4xl mx-auto px-4 py-6">
+
+    <!-- ═══ OVERVIEW TAB ═══ -->
+    <section id="tab-overview" class="fade-in">
+      <div class="grid md:grid-cols-2 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm border p-5">
+          <h3 class="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wide">Property Snapshot</h3>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between"><span class="text-slate-500">List Price</span><span class="font-bold text-lg">$250,000</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">AVM Estimate</span><span class="font-semibold text-emerald-600">$337,400</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Discount to AVM</span><span class="font-semibold text-blue-600">~26%</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Year Built</span><span>1971 (55 yrs)</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Sq Ft (above)</span><span>2,306</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Total Sq Ft</span><span>2,996</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Lot</span><span>16,373 sq ft (0.38 ac)</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Beds / Baths</span><span>4 Bed / 3 Full + 1 Half</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Garage</span><span>2-car attached</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Taxes</span><span>$4,016/yr</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">HOA</span><span>$90/yr (Tomashaw Village)</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Style</span><span>1.5 Story Traditional</span></div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border p-5">
+          <h3 class="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wide">Key Contacts</h3>
+          <div class="space-y-3 text-sm">
+            <div class="bg-slate-50 rounded-lg p-3">
+              <div class="font-bold text-slate-900">Your Agent</div>
+              <div>Jared Tolley · Your KC Homes LLC</div>
+              <div class="text-slate-500">United Real Estate Kansas City</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3">
+              <div class="font-bold text-slate-900">Listing Agent</div>
+              <div>Taylor Reese · Compass Realty Group</div>
+              <div class="text-slate-500">913-207-6621 · taylor.reese@compass.com</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3">
+              <div class="font-bold text-slate-900">Lender</div>
+              <div>Zachary Andrew Perl · Flat Branch Home Loans</div>
+              <div class="text-slate-500">816-282-6279 · zperl@fbhl.com</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3">
+              <div class="font-bold text-slate-900">Title Company</div>
+              <div>Christy Cothern · Continental Title</div>
+              <div class="text-slate-500">913-338-3232 · christyc@ctitle.com</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border p-5 mb-4">
+        <h3 class="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wide">What's Good</h3>
+        <div class="grid md:grid-cols-2 gap-2 text-sm text-slate-700">
+          <div class="flex gap-2"><span class="text-emerald-500">✓</span> Big lot, fully fenced, mature trees, creek</div>
+          <div class="flex gap-2"><span class="text-emerald-500">✓</span> Hardwood floors (upper level + under carpet)</div>
+          <div class="flex gap-2"><span class="text-emerald-500">✓</span> 4 bed / 3.5 bath with 2 fireplaces</div>
+          <div class="flex gap-2"><span class="text-emerald-500">✓</span> Furnace & water heater only 6 years old</div>
+          <div class="flex gap-2"><span class="text-emerald-500">✓</span> Walkout basement with wet bar</div>
+          <div class="flex gap-2"><span class="text-emerald-500">✓</span> Four-season sunroom</div>
+          <div class="flex gap-2"><span class="text-emerald-500">✓</span> ~26% below AVM at $250K list</div>
+          <div class="flex gap-2"><span class="text-emerald-500">✓</span> Seller paying buyer agent commission</div>
+        </div>
+      </div>
+
+      <div class="bg-amber-50 border border-amber-300 rounded-xl p-5">
+        <h3 class="font-bold text-amber-900 mb-3 text-sm uppercase tracking-wide">⚠ Bottom Line</h3>
+        <p class="text-sm text-amber-800">This is an as-is project. Budget $30K–$50K+ in repairs for water intrusion, mold remediation, dead AC, tuckpointing, carpet, and driveway work. At $250K + $40K rehab = ~$290K all-in against $337K estimated value. There's margin, but the basement water situation drives the risk. See the Disclosure tab for full details.</p>
+      </div>
+    </section>
+
+    <!-- ═══ DISCLOSURE TAB ═══ -->
+    <section id="tab-disclosure" class="hidden fade-in">
+      <h2 class="text-lg font-extrabold text-slate-900 mb-4">Seller's Disclosure Breakdown</h2>
+      <p class="text-xs text-slate-500 mb-4">Source: Seller's Disclosure signed 08/08/2026 by Joel Sartwell (AMP). Seller does NOT occupy — limited firsthand knowledge.</p>
+
+      <!-- RED FLAGS -->
+      <div class="mb-4">
+        <div class="bg-red-600 text-white px-4 py-2 rounded-t-lg font-bold text-sm">🔴 MAJOR CONCERNS</div>
+        <div class="bg-white border border-red-200 rounded-b-lg p-4 space-y-4">
+          <div>
+            <div class="font-bold text-red-700 text-sm mb-1">1. BASEMENT WATER INTRUSION & MOLD</div>
+            <ul class="text-sm text-slate-700 space-y-1 ml-4 list-disc">
+              <li>Three water seepage points: south wall, southwest wall, northwest wall</li>
+              <li>Water seepage under basement door</li>
+              <li><span class="font-bold text-red-600">Mold visible on drywall</span> in basement due to seepage</li>
+              <li>Sump pump in northwest corner</li>
+              <li>No professional mold testing or mitigation done</li>
+            </ul>
+            <div class="mt-2 bg-red-50 rounded px-3 py-2 text-sm font-semibold text-red-800">Est. remediation: $8,000 – $20,000+</div>
+          </div>
+          <div>
+            <div class="font-bold text-red-700 text-sm mb-1">2. HVAC — DEAD AC UNIT</div>
+            <ul class="text-sm text-slate-700 space-y-1 ml-4 list-disc">
+              <li>Unit 1 (5 yrs old): operational ✓</li>
+              <li>Unit 2 (25 yrs old): <span class="font-bold text-red-600">has not worked for at least 5 years</span></li>
+              <li>Unit 2 serves second floor bedrooms and sunroom</li>
+            </ul>
+            <div class="mt-2 bg-red-50 rounded px-3 py-2 text-sm font-semibold text-red-800">Est. replacement: $5,000 – $8,000+</div>
+          </div>
+          <div>
+            <div class="font-bold text-red-700 text-sm mb-1">3. STRUCTURAL / EXTERIOR</div>
+            <ul class="text-sm text-slate-700 space-y-1 ml-4 list-disc">
+              <li>Exterior brick needs tuckpointing, especially on the wings</li>
+              <li>Driveway cracked with settling near garage</li>
+              <li>Kitchen storm door broken</li>
+              <li>Cracks/flaws in walls, ceilings, foundations: YES</li>
+              <li>Wood rot at 2 eave locations (squirrels entered — now grated)</li>
+              <li>Window/exterior door problems: YES</li>
+            </ul>
+            <div class="mt-2 bg-red-50 rounded px-3 py-2 text-sm font-semibold text-red-800">Est. repairs: $5,000 – $15,000+</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- YELLOW FLAGS -->
+      <div class="mb-4">
+        <div class="bg-amber-500 text-white px-4 py-2 rounded-t-lg font-bold text-sm">🟡 MODERATE CONCERNS</div>
+        <div class="bg-white border border-amber-200 rounded-b-lg p-4 space-y-4">
+          <div>
+            <div class="font-bold text-amber-700 text-sm mb-1">4. ROOF — 21 YEARS OLD</div>
+            <p class="text-sm text-slate-700">Asphalt, single layer, complete replacement done (date unknown). Front downspouts clogged. Approaching end of life — budget for re-roof near term.</p>
+          </div>
+          <div>
+            <div class="font-bold text-amber-700 text-sm mb-1">5. PLUMBING — MIXED MATERIALS</div>
+            <p class="text-sm text-slate-700">Copper, Galvanized, PVC, PEX, <span class="font-bold">Polybutylene</span> (insurance concern), and <span class="font-bold">Lead drain pipes</span>. Sewer cleanout in basement.</p>
+          </div>
+          <div>
+            <div class="font-bold text-amber-700 text-sm mb-1">6. PEST / INFESTATION</div>
+            <p class="text-sm text-slate-700">Terminix baiting program (4 yrs), $356/yr, 1 month remaining. System removed if not paid. Squirrels entered at 2 eave locations. Animals removed from basement door covering.</p>
+          </div>
+          <div>
+            <div class="font-bold text-amber-700 text-sm mb-1">7. CARPET & FLOORING</div>
+            <p class="text-sm text-slate-700">Carpet 25+ years old with 3 dogs. Pet stains confirmed. Hardwood likely under carpet throughout main level.</p>
+          </div>
+          <div>
+            <div class="font-bold text-amber-700 text-sm mb-1">8. HAZARDOUS</div>
+            <p class="text-sm text-slate-700">~25 gallons latex paint in basement/garage. No radon testing. No mold testing. Pre-1978 = Lead Paint Disclosure required. Liens beyond mortgage exist.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- GREEN -->
+      <div class="mb-4">
+        <div class="bg-emerald-600 text-white px-4 py-2 rounded-t-lg font-bold text-sm">🟢 POSITIVE / NEUTRAL</div>
+        <div class="bg-white border border-emerald-200 rounded-b-lg p-4 space-y-2 text-sm text-slate-700">
+          <p>✓ No flood zone, no fill/expansive soil, no settling. Stake survey completed. Boundaries marked by fence.</p>
+          <p>✓ Heating (natural gas) & water heater (gas, 50 gal): both 6 years old, operational.</p>
+          <p>✓ Copper/breaker electrical, no known problems.</p>
+          <p>✓ Additions (basement finish, sunroom) permitted and code-compliant.</p>
+          <p>✓ HOA $90/yr, paid through 05/01/2027. No violations. No transfer fee.</p>
+        </div>
+      </div>
+
+      <!-- RECOMMENDED INSPECTIONS -->
+      <div class="bg-slate-900 text-white rounded-xl p-5">
+        <h3 class="font-bold mb-3 text-sm uppercase tracking-wide">Recommended Inspections</h3>
+        <div class="grid md:grid-cols-2 gap-2 text-sm">
+          <div class="bg-slate-800 rounded-lg px-3 py-2">Whole House Inspection</div>
+          <div class="bg-slate-800 rounded-lg px-3 py-2">Wood Destroying Insects</div>
+          <div class="bg-slate-800 rounded-lg px-3 py-2">Radon Test</div>
+          <div class="bg-slate-800 rounded-lg px-3 py-2">Mold Testing</div>
+          <div class="bg-slate-800 rounded-lg px-3 py-2">Sewer Scope</div>
+          <div class="bg-slate-800 rounded-lg px-3 py-2">Foundation / Waterproofing</div>
+          <div class="bg-slate-800 rounded-lg px-3 py-2">HVAC Assessment</div>
+          <div class="bg-slate-800 rounded-lg px-3 py-2">Roof Inspection</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ BUYER CALCULATOR TAB ═══ -->
+    <section id="tab-buyer" class="hidden fade-in">
+      <div id="buyer-calc-mount"></div>
+    </section>
+
+    <!-- ═══ SELLER NET SHEET TAB ═══ -->
+    <section id="tab-seller" class="hidden fade-in">
+      <div id="seller-calc-mount"></div>
+    </section>
+
+  </main>
+
+  <footer class="text-center py-6 text-xs text-slate-400 no-print">
+    <p>Prepared by Jared Tolley · Your KC Homes LLC · United Real Estate Kansas City</p>
+    <p class="mt-1">This is an estimate only — not a guarantee. Confirm all numbers with your lender and title company.</p>
+  </footer>
+</div>
+
+<script>
+// ═══ AUTH ═══
+const ACCESS_CODE = 'layendecker2026';
+function checkPW(){
+  const v = document.getElementById('pw').value.toLowerCase().trim();
+  if(v === ACCESS_CODE){
+    document.getElementById('gate').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    localStorage.setItem('4332_auth','1');
+  } else {
+    document.getElementById('pw-err').classList.remove('hidden');
+  }
+}
+if(localStorage.getItem('4332_auth')==='1'){
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+}
+
+// ═══ TABS ═══
+function showTab(id){
+  document.querySelectorAll('[id^="tab-"]').forEach(el=>el.classList.add('hidden'));
+  document.getElementById('tab-'+id).classList.remove('hidden');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// ═══ CALCULATOR ENGINE ═══
+const STORE_KEY = '4332_calc_data';
+
+const D = {
+  rate:6.5, term:30, annualTax:4016,
+  seller:{salePrice:198800,payoff:31000,listPct:1.5,buyerAgentPct:2.5,ownerTitle:940,closingFee:0,taxProration:400,recordRelease:50,brokerTxnFee:530,homeWarranty:0,repairs:0,other1:0},
+  a:{price:250000,down:120000,origPct:1,lenderFees:1200,credit:75,appraisal:550,flood:25,taxService:85,survey:0,titleEscrow:450,lenderTitle:450,recording:93,prepaidDays:30,hoIns12:2200,hoInsEscrow:367,propTaxMo:3,hoaProration:30,hoaTransfer:0,homeWarranty:500,brokerComm:0,otherCommAmt:530,other1Amt:0,wholeHouse:450,wdi:100,otherInsp1Amt:400,sellerPaid:0,pmi:0},
+  b:{price:250000,down:12500,origPct:1,lenderFees:1200,credit:75,appraisal:550,flood:25,taxService:85,survey:0,titleEscrow:450,lenderTitle:450,recording:93,prepaidDays:30,hoIns12:2200,hoInsEscrow:367,propTaxMo:3,hoaProration:30,hoaTransfer:0,homeWarranty:500,brokerComm:0,otherCommAmt:530,other1Amt:0,wholeHouse:450,wdi:100,otherInsp1Amt:400,sellerPaid:0,pmi:175},
+  recast:{monthsBefore:1,fee:400,holdback:30000,lumpOverride:null}
+};
+
+let data = JSON.parse(JSON.stringify(D));
+try{const s=localStorage.getItem(STORE_KEY);if(s){const p=JSON.parse(s);Object.assign(data,p);if(p.seller)Object.assign(data.seller,p.seller);if(p.a)Object.assign(data.a,p.a);if(p.b)Object.assign(data.b,p.b);if(p.recast)Object.assign(data.recast,p.recast);}}catch(e){}
+
+function save(){localStorage.setItem(STORE_KEY,JSON.stringify(data));}
+function fmt(v){return Math.round(v||0).toLocaleString('en-US');}
+function pmt(rate,nper,pv){if(!pv||!nper)return 0;if(rate===0)return pv/nper;const r=rate/12;return(pv*r*Math.pow(1+r,nper))/(Math.pow(1+r,nper)-1);}
+function remBal(P,r,n,N){if(r===0)return P*(1-N/n);const mr=r/12;return P*(Math.pow(1+mr,n)-Math.pow(1+mr,N))/(Math.pow(1+mr,n)-1);}
+
+function calcScenario(s){
+  const loan=s.price-s.down;
+  const orig=Math.round(loan*s.origPct/100);
+  const preInt=Math.round(loan*(data.rate/100)/365*s.prepaidDays);
+  const taxEsc=Math.round((data.annualTax/12)*s.propTaxMo);
+  const eligible=orig+s.lenderFees+s.credit+s.appraisal+s.flood+s.taxService+s.survey+s.titleEscrow+s.lenderTitle+s.recording+preInt+s.hoIns12+s.hoInsEscrow+taxEsc+s.hoaProration+s.hoaTransfer+s.homeWarranty+s.brokerComm+s.otherCommAmt+s.other1Amt;
+  const insp=s.wholeHouse+s.wdi+s.otherInsp1Amt;
+  const costs=eligible+insp;
+  const ltv=s.price>0?(loan/s.price)*100:0;
+  const maxPct=ltv>90?0.03:ltv>75?0.06:0.09;
+  return{loan,orig,preInt,taxEsc,eligible,insp,costs,totalDue:s.down+costs-s.sellerPaid,ltv,maxConc:Math.round(s.price*maxPct),maxPct};
+}
+
+function calcSeller(){
+  const s=data.seller;
+  const lc=Math.round(s.salePrice*s.listPct/100);
+  const ba=Math.round(s.salePrice*s.buyerAgentPct/100);
+  const tc=lc+ba+s.ownerTitle+s.closingFee+s.taxProration+s.recordRelease+s.brokerTxnFee+s.homeWarranty+s.repairs+s.other1;
+  return{lc,ba,tc,net:s.salePrice-s.payoff-tc};
+}
+
+// ═══ RENDER ═══
+function makeEditable(val,onchange,cls=''){
+  const id='ed_'+Math.random().toString(36).substr(2,6);
+  setTimeout(()=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.addEventListener('click',()=>{
+      el.contentEditable=true;
+      el.textContent=String(val||0);
+      el.focus();
+      const range=document.createRange();range.selectNodeContents(el);
+      const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
+    });
+    el.addEventListener('blur',()=>{
+      el.contentEditable=false;
+      const n=parseFloat(el.textContent.replace(/[,$]/g,''))||0;
+      onchange(n);
+      save();
+      renderAll();
+    });
+    el.addEventListener('keydown',(e)=>{
+      if(e.key==='Enter'){e.preventDefault();el.blur();}
+    });
+  },0);
+  return `<div id="${id}" class="editable mono text-right text-sm py-1 px-2 ${cls}">$${fmt(val)}</div>`;
+}
+
+function renderBuyer(){
+  const cA=calcScenario(data.a);
+  const cB=calcScenario(data.b);
+  const sn=calcSeller();
+  const taxMo=Math.round(data.annualTax/12);
+  const insB=Math.round(data.b.hoIns12/12);
+  const insA=Math.round(data.a.hoIns12/12);
+  const piA=pmt(data.rate/100,data.term*12,cA.loan);
+  const piB=pmt(data.rate/100,data.term*12,cB.loan);
+  const moA=Math.round(piA)+taxMo+insA+data.a.pmi;
+  const moB=Math.round(piB)+taxMo+insB+data.b.pmi;
+
+  const rc=data.recast;
+  const tp=data.term*12;
+  const bal1=remBal(cB.loan,data.rate/100,tp,rc.monthsBefore);
+  const gross=rc.lumpOverride!==null?rc.lumpOverride:sn.net;
+  const netLump=Math.max(0,gross-rc.holdback);
+  const newBal=Math.max(0,bal1-netLump);
+  const newPI=pmt(data.rate/100,tp-rc.monthsBefore,newBal);
+  const newLTV=data.b.price>0?(newBal/data.b.price)*100:0;
+  const rcPMI=newLTV<80?0:data.b.pmi;
+  const moC=Math.round(newPI)+taxMo+insB+rcPMI;
+
+  function row(label,keyA,keyB,eligible=true,computed=false,compA=null,compB=null){
+    const bar=eligible?'green-bar':'gray-bar';
+    const va=computed?compA:data.a[keyA];
+    const vb=computed?compB:data.b[keyB||keyA];
+    const cellA=computed?`<div class="mono text-right text-sm py-1 px-2 italic text-slate-400">$${fmt(va)}</div>`:makeEditable(va,(n)=>{data.a[keyA]=n;});
+    const cellB=computed?`<div class="mono text-right text-sm py-1 px-2 italic text-slate-400">$${fmt(vb)}</div>`:makeEditable(vb,(n)=>{data.b[keyB||keyA]=n;});
+    return `<tr><td class="py-1 px-2 text-xs border-b border-slate-100 ${bar}">${label}</td><td class="border-b border-slate-100 w-24">${cellA}</td><td class="border-b border-slate-100 w-24">${cellB}</td></tr>`;
+  }
+
+  const h=`
+  <div class="bg-white rounded-xl shadow-sm border p-4 mb-4">
+    <div class="flex gap-4 flex-wrap items-center text-xs mb-2">
+      <span class="font-bold">Closing: Oct 1, 2026</span>
+      <label>Rate <input type="number" step="0.125" value="${data.rate}" class="w-14 border rounded px-1 py-0.5 mono text-xs" onchange="data.rate=parseFloat(this.value)||0;save();renderAll()">%</label>
+      <label>Term <input type="number" value="${data.term}" class="w-10 border rounded px-1 py-0.5 mono text-xs" onchange="data.term=parseInt(this.value)||30;save();renderAll()"> yr</label>
+      <label>Tax <input type="number" value="${data.annualTax}" class="w-16 border rounded px-1 py-0.5 mono text-xs" onchange="data.annualTax=parseFloat(this.value)||0;save();renderAll()">/yr</label>
+    </div>
+    <div class="flex gap-3 text-[10px] text-slate-500">
+      <span><span class="inline-block w-3 h-3 bg-emerald-500 rounded-sm align-middle mr-1"></span>Seller can pay</span>
+      <span><span class="inline-block w-3 h-3 bg-slate-200 rounded-sm align-middle mr-1"></span>Buyer only</span>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto">
+  <table class="w-full text-sm">
+  <thead><tr>
+    <th class="bg-slate-900 text-white text-left text-xs py-2 px-2 rounded-tl-lg">Closing Costs</th>
+    <th class="bg-slate-900 text-blue-300 text-center text-[10px] py-2 w-24 font-bold">A: CONTING.<br><span class="text-slate-400 font-normal">52% LTV</span></th>
+    <th class="bg-slate-900 text-amber-300 text-center text-[10px] py-2 w-24 font-bold rounded-tr-lg">B: NON-CONT.<br><span class="text-slate-400 font-normal">95% LTV</span></th>
+  </tr></thead>
+  <tbody>
+    ${row('Purchase Price','price','price',false)}
+    ${row('Down Payment','down','down',false)}
+    <tr><td class="py-1 px-2 text-xs border-b font-bold text-blue-600">Loan Amount (auto)</td>
+      <td class="border-b"><div class="mono text-right text-sm py-1 px-2 italic text-emerald-600 font-bold">$${fmt(cA.loan)}</div></td>
+      <td class="border-b"><div class="mono text-right text-sm py-1 px-2 italic text-emerald-600 font-bold">$${fmt(cB.loan)}</div></td></tr>
+    <tr><td colspan="3" class="bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider py-1 px-2">A. Origination</td></tr>
+    ${row('Origination ('+data.a.origPct+'%)','origPct','origPct',true,true,cA.orig,cB.orig)}
+    ${row('Lender Fees','lenderFees','lenderFees')}
+    <tr><td colspan="3" class="bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider py-1 px-2">B. Lender Services</td></tr>
+    ${row('Credit Report','credit','credit')}
+    ${row('Appraisal','appraisal','appraisal')}
+    ${row('Flood Certificate','flood','flood')}
+    ${row('Tax Service Fee','taxService','taxService')}
+    <tr><td colspan="3" class="bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider py-1 px-2">C. Services & Fees</td></tr>
+    ${row('Survey','survey','survey')}
+    ${row('Title / Escrow Closing','titleEscrow','titleEscrow')}
+    ${row("Lender's Title Policy",'lenderTitle','lenderTitle')}
+    ${row('Recording / Courier / Wire','recording','recording')}
+    <tr><td colspan="3" class="bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider py-1 px-2">D. Prepaid (Oct 1 closing, ${data.a.prepaidDays} days)</td></tr>
+    ${row('Prepaid Interest','prepaidDays','prepaidDays',true,true,cA.preInt,cB.preInt)}
+    ${row('HO Insurance (12 mo)','hoIns12','hoIns12')}
+    ${row('HO Ins Escrow','hoInsEscrow','hoInsEscrow')}
+    ${row('Prop Tax Escrow ('+data.a.propTaxMo+' mo)','propTaxMo','propTaxMo',true,true,cA.taxEsc,cB.taxEsc)}
+    <tr><td colspan="3" class="bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider py-1 px-2">E. Other Costs</td></tr>
+    ${row('HOA Prorations','hoaProration','hoaProration')}
+    ${row('Home Warranty','homeWarranty','homeWarranty')}
+    ${row("Broker's Commission",'brokerComm','brokerComm')}
+    ${row('United Transaction Fee','otherCommAmt','otherCommAmt')}
+    <tr><td colspan="3" class="bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider py-1 px-2">F. Inspections (buyer pays before closing)</td></tr>
+    ${row('Whole House','wholeHouse','wholeHouse',false)}
+    ${row('Wood Des. Insects','wdi','wdi',false)}
+    ${row('Radon / Mold / Sewer','otherInsp1Amt','otherInsp1Amt',false)}
+    <tr class="bg-emerald-50"><td class="py-1 px-2 text-xs font-bold text-emerald-700 border-b-2 border-emerald-300">Concession-Eligible</td>
+      <td class="border-b-2 border-emerald-300"><div class="mono text-right text-xs py-1 px-2 text-emerald-600 font-bold">$${fmt(cA.eligible)}</div></td>
+      <td class="border-b-2 border-emerald-300"><div class="mono text-right text-xs py-1 px-2 text-emerald-600 font-bold">$${fmt(cB.eligible)}</div></td></tr>
+    <tr class="bg-slate-50"><td class="py-1 px-2 text-xs font-bold border-b">Total Costs</td>
+      <td class="border-b"><div class="mono text-right text-sm py-1 px-2 font-bold">$${fmt(cA.costs)}</div></td>
+      <td class="border-b"><div class="mono text-right text-sm py-1 px-2 font-bold">$${fmt(cB.costs)}</div></td></tr>
+    <tr class="bg-emerald-100"><td class="py-2 px-2 text-xs font-bold text-emerald-800 border-b-2 border-emerald-400">Seller Concessions<br><span class="font-normal text-[10px]">Max A: $${fmt(cA.maxConc)} (${Math.round(cA.maxPct*100)}%) · Max B: $${fmt(cB.maxConc)} (${Math.round(cB.maxPct*100)}%)</span></td>
+      <td class="border-b-2 border-emerald-400 bg-emerald-50">${makeEditable(data.a.sellerPaid,(n)=>{data.a.sellerPaid=n;})}</td>
+      <td class="border-b-2 border-emerald-400 bg-emerald-50">${makeEditable(data.b.sellerPaid,(n)=>{data.b.sellerPaid=n;})}</td></tr>
+    <tr class="bg-slate-900"><td class="py-2 px-2 text-sm font-bold text-white">TOTAL DUE FROM BUYER</td>
+      <td><div class="mono text-right text-sm py-1 px-2 font-bold text-white">$${fmt(cA.totalDue)}</div></td>
+      <td><div class="mono text-right text-sm py-1 px-2 font-bold text-white">$${fmt(cB.totalDue)}</div></td></tr>
+  </tbody></table></div>
+
+  <!-- RECAST -->
+  <div class="mt-6 bg-amber-50 border border-amber-400 rounded-xl p-4">
+    <h3 class="font-bold text-amber-900 text-sm mb-1">C: Recast Calculator</h3>
+    <p class="text-[11px] text-amber-800 mb-3">Buy non-contingent (B) → make 1+ payment → sell current home → keep savings → recast the rest. Same rate, lower balance, lower payment.</p>
+    <div class="grid grid-cols-2 gap-3 text-xs">
+      <div><label class="font-bold text-amber-900 text-[10px] block mb-1">Payments before recast (min 1)</label>
+        <input type="number" min="1" value="${rc.monthsBefore}" class="w-full border border-amber-400 rounded px-2 py-1.5 mono" onchange="data.recast.monthsBefore=Math.max(1,parseInt(this.value)||1);save();renderAll()"></div>
+      <div><label class="font-bold text-amber-900 text-[10px] block mb-1">Recast fee</label>
+        <input type="number" value="${rc.fee}" class="w-full border border-amber-400 rounded px-2 py-1.5 mono" onchange="data.recast.fee=parseInt(this.value)||0;save();renderAll()"></div>
+      <div class="col-span-2"><label class="font-bold text-amber-900 text-[10px] block mb-1">Seller net proceeds (auto: $${fmt(sn.net)})</label>
+        <input type="text" value="${rc.lumpOverride!==null?rc.lumpOverride:fmt(sn.net)}" class="w-full border border-amber-400 rounded px-2 py-1.5 mono" onchange="const v=this.value.replace(/[,$]/g,'');data.recast.lumpOverride=v===''||v==='${sn.net}'?null:parseFloat(v)||0;save();renderAll()"></div>
+      <div class="col-span-2 bg-amber-200 rounded-lg p-3">
+        <label class="font-bold text-amber-900 text-xs block mb-1">💰 Keep for savings (holdback)</label>
+        <input type="number" value="${rc.holdback}" class="w-full border-2 border-amber-500 rounded px-2 py-2 mono text-lg font-bold" onchange="data.recast.holdback=parseFloat(this.value)||0;save();renderAll()">
+        <div class="text-xs text-amber-800 mt-1">Lump sum to recast: <b>$${fmt(netLump)}</b></div>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-1 mt-3 text-xs text-amber-800">
+      <div>Loan after ${rc.monthsBefore} pmt: <b>$${fmt(bal1)}</b></div>
+      <div>New balance: <b>$${fmt(newBal)}</b></div>
+      <div>New LTV: <b>${newLTV.toFixed(1)}%</b></div>
+      <div>PMI: <b class="${newLTV<80?'text-emerald-700':'text-amber-900'}">${newLTV<80?'DROPS OFF ✓':'$'+fmt(rcPMI)+'/mo'}</b></div>
+    </div>
+  </div>
+
+  <!-- MONTHLY COMPARISON -->
+  <div class="mt-6 overflow-x-auto">
+  <table class="w-full">
+  <thead><tr>
+    <th class="bg-slate-900 text-white text-left text-xs py-2 px-2 rounded-tl-lg">Monthly Payment</th>
+    <th class="bg-slate-900 text-blue-300 text-center text-[10px] py-2 w-20">A</th>
+    <th class="bg-slate-900 text-amber-300 text-center text-[10px] py-2 w-20">B</th>
+    <th class="bg-slate-900 text-emerald-300 text-center text-[10px] py-2 w-20 rounded-tr-lg">C: Recast</th>
+  </tr></thead>
+  <tbody>
+    <tr><td class="pl-5 py-1 text-xs border-b">Principal & Interest</td>
+      <td class="border-b"><div class="mono text-right text-xs py-1 px-1 text-slate-400">$${fmt(Math.round(piA))}</div></td>
+      <td class="border-b"><div class="mono text-right text-xs py-1 px-1 text-slate-400">$${fmt(Math.round(piB))}</div></td>
+      <td class="border-b"><div class="mono text-right text-xs py-1 px-1 text-emerald-600 font-bold">$${fmt(Math.round(newPI))}</div></td></tr>
+    <tr><td class="pl-5 py-1 text-xs border-b">Taxes</td>
+      <td class="border-b"><div class="mono text-right text-xs py-1 px-1 text-slate-400">$${fmt(taxMo)}</div></td>
+      <td class="border-b"><div class="mono text-right text-xs py-1 px-1 text-slate-400">$${fmt(taxMo)}</div></td>
+      <td class="border-b"><div class="mono text-right text-xs py-1 px-1 text-slate-400">$${fmt(taxMo)}</div></td></tr>
+    <tr><td class="pl-5 py-1 text-xs border-b">Insurance</td>
+      <td class="border-b"><div class="mono text-right text-xs py-1 px-1 text-slate-400">$${fmt(insA)}</div></td>
+      <td class="border-b"><div class="mono text-right text-xs py-1 px-1 text-slate-400">$${fmt(insB)}</div></td>
+      <td class="border-b"><div class="mono text-right text-xs py-1 px-1 text-slate-400">$${fmt(insB)}</div></td></tr>
+    <tr><td class="pl-5 py-1 text-xs border-b">PMI</td>
+      <td class="border-b">${makeEditable(data.a.pmi,(n)=>{data.a.pmi=n;},'text-xs')}</td>
+      <td class="border-b">${makeEditable(data.b.pmi,(n)=>{data.b.pmi=n;},'text-xs')}</td>
+      <td class="border-b"><div class="mono text-right text-xs py-1 px-1 ${rcPMI===0?'text-emerald-600 font-bold':'text-slate-400'}">$${fmt(rcPMI)}${rcPMI===0?' ✓':''}</div></td></tr>
+    <tr class="bg-slate-900"><td class="py-3 px-2 text-sm font-bold text-white">Est. Monthly</td>
+      <td><div class="mono text-right py-2 px-1 font-extrabold text-white text-xl">$${fmt(moA)}</div></td>
+      <td><div class="mono text-right py-2 px-1 font-extrabold text-white text-xl">$${fmt(moB)}</div></td>
+      <td class="bg-emerald-700 rounded-br-lg"><div class="mono text-right py-2 px-1 font-extrabold text-white text-2xl">$${fmt(moC)}</div></td></tr>
+    ${moB-moC>0?`<tr><td colspan="3"></td><td class="text-center text-xs font-bold text-emerald-600 py-1">saves $${fmt(moB-moC)}/mo</td></tr>`:''}
+  </tbody></table></div>
+
+  <!-- STORY -->
+  <div class="mt-4 bg-emerald-50 border border-emerald-300 rounded-xl p-4 text-sm text-emerald-800">
+    <div class="font-bold text-emerald-900 mb-1">The Recast Story</div>
+    Close non-contingent at <b>$${fmt(moB)}/mo</b> →
+    make ${rc.monthsBefore} payment${rc.monthsBefore>1?'s':''} →
+    sell current home (net <b>$${fmt(gross)}</b>) →
+    keep <b>$${fmt(rc.holdback)}</b> for savings →
+    recast <b>$${fmt(netLump)}</b> onto loan →
+    new balance <b>$${fmt(newBal)}</b> →
+    payment drops to <b>$${fmt(moC)}/mo</b>
+    ${rcPMI===0?' → <b>PMI gone</b>':''}
+  </div>`;
+  document.getElementById('buyer-calc-mount').innerHTML=h;
+}
+
+function renderSeller(){
+  const s=data.seller;
+  const r=calcSeller();
+  function srow(label,key,computed=false,val=0){
+    const v=computed?val:s[key];
+    const cell=computed?`<div class="mono text-right text-sm py-1 px-2 italic text-slate-400">$${fmt(v)}</div>`:makeEditable(v,(n)=>{s[key]=n;});
+    return `<tr><td class="py-1 px-3 text-xs border-b">${label}</td><td class="border-b w-32">${cell}</td></tr>`;
+  }
+  const h=`
+  <div class="bg-amber-50 border border-amber-300 rounded-xl p-4 mb-4 text-sm">
+    <b>1410 W 27th Ter S, Independence, MO 64052</b><br>
+    Zestimate: $198,800 · Owe: $31,000 · Tax: $1,654/yr
+  </div>
+  <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+  <table class="w-full text-sm">
+  <thead><tr><th class="bg-slate-900 text-white text-left text-xs py-2 px-3">Item</th><th class="bg-slate-900 text-white text-center text-xs py-2 w-32">Amount</th></tr></thead>
+  <tbody>
+    ${srow('Sale Price','salePrice')}
+    ${srow('Mortgage Payoff','payoff')}
+    <tr><td colspan="2" class="bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider py-1 px-3">Seller Costs</td></tr>
+    <tr><td class="py-1 px-3 text-xs border-b">Listing Commission (${s.listPct}%)</td><td class="border-b"><div class="mono text-right text-sm py-1 px-2 italic text-slate-400">$${fmt(r.lc)}</div></td></tr>
+    <tr><td class="py-1 px-3 text-xs border-b">Buyer Agent Comm (${s.buyerAgentPct}%)</td><td class="border-b"><div class="mono text-right text-sm py-1 px-2 italic text-slate-400">$${fmt(r.ba)}</div></td></tr>
+    ${srow("Owner's Title Insurance",'ownerTitle')}
+    ${srow('Closing Fee','closingFee')}
+    ${srow('Tax Prorations','taxProration')}
+    ${srow('Recording / Release','recordRelease')}
+    ${srow('Broker Transaction Fee','brokerTxnFee')}
+    ${srow('Home Warranty','homeWarranty')}
+    ${srow('Repairs / Credits','repairs')}
+    <tr class="bg-slate-100"><td class="py-2 px-3 text-xs font-bold border-b-2">Total Seller Costs</td>
+      <td class="border-b-2"><div class="mono text-right text-sm py-1 px-2 font-bold">$${fmt(r.tc)}</div></td></tr>
+    <tr class="bg-slate-900"><td class="py-3 px-3 text-sm font-bold text-white">NET PROCEEDS</td>
+      <td><div class="mono text-right text-xl py-2 px-2 font-extrabold text-white">$${fmt(r.net)}</div></td></tr>
+  </tbody></table></div>
+  <div class="text-center text-xs text-slate-400 mt-3">↑ This net auto-feeds into the Recast on the Buyer tab</div>`;
+  document.getElementById('seller-calc-mount').innerHTML=h;
+}
+
+function renderAll(){renderBuyer();renderSeller();}
+renderAll();
+
+// Reset
+function resetAll(){if(confirm('Reset all values to defaults?')){data=JSON.parse(JSON.stringify(D));localStorage.removeItem(STORE_KEY);renderAll();}}
+</script>
+</body>
+</html>
