@@ -25,6 +25,27 @@
  * ever go down when the file corrects a still-visible job — never because
  * history rotated away. (First regression 8/9: crossover $14.13 -> $5.97.)
  *
+ * ⚠️ Job captures are not the whole bill. Some spend never appears in
+ * vater_jobs.json at all — Modal charges for work a job under-reported, repair
+ * passes driven straight from a script, provider invoices that land days later.
+ * That spend is booked by hand into byStage.reconciliation, and this script
+ * must treat the booking as DURABLE INPUT, never as something to recompute.
+ * (Regression 8/13, twice in one day: #21 $22.90 -> $1.87 and the
+ * reconciliation entry erased, because byStage was rebuilt from captures.)
+ *
+ * A reconciled project is therefore anchored on its BOOKED total, and this
+ * script only applies what has changed in the captures since:
+ *
+ *     total = bookedTotal + (captureSum now - captureSum when booked)
+ *
+ * Anchoring is what makes the two reconciliation dialects in the data safe to
+ * handle with one rule. #1-#4 annotate a true-up that is already inside their
+ * booked total ("real all-in per Modal billing report"); #21 books a true-up
+ * on top of a capture that saw one render out of three. Adding the entry's
+ * dollars would double-count the first kind; ignoring it loses the second.
+ * The human's total already resolves it — so never re-derive that number, and
+ * when booking one, write totalUsd too (see scripts/tmp-book-21-true.ts).
+ *
  *   node scripts/vater-cost-reconcile.mjs                 # every project
  *   node scripts/vater-cost-reconcile.mjs --project <id>  # one project
  *   node scripts/vater-cost-reconcile.mjs --dry-run
@@ -72,6 +93,28 @@ function stageOf(job) {
   }
 }
 
+/** Stages that are booked by hand and have no job behind them. Carried over
+ *  from the stored costJson untouched; never derived, never dropped. */
+const MANUAL_STAGES = new Set(['reconciliation']);
+
+/** Dollars a manual stage entry represents — reported, never used to move a
+ *  total (the booked totalUsd owns that). Two shapes are in the wild: a plain
+ *  `{usd}` like the capture stages, and an itemised booking such as
+ *  `{originalRenderTrueUp: 5.53, repair21: 11.40, note: "..."}`. Itemised
+ *  amounts win when present; `usd` is written back as the derived roll-up for
+ *  lib/vater/billing/summary.ts, which only knows the `{usd}` shape. */
+function manualStageUsd(entry) {
+  if (!entry || typeof entry !== 'object') return 0;
+  let items = 0;
+  for (const [k, v] of Object.entries(entry)) {
+    if (k === 'usd' || k === 'calls') continue;
+    if (typeof v === 'number' && Number.isFinite(v)) items += v;
+  }
+  if (items > 0) return Number(items.toFixed(4));
+  const flat = Number(entry.usd);
+  return Number.isFinite(flat) && flat > 0 ? Number(flat.toFixed(4)) : 0;
+}
+
 const jobs = loadJobs();
 
 /** A job belongs to a project if it says so, or if it targets that project's
@@ -108,6 +151,7 @@ for (const p of projects) {
 
   const prevByJob = p.costJson?.byJob && typeof p.costJson.byJob === 'object' ? p.costJson.byJob : {};
   const prevStage = p.costJson?.byJobStage && typeof p.costJson.byJobStage === 'object' ? p.costJson.byJobStage : {};
+  const prevByStage = p.costJson?.byStage && typeof p.costJson.byStage === 'object' ? p.costJson.byStage : {};
 
   const byJob = {};
   const byJobStage = {};
@@ -122,11 +166,29 @@ for (const p of projects) {
     byStage[s].usd = Number((byStage[s].usd + byJob[jid]).toFixed(4));
     byStage[s].calls += 1;
   }
-  const total = Number(Object.values(byJob).reduce((a, b) => a + b, 0).toFixed(2));
+  // Hand-booked stages ride along untouched.
+  let booked = false;
+  let restage = false;
+  for (const [key, entry] of Object.entries(prevByStage)) {
+    if (!MANUAL_STAGES.has(key)) continue;
+    const usd = manualStageUsd(entry);
+    byStage[key] = { ...entry, usd };
+    booked = true;
+    // An itemised booking arrives without the roll-up summary.ts reads.
+    if (Math.abs(Number(entry.usd ?? 0) - usd) >= 0.005) restage = true;
+  }
+
+  const captureUsd = Object.values(byJob).reduce((a, b) => a + b, 0);
+  const prevCaptureUsd = Object.values(prevByJob).reduce((a, b) => a + (Number(b) || 0), 0);
+  const prev = Number(p.costJson?.totalUsd ?? 0);
+  // Un-booked projects: captures are the whole story. Booked ones: hold the
+  // human's number and move it only by the change in captures.
+  const total = booked
+    ? Number((prev + captureUsd - prevCaptureUsd).toFixed(2))
+    : Number(captureUsd.toFixed(2));
   if (!total) continue;
 
-  const prev = Number(p.costJson?.totalUsd ?? 0);
-  if (Math.abs(prev - total) < 0.005) continue;
+  if (Math.abs(prev - total) < 0.005 && !restage) continue;
 
   const label = (p.publishTitle || p.sourceTitle || p.id).slice(0, 40);
   console.log(

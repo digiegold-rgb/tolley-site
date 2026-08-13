@@ -16,9 +16,24 @@
  *   node scripts/vater-invoice.mjs --since 2026-08-01    # period filter
  *   node scripts/vater-invoice.mjs --user <userId>
  *   node scripts/vater-invoice.mjs --json
+ *
+ * Runnable from anywhere (~/vater-studio/vater-invoice.mjs is a wrapper): the
+ * Prisma client and DATABASE_URL are resolved against the tolley-site package
+ * explicitly rather than inherited from the shell's cwd, which is what used to
+ * make this die with ERR_MODULE_NOT_FOUND outside ~/tolley-site.
  */
 import { readFileSync } from 'node:fs';
-import { PrismaClient } from '@prisma/client';
+import { createRequire } from 'node:module';
+
+const SITE_ROOT = '/home/jelly/tolley-site';
+const require = createRequire(`${SITE_ROOT}/package.json`);
+const { PrismaClient } = require('@prisma/client');
+
+if (!process.env.DATABASE_URL) {
+  const line = readFileSync(`${SITE_ROOT}/.env`, 'utf8').split('\n')
+    .find((l) => l.trim().startsWith('DATABASE_URL='));
+  if (line) process.env.DATABASE_URL = line.slice(line.indexOf('=') + 1).trim().replace(/^["']|["']$/g, '');
+}
 
 const prisma = new PrismaClient();
 const SETTINGS = '/home/jelly/vater-studio/VATER-SETTINGS.env';
