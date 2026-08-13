@@ -654,6 +654,16 @@ function HqPageInner() {
           >
             📄 YT Length Study
           </a>
+          <a
+            className="tab-btn"
+            href="/research/hardware-upgrade-plan-2026-08.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Hardware upgrade plan: capacity forecast, cap-out timeline, and ranked buy list with product links (Aug 2026)"
+            style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, background: "linear-gradient(135deg,#12244a,#2a5298)", color: "#f0d98a", borderColor: "#c9a227" }}
+          >
+            🔧 Hardware Plan
+          </a>
           {tab === "pipeline" && (
             <select
               value={offerFilter}
