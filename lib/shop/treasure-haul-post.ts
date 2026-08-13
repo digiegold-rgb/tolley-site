@@ -79,9 +79,17 @@ export function formatTreasureHaulCaption(input: TreasureHaulCaptionInput): stri
 
   if (product.amazonAsin) {
     const amazon = amazonAffiliateUrl(product.amazonAsin, null, "brand_fb");
-    if (amazon) parts.push(`🔗 Amazon: ${amazon}`);
+    if (amazon) parts.push(`🔗 Amazon (#ad): ${amazon}`);
   }
-  parts.push(`🛍 Storefront: ${STOREFRONT_URL}?ref_=tolley_brand_fb`);
+  const dailyShelf = shelfForAsin(product.amazonAsin);
+  parts.push(
+    dailyShelf
+      ? `🛍 Storefront shelf: ${storefrontListUrl(dailyShelf, "brand_fb")}`
+      : `🛍 Storefront: ${STOREFRONT_URL}?ref_=tolley_brand_fb`,
+  );
+  // Storefront + affiliate links are always present, so the disclosure is
+  // unconditional — a tagged link with no disclosure is a ToS strike.
+  parts.push("As an Amazon Associate I earn from qualifying purchases.");
 
   parts.push("");
   parts.push(FOLLOW_CTA);
@@ -502,7 +510,7 @@ export function formatAmazonPicksCaption(
   products: TreasureHaulCaptionInput["product"][],
 ): string {
   const lines: string[] = [];
-  lines.push("🛍 This week's Amazon picks — handpicked by Ruthann:");
+  lines.push("🛍 This week's Amazon picks — handpicked by Ruthann: #ad");
   lines.push("");
   for (const p of products) {
     // Sold items are reposted ON PURPOSE (affiliate revenue) — say so, or
@@ -606,7 +614,7 @@ export function formatHaulFacebookCaption(
 ): string {
   const lines: string[] = [];
   lines.push(
-    `🛒 Amazon Haul — every pick under $${HAUL_LIMIT_USD}, hand-picked by Ruthann:`,
+    `🛒 Amazon Haul — every pick under $${HAUL_LIMIT_USD}, hand-picked by Ruthann: #ad`,
   );
   lines.push("");
   const haulTag = encodeURIComponent(
@@ -642,7 +650,7 @@ export function formatHaulInstagramCaption(
   items: { title: string; asin: string | null }[],
 ): string {
   const lines: string[] = [];
-  lines.push(`🛒 Amazon Haul — everything under $${HAUL_LIMIT_USD}`);
+  lines.push(`🛒 Amazon Haul — everything under $${HAUL_LIMIT_USD} #ad`);
   lines.push("");
   for (const item of items) lines.push(`✨ ${item.title.trim()}`);
   lines.push("");

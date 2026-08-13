@@ -48,7 +48,7 @@ export default function AmazonStorefrontBanner() {
         <a
           href={STOREFRONT_URL}
           target="_blank"
-          rel="nofollow sponsored noopener noreferrer"
+          rel="nofollow sponsored noopener"
           onClick={() => trackEvent("shop", "amazon_storefront_click", "banner")}
           className="group flex flex-1 items-center gap-3"
         >

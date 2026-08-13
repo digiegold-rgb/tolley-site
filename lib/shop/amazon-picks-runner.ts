@@ -291,7 +291,7 @@ function formatInstagramCaption(
   items: { title: string; asin: string | null }[],
 ): string {
   const lines: string[] = [];
-  lines.push("🛍 This week's Amazon picks — handpicked by Ruthann");
+  lines.push("🛍 This week's Amazon picks — handpicked by Ruthann #ad");
   lines.push("");
   for (const item of items) lines.push(`✨ ${item.title.trim()}`);
   lines.push("");

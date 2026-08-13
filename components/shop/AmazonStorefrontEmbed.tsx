@@ -10,6 +10,8 @@
  * vanity so this works out of the box.
  */
 import { AMAZON_AFFILIATE_TAG_FALLBACK } from "@/lib/shop";
+import { STOREFRONT_LIST_IDS } from "@/lib/amazon/storefront-lists";
+import { resolveAmazonSubtag } from "@/lib/amazon/subtags";
 
 const STOREFRONT_URL =
   process.env.AMAZON_STOREFRONT_URL || "https://www.amazon.com/shop/digitaljared";
@@ -27,6 +29,7 @@ export default function AmazonStorefrontEmbed({
 }: {
   highlights?: PreviewItem[];
 }) {
+  const tag = resolveAmazonSubtag("shop");
   return (
     <section
       aria-label="Amazon storefront"
@@ -46,13 +49,28 @@ export default function AmazonStorefrontEmbed({
           </p>
         </div>
         <a
-          href={STOREFRONT_URL}
+          href={`${STOREFRONT_URL}?tag=${tag}`}
           target="_blank"
-          rel="nofollow sponsored noopener noreferrer"
+          rel="nofollow sponsored noopener"
           className="rounded-full bg-[#FF9900] px-5 py-2 text-sm font-bold text-black hover:bg-[#ffb13a]"
         >
           Open on Amazon →
         </a>
+      </div>
+
+      {/* Shelf chips — one per live Idea List on the storefront. */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {Object.entries(STOREFRONT_LIST_IDS).map(([shelf, listId]) => (
+          <a
+            key={listId}
+            href={`${STOREFRONT_URL}/list/${listId}?tag=${tag}`}
+            target="_blank"
+            rel="nofollow sponsored noopener"
+            className="rounded-full border border-amber-300/25 bg-black/25 px-3 py-1 text-xs text-amber-100/85 transition hover:border-amber-300/60 hover:text-white"
+          >
+            {shelf} <span className="text-amber-300/70">→</span>
+          </a>
+        ))}
       </div>
 
       {highlights.length > 0 ? (
@@ -62,7 +80,7 @@ export default function AmazonStorefrontEmbed({
               key={h.asin}
               href={`https://www.amazon.com/dp/${h.asin}?tag=${AMAZON_AFFILIATE_TAG_FALLBACK}`}
               target="_blank"
-              rel="nofollow sponsored noopener noreferrer"
+              rel="nofollow sponsored noopener"
               className="group block rounded-lg border border-white/5 bg-black/30 p-2 transition hover:border-amber-300/40"
               title={h.title}
             >
@@ -85,12 +103,11 @@ export default function AmazonStorefrontEmbed({
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-amber-300/20 bg-black/20 p-6 text-center text-sm text-white/55">
-          Top picks load here once Idea Lists sync (Tier 1, unlocks after
-          probation). For now,{" "}
+          Pick a shelf above, or{" "}
           <a
-            href={STOREFRONT_URL}
+            href={`${STOREFRONT_URL}?tag=${tag}`}
             target="_blank"
-            rel="nofollow sponsored noopener noreferrer"
+            rel="nofollow sponsored noopener"
             className="text-amber-300 underline hover:text-amber-200"
           >
             browse the full storefront

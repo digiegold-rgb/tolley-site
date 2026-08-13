@@ -142,7 +142,7 @@ export default function BuyButton({
             e.currentTarget.href = `/api/shop/amazon/${itemId}?src=${clickSrc()}`;
           }}
           target="_blank"
-          rel="nofollow sponsored noopener noreferrer"
+          rel="nofollow sponsored noopener"
           className={`block w-full rounded-md bg-[#FF9900] ${padY} text-center ${text} font-semibold text-black hover:bg-[#ffb13a]`}
         >
           {isSold ? "Find Similar on Amazon" : "Buy on Amazon"}
@@ -164,7 +164,7 @@ export default function BuyButton({
             }
           }}
           target="_blank"
-          rel="nofollow sponsored noopener noreferrer"
+          rel="nofollow sponsored noopener"
           className={`block w-full rounded-md bg-[#FF9900]/85 ${padY} text-center ${text} font-semibold text-black hover:bg-[#ffb13a]`}
         >
           Shop similar on Amazon
