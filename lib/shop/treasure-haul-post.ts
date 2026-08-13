@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { amazonAffiliateUrl, resolveAmazonTag } from "@/lib/shop";
+import { dominantShelf, shelfForAsin, storefrontListUrl } from "@/lib/amazon/storefront-lists";
 import type { Product, PlatformListing, Prisma } from "@prisma/client";
 
 const STOREFRONT_URL =
@@ -514,7 +515,12 @@ export function formatAmazonPicksCaption(
     if (url) lines.push(`  🛒 ${url}`);
   }
   lines.push("");
-  lines.push(`Full storefront → https://www.amazon.com/shop/digitaljared?tag=${resolveAmazonTag(null, "brand_fb")}`);
+  const picksShelf = dominantShelf(products.map((p) => p.amazonAsin));
+  lines.push(
+    picksShelf
+      ? `Shop the ${picksShelf} shelf → ${storefrontListUrl(picksShelf, "brand_fb")}`
+      : `Full storefront → https://www.amazon.com/shop/digitaljared?tag=${resolveAmazonTag(null, "brand_fb")}`,
+  );
   lines.push("");
   lines.push("As an Amazon Associate I earn from qualifying purchases. Same Prime shipping you already love. 🛒");
   lines.push("");
@@ -615,7 +621,12 @@ export function formatHaulFacebookCaption(
     }
   }
   lines.push("");
-  lines.push(`Full Haul storefront → ${STOREFRONT_URL}?ref_=tolley_haul_fb`);
+  const haulShelf = dominantShelf(products.map((p) => p.amazonAsin));
+  lines.push(
+    haulShelf
+      ? `Shop the ${haulShelf} shelf → ${storefrontListUrl(haulShelf, "haul")}`
+      : `Full Haul storefront → ${STOREFRONT_URL}?ref_=tolley_haul_fb`,
+  );
   lines.push("");
   lines.push(
     "As an Amazon Associate I earn from qualifying purchases — and Amazon may award a one-time first-purchase bounty on Haul orders. Prime shipping. 🛒",
@@ -635,7 +646,12 @@ export function formatHaulInstagramCaption(
   lines.push("");
   for (const item of items) lines.push(`✨ ${item.title.trim()}`);
   lines.push("");
-  lines.push(`Shop the Haul → amazon.com/shop/digitaljared`);
+  const shelf = dominantShelf(items.map((i) => i.asin));
+  lines.push(
+    shelf
+      ? `Shop the Haul shelf → ${storefrontListUrl(shelf, "haul")}`
+      : `Shop the Haul → amazon.com/shop/digitaljared`,
+  );
   lines.push("More finds at tolley.io/shop (link in bio)");
   lines.push("");
   lines.push("As an Amazon Associate I earn from qualifying purchases.");
@@ -647,7 +663,7 @@ export function formatHaulInstagramCaption(
 }
 
 export function buildHaulPinterestDescription(
-  p: Pick<Product, "title" | "description">,
+  p: Pick<Product, "title" | "description" | "amazonAsin">,
 ): string {
   const lines: string[] = [];
   lines.push(`${p.title.trim()} — under $${HAUL_LIMIT_USD} on Amazon Haul`);
@@ -656,7 +672,12 @@ export function buildHaulPinterestDescription(
     lines.push(p.description.trim().slice(0, 320));
   }
   lines.push("");
-  lines.push(`Full Haul storefront → amazon.com/shop/digitaljared`);
+  const pinShelf = shelfForAsin(p.amazonAsin);
+  lines.push(
+    pinShelf
+      ? `Full Haul storefront → ${storefrontListUrl(pinShelf, "haul")}`
+      : `Full Haul storefront → amazon.com/shop/digitaljared`,
+  );
   lines.push("");
   lines.push("As an Amazon Associate I earn from qualifying purchases.");
   lines.push("#amazonhaul #under20 #amazonfinds #treasurehaul");

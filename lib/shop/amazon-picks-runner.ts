@@ -28,6 +28,7 @@ import {
   alertDiscord,
 } from "@/lib/shop/treasure-haul-post";
 import { amazonAffiliateUrl } from "@/lib/shop";
+import { dominantShelf, shelfForAsin, storefrontListUrl } from "@/lib/amazon/storefront-lists";
 import { getStoredToken } from "@/lib/social/token-store";
 import { prisma } from "@/lib/prisma";
 import type { Product, PlatformListing } from "@prisma/client";
@@ -294,7 +295,12 @@ function formatInstagramCaption(
   lines.push("");
   for (const item of items) lines.push(`✨ ${item.title.trim()}`);
   lines.push("");
-  lines.push("Shop the full storefront → amazon.com/shop/digitaljared");
+  const shelf = dominantShelf(items.map((i) => i.asin));
+  lines.push(
+    shelf
+      ? `Shop the ${shelf} shelf → ${storefrontListUrl(shelf, "ig")}`
+      : "Shop the full storefront → amazon.com/shop/digitaljared",
+  );
   lines.push("More finds at tolley.io/shop (link in bio)");
   lines.push("");
   lines.push("As an Amazon Associate I earn from qualifying purchases.");
@@ -368,7 +374,9 @@ async function postPinterest(
   return { platform: "pinterest", ok: true, postedCount: posted };
 }
 
-function buildPinterestDescription(p: Pick<Product, "title" | "description">): string {
+function buildPinterestDescription(
+  p: Pick<Product, "title" | "description" | "amazonAsin">,
+): string {
   const lines: string[] = [];
   lines.push(p.title.trim());
   if (p.description?.trim()) {
@@ -376,7 +384,12 @@ function buildPinterestDescription(p: Pick<Product, "title" | "description">): s
     lines.push(p.description.trim().slice(0, 350));
   }
   lines.push("");
-  lines.push("Full storefront → amazon.com/shop/digitaljared");
+  const shelf = shelfForAsin(p.amazonAsin);
+  lines.push(
+    shelf
+      ? `Full storefront → ${storefrontListUrl(shelf, "pin")}`
+      : "Full storefront → amazon.com/shop/digitaljared",
+  );
   lines.push("");
   lines.push("As an Amazon Associate I earn from qualifying purchases.");
   lines.push("#amazonfinds #treasurehaul #thrifting #vintagefinds");
