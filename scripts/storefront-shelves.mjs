@@ -277,6 +277,13 @@ section.review .tag h2{color:var(--acc)}
   background:var(--acc-soft); border-radius:8px;
 }
 .empty{color:var(--mut);padding:2rem 0;display:none}
+#sheet{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:1rem}
+#sheet[hidden]{display:none}
+.sheet-box{background:var(--panel);border:1px solid var(--line-2);border-radius:10px;max-width:640px;width:100%;padding:1rem;display:flex;flex-direction:column;gap:.6rem;max-height:85vh}
+.sheet-head{display:flex;align-items:center;gap:.5rem}
+.sheet-head strong{margin-right:auto}
+.sheet-hint{margin:0;font-size:.82rem;color:var(--mut)}
+#sheet-text{flex:1;min-height:14rem;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:.6rem;resize:vertical;white-space:pre}
 footer{border-top:1px solid var(--line);margin-top:2.5rem;padding-top:1.2rem;color:var(--mut);font-size:.85rem}
 footer code{font-family:ui-monospace,monospace;color:var(--acc);overflow-wrap:anywhere}
 </style>
@@ -300,6 +307,19 @@ footer code{font-family:ui-monospace,monospace;color:var(--acc);overflow-wrap:an
   <input type="search" id="q" placeholder="Filter by product or ASIN…" aria-label="Filter products">
   <button id="toggle">Hide shelved</button>
   <button id="reset">Reset ticks</button>
+  <button id="copyall">Copy ALL ASINs</button>
+</div>
+
+<div id="sheet" hidden>
+  <div class="sheet-box">
+    <div class="sheet-head">
+      <strong id="sheet-title">ASINs</strong>
+      <button id="sheet-select">Select all</button>
+      <button id="sheet-close">Close</button>
+    </div>
+    <p class="sheet-hint">Clipboard is blocked in this viewer. The list below is pre-selected &mdash; press <b>Ctrl/Cmd&thinsp;+&thinsp;C</b> to copy.</p>
+    <textarea id="sheet-text" readonly spellcheck="false"></textarea>
+  </div>
 </div>
 
 ${shelfOrder
@@ -394,15 +414,55 @@ ${shelfOrder
     paint(); applyFilter();
   });
 
+  // Clipboard is often blocked in sandboxed viewers (the claude.ai artifact
+  // frame among them) — every copy path needs the select-all sheet fallback.
+  var sheet = document.getElementById("sheet");
+  var sheetText = document.getElementById("sheet-text");
+  var sheetTitle = document.getElementById("sheet-title");
+  function openSheet(title, text) {
+    sheetTitle.textContent = title;
+    sheetText.value = text;
+    sheet.hidden = false;
+    sheetText.focus();
+    sheetText.select();
+    try { document.execCommand("copy"); } catch (e) {}
+  }
+  document.getElementById("sheet-close").addEventListener("click", function () { sheet.hidden = true; });
+  sheet.addEventListener("click", function (e) { if (e.target === sheet) sheet.hidden = true; });
+  document.getElementById("sheet-select").addEventListener("click", function () {
+    sheetText.focus(); sheetText.select();
+    try { document.execCommand("copy"); } catch (e) {}
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") sheet.hidden = true; });
+
+  function copyList(btn, title, asins) {
+    var text = asins.join("\\n");
+    var flash = function () {
+      var old = btn.textContent;
+      btn.textContent = "Copied " + asins.length;
+      setTimeout(function () { btn.textContent = old; }, 1400);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(flash, function () { openSheet(title, text); });
+    } else {
+      openSheet(title, text);
+    }
+  }
+
   document.querySelectorAll("button.copy").forEach(function (btn) {
     btn.addEventListener("click", function () {
-      var text = btn.dataset.asins.split(" ").join("\n");
-      navigator.clipboard.writeText(text).then(function () {
-        var old = btn.textContent;
-        btn.textContent = "Copied " + btn.dataset.asins.split(" ").length;
-        setTimeout(function () { btn.textContent = old; }, 1400);
-      });
+      var sec = btn.closest("section");
+      var title = (sec ? sec.dataset.shelf + " " : "") + "ASINs";
+      copyList(btn, title, btn.dataset.asins.split(" "));
     });
+  });
+
+  document.getElementById("copyall").addEventListener("click", function () {
+    var all = [];
+    document.querySelectorAll("button.copy").forEach(function (b) {
+      all = all.concat(b.dataset.asins.split(" "));
+    });
+    copyList(this, "All " + all.length + " ASINs", all);
   });
 
   paint();
@@ -410,6 +470,35 @@ ${shelfOrder
 </script>`;
 
 writeFileSync(`${DIR}/add-sheet.html`, html);
+
+// /hq/storefront renders this same worklist inside the dashboard; the page is
+// static on Vercel, so the data ships as a committed JSON refreshed by rerunning
+// this script (then redeploying).
+writeFileSync(
+  new URL("../app/hq/storefront/sheet-data.json", import.meta.url),
+  JSON.stringify(
+    {
+      generatedAt: new Date().toISOString(),
+      total: kept.length,
+      shelfCount,
+      totalValue: Math.round(totalValue),
+      shelves: shelfOrder.map(([shelf, items]) => ({
+        shelf,
+        review: shelf === NEEDS_REVIEW,
+        items: items.map((r) => ({
+          asin: r.asin,
+          title: (r.title_amazon ?? r.title ?? r.asin).slice(0, 118),
+          price: r.price ?? null,
+          rating: r.rating ?? null,
+          soldCount: r.soldCount,
+          ladder: r.ladder ? r.ladder.slice(0, 3) : null,
+        })),
+      })),
+    },
+    null,
+    1
+  )
+);
 
 console.log(`kept ${kept.length} (>= $${MIN_PRICE}) of ${rows.length} verified`);
 for (const [s, i] of shelfOrder) console.log(`  ${s}: ${i.length}`);

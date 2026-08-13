@@ -621,6 +621,10 @@ function HqPageInner() {
           >
             🛍 TikTok
           </button>
+          {/* Storefront stocking is its own route (big static worklist), not a tab state. */}
+          <a className="tab-btn" href="/hq/storefront" style={{ textDecoration: "none" }}>
+            🛒 Storefront
+          </a>
           <button
             className={`tab-btn ${tab === "bk" ? "active" : ""}`}
             onClick={() => setTab("bk")}
