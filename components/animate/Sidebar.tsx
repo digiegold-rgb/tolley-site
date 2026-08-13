@@ -36,6 +36,7 @@ const NAV_ITEMS: NavItemDef[] = [
   { id: 'project-history', label: 'Project History', icon: 'history' },
   { id: 'video-editor', label: 'Video Editor', icon: 'videoEditor' },
   { id: 'course', label: 'Course Studio', icon: 'course' },
+  { id: 'rules', label: 'Rules', icon: 'description' },
   { id: 'learning-center', label: 'Learning Center', icon: 'learning', stub: true },
 ];
 

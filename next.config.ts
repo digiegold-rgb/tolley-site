@@ -51,8 +51,22 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // data/VATER-RULES.pdf is read at runtime by the studio-gated rules route;
+  // without this it never makes it into the serverless bundle.
+  outputFileTracingIncludes: {
+    "/api/vater/rules": ["./data/VATER-RULES.pdf"],
+    "/api/vater/rules/route": ["./data/VATER-RULES.pdf"],
+  },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // The Rules PDF renders inside an iframe on /animate; the global
+      // X-Frame-Options: DENY would blank it. Last matching key wins.
+      {
+        source: "/api/vater/rules",
+        headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }],
+      },
+    ];
   },
   async redirects() {
     return [

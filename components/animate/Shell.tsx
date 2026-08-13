@@ -48,6 +48,7 @@ import { StylesListEmbed } from './screens/browse/StylesListEmbed';
 import { StyleEditEmbed } from './screens/browse/StyleEditEmbed';
 import { CustomArtStylesEmbed } from './screens/browse/CustomArtStylesEmbed';
 import { LearningCenterScreen } from './screens/browse/LearningCenterScreen';
+import { RulesScreen } from './screens/browse/RulesScreen';
 import { PricingScreen } from './screens/browse/PricingScreen';
 
 export function Shell(): React.ReactElement {
@@ -349,6 +350,7 @@ function renderScreen(
     case 'learning-center': return <LearningCenterScreen />;
     case 'pricing': return <PricingScreen />;
     case 'course': return <CourseScreen />;
+    case 'rules': return <RulesScreen />;
     case 'affiliate': return <ComingSoonScreen route="affiliate" />;
     default: return <ComingSoonScreen route={route} />;
   }
