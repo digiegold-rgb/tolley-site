@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHmac } from "crypto";
 import { geolocation } from "@vercel/functions";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import {
+  BOT_UA,
+  isBot,
+  isDatacenterGeo as isDatacenterCity,
+  hashIp,
+  getSkipIps,
+  getSkipHashes,
+} from "@/lib/visit-filters";
 
 // ─── Hardening helpers ──────────────────────────────────────
 
@@ -36,40 +43,12 @@ function corsHeaders(origin: string | null): Record<string, string> {
   };
 }
 
-// Matches obvious bots, crawlers, and non-browser HTTP clients. Applied on
-// the write path (don't store) and the read path (exclude historical rows).
-const BOT_UA =
-  /bot|crawl|spider|slurp|bingbot|googlebot|facebookexternalhit|meta-externalagent|twitterbot|linkedinbot|pinterest|whatsapp|telegram|discordbot|curl\/|wget\/|python-requests|java-http|go-http|okhttp|postman|insomnia|headlesschrome|phantomjs|axios/i;
-
-function isBot(ua: string | null): boolean {
-  if (!ua) return false;
-  return BOT_UA.test(ua);
-}
-
-// Known cloud / datacenter cities. Hits geolocated here are almost always
-// scrapers, headless probes, or proxy egress — they never trip BOT_UA
-// because the UA strings are spoofed to look like real browsers. Excluded
-// on the read path only; we still store them in case we want to audit.
-const DATACENTER_CITIES = new Set<string>([
-  // AWS
-  "Ashburn", "Boardman", "Hilliard", "Manassas",
-  // Google
-  "Council Bluffs", "The Dalles", "Mayes", "Pryor",
-  // Facebook / Meta
-  "Prineville", "Forest City", "Luleå", "Lulea", "Altoona", "Henrico", "Eagle Mountain",
-  // Microsoft / Azure
-  "Clonee", "Quincy", "San Antonio", "Cheyenne",
-  // Hetzner / OVH
-  "Falkenstein", "Nuremberg", "Roubaix", "Strasbourg", "Gravelines",
-  // DigitalOcean / Linode / Vultr
-  "Secaucus", "Cedar Knolls", "Piscataway",
-]);
-
-function isDatacenterGeo(city: string | null, country: string | null): boolean {
-  if (!city) return false;
-  if (DATACENTER_CITIES.has(city)) return true;
-  return false;
-}
+// Bot / datacenter / self-IP exclusion helpers live in lib/visit-filters so
+// the HQ Site tab (/api/hq/site-visits) applies identical rules. Bots are
+// dropped on the write path; the rest is read-path only (data kept for audit).
+// The lib's isDatacenterGeo takes city only; country is unused for now.
+const isDatacenterGeo = (city: string | null, _country: string | null) =>
+  isDatacenterCity(city);
 
 // Routes that are admin / dashboard / auth — these are "Cordless logged in
 // using his own product," not marketing visits. Excluded from top-paths so
@@ -107,35 +86,10 @@ async function isRateLimited(ip: string | null): Promise<boolean> {
   return viewCount + eventCount >= RATE_LIMIT_COUNT;
 }
 
-// Self-exclusion: comma-separated IPs in ANALYTICS_SKIP_IPS are filtered
-// from the dashboard on the read path. Not blocked on write so the data
-// is still there if we ever want to audit it. We also hash them to match
-// against ipHash on new rows.
-function getSkipIps(): Set<string> {
-  return new Set(
-    (process.env.ANALYTICS_SKIP_IPS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
-  );
-}
-
-function getSkipHashes(skipIps: Set<string>): Set<string> {
-  const salt = process.env.ANALYTICS_IP_SALT;
-  if (!salt) return new Set();
-  const hashes = new Set<string>();
-  for (const ip of skipIps) hashes.add(hashIp(ip, salt));
-  return hashes;
-}
-
 // IP hashing: HMAC-SHA256 with a stable secret salt from env. Stable per-IP
 // (so dedup works), but the salt lives in env vars, so a DB leak alone
 // doesn't reveal raw IPs. Old rows still have raw ip; new rows store only
 // the hash (we null out raw ip on write once the backfill is complete).
-function hashIp(ip: string, salt: string): string {
-  return createHmac("sha256", salt).update(ip).digest("hex");
-}
-
 function maybeHashIp(ip: string | null): string | null {
   if (!ip) return null;
   const salt = process.env.ANALYTICS_IP_SALT;

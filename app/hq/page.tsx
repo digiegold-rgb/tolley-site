@@ -28,6 +28,7 @@ import { HqHaulAppraisals } from "@/components/hq/hq-haul-appraisals";
 import { HqPosts } from "@/components/hq/hq-posts";
 import { HqTiktokShop } from "@/components/hq/hq-tiktok-shop";
 import { HqChannelScoreboard } from "@/components/hq/hq-channel-scoreboard";
+import { HqSiteVisits } from "@/components/hq/hq-site-visits";
 import {
   HqMustComplete,
   type MustCompleteItem,
@@ -41,9 +42,9 @@ import {
   type HqInboundLead,
 } from "@/components/hq/types";
 
-type Tab = "empire" | "must" | "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats" | "chats" | "hauls" | "posts" | "tiktok" | "bk";
+type Tab = "empire" | "must" | "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats" | "site" | "chats" | "hauls" | "posts" | "tiktok" | "bk";
 
-const TABS: readonly Tab[] = ["empire", "must", "pipeline", "inbound", "approvals", "money", "dnc", "estates", "stats", "chats", "hauls", "posts", "tiktok", "bk"];
+const TABS: readonly Tab[] = ["empire", "must", "pipeline", "inbound", "approvals", "money", "dnc", "estates", "stats", "site", "chats", "hauls", "posts", "tiktok", "bk"];
 
 function isTab(v: string | null): v is Tab {
   return v != null && (TABS as readonly string[]).includes(v);
@@ -591,6 +592,12 @@ function HqPageInner() {
             Stats
           </button>
           <button
+            className={`tab-btn ${tab === "site" ? "active" : ""}`}
+            onClick={() => setTab("site")}
+          >
+            🌐 Site
+          </button>
+          <button
             className={`tab-btn ${tab === "chats" ? "active" : ""}`}
             onClick={() => setTab("chats")}
           >
@@ -696,6 +703,8 @@ function HqPageInner() {
             <HqChannelScoreboard />
             <HqStats />
           </>
+        ) : tab === "site" ? (
+          <HqSiteVisits />
         ) : tab === "chats" ? (
           <HqFbChats />
         ) : tab === "hauls" ? (
