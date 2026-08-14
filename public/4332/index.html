@@ -63,6 +63,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="max-w-4xl mx-auto flex overflow-x-auto">
       <button class="tab-btn active px-4 py-3 text-xs font-bold rounded-t-lg whitespace-nowrap" onclick="showTab('overview')">Overview</button>
       <button class="tab-btn px-4 py-3 text-xs font-bold rounded-t-lg whitespace-nowrap" onclick="showTab('disclosure')">Disclosure</button>
+      <button class="tab-btn px-4 py-3 text-xs font-bold rounded-t-lg whitespace-nowrap" onclick="showTab('docs')">Documents</button>
       <button class="tab-btn px-4 py-3 text-xs font-bold rounded-t-lg whitespace-nowrap" onclick="showTab('buyer')">Buyer Calculator</button>
       <button class="tab-btn px-4 py-3 text-xs font-bold rounded-t-lg whitespace-nowrap" onclick="showTab('seller')">Seller Net Sheet</button>
     </div>
@@ -236,6 +237,16 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </div>
     </section>
 
+    <!-- ═══ DOCUMENTS TAB ═══ -->
+    <section id="tab-docs" class="hidden fade-in">
+      <h2 class="text-lg font-extrabold text-slate-900 mb-1">Property Documents</h2>
+      <p class="text-xs text-slate-500 mb-5">Original PDFs as provided by the seller / listing brokerage. View in-browser or download.</p>
+      <div id="docs-mount" class="space-y-3"></div>
+      <div class="bg-amber-50 border-l-4 border-amber-400 rounded-lg p-4 mt-6">
+        <p class="text-xs text-amber-800">These documents are provided for buyer review. Summaries elsewhere on this page are for convenience only — the signed PDFs above are the controlling documents. Buyer is advised to review all disclosures with their own counsel and inspectors.</p>
+      </div>
+    </section>
+
     <!-- ═══ BUYER CALCULATOR TAB ═══ -->
     <section id="tab-buyer" class="hidden fade-in">
       <div id="buyer-calc-mount"></div>
@@ -274,10 +285,57 @@ if(localStorage.getItem('4332_auth')==='1'){
 
 // ═══ TABS ═══
 function showTab(id){
+  if(id==='docs')renderDocs();
   document.querySelectorAll('[id^="tab-"]').forEach(el=>el.classList.add('hidden'));
   document.getElementById('tab-'+id).classList.remove('hidden');
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   event.target.classList.add('active');
+}
+
+/* ═══ DOCUMENTS ═══ */
+const DOCS=[
+  {file:'sellers-disclosure.pdf', title:"Seller's Disclosure", meta:'Signed 08/08/2026 — Joel Sartwell (AMP)', icon:'📄'},
+  {file:'hoa-docs.pdf', title:'HOA Documents', meta:'Tomashaw Village — $90/yr, paid through 05/01/2027', icon:'🏘️'},
+  {file:'lead-paint-disclosure.pdf', title:'Lead-Based Paint Disclosure', meta:'Required — home built pre-1978', icon:'⚠️'}
+];
+let docsRendered=false;
+async function renderDocs(){
+  if(docsRendered)return; docsRendered=true;
+  const m=document.getElementById('docs-mount');
+  m.innerHTML='<div class="text-sm text-slate-400">Loading documents…</div>';
+  const checks=await Promise.all(DOCS.map(async d=>{
+    try{const r=await fetch('/4332/docs/'+d.file,{method:'HEAD'});
+      return {...d, ok:r.ok, size:Number(r.headers.get('content-length')||0)};
+    }catch(e){return {...d, ok:false, size:0}}
+  }));
+  const kb=n=>n?(n>1048576?(n/1048576).toFixed(1)+' MB':Math.round(n/1024)+' KB'):'';
+  const live=checks.filter(d=>d.ok), pending=checks.filter(d=>!d.ok);
+  let h=live.map(d=>`
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="flex items-center gap-3 p-4">
+        <div class="text-2xl">${d.icon}</div>
+        <div class="flex-1 min-w-0">
+          <div class="font-bold text-slate-900 text-sm">${d.title}</div>
+          <div class="text-xs text-slate-500">${d.meta}${d.size?' · '+kb(d.size):''}</div>
+        </div>
+        <a href="/4332/docs/${d.file}" target="_blank" rel="noopener" class="no-print shrink-0 bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-slate-800 transition">Open</a>
+        <a href="/4332/docs/${d.file}" download class="no-print shrink-0 bg-slate-100 text-slate-700 text-xs font-bold px-3 py-2 rounded-lg hover:bg-slate-200 transition">Download</a>
+      </div>
+      <details class="border-t border-slate-100 no-print">
+        <summary class="cursor-pointer px-4 py-2 text-xs font-bold text-blue-600 hover:bg-slate-50">Preview inline</summary>
+        <iframe src="/4332/docs/${d.file}#view=FitH" class="w-full" style="height:75vh;border:0" title="${d.title}"></iframe>
+      </details>
+    </div>`).join('');
+  if(pending.length)h+=pending.map(d=>`
+    <div class="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-4 flex items-center gap-3 opacity-70">
+      <div class="text-2xl grayscale">${d.icon}</div>
+      <div class="flex-1">
+        <div class="font-bold text-slate-500 text-sm">${d.title}</div>
+        <div class="text-xs text-slate-400">Awaiting upload — contact Jared Tolley to request this document.</div>
+      </div>
+      <span class="text-[10px] font-bold uppercase tracking-wide text-slate-400 bg-slate-200 px-2 py-1 rounded">Pending</span>
+    </div>`).join('');
+  m.innerHTML=h;
 }
 
 // ═══ CALCULATOR ENGINE ═══
