@@ -122,6 +122,7 @@ export async function getVaterBillingSummary(): Promise<{
         audioDuration: true,
         costJson: true,
         updatedAt: true,
+        completedAt: true,
       },
     }),
     prisma.vaterPayment.aggregate({ _sum: { amountUsd: true } }),
@@ -146,17 +147,40 @@ export async function getVaterBillingSummary(): Promise<{
   // different populations and the difference surfaced on the customer's bill
   // as a growing "Other" line ($34.70 by 2026-08-13). The snapshot stays the
   // internal cost-of-goods number; it is not what the customer owes.
-  const computeUsd = r2(
-    finished.reduce(
-      (sum, p) =>
-        sum + Number((p.costJson as { totalUsd?: number } | null)?.totalUsd ?? 0),
-      0,
-    ),
-  );
+  const cardUsd = (p: { costJson: unknown }) =>
+    Number((p.costJson as { totalUsd?: number } | null)?.totalUsd ?? 0);
+  const computeUsd = r2(finished.reduce((sum, p) => sum + cardUsd(p), 0));
   const opsUsd = r2(minutes * opsRatePerMinute);
-  const totalUsd = r2(computeUsd + opsUsd);
   const paidUsd = r2(paidAgg._sum.amountUsd ?? 0);
-  const dueUsd = r2(Math.max(0, totalUsd - paidUsd));
+
+  // Due is SETTLEMENT-BASED: a payment settles everything delivered up to the
+  // moment it landed, and due is only the videos delivered since. All-time is
+  // paid + due — what has actually been billed.
+  //
+  // Due used to be all-time-minus-payments, which broke every time history
+  // was corrected: the 8/10 $144 settle-up was priced by the old ledger
+  // (whose phantom Kimi estimates happened to offset under-captured Modal),
+  // so later corrections to either error re-opened a period Trey had already
+  // settled and swung his balance — $62 due one day, $3.71 credit the next,
+  // while Modal showed ~$60 of genuinely new spend. Under settlement
+  // semantics, corrections to pre-payment history can never move current due.
+  //
+  // Delivery time is completedAt; updatedAt is only a fallback for legacy
+  // rows without one, and is NOT reliable — true-ups and renumbering bump it,
+  // which under the old math dragged settled videos back into the bill.
+  const deliveredAt = (p: { completedAt: Date | null; updatedAt: Date }) =>
+    p.completedAt ?? p.updatedAt;
+  const settledUpTo = lastPayment?.createdAt ?? new Date(0);
+  const finishedSince = finished.filter((p) => deliveredAt(p) > settledUpTo);
+  let minutesSince = 0;
+  for (const p of finishedSince) {
+    minutesSince += Math.max(0, Number(p.audioDuration ?? 0)) / 60;
+  }
+  const dueUsd = r2(
+    finishedSince.reduce((sum, p) => sum + cardUsd(p), 0) +
+      minutesSince * opsRatePerMinute,
+  );
+  const totalUsd = r2(paidUsd + dueUsd);
 
   const readStages = (
     rows: typeof projects,
