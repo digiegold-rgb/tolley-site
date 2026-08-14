@@ -136,9 +136,22 @@ export async function getVaterBillingSummary(): Promise<{
   for (const p of finished) {
     minutes += Math.max(0, Number(p.audioDuration ?? 0)) / 60;
   }
+  // Trey is billed for the videos he received, so compute is the sum of the
+  // delivered videos' own cards — the same figure vater-invoice.mjs prints.
+  //
+  // It used to come off the vaterCostSnapshot ledger rollup, which is every
+  // dollar the Vater lane has ever spent: pipeline R&D, failed experiments,
+  // repair passes, dev renders against the vater-* Modal apps. Ops was already
+  // derived from finished videos, so the two halves of the total measured
+  // different populations and the difference surfaced on the customer's bill
+  // as a growing "Other" line ($34.70 by 2026-08-13). The snapshot stays the
+  // internal cost-of-goods number; it is not what the customer owes.
   const computeUsd = r2(
-    (costs?.claudeUsd ?? 0) + (costs?.modalUsd ?? 0) + (costs?.geminiUsd ?? 0) +
-    (costs?.falUsd ?? 0) + (costs?.otherUsd ?? 0),
+    finished.reduce(
+      (sum, p) =>
+        sum + Number((p.costJson as { totalUsd?: number } | null)?.totalUsd ?? 0),
+      0,
+    ),
   );
   const opsUsd = r2(minutes * opsRatePerMinute);
   const totalUsd = r2(computeUsd + opsUsd);
@@ -164,9 +177,12 @@ export async function getVaterBillingSummary(): Promise<{
     return totals;
   };
 
-  const allStages = readStages(projects);
+  // Same population as computeUsd above, so the stage rows add up to the
+  // compute being charged instead of leaving a remainder.
+  const allStages = readStages(finished);
   const breakdown = stageRows(allStages);
-  // Spend the per-video records can't see (pre-capture era, dev/test runs).
+  // Should now be ~0. It stays as a guard: a delivered video whose card has a
+  // total but no byStage detail would otherwise silently drop off the bill.
   const unattributedUsd = r2(computeUsd - sumRows(breakdown));
   if (unattributedUsd > 0.01) {
     breakdown.push({ key: "other", label: "Other", usd: unattributedUsd });
