@@ -5125,3 +5125,11 @@ model RepriceEvent {
 
   @@index([runAt])
 }
+
+// Single-row heartbeat: what the DGX is actively working on right now.
+// dgx-activity-scan.sh pushes one line hourly; the Posts tab shows it verbatim.
+model DgxActivity {
+  id        Int      @id @default(1)
+  line      String
+  updatedAt DateTime @default(now())
+}

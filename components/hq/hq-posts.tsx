@@ -95,6 +95,39 @@ function money(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+// One-liner pushed hourly by the DGX (dgx-activity-scan.sh): what the box is
+// actively working on right now. Renders nothing until the first push lands.
+function DgxActivityLine() {
+  const [act, setAct] = useState<{ line: string; updatedAt: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/hq/dgx-activity")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.line) setAct(d as { line: string; updatedAt: string }); })
+      .catch(() => {});
+  }, []);
+
+  if (!act) return null;
+  const stale = Date.now() - Date.parse(act.updatedAt) > 2 * 3600_000;
+  return (
+    <div
+      style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "9px 16px", borderRadius: 10, marginBottom: 10,
+        background: "#f2f2f7", border: "1px solid #e5e5ea",
+      }}
+    >
+      <span style={{ fontSize: 15 }}>🖥️</span>
+      <span style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 200 }}>
+        DGX: {act.line}
+      </span>
+      <span style={{ fontSize: 11, color: stale ? "#b3261e" : "#8e8e93", fontWeight: stale ? 700 : 400 }}>
+        {stale ? `⚠︎ scan stale — ${ago(act.updatedAt)}` : ago(act.updatedAt)}
+      </span>
+    </div>
+  );
+}
+
 export function HqPosts() {
   const [data, setData] = useState<Payload | null>(null);
   const [days, setDays] = useState(7);
@@ -133,6 +166,9 @@ export function HqPosts() {
 
       {/* ── Monthly city search-rank sweep (renders after first sweep) ── */}
       <HqCityRanks />
+
+      {/* ── What the DGX is actively working on (hourly scan) ── */}
+      <DgxActivityLine />
 
       {/* ── Headline: is anything dark right now? ── */}
       <div
