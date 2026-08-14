@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { validateWdAdmin } from "@/lib/wd-auth";
 import { secretEquals } from "@/lib/secret-compare";
 
 export const runtime = "nodejs";
@@ -30,8 +31,11 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-// GET — the Posts tab reads the current line.
+// GET — the Posts tab reads the current line. Same admin gate as the rest of
+// /hq: the line names live infra (ports, engines) and must not be public.
 export async function GET() {
+  const { authed } = await validateWdAdmin();
+  if (!authed) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const row = await prisma.dgxActivity.findUnique({ where: { id: 1 } });
   if (!row) return NextResponse.json({ line: null, updatedAt: null });
   return NextResponse.json({ line: row.line, updatedAt: row.updatedAt.toISOString() });
