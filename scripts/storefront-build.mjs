@@ -96,6 +96,16 @@ async function verify(asin, attempt = 0) {
       }
       return { ok: false, reason: "captcha" };
     }
+    // Soft block: a ~4KB "To discuss automated access…" shell with a 200
+    // status and no productTitle. Without this check it gets recorded as
+    // no_title and healthy ASINs read as dead.
+    if (/api-services-support@amazon\.com/i.test(html) || html.length < 10000) {
+      if (attempt < 3) {
+        await sleep(15000 * (attempt + 1));
+        return verify(asin, attempt + 1);
+      }
+      return { ok: false, reason: "bot_page" };
+    }
     if (/Page Not Found|we couldn't find that page|Looking for something\?/i.test(html))
       return { ok: false, reason: "not_found" };
 
@@ -210,7 +220,7 @@ if (existsSync(CKPT)) {
     try {
       const r = JSON.parse(line);
       // Throttle artifacts are not verdicts — let those ASINs be retried.
-      if (r.ok || !["captcha", "no_title", "error_TimeoutError"].includes(r.reason))
+      if (r.ok || !["captcha", "no_title", "bot_page", "error_TimeoutError"].includes(r.reason))
         seen.set(r.asin, r);
     } catch {}
   }

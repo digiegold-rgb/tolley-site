@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CMA — 4332 S Dover Ave, Independence MO 64055</title>
+<style>
+  :root{
+    color-scheme: light;
+    --surface-0:#f6f5f2; --surface-1:#fcfcfb; --surface-2:#efeeea;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#7a7873;
+    --rule:#e0dfda; --rule-strong:#c9c8c2;
+    --series-1:#2a78d6; --accent-red:#e34948; --good:#0a7d4f;
+    --band:rgba(42,120,214,.10);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:where(:not([data-theme="light"])){
+      color-scheme: dark;
+      --surface-0:#131312; --surface-1:#1a1a19; --surface-2:#242423;
+      --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#96958c;
+      --rule:#33332f; --rule-strong:#4a4a45;
+      --series-1:#3987e5; --accent-red:#e66767; --good:#3aa77a;
+      --band:rgba(57,135,229,.14);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --surface-0:#131312; --surface-1:#1a1a19; --surface-2:#242423;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#96958c;
+    --rule:#33332f; --rule-strong:#4a4a45;
+    --series-1:#3987e5; --accent-red:#e66767; --good:#3aa77a;
+    --band:rgba(57,135,229,.14);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--surface-0); color:var(--text-primary);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{max-width:1000px;margin:0 auto;padding:34px 30px 60px}
+
+  header{border-bottom:2px solid var(--text-primary);padding-bottom:16px;margin-bottom:26px}
+  .eyebrow{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--text-muted);font-weight:600}
+  h1{font-size:27px;line-height:1.2;margin:8px 0 4px;letter-spacing:-.02em}
+  .sub{color:var(--text-secondary);font-size:14px}
+  .meta{display:flex;flex-wrap:wrap;gap:22px;margin-top:14px;font-size:12.5px;color:var(--text-secondary)}
+  .meta b{color:var(--text-primary);font-weight:600}
+
+  h2{font-size:12px;letter-spacing:.11em;text-transform:uppercase;color:var(--text-muted);
+     font-weight:700;margin:36px 0 14px;padding-bottom:7px;border-bottom:1px solid var(--rule)}
+
+  /* verdict */
+  .verdict{background:var(--surface-1);border:1px solid var(--rule);border-left:4px solid var(--series-1);
+           border-radius:10px;padding:22px 24px;margin-bottom:8px}
+  .vgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:26px;align-items:start}
+  .vlabel{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:5px}
+  .vnum{font-size:30px;font-weight:680;letter-spacing:-.025em;line-height:1.1;
+        font-variant-numeric:tabular-nums}
+  .vnum.blue{color:var(--series-1)}
+  .vfoot{font-size:12px;color:var(--text-secondary);margin-top:5px}
+  .headline{margin-top:20px;padding-top:18px;border-top:1px solid var(--rule);
+            font-size:16.5px;line-height:1.5;color:var(--text-primary)}
+  .headline strong{font-weight:650}
+
+  /* chart */
+  .chart-wrap{background:var(--surface-1);border:1px solid var(--rule);border-radius:10px;padding:20px 22px 14px}
+  .chart-title{font-size:14px;font-weight:620;margin-bottom:3px}
+  .chart-sub{font-size:12px;color:var(--text-secondary);margin-bottom:16px}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .grid-line{stroke:var(--rule);stroke-width:1}
+  .axis-txt{fill:var(--text-muted);font-size:10.5px;font-variant-numeric:tabular-nums}
+  .row-lbl{fill:var(--text-secondary);font-size:11.5px}
+  .row-val{fill:var(--text-primary);font-size:11.5px;font-weight:620;font-variant-numeric:tabular-nums}
+  .stem{stroke:var(--rule-strong);stroke-width:2}
+  .dot{fill:var(--series-1);stroke:var(--surface-1);stroke-width:2}
+  .askline{stroke:var(--accent-red);stroke-width:2;stroke-dasharray:5 4}
+  .asklbl{fill:var(--accent-red);font-size:11px;font-weight:620}
+  .hit{fill:transparent;cursor:pointer}
+  .hit:hover ~ .dot,.dotg:hover .dot{r:8}
+
+  /* tooltip */
+  #tip{position:fixed;pointer-events:none;opacity:0;transition:opacity .1s;
+       background:var(--text-primary);color:var(--surface-1);padding:8px 11px;border-radius:7px;
+       font-size:12px;line-height:1.45;z-index:99;max-width:260px;box-shadow:0 4px 14px rgba(0,0,0,.22)}
+  #tip b{font-weight:650}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+  th{text-align:right;font-weight:650;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;
+     color:var(--text-muted);padding:0 8px 8px;border-bottom:1px solid var(--rule-strong)}
+  th:first-child,td:first-child{text-align:left}
+  td{padding:9px 8px;border-bottom:1px solid var(--rule);text-align:right}
+  tbody tr:hover{background:var(--surface-2)}
+  .addr{font-weight:620;color:var(--text-primary)}
+  .mls{display:block;font-size:10.5px;color:var(--text-muted);font-weight:400;letter-spacing:.02em}
+  .pos{color:var(--good);font-weight:600}
+  .neg{color:var(--accent-red);font-weight:600}
+  .adjcol{font-weight:680;color:var(--series-1)}
+  tfoot td{border-bottom:none;border-top:2px solid var(--text-primary);font-weight:680;padding-top:11px}
+
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .card{background:var(--surface-1);border:1px solid var(--rule);border-radius:9px;padding:14px 15px}
+  .cnum{font-size:22px;font-weight:680;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .clbl{font-size:11px;color:var(--text-secondary);margin-top:3px;line-height:1.35}
+
+  ul{margin:0;padding-left:19px}
+  li{margin-bottom:9px;color:var(--text-secondary)}
+  li strong{color:var(--text-primary);font-weight:620}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:30px}
+
+  .risk{background:var(--surface-1);border:1px solid var(--rule);border-left:4px solid var(--accent-red);
+        border-radius:9px;padding:18px 20px}
+  .note{font-size:11.5px;color:var(--text-muted);line-height:1.55;margin-top:34px;
+        padding-top:14px;border-top:1px solid var(--rule)}
+  .toggle{position:fixed;top:14px;right:14px;background:var(--surface-1);color:var(--text-secondary);
+          border:1px solid var(--rule-strong);border-radius:7px;padding:6px 11px;font-size:11.5px;cursor:pointer}
+  @media print{.toggle{display:none}body{background:#fff}}
+  @media (max-width:760px){.vgrid,.two{grid-template-columns:1fr}.cards{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<button class="toggle" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">◐ theme</button>
+<div class="page">
+
+<header>
+  <div class="eyebrow">Comparative Market Analysis · Buyer Advisory</div>
+  <h1>4332 S Dover Avenue, Independence, MO 64055</h1>
+  <div class="sub">Tomasha Village · 1.5-Story Traditional · Built 1971 · 4 bed / 3 full + 1 half bath</div>
+  <div class="meta">
+    <span><b>MLS #</b> 2635974</span>
+    <span><b>List price</b> $250,000</span>
+    <span><b>Status</b> Coming Soon → Active 08/14/2026</span>
+    <span><b>Effective date</b> August 14, 2026</span>
+  </div>
+</header>
+
+<div class="verdict">
+  <div class="vgrid">
+    <div>
+      <div class="vlabel">List price</div>
+      <div class="vnum">$250,000</div>
+      <div class="vfoot">$108/sf above grade</div>
+    </div>
+    <div>
+      <div class="vlabel">Indicated market value</div>
+      <div class="vnum blue">$300,000&ndash;$315,000</div>
+      <div class="vfoot">Weighted reconciliation $308,800</div>
+    </div>
+    <div>
+      <div class="vlabel">Apparent margin</div>
+      <div class="vnum">$50k&ndash;$65k</div>
+      <div class="vfoot">Roughly 19% below indicated value</div>
+    </div>
+  </div>
+  <div class="headline">
+    <strong>The ask is below market.</strong> All six closed comparables &mdash; each adjusted for size,
+    basement finish, bath count, lot, fireplaces, condition, seller concessions and time &mdash; land
+    between $279,000 and $333,000. Not one supports a value at or under $250,000. The property is
+    dated and sold as-is, but it is not a gut rehab, and it is priced as though it were one.
+  </div>
+</div>
+
+<h2>Adjusted value of each comparable</h2>
+<div class="chart-wrap">
+  <div class="chart-title">Every comparable adjusts above the asking price</div>
+  <div class="chart-sub">Sale price, net of seller concessions, adjusted to the subject property. Hover any point for the detail.</div>
+  <svg id="chart" viewBox="0 0 900 300" role="img" aria-label="Dot plot of six adjusted comparable values, all above the $250,000 asking price">
+    <g id="plot"></g>
+  </svg>
+</div>
+
+<h2>Comparable sales grid — Tomasha Village</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Comparable</th><th>Sold</th><th>Sale price</th><th>Concess.</th>
+      <th>SF above</th><th>SF fin. below</th><th>Bed/Bath</th>
+      <th>Net adj.</th><th>Adjusted</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="addr">14301 E Covington Rd</span><span class="mls">MLS 2612986 · as-is, sold site unseen</span></td>
+      <td>06/01/26</td><td>$291,000</td><td>$0</td><td>2,146</td><td>0</td><td>4 / 2.1</td>
+      <td class="pos">+$30,232</td><td class="adjcol">$321,232</td>
+    </tr>
+    <tr>
+      <td><span class="addr">14600 E 43rd Street S</span><span class="mls">MLS 2589429 · MLS-flagged “Fixer Up”</span></td>
+      <td>02/10/26</td><td>$275,000</td><td>$7,582</td><td>2,581</td><td>0</td><td>4 / 3.1</td>
+      <td class="pos">+$11,602</td><td class="adjcol">$279,020</td>
+    </tr>
+    <tr>
+      <td><span class="addr">14722 E 43rd Street S</span><span class="mls">MLS 2599387 · as-is trust sale, 0 days on market</span></td>
+      <td>03/18/26</td><td>$319,900</td><td>$10,000</td><td>2,128</td><td>1,708</td><td>5 / 3.1</td>
+      <td class="neg">−$4,893</td><td class="adjcol">$305,007</td>
+    </tr>
+    <tr>
+      <td><span class="addr">4305 S Cambridge Street</span><span class="mls">MLS 2575828 · “Fixer Up,” no seller disclosure</span></td>
+      <td>10/21/25</td><td>$310,000</td><td>$0</td><td>2,888</td><td>1,468</td><td>5 / 3.2</td>
+      <td class="neg">−$21,083</td><td class="adjcol">$288,917</td>
+    </tr>
+    <tr>
+      <td><span class="addr">4329 S Dover Avenue</span><span class="mls">MLS 2626258 · same street · as-is</span></td>
+      <td>07/29/26</td><td>$300,000</td><td>$5,500</td><td>1,926</td><td>0</td><td>3 / 2.1</td>
+      <td class="pos">+$38,732</td><td class="adjcol">$333,232</td>
+    </tr>
+    <tr>
+      <td><span class="addr">4320 S Dover Avenue</span><span class="mls">MLS 2630440 · same street · dated, cash sale</span></td>
+      <td>08/10/26</td><td>$268,000</td><td>$0</td><td>1,795</td><td>0</td><td>3 / 2.0</td>
+      <td class="pos">+$44,348</td><td class="adjcol">$312,348</td>
+    </tr>
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="7">Weighted reconciliation &mdash; heaviest weight on the two nearest-in-style as-is sales and the two same-street sales</td>
+      <td></td><td class="adjcol">$308,800</td>
+    </tr>
+  </tfoot>
+</table>
+
+<h2>What the neighborhood is doing</h2>
+<div class="cards">
+  <div class="card"><div class="cnum">$136</div><div class="clbl">Median $/sf above grade for <b>dated / as-is</b> sales (9 of 15)</div></div>
+  <div class="card"><div class="cnum">$186</div><div class="clbl">Median $/sf above grade for <b>updated</b> sales (6 of 15)</div></div>
+  <div class="card"><div class="cnum">6 days</div><div class="clbl">Median days on market across all 15 closed sales</div></div>
+  <div class="card"><div class="cnum">6 of 15</div><div class="clbl">Closed <b>above</b> final list price in the past 12 months</div></div>
+</div>
+
+<div class="two" style="margin-top:24px">
+  <div>
+    <h2 style="margin-top:0">Why this is priced low</h2>
+    <ul>
+      <li><strong>$108/sf above grade.</strong> The two cheapest sales per square foot in Tomasha Village
+        in twelve months were $106.55 and $107.34 &mdash; and the MLS flagged <em>both</em> of those homes
+        "Fixer Up." This subject is being offered below the neighborhood's fixer floor.</li>
+      <li><strong>The closest analog sold $21,000 over ask.</strong> 14301 E Covington &mdash; also 1.5-story,
+        also as-is, 160 sf smaller, and with an <em>unfinished</em> basement &mdash; listed at $270,000 and
+        closed at $291,000 sight unseen in June.</li>
+      <li><strong>Both same-street sales were smaller ranches.</strong> 4329 and 4320 S Dover closed at
+        $300,000 and $268,000 with 1,926 and 1,795 finished feet and no finished basement. This subject
+        offers 2,306 above grade plus 690 finished below, and an extra full bath.</li>
+      <li><strong>Nothing competes with it right now.</strong> Exactly one active listing in the whole
+        subdivision, at $399,000. Of the three homes under contract, the only one priced below this
+        subject needs extensive remodeling, has a deck the listing calls hazardous, and still drew
+        multiple offers in two days at $199,500.</li>
+    </ul>
+  </div>
+  <div>
+    <h2 style="margin-top:0">What could be wrong with this picture</h2>
+    <div class="risk">
+      <ul style="margin-bottom:0">
+        <li><strong>Cash and conventional financing only.</strong> The listing excludes FHA and VA. That
+          narrows the buyer pool, but it also hints at condition the seller expects an FHA appraiser to
+          flag &mdash; most likely the basement bathroom the remarks describe as open and not enclosed.</li>
+        <li><strong>Square footage is from public records, not measured.</strong> The listing agent asks
+          buyers to verify. If the true above-grade area comes in near 2,000 sf, the indicated value
+          drops roughly $12,000 &mdash; it does not change the conclusion.</li>
+        <li><strong>Sold as-is, seller will not repair.</strong> A 1971 home with unknown roof, HVAC and
+          electrical age. Two comparables disclosed exactly these surprises &mdash; a foundation repair
+          and a replaced electrical panel.</li>
+        <li><strong>The margin absorbs a lot.</strong> It would take roughly <strong>$57,000</strong> of
+          deferred maintenance and repair before $250,000 stops being a discount and becomes merely fair.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h2>Offer strategy</h2>
+<ul>
+  <li><strong>Expect competition, and expect it fast.</strong> Ten of the last fifteen sales here went
+    under contract within fifteen days; seven within five. Under-priced as-is homes in this subdivision
+    have gone to contract at zero days on market and closed over ask. The listing requires 1% earnest
+    money and a 48-hour offer expiration &mdash; that is a listing agent set up to collect and compare
+    offers, not to negotiate slowly.</li>
+  <li><strong>An offer in the $265,000&ndash;$285,000 range still clears the analysis</strong> with roughly
+    $25,000 to $45,000 of headroom against the indicated $308,800. Coming in at list is unlikely to win.</li>
+  <li><strong>Ask for inspection, not repairs.</strong> The seller has stated they will not repair. An
+    inspection for information &mdash; with a walk-away right rather than a repair request &mdash; keeps the
+    offer competitive while protecting against the roof/HVAC/foundation unknowns.</li>
+  <li><strong>Concessions are normal here.</strong> Ten of fifteen sellers paid them, median $5,900 among
+    those who did. A cash-equivalent price matters more than the headline number.</li>
+</ul>
+
+<div class="note">
+  <b>Basis and limitations.</b> Prepared from Heartland MLS closed-sale data for Tomasha Village,
+  August 2025 through August 2026 (15 closed sales, 5 active/pending), effective August 14, 2026.
+  Adjustments applied: time at 3%/year, above-grade area at $40/sf, finished below-grade area at $18/sf,
+  full bath $5,000, half bath $2,500, garage bay $5,000, lot area $0.75/sf, fireplace $2,000, plus a
+  condition adjustment where the MLS explicitly flagged a comparable as a fixer. Seller-paid financial
+  concessions are deducted in full to reach a cash-equivalent price. Gross adjustments stay within 25%
+  on every comparable; the net adjustment on 4320 S Dover is 16.5%, modestly above the customary 15%
+  guideline, which is why it is weighted lightly. Conclusions were re-tested at above-grade rates from
+  $30 to $50/sf and time adjustments from 0% to 6%/year, and hold in every case.
+  <br><br>
+  Square footage, taxes, HOA terms and school assignment are from MLS and public records and have not
+  been independently verified. No interior inspection was performed; condition is inferred from listing
+  remarks and photographs. This is a broker's opinion of value prepared to inform a purchase decision.
+  It is not an appraisal, and it is not a guarantee of sale price or future value.
+</div>
+
+</div>
+<div id="tip"></div>
+
+<script>
+const DATA=[
+ {id:"4329 S Dover Ave",   adj:333232, sp:300000, conc:5500,  cash:294500, net:38732,  pct:13.2,
+  d:"Sold 07/29/26 · same street, three doors down · 1,926 sf, unfinished basement, 3 bed / 2.1 bath"},
+ {id:"14301 E Covington",  adj:321232, sp:291000, conc:0,     cash:291000, net:30232,  pct:10.4,
+  d:"Sold 06/01/26 · as-is, sight unseen, closed $21,000 OVER list · 2,146 sf, unfinished basement"},
+ {id:"4320 S Dover Ave",   adj:312348, sp:268000, conc:0,     cash:268000, net:44348,  pct:16.5,
+  d:"Sold 08/10/26 · same street, cash buyer · 1,795 sf, dated one-owner home, 3 bed / 2 bath"},
+ {id:"14722 E 43rd St S",  adj:305007, sp:319900, conc:10000, cash:309900, net:-4893,  pct:-1.6,
+  d:"Sold 03/18/26 · as-is trust sale, 0 days on market · 2,128 sf plus 1,708 sf finished basement"},
+ {id:"4305 S Cambridge",   adj:288917, sp:310000, conc:0,     cash:310000, net:-21083, pct:-6.8,
+  d:"Sold 10/21/25 · MLS “Fixer Up,” trust, no disclosure · 2,888 sf plus 1,468 sf finished basement"},
+ {id:"14600 E 43rd St S",  adj:279020, sp:275000, conc:7582,  cash:267418, net:11602,  pct:4.3,
+  d:"Sold 02/10/26 · MLS “Fixer Up” · 2,581 sf, unfinished basement, 4 bed / 3.1 bath"},
+];
+const ASK=250000, W=900, H=300, L=150, R=92, T=26, B=40;
+const min=240000, max=350000;
+const x=v=>L+(v-min)/(max-min)*(W-L-R);
+const y=i=>T+i*((H-T-B)/(DATA.length-1));
+const NS="http://www.w3.org/2000/svg";
+const g=document.getElementById("plot");
+const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
+const fmt=n=>"$"+n.toLocaleString("en-US",{maximumFractionDigits:0});
+
+// grid + axis
+for(let v=250000; v<=350000; v+=25000){
+  g.appendChild(el("line",{class:"grid-line",x1:x(v),x2:x(v),y1:T-12,y2:H-B+6}));
+  const t=el("text",{class:"axis-txt","text-anchor":"middle",x:x(v),y:H-B+22});
+  t.textContent="$"+(v/1000)+"k"; g.appendChild(t);
+}
+// ask reference line
+g.appendChild(el("line",{class:"askline",x1:x(ASK),x2:x(ASK),y1:T-18,y2:H-B+6}));
+const al=el("text",{class:"asklbl","text-anchor":"start",x:x(ASK)+7,y:T-22});
+al.textContent="Asking price  $250,000"; g.appendChild(al);
+
+const tip=document.getElementById("tip");
+DATA.forEach((d,i)=>{
+  const yy=y(i);
+  g.appendChild(el("line",{class:"stem",x1:x(ASK),x2:x(d.adj),y1:yy,y2:yy}));
+  const lbl=el("text",{class:"row-lbl","text-anchor":"end",x:L-14,y:yy+4});
+  lbl.textContent=d.id; g.appendChild(lbl);
+  const val=el("text",{class:"row-val","text-anchor":"start",x:x(d.adj)+14,y:yy+4});
+  val.textContent=fmt(d.adj); g.appendChild(val);
+  const dot=el("circle",{class:"dot",cx:x(d.adj),cy:yy,r:6.5});
+  g.appendChild(dot);
+  const hit=el("rect",{class:"hit",x:L-140,y:yy-14,width:W-L+120,height:28});
+  hit.addEventListener("mousemove",e=>{
+    dot.setAttribute("r",9);
+    tip.style.opacity=1;
+    tip.style.left=Math.min(e.clientX+16,window.innerWidth-280)+"px";
+    tip.style.top=(e.clientY+16)+"px";
+    tip.innerHTML=`<b>${d.id}</b><br>${d.d}<br><br>
+      Sale price ${fmt(d.sp)}${d.conc?` · concessions ${fmt(d.conc)}`:""}<br>
+      Cash-equivalent ${fmt(d.cash)}<br>
+      Net adjustment ${d.net>0?"+":""}${fmt(d.net)} (${d.pct>0?"+":""}${d.pct}%)<br>
+      <b>Adjusted value ${fmt(d.adj)}</b>`;
+  });
+  hit.addEventListener("mouseleave",()=>{dot.setAttribute("r",6.5);tip.style.opacity=0;});
+  g.appendChild(hit);
+});
+</script>
+</body>
+</html>

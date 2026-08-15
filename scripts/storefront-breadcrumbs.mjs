@@ -86,6 +86,16 @@ async function fetchCategory(asin, attempt = 0) {
       }
       return { ok: false, reason: "captcha" };
     }
+    // Soft block: a ~4KB "To discuss automated access…" shell with a 200
+    // status. It carries no product data, so it is a throttle verdict on us,
+    // never a category verdict on the ASIN.
+    if (/api-services-support@amazon\.com/i.test(html) || html.length < 10000) {
+      if (attempt < 3) {
+        await sleep(15000 * (attempt + 1));
+        return fetchCategory(asin, attempt + 1);
+      }
+      return { ok: false, reason: "bot_page" };
+    }
     const breadcrumbs = parseBreadcrumbs(html);
     const bsrRoot = parseBsrRoot(html);
     if (!breadcrumbs && !bsrRoot) {
@@ -123,8 +133,10 @@ if (existsSync(CKPT)) {
     if (!line.trim()) continue;
     try {
       const r = JSON.parse(line);
-      // Keep hard verdicts; let throttle artifacts be retried on resume.
-      if (r.ok || !["captcha", "error_TimeoutError"].includes(r.reason)) seen.add(r.asin);
+      // Keep hard verdicts; let throttle artifacts be retried on resume. An
+      // ok row with neither signal predates bot-page detection — retry those.
+      if (r.ok && !r.breadcrumbs && !r.bsrRoot) continue;
+      if (r.ok || !["captcha", "bot_page", "error_TimeoutError"].includes(r.reason)) seen.add(r.asin);
     } catch {}
   }
   console.log(`resuming — ${seen.size} ASINs already swept`);

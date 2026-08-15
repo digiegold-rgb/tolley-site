@@ -43,3 +43,6 @@ yarn-error.log*
 .playwright-state.json
 next-env.d.ts
 .env*.local
+
+# macOS resource forks
+._*
