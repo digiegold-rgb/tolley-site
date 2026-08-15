@@ -39,7 +39,7 @@ const EQ_LABEL: Record<number, string> = {
 };
 const WPM = 185; // Monroe's measured long-form pace (standing spec)
 
-const PRESETS: { id: string; label: string; hint: string; post: Partial<Post> }[] = [
+const PRESETS: { id: string; label: string; hint: string; post: DeepPartial<Post> }[] = [
   {
     id: 'warm',
     label: 'Warm & calm',
@@ -74,7 +74,9 @@ const PRESETS: { id: string; label: string; hint: string; post: Partial<Post> }[
   },
 ];
 
-function deepMerge<T>(base: T, over: Partial<T>): T {
+type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] };
+
+function deepMerge<T>(base: T, over: DeepPartial<T>): T {
   const out: Record<string, unknown> = { ...(base as Record<string, unknown>) };
   for (const [k, v] of Object.entries(over || {})) {
     const cur = out[k];
@@ -342,10 +344,10 @@ export function VoiceTuner(): React.ReactElement {
   React.useEffect(() => { lastAppliedPost.current = null; }, [draftSlot.id]);
 
   /* ── mutations ────────────────────────────────────────────────────── */
-  const upd = (patch: Partial<VoiceTuning> | { gen?: Partial<Gen>; post?: Partial<Post> }) =>
-    setDraft((d) => (d ? deepMerge(d, patch as Partial<VoiceTuning>) : d));
-  const setGen = (k: keyof Gen, v: number | null) => upd({ gen: { [k]: v } as Partial<Gen> });
-  const setPost = (k: keyof Post, v: unknown) => upd({ post: { [k]: v } as Partial<Post> });
+  const upd = (patch: DeepPartial<VoiceTuning>) =>
+    setDraft((d) => (d ? deepMerge(d, patch) : d));
+  const setGen = (k: keyof Gen, v: number | null) => upd({ gen: { [k]: v } as DeepPartial<Gen> });
+  const setPost = (k: keyof Post, v: unknown) => upd({ post: { [k]: v } as DeepPartial<Post> });
 
   const lockIn = async () => {
     if (!draft) return;
