@@ -161,14 +161,15 @@ export function HqPosts() {
 
   return (
     <div style={{ padding: "4px 0 40px" }}>
+      {/* ── What the DGX is actively working on (hourly scan) — sits above
+           the view-counter bar on purpose: first thing Jared sees. ── */}
+      <DgxActivityLine />
+
       {/* ── Live view counter across every channel ── */}
       <HqViewCounter />
 
       {/* ── Monthly city search-rank sweep (renders after first sweep) ── */}
       <HqCityRanks />
-
-      {/* ── What the DGX is actively working on (hourly scan) ── */}
-      <DgxActivityLine />
 
       {/* ── Headline: is anything dark right now? ── */}
       <div
