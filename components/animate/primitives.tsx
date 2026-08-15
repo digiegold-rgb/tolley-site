@@ -32,12 +32,17 @@ export interface VBtnProps {
   style?: React.CSSProperties;
   disabled?: boolean;
   icon?: IconName | string;
+  /** Passthrough hooks for accessibility + the audit harness. */
+  'aria-label'?: string;
+  'data-testid'?: string;
 }
 
 export function VBtn({
   children,
   variant = 'primary',
   size = 'md',
+  'aria-label': ariaLabel,
+  'data-testid': testId,
   onClick,
   style,
   disabled,
@@ -69,6 +74,9 @@ export function VBtn({
     typeof v.color === 'string' ? v.color : (JELLY_TOKENS.brand as string);
   return (
     <button
+      type="button"
+      aria-label={ariaLabel}
+      data-testid={testId}
       onClick={onClick}
       disabled={disabled}
       onMouseEnter={() => setHovered(true)}
@@ -106,6 +114,8 @@ export interface VCardProps {
   style?: React.CSSProperties;
   variant?: VCardVariant;
   onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  /** Passthrough hook for the audit harness. */
+  'data-testid'?: string;
 }
 
 export function VCard({
@@ -113,6 +123,7 @@ export function VCard({
   style,
   variant = 'elevated',
   onClick,
+  'data-testid': testId,
 }: VCardProps): React.ReactElement {
   const { t, dark } = useTheme();
   const base: React.CSSProperties = {
@@ -134,7 +145,7 @@ export function VCard({
   }
   if (onClick) base.cursor = 'pointer';
   return (
-    <div onClick={onClick} style={{ ...base, ...style }}>
+    <div data-testid={testId} onClick={onClick} style={{ ...base, ...style }}>
       {children}
     </div>
   );
@@ -234,7 +245,18 @@ export function PillStepper({
       {steps.map((s, i) => (
         <div
           key={i}
+          role="button"
+          tabIndex={0}
+          aria-label={String(s)}
+          aria-current={i === active ? 'step' : undefined}
+          data-testid={`step-${i}`}
           onClick={() => onSelect(i)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onSelect(i);
+            }
+          }}
           style={{
             padding: '10px 20px',
             borderRadius: JELLY_TOKENS.radius.pill,
@@ -377,6 +399,89 @@ export function SectionHeader({
           )}
         </VBtn>
       )}
+    </div>
+  );
+}
+
+/* ─── Toast ───
+ * Minimal transient notice, bottom-center. There was no toast primitive in
+ * the v2 shell, so post-redirect feedback (Stripe card-on-file return) had
+ * nowhere to land and the user saw a silent screen change.
+ */
+
+export type ToastKind = 'success' | 'error' | 'info';
+
+export interface ToastProps {
+  message: string;
+  kind?: ToastKind;
+  onDismiss: () => void;
+  /** Auto-dismiss delay in ms. 0 disables. */
+  duration?: number;
+}
+
+export function Toast({
+  message,
+  kind = 'info',
+  onDismiss,
+  duration = 6000,
+}: ToastProps): React.ReactElement {
+  const { t } = useTheme();
+
+  React.useEffect(() => {
+    if (!duration) return;
+    const id = window.setTimeout(onDismiss, duration);
+    return () => window.clearTimeout(id);
+  }, [duration, onDismiss]);
+
+  const accent =
+    kind === 'success'
+      ? JELLY_TOKENS.success
+      : kind === 'error'
+        ? JELLY_TOKENS.error
+        : JELLY_TOKENS.brand;
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      data-testid="toast"
+      style={{
+        position: 'fixed',
+        bottom: 24,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 300,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        maxWidth: 'min(560px, calc(100vw - 32px))',
+        padding: '12px 16px',
+        borderRadius: JELLY_TOKENS.radius.md,
+        background: t.card,
+        color: t.text,
+        border: `1px solid ${t.border}`,
+        borderLeft: `3px solid ${accent}`,
+        boxShadow: JELLY_TOKENS.shadow4,
+        fontSize: 14,
+        fontFamily: JELLY_TOKENS.font,
+      }}
+    >
+      <span style={{ flex: 1, minWidth: 0 }}>{message}</span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          padding: 4,
+          display: 'flex',
+          color: t.textSecondary,
+        }}
+      >
+        <Icon name="close" size={16} color={t.textSecondary} />
+      </button>
     </div>
   );
 }

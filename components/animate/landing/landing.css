@@ -306,6 +306,31 @@
 .jsl-faq details[open] summary::after { content: "−"; }
 .jsl-faq .a { padding: 0 0 24px; max-width: 720px; color: var(--cream-dim); font-size: 14.5px; line-height: 1.7; }
 
+/* ── craft grid (three slop failure modes) ── */
+.jsl-craft {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  margin-top: 36px; background: var(--line);
+  border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+}
+.jsl-craft-cell { background: var(--ink-2); padding: 22px 20px; }
+.jsl-craft-cell .bad {
+  font-size: 14px; line-height: 1.6; color: var(--cream-faint);
+  padding-bottom: 14px; margin-bottom: 14px;
+  border-bottom: 1px dashed var(--line);
+}
+.jsl-craft-cell .bad::before {
+  content: "THE SLOP"; display: block;
+  font-family: var(--font-jsl-mono); font-size: 10px; letter-spacing: 0.18em;
+  color: var(--cream-faint); margin-bottom: 8px;
+}
+.jsl-craft-cell .good { font-size: 14.5px; line-height: 1.65; color: var(--cream); }
+.jsl-craft-cell .good::before {
+  content: "WHAT JELLY DOES"; display: block;
+  font-family: var(--font-jsl-mono); font-size: 10px; letter-spacing: 0.18em;
+  color: var(--amber); margin-bottom: 8px;
+}
+@media (max-width: 860px) { .jsl-craft { grid-template-columns: 1fr; } }
+
 /* ── footer cta ── */
 .jsl-final {
   margin: 100px 0 0; padding: 72px 0 80px;
@@ -317,6 +342,52 @@
   display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap;
   padding: 26px 0 34px; color: var(--cream-faint);
   font-family: var(--font-jsl-mono); font-size: 11px; letter-spacing: 0.08em;
+}
+
+/* ── AN-09: phone layout ──
+ * At 390px the hero paragraph and the render-card topic line were clipped
+ * mid-word: `.jsl-topic` is `white-space: nowrap; overflow: hidden` for the
+ * typing effect, and the fixed `.jsl-phase` columns plus 28px gutters left
+ * the card wider than the viewport. Below 640px the typing animation is
+ * dropped (the text wraps and stays readable) and the paddings shrink.
+ */
+@media (max-width: 640px) {
+  .jsl-wrap { padding: 0 16px; }
+
+  .jsl-nav { flex-wrap: wrap; gap: 12px; padding-top: 18px; }
+  .jsl-nav-links { gap: 16px; font-size: 13px; flex-wrap: wrap; }
+
+  .jsl-hero { padding: 40px 0 48px; gap: 32px; }
+  .jsl-h1 { font-size: clamp(34px, 10vw, 46px); }
+  .jsl-sub,
+  .jsl-cta-note,
+  .jsl-faq .a,
+  .jsl-price-points { max-width: 100%; overflow-wrap: anywhere; }
+  .jsl-cta-note { line-height: 1.7; }
+  .jsl-hero-ctas { gap: 10px; }
+  .jsl-hero-ctas .jsl-btn { width: 100%; text-align: center; justify-content: center; }
+
+  .jsl-render { padding: 18px 16px 16px; }
+  /* Stop clipping the topic mid-word — wrap it instead of typing it. */
+  .jsl-topic { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+  .jsl-topic span {
+    max-width: 100%; white-space: normal; overflow: visible;
+    border-right: none; animation: none;
+  }
+  .jsl-phase { grid-template-columns: 74px 1fr 42px; gap: 8px; font-size: 10.5px; }
+  .jsl-render-foot { flex-wrap: wrap; gap: 8px; }
+  .jsl-render-foot .amt { font-size: 22px; }
+
+  .jsl-step { min-width: 100%; border-right: none; border-bottom: 1px solid var(--line); padding: 20px 16px; }
+  .jsl-pipeline { flex-direction: column; overflow-x: visible; }
+
+  .jsl-section { padding: 56px 0 0; }
+  .jsl-price-cell { padding: 14px; }
+  .jsl-craft-cell { padding: 16px 14px; }
+  .jsl-craft-cell .bad,
+  .jsl-craft-cell .good { overflow-wrap: anywhere; }
+  .jsl-faq summary { font-size: 15px; gap: 12px; }
+  .jsl-final { margin-top: 64px; padding: 48px 0 56px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

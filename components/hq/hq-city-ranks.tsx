@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { useToast } from "@/components/ui/Toast";
+
 // City search rankings — the monthly SerpAPI sweep answering whether the
 // per-city listings videos actually rank for "new homes {city}". This is the
 // KPI the 33-city expansion is judged on: views were never the point, search
@@ -30,15 +32,36 @@ function delta(r: RankRow): string {
 }
 
 export default function HqCityRanks() {
+  const { toast } = useToast();
   const [data, setData] = useState<Payload | null>(null);
   const [open, setOpen] = useState(false);
 
+  // The panel renders nothing until the first sweep, so a failed load and "no
+  // data yet" look identical. Toast so a broken endpoint can't hide as "the
+  // sweep hasn't run".
   useEffect(() => {
+    let cancelled = false;
     fetch("/api/hq/city-ranks")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setData(d))
-      .catch(() => setData(null));
-  }, []);
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((d) => {
+        if (!cancelled) setData(d);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setData(null);
+        toast({
+          title: "City ranks failed to load",
+          description: e instanceof Error ? e.message : String(e),
+          variant: "error",
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [toast]);
 
   if (!data || !data.lastSweep) return null; // nothing until the first sweep
 
@@ -60,23 +83,23 @@ export default function HqCityRanks() {
 
   const cell = (r?: RankRow) =>
     r?.position != null ? (
-      <span style={{ fontWeight: 700, color: r.position <= 5 ? "#0a7d32" : "#1d1d1f" }}>
-        #{r.position} <span style={{ fontWeight: 400, fontSize: 10, color: "#6e6e73" }}>{delta(r)}</span>
+      <span style={{ fontWeight: 700, color: r.position <= 5 ? "var(--hq-green)" : "#1d1d1f" }}>
+        #{r.position} <span style={{ fontWeight: 400, fontSize: 10, color: "var(--hq-ink-2)" }}>{delta(r)}</span>
       </span>
     ) : (
       <span style={{ color: "#c7c7cc" }}>—</span>
     );
 
   return (
-    <div style={{ border: "1px solid #e5e5ea", borderRadius: 12, padding: "12px 14px", background: "#fff", marginBottom: 14 }}>
+    <div style={{ border: "1px solid var(--hq-line)", borderRadius: 12, padding: "12px 14px", background: "#fff", marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
         <span style={{ fontWeight: 700, fontSize: 14 }}>🔎 City search ranks</span>
-        <span style={{ fontSize: 12, color: "#6e6e73" }}>
+        <span style={{ fontSize: 12, color: "var(--hq-ink-2)" }}>
           {ranked}/{data.ranks.length} placements found · sweep {new Date(data.lastSweep).toLocaleDateString()}
         </span>
         <button
           onClick={() => setOpen(!open)}
-          style={{ marginLeft: "auto", fontSize: 12, color: "#0071e3", background: "none", border: "none", cursor: "pointer" }}
+          style={{ marginLeft: "auto", fontSize: 12, color: "var(--hq-blue)", background: "none", border: "none", cursor: "pointer" }}
         >
           {open ? "collapse" : `all ${cities.length}`}
         </button>
@@ -84,7 +107,7 @@ export default function HqCityRanks() {
       <div style={{ overflowX: "auto", marginTop: 8 }}>
         <table style={{ borderCollapse: "collapse", fontSize: 12, minWidth: 360 }}>
           <thead>
-            <tr style={{ color: "#6e6e73", textAlign: "left" }}>
+            <tr style={{ color: "var(--hq-ink-2)", textAlign: "left" }}>
               <th style={{ padding: "3px 10px 3px 0", fontWeight: 600 }}>City</th>
               <th style={{ padding: "3px 10px", fontWeight: 600 }}>Google</th>
               <th style={{ padding: "3px 10px", fontWeight: 600 }}>YouTube</th>

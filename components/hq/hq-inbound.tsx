@@ -57,9 +57,12 @@ function LeadCard({
   onAdvance,
   onNote,
   onReply,
+  defaultUpsell,
 }: {
   lead: HqInboundLead;
   busy: boolean;
+  /** Hint already shown once above the board — suppressed on the cards. */
+  defaultUpsell: string;
   onAdvance: (id: string, status: string) => void;
   onNote: (id: string, note: string) => Promise<boolean>;
   onReply: (id: string, subject: string, body: string) => Promise<boolean>;
@@ -72,7 +75,7 @@ function LeadCard({
   const [replyArmed, setReplyArmed] = useState(false);
   const [replySending, setReplySending] = useState(false);
   const fields = lead.structured ?? {};
-  const upsell = crossSellHint(lead.subsite);
+  const upsellText = crossSellHint(lead.subsite).join(", ");
   const canReply = !!lead.email && lead.status !== "won" && lead.status !== "lost";
 
   const openReply = () => {
@@ -88,7 +91,7 @@ function LeadCard({
   return (
     <div
       style={{
-        border: "1px solid #e5e5ea",
+        border: "1px solid var(--hq-line)",
         borderRadius: 10,
         padding: 12,
         marginBottom: 10,
@@ -137,10 +140,13 @@ function LeadCard({
         </div>
       )}
 
-      {/* cross-sell hint */}
-      {upsell.length > 0 && (
+      {/* Cross-sell hint (HQ-08). The hint is derived from the subsite, so when
+          every lead arrives on the same one this printed an identical line on
+          every card and became invisible furniture. The shared hint is shown
+          once above the board; a card only speaks up when its own differs. */}
+      {upsellText && upsellText !== defaultUpsell && (
         <div style={{ marginTop: 6, fontSize: 11, color: "#137333" }}>
-          ↗ Upsell idea: {upsell.join(", ")}
+          ↗ Upsell idea: {upsellText}
         </div>
       )}
 
@@ -151,7 +157,7 @@ function LeadCard({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={2}
-            style={{ width: "100%", fontSize: 12, padding: 6, border: "1px solid #d1d1d6", borderRadius: 6, boxSizing: "border-box" }}
+            style={{ width: "100%", fontSize: 12, padding: 6, border: "1px solid var(--hq-border)", borderRadius: 6, boxSizing: "border-box" }}
             placeholder="Note (what you quoted, next step…)"
           />
           <div style={{ marginTop: 4, display: "flex", gap: 6 }}>
@@ -186,18 +192,18 @@ function LeadCard({
       {/* reply — pre-drafted in Jared's voice; nothing sends until the
           armed confirm button is tapped */}
       {replyOpen && (
-        <div style={{ marginTop: 8, border: "1px solid #d1d1d6", borderRadius: 8, padding: 8, background: "#fafafa" }}>
+        <div style={{ marginTop: 8, border: "1px solid var(--hq-border)", borderRadius: 8, padding: 8, background: "#fafafa" }}>
           <input
             value={replySubject}
             onChange={(e) => setReplySubject(e.target.value)}
-            style={{ width: "100%", fontSize: 12, padding: 6, border: "1px solid #d1d1d6", borderRadius: 6, boxSizing: "border-box", marginBottom: 6 }}
+            style={{ width: "100%", fontSize: 12, padding: 6, border: "1px solid var(--hq-border)", borderRadius: 6, boxSizing: "border-box", marginBottom: 6 }}
             placeholder="Subject"
           />
           <textarea
             value={replyBody}
             onChange={(e) => setReplyBody(e.target.value)}
             rows={8}
-            style={{ width: "100%", fontSize: 12, padding: 6, border: "1px solid #d1d1d6", borderRadius: 6, boxSizing: "border-box", fontFamily: "inherit" }}
+            style={{ width: "100%", fontSize: 12, padding: 6, border: "1px solid var(--hq-border)", borderRadius: 6, boxSizing: "border-box", fontFamily: "inherit" }}
           />
           <div style={{ marginTop: 6, display: "flex", gap: 6, alignItems: "center" }}>
             {replyArmed ? (
@@ -265,6 +271,24 @@ export function HqInbound({ leads, counts, loading, busyId, onRefresh, onAdvance
 
   const byStatus = (s: string) => filtered.filter((l) => l.status === s);
 
+  // HQ-08: the single hint most leads on this board share. Shown once below the
+  // header; cards suppress it and only print their own when it differs. Needs a
+  // real majority — with a mixed board every card's hint is still news.
+  const defaultUpsell = useMemo(() => {
+    if (filtered.length < 2) return "";
+    const tally = new Map<string, number>();
+    for (const l of filtered) {
+      const hint = crossSellHint(l.subsite).join(", ");
+      if (hint) tally.set(hint, (tally.get(hint) ?? 0) + 1);
+    }
+    let best = "";
+    let bestN = 0;
+    for (const [hint, n] of tally) {
+      if (n > bestN) { best = hint; bestN = n; }
+    }
+    return bestN > filtered.length / 2 ? best : "";
+  }, [filtered]);
+
   return (
     <div style={{ paddingTop: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
@@ -272,7 +296,7 @@ export function HqInbound({ leads, counts, loading, busyId, onRefresh, onAdvance
         <select
           value={subsiteFilter}
           onChange={(e) => setSubsiteFilter(e.target.value)}
-          style={{ padding: "4px 8px", border: "1px solid #d1d1d6", borderRadius: 8, fontSize: 12, background: "#fff" }}
+          style={{ padding: "4px 8px", border: "1px solid var(--hq-border)", borderRadius: 8, fontSize: 12, background: "#fff" }}
         >
           <option value="all">All products</option>
           {subsites.map((s) => (
@@ -284,6 +308,13 @@ export function HqInbound({ leads, counts, loading, busyId, onRefresh, onAdvance
         </button>
       </div>
 
+      {defaultUpsell && !loading && filtered.length > 0 && (
+        <div style={{ marginBottom: 10, fontSize: 11, color: "#137333" }}>
+          ↗ Upsell idea for most of these: {defaultUpsell}
+          <span style={{ color: "var(--hq-ink-3)" }}> — cards below only note it when theirs differs.</span>
+        </div>
+      )}
+
       {loading ? (
         <div style={{ color: "#888", fontSize: 13, padding: 16 }}>Loading…</div>
       ) : filtered.length === 0 ? (
@@ -291,19 +322,20 @@ export function HqInbound({ leads, counts, loading, busyId, onRefresh, onAdvance
           No inbound leads yet. Quote requests from every product land here.
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12, alignItems: "start" }}>
+        <div className="inbound-board">
           {LADDER.map((status) => {
             const rows = byStatus(status);
             if (rows.length === 0 && status !== "new") return null;
             return (
-              <div key={status}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#5f6368", marginBottom: 8 }}>
+              <div key={status} className="inbound-col">
+                <div className="inbound-col-head">
                   {INBOUND_STATUS_LABEL[status] ?? status} ({rows.length})
                 </div>
                 {rows.map((lead) => (
                   <LeadCard
                     key={lead.id}
                     lead={lead}
+                    defaultUpsell={defaultUpsell}
                     busy={busyId === lead.id}
                     onAdvance={onAdvance}
                     onNote={onNote}

@@ -32,10 +32,18 @@ import type {
   CreatorModelId,
 } from '@/lib/vater/creator-models';
 import type { EditorStepProps } from './ProjectShell';
+import {
+  BillingBlockModal,
+  BillingBlockedError,
+  assertOk,
+  type BillingBlockReason,
+} from './BillingBlock';
 
 export function ScriptStep({ projectId, project, refresh }: EditorStepProps): React.ReactElement {
   const { t } = useTheme();
   const [title, setTitle] = React.useState('');
+  // 402 from a generation route → actionable modal, not a raw error string.
+  const [billingBlock, setBillingBlock] = React.useState<BillingBlockReason | null>(null);
   const [webSearch, setWebSearch] = React.useState(false);
   const [showOptions, setShowOptions] = React.useState(false);
   const [style, setStyle] = React.useState('Finance');
@@ -121,13 +129,14 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
           scriptGuidelines: extraContext.trim() || undefined,
         }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
+      await assertOk(res);
       await refresh();
     } catch (err) {
-      setGenError(err instanceof Error ? err.message : 'Generate failed');
+      if (err instanceof BillingBlockedError) {
+        setBillingBlock(err.reason);
+      } else {
+        setGenError(err instanceof Error ? err.message : 'Generate failed');
+      }
     } finally {
       setGenerating(false);
     }
@@ -172,15 +181,16 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ customStylePrompt: trimmed }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
+      await assertOk(res);
       lastSavedAnim.current = trimmed;
       setAnimDirty(false);
       await refresh();
     } catch (err) {
-      setAnimError(err instanceof Error ? err.message : 'Save failed');
+      if (err instanceof BillingBlockedError) {
+        setBillingBlock(err.reason);
+      } else {
+        setAnimError(err instanceof Error ? err.message : 'Save failed');
+      }
     } finally {
       setAnimSaving(false);
     }
@@ -227,15 +237,16 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
           scriptOverride: trimmed,
         }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || data.error || `HTTP ${res.status}`);
-      }
+      await assertOk(res);
       setPastedScript('');
       setUseOwnScript(false);
       await refresh();
     } catch (err) {
-      setOwnError(err instanceof Error ? err.message : 'Submit failed');
+      if (err instanceof BillingBlockedError) {
+        setBillingBlock(err.reason);
+      } else {
+        setOwnError(err instanceof Error ? err.message : 'Submit failed');
+      }
     } finally {
       setSubmittingOwn(false);
     }
@@ -724,6 +735,10 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
           </div>
         </VCard>
       )}
+      <BillingBlockModal
+        reason={billingBlock}
+        onClose={() => setBillingBlock(null)}
+      />
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { HQ_STAGES } from "@/lib/hq";
-import { CHANNEL_ICON, STAGE_LABEL, type HqLead } from "./types";
+import { CHANNEL_ICON, STAGE_LABEL, isHttpUrl, type HqLead } from "./types";
 
 interface Props {
   lead: HqLead;
@@ -53,7 +53,7 @@ export function HqLeadDrawer({ lead, saving, onClose, onSave }: Props) {
   const factRow = (label: string, value: React.ReactNode) =>
     value ? (
       <div style={{ display: "flex", gap: 6, fontSize: 12, padding: "2px 0" }}>
-        <span style={{ color: "#6e6e73", minWidth: 86, fontWeight: 600 }}>{label}</span>
+        <span style={{ color: "var(--hq-ink-2)", minWidth: 86, fontWeight: 600 }}>{label}</span>
         <span style={{ wordBreak: "break-word" }}>{value}</span>
       </div>
     ) : null;
@@ -81,8 +81,8 @@ export function HqLeadDrawer({ lead, saving, onClose, onSave }: Props) {
             {factRow("Address", lead.address)}
             {factRow(
               "Website",
-              lead.website && (
-                <a href={lead.website} target="_blank" rel="noreferrer" style={{ color: "#3a63af" }}>
+              isHttpUrl(lead.website) && (
+                <a href={lead.website} target="_blank" rel="noopener noreferrer" style={{ color: "#3a63af" }}>
                   {lead.website}
                 </a>
               )
@@ -99,7 +99,7 @@ export function HqLeadDrawer({ lead, saving, onClose, onSave }: Props) {
             {factRow(
               "Demo",
               lead.demoUrl && (
-                <a href={lead.demoUrl} target="_blank" rel="noreferrer" style={{ color: "#3a63af" }}>
+                <a href={lead.demoUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#3a63af" }}>
                   {lead.demoUrl}
                 </a>
               )

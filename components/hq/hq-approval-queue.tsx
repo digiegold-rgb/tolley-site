@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 
+import { useToast } from "@/components/ui/Toast";
 import { CHANNEL_ICON, type HqQueueTouch } from "./types";
+import { HqShowMore, HQ_PAGE_SIZE } from "./hq-show-more";
 
 interface Props {
   touches: HqQueueTouch[];
@@ -23,12 +25,14 @@ export function HqApprovalQueue({
   onDiscard,
   onSaveEdit,
 }: Props) {
+  const { toast } = useToast();
   const [editId, setEditId] = useState<string | null>(null);
   const [editSubject, setEditSubject] = useState("");
   const [editBody, setEditBody] = useState("");
   const [armedOffer, setArmedOffer] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkResult, setBulkResult] = useState<string | null>(null);
+  const [limit, setLimit] = useState(HQ_PAGE_SIZE);
 
   // One deliberate click sends the whole batch: first click arms, second fires.
   async function bulkSend(offer: string) {
@@ -45,9 +49,17 @@ export function HqApprovalQueue({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ offer, count: 10 }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}) as { error?: string });
       if (!res.ok) {
-        setBulkResult(`⚠ ${data.error || res.status}`);
+        const message = data.error || `HTTP ${res.status}`;
+        setBulkResult(`⚠ ${message}`);
+        toast({
+          // 409 = the Instantly sender is switched off (lane killed 8/11), so
+          // nothing was sent. Anything else is a real failure.
+          title: res.status === 409 ? "Sender not configured" : "Bulk send failed",
+          description: message,
+          variant: "error",
+        });
       } else {
         const failNote = data.failed?.length ? ` · ${data.failed.length} failed` : "";
         setBulkResult(
@@ -56,7 +68,9 @@ export function HqApprovalQueue({
         onRefresh();
       }
     } catch (e) {
-      setBulkResult(`⚠ ${e instanceof Error ? e.message : "send failed"}`);
+      const message = e instanceof Error ? e.message : "send failed";
+      setBulkResult(`⚠ ${message}`);
+      toast({ title: "Bulk send failed", description: message, variant: "error" });
     } finally {
       setBulkBusy(false);
     }
@@ -143,14 +157,20 @@ export function HqApprovalQueue({
         </div>
       )}
 
-      {touches.length === 0 && !loading && (
-        <div style={{ fontSize: 13, color: "#999", padding: "8px 0" }}>
-          No drafts waiting. Outreach written by the growth agents lands here for approval —
-          approved touches are picked up by the sender cron.
+      {touches.length === 0 && loading && (
+        <div style={{ fontSize: 13, color: "var(--hq-ink-3)", padding: "8px 0" }}>
+          Loading drafts…
         </div>
       )}
 
-      {sortedTouches.map((t) => (
+      {touches.length === 0 && !loading && (
+        <div style={{ fontSize: 13, color: "#999", padding: "8px 0" }}>
+          No drafts waiting. Outreach written by the growth agents lands here for approval.
+          Email sending is off until a sender is configured — approving marks the draft only.
+        </div>
+      )}
+
+      {sortedTouches.slice(0, limit).map((t) => (
         <div key={t.id} style={{ borderTop: "1px solid #eef0f2", padding: "10px 0" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
             <span className="pill pill-channel">
@@ -195,9 +215,23 @@ export function HqApprovalQueue({
               {t.subject && (
                 <div style={{ fontSize: 12, fontWeight: 600, color: "#444" }}>{t.subject}</div>
               )}
-              <div style={{ fontSize: 13, color: "#333", whiteSpace: "pre-wrap", marginBottom: 6 }}>
-                {t.body || <em style={{ color: "#999" }}>(empty body)</em>}
-              </div>
+              {/* Collapsed by default (HQ-02): 200 fully-expanded drafts made
+                  this tab ~34,000px tall. The first line is enough to triage;
+                  open the row to read the whole thing before approving. */}
+              {t.body ? (
+                <details style={{ marginBottom: 6 }}>
+                  <summary style={{ fontSize: 13, color: "#333", cursor: "pointer", listStyle: "revert" }}>
+                    {t.body.length > 110 ? `${t.body.slice(0, 110).trimEnd()}…` : t.body}
+                  </summary>
+                  <div style={{ fontSize: 13, color: "#333", whiteSpace: "pre-wrap", marginTop: 4 }}>
+                    {t.body}
+                  </div>
+                </details>
+              ) : (
+                <div style={{ fontSize: 13, marginBottom: 6 }}>
+                  <em style={{ color: "#999" }}>(empty body)</em>
+                </div>
+              )}
               <div style={{ display: "flex", gap: 6 }}>
                 <button className="btn btn-sm btn-primary" onClick={() => onApprove(t.id)} disabled={busyId === t.id}>
                   {busyId === t.id ? "…" : "✓ Approve"}
@@ -218,6 +252,14 @@ export function HqApprovalQueue({
           )}
         </div>
       ))}
+
+      <HqShowMore
+        shown={Math.min(limit, sortedTouches.length)}
+        total={sortedTouches.length}
+        noun="drafts"
+        onMore={() => setLimit((n) => n + HQ_PAGE_SIZE)}
+        onAll={() => setLimit(sortedTouches.length)}
+      />
     </div>
   );
 }

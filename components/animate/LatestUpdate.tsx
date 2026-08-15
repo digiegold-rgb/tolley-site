@@ -16,6 +16,7 @@
 import * as React from 'react';
 import { JELLY_TOKENS } from './tokens';
 import { useTheme, useRoute } from './theme-context';
+import { useTier } from './tier-context';
 
 const SEEN_KEY = 'vater-latest-seen-id';
 const GREEN = '#22c55e';
@@ -74,7 +75,16 @@ interface LatestPayload {
 
 export function useVaterLatest(): LatestPayload | null {
   const [data, setData] = React.useState<LatestPayload | null>(null);
+  // /api/vater/latest is studio-gated and its payload is the OWNER's spend.
+  // Without this check every public customer fired a request that 401'd and
+  // the cost pill sat on "—" forever. Skip the fetch entirely.
+  const { capabilities } = useTier();
+  const allowed = capabilities.latestCosts;
   React.useEffect(() => {
+    if (!allowed) {
+      setData(null);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -89,7 +99,7 @@ export function useVaterLatest(): LatestPayload | null {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [allowed]);
   return data;
 }
 

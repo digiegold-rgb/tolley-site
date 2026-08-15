@@ -14,7 +14,7 @@ interface ChatRow {
 }
 
 const KIND_LABEL: Record<ChatRow["kind"], { label: string; color: string }> = {
-  faq: { label: "FAQ answered", color: "#2dd4a7" },
+  faq: { label: "FAQ answered", color: "var(--hq-teal)" },
   ack: { label: "Acknowledged", color: "#38bdf8" },
   notify: { label: "Needs Jared", color: "#fbbf24" },
   fail: { label: "Send FAILED", color: "#f87171" },

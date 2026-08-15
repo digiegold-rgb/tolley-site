@@ -24,6 +24,9 @@ interface Payload {
   } | null;
 }
 
+// Literal hex, not var(--hq-…): these feed SVG presentation attributes
+// (fill=/stroke= on the chart), where var() is not reliably resolved. Keep them
+// in sync with --hq-blue / --hq-ink-2 in app/hq/hq.css.
 const ACCENT = "#0071e3";
 const INK = "#1a1a1a";
 const INK2 = "#6e6e73";
@@ -287,7 +290,7 @@ export function HqSiteVisits() {
                 style={{
                   padding: "4px 12px",
                   borderRadius: 14,
-                  border: "1px solid #d1d1d6",
+                  border: "1px solid var(--hq-border)",
                   fontSize: 12,
                   fontWeight: 600,
                   cursor: "pointer",

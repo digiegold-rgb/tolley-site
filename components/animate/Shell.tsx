@@ -9,8 +9,8 @@
  * sidebar + main column (header + content + footer-via-screen) + HelpFAB +
  * ObserverSlot. The Tweaks Panel is intentionally excluded.
  *
- * Phase 1 only handles the 'dashboard' route. Every other route key falls
- * through to a centered "coming in Phase 2" placeholder.
+ * Routes the caller's tier can't reach render <NotAvailableScreen /> rather
+ * than a screen that 401s on every fetch.
  */
 
 import * as React from 'react';
@@ -20,9 +20,12 @@ import {
   RouteContext,
   type RouteContextValue,
 } from './theme-context';
+import { TierProvider, useTier } from './tier-context';
+import { Toast, VBtn } from './primitives';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { HelpFAB } from './HelpFAB';
+import { HelpDrawer } from './HelpDrawer';
 import { ObserverSlot } from './ObserverSlot';
 import { BetaAccessBanner } from './BetaAccessBanner';
 import { DashboardScreen } from './screens/DashboardScreen';
@@ -50,17 +53,53 @@ import { CustomArtStylesEmbed } from './screens/browse/CustomArtStylesEmbed';
 import { LearningCenterScreen } from './screens/browse/LearningCenterScreen';
 import { RulesScreen } from './screens/browse/RulesScreen';
 import { PricingScreen } from './screens/browse/PricingScreen';
+import { canSeeRoute } from '@/lib/vater/nav-visibility';
 
 export function Shell(): React.ReactElement {
+  return (
+    <TierProvider>
+      <ShellInner />
+    </TierProvider>
+  );
+}
+
+function ShellInner(): React.ReactElement {
   const [dark, setDark] = React.useState(true);
   const [route, setRouteState] = React.useState('dashboard');
   const [editorStep, setEditorStep] = React.useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  // AN-02: the 260px sidebar forced every screen into horizontal scroll on a
+  // 390px viewport. Below 768px the sidebar becomes an off-canvas drawer;
+  // between 768 and 1024 it starts collapsed to icons.
+  const [isMobile, setIsMobile] = React.useState(false);
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const mobile = window.matchMedia('(max-width: 767px)');
+    const narrow = window.matchMedia('(max-width: 1024px)');
+    const sync = (): void => {
+      setIsMobile(mobile.matches);
+      if (mobile.matches) setDrawerOpen(false);
+      else setSidebarCollapsed(narrow.matches);
+    };
+    sync();
+    mobile.addEventListener('change', sync);
+    narrow.addEventListener('change', sync);
+    return () => {
+      mobile.removeEventListener('change', sync);
+      narrow.removeEventListener('change', sync);
+    };
+  }, []);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const [selectedStyleId, setSelectedStyleId] = React.useState<string | null>(null);
   // Bumps each time something outside the dashboard asks for a new video.
   // Dashboard watches this and pops the StylePickerModal.
   const [newVideoRequest, setNewVideoRequest] = React.useState(0);
+  const [toast, setToast] = React.useState<
+    { message: string; kind: 'success' | 'error' | 'info' } | null
+  >(null);
+  const [helpOpen, setHelpOpen] = React.useState(false);
+  const { tier, loading: tierLoading } = useTier();
 
   const requestNewVideo = React.useCallback(() => {
     setRouteState('dashboard');
@@ -69,6 +108,16 @@ export function Shell(): React.ReactElement {
 
   const consumeNewVideoRequest = React.useCallback(() => {
     setNewVideoRequest(0);
+  }, []);
+
+  // Any navigation closes the mobile drawer — otherwise it covers the screen
+  // the user just asked for.
+  React.useEffect(() => {
+    setDrawerOpen(false);
+  }, [route]);
+
+  const openHelp = React.useCallback(() => {
+    setHelpOpen(true);
   }, []);
 
   const toggleDark = React.useCallback(() => {
@@ -124,6 +173,50 @@ export function Shell(): React.ReactElement {
   React.useEffect(() => {
     const apply = (): void => {
       skipNextWrite.current = true;
+
+      /* Stripe's card-on-file redirect comes back with QUERY params, not a
+       * hash (?card_added=1 / ?card_cancelled=1). Before this, apply() read
+       * only the hash, so the user landed silently on the Dashboard with no
+       * confirmation that their card was saved. Consume the params, flash a
+       * toast, route to Billing, then strip them from the URL. */
+      const search = new URLSearchParams(window.location.search);
+      const added = search.get('card_added');
+      const cancelled = search.get('card_cancelled');
+      const legacyScreen = search.get('screen');
+      if (added || cancelled || legacyScreen) {
+        if (added) {
+          setToast({
+            message: 'Card saved. You can render without trial caps now.',
+            kind: 'success',
+          });
+          // PricingScreen mounts after the query string is stripped, so hand
+          // the confirmation over via sessionStorage — it reads and clears it.
+          try {
+            window.sessionStorage.setItem('vater-card-added', '1');
+          } catch {
+            /* private mode — the toast still fires */
+          }
+        } else if (cancelled) {
+          setToast({ message: 'Card setup cancelled — nothing was charged.', kind: 'info' });
+        }
+        search.delete('card_added');
+        search.delete('card_cancelled');
+        search.delete('session_id');
+        search.delete('screen');
+        const rest = search.toString();
+        const hashPart = window.location.hash;
+        window.history.replaceState(
+          { v2: true },
+          '',
+          `${window.location.pathname}${rest ? `?${rest}` : ''}${hashPart}`,
+        );
+        setRouteState('pricing');
+        setEditorStep(0);
+        setSelectedProjectId(null);
+        setSelectedStyleId(null);
+        return;
+      }
+
       const hash = window.location.hash.replace(/^#/, '');
       if (!hash) {
         setRouteState('dashboard');
@@ -140,7 +233,14 @@ export function Shell(): React.ReactElement {
     };
     apply();
     window.addEventListener('popstate', apply);
-    return () => window.removeEventListener('popstate', apply);
+    // hashchange too: a plain `#r=…` link (or the user editing the hash in
+    // the address bar) fires hashchange but NOT popstate, so those
+    // navigations used to leave the shell on the old screen.
+    window.addEventListener('hashchange', apply);
+    return () => {
+      window.removeEventListener('popstate', apply);
+      window.removeEventListener('hashchange', apply);
+    };
   }, []);
 
   React.useEffect(() => {
@@ -227,6 +327,7 @@ export function Shell(): React.ReactElement {
       newVideoRequest,
       requestNewVideo,
       consumeNewVideoRequest,
+      openHelp,
     }),
     [
       route,
@@ -240,57 +341,89 @@ export function Shell(): React.ReactElement {
       newVideoRequest,
       requestNewVideo,
       consumeNewVideoRequest,
+      openHelp,
     ],
   );
 
   const t = dark ? JELLY_TOKENS.dark : JELLY_TOKENS.light;
 
-  const screen = renderScreen(route, selectedProjectId, selectedStyleId);
+  const effectiveTier = tierLoading ? 'public' : tier;
+  const screen = canSeeRoute(effectiveTier, route)
+    ? renderScreen(route, selectedProjectId, selectedStyleId)
+    : <NotAvailableScreen onHome={() => setRoute('dashboard')} />;
 
   return (
     <ThemeProvider dark={dark} toggle={toggleDark}>
       <RouteContext.Provider value={routeValue}>
         <div
+          className="animate-shell"
           style={{
             display: 'flex',
             flexDirection: 'column',
             minHeight: '100vh',
+            width: '100%',
+            maxWidth: '100%',
+            overflowX: 'hidden',
             background: t.body,
             color: t.text,
             fontFamily: JELLY_TOKENS.font,
           }}
         >
           <BetaAccessBanner />
-          <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-          <Sidebar
-            collapsed={sidebarCollapsed}
-            onToggle={() => setSidebarCollapsed((prev) => !prev)}
-          />
-          <div
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              minWidth: 0,
-            }}
-          >
-            <Header />
-            <main
-              key={route}
+          <div style={{ display: 'flex', flex: 1, minHeight: 0, minWidth: 0 }}>
+            <Sidebar
+              collapsed={sidebarCollapsed}
+              onToggle={() => setSidebarCollapsed((prev) => !prev)}
+              mobile={isMobile}
+              drawerOpen={drawerOpen}
+              onCloseDrawer={() => setDrawerOpen(false)}
+            />
+            <div
               style={{
                 flex: 1,
-                padding: '24px 32px',
-                maxWidth: 1200,
-                width: '100%',
-                margin: '0 auto',
+                display: 'flex',
+                flexDirection: 'column',
+                minWidth: 0,
               }}
             >
-              {screen}
-            </main>
-          </div>
+              <Header
+                mobile={isMobile}
+                onOpenNav={() => setDrawerOpen(true)}
+              />
+              <main
+                key={route}
+                style={{
+                  flex: 1,
+                  // minWidth:0 keeps a wide child (scene grid, queue row) from
+                  // forcing the whole page into horizontal scroll.
+                  minWidth: 0,
+                  padding: isMobile ? '16px 16px 32px' : '24px 32px',
+                  maxWidth: 1200,
+                  width: '100%',
+                  margin: '0 auto',
+                }}
+              >
+                {screen}
+              </main>
+            </div>
           </div>
         </div>
-        <HelpFAB />
+        <HelpFAB onClick={openHelp} />
+        <HelpDrawer
+          open={helpOpen}
+          onClose={() => setHelpOpen(false)}
+          onGoBilling={() => {
+            setHelpOpen(false);
+            setRoute('pricing');
+          }}
+        />
+        {toast && (
+          <Toast
+            message={toast.message}
+            kind={toast.kind}
+            onDismiss={() => setToast(null)}
+          />
+        )}
         <ObserverSlot />
       </RouteContext.Provider>
     </ThemeProvider>
@@ -397,11 +530,42 @@ function ComingSoonScreen({ route }: { route: string }): React.ReactElement {
     >
       <div>
         <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
-          Screen <code style={{ fontFamily: 'monospace' }}>{route}</code> — coming in Phase 2
+          Not built yet
         </div>
         <div style={{ fontSize: 14, opacity: 0.7 }}>
-          The v2 shell is wired; this screen will land in a follow-up phase.
+          <code style={{ fontFamily: 'monospace' }}>{route}</code> isn&apos;t part of the
+          studio yet. Everything you need to make and publish a video already is.
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Shown when the URL hash points at a route above the caller's tier — e.g.
+ * a public customer pasting `#r=autopilot`. Better than rendering a screen
+ * whose every fetch 401s.
+ */
+function NotAvailableScreen({ onHome }: { onHome: () => void }): React.ReactElement {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 400,
+        padding: 32,
+      }}
+    >
+      <div style={{ maxWidth: 420, textAlign: 'center' }}>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
+          This area is part of the studio tier
+        </div>
+        <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 20, lineHeight: 1.6 }}>
+          Your account doesn&apos;t have access to this screen. Everything you need to
+          write, render and publish a video is on your dashboard.
+        </div>
+        <VBtn onClick={onHome}>Back to Dashboard</VBtn>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
-import { sendLeadViaInstantly } from "@/lib/hq-instantly";
+import { sendLeadViaInstantly, SENDER_DISABLED } from "@/lib/hq-instantly";
 
 export const runtime = "nodejs";
 
@@ -79,6 +79,16 @@ export async function PATCH(
             return NextResponse.json(
               { error: "Send failed: " + message },
               { status: 502 }
+            );
+          }
+
+          // Sender is off (lane killed 8/11). Refuse loudly instead of
+          // flipping the touch to "approved" and telling Jared a cron that no
+          // longer exists will pick it up.
+          if (!result.ok && result.reason === SENDER_DISABLED) {
+            return NextResponse.json(
+              { error: "Email sender not configured — approval would not send" },
+              { status: 409 }
             );
           }
 

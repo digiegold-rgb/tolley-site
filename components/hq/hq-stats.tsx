@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useToast } from "@/components/ui/Toast";
+import { HqShowMore, HQ_PAGE_SIZE } from "./hq-show-more";
 import { readApiError } from "./types";
 
 interface StatsVideoRow {
@@ -84,6 +85,7 @@ export function HqStats() {
   const [sortKey, setSortKey] = useState<SortKey>("views");
   const [pipelineFilter, setPipelineFilter] = useState<string>("all");
   const [reassignBusy, setReassignBusy] = useState<string | null>(null);
+  const [limit, setLimit] = useState(HQ_PAGE_SIZE);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -173,7 +175,7 @@ export function HqStats() {
   if (data.videos.length === 0) {
     return (
       <div className="panel">
-        <div style={{ fontSize: 13, color: "#6e6e73", padding: "8px 0", lineHeight: 1.6 }}>
+        <div style={{ fontSize: 13, color: "var(--hq-ink-2)", padding: "8px 0", lineHeight: 1.6 }}>
           No YouTube snapshots yet. The daily pull ( /api/cron/youtube-stats, 11:30 UTC )
           needs a token with the analytics scope — complete the one-click re-auth at{" "}
           <code>/api/social/oauth/youtube/start</code>, then the first snapshot lands on the
@@ -194,6 +196,9 @@ export function HqStats() {
     return (bv as number) - (av as number);
   });
 
+  // Cap the rendered rows (HQ-02): the full table ran ~38,000px tall.
+  const visible = sorted.slice(0, limit);
+
   const th = (label: string, key?: SortKey) => (
     <th
       style={{ cursor: key ? "pointer" : undefined, whiteSpace: "nowrap" }}
@@ -213,11 +218,11 @@ export function HqStats() {
             <h4>{PIPELINE_LABEL[p.pipeline] ?? p.pipeline}</h4>
             <div className="val" style={{ fontSize: 15 }}>
               {n(p.totalViews)}{" "}
-              <span style={{ fontSize: 11, fontWeight: 600, color: "#6e6e73" }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--hq-ink-2)" }}>
                 views · {p.videos} vids
               </span>
             </div>
-            <div style={{ fontSize: 11, color: "#6e6e73" }}>
+            <div style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>
               +{n(p.views7d)} 7d · retention {pct(p.avgViewPct)}
             </div>
           </div>
@@ -250,7 +255,7 @@ export function HqStats() {
           <button className="btn btn-primary" onClick={analyze} disabled={analyzing}>
             {analyzing ? "Analyzing…" : "⚡ Analyze — what's working?"}
           </button>
-          <span style={{ fontSize: 11, color: "#6e6e73" }}>
+          <span style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>
             {data.lastPullAt
               ? `Data pulled ${new Date(data.lastPullAt).toLocaleString("en-US")}`
               : "No pull yet"}
@@ -285,7 +290,7 @@ export function HqStats() {
           <select
             value={pipelineFilter}
             onChange={(e) => setPipelineFilter(e.target.value)}
-            style={{ marginLeft: "auto", padding: "4px 8px", border: "1px solid #d1d1d6", borderRadius: 8, fontSize: 12 }}
+            style={{ marginLeft: "auto", padding: "4px 8px", border: "1px solid var(--hq-border)", borderRadius: 8, fontSize: 12 }}
           >
             <option value="all">All pipelines</option>
             {PIPELINES.map((p) => (
@@ -296,7 +301,7 @@ export function HqStats() {
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
-            <tr style={{ textAlign: "left", color: "#6e6e73" }}>
+            <tr style={{ textAlign: "left", color: "var(--hq-ink-2)" }}>
               {th("Title")}
               {th("Pipeline")}
               {th("Published", "publishedAt")}
@@ -308,7 +313,7 @@ export function HqStats() {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((v) => (
+            {visible.map((v) => (
               <tr key={v.videoId} style={{ borderTop: "1px solid #eee" }}>
                 <td style={{ padding: "6px 8px 6px 0", maxWidth: 280 }}>
                   <a
@@ -325,7 +330,7 @@ export function HqStats() {
                     value={v.pipeline}
                     disabled={reassignBusy === v.videoId}
                     onChange={(e) => reassign(v.videoId, e.target.value)}
-                    style={{ padding: "2px 4px", border: "1px solid #e5e5ea", borderRadius: 6, fontSize: 11 }}
+                    style={{ padding: "2px 4px", border: "1px solid var(--hq-line)", borderRadius: 6, fontSize: 11 }}
                   >
                     {PIPELINES.map((p) => (
                       <option key={p} value={p}>{PIPELINE_LABEL[p]}</option>
@@ -334,7 +339,7 @@ export function HqStats() {
                 </td>
                 <td style={{ whiteSpace: "nowrap" }}>{shortDate(v.publishedAt)}</td>
                 <td>{n(v.views)}</td>
-                <td style={{ color: (v.views7d ?? 0) > 0 ? "#34a853" : "#6e6e73" }}>
+                <td style={{ color: (v.views7d ?? 0) > 0 ? "#34a853" : "var(--hq-ink-2)" }}>
                   {v.views7d == null ? "—" : `+${n(v.views7d)}`}
                 </td>
                 <td>{pct(v.avgViewPct)}</td>
@@ -346,6 +351,13 @@ export function HqStats() {
             ))}
           </tbody>
         </table>
+        <HqShowMore
+          shown={visible.length}
+          total={sorted.length}
+          noun="videos"
+          onMore={() => setLimit((n) => n + HQ_PAGE_SIZE)}
+          onAll={() => setLimit(sorted.length)}
+        />
       </div>
     </div>
   );

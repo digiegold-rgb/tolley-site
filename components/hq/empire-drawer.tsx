@@ -36,11 +36,11 @@ export function EmpireDrawer({ def, lane, health, payload, onSelect, onClose }: 
 
   return (
     <div
-      className="absolute inset-y-0 right-0 z-20 flex w-[340px] max-w-[85%] flex-col overflow-y-auto border-l border-[#1e2733] bg-[#0d131c]/95 backdrop-blur-md"
+      className="absolute inset-y-0 right-0 z-20 flex w-[340px] max-w-[85%] flex-col overflow-y-auto border-l border-[var(--hq-navy)] bg-[#0d131c]/95 backdrop-blur-md"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 border-b border-[#1e2733] px-4 py-3.5">
+      <div className="flex items-start justify-between gap-3 border-b border-[var(--hq-navy)] px-4 py-3.5">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="text-2xl leading-none">{def.icon}</span>
           <div className="min-w-0">
@@ -52,7 +52,7 @@ export function EmpireDrawer({ def, lane, health, payload, onSelect, onClose }: 
         </div>
         <button
           onClick={onClose}
-          className="rounded-md border border-[#1e2733] px-2 py-1 text-xs text-[#7a8699] hover:border-[#2a3646] hover:text-[#e5edf5]"
+          className="rounded-md border border-[var(--hq-navy)] px-2 py-1 text-xs text-[#7a8699] hover:border-[#2a3646] hover:text-[#e5edf5]"
           aria-label="Close"
         >
           ✕
@@ -121,7 +121,7 @@ export function EmpireDrawer({ def, lane, health, payload, onSelect, onClose }: 
         {/* Raw signal */}
         <div>
           <SectionTitle>Signal</SectionTitle>
-          <code className="block break-all rounded-md border border-[#1e2733] bg-[#0a0e14] px-2.5 py-2 font-mono text-[10.5px] text-[#7a8699]">
+          <code className="block break-all rounded-md border border-[var(--hq-navy)] bg-[#0a0e14] px-2.5 py-2 font-mono text-[10.5px] text-[#7a8699]">
             {def.signal}
           </code>
         </div>
@@ -131,7 +131,7 @@ export function EmpireDrawer({ def, lane, health, payload, onSelect, onClose }: 
             href={def.href}
             target="_blank"
             rel="noreferrer"
-            className="rounded-lg border border-[#1f6f5c] bg-[#1f6f5c]/15 px-3 py-2 text-center text-xs font-semibold text-[#2dd4a7] hover:bg-[#1f6f5c]/30"
+            className="rounded-lg border border-[#1f6f5c] bg-[#1f6f5c]/15 px-3 py-2 text-center text-xs font-semibold text-[var(--hq-teal)] hover:bg-[#1f6f5c]/30"
           >
             Open →
           </a>
@@ -141,7 +141,7 @@ export function EmpireDrawer({ def, lane, health, payload, onSelect, onClose }: 
   );
 }
 
-const EDGE_KIND_COLOR: Record<string, string> = { flow: "#2dd4a7", data: "#38bdf8", money: "#22c55e" };
+const EDGE_KIND_COLOR: Record<string, string> = { flow: "var(--hq-teal)", data: "#38bdf8", money: "#22c55e" };
 
 function ConnRow({
   dir,
@@ -163,7 +163,7 @@ function ConnRow({
   return (
     <button
       onClick={() => onSelect(otherId)}
-      className="flex w-full items-center gap-2 rounded-md border border-transparent px-1.5 py-1 text-left hover:border-[#1e2733] hover:bg-[#111722]"
+      className="flex w-full items-center gap-2 rounded-md border border-transparent px-1.5 py-1 text-left hover:border-[var(--hq-navy)] hover:bg-[#111722]"
     >
       <span className="w-8 shrink-0 font-mono text-[10px]" style={{ color: EDGE_KIND_COLOR[kind] ?? "#7a8699" }}>
         {dir === "in" ? "→ in" : "out →"}

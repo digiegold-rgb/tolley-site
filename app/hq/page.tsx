@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { HQ_BOARD_STAGES, HQ_OFFERS } from "@/lib/hq";
@@ -327,6 +327,30 @@ function HqPageInner() {
     }
   }
 
+  // ─── Logout ───
+  async function handleLogout() {
+    try {
+      const r = await fetch("/api/hq/logout", { method: "POST" });
+      if (!r.ok) throw new Error(await readApiError(r, "Sign out failed"));
+    } catch (err) {
+      toast({
+        title: "Sign out failed",
+        description: err instanceof Error ? err.message : String(err),
+        variant: "error",
+      });
+      return;
+    }
+    // Drop every loaded row with the session — the next person at this screen
+    // should see the PIN prompt, not the last operator's pipeline.
+    setAuthed(false);
+    setPin("");
+    setLeads([]);
+    setDrafts([]);
+    setInbound([]);
+    setMoney(null);
+    setSelected(null);
+  }
+
   // ─── Lead save (drawer) ───
   async function saveLead(id: string, fields: Record<string, string | number | null>) {
     setSaving(true);
@@ -415,8 +439,49 @@ function HqPageInner() {
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const addedThisWeek = leads.filter((l) => new Date(l.createdAt).getTime() >= weekAgo).length;
   const deadCount = leads.filter((l) => l.stage === "dead").length;
+  const dncCount = leads.filter((l) => l.stage === "do_not_contact").length;
+  const moneyCount = money
+    ? money.wd.pastDue.length + money.wd.pendingApproval.length + money.invoices.open.length
+    : undefined;
   const boardLeads =
     offerFilter === "all" ? leads : leads.filter((l) => l.offer === offerFilter);
+
+  // ─── Tab bar helpers ───
+  // One shape for every tab pill; per-tab tints are classes in hq.css.
+  function tabPill(id: Tab, label: string, count?: number, tint?: string) {
+    return (
+      <button
+        className={`tab-btn${tint ? ` ${tint}` : ""}${tab === id ? " active" : ""}`}
+        onClick={() => setTab(id)}
+        aria-current={tab === id ? "true" : undefined}
+      >
+        {label}
+        {count ? ` (${count})` : ""}
+      </button>
+    );
+  }
+
+  // <details> has no built-in dismiss, so a stray open Docs menu would sit over
+  // the page until re-clicked. Close it on outside-click and on Escape.
+  const docsRef = useRef<HTMLDetailsElement>(null);
+  const closeDocs = () => {
+    if (docsRef.current) docsRef.current.open = false;
+  };
+  useEffect(() => {
+    function onPointerDown(e: MouseEvent) {
+      const el = docsRef.current;
+      if (el?.open && !el.contains(e.target as Node)) el.open = false;
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && docsRef.current?.open) docsRef.current.open = false;
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
 
   // ─── Screens ───
   if (checking) {
@@ -439,7 +504,7 @@ function HqPageInner() {
               placeholder="Enter PIN"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
-              style={{ width: "100%", padding: "8px 12px", marginBottom: 12, border: "1px solid #d1d1d6", borderRadius: 8, fontSize: 14, textAlign: "center", boxSizing: "border-box" }}
+              style={{ width: "100%", padding: "8px 12px", marginBottom: 12, border: "1px solid var(--hq-border)", borderRadius: 8, fontSize: 14, textAlign: "center", boxSizing: "border-box" }}
               autoFocus
             />
             {pinError && (
@@ -479,10 +544,13 @@ function HqPageInner() {
           >
             ↻ Refresh
           </button>
+          <button className="btn btn-sm" onClick={handleLogout} title="Clear the admin session on this device">
+            Sign out
+          </button>
         </div>
       </div>
 
-      <div style={{ padding: "12px 16px" }}>
+      <div className="hq-content">
         {/* Stat row */}
         <div className="stat-row">
           {HQ_BOARD_STAGES.map((s) => (
@@ -507,175 +575,104 @@ function HqPageInner() {
           )}
         </div>
 
-        {/* Tab bar + offer filter */}
-        <div className="tab-bar" style={{ alignItems: "center" }}>
-          <button
-            className={`tab-btn ${tab === "empire" ? "active" : ""}`}
-            onClick={() => setTab("empire")}
-            style={
-              tab === "empire"
-                ? { background: "linear-gradient(135deg, #0f766e, #134e4a)", boxShadow: "0 2px 6px rgba(15, 118, 110, 0.35)" }
-                : undefined
-            }
-          >
-            🗺️ Empire
-          </button>
-          <a
-            className="tab-btn"
-            href="/generate"
-            style={{ textDecoration: "none" }}
-            title="Quick Generate — prompt → image / video (Gemini + Wan2.2)"
-          >
-            ✨ Generate
-          </a>
-          <a
-            className="tab-btn"
-            href="/persona"
-            style={{ textDecoration: "none" }}
-            title="Persona Editor — edit her description, wardrobe, and face yourself"
-          >
-            💃 Persona
-          </a>
-          <button
-            className={`tab-btn ${tab === "must" ? "active" : ""}`}
-            onClick={() => setTab("must")}
-            style={
-              tab === "must"
-                ? { background: "linear-gradient(135deg, #dc2626, #b91c1c)", boxShadow: "0 2px 6px rgba(220, 38, 38, 0.3)" }
-                : undefined
-            }
-          >
-            🎯 Must Complete
-            {mustOpen.length ? ` (${mustOpen.length})` : ""}
-          </button>
-          <button
-            className={`tab-btn ${tab === "pipeline" ? "active" : ""}`}
-            onClick={() => setTab("pipeline")}
-          >
-            Pipeline
-          </button>
-          <button
-            className={`tab-btn ${tab === "inbound" ? "active" : ""}`}
-            onClick={() => setTab("inbound")}
-          >
-            Inbox
-            {inboundCounts.new ? ` (${inboundCounts.new})` : ""}
-          </button>
-          <button
-            className={`tab-btn ${tab === "approvals" ? "active" : ""}`}
-            onClick={() => setTab("approvals")}
-          >
-            Approvals
-            {drafts.length + licenseReviews.length > 0
-              ? ` (${drafts.length + licenseReviews.length})`
-              : ""}
-          </button>
-          <button
-            className={`tab-btn ${tab === "money" ? "active" : ""}`}
-            onClick={() => setTab("money")}
-          >
-            Money
-            {money
-              ? ` (${money.wd.pastDue.length + money.wd.pendingApproval.length + money.invoices.open.length})`
-              : ""}
-          </button>
-          <button
-            className={`tab-btn ${tab === "estates" ? "active" : ""}`}
-            onClick={() => setTab("estates")}
-          >
-            Estates
-          </button>
-          <button
-            className={`tab-btn ${tab === "stats" ? "active" : ""}`}
-            onClick={() => setTab("stats")}
-          >
-            Stats
-          </button>
-          <button
-            className={`tab-btn ${tab === "site" ? "active" : ""}`}
-            onClick={() => setTab("site")}
-          >
-            🌐 Site
-          </button>
-          <button
-            className={`tab-btn ${tab === "chats" ? "active" : ""}`}
-            onClick={() => setTab("chats")}
-          >
-            Chats
-          </button>
-          <button
-            className={`tab-btn ${tab === "hauls" ? "active" : ""}`}
-            onClick={() => setTab("hauls")}
-          >
-            💎 Hauls
-          </button>
-          <button
-            className={`tab-btn ${tab === "posts" ? "active" : ""}`}
-            onClick={() => setTab("posts")}
-          >
-            📡 Posts
-          </button>
-          <button
-            className={`tab-btn ${tab === "tiktok" ? "active" : ""}`}
-            onClick={() => setTab("tiktok")}
-          >
-            🛍 TikTok
-          </button>
-          {/* Storefront stocking is its own route (big static worklist), not a tab state. */}
-          <a className="tab-btn" href="/hq/storefront" style={{ textDecoration: "none" }}>
-            🛒 Storefront
-          </a>
-          <button
-            className={`tab-btn ${tab === "bk" ? "active" : ""}`}
-            onClick={() => setTab("bk")}
-            style={tab === "bk" ? { background: "linear-gradient(135deg,#0a2540,#0071e3)", color: "#fff", borderColor: "#0071e3" } : undefined}
-          >
-            ⚡ BK
-          </button>
-          <button
-            className={`tab-btn ${tab === "dnc" ? "active" : ""}`}
-            onClick={() => setTab("dnc")}
-          >
-            Contacted / DNC
-            {(() => {
-              const n = leads.filter((l) => l.stage === "do_not_contact").length;
-              return n ? ` (${n})` : "";
-            })()}
-          </button>
-          {/* Research briefs — static PDFs in /public/research, opened in a new tab.
-              Not a Tab state: these are read-once documents, not dashboard views. */}
-          <a
-            className="tab-btn"
-            href="/research/youtube-video-length-2026.pdf"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Research: what video length is actually correct for YouTube (Aug 2026)"
-            style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}
-          >
-            📄 YT Length Study
-          </a>
-          <a
-            className="tab-btn"
-            href="/research/hardware-upgrade-plan-2026-08.pdf"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Hardware upgrade plan v2: 16TB vs 12TB settled, where to buy drives cheaper than Amazon, drive-price outlook, and what a second GB10 actually buys (Aug 14, 2026)"
-            style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, background: "linear-gradient(135deg,#12244a,#2a5298)", color: "#f0d98a", borderColor: "#c9a227" }}
-          >
-            🔧 Hardware Plan
-          </a>
-          {tab === "pipeline" && (
-            <select
-              value={offerFilter}
-              onChange={(e) => setOfferFilter(e.target.value)}
-              style={{ marginLeft: "auto", padding: "5px 10px", border: "1px solid #d1d1d6", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#fff" }}
+        {/* Tab bar. Grouped Ops | Growth | Content; the strip scrolls sideways
+            (see hq.css) so adding a tab never widens the page. Docs and the
+            offer filter sit outside the scroller — an overflow container would
+            clip the open Docs menu. */}
+        <div className="tab-bar">
+          <div className="tab-strip">
+            {/* Ops */}
+            {tabPill("empire", "🗺️ Empire", undefined, "tab-empire")}
+            {tabPill("must", "🎯 Must Complete", mustOpen.length, "tab-must")}
+            {tabPill("money", "Money", moneyCount)}
+            {tabPill("site", "🌐 Site")}
+
+            <span className="tab-sep" aria-hidden="true" />
+
+            {/* Growth */}
+            {tabPill("pipeline", "Pipeline")}
+            {tabPill("inbound", "Inbox", inboundCounts.new)}
+            {tabPill("approvals", "Approvals", drafts.length + licenseReviews.length)}
+            {tabPill("estates", "Estates")}
+            {tabPill("dnc", "Contacted / DNC", dncCount)}
+
+            <span className="tab-sep" aria-hidden="true" />
+
+            {/* Content — the two /generate and /persona pills are their own
+                routes, not tab states, so they stay plain links. */}
+            <a
+              className="tab-btn"
+              href="/generate"
+              title="Quick Generate — prompt → image / video (Gemini + Wan2.2)"
             >
-              <option value="all">All offers</option>
-              {HQ_OFFERS.map((o) => (
-                <option key={o} value={o}>{o}</option>
-              ))}
-            </select>
-          )}
+              ✨ Generate
+            </a>
+            {/* /persona is gated by a NextAuth admin session, not the /hq PIN
+                (HQ-03), so from here it 401s. Keep the link — it works once
+                you're signed into the site — but say so and open it in its own
+                tab so a dead-end doesn't cost you the HQ session. */}
+            <a
+              className="tab-btn"
+              href="/persona"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Persona Editor — edit her description, wardrobe, and face. Needs a site login (NextAuth admin), not the HQ PIN — opens in a new tab."
+            >
+              💃 Persona <span style={{ opacity: 0.6, fontWeight: 500 }}>(needs site login)</span>
+            </a>
+            {tabPill("stats", "Stats")}
+            {tabPill("chats", "Chats")}
+            {tabPill("hauls", "💎 Hauls")}
+            {tabPill("posts", "📡 Posts")}
+            {tabPill("tiktok", "🛍 TikTok")}
+            {/* Storefront stocking is its own route (big static worklist), not a tab state. */}
+            <a className="tab-btn" href="/hq/storefront">
+              🛒 Storefront
+            </a>
+            {tabPill("bk", "⚡ BK", undefined, "tab-bk")}
+          </div>
+
+          <div className="tab-bar-end">
+            {/* Read-once briefs live in one dropdown so the next PDF doesn't
+                cost another tab's worth of bar. Static files in /public/research. */}
+            <details className="tab-docs" ref={docsRef}>
+              <summary className="tab-btn">📄 Docs ▾</summary>
+              <div className="tab-docs-menu">
+                <a
+                  href="/research/hardware-upgrade-plan-2026-08.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeDocs}
+                >
+                  🔧 Hardware Plan
+                  <span className="doc-sub">16TB vs 12TB settled, where to buy, second GB10 — Aug 14, 2026</span>
+                </a>
+                <a
+                  href="/research/youtube-video-length-2026.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeDocs}
+                >
+                  📄 YT Length Study
+                  <span className="doc-sub">What video length is actually correct for YouTube — Aug 2026</span>
+                </a>
+              </div>
+            </details>
+
+            {tab === "pipeline" && (
+              <select
+                value={offerFilter}
+                onChange={(e) => setOfferFilter(e.target.value)}
+                aria-label="Filter pipeline by offer"
+                style={{ padding: "5px 10px", border: "1px solid var(--hq-border)", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#fff" }}
+              >
+                <option value="all">All offers</option>
+                {HQ_OFFERS.map((o) => (
+                  <option key={o} value={o}>{o}</option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
 
         {tab === "empire" ? (
@@ -750,7 +747,7 @@ function HqPageInner() {
               loading={queueLoading}
               busyId={busyId}
               onRefresh={loadDrafts}
-              onApprove={(id) => patchTouch(id, { action: "approve" }, "Approved — sender cron will pick it up")}
+              onApprove={(id) => patchTouch(id, { action: "approve" }, "Approved")}
               onDiscard={(id) => patchTouch(id, { action: "discard" }, "Draft discarded")}
               onSaveEdit={(id, subject, body) => patchTouch(id, { subject, body }, "Draft updated")}
             />

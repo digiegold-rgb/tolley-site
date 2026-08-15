@@ -66,6 +66,8 @@ export interface RouteContextValue {
   requestNewVideo: () => void;
   /** Dashboard calls this once it has handled the request. */
   consumeNewVideoRequest: () => void;
+  /** Opens the shell-level Help drawer (FAB + Dashboard tutorial card). */
+  openHelp: () => void;
 }
 
 const defaultRouteValue: RouteContextValue = {
@@ -83,6 +85,7 @@ const defaultRouteValue: RouteContextValue = {
   newVideoRequest: 0,
   requestNewVideo: () => {},
   consumeNewVideoRequest: () => {},
+  openHelp: () => {},
 };
 
 export const RouteContext = React.createContext<RouteContextValue>(defaultRouteValue);

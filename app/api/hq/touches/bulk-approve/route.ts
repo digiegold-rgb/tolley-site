@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
-import { sendLeadViaInstantly, campaignIdForOffer } from "@/lib/hq-instantly";
+import {
+  sendLeadViaInstantly,
+  campaignIdForOffer,
+  instantlySenderEnabled,
+} from "@/lib/hq-instantly";
 
 export const runtime = "nodejs";
 
@@ -34,6 +38,16 @@ export async function POST(request: NextRequest) {
   const offer = (body.offer || "site").trim();
   const count = Math.min(Math.max(Number(body.count) || 10, 1), 25);
   const dryRun = Boolean(body.dryRun);
+
+  // Sender killed 8/11 — bail before ranking so nobody sees an empty "sent: []"
+  // and reads it as "there was nothing to send". dryRun still works: it only
+  // previews the batch and touches nothing.
+  if (!dryRun && !instantlySenderEnabled()) {
+    return NextResponse.json(
+      { error: "Email sender not configured — nothing would send" },
+      { status: 409 },
+    );
+  }
 
   if (!campaignIdForOffer(offer)) {
     return NextResponse.json(

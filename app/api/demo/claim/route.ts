@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { rateLimitByIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -8,6 +9,7 @@ export const runtime = "nodejs";
 // Creates a GrowthTouch (channel=demo, direction=in, status=received) on the
 // owning GrowthLead so the claim lands in the /hq queue. No auth: the demo
 // pages are public by design; input is length-capped and the lead must exist.
+// Rate limited to 10/hr per IP so the public form can't flood the /hq queue.
 
 interface ClaimBody {
   slug?: unknown;
@@ -22,6 +24,9 @@ function cleanField(value: unknown, max: number): string {
 }
 
 export async function POST(request: NextRequest) {
+  const limited = await rateLimitByIp(request, "demo:claim", 10, 3600);
+  if (limited) return limited;
+
   let body: ClaimBody;
   try {
     body = (await request.json()) as ClaimBody;

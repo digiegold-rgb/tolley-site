@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { isHttpUrl } from "./types";
+
 // Private haul appraisals — inbound FB photo messages the DGX fb-haul-appraiser
 // captured, AI-appraised item-by-item. Jared-only (PIN-gated API), never shown
 // to the sender.
@@ -131,11 +133,13 @@ export function HqHaulAppraisals() {
               </div>
             )}
 
-            {h.photoUrls?.some(Boolean) && (
+            {/* Messenger CDN links expire and sometimes come back as junk —
+                only render the ones that are real http(s) URLs. */}
+            {h.photoUrls?.some(isHttpUrl) && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {h.photoUrls.map((u, i) =>
-                  u ? (
-                    <a key={i} href={u} target="_blank" rel="noreferrer" title={`Photo ${i + 1}`}>
+                  isHttpUrl(u) ? (
+                    <a key={i} href={u} target="_blank" rel="noopener noreferrer" title={`Photo ${i + 1}`}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={u}

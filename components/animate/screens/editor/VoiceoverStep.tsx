@@ -32,6 +32,12 @@ import { VCard, SectionHeader } from '../../primitives';
 import { YouTubeVoiceClonePanel } from '@/components/vater/youtube-voice-clone-panel';
 import { YouTubePopularVoices } from '@/components/vater/youtube-popular-voices';
 import type { EditorStepProps } from './ProjectShell';
+import {
+  BillingBlockModal,
+  BillingBlockedError,
+  assertOk,
+  type BillingBlockReason,
+} from './BillingBlock';
 
 const CUT_MODES = ['Smooth', 'Natural', 'Jumpy'] as const;
 type CutMode = (typeof CUT_MODES)[number];
@@ -43,6 +49,8 @@ export function VoiceoverStep({
 }: EditorStepProps): React.ReactElement {
   const { t } = useTheme();
   const [cutSilences, setCutSilences] = React.useState<CutMode>('Natural');
+  // 402 from a generation route → actionable modal, not a raw error string.
+  const [billingBlock, setBillingBlock] = React.useState<BillingBlockReason | null>(null);
   const [showScript, setShowScript] = React.useState(false);
   const [voiceClone, setVoiceClone] = React.useState<string | null>(null);
   const [generating, setGenerating] = React.useState(false);
@@ -86,13 +94,14 @@ export function VoiceoverStep({
           voiceCloneName: voiceClone,
         }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
+      await assertOk(res);
       await refresh();
     } catch (err) {
-      setGenError(err instanceof Error ? err.message : 'Generate failed');
+      if (err instanceof BillingBlockedError) {
+        setBillingBlock(err.reason);
+      } else {
+        setGenError(err instanceof Error ? err.message : 'Generate failed');
+      }
     } finally {
       setGenerating(false);
     }
@@ -269,6 +278,10 @@ export function VoiceoverStep({
       <div style={{ marginTop: 16 }}>
         <YouTubePopularVoices />
       </div>
+      <BillingBlockModal
+        reason={billingBlock}
+        onClose={() => setBillingBlock(null)}
+      />
     </div>
   );
 }

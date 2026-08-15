@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { runSellerSeed } from "@/lib/leads/seller-seed";
+import { secretEquals } from "@/lib/secret-compare";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -13,9 +14,9 @@ export const maxDuration = 60;
  * Not in vercel.json — Cordless fires it via curl when he wants an off-cycle run.
  */
 export async function POST(request: NextRequest) {
-  const syncSecret = process.env.SYNC_SECRET;
-  const authHeader = request.headers.get("x-sync-secret");
-  if (!syncSecret || authHeader !== syncSecret) {
+  // Constant-time compare — `!==` short-circuits on the first differing byte,
+  // which leaks the secret one character at a time to a patient caller.
+  if (!secretEquals(request.headers.get("x-sync-secret"), process.env.SYNC_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -5,6 +5,16 @@ import { useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { readApiError } from "./types";
 
+/**
+ * Endpoints that mint OAuth tokens require a NextAuth admin session (or an
+ * x-sync-secret), which the /hq PIN cookie is not — clicking one from here
+ * just 401s (HQ-05). Queue rows are written by agents and carry these URLs as
+ * plain links, so the renderer is the only place we can catch it.
+ */
+function needsSiteLogin(url: string): boolean {
+  return /^\/api\/(social\/oauth|admin)\//.test(url);
+}
+
 export interface MustCompleteItem {
   id: string;
   sortOrder: number;
@@ -73,6 +83,7 @@ export function HqMustComplete({
   const { toast } = useToast();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showDone, setShowDone] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
   function toggle(id: string) {
     setExpanded((prev) => {
@@ -92,6 +103,22 @@ export function HqMustComplete({
     }
   }
 
+  async function copyUrl(url: string) {
+    const absolute = url.startsWith("/") ? `${window.location.origin}${url}` : url;
+    try {
+      await navigator.clipboard.writeText(absolute);
+      setCopiedUrl(url);
+      setTimeout(() => setCopiedUrl((c) => (c === url ? null : c)), 1600);
+      toast({
+        title: "Link copied",
+        description: "Open it in a tab where you're signed into the site — the HQ PIN won't authorize it.",
+        variant: "success",
+      });
+    } catch {
+      toast({ title: "Copy failed", description: absolute, variant: "error" });
+    }
+  }
+
   const redCount = open.filter((i) => i.priority === "red").length;
 
   return (
@@ -100,7 +127,7 @@ export function HqMustComplete({
         <div style={{ fontSize: 13, fontWeight: 700 }}>
           Everything that needs YOU — in order. Nothing else does.
         </div>
-        <div style={{ fontSize: 11, color: "#6e6e73" }}>
+        <div style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>
           Work top to bottom. Claude adds new blockers here automatically; when an item says
           &ldquo;then tell Claude…&rdquo;, that message is what fires the machine side.
         </div>
@@ -123,7 +150,7 @@ export function HqMustComplete({
         <div className="panel" style={{ textAlign: "center", padding: 30 }}>
           <div style={{ fontSize: 28 }}>🏁</div>
           <div style={{ fontWeight: 700, marginTop: 6 }}>Queue is empty.</div>
-          <div style={{ fontSize: 11, color: "#6e6e73", marginTop: 2 }}>
+          <div style={{ fontSize: 11, color: "var(--hq-ink-2)", marginTop: 2 }}>
             The machine runs itself — your job is phone calls, decisions, and being the licensed agent.
           </div>
         </div>
@@ -171,19 +198,35 @@ export function HqMustComplete({
                   {/* Clickable links — always visible, these ARE the steps */}
                   {item.links.length > 0 && (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-                      {item.links.map((l, i) => (
-                        <a
-                          key={i}
-                          className="btn btn-sm"
-                          href={l.url}
-                          target={l.url.startsWith("tel:") ? undefined : "_blank"}
-                          rel="noreferrer"
-                          style={{ textDecoration: "none", display: "inline-block", color: "#1d4ed8", borderColor: "#bfdbfe", background: "#eff6ff" }}
-                        >
-                          {l.url.startsWith("tel:") ? "📞 " : "🔗 "}
-                          {l.label}
-                        </a>
-                      ))}
+                      {item.links.map((l, i) =>
+                        needsSiteLogin(l.url) ? (
+                          // Not a link: a click here would 401. Offer the URL
+                          // to copy so it can be opened in a site-login tab.
+                          <button
+                            key={i}
+                            className="btn btn-sm"
+                            title={`${l.url} — needs a site login (NextAuth admin), not the HQ PIN. Click to copy.`}
+                            onClick={() => copyUrl(l.url)}
+                            style={{ color: "#8a5300", borderColor: "#fde68a", background: "#fffbeb" }}
+                          >
+                            {copiedUrl === l.url ? "✓ Copied — " : "📋 "}
+                            {l.label}
+                            <span style={{ opacity: 0.7, fontWeight: 500 }}> (site login)</span>
+                          </button>
+                        ) : (
+                          <a
+                            key={i}
+                            className="btn btn-sm"
+                            href={l.url}
+                            target={l.url.startsWith("tel:") ? undefined : "_blank"}
+                            rel="noopener noreferrer"
+                            style={{ textDecoration: "none", display: "inline-block", color: "#1d4ed8", borderColor: "#bfdbfe", background: "#eff6ff" }}
+                          >
+                            {l.url.startsWith("tel:") ? "📞 " : "🔗 "}
+                            {l.label}
+                          </a>
+                        )
+                      )}
                     </div>
                   )}
 

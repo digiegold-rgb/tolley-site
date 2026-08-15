@@ -19,6 +19,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { appendScriptVersion } from "@/lib/vater/script-versions";
 import { resolveLockedStyle, LOCKED_STYLE_NAME } from "@/lib/vater/locked-style";
+import { isVaterStudioEmail } from "@/lib/admin-auth";
 
 /** Monroe's measured long-form pace (standing spec §5). Runtime always comes
  *  from the script's word count — never from stretching scenes. */
@@ -104,6 +105,27 @@ export async function POST(req: NextRequest) {
         },
         { status: 409 },
       );
+    }
+    // Safety net: with VATER_LOCKED_STYLE_ID pinned, resolveLockedStyle()
+    // returns Trey's row for ANY caller. A public customer must never
+    // silently render in someone else's locked look — make them pick or
+    // create their own style instead. (Pipeline logic is untouched; this is
+    // an authorization check on the resolved row.)
+    if (!isVaterStudioEmail(session.user.email)) {
+      const owner = await prisma.youTubeStyle.findUnique({
+        where: { id: locked.id },
+        select: { userId: true, isSystem: true },
+      });
+      if (owner && !owner.isSystem && owner.userId && owner.userId !== session.user.id) {
+        return NextResponse.json(
+          {
+            error: "no_locked_style",
+            message:
+              "Pick or create a style before rendering — this account has no locked style.",
+          },
+          { status: 409 },
+        );
+      }
     }
     styleId = locked.id;
   }

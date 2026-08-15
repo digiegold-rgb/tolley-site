@@ -8,9 +8,23 @@
  * the old approve-only behavior (see the touches PATCH route), so this returns
  * a soft {ok:false} for the "not wired yet" cases and only THROWS on a real
  * Instantly API failure (via addLeadsToCampaign → InstantlyError).
+ *
+ * ⚠️ The Instantly cold-email lane was KILLED on 2026-08-11. The sender is now
+ * off unless INSTANTLY_ENABLED=1 is explicitly set, and while it is off every
+ * send returns {ok:false, reason:"sender_disabled"} — which callers must
+ * surface as a 409 rather than reporting a send that never happened. Reviving
+ * the lane needs a new sender, not just the flag.
  */
 
 import { addLeadsToCampaign } from "@/lib/instantly";
+
+/** Reason string callers match on to distinguish "off" from "not wired". */
+export const SENDER_DISABLED = "sender_disabled";
+
+/** The cold-email sender only runs when explicitly switched on. */
+export function instantlySenderEnabled(): boolean {
+  return process.env.INSTANTLY_ENABLED === "1";
+}
 
 /** Map an HQ offer to its Instantly campaign UUID, or null if unconfigured. */
 export function campaignIdForOffer(offer: string): string | null {
@@ -38,6 +52,10 @@ export async function sendLeadViaInstantly(lead: {
   category?: string | null;
   city?: string | null;
 }): Promise<{ ok: boolean; reason?: string; campaignId?: string }> {
+  if (!instantlySenderEnabled()) {
+    return { ok: false, reason: SENDER_DISABLED };
+  }
+
   const campaignId = campaignIdForOffer(lead.offer);
   if (!campaignId) {
     return { ok: false, reason: `no campaign configured for offer ${lead.offer}` };

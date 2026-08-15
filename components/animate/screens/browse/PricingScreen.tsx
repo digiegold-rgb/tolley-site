@@ -143,12 +143,27 @@ export function PricingScreen(): React.ReactElement {
   const [savingLimit, setSavingLimit] = React.useState(false);
   const [limitError, setLimitError] = React.useState<string | null>(null);
   const [limitSaved, setLimitSaved] = React.useState(false);
+  // Set by Shell when Stripe redirects back with ?card_added=1. Read once.
+  const [cardAdded, setCardAdded] = React.useState(false);
+
+  React.useEffect(() => {
+    try {
+      if (window.sessionStorage.getItem('vater-card-added') === '1') {
+        setCardAdded(true);
+        window.sessionStorage.removeItem('vater-card-added');
+      }
+    } catch {
+      /* private mode — the Shell toast already confirmed it */
+    }
+  }, []);
 
   const loadStatus = React.useCallback(async () => {
     setLoading(true);
     setStatusError(null);
     try {
-      const res = await fetch('/api/vater/billing/status');
+      // no-store so the Stripe card-on-file return shows the new card
+      // instead of a cached pre-checkout response.
+      const res = await fetch('/api/vater/billing/status', { cache: 'no-store' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || `HTTP ${res.status}`);
@@ -176,7 +191,9 @@ export function PricingScreen(): React.ReactElement {
     (async () => {
       setUsageError(null);
       try {
-        const res = await fetch('/api/vater/billing/usage?period=current&limit=10');
+        const res = await fetch('/api/vater/billing/usage?period=current&limit=10', {
+          cache: 'no-store',
+        });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error || `HTTP ${res.status}`);
@@ -337,7 +354,7 @@ export function PricingScreen(): React.ReactElement {
         Jelly Studio
       </div>
       <div style={{ fontSize: 14, color: t.textSecondary, marginTop: 4 }}>
-        Add a card, generate a video, get charged the per-action price. That's it.
+        Add a card, generate a video, get charged the per-action price. That&apos;s it.
       </div>
       <div style={{ fontSize: 36, fontWeight: 700, color: t.text, marginTop: 20 }}>
         ~$25<span style={{ fontSize: 16, color: t.textSecondary, fontWeight: 500 }}> / video avg</span>
@@ -518,7 +535,7 @@ export function PricingScreen(): React.ReactElement {
             </div>
           )}
           <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 8 }}>
-            A safety cap, not a plan — generation is blocked once this month's
+            A safety cap, not a plan — generation is blocked once this month&apos;s
             spend would exceed it. $50 minimum.
           </div>
         </VCard>
@@ -584,7 +601,48 @@ export function PricingScreen(): React.ReactElement {
   // ─── Render ──────────────────────────────────────────────────────────
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32, minWidth: 0 }}>
+      {/* A real heading: the Stripe return (/animate?card_added=1#r=pricing)
+          used to land on a page with no h1 at all. */}
+      <h1
+        style={{
+          fontSize: 28,
+          fontWeight: 700,
+          color: t.text,
+          margin: 0,
+        }}
+      >
+        Billing
+      </h1>
+
+      {cardAdded && (
+        <VCard
+          variant="flat"
+          data-testid="card-added-confirmation"
+          style={{
+            border: `1px solid ${JELLY_TOKENS.success}`,
+            background: 'rgba(22,163,74,0.08)',
+          }}
+        >
+          <div style={{ fontSize: 14, fontWeight: 600, color: JELLY_TOKENS.success }}>
+            Card saved
+          </div>
+          <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 4, lineHeight: 1.6 }}>
+            Your card is on file. Nothing has been charged — you are billed only
+            for the actions you run, invoiced automatically once charges reach
+            $25.
+          </div>
+          <VBtn
+            size="sm"
+            variant="outlined"
+            onClick={() => setCardAdded(false)}
+            style={{ marginTop: 12 }}
+          >
+            Dismiss
+          </VBtn>
+        </VCard>
+      )}
+
       <SectionHeader
         icon="folder"
         title="Jelly Studio"

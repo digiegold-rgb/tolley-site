@@ -15,6 +15,7 @@ import {
   formatPrice,
 } from "@/lib/vater/pricing";
 import { VATER_TRIAL_CAPS } from "@/lib/vater-subscription";
+import { PIPELINE_STEPS, HELP_FAQ } from "@/lib/vater/help-content";
 import "./landing.css";
 
 const display = Bricolage_Grotesque({
@@ -36,13 +37,7 @@ const mono = JetBrains_Mono({
 const SIGNUP = "/signup?callbackUrl=%2Fanimate";
 const SIGNIN = "/login?callbackUrl=%2Fanimate";
 
-const PIPELINE = [
-  { n: "01", t: "Script", d: "Type a topic — or paste a transcript. The script writes itself, you edit every word." },
-  { n: "02", t: "Voice", d: "Cloned voices with word-level caption timing. Bring your own or pick from the library." },
-  { n: "03", t: "Scenes", d: "Every beat becomes a cinematic frame, in the art style you lock for the whole channel." },
-  { n: "04", t: "Motion", d: "Animate any scene with Wan2.2, Hunyuan, Kling, Veo or Luma — per-scene, your call." },
-  { n: "05", t: "Publish", d: "Compose with soundtrack + captions, then push to YouTube, TikTok, IG, Facebook, Pinterest." },
-];
+const PIPELINE = PIPELINE_STEPS;
 
 const FLAT_LABELS: Record<keyof typeof FLAT_ACTION_PRICES, string> = {
   script: "Script generation",
@@ -54,28 +49,27 @@ const FLAT_LABELS: Record<keyof typeof FLAT_ACTION_PRICES, string> = {
   transcription: "Transcription",
 };
 
-const FAQ = [
+const FAQ = HELP_FAQ;
+
+/* The three failure modes that make AI video read as slop, and what Jelly
+ * does instead. Claims only about our own pipeline — no rival named, no
+ * rival price quoted. */
+const SLOP_FIXES = [
   {
-    q: "How does billing work?",
-    a: "You put a card on file — there is no subscription and no monthly fee. Each action bills at the fixed price shown above, charges accrue on your account, and your card is invoiced automatically once they reach $25 (plus a monthly sweep for anything left over). Failed renders are never charged.",
+    problem:
+      "Synthetic narration falls apart on long sentences — the cadence flattens and the breath disappears.",
+    fix: "A cloned voice with word-level timing, so captions land on the syllable and the delivery holds through a full paragraph.",
   },
   {
-    q: "Is there really a free tier?",
-    a: `Yes — every account starts with ${VATER_TRIAL_CAPS.transcripts} transcripts, ${VATER_TRIAL_CAPS.scenes} scene generation and ${VATER_TRIAL_CAPS.animations} animation, no card required and no time limit. It ends when you hit a cap, not a date.`,
+    problem:
+      "The same stock B-roll loops behind every point until the viewer stops looking.",
+    fix: "Every beat of the script becomes its own generated scene, in one art style you lock for the whole channel.",
   },
   {
-    q: "What does a finished video actually cost?",
-    a: "A typical 15-scene video — script, voiceover, scene images, a few animated clips and the final compose — lands around $25. You see the exact price next to every button before you click it, and a per-render confirm for batch animation.",
+    problem: "Lip-sync drifts a few frames and the whole thing reads as fake.",
+    fix: "No pasted-on mouths. Motion is generated with Wan2.2 (or Hunyuan, Kling, Veo, Luma) per scene, your call, at a price you see first.",
   },
-  {
-    q: "Whose GPUs is this running on?",
-    a: "A hybrid stack: budget tiers render on our own hardware, premium tiers spin up dedicated cloud GPUs (L40S/H100) or metered APIs like Veo and Kling. You pick the tier per scene — the dropdown shows price and ETA for each.",
-  },
-  {
-    q: "Can I generate in other languages?",
-    a: "Voiceovers support major languages via F5-TTS and ElevenLabs, and scripts can be generated in any major language.",
-  },
-];
+] as const;
 
 export function AnimateLanding(): React.ReactElement {
   // Featured tiers for the price grid: cheapest budget, the workhorse, the flagship.
@@ -97,9 +91,10 @@ export function AnimateLanding(): React.ReactElement {
           </a>
           <div className="jsl-nav-links">
             <a href="#pricing">Pricing</a>
+            <a href="#craft">Craft</a>
             <a href="#faq">FAQ</a>
             <a href={SIGNIN}>Sign in</a>
-            <a className="jsl-btn jsl-btn-amber" href={SIGNUP}>Start free</a>
+            <a className="jsl-btn jsl-btn-amber" href={SIGNUP}>Start free — no card</a>
           </div>
         </nav>
 
@@ -117,11 +112,16 @@ export function AnimateLanding(): React.ReactElement {
               timeline. <strong>No subscription. Pay per video, ~$25 each.</strong>
             </p>
             <div className="jsl-hero-ctas jsl-rev d4">
-              <a className="jsl-btn jsl-btn-amber" href={SIGNUP}>Make your first video free</a>
+              <a className="jsl-btn jsl-btn-amber" href={SIGNUP}>
+                Start free — {VATER_TRIAL_CAPS.transcripts} transcripts,{" "}
+                {VATER_TRIAL_CAPS.scenes} scene, {VATER_TRIAL_CAPS.animations} animation
+              </a>
               <a className="jsl-btn jsl-btn-ghost" href="#pricing">See every price</a>
             </div>
             <div className="jsl-cta-note jsl-rev d5" style={{ marginTop: 16 }}>
-              NO CARD REQUIRED · FREE TIER ENDS AT A CAP, NOT A DATE
+              NO CARD REQUIRED · {VATER_TRIAL_CAPS.transcripts} TRANSCRIPTS,{" "}
+              {VATER_TRIAL_CAPS.scenes} SCENE GENERATION,{" "}
+              {VATER_TRIAL_CAPS.animations} ANIMATION FREE · ENDS AT A CAP, NOT A DATE
             </div>
           </div>
 
@@ -163,6 +163,26 @@ export function AnimateLanding(): React.ReactElement {
               <div className="d">{s.d}</div>
             </div>
           ))}
+        </section>
+
+        {/* what "not slop" actually means — concrete failure modes, no rivals named */}
+        <section className="jsl-section" id="craft">
+          <div className="jsl-eyebrow">Craft</div>
+          <h2 className="jsl-h2">
+            Three ways AI video goes <span className="it">wrong.</span>
+          </h2>
+          <p className="jsl-sub" style={{ maxWidth: 560 }}>
+            Every one of these is a specific, fixable failure. Here is what
+            happens instead.
+          </p>
+          <div className="jsl-craft">
+            {SLOP_FIXES.map((f) => (
+              <div className="jsl-craft-cell" key={f.problem}>
+                <div className="bad">{f.problem}</div>
+                <div className="good">{f.fix}</div>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* pricing */}
@@ -252,12 +272,34 @@ export function AnimateLanding(): React.ReactElement {
           </div>
         </section>
 
+        {/* how billing works, plainly */}
+        <section className="jsl-section" id="how-billing-works">
+          <div className="jsl-eyebrow">Billing, plainly</div>
+          <h2 className="jsl-h2">
+            You are never billed for a <span className="it">month.</span>
+          </h2>
+          <p className="jsl-sub" style={{ maxWidth: 620 }}>
+            There is no plan to pick and no tier to outgrow. You add a card,
+            and each action bills at the fixed price listed above — script,
+            voiceover, each scene image, each animated clip, the compose. The
+            charges sit on your account and your card is invoiced once they
+            reach $25, plus a monthly sweep for whatever is left. Stop by simply
+            not rendering; nothing recurs.
+          </p>
+        </section>
+
         {/* final CTA */}
         <section className="jsl-final">
           <div className="jsl-eyebrow">Roll credits</div>
           <h2 className="jsl-h2">
-            Your first video is <span className="it">free.</span>
+            Start for <span className="it">free.</span>
           </h2>
+          <p className="jsl-sub" style={{ margin: "0 auto 24px", maxWidth: 520 }}>
+            {VATER_TRIAL_CAPS.transcripts} transcripts, {VATER_TRIAL_CAPS.scenes}{" "}
+            scene generation and {VATER_TRIAL_CAPS.animations} animation on the
+            house — no card, no clock. Add a card when you are ready to finish a
+            full video.
+          </p>
           <a className="jsl-btn jsl-btn-amber" href={SIGNUP}>Open the studio</a>
         </section>
 

@@ -12,7 +12,10 @@
     "agent:start": "node src/server.js",
     "agent:dev": "node --watch src/server.js",
     "test:e2e": "playwright test",
-    "test:e2e:list": "playwright test --list"
+    "test:e2e:list": "playwright test --list",
+    "audit:hq": "playwright test tests/e2e/audit/hq.spec.ts",
+    "audit:animate": "playwright test tests/e2e/audit/animate.spec.ts",
+    "audit:all": "playwright test tests/e2e/audit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

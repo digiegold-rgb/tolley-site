@@ -15,7 +15,7 @@
 
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
-import { useTheme } from '../../theme-context';
+import { useTheme, useRoute } from '../../theme-context';
 import { RetryError } from '../../primitives';
 import { LatestUpdateStrip } from '../../LatestUpdate';
 import { YouTubeLibrary } from '@/components/vater/youtube-library';
@@ -25,6 +25,7 @@ type AnyProject = any;
 
 export function Library(): React.ReactElement {
   const { t } = useTheme();
+  const { requestNewVideo } = useRoute();
   const [projects, setProjects] = React.useState<AnyProject[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -134,6 +135,48 @@ export function Library(): React.ReactElement {
           }}
         >
           Loading library…
+        </div>
+      ) : ready.length === 0 && !error ? (
+        <div
+          style={{
+            padding: 32,
+            textAlign: 'center',
+            border: `1px dashed ${t.border}`,
+            borderRadius: JELLY_TOKENS.radius.lg,
+          }}
+        >
+          <div style={{ fontSize: 15, fontWeight: 600, color: t.text }}>
+            Nothing here yet
+          </div>
+          <div
+            style={{
+              fontSize: 13,
+              color: t.textSecondary,
+              marginTop: 6,
+              lineHeight: 1.6,
+            }}
+          >
+            Finished videos land here, ready to download or publish. Projects
+            still rendering live on the Queue screen.
+          </div>
+          <button
+            type="button"
+            onClick={requestNewVideo}
+            style={{
+              marginTop: 16,
+              background: JELLY_TOKENS.brand,
+              border: 'none',
+              borderRadius: JELLY_TOKENS.radius.md,
+              padding: '9px 18px',
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#fff',
+              cursor: 'pointer',
+              fontFamily: JELLY_TOKENS.font,
+            }}
+          >
+            Create your first video
+          </button>
         </div>
       ) : (
         <YouTubeLibrary

@@ -66,6 +66,22 @@
 .sf-wrap button:hover { border-color: #c8531a; color: #c8531a; }
 
 .sf-section { margin-bottom: 2.4rem; }
+/* The shelf header is a <summary> now — restore the flex row and give it an
+   affordance, since a collapsed shelf must look openable. */
+.sf-section > summary.sf-tag {
+  cursor: pointer;
+  list-style: none;
+}
+.sf-section > summary.sf-tag::-webkit-details-marker { display: none; }
+.sf-section > summary.sf-tag h2::before {
+  content: "\25B8 ";           /* ▸ collapsed */
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+.sf-section[open] > summary.sf-tag h2::before {
+  content: "\25BE ";           /* ▾ open */
+}
+.sf-section > summary.sf-tag:hover h2 { opacity: 0.75; }
 .sf-tag {
   display: flex;
   align-items: center;

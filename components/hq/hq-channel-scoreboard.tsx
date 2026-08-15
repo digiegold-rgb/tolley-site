@@ -40,7 +40,7 @@ export function HqChannelScoreboard() {
   }, [load]);
 
   if (error) return <div className="panel" style={{ color: "#f87171" }}>Channel scoreboard failed: {error}</div>;
-  if (!data) return null;
+  if (!data) return <div className="panel" style={{ marginBottom: 14, color: "var(--hq-ink-3)" }}>Loading distribution scoreboard…</div>;
 
   return (
     <div className="panel" style={{ marginBottom: 14 }}>
@@ -53,7 +53,7 @@ export function HqChannelScoreboard() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10 }}>
         {data.out.map((o) => {
           const pct = o.out7d != null ? Math.min(100, Math.round((o.out7d / o.target) * 100)) : 0;
-          const color = o.healthy === false ? "#f87171" : pct >= 80 ? "#2dd4a7" : "#fbbf24";
+          const color = o.healthy === false ? "#f87171" : pct >= 80 ? "var(--hq-teal)" : "#fbbf24";
           return (
             <div key={o.channel} style={{ border: "1px solid rgba(148,163,184,0.25)", borderRadius: 10, padding: "10px 12px" }}>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{o.channel}</div>

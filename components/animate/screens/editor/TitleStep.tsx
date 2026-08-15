@@ -30,6 +30,11 @@ import { useTheme } from '../../theme-context';
 import { Icon } from '../../Icon';
 import { VBtn, VCard } from '../../primitives';
 import type { EditorStepProps, EditorProject } from './ProjectShell';
+import {
+  BillingBlockModal,
+  BillingBlockedError,
+  type BillingBlockReason,
+} from './BillingBlock';
 
 interface CardDef {
   kind: 'sample' | 'channel' | 'style';
@@ -89,6 +94,8 @@ export function TitleStep({
 }: EditorStepProps): React.ReactElement {
   const { t } = useTheme();
   const [sampleText, setSampleText] = React.useState('');
+  // 402 from a generation route → actionable modal, not a raw error string.
+  const [billingBlock, setBillingBlock] = React.useState<BillingBlockReason | null>(null);
   const [channelUrl, setChannelUrl] = React.useState('');
   const [busyKind, setBusyKind] = React.useState<CardDef['kind'] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -139,6 +146,10 @@ export function TitleStep({
           throw new Error(
             data.error || 'Channel-page mode coming soon — paste a specific video URL.',
           );
+        }
+        if (res.status === 402) {
+          const reason = (data as { budget?: { reason?: string } }).budget?.reason;
+          if (reason) throw new BillingBlockedError(reason as BillingBlockReason);
         }
         throw new Error(data.error || `HTTP ${res.status}`);
       }
@@ -238,7 +249,11 @@ export function TitleStep({
           setTitles(data.titles ?? []);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Generate failed');
+        if (err instanceof BillingBlockedError) {
+          setBillingBlock(err.reason);
+        } else {
+          setError(err instanceof Error ? err.message : 'Generate failed');
+        }
       } finally {
         setBusyKind(null);
       }
@@ -263,7 +278,11 @@ export function TitleStep({
         }
         await refresh();
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not set title');
+        if (err instanceof BillingBlockedError) {
+          setBillingBlock(err.reason);
+        } else {
+          setError(err instanceof Error ? err.message : 'Could not set title');
+        }
       } finally {
         setPicking(false);
       }
@@ -486,6 +505,10 @@ export function TitleStep({
           </div>
         </VCard>
       )}
+      <BillingBlockModal
+        reason={billingBlock}
+        onClose={() => setBillingBlock(null)}
+      />
     </div>
   );
 }

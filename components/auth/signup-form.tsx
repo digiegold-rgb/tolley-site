@@ -179,15 +179,7 @@ export function SignupForm({ claimSlug }: SignupFormProps = {}) {
         {status === "loading" ? "Creating..." : "Create Account"}
       </button>
 
-      <p className="pt-1 text-center text-xs text-white/60">
-        Already have an account?{" "}
-        <Link
-          href={`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`}
-          className="text-violet-200 transition hover:text-white"
-        >
-          Sign in
-        </Link>
-      </p>
+      {/* "Already have an account? Sign in" is rendered once by AuthShell (audit AN-12). */}
     </form>
   );
 }

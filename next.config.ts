@@ -39,7 +39,15 @@ const securityHeaders = [
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=(self), interest-cohort=()",
   },
-  { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
+  // CSP_ENFORCE=1 (Vercel env) promotes the policy to enforcing; unset = report-only.
+  // Rollback = flip the env var + redeploy, no code change (overhaul 2026-08-15).
+  {
+    key:
+      process.env.CSP_ENFORCE === "1"
+        ? "Content-Security-Policy"
+        : "Content-Security-Policy-Report-Only",
+    value: cspReportOnly,
+  },
 ];
 
 const nextConfig: NextConfig = {
@@ -64,7 +72,21 @@ const nextConfig: NextConfig = {
       // X-Frame-Options: DENY would blank it. Last matching key wins.
       {
         source: "/api/vater/rules",
-        headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }],
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          // Same story for CSP: the global frame-ancestors 'none' would block the
+          // same-origin iframe once CSP_ENFORCE=1 (audit AN-10, 2026-08-15).
+          {
+            key:
+              process.env.CSP_ENFORCE === "1"
+                ? "Content-Security-Policy"
+                : "Content-Security-Policy-Report-Only",
+            value: cspReportOnly.replace(
+              "frame-ancestors 'none'",
+              "frame-ancestors 'self'",
+            ),
+          },
+        ],
       },
     ];
   },

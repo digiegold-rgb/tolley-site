@@ -55,7 +55,7 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
           <h4>W/D (7d)</h4>
           <div className="val" style={{ fontSize: 15 }}>
             {usd(week.wdRevenue)}{" "}
-            <span style={{ fontSize: 11, fontWeight: 600, color: "#6e6e73" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--hq-ink-2)" }}>
               · {week.wdPayments} pmts
             </span>
           </div>
@@ -64,7 +64,7 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
           <h4>Invoices (7d)</h4>
           <div className="val" style={{ fontSize: 15 }}>
             {usd(week.invoiceRevenue)}{" "}
-            <span style={{ fontSize: 11, fontWeight: 600, color: "#6e6e73" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--hq-ink-2)" }}>
               · {week.invoicePayments} pmts
             </span>
           </div>
@@ -78,7 +78,7 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
             <h4>Animate Studio (mo)</h4>
             <div className="val" style={{ fontSize: 15 }}>
               {usd(money.animate.monthRevenue)}{" "}
-              <span style={{ fontSize: 11, fontWeight: 600, color: "#6e6e73" }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--hq-ink-2)" }}>
                 · {money.animate.monthActions} renders · {money.animate.videoOfferClients} video client
                 {money.animate.videoOfferClients === 1 ? "" : "s"}
               </span>
@@ -97,7 +97,7 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
           <div style={{ fontWeight: 700, fontSize: 14 }}>
             Washer/Dryer{" "}
-            <span style={{ fontWeight: 600, fontSize: 12, color: "#6e6e73" }}>
+            <span style={{ fontWeight: 600, fontSize: 12, color: "var(--hq-ink-2)" }}>
               {wd.pastDue.length} past due ({usd(wd.pastDueTotal)} behind) · {wd.pendingApproval.length} pending
               approval · {wd.draftCount} message draft{wd.draftCount === 1 ? "" : "s"}
             </span>
@@ -126,7 +126,7 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
               <span style={{ fontSize: 12, fontWeight: 700, color: "#b91c1c" }}>
                 {usd(c.amountBehind)} behind
               </span>
-              <span style={{ fontSize: 11, color: "#6e6e73" }}>
+              <span style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>
                 {c.missedCount} missed · ${c.unitCost}/mo
               </span>
               {c.dunningStage > 0 && (
@@ -157,7 +157,7 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
               style={{ display: "flex", alignItems: "center", gap: 8, borderTop: "1px solid #eef0f2", padding: "7px 0", textDecoration: "none", color: "inherit", flexWrap: "wrap" }}
             >
               <span style={{ fontSize: 12, fontWeight: 700, minWidth: 140 }}>{c.name}</span>
-              <span style={{ fontSize: 11, color: "#6e6e73" }}>
+              <span style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>
                 ${c.unitCost}/mo · signed up {shortDate(c.createdAt)}
               </span>
               <span style={{ marginLeft: "auto", fontSize: 11, color: "#4472c4", fontWeight: 600 }}>
@@ -176,7 +176,7 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
           style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", textDecoration: "none", color: "inherit" }}
         >
           <span className="pill pill-status-draft">{wd.draftCount} draft{wd.draftCount === 1 ? "" : "s"}</span>
-          <span style={{ fontSize: 12, color: "#6e6e73" }}>
+          <span style={{ fontSize: 12, color: "var(--hq-ink-2)" }}>
             reminders, dunning + AI replies awaiting 1-tap send
           </span>
           <span style={{ marginLeft: "auto", fontSize: 11, color: "#4472c4", fontWeight: 600 }}>
@@ -190,7 +190,7 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
           <div style={{ fontWeight: 700, fontSize: 14 }}>
             Open invoices{" "}
-            <span style={{ fontWeight: 600, fontSize: 12, color: "#6e6e73" }}>
+            <span style={{ fontWeight: 600, fontSize: 12, color: "var(--hq-ink-2)" }}>
               {invoices.open.length} open · {usd(invoices.totalDue)} due
               {invoices.overdueDue > 0 ? ` · ${usd(invoices.overdueDue)} overdue` : ""}
             </span>
@@ -216,7 +216,7 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
                 style={{
                   fontSize: 11,
                   fontWeight: inv.isOverdue ? 700 : 400,
-                  color: inv.isOverdue ? "#b91c1c" : "#6e6e73",
+                  color: inv.isOverdue ? "#b91c1c" : "var(--hq-ink-2)",
                 }}
               >
                 due {shortDate(inv.dueDate)}

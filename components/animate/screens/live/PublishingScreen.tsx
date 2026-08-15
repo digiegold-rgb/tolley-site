@@ -25,6 +25,7 @@
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
+import { useTier } from '../../tier-context';
 import { VCard, VBtn } from '../../primitives';
 import { SectionTitle, EmptyState, ErrorBar, SkeletonRows } from './AutopilotScreen';
 
@@ -87,6 +88,11 @@ interface SocialAccountsResp {
 
 export function PublishingScreen(): React.ReactElement {
   const { t } = useTheme();
+  // /api/content/posts is site-admin only. For everyone else the queue card
+  // rendered a permanent "contact admin" error; hide it instead. Connected
+  // accounts and per-project publishing stay available to all users.
+  const { capabilities } = useTier();
+  const showQueue = capabilities.publishingPosts;
   const [posts, setPosts] = React.useState<ContentPost[]>([]);
   const [postsErr, setPostsErr] = React.useState<string | null>(null);
   const [postsLoading, setPostsLoading] = React.useState(true);
@@ -96,6 +102,11 @@ export function PublishingScreen(): React.ReactElement {
   const [retryingId, setRetryingId] = React.useState<string | null>(null);
 
   const loadPosts = React.useCallback(async () => {
+    if (!showQueue) {
+      setPosts([]);
+      setPostsLoading(false);
+      return;
+    }
     setPostsLoading(true);
     try {
       const url = new URL('/api/content/posts', window.location.origin);
@@ -115,7 +126,7 @@ export function PublishingScreen(): React.ReactElement {
     } finally {
       setPostsLoading(false);
     }
-  }, []);
+  }, [showQueue]);
 
   const loadAccounts = React.useCallback(async () => {
     try {
@@ -232,18 +243,21 @@ export function PublishingScreen(): React.ReactElement {
                 <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 4 }}>
                   {connected ? acc?.displayName ?? 'connected' : 'not connected'}
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                  <Pill label="Pending" value={c.pending} color={JELLY_TOKENS.accent} />
-                  <Pill label="Posted" value={c.posted} color={JELLY_TOKENS.success} />
-                  <Pill label="Failed" value={c.failed} color={JELLY_TOKENS.error} />
-                </div>
+                {showQueue && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                    <Pill label="Pending" value={c.pending} color={JELLY_TOKENS.accent} />
+                    <Pill label="Posted" value={c.posted} color={JELLY_TOKENS.success} />
+                    <Pill label="Failed" value={c.failed} color={JELLY_TOKENS.error} />
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       </VCard>
 
-      {/* Queue list */}
+      {/* Queue list — site-admin content calendar only. */}
+      {showQueue && (
       <VCard>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <SectionTitle icon="history" title="Publishing queue" sub="Newest first; deduped by /api/content/posts." />
@@ -299,6 +313,7 @@ export function PublishingScreen(): React.ReactElement {
           </div>
         )}
       </VCard>
+      )}
     </div>
   );
 }

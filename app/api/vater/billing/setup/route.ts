@@ -61,8 +61,10 @@ export async function POST(request: Request) {
     mode: "setup",
     customer: customerId,
     payment_method_types: ["card"],
-    success_url: `${origin}/animate?card_added=1&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/animate?screen=pricing`,
+    // The /animate shell is a hash router — without #r=pricing Stripe drops
+    // the user on the Dashboard with no sign the card was saved.
+    success_url: `${origin}/animate?card_added=1&session_id={CHECKOUT_SESSION_ID}#r=pricing`,
+    cancel_url: `${origin}/animate?card_cancelled=1#r=pricing`,
     metadata: {
       userId,
       product: VATER_PRODUCT_METADATA,

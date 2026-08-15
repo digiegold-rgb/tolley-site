@@ -1,12 +1,38 @@
 /* ─── Growth HQ — same Apple Numbers / macOS aesthetic as WD Admin ─── */
 
 .hq-admin {
+  /* ── Palette ──────────────────────────────────────────────────────────
+     One home for the greys and status colors that used to be pasted as raw
+     hex into every component. Change a shade here, not in 300 places.
+     Components use these via `var(--hq-…)` in style objects; the one place
+     they can't is an SVG presentation attribute (fill=/stroke=), where
+     var() isn't reliably supported — those keep a named JS constant. */
+  --hq-ink-2: #6e6e73;   /* secondary text: labels, captions, meta */
+  --hq-ink-3: #8e8e93;   /* tertiary text: placeholders, disabled */
+  --hq-border: #d1d1d6;  /* input + control borders */
+  --hq-line: #e5e5ea;    /* hairline dividers, inactive chip fill */
+  --hq-red: #b3261e;     /* error / overdue */
+  --hq-green: #0a7d32;   /* success / paid */
+  --hq-amber: #8a5300;   /* warning / pending */
+  --hq-blue: #0071e3;    /* links + primary accent */
+  --hq-teal: #2dd4a7;    /* live / healthy signal */
+  --hq-navy: #1e2733;    /* dark chrome on light panels */
+
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 12px;
   line-height: 1.4;
   background: #f5f5f7;
   color: #1a1a1a;
   min-height: 100vh;
+}
+
+/* Page body wrapper (was an inline padding style on the /hq content div). */
+.hq-admin .hq-content {
+  padding: 12px 16px;
+  min-width: 0;
+}
+@media (max-width: 768px) {
+  .hq-admin .hq-content { padding: 10px 12px; }
 }
 
 /* ─── Top Bar ─── */
@@ -37,40 +63,196 @@
   flex-wrap: wrap;
 }
 
+/* Health pills live inside .topbar, which sets color:#fff for the dark bar.
+   A pill paints its own white background, so it MUST restate its ink or the
+   label renders white-on-white and vanishes (HQ-01). Shared class so the next
+   pill someone adds inherits the fix instead of repeating the bug. */
+.hq-admin .topbar-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--hq-border);
+  border-radius: 999px;
+  background: #fff;
+  color: #1a1a1a;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 /* ─── Tab Bar ─── */
-/* wrap, don't spill — 14 tabs at ~70px each is 1170px of buttons, and without
-   this the whole document is that wide on a phone. */
+/* 20+ tabs at ~70-130px each is well past 1280px of buttons. The strip scrolls
+   sideways inside itself (with a fade at each edge so a cut-off pill reads as
+   "there's more") rather than widening the document; below 768px it wraps
+   instead, because a horizontal scroll strip under a thumb fights the page.
+   The Docs dropdown and the offer filter live OUTSIDE the scroller — an
+   overflow container would clip the open popover. */
 .hq-admin .tab-bar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 12px;
   padding: 4px 0;
+  min-width: 0;
+}
+.hq-admin .tab-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  padding-bottom: 2px;
+  /* The 12px fade zones are made of padding, and the negative left margin pulls
+     the strip back so the first pill still lines up with the page gutter. At
+     rest the fade therefore covers only empty padding — it never washes out an
+     end pill — and once the strip scrolls, pills pass under it. */
+  padding-left: 12px;
+  margin-left: -12px;
+  padding-right: 12px;
+  -webkit-mask-image: linear-gradient(
+    90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%
+  );
+}
+.hq-admin .tab-bar-end {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  position: relative;
+}
+/* Subtle group divider between Ops | Growth | Content. */
+.hq-admin .tab-sep {
+  flex: 0 0 auto;
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 2px;
+  background: var(--hq-border);
+  border-radius: 1px;
 }
 .hq-admin .tab-btn {
   padding: 6px 16px;
   border: none;
-  background: #e5e5ea;
+  background: var(--hq-line);
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
   border-radius: 20px;
   color: #1a1a1a;
   transition: all 0.2s ease;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 .hq-admin .tab-btn:hover {
-  background: #d1d1d6;
+  background: var(--hq-border);
 }
 .hq-admin .tab-btn.active {
   background: linear-gradient(135deg, #4472c4, #3a63af);
   color: #fff;
   box-shadow: 0 2px 6px rgba(68, 114, 196, 0.3);
 }
+/* Per-tab active tints (were inline gradients in page.tsx). */
+.hq-admin .tab-btn.tab-empire.active {
+  background: linear-gradient(135deg, #0f766e, #134e4a);
+  box-shadow: 0 2px 6px rgba(15, 118, 110, 0.35);
+}
+.hq-admin .tab-btn.tab-must.active {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.3);
+}
+.hq-admin .tab-btn.tab-bk.active {
+  background: linear-gradient(135deg, #0a2540, var(--hq-blue));
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0, 113, 227, 0.35);
+}
+.hq-admin a.tab-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ─── Docs dropdown (static PDFs — read-once briefs, not dashboard views) ─── */
+.hq-admin .tab-docs {
+  position: relative;
+}
+/* A <summary> is display:list-item by default — force the pill shape so it
+   matches the tab buttons beside it, and kill both marker renderings. */
+.hq-admin .tab-docs > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.hq-admin .tab-docs > summary::-webkit-details-marker { display: none; }
+.hq-admin .tab-docs[open] > summary {
+  background: var(--hq-navy);
+  color: #fff;
+}
+.hq-admin .tab-docs-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  min-width: 240px;
+  background: #fff;
+  border: 1px solid var(--hq-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hq-admin .tab-docs-menu a {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a1a1a;
+  text-decoration: none;
+}
+.hq-admin .tab-docs-menu a:hover { background: #f0f0f5; }
+.hq-admin .tab-docs-menu .doc-sub {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--hq-ink-2);
+  margin-top: 1px;
+}
+
+@media (max-width: 768px) {
+  .hq-admin .tab-bar { flex-wrap: wrap; align-items: flex-start; }
+  .hq-admin .tab-strip {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    overflow-x: visible;
+    padding-left: 0;
+    margin-left: 0;
+    padding-right: 0;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .hq-admin .tab-sep { display: none; }
+  .hq-admin .tab-bar-end { flex: 1 1 100%; }
+  .hq-admin .tab-docs-menu { right: auto; left: 0; }
+}
 
 /* ─── Buttons ─── */
 .hq-admin .btn {
   padding: 6px 14px;
-  border: 1px solid #d1d1d6;
+  border: 1px solid var(--hq-border);
   border-radius: 8px;
   cursor: pointer;
   font-size: 12px;
@@ -130,7 +312,7 @@
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #6e6e73;
+  color: var(--hq-ink-2);
   font-weight: 600;
 }
 .hq-admin .stat-card .val {
@@ -143,11 +325,54 @@
 .hq-admin .stat-card.accent-purple { border-left-color: #7c3aed; }
 .hq-admin .stat-card.accent-gray { border-left-color: #9ca3af; }
 
+/* ─── Inbound board (HQ-04) ───
+   Was `repeat(auto-fit, minmax(280px, 1fr))`, whose 280px floor is a hard
+   minimum: once a card's intrinsic content was wider, the three columns stopped
+   fitting and pushed the whole page sideways at 1024px. `minmax(0, 1fr)` lets a
+   column shrink and the card wrap instead. Each column scrolls in its own box
+   so one busy status can't stretch the page; below 1100px they stack, where a
+   capped column would just be a scroll trap. */
+.hq-admin .inbound-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+.hq-admin .inbound-col {
+  min-width: 0;
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding-right: 2px;
+}
+.hq-admin .inbound-col-head {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #5f6368;
+  margin-bottom: 8px;
+  position: sticky;
+  top: 0;
+  background: #f5f5f7;
+  padding: 2px 0 6px;
+  z-index: 1;
+}
+@media (max-width: 1100px) {
+  .hq-admin .inbound-board { grid-template-columns: 1fr; }
+  .hq-admin .inbound-col { max-height: none; overflow-y: visible; }
+}
+
 /* ─── Pipeline Board ─── */
+/* The board is the one intentionally-wide thing on the page. It scrolls inside
+   its own box — `max-width` + `overscroll-behavior` keep that swipe from
+   chaining out and dragging the whole document sideways on a phone. */
 .hq-admin .board {
   display: flex;
   gap: 10px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  max-width: 100%;
   align-items: flex-start;
   padding-bottom: 12px;
 }
@@ -167,11 +392,11 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  color: #6e6e73;
+  color: var(--hq-ink-2);
   padding: 2px 4px 8px;
 }
 .hq-admin .board-col-count {
-  background: #d1d1d6;
+  background: var(--hq-border);
   color: #3a3a3c;
   border-radius: 10px;
   padding: 0 7px;
@@ -220,7 +445,7 @@
 }
 .hq-admin .lead-card .lead-note {
   font-size: 11px;
-  color: #6e6e73;
+  color: var(--hq-ink-2);
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -314,7 +539,7 @@
 .hq-admin .drawer textarea {
   width: 100%;
   padding: 6px 10px;
-  border: 1px solid #d1d1d6;
+  border: 1px solid var(--hq-border);
   border-radius: 8px;
   font-size: 13px;
   font-family: inherit;
@@ -429,4 +654,43 @@
   .hq-admin .empire-island .empire-dot-pulse,
   .hq-admin .empire-island .empire-dot-breathe,
   .hq-admin .empire-island .empire-flash { animation: none; }
+}
+
+/* ─── Phones (≤768px) / small phones (≤430px) ─────────────────────────────
+   The drawer becomes a full sheet (a 420px panel on a 390px screen is a
+   sliver of context plus a sliver of page), stat cards go two-up instead of
+   one-per-row, and the board columns narrow so two are reachable per swipe. */
+@media (max-width: 768px) {
+  .hq-admin .drawer {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0;
+  }
+  .hq-admin .drawer .field-grid {
+    grid-template-columns: 1fr;
+  }
+  .hq-admin .board-cards {
+    max-height: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .hq-admin .stat-row {
+    gap: 8px;
+  }
+  .hq-admin .stat-card {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    padding: 8px 10px;
+  }
+  .hq-admin .stat-card .val {
+    font-size: 17px;
+  }
+  .hq-admin .board-col {
+    min-width: 200px;
+    width: 200px;
+  }
+  .hq-admin .topbar {
+    padding: 8px 12px;
+  }
 }

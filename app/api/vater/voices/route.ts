@@ -12,10 +12,13 @@ import {
   autopilot,
   AutopilotError,
 } from "@/lib/vater/autopilot-client";
-import { requireVaterProxyAuth } from "@/lib/vater/proxy-auth";
+import {
+  requireVaterProxyAuth,
+  requireVaterProxyRead,
+} from "@/lib/vater/proxy-auth";
 
 export async function GET(req: NextRequest) {
-  const gate = await requireVaterProxyAuth(req);
+  const gate = await requireVaterProxyRead(req);
   if (!gate.ok) return gate.response;
   try {
     const voices = await autopilot.getVoices();

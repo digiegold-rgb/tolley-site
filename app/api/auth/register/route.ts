@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
+import { rateLimitByIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -18,8 +19,13 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+// Rate limited to 5/hr per IP: signup is a public write that also runs a
+// (deliberately slow) password hash, so it is both a spam and a CPU target.
 export async function POST(request: Request) {
   try {
+    const limited = await rateLimitByIp(request, "auth:register", 5, 3600);
+    if (limited) return limited;
+
     const payload = (await request.json()) as RegisterPayload;
     const email = typeof payload.email === "string" ? normalizeEmail(payload.email) : "";
     const password = typeof payload.password === "string" ? payload.password : "";

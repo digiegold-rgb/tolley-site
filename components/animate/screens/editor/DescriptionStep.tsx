@@ -12,10 +12,18 @@ import { JELLY_TOKENS, SECTION_PRICES } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VBtn, VCard, VInput, SectionHeader } from '../../primitives';
 import type { EditorStepProps } from './ProjectShell';
+import {
+  BillingBlockModal,
+  BillingBlockedError,
+  assertOk,
+  type BillingBlockReason,
+} from './BillingBlock';
 
 export function DescriptionStep({ projectId, project, refresh }: EditorStepProps): React.ReactElement {
   const { t } = useTheme();
   const [title, setTitle] = React.useState(project?.sourceTitle ?? '');
+  // 402 from a generation route → actionable modal, not a raw error string.
+  const [billingBlock, setBillingBlock] = React.useState<BillingBlockReason | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [generated, setGenerated] = React.useState<{ description: string; tags: string[]; hashtags: string[] } | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -28,7 +36,7 @@ export function DescriptionStep({ projectId, project, refresh }: EditorStepProps
     setError(null);
     try {
       const res = await fetch(`/api/vater/youtube/${projectId}/social-metadata?platform=youtube`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await assertOk(res);
       const data = await res.json();
       setGenerated({
         description: data.description ?? '',
@@ -36,7 +44,11 @@ export function DescriptionStep({ projectId, project, refresh }: EditorStepProps
         hashtags: data.hashtags ?? [],
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'failed');
+      if (err instanceof BillingBlockedError) {
+        setBillingBlock(err.reason);
+      } else {
+        setError(err instanceof Error ? err.message : 'failed');
+      }
     } finally {
       setBusy(false);
     }
@@ -94,6 +106,10 @@ export function DescriptionStep({ projectId, project, refresh }: EditorStepProps
           )}
         </VCard>
       )}
+      <BillingBlockModal
+        reason={billingBlock}
+        onClose={() => setBillingBlock(null)}
+      />
     </div>
   );
 }

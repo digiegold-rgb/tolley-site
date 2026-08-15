@@ -26,3 +26,28 @@ export async function requireVaterProxyAuth(req: Request): Promise<
     response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
   };
 }
+
+/**
+ * Read-only variant of the gate above.
+ *
+ * The write bar (studio tier) was also blocking READS, which broke the
+ * public golden path: StyleWizardModal fetches /api/vater/voices and a
+ * customer got 401, so they could never create a style — and therefore
+ * never create a project. These catalogs (voices, styles, sfx, pipeline
+ * status) are product metadata, not owner data, so any signed-in user may
+ * read them. POST/PUT/DELETE still require requireVaterProxyAuth.
+ */
+export async function requireVaterProxyRead(req: Request): Promise<
+  { ok: true } | { ok: false; response: NextResponse }
+> {
+  const sync = req.headers.get("x-sync-secret");
+  if (sync && secretEquals(sync, process.env.SYNC_SECRET)) return { ok: true };
+
+  const session = await auth();
+  if (session?.user?.id) return { ok: true };
+
+  return {
+    ok: false,
+    response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+  };
+}

@@ -53,11 +53,7 @@ export function HqEngineStatus() {
       <button
         onClick={() => setOpen((o) => !o)}
         title="Lead engine health — click for detail"
-        style={{
-          display: "flex", alignItems: "center", gap: 6, padding: "4px 10px",
-          border: "1px solid #d1d1d6", borderRadius: 999, background: "#fff",
-          fontSize: 12, cursor: "pointer", whiteSpace: "nowrap",
-        }}
+        className="topbar-pill"
       >
         <span style={{
           width: 8, height: 8, borderRadius: "50%", background: COLOR[status],
@@ -72,7 +68,7 @@ export function HqEngineStatus() {
       {open && (
         <div style={{
           position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 50,
-          width: 280, background: "#fff", border: "1px solid #d1d1d6", borderRadius: 10,
+          width: 280, background: "#fff", border: "1px solid var(--hq-border)", borderRadius: 10,
           boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: 12, fontSize: 12.5, color: "#1f2328",
         }}>
           <div style={{ fontWeight: 600, marginBottom: 8 }}>Monday-digest engine</div>

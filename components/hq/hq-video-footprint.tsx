@@ -123,15 +123,15 @@ export function HqVideoFootprint() {
 
   if (error) {
     return (
-      <div style={{ fontSize: 12, color: "#b3261e", marginBottom: 22 }}>
+      <div style={{ fontSize: 12, color: "var(--hq-red)", marginBottom: 22 }}>
         Disk footprint unavailable: {error}
       </div>
     );
   }
-  if (!data) return null;
+  if (!data) return <div style={{ fontSize: 12, color: "var(--hq-ink-3)", marginBottom: 22 }}>Loading disk footprint…</div>;
   if (data.pending) {
     return (
-      <div style={{ padding: 14, marginBottom: 22, fontSize: 13, color: "#6e6e73", border: "1px dashed #d1d1d6", borderRadius: 10 }}>
+      <div style={{ padding: 14, marginBottom: 22, fontSize: 13, color: "var(--hq-ink-2)", border: "1px dashed var(--hq-border)", borderRadius: 10 }}>
         No disk footprint yet — the nightly scan (<code>video-disk-footprint.py --push</code>) has not run.
       </div>
     );
@@ -144,7 +144,7 @@ export function HqVideoFootprint() {
 
   return (
     <div style={{ marginBottom: 28 }}>
-      <h3 style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "#6e6e73", margin: "0 0 10px" }}>
+      <h3 style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--hq-ink-2)", margin: "0 0 10px" }}>
         Local footprint &amp; self-hosting savings
       </h3>
 
@@ -158,31 +158,31 @@ export function HqVideoFootprint() {
       >
         <div>
           <div style={{ fontSize: 26, fontWeight: 600, letterSpacing: -0.5 }}>{size(t.bytesAll)}</div>
-          <div style={{ fontSize: 11, color: "#6e6e73" }}>
+          <div style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>
             total on disk · {t.filesAll.toLocaleString()} files · {t.videosAll} videos
           </div>
           {/* The headline is NOT "how much video we generated" — most of the
               bytes are downloaded source audio the pipelines consume. */}
-          <div style={{ fontSize: 11, color: "#8e8e93", marginTop: 2 }}>
+          <div style={{ fontSize: 11, color: "var(--hq-ink-3)", marginTop: 2 }}>
             {size(t.genBytesAll)} generated · {size(t.sourceBytesAll)} downloaded source
           </div>
         </div>
         <div>
           <div style={{ fontSize: 17, fontWeight: 600 }}>{size(t.bytes30)}</div>
-          <div style={{ fontSize: 11, color: "#6e6e73" }}>
+          <div style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>
             written in {data.windowDays}d
             {grew !== null && (
-              <span style={{ color: grew > 0 ? "#b3261e" : "#1a7f37" }}>
+              <span style={{ color: grew > 0 ? "var(--hq-red)" : "#1a7f37" }}>
                 {" "}· {grew > 0 ? "+" : ""}{size(Math.abs(grew))} vs 30d ago
               </span>
             )}
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 17, fontWeight: 600, color: data.invisible.count ? "#b3261e" : "#1a7f37" }}>
+          <div style={{ fontSize: 17, fontWeight: 600, color: data.invisible.count ? "var(--hq-red)" : "#1a7f37" }}>
             {data.invisible.count}
           </div>
-          <div style={{ fontSize: 11, color: "#6e6e73" }}>
+          <div style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>
             renders with no ledger row · {size(data.invisible.bytes)}
           </div>
         </div>
@@ -191,7 +191,7 @@ export function HqVideoFootprint() {
             <div style={{ fontSize: 22, fontWeight: 700, color: "#1a7f37", letterSpacing: -0.4 }}>
               {money(s.maxSavings)}
             </div>
-            <div style={{ fontSize: 11, color: "#6e6e73" }}>max saved/mo vs commercial</div>
+            <div style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>max saved/mo vs commercial</div>
           </div>
         )}
       </div>
@@ -199,7 +199,7 @@ export function HqVideoFootprint() {
       {/* ── where the bytes are ── */}
       <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16 }}>
         <thead>
-          <tr style={{ borderBottom: "1px solid #e5e5ea", color: "#6e6e73", fontSize: 11 }}>
+          <tr style={{ borderBottom: "1px solid var(--hq-line)", color: "var(--hq-ink-2)", fontSize: 11 }}>
             <th style={{ ...CELL, textAlign: "left" }}>Location</th>
             <th style={NUM}>Files {data.windowDays}d</th>
             <th style={NUM}>Size {data.windowDays}d</th>
@@ -213,14 +213,14 @@ export function HqVideoFootprint() {
             .sort((a, b) => b.bytes_all - a.bytes_all)
             .map((r) => (
               <tr key={r.label} style={{ borderBottom: "1px solid #f2f2f7" }}>
-                <td style={{ ...CELL, color: r.temp ? "#8e8e93" : undefined }}>
+                <td style={{ ...CELL, color: r.temp ? "var(--hq-ink-3)" : undefined }}>
                   {r.label}
                   {r.temp && <span style={{ fontSize: 10, marginLeft: 6 }}>scratch</span>}
                 </td>
                 <td style={NUM}>{r.files_30.toLocaleString()}</td>
                 <td style={NUM}>{size(r.bytes_30)}</td>
                 <td style={NUM}>{size(r.bytes_all)}</td>
-                <td style={{ ...NUM, color: r.invisible ? "#b3261e" : "#c7c7cc" }}>
+                <td style={{ ...NUM, color: r.invisible ? "var(--hq-red)" : "#c7c7cc" }}>
                   {r.invisible || "—"}
                 </td>
               </tr>
@@ -231,7 +231,7 @@ export function HqVideoFootprint() {
       {/* ── savings comparison ── */}
       {s && !s.error && s.tiers?.length > 0 && (
         <>
-          <div style={{ fontSize: 11, color: "#6e6e73", marginBottom: 6 }}>
+          <div style={{ fontSize: 11, color: "var(--hq-ink-2)", marginBottom: 6 }}>
             {s.videos} videos · {s.clipsLogged.toLocaleString()} logged clips ÷{" "}
             {(s.visibility * 100).toFixed(0)}% ledger visibility ={" "}
             <strong>{s.attempts.toLocaleString()} true attempts</strong> — commercial APIs bill
@@ -239,7 +239,7 @@ export function HqVideoFootprint() {
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid #e5e5ea", color: "#6e6e73", fontSize: 11 }}>
+              <tr style={{ borderBottom: "1px solid var(--hq-line)", color: "var(--hq-ink-2)", fontSize: 11 }}>
                 <th style={{ ...CELL, textAlign: "left" }}>Tier / Provider</th>
                 <th style={NUM}>Rate/clip</th>
                 <th style={NUM}>Would have paid</th>
@@ -256,7 +256,7 @@ export function HqVideoFootprint() {
                     <td style={CELL}>{r.tier}</td>
                     <td style={NUM}>${r.rate.toFixed(2)}</td>
                     <td style={NUM}>{money(r.total)}</td>
-                    <td style={{ ...NUM, color: "#6e6e73" }}>{money(r.ours)}</td>
+                    <td style={{ ...NUM, color: "var(--hq-ink-2)" }}>{money(r.ours)}</td>
                     <td style={{ ...NUM, fontWeight: 600, color: "#1a7f37" }}>{money(r.savings)}</td>
                   </tr>
                 ))}
@@ -296,7 +296,7 @@ export function HqVideoFootprint() {
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid #e5e5ea", color: "#6e6e73", fontSize: 11 }}>
+                  <tr style={{ borderBottom: "1px solid var(--hq-line)", color: "var(--hq-ink-2)", fontSize: 11 }}>
                     <th style={{ ...CELL, textAlign: "left" }}>Pipeline step</th>
                     <th style={NUM}>We pay</th>
                     <th style={NUM}>Rented</th>
@@ -309,20 +309,20 @@ export function HqVideoFootprint() {
                     .sort((a, b) => b.saved - a.saved)
                     .map((r) => (
                       <tr key={r.step} style={{ borderBottom: "1px solid #f2f2f7" }}>
-                        <td style={{ ...CELL, color: r.saved === 0 ? "#8e8e93" : undefined }}>
+                        <td style={{ ...CELL, color: r.saved === 0 ? "var(--hq-ink-3)" : undefined }}>
                           {r.step}
                           {r.saved === 0 && (
                             <span style={{ fontSize: 10, marginLeft: 6 }}>already rented</span>
                           )}
                         </td>
-                        <td style={{ ...NUM, color: "#6e6e73" }}>{money(r.ours)}</td>
+                        <td style={{ ...NUM, color: "var(--hq-ink-2)" }}>{money(r.ours)}</td>
                         <td style={NUM}>{money(r.theirs)}</td>
                         <td style={{ ...NUM, fontWeight: 600, color: r.saved ? "#1a7f37" : "#c7c7cc" }}>
                           {r.saved ? money(r.saved) : "—"}
                         </td>
                       </tr>
                     ))}
-                  <tr style={{ borderTop: "2px solid #e5e5ea", fontWeight: 700 }}>
+                  <tr style={{ borderTop: "2px solid var(--hq-line)", fontWeight: 700 }}>
                     <td style={CELL}>Total / month</td>
                     <td style={NUM}>{money(fs.ourSpend)}</td>
                     <td style={NUM}>{money(fs.rentedCost)}</td>
@@ -330,7 +330,7 @@ export function HqVideoFootprint() {
                   </tr>
                 </tbody>
               </table>
-              <div style={{ fontSize: 11, color: "#6e6e73", marginTop: 6 }}>
+              <div style={{ fontSize: 11, color: "var(--hq-ink-2)", marginTop: 6 }}>
                 Renting the whole stack costs <strong>{fs.multiple}×</strong> what we pay
                 {fs.llmTokens && (
                   <>
@@ -346,7 +346,7 @@ export function HqVideoFootprint() {
             </div>
           )}
 
-          <div style={{ fontSize: 11, color: "#6e6e73", marginTop: 8 }}>
+          <div style={{ fontSize: 11, color: "var(--hq-ink-2)", marginTop: 8 }}>
             Our figure is billed Modal cash <em>including</em> the overhead row (retries, cold
             starts, experiments) — excluding it would flatter the savings, since the attempts
             number already assumes those runs happened. It still excludes DGX hardware
@@ -357,7 +357,7 @@ export function HqVideoFootprint() {
         </>
       )}
 
-      <div style={{ fontSize: 10, color: "#8e8e93", marginTop: 10 }}>
+      <div style={{ fontSize: 10, color: "var(--hq-ink-3)", marginTop: 10 }}>
         Scanned {new Date(data.collectedAt).toLocaleString("en-US", { timeZone: "America/Chicago" })} ·
         compared against {data.ledgerKeys} ledger rows
       </div>

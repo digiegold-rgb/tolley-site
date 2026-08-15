@@ -168,3 +168,21 @@ export async function readApiError(res: Response, fallback: string): Promise<str
   }
   return `${fallback} (HTTP ${res.status})`;
 }
+
+/**
+ * True only for values safe to hand to an <a href> / <img src> that opens in a
+ * new tab. Everything in these tables is machine-written (scrapers, Messenger
+ * payloads, the DGX), so a field typed `string | null` can still arrive as ""
+ * or "n/a" — and a `javascript:` or `data:` value would be an injected link
+ * rendered with the operator's session. Anchors are gated on this; anything
+ * else renders as plain text.
+ */
+export function isHttpUrl(value: unknown): value is string {
+  if (typeof value !== "string" || !value.trim()) return false;
+  try {
+    const { protocol } = new URL(value.trim());
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}

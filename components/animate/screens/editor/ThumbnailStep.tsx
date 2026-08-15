@@ -16,6 +16,12 @@ import { JELLY_TOKENS, SECTION_PRICES } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { VBtn, VCard, SectionHeader } from '../../primitives';
 import type { EditorStepProps } from './ProjectShell';
+import {
+  BillingBlockModal,
+  BillingBlockedError,
+  assertOk,
+  type BillingBlockReason,
+} from './BillingBlock';
 
 const COST_PER_PAIR = 175;
 
@@ -23,6 +29,8 @@ export function ThumbnailStep({ projectId, project, refresh }: EditorStepProps):
   const { t } = useTheme();
   const { openProjectInVideoEditor } = useRoute();
   const [mode, setMode] = React.useState<'auto' | 'manual'>('auto');
+  // 402 from a generation route → actionable modal, not a raw error string.
+  const [billingBlock, setBillingBlock] = React.useState<BillingBlockReason | null>(null);
   const [count, setCount] = React.useState(2);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -39,10 +47,14 @@ export function ThumbnailStep({ projectId, project, refresh }: EditorStepProps):
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ count }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await assertOk(res);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'failed');
+      if (err instanceof BillingBlockedError) {
+        setBillingBlock(err.reason);
+      } else {
+        setError(err instanceof Error ? err.message : 'failed');
+      }
     } finally {
       setBusy(false);
     }
@@ -120,6 +132,10 @@ export function ThumbnailStep({ projectId, project, refresh }: EditorStepProps):
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
         </VCard>
       )}
+      <BillingBlockModal
+        reason={billingBlock}
+        onClose={() => setBillingBlock(null)}
+      />
     </div>
   );
 }

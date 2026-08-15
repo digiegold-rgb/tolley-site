@@ -269,7 +269,7 @@ export function HqEstates() {
       type={type}
       placeholder={placeholder}
       required={required}
-      style={{ padding: "6px 10px", border: "1px solid #d1d1d6", borderRadius: 8, fontSize: 13 }}
+      style={{ padding: "6px 10px", border: "1px solid var(--hq-border)", borderRadius: 8, fontSize: 13 }}
     />
   );
 
@@ -315,7 +315,7 @@ export function HqEstates() {
           return (
             <div
               key={sale.id}
-              style={{ border: "1px solid #e5e5ea", borderRadius: 10, padding: 12, marginBottom: 10 }}
+              style={{ border: "1px solid var(--hq-line)", borderRadius: 10, padding: 12, marginBottom: 10 }}
             >
               <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
                 <strong style={{ fontSize: 14 }}>{sale.title}</strong>
@@ -346,7 +346,7 @@ export function HqEstates() {
                 )}
               </div>
 
-              <div style={{ fontSize: 12, color: "#6e6e73", margin: "6px 0" }}>
+              <div style={{ fontSize: 12, color: "var(--hq-ink-2)", margin: "6px 0" }}>
                 {shortDateTime(sale.startsAt)} → {shortDateTime(sale.endsAt)} · {sale.photos.length}{" "}
                 photos · {sale._count.leads} linked leads
                 {sale.status !== "done" && (
@@ -403,7 +403,7 @@ export function HqEstates() {
               )}
 
               <details>
-                <summary style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#6e6e73" }}>
+                <summary style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", color: "var(--hq-ink-2)" }}>
                   Playbook checklist ({checked}/{ESTATE_CHECKLIST_ITEMS.length})
                 </summary>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 4, marginTop: 8 }}>
@@ -445,7 +445,7 @@ export function HqEstates() {
             {input("phone", "Phone")}
             {input("email", "Email", "email")}
             {input("address", "Property address")}
-            <select name="source" style={{ padding: "6px 10px", border: "1px solid #d1d1d6", borderRadius: 8, fontSize: 13 }}>
+            <select name="source" style={{ padding: "6px 10px", border: "1px solid var(--hq-border)", borderRadius: 8, fontSize: 13 }}>
               <option value="manual">manual</option>
               <option value="referral">referral</option>
               <option value="fb">fb</option>
@@ -463,22 +463,22 @@ export function HqEstates() {
             const inStage = leads.filter((l) => l.stage === stage);
             return (
               <div key={stage} style={{ minWidth: 190, flex: "0 0 190px" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#6e6e73", textTransform: "uppercase", marginBottom: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--hq-ink-2)", textTransform: "uppercase", marginBottom: 6 }}>
                   {STAGE_LABEL[stage]} ({inStage.length})
                 </div>
                 {inStage.map((lead) => (
-                  <div key={lead.id} style={{ border: "1px solid #e5e5ea", borderRadius: 8, padding: 8, marginBottom: 6, fontSize: 12 }}>
+                  <div key={lead.id} style={{ border: "1px solid var(--hq-line)", borderRadius: 8, padding: 8, marginBottom: 6, fontSize: 12 }}>
                     <strong>{lead.name}</strong>
-                    <div style={{ color: "#6e6e73" }}>
+                    <div style={{ color: "var(--hq-ink-2)" }}>
                       {[lead.phone, lead.email].filter(Boolean).join(" · ") || "no contact"}
                     </div>
-                    {lead.address && <div style={{ color: "#6e6e73" }}>{lead.address}</div>}
-                    <div style={{ color: "#6e6e73" }}>src: {lead.source}{lead.sale ? ` · ${lead.sale.slug}` : ""}</div>
+                    {lead.address && <div style={{ color: "var(--hq-ink-2)" }}>{lead.address}</div>}
+                    <div style={{ color: "var(--hq-ink-2)" }}>src: {lead.source}{lead.sale ? ` · ${lead.sale.slug}` : ""}</div>
                     <select
                       value={lead.stage}
                       disabled={busyId === lead.id}
                       onChange={(e) => patchLead(lead.id, { stage: e.target.value })}
-                      style={{ marginTop: 4, width: "100%", padding: "3px 6px", border: "1px solid #e5e5ea", borderRadius: 6, fontSize: 11 }}
+                      style={{ marginTop: 4, width: "100%", padding: "3px 6px", border: "1px solid var(--hq-line)", borderRadius: 6, fontSize: 11 }}
                     >
                       {ESTATE_LEAD_STAGES.map((s) => (
                         <option key={s} value={s}>{STAGE_LABEL[s]}</option>
@@ -496,7 +496,7 @@ export function HqEstates() {
       <div className="panel">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <strong style={{ fontSize: 14 }}>VIP email list</strong>
-          <span style={{ fontSize: 13, color: "#6e6e73" }}>
+          <span style={{ fontSize: 13, color: "var(--hq-ink-2)" }}>
             {vipCount == null ? "—" : `${vipCount} subscribers`} (2-touch policy: announcement + address only)
           </span>
           <button

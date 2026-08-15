@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { isHttpUrl } from "./types";
+
 /** Bitcoin Kids production command center — the DGX pushes a snapshot to
  *  /api/hq/bk; Jared steers from here (notes post back for the next render). */
 
@@ -45,8 +47,8 @@ type Production = {
 type Note = { id: string; text: string; area: string; at: string; done?: boolean };
 type Payload = { production: Production | null; pushedAt: string | null; notes: { items: Note[] } };
 
-const MUTED = "#6e6e73";
-const BORDER = "#e5e5ea";
+const MUTED = "var(--hq-ink-2)";
+const BORDER = "var(--hq-line)";
 const card: React.CSSProperties = {
   background: "#fff",
   border: `1px solid ${BORDER}`,
@@ -84,7 +86,7 @@ function Bar({ done, total, label }: { done: number; total: number; label: strin
         </strong>
       </div>
       <div style={{ height: 7, background: "#f0f0f2", borderRadius: 4, overflow: "hidden" }}>
-        <div style={{ width: `${pct}%`, height: "100%", background: pct === 100 ? "#0a7d32" : "#0071e3" }} />
+        <div style={{ width: `${pct}%`, height: "100%", background: pct === 100 ? "var(--hq-green)" : "var(--hq-blue)" }} />
       </div>
     </div>
   );
@@ -130,7 +132,7 @@ export function HqBk() {
     void load();
   }, [noteText, noteArea, data, load]);
 
-  if (error) return <div style={{ color: "#b3261e", padding: 20 }}>BK: {error}</div>;
+  if (error) return <div style={{ color: "var(--hq-red)", padding: 20 }}>BK: {error}</div>;
   if (!data) return <div style={{ padding: 20, color: MUTED }}>Loading production state…</div>;
 
   const p = data.production;
@@ -183,7 +185,7 @@ export function HqBk() {
           <h3 style={h}>Waiting on Jared</h3>
           <div style={{ ...card, background: "#fff4e5", borderColor: "#f0d9b5" }}>
             {p.blockers.map((b) => (
-              <div key={b} style={{ fontSize: 13, padding: "4px 0", color: "#8a5300" }}>
+              <div key={b} style={{ fontSize: 13, padding: "4px 0", color: "var(--hq-amber)" }}>
                 ⚠️ {b}
               </div>
             ))}
@@ -225,7 +227,7 @@ export function HqBk() {
         {p.story.top_atoms.map((a) => (
           <div key={a.id} style={{ padding: "9px 0", borderBottom: `1px solid ${BORDER}` }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 3 }}>
-              <span style={{ fontSize: 11, padding: "2px 7px", borderRadius: 20, background: "#e8f8ee", color: "#0a7d32" }}>{a.type}</span>
+              <span style={{ fontSize: 11, padding: "2px 7px", borderRadius: 20, background: "#e8f8ee", color: "var(--hq-green)" }}>{a.type}</span>
               <span style={{ fontSize: 11, color: MUTED }}>{a.arc}</span>
               <span style={{ fontSize: 11, color: MUTED, marginLeft: "auto" }}>★ {a.ep}</span>
             </div>
@@ -247,7 +249,7 @@ export function HqBk() {
                 padding: "2px 8px",
                 borderRadius: 20,
                 background: e.status === "in-review" ? "#e8f8ee" : "#fff4e5",
-                color: e.status === "in-review" ? "#0a7d32" : "#8a5300",
+                color: e.status === "in-review" ? "var(--hq-green)" : "var(--hq-amber)",
               }}
             >
               {e.status}
@@ -270,9 +272,9 @@ export function HqBk() {
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 2 }}>
                       <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 4, background: "#f0f0f2" }}>{s.kind}</span>
-                      {s.speaker && <span style={{ fontSize: 11, color: "#0071e3" }}>{s.speaker}</span>}
+                      {s.speaker && <span style={{ fontSize: 11, color: "var(--hq-blue)" }}>{s.speaker}</span>}
                       {s.cast.map((c) => (
-                        <span key={c} style={{ fontSize: 11, color: "#8a5300" }}>
+                        <span key={c} style={{ fontSize: 11, color: "var(--hq-amber)" }}>
                           +{c}
                         </span>
                       ))}
@@ -293,21 +295,23 @@ export function HqBk() {
         {p.review.length === 0 && <div style={{ fontSize: 13, color: MUTED }}>Nothing rendered yet.</div>}
         {p.review.map((r) => (
           <div key={r.file} style={{ padding: "6px 0", borderBottom: `1px solid #f4f4f6` }}>
+            {/* Only a real http(s) URL is playable/linkable — the scanner
+                writes this field and can hand back a bare path or "". */}
             <div
-              onClick={() => r.url && setPlaying(playing === r.file ? null : r.file)}
+              onClick={() => isHttpUrl(r.url) && setPlaying(playing === r.file ? null : r.file)}
               style={{
                 display: "flex", gap: 10, alignItems: "center", fontSize: 13,
-                cursor: r.url ? "pointer" : "default",
+                cursor: isHttpUrl(r.url) ? "pointer" : "default",
               }}
             >
               <span>{playing === r.file ? "▼" : "▶"}</span>
-              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", color: r.url ? "#0071e3" : undefined }}>
+              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", color: isHttpUrl(r.url) ? "var(--hq-blue)" : undefined }}>
                 {r.file}
               </span>
               <span style={{ color: MUTED, fontSize: 12 }}>{r.mb} MB</span>
               <span style={{ color: MUTED, fontSize: 12 }}>{ago(r.mtime)}</span>
             </div>
-            {playing === r.file && r.url && (
+            {playing === r.file && isHttpUrl(r.url) && (
               <div style={{ marginTop: 8 }}>
                 {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                 <video
@@ -316,7 +320,7 @@ export function HqBk() {
                   autoPlay
                   style={{ width: "100%", maxWidth: 860, borderRadius: 10, background: "#000", display: "block" }}
                 />
-                <a href={r.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: MUTED, display: "inline-block", marginTop: 5 }}>
+                <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: MUTED, display: "inline-block", marginTop: 5 }}>
                   Open full size ↗
                 </a>
               </div>
@@ -339,7 +343,7 @@ export function HqBk() {
               onClick={() => setNoteArea(a)}
               style={
                 noteArea === a
-                  ? { background: "#0071e3", color: "#fff", borderColor: "#0071e3" }
+                  ? { background: "var(--hq-blue)", color: "#fff", borderColor: "var(--hq-blue)" }
                   : undefined
               }
             >

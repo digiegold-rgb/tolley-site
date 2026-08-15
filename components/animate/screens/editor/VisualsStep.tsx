@@ -57,6 +57,10 @@ import type {
   SceneSpec,
 } from '@/lib/vater/video-spec';
 import type { EditorStepProps } from './ProjectShell';
+import {
+  BillingBlockModal,
+  type BillingBlockReason,
+} from './BillingBlock';
 
 /* Mirrors the route's VALID_QUALITIES exactly. Any new tier added to the
  * route (app/api/vater/youtube/[id]/scene/animate/route.ts) MUST be added here
@@ -105,13 +109,6 @@ const CLOUD_OPTIONS: CloudOption[] = [
   { key: 'dgx', label: 'DGX Local', desc: 'Free, uses your GPU' },
   { key: 'modal', label: 'Modal Cloud', desc: '~$0.03/scene L40S' },
 ];
-
-/** 402 budget.reason values from the generation routes' billing gate. */
-type BillingBlockReason =
-  | 'trial_cap_reached'
-  | 'subscription_inactive'
-  | 'payment_past_due'
-  | 'monthly_limit_exceeded';
 
 /** Local shape — UI reads only this subset; the route owns full scenesJson
  *  schema validation. Per risk #9 in feature-inventory.md: don't overwrite
@@ -1461,138 +1458,6 @@ function BatchAnimateConfirmModal({
           </VBtn>
           <VBtn size="sm" onClick={onConfirm} style={{ background: '#9C27B0' }}>
             Confirm — {formatPrice(totalCents)}
-          </VBtn>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface BillingBlockModalProps {
-  reason: BillingBlockReason | null;
-  onClose: () => void;
-}
-
-function BillingBlockModal({ reason, onClose }: BillingBlockModalProps): React.ReactElement | null {
-  const { t } = useTheme();
-  const { setRoute } = useRoute();
-  const [working, setWorking] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
-  // Reset transient state whenever the modal (re)opens with a new reason.
-  React.useEffect(() => {
-    setWorking(false);
-    setError(null);
-  }, [reason]);
-
-  const goStripe = React.useCallback(
-    async (endpoint: '/api/vater/billing/setup' | '/api/vater/billing/portal') => {
-      setWorking(true);
-      setError(null);
-      try {
-        const res = await fetch(endpoint, { method: 'POST' });
-        const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
-        if (!res.ok || !data.url) {
-          throw new Error(data.error || `HTTP ${res.status}`);
-        }
-        window.location.href = data.url;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Redirect failed');
-        setWorking(false);
-      }
-    },
-    [],
-  );
-
-  if (!reason) return null;
-
-  const content: Record<
-    BillingBlockReason,
-    { title: string; body: string; cta: string; onCta: () => void }
-  > = {
-    trial_cap_reached: {
-      title: 'Free tier used up',
-      body: "You've hit the free-tier cap. Add a card to keep going — pay per clip, no subscription, nothing charged until you generate.",
-      cta: 'Add a card',
-      onCta: () => void goStripe('/api/vater/billing/setup'),
-    },
-    subscription_inactive: {
-      title: 'Add a card to keep going',
-      body: 'Generation needs a card on file. No subscription — you only pay the per-action price for what you make.',
-      cta: 'Add a card',
-      onCta: () => void goStripe('/api/vater/billing/setup'),
-    },
-    payment_past_due: {
-      title: 'Payment failed — update your card',
-      body: 'Your last invoice could not be charged, so rendering is paused. Update your card to resume — your projects are safe.',
-      cta: 'Update card',
-      onCta: () => void goStripe('/api/vater/billing/portal'),
-    },
-    monthly_limit_exceeded: {
-      title: 'Monthly limit reached',
-      body: 'This action would put you over your self-set monthly spending limit. Raise the limit on the Pricing screen to continue.',
-      cta: 'Open Pricing',
-      onCta: () => {
-        onClose();
-        setRoute('pricing');
-      },
-    },
-  };
-  const c = content[reason];
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={c.title}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.55)',
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !working) onClose();
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 440,
-          background: t.card,
-          border: `1px solid ${t.border}`,
-          borderRadius: JELLY_TOKENS.radius.lg,
-          padding: 20,
-        }}
-      >
-        <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>{c.title}</div>
-        <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 8, lineHeight: 1.6 }}>
-          {c.body}
-        </div>
-        {error && (
-          <div
-            style={{
-              marginTop: 12,
-              padding: '8px 12px',
-              fontSize: 13,
-              borderRadius: JELLY_TOKENS.radius.md,
-              background: 'rgba(220,38,38,0.08)',
-              color: JELLY_TOKENS.error,
-            }}
-          >
-            {error}
-          </div>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
-          <VBtn size="sm" variant="ghost" onClick={onClose} disabled={working}>
-            Not now
-          </VBtn>
-          <VBtn size="sm" onClick={c.onCta} disabled={working}>
-            {working ? 'Redirecting…' : c.cta}
           </VBtn>
         </div>
       </div>

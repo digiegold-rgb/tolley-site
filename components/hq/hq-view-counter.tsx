@@ -62,7 +62,7 @@ const PLATFORM_BADGE: Record<string, { label: string; bg: string; fg: string; ca
   linkedin: { label: "in LinkedIn", bg: "#e2edfb", fg: "#0a66c2", cardBg: "#f1f6fd", cardBorder: "#d3e3f7" },
   pinterest: { label: "P Pinterest", bg: "#fce8e9", fg: "#e60023", cardBg: "#fef4f5", cardBorder: "#f7d6d9" },
 };
-const FALLBACK_BADGE = { label: "•", bg: "#eee", fg: "#333", cardBg: "#fff", cardBorder: "#e5e5ea" };
+const FALLBACK_BADGE = { label: "•", bg: "#eee", fg: "#333", cardBg: "#fff", cardBorder: "var(--hq-line)" };
 
 /** One rolling digit column, 0–9 stacked; translateY slides to the value. */
 function Digit({ d, height }: { d: number; height: number }) {
@@ -117,12 +117,12 @@ function SubDelta({ delta, period, rounding = 1 }: { delta: number | null; perio
   // happened. Render it grey and labelled as rounding instead.
   if (rounding > 1 && Math.abs(delta) <= rounding) {
     return (
-      <span style={{ color: "#8e8e93", fontWeight: 600 }}>
+      <span style={{ color: "var(--hq-ink-3)", fontWeight: 600 }}>
         ±{rounding.toLocaleString()} rounding
       </span>
     );
   }
-  const color = delta > 0 ? "#0a7d32" : delta < 0 ? "#b3261e" : "#8e8e93";
+  const color = delta > 0 ? "var(--hq-green)" : delta < 0 ? "var(--hq-red)" : "var(--hq-ink-3)";
   const arrow = delta > 0 ? "▲" : delta < 0 ? "▼" : "—";
   return (
     <span style={{ color, fontWeight: 700 }}>
@@ -142,7 +142,7 @@ function LiveStrip({ live }: { live: LiveStat }) {
   return (
     <div
       style={{
-        marginTop: 8, paddingTop: 8, borderTop: "1px dashed #e5e5ea",
+        marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--hq-line)",
         fontSize: 11, color: "#3c3c43", lineHeight: 1.5,
       }}
     >
@@ -150,7 +150,7 @@ function LiveStrip({ live }: { live: LiveStat }) {
         <span
           style={{
             fontSize: 9, fontWeight: 800, letterSpacing: 0.4, padding: "1px 5px",
-            borderRadius: 4, background: "#e8f8ee", color: "#0a7d32", whiteSpace: "nowrap",
+            borderRadius: 4, background: "#e8f8ee", color: "var(--hq-green)", whiteSpace: "nowrap",
           }}
         >
           ● LIVE
@@ -158,18 +158,18 @@ function LiveStrip({ live }: { live: LiveStat }) {
         <span style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums", fontSize: 13 }}>
           {h24.views.toLocaleString()}
         </span>
-        <span style={{ color: "#8e8e93" }}>
+        <span style={{ color: "var(--hq-ink-3)" }}>
           on {h24.videos} upload{h24.videos === 1 ? "" : "s"} · 24h
         </span>
       </div>
-      <div style={{ color: "#8e8e93", marginTop: 2 }}>
+      <div style={{ color: "var(--hq-ink-3)", marginTop: 2 }}>
         7d uploads: <strong style={{ color: "#3c3c43" }}>{d7.views.toLocaleString()}</strong> on{" "}
         {d7.videos} video{d7.videos === 1 ? "" : "s"}
       </div>
       {live.topTitle && live.topViews !== null && (
         <div
           style={{
-            color: "#8e8e93", marginTop: 2, overflow: "hidden",
+            color: "var(--hq-ink-3)", marginTop: 2, overflow: "hidden",
             textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}
           title={live.topTitle}
@@ -229,12 +229,18 @@ export function HqViewCounter() {
 
   if (error) {
     return (
-      <div style={{ padding: "12px 16px", marginBottom: 18, borderRadius: 12, background: "#fdecea", color: "#b3261e", fontSize: 13 }}>
+      <div style={{ padding: "12px 16px", marginBottom: 18, borderRadius: 12, background: "#fdecea", color: "var(--hq-red)", fontSize: 13 }}>
         View counter: {error}
       </div>
     );
   }
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div style={{ padding: "12px 16px", marginBottom: 18, borderRadius: 12, background: "#f2f2f7", color: "var(--hq-ink-3)", fontSize: 13 }}>
+        Loading view counter…
+      </div>
+    );
+  }
 
   const channelViews = (c: Channel): { views: number | null; partial: boolean; since: string | null } => {
     if (win === "lifetime") {
@@ -314,7 +320,7 @@ export function HqViewCounter() {
                   {c.label}
                 </span>
               </div>
-              {c.note && <div style={{ fontSize: 10, color: "#8e8e93", marginBottom: 6 }}>{c.note}</div>}
+              {c.note && <div style={{ fontSize: 10, color: "var(--hq-ink-3)", marginBottom: 6 }}>{c.note}</div>}
               {(() => {
                 // Per-platform headline metric: Bluesky has no views (likes),
                 // LinkedIn reports impressions, everything else is views.
@@ -331,25 +337,25 @@ export function HqViewCounter() {
                 return (
                   <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>
                     {shown !== null ? shown.toLocaleString() : "—"}
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "#8e8e93", marginLeft: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--hq-ink-3)", marginLeft: 6 }}>
                       {fallback ? `${metric} · all-time` : metric}
                     </span>
                   </div>
                 );
               })()}
               {v.views === null && c.lifetimeViews !== null && (
-                <div style={{ fontSize: 10, color: "#8a5300", marginTop: 2 }}>
+                <div style={{ fontSize: 10, color: "var(--hq-amber)", marginTop: 2 }}>
                   {WINDOW_LABELS[win]} splits start after day 2 of tracking
                 </div>
               )}
               {v.since && (
-                <div style={{ fontSize: 10, color: "#8a5300", marginTop: 2 }}>since {v.since}</div>
+                <div style={{ fontSize: 10, color: "var(--hq-amber)", marginTop: 2 }}>since {v.since}</div>
               )}
               {(() => {
                 const behind = daysBehind(c.viewsThrough);
                 if (behind === null || behind < 2) return null;
                 return (
-                  <div style={{ fontSize: 10, color: "#8a5300", marginTop: 2 }}>
+                  <div style={{ fontSize: 10, color: "var(--hq-amber)", marginTop: 2 }}>
                     views through {c.viewsThrough} · {behind}d platform lag
                   </div>
                 );
@@ -359,7 +365,7 @@ export function HqViewCounter() {
                 <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
                   {c.subscribers !== null ? c.subscribers.toLocaleString() : "—"}
                 </span>
-                <span style={{ fontSize: 10, color: "#8e8e93" }}>
+                <span style={{ fontSize: 10, color: "var(--hq-ink-3)" }}>
                   {c.platform === "youtube" ? "subs" : "followers"}
                 </span>
                 <SubDelta

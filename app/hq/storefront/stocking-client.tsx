@@ -158,28 +158,40 @@ export default function StockingClient({ data }: { data: SheetData }) {
         </button>
       </div>
 
+      {/* Shelves collapse (HQ-02): all 10 Idea Lists expanded made this page
+          62,075px — about 45 screens. Only the first opens on load; a search
+          opens every shelf so matches are never hidden behind a closed row.
+          `open` is passed a value that only changes with the search, so React
+          leaves your manual toggles alone while you tick items off. */}
       {visible.map(
-        (s) =>
+        (s, idx) =>
           s.items.length > 0 && (
-            <section key={s.shelf} className={s.review ? "sf-section sf-review" : "sf-section"}>
-              <div className="sf-tag">
+            <details
+              key={s.shelf}
+              className={s.review ? "sf-section sf-review" : "sf-section"}
+              open={needle.length > 0 || idx === 0}
+            >
+              <summary className="sf-tag">
                 <h2>{s.shelf}</h2>
                 <span className="sf-n">{s.items.length}</span>
                 <button
                   className="sf-copy"
-                  onClick={() =>
+                  onClick={(e) => {
+                    // Inside <summary>, a click would also toggle the shelf.
+                    e.preventDefault();
+                    e.stopPropagation();
                     copyList(
                       s.shelf,
                       `${s.shelf} ASINs`,
                       data.shelves.find((x) => x.shelf === s.shelf)!.items.map((i) => i.asin)
-                    )
-                  }
+                    );
+                  }}
                 >
                   {copied === s.shelf
                     ? `Copied ${data.shelves.find((x) => x.shelf === s.shelf)!.items.length}`
                     : "Copy ASINs"}
                 </button>
-              </div>
+              </summary>
               {s.review && (
                 <p className="sf-review-note">
                   Amazon category was missing or ambiguous for these — eyeball each one and pick
@@ -216,7 +228,7 @@ export default function StockingClient({ data }: { data: SheetData }) {
                   </li>
                 ))}
               </ul>
-            </section>
+            </details>
           )
       )}
 

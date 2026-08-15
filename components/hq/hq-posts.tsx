@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+
+import { useToast } from "@/components/ui/Toast";
+import { isHttpUrl } from "./types";
+import { HqShowMore, HQ_PAGE_SIZE } from "./hq-show-more";
 import { HqVideoCosts } from "./hq-video-costs";
 import { HqVideoFootprint } from "./hq-video-footprint";
 import { HqViewCounter } from "./hq-view-counter";
@@ -72,10 +76,10 @@ const CHANNEL_LABEL: Record<string, string> = {
 };
 
 const STATUS_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
-  ok: { bg: "#e8f8ee", fg: "#0a7d32", label: "OK" },
-  failing: { bg: "#fdecea", fg: "#b3261e", label: "FAILING" },
-  dark: { bg: "#fdecea", fg: "#b3261e", label: "DARK" },
-  never: { bg: "#fff4e5", fg: "#8a5300", label: "NEVER RAN" },
+  ok: { bg: "#e8f8ee", fg: "var(--hq-green)", label: "OK" },
+  failing: { bg: "#fdecea", fg: "var(--hq-red)", label: "FAILING" },
+  dark: { bg: "#fdecea", fg: "var(--hq-red)", label: "DARK" },
+  never: { bg: "#fff4e5", fg: "var(--hq-amber)", label: "NEVER RAN" },
 };
 
 function ago(iso: string): string {
@@ -98,14 +102,33 @@ function money(cents: number): string {
 // One-liner pushed hourly by the DGX (dgx-activity-scan.sh): what the box is
 // actively working on right now. Renders nothing until the first push lands.
 function DgxActivityLine() {
+  const { toast } = useToast();
   const [act, setAct] = useState<{ line: string; updatedAt: string } | null>(null);
 
+  // "No line yet" and "the endpoint is down" both render as nothing, and a
+  // missing DGX line is exactly the signal you'd want to notice — so say it.
   useEffect(() => {
+    let cancelled = false;
     fetch("/api/hq/dgx-activity")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d?.line) setAct(d as { line: string; updatedAt: string }); })
-      .catch(() => {});
-  }, []);
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((d) => {
+        if (!cancelled && d?.line) setAct(d as { line: string; updatedAt: string });
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        toast({
+          title: "DGX activity unavailable",
+          description: e instanceof Error ? e.message : String(e),
+          variant: "warning",
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [toast]);
 
   if (!act) return null;
   const stale = Date.now() - Date.parse(act.updatedAt) > 2 * 3600_000;
@@ -114,14 +137,14 @@ function DgxActivityLine() {
       style={{
         display: "flex", alignItems: "center", gap: 10,
         padding: "9px 16px", borderRadius: 10, marginBottom: 10,
-        background: "#f2f2f7", border: "1px solid #e5e5ea",
+        background: "#f2f2f7", border: "1px solid var(--hq-line)",
       }}
     >
       <span style={{ fontSize: 15 }}>🖥️</span>
       <span style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 200 }}>
         DGX: {act.line}
       </span>
-      <span style={{ fontSize: 11, color: stale ? "#b3261e" : "#8e8e93", fontWeight: stale ? 700 : 400 }}>
+      <span style={{ fontSize: 11, color: stale ? "var(--hq-red)" : "var(--hq-ink-3)", fontWeight: stale ? 700 : 400 }}>
         {stale ? `⚠︎ scan stale — ${ago(act.updatedAt)}` : ago(act.updatedAt)}
       </span>
     </div>
@@ -133,6 +156,7 @@ export function HqPosts() {
   const [days, setDays] = useState(7);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [runLimit, setRunLimit] = useState(HQ_PAGE_SIZE);
 
   const load = useCallback(async () => {
     try {
@@ -152,8 +176,13 @@ export function HqPosts() {
     void load();
   }, [load]);
 
-  if (loading && !data) return <div style={{ padding: 20, color: "#6e6e73" }}>Loading post ledger…</div>;
-  if (error) return <div style={{ padding: 20, color: "#b3261e" }}>Error: {error}</div>;
+  // A new day-range is a new list — start it back at one page.
+  useEffect(() => {
+    setRunLimit(HQ_PAGE_SIZE);
+  }, [days]);
+
+  if (loading && !data) return <div style={{ padding: 20, color: "var(--hq-ink-2)" }}>Loading post ledger…</div>;
+  if (error) return <div style={{ padding: 20, color: "var(--hq-red)" }}>Error: {error}</div>;
   if (!data) return null;
 
   const problems = data.health.filter((h) => h.status !== "ok");
@@ -182,12 +211,12 @@ export function HqPosts() {
       >
         <span style={{ fontSize: 22 }}>{problems.length ? "🔴" : "🟢"}</span>
         <div style={{ flex: 1, minWidth: 220 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: problems.length ? "#b3261e" : "#0a7d32" }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: problems.length ? "var(--hq-red)" : "var(--hq-green)" }}>
             {problems.length
               ? `${problems.length} of ${data.summary.declaredChannels} channels need attention`
               : `All ${data.summary.declaredChannels} channels posting on schedule`}
           </div>
-          <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: "var(--hq-ink-2)", marginTop: 2 }}>
             Last {data.days}d — {data.summary.ok} posted · {data.summary.failed} failed ·{" "}
             {data.summary.skipped} skipped · {money(data.summary.costCents)} spent
           </div>
@@ -195,7 +224,7 @@ export function HqPosts() {
         <select
           value={days}
           onChange={(e) => setDays(Number(e.target.value))}
-          style={{ padding: "5px 10px", border: "1px solid #d1d1d6", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#fff" }}
+          style={{ padding: "5px 10px", border: "1px solid var(--hq-border)", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#fff" }}
         >
           <option value={1}>Today</option>
           <option value={7}>7 days</option>
@@ -203,7 +232,7 @@ export function HqPosts() {
         </select>
         <button
           onClick={() => void load()}
-          style={{ padding: "5px 12px", border: "1px solid #d1d1d6", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#fff", cursor: "pointer" }}
+          style={{ padding: "5px 12px", border: "1px solid var(--hq-border)", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#fff", cursor: "pointer" }}
         >
           Refresh
         </button>
@@ -218,7 +247,7 @@ export function HqPosts() {
       <HqVideoFootprint />
 
       {/* ── Channel health, problems first ── */}
-      <h3 style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "#6e6e73", margin: "0 0 10px" }}>
+      <h3 style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--hq-ink-2)", margin: "0 0 10px" }}>
         Channel health
       </h3>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10, marginBottom: 26 }}>
@@ -227,7 +256,7 @@ export function HqPosts() {
           return (
             <div
               key={`${h.job}-${h.channel}`}
-              style={{ border: "1px solid #e5e5ea", borderRadius: 10, padding: "10px 12px", background: "#fff" }}
+              style={{ border: "1px solid var(--hq-line)", borderRadius: 10, padding: "10px 12px", background: "#fff" }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                 <span style={{ fontWeight: 700, fontSize: 14 }}>
@@ -237,17 +266,17 @@ export function HqPosts() {
                   {s.label}
                 </span>
               </div>
-              <div style={{ fontSize: 11, color: "#6e6e73" }}>
+              <div style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>
                 {h.jobLabel} · {h.schedule}
               </div>
               {h.account && (
-                <div style={{ fontSize: 11, color: "#6e6e73" }}>@{h.account}</div>
+                <div style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>@{h.account}</div>
               )}
-              <div style={{ fontSize: 11, marginTop: 5, color: h.status === "ok" ? "#0a7d32" : "#b3261e", fontWeight: 600 }}>
+              <div style={{ fontSize: 11, marginTop: 5, color: h.status === "ok" ? "var(--hq-green)" : "var(--hq-red)", fontWeight: 600 }}>
                 {h.lastFiredAt ? `Last fired ${ago(h.lastFiredAt)}` : `No post ever recorded — ${h.unit}`}
               </div>
               {h.lastError && (
-                <div style={{ fontSize: 11, color: "#b3261e", marginTop: 3 }}>{h.lastError.slice(0, 140)}</div>
+                <div style={{ fontSize: 11, color: "var(--hq-red)", marginTop: 3 }}>{h.lastError.slice(0, 140)}</div>
               )}
             </div>
           );
@@ -257,17 +286,17 @@ export function HqPosts() {
       {/* ── Cost breakdown ── */}
       {Object.keys(data.summary.costByChannel).length > 0 && (
         <>
-          <h3 style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "#6e6e73", margin: "0 0 10px" }}>
+          <h3 style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--hq-ink-2)", margin: "0 0 10px" }}>
             Cost — last {data.days}d
           </h3>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 26 }}>
             {Object.entries(data.summary.costByChannel)
               .sort((a, b) => b[1] - a[1])
               .map(([ch, cents]) => (
-                <div key={ch} style={{ border: "1px solid #e5e5ea", borderRadius: 10, padding: "8px 14px", background: "#fff" }}>
-                  <div style={{ fontSize: 11, color: "#6e6e73" }}>{CHANNEL_LABEL[ch] ?? ch}</div>
+                <div key={ch} style={{ border: "1px solid var(--hq-line)", borderRadius: 10, padding: "8px 14px", background: "#fff" }}>
+                  <div style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>{CHANNEL_LABEL[ch] ?? ch}</div>
                   <div style={{ fontSize: 17, fontWeight: 700 }}>{money(cents)}</div>
-                  <div style={{ fontSize: 10, color: "#6e6e73" }}>
+                  <div style={{ fontSize: 10, color: "var(--hq-ink-2)" }}>
                     ≈ {money(Math.round((cents / data.days) * 30))}/mo
                   </div>
                 </div>
@@ -277,40 +306,40 @@ export function HqPosts() {
       )}
 
       {/* ── Run feed ── */}
-      <h3 style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "#6e6e73", margin: "0 0 10px" }}>
+      <h3 style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--hq-ink-2)", margin: "0 0 10px" }}>
         Every post — last {data.days}d
       </h3>
       {data.runs.length === 0 ? (
-        <div style={{ padding: 16, color: "#6e6e73", fontSize: 13, border: "1px dashed #d1d1d6", borderRadius: 10 }}>
+        <div style={{ padding: 16, color: "var(--hq-ink-2)", fontSize: 13, border: "1px dashed var(--hq-border)", borderRadius: 10 }}>
           No posts recorded in this window.
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {data.runs.map((run) => (
-            <div key={run.runId} style={{ border: "1px solid #e5e5ea", borderRadius: 10, padding: "10px 12px", background: "#fff" }}>
+          {data.runs.slice(0, runLimit).map((run) => (
+            <div key={run.runId} style={{ border: "1px solid var(--hq-line)", borderRadius: 10, padding: "10px 12px", background: "#fff" }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#6e6e73", minWidth: 68 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--hq-ink-2)", minWidth: 68 }}>
                   {clock(run.firedAt)}
                 </span>
                 <span style={{ fontWeight: 600, fontSize: 14, flex: 1, minWidth: 180 }}>
                   {run.title ?? run.job}
                 </span>
                 {(run.renderCents ?? 0) > 0 && (
-                  <span style={{ fontSize: 12, color: "#6e6e73" }} title="What the video cost to make (VideoCost ledger)">
+                  <span style={{ fontSize: 12, color: "var(--hq-ink-2)" }} title="What the video cost to make (VideoCost ledger)">
                     render {run.renderEstimated ? "~" : ""}{money(run.renderCents!)}
                   </span>
                 )}
                 {run.costCents > 0 && (
-                  <span style={{ fontSize: 12, color: "#6e6e73" }} title="Posting API spend">posting {money(run.costCents)}</span>
+                  <span style={{ fontSize: 12, color: "var(--hq-ink-2)" }} title="Posting API spend">posting {money(run.costCents)}</span>
                 )}
-                <span style={{ fontSize: 11, color: "#8e8e93" }}>{ago(run.firedAt)}</span>
+                <span style={{ fontSize: 11, color: "var(--hq-ink-3)" }}>{ago(run.firedAt)}</span>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                 {run.channels.map((c) => {
                   const ok = c.status === "ok";
                   const skipped = c.status === "skipped";
                   const bg = ok ? "#e8f8ee" : skipped ? "#f2f2f7" : "#fdecea";
-                  const fg = ok ? "#0a7d32" : skipped ? "#6e6e73" : "#b3261e";
+                  const fg = ok ? "var(--hq-green)" : skipped ? "var(--hq-ink-2)" : "var(--hq-red)";
                   const chip = (
                     <span
                       style={{ fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 6, background: bg, color: fg, whiteSpace: "nowrap" }}
@@ -319,7 +348,9 @@ export function HqPosts() {
                       {ok ? "✓" : skipped ? "–" : "✕"} {CHANNEL_LABEL[c.channel] ?? c.channel}
                     </span>
                   );
-                  return c.url ? (
+                  // Post URLs come back from a dozen different posters; only
+                  // link the ones that are actually http(s).
+                  return isHttpUrl(c.url) ? (
                     <a key={c.id} href={c.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
                       {chip}
                     </a>
@@ -329,7 +360,7 @@ export function HqPosts() {
                 })}
               </div>
               {run.channels.some((c) => c.status === "fail") && (
-                <div style={{ fontSize: 11, color: "#b3261e", marginTop: 6 }}>
+                <div style={{ fontSize: 11, color: "var(--hq-red)", marginTop: 6 }}>
                   {run.channels
                     .filter((c) => c.status === "fail" && c.error)
                     .map((c) => `${CHANNEL_LABEL[c.channel] ?? c.channel}: ${c.error?.slice(0, 120)}`)
@@ -338,6 +369,13 @@ export function HqPosts() {
               )}
             </div>
           ))}
+          <HqShowMore
+            shown={Math.min(runLimit, data.runs.length)}
+            total={data.runs.length}
+            noun="runs"
+            onMore={() => setRunLimit((n) => n + HQ_PAGE_SIZE)}
+            onAll={() => setRunLimit(data.runs.length)}
+          />
         </div>
       )}
     </div>

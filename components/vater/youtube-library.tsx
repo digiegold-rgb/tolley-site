@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { fetchVaterCapabilities } from "@/components/animate/tier-context";
 import { YouTubeFinalPlayer } from "./youtube-final-player";
 import { YouTubeShareModal } from "./youtube-share-modal";
 import { getStylePreset } from "@/lib/vater/style-presets";
@@ -59,6 +60,10 @@ function useOpsRate(): number | null {
     let cancelled = false;
     (async () => {
       try {
+        const caps = await fetchVaterCapabilities();
+        // /api/vater/latest is owner-only; without this guard every public
+        // account 401'd on it on every screen that renders this component.
+        if (!caps.latestCosts) return;
         const r = await fetch("/api/vater/latest", { cache: "no-store" });
         if (!r.ok) return;
         const j = (await r.json()) as { billing?: { opsRatePerMinute?: number } };

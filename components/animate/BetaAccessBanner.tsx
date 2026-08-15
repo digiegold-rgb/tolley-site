@@ -63,8 +63,8 @@ export function BetaAccessBanner(): React.ReactElement | null {
       }}
     >
       <span>
-        <strong>Pay-per-video is live</strong> — add a card in Pricing and
-        render without limits. No subscription, ~$25/video.
+        <strong>Pay-per-video is live</strong> — add a card in Billing to
+        render past the free-tier caps. No subscription, ~$25/video.
       </span>
       <button
         onClick={dismiss}

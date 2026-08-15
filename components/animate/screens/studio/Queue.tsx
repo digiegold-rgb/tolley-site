@@ -55,7 +55,7 @@ export function Queue(): React.ReactElement {
         <VCard variant="flat"><div style={{ color: t.textSecondary, fontSize: 14 }}>Loading queue…</div></VCard>
       ) : projects.length === 0 ? (
         <VCard variant="flat">
-          <div style={{ color: t.textSecondary, fontSize: 14 }}>No active jobs. Start one from Topic, Transcribe, or RSS.</div>
+          <div style={{ color: t.textSecondary, fontSize: 14 }}>Nothing rendering right now. Hit “+ Create Video” and this screen will track it beat by beat.</div>
         </VCard>
       ) : (
         <YouTubeImportTracker projects={projects} onCreated={() => { void refresh(); }} />

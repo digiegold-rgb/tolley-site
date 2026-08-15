@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { isHttpUrl } from "./types";
+
 // 🛍 TikTok tab — the Treasure Huals command center.
 //
 // Four questions, top to bottom: are we selling (sales + probation pace)?
@@ -88,17 +90,17 @@ interface Payload {
 }
 
 const FLAG_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
-  sealed: { bg: "#e8f8ee", fg: "#0a7d32", label: "SEALED — OK" },
-  "open-box": { bg: "#fff4e5", fg: "#8a5300", label: "OPEN-BOX — GRAY" },
-  used: { bg: "#fdecea", fg: "#b3261e", label: "USED — DON'T SUBMIT" },
+  sealed: { bg: "#e8f8ee", fg: "var(--hq-green)", label: "SEALED — OK" },
+  "open-box": { bg: "#fff4e5", fg: "var(--hq-amber)", label: "OPEN-BOX — GRAY" },
+  used: { bg: "#fdecea", fg: "var(--hq-red)", label: "USED — DON'T SUBMIT" },
 };
 
 const STAGE_COLORS: Record<string, string> = {
-  researching: "#6e6e73",
-  contacted: "#8a5300",
+  researching: "var(--hq-ink-2)",
+  contacted: "var(--hq-amber)",
   sampled: "#0a58c2",
-  ordered: "#0a7d32",
-  dead: "#b3261e",
+  ordered: "var(--hq-green)",
+  dead: "var(--hq-red)",
 };
 
 function usd(n: number): string {
@@ -114,7 +116,7 @@ function ago(iso: string): string {
 
 const card: React.CSSProperties = {
   background: "#fff",
-  border: "1px solid #e5e5ea",
+  border: "1px solid var(--hq-line)",
   borderRadius: 12,
   padding: 16,
   marginBottom: 16,
@@ -210,8 +212,8 @@ export function HqTiktokShop() {
     await load();
   };
 
-  if (loading && !data) return <div style={{ padding: 20, color: "#6e6e73" }}>Loading TikTok Shop…</div>;
-  if (error && !data) return <div style={{ padding: 20, color: "#b3261e" }}>Error: {error}</div>;
+  if (loading && !data) return <div style={{ padding: 20, color: "var(--hq-ink-2)" }}>Loading TikTok Shop…</div>;
+  if (error && !data) return <div style={{ padding: 20, color: "var(--hq-red)" }}>Error: {error}</div>;
   if (!data) return null;
 
   const { summary, probation, listings, orders, suppliers, links, playbook } = data;
@@ -223,7 +225,7 @@ export function HqTiktokShop() {
       <div style={card}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
           <h3 style={{ margin: 0 }}>Sales &amp; probation</h3>
-          <div style={{ fontSize: 12, color: "#6e6e73" }}>
+          <div style={{ fontSize: 12, color: "var(--hq-ink-2)" }}>
             {summary.lastSync ? `synced ${ago(summary.lastSync)}` : "no automated sync yet — worker pending"}
             {" · "}
             <a href={links.orders} target="_blank" rel="noreferrer">Seller Center orders ↗</a>
@@ -238,26 +240,26 @@ export function HqTiktokShop() {
             { label: "Pace (7d)", value: `${probation.paceLast7.toFixed(1)}/day` },
           ].map((s) => (
             <div key={s.label}>
-              <div style={{ fontSize: 11, textTransform: "uppercase", color: "#6e6e73" }}>{s.label}</div>
+              <div style={{ fontSize: 11, textTransform: "uppercase", color: "var(--hq-ink-2)" }}>{s.label}</div>
               <div style={{ fontSize: 22, fontWeight: 700 }}>{s.value}</div>
             </div>
           ))}
         </div>
         <div style={{ marginTop: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6e6e73", marginBottom: 4 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--hq-ink-2)", marginBottom: 4 }}>
             <span>
               Probation exit: {probation.matureOrders}/{probation.target} mature orders · day {probation.daysSinceOpen} of 60
             </span>
-            <span style={{ color: probation.onPace ? "#0a7d32" : "#8a5300", fontWeight: 600 }}>
+            <span style={{ color: probation.onPace ? "var(--hq-green)" : "var(--hq-amber)", fontWeight: 600 }}>
               {probation.onPace ? "ON PACE" : `need ~${probation.paceTarget}/day`}
             </span>
           </div>
-          <div style={{ height: 8, borderRadius: 4, background: "#e5e5ea", overflow: "hidden" }}>
+          <div style={{ height: 8, borderRadius: 4, background: "var(--hq-line)", overflow: "hidden" }}>
             <div
               style={{
                 width: `${Math.max(1, probation.pct * 100)}%`,
                 height: "100%",
-                background: probation.onPace ? "#0a7d32" : "#f0a020",
+                background: probation.onPace ? "var(--hq-green)" : "#f0a020",
               }}
             />
           </div>
@@ -271,13 +273,13 @@ export function HqTiktokShop() {
           <a href={links.fbt} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>FBT console ↗</a>
         </div>
         {orders.length === 0 ? (
-          <p style={{ color: "#6e6e73", fontSize: 13, marginBottom: 0 }}>
+          <p style={{ color: "var(--hq-ink-2)", fontSize: 13, marginBottom: 0 }}>
             No orders yet. First sales will appear here automatically once the sync worker is live (or via manual entry).
           </p>
         ) : (
           <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse", marginTop: 8 }}>
             <thead>
-              <tr style={{ textAlign: "left", color: "#6e6e73", fontSize: 11, textTransform: "uppercase" }}>
+              <tr style={{ textAlign: "left", color: "var(--hq-ink-2)", fontSize: 11, textTransform: "uppercase" }}>
                 <th style={{ padding: "4px 8px" }}>Order</th>
                 <th style={{ padding: "4px 8px" }}>Item</th>
                 <th style={{ padding: "4px 8px" }}>Price</th>
@@ -297,7 +299,7 @@ export function HqTiktokShop() {
                     <span
                       style={{
                         background: o.fulfillment === "pending" ? "#fff4e5" : "#e8f8ee",
-                        color: o.fulfillment === "pending" ? "#8a5300" : "#0a7d32",
+                        color: o.fulfillment === "pending" ? "var(--hq-amber)" : "var(--hq-green)",
                         borderRadius: 6,
                         padding: "2px 8px",
                         fontSize: 11,
@@ -316,7 +318,7 @@ export function HqTiktokShop() {
           </table>
         )}
         {pending.length > 0 && (
-          <p style={{ color: "#b3261e", fontSize: 12, marginTop: 8, marginBottom: 0 }}>
+          <p style={{ color: "var(--hq-red)", fontSize: 12, marginTop: 8, marginBottom: 0 }}>
             {pending.length} order{pending.length > 1 ? "s" : ""} need shipping — 2-business-day dispatch, late rate must stay ≤5%.
           </p>
         )}
@@ -349,7 +351,7 @@ export function HqTiktokShop() {
                   <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {l.title}
                   </div>
-                  <div style={{ fontSize: 12, color: "#6e6e73" }}>
+                  <div style={{ fontSize: 12, color: "var(--hq-ink-2)" }}>
                     {l.price != null ? usd(l.price) : "—"} · {l.ttStatus.toUpperCase()}
                   </div>
                   {fs && (
@@ -357,7 +359,7 @@ export function HqTiktokShop() {
                       {fs.label}
                     </span>
                   )}
-                  {l.flag?.note && <div style={{ fontSize: 11, color: "#8a5300", marginTop: 2 }}>{l.flag.note}</div>}
+                  {l.flag?.note && <div style={{ fontSize: 11, color: "var(--hq-amber)", marginTop: 2 }}>{l.flag.note}</div>}
                 </div>
               </div>
             );
@@ -390,14 +392,14 @@ export function HqTiktokShop() {
                 placeholder={label}
                 value={form[key]}
                 onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                style={{ padding: "7px 10px", border: "1px solid #d1d1d6", borderRadius: 8, fontSize: 13 }}
+                style={{ padding: "7px 10px", border: "1px solid var(--hq-border)", borderRadius: 8, fontSize: 13 }}
               />
             ))}
             <input
               placeholder="Notes"
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              style={{ padding: "7px 10px", border: "1px solid #d1d1d6", borderRadius: 8, fontSize: 13, gridColumn: "1 / -1" }}
+              style={{ padding: "7px 10px", border: "1px solid var(--hq-border)", borderRadius: 8, fontSize: 13, gridColumn: "1 / -1" }}
             />
             <button className="tab-btn active" disabled={saving} onClick={() => void saveSupplier()}>
               {saving ? "Saving…" : "Save supplier"}
@@ -405,7 +407,7 @@ export function HqTiktokShop() {
           </div>
         )}
         {suppliers.length === 0 && !showSupplierForm ? (
-          <p style={{ color: "#6e6e73", fontSize: 13, marginBottom: 0 }}>
+          <p style={{ color: "var(--hq-ink-2)", fontSize: 13, marginBottom: 0 }}>
             No suppliers yet. Add candidates here (or the nightly research job will stage them) — the scorecard grades
             landed cost against the $20–30 band after TikTok&apos;s all-in take.
           </p>
@@ -414,23 +416,23 @@ export function HqTiktokShop() {
             <div key={s.id} style={{ borderTop: "1px solid #f0f0f2", padding: "10px 0", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
               <div style={{ flex: "1 1 220px", minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>
-                  {s.website ? (
-                    <a href={s.website} target="_blank" rel="noreferrer">{s.name} ↗</a>
+                  {isHttpUrl(s.website) ? (
+                    <a href={s.website} target="_blank" rel="noopener noreferrer">{s.name} ↗</a>
                   ) : (
                     s.name
                   )}
                 </div>
-                <div style={{ fontSize: 12, color: "#6e6e73" }}>
+                <div style={{ fontSize: 12, color: "var(--hq-ink-2)" }}>
                   {[s.contactEmail, s.location, s.moq != null ? `MOQ ${s.moq}` : null].filter(Boolean).join(" · ") || "—"}
                 </div>
-                {s.notes && <div style={{ fontSize: 12, color: "#6e6e73" }}>{s.notes}</div>}
+                {s.notes && <div style={{ fontSize: 12, color: "var(--hq-ink-2)" }}>{s.notes}</div>}
               </div>
               {s.score && (
                 <div style={{ fontSize: 12 }}>
                   <span
                     style={{
                       fontWeight: 700,
-                      color: s.score.grade === "strong" ? "#0a7d32" : s.score.grade === "workable" ? "#8a5300" : "#b3261e",
+                      color: s.score.grade === "strong" ? "var(--hq-green)" : s.score.grade === "workable" ? "var(--hq-amber)" : "var(--hq-red)",
                     }}
                   >
                     {s.score.grade.toUpperCase()}
@@ -442,7 +444,7 @@ export function HqTiktokShop() {
               <select
                 value={s.stage}
                 onChange={(e) => void setStage(s, e.target.value)}
-                style={{ padding: "4px 8px", border: "1px solid #d1d1d6", borderRadius: 8, fontSize: 12, fontWeight: 700, color: STAGE_COLORS[s.stage] ?? "#1d1d1f" }}
+                style={{ padding: "4px 8px", border: "1px solid var(--hq-border)", borderRadius: 8, fontSize: 12, fontWeight: 700, color: STAGE_COLORS[s.stage] ?? "#1d1d1f" }}
               >
                 {["researching", "contacted", "sampled", "ordered", "dead"].map((st) => (
                   <option key={st} value={st}>{st}</option>
@@ -451,7 +453,7 @@ export function HqTiktokShop() {
             </div>
           ))
         )}
-        <p style={{ fontSize: 11, color: "#6e6e73", marginTop: 10, marginBottom: 0 }}>
+        <p style={{ fontSize: 11, color: "var(--hq-ink-2)", marginTop: 10, marginBottom: 0 }}>
           Contacting suppliers stays manual by design — evaluate here, reach out yourself, log the stage.
         </p>
       </div>

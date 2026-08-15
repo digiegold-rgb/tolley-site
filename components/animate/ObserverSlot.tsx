@@ -1,20 +1,25 @@
 'use client';
 
-/* ObserverSlot — placeholder for the right-side slide-out Vater Observer.
+/* ObserverSlot — right-side slide-out Vater Observer.
  *
- * In a later phase this will mount the existing
- *   components/vater/VaterObserverSidebar.tsx
- * (do NOT import it from here in Phase 1 — path-isolation contract).
+ * This used to return an empty fragment while observer/ObserverPanel.tsx sat
+ * unmounted, so the Observer never appeared for anyone. It is now mounted for
+ * owner-tier accounts only: /api/vater/observer/* is gated by
+ * requireVaterAdminApiSession, so mounting it for a customer would just open
+ * an SSE that 401s.
  *
- * The user has stated the observer must remain visible right-side slide-out,
- * so this slot stays in the Shell tree from day one to lock in the layout
- * contract; only the contents are deferred.
+ * No extra providers are needed — ActiveJobContext ships a no-op default
+ * (scope falls back to "all") and VaterObserverSidebar owns its own state.
  */
 
 import * as React from 'react';
+import { useTier } from './tier-context';
+import { useActiveJob } from './observer/active-job-context';
+import { ObserverPanel } from './observer/ObserverPanel';
 
-export function ObserverSlot(): React.ReactElement {
-  // TODO(phase-2): wrap <VaterObserverSidebar /> here once the v2 shell
-  // is ready to take over routing from app/vater/youtube/page.tsx.
-  return <></>;
+export function ObserverSlot(): React.ReactElement | null {
+  const { capabilities } = useTier();
+  const { activeJobId } = useActiveJob();
+  if (!capabilities.observer) return null;
+  return <ObserverPanel activeJobId={activeJobId} />;
 }

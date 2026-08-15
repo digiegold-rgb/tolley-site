@@ -23,6 +23,7 @@ import {
   MarkerType,
   type Edge,
   type Node,
+  type ReactFlowInstance,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
@@ -51,7 +52,7 @@ const LANE_PAD_X = 20;
 const LANE_HEADER = 34;
 const LANE_GAP = 40;
 
-const EDGE_COLORS: Record<string, string> = { flow: "#2dd4a7", data: "#38bdf8", money: "#22c55e" };
+const EDGE_COLORS: Record<string, string> = { flow: "var(--hq-teal)", data: "#38bdf8", money: "#22c55e" };
 
 const nodeTypes = { empireNode: EmpireNodeComponent, empireLane: EmpireLaneComponent };
 
@@ -157,7 +158,7 @@ function buildNodes(payload: EmpirePayload | null, flashIds: Set<string>, focusI
       data: {
         label: def.label,
         icon: def.icon,
-        accent: laneById.get(def.lane)?.accent ?? "#2dd4a7",
+        accent: laneById.get(def.lane)?.accent ?? "var(--hq-teal)",
         status,
         statusWord: payload ? statusWord(status) : "loading",
         timeText: timeText(def, payload),
@@ -240,7 +241,7 @@ function EmpireList({
             >
               {lane.label}
             </div>
-            <div className="overflow-hidden rounded-lg border border-[#1e2733]">
+            <div className="overflow-hidden rounded-lg border border-[var(--hq-navy)]">
               {nodes.map((def, i) => {
                 const status = payload?.nodes[def.id]?.status ?? "missing";
                 const cfg = STATUS_CONFIG[status];
@@ -334,6 +335,24 @@ function HqEmpireMapInner() {
     return { broken: count("broken"), stale: count("stale"), working: count("working"), running: count("running") };
   }, [payload]);
 
+  // HQ-07: `fitView` only runs on init, and on init `nodes` is [] (the first
+  // poll hasn't landed). Fitting an empty graph left the board parked in the
+  // right-hand ~60% of the canvas forever. Re-fit the first time real nodes
+  // exist — once, so it never fights a pan the user has done since.
+  const flowRef = useRef<ReactFlowInstance | null>(null);
+  const didFit = useRef(false);
+  useEffect(() => {
+    if (didFit.current || showList || nodes.length === 0) return;
+    didFit.current = true;
+    // Wait a frame so the nodes are measured before fitView reads their bounds.
+    requestAnimationFrame(() => flowRef.current?.fitView({ padding: 0.08 }));
+  }, [nodes.length, showList]);
+
+  // Swapping to the phone list unmounts the canvas; allow one fit on the way back.
+  useEffect(() => {
+    if (showList) didFit.current = false;
+  }, [showList]);
+
   const selectedDef = selectedId ? defsById.get(selectedId) : null;
   const dgxAge = payload?.dgxSnapshotAt ? relTime(payload.dgxSnapshotAt) : "never";
 
@@ -341,13 +360,13 @@ function HqEmpireMapInner() {
     <div className={`empire-island ${reducedMotion ? "empire-no-motion" : ""}`}>
       {/* Header strip */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[#141c28] px-4 py-3">
-        <span className="font-mono text-[13px] font-bold tracking-[0.28em] text-[#2dd4a7]">◉ EMPIRE MAP</span>
+        <span className="font-mono text-[13px] font-bold tracking-[0.28em] text-[var(--hq-teal)]">◉ EMPIRE MAP</span>
         <span
           className="rounded-full border px-2.5 py-1 font-mono text-[10px]"
           style={
             payload?.dgxStale
               ? { borderColor: "#f59e0b55", color: "#f59e0b", background: "#f59e0b11" }
-              : { borderColor: "#1f6f5c", color: "#2dd4a7", background: "#1f6f5c22" }
+              : { borderColor: "#1f6f5c", color: "var(--hq-teal)", background: "#1f6f5c22" }
           }
           title="Age of the last DGX health push (twice daily)"
         >
@@ -369,7 +388,7 @@ function HqEmpireMapInner() {
           {narrow && (
             <button
               onClick={() => setForceCanvas((v) => !v)}
-              className="rounded-md border border-[#1e2733] px-2.5 py-1 font-mono text-[10px] text-[#7a8699] hover:border-[#2dd4a7] hover:text-[#2dd4a7]"
+              className="rounded-md border border-[var(--hq-navy)] px-2.5 py-1 font-mono text-[10px] text-[#7a8699] hover:border-[var(--hq-teal)] hover:text-[var(--hq-teal)]"
               title="The canvas is heavy on phones — it can crash the tab"
             >
               {forceCanvas ? "≡ list" : "⬚ map"}
@@ -377,7 +396,7 @@ function HqEmpireMapInner() {
           )}
           <button
             onClick={load}
-            className="rounded-md border border-[#1e2733] px-2.5 py-1 font-mono text-[10px] text-[#7a8699] hover:border-[#2dd4a7] hover:text-[#2dd4a7]"
+            className="rounded-md border border-[var(--hq-navy)] px-2.5 py-1 font-mono text-[10px] text-[#7a8699] hover:border-[var(--hq-teal)] hover:text-[var(--hq-teal)]"
           >
             ↻ refresh
           </button>
@@ -386,6 +405,13 @@ function HqEmpireMapInner() {
 
       {/* Canvas (or the phone list) + drawer */}
       <div className="relative" style={{ height: "max(420px, calc(100vh - 320px))" }}>
+        {/* Before the first poll lands the canvas is an empty dark rectangle,
+            which looks exactly like "the whole empire is gone". Say so. */}
+        {!payload && !error && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center font-mono text-[12px] tracking-[0.2em] text-[#5b6b7f]">
+            LOADING EMPIRE…
+          </div>
+        )}
         {showList ? (
           <EmpireList payload={payload} onSelect={setSelectedId} />
         ) : (
@@ -394,6 +420,7 @@ function HqEmpireMapInner() {
           edges={edges}
           nodeTypes={nodeTypes}
           colorMode="dark"
+          onInit={(instance) => { flowRef.current = instance; }}
           fitView
           fitViewOptions={{ padding: 0.08 }}
           minZoom={0.12}
@@ -414,18 +441,22 @@ function HqEmpireMapInner() {
           <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="rgba(45,212,167,0.05)" />
           <Controls
             showInteractive={false}
-            className="!bg-[#111722] !border-[#1e2733] !rounded-lg [&>button]:!bg-transparent [&>button]:!border-[#1e2733] [&>button]:!text-[#7a8699] [&>button:hover]:!bg-[#1e2733]"
+            className="!bg-[#111722] !border-[var(--hq-navy)] !rounded-lg [&>button]:!bg-transparent [&>button]:!border-[var(--hq-navy)] [&>button]:!text-[#7a8699] [&>button:hover]:!bg-[var(--hq-navy)]"
           />
+          {/* An empty MiniMap is just a grey rectangle over the canvas — only
+              draw it once there are nodes to show. */}
+          {nodes.length > 0 && (
           <MiniMap
             nodeColor={(n) =>
               n.type === "empireLane" ? "#0d131c" : STATUS_CONFIG[(n.data as EmpireFlowNodeData).status]?.color ?? "#4b5563"
             }
             maskColor="rgba(4,7,11,0.75)"
             bgColor="#0a0e14"
-            className="!border-[#1e2733] !rounded-lg"
+            className="!border-[var(--hq-navy)] !rounded-lg"
             pannable
             zoomable
           />
+          )}
         </ReactFlow>
         )}
 
@@ -450,7 +481,7 @@ function HqEmpireMapInner() {
           </span>
         ))}
         <span className="ml-auto hidden items-center gap-3 sm:flex">
-          <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-5" style={{ background: "#2dd4a7" }} /> flow</span>
+          <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-5" style={{ background: "var(--hq-teal)" }} /> flow</span>
           <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-5" style={{ background: "#38bdf8" }} /> data</span>
           <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-5" style={{ background: "#22c55e" }} /> money</span>
         </span>

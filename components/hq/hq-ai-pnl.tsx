@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+
+import { useToast } from "@/components/ui/Toast";
 import {
   AI_PNL_AS_OF,
   AI_SPEND,
@@ -30,21 +32,35 @@ const fmt = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 export function HqAiPnl() {
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [live, setLive] = useState<LiveRow[]>([]);
 
+  // A failed load silently falls back to the static baseline in lib/ai-pnl.ts —
+  // which reads as a real (stale) number, so say so once instead of showing a
+  // months-old figure as if it were today's.
   useEffect(() => {
     let cancelled = false;
     fetch("/api/hq/ai-spend")
-      .then((r) => (r.ok ? r.json() : null))
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((d) => {
         if (!cancelled && d && Array.isArray(d.rows)) setLive(d.rows);
       })
-      .catch(() => {});
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        toast({
+          title: "AI spend not live",
+          description: `${e instanceof Error ? e.message : String(e)} — showing the static baseline`,
+          variant: "warning",
+        });
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [toast]);
 
   const { lines, spendTotal, spendVerified, liveAsOf } = useMemo(() => {
     const byProvider = new Map(live.map((r) => [r.provider, r]));
@@ -85,11 +101,7 @@ export function HqAiPnl() {
       <button
         onClick={() => setOpen((o) => !o)}
         title="AI P&L — total invested vs actual cash made from AI. Click for ledger."
-        style={{
-          display: "flex", alignItems: "center", gap: 6, padding: "4px 10px",
-          border: "1px solid #d1d1d6", borderRadius: 999, background: "#fff",
-          fontSize: 12, cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600,
-        }}
+        className="topbar-pill"
       >
         <span style={{
           width: 8, height: 8, borderRadius: "50%",
@@ -103,7 +115,7 @@ export function HqAiPnl() {
       {open && (
         <div style={{
           position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 50,
-          width: 340, background: "#fff", border: "1px solid #d1d1d6", borderRadius: 10,
+          width: 340, background: "#fff", border: "1px solid var(--hq-border)", borderRadius: 10,
           boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: 12, fontSize: 12.5,
           color: "#1f2328", maxHeight: 420, overflowY: "auto",
         }}>

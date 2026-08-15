@@ -58,7 +58,7 @@ export function Recent(): React.ReactElement {
         <VCard variant="flat"><div style={{ color: t.textSecondary, fontSize: 14 }}>Loading recent…</div></VCard>
       ) : projects.length === 0 ? (
         <VCard variant="flat">
-          <div style={{ color: t.textSecondary, fontSize: 14 }}>No completed videos yet. Start your first project from Topic or Transcribe.</div>
+          <div style={{ color: t.textSecondary, fontSize: 14 }}>No finished or failed projects yet. Anything you render shows up here, newest first.</div>
         </VCard>
       ) : (
         <YouTubeImportTracker projects={projects} onCreated={() => { /* no-op */ }} />

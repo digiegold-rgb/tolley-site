@@ -2,14 +2,14 @@
 
 /* Header + SettingsModal — ported from vater-core.jsx lines 282-380.
  *
- * Phase 1 wiring (2026-04-26 audit fixes):
- *  - Credits pill fetches /api/billing/status on mount (was hardcoded "81.1K credits")
- *  - Profile name + email read from useSession() (was hardcoded "Tyler Vater" + test email)
- *  - Logout calls signOut() from next-auth/react (was unwired)
- *  - Profile Save Changes replaced with external link to /account (matches Security/Team pattern)
- *  - Usage tab shows polished empty state + link to Pricing (was literal "Usage chart placeholder")
+ * Everything here reads live data: the usage pill and the Settings "plan"
+ * card both come from /api/vater/billing/status, and the tier line comes
+ * from /api/vater/me. There is no $200/month plan — the product is
+ * pay-per-video, and the modal says so.
  *
- * Security and Team tabs continue to redirect to /account/security and /account/team.
+ * Account links point at /settings (works for any signed-in user). They used
+ * to point at /account, which is requireAdminPageSession — a dead end that
+ * redirected every customer to the homepage.
  */
 
 import * as React from 'react';
@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
 import { JELLY_TOKENS } from './tokens';
 import { useTheme, useRoute } from './theme-context';
+import { useTier } from './tier-context';
 import { Icon } from './Icon';
 import { VBtn } from './primitives';
 import { VaterCostPill } from './LatestUpdate';
@@ -32,6 +33,8 @@ interface VaterBillingStatus {
     includedCents: number;
     limitCents: number;
   };
+  card: { brand: string | null; last4: string | null } | null;
+  delinquent: boolean;
   isTrial: boolean;
   trial?: {
     transcripts: number;
@@ -41,10 +44,15 @@ interface VaterBillingStatus {
   };
 }
 
-export function Header(): React.ReactElement {
-  const { t, dark, toggle } = useTheme();
-  const { setRoute } = useRoute();
-  const [showSettings, setShowSettings] = React.useState(false);
+/**
+ * Shared fetch of /api/vater/billing/status. Used by the header pill and by
+ * the Settings modal, which used to display a hardcoded "Full Access Plan —
+ * $200/month". That plan does not exist: the product is pay-per-video.
+ */
+function useVaterBilling(): {
+  billing: VaterBillingStatus | null;
+  loading: boolean;
+} {
   const [billing, setBilling] = React.useState<VaterBillingStatus | null>(null);
   const [billingLoading, setBillingLoading] = React.useState(true);
 
@@ -67,6 +75,52 @@ export function Header(): React.ReactElement {
       cancelled = true;
     };
   }, []);
+
+  return { billing, loading: billingLoading };
+}
+
+/** Truthful one-liner for the current billing state. */
+function planSummary(
+  billing: VaterBillingStatus | null,
+  loading: boolean,
+): { title: string; detail: string } {
+  if (loading) return { title: 'Billing', detail: 'Loading…' };
+  if (!billing) return { title: 'Billing', detail: 'Sign in to view your plan.' };
+  if (billing.delinquent) {
+    return {
+      title: 'Past due',
+      detail: 'A charge failed. Update your card to keep rendering.',
+    };
+  }
+  if (billing.isTrial) {
+    const tr = billing.trial;
+    return {
+      title: 'Free trial',
+      detail: tr
+        ? `${Math.max(0, tr.caps.transcripts - tr.transcripts)} transcripts, ${Math.max(0, tr.caps.scenes - tr.scenes)} scene generations and ${Math.max(0, tr.caps.animations - tr.animations)} animations left. No card on file.`
+        : 'No card on file yet.',
+    };
+  }
+  return {
+    title: 'Pay per video',
+    detail: billing.card?.last4
+      ? `Card on file ending ${billing.card.last4}. No subscription — you are billed for what you render.`
+      : 'No subscription — you are billed for what you render.',
+  };
+}
+
+export interface HeaderProps {
+  /** True below 768px — shows the hamburger that opens the nav drawer. */
+  mobile?: boolean;
+  onOpenNav?: () => void;
+}
+
+export function Header({ mobile = false, onOpenNav }: HeaderProps = {}): React.ReactElement {
+  const { t, dark, toggle } = useTheme();
+  const { setRoute } = useRoute();
+  const { capabilities } = useTier();
+  const [showSettings, setShowSettings] = React.useState(false);
+  const { billing, loading: billingLoading } = useVaterBilling();
 
   // Trial pill: "Trial: 2 / 1 / 1" (transcripts / scenes / animations remaining)
   // Paid pill: "$X.XX of $250.00"
@@ -101,12 +155,12 @@ export function Header(): React.ReactElement {
     <>
       <div
         style={{
-          height: 64,
+          minHeight: 64,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-end',
-          padding: '0 24px',
-          gap: 12,
+          padding: mobile ? '10px 12px' : '0 24px',
+          gap: mobile ? 8 : 12,
           background: t.headerBg,
           borderBottom: `1px solid ${t.border}`,
           position: 'sticky',
@@ -114,36 +168,108 @@ export function Header(): React.ReactElement {
           zIndex: 90,
         }}
       >
-        <VaterCostPill />
-        <VBtn
-          size="sm"
-          onClick={() => setRoute('pricing')}
-          style={{ borderRadius: JELLY_TOKENS.radius.full, padding: '8px 20px' }}
-        >
-          Buy Credits
-        </VBtn>
+        {mobile && (
+          <button
+            type="button"
+            aria-label="Open navigation"
+            data-testid="nav-open"
+            onClick={() => onOpenNav?.()}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 8,
+              display: 'flex',
+              alignItems: 'center',
+              color: t.text,
+              // pushes the account controls to the right edge without
+              // spreading the pill/toggle/avatar apart
+              marginRight: 'auto',
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
+            </svg>
+          </button>
+        )}
+        {!mobile && <VaterCostPill />}
+        {!mobile && (
+          <VBtn
+            size="sm"
+            onClick={() => setRoute('pricing')}
+            style={{ borderRadius: JELLY_TOKENS.radius.full, padding: '8px 20px' }}
+          >
+            Billing
+          </VBtn>
+        )}
         <div
           style={{
             background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
             borderRadius: JELLY_TOKENS.radius.full,
             padding: '6px 14px',
-            fontSize: 14,
+            fontSize: mobile ? 12 : 14,
             fontWeight: 500,
             color: t.text,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            maxWidth: mobile ? 150 : undefined,
           }}
           title={pillTitle}
         >
           {pillText}
         </div>
-        <div style={{ cursor: 'pointer', padding: 8, borderRadius: '50%' }}>
-          <Icon name="bell" size={20} color={t.textSecondary} />
-        </div>
-        <div onClick={toggle} style={{ cursor: 'pointer', padding: 8, borderRadius: '50%' }}>
+        {capabilities.latestCosts && (
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="What's new"
+            title="What's new — opens the update banner on your dashboard"
+            data-testid="header-bell"
+            onClick={() => setRoute('dashboard')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setRoute('dashboard');
+              }
+            }}
+            style={{ cursor: 'pointer', padding: 8, borderRadius: '50%' }}
+          >
+            <Icon name="bell" size={20} color={t.textSecondary} />
+          </div>
+        )}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
+          aria-pressed={dark}
+          data-testid="theme-toggle"
+          onClick={toggle}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              toggle();
+            }
+          }}
+          style={{ cursor: 'pointer', padding: 8, borderRadius: '50%' }}
+        >
           <Icon name={dark ? 'sun' : 'moon'} size={20} color={t.textSecondary} />
         </div>
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Account settings"
+          aria-expanded={showSettings}
+          data-testid="account-menu"
           onClick={() => setShowSettings((prev) => !prev)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setShowSettings((prev) => !prev);
+            }
+          }}
           style={{
+            flexShrink: 0,
             width: 40,
             height: 40,
             borderRadius: '50%',
@@ -180,7 +306,10 @@ const SETTINGS_TABS: ReadonlyArray<{ key: SettingsTab; label: string }> = [
 export function SettingsModal({ onClose }: SettingsModalProps): React.ReactElement {
   const { t } = useTheme();
   const { setRoute } = useRoute();
+  const { tier } = useTier();
   const [tab, setTab] = React.useState<SettingsTab>('profile');
+  const { billing, loading: billingLoading } = useVaterBilling();
+  const plan = planSummary(billing, billingLoading);
   const { data: session } = useSession();
   const fullName = session?.user?.name ?? '';
   const email = session?.user?.email ?? '';
@@ -206,8 +335,8 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
           background: t.card,
           borderRadius: JELLY_TOKENS.radius.lg,
           boxShadow: JELLY_TOKENS.shadow24,
-          width: 720,
-          maxHeight: '80vh',
+          width: 'min(720px, calc(100vw - 24px))',
+          maxHeight: '85vh',
           display: 'flex',
           overflow: 'hidden',
         }}
@@ -215,6 +344,7 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
         <div
           style={{
             width: 200,
+            flexShrink: 0,
             borderRight: `1px solid ${t.border}`,
             padding: '24px 0',
             display: 'flex',
@@ -262,7 +392,7 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
             Logout
           </div>
         </div>
-        <div style={{ flex: 1, padding: 24 }}>
+        <div style={{ flex: 1, minWidth: 0, padding: 24, overflowY: 'auto' }}>
           <div
             style={{
               display: 'flex',
@@ -297,7 +427,7 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
                     border: `1px solid ${t.border}`,
                     borderRadius: JELLY_TOKENS.radius.md,
                     background: t.cardAlt,
-                    color: fullName ? t.text : t.textDisabled,
+                    color: fullName ? t.text : t.textSecondary,
                   }}
                 >
                   {fullName || 'Not set'}
@@ -322,10 +452,36 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
                     border: `1px solid ${t.border}`,
                     borderRadius: JELLY_TOKENS.radius.md,
                     background: t.cardAlt,
-                    color: email ? t.text : t.textDisabled,
+                    color: email ? t.text : t.textSecondary,
                   }}
                 >
                   {email || 'Sign in to view'}
+                </div>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: t.textSecondary,
+                    marginBottom: 6,
+                  }}
+                >
+                  Access
+                </div>
+                <div
+                  style={{
+                    padding: '14px',
+                    fontSize: 16,
+                    fontFamily: JELLY_TOKENS.font,
+                    border: `1px solid ${t.border}`,
+                    borderRadius: JELLY_TOKENS.radius.md,
+                    background: t.cardAlt,
+                    color: t.text,
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {tier} tier
                 </div>
               </div>
               <div
@@ -337,16 +493,42 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
                 }}
               >
                 <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
-                  Full Access Plan
+                  {plan.title}
                 </div>
-                <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 4 }}>
-                  $200/month — Pay per section
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: t.textSecondary,
+                    marginTop: 4,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {plan.detail}
+                </div>
+                <div
+                  onClick={() => {
+                    setRoute('pricing');
+                    onClose();
+                  }}
+                  style={{
+                    marginTop: 12,
+                    display: 'inline-block',
+                    padding: '8px 14px',
+                    borderRadius: JELLY_TOKENS.radius.md,
+                    background: JELLY_TOKENS.brandGhost,
+                    color: JELLY_TOKENS.brand,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Manage billing →
                 </div>
               </div>
               <SettingsExternalLink
-                href="/account"
-                label="Manage on Account Settings →"
-                description="Edit your name, email, profile photo, and login methods on your full account page."
+                href="/settings"
+                label="Open account settings →"
+                description="Edit your name, email, and login methods on your account page."
               />
             </div>
           )}
@@ -380,16 +562,16 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
           {tab === 'security' && (
             <SettingsExternalLink
               href="/settings"
-              label="Manage on Account Settings →"
-              description="Password, two-factor authentication, and active sessions are managed on your full account page."
+              label="Open account settings →"
+              description="Sign-in method and active sessions are managed on your account page."
             />
           )}
           {tab === 'team' && (
-            <SettingsExternalLink
-              href="/settings"
-              label="Manage on Account Settings →"
-              description="Invite teammates, manage roles, and configure billing seats from your full account page."
-            />
+            <div style={{ fontSize: 14, color: t.textSecondary, lineHeight: 1.6 }}>
+              Jelly Studio accounts are single-seat today — there are no
+              teammates to invite yet. Projects and billing belong to{' '}
+              {session?.user?.email || 'your account'} alone.
+            </div>
           )}
         </div>
       </div>

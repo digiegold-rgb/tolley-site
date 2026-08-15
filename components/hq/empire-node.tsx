@@ -46,7 +46,7 @@ export function relTime(iso: string | null): string {
   return `${Math.round(h / 24)}d ago`;
 }
 
-const handleClass = "!bg-[#1e2733] !border-[#2a3646] !w-2 !h-2";
+const handleClass = "!bg-[var(--hq-navy)] !border-[#2a3646] !w-2 !h-2";
 
 export function EmpireNodeComponent({ data, selected }: NodeProps<Node<EmpireFlowNodeData>>) {
   const cfg = STATUS_CONFIG[data.status];
@@ -61,7 +61,7 @@ export function EmpireNodeComponent({ data, selected }: NodeProps<Node<EmpireFlo
           width: NODE_W,
           height: NODE_H,
           background: "#111722",
-          border: `1px solid ${selected ? cfg.color : "#1e2733"}`,
+          border: `1px solid ${selected ? cfg.color : "var(--hq-navy)"}`,
           borderLeft: `3px solid ${dimmed ? "#2a3646" : data.accent}`,
           boxShadow: !dimmed && cfg.glow ? cfg.glow : "none",
           opacity: data.dim ? 0.22 : dimmed ? 0.55 : 1,

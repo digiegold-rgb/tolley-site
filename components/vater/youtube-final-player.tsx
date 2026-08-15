@@ -21,6 +21,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { fetchVaterCapabilities } from "@/components/animate/tier-context";
 import { useToast } from "@/components/ui/Toast";
 import { VideoSpeedChips } from "@/components/ui/VideoSpeedChips";
 import { isFinalMp4Stale, finalVideoPlaybackUrl } from "@/lib/vater/youtube-status";
@@ -82,6 +83,10 @@ export function YouTubeFinalPlayer({ project, onRecomposeStart }: Props) {
     let cancelled = false;
     (async () => {
       try {
+        const caps = await fetchVaterCapabilities();
+        // /api/vater/latest is owner-only; without this guard every public
+        // account 401'd on it on every screen that renders this component.
+        if (!caps.latestCosts) return;
         const r = await fetch("/api/vater/latest", { cache: "no-store" });
         if (!r.ok) return;
         const j = (await r.json()) as { billing?: { opsRatePerMinute?: number } };

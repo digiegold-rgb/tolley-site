@@ -39,7 +39,13 @@ type AnyProject = any;
 
 export function DashboardScreen(): React.ReactElement {
   const { t } = useTheme();
-  const { setRoute, openProjectInEditor, newVideoRequest, consumeNewVideoRequest } = useRoute();
+  const {
+    setRoute,
+    openProjectInEditor,
+    newVideoRequest,
+    consumeNewVideoRequest,
+    openHelp,
+  } = useRoute();
   const [projects, setProjects] = React.useState<AnyProject[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [stylePickerOpen, setStylePickerOpen] = React.useState(false);
@@ -149,9 +155,9 @@ export function DashboardScreen(): React.ReactElement {
             color: '#fff',
           }}
         >
-          <div style={{ fontSize: 18, fontWeight: 700 }}>Buy Credits</div>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>Billing</div>
           <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-            Get more credits to create unlimited videos
+            Pay per video — see every price and your card on file
           </div>
           <VBtn
             variant="white"
@@ -159,7 +165,7 @@ export function DashboardScreen(): React.ReactElement {
             onClick={() => setRoute('pricing')}
             style={{ marginTop: 16 }}
           >
-            Purchase Credits
+            Open Billing
           </VBtn>
         </div>
         <div
@@ -170,26 +176,55 @@ export function DashboardScreen(): React.ReactElement {
             color: '#fff',
           }}
         >
-          <div style={{ fontSize: 18, fontWeight: 700 }}>Upgrade Plan</div>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>Your Library</div>
           <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-            Unlock premium features and more credits
+            Finished videos, ready to download or publish
           </div>
           <VBtn
             variant="white"
             size="sm"
-            onClick={() => setRoute('pricing')}
+            onClick={() => setRoute('library')}
             style={{ marginTop: 16 }}
           >
-            View Plans
+            Open Library
           </VBtn>
         </div>
       </div>
+
+      {!loading && projects.length === 0 && (
+        <VCard style={{ marginTop: 24, padding: 24 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>
+            No videos yet
+          </div>
+          <div
+            style={{
+              fontSize: 14,
+              color: t.textSecondary,
+              marginTop: 6,
+              lineHeight: 1.6,
+              maxWidth: 560,
+            }}
+          >
+            Start with a style — it locks the voice and the look for every video
+            on your channel — then write or paste a script. Your first
+            transcripts, scene generation and animation are free.
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+            <VBtn size="sm" onClick={() => setStylePickerOpen(true)}>
+              Create your first video
+            </VBtn>
+            <VBtn variant="outlined" size="sm" onClick={openHelp}>
+              How it works
+            </VBtn>
+          </div>
+        </VCard>
+      )}
 
       {/* KPI + Tutorial row */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr 1.2fr',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: 16,
           marginTop: 24,
         }}
@@ -219,6 +254,16 @@ export function DashboardScreen(): React.ReactElement {
           </VCard>
         ))}
         <div
+          role="button"
+          tabIndex={0}
+          data-testid="tutorial-card"
+          onClick={openHelp}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              openHelp();
+            }
+          }}
           style={{
             background: JELLY_TOKENS.gradTutorial,
             borderRadius: JELLY_TOKENS.radius.xl,
@@ -228,6 +273,7 @@ export function DashboardScreen(): React.ReactElement {
             flexDirection: 'column',
             justifyContent: 'center',
             position: 'relative',
+            cursor: 'pointer',
           }}
         >
           <div

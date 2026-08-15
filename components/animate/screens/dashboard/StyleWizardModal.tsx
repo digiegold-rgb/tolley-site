@@ -168,12 +168,21 @@ export function StyleWizardModal({
           fetch('/api/vater/voices', { cache: 'no-store' }),
           fetch('/api/vater/voices/elevenlabs', { cache: 'no-store' }),
         ]);
-        if (!vRes.ok) {
-          throw new Error(`Voice clones HTTP ${vRes.status}`);
+        // Soft-fail: this used to throw, which left a signed-in customer
+        // unable to create a style at all (and therefore unable to create a
+        // project) whenever the voice proxy was unreachable. The wizard
+        // falls back to a typed voice name instead.
+        if (vRes.ok) {
+          const vData = (await vRes.json()) as { voices?: VaterVoice[] };
+          if (cancelled) return;
+          setVaterVoices(Array.isArray(vData.voices) ? vData.voices : []);
+        } else {
+          if (cancelled) return;
+          setVaterVoices([]);
+          setVoicesError(
+            'Voice library unavailable — type a voice name below, or edit this style later.',
+          );
         }
-        const vData = (await vRes.json()) as { voices?: VaterVoice[] };
-        if (cancelled) return;
-        setVaterVoices(Array.isArray(vData.voices) ? vData.voices : []);
         if (eRes.ok) {
           const eData = (await eRes.json()) as { voices?: ElevenVoice[] };
           if (!cancelled) {
@@ -186,8 +195,10 @@ export function StyleWizardModal({
       } catch (err) {
         if (cancelled) return;
         devError('[StyleWizardModal] voices load failed:', err);
+        setVaterVoices([]);
+        setElevenVoices([]);
         setVoicesError(
-          err instanceof Error ? err.message : 'Failed to load voices',
+          'Voice library unavailable — type a voice name below, or edit this style later.',
         );
       } finally {
         if (!cancelled) setVoicesLoading(false);
@@ -714,13 +725,24 @@ export function StyleWizardModal({
                 <div
                   style={{
                     fontSize: 12,
-                    color: JELLY_TOKENS.error,
+                    color: t.textSecondary,
                     marginTop: 4,
                   }}
                 >
                   {voicesError}
                 </div>
               )}
+              {!voicesLoading &&
+                voiceBackend === 'f5-tts' &&
+                vaterVoices.length === 0 && (
+                  <input
+                    value={voice}
+                    onChange={(e) => setVoice(e.target.value)}
+                    placeholder="Voice name (e.g. monroe)"
+                    aria-label="Voice name"
+                    style={{ ...inputStyle, marginTop: 6 }}
+                  />
+                )}
               {!voicesLoading &&
                 voiceBackend === 'elevenlabs' &&
                 elevenVoices.length === 0 && (

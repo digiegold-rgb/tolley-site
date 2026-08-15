@@ -53,6 +53,12 @@ export function HqLicenseReviews({
         </button>
       </div>
 
+      {reviews.length === 0 && loading && (
+        <div style={{ fontSize: 13, color: "var(--hq-ink-3)", padding: "8px 0" }}>
+          Loading license reviews…
+        </div>
+      )}
+
       {reviews.length === 0 && !loading && (
         <div style={{ fontSize: 13, color: "#999", padding: "8px 0" }}>
           No licenses waiting. Kansas digest signups (and Missouri ones during registry
@@ -67,7 +73,7 @@ export function HqLicenseReviews({
           <div
             key={r.id}
             style={{
-              border: "1px solid #e5e5ea",
+              border: "1px solid var(--hq-line)",
               borderRadius: 8,
               padding: "10px 12px",
               marginBottom: 8,

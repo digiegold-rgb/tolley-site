@@ -1,11 +1,14 @@
 'use client';
 
-/* NicheFinderScreen — exploratory + Creator Models browser.
+/* NicheFinderScreen — the Creator Models browser.
  *
- * No live niche-discovery backend yet — show empty-state placeholder for the
- * search side. Promote CREATOR_MODELS (currently buried inside
- * youtube-creator-model-picker.tsx) to a first-class browser tab so users can
- * read each model's title formulas / content pillars before starting a project.
+ * Promotes CREATOR_MODELS (previously buried inside
+ * youtube-creator-model-picker.tsx) to a first-class screen so users can read
+ * each model's title formulas / content pillars before starting a project.
+ *
+ * The old "Channel Discovery" tab was removed: it had no backend and only
+ * ever rendered a "connecting soon" card, so the tab strip advertised a
+ * feature that did not exist.
  */
 
 import * as React from 'react';
@@ -16,8 +19,7 @@ import { CREATOR_MODELS } from '@/lib/vater/creator-models';
 
 export function NicheFinderScreen(): React.ReactElement {
   const { t } = useTheme();
-  const { setRoute } = useRoute();
-  const [tab, setTab] = React.useState<'discover' | 'creator-models'>('creator-models');
+  const { requestNewVideo } = useRoute();
   const [query, setQuery] = React.useState('');
 
   const filtered = React.useMemo(() => {
@@ -39,27 +41,11 @@ export function NicheFinderScreen(): React.ReactElement {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <SectionHeader
         icon="niche"
-        title="Niche Finder"
-        description="Discover content niches, channels to study, and the Creator Models that power Jelly scripts."
+        title="Creator Models"
+        description="The channel archetypes that shape Jelly scripts — title formulas, content pillars, and pacing for each."
       />
 
-      <div style={{
-        display: 'flex', gap: 4, padding: 4, background: t.card, borderRadius: JELLY_TOKENS.radius.pill,
-        border: `1px solid ${t.border}`, alignSelf: 'flex-start',
-      }}>
-        {(['creator-models', 'discover'] as const).map(x => (
-          <div key={x} onClick={() => setTab(x)}
-            style={{
-              padding: '8px 16px', borderRadius: JELLY_TOKENS.radius.pill, cursor: 'pointer',
-              background: tab === x ? JELLY_TOKENS.brand : 'transparent',
-              color: tab === x ? '#fff' : t.textSecondary,
-              fontSize: 13, fontWeight: tab === x ? 600 : 500,
-            }}>{x === 'creator-models' ? 'Creator Models' : 'Channel Discovery'}</div>
-        ))}
-      </div>
-
-      {tab === 'creator-models' && (
-        <>
+      <>
           <VInput value={query} onChange={setQuery} placeholder="Filter by name, pillar, or title formula…" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
             {filtered.map((m) => (
@@ -96,21 +82,20 @@ export function NicheFinderScreen(): React.ReactElement {
                   </>
                 )}
                 <div style={{ marginTop: 12 }}>
-                  <VBtn variant="outlined" size="sm" onClick={() => setRoute('editor')}>Use this model →</VBtn>
+                  <VBtn variant="outlined" size="sm" onClick={requestNewVideo}>Start a video with this model →</VBtn>
                 </div>
               </VCard>
             ))}
           </div>
-        </>
-      )}
-
-      {tab === 'discover' && (
-        <VCard variant="flat">
-          <div style={{ fontSize: 14, color: t.textSecondary }}>
-            Channel discovery is exploratory — connecting soon. For now, browse the Creator Models or import an RSS feed to seed videos automatically.
-          </div>
-        </VCard>
-      )}
+        {filtered.length === 0 && (
+          <VCard variant="flat">
+            <div style={{ fontSize: 14, color: t.textSecondary }}>
+              No creator model matches &ldquo;{query}&rdquo;. Clear the filter to see all
+              {' '}{CREATOR_MODELS.length}.
+            </div>
+          </VCard>
+        )}
+      </>
     </div>
   );
 }

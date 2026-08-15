@@ -106,7 +106,7 @@ export function HqVaterDue() {
       style={{
         padding: "10px 14px",
         marginBottom: 14,
-        border: "1px solid #d1d1d6",
+        border: "1px solid var(--hq-border)",
         borderRadius: 10,
         background: "#fff",
         fontSize: 13,
@@ -143,7 +143,7 @@ export function HqVaterDue() {
               style={{
                 width: 80,
                 padding: "5px 8px",
-                border: "1px solid #d1d1d6",
+                border: "1px solid var(--hq-border)",
                 borderRadius: 8,
                 fontSize: 12,
                 textAlign: "right",
@@ -175,7 +175,7 @@ export function HqVaterDue() {
                 onClick={() => setConfirming(false)}
                 style={{
                   padding: "6px 10px",
-                  border: "1px solid #d1d1d6",
+                  border: "1px solid var(--hq-border)",
                   borderRadius: 8,
                   fontSize: 12,
                   background: "#fff",

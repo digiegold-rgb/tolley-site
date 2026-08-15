@@ -3,6 +3,8 @@ import Link from "next/link";
 type AuthShellProps = {
   title: string;
   subtitle: string;
+  /** Small eyebrow above the title. Defaults to the T-Agent brand. */
+  brand?: string;
   children: React.ReactNode;
   alternatePrompt: string;
   alternateLabel: string;
@@ -12,6 +14,7 @@ type AuthShellProps = {
 export function AuthShell({
   title,
   subtitle,
+  brand = "t-agent",
   children,
   alternatePrompt,
   alternateLabel,
@@ -26,7 +29,7 @@ export function AuthShell({
       <section className="relative z-20 w-full max-w-md">
         <div className="mb-4 text-center">
           <p className="mb-3 text-[0.72rem] font-medium tracking-[0.42em] text-white/68 uppercase">
-            t-agent
+            {brand}
           </p>
           <h1 className="text-xl font-semibold tracking-[0.02em] text-white/95 sm:text-2xl">
             {title}

@@ -47,7 +47,10 @@ export const JELLY_TOKENS = {
   gradCredits: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
   gradUpgrade: 'linear-gradient(135deg, #4B5563 0%, #6B7280 100%)',
   gradTutorial: 'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)',
-  font: "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  // Poppins was never loaded anywhere — the root layout loads Sora as
+  // --font-sora, so every /animate surface silently fell back to the
+  // system UI font. Use the font that is actually on the page.
+  font: "var(--font-sora), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   radius: { xs: 4, sm: 6, md: 8, lg: 12, xl: 16, pill: 24, full: 9999 },
   shadow1:
     '0 3px 3px -2px rgba(0,0,0,0.2), 0 3px 4px 0 rgba(0,0,0,0.14), 0 1px 8px 0 rgba(0,0,0,0.12)',

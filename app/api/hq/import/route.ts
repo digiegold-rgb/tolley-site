@@ -6,6 +6,9 @@ import { HQ_OFFERS, sanitizeGrowthLeadInput } from "@/lib/hq";
 
 export const runtime = "nodejs";
 
+// No UI caller — agent/curl only (kept on purpose). The scrapers post here
+// directly with the admin cookie; there is deliberately no /hq button for it.
+//
 // POST /api/hq/import — bulk-import scraped prospects.
 // Body: JSON array of GrowthLead scalar-field objects (or { leads: [...] }).
 // Upsert key: placeId; fallback name+city. New rows land at stage="scraped";

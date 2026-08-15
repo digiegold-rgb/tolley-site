@@ -9,9 +9,9 @@
  */
 
 import * as React from 'react';
-import { JELLY_TOKENS } from '../../tokens';
-import { useTheme, useRoute } from '../../theme-context';
-import { VBtn, VCard, SectionHeader, RetryError } from '../../primitives';
+import { JELLY_TOKENS } from '../tokens';
+import { useTheme, useRoute } from '../theme-context';
+import { VBtn, VCard, SectionHeader, RetryError } from '../primitives';
 import { StylesGallery } from '@/components/vater/styles/StylesGallery';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

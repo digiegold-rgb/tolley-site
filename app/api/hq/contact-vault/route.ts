@@ -7,6 +7,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
+ * No UI caller — agent/curl only (kept on purpose). SMS is off, so nothing in
+ * /hq reads this yet; the ingest lane is driven by vault-ingest.mjs.
+ *
  * Contact Vault — the phone-keyed merge of Jared's and Ruthann's address books.
  *
  * POST (x-sync-secret): ~/business-os/bin/vault-ingest.mjs pushes parsed batches.
