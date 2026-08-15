@@ -22,6 +22,7 @@ import { useTheme } from '../../theme-context';
 import { useTier } from '../../tier-context';
 import { YouTubeVoiceClonePanel } from '@/components/vater/youtube-voice-clone-panel';
 import { YouTubePopularVoices } from '@/components/vater/youtube-popular-voices';
+import { VoiceTuner } from './VoiceTuner';
 
 export function Voices(): React.ReactElement {
   const { t } = useTheme();
@@ -69,6 +70,10 @@ export function Voices(): React.ReactElement {
       {/* Local clone management — studio tier only (POST /api/vater/voices). */}
       {capabilities.voicesWrite ? (
         <>
+          {/* Voice Tuner — EQ / delivery control panel with instant ~30s samples,
+              lock-in writes vater_voices/<Name>.tuning.json on the DGX (8/15). */}
+          <VoiceTuner />
+
           <div style={cardStyle}>
             <div
               style={{

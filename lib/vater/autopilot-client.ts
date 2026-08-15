@@ -543,7 +543,7 @@ function assertConfig() {
 }
 
 async function call<T>(
-  method: "GET" | "POST" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<T> {
@@ -628,6 +628,75 @@ async function callForm<T>(
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+// ── Voice Tuner types (mirror content-autopilot/vater_voice_tuning.py) ────
+export type VoiceTuning = {
+  version: number;
+  gen: {
+    temperature: number;
+    top_p: number;
+    top_k: number;
+    num_beams: number;
+    repetition_penalty: number;
+    interval_silence_ms: number;
+    emo_alpha: number;
+    emo: Record<string, number>;
+    seed: number | null;
+  };
+  post: {
+    chunk_gap_ms: number;
+    tempo: number;
+    pitch_semitones: number;
+    highpass_hz: number;
+    lowpass_hz: number;
+    denoise: number;
+    deess: number;
+    eq: Record<string, number>;
+    low_shelf_db: number;
+    high_shelf_db: number;
+    compressor: {
+      enabled: boolean;
+      threshold_db: number;
+      ratio: number;
+      attack_ms: number;
+      release_ms: number;
+      makeup_db: number;
+    };
+    room: { enabled: boolean; delay_ms: number; decay: number };
+    loudnorm: { enabled: boolean; lufs: number };
+    gain_db: number;
+  };
+};
+
+export type VoiceTuningDoc = {
+  voice: string;
+  tuning: VoiceTuning;
+  defaults?: VoiceTuning;
+  locked: boolean;
+  updatedAt?: string | null;
+  sampleText?: string;
+  emoKeys?: string[];
+  eqBandsHz?: number[];
+  chain?: string;
+  ok?: boolean;
+};
+
+export type VoicePreviewStatus = {
+  previewId: string;
+  voice: string;
+  phase: "queued" | "synth" | "post" | "done" | "error";
+  words?: number;
+  chunks?: number;
+  chunkDone?: number;
+  rawDurationS?: number;
+  v?: number;
+  durationS?: number;
+  modalWallS?: number;
+  postWallS?: number;
+  usd?: number;
+  chain?: string;
+  error?: string;
+};
 
 export const autopilot = {
   /** Async — `yt-dlp` + transcribe a source URL. Returns a jobId. */
@@ -843,6 +912,32 @@ export const autopilot = {
       "GET",
       `/vater/file/voice/${encodeURIComponent(name)}`,
       range,
+    ),
+
+  // ── Voice Tuner (2026-08-15) — per-voice gen knobs + EQ/post chain ──────
+  /** Locked tuning (or env defaults) for a voice clone. */
+  getVoiceTuning: (name: string) =>
+    call<VoiceTuningDoc>("GET", `/vater/voices/${encodeURIComponent(name)}/tuning`),
+  /** Lock in a tuning — every render of this voice honors it from now on. */
+  putVoiceTuning: (name: string, tuning: VoiceTuning) =>
+    call<VoiceTuningDoc>("PUT", `/vater/voices/${encodeURIComponent(name)}/tuning`, { tuning }),
+  /** Back to factory/env defaults. */
+  deleteVoiceTuning: (name: string) =>
+    call<VoiceTuningDoc>("DELETE", `/vater/voices/${encodeURIComponent(name)}/tuning`),
+  /** Async — synthesize a ~30s sample on Modal with draft settings. */
+  startVoicePreview: (name: string, input: { text: string; gen: VoiceTuning["gen"]; post: VoiceTuning["post"] }) =>
+    call<{ previewId: string; voice: string; words: number }>(
+      "POST", `/vater/voices/${encodeURIComponent(name)}/preview`, input),
+  getVoicePreview: (previewId: string) =>
+    call<VoicePreviewStatus>("GET", `/vater/voice-previews/${encodeURIComponent(previewId)}`),
+  /** Sync (~1-3s) — re-apply ONLY the post chain to the cached raw take. */
+  repostVoicePreview: (previewId: string, post: VoiceTuning["post"]) =>
+    call<VoicePreviewStatus>("POST", `/vater/voice-previews/${encodeURIComponent(previewId)}/post`, { post }),
+  fetchVoicePreviewAudio: (previewId: string, v?: number | null, raw?: boolean) =>
+    callRaw(
+      "GET",
+      `/vater/voice-previews/${encodeURIComponent(previewId)}/audio?` +
+        (raw ? "raw=1" : v ? `v=${v}` : ""),
     ),
 
   /** Generate a YouTube thumbnail (1280×720 SDXL + ffmpeg text overlay). */
