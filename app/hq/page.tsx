@@ -639,6 +639,15 @@ function HqPageInner() {
               <summary className="tab-btn">📄 Docs ▾</summary>
               <div className="tab-docs-menu">
                 <a
+                  href="/research/hq-animate-overhaul-2026-08.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeDocs}
+                >
+                  🛠 HQ + Animate Overhaul
+                  <span className="doc-sub">Audit, security, dead-ends fixed; /animate made sellable — Aug 15, 2026</span>
+                </a>
+                <a
                   href="/research/hardware-upgrade-plan-2026-08.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
