@@ -198,10 +198,6 @@
       "schedule": "0 */4 * * *"
     },
     {
-      "path": "/api/cron/trading-agents",
-      "schedule": "0 21 * * 1-5"
-    },
-    {
       "path": "/api/cron/pools-intelligence",
       "schedule": "0 4 * * *"
     },
