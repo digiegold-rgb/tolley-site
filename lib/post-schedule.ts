@@ -49,10 +49,10 @@ export const SCHEDULED_JOBS: ScheduledJob[] = [
   },
   {
     job: "listings-video",
-    label: "New KC Homes Today (7 cities)",
-    schedule: "10:30 daily",
+    label: "New KC Homes This Week (33 cities, weekly)",
+    schedule: "10:30 Mon (weekly since 2026-08-15)",
     unit: "listings-video.timer",
-    staleAfterHours: 30,
+    staleAfterHours: 8 * 24,
     channels: [
       { channel: "yt", account: "yourkchome", business: "ykh" },
       { channel: "fb", account: "yourkchomes", business: "ykh" },
