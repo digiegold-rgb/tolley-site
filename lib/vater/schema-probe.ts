@@ -77,6 +77,26 @@ export function hasVaterPaymentUserId(): Promise<boolean> {
 }
 
 /**
+ * True once the VaterCreditLedger table exists (prepaid credits, migration
+ * prisma/migrations/20260815_vater_credit_ledger).
+ *
+ * Behaviour when it is missing: balances read as "not ready" (never as $0
+ * spendable, which would look like a real empty wallet), and the budget gate
+ * falls back to the pre-credits rules instead of blocking every render in the
+ * studio until Jared runs the migration.
+ */
+export function hasVaterCreditLedgerTable(): Promise<boolean> {
+  return probe("VaterCreditLedger", async () => {
+    const rows = await prisma.$queryRaw<{ n: bigint }[]>`
+      SELECT COUNT(*)::bigint AS n
+      FROM information_schema.tables
+      WHERE table_schema = current_schema() AND table_name = 'VaterCreditLedger'
+    `;
+    return Number(rows[0]?.n ?? 0) > 0;
+  });
+}
+
+/**
  * Prisma "table does not exist" (P2021) / "column does not exist" (P2022).
  * Used as a belt-and-braces catch alongside the probes above, for the race
  * where the probe succeeds and the migration is rolled back under us.

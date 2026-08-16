@@ -19,11 +19,14 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { appendScriptVersion } from "@/lib/vater/script-versions";
 import { resolveLockedStyle, LOCKED_STYLE_NAME } from "@/lib/vater/locked-style";
-import { isVaterStudioEmail } from "@/lib/admin-auth";
-
-/** Monroe's measured long-form pace (standing spec §5). Runtime always comes
- *  from the script's word count — never from stretching scenes. */
-const WORDS_PER_MINUTE = 185;
+import { isVaterAdminEmail, isVaterStudioEmail } from "@/lib/admin-auth";
+import {
+  BETA_LENGTH_MESSAGE,
+  BETA_MAX_WORDS,
+  WORDS_PER_MINUTE,
+  isOverBetaLength,
+  runtimeClock,
+} from "@/lib/vater/script-limits";
 
 /** Guard rails on the pasted text: enough to be a script, small enough that a
  *  paste accident can't push a novel through the renderer. */
@@ -69,6 +72,22 @@ export async function POST(req: NextRequest) {
   if (wordCount < MIN_WORDS) {
     return NextResponse.json(
       { error: `Script is only ${wordCount} words — need at least ${MIN_WORDS}` },
+      { status: 400 },
+    );
+  }
+  // Beta runtime cap. Stop it here rather than at the render gate: the DGX
+  // rejects an over-cap script anyway (vater.py run-creation), and finding out
+  // at Approve & Animate means the user has already invested in the project.
+  // The owner is uncapped.
+  if (!isVaterAdminEmail(session.user.email) && isOverBetaLength(wordCount)) {
+    return NextResponse.json(
+      {
+        error: "script_too_long",
+        message: BETA_LENGTH_MESSAGE,
+        detail: `That script is ${wordCount.toLocaleString()} words (≈ ${runtimeClock(wordCount)}). ${BETA_LENGTH_MESSAGE}`,
+        wordCount,
+        maxWords: BETA_MAX_WORDS,
+      },
       { status: 400 },
     );
   }

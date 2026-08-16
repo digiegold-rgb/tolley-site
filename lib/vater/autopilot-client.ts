@@ -99,9 +99,24 @@ export type StylePreset = {
 };
 
 export type VoiceClone = {
+  /** URL-safe id AND the value stored as `voiceCloneName`: bare stem for a
+   *  shared voice ("Monroe"), `u_<userId>~Stem` for a tenant's own clone. */
   name: string;
   sampleText?: string;
   language: string;
+  /** Same value as `name`; the DGX emits both. */
+  id?: string;
+  /** Logical `<ownerKey>/<Name>` form. */
+  canonicalId?: string;
+  /** The stem on its own — what a human should read. */
+  displayName?: string;
+  /** "shared" or `u_<userId>`. */
+  owner?: string;
+  shared?: boolean;
+  /** A locked `<Name>.tuning.json` exists for this voice. */
+  tuned?: boolean;
+  /** A `<Name>.consent.json` attestation was filed at upload. */
+  consented?: boolean;
 };
 
 export type ElevenLabsVoice = {
@@ -561,11 +576,14 @@ async function call<T>(
   method: "GET" | "POST" | "PUT" | "DELETE",
   path: string,
   body?: unknown,
+  /** Extra request headers — used for `X-Vater-Owner-Admin` on voice writes. */
+  extraHeaders?: Record<string, string>,
 ): Promise<T> {
   assertConfig();
   const url = `${BASE}${path}`;
   const headers: Record<string, string> = {
     Authorization: `Bearer ${KEY}`,
+    ...(extraHeaders ?? {}),
   };
   if (body !== undefined) headers["Content-Type"] = "application/json";
 
@@ -638,6 +656,11 @@ async function callForm<T>(
     throw new AutopilotError(res.status, path, text || res.statusText);
   }
   return (await res.json()) as T;
+}
+
+/** `?owner=u_<userId>` for the owner-scoped voice writes; empty when omitted. */
+function voiceOwnerQuery(owner?: string): string {
+  return owner ? `?owner=${encodeURIComponent(owner)}` : "";
 }
 
 // ---------------------------------------------------------------------------
@@ -866,11 +889,18 @@ export const autopilot = {
     return data?.references ?? {};
   },
 
-  /** List voice clones. (DGX returns `{voices: [...]}`, unwrap.) */
-  getVoices: async (): Promise<VoiceClone[]> => {
+  /**
+   * List voice clones. (DGX returns `{voices: [...]}`, unwrap.)
+   *
+   * `owner` scopes the result: omitted → the shared library only (the
+   * pre-namespace behaviour), `u_<userId>` → shared + that tenant's clones,
+   * `"all"` → every namespace (owner account only).
+   */
+  getVoices: async (owner?: string): Promise<VoiceClone[]> => {
+    const qs = owner ? `?owner=${encodeURIComponent(owner)}` : "";
     const data = await call<{ voices?: VoiceClone[] } | VoiceClone[]>(
       "GET",
-      "/vater/voices",
+      `/vater/voices${qs}`,
     );
     if (Array.isArray(data)) return data;
     return Array.isArray(data?.voices) ? data.voices : [];
@@ -912,9 +942,20 @@ export const autopilot = {
     return Array.isArray(data?.sfx) ? data.sfx : [];
   },
 
-  /** Upload a new voice clone (multipart: audio file + name + sampleText). */
+  /** Upload a new voice clone (multipart: audio + name + sampleText, plus
+   *  `ownerKey` / `voiceConsent` / `consentUserId` for a tenant upload). */
   uploadVoice: (form: FormData) =>
-    callForm<{ name: string }>("/vater/voices", form),
+    callForm<VoiceClone>("/vater/voices", form),
+
+  /** Delete a clone + its sidecars. `owner` proves which namespace the caller
+   *  is; `admin` (owner account) is the only way to remove a shared voice. */
+  deleteVoice: (voiceId: string, opts: { owner: string; admin?: boolean }) =>
+    call<{ ok: boolean; id: string; owner: string; removed: string[] }>(
+      "DELETE",
+      `/vater/voices/${encodeURIComponent(voiceId)}?owner=${encodeURIComponent(opts.owner)}`,
+      undefined,
+      opts.admin ? { "X-Vater-Owner-Admin": "1" } : undefined,
+    ),
 
   /** Stream a finished asset back through the proxy: kind = "audio" | "video" | `scene/${idx}`. */
   fetchFile: (jobId: string, kind: string, range?: string | null) =>
@@ -936,12 +977,28 @@ export const autopilot = {
   /** Locked tuning (or env defaults) for a voice clone. */
   getVoiceTuning: (name: string) =>
     call<VoiceTuningDoc>("GET", `/vater/voices/${encodeURIComponent(name)}/tuning`),
-  /** Lock in a tuning — every render of this voice honors it from now on. */
-  putVoiceTuning: (name: string, tuning: VoiceTuning) =>
-    call<VoiceTuningDoc>("PUT", `/vater/voices/${encodeURIComponent(name)}/tuning`, { tuning }),
+  /** Lock in a tuning — every render of this voice honors it from now on.
+   *  Owner-scoped: the DGX rejects a write outside `owner`'s namespace unless
+   *  the admin header is set. */
+  putVoiceTuning: (
+    name: string,
+    tuning: VoiceTuning,
+    opts?: { owner?: string; admin?: boolean },
+  ) =>
+    call<VoiceTuningDoc>(
+      "PUT",
+      `/vater/voices/${encodeURIComponent(name)}/tuning${voiceOwnerQuery(opts?.owner)}`,
+      { tuning },
+      opts?.admin ? { "X-Vater-Owner-Admin": "1" } : undefined,
+    ),
   /** Back to factory/env defaults. */
-  deleteVoiceTuning: (name: string) =>
-    call<VoiceTuningDoc>("DELETE", `/vater/voices/${encodeURIComponent(name)}/tuning`),
+  deleteVoiceTuning: (name: string, opts?: { owner?: string; admin?: boolean }) =>
+    call<VoiceTuningDoc>(
+      "DELETE",
+      `/vater/voices/${encodeURIComponent(name)}/tuning${voiceOwnerQuery(opts?.owner)}`,
+      undefined,
+      opts?.admin ? { "X-Vater-Owner-Admin": "1" } : undefined,
+    ),
   /** Async — synthesize a ~30s sample on Modal with draft settings. */
   startVoicePreview: (name: string, input: { text: string; gen: VoiceTuning["gen"]; post: VoiceTuning["post"] }) =>
     call<{ previewId: string; voice: string; words: number }>(

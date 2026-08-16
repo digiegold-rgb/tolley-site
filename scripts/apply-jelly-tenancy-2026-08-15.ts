@@ -5,7 +5,7 @@
  * prod Neon database. Staged to /hq "Must Complete" because prod DB writes
  * are Jared's hands only (see memory: queue-janitor rules).
  *
- * Runs four steps, in order, all idempotent:
+ * Runs six steps, in order, all idempotent:
  *   1. MIGRATION  — apply prisma/migrations/20260815_vater_account/migration.sql
  *                   (creates VaterAccount, adds VaterPayment.userId + indexes;
  *                   every statement is IF NOT EXISTS, nothing is dropped)
@@ -14,9 +14,22 @@
  *   3. PROJECTS   — assign the 208 legacy YouTubeProject rows with userId=NULL
  *                   to the owner, so NULL stops being a permission state
  *   4. PAYMENTS   — backfill VaterPayment.userId = Trey for the pre-tenancy row
+ *   5. BETA       — apply prisma/migrations/20260815_beta_invites/migration.sql
+ *                   (BetaInvite, AdminImpersonation, VaterEvent + two User
+ *                   columns; all IF NOT EXISTS, nothing dropped)
+ *   6. CREDITS    — apply prisma/migrations/20260815_vater_credit_ledger/
+ *                   migration.sql (creates VaterCreditLedger: the prepaid
+ *                   credit ledger + its unique idempotency indexes). Also
+ *                   IF NOT EXISTS throughout; creates a table, touches none.
  *
- * SAFE TO RUN TWICE: step 1 is IF NOT EXISTS, step 2 upserts, steps 3-4 match
- * only rows that are still NULL. A second run reports 0 changes.
+ * SAFE TO RUN TWICE: the migration steps are IF NOT EXISTS, step 2 upserts, steps
+ * 3-4 match only rows that are still NULL. A second run reports 0 changes.
+ *
+ * UNTIL THE CREDITS STEP RUNS, prepaid credits are simply dormant: /animate reports the
+ * balance as "not ready" and the budget gate falls back to the pre-credits
+ * rules, so nothing is blocked and nothing is billed. Nobody can buy a credit
+ * pack that will not be recorded, because the Billing screen hides the pack
+ * buttons while the ledger is unavailable.
  *
  * WHAT CHANGES FOR TREY: nothing he owes. His compute stays $108.79 and his
  * current due stays $68.27. His all-time ops fee drops $37.98 -> $33.20,
@@ -35,6 +48,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { prisma } from "../lib/prisma";
+import { splitSqlStatements } from "./lib/sql-statements";
 
 const MIGRATION_SQL = path.join(
   __dirname,
@@ -45,12 +59,67 @@ const MIGRATION_SQL = path.join(
   "migration.sql",
 );
 
+const CREDIT_LEDGER_SQL = path.join(
+  __dirname,
+  "..",
+  "prisma",
+  "migrations",
+  "20260815_vater_credit_ledger",
+  "migration.sql",
+);
+
+/**
+ * Phase 3 (invites / password reset / view-as / system log), 2026-08-15.
+ * Appended as STEP 5 rather than a second script: both migrations are staged
+ * to the same /hq item, both are IF NOT EXISTS, and running one without the
+ * other leaves /animate half-built.
+ */
+const BETA_MIGRATION_SQL = path.join(
+  __dirname,
+  "..",
+  "prisma",
+  "migrations",
+  "20260815_beta_invites",
+  "migration.sql",
+);
+
 const OWNER_EMAIL = "digiegold@gmail.com";
 const OWNER_FALLBACK_EMAIL = "jared@yourkchomes.com";
 const TREY_EMAIL = "tvater326@gmail.com";
 
 const APPLY = process.argv.includes("--apply");
 const tag = (s: string) => (APPLY ? s : `[dry-run] ${s}`);
+
+/**
+ * Split a migration file into executable statements.
+ *
+ * 🔴 THIS FEEDS $executeRawUnsafe AGAINST THE PRODUCTION DATABASE. Anything
+ * this function mistakes for SQL gets run. A naive split has bitten us twice
+ * already, so it is a real scanner rather than a chain of string ops:
+ *
+ *   1. `.split(";")` BEFORE stripping comments cut a `--` comment in half and
+ *      the tail survived as a "statement" — the credit-ledger migration's
+ *      "no cached balance column" was printed as SQL (fixed 2026-08-15).
+ *   2. Stripping only comments that START a line leaves a trailing `-- note;`
+ *      after real SQL intact, which reintroduces (1) on the next semicolon.
+ *   3. `/* *​/` block comments were not handled AT ALL — prose inside one went
+ *      straight through as a statement.
+ *   4. A `DO $$ … END IF; … $$;` block was shredded on the semicolons INSIDE
+ *      its body. This one survived fix (1): verified against the repo's 60
+ *      migrations, `20260704_launchpad_platform` and `20260705_regular_runs`
+ *      still emitted a bare `END IF` as a statement afterwards.
+ *
+ * The scanner walks the file once, tracking whether it is inside a string
+ * literal, a quoted identifier, or a dollar-quoted body, and only treats
+ * `--`, `/* *​/` and `;` as syntax when it is not. That also means a semicolon
+ * inside a string ('a;b') no longer splits a statement in half.
+ *
+ * Comments are replaced with whitespace rather than deleted so tokens on
+ * either side can never be glued together.
+ */
+function sqlStatements(file: string): string[] {
+  return splitSqlStatements(readFileSync(file, "utf8"));
+}
 
 function heading(n: number, title: string) {
   console.log(`\n${"=".repeat(66)}\nSTEP ${n} — ${title}\n${"=".repeat(66)}`);
@@ -74,6 +143,27 @@ async function paymentUserIdExists(): Promise<boolean> {
   return Number(rows[0]?.n ?? 0) > 0;
 }
 
+/** Generic table probe — shared by the Phase 3 and credit-ledger steps. */
+async function tableExists(table: string): Promise<boolean> {
+  const rows = await prisma.$queryRaw<{ n: bigint }[]>`
+    SELECT COUNT(*)::bigint AS n
+    FROM information_schema.tables
+    WHERE table_schema = current_schema() AND table_name = ${table}
+  `;
+  return Number(rows[0]?.n ?? 0) > 0;
+}
+
+/** Generic column probe — used by the Phase 3 step. */
+async function columnExists(table: string, column: string): Promise<boolean> {
+  const rows = await prisma.$queryRaw<{ n: bigint }[]>`
+    SELECT COUNT(*)::bigint AS n
+    FROM information_schema.columns
+    WHERE table_schema = current_schema()
+      AND table_name = ${table} AND column_name = ${column}
+  `;
+  return Number(rows[0]?.n ?? 0) > 0;
+}
+
 async function vaterAccountExists(): Promise<boolean> {
   const rows = await prisma.$queryRaw<{ n: bigint }[]>`
     SELECT COUNT(*)::bigint AS n
@@ -82,6 +172,7 @@ async function vaterAccountExists(): Promise<boolean> {
   `;
   return Number(rows[0]?.n ?? 0) > 0;
 }
+
 
 // ---------------------------------------------------------------- step 1
 async function stepMigration() {
@@ -99,16 +190,7 @@ async function stepMigration() {
     return;
   }
 
-  const statements = readFileSync(MIGRATION_SQL, "utf8")
-    .split(";")
-    .map((chunk) =>
-      chunk
-        .split("\n")
-        .filter((line) => !line.trim().startsWith("--"))
-        .join("\n")
-        .trim(),
-    )
-    .filter(Boolean);
+  const statements = sqlStatements(MIGRATION_SQL);
 
   for (const stmt of statements) {
     console.log(`  ${tag(stmt.replace(/\s+/g, " "))}`);
@@ -272,7 +354,102 @@ async function stepBackfillPayments(treyId: string | null) {
   }
 }
 
+// ---------------------------------------------------------------- step 6
+/**
+ * Prepaid credit ledger (Phase 2 of the beta launch).
+ *
+ * Creates ONE table. The unique indexes are the point of it: they are what
+ * make a duplicated Stripe webhook, a re-poll of a finished render, or a
+ * re-sent invite unable to double-credit or double-charge anyone.
+ *
+ * Nothing is written into it here. Balances start empty, starter grants are
+ * handed out by the invite flow, and the first debit happens the next time a
+ * metered user's video finishes.
+ */
+async function stepCreditLedger() {
+  heading(6, "Migration — VaterCreditLedger (prepaid credits)");
+
+  if (await tableExists("VaterCreditLedger")) {
+    console.log("  already applied — nothing to do.");
+    return;
+  }
+
+  for (const stmt of sqlStatements(CREDIT_LEDGER_SQL)) {
+    console.log(`  ${tag(stmt.replace(/\s+/g, " "))}`);
+    if (APPLY) await prisma.$executeRawUnsafe(stmt);
+  }
+
+  if (APPLY) {
+    console.log(
+      `  now: VaterCreditLedger table=${await tableExists("VaterCreditLedger")}`,
+    );
+  }
+}
+
 // ---------------------------------------------------------------- main
+// ---------------------------------------------------------------- step 5
+/**
+ * Phase 3 schema: BetaInvite, AdminImpersonation, VaterEvent, plus
+ * User.betaInviteId / User.sessionVersion.
+ *
+ * Every statement is IF NOT EXISTS and nothing is dropped or rewritten, so
+ * this is safe to run against a live database and safe to run twice.
+ *
+ * What stays broken until it runs (all degrade, none 500):
+ *   - invite gate is OPEN — /animate signup accepts anyone
+ *   - password reset works but does NOT sign other devices out
+ *   - System Log shows project status only, no event history
+ *   - /hq "Studio users" can't mint invites
+ */
+async function stepBetaMigration() {
+  heading(5, "Migration — beta invites, impersonation audit, system log");
+
+  const before = {
+    invite: await tableExists("BetaInvite"),
+    event: await tableExists("VaterEvent"),
+    impersonation: await tableExists("AdminImpersonation"),
+    sessionVersion: await columnExists("User", "sessionVersion"),
+    betaInviteId: await columnExists("User", "betaInviteId"),
+  };
+  console.log(
+    `  current: BetaInvite=${before.invite}, VaterEvent=${before.event}, ` +
+      `AdminImpersonation=${before.impersonation}, ` +
+      `User.sessionVersion=${before.sessionVersion}, User.betaInviteId=${before.betaInviteId}`,
+  );
+  if (Object.values(before).every(Boolean)) {
+    console.log("  already applied — nothing to do.");
+    return;
+  }
+
+  for (const stmt of sqlStatements(BETA_MIGRATION_SQL)) {
+    console.log(`  ${tag(stmt.replace(/\s+/g, " "))}`);
+    if (APPLY) await prisma.$executeRawUnsafe(stmt);
+  }
+
+  if (APPLY) {
+    console.log(
+      `  now: BetaInvite=${await tableExists("BetaInvite")}, ` +
+        `VaterEvent=${await tableExists("VaterEvent")}, ` +
+        `AdminImpersonation=${await tableExists("AdminImpersonation")}, ` +
+        `User.sessionVersion=${await columnExists("User", "sessionVersion")}, ` +
+        `User.betaInviteId=${await columnExists("User", "betaInviteId")}`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------- step 7
+// Flip every non-owner YouTubeStyle row to Modal backends (firered-modal +
+// indextts-modal). The site already FORCES Modal for non-owner sessions in
+// code (context route), so this only makes the stored rows honest. Delegates to
+// the dedicated, idempotent script so there is exactly one implementation.
+async function stepStylesModal() {
+  heading(7, "Styles → Modal backends (migrate-styles-modal.ts)");
+  const { spawnSync } = await import("node:child_process");
+  const args = ["tsx", "scripts/migrate-styles-modal.ts", APPLY ? "--apply" : "--dry-run"];
+  const r = spawnSync("npx", args, { stdio: "inherit", cwd: path.join(__dirname, "..") });
+  if (r.status !== 0) throw new Error(`migrate-styles-modal exited ${r.status}`);
+}
+
 async function main() {
   console.log(
     APPLY
@@ -299,6 +476,9 @@ async function main() {
   await stepSeedAccounts(owner.id, trey?.id ?? null);
   await stepAssignProjects(owner.id);
   await stepBackfillPayments(trey?.id ?? null);
+  await stepBetaMigration();
+  await stepCreditLedger();
+  await stepStylesModal();
 
   console.log(
     APPLY

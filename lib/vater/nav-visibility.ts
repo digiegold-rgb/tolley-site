@@ -57,6 +57,9 @@ export const NAV_ROUTES: readonly NavRouteDef[] = [
   { id: 'course', label: 'Course Studio', icon: 'course', minTier: 'studio', section: 'primary' },
   { id: 'rules', label: 'Rules', icon: 'description', minTier: 'studio', section: 'primary' },
   { id: 'learning-center', label: 'Learning Center', icon: 'learning', minTier: 'public', section: 'primary', stub: true },
+  // Every tier gets the System Log: when a render fails, the first thing a
+  // customer needs is to see what happened without opening a support ticket.
+  { id: 'system-log', label: 'System Log', icon: 'description', minTier: 'public', section: 'secondary' },
   { id: 'pricing', label: 'Billing', icon: 'affiliate', minTier: 'public', section: 'secondary' },
   { id: 'discord', label: 'Discord Bot', icon: 'help', minTier: 'owner', section: 'secondary' },
   { id: 'affiliate', label: 'Affiliate', icon: 'affiliate', minTier: 'public', section: 'secondary', stub: true },

@@ -126,6 +126,9 @@ const SECTIONS: LegalSectionContent[] = [
   },
   {
     heading: "9. Voices, faces, and likeness",
+    // Deep-linked from the voice-clone consent attestation in
+    // components/vater/youtube-voice-clone-panel.tsx (/animate/terms#voice).
+    id: "voice",
     emphasis: true,
     paragraphs: [
       "Voice cloning is the single easiest way to get yourself sued using this product, so read this section.",

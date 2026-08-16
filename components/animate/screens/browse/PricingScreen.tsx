@@ -1,111 +1,93 @@
 'use client';
 
-/* PricingScreen — Jelly Studio pay-per-video billing (card on file).
+/* Billing — Jelly Studio prepaid credits.
  *
- * 2026-06-11: pay-per-video shipped server-side. This screen now drives the
- * full customer billing surface off GET /api/vater/billing/status:
- *   - trialing  (no card)  → hero "Add a card" CTA + trial-caps-remaining chips
- *   - active    (card)     → card summary, unbilled accrual, month spend vs
- *                            editable limit, recent usage table
- *   - past_due             → red update-card banner above the active content
+ * Route id is still 'pricing' (nav-visibility.ts labels it "Billing"), but the
+ * screen is no longer a price list. It is a wallet:
  *
- * Errors: every fetch surfaces a real message inline. No silent catches —
- * see feedback_silent_failures_leads.md.
+ *   balance headline → pack buttons → card on file → ledger → how pricing works
+ *
+ * WHAT THIS REPLACED (2026-08-15): a card-on-file + per-action price table
+ * (25¢ a scene, $2.50 a render) that invented numbers unrelated to what a
+ * render actually costs, plus a self-set monthly ceiling to contain the
+ * damage. Prepaid credit is its own spending limit, in dollars the customer
+ * chose, and the price is the real one: compute at cost + $0.35 per finished
+ * minute.
+ *
+ * Reads GET /api/vater/billing/credits — one call, so balance, packs and
+ * ledger can never disagree with each other. Pack buttons render from the
+ * server's own net-credit figures rather than recomputing the Stripe fee on
+ * the client, because two copies of that formula is one copy too many.
+ *
+ * Errors surface inline with a real message. No silent catches — see
+ * feedback_silent_failures_leads.md.
  */
 
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VBtn, VCard, SectionHeader } from '../../primitives';
-import {
-  ANIMATION_PRICES,
-  FLAT_ACTION_PRICES,
-  formatPrice,
-} from '@/lib/vater/pricing';
 
-const FLAT_LABELS: Record<keyof typeof FLAT_ACTION_PRICES, string> = {
-  script: 'Script generation',
-  voiceover: 'Voiceover',
-  scene: 'Scene image',
-  render: 'Video compose',
-  thumbnail: 'Thumbnail',
-  description: 'Description',
-  transcription: 'Transcription',
+// ─── GET /api/vater/billing/credits ───────────────────────────────────────
+
+interface PackOption {
+  pack: number;
+  priceCents: number;
+  creditsCents: number;
+}
+
+interface LedgerRow {
+  id: string;
+  createdAt: string;
+  kind: string;
+  deltaCents: number;
+  projectId: string | null;
+  note: string | null;
+  expiresAt: string | null;
+  stillsOnly: boolean;
+  lineJson: {
+    computeUsd?: number;
+    minutes?: number;
+    opsUsd?: number;
+    totalUsd?: number;
+    cappedAt?: number;
+  } | null;
+}
+
+interface CreditsResponse {
+  ready: boolean;
+  unmetered: boolean;
+  opsRatePerMinute: number;
+  starterGrantCents: number;
+  balance: {
+    balanceCents: number;
+    purchasedCents: number;
+    grantCents: number;
+    grantExpiresAt: string | null;
+    lifetimePurchasedCents: number;
+    lifetimeSpentCents: number;
+  };
+  packs: PackOption[];
+  card: {
+    brand: string | null;
+    last4: string | null;
+    expMonth: number | null;
+    expYear: number | null;
+  } | null;
+  ledger: LedgerRow[];
+}
+
+const KIND_LABEL: Record<string, string> = {
+  purchase: 'Credit pack',
+  grant: 'Welcome credit',
+  debit: 'Video',
+  refund: 'Refund',
+  adjust: 'Adjustment',
 };
 
-const PER_ACTION_PRICES: ReadonlyArray<{ key: string; label: string; price: string; unit: string }> = [
-  ...Object.entries(FLAT_ACTION_PRICES).map(([key, spec]) => ({
-    key,
-    label: FLAT_LABELS[key as keyof typeof FLAT_ACTION_PRICES],
-    price: formatPrice(spec.priceCents),
-    unit: spec.unit,
-  })),
-  ...Object.entries(ANIMATION_PRICES).map(([key, spec]) => ({
-    key: `anim_${key}`,
-    label: `Animation — ${spec.label}`,
-    price: formatPrice(spec.priceCents),
-    unit: '/clip',
-  })),
-];
-
-const FAQ = [
-  {
-    q: 'How does billing work?',
-    a: 'No subscription, no monthly fee. You put a card on file, then each action is billed at the fixed per-action price shown below (scripts, scenes, animations, renders, etc.). Charges accrue on your account and are invoiced to your card automatically once they reach $25, plus a monthly sweep for anything left over. Failed renders are never charged. Until you add a card, the free tier gives you 3 transcripts, 1 scene generation, and 1 animation.',
-  },
-  {
-    q: 'Is there a free trial?',
-    a: "Yes — every new account gets free trial usage: 3 transcripts, 1 scene generation, and 1 5-second animation. No card required. There's no time limit; it ends when you hit any cap.",
-  },
-  {
-    q: 'What happens if my card is declined?',
-    a: 'New jobs pause. We email you and show a banner in the app until you update payment. Existing projects stay safe.',
-  },
-  {
-    q: 'Can I generate in other languages?',
-    a: 'Yes — voiceovers support major languages via F5-TTS (local) and ElevenLabs; scripts can be generated in any major language.',
-  },
-];
-
-// ─── /api/vater/billing/status response (client-side view) ────────────────
-
-interface BillingCard {
-  brand: string | null;
-  last4: string | null;
-  expMonth: number | null;
-  expYear: number | null;
-}
-
-interface BillingStatus {
-  subscription: { status: string } | null;
-  usage: {
-    usedCents: number;
-    includedCents: number;
-    limitCents: number;
-    periodStart: string | null;
-    periodEnd: string | null;
-  };
-  trial: {
-    transcripts: number;
-    scenes: number;
-    animations: number;
-    caps: { transcripts: number; scenes: number; animations: number };
-    capHitAt: string | null;
-  };
-  isTrial: boolean;
-  card: BillingCard | null;
-  unbilledCents: number;
-  delinquent: boolean;
-  defaultLimitCents: number;
-}
-
-interface UsageItem {
-  id: string;
-  action: string;
-  tier: string | null;
-  costCents: number;
-  description: string | null;
-  ts: string;
+function usd(cents: number): string {
+  const sign = cents < 0 ? '-' : '';
+  return `${sign}$${Math.abs(cents / 100).toFixed(2)}`;
 }
 
 function fmtDate(iso: string): string {
@@ -119,33 +101,31 @@ function fmtDate(iso: string): string {
   });
 }
 
-function formatCentsExact(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+function fmtDay(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
 }
 
 export function PricingScreen(): React.ReactElement {
   const { t } = useTheme();
-  const [openFaq, setOpenFaq] = React.useState<number | null>(0);
 
-  const [status, setStatus] = React.useState<BillingStatus | null>(null);
-  const [statusError, setStatusError] = React.useState<string | null>(null);
+  const [data, setData] = React.useState<CreditsResponse | null>(null);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
 
-  const [usageItems, setUsageItems] = React.useState<UsageItem[] | null>(null);
-  const [usageError, setUsageError] = React.useState<string | null>(null);
-
-  // CTA / mutation state
+  const [buying, setBuying] = React.useState<number | null>(null);
   const [redirecting, setRedirecting] = React.useState<'setup' | 'portal' | null>(null);
   const [actionError, setActionError] = React.useState<string | null>(null);
-
-  // Editable monthly limit (dollars in the input, cents over the wire)
-  const [limitInput, setLimitInput] = React.useState<string>('');
-  const [savingLimit, setSavingLimit] = React.useState(false);
-  const [limitError, setLimitError] = React.useState<string | null>(null);
-  const [limitSaved, setLimitSaved] = React.useState(false);
-  // Set by Shell when Stripe redirects back with ?card_added=1. Read once.
+  const [creditsAdded, setCreditsAdded] = React.useState(false);
   const [cardAdded, setCardAdded] = React.useState(false);
 
+  /* Stripe redirect confirmations.
+   *
+   * The card flow is handed over by Shell via sessionStorage (Shell strips
+   * ?card_added before this screen mounts). The credit-pack flow returns with
+   * ?credits=ok, which Shell leaves alone, so this screen consumes it itself
+   * and cleans the URL — a reload should not re-announce a purchase. */
   React.useEffect(() => {
     try {
       if (window.sessionStorage.getItem('vater-card-added') === '1') {
@@ -155,584 +135,436 @@ export function PricingScreen(): React.ReactElement {
     } catch {
       /* private mode — the Shell toast already confirmed it */
     }
+
+    const search = new URLSearchParams(window.location.search);
+    const credits = search.get('credits');
+    if (!credits) return;
+    if (credits === 'ok') setCreditsAdded(true);
+    if (credits === 'cancelled') {
+      setActionError('Checkout cancelled — nothing was charged.');
+    }
+    search.delete('credits');
+    search.delete('session_id');
+    const rest = search.toString();
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${rest ? `?${rest}` : ''}${window.location.hash}`,
+    );
   }, []);
 
-  const loadStatus = React.useCallback(async () => {
+  const load = React.useCallback(async () => {
     setLoading(true);
-    setStatusError(null);
+    setLoadError(null);
     try {
-      // no-store so the Stripe card-on-file return shows the new card
-      // instead of a cached pre-checkout response.
-      const res = await fetch('/api/vater/billing/status', { cache: 'no-store' });
+      // no-store: coming back from Stripe must show the new balance, not the
+      // pre-checkout one.
+      const res = await fetch('/api/vater/billing/credits', { cache: 'no-store' });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${res.status}`);
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
       }
-      const data = (await res.json()) as BillingStatus;
-      setStatus(data);
-      setLimitInput(String(Math.round((data.usage?.limitCents ?? 0) / 100)));
+      setData((await res.json()) as CreditsResponse);
     } catch (err) {
-      setStatusError(err instanceof Error ? err.message : 'Failed to load billing status');
+      setLoadError(err instanceof Error ? err.message : 'Failed to load billing');
     } finally {
       setLoading(false);
     }
   }, []);
 
   React.useEffect(() => {
-    void loadStatus();
-  }, [loadStatus]);
+    void load();
+  }, [load]);
 
-  // Usage history — only relevant once a card is on file, but cheap to fetch
-  // whenever the status says we're not on trial.
-  const hasCard = Boolean(status?.card);
+  /**
+   * Stripe's webhook credits the balance, and it can land a beat after the
+   * browser returns. One delayed refetch turns "I paid and nothing happened"
+   * into "there it is" without making the customer reload.
+   */
   React.useEffect(() => {
-    if (!hasCard) return;
-    let aborted = false;
-    (async () => {
-      setUsageError(null);
-      try {
-        const res = await fetch('/api/vater/billing/usage?period=current&limit=10', {
-          cache: 'no-store',
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || `HTTP ${res.status}`);
-        }
-        const data = (await res.json()) as { items: UsageItem[] };
-        if (!aborted) setUsageItems(data.items ?? []);
-      } catch (err) {
-        if (!aborted) {
-          setUsageError(err instanceof Error ? err.message : 'Failed to load usage history');
-        }
-      }
-    })();
-    return () => {
-      aborted = true;
-    };
-  }, [hasCard]);
+    if (!creditsAdded) return;
+    const timer = window.setTimeout(() => void load(), 2500);
+    return () => window.clearTimeout(timer);
+  }, [creditsAdded, load]);
 
-  const startSetup = React.useCallback(async () => {
-    setRedirecting('setup');
+  const buyPack = React.useCallback(async (pack: number) => {
+    setBuying(pack);
     setActionError(null);
     try {
-      const res = await fetch('/api/vater/billing/setup', { method: 'POST' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
-      window.location.href = data.url as string;
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not start card setup');
-      setRedirecting(null);
-    }
-  }, []);
-
-  const openPortal = React.useCallback(async () => {
-    setRedirecting('portal');
-    setActionError(null);
-    try {
-      const res = await fetch('/api/vater/billing/portal', { method: 'POST' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
-      window.location.href = data.url as string;
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not open billing portal');
-      setRedirecting(null);
-    }
-  }, []);
-
-  const saveLimit = React.useCallback(async () => {
-    const dollars = Number(limitInput);
-    if (!Number.isFinite(dollars) || dollars <= 0) {
-      setLimitError('Enter a dollar amount, e.g. 500');
-      return;
-    }
-    setSavingLimit(true);
-    setLimitError(null);
-    setLimitSaved(false);
-    try {
-      const res = await fetch('/api/vater/billing/limit', {
+      const res = await fetch('/api/vater/billing/packs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limitCents: Math.round(dollars * 100) }),
+        body: JSON.stringify({ pack }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
-      setLimitSaved(true);
-      setStatus((prev) =>
-        prev
-          ? { ...prev, usage: { ...prev.usage, limitCents: data.limitCents as number } }
-          : prev,
-      );
-      setLimitInput(String(Math.round((data.limitCents as number) / 100)));
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.url) throw new Error(body.error || `HTTP ${res.status}`);
+      window.location.href = body.url as string;
     } catch (err) {
-      setLimitError(err instanceof Error ? err.message : 'Failed to save limit');
-    } finally {
-      setSavingLimit(false);
+      setActionError(err instanceof Error ? err.message : 'Could not start checkout');
+      setBuying(null);
     }
-  }, [limitInput]);
+  }, []);
 
-  // ─── Derived state ───────────────────────────────────────────────────
-
-  const isPastDue = Boolean(
-    status && (status.delinquent || status.subscription?.status === 'past_due'),
+  const goStripe = React.useCallback(
+    async (endpoint: '/api/vater/billing/setup' | '/api/vater/billing/portal') => {
+      setRedirecting(endpoint.endsWith('setup') ? 'setup' : 'portal');
+      setActionError(null);
+      try {
+        const res = await fetch(endpoint, { method: 'POST' });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || !body.url) throw new Error(body.error || `HTTP ${res.status}`);
+        window.location.href = body.url as string;
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : 'Redirect failed');
+        setRedirecting(null);
+      }
+    },
+    [],
   );
-  const showTrialHero = Boolean(status && !status.card && !isPastDue);
-
-  const trialChips: Array<{ key: string; label: string; left: number }> = status
-    ? [
-        {
-          key: 'transcripts',
-          left: Math.max(0, status.trial.caps.transcripts - status.trial.transcripts),
-          label: 'free transcript',
-        },
-        {
-          key: 'scenes',
-          left: Math.max(0, status.trial.caps.scenes - status.trial.scenes),
-          label: 'free scene gen',
-        },
-        {
-          key: 'animations',
-          left: Math.max(0, status.trial.caps.animations - status.trial.animations),
-          label: 'free animation',
-        },
-      ]
-    : [];
 
   // ─── Sub-renders ─────────────────────────────────────────────────────
 
-  const renderPastDueBanner = () => (
-    <VCard
-      variant="flat"
+  const banner = (tone: 'ok' | 'warn' | 'error', text: string) => (
+    <div
       style={{
-        border: `1px solid ${JELLY_TOKENS.error}`,
-        background: 'rgba(220,38,38,0.08)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
-        flexWrap: 'wrap',
+        padding: '10px 14px',
+        fontSize: 13,
+        borderRadius: JELLY_TOKENS.radius.md,
+        background:
+          tone === 'ok'
+            ? 'rgba(22,163,74,0.10)'
+            : tone === 'warn'
+              ? 'rgba(245,158,11,0.10)'
+              : 'rgba(220,38,38,0.08)',
+        color:
+          tone === 'ok'
+            ? JELLY_TOKENS.success
+            : tone === 'warn'
+              ? JELLY_TOKENS.warning
+              : JELLY_TOKENS.error,
       }}
     >
-      <div style={{ flex: 1, minWidth: 240 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: JELLY_TOKENS.error }}>
-          Payment failed — update your card to resume rendering
-        </div>
-        <div style={{ fontSize: 12, color: t.textSecondary, marginTop: 4 }}>
-          Your last invoice could not be charged. New generation is paused until
-          payment succeeds. Your projects are safe.
-        </div>
-      </div>
-      <VBtn
-        variant="danger"
-        size="sm"
-        onClick={openPortal}
-        disabled={redirecting !== null}
-      >
-        {redirecting === 'portal' ? 'Opening…' : 'Update card'}
-      </VBtn>
-    </VCard>
+      {text}
+    </div>
   );
 
-  const renderTrialHero = () => (
-    <VCard
-      variant="hero"
-      style={{
-        borderTop: `4px solid ${JELLY_TOKENS.brand}`,
-        maxWidth: 540,
-        alignSelf: 'flex-start',
-        width: '100%',
-      }}
-    >
-      <div style={{ fontSize: 12, color: JELLY_TOKENS.brand, fontWeight: 600 }}>
-        Pay per video — no subscription
-      </div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: t.text, marginTop: 4 }}>
-        Jelly Studio
-      </div>
-      <div style={{ fontSize: 14, color: t.textSecondary, marginTop: 4 }}>
-        Add a card, generate a video, get charged the per-action price. That&apos;s it.
-      </div>
-      <div style={{ fontSize: 36, fontWeight: 700, color: t.text, marginTop: 20 }}>
-        ~$25<span style={{ fontSize: 16, color: t.textSecondary, fontWeight: 500 }}> / video avg</span>
-      </div>
+  const renderBalance = () => {
+    if (!data) return null;
+    const { balance } = data;
 
-      {/* Trial caps remaining */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
-        {trialChips.map((chip) => (
-          <span
-            key={chip.key}
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              padding: '4px 10px',
-              borderRadius: JELLY_TOKENS.radius.full,
-              background: chip.left > 0 ? JELLY_TOKENS.brandGhost : t.cardAlt,
-              color: chip.left > 0 ? JELLY_TOKENS.brand : t.textSecondary,
-              border: `1px solid ${chip.left > 0 ? 'transparent' : t.border}`,
-            }}
-          >
-            {chip.left} {chip.label}
-            {chip.left === 1 ? '' : 's'} left
-          </span>
-        ))}
-      </div>
+    if (data.unmetered) {
+      return (
+        <VCard variant="hero" style={{ borderTop: `4px solid ${JELLY_TOKENS.brand}` }}>
+          <div style={{ fontSize: 12, color: JELLY_TOKENS.brand, fontWeight: 600 }}>
+            Unmetered account
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: t.text, marginTop: 6 }}>
+            No credit needed
+          </div>
+          <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 8, lineHeight: 1.6 }}>
+            This account is billed outside the app, so renders never draw down a
+            balance. Every video still shows its full cost on its receipt.
+          </div>
+        </VCard>
+      );
+    }
 
-      <ul style={{ paddingLeft: 18, marginTop: 16, fontSize: 14, color: t.text, lineHeight: 1.7 }}>
-        <li>No subscription — pay only when you generate</li>
-        <li>Fixed per-action prices, shown before every render</li>
-        <li>Charges auto-invoiced at $25 — no surprise bills</li>
-        <li>Failed renders never charged</li>
-        <li>Set your own monthly spending limit</li>
-      </ul>
-      <VBtn
-        onClick={startSetup}
-        disabled={redirecting !== null}
-        style={{ width: '100%', justifyContent: 'center', marginTop: 24 }}
-      >
-        {redirecting === 'setup' ? 'Redirecting to Stripe…' : 'Add a card'}
-      </VBtn>
-      {actionError && (
+    return (
+      <VCard variant="hero" style={{ borderTop: `4px solid ${JELLY_TOKENS.brand}` }}>
+        <div style={{ fontSize: 12, color: JELLY_TOKENS.brand, fontWeight: 600 }}>
+          Credit balance
+        </div>
+        <div style={{ fontSize: 44, fontWeight: 700, color: t.text, marginTop: 2 }}>
+          {usd(balance.balanceCents)}
+        </div>
+
+        {balance.grantCents > 0 && (
+          <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 8, lineHeight: 1.6 }}>
+            Includes <strong style={{ color: t.text }}>{usd(balance.grantCents)}</strong>{' '}
+            of welcome credit
+            {balance.grantExpiresAt ? ` — expires ${fmtDay(balance.grantExpiresAt)}` : ''}.
+            It covers scripts and still images; animation runs on purchased
+            credit.
+          </div>
+        )}
+
         <div
           style={{
-            marginTop: 12,
-            padding: '8px 12px',
-            fontSize: 13,
-            borderRadius: JELLY_TOKENS.radius.md,
-            background: 'rgba(220,38,38,0.08)',
-            color: JELLY_TOKENS.error,
+            display: 'flex',
+            gap: 24,
+            flexWrap: 'wrap',
+            marginTop: 16,
+            fontSize: 12,
+            color: t.textSecondary,
           }}
         >
-          {actionError}
+          <span>
+            Purchased to date{' '}
+            <strong style={{ color: t.text }}>{usd(balance.lifetimePurchasedCents)}</strong>
+          </span>
+          <span>
+            Spent on videos{' '}
+            <strong style={{ color: t.text }}>{usd(balance.lifetimeSpentCents)}</strong>
+          </span>
         </div>
-      )}
-      <div style={{ marginTop: 12, textAlign: 'center', fontSize: 12, color: t.textSecondary }}>
-        Card capture via Stripe — nothing is charged until you generate.
+
+        {balance.balanceCents <= 0 && (
+          <div style={{ marginTop: 16 }}>
+            {banner('warn', 'Out of credit — add a pack below to keep rendering.')}
+          </div>
+        )}
+      </VCard>
+    );
+  };
+
+  const renderPacks = () => {
+    if (!data || data.unmetered) return null;
+    return (
+      <VCard variant="flat">
+        <SectionHeader
+          icon="affiliate"
+          title="Add credit"
+          description="One-off purchase. No subscription, and credit you buy does not expire."
+        />
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: 12,
+            marginTop: 18,
+          }}
+        >
+          {data.packs.map((p) => (
+            <button
+              key={p.pack}
+              type="button"
+              onClick={() => void buyPack(p.pack)}
+              disabled={buying !== null}
+              data-testid={`credit-pack-${p.pack}`}
+              style={{
+                textAlign: 'left',
+                cursor: buying !== null ? 'default' : 'pointer',
+                opacity: buying !== null && buying !== p.pack ? 0.5 : 1,
+                background: t.cardAlt,
+                border: `1px solid ${t.border}`,
+                borderRadius: JELLY_TOKENS.radius.lg,
+                padding: '16px 18px',
+                fontFamily: JELLY_TOKENS.font,
+              }}
+            >
+              <div style={{ fontSize: 24, fontWeight: 700, color: t.text }}>
+                ${p.pack}
+              </div>
+              <div style={{ fontSize: 13, color: JELLY_TOKENS.brand, fontWeight: 600, marginTop: 2 }}>
+                {buying === p.pack ? 'Redirecting…' : `${usd(p.creditsCents)} credit`}
+              </div>
+              <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 6, lineHeight: 1.5 }}>
+                {usd(p.priceCents - p.creditsCents)} Stripe fee
+              </div>
+            </button>
+          ))}
+        </div>
+        <div
+          style={{
+            fontSize: 12,
+            color: t.textSecondary,
+            marginTop: 14,
+            lineHeight: 1.6,
+          }}
+        >
+          {/* Say it plainly rather than hiding the fee behind a $10.61 price. */}
+          A $10 pack is $9.41 of credit. The difference is Stripe&apos;s card
+          processing fee — we don&apos;t add anything on top of it.
+        </div>
+      </VCard>
+    );
+  };
+
+  const renderCard = () => {
+    if (!data || data.unmetered) return null;
+    const card = data.card;
+    return (
+      <VCard variant="flat">
+        <SectionHeader
+          icon="affiliate"
+          title="Card on file"
+          description="Optional. Saved automatically when you buy a pack, so a top-up is one click."
+        />
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+            flexWrap: 'wrap',
+            marginTop: 16,
+          }}
+        >
+          <div style={{ fontSize: 14, color: t.text }}>
+            {card?.last4 ? (
+              <>
+                {card.brand ? card.brand.toUpperCase() : 'Card'} ····{card.last4}
+                {card.expMonth && card.expYear ? (
+                  <span style={{ color: t.textSecondary, fontSize: 12 }}>
+                    {'  '}exp {String(card.expMonth).padStart(2, '0')}/{String(card.expYear).slice(-2)}
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              <span style={{ color: t.textSecondary }}>No card saved</span>
+            )}
+          </div>
+          <VBtn
+            size="sm"
+            variant={card?.last4 ? 'ghost' : 'outlined'}
+            disabled={redirecting !== null}
+            onClick={() => void goStripe(card?.last4 ? '/api/vater/billing/portal' : '/api/vater/billing/setup')}
+          >
+            {redirecting !== null
+              ? 'Opening…'
+              : card?.last4
+                ? 'Manage in Stripe'
+                : 'Save a card'}
+          </VBtn>
+        </div>
+      </VCard>
+    );
+  };
+
+  const renderLedger = () => {
+    if (!data || data.ledger.length === 0) return null;
+    return (
+      <VCard variant="flat">
+        <SectionHeader
+          icon="history"
+          title="Activity"
+          description="Every credit in and every credit out, with the video it paid for."
+        />
+        <div style={{ overflowX: 'auto', marginTop: 16 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ color: t.textSecondary, textAlign: 'left' }}>
+                <th style={{ padding: '6px 8px', fontWeight: 600 }}>Date</th>
+                <th style={{ padding: '6px 8px', fontWeight: 600 }}>Type</th>
+                <th style={{ padding: '6px 8px', fontWeight: 600 }}>Detail</th>
+                <th style={{ padding: '6px 8px', fontWeight: 600, textAlign: 'right' }}>
+                  Amount
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.ledger.map((row) => (
+                <tr key={row.id} style={{ borderTop: `1px solid ${t.border}` }}>
+                  <td style={{ padding: '8px', color: t.textSecondary, whiteSpace: 'nowrap' }}>
+                    {fmtDate(row.createdAt)}
+                  </td>
+                  <td style={{ padding: '8px', color: t.text }}>
+                    {KIND_LABEL[row.kind] ?? row.kind}
+                  </td>
+                  <td style={{ padding: '8px', color: t.textSecondary }}>
+                    {row.note ?? '—'}
+                    {row.lineJson?.cappedAt !== undefined && (
+                      <span style={{ color: JELLY_TOKENS.success, marginLeft: 6 }}>
+                        (capped — we covered the overrun)
+                      </span>
+                    )}
+                  </td>
+                  <td
+                    style={{
+                      padding: '8px',
+                      textAlign: 'right',
+                      whiteSpace: 'nowrap',
+                      fontWeight: 600,
+                      color: row.deltaCents >= 0 ? JELLY_TOKENS.success : t.text,
+                    }}
+                  >
+                    {row.deltaCents >= 0 ? '+' : ''}
+                    {usd(row.deltaCents)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </VCard>
+    );
+  };
+
+  const renderExplainer = () => (
+    <VCard variant="flat">
+      <SectionHeader icon="help" title="How pricing works" />
+      <div style={{ fontSize: 14, color: t.text, lineHeight: 1.8, marginTop: 14 }}>
+        <p style={{ margin: '0 0 12px' }}>
+          A finished video costs{' '}
+          <strong>the compute it used, at cost</strong>, plus{' '}
+          <strong>
+            ${(data?.opsRatePerMinute ?? 0.35).toFixed(2)} per finished minute
+          </strong>{' '}
+          of render operations. Nothing else — no per-scene fees, no seat fees,
+          no subscription.
+        </p>
+        <ul style={{ paddingLeft: 20, margin: '0 0 12px' }}>
+          <li>A typical long-form video lands between $1 and $7.</li>
+          <li>You are charged when the video finishes, never before.</li>
+          <li>
+            <strong>Failed renders are never charged.</strong>
+          </li>
+          <li>
+            If a video needs repair passes and overruns its estimate, we cap
+            what you pay and cover the rest.
+          </li>
+          <li>Every video shows an itemised receipt when it&apos;s done.</li>
+        </ul>
+        <p style={{ margin: 0, color: t.textSecondary, fontSize: 13 }}>
+          Credit is prepaid, so your balance is your spending limit — there is
+          no bill to be surprised by.
+        </p>
       </div>
     </VCard>
   );
-
-  const renderActiveBilling = () => {
-    if (!status) return null;
-    const card = status.card;
-    const usedCents = status.usage.usedCents;
-    const limitCents = status.usage.limitCents;
-    const pct = limitCents > 0 ? Math.min(100, (usedCents / limitCents) * 100) : 0;
-    return (
-      <>
-        {/* Card on file */}
-        <VCard variant="flat">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <div style={{ fontSize: 12, color: t.textSecondary }}>Card on file</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: t.text, marginTop: 4 }}>
-                {(card?.brand ?? 'Card').toUpperCase()} •••• {card?.last4 ?? '????'}
-                {card?.expMonth && card?.expYear ? (
-                  <span style={{ fontSize: 13, fontWeight: 500, color: t.textSecondary, marginLeft: 8 }}>
-                    exp {String(card.expMonth).padStart(2, '0')}/{String(card.expYear).slice(-2)}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-            <VBtn
-              variant="outlined"
-              size="sm"
-              onClick={openPortal}
-              disabled={redirecting !== null}
-            >
-              {redirecting === 'portal' ? 'Opening…' : 'Manage card'}
-            </VBtn>
-          </div>
-          <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 12 }}>
-            Unbilled balance:{' '}
-            <span style={{ color: t.text, fontWeight: 600 }}>
-              {formatCentsExact(status.unbilledCents)}
-            </span>{' '}
-            (invoiced automatically at $25)
-          </div>
-          {actionError && (
-            <div
-              style={{
-                marginTop: 12,
-                padding: '8px 12px',
-                fontSize: 13,
-                borderRadius: JELLY_TOKENS.radius.md,
-                background: 'rgba(220,38,38,0.08)',
-                color: JELLY_TOKENS.error,
-              }}
-            >
-              {actionError}
-            </div>
-          )}
-        </VCard>
-
-        {/* Month spend vs limit */}
-        <VCard variant="flat">
-          <div style={{ fontSize: 16, fontWeight: 600, color: t.text, marginBottom: 4 }}>
-            This month
-          </div>
-          <div style={{ fontSize: 13, color: t.textSecondary }}>
-            <span style={{ color: t.text, fontWeight: 600 }}>{formatCentsExact(usedCents)}</span>
-            {' of '}
-            <span style={{ color: t.text, fontWeight: 600 }}>{formatCentsExact(limitCents)}</span>
-            {' monthly limit'}
-          </div>
-          <div
-            style={{
-              marginTop: 10,
-              height: 8,
-              borderRadius: 4,
-              background: t.cardAlt,
-              border: `1px solid ${t.border}`,
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                width: `${pct}%`,
-                height: '100%',
-                background: pct >= 90 ? JELLY_TOKENS.error : JELLY_TOKENS.brand,
-              }}
-            />
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 16, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, color: t.textSecondary }}>Monthly limit: $</span>
-            <input
-              type="number"
-              min={50}
-              step={50}
-              value={limitInput}
-              onChange={(e) => {
-                setLimitInput(e.target.value);
-                setLimitSaved(false);
-                setLimitError(null);
-              }}
-              style={{
-                width: 100,
-                padding: '8px 10px',
-                borderRadius: JELLY_TOKENS.radius.md,
-                border: `1px solid ${t.border}`,
-                background: t.card,
-                color: t.text,
-                fontSize: 14,
-                fontFamily: JELLY_TOKENS.font,
-              }}
-              aria-label="Monthly spending limit in dollars"
-            />
-            <VBtn size="sm" variant="outlined" onClick={saveLimit} disabled={savingLimit}>
-              {savingLimit ? 'Saving…' : 'Save limit'}
-            </VBtn>
-            {limitSaved && (
-              <span style={{ fontSize: 12, color: JELLY_TOKENS.success }}>✓ saved</span>
-            )}
-          </div>
-          {limitError && (
-            <div style={{ marginTop: 8, fontSize: 12, color: JELLY_TOKENS.error }}>
-              {limitError}
-            </div>
-          )}
-          <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 8 }}>
-            A safety cap, not a plan — generation is blocked once this month&apos;s
-            spend would exceed it. $50 minimum.
-          </div>
-        </VCard>
-
-        {/* Recent usage */}
-        <VCard variant="flat">
-          <div style={{ fontSize: 16, fontWeight: 600, color: t.text, marginBottom: 12 }}>
-            Recent usage
-          </div>
-          {usageError && (
-            <div
-              style={{
-                padding: '8px 12px',
-                fontSize: 13,
-                borderRadius: JELLY_TOKENS.radius.md,
-                background: 'rgba(220,38,38,0.08)',
-                color: JELLY_TOKENS.error,
-              }}
-            >
-              {usageError}
-            </div>
-          )}
-          {!usageError && usageItems === null && (
-            <div style={{ fontSize: 13, color: t.textSecondary }}>Loading usage…</div>
-          )}
-          {!usageError && usageItems !== null && usageItems.length === 0 && (
-            <div style={{ fontSize: 13, color: t.textSecondary }}>
-              No charges this month yet.
-            </div>
-          )}
-          {!usageError && usageItems !== null && usageItems.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {usageItems.map((item, i) => (
-                <div
-                  key={item.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    gap: 12,
-                    padding: '8px 0',
-                    borderTop: i === 0 ? 'none' : `1px solid ${t.border}`,
-                    fontSize: 13,
-                  }}
-                >
-                  <span style={{ flex: 1, minWidth: 0, color: t.text }}>
-                    {item.description || `${item.action}${item.tier ? ` — ${item.tier}` : ''}`}
-                  </span>
-                  <span style={{ color: t.textSecondary, fontSize: 12, whiteSpace: 'nowrap' }}>
-                    {fmtDate(item.ts)}
-                  </span>
-                  <span style={{ fontWeight: 600, color: t.text, whiteSpace: 'nowrap' }}>
-                    {formatCentsExact(item.costCents)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </VCard>
-      </>
-    );
-  };
 
   // ─── Render ──────────────────────────────────────────────────────────
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 32, minWidth: 0 }}>
-      {/* A real heading: the Stripe return (/animate?card_added=1#r=pricing)
-          used to land on a page with no h1 at all. */}
-      <h1
-        style={{
-          fontSize: 28,
-          fontWeight: 700,
-          color: t.text,
-          margin: 0,
-        }}
-      >
-        Billing
-      </h1>
-
-      {cardAdded && (
-        <VCard
-          variant="flat"
-          data-testid="card-added-confirmation"
-          style={{
-            border: `1px solid ${JELLY_TOKENS.success}`,
-            background: 'rgba(22,163,74,0.08)',
-          }}
-        >
-          <div style={{ fontSize: 14, fontWeight: 600, color: JELLY_TOKENS.success }}>
-            Card saved
-          </div>
-          <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 4, lineHeight: 1.6 }}>
-            Your card is on file. Nothing has been charged — you are billed only
-            for the actions you run, invoiced automatically once charges reach
-            $25.
-          </div>
-          <VBtn
-            size="sm"
-            variant="outlined"
-            onClick={() => setCardAdded(false)}
-            style={{ marginTop: 12 }}
-          >
-            Dismiss
-          </VBtn>
-        </VCard>
-      )}
-
-      <SectionHeader
-        icon="folder"
-        title="Jelly Studio"
-        description="Pay only for what you make. No subscription, no commitment."
-      />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }} data-testid="billing-screen">
+      {cardAdded && banner('ok', 'Card saved.')}
+      {creditsAdded && banner('ok', 'Payment received — your credit will appear in a moment.')}
+      {actionError && banner('error', actionError)}
 
       {loading && (
-        <VCard variant="flat" style={{ padding: 24, textAlign: 'center' }}>
-          <div style={{ fontSize: 13, color: t.textSecondary }}>Loading billing status…</div>
-        </VCard>
+        <div style={{ fontSize: 14, color: t.textSecondary }}>Loading billing…</div>
       )}
 
-      {!loading && statusError && (
-        <VCard
-          variant="flat"
-          style={{
-            border: `1px solid ${JELLY_TOKENS.error}`,
-            background: 'rgba(220,38,38,0.08)',
-          }}
-        >
-          <div style={{ fontSize: 13, color: JELLY_TOKENS.error }}>
-            Could not load billing status: {statusError}
-          </div>
-          <VBtn size="sm" variant="outlined" onClick={loadStatus} style={{ marginTop: 12 }}>
-            Retry
+      {loadError && (
+        <VCard variant="flat">
+          {banner('error', loadError)}
+          <VBtn size="sm" variant="outlined" style={{ marginTop: 12 }} onClick={() => void load()}>
+            Try again
           </VBtn>
         </VCard>
       )}
 
-      {!loading && !statusError && status && (
+      {data && !data.ready && !data.unmetered && (
+        // "We can't see your credit" and "you have no credit" are different
+        // sentences. Say the true one, and hide the buy buttons rather than
+        // take money the ledger cannot record yet.
+        <VCard variant="flat">
+          {banner(
+            'warn',
+            'Credits are not switched on for this database yet. Nothing is being charged, and rendering is unaffected.',
+          )}
+        </VCard>
+      )}
+
+      {data && (data.ready || data.unmetered) && (
         <>
-          {isPastDue && renderPastDueBanner()}
-          {showTrialHero ? renderTrialHero() : renderActiveBilling()}
+          {renderBalance()}
+          {renderPacks()}
+          {renderCard()}
+          {renderLedger()}
         </>
       )}
 
-      <VCard variant="flat">
-        <div style={{ fontSize: 16, fontWeight: 600, color: t.text, marginBottom: 4 }}>
-          Per-action pricing
-        </div>
-        <div style={{ fontSize: 13, color: t.textSecondary, marginBottom: 16 }}>
-          You see the exact cost before you click Generate. No subscription — pay only for what you make.
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-          {PER_ACTION_PRICES.map((row) => (
-            <div
-              key={row.key}
-              style={{
-                padding: 12,
-                borderRadius: JELLY_TOKENS.radius.sm,
-                background: t.cardAlt,
-                border: `1px solid ${t.border}`,
-              }}
-            >
-              <div style={{ fontSize: 12, color: t.textSecondary }}>{row.label}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: t.text, marginTop: 4 }}>
-                {row.price}
-                <span style={{ fontSize: 12, color: t.textSecondary, fontWeight: 500 }}>{row.unit}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </VCard>
-
-      <VCard variant="flat">
-        <div style={{ fontSize: 16, fontWeight: 600, color: t.text, marginBottom: 16 }}>
-          Frequently Asked Questions
-        </div>
-        {FAQ.map((q, i) => (
-          <div key={i} style={{ borderTop: i === 0 ? 'none' : `1px solid ${t.border}`, padding: '12px 0' }}>
-            <div
-              onClick={() => setOpenFaq(openFaq === i ? null : i)}
-              style={{
-                cursor: 'pointer',
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: 14,
-                fontWeight: 600,
-                color: t.text,
-              }}
-            >
-              <span>{q.q}</span>
-              <span style={{ color: t.textSecondary }}>{openFaq === i ? '−' : '+'}</span>
-            </div>
-            {openFaq === i && (
-              <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 8, lineHeight: 1.7 }}>{q.a}</div>
-            )}
-          </div>
-        ))}
-      </VCard>
+      {renderExplainer()}
     </div>
   );
 }

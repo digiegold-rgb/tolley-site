@@ -41,9 +41,16 @@ export function SignupForm({ claimSlug }: SignupFormProps = {}) {
   const isStudio = !claimSlug && callbackUrl.startsWith("/animate");
   const requiresAgreement = Boolean(claimSlug) || isStudio;
 
+  /* Invite-only beta: the link Jared sends is
+   * /signup?callbackUrl=%2Fanimate&invite=CODE, so the field arrives
+   * prefilled and the tester never types it. The field is still shown (and
+   * editable) because people forward the code without the link. */
+  const inviteFromLink = searchParams.get("invite") ?? "";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [invite, setInvite] = useState(inviteFromLink);
   const [agreed, setAgreed] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -54,6 +61,14 @@ export function SignupForm({ claimSlug }: SignupFormProps = {}) {
     if (!email.trim() || !password || !confirmPassword) {
       setStatus("error");
       setErrorMessage("Enter email, password, and confirm password.");
+      return;
+    }
+
+    if (isStudio && !invite.trim()) {
+      setStatus("error");
+      setErrorMessage(
+        "Jelly Studio is invite-only right now. Paste your invite code, or use the link from your invite email.",
+      );
       return;
     }
 
@@ -90,7 +105,9 @@ export function SignupForm({ claimSlug }: SignupFormProps = {}) {
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
           password,
+          callbackUrl,
           ...(isStudio ? { termsVersion: TOS_VERSION } : {}),
+          ...(invite.trim() ? { invite: invite.trim() } : {}),
         }),
       });
 
@@ -157,6 +174,34 @@ export function SignupForm({ claimSlug }: SignupFormProps = {}) {
         placeholder="repeat password"
         className="w-full rounded-xl border border-white/18 bg-black/25 px-3 py-2 text-sm text-white/90 outline-none transition focus:border-violet-300/75"
       />
+
+      {isStudio ? (
+        <>
+          <label
+            htmlFor="signup-invite"
+            className="block text-[0.7rem] tracking-[0.16em] text-white/65 uppercase"
+          >
+            Invite Code
+          </label>
+          <input
+            id="signup-invite"
+            type="text"
+            value={invite}
+            onChange={(event) => setInvite(event.target.value)}
+            placeholder="JELLY-XXXX-XXXX"
+            autoComplete="off"
+            spellCheck={false}
+            aria-describedby="signup-invite-note"
+            data-testid="signup-invite"
+            className="w-full rounded-xl border border-white/18 bg-black/25 px-3 py-2 font-mono text-sm tracking-[0.12em] text-white/90 uppercase outline-none transition focus:border-violet-300/75"
+          />
+          <p id="signup-invite-note" className="text-[0.7rem] text-white/50">
+            {inviteFromLink
+              ? "Filled in from your invite link — you shouldn't need to change it."
+              : "Jelly Studio is invite-only during the beta. Your code is in your invite email."}
+          </p>
+        </>
+      ) : null}
 
       {claimSlug ? (
         <label className="flex items-start gap-2 pt-1 text-xs text-white/75">

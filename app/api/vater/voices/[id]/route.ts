@@ -1,67 +1,56 @@
 /**
  * DELETE /api/vater/voices/[id]
  *
- * Proxies a delete to the autopilot side. The `id` here is the voice
- * `name` (the autopilot library is keyed by name, not numeric id).
+ * `id` is the voice's wire id — a bare stem for a shared/system voice
+ * ("Monroe") or `u_<userId>~Stem` for a tenant's own clone.
  *
- * The shared `autopilot` client doesn't currently expose a deleteVoice
- * helper, so we hand-roll the call here using the same env vars. If/when
- * the schema agent adds one, this can be simplified.
+ * Per-user namespaces (2026-08-15): a customer may delete their OWN clones and
+ * nothing else. The shared library is read-only for everyone but the owner
+ * account, which sends `X-Vater-Owner-Admin: 1` upstream. Before this, any
+ * studio-tier session could wipe Monroe — or another customer's voice — out of
+ * the one flat directory.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { requireVaterProxyAuth } from "@/lib/vater/proxy-auth";
-import { canAccessVoice } from "@/lib/vater/voice-privacy";
-
-const BASE = (process.env.AUTOPILOT_URL || "").replace(/\/$/, "");
-const KEY = process.env.CONTENT_API_KEY || "";
+import { autopilot, AutopilotError } from "@/lib/vater/autopilot-client";
+import { isVaterAdminEmail } from "@/lib/admin-auth";
+import { canWriteVoice, ownerKeyForUser } from "@/lib/vater/voice-privacy";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function DELETE(req: NextRequest, ctx: Ctx) {
-  // Auth-gate: this permanently deletes a voice clone on the DGX, and the
-  // library is SHARED — any signed-in user could wipe another customer's (or
-  // the owner's) clone. Studio tier is the bar for writes (2026-08-15).
-  const gate = await requireVaterProxyAuth(req);
-  if (!gate.ok) return gate.response;
-  const { id } = await ctx.params;
-
-  // Owner-private clones can only be deleted by the owner. (No session =
-  // x-sync-secret server-to-server caller, already fully trusted.)
+export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const session = await auth();
-  if (session?.user?.id && !canAccessVoice(id, session.user.email ?? null)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const { id } = await ctx.params;
+  const userId = session.user.id;
+  const email = session.user.email ?? null;
 
-  if (!BASE || !KEY) {
+  if (!canWriteVoice(id, { userId, email })) {
     return NextResponse.json(
-      { error: "AUTOPILOT_URL or CONTENT_API_KEY not configured" },
-      { status: 500 },
+      { error: "You can only delete voices you uploaded." },
+      { status: 403 },
     );
   }
 
   try {
-    const upstream = await fetch(
-      `${BASE}/vater/voices/${encodeURIComponent(id)}`,
-      {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${KEY}` },
-        cache: "no-store",
-      },
-    );
-    if (!upstream.ok) {
-      const text = await upstream.text().catch(() => "");
+    const result = await autopilot.deleteVoice(id, {
+      owner: ownerKeyForUser(userId),
+      admin: isVaterAdminEmail(email),
+    });
+    return NextResponse.json({ ...result, ok: true });
+  } catch (err) {
+    if (err instanceof AutopilotError) {
       return NextResponse.json(
         {
           error: "Upstream delete failed",
-          status: upstream.status,
-          detail: text || upstream.statusText,
+          status: err.status,
+          detail: err.body || err.message,
         },
-        { status: 502 },
+        { status: err.status === 404 || err.status === 403 ? err.status : 502 },
       );
     }
-    return NextResponse.json({ ok: true });
-  } catch (err) {
     return NextResponse.json(
       {
         error: "Upstream delete failed",

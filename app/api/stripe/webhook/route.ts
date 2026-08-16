@@ -58,6 +58,7 @@ import {
   handleVaterSetupCompleted,
   handleVaterInvoicePaid,
   handleVaterInvoiceFailed,
+  fulfillJellyCredits,
 } from "@/lib/vater/billing/sync";
 import {
   syncSubscriptionRecord,
@@ -109,6 +110,10 @@ export async function POST(request: Request) {
           await handleVaterSetupCompleted(checkoutSession);
           break;
         }
+
+        // Jelly Studio prepaid credit pack (mode=payment). Narrow and
+        // self-contained, like the demo-site / video-offer handlers.
+        if (await fulfillJellyCredits(checkoutSession)) break;
 
         if (await fulfillVideoCredits(checkoutSession)) break;
         if (await fulfillShopSale(checkoutSession)) break;

@@ -603,6 +603,7 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
                   Manage billing →
                 </div>
               </div>
+              <ShowcaseOptOutToggle />
               <SettingsExternalLink
                 href="/settings"
                 label="Open account settings →"
@@ -653,6 +654,128 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Terms § 7 promotional-license opt-out.
+ *
+ * Default is OPT-IN (showcaseOptOut === false): the Beta Addendum says we may
+ * showcase renders. This is the switch that makes that promise keepable —
+ * a licence term with no way to withdraw consent is not a licence term.
+ *
+ * Reads and writes /api/vater/me. The checkbox reflects SERVER state at all
+ * times: it goes disabled during the save and reverts on failure rather than
+ * showing a preference that didn't persist, because "I turned that off" is
+ * exactly the kind of thing someone will later be certain about.
+ *
+ * ⚠️ During an admin view-as session this PATCH is 403'd by proxy.ts. That is
+ * intended — support must never flip a customer's licensing consent for them.
+ */
+function ShowcaseOptOutToggle(): React.ReactElement {
+  const { t } = useTheme();
+  const [optOut, setOptOut] = React.useState<boolean | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/vater/me', { cache: 'no-store' });
+        if (!r.ok) return;
+        const data = (await r.json()) as { beta?: { showcaseOptOut?: boolean } };
+        if (!cancelled) setOptOut(Boolean(data.beta?.showcaseOptOut));
+      } catch {
+        /* leave it indeterminate rather than guessing a consent value */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggle = React.useCallback(
+    async (next: boolean) => {
+      const previous = optOut;
+      setOptOut(next);
+      setSaving(true);
+      setError(null);
+      try {
+        const r = await fetch('/api/vater/me', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ showcaseOptOut: next }),
+        });
+        if (!r.ok) {
+          setOptOut(previous);
+          setError(
+            r.status === 403
+              ? "Can't change this from a support session."
+              : "Couldn't save that — try again.",
+          );
+        }
+      } catch {
+        setOptOut(previous);
+        setError("Couldn't save that — try again.");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [optOut],
+  );
+
+  // `optOut` is the opt-OUT flag; the checkbox asks the positive question.
+  const allowed = optOut === null ? true : !optOut;
+
+  return (
+    <div
+      style={{
+        padding: 16,
+        background: t.cardAlt,
+        borderRadius: JELLY_TOKENS.radius.md,
+        border: `1px solid ${t.border}`,
+      }}
+    >
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+          cursor: optOut === null || saving ? 'default' : 'pointer',
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={allowed}
+          disabled={optOut === null || saving}
+          onChange={(e) => void toggle(!e.target.checked)}
+          data-testid="showcase-opt-out"
+          style={{ marginTop: 3 }}
+        />
+        <span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
+            Allow Jelly Studio to showcase my renders
+          </span>
+          <span
+            style={{
+              display: 'block',
+              marginTop: 4,
+              fontSize: 13,
+              color: t.textSecondary,
+              lineHeight: 1.5,
+            }}
+          >
+            Beta licence (Terms § 7). On by default. Turn it off and we won&apos;t use
+            your videos in demos, the landing page or social posts. Your videos are
+            yours either way.
+          </span>
+        </span>
+      </label>
+      {error ? (
+        <div style={{ marginTop: 8, fontSize: 12, color: JELLY_TOKENS.error }}>{error}</div>
+      ) : null}
     </div>
   );
 }

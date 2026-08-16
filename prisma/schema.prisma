@@ -27,6 +27,13 @@ model User {
   termsAcceptedAt      DateTime?
   termsVersion         String?
   showcaseOptOut       Boolean              @default(false)
+  // Invite-only beta (migration 20260815_beta_invites). betaInviteId is the
+  // BetaInvite row this account was created from — /animate signups require
+  // one; every other signup lane (leads, food, Launchpad claim) leaves it
+  // NULL. sessionVersion is bumped on password reset so every outstanding JWT
+  // for this user stops validating (auth.ts jwt callback compares).
+  betaInviteId         String?
+  sessionVersion       Int                  @default(0)
   accounts             Account[]
   agents               Agent[]
   credentialAuth       CredentialAuth?
@@ -629,16 +636,16 @@ model SmsConversation {
 // so a STOP applies to the number, not to one conversation. Rows are never
 // deleted — a START flips optedOut back to false and stamps optedInAt.
 model SmsOptOut {
-  id          String    @id @default(cuid())
-  phone       String    @unique
-  optedOut    Boolean   @default(true)
-  source      String    @default("sms_keyword")
-  keyword     String?
-  lastBody    String?
-  optedOutAt  DateTime? @default(now())
-  optedInAt   DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         String    @id @default(cuid())
+  phone      String    @unique
+  optedOut   Boolean   @default(true)
+  source     String    @default("sms_keyword")
+  keyword    String?
+  lastBody   String?
+  optedOutAt DateTime? @default(now())
+  optedInAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([optedOut])
 }
@@ -5002,15 +5009,15 @@ model PostLogEntry {
 // pushed daily by the DGX collector (~/growth-engine/ai-spend/collect-ai-spend.mjs).
 // The /hq AI P&L pill merges these over the static baseline in lib/ai-pnl.ts.
 model AiSpendLive {
-  id         String   @id @default(cuid())
-  provider   String   @unique // matches PnlLine.provider in lib/ai-pnl.ts
-  label      String
-  amountCents Int     @default(0) // lifetime cash out, USD cents
-  kind       String   @default("verified") // verified | estimated
-  note       String?
-  asOf       DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(cuid())
+  provider    String   @unique // matches PnlLine.provider in lib/ai-pnl.ts
+  label       String
+  amountCents Int      @default(0) // lifetime cash out, USD cents
+  kind        String   @default("verified") // verified | estimated
+  note        String?
+  asOf        DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model VideoCost {
@@ -5133,15 +5140,62 @@ model VaterAccount {
   @@index([tier])
 }
 
+/// Prepaid credit ledger — Jelly Studio "Model B" billing (2026-08-15).
+///
+/// Append-only. Balance = SUM(deltaCents) for the user; there is no cached
+/// balance column, because a cache is a second truth that drifts the moment a
+/// webhook retries. Every row says WHY the balance moved:
+///
+///   purchase  (+) a Stripe Checkout pack, net of Stripe's fee
+///   grant     (+) promotional starter credit (expires; stillsOnly)
+///   debit     (-) one finished video, priced compute-at-cost + ops/min
+///   refund    (+) money returned
+///   adjust    (±) correction: expired-grant sweep, repair cap, reconciler true-up
+///
+/// Idempotency is enforced by the database, not by application care:
+/// stripeSessionId is unique (one purchase per Checkout session) and
+/// [kind, projectId] is unique (one debit per finished video).
+model VaterCreditLedger {
+  id                    String    @id @default(cuid())
+  userId                String
+  /// Signed cents. Positive adds spendable balance, negative consumes it.
+  deltaCents            Int
+  /// purchase | grant | debit | refund | adjust
+  kind                  String
+  /// YouTubeProject.id for debits and their corrections.
+  projectId             String?
+  stripeSessionId       String?   @unique
+  stripePaymentIntentId String?
+  /// Grants only: after this instant the unspent remainder is swept by an
+  /// 'adjust' row written lazily on the next balance read.
+  expiresAt             DateTime?
+  /// Grants only: can fund stills/scripts but NOT animation actions.
+  stillsOnly            Boolean   @default(false)
+  /// Debits: { computeUsd, minutes, opsRate, opsUsd, totalUsd, estimateUsd, cappedAt? }
+  lineJson              Json?
+  note                  String?
+  createdAt             DateTime  @default(now())
+  /// DB-enforced idempotency key. "debit:<projectId>" (one debit per finished
+  /// video), "grant:starter:<userId>" (one starter grant per user),
+  /// "adjust:expiry:<grantRowId>" (one sweep per expired grant),
+  /// "adjust:reconcile:<projectId>:<revision>". NOT reused for purchases —
+  /// those dedupe on stripeSessionId.
+  dedupeKey             String?   @unique
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@index([projectId])
+}
+
 model VaterPayment {
-  id        String   @id @default(cuid())
+  id           String   @id @default(cuid())
   // Tenant this payment settles. Nullable only for the pre-tenancy row(s);
   // recordVaterPayment always writes it.
-  userId    String?
-  amountUsd Float
-  method    String   @default("zelle")
-  note      String?
-  createdAt DateTime @default(now())
+  userId       String?
+  amountUsd    Float
+  method       String   @default("zelle")
+  note         String?
+  createdAt    DateTime @default(now())
   // All-time billing state captured the instant this payment was recorded
   // ({ computeUsd, opsUsd, totalUsd, minutes, videos, breakdown[] }). The
   // "new since last payment" breakdown is current − this baseline, so Trey
@@ -5171,4 +5225,85 @@ model DgxActivity {
   id        Int      @id @default(1)
   line      String
   updatedAt DateTime @default(now())
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Jelly Studio beta — invites, impersonation audit, system log
+// (2026-08-15, migration prisma/migrations/20260815_beta_invites)
+//
+// ADDITIVE ONLY. Three new tables plus two new User columns (declared up in
+// the User model: betaInviteId, sessionVersion). Nothing existing is touched,
+// so the SQL is safe to apply while the current code is live and every route
+// that reads these tables degrades to "feature not ready" (503) if it isn't.
+// ═════════════════════════════════════════════════════════════════════════
+
+/// One invite code for the invite-only /animate beta.
+///
+/// Link handed to a beta user:
+///   https://www.tolley.io/signup?callbackUrl=%2Fanimate&invite=CODE
+///
+/// A code is spendable while `usedCount < maxUses` and (`expiresAt` is NULL
+/// or in the future). When `email` is set the code only works for that
+/// address, which is how a personally-addressed invite stays personal.
+/// Redemption happens inside the register transaction, so two simultaneous
+/// signups can't both spend the last use.
+model BetaInvite {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  /// Locks the code to one address (case-insensitive, stored lowercase).
+  email     String?
+  maxUses   Int       @default(1)
+  usedCount Int       @default(0)
+  expiresAt DateTime?
+  /// Admin email that minted it — audit trail for "who let this person in".
+  createdBy String?
+  note      String?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+  @@index([createdAt])
+}
+
+/// Audit row written every time an admin starts a "view as user" session.
+/// Only the START is recorded — the session itself is read-only (proxy.ts
+/// 403s every non-GET while the jelly_view_as cookie is present), so there is
+/// no write to attribute and a per-request log would be noise.
+model AdminImpersonation {
+  id           String   @id @default(cuid())
+  adminEmail   String
+  targetUserId String
+  /// Where the admin started from (the /hq card, usually).
+  path         String?
+  createdAt    DateTime @default(now())
+
+  @@index([targetUserId, createdAt])
+  @@index([createdAt])
+}
+
+/// Customer-visible system log — the "what actually happened to my render"
+/// feed behind the /animate System Log screen and GET /api/vater/me/log.
+///
+/// Deliberately a separate table from the pipeline's stepDetails JSON: that
+/// blob is overwritten wholesale on every poll, so it can never answer "what
+/// happened an hour ago". These rows are append-only.
+///
+/// kind  — dotted event name (account.created, invite.accepted, render.phase,
+///         render.failed, password.reset, admin.view_as, feedback.sent).
+/// level — info | warn | error. Drives the row colour and nothing else.
+model VaterEvent {
+  id         String   @id @default(cuid())
+  userId     String
+  projectId  String?
+  jobId      String?
+  kind       String
+  level      String   @default("info")
+  message    String   @db.Text
+  /// Small structured payload for the "Copy for support" button.
+  dataJson   Json?
+  durationMs Int?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([createdAt])
 }

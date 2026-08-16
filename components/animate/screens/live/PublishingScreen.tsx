@@ -241,8 +241,25 @@ export function PublishingScreen(): React.ReactElement {
                   />
                 </div>
                 <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 4 }}>
-                  {connected ? acc?.displayName ?? 'connected' : 'not connected'}
+                  {p === 'youtube'
+                    ? connected
+                      ? acc?.displayName ?? 'connected'
+                      : 'not connected'
+                    : 'via your scheduler'}
                 </div>
+                {/* YouTube is the only direct upload Jelly performs, and it is
+                    per-user OAuth: Google consents to YOUR channel and the
+                    refresh token lands on your own account row. Everything
+                    else goes out through whatever scheduler you already use. */}
+                {p === 'youtube' ? (
+                  <YouTubeTileActions
+                    connected={connected}
+                    status={acc?.status}
+                    onChanged={() => void loadAccounts()}
+                  />
+                ) : (
+                  <SchedulerHint platform={meta.label} />
+                )}
                 {showQueue && (
                   <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                     <Pill label="Pending" value={c.pending} color={JELLY_TOKENS.accent} />
@@ -313,6 +330,115 @@ export function PublishingScreen(): React.ReactElement {
           </div>
         )}
       </VCard>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Connect / reconnect / disconnect for the one platform Jelly uploads to
+ * directly. Ungated in the beta (2026-08-15): the OAuth is per-user, so a
+ * customer connecting their channel touches nothing shared.
+ */
+function YouTubeTileActions({
+  connected,
+  status,
+  onChanged,
+}: {
+  connected: boolean;
+  status?: string;
+  onChanged: () => void;
+}): React.ReactElement {
+  const { t } = useTheme();
+  const [busy, setBusy] = React.useState(false);
+
+  const disconnect = async (): Promise<void> => {
+    if (
+      !window.confirm(
+        'Disconnect this YouTube channel? Jelly forgets the token; nothing already uploaded is affected.',
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await fetch('/api/vater/social-accounts/youtube', { method: 'DELETE' });
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+      <VBtn
+        size="sm"
+        variant={connected ? 'outlined' : 'primary'}
+        onClick={() => {
+          window.location.href = '/api/vater/social-accounts/oauth/youtube/start';
+        }}
+      >
+        {connected ? 'Reconnect' : 'Connect YouTube'}
+      </VBtn>
+      {connected && (
+        <VBtn size="sm" variant="text" onClick={() => void disconnect()} disabled={busy}>
+          {busy ? '…' : 'Disconnect'}
+        </VBtn>
+      )}
+      {status && status !== 'active' && (
+        <span style={{ fontSize: 10, color: JELLY_TOKENS.error, alignSelf: 'center' }}>
+          {status} — reconnect to fix
+        </span>
+      )}
+      {!connected && (
+        <span style={{ fontSize: 10, color: t.textDisabled, alignSelf: 'center' }}>
+          uploads to your own channel
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** "How" popover for the platforms Jelly does not post to itself. */
+function SchedulerHint({ platform }: { platform: string }): React.ReactElement {
+  const { t } = useTheme();
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div style={{ marginTop: 10 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          padding: 0,
+          fontSize: 11,
+          fontFamily: JELLY_TOKENS.font,
+          color: JELLY_TOKENS.brand,
+          cursor: 'pointer',
+        }}
+      >
+        {open ? 'Hide' : 'How?'}
+      </button>
+      {open && (
+        <div
+          style={{
+            marginTop: 6,
+            padding: 8,
+            borderRadius: JELLY_TOKENS.radius.sm,
+            background: t.card,
+            border: `1px solid ${t.border}`,
+            fontSize: 10,
+            lineHeight: 1.6,
+            color: t.textSecondary,
+          }}
+        >
+          Jelly doesn&apos;t post to {platform} directly. Download the MP4 from
+          the Library tab, then upload it to {platform} through the scheduler
+          you already use — Repurpose, Postiz, or Blotato all take an MP4 and a
+          caption.
+        </div>
       )}
     </div>
   );

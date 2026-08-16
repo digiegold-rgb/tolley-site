@@ -1,11 +1,16 @@
 'use client';
 
 /**
- * BetaAccessBanner — launch banner for pay-per-video billing (2026-06-11).
+ * BetaAccessBanner — the invite-only public beta banner (2026-08-15).
  *
- * The private-beta gate is gone: card-on-file Stripe billing is live. This
- * now announces the launch and points users at the Pricing screen. It is
- * dismissible (persisted in localStorage) so it doesn't nag forever.
+ * Announces the one thing every user needs to know on sight: what a video
+ * costs and that nothing recurs. The numbers here must match the landing
+ * page, lib/vater/help-content.ts and the Pricing screen — compute at cost
+ * plus $0.35 per finished minute, prepaid credit, no subscription.
+ *
+ * It is dismissible (persisted in localStorage) so it doesn't nag forever.
+ * DISMISS_KEY carries a version suffix: when the message materially changes,
+ * bump it so people who dismissed the previous banner see the new one once.
  *
  * Note: rendered both inside the v2 Shell (RouteContext available) and on
  * the v1 /vater/youtube page (no RouteContext) — so it deliberately avoids
@@ -15,7 +20,7 @@
 import * as React from 'react';
 import { JELLY_TOKENS } from './tokens';
 
-const DISMISS_KEY = 'vater-ppv-launch-banner-dismissed';
+const DISMISS_KEY = 'vater-beta-banner-dismissed-v1.3';
 
 export function BetaAccessBanner(): React.ReactElement | null {
   // Start hidden, reveal after the localStorage check — avoids a hydration
@@ -63,8 +68,9 @@ export function BetaAccessBanner(): React.ReactElement | null {
       }}
     >
       <span>
-        <strong>Pay-per-video is live</strong> — add a card in Billing to
-        render past the free-tier caps. No subscription, ~$25/video.
+        <strong>Public beta · invite only</strong> — prepaid credit, no
+        subscription: compute at cost plus $0.35 per finished minute. Failed
+        renders are never charged.
       </span>
       <button
         onClick={dismiss}

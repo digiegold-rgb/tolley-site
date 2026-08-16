@@ -9,22 +9,65 @@
  * Source of truth is `/api/vater/voices` (which proxies to the autopilot
  * /vater/voices endpoint). Never imports `autopilot` directly — that lib is
  * server-only.
+ *
+ * Per-user namespaces (2026-08-15): the catalog is `shared + yours`, and a
+ * voice's `name` is its wire id — bare ("Monroe") for the shared library,
+ * `u_<userId>~Stem` for a clone you uploaded. Display always uses the stem;
+ * the prefix is plumbing, never something a user should read. Uploading is
+ * open to every tier now, capped for non-studio accounts, and requires a
+ * consent attestation (Terms §9 — voice cloning is the fastest way to get
+ * sued with this product).
  */
 
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { getVoiceMeta } from "@/lib/vater/voice-catalog";
+import {
+  MAX_OWN_VOICES_DEFAULT,
+  isSharedVoiceId,
+  voiceDisplayName,
+} from "@/lib/vater/voice-ids";
 
 interface VoiceClone {
+  /** Wire id: bare stem when shared, `u_<userId>~Stem` when it's yours. */
   name: string;
   language?: string;
   sampleText?: string;
+  displayName?: string;
+  owner?: string;
+  shared?: boolean;
 }
+
+type ConsentType = "own" | "written-consent";
 
 /** Server-route path for the streaming reference WAV preview. */
 function voiceSampleUrl(name: string): string {
   return `/api/vater/voices/${encodeURIComponent(name)}/sample`;
+}
+
+/** Label a human should see. Falls back to parsing the id. */
+function labelFor(voice: VoiceClone): string {
+  return voice.displayName || voiceDisplayName(voice.name) || voice.name;
+}
+
+/** True for the shared/system library (no per-user prefix). */
+function isShared(voice: VoiceClone): boolean {
+  return voice.shared ?? isSharedVoiceId(voice.name);
+}
+
+function OwnerBadge({ shared }: { shared: boolean }) {
+  return (
+    <span
+      className={`rounded px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide ${
+        shared
+          ? "bg-zinc-700/40 text-zinc-400"
+          : "bg-emerald-500/15 text-emerald-300"
+      }`}
+    >
+      {shared ? "Shared" : "Yours"}
+    </span>
+  );
 }
 
 interface SelectProps {
@@ -39,6 +82,8 @@ interface SelectProps {
 
 interface ManageProps {
   mode: "manage";
+  /** Studio/owner accounts aren't held to the beta clone cap. */
+  unlimited?: boolean;
 }
 
 type Props = SelectProps | ManageProps;
@@ -46,6 +91,7 @@ type Props = SelectProps | ManageProps;
 export function YouTubeVoiceClonePanel(props: Props) {
   const { toast } = useToast();
   const [voices, setVoices] = useState<VoiceClone[]>([]);
+  const [ownCount, setOwnCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +106,11 @@ export function YouTubeVoiceClonePanel(props: Props) {
       }
       const data = (await res.json()) as { voices?: VoiceClone[] };
       setVoices(Array.isArray(data.voices) ? data.voices : []);
+      setOwnCount(
+        (Array.isArray(data.voices) ? data.voices : []).filter(
+          (v) => !isShared(v),
+        ).length,
+      );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to load voices";
@@ -96,6 +147,8 @@ export function YouTubeVoiceClonePanel(props: Props) {
   return (
     <ManageMode
       voices={voices}
+      ownCount={ownCount}
+      unlimited={props.unlimited ?? false}
       loading={loading}
       error={error}
       onRefresh={fetchVoices}
@@ -131,14 +184,14 @@ function SelectMode({
   // When a Style auto-populated the voice and the user hasn't expanded,
   // show a compact single-line summary instead of the full grid.
   if (autoPopulatedFrom && value && !expanded && !loading) {
-    const meta = getVoiceMeta(value);
+    const meta = getVoiceMeta(voiceDisplayName(value));
     return (
       <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm">
             <span aria-hidden="true">{meta?.emoji ?? "🎤"}</span>
             <span className="font-semibold text-emerald-300">
-              {meta?.displayName ?? value}
+              {meta?.displayName ?? voiceDisplayName(value) ?? value}
             </span>
             <span className="text-[10px] text-zinc-500">
               (from Style: {autoPopulatedFrom})
@@ -191,7 +244,11 @@ function SelectMode({
         >
           {voices.map((voice) => {
             const isSelected = voice.name === value;
-            const meta = getVoiceMeta(voice.name);
+            const label = labelFor(voice);
+            // Editorial metadata is keyed by the bare stem, so a namespaced id
+            // has to be split before the lookup or every own clone would fall
+            // into the "unknown voice" card.
+            const meta = isShared(voice) ? getVoiceMeta(label) : null;
             return (
               <button
                 key={voice.name}
@@ -217,7 +274,7 @@ function SelectMode({
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
                       <span className="text-3xl font-bold text-zinc-500">
-                        {voice.name.slice(0, 1).toUpperCase()}
+                        {label.slice(0, 1).toUpperCase()}
                       </span>
                     </div>
                   )}
@@ -235,8 +292,9 @@ function SelectMode({
                         isSelected ? "text-sky-400" : "text-zinc-200"
                       }`}
                     >
-                      {meta?.displayName ?? voice.name}
+                      {meta?.displayName ?? label}
                     </span>
+                    {!isShared(voice) && <OwnerBadge shared={false} />}
                   </div>
                   {meta ? (
                     <>
@@ -249,7 +307,8 @@ function SelectMode({
                     </>
                   ) : (
                     <p className="text-[10px] text-zinc-600">
-                      {(voice.language || "en").toUpperCase()} · user-uploaded
+                      {(voice.language || "en").toUpperCase()} ·{" "}
+                      {isShared(voice) ? "shared library" : "your clone"}
                     </p>
                   )}
                   <audio
@@ -289,11 +348,15 @@ function SelectMode({
 
 function ManageMode({
   voices,
+  ownCount,
+  unlimited,
   loading,
   error,
   onRefresh,
 }: {
   voices: VoiceClone[];
+  ownCount: number;
+  unlimited: boolean;
   loading: boolean;
   error: string | null;
   onRefresh: () => void;
@@ -302,20 +365,31 @@ function ManageMode({
   const [audio, setAudio] = useState<File | null>(null);
   const [name, setName] = useState("");
   const [sampleText, setSampleText] = useState("");
+  const [consent, setConsent] = useState<ConsentType | null>(null);
   const [uploading, setUploading] = useState(false);
   const [deletingName, setDeletingName] = useState<string | null>(null);
 
+  const atCap = !unlimited && ownCount >= MAX_OWN_VOICES_DEFAULT;
+  const mine = useMemo(() => voices.filter((v) => !isShared(v)), [voices]);
+
   const canSubmit =
-    !!audio && name.trim().length > 0 && sampleText.trim().length > 0;
+    !!audio &&
+    !!consent &&
+    !atCap &&
+    name.trim().length > 0 &&
+    sampleText.trim().length > 0;
 
   const handleUpload = async () => {
-    if (!canSubmit || !audio) return;
+    if (!canSubmit || !audio || !consent) return;
     setUploading(true);
     try {
       const form = new FormData();
       form.append("audio", audio);
       form.append("name", name.trim());
       form.append("sampleText", sampleText.trim());
+      // Required by the server: the attestation is filed on the DGX next to
+      // the clip, so the record of whose voice this is survives everything.
+      form.append("voiceConsent", consent);
 
       const res = await fetch("/api/vater/voices", {
         method: "POST",
@@ -333,6 +407,7 @@ function ManageMode({
       setAudio(null);
       setName("");
       setSampleText("");
+      setConsent(null);
       onRefresh();
     } catch (err) {
       toast({
@@ -347,7 +422,9 @@ function ManageMode({
 
   const handleDelete = async (voiceName: string) => {
     if (
-      !confirm(`Delete voice clone "${voiceName}"? This cannot be undone.`)
+      !confirm(
+        `Delete voice clone "${voiceDisplayName(voiceName)}"? This cannot be undone.`,
+      )
     ) {
       return;
     }
@@ -363,7 +440,7 @@ function ManageMode({
       }
       toast({
         title: "Deleted",
-        description: `"${voiceName}" removed`,
+        description: `"${voiceDisplayName(voiceName)}" removed`,
         variant: "success",
       });
       onRefresh();
@@ -382,14 +459,29 @@ function ManageMode({
     <div className="space-y-6">
       {/* Upload form */}
       <div className="vater-card p-5">
-        <h3 className="mb-3 text-sm font-semibold text-zinc-200">
-          Upload a new voice clone
-        </h3>
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="text-sm font-semibold text-zinc-200">
+            Upload a new voice clone
+          </h3>
+          {!unlimited && (
+            <span className="text-[11px] text-zinc-500">
+              {mine.length} of {MAX_OWN_VOICES_DEFAULT} custom voices used
+            </span>
+          )}
+        </div>
         <p className="mb-4 text-xs text-zinc-500">
-          F5-TTS needs a 5-second clean speech sample plus the exact text
+          Cloning needs a 5-second clean speech sample plus the exact text
           that&apos;s spoken. Use a quiet recording — no music, no
-          background noise.
+          background noise. Your clones are private to your account; the
+          shared library below is available to everyone.
         </p>
+
+        {atCap && (
+          <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300">
+            You&apos;ve reached the beta limit of {MAX_OWN_VOICES_DEFAULT} custom
+            voices. Delete one below to add another.
+          </div>
+        )}
 
         <div className="space-y-3">
           <div>
@@ -437,6 +529,55 @@ function ManageMode({
             />
           </div>
 
+          {/* Consent attestation — required by the server, filed on the DGX
+              alongside the clip. Terms §9: an unauthorised clone is the
+              uploader's liability, and this is the record of who said what. */}
+          <fieldset className="rounded-lg border border-amber-500/25 bg-amber-500/[0.06] p-3">
+            <legend className="px-1 text-[11px] font-semibold text-amber-300">
+              Whose voice is this?
+            </legend>
+            <div className="space-y-2">
+              {(
+                [
+                  ["own", "This is my own voice."],
+                  [
+                    "written-consent",
+                    "This is someone else's voice and I have their written consent for this use.",
+                  ],
+                ] as [ConsentType, string][]
+              ).map(([value, label]) => (
+                <label
+                  key={value}
+                  className="flex cursor-pointer items-start gap-2 text-xs text-zinc-300"
+                >
+                  <input
+                    type="radio"
+                    name="voiceConsent"
+                    value={value}
+                    checked={consent === value}
+                    onChange={() => setConsent(value)}
+                    className="mt-0.5"
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+            <p className="mt-2 text-[10px] leading-relaxed text-zinc-500">
+              Cloning a voice without consent is illegal in several US states,
+              and the liability is yours, not ours. We remove reported clones.
+              Section 9 covers this attestation, Section 10 lists the voices
+              you may not make at all.{" "}
+              <a
+                href="/animate/terms#voice"
+                target="_blank"
+                rel="noreferrer"
+                className="text-sky-400 underline-offset-2 hover:underline"
+              >
+                Read Terms §§9–10
+              </a>
+            </p>
+          </fieldset>
+
           <button
             type="button"
             onClick={handleUpload}
@@ -445,6 +586,11 @@ function ManageMode({
           >
             {uploading ? "Uploading..." : "Upload voice clone"}
           </button>
+          {!consent && !!audio && (
+            <p className="text-[11px] text-zinc-500">
+              Pick one of the two statements above to enable the upload.
+            </p>
+          )}
         </div>
       </div>
 
@@ -475,38 +621,50 @@ function ManageMode({
           </div>
         ) : (
           <div className="space-y-2">
-            {voices.map((voice) => (
-              <div
-                key={voice.name}
-                className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-zinc-200">
-                    {voice.name}
-                  </p>
-                  <p className="mt-0.5 truncate text-[10px] text-zinc-600">
-                    {(voice.language || "en").toUpperCase()}
-                    {voice.sampleText ? ` — "${voice.sampleText}"` : ""}
-                  </p>
+            {voices.map((voice) => {
+              const shared = isShared(voice);
+              return (
+                <div
+                  key={voice.name}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-2 truncate text-sm font-semibold text-zinc-200">
+                      {labelFor(voice)}
+                      <OwnerBadge shared={shared} />
+                    </p>
+                    <p className="mt-0.5 truncate text-[10px] text-zinc-600">
+                      {(voice.language || "en").toUpperCase()}
+                      {voice.sampleText ? ` — "${voice.sampleText}"` : ""}
+                    </p>
+                  </div>
+                  <audio
+                    controls
+                    preload="none"
+                    src={voiceSampleUrl(voice.name)}
+                    className="h-8 w-48 flex-shrink-0"
+                  >
+                    Your browser does not support audio playback.
+                  </audio>
+                  {/* Shared voices are read-only: they narrate other people's
+                      projects too, so only the owner account can remove them. */}
+                  {shared ? (
+                    <span className="w-[68px] text-center text-[10px] text-zinc-600">
+                      read-only
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(voice.name)}
+                      disabled={deletingName === voice.name}
+                      className="w-[68px] rounded bg-red-500/10 px-3 py-1 text-[11px] font-semibold text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+                    >
+                      {deletingName === voice.name ? "..." : "Delete"}
+                    </button>
+                  )}
                 </div>
-                <audio
-                  controls
-                  preload="none"
-                  src={voiceSampleUrl(voice.name)}
-                  className="h-8 w-48 flex-shrink-0"
-                >
-                  Your browser does not support audio playback.
-                </audio>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(voice.name)}
-                  disabled={deletingName === voice.name}
-                  className="rounded bg-red-500/10 px-3 py-1 text-[11px] font-semibold text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
-                >
-                  {deletingName === voice.name ? "..." : "Delete"}
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

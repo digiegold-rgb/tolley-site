@@ -26,7 +26,15 @@
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
+import { useTier } from '../../tier-context';
 import { VBtn, VCard, VInput, RetryError, SectionHeader } from '../../primitives';
+import {
+  BETA_LENGTH_MESSAGE,
+  BETA_MAX_WORDS,
+  WORDS_PER_MINUTE,
+  isOverBetaLength,
+  runtimeClock,
+} from '@/lib/vater/script-limits';
 import {
   CREATION_PHASES,
   IN_FLIGHT_STATUSES,
@@ -104,18 +112,11 @@ interface LockedStyle {
   characterNames: string[];
 }
 
-/* Monroe's measured long-form pace (standing spec §5) — runtime comes from the
- * script's word count, never from stretching scenes. */
-const WORDS_PER_MINUTE = 185;
-
 const wordsIn = (s: string): number => s.split(/\s+/).filter(Boolean).length;
 
-function runtimeLabel(words: number): string {
-  const totalSeconds = Math.round((words / WORDS_PER_MINUTE) * 60);
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return m > 0 ? `${m}m ${s}s` : `${s}s`;
-}
+/* Runtime is quoted as m:ss everywhere now (`runtimeClock` in
+ * lib/vater/script-limits) so the beta ceiling reads as "9:00" in the copy,
+ * the counter, and the error message alike. */
 
 export type ReviewStage =
   | 'preparing'
@@ -437,6 +438,7 @@ function ScriptIntake({
   onCreated: (project: ReviewProject) => void;
 }): React.ReactElement {
   const { t } = useTheme();
+  const { tier } = useTier();
   const [title, setTitle] = React.useState('');
   const [script, setScript] = React.useState('');
   const [animUntil, setAnimUntil] = React.useState('120');
@@ -445,6 +447,10 @@ function ScriptIntake({
   const fileRef = React.useRef<HTMLInputElement | null>(null);
 
   const words = React.useMemo(() => wordsIn(script), [script]);
+  // Only the owner renders past the beta cap — everyone else, including
+  // studio tier, is held to 9:00.
+  const isOwner = tier === 'owner';
+  const overLimit = !isOwner && isOverBetaLength(words);
 
   const readFile = async (file: File): Promise<void> => {
     setError(null);
@@ -468,6 +474,15 @@ function ScriptIntake({
     const animUntilS = Number.parseInt(animUntil, 10);
     if (words < 20) {
       setError(`Paste a script first — this is only ${words} words.`);
+      return;
+    }
+    // Hard stop at the beta runtime cap. The server rejects it too, and so
+    // does the DGX — this just saves the round trip and says it in the words
+    // the user will see everywhere else.
+    if (!isOwner && isOverBetaLength(words)) {
+      setError(
+        `That's ${words.toLocaleString()} words (≈ ${runtimeClock(words)}). ${BETA_LENGTH_MESSAGE}`,
+      );
       return;
     }
     if (!Number.isFinite(animUntilS) || animUntilS < 0) {
@@ -535,8 +550,16 @@ function ScriptIntake({
             Script
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 12, color: t.textSecondary }}>
-              {words.toLocaleString()} words · ≈ {runtimeLabel(words)}
+            <span
+              style={{
+                fontSize: 12,
+                color: overLimit ? JELLY_TOKENS.error : t.textSecondary,
+                fontWeight: overLimit ? 600 : 400,
+              }}
+            >
+              {words.toLocaleString()} words · ≈ {runtimeClock(words)} at{' '}
+              {WORDS_PER_MINUTE} wpm
+              {!isOwner && ` · limit ${BETA_MAX_WORDS.toLocaleString()}`}
             </span>
             <button
               type="button"
@@ -602,10 +625,30 @@ function ScriptIntake({
         </div>
       </div>
 
+      {overLimit && (
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: JELLY_TOKENS.radius.md,
+            background: 'rgba(220,38,38,0.08)',
+            border: `1px solid ${JELLY_TOKENS.error}`,
+            fontSize: 12,
+            color: t.text,
+            lineHeight: 1.6,
+          }}
+        >
+          {BETA_LENGTH_MESSAGE}
+        </div>
+      )}
+
       {error && <RetryError message={error} />}
 
       <div>
-        <VBtn onClick={() => void submit()} disabled={submitting} icon="sparkle">
+        <VBtn
+          onClick={() => void submit()}
+          disabled={submitting || overLimit}
+          icon="sparkle"
+        >
           {submitting ? 'Adding…' : 'Add script to review'}
         </VBtn>
       </div>
@@ -1073,6 +1116,7 @@ function ReviewPanel({
   onChanged: () => void;
 }): React.ReactElement {
   const { t } = useTheme();
+  const { tier } = useTier();
   /* `saved` is the text the server currently holds; `draft` is what's in the
    * box. Approve sends the DRAFT, so an unsaved edit can never silently
    * render the older text — but the button says so out loud too. */
@@ -1085,6 +1129,10 @@ function ReviewPanel({
 
   const words = React.useMemo(() => wordsIn(draft), [draft]);
   const dirty = draft !== saved;
+  // Approve & Animate is the money click. The DGX rejects an over-cap script
+  // with a 400, so stopping here costs the user one edit instead of a failed
+  // project. Owner is uncapped.
+  const overLimit = tier !== 'owner' && isOverBetaLength(words);
 
   const save = async (): Promise<void> => {
     setError(null);
@@ -1143,12 +1191,32 @@ function ReviewPanel({
 
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 13 }}>
         <Stat label="Words" value={words.toLocaleString()} />
-        <Stat label="Estimated runtime" value={runtimeLabel(words)} />
+        <Stat
+          label="Estimated runtime"
+          value={`${runtimeClock(words)} at ${WORDS_PER_MINUTE} wpm`}
+        />
         <Stat
           label="Animated window"
           value={project.animUntilS ? `first ${project.animUntilS}s` : 'stills only'}
         />
       </div>
+
+      {overLimit && (
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: JELLY_TOKENS.radius.md,
+            background: 'rgba(220,38,38,0.08)',
+            border: `1px solid ${JELLY_TOKENS.error}`,
+            fontSize: 12,
+            color: t.text,
+            lineHeight: 1.6,
+          }}
+        >
+          {words.toLocaleString()} words is over the{' '}
+          {BETA_MAX_WORDS.toLocaleString()}-word ceiling. {BETA_LENGTH_MESSAGE}
+        </div>
+      )}
 
       {(project.scriptVersions?.length ?? 0) > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, flexWrap: 'wrap' }}>
@@ -1231,17 +1299,19 @@ function ReviewPanel({
         </VBtn>
         <VBtn
           onClick={() => void approve()}
-          disabled={approving || saving || words === 0}
+          disabled={approving || saving || words === 0 || overLimit}
           icon="play"
         >
           {approving ? 'Starting render…' : 'Approve & Animate'}
         </VBtn>
         <span style={{ fontSize: 12, color: t.textSecondary }}>
-          {dirty
-            ? 'Unsaved edits — Approve sends the text in the box above.'
-            : justSaved
-              ? 'Saved. Approving sends this exact text to the renderer.'
-              : 'Approving sends the text above to the renderer.'}
+          {overLimit
+            ? BETA_LENGTH_MESSAGE
+            : dirty
+              ? 'Unsaved edits — Approve sends the text in the box above.'
+              : justSaved
+                ? 'Saved. Approving sends this exact text to the renderer.'
+                : 'Approving sends the text above to the renderer.'}
         </span>
       </div>
     </VCard>

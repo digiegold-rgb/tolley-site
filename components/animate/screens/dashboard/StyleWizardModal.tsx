@@ -23,6 +23,7 @@ import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { Icon } from '../../Icon';
+import { isSharedVoiceId, voiceDisplayName } from '@/lib/vater/voice-ids';
 import { devError } from '../../log';
 import { VBtn } from '../../primitives';
 
@@ -713,10 +714,14 @@ export function StyleWizardModal({
                 <option value="">
                   {voicesLoading ? 'Loading voices…' : 'Pick a voice…'}
                 </option>
+                {/* Value is the wire id (namespaced for your own clones and
+                    stored as the style's voiceCloneName); the label is the
+                    readable stem. */}
                 {voiceBackend === 'indextts-modal'
                   ? vaterVoices.map((v) => (
                       <option key={v.name} value={v.name}>
-                        {v.name}
+                        {voiceDisplayName(v.name)}
+                        {isSharedVoiceId(v.name) ? '' : ' (yours)'}
                         {v.language ? ` — ${v.language}` : ''}
                       </option>
                     ))
@@ -1065,7 +1070,7 @@ export function StyleWizardModal({
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
                     gap: 12,
                   }}
                 >

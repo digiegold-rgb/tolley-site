@@ -1,6 +1,7 @@
 "use client";
 
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
@@ -79,6 +80,16 @@ export function LoginForm() {
         autoComplete="current-password"
         className="w-full rounded-xl border border-white/18 bg-black/25 px-3 py-2 text-sm text-white/90 outline-none transition focus:border-violet-300/75"
       />
+
+      <p className="pt-1 text-right">
+        <Link
+          href={`/reset-password?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+          data-testid="forgot-password"
+          className="text-xs text-white/60 underline underline-offset-2 transition hover:text-violet-200"
+        >
+          Forgot password?
+        </Link>
+      </p>
 
       {errorMessage ? <p className="text-xs text-rose-200/90">{errorMessage}</p> : null}
 

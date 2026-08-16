@@ -157,7 +157,7 @@ export function DashboardScreen(): React.ReactElement {
         >
           <div style={{ fontSize: 18, fontWeight: 700 }}>Billing</div>
           <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-            Pay per video — see every price and your card on file
+            Prepaid credit — compute at cost + $0.35 per finished minute
           </div>
           <VBtn
             variant="white"

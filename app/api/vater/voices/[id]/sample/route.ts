@@ -14,7 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { autopilot, AutopilotError } from "@/lib/vater/autopilot-client";
-import { canAccessVoice } from "@/lib/vater/voice-privacy";
+import { canReadVoice, splitVoiceId, voiceWireId } from "@/lib/vater/voice-privacy";
 
 export const dynamic = "force-dynamic";
 
@@ -29,13 +29,18 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await ctx.params;
-  const safe = id.replace(/[^a-zA-Z0-9_-]/g, "");
-  if (!safe) {
+  // The id may be namespaced (`u_<userId>~Stem`), so parse it rather than
+  // stripping every non-alphanumeric — the old strip silently merged
+  // "u_abc~Mom" into "u_abcMom" and would have streamed the wrong clone.
+  const { owner, stem } = splitVoiceId(id);
+  const safe = voiceWireId(owner, stem);
+  if (!stem) {
     return NextResponse.json({ error: "Invalid voice name" }, { status: 400 });
   }
-  // Owner-private clones (Jared-A..D) are the owner's likeness — never
-  // streamable by a beta customer even though the name is guessable.
-  if (!canAccessVoice(safe, session.user.email ?? null)) {
+  // Owner-private clones (Jared-A..D) are the owner's likeness, and a tenant's
+  // clone is theirs — neither is streamable by another beta customer even
+  // though the id is guessable.
+  if (!canReadVoice(safe, { userId: session.user.id, email: session.user.email ?? null })) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   try {

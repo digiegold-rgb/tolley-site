@@ -26,9 +26,10 @@ import { VoiceTuner } from './VoiceTuner';
 
 export function Voices(): React.ReactElement {
   const { t } = useTheme();
-  // POST /api/vater/voices stays studio-gated. Showing the upload form to a
-  // customer who will only ever get a 401 is a dead end, so swap it for an
-  // honest note. Reading the catalog works for everyone.
+  // Cloning your own voice is open to every tier (2026-08-15): uploads land in
+  // a per-user namespace on the DGX, so one customer's clone is invisible to
+  // everyone else. `voicesWrite` now only decides who gets the Voice Tuner,
+  // which spends (small) Modal money per audition and stays studio/owner.
   const { capabilities } = useTier();
 
   const cardStyle: React.CSSProperties = {
@@ -67,81 +68,59 @@ export function Voices(): React.ReactElement {
         <YouTubePopularVoices />
       </div>
 
-      {/* Local clone management — studio tier only (POST /api/vater/voices). */}
-      {capabilities.voicesWrite ? (
-        <>
-          {/* Voice Tuner — EQ / delivery control panel with instant ~30s samples,
-              lock-in writes vater_voices/<Name>.tuning.json on the DGX (8/15). */}
-          <VoiceTuner />
+      {/* Voice Tuner — EQ / delivery control panel with instant ~30s samples,
+          lock-in writes <ownerDir>/<Name>.tuning.json on the DGX (8/15).
+          Studio/owner only: every audition is a real Modal call that isn't
+          metered against customer credits. */}
+      {capabilities.voicesWrite && <VoiceTuner />}
 
-          <div style={cardStyle}>
-            <div
-              style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: t.text,
-                marginBottom: 6,
-              }}
-            >
-              Your voice clones (F5-TTS)
-            </div>
-            <p
-              style={{
-                fontSize: 11,
-                color: t.textSecondary,
-                margin: '0 0 12px',
-                lineHeight: 1.5,
-              }}
-            >
-              Upload a 5-second clean speech sample with its exact transcript.
-              F5-TTS produces a local clone — zero API cost, every render.
-            </p>
-            <YouTubeVoiceClonePanel mode="manage" />
-          </div>
-
-          <div
-            style={{
-              padding: '10px 14px',
-              borderRadius: JELLY_TOKENS.radius.md,
-              background: 'rgba(245,158,11,0.08)',
-              border: '1px solid rgba(245,158,11,0.4)',
-              fontSize: 11,
-              color: t.textSecondary,
-              lineHeight: 1.6,
-            }}
-          >
-            <strong style={{ color: JELLY_TOKENS.warning }}>Heads up:</strong>{' '}
-            voice samples larger than ~4.5MB upload through a Serverless route
-            and will silently 500. Trim to a 5-second WAV before uploading.
-          </div>
-        </>
-      ) : (
-        <div style={cardStyle}>
-          <div
-            style={{
-              fontSize: 14,
-              fontWeight: 600,
-              color: t.text,
-              marginBottom: 6,
-            }}
-          >
-            Custom voice clones
-          </div>
-          <p
-            style={{
-              fontSize: 11,
-              color: t.textSecondary,
-              margin: 0,
-              lineHeight: 1.6,
-            }}
-          >
-            Cloning your own voice is a studio-tier feature. Every voice in the
-            shared library is available to you now — pick one when you create a
-            style, and it narrates every video on that channel.
-          </p>
+      {/* Clone management — open to every tier. Uploads land in the caller's
+          own namespace (u_<userId>), so they're invisible to other accounts. */}
+      <div style={cardStyle}>
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: t.text,
+            marginBottom: 6,
+          }}
+        >
+          Your voice clones
         </div>
-      )}
+        <p
+          style={{
+            fontSize: 11,
+            color: t.textSecondary,
+            margin: '0 0 12px',
+            lineHeight: 1.5,
+          }}
+        >
+          Upload a 5-second clean speech sample with its exact transcript. The
+          clone is private to your account and narrates any project you point
+          at it. Voices marked <strong>Shared</strong> come with the studio and
+          are available to everyone.
+        </p>
+        <YouTubeVoiceClonePanel
+          mode="manage"
+          unlimited={capabilities.voicesWrite}
+        />
+      </div>
 
+      <div
+        style={{
+          padding: '10px 14px',
+          borderRadius: JELLY_TOKENS.radius.md,
+          background: 'rgba(245,158,11,0.08)',
+          border: '1px solid rgba(245,158,11,0.4)',
+          fontSize: 11,
+          color: t.textSecondary,
+          lineHeight: 1.6,
+        }}
+      >
+        <strong style={{ color: JELLY_TOKENS.warning }}>Heads up:</strong>{' '}
+        voice samples larger than ~4.5MB upload through a Serverless route
+        and will silently 500. Trim to a 5-second WAV before uploading.
+      </div>
     </div>
   );
 }

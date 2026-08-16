@@ -22,6 +22,7 @@ import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VBtn } from '../../primitives';
+import { isSharedVoiceId, voiceDisplayName } from '@/lib/vater/voice-ids';
 import type {
   VoiceTuning,
   VoiceTuningDoc,
@@ -425,8 +426,13 @@ export function VoiceTuner(): React.ReactElement {
             border: `1px solid ${t.border}`, background: t.cardAlt, color: t.text,
           }}
         >
+          {/* The value is the wire id (namespaced for a user's own clone); the
+              label is the stem, because "u_cm3x…~Mom" is plumbing. */}
           {(voices.length ? voices : [{ name: voice }]).map((v) => (
-            <option key={v.name} value={v.name}>{v.name}</option>
+            <option key={v.name} value={v.name}>
+              {voiceDisplayName(v.name)}
+              {isSharedVoiceId(v.name) ? '' : ' (yours)'}
+            </option>
           ))}
         </select>
         {doc && (

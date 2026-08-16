@@ -2,6 +2,10 @@ import type { ReactNode } from "react";
 
 export type LegalSectionContent = {
   heading: string;
+  /** Anchor target, so other surfaces can deep-link a specific clause — e.g.
+   *  the voice-clone consent panel links to /animate/terms#voice. Sections get
+   *  scroll margin so the anchor does not land under a sticky header. */
+  id?: string;
   /** Plain paragraphs, rendered in order before any bullets. */
   paragraphs?: string[];
   /** Bulleted items, rendered after the paragraphs. */
@@ -19,6 +23,7 @@ export type LegalSectionContent = {
  */
 export function LegalSection({
   heading,
+  id,
   paragraphs,
   bullets,
   children,
@@ -50,11 +55,18 @@ export function LegalSection({
 
   if (emphasis) {
     return (
-      <section className="space-y-3 rounded-2xl border border-violet-200/25 bg-violet-300/[0.06] p-4 sm:p-5">
+      <section
+        id={id}
+        className="scroll-mt-24 space-y-3 rounded-2xl border border-violet-200/25 bg-violet-300/[0.06] p-4 sm:p-5"
+      >
         {body}
       </section>
     );
   }
 
-  return <section className="space-y-3">{body}</section>;
+  return (
+    <section id={id} className="scroll-mt-24 space-y-3">
+      {body}
+    </section>
+  );
 }

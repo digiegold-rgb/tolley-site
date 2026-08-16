@@ -179,12 +179,147 @@ export function Library(): React.ReactElement {
           </button>
         </div>
       ) : (
-        <YouTubeLibrary
-          projects={ready}
-          onDelete={handleDelete}
-          onRecomposeStart={handleRecomposeStart}
-        />
+        <>
+          <YouTubeLibrary
+            projects={ready}
+            onDelete={handleDelete}
+            onRecomposeStart={handleRecomposeStart}
+          />
+          <SendToScheduler projects={ready} />
+        </>
       )}
     </div>
   );
+}
+
+/**
+ * Send to scheduler.
+ *
+ * YouTube is the only platform Jelly uploads to itself (per-user OAuth, see the
+ * Publishing tab). For TikTok / IG / Facebook / Pinterest / X / LinkedIn the
+ * honest answer is "take the MP4 to the scheduler you already use", so give
+ * people the three things that makes possible — a direct link they can paste,
+ * a download, and a way into YouTube Studio — instead of a Connect button that
+ * would never work.
+ */
+function SendToScheduler({
+  projects,
+}: {
+  projects: AnyProject[];
+}): React.ReactElement {
+  const { t } = useTheme();
+  const [copied, setCopied] = React.useState<string | null>(null);
+
+  const copyLink = React.useCallback(async (id: string) => {
+    const url = `${window.location.origin}/api/vater/youtube/${id}/video`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(id);
+      window.setTimeout(() => setCopied((c) => (c === id ? null : c)), 2000);
+    } catch {
+      // Clipboard is permission-gated in some browsers — show the URL so the
+      // user can copy it by hand rather than failing silently.
+      window.prompt('Copy this MP4 link:', url);
+    }
+  }, []);
+
+  return (
+    <div
+      style={{
+        marginTop: 24,
+        border: `1px solid ${t.border}`,
+        borderRadius: JELLY_TOKENS.radius.lg,
+        padding: 16,
+      }}
+    >
+      <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
+        Send to scheduler
+      </div>
+      <div
+        style={{
+          fontSize: 12,
+          color: t.textSecondary,
+          margin: '4px 0 12px',
+          lineHeight: 1.6,
+        }}
+      >
+        Jelly uploads to YouTube directly from the Publishing tab. For TikTok,
+        Instagram, Facebook, Pinterest, X, and LinkedIn, take the MP4 to
+        whichever scheduler you already use — Repurpose, Postiz, and Blotato all
+        accept an MP4 plus a caption.
+      </div>
+
+      <div style={{ display: 'grid', gap: 8 }}>
+        {projects.map((p) => (
+          <div
+            key={p.id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              flexWrap: 'wrap',
+              padding: 10,
+              background: t.cardAlt,
+              border: `1px solid ${t.border}`,
+              borderRadius: JELLY_TOKENS.radius.md,
+            }}
+          >
+            <div
+              style={{
+                flex: '1 1 220px',
+                minWidth: 0,
+                fontSize: 13,
+                color: t.text,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {p.publishTitle || p.sourceTitle || p.topic || p.id}
+            </div>
+            <button
+              type="button"
+              onClick={() => void copyLink(p.id)}
+              style={linkBtn(t.border, t.textSecondary)}
+            >
+              {copied === p.id ? 'Copied ✓' : 'Copy MP4 link'}
+            </button>
+            <a
+              href={`/api/vater/youtube/${p.id}/video?download=1`}
+              download={`${p.sourceTitle ?? p.id}.mp4`}
+              style={{ ...linkBtn(t.border, t.textSecondary), textDecoration: 'none' }}
+            >
+              Download
+            </a>
+            <a
+              href={
+                p.youtubeVideoId
+                  ? `https://studio.youtube.com/video/${p.youtubeVideoId}/edit`
+                  : 'https://studio.youtube.com/'
+              }
+              target="_blank"
+              rel="noreferrer"
+              style={{ ...linkBtn(t.border, t.textSecondary), textDecoration: 'none' }}
+            >
+              Open in YouTube Studio
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function linkBtn(border: string, color: string): React.CSSProperties {
+  return {
+    background: 'transparent',
+    border: `1px solid ${border}`,
+    borderRadius: JELLY_TOKENS.radius.md,
+    padding: '5px 10px',
+    fontSize: 11,
+    color,
+    cursor: 'pointer',
+    fontFamily: JELLY_TOKENS.font,
+    whiteSpace: 'nowrap',
+  };
 }

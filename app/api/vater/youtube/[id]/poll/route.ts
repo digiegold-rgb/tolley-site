@@ -35,6 +35,8 @@ import {
   type YouTubeProjectStatus,
 } from "@/lib/vater/youtube-status";
 import { mergeVideoCost } from "@/lib/vater/video-cost";
+import { debitForProject } from "@/lib/vater/billing/ledger";
+import { hasUnmeteredStudioAccess } from "@/lib/vater/billing/check-budget";
 import { appendScriptVersion } from "@/lib/vater/script-versions";
 import { auth } from "@/auth";
 import { canAccessProject } from "@/lib/vater/project-access";
@@ -42,6 +44,7 @@ import { recordUsage } from "@/lib/vater/billing/record-usage";
 import { FLAT_ACTION_PRICES } from "@/lib/vater/pricing";
 import type { VaterAction } from "@/lib/vater-subscription";
 import { notifyTelegram } from "@/lib/budget/notify";
+import { queueVaterEvent } from "@/lib/vater/events";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -175,11 +178,34 @@ function logTransition(
   from: YouTubeProjectStatus,
   to: YouTubeProjectStatus,
   job: JobStatus,
+  /** Project OWNER, not the polling session — the log belongs to the tenant. */
+  ownerUserId: string | null,
 ) {
-  if (from !== to) {
-    console.log(
-      `[vater/poll] project=${projectId} job=${jobId} ${from} → ${to} (phase=${job.phase}, progress=${job.progress})`,
-    );
+  if (from === to) return;
+
+  console.log(
+    `[vater/poll] project=${projectId} job=${jobId} ${from} → ${to} (phase=${job.phase}, progress=${job.progress})`,
+  );
+
+  /* Durable copy of the transition for the customer's System Log. stepDetails
+   * is rewritten wholesale on every poll, so it can only ever say what is
+   * happening NOW — this is the only record that survives to answer "what
+   * happened an hour ago". queueVaterEvent defers the write via next/server
+   * `after()` so it survives the response (a bare floating promise is killed
+   * on Vercel), never throws, and never fails a render. */
+  if (ownerUserId) {
+    queueVaterEvent({
+      userId: ownerUserId,
+      kind: to === "ready" ? "render.ready" : to === "failed" ? "render.failed" : "render.phase",
+      level: to === "failed" ? "error" : "info",
+      message:
+        to === "failed"
+          ? `Render failed at phase ${job.phase ?? "unknown"}: ${job.error || "no error message"}`
+          : `${from} → ${to}${job.phase ? ` (${job.phase})` : ""}`,
+      projectId,
+      jobId,
+      data: { from, to, phase: job.phase ?? null, progress: job.progress ?? null },
+    });
   }
 }
 
@@ -251,7 +277,14 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
 
   const currentStatus = project.status as YouTubeProjectStatus;
   const nextStatus = mapPhaseToStatus(job, currentStatus);
-  logTransition(id, project.autopilotJobId, currentStatus, nextStatus, job);
+  logTransition(
+    id,
+    project.autopilotJobId,
+    currentStatus,
+    nextStatus,
+    job,
+    project.userId,
+  );
 
   // -------------------------------------------------------------------------
   // Build the Prisma update payload (typed via Prisma.YouTubeProjectUpdateInput
@@ -690,6 +723,41 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       );
     } catch (err) {
       console.error(`[vater/poll] failure alert failed project=${id}`, err);
+    }
+  }
+
+  // ── Debit prepaid credits for a FINISHED video (owner-billed, once) ─────
+  // This is where the customer actually pays: compute at cost + $0.35 per
+  // finished minute, charged the moment the video exists and never before.
+  // Failed renders reach `status: "failed"` above and are never charged.
+  //
+  // Idempotent twice over: the guard below only fires on the transition INTO
+  // ready, and debitForProject dedupes on a UNIQUE `debit:<projectId>` key —
+  // so the 5-second re-polls of an already-done job cannot bill twice.
+  //
+  // Unmetered owners (Jared, Trey, any VaterAccount.unmetered) settle
+  // out-of-band via the Zelle render bill and must never be debited here.
+  if (
+    updated.status === "ready" &&
+    currentStatus !== "ready" &&
+    updated.finalVideoUrl &&
+    updated.userId
+  ) {
+    try {
+      const unmetered = await hasUnmeteredStudioAccess(updated.userId);
+      const debit = await debitForProject(id, {
+        skip: unmetered,
+        skipReason: "unmetered",
+      });
+      console.log(
+        `[vater/poll] project=${id} credit debit → ${debit.outcome}${debit.reason ? ` (${debit.reason})` : ""}${
+          debit.chargedCents ? ` $${(debit.chargedCents / 100).toFixed(2)}` : ""
+        }`,
+      );
+    } catch (err) {
+      // The customer already has their video. A billing hiccup must never
+      // turn a successful render into a 500 — the reconciler backfills.
+      console.error(`[vater/poll] credit debit failed project=${id}`, err);
     }
   }
 

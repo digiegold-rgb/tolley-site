@@ -9,6 +9,10 @@ type SignupPageProps = {
     callbackUrl?: string;
     plan?: string;
     claim?: string;
+    /** Beta invite code — read client-side by SignupForm, listed here so the
+     *  page's params type stays honest about the invite-only link shape:
+     *  /signup?callbackUrl=%2Fanimate&invite=CODE */
+    invite?: string;
   }>;
 };
 
@@ -49,7 +53,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
     : isFoodPlan
       ? "30-day free trial, then $39/year. Cancel anytime."
       : isStudio
-        ? "No subscription. Start free, add a card only when you're ready to render — you pay per video."
+        ? "Invite-only beta. No subscription — start with your promo credit, add a card only when you're ready to render. You pay per video."
         : "Set up your credentials to unlock paid T-Agent search.";
 
   const loginHref = claimSlug

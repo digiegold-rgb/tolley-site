@@ -17,8 +17,28 @@
  * Default "Jared-A,Jared-B,Jared-C,Jared-D". The /^Jared(-[A-D])?$/i shape
  * is ALWAYS private regardless of env, so a truncated env var can't
  * accidentally expose the owner's voice.
+ *
+ * ─── Per-user namespaces (Phase 3, 2026-08-15) ─────────────────────────────
+ *
+ * The private-name predicate above protects the owner's four clones. It does
+ * nothing for customers uploading their own voice, which the beta now allows:
+ * two tenants can both name a clone "Mom" and neither may hear the other's.
+ *
+ * So a voice id is owner-scoped, matching `vater.py`:
+ *
+ *     Monroe             → the shared/system library (bare = shared, forever)
+ *     u_<userId>~Monroe  → exactly one tenant's clone
+ *
+ * "~" rather than "/" because the id has to survive a single URL path segment
+ * (a Next.js `[id]` route will not match an encoded slash). The DGX accepts
+ * either separator; "/" is the canonical logical form and both round-trip.
  */
 import { isVaterAdminEmail } from "@/lib/admin-auth";
+import {
+  SHARED_VOICE_OWNER,
+  ownerKeyForUser,
+  splitVoiceId,
+} from "./voice-ids";
 
 const DEFAULT_PRIVATE_VOICES = "Jared-A,Jared-B,Jared-C,Jared-D";
 
@@ -60,4 +80,70 @@ export function filterVoicesForEmail<T extends { name?: string | null }>(
 ): T[] {
   if (isVaterAdminEmail(email)) return voices;
   return voices.filter((v) => !isPrivateVoiceName(v?.name));
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Per-user voice namespaces
+// ───────────────────────────────────────────────────────────────────────────
+//
+// The id grammar itself lives in `voice-ids.ts` so client components can use
+// it too — this module cannot be imported from the browser (admin-auth →
+// @/auth). Re-exported here so server callers only need one import.
+
+export {
+  SHARED_VOICE_OWNER,
+  MAX_OWN_VOICES_DEFAULT,
+  ownerKeyForUser,
+  splitVoiceId,
+  voiceWireId,
+  voiceDisplayName,
+  isSharedVoiceId,
+} from "./voice-ids";
+
+/** True when this id addresses the caller's own namespace. */
+export function ownsVoice(
+  voiceId: string | null | undefined,
+  userId: string | null | undefined,
+): boolean {
+  if (!userId) return false;
+  return splitVoiceId(voiceId).owner === ownerKeyForUser(userId);
+}
+
+/**
+ * May this caller READ / render with this voice?
+ *
+ * Shared voices: yes, minus the owner-private clones. Namespaced voices: only
+ * their owner (and the owner account, which sees everything).
+ */
+export function canReadVoice(
+  voiceId: string | null | undefined,
+  caller: { userId?: string | null; email?: string | null },
+): boolean {
+  if (isVaterAdminEmail(caller.email)) return true;
+  const { owner, stem } = splitVoiceId(voiceId);
+  if (owner !== SHARED_VOICE_OWNER) return ownsVoice(voiceId, caller.userId);
+  return !isPrivateVoiceName(stem);
+}
+
+/**
+ * May this caller WRITE (delete, re-tune, re-sample) this voice?
+ *
+ * Strictly narrower than reading: the shared library is read-only for everyone
+ * but the owner, so no tenant can delete Monroe or re-EQ her for the whole beta.
+ */
+export function canWriteVoice(
+  voiceId: string | null | undefined,
+  caller: { userId?: string | null; email?: string | null },
+): boolean {
+  if (isVaterAdminEmail(caller.email)) return true;
+  return ownsVoice(voiceId, caller.userId);
+}
+
+/** Catalog filter for a signed-in caller: shared (minus private) + own. */
+export function filterVoicesForCaller<T extends { name?: string | null }>(
+  voices: T[],
+  caller: { userId?: string | null; email?: string | null },
+): T[] {
+  if (isVaterAdminEmail(caller.email)) return voices;
+  return voices.filter((v) => canReadVoice(v?.name, caller));
 }

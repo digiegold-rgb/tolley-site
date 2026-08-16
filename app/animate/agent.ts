@@ -4,7 +4,7 @@ export const manifest: SubsiteManifest = {
   name: "animate",
   title: "Jelly Studio — Type a topic. Publish a video.",
   purpose:
-    "AI video studio: turn a topic into a finished, publishable video. No subscription — pay per video, ~$25 each, billed automatically via Stripe.",
+    "AI video studio (public beta): turn a script into a finished, publishable faceless video. No subscription — prepaid credits, compute at cost + $0.35 per finished minute (typical long-form video $1–7).",
   url: "/animate",
   schemaType: "SoftwareApplication",
   jsonEndpoints: [],

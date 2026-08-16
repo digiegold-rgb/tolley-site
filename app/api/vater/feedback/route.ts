@@ -17,6 +17,7 @@ import { auth } from "@/auth";
 import { consumeRateLimit, rateLimited } from "@/lib/rate-limit";
 import { notifyTelegram } from "@/lib/budget/notify";
 import { APP_VERSION } from "@/lib/vater/changelog";
+import { queueVaterEvent } from "@/lib/vater/events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -105,6 +106,16 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+
+  // Echo into the user's own System Log so "I reported this" is visible to
+  // them (and to support during a view-as session), not just in Jared's queue.
+  queueVaterEvent({
+    userId,
+    kind: "feedback.sent",
+    message: `Feedback sent: ${headline}`,
+    projectId,
+    data: { ticketId, screen: routeHash },
+  });
 
   // Best-effort: the ticket is already filed, so a Telegram outage must not
   // turn a successful report into an error the user sees.

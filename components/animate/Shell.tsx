@@ -38,6 +38,8 @@ import { Voices } from './screens/studio/Voices';
 import { Feeds } from './screens/studio/Feeds';
 import { Queue } from './screens/studio/Queue';
 import { Recent } from './screens/studio/Recent';
+import { SystemLog } from './screens/studio/SystemLog';
+import { ViewAsBanner } from './ViewAsBanner';
 import { AutopilotScreen } from './screens/live/AutopilotScreen';
 import { PublishingScreen } from './screens/live/PublishingScreen';
 import { AnimationScreen } from './screens/live/AnimationScreen';
@@ -379,6 +381,9 @@ function ShellInner(): React.ReactElement {
             fontFamily: JELLY_TOKENS.font,
           }}
         >
+          {/* Above everything, including the beta banner: an admin must never
+              be one scroll away from forgetting whose account they are in. */}
+          <ViewAsBanner />
           <BetaAccessBanner />
           <div style={{ display: 'flex', flex: 1, minHeight: 0, minWidth: 0 }}>
             <Sidebar
@@ -494,6 +499,7 @@ function renderScreen(
       return selectedProjectId
         ? <VideoEditorEmbed projectId={selectedProjectId} />
         : <VideoEditorScreen />;
+    case 'system-log': return <SystemLog />;
     case 'learning-center': return <LearningCenterScreen />;
     case 'pricing': return <PricingScreen />;
     case 'course': return <CourseScreen />;

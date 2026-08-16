@@ -9,20 +9,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { autopilot, AutopilotError } from "@/lib/vater/autopilot-client";
 import { requireVaterProxyAuth } from "@/lib/vater/proxy-auth";
 import { auth } from "@/auth";
-import { canAccessVoice } from "@/lib/vater/voice-privacy";
+import { canReadVoice, splitVoiceId, voiceWireId } from "@/lib/vater/voice-privacy";
 
 export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, ctx: Ctx) {
+  // Still studio/owner-gated: every sample is real (small) Modal spend that
+  // isn't metered against a customer's credits, so the Tuner stays a
+  // studio-tier surface even though voice UPLOAD is now open to all tiers.
   const gate = await requireVaterProxyAuth(req);
   if (!gate.ok) return gate.response;
-  const name = (await ctx.params).id.replace(/[^a-zA-Z0-9_-]/g, "");
-  if (!name) return NextResponse.json({ error: "Invalid voice name" }, { status: 400 });
-  // Owner-private clones: no sampling the owner's voice.
+  // Namespaced ids (`u_<userId>~Stem`) must survive intact — the old
+  // strip-everything sanitiser merged them into a different voice.
+  const { owner, stem } = splitVoiceId((await ctx.params).id);
+  const name = voiceWireId(owner, stem);
+  if (!stem) return NextResponse.json({ error: "Invalid voice name" }, { status: 400 });
+  // Owner-private clones and other tenants' clones: never sampleable.
   const session = await auth();
-  if (session?.user?.id && !canAccessVoice(name, session.user.email ?? null)) {
+  if (
+    session?.user?.id &&
+    !canReadVoice(name, { userId: session.user.id, email: session.user.email ?? null })
+  ) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   let body: { text?: string; gen?: unknown; post?: unknown };

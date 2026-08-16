@@ -24,11 +24,13 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { isVaterAdminEmail } from "@/lib/admin-auth";
+import { BETA_MAX_WORDS } from "./script-limits";
 
 export type OwnerTier = "owner" | "beta";
 
-/** Script length ceiling for non-owner renders. Owner is uncapped. */
-export const NON_OWNER_MAX_WORDS = 1700;
+/** Script length ceiling for non-owner renders. Owner is uncapped.
+ *  Defined in `script-limits.ts` so the browser can quote the same number. */
+export const NON_OWNER_MAX_WORDS = BETA_MAX_WORDS;
 
 export interface OwnerFields {
   ownerId: string;

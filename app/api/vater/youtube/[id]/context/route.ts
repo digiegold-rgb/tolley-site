@@ -35,6 +35,13 @@ import { canAccessProject } from "@/lib/vater/project-access";
 import { isVaterAdminEmail } from "@/lib/admin-auth";
 import { ownerFieldsForSession } from "@/lib/vater/owner-tier";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
+import {
+  BETA_LENGTH_MESSAGE,
+  BETA_MAX_WORDS,
+  isBetaLengthRejection,
+  isOverBetaLength,
+  runtimeClock,
+} from "@/lib/vater/script-limits";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -173,6 +180,27 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     : typeof body.targetWordCount === "number" && body.targetWordCount > 0
       ? Math.round(body.targetWordCount)
       : targetDuration * 150;
+
+  // Beta runtime cap (9:00). The DGX rejects an over-cap `scriptOverride` too,
+  // but its 400 lands after the project row has been flipped to "scripted" —
+  // catching it here keeps the project clean and the message ours. The owner
+  // is uncapped; `ownerFields` below carries the same decision to the DGX.
+  if (
+    scriptOverride &&
+    !isVaterAdminEmail(session.user.email) &&
+    isOverBetaLength(overrideWordCount)
+  ) {
+    return NextResponse.json(
+      {
+        error: "script_too_long",
+        message: BETA_LENGTH_MESSAGE,
+        detail: `That script is ${overrideWordCount.toLocaleString()} words (≈ ${runtimeClock(overrideWordCount)}). ${BETA_LENGTH_MESSAGE}`,
+        wordCount: overrideWordCount,
+        maxWords: BETA_MAX_WORDS,
+      },
+      { status: 400 },
+    );
+  }
 
   const effectiveGoal =
     typeof body.goal === "string" && body.goal.trim()
@@ -421,6 +449,31 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         : err instanceof Error
           ? err.message
           : "unknown error";
+
+    // The DGX enforces the same 9:00 cap and words it differently. Surface our
+    // sentence instead of the raw upstream string — but still mark the project
+    // failed, because the row was flipped to "scripted" above and no job exists.
+    if (
+      err instanceof AutopilotError &&
+      err.status === 400 &&
+      isBetaLengthRejection(err.body)
+    ) {
+      const overLong = await prisma.youTubeProject.update({
+        where: { id },
+        data: { status: "failed", errorMessage: BETA_LENGTH_MESSAGE },
+      });
+      return NextResponse.json(
+        {
+          error: "script_too_long",
+          message: BETA_LENGTH_MESSAGE,
+          detail: BETA_LENGTH_MESSAGE,
+          maxWords: BETA_MAX_WORDS,
+          project: overLong,
+        },
+        { status: 400 },
+      );
+    }
+
     // Roll the project into failed so the UI surfaces the problem
     const failed = await prisma.youTubeProject.update({
       where: { id },

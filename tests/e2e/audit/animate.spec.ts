@@ -29,6 +29,7 @@ import {
   checkInternalLinks,
   gotoHashRoute,
   gotoSettled,
+  hasHorizontalOverflow,
   installNetworkGuard,
   newCollector,
   safeClickSweep,
@@ -238,6 +239,155 @@ async function enumerateSidebar(page: Page): Promise<string[]> {
     .catch(() => [] as string[]);
 }
 
+/**
+ * Phone sweep of the signed-out marketing landing.
+ *
+ * 390px is in the shared VIEWPORTS sweep already, but only as a recorded
+ * boolean nobody reads until the report is opened. The landing is the one
+ * page a stranger sees first, so its phone layout gets a real assertion —
+ * and 360px (the narrowest phone still in meaningful use) is added, since
+ * that is where a fixed two-column grid or an unwrapped table shows up as
+ * a sideways scroll.
+ *
+ * Also checks the demo media is cheap to arrive at: <video> must carry a
+ * poster and preload="none", or every visitor downloads tens of megabytes
+ * of MP4 they never asked to play.
+ */
+async function auditLandingPhone(page: Page, c: Collector, routes: RouteRecord[]) {
+  const id = 'signed-out:/animate@phone';
+  c.route = id;
+  await gotoSettled(page, '/animate');
+
+  const notes: string[] = [];
+  const screenshots: string[] = [];
+  const overflow: Record<string, boolean> = {};
+
+  for (const w of [360, 390]) {
+    await page.setViewportSize({ width: w, height: 800 });
+    await page.waitForTimeout(400);
+    const over = await hasHorizontalOverflow(page).catch(() => false);
+    overflow[`phone-${w}`] = over;
+    screenshots.push(await shot(page, TRACK, `signed-out-landing@${w}`));
+    notes.push(over ? `HORIZONTAL OVERFLOW at ${w}px` : `no horizontal overflow at ${w}px`);
+    expect.soft(over, `/animate landing must not scroll sideways at ${w}px`).toBe(false);
+  }
+
+  // Demo media hygiene — read-only DOM inspection, nothing is played.
+  const media = await page
+    .$$eval('video', (els) =>
+      els.map((v) => ({
+        preload: v.getAttribute('preload'),
+        poster: v.getAttribute('poster'),
+        autoplay: v.hasAttribute('autoplay'),
+        controls: v.hasAttribute('controls'),
+        src: (v.getAttribute('src') || '').slice(0, 80),
+      })),
+    )
+    .catch(() => [] as { preload: string | null; poster: string | null; autoplay: boolean; controls: boolean; src: string }[]);
+  notes.push(`<video> elements: ${media.length}`);
+  for (const m of media) {
+    notes.push(
+      `video src=${JSON.stringify(m.src)} preload=${m.preload} poster=${m.poster ? 'yes' : 'MISSING'} autoplay=${m.autoplay} controls=${m.controls}`,
+    );
+    expect.soft(m.preload, 'landing demo video must not preload').toBe('none');
+    expect.soft(Boolean(m.poster), 'landing demo video must have a poster').toBe(true);
+    expect.soft(m.autoplay, 'landing demo video must not autoplay').toBe(false);
+  }
+
+  // Copy sweep: nothing on the public page may still promise the retired
+  // pricing model. Cheap to assert, and it is the exact thing that rotted.
+  const bodyText = await page.evaluate(() => document.body.innerText).catch(() => '');
+  for (const stale of ['$24.85', 'NO CARD REQUIRED', 'no card required', 'First video free', '~$25']) {
+    const present = bodyText.toLowerCase().includes(stale.toLowerCase());
+    if (present) notes.push(`STALE COPY on landing: ${JSON.stringify(stale)}`);
+    expect.soft(present, `retired pricing copy ${JSON.stringify(stale)} must be gone`).toBe(false);
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  routes.push({
+    id,
+    url: `${BASE_URL}/animate`,
+    persona: 'signed-out',
+    notes,
+    overflow,
+    screenshots,
+  });
+}
+
+/**
+ * The 7-step project editor (`#r=editor&s=<0..6>&p=<projectId>`).
+ *
+ * Shell.tsx falls back to the Dashboard when no `p=` is present, so a bare
+ * `#r=editor` audits nothing. A project id is discovered READ-ONLY from
+ * GET /api/vater/youtube — this never creates a project, and an account
+ * with no projects yet is recorded as skipped rather than failed.
+ */
+async function auditEditorSteps(
+  page: Page,
+  c: Collector,
+  routes: RouteRecord[],
+  persona: string,
+  flush: () => void,
+) {
+  c.route = `${persona}:editor-discovery`;
+  let projectId: string | null = null;
+  let discovery = '';
+  try {
+    const res = await page.request.get(`${BASE_URL}/api/vater/youtube`);
+    if (res.ok()) {
+      const body = (await res.json()) as { projects?: { id?: string }[] };
+      projectId = body.projects?.[0]?.id ?? null;
+      discovery = `GET /api/vater/youtube status=${res.status()} projects=${body.projects?.length ?? 0}`;
+    } else {
+      discovery = `GET /api/vater/youtube status=${res.status()}`;
+    }
+  } catch (err) {
+    discovery = `GET /api/vater/youtube threw: ${String(err).slice(0, 120)}`;
+  }
+
+  if (!projectId) {
+    routes.push({
+      id: `${persona}:#r=editor:SKIPPED`,
+      url: `${BASE_URL}/animate#r=editor`,
+      persona,
+      notes: [discovery, 'no existing project to open — editor steps skipped (this audit never creates one)'],
+      overflow: {},
+      screenshots: [],
+    });
+    flush();
+    return;
+  }
+
+  for (let step = 0; step <= 6; step += 1) {
+    const path = `/animate#r=editor&s=${step}&p=${projectId}`;
+    const id = `${persona}:#r=editor&s=${step}`;
+    c.route = id;
+    await gotoHashRoute(page, path);
+    await page.waitForTimeout(STUDIO_SETTLE_MS);
+
+    const heading = await page
+      .locator('h1, h2, [role=heading]')
+      .first()
+      .textContent()
+      .catch(() => null);
+    const sweep = await sweepViewports(page, TRACK, `${persona}-editor-s${step}`);
+    routes.push({
+      id,
+      url: `${BASE_URL}${path}`,
+      persona,
+      notes: [
+        step === 0 ? discovery : `step ${step}`,
+        `first heading: ${JSON.stringify((heading || '(none)').trim().slice(0, 120))}`,
+        sweep.overflow.mobile ? 'HORIZONTAL OVERFLOW at 390px' : 'no horizontal overflow at 390px',
+      ],
+      overflow: sweep.overflow,
+      screenshots: sweep.screenshots,
+    });
+    flush();
+    console.log(`[audit:animate] done ${id}`);
+  }
+}
+
 async function auditStudioRoutes(
   page: Page,
   c: Collector,
@@ -381,6 +531,9 @@ test('animate audit sweep', async ({ page }) => {
       console.log(`[audit:animate] done ${id}`);
     }
 
+    await auditLandingPhone(page, c, routes);
+    flush();
+
     /* ── persona (b): public account ──────────────────────────────────── */
     if (!EMAIL || !PASSWORD) {
       routes.push({
@@ -424,6 +577,7 @@ test('animate audit sweep', async ({ page }) => {
       });
 
       await auditStudioRoutes(page, c, routes, 'public', flush);
+      await auditEditorSteps(page, c, routes, 'public', flush);
     }
 
     /* ── persona (c): studio tier (opt-in) ────────────────────────────── */

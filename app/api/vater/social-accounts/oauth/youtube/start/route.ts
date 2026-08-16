@@ -8,11 +8,19 @@
  *     the studio never comments, edits playlists, or reads channel stats);
  *   - the token lands in the per-user `SocialAccount` row, never in the
  *     social suite's `PlatformConnection` store.
+ *
+ * Ungated for the beta (Phase 3, 2026-08-15). Publishing your finished video
+ * to your own channel is the end of the golden path, and the studio-tier gate
+ * here made it owner-and-Trey-only — a customer could render a video and then
+ * had nowhere to send it. Any signed-in session may connect, which is safe
+ * because the whole flow is per-user: Google consents to THEIR channel, the
+ * refresh token lands in THEIR `SocialAccount` row keyed by `userId`, and the
+ * publish route only ever loads the row belonging to the caller. Nothing here
+ * touches a shared credential.
  */
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { auth } from "@/auth";
-import { isVaterStudioEmail } from "@/lib/admin-auth";
 import {
   OAUTH_STATE_COOKIE,
   OAUTH_COOKIE_PATH,
@@ -25,9 +33,6 @@ export async function GET(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (!isVaterStudioEmail(session.user.email)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const clientId = process.env.YOUTUBE_CLIENT_ID;

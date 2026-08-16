@@ -14,7 +14,6 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { isVaterStudioEmail } from "@/lib/admin-auth";
 import type { YouTubeCredentials } from "@/lib/vater/youtube-upload";
 import {
   OAUTH_STATE_COOKIE,
@@ -65,8 +64,12 @@ function page(opts: {
 }
 
 export async function GET(request: NextRequest) {
+  // Signed-in only — no tier gate. Matches the `start` route: the consent is
+  // per-user and the token lands in this caller's own SocialAccount row, so a
+  // studio-tier check here would only strand customers half-way through
+  // Google's flow with their consent already granted.
   const session = await auth();
-  if (!session?.user?.id || !isVaterStudioEmail(session.user.email)) {
+  if (!session?.user?.id) {
     return page({
       ok: false,
       heading: "Sign in first",

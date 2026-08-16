@@ -15,9 +15,10 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   alternates: { canonical: "https://www.tolley.io/animate" },
-  title: "Jelly Studio — Type a topic. Publish a video.",
+  title:
+    "Jelly Studio — faceless videos from your script, ~$1/min, no subscription · public beta",
   description:
-    "Faceless video studio: script, cloned voiceover, cinematic scenes, real motion and 5-platform publishing. No subscription — pay per video, ~$25 each. First video free.",
+    "Type a script, get a finished faceless video: cloned voice, generated cinematic scenes, optional motion, no watermark. Compute at cost plus $0.35 per finished minute — a typical long-form video runs $1–7 all in. No subscription. Invite-only public beta.",
 };
 
 export default async function AnimateStudioPage() {

@@ -7,6 +7,7 @@ import { HQ_BOARD_STAGES, HQ_OFFERS } from "@/lib/hq";
 import { useToast } from "@/components/ui/Toast";
 import { HqBk } from "@/components/hq/hq-bk";
 import { HqVaterDue } from "@/components/hq/hq-vater-due";
+import { HqStudioUsers } from "@/components/hq/hq-studio-users";
 import { HqBoard } from "@/components/hq/hq-board";
 import { HqLeadDrawer } from "@/components/hq/hq-lead-drawer";
 import { HqApprovalQueue } from "@/components/hq/hq-approval-queue";
@@ -698,6 +699,7 @@ function HqPageInner() {
         ) : tab === "must" ? (
           <>
             <HqVaterDue />
+            <HqStudioUsers />
             <HqMustComplete
               open={mustOpen}
               done={mustDone}

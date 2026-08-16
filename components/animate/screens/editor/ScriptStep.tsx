@@ -479,7 +479,7 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
               gap: 12,
             }}
           >
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
               <VInput
                 label="Style"
                 value={style}

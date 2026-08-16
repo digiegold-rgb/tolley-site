@@ -8,41 +8,32 @@
  *      operations margin, and it scales with delivered output rather than
  *      with how expensive a given model happened to be.
  *
- * OPS_RATE lives in ~/vater-studio/VATER-SETTINGS.env as
- * VATER_OPS_RATE_PER_MIN (dollars per finished minute) so the rate can change
- * without touching billing logic. Falls back to 0.35/min when unset.
+ * OPS_RATE = env `VATER_OPS_RATE_PER_MIN` (dollars per finished minute),
+ * default 0.35.
+ *
+ * ⚠️ 2026-08-15: this used to read /home/jelly/vater-studio/VATER-SETTINGS.env
+ * off the DGX filesystem. That path does not exist on Vercel, so every
+ * production read silently fell through to the default — a "no deploy needed"
+ * knob that was in fact un-turnable. The env var is the real knob now (a
+ * Vercel env change + redeploy), and the default still MATCHES the live rate
+ * so a missing value can never invent a price.
  */
 import "server-only";
-import { readFileSync } from "node:fs";
 
-const SETTINGS_PATH = "/home/jelly/vater-studio/VATER-SETTINGS.env";
 // 35 cents per rendered minute — the actual rate (Jared 2026-08-08).
-// Config still wins; this only applies if VATER_OPS_RATE_PER_MIN is missing,
-// and it must MATCH the real rate so a missing config never invents a price.
+// Must MATCH the live rate: a default that differs lets a missing env invent
+// a price, and a client rendering before the fetched rate lands would flash
+// the wrong number.
 const DEFAULT_OPS_RATE = 0.35;
 
-let cached: { rate: number; at: number } | null = null;
-
-/** Dollars charged per finished video minute. Re-read at most once a minute
- *  so a config edit takes effect without a deploy. */
+/** Dollars charged per finished video minute. */
 export function getOpsRate(): number {
-  if (cached && Date.now() - cached.at < 60_000) return cached.rate;
-  let rate = DEFAULT_OPS_RATE;
-  try {
-    const line = readFileSync(SETTINGS_PATH, "utf8")
-      .split("\n")
-      .find((l) => l.trim().startsWith("VATER_OPS_RATE_PER_MIN="));
-    if (line) {
-      const parsed = Number(line.split("=")[1]?.trim().replace(/["']/g, ""));
-      // A zero rate is a legitimate setting (ops fee switched off); only a
-      // non-numeric or negative value falls back to the default.
-      if (Number.isFinite(parsed) && parsed >= 0) rate = parsed;
-    }
-  } catch {
-    /* config unreadable — default rate */
-  }
-  cached = { rate, at: Date.now() };
-  return rate;
+  const raw = process.env.VATER_OPS_RATE_PER_MIN;
+  if (raw === undefined || raw.trim() === "") return DEFAULT_OPS_RATE;
+  const parsed = Number(raw.trim().replace(/["']/g, ""));
+  // A zero rate is a legitimate setting (ops fee switched off); only a
+  // non-numeric or negative value falls back to the default.
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_OPS_RATE;
 }
 
 export interface VideoBillingLine {

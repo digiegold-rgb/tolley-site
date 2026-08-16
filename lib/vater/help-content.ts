@@ -6,10 +6,11 @@
  * It lived only in the landing file, which meant a signed-in user had no
  * way to read it. Keep it here so the two never drift.
  *
- * Free-tier numbers come from VATER_TRIAL_CAPS — do not hardcode them.
+ * Pricing answers here must match the landing page and the Pricing screen
+ * exactly: compute passed through at cost, plus $0.35 per finished minute.
+ * There is no subscription and no per-action list price — if you are about
+ * to write a different number in this file, fix the number, not the copy.
  */
-
-import { VATER_TRIAL_CAPS } from "@/lib/vater-subscription";
 
 export interface HelpStep {
   n: string;
@@ -21,27 +22,27 @@ export const PIPELINE_STEPS: readonly HelpStep[] = [
   {
     n: "01",
     t: "Script",
-    d: "Type a topic — or paste a transcript. The script writes itself, you edit every word.",
+    d: "Paste the script you already wrote, or generate one from a topic — either way you edit every word.",
   },
   {
     n: "02",
     t: "Voice",
-    d: "Cloned voices with word-level caption timing. Bring your own or pick from the library.",
+    d: "Cloned and custom voices with word-level caption timing, shaped in the Voice Tuner.",
   },
   {
     n: "03",
     t: "Scenes",
-    d: "Every beat becomes a cinematic frame, in the art style you lock for the whole channel.",
+    d: "Every beat becomes a generated cinematic frame, with your characters, in the art style you lock.",
   },
   {
     n: "04",
     t: "Motion",
-    d: "Animate any scene with Wan2.2, Hunyuan, Kling, Veo or Luma — per-scene, your call.",
+    d: "Animate the scenes that earn it with Wan2.2 — optional, per scene, priced before you click.",
   },
   {
     n: "05",
     t: "Publish",
-    d: "Compose with soundtrack + captions, then push to YouTube, TikTok, IG, Facebook, Pinterest.",
+    d: "Compose with captions and soundtrack, then publish to YouTube or download the MP4 for any scheduler.",
   },
 ];
 
@@ -52,28 +53,40 @@ export interface HelpFaq {
 
 export const HELP_FAQ: readonly HelpFaq[] = [
   {
-    q: "How does billing work?",
-    a: "You put a card on file — there is no subscription and no monthly fee. Each action bills at the fixed price shown next to the button, charges accrue on your account, and your card is invoiced automatically once they reach $25 (plus a monthly sweep for anything left over). Failed renders are never charged.",
-  },
-  {
-    q: "What is included for free?",
-    a: `Every account starts with ${VATER_TRIAL_CAPS.transcripts} transcripts, ${VATER_TRIAL_CAPS.scenes} scene generation and ${VATER_TRIAL_CAPS.animations} animation — no card required and no time limit. It ends when you hit a cap, not a date. A full video needs more scenes than the free allowance, so add a card when you are ready to finish one.`,
-  },
-  {
     q: "What does a finished video actually cost?",
-    a: "A typical 15-scene video — script, voiceover, scene images, a few animated clips and the final compose — lands around $25. You see the exact price next to every button before you click it, and a per-render confirm for batch animation.",
+    a: "The compute your render consumed, passed through at cost, plus $0.35 per finished minute. A typical long-form video lands between $1 and $7 all in — our 8:44 benchmark render cost $5.56. You see the itemised receipt while the render is still running, so there is never a number you find out about later.",
+  },
+  {
+    q: "Is there a subscription?",
+    a: "No. There is no plan, no seat fee and no monthly minimum. You buy prepaid credit in $10, $25, $50 or $100 packs and spend it a render at a time. A $10 pack is $9.41 of credit — the difference is Stripe's card processing fee, and we add nothing on top of it. Credit does not expire, and there is nothing to cancel — stop by not rendering.",
+  },
+  {
+    q: "What happens when I put a card on file?",
+    a: "Stripe places a $0 verification hold — nothing is charged — and a $10 promotional starter credit lands on your balance. That credit covers the stills pipeline: scripts, transcripts, voice and still scenes. Animated motion runs on purchased credit only, so a fully animated video means buying a pack first. Nothing is billed to the card until you choose to top up.",
+  },
+  {
+    q: "A render failed. Was I charged?",
+    a: "No. Failed renders are never charged, partially or otherwise. Retry it from the Queue screen at no cost. And if a render that does succeed overruns its estimate on repair passes, your bill is capped at the estimate — we absorb the difference.",
+  },
+  {
+    q: "How long can a video be?",
+    a: "The beta caps a video at 9:00, and defaults to 5:00. That is not arbitrary: renders are proven clean up to just under nine minutes, and the one longer attempt failed quality review. Longer videos are coming once the fix-up budget scales with length.",
+  },
+  {
+    q: "Is there a watermark? Can I download it?",
+    a: "No watermark, on anything. You get the finished MP4 to download and use however you like — publish to YouTube from inside the studio, or hand the file to whatever scheduler you already run.",
+  },
+  {
+    q: "Why is the beta invite-only?",
+    a: "Because the render fleet is small enough right now that everyone in the beta gets the whole machine, and because feedback from a handful of people who actually ship videos is worth more than a signup graph. Invites go out in small batches — email support@tolley.io and say what you want to make.",
   },
   {
     q: "Whose GPUs is this running on?",
-    a: "A hybrid stack: budget tiers render on our own hardware, premium tiers spin up dedicated cloud GPUs (L40S/H100) or metered APIs like Veo and Kling. You pick the tier per scene — the dropdown shows price and ETA for each.",
+    a: "Rented cloud GPUs (L40S/H100) for the heavy stages, plus metered APIs where they win on quality. Whatever it costs to render your video is what appears on your receipt as compute.",
   },
   {
     q: "Can I generate in other languages?",
     a: "Voiceovers support major languages via F5-TTS and ElevenLabs, and scripts can be generated in any major language.",
-  },
-  {
-    q: "A render failed. Was I charged?",
-    a: "No. Only completed actions bill. If a job fails you can retry it from the Queue screen at no extra cost.",
   },
 ];
 
