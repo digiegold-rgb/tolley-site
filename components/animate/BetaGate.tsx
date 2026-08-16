@@ -17,6 +17,7 @@
  */
 
 import React from 'react';
+import { signOut } from 'next-auth/react';
 import { useTier } from './tier-context';
 import { JELLY_TOKENS } from './tokens';
 
@@ -91,7 +92,7 @@ export function BetaGate(): React.ReactElement | null {
             Already have a code? Sign out and open your invite link
             (tolley.io/signup?…&amp;invite=CODE) with a new email, or reply to
             your invite email and we&apos;ll attach the code to this account.{' '}
-            <a href="/logout" style={linkStyle}>Sign out</a>
+            <button type="button" onClick={() => signOut({ callbackUrl: '/animate' })} style={{ ...linkStyle, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}>Sign out</button>
           </p>
         </div>
       </div>
