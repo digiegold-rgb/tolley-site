@@ -296,7 +296,7 @@ export function AnimateLanding(): React.ReactElement {
           <a className="jc-nav-link jsl-navlink" href="#stories">Stories</a>
           <a className="jc-nav-link jsl-navlink" href="#reels">The reels</a>
           <a className="jc-nav-link jsl-navlink" href="#boxoffice">Box office</a>
-          <a className="jc-nav-link jsl-navlink" href={SIGNIN}>Sign in</a>
+          <PillButton variant="ghost" size="md" href={SIGNIN} data-testid="nav-sign-in">Sign in</PillButton>
           <PillButton variant="gradient" size="md" href={INVITE}>Request an invite</PillButton>
         </div>
       </nav>

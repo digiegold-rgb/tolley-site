@@ -119,3 +119,24 @@
   .jc-marquee-track { animation: none !important; transform: none !important; }
   .jc-floatA, .jc-floatB, .jc-floatC { animation: none !important; }
 }
+
+/* ── Jelly auth screens (/login, /signup, /reset-password with callbackUrl=/animate) ── */
+/* The forms are shared with T-Agent (Tailwind); these scoped rules re-skin them. */
+.jc-auth label { color: #9A94B0 !important; letter-spacing: 0.22em !important; font-size: 10.5px !important; }
+.jc-auth input, .jc-auth select, .jc-auth textarea {
+  background: rgba(240,238,248,0.04) !important; border: 1px solid rgba(240,238,248,0.16) !important; color: #F0EEF8 !important;
+  border-radius: 12px !important; padding: 12px 14px !important; font-size: 15px !important; font-family: inherit;
+}
+.jc-auth input:focus, .jc-auth textarea:focus { border-color: #8F7DFF !important; box-shadow: 0 0 0 3px rgba(143,125,255,0.2); outline: none; }
+.jc-auth input::placeholder { color: #6B6584; }
+.jc-auth button[type=submit] {
+  background: linear-gradient(120deg, #8F7DFF, #6FD6FF) !important; color: #0A0A14 !important; border: 1px solid transparent !important;
+  border-radius: 999px !important; font-weight: 700 !important; letter-spacing: 0.02em !important; text-transform: none !important;
+  font-size: 15px !important; padding: 13px 22px !important; box-shadow: 0 12px 44px rgba(143,125,255,0.35); transition: transform .2s ease, box-shadow .2s ease;
+}
+.jc-auth button[type=submit]:hover { transform: translateY(-1px); box-shadow: 0 16px 50px rgba(143,125,255,0.45); }
+.jc-auth a { color: #B3A6FF; }
+.jc-auth a:hover { color: #F0EEF8; }
+.jc-auth p, .jc-auth span { color: #9A94B0; }
+.jc-auth .text-rose-200\/90, .jc-auth [class*="text-rose"], .jc-auth [class*="text-red"] { color: #F0607A !important; }
+.jc-auth input[type=checkbox] { width: 16px !important; height: 16px !important; padding: 0 !important; accent-color: #8F7DFF; border-radius: 4px !important; }

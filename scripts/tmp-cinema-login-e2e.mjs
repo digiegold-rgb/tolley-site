@@ -1,0 +1,11 @@
+import { chromium } from '@playwright/test';
+const E = process.env.AUDIT_ANIMATE_EMAIL, P = process.env.AUDIT_ANIMATE_PASSWORD;
+const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+await p.goto('http://localhost:3057/animate', { waitUntil: 'networkidle' });
+await p.getByTestId('nav-sign-in').click();
+await p.waitForURL(/\/login/); console.log('login url', p.url());
+await p.locator('input[type=email]').first().fill(E); await p.locator('input[type=password]').first().fill(P);
+await p.locator('button[type=submit]').first().click();
+await p.waitForURL((u) => u.pathname === '/animate', { timeout: 60000 }); await p.waitForTimeout(3000);
+console.log('landed', p.url(), 'shell:', await p.locator('.animate-shell').count());
+await b.close();

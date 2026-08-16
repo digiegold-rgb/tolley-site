@@ -75,13 +75,15 @@
   font-size: 14px;
 }
 
-/* Below 760px only the CTA survives; the section anchors are all reachable by
- * scrolling and a wrapped nav pushes the hero off the first screen. */
+/* Below 760px only Sign in + the CTA survive; the section anchors are all
+ * reachable by scrolling and a wrapped nav pushes the hero off the first screen. */
 @media (max-width: 760px) {
   .jsl-navlinks .jsl-navlink,
   .jsl-verpill {
     display: none;
   }
+  .jsl-navlinks { gap: 8px; }
+  .jsl-navlinks a { padding-left: 14px !important; padding-right: 14px !important; font-size: 13px !important; }
 }
 
 @media (max-width: 420px) {

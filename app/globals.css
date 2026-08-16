@@ -50,7 +50,7 @@ body {
 }
 
 /* Add bottom padding on pages that show the fixed footer (not standalone pages) */
-body:not(:has(.wd-page)):not(:has(.trailer-page)):not(:has(.generator-page)):not(:has(.homes-page)):not(:has(.hvac-page)):not(:has(.lastmile-page)):not(:has(.start-page)):not(:has(.circle-page)):not(:has(.junkinjays-page)):not(:has(.shop-page)):not(:has(.moving-page)):not(:has(.vater-page)):not(:has(.pools-page)):not(:has(.scan-page)):not(:has(.manus-page)):not(:has(.water-page)):not(:has(.hq-admin)):not(:has(.jsl)):not(:has(.animate-shell)):not(:has(.jc-legal)):not(:has(.jc-demo)) {
+body:not(:has(.wd-page)):not(:has(.trailer-page)):not(:has(.generator-page)):not(:has(.homes-page)):not(:has(.hvac-page)):not(:has(.lastmile-page)):not(:has(.start-page)):not(:has(.circle-page)):not(:has(.junkinjays-page)):not(:has(.shop-page)):not(:has(.moving-page)):not(:has(.vater-page)):not(:has(.pools-page)):not(:has(.scan-page)):not(:has(.manus-page)):not(:has(.water-page)):not(:has(.hq-admin)):not(:has(.jsl)):not(:has(.animate-shell)):not(:has(.jc-legal)):not(:has(.jc-demo)):not(:has(.jc-auth)) {
   padding-bottom: 4.5rem;
 }
 
