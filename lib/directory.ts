@@ -281,7 +281,7 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
   },
   animate: {
     group: "AI & Ventures",
-    tagline: "Faceless videos from your script — compute at cost + $0.35/min, no subscription (public beta)",
+    tagline: "The most affordable faceless-video studio — pay only for what you render, no subscription (public beta)",
     bullets: ["AI video studio", "Pay per video", "Auto-billed via Stripe"],
     emoji: "🎬",
     accent: "violet",

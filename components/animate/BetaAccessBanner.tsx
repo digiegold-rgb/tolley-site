@@ -68,9 +68,9 @@ export function BetaAccessBanner(): React.ReactElement | null {
       }}
     >
       <span>
-        <strong>Public beta · invite only</strong> — prepaid credit, no
-        subscription: compute at cost plus $0.35 per finished minute. Failed
-        renders are never charged.
+        <strong>Public beta · invite only</strong> — pay only for what you
+        render. No subscription, no commitment, no watermark. Failed renders are
+        never charged.
       </span>
       <button
         onClick={dismiss}

@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   title:
     "Jelly Studio — faceless videos from your script, ~$1/min, no subscription · public beta",
   description:
-    "Type a script, get a finished faceless video: cloned voice, generated cinematic scenes, optional motion, no watermark. Compute at cost plus $0.35 per finished minute — a typical long-form video runs $1–7 all in. No subscription. Invite-only public beta.",
+    "Type a script, get a finished faceless video: cloned voice, generated cinematic scenes, optional motion, no watermark. The most affordable way to make faceless videos — pay only for what you render, no subscription. A typical long-form video runs $1–7 all in. No subscription. Invite-only public beta.",
 };
 
 export default async function AnimateStudioPage() {

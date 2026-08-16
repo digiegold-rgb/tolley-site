@@ -178,11 +178,11 @@ export function AnimateLanding(): React.ReactElement {
               cinematic scenes, optional motion, captions and soundtrack —
               composed, downloadable, no watermark.{" "}
               <strong>
-                You pay the compute it used, at cost, plus {opsRateLabel} per
-                finished minute of render operations. A typical long-form video
-                lands between $1 and $7 all in.
+                The most affordable way to make faceless videos — pay only for
+                what you render. A typical long-form video lands between $1 and
+                $7 all in.
               </strong>{" "}
-              No subscription, ever.
+              No subscription. No commitment. No watermark.
             </p>
             <div className="jsl-hero-ctas jsl-rev d4">
               <a className="jsl-btn jsl-btn-amber" href={INVITE}>Request an invite</a>
@@ -344,14 +344,14 @@ export function AnimateLanding(): React.ReactElement {
         <section className="jsl-section" id="pricing">
           <div className="jsl-eyebrow">Pricing</div>
           <h2 className="jsl-h2">
-            Compute at cost.<br />
-            Plus <span className="it">{opsRateLabel}</span> a minute.
+            The most affordable way to make faceless videos.<br />
+            <span className="it">Pay only for what you render.</span>
           </h2>
 
           <div className="jsl-price-hero">
             <div className="jsl-bigprice">
-              {opsRateLabel}
-              <small> / finished minute of render operations, + compute at cost</small>
+              $1–7
+              <small> per finished long-form video · no subscription · no commitment</small>
             </div>
             {/* Each <li> is a flex row: the em-dash marker, then ONE span.
               * Put inline markup directly in the <li> and it becomes a second
@@ -366,10 +366,10 @@ export function AnimateLanding(): React.ReactElement {
               </li>
               <li>
                 <span>
-                  Compute is passed through at what it actually cost to render
-                  your video, and it genuinely varies — {COMPUTE_RANGE} per
-                  finished minute across recent renders. The ops half is the
-                  fixed, predictable one.
+                  Every render shows you an itemized receipt: GPU time at our
+                  cost ({COMPUTE_RANGE} per finished minute across recent renders)
+                  plus a flat {opsRateLabel} per finished minute. No markup games,
+                  no monthly bill, no expiring quota.
                 </span>
               </li>
               <li>

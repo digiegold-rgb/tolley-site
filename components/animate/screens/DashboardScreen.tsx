@@ -157,7 +157,7 @@ export function DashboardScreen(): React.ReactElement {
         >
           <div style={{ fontSize: 18, fontWeight: 700 }}>Billing</div>
           <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-            Prepaid credit — compute at cost + $0.35 per finished minute
+            Prepaid credit — pay only for what you render, no subscription
           </div>
           <VBtn
             variant="white"
