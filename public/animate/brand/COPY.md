@@ -123,6 +123,18 @@ cut hard to the narration. This one came to $3.04 for 3:24, all in.
 #facelessvideo #aivideo #videoproduction
 ```
 
+### Post 3b — video `demo-dgd-bake-a-gpu-vertical-1080x1920.mp4` (second reel — different show, same pipeline)
+
+Post as a **Reel** (vertical file). 16:9 twin for a feed post: `demo-dgd-bake-a-gpu-30s.mp4`.
+
+```
+Same pipeline, totally different show. 29 seconds from an animated series
+about two kids who bake a dead graphics card in the oven to bring it back to
+life — cast voices, one locked look, every scene generated for the script.
+True story, by the way.
+#facelessvideo #aivideo #animation #videoproduction
+```
+
 ### Post 4 — image `post-4-invite.png`
 
 ```
@@ -292,7 +304,25 @@ say "made with Jelly Studio · tolley.io/animate · public beta, invite only".
 They were re-cut on 16 Aug 2026 so the end card and Reels frame carry the 1C
 pink mark.
 
-### Brand reference (concept 1C — `design/jelly-studio-logo-1c/`)
+### Brand reference — SITE = "Cinema" language (2026-08-16, supersedes 1C on tolley.io/animate)
+
+The site (landing, studio, billing, legal) now runs the cinema handoff in
+`design/jelly-cinema-2026-08-16/README.md`. The 1C pink kit below is still what
+the Facebook Page / social assets were exported with — treat those exports as
+OFF-BRAND vs. the live site until re-rendered.
+
+| Token | Value | Where |
+| --- | --- | --- |
+| Base | `#0A0A14` | every background; deep panel `#08070F`; nebula tint `#1B1533` |
+| Violet | `#8F7DFF` (light `#B3A6FF`) | brand, borders, glows, micro-labels |
+| Cyan | `#6FD6FF` | prices, live/active state, "● NOW FILMING" |
+| Primary gradient | `linear-gradient(120deg,#8F7DFF,#6FD6FF)` · text on it `#0A0A14` | CTAs |
+| Text | `#F0EEF8` / secondary `#9A94B0` / faint `#6B6584` / dim `#4A4560` | |
+| Hairline / glass | `rgba(240,238,248,0.10–0.14)` / `rgba(240,238,248,0.04)` + blur 10px | every panel |
+| Display + body type | Space Grotesk 400–700 | everything |
+| Cinematic accent type | Instrument Serif italic | title cards, hero phrase, "Directed by you." only |
+
+### Previous brand reference (concept 1C — social exports only — `design/jelly-studio-logo-1c/`)
 
 Jared's 1C handoff is the source of truth and is marked high-fidelity: colours,
 type and spacing are final. Pink is the hero colour on every asset.
