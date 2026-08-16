@@ -23,6 +23,7 @@ import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VBtn } from '../../primitives';
 import { isSharedVoiceId, voiceDisplayName } from '@/lib/vater/voice-ids';
+import { VoiceSamples } from './VoiceSamples';
 import type {
   VoiceTuning,
   VoiceTuningDoc,
@@ -193,6 +194,8 @@ export function VoiceTuner(): React.ReactElement {
   const [draftSlot, setDraftSlot] = React.useState<SampleSlot>(EMPTY_SLOT);
   const [lockedSlot, setLockedSlot] = React.useState<SampleSlot>(EMPTY_SLOT);
   const [pendingLive, setPendingLive] = React.useState(false);
+  // 8/16: gallery of 10 advisor reads sits in front of the knobs.
+  const [tab, setTab] = React.useState<'samples' | 'tuner'>('samples');
   const draftAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const draftGenAtRender = React.useRef<Gen | null>(null);
   const draftGapAtRender = React.useRef<number | null>(null);
@@ -236,6 +239,19 @@ export function VoiceTuner(): React.ReactElement {
     }
   }, []);
   React.useEffect(() => { if (voice) void loadTuning(voice); }, [voice, loadTuning]);
+
+  // After a gallery lock: refresh the doc (locked badge / B player) without
+  // wiping the user's draft or sample slots.
+  const refreshDoc = React.useCallback(async () => {
+    try {
+      const r = await fetch(`/api/vater/voices/${encodeURIComponent(voice)}/tuning`);
+      if (!r.ok) return;
+      const j = (await r.json()) as VoiceTuningDoc;
+      setDoc(j);
+      setDraft(clone(j.tuning));
+      setLockedSlot(EMPTY_SLOT);
+    } catch { /* ignore */ }
+  }, [voice]);
 
   const words = text.trim().split(/\s+/).filter(Boolean).length;
   const estSec = Math.round((words / WPM) * 60 / (draft?.post.tempo || 1));
@@ -435,6 +451,21 @@ export function VoiceTuner(): React.ReactElement {
             </option>
           ))}
         </select>
+        <div role="tablist" style={{ display: 'inline-flex', borderRadius: 999, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
+          {(['samples', 'tuner'] as const).map((k) => (
+            <button
+              key={k} type="button" role="tab" aria-selected={tab === k}
+              onClick={() => setTab(k)}
+              style={{
+                fontSize: 11.5, padding: '4px 12px', border: 'none', cursor: 'pointer', fontWeight: 600,
+                background: tab === k ? JELLY_TOKENS.brand : 'transparent',
+                color: tab === k ? '#fff' : t.textSecondary,
+              }}
+            >
+              {k === 'samples' ? '🎧 Samples' : '🎛 Tuner'}
+            </button>
+          ))}
+        </div>
         {doc && (
           <span style={{
             fontSize: 10.5, padding: '2px 8px', borderRadius: 999,
@@ -458,7 +489,21 @@ export function VoiceTuner(): React.ReactElement {
 
       {loadErr && <div style={{ color: JELLY_TOKENS.error, fontSize: 12, marginBottom: 10 }}>{loadErr}</div>}
 
-      {draft && doc && (
+      {tab === 'samples' && (
+        <VoiceSamples
+          voice={voice}
+          canWrite
+          onLocked={() => void refreshDoc()}
+          onOpenInTuner={(tuning, label) => {
+            setDraft(clone(tuning));
+            setDraftSlot(EMPTY_SLOT);
+            setTab('tuner');
+            flash(`Loaded “${label}” into the tuner — render a sample or lock it in.`);
+          }}
+        />
+      )}
+
+      {tab === 'tuner' && draft && doc && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* sample text */}
           <div>
@@ -671,7 +716,7 @@ export function VoiceTuner(): React.ReactElement {
           </p>
         </div>
       )}
-      {!draft && !loadErr && <div style={{ fontSize: 12, color: t.textSecondary }}>Loading {voice}…</div>}
+      {tab === 'tuner' && !draft && !loadErr && <div style={{ fontSize: 12, color: t.textSecondary }}>Loading {voice}…</div>}
     </div>
   );
 }

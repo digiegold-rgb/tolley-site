@@ -752,6 +752,38 @@ export type VoicePreviewStatus = {
   error?: string;
 };
 
+
+/** Voice sample gallery (2026-08-16) — 10 advisor variants of one clone. */
+export type VoiceSample = {
+  id: string;
+  n: number;
+  label: string;
+  tagline: string;
+  why: string;
+  tuning: VoiceTuning;
+  chain?: string;
+  phase: "queued" | "synth" | "done" | "error";
+  error?: string | null;
+  previewId?: string;
+  durationS?: number;
+  modalWallS?: number;
+  usd?: number;
+  renderedAt?: string;
+  metrics?: Record<string, number | string>;
+};
+export type VoiceSamplePick = { id: string; rank: number; reason: string };
+export type VoiceSampleGallery = {
+  voice: string;
+  samples: VoiceSample[];
+  picks: VoiceSamplePick[];
+  text?: string;
+  generating?: boolean;
+  lockedSample?: string | null;
+  lockedTuning?: VoiceTuning | null;
+  updatedAt?: string;
+  analysis?: Record<string, unknown>;
+};
+
 export const autopilot = {
   /** Async — `yt-dlp` + transcribe a source URL. Returns a jobId. */
   fetchSource: (input: FetchSourceInput) =>
@@ -1029,6 +1061,33 @@ export const autopilot = {
       "GET",
       `/vater/voice-previews/${encodeURIComponent(previewId)}/audio?` +
         (raw ? "raw=1" : v ? `v=${v}` : ""),
+    ),
+
+  // ── Voice sample gallery (2026-08-16) ────────────────────────────────────
+  getVoiceSamples: (name: string) =>
+    call<VoiceSampleGallery>("GET", `/vater/voices/${encodeURIComponent(name)}/samples`),
+  generateVoiceSamples: (
+    name: string,
+    input?: { text?: string; only?: string[] },
+    opts?: { owner?: string; admin?: boolean },
+  ) =>
+    call<{ started: boolean; voice: string; count: number }>(
+      "POST",
+      `/vater/voices/${encodeURIComponent(name)}/samples/generate${voiceOwnerQuery(opts?.owner)}`,
+      input ?? {},
+      opts?.admin ? { "X-Vater-Owner-Admin": "1" } : undefined,
+    ),
+  lockVoiceSample: (name: string, sid: string, opts?: { owner?: string; admin?: boolean }) =>
+    call<VoiceTuningDoc & { sample: string }>(
+      "POST",
+      `/vater/voices/${encodeURIComponent(name)}/samples/${encodeURIComponent(sid)}/lock${voiceOwnerQuery(opts?.owner)}`,
+      undefined,
+      opts?.admin ? { "X-Vater-Owner-Admin": "1" } : undefined,
+    ),
+  fetchVoiceSampleAudio: (name: string, sid: string, raw?: boolean) =>
+    callRaw(
+      "GET",
+      `/vater/voices/${encodeURIComponent(name)}/samples/${encodeURIComponent(sid)}/audio${raw ? "?raw=1" : ""}`,
     ),
 
   /** Generate a YouTube thumbnail (1280×720 SDXL + ffmpeg text overlay). */
