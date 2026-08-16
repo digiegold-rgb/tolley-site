@@ -1,29 +1,33 @@
 <meta charset="utf-8">
 <title>Post 3 — anti-slop</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_base.css">
 <style>
-  .p-title { font-size: 56px; }
+  /* The one place the violet secondary earns its keep: it separates "what we
+     do instead" from the pink hero without introducing a third hue. */
+  .p-title { font-size: 54px; }
 
   .rows { margin-top: 40px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 22px; }
   .row {
-    padding: 22px 28px; border: 1px solid var(--brand-line); border-radius: 12px;
-    background: linear-gradient(160deg, rgba(28, 26, 40, 0.9), rgba(22, 20, 31, 0.9));
+    padding: 22px 28px; border: 1px solid var(--hairline); border-radius: 14px;
+    background: var(--studio);
   }
   .row .bad, .row .good { display: flex; gap: 16px; align-items: baseline; }
-  .row .good { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--brand-line); }
-  .mark { flex: none; width: 32px; font-family: var(--mono); font-size: 29px; font-weight: 700; line-height: 1; }
-  .row .bad .mark { color: var(--text-3); }
-  .row .good .mark { color: var(--brand-light); }
+  .row .good { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--pink-line); }
+  .mark { flex: none; width: 32px; font-family: var(--mono); font-size: 27px; font-weight: 500; line-height: 1; }
+  .row .bad .mark { color: var(--muted); }
+  .row .good .mark { color: var(--violet); }
   .row .bad .t {
-    font-size: 30px; font-weight: 600; color: var(--text-2);
-    text-decoration: line-through; text-decoration-color: rgba(151, 148, 168, 0.7);
-    text-decoration-thickness: 2px; letter-spacing: -0.01em;
+    font-family: var(--display); font-weight: 500; font-size: 29px; color: var(--muted);
+    text-decoration: line-through; text-decoration-color: rgba(168, 164, 176, 0.75);
+    text-decoration-thickness: 2px; letter-spacing: -0.02em;
   }
-  .row .good .t { font-size: 30px; font-weight: 650; color: var(--text); letter-spacing: -0.01em; }
-  .row .good .t b { color: var(--brand-light); font-weight: 650; }
+  .row .good .t {
+    font-family: var(--display); font-weight: 700; font-size: 29px;
+    color: var(--off-white); letter-spacing: -0.025em;
+  }
+  .row .good .t b { color: var(--pink); font-weight: 700; }
 </style>
 <body class="post">
 <div class="stage">
@@ -32,18 +36,17 @@
   <div class="inner">
 
     <div class="p-head">
-      <div class="p-lockup">
-        <div class="jmark"><span class="glyph">J</span></div>
-        <div>
-          <div class="name">JELLY<span style="color:var(--brand-light)">·</span>STUDIO</div>
-          <div class="by">BY TOLLEY.IO</div>
+      <div class="lockup">
+        <div class="jmark compact">
+          <div class="line">JELLY</div><div class="line">STUDIO</div><div class="sub">TOLLEY.IO</div>
         </div>
+        <div><div class="name">Jelly Studio</div><div class="by">BY TOLLEY.IO</div></div>
       </div>
       <div class="tag">PUBLIC BETA</div>
     </div>
 
     <div class="p-eyebrow">Why most faceless video looks like slop</div>
-    <h1 class="p-title">3 things the tools<br>get wrong — and<br><span class="it">what we do instead.</span></h1>
+    <h1 class="p-title">3 things the tools get<br>wrong — and <span class="pink">what we<br>do instead.</span></h1>
 
     <div class="rows">
       <div class="row">

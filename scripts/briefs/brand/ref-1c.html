@@ -1,0 +1,52 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>1C reference geometry — measurement target</title>
+<!-- Verbatim geometry from design/jelly-studio-logo-1c/jelly-studio-logo-1c.html.
+     This file exists only so measure-layout.mjs can read chromium's real
+     layout numbers off the exact spec. Do not restyle it. -->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #0d0d10; }
+  .mark {
+    width: 340px; height: 340px; border-radius: 28px;
+    background: oklch(0.72 0.19 340);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  }
+  .mark .line {
+    font-family: 'Space Grotesk', Helvetica, sans-serif; font-weight: 700;
+    font-size: 60px; letter-spacing: -0.04em; line-height: 0.98; color: #17131a;
+  }
+  .mark .sub {
+    margin-top: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    letter-spacing: 0.28em; color: #17131a; opacity: 0.72; line-height: normal;
+  }
+  /* Compact variant, measured on the same 340 canvas so one SVG viewBox serves
+     both. Ratio comes from the handoff's own two data points (37px @176 and
+     15px @72 ≈ 21.0% of the edge); line-height and tracking follow the README's
+     compact spec. */
+  .compact { gap: 0; }
+  .compact .line { font-size: 71.47px; letter-spacing: -0.03em; line-height: 1; }
+</style>
+<div class="mark">
+  <div class="line" data-measure="jelly">JELLY</div>
+  <div class="line" data-measure="studio">STUDIO</div>
+  <div class="sub" data-measure="tolley">TOLLEY.IO</div>
+</div>
+
+<!-- Off-screen SVG twins of every line. measureText() on a prefix cannot see the
+     kern pair with the character that follows it (it shifted JELLY's Y), whereas
+     SVG's getStartPositionOfChar reports the real shaped pen position per glyph,
+     kerning and tracking included. -->
+<svg id="probe" width="900" height="400" style="position:absolute;left:-9999px;top:0">
+  <text id="p-jelly"   x="0" y="100" font-family="Space Grotesk" font-weight="700" font-size="60"    letter-spacing="-2.4">JELLY</text>
+  <text id="p-studio"  x="0" y="180" font-family="Space Grotesk" font-weight="700" font-size="60"    letter-spacing="-2.4">STUDIO</text>
+  <text id="p-tolley"  x="0" y="240" font-family="IBM Plex Mono" font-weight="400" font-size="12"    letter-spacing="3.36">TOLLEY.IO</text>
+  <text id="p-c-jelly" x="0" y="320" font-family="Space Grotesk" font-weight="700" font-size="71.47" letter-spacing="-2.1441">JELLY</text>
+  <text id="p-c-studio" x="0" y="390" font-family="Space Grotesk" font-weight="700" font-size="71.47" letter-spacing="-2.1441">STUDIO</text>
+</svg>
+
+<div class="mark compact">
+  <div class="line" data-measure="c-jelly">JELLY</div>
+  <div class="line" data-measure="c-studio">STUDIO</div>
+</div>

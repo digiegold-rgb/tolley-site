@@ -1,21 +1,23 @@
 <meta charset="utf-8">
 <title>Post 1 — what it is</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_base.css">
 <style>
-  .p-title { font-size: 62px; }
+  .p-title { font-size: 60px; }
   .steps { margin-top: 50px; display: flex; flex-direction: column; gap: 30px; }
   .step { display: flex; gap: 26px; align-items: flex-start; }
   .step .n {
     flex: none; width: 54px; height: 54px; border-radius: 50%;
-    border: 1px solid var(--brand-outline); background: var(--brand-ghost);
+    border: 1px solid var(--pink-line); background: var(--pink-ghost);
     display: grid; place-items: center;
-    font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--brand-light);
+    font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--pink);
   }
-  .step .t { font-size: 40px; font-weight: 650; line-height: 1.2; letter-spacing: -0.015em; color: var(--text); }
-  .step .d { margin-top: 9px; font-family: var(--mono); font-size: 20px; line-height: 1.55; color: var(--text-2); }
+  .step .t {
+    font-family: var(--display); font-weight: 700; font-size: 38px;
+    line-height: 1.2; letter-spacing: -0.03em; color: var(--off-white);
+  }
+  .step .d { margin-top: 9px; font-family: var(--mono); font-size: 19px; line-height: 1.6; color: var(--muted); }
 </style>
 <body class="post">
 <div class="stage">
@@ -24,18 +26,17 @@
   <div class="inner">
 
     <div class="p-head">
-      <div class="p-lockup">
-        <div class="jmark"><span class="glyph">J</span></div>
-        <div>
-          <div class="name">JELLY<span style="color:var(--brand-light)">·</span>STUDIO</div>
-          <div class="by">BY TOLLEY.IO</div>
+      <div class="lockup">
+        <div class="jmark compact">
+          <div class="line">JELLY</div><div class="line">STUDIO</div><div class="sub">TOLLEY.IO</div>
         </div>
+        <div><div class="name">Jelly Studio</div><div class="by">BY TOLLEY.IO</div></div>
       </div>
       <div class="tag">PUBLIC BETA</div>
     </div>
 
     <div class="p-eyebrow">What it is</div>
-    <h1 class="p-title">Type a script.<br>Get a finished<br><span class="it">faceless video.</span></h1>
+    <h1 class="p-title">Type a script.<br>Get a finished<br><span class="pink">faceless video.</span></h1>
 
     <div class="steps">
       <div class="step">

@@ -1,164 +1,156 @@
-/* Jelly Studio brand-kit render base — purple system.
- * Values taken verbatim from components/animate/tokens.ts (JELLY_TOKENS), so
- * the Facebook kit and the product cannot drift apart.
- * Purple is the primary colour on every surface. Amber survives only as a
- * hairline status accent (the live/beta dot); nothing else uses it. */
+/* Jelly Studio brand kit — concept 1C.
+ * Tokens are taken verbatim from design/jelly-studio-logo-1c/README.md, which
+ * is marked high-fidelity/final. Brand pink is written as oklch so chromium
+ * renders exactly what Jared's reference export rendered (#EF6DC9 in sRGB);
+ * the README's #F26BB0 is only the fallback for engines without oklch. */
 
 :root {
-  /* brand */
-  --brand: #8b5cf6;
-  --brand-light: #a78bfa;
-  --brand-dark: #7c3aed;
-  --brand-ghost: rgba(139, 92, 246, 0.08);
-  --brand-outline: rgba(139, 92, 246, 0.4);
-  --brand-line: rgba(139, 92, 246, 0.16);
-  --grad: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
-  --grad-deep: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  --pink: oklch(0.72 0.19 340);
+  --pink-hex: #ef6dc9;              /* what the oklch above resolves to in sRGB */
+  --ink: #17131a;                   /* type on pink */
+  --studio: #131318;                /* studio near-black, alt surface */
+  --page: #0d0d10;                  /* page black */
+  --off-white: #f7f5fa;
+  --muted: #a8a4b0;
+  --violet: oklch(0.72 0.19 285);   /* secondary accent, used sparingly */
 
-  /* dark surfaces */
-  --body: #0a0a10;
-  --card: #16141f;
-  --card-alt: #1c1a28;
-  --sidebar: #110f1a;
+  --pink-ghost: color-mix(in srgb, #ef6dc9 10%, transparent);
+  --pink-line: color-mix(in srgb, #ef6dc9 22%, transparent);
+  --hairline: rgba(247, 245, 250, 0.12);
 
-  /* type */
-  --text: #f1f0f5;
-  --text-2: #9794a8;
-  --text-3: rgba(241, 240, 245, 0.42);
-
-  /* the one permitted amber: a status dot, nothing more */
-  --accent: #f59e0b;
-
-  --display: "Bricolage Grotesque", "Sora", system-ui, sans-serif;
-  --serif: "Instrument Serif", Georgia, serif;
-  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --display: "Space Grotesk", Helvetica, system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
-  background: var(--body);
-  color: var(--text);
+  background: var(--page);
+  color: var(--off-white);
   font-family: var(--display);
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
 }
 
-/* transparent-plate mode (mark-only exports): render.mjs sets .bare on <html>
- * and <body>, and screenshots with omitBackground. Every painted ground has to
- * be cleared or chromium composites over it and the PNG comes back opaque. */
+/* transparent-plate mode for mark-only / overlay exports */
 html.bare, body.bare, body.bare .stage { background: transparent; }
 body.bare .glow, body.bare .grain { display: none; }
 
-.stage { position: relative; overflow: hidden; background: var(--body); }
+.stage { position: relative; overflow: hidden; background: var(--page); }
 
-/* violet key light, upper right */
+/* a low, wide pink wash — the hero colour has to be felt on every surface */
 .glow {
   position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background:
-    radial-gradient(108% 100% at 84% -16%, rgba(139, 92, 246, 0.26), transparent 62%),
-    radial-gradient(90% 104% at -12% 46%, rgba(124, 58, 237, 0.16), transparent 62%);
+    radial-gradient(105% 96% at 86% -18%, color-mix(in srgb, #ef6dc9 22%, transparent), transparent 62%),
+    radial-gradient(86% 100% at -12% 48%, color-mix(in srgb, #ef6dc9 10%, transparent), transparent 62%);
 }
 
-/* fine grain, kept very low so the purple stays clean */
 .grain {
-  position: absolute; inset: 0; pointer-events: none; z-index: 2; opacity: 0.04;
+  position: absolute; inset: 0; pointer-events: none; z-index: 2; opacity: 0.035;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 220px 220px;
 }
 
 .inner { position: relative; z-index: 1; height: 100%; }
 
-/* filmstrip sprocket rail, in violet */
-.sprockets {
-  position: absolute; z-index: 1;
-  background-image: radial-gradient(circle at 50% 50%, var(--body) 3.4px, transparent 3.9px);
-  background-size: 100% 34px;
-  border-inline: 1px solid var(--brand-line);
-  background-color: rgba(139, 92, 246, 0.10);
+/* ── the mark ──────────────────────────────────────────────────────────
+ * Geometry is the handoff's, expressed in em off a viewport-derived root so
+ * one rule renders identically at 1024, 512 or 72 px. 16px root = the 340px
+ * reference canvas, so 60px type is 3.75em, 2px gap is 0.125em, and so on. */
+.jmark {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 0.125em;
+  background: var(--pink);
+  border-radius: 8.2353%;      /* 28px at 340px */
+  aspect-ratio: 1;
 }
+.jmark .line {
+  font-family: var(--display); font-weight: 700;
+  font-size: 3.75em; letter-spacing: -0.04em; line-height: 0.98; color: var(--ink);
+}
+.jmark .sub {
+  margin-top: 0.875em;
+  font-family: var(--mono); font-weight: 400;
+  font-size: 0.75em; letter-spacing: 0.28em; color: var(--ink); opacity: 0.72;
+}
+/* Below ~96px the TOLLEY.IO line is illegible, so the compact variant drops it
+ * and sets the two wordmark lines larger. */
+.jmark.compact { gap: 0; }
+.jmark.compact .line { font-size: 4.4669em; letter-spacing: -0.03em; line-height: 1; }
+.jmark.compact .sub { display: none; }
 
-/* shared atoms */
+.jmark.reversed { background: var(--studio); }
+.jmark.reversed .line, .jmark.reversed .sub { color: var(--off-white); }
+
+/* ── shared atoms ─────────────────────────────────────────────────────── */
 .badge {
   display: inline-flex; align-items: center; gap: 10px;
-  font-family: var(--mono); letter-spacing: 0.22em;
-  color: var(--brand-light); background: var(--brand-ghost);
-  border: 1px solid var(--brand-outline); border-radius: 99px;
+  font-family: var(--mono); letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--pink); background: var(--pink-ghost);
+  border: 1px solid var(--pink-line); border-radius: 99px;
 }
-.badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pink); }
 
 .eyebrow {
   font-family: var(--mono); letter-spacing: 0.24em;
-  color: var(--text-3); text-transform: uppercase;
+  color: var(--muted); text-transform: uppercase;
 }
-/* The accent italic runs a LIGHTER ramp than the mark gradient: #8B5CF6 is
- * too dim against #0A0A10 at display sizes, so the type ramp starts where the
- * mark ramp ends. */
-.it {
-  font-family: var(--serif); font-style: italic; font-weight: 400;
-  background: linear-gradient(135deg, #a78bfa 0%, #cbb8fd 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-.mono { font-family: var(--mono); }
+.pink { color: var(--pink); }
 
-/* ── the mark ──────────────────────────────────────────────────────────
- * A "jelly wobble" squircle: uneven percentage border-radii give the soft
- * asymmetric bounce, filled with the product's own create-gradient. Sized
- * entirely in em so one rule renders identically at 1024, 512 or 48 px. */
-.jmark {
-  position: relative;
-  display: grid; place-items: center;
-  background: var(--grad);
-  border-radius: 42% 27% 38% 31% / 31% 42% 27% 38%;
-  box-shadow: 0 0.14em 0.5em rgba(124, 58, 237, 0.42);
-}
-/* top-left sheen, so the shape reads as soft rather than flat */
-.jmark::before {
-  content: ""; position: absolute; inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.26), transparent 52%);
-}
-.jmark .glyph {
-  position: relative;
-  font-family: var(--display); font-weight: 800;
-  color: #ffffff; line-height: 0.78;
+/* filmstrip rail, pink */
+.sprockets {
+  position: absolute; z-index: 1;
+  background-image: radial-gradient(circle at 50% 50%, var(--page) 3.4px, transparent 3.9px);
+  background-size: 100% 34px;
+  border-inline: 1px solid var(--pink-line);
+  background-color: color-mix(in srgb, #ef6dc9 12%, transparent);
 }
 
-/* ── 1080×1080 feed post chrome ────────────────────────────────────── */
+/* ── inline lockup used on covers, posts, end cards ───────────────────── */
+.lockup { display: flex; align-items: center; gap: 16px; }
+.lockup .jmark { flex: none; }
+.lockup .name {
+  font-family: var(--display); font-weight: 700;
+  letter-spacing: -0.02em; color: var(--off-white); line-height: 1;
+}
+.lockup .by {
+  font-family: var(--mono); font-weight: 400;
+  letter-spacing: 0.28em; color: var(--muted);
+}
+
+/* ── 1080×1080 feed post chrome ───────────────────────────────────────── */
 body.post { width: 1080px; height: 1080px; }
 body.post .stage { width: 1080px; height: 1080px; }
 body.post .inner { padding: 76px 84px 72px; display: flex; flex-direction: column; }
 
 .p-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.p-lockup { display: flex; align-items: center; gap: 14px; }
-.p-lockup .jmark { width: 46px; height: 46px; }
-.p-lockup .jmark .glyph { font-size: 28px; }
-.p-lockup .name {
-  font-family: var(--mono); font-weight: 600; font-size: 17px;
-  letter-spacing: 0.30em; color: var(--text);
-}
-.p-lockup .by { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; color: var(--text-3); }
+.p-head .lockup .jmark { width: 58px; font-size: calc(58px / 340 * 16); }
+.p-head .lockup .name { font-size: 21px; }
+.p-head .lockup .by { font-size: 11px; margin-top: 6px; }
 .p-head .tag {
   font-family: var(--mono); font-size: 13px; letter-spacing: 0.2em;
-  color: var(--brand-light); background: var(--brand-ghost);
-  border: 1px solid var(--brand-outline); border-radius: 99px; padding: 8px 17px;
+  color: var(--pink); background: var(--pink-ghost);
+  border: 1px solid var(--pink-line); border-radius: 99px; padding: 8px 17px;
 }
 
 .p-eyebrow {
-  margin-top: 74px;
+  margin-top: 72px;
   font-family: var(--mono); font-size: 17px; letter-spacing: 0.26em;
-  text-transform: uppercase; color: var(--text-3);
+  text-transform: uppercase; color: var(--muted);
 }
 .p-title {
   margin-top: 22px;
-  font-family: var(--display); font-weight: 750;
-  font-size: 68px; line-height: 1.05; letter-spacing: -0.028em; color: var(--text);
+  font-family: var(--display); font-weight: 700;
+  font-size: 66px; line-height: 1.04; letter-spacing: -0.035em; color: var(--off-white);
 }
+.p-title .pink { color: var(--pink); }
 
 .p-foot {
-  margin-top: auto; padding-top: 30px; border-top: 1px dashed var(--brand-line);
+  margin-top: auto; padding-top: 30px; border-top: 1px dashed var(--pink-line);
   display: flex; align-items: baseline; justify-content: space-between; gap: 20px;
   font-family: var(--mono);
 }
-.p-foot .url { font-size: 27px; font-weight: 700; letter-spacing: 0.04em; color: var(--brand-light); }
-.p-foot .note { font-size: 15px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-3); }
+.p-foot .url { font-size: 26px; font-weight: 500; letter-spacing: 0.02em; color: var(--pink); }
+.p-foot .note { font-size: 15px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }

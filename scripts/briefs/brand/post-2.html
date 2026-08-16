@@ -1,8 +1,7 @@
 <meta charset="utf-8">
 <title>Post 2 — what it costs</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_base.css">
 <style>
   /* No cost formula on this card by design — public messaging is the total a
@@ -12,32 +11,32 @@
 
   .panel {
     margin-top: 30px; padding: 26px 34px 22px;
-    background: linear-gradient(160deg, var(--card-alt), var(--card));
-    border: 1px solid var(--brand-line); border-radius: 14px;
+    background: var(--studio);
+    border: 1px solid var(--pink-line); border-radius: 16px;
     box-shadow: 0 34px 90px -34px rgba(0, 0, 0, 0.9);
     font-family: var(--mono);
   }
   .panel .phead {
     display: flex; justify-content: space-between; align-items: center;
-    font-size: 15px; letter-spacing: 0.18em; text-transform: uppercase;
-    color: var(--text-3); padding-bottom: 16px; border-bottom: 1px dashed var(--brand-line);
+    font-size: 14.5px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--muted); padding-bottom: 16px; border-bottom: 1px dashed var(--pink-line);
   }
 
   .row { display: flex; align-items: baseline; gap: 16px; margin-top: 19px; }
-  .row .len { font-size: 28px; font-weight: 600; color: var(--text); min-width: 126px; }
+  .row .len { font-size: 27px; font-weight: 500; color: var(--off-white); min-width: 126px; }
   .row .len small {
-    display: block; font-size: 13.5px; font-weight: 400; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--text-3); margin-top: 6px;
+    display: block; font-size: 13px; font-weight: 400; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); margin-top: 6px;
   }
-  .row .dots { flex: 1; border-bottom: 1px dotted rgba(167, 139, 250, 0.28); transform: translateY(-7px); }
-  .row .amt { font-size: 33px; font-weight: 700; color: var(--brand-light); }
+  .row .dots { flex: 1; border-bottom: 1px dotted rgba(239, 109, 201, 0.34); transform: translateY(-7px); }
+  .row .amt { font-size: 33px; font-weight: 500; color: var(--pink); }
 
   .kicker {
     margin-top: 26px; margin-bottom: 14px;
-    font-family: var(--display); font-weight: 650;
-    font-size: 32px; line-height: 1.3; color: var(--text);
+    font-family: var(--display); font-weight: 700;
+    font-size: 31px; line-height: 1.32; letter-spacing: -0.025em; color: var(--off-white);
   }
-  .kicker span { color: var(--brand-light); }
+  .kicker span { color: var(--pink); }
 </style>
 <body class="post">
 <div class="stage">
@@ -46,24 +45,20 @@
   <div class="inner">
 
     <div class="p-head">
-      <div class="p-lockup">
-        <div class="jmark"><span class="glyph">J</span></div>
-        <div>
-          <div class="name">JELLY<span style="color:var(--brand-light)">·</span>STUDIO</div>
-          <div class="by">BY TOLLEY.IO</div>
+      <div class="lockup">
+        <div class="jmark compact">
+          <div class="line">JELLY</div><div class="line">STUDIO</div><div class="sub">TOLLEY.IO</div>
         </div>
+        <div><div class="name">Jelly Studio</div><div class="by">BY TOLLEY.IO</div></div>
       </div>
       <div class="tag">PUBLIC BETA</div>
     </div>
 
     <div class="p-eyebrow">What a finished video costs</div>
-    <h1 class="p-title">Most long-form videos<br>cost <span class="it">$1–7.</span></h1>
+    <h1 class="p-title">Most long-form videos<br>cost <span class="pink">$1–7.</span></h1>
 
     <div class="panel">
-      <div class="phead">
-        <span>Four real renders</span>
-        <span>Aug 2026</span>
-      </div>
+      <div class="phead"><span>Four real renders</span><span>Aug 2026</span></div>
 
       <div class="row">
         <span class="len">0:29<small>Short</small></span>

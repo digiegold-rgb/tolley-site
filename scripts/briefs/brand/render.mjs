@@ -14,9 +14,15 @@ const OUT = path.resolve(HERE, "../../../public/animate/brand");
 
 /* name, source html, viewport, and whether the plate is transparent */
 const JOBS = [
+  /* logo family — `variant` becomes a body class so one source serves all */
   { out: "logo-1024.png", html: "logo.html", w: 1024, h: 1024 },
   { out: "logo-512.png", html: "logo.html", w: 512, h: 512 },
-  { out: "logo-mark-transparent.png", html: "logo.html", w: 1024, h: 1024, bare: true },
+  { out: "logo-compact-512.png", html: "logo.html", w: 512, h: 512, variant: "compact" },
+  { out: "favicon-512.png", html: "logo.html", w: 512, h: 512, variant: "compact" },
+  { out: "logo-reversed-1024.png", html: "logo.html", w: 1024, h: 1024, variant: "reversed" },
+  { out: "logo-mono-black.png", html: "logo.html", w: 1024, h: 1024, variant: "mono-black", bare: true },
+  { out: "logo-mono-white.png", html: "logo.html", w: 1024, h: 1024, variant: "mono-white", bare: true },
+
   { out: "logo-lockup-1600x400.png", html: "lockup.html", w: 1600, h: 400 },
   { out: "cover-1640x624.png", html: "cover.html", w: 1640, h: 624 },
   { out: "cover-mobile-820x360.png", html: "cover-mobile.html", w: 820, h: 360 },
@@ -27,7 +33,6 @@ const JOBS = [
   { out: "endcard-1280x720.png", html: "endcard.html", w: 1280, h: 720, bare: true },
   { out: "endcard-1080x1920.png", html: "endcard-vertical.html", w: 1080, h: 1920, bare: true },
   { out: "reels-frame-1080x1920.png", html: "reels-frame.html", w: 1080, h: 1920, bare: true },
-  { out: "candidates.png", html: "candidates.html", w: 1500, h: 620, scratch: true },
 ];
 
 const only = process.argv.slice(2);
@@ -49,14 +54,26 @@ for (const job of jobs) {
       document.body.classList.add("bare");
     });
   }
+  if (job.variant) {
+    await page.evaluate((v) => {
+      document.body.classList.add(v);
+      // `compact` and `reversed` are modifiers on the mark itself
+      for (const m of document.querySelectorAll(".jmark")) m.classList.add(v);
+    }, job.variant);
+  }
   // webfonts must be resolved before the shutter, or we screenshot the fallback
   await page.evaluate(() => document.fonts.ready);
   const loaded = await page.evaluate(() =>
     [
-      ["Bricolage Grotesque", "700 16px"],
-      ["Instrument Serif", "italic 16px"],
-      ["JetBrains Mono", "600 16px"],
-    ].map(([f, spec]) => `${f.split(" ")[0]}:${document.fonts.check(`${spec} "${f}"`) ? "ok" : "MISSING"}`),
+      ["Space Grotesk", "700 16px"],
+      ["IBM Plex Mono", "400 16px"],
+    ].map(([f, spec]) => {
+      // check() answers "can this render with what's loaded", which is trivially
+      // true for a family the page never requested — so also confirm a matching
+      // FontFace actually exists in the document's set.
+      const known = [...document.fonts].some((ff) => ff.family.replace(/["']/g, "") === f);
+      return `${f.split(" ")[0]}:${known && document.fonts.check(`${spec} "${f}"`) ? "ok" : "MISSING"}`;
+    }),
   );
   await page.waitForTimeout(220);
   const dest = job.scratch ? path.join(HERE, job.out) : path.join(OUT, job.out);

@@ -264,8 +264,12 @@ in `~/Shared/jelly-studio-brand/` on the Mac.
 | File | Size | Use |
 | --- | --- | --- |
 | `logo-1024.png` | 1024×1024 | Profile picture (upload this one) |
-| `logo-512.png` | 512×512 | Smaller placements, favicons, app listings |
-| `logo-mark-transparent.png` | 1024×1024, alpha | Mark only, over any background |
+| `logo-512.png` | 512×512 | Smaller placements |
+| `logo-compact-512.png` | 512×512 | Avatar/favicon variant, no TOLLEY.IO line |
+| `favicon-512.png` | 512×512 | Favicon (compact variant) |
+| `logo-reversed-1024.png` | 1024×1024 | Off-white on near-black, for dark placements |
+| `logo-mono-black.png` / `logo-mono-white.png` | 1024×1024, alpha | One-colour stamps |
+| `logo.svg` / `logo-compact.svg` | vector | Distributable logo, type outlined |
 | `cover-1640x624.png` | 1640×624 | Page cover (desktop) |
 | `cover-mobile-820x360.png` | 820×360 | Cover variant if the desktop crop looks wrong on phone |
 | `post-1-what-it-is.png` | 1080×1080 | Post 1 (pin) |
@@ -285,41 +289,60 @@ in `~/Shared/jelly-studio-brand/` on the Mac.
 
 The three video files and all three overlay PNGs carry no pricing claim — they
 say "made with Jelly Studio · tolley.io/animate · public beta, invite only".
-They were re-cut on 16 Aug 2026 so the end card and Reels frame carry the new
-purple mark.
+They were re-cut on 16 Aug 2026 so the end card and Reels frame carry the 1C
+pink mark.
 
-### Brand reference (matches `components/animate/tokens.ts`)
+### Brand reference (concept 1C — `design/jelly-studio-logo-1c/`)
 
-Purple is the primary colour on every asset. The kit takes its values straight
-from `JELLY_TOKENS`, so the Facebook Page and the product cannot drift apart.
+Jared's 1C handoff is the source of truth and is marked high-fidelity: colours,
+type and spacing are final. Pink is the hero colour on every asset.
 
 | Token | Value | Where |
 | --- | --- | --- |
-| Brand | `#8B5CF6` | mark gradient start, rules, outlines |
-| Brand light | `#A78BFA` | URLs, prices, accents on dark |
-| Brand dark | `#7C3AED` | mark shadow, deep gradient |
-| Mark gradient | `linear-gradient(135deg, #8B5CF6 → #A78BFA)` | the mark itself |
-| Body | `#0A0A10` | page ground |
-| Card / card alt | `#16141F` / `#1C1A28` | panels |
-| Text | `#F1F0F5` | headlines and body |
-| Text secondary | `#9794A8` | sub-copy |
-| Amber | `#F59E0B` | **status dot only** — one 8px dot on the beta badge |
-| Display font | Bricolage Grotesque 700–800 | headlines |
-| Accent italic | Instrument Serif italic 400, `#A78BFA → #CBB8FD` | the one italic phrase per asset |
-| Labels & numbers | JetBrains Mono 400–700 | eyebrows, prices, URLs |
+| Brand pink | `oklch(0.72 0.19 340)` → **`#EF6DC9`** in sRGB | the mark's plate, headlines' accent phrase, URLs, prices, badges |
+| Ink | `#17131A` | type on pink |
+| Studio near-black | `#131318` | panels, reversed-mark plate |
+| Page black | `#0D0D10` | every background |
+| Off-white | `#F7F5FA` | headlines and body copy |
+| Muted | `#A8A4B0` | sub-copy, eyebrows, labels |
+| Violet accent | `oklch(0.72 0.19 285)` | secondary only — currently just the ✓ ticks on post 3 |
+| Display type | Space Grotesk 500/600/700 | headlines, the wordmark |
+| Mono type | IBM Plex Mono 400/500 | eyebrows, prices, URLs, the TOLLEY.IO line |
+
+**A note on the pink.** The README gives `oklch(0.72 0.19 340)` with `#F26BB0` as
+a hex *fallback*, but those are not the same colour: the oklch value resolves to
+**`#EF6DC9`** in sRGB, and that is what Jared's own `jelly-studio-logo-1024.png`
+export contains (sampled straight off the file). The kit uses oklch so it renders
+identically to that reference; `#F26BB0` is only for engines with no oklch
+support. If a hex is ever needed, use `#EF6DC9`.
 
 ### The mark
 
-A **jelly-wobble squircle** — an asymmetric rounded shape (uneven corner radii
-give the soft bounce) filled with the product's own create-gradient, carrying a
-bold white **J**. No droplet, no food imagery.
+A stacked **JELLY / STUDIO** wordmark in ink on brand pink, with a monospace
+**TOLLEY.IO** lockup line beneath. Space Grotesk 700, `-0.04em` tracking,
+`0.98` line-height; the sub-line is IBM Plex Mono 400 at `0.28em` tracking and
+72% opacity. Corner radius is 8.235% of the edge (28px on the 340px reference).
 
-- `logo-1024.png` / `logo-512.png` — mark on the dark plate, for the profile
-  picture. **Mark only, no wordmark:** at Facebook's 170px display a wordmark
-  inside the square degrades to unreadable texture, and the avatar also gets
-  circle-cropped. The J alone still reads at the 48px feed size.
-- `logo-mark-transparent.png` — the same mark on transparency, for any ground.
-- `logo-lockup-1600x400.png` — the horizontal wordmark lockup: mark +
-  **JELLY·STUDIO** + **BY TOLLEY.IO**. Use this anywhere the name needs to be
-  read — email headers, decks, slide footers. The same lockup is built into the
-  cover, all four posts, the end cards and the Reels frame.
+- `logo-1024.png` / `logo-512.png` — primary, ink on pink.
+- `logo-compact-512.png` — **compact variant**: drops the TOLLEY.IO line and sets
+  the two wordmark lines larger. The handoff calls for this below ~96–128px,
+  because the sub-line stops being legible. It is what every inline lockup in
+  this kit uses (the cover and post lockups are 46–62px), and what you should
+  use for favicons and any avatar under 128px.
+- `favicon-512.png` — the compact variant again, named for its job.
+- `logo-reversed-1024.png` — `#F7F5FA` type on `#131318`, for dark placements
+  where the pink would clash.
+- `logo-mono-black.png` / `logo-mono-white.png` — single-colour type on
+  transparency, for print and one-colour stamps.
+- `logo.svg` / `logo-compact.svg` — **the distributable vector**, type converted
+  to outlines. No font is needed to render them and no text is selectable; they
+  scale to any size without a raster step. Built from the real Space Grotesk 700
+  and IBM Plex Mono 400 outlines, positioned from chromium's own measurement of
+  the handoff CSS, then pixel-diffed against Jared's reference export (the
+  remaining difference is a one-pixel antialiasing hairline).
+- `logo-lockup-1600x400.png` — horizontal lockup for email headers and decks.
+  The 1C mark already *is* a wordmark, so this pairs it with what the product
+  does rather than repeating the name beside itself.
+
+Fonts are Space Grotesk and IBM Plex Mono, both SIL Open Font License. The
+handoff asks for them to be self-hosted in production rather than hotlinked.

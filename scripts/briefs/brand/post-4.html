@@ -1,43 +1,49 @@
 <meta charset="utf-8">
 <title>Post 4 — invite</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_base.css">
 <style>
-  .p-title { font-size: 86px; margin-top: 26px; }
+  .p-title { font-size: 84px; margin-top: 26px; }
 
   .ticket {
-    margin-top: 48px; position: relative;
-    padding: 36px 40px; border-radius: 14px;
-    border: 1px dashed var(--brand-outline);
-    background: linear-gradient(160deg, rgba(28, 26, 40, 0.92), rgba(22, 20, 31, 0.92));
+    margin-top: 46px; position: relative;
+    padding: 36px 40px; border-radius: 16px;
+    border: 1px dashed var(--pink-line);
+    background: var(--studio);
   }
   .ticket::before, .ticket::after {
     content: ""; position: absolute; top: 50%; width: 30px; height: 30px;
-    border-radius: 50%; background: var(--body); transform: translateY(-50%);
-    border: 1px dashed var(--brand-outline);
+    border-radius: 50%; background: var(--page); transform: translateY(-50%);
+    border: 1px dashed var(--pink-line);
   }
   .ticket::before { left: -16px; }
   .ticket::after { right: -16px; }
 
   .ticket .k {
-    font-family: var(--mono); font-size: 16px; letter-spacing: 0.24em;
-    text-transform: uppercase; color: var(--text-3);
+    font-family: var(--mono); font-size: 15px; letter-spacing: 0.24em;
+    text-transform: uppercase; color: var(--muted);
   }
   .ticket .code {
-    margin-top: 14px; font-family: var(--mono); font-size: 48px; font-weight: 700;
-    letter-spacing: 0.18em; color: var(--brand-light);
+    margin-top: 14px; font-family: var(--mono); font-size: 46px; font-weight: 500;
+    letter-spacing: 0.16em; color: var(--pink);
   }
   .ticket .sub {
-    margin-top: 16px; font-family: var(--mono); font-size: 20px; line-height: 1.6;
-    color: var(--text-2);
+    margin-top: 16px; font-family: var(--mono); font-size: 19px; line-height: 1.6; color: var(--muted);
   }
+  .ticket .sub b { color: var(--off-white); font-weight: 500; }
 
-  .bullets { margin-top: 46px; display: flex; flex-direction: column; gap: 20px; }
-  .b { display: flex; gap: 18px; align-items: baseline; font-size: 29px; line-height: 1.35; color: var(--text); }
-  .b .m { flex: none; color: var(--brand-light); font-family: var(--mono); font-size: 22px; }
-  .b small { display: block; font-family: var(--mono); font-size: 17px; color: var(--text-3); margin-top: 7px; letter-spacing: 0.03em; }
+  .bullets { margin-top: 44px; display: flex; flex-direction: column; gap: 20px; }
+  .b {
+    display: flex; gap: 18px; align-items: baseline;
+    font-family: var(--display); font-weight: 500; font-size: 28px;
+    line-height: 1.35; letter-spacing: -0.02em; color: var(--off-white);
+  }
+  .b .m { flex: none; color: var(--pink); font-family: var(--mono); font-size: 20px; }
+  .b small {
+    display: block; font-family: var(--mono); font-size: 16px; color: var(--muted);
+    margin-top: 7px; letter-spacing: 0.03em; text-transform: uppercase;
+  }
 </style>
 <body class="post">
 <div class="stage">
@@ -46,28 +52,27 @@
   <div class="inner">
 
     <div class="p-head">
-      <div class="p-lockup">
-        <div class="jmark"><span class="glyph">J</span></div>
-        <div>
-          <div class="name">JELLY<span style="color:var(--brand-light)">·</span>STUDIO</div>
-          <div class="by">BY TOLLEY.IO</div>
+      <div class="lockup">
+        <div class="jmark compact">
+          <div class="line">JELLY</div><div class="line">STUDIO</div><div class="sub">TOLLEY.IO</div>
         </div>
+        <div><div class="name">Jelly Studio</div><div class="by">BY TOLLEY.IO</div></div>
       </div>
       <div class="tag">PUBLIC BETA</div>
     </div>
 
     <div class="p-eyebrow">Doors are open — a few seats at a time</div>
-    <h1 class="p-title">Invite<br><span class="it">only.</span></h1>
+    <h1 class="p-title">Invite<br><span class="pink">only.</span></h1>
 
     <div class="ticket">
       <div class="k">Admit one · Jelly Studio beta</div>
       <div class="code">DM US FOR A CODE</div>
-      <div class="sub">Message this page the word <b style="color:var(--text)">INVITE</b> and we send one back.</div>
+      <div class="sub">Message this page the word <b>INVITE</b> and we send one back.</div>
     </div>
 
     <div class="bullets">
-      <div class="b"><span class="m">▸</span><span>$10 starter credit once a card is on file<small>STRIPE $0 HOLD — NOTHING CHARGED UNTIL YOU SPEND IT</small></span></div>
-      <div class="b"><span class="m">▸</span><span>Failed renders are never charged<small>YOU ONLY PAY FOR A VIDEO THAT FINISHED</small></span></div>
+      <div class="b"><span class="m">▸</span><span>$10 starter credit once a card is on file<small>Stripe $0 hold — nothing charged until you spend it</small></span></div>
+      <div class="b"><span class="m">▸</span><span>Failed renders are never charged<small>You only pay for a video that finished</small></span></div>
     </div>
 
     <div class="p-foot">

@@ -1,43 +1,38 @@
 <meta charset="utf-8">
 <title>End card — 1080×1920 overlay</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_base.css">
 <style>
   body { width: 1080px; height: 1920px; }
   .stage { width: 1080px; height: 1920px; }
   .scrim {
     position: absolute; inset: 0;
-    background: radial-gradient(80% 55% at 50% 47%, rgba(10, 10, 16, 0.975), rgba(10, 10, 16, 0.995));
+    background: radial-gradient(80% 55% at 50% 47%, rgba(13, 13, 16, 0.975), rgba(13, 13, 16, 0.995));
   }
   .inner { display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
-  .jmark { width: 194px; height: 194px; box-shadow: 0 18px 52px rgba(124, 58, 237, 0.5); }
-  .jmark .glyph { font-size: 118px; transform: translateX(0.055em); }
+  .jmark { width: 280px; font-size: calc(280px / 340 * 16); }
 
-  .name {
-    margin-top: 40px; font-family: var(--mono); font-weight: 600;
-    font-size: 44px; letter-spacing: 0.34em; color: var(--text); text-indent: 0.34em;
-  }
   .made {
-    margin-top: 28px; font-family: var(--display); font-weight: 500;
-    font-size: 40px; color: var(--text-2);
+    margin-top: 52px; font-family: var(--display); font-weight: 500;
+    font-size: 40px; letter-spacing: -0.02em; color: var(--muted);
   }
   .url {
-    margin-top: 44px; font-family: var(--mono); font-weight: 700;
-    font-size: 50px; letter-spacing: 0.04em; color: var(--brand-light);
+    margin-top: 30px; font-family: var(--mono); font-weight: 500;
+    font-size: 49px; letter-spacing: 0.02em; color: var(--pink);
   }
   .tag {
-    margin-top: 36px; font-family: var(--mono); font-size: 22px; letter-spacing: 0.24em;
-    text-transform: uppercase; color: var(--text-3);
+    margin-top: 32px; font-family: var(--mono); font-size: 21px; letter-spacing: 0.24em;
+    text-transform: uppercase; color: var(--muted);
   }
 </style>
 <div class="stage">
   <div class="scrim"></div>
   <div class="inner">
-    <div class="jmark"><span class="glyph">J</span></div>
-    <div class="name">JELLY<span style="color:var(--brand-light)">·</span>STUDIO</div>
+    <div class="jmark">
+      <div class="line">JELLY</div><div class="line">STUDIO</div><div class="sub">TOLLEY.IO</div>
+    </div>
     <div class="made">made with Jelly Studio</div>
     <div class="url">tolley.io/animate</div>
     <div class="tag">Public beta · invite only</div>

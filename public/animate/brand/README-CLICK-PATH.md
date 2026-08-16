@@ -23,15 +23,18 @@ paste is in `COPY.md` next to this file.
 2. Hover the profile circle → the **camera icon** appears → click it.
 3. **Upload photo** → choose `logo-1024.png`.
 4. Facebook shows a circular crop tool. **Do not zoom in** — the mark is already
-   composed for the circle. Drag until the reel is centred.
+   composed for the circle. Drag until the wordmark is centred.
 5. **Save**.
 6. Facebook auto-creates a "changed profile picture" post. Leave it; it is your
    first bit of reach. Optionally add the caption from `COPY.md` post 1.
 
-*The profile mark carries no wordmark on purpose — it would be unreadable at
-Facebook's 170px and the avatar is circle-cropped anyway. The name lives on the
-cover, every post, and `logo-lockup-1600x400.png`. If you need the mark on a
-non-dark ground, use `logo-mark-transparent.png`.*
+*The mark **is** the wordmark — JELLY / STUDIO stacked on brand pink — so there
+is nothing extra to add beside it. Use `logo-1024.png` for the Page picture
+(Facebook shows it at 176px, where the TOLLEY.IO line still reads). Use
+`logo-compact-512.png` anywhere under 128px — favicons, small avatars — because
+the TOLLEY.IO line stops being legible there. `logo-mono-black.png` /
+`logo-mono-white.png` are the transparent one-colour stamps, and `logo.svg` is
+the vector with the type already outlined.*
 
 ## 2. Cover photo (2 min)
 

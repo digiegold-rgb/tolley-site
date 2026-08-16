@@ -1,40 +1,29 @@
 <meta charset="utf-8">
 <title>Reels frame — 1080×1920 transparent overlay</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_base.css">
 <style>
   /* Persistent branding for the vertical cut. The centre band (y 654–1266) is
-     where the 1080×612 video sits, so it stays completely transparent.
-     The letterbox scrims are mandatory: the blurred backdrop behind the bands
-     swings bright to dark shot to shot, and unscrimmed text strobes in and out
-     of legibility. */
+     where the 1080×612 video sits, so it stays fully transparent. The letterbox
+     scrims are mandatory: the blurred backdrop swings bright to dark shot to
+     shot, and unscrimmed text strobes in and out of legibility. */
   body { width: 1080px; height: 1920px; }
   .stage { width: 1080px; height: 1920px; }
 
   .band { position: absolute; left: 0; right: 0; height: 648px; }
-  .band.t { top: 0; background: linear-gradient(180deg, rgba(10,10,16,0.93) 0%, rgba(10,10,16,0.88) 72%, rgba(10,10,16,0.68) 100%); }
-  .band.b { top: 1272px; background: linear-gradient(0deg, rgba(10,10,16,0.93) 0%, rgba(10,10,16,0.88) 72%, rgba(10,10,16,0.68) 100%); }
+  .band.t { top: 0; background: linear-gradient(180deg, rgba(13,13,16,0.93) 0%, rgba(13,13,16,0.88) 72%, rgba(13,13,16,0.68) 100%); }
+  .band.b { top: 1272px; background: linear-gradient(0deg, rgba(13,13,16,0.93) 0%, rgba(13,13,16,0.88) 72%, rgba(13,13,16,0.68) 100%); }
 
   .top {
-    position: absolute; left: 0; right: 0; top: 292px;
-    display: flex; flex-direction: column; align-items: center; gap: 26px;
+    position: absolute; left: 0; right: 0; top: 250px;
+    display: flex; flex-direction: column; align-items: center;
   }
-  .top .jmark { width: 104px; height: 104px; box-shadow: 0 12px 34px rgba(124, 58, 237, 0.5); }
-  .top .jmark .glyph { font-size: 63px; transform: translateX(0.055em); }
-  .top .name {
-    font-family: var(--mono); font-weight: 600; font-size: 34px;
-    letter-spacing: 0.34em; color: var(--text); text-indent: 0.34em;
-  }
-  .top .by {
-    font-family: var(--mono); font-size: 19px; letter-spacing: 0.28em;
-    color: var(--text-3); text-align: center; margin-top: 10px;
-  }
+  .top .jmark { width: 208px; font-size: calc(208px / 340 * 16); }
 
   .strip {
     position: absolute; left: 0; right: 0; height: 10px;
-    background-image: radial-gradient(circle at 50% 50%, rgba(167, 139, 250, 0.7) 3px, transparent 3.5px);
+    background-image: radial-gradient(circle at 50% 50%, rgba(239, 109, 201, 0.75) 3px, transparent 3.5px);
     background-size: 30px 100%;
   }
   .strip.a { top: 640px; }
@@ -42,19 +31,20 @@
 
   .bottom {
     position: absolute; left: 0; right: 0; top: 1420px;
-    display: flex; flex-direction: column; align-items: center; gap: 26px;
+    display: flex; flex-direction: column; align-items: center; gap: 24px;
   }
   .bottom .hook {
     font-family: var(--display); font-weight: 700; font-size: 44px;
-    letter-spacing: -0.02em; color: var(--text); text-align: center; line-height: 1.25;
+    letter-spacing: -0.035em; color: var(--off-white); text-align: center; line-height: 1.24;
   }
+  .bottom .hook .pink { color: var(--pink); }
   .bottom .url {
-    font-family: var(--mono); font-weight: 700; font-size: 44px;
-    letter-spacing: 0.04em; color: var(--brand-light);
+    font-family: var(--mono); font-weight: 500; font-size: 43px;
+    letter-spacing: 0.02em; color: var(--pink);
   }
   .bottom .tag {
-    font-family: var(--mono); font-size: 20px; letter-spacing: 0.24em;
-    text-transform: uppercase; color: var(--text-3);
+    font-family: var(--mono); font-size: 19px; letter-spacing: 0.24em;
+    text-transform: uppercase; color: var(--muted);
   }
 </style>
 <div class="stage">
@@ -62,10 +52,8 @@
   <div class="band b"></div>
 
   <div class="top">
-    <div class="jmark"><span class="glyph">J</span></div>
-    <div>
-      <div class="name">JELLY<span style="color:var(--brand-light)">·</span>STUDIO</div>
-      <div class="by">BY TOLLEY.IO</div>
+    <div class="jmark">
+      <div class="line">JELLY</div><div class="line">STUDIO</div><div class="sub">TOLLEY.IO</div>
     </div>
   </div>
 
@@ -73,7 +61,7 @@
   <div class="strip b2"></div>
 
   <div class="bottom">
-    <div class="hook">The most affordable way<br>to make faceless videos.</div>
+    <div class="hook">The most affordable way<br>to make <span class="pink">faceless videos.</span></div>
     <div class="url">tolley.io/animate</div>
     <div class="tag">Public beta · invite only</div>
   </div>

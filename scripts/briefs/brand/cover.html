@@ -1,65 +1,54 @@
 <meta charset="utf-8">
 <title>Jelly Studio — Facebook cover 1640×624</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_base.css">
 <style>
-  /* 1640×624. Facebook's own safe area is the centred 1200×624; on desktop the
+  /* 1640×624. Facebook's safe area is the centred 1200×624; on desktop the
      176px profile circle also punches the lower-LEFT corner, so nothing that
-     has to be read lives below y≈300 left of x≈470. Type is sized for the 50%
+     has to be read sits below y≈300 left of x≈470. Type is sized for the 50%
      desktop render, not 1:1. */
   body { width: 1640px; height: 624px; }
   .stage { width: 1640px; height: 624px; }
 
-  .lockup { position: absolute; left: 250px; top: 62px; display: flex; align-items: center; gap: 16px; }
-  .lockup .jmark { width: 58px; height: 58px; box-shadow: 0 6px 18px rgba(124, 58, 237, 0.45); }
-  .lockup .jmark .glyph { font-size: 35px; transform: translateX(0.055em); }
-  .lockup .name {
-    font-family: var(--mono); font-weight: 600; font-size: 19px;
-    letter-spacing: 0.30em; color: var(--text);
-  }
-  .lockup .by {
-    font-family: var(--mono); font-size: 13px; letter-spacing: 0.22em;
-    color: var(--text-3); margin-top: 5px;
-  }
+  .lockup { position: absolute; left: 250px; top: 60px; }
+  .lockup .jmark { width: 62px; font-size: calc(62px / 340 * 16); }
+  .lockup .name { font-size: 22px; }
+  .lockup .by { font-size: 12px; margin-top: 7px; }
 
-  .copy { position: absolute; left: 470px; top: 132px; width: 580px; }
-  .badge { font-size: 13.5px; padding: 9px 19px; }
+  .copy { position: absolute; left: 470px; top: 128px; width: 580px; }
+  .badge { font-size: 13px; padding: 9px 19px; }
 
   h1 {
     margin: 22px 0 0;
-    font-family: var(--display); font-weight: 750;
-    font-size: 45px; line-height: 1.1; letter-spacing: -0.026em; color: var(--text);
+    font-family: var(--display); font-weight: 700;
+    font-size: 46px; line-height: 1.1; letter-spacing: -0.038em; color: var(--off-white);
   }
-  h1 .it { font-size: 48px; letter-spacing: -0.01em; }
+  h1 .pink { color: var(--pink); }
 
   .sub {
-    margin-top: 24px; max-width: 620px;
-    font-family: var(--mono); font-size: 18px; line-height: 1.75;
-    color: var(--text-2);
+    margin-top: 24px;
+    font-family: var(--mono); font-size: 17.5px; line-height: 1.78; color: var(--muted);
   }
-  .sub b { color: var(--text); font-weight: 600; }
+  .sub b { color: var(--off-white); font-weight: 500; }
 
   .url {
-    position: absolute; left: 470px; top: 466px;
+    position: absolute; left: 470px; top: 462px;
     display: flex; align-items: center; gap: 12px;
-    font-family: var(--mono); font-size: 25px; font-weight: 700;
-    letter-spacing: 0.05em; color: var(--brand-light);
+    font-family: var(--mono); font-weight: 500; font-size: 25px;
+    letter-spacing: 0.02em; color: var(--pink);
   }
-  .url .arrow { font-size: 19px; }
-
   .note {
-    position: absolute; left: 470px; top: 519px;
-    font-family: var(--mono); font-size: 15px; letter-spacing: 0.11em;
-    text-transform: uppercase; color: var(--text-3);
+    position: absolute; left: 470px; top: 516px;
+    font-family: var(--mono); font-size: 14.5px; letter-spacing: 0.11em;
+    text-transform: uppercase; color: var(--muted);
   }
 
-  /* right: a real render, in a card with a violet sprocket rail */
+  /* right: a real render */
   .screen {
-    position: absolute; right: 224px; top: 128px; width: 330px;
-    background: linear-gradient(160deg, var(--card-alt), var(--card));
-    border: 1px solid var(--brand-line); border-radius: 12px;
+    position: absolute; right: 224px; top: 126px; width: 330px;
+    background: var(--studio);
+    border: 1px solid var(--pink-line); border-radius: 14px;
     padding: 13px 13px 11px;
     box-shadow: 0 34px 80px -30px rgba(0, 0, 0, 0.9);
   }
@@ -67,44 +56,47 @@
   .screen .head {
     display: flex; justify-content: space-between; align-items: center; gap: 10px;
     font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em;
-    color: var(--text-3); text-transform: uppercase;
-    padding-bottom: 10px; border-bottom: 1px dashed var(--brand-line);
+    color: var(--muted); text-transform: uppercase;
+    padding-bottom: 10px; border-bottom: 1px dashed var(--pink-line);
   }
-  .screen .head .run { color: var(--brand-light); }
+  .screen .head .run { color: var(--pink); }
   .screen img {
     display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover;
-    border-radius: 6px; border: 1px solid var(--brand-line); background: #000;
+    border-radius: 7px; border: 1px solid var(--hairline); background: #000;
     margin-top: 11px;
   }
   .screen .foot {
     display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
-    margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--brand-line);
+    margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--pink-line);
     font-family: var(--mono);
   }
-  .screen .foot .ttl { font-size: 13px; color: var(--text-2); }
-  .screen .foot .cost { font-size: 22px; font-weight: 700; color: var(--brand-light); }
-  .screen .foot .cost small { font-size: 11px; color: var(--text-3); font-weight: 400; letter-spacing: 0.1em; }
+  .screen .foot .ttl { font-size: 12.5px; color: var(--muted); }
+  .screen .foot .cost { font-size: 22px; font-weight: 500; color: var(--pink); }
+  .screen .foot .cost small { font-size: 10.5px; color: var(--muted); letter-spacing: 0.1em; }
 </style>
 
 <div class="stage">
   <div class="glow"></div>
-
-  <div class="sprockets" style="left:0;right:0;top:0;height:22px;background-size:34px 100%;border-inline:0;border-bottom:1px solid var(--brand-line);"></div>
-  <div class="sprockets" style="left:0;right:0;bottom:0;height:22px;background-size:34px 100%;border-inline:0;border-top:1px solid var(--brand-line);"></div>
+  <div class="sprockets" style="left:0;right:0;top:0;height:22px;background-size:34px 100%;border-inline:0;border-bottom:1px solid var(--pink-line);"></div>
+  <div class="sprockets" style="left:0;right:0;bottom:0;height:22px;background-size:34px 100%;border-inline:0;border-top:1px solid var(--pink-line);"></div>
 
   <div class="inner">
 
     <div class="lockup">
-      <div class="jmark"><span class="glyph">J</span></div>
+      <div class="jmark compact">
+        <div class="line">JELLY</div>
+        <div class="line">STUDIO</div>
+        <div class="sub">TOLLEY.IO</div>
+      </div>
       <div>
-        <div class="name">JELLY<span style="color:var(--brand-light)">·</span>STUDIO</div>
+        <div class="name">Jelly Studio</div>
         <div class="by">BY TOLLEY.IO</div>
       </div>
     </div>
 
     <div class="copy">
-      <div class="badge"><span class="dot"></span>PUBLIC BETA · INVITE ONLY</div>
-      <h1>The most affordable way<br>to make <span class="it">faceless videos.</span></h1>
+      <div class="badge"><span class="dot"></span>Public beta · invite only</div>
+      <h1>The most affordable way<br>to make <span class="pink">faceless videos.</span></h1>
       <p class="sub">
         Pay only for what you render.<br>
         <b>No subscription. No commitment.</b><br>
@@ -112,7 +104,7 @@
       </p>
     </div>
 
-    <div class="url"><span class="arrow">▸</span>tolley.io/animate</div>
+    <div class="url">tolley.io/animate</div>
     <div class="note">Cloned voice · generated scenes, not stock · no watermark</div>
 
     <figure class="screen">

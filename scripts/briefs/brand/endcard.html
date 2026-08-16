@@ -1,46 +1,41 @@
 <meta charset="utf-8">
 <title>End card — 1280×720 overlay</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_base.css">
 <style>
-  /* Rendered with omitBackground, so the scrim below is the only ground and
-     ffmpeg can fade the whole PNG in over the last seconds of the clip. The
-     scrim is near-opaque: at 0.93 the burned-in captions ghosted through. */
+  /* Rendered with omitBackground so ffmpeg can fade the whole PNG in over the
+     last seconds. The scrim is near-opaque: at 0.93 the burned-in captions
+     ghosted through behind the mark. */
   body { width: 1280px; height: 720px; }
   .stage { width: 1280px; height: 720px; }
   .scrim {
     position: absolute; inset: 0;
-    background: radial-gradient(70% 90% at 50% 45%, rgba(10, 10, 16, 0.975), rgba(10, 10, 16, 0.995));
+    background: radial-gradient(70% 90% at 50% 45%, rgba(13, 13, 16, 0.975), rgba(13, 13, 16, 0.995));
   }
   .inner { display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
-  .jmark { width: 118px; height: 118px; box-shadow: 0 12px 34px rgba(124, 58, 237, 0.5); }
-  .jmark .glyph { font-size: 72px; transform: translateX(0.055em); }
+  .jmark { width: 172px; font-size: calc(172px / 340 * 16); }
 
-  .name {
-    margin-top: 28px; font-family: var(--mono); font-weight: 600;
-    font-size: 30px; letter-spacing: 0.34em; color: var(--text); text-indent: 0.34em;
-  }
   .made {
-    margin-top: 18px; font-family: var(--display); font-weight: 500;
-    font-size: 26px; color: var(--text-2);
+    margin-top: 34px; font-family: var(--display); font-weight: 500;
+    font-size: 26px; letter-spacing: -0.02em; color: var(--muted);
   }
   .url {
-    margin-top: 30px; font-family: var(--mono); font-weight: 700;
-    font-size: 34px; letter-spacing: 0.05em; color: var(--brand-light);
+    margin-top: 20px; font-family: var(--mono); font-weight: 500;
+    font-size: 33px; letter-spacing: 0.02em; color: var(--pink);
   }
   .tag {
-    margin-top: 26px; font-family: var(--mono); font-size: 15px; letter-spacing: 0.24em;
-    text-transform: uppercase; color: var(--text-3);
+    margin-top: 22px; font-family: var(--mono); font-size: 14px; letter-spacing: 0.24em;
+    text-transform: uppercase; color: var(--muted);
   }
 </style>
 <div class="stage">
   <div class="scrim"></div>
   <div class="inner">
-    <div class="jmark"><span class="glyph">J</span></div>
-    <div class="name">JELLY<span style="color:var(--brand-light)">·</span>STUDIO</div>
+    <div class="jmark">
+      <div class="line">JELLY</div><div class="line">STUDIO</div><div class="sub">TOLLEY.IO</div>
+    </div>
     <div class="made">made with Jelly Studio</div>
     <div class="url">tolley.io/animate</div>
     <div class="tag">Public beta · invite only</div>
