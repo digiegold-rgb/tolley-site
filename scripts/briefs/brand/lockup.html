@@ -1,0 +1,39 @@
+<meta charset="utf-8">
+<title>Jelly Studio — horizontal lockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_base.css">
+<style>
+  /* The wordmark lockup: mark + JELLY STUDIO + by tolley.io. This is where the
+     name lives at readable size — the square avatar is mark-only on purpose. */
+  body { width: 1600px; height: 400px; }
+  .stage { width: 1600px; height: 400px; }
+  .inner { display: flex; align-items: center; justify-content: center; gap: 46px; }
+
+  .jmark { width: 190px; height: 190px; box-shadow: 0 18px 52px rgba(124, 58, 237, 0.45); }
+  .jmark .glyph { font-size: 116px; transform: translateX(0.055em); }
+
+  .name {
+    font-family: var(--mono); font-weight: 600; font-size: 74px;
+    letter-spacing: 0.20em; color: var(--text);
+  }
+  .name .sep { color: var(--brand-light); }
+  .by {
+    margin-top: 20px;
+    font-family: var(--mono); font-size: 26px; letter-spacing: 0.30em;
+    color: var(--text-3);
+  }
+</style>
+
+<div class="stage">
+  <div class="glow"></div>
+  <div class="inner">
+    <div class="jmark"><span class="glyph">J</span></div>
+    <div>
+      <div class="name">JELLY<span class="sep">·</span>STUDIO</div>
+      <div class="by">BY TOLLEY.IO</div>
+    </div>
+  </div>
+  <div class="grain"></div>
+</div>

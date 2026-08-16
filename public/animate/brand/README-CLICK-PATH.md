@@ -28,8 +28,10 @@ paste is in `COPY.md` next to this file.
 6. Facebook auto-creates a "changed profile picture" post. Leave it; it is your
    first bit of reach. Optionally add the caption from `COPY.md` post 1.
 
-*If the crop tool insists on cutting the wordmark, use
-`logo-mark-transparent.png` instead — it is the mark with no text.*
+*The profile mark carries no wordmark on purpose — it would be unreadable at
+Facebook's 170px and the avatar is circle-cropped anyway. The name lives on the
+cover, every post, and `logo-lockup-1600x400.png`. If you need the mark on a
+non-dark ground, use `logo-mark-transparent.png`.*
 
 ## 2. Cover photo (2 min)
 

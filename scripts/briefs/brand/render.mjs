@@ -17,6 +17,7 @@ const JOBS = [
   { out: "logo-1024.png", html: "logo.html", w: 1024, h: 1024 },
   { out: "logo-512.png", html: "logo.html", w: 512, h: 512 },
   { out: "logo-mark-transparent.png", html: "logo.html", w: 1024, h: 1024, bare: true },
+  { out: "logo-lockup-1600x400.png", html: "lockup.html", w: 1600, h: 400 },
   { out: "cover-1640x624.png", html: "cover.html", w: 1640, h: 624 },
   { out: "cover-mobile-820x360.png", html: "cover-mobile.html", w: 820, h: 360 },
   { out: "post-1-what-it-is.png", html: "post-1.html", w: 1080, h: 1080 },
@@ -26,6 +27,7 @@ const JOBS = [
   { out: "endcard-1280x720.png", html: "endcard.html", w: 1280, h: 720, bare: true },
   { out: "endcard-1080x1920.png", html: "endcard-vertical.html", w: 1080, h: 1920, bare: true },
   { out: "reels-frame-1080x1920.png", html: "reels-frame.html", w: 1080, h: 1920, bare: true },
+  { out: "candidates.png", html: "candidates.html", w: 1500, h: 620, scratch: true },
 ];
 
 const only = process.argv.slice(2);
@@ -57,8 +59,9 @@ for (const job of jobs) {
     ].map(([f, spec]) => `${f.split(" ")[0]}:${document.fonts.check(`${spec} "${f}"`) ? "ok" : "MISSING"}`),
   );
   await page.waitForTimeout(220);
+  const dest = job.scratch ? path.join(HERE, job.out) : path.join(OUT, job.out);
   await page.screenshot({
-    path: path.join(OUT, job.out),
+    path: dest,
     type: "png",
     omitBackground: !!job.bare,
     clip: { x: 0, y: 0, width: job.w, height: job.h },

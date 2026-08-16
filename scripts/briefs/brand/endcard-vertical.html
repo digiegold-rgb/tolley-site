@@ -9,40 +9,35 @@
   .stage { width: 1080px; height: 1920px; }
   .scrim {
     position: absolute; inset: 0;
-    background: radial-gradient(80% 55% at 50% 47%, rgba(13, 11, 8, 0.975), rgba(13, 11, 8, 0.995));
+    background: radial-gradient(80% 55% at 50% 47%, rgba(10, 10, 16, 0.975), rgba(10, 10, 16, 0.995));
   }
   .inner { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .mark { width: 200px; height: 200px; }
+
+  .jmark { width: 194px; height: 194px; box-shadow: 0 18px 52px rgba(124, 58, 237, 0.5); }
+  .jmark .glyph { font-size: 118px; transform: translateX(0.055em); }
+
   .name {
     margin-top: 40px; font-family: var(--mono); font-weight: 600;
-    font-size: 44px; letter-spacing: 0.34em; color: var(--cream); text-indent: 0.34em;
+    font-size: 44px; letter-spacing: 0.34em; color: var(--text); text-indent: 0.34em;
   }
   .made {
     margin-top: 28px; font-family: var(--display); font-weight: 500;
-    font-size: 40px; color: var(--cream-dim);
+    font-size: 40px; color: var(--text-2);
   }
   .url {
     margin-top: 44px; font-family: var(--mono); font-weight: 700;
-    font-size: 50px; letter-spacing: 0.04em; color: var(--amber);
+    font-size: 50px; letter-spacing: 0.04em; color: var(--brand-light);
   }
   .tag {
     margin-top: 36px; font-family: var(--mono); font-size: 22px; letter-spacing: 0.24em;
-    text-transform: uppercase; color: var(--cream-faint);
+    text-transform: uppercase; color: var(--text-3);
   }
 </style>
 <div class="stage">
   <div class="scrim"></div>
   <div class="inner">
-    <svg class="mark" viewBox="0 0 700 700" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="350" cy="350" r="310" fill="#15120d" stroke="#ffb83d" stroke-width="34"/>
-      <g fill="#0d0b08" stroke="#ffb83d" stroke-width="6" stroke-opacity="0.5">
-        <circle cx="350" cy="52" r="26"/><circle cx="648" cy="350" r="26"/>
-        <circle cx="350" cy="648" r="26"/><circle cx="52" cy="350" r="26"/>
-      </g>
-      <text x="352" y="482" text-anchor="middle" fill="#ffb83d"
-            font-family="Bricolage Grotesque" font-weight="800" font-size="390">J</text>
-    </svg>
-    <div class="name">JELLY<span style="color:var(--amber)">·</span>STUDIO</div>
+    <div class="jmark"><span class="glyph">J</span></div>
+    <div class="name">JELLY<span style="color:var(--brand-light)">·</span>STUDIO</div>
     <div class="made">made with Jelly Studio</div>
     <div class="url">tolley.io/animate</div>
     <div class="tag">Public beta · invite only</div>

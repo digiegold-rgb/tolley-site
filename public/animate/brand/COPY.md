@@ -281,24 +281,45 @@ in `~/Shared/jelly-studio-brand/` on the Mac.
 | `endcard-1280x720.png` | alpha | Reusable end card for future 16:9 cuts |
 | `endcard-1080x1920.png` | alpha | Reusable end card for future vertical cuts |
 | `reels-frame-1080x1920.png` | alpha | Reusable branded frame for vertical cuts |
+| `logo-lockup-1600x400.png` | 1600×400 | Horizontal wordmark lockup for email/decks |
 
-The three video files and all three overlay PNGs carry no pricing claim at all —
-they say "made with Jelly Studio · tolley.io/animate · public beta, invite only"
-— so the Aug 2026 positioning change did not require re-cutting them.
+The three video files and all three overlay PNGs carry no pricing claim — they
+say "made with Jelly Studio · tolley.io/animate · public beta, invite only".
+They were re-cut on 16 Aug 2026 so the end card and Reels frame carry the new
+purple mark.
 
-### Brand reference (matches `components/animate/landing/landing.css`)
+### Brand reference (matches `components/animate/tokens.ts`)
 
-| Token | Value |
-| --- | --- |
-| Ink (background) | `#0d0b08` |
-| Ink 2 / panel | `#15120d` / `#1c1812` |
-| Amber (primary) | `#ffb83d` |
-| Cream (text) | `#f4ead8` |
-| Good (money/green) | `#7fd98c` |
-| Display font | Bricolage Grotesque 700–800 |
-| Accent italic | Instrument Serif italic 400 |
-| Labels & numbers | JetBrains Mono 400–700 |
+Purple is the primary colour on every asset. The kit takes its values straight
+from `JELLY_TOKENS`, so the Facebook Page and the product cannot drift apart.
 
-The mark has two forms on purpose: **large** (≥256px) uses the reel with the
-jelly drop falling off the J; **small** (≤120px, lockups and end cards) drops
-the drop, because at that size it reads as an exclamation mark.
+| Token | Value | Where |
+| --- | --- | --- |
+| Brand | `#8B5CF6` | mark gradient start, rules, outlines |
+| Brand light | `#A78BFA` | URLs, prices, accents on dark |
+| Brand dark | `#7C3AED` | mark shadow, deep gradient |
+| Mark gradient | `linear-gradient(135deg, #8B5CF6 → #A78BFA)` | the mark itself |
+| Body | `#0A0A10` | page ground |
+| Card / card alt | `#16141F` / `#1C1A28` | panels |
+| Text | `#F1F0F5` | headlines and body |
+| Text secondary | `#9794A8` | sub-copy |
+| Amber | `#F59E0B` | **status dot only** — one 8px dot on the beta badge |
+| Display font | Bricolage Grotesque 700–800 | headlines |
+| Accent italic | Instrument Serif italic 400, `#A78BFA → #CBB8FD` | the one italic phrase per asset |
+| Labels & numbers | JetBrains Mono 400–700 | eyebrows, prices, URLs |
+
+### The mark
+
+A **jelly-wobble squircle** — an asymmetric rounded shape (uneven corner radii
+give the soft bounce) filled with the product's own create-gradient, carrying a
+bold white **J**. No droplet, no food imagery.
+
+- `logo-1024.png` / `logo-512.png` — mark on the dark plate, for the profile
+  picture. **Mark only, no wordmark:** at Facebook's 170px display a wordmark
+  inside the square degrades to unreadable texture, and the avatar also gets
+  circle-cropped. The J alone still reads at the 48px feed size.
+- `logo-mark-transparent.png` — the same mark on transparency, for any ground.
+- `logo-lockup-1600x400.png` — the horizontal wordmark lockup: mark +
+  **JELLY·STUDIO** + **BY TOLLEY.IO**. Use this anywhere the name needs to be
+  read — email headers, decks, slide footers. The same lockup is built into the
+  cover, all four posts, the end cards and the Reels frame.

@@ -6,39 +6,38 @@
 <link rel="stylesheet" href="_base.css">
 <style>
   /* No cost formula on this card by design — public messaging is the total a
-     finished video came to, never how the total is built. The breakdown lives
-     on the in-app receipt. Every figure here is a reconciled render from
-     lib/vater/demo-videos.ts. */
+     finished video came to, never how the total is built. Every figure is a
+     reconciled render from lib/vater/demo-videos.ts. */
   .p-title { font-size: 54px; }
 
   .panel {
     margin-top: 30px; padding: 26px 34px 22px;
-    background: linear-gradient(160deg, var(--panel), var(--ink-2));
-    border: 1px solid var(--line); border-radius: 12px;
+    background: linear-gradient(160deg, var(--card-alt), var(--card));
+    border: 1px solid var(--brand-line); border-radius: 14px;
     box-shadow: 0 34px 90px -34px rgba(0, 0, 0, 0.9);
     font-family: var(--mono);
   }
   .panel .phead {
     display: flex; justify-content: space-between; align-items: center;
     font-size: 15px; letter-spacing: 0.18em; text-transform: uppercase;
-    color: var(--cream-faint); padding-bottom: 16px; border-bottom: 1px dashed var(--line);
+    color: var(--text-3); padding-bottom: 16px; border-bottom: 1px dashed var(--brand-line);
   }
 
   .row { display: flex; align-items: baseline; gap: 16px; margin-top: 19px; }
-  .row .len { font-size: 28px; font-weight: 600; color: var(--cream); min-width: 126px; }
+  .row .len { font-size: 28px; font-weight: 600; color: var(--text); min-width: 126px; }
   .row .len small {
     display: block; font-size: 13.5px; font-weight: 400; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--cream-faint); margin-top: 6px;
+    text-transform: uppercase; color: var(--text-3); margin-top: 6px;
   }
-  .row .dots { flex: 1; border-bottom: 1px dotted rgba(244, 234, 216, 0.2); transform: translateY(-7px); }
-  .row .amt { font-size: 33px; font-weight: 700; color: var(--good); }
+  .row .dots { flex: 1; border-bottom: 1px dotted rgba(167, 139, 250, 0.28); transform: translateY(-7px); }
+  .row .amt { font-size: 33px; font-weight: 700; color: var(--brand-light); }
 
   .kicker {
     margin-top: 26px; margin-bottom: 14px;
     font-family: var(--display); font-weight: 650;
-    font-size: 32px; line-height: 1.3; color: var(--cream);
+    font-size: 32px; line-height: 1.3; color: var(--text);
   }
-  .kicker span { color: var(--amber); }
+  .kicker span { color: var(--brand-light); }
 </style>
 <body class="post">
 <div class="stage">
@@ -48,17 +47,9 @@
 
     <div class="p-head">
       <div class="p-lockup">
-        <svg viewBox="0 0 700 700" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="350" cy="350" r="310" fill="#15120d" stroke="#ffb83d" stroke-width="34"/>
-          <g fill="#0d0b08" stroke="#ffb83d" stroke-width="6" stroke-opacity="0.5">
-            <circle cx="350" cy="52" r="26"/><circle cx="648" cy="350" r="26"/>
-            <circle cx="350" cy="648" r="26"/><circle cx="52" cy="350" r="26"/>
-          </g>
-          <text x="352" y="470" text-anchor="middle" fill="#ffb83d"
-                font-family="Bricolage Grotesque" font-weight="800" font-size="360">J</text>
-        </svg>
+        <div class="jmark"><span class="glyph">J</span></div>
         <div>
-          <div class="name">JELLY<span style="color:var(--amber)">·</span>STUDIO</div>
+          <div class="name">JELLY<span style="color:var(--brand-light)">·</span>STUDIO</div>
           <div class="by">BY TOLLEY.IO</div>
         </div>
       </div>

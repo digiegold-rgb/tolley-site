@@ -9,36 +9,35 @@
 
   .ticket {
     margin-top: 48px; position: relative;
-    padding: 36px 40px; border-radius: 12px;
-    border: 1px dashed var(--line-strong);
-    background: linear-gradient(160deg, rgba(28, 24, 18, 0.9), rgba(21, 18, 13, 0.9));
+    padding: 36px 40px; border-radius: 14px;
+    border: 1px dashed var(--brand-outline);
+    background: linear-gradient(160deg, rgba(28, 26, 40, 0.92), rgba(22, 20, 31, 0.92));
   }
-  /* punched ticket notches */
   .ticket::before, .ticket::after {
     content: ""; position: absolute; top: 50%; width: 30px; height: 30px;
-    border-radius: 50%; background: var(--ink); transform: translateY(-50%);
-    border: 1px dashed var(--line-strong);
+    border-radius: 50%; background: var(--body); transform: translateY(-50%);
+    border: 1px dashed var(--brand-outline);
   }
   .ticket::before { left: -16px; }
   .ticket::after { right: -16px; }
 
   .ticket .k {
     font-family: var(--mono); font-size: 16px; letter-spacing: 0.24em;
-    text-transform: uppercase; color: var(--cream-faint);
+    text-transform: uppercase; color: var(--text-3);
   }
   .ticket .code {
     margin-top: 14px; font-family: var(--mono); font-size: 48px; font-weight: 700;
-    letter-spacing: 0.18em; color: var(--amber);
+    letter-spacing: 0.18em; color: var(--brand-light);
   }
   .ticket .sub {
     margin-top: 16px; font-family: var(--mono); font-size: 20px; line-height: 1.6;
-    color: var(--cream-dim);
+    color: var(--text-2);
   }
 
   .bullets { margin-top: 46px; display: flex; flex-direction: column; gap: 20px; }
-  .b { display: flex; gap: 18px; align-items: baseline; font-size: 29px; line-height: 1.35; color: var(--cream); }
-  .b .m { flex: none; color: var(--amber); font-family: var(--mono); font-size: 22px; }
-  .b small { display: block; font-family: var(--mono); font-size: 17px; color: var(--cream-faint); margin-top: 7px; letter-spacing: 0.03em; }
+  .b { display: flex; gap: 18px; align-items: baseline; font-size: 29px; line-height: 1.35; color: var(--text); }
+  .b .m { flex: none; color: var(--brand-light); font-family: var(--mono); font-size: 22px; }
+  .b small { display: block; font-family: var(--mono); font-size: 17px; color: var(--text-3); margin-top: 7px; letter-spacing: 0.03em; }
 </style>
 <body class="post">
 <div class="stage">
@@ -48,17 +47,9 @@
 
     <div class="p-head">
       <div class="p-lockup">
-        <svg viewBox="0 0 700 700" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="350" cy="350" r="310" fill="#15120d" stroke="#ffb83d" stroke-width="34"/>
-          <g fill="#0d0b08" stroke="#ffb83d" stroke-width="6" stroke-opacity="0.5">
-            <circle cx="350" cy="52" r="26"/><circle cx="648" cy="350" r="26"/>
-            <circle cx="350" cy="648" r="26"/><circle cx="52" cy="350" r="26"/>
-          </g>
-          <text x="352" y="470" text-anchor="middle" fill="#ffb83d"
-                font-family="Bricolage Grotesque" font-weight="800" font-size="360">J</text>
-        </svg>
+        <div class="jmark"><span class="glyph">J</span></div>
         <div>
-          <div class="name">JELLY<span style="color:var(--amber)">·</span>STUDIO</div>
+          <div class="name">JELLY<span style="color:var(--brand-light)">·</span>STUDIO</div>
           <div class="by">BY TOLLEY.IO</div>
         </div>
       </div>
@@ -71,7 +62,7 @@
     <div class="ticket">
       <div class="k">Admit one · Jelly Studio beta</div>
       <div class="code">DM US FOR A CODE</div>
-      <div class="sub">Message this page the word <b style="color:var(--cream)">INVITE</b> and we send one back.</div>
+      <div class="sub">Message this page the word <b style="color:var(--text)">INVITE</b> and we send one back.</div>
     </div>
 
     <div class="bullets">

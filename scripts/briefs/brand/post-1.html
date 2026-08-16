@@ -5,16 +5,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_base.css">
 <style>
-  .steps { margin-top: 52px; display: flex; flex-direction: column; gap: 30px; }
+  .p-title { font-size: 62px; }
+  .steps { margin-top: 50px; display: flex; flex-direction: column; gap: 30px; }
   .step { display: flex; gap: 26px; align-items: flex-start; }
   .step .n {
     flex: none; width: 54px; height: 54px; border-radius: 50%;
-    border: 1px solid var(--line-strong); background: var(--amber-soft);
+    border: 1px solid var(--brand-outline); background: var(--brand-ghost);
     display: grid; place-items: center;
-    font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--amber);
+    font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--brand-light);
   }
-  .step .t { font-size: 40px; font-weight: 650; line-height: 1.2; letter-spacing: -0.015em; color: var(--cream); }
-  .step .d { margin-top: 9px; font-family: var(--mono); font-size: 20px; line-height: 1.55; color: var(--cream-dim); }
+  .step .t { font-size: 40px; font-weight: 650; line-height: 1.2; letter-spacing: -0.015em; color: var(--text); }
+  .step .d { margin-top: 9px; font-family: var(--mono); font-size: 20px; line-height: 1.55; color: var(--text-2); }
 </style>
 <body class="post">
 <div class="stage">
@@ -24,17 +25,9 @@
 
     <div class="p-head">
       <div class="p-lockup">
-        <svg viewBox="0 0 700 700" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="350" cy="350" r="310" fill="#15120d" stroke="#ffb83d" stroke-width="34"/>
-          <g fill="#0d0b08" stroke="#ffb83d" stroke-width="6" stroke-opacity="0.5">
-            <circle cx="350" cy="52" r="26"/><circle cx="648" cy="350" r="26"/>
-            <circle cx="350" cy="648" r="26"/><circle cx="52" cy="350" r="26"/>
-          </g>
-          <text x="352" y="470" text-anchor="middle" fill="#ffb83d"
-                font-family="Bricolage Grotesque" font-weight="800" font-size="360">J</text>
-        </svg>
+        <div class="jmark"><span class="glyph">J</span></div>
         <div>
-          <div class="name">JELLY<span style="color:var(--amber)">·</span>STUDIO</div>
+          <div class="name">JELLY<span style="color:var(--brand-light)">·</span>STUDIO</div>
           <div class="by">BY TOLLEY.IO</div>
         </div>
       </div>
