@@ -24,6 +24,29 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   alternates: { canonical: "https://www.tolley.io/animate" },
+  openGraph: {
+    type: "website",
+    siteName: "Jelly Studio",
+    url: "https://www.tolley.io/animate",
+    title: "Jelly Studio — your life is already a motion picture",
+    description:
+      "Real cinematic films about people’s lives — your cloned voice, a generated scene for every line, no stock footage, no watermark. Pay per film ($1–7 all in), never per month. Public beta.",
+    images: [
+      {
+        url: "https://www.tolley.io/animate/brand/og-cinema-1200x630.png",
+        width: 1200,
+        height: 630,
+        alt: "Jelly Studio — Your life is already a motion picture. We just develop the film.",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Jelly Studio — your life is already a motion picture",
+    description:
+      "Real cinematic films about people’s lives. Pay per film ($1–7 all in), never per month. Public beta.",
+    images: ["https://www.tolley.io/animate/brand/og-cinema-1200x630.png"],
+  },
   title:
     "Jelly Studio — your life is already a motion picture · pay per film, no subscription · public beta",
   description:

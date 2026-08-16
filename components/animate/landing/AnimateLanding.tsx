@@ -50,7 +50,6 @@ import { getOpsRate } from "@/lib/vater/billing/ops-fee";
 import { localEstimate, MOTION_USD_PER_MIN } from "@/lib/vater/billing/estimate";
 import {
   LIVE_DEMOS,
-  PENDING_DEMO_COUNT,
   demoPerMinute,
 } from "@/lib/vater/demo-videos";
 
@@ -354,12 +353,13 @@ export function AnimateLanding(): React.ReactElement {
           </div>
         </div>
 
-        {/* The floating stack. Card A (front) is a real finished render; the two
-          * behind it are a real frame of that same render and an honest slate —
-          * never a picture from a film that does not exist. */}
+        {/* The floating stack — three REAL Jelly renders: front = The Quiet Exit
+          * (demo #23), mid = Digital Gold Diggers reel, back = the Lady. Never a
+          * picture from a film that does not exist. */}
         <div className="jsl-filmstage">
           <div className="jsl-filmstack">
-            {/* back — LIVE_DEMOS[2] when one clears consent, otherwise the slate */}
+            {/* back — the Lady (persona character from the shorts lane; frame
+              * from her locked character reference, a real render). */}
             <div
               className="jc-floatC"
               style={{
@@ -375,17 +375,12 @@ export function AnimateLanding(): React.ReactElement {
                 background: t.cardAlt,
               }}
             >
-              {LIVE_DEMOS[2] ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={LIVE_DEMOS[2].poster} alt={LIVE_DEMOS[2].title} style={FILM_MEDIA_STYLE} />
-              ) : (
-                <PendingSlate />
-              )}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/animate/brand/poster-lady-1280x720.jpg" alt="The Lady — a Jelly Studio character" style={FILM_MEDIA_STYLE} />
             </div>
 
-            {/* mid — LIVE_DEMOS[1], else a real frame of the demo below it.
-              * poster-full-1280x720.jpg is a frame grab of THIS render
-              * (project cmst8pnwl0001l4ts3hx8hkux), not a stock image. */}
+            {/* mid — Digital Gold Diggers, the 30s demo reel (a real render;
+              * poster-dgd-30s-1280x720.jpg is a frame grab of it). */}
             <div
               className="jc-floatB"
               style={{
@@ -401,19 +396,8 @@ export function AnimateLanding(): React.ReactElement {
                 background: t.cardAlt,
               }}
             >
-              {LIVE_DEMOS[1] ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={LIVE_DEMOS[1].poster} alt={LIVE_DEMOS[1].title} style={FILM_MEDIA_STYLE} />
-              ) : featured ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src="/animate/brand/poster-full-1280x720.jpg"
-                  alt={`A frame from ${featured.title}`}
-                  style={FILM_MEDIA_STYLE}
-                />
-              ) : (
-                <PendingSlate />
-              )}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/animate/brand/poster-dgd-30s-1280x720.jpg" alt="Digital Gold Diggers — demo reel" style={FILM_MEDIA_STYLE} />
             </div>
 
             {/* front — the film itself */}
@@ -823,31 +807,3 @@ export function AnimateLanding(): React.ReactElement {
 
 /** The honest stand-in for a film that exists but has not cleared consent.
  *  Never a generated frame — see rule 3 in the header contract. */
-function PendingSlate(): React.ReactElement {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        textAlign: "center",
-        padding: 18,
-        background: "rgba(240,238,248,0.04)",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
-      }}
-    >
-      <span aria-hidden="true" style={{ color: JELLY_TOKENS.cyan, fontSize: 12 }}>●</span>
-      <span style={{ fontSize: 11, letterSpacing: "0.26em", textTransform: "uppercase", color: t.textFaint }}>
-        awaiting sign-off
-      </span>
-      <span style={{ fontSize: 12.5, color: t.textSecondary }}>
-        {PENDING_DEMO_COUNT} more films
-      </span>
-    </div>
-  );
-}
