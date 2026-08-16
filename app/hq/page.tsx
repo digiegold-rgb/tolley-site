@@ -640,6 +640,15 @@ function HqPageInner() {
               <summary className="tab-btn">📄 Docs ▾</summary>
               <div className="tab-docs-menu">
                 <a
+                  href="/research/jelly-competitor-gaps-2026-08.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeDocs}
+                >
+                  🥊 Competitor Gaps
+                  <span className="doc-sub">What TubeGen/Vidnoz/Argil/StoryShort/NoLang/Zebracat/Faceless.so have that Jelly doesn&apos;t — and how we add it — Aug 16, 2026</span>
+                </a>
+                <a
                   href="/research/jelly-beta-launch-2026-08.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
