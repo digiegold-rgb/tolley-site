@@ -373,3 +373,18 @@
   outline-offset: 3px;
   border-radius: 4px;
 }
+
+/* ── Now showing — demo reel ─────────────────────────────────────────── */
+.jsl-reel-strip::-webkit-scrollbar { display: none; }
+.jsl-reel-strip {
+  /* let the strip run edge-to-edge past the band's side padding */
+  margin-left: -36px;
+  margin-right: -36px;
+  scroll-padding: 0 36px;
+}
+.jsl-reel-card { transition: transform 0.25s ease; }
+.jsl-reel-card:hover { transform: translateY(-3px); }
+@media (max-width: 640px) {
+  .jsl-reel-strip { margin-left: -20px; margin-right: -20px; padding-left: 20px !important; padding-right: 20px !important; scroll-padding: 0 20px; }
+  .jsl-demos { padding-top: 60px !important; }
+}

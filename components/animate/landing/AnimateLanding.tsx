@@ -70,6 +70,8 @@ import {
 import { InviteRequestForm } from "./InviteRequestForm";
 import { CancelSubscriptionButton } from "./CancelSubscriptionButton";
 import { StoryChips, type StoryChip } from "./StoryChips";
+import { DemoReel } from "./DemoReel";
+import { LIVE_CLIPS } from "@/lib/vater/demo-clips";
 import { CINEMA_PALETTE, PricingCalculator } from "./PricingCalculator";
 import "./landing.css";
 
@@ -188,6 +190,52 @@ const LEAD: React.CSSProperties = {
   lineHeight: 1.7,
   margin: 0,
 };
+/* ── Interlude: bring your own everything ──────────────────────────────
+ * Answers the first-look question "do I have to use your scripts?" (beta
+ * feedback, 2026-08-16). Every card names a real studio surface
+ * (lib/vater/nav-visibility.ts): Direct / Script step, RSS Feeds + Autopilot,
+ * Script Review, Characters, Creator Models, Voices. No feature is promised
+ * that is not mounted in the Shell. */
+interface ByoCard { k: string; title: string; copy: string; where: string }
+const BYO: readonly ByoCard[] = [
+  {
+    k: "script",
+    title: "Your script, word for word",
+    copy: "Paste it, dictate it, or start from a one-line idea and let the studio draft. Either way you hold the pen — the studio only illustrates what you approve.",
+    where: "Direct · Script step",
+  },
+  {
+    k: "rss",
+    title: "Your feeds, on autopilot",
+    copy: "Point an RSS feed at the studio. It polls every 15 minutes and every new post becomes an episode draft in your voice, waiting for your yes.",
+    where: "RSS Feeds · Autopilot",
+  },
+  {
+    k: "llms",
+    title: "More than one writer in the room",
+    copy: "The writers’ room runs several large language models — one drafts, another reads it back and critiques — and you approve the final cut, or rewrite it.",
+    where: "Script Review",
+  },
+  {
+    k: "cast",
+    title: "Your own characters",
+    copy: "Mint a cast: name them, describe them, lock their look. They come back scene after scene, film after film, without drifting.",
+    where: "Characters · Styles",
+  },
+  {
+    k: "persona",
+    title: "A personality per channel",
+    copy: "Give each channel a creator model — its format, its pillars, its cadence — and every script it writes stays in that personality’s voice.",
+    where: "Creator Models",
+  },
+  {
+    k: "voice",
+    title: "Your voice, or a cast of them",
+    copy: "Clone yours from a short sample, or audition and lock a house voice per character. Narration, dialogue, both.",
+    where: "Voices",
+  },
+];
+
 const SECTION: React.CSSProperties = { paddingTop: 20, paddingBottom: 110 };
 /* MicroLabel defaults to nowrap, which is right for a ticket header and wrong
  * for "ACT IV — THE PRICE OF ADMISSION" on a 390px screen. */
@@ -293,8 +341,8 @@ export function AnimateLanding(): React.ReactElement {
         </span>
         <div style={{ flex: 1 }} />
         <div className="jsl-navlinks">
+          <a className="jc-nav-link jsl-navlink" href="#demos">Demos</a>
           <a className="jc-nav-link jsl-navlink" href="#stories">Stories</a>
-          <a className="jc-nav-link jsl-navlink" href="#reels">The reels</a>
           <a className="jc-nav-link jsl-navlink" href="#boxoffice">Box office</a>
           <PillButton variant="ghost" size="md" href={SIGNIN} data-testid="nav-sign-in">Sign in</PillButton>
           <PillButton variant="gradient" size="md" href={INVITE}>Request an invite</PillButton>
@@ -455,6 +503,24 @@ export function AnimateLanding(): React.ReactElement {
 
       <Marquee items={MARQUEE} />
 
+      {/* ══ Now showing — the demo reel ══════════════════════════════════ */}
+      {LIVE_CLIPS.length > 0 ? (
+        <section id="demos" className="jsl-band jsl-demos" style={{ paddingTop: 90, paddingBottom: 40, textAlign: "center" }}>
+          <div className="jc-rise">
+            <MicroLabel tone="cyan" style={ACT_LABEL}>NOW SHOWING — MADE HERE</MicroLabel>
+            <h2 style={{ ...H2, margin: "0 0 12px" }}>See what comes out the other end.</h2>
+            <p style={{ ...LEAD, margin: "0 auto 8px", maxWidth: 620 }}>
+              Eight-second excerpts of finished renders — long-form films from
+              Trey&apos;s library and vertical shorts from our own channels. Every
+              frame is generated; nothing is stock. Tap any card for the full piece.
+            </p>
+          </div>
+          <div className="jc-rise jsl-demos-reel">
+            <DemoReel clips={LIVE_CLIPS} />
+          </div>
+        </section>
+      ) : null}
+
       {/* ══ Act I — the story ════════════════════════════════════════════ */}
       <section id="stories" className="jsl-band" style={{ paddingTop: 100, paddingBottom: 100, textAlign: "center" }}>
         <div className="jc-rise">
@@ -464,6 +530,38 @@ export function AnimateLanding(): React.ReactElement {
             Not niches. Not trends. The stuff of an actual life. Tap one.
           </p>
           <StoryChips chips={chips} />
+        </div>
+      </section>
+
+      {/* ══ Interlude — bring your own everything ════════════════════════ */}
+      <section id="your-studio" className="jsl-band" style={SECTION}>
+        <div className="jc-rise">
+          <MicroLabel tone="cyan" style={ACT_LABEL}>INTERLUDE — YOUR STUDIO, YOUR RULES</MicroLabel>
+          <h2 style={{ ...H2, maxWidth: 720, margin: "0 0 14px" }}>
+            Not a menu of canned scripts.
+            <br />
+            <GradientText serif as="span">Bring your own everything.</GradientText>
+          </h2>
+          <p style={{ ...LEAD, maxWidth: 640, margin: "0 0 40px" }}>
+            The stories above are prompts, not the product. Faceless channel,
+            explainer series, a cast of recurring characters, a feed that turns
+            itself into episodes — the studio takes whatever you bring and
+            renders it. It goes as far as your mind does.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+            {BYO.map((c, i) => (
+              <GlassCard key={c.k} hover radius={JELLY_TOKENS.radius.xl} padding="24px 22px" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <MicroLabel tone="violet" size={11} tracking="0.22em">
+                  {String(i + 1).padStart(2, "0")} — {c.where}
+                </MicroLabel>
+                <div style={{ fontWeight: 600, fontSize: 17, lineHeight: 1.25 }}>{c.title}</div>
+                <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: t.textSecondary }}>{c.copy}</p>
+              </GlassCard>
+            ))}
+          </div>
+          <p style={{ margin: "18px 0 0", fontSize: 12.5, color: t.textFaint, lineHeight: 1.6 }}>
+            Feeds and Autopilot are switched on per account during the beta — ask when you sign in.
+          </p>
         </div>
       </section>
 
