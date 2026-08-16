@@ -1,0 +1,88 @@
+<meta charset="utf-8">
+<title>Post 4 — invite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_base.css">
+<style>
+  .p-title { font-size: 86px; margin-top: 26px; }
+
+  .ticket {
+    margin-top: 48px; position: relative;
+    padding: 36px 40px; border-radius: 12px;
+    border: 1px dashed var(--line-strong);
+    background: linear-gradient(160deg, rgba(28, 24, 18, 0.9), rgba(21, 18, 13, 0.9));
+  }
+  /* punched ticket notches */
+  .ticket::before, .ticket::after {
+    content: ""; position: absolute; top: 50%; width: 30px; height: 30px;
+    border-radius: 50%; background: var(--ink); transform: translateY(-50%);
+    border: 1px dashed var(--line-strong);
+  }
+  .ticket::before { left: -16px; }
+  .ticket::after { right: -16px; }
+
+  .ticket .k {
+    font-family: var(--mono); font-size: 16px; letter-spacing: 0.24em;
+    text-transform: uppercase; color: var(--cream-faint);
+  }
+  .ticket .code {
+    margin-top: 14px; font-family: var(--mono); font-size: 48px; font-weight: 700;
+    letter-spacing: 0.18em; color: var(--amber);
+  }
+  .ticket .sub {
+    margin-top: 16px; font-family: var(--mono); font-size: 20px; line-height: 1.6;
+    color: var(--cream-dim);
+  }
+
+  .bullets { margin-top: 46px; display: flex; flex-direction: column; gap: 20px; }
+  .b { display: flex; gap: 18px; align-items: baseline; font-size: 29px; line-height: 1.35; color: var(--cream); }
+  .b .m { flex: none; color: var(--amber); font-family: var(--mono); font-size: 22px; }
+  .b small { display: block; font-family: var(--mono); font-size: 17px; color: var(--cream-faint); margin-top: 7px; letter-spacing: 0.03em; }
+</style>
+<body class="post">
+<div class="stage">
+  <div class="glow"></div>
+  <div class="sprockets" style="left:0;top:0;bottom:0;width:26px;border-left:0;"></div>
+  <div class="inner">
+
+    <div class="p-head">
+      <div class="p-lockup">
+        <svg viewBox="0 0 700 700" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="350" cy="350" r="310" fill="#15120d" stroke="#ffb83d" stroke-width="34"/>
+          <g fill="#0d0b08" stroke="#ffb83d" stroke-width="6" stroke-opacity="0.5">
+            <circle cx="350" cy="52" r="26"/><circle cx="648" cy="350" r="26"/>
+            <circle cx="350" cy="648" r="26"/><circle cx="52" cy="350" r="26"/>
+          </g>
+          <text x="352" y="470" text-anchor="middle" fill="#ffb83d"
+                font-family="Bricolage Grotesque" font-weight="800" font-size="360">J</text>
+        </svg>
+        <div>
+          <div class="name">JELLY<span style="color:var(--amber)">·</span>STUDIO</div>
+          <div class="by">BY TOLLEY.IO</div>
+        </div>
+      </div>
+      <div class="tag">PUBLIC BETA</div>
+    </div>
+
+    <div class="p-eyebrow">Doors are open — a few seats at a time</div>
+    <h1 class="p-title">Invite<br><span class="it">only.</span></h1>
+
+    <div class="ticket">
+      <div class="k">Admit one · Jelly Studio beta</div>
+      <div class="code">DM US FOR A CODE</div>
+      <div class="sub">Message this page the word <b style="color:var(--cream)">INVITE</b> and we send one back.</div>
+    </div>
+
+    <div class="bullets">
+      <div class="b"><span class="m">▸</span><span>$10 starter credit once a card is on file<small>STRIPE $0 HOLD — NOTHING CHARGED UNTIL YOU SPEND IT</small></span></div>
+      <div class="b"><span class="m">▸</span><span>Failed renders are never charged<small>YOU ONLY PAY FOR A VIDEO THAT FINISHED</small></span></div>
+    </div>
+
+    <div class="p-foot">
+      <span class="url">tolley.io/animate</span>
+      <span class="note">No subscription · no commitment</span>
+    </div>
+  </div>
+  <div class="grain"></div>
+</div>

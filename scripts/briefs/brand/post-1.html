@@ -1,0 +1,77 @@
+<meta charset="utf-8">
+<title>Post 1 — what it is</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_base.css">
+<style>
+  .steps { margin-top: 52px; display: flex; flex-direction: column; gap: 30px; }
+  .step { display: flex; gap: 26px; align-items: flex-start; }
+  .step .n {
+    flex: none; width: 54px; height: 54px; border-radius: 50%;
+    border: 1px solid var(--line-strong); background: var(--amber-soft);
+    display: grid; place-items: center;
+    font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--amber);
+  }
+  .step .t { font-size: 40px; font-weight: 650; line-height: 1.2; letter-spacing: -0.015em; color: var(--cream); }
+  .step .d { margin-top: 9px; font-family: var(--mono); font-size: 20px; line-height: 1.55; color: var(--cream-dim); }
+</style>
+<body class="post">
+<div class="stage">
+  <div class="glow"></div>
+  <div class="sprockets" style="left:0;top:0;bottom:0;width:26px;border-left:0;"></div>
+  <div class="inner">
+
+    <div class="p-head">
+      <div class="p-lockup">
+        <svg viewBox="0 0 700 700" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="350" cy="350" r="310" fill="#15120d" stroke="#ffb83d" stroke-width="34"/>
+          <g fill="#0d0b08" stroke="#ffb83d" stroke-width="6" stroke-opacity="0.5">
+            <circle cx="350" cy="52" r="26"/><circle cx="648" cy="350" r="26"/>
+            <circle cx="350" cy="648" r="26"/><circle cx="52" cy="350" r="26"/>
+          </g>
+          <text x="352" y="470" text-anchor="middle" fill="#ffb83d"
+                font-family="Bricolage Grotesque" font-weight="800" font-size="360">J</text>
+        </svg>
+        <div>
+          <div class="name">JELLY<span style="color:var(--amber)">·</span>STUDIO</div>
+          <div class="by">BY TOLLEY.IO</div>
+        </div>
+      </div>
+      <div class="tag">PUBLIC BETA</div>
+    </div>
+
+    <div class="p-eyebrow">What it is</div>
+    <h1 class="p-title">Type a script.<br>Get a finished<br><span class="it">faceless video.</span></h1>
+
+    <div class="steps">
+      <div class="step">
+        <div class="n">1</div>
+        <div>
+          <div class="t">You write the script.</div>
+          <div class="d">Your words, your angle. Nothing is auto-generated for you.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <div>
+          <div class="t">We voice it and generate every scene.</div>
+          <div class="d">A cloned voice, scenes built for your lines — not stock — captions and music.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <div>
+          <div class="t">You download the MP4.</div>
+          <div class="d">No watermark. Yours to post anywhere.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-foot">
+      <span class="url">tolley.io/animate</span>
+      <span class="note">No subscription · no commitment</span>
+    </div>
+  </div>
+  <div class="grain"></div>
+</div>

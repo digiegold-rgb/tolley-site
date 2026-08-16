@@ -1,0 +1,129 @@
+/* Jelly Studio brand-kit render base — mirrors components/animate/landing/landing.css
+ * "midnight screening room": warm near-black, projector-amber key light, grain,
+ * filmstrip sprockets. Used only by the offline PNG renderers in this folder. */
+
+:root {
+  --ink: #0d0b08;
+  --ink-2: #15120d;
+  --panel: #1c1812;
+  --line: rgba(255, 196, 92, 0.14);
+  --line-strong: rgba(255, 196, 92, 0.32);
+  --amber: #ffb83d;
+  --amber-soft: rgba(255, 184, 61, 0.12);
+  --cream: #f4ead8;
+  --cream-dim: rgba(244, 234, 216, 0.72);
+  --cream-faint: rgba(244, 234, 216, 0.46);
+  --good: #7fd98c;
+  --bad: #e2795f;
+
+  --display: "Bricolage Grotesque", "Sora", system-ui, sans-serif;
+  --serif: "Instrument Serif", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--ink);
+  color: var(--cream);
+  font-family: var(--display);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+/* transparent-plate mode (mark-only exports): render.mjs sets .bare on <html>
+ * and <body>, and screenshots with omitBackground. Every painted ground has to
+ * be cleared or chromium composites over it and the PNG comes back opaque. */
+html.bare, body.bare, body.bare .stage { background: transparent; }
+body.bare .glow, body.bare .grain { display: none; }
+
+/* the canvas is sized exactly to the export; nothing may spill */
+.stage {
+  position: relative;
+  overflow: hidden;
+  background: var(--ink);
+}
+
+/* projector glow — warm key light from the upper right */
+.glow {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(108% 100% at 82% -14%, rgba(255, 184, 61, 0.20), transparent 62%),
+    radial-gradient(88% 103% at -10% 40%, rgba(255, 120, 40, 0.09), transparent 60%);
+}
+
+/* film grain */
+.grain {
+  position: absolute; inset: 0; pointer-events: none; z-index: 2; opacity: 0.055;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+}
+
+.inner { position: relative; z-index: 1; height: 100%; }
+
+/* filmstrip sprocket rail */
+.sprockets {
+  position: absolute; z-index: 1;
+  background-image: radial-gradient(circle at 50% 50%, var(--ink) 3.4px, transparent 3.9px);
+  background-size: 100% 34px;
+  border-inline: 1px solid var(--line);
+  background-color: rgba(255, 184, 61, 0.07);
+}
+
+/* shared atoms */
+.badge {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--mono); letter-spacing: 0.22em;
+  color: var(--amber); background: var(--amber-soft);
+  border: 1px solid rgba(255, 184, 61, 0.30); border-radius: 99px;
+}
+.badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+
+.eyebrow {
+  font-family: var(--mono); letter-spacing: 0.24em;
+  color: var(--cream-faint); text-transform: uppercase;
+}
+.it { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--amber); }
+.rule { border: 0; border-top: 1px dashed var(--line); }
+.mono { font-family: var(--mono); }
+
+/* ── 1080×1080 feed post chrome (shared by post-1..4) ─────────────────
+ * Facebook renders these around 500px wide in feed, so nothing is smaller
+ * than ~26px here or it dissolves on a phone. */
+body.post { width: 1080px; height: 1080px; }
+body.post .stage { width: 1080px; height: 1080px; }
+body.post .inner { padding: 76px 84px 72px; display: flex; flex-direction: column; }
+
+.p-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.p-lockup { display: flex; align-items: center; gap: 13px; }
+.p-lockup svg { width: 42px; height: 42px; }
+.p-lockup .name {
+  font-family: var(--mono); font-weight: 600; font-size: 17px;
+  letter-spacing: 0.30em; color: var(--cream);
+}
+.p-lockup .by { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; color: var(--cream-faint); }
+.p-head .tag {
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.2em;
+  color: var(--amber); background: var(--amber-soft);
+  border: 1px solid rgba(255, 184, 61, 0.3); border-radius: 99px; padding: 8px 17px;
+}
+
+.p-eyebrow {
+  margin-top: 74px;
+  font-family: var(--mono); font-size: 17px; letter-spacing: 0.26em;
+  text-transform: uppercase; color: var(--cream-faint);
+}
+.p-title {
+  margin-top: 22px;
+  font-family: var(--display); font-weight: 750;
+  font-size: 68px; line-height: 1.05; letter-spacing: -0.028em; color: var(--cream);
+}
+.p-title .it { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--amber); }
+
+.p-foot {
+  margin-top: auto; padding-top: 30px; border-top: 1px dashed var(--line);
+  display: flex; align-items: baseline; justify-content: space-between; gap: 20px;
+  font-family: var(--mono);
+}
+.p-foot .url { font-size: 27px; font-weight: 700; letter-spacing: 0.04em; color: var(--amber); }
+.p-foot .note { font-size: 15px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cream-faint); }

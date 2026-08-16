@@ -1,0 +1,80 @@
+<meta charset="utf-8">
+<title>Post 3 — anti-slop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_base.css">
+<style>
+  .p-title { font-size: 56px; }
+
+  .rows { margin-top: 40px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 22px; }
+  .row {
+    padding: 22px 28px; border: 1px solid var(--line); border-radius: 10px;
+    background: linear-gradient(160deg, rgba(28, 24, 18, 0.85), rgba(21, 18, 13, 0.85));
+  }
+  .row .bad, .row .good { display: flex; gap: 16px; align-items: baseline; }
+  .row .good { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); }
+  .mark {
+    flex: none; width: 32px; font-family: var(--mono); font-size: 29px; font-weight: 700;
+    line-height: 1;
+  }
+  .row .bad .mark { color: var(--bad); }
+  .row .good .mark { color: var(--good); }
+  .row .bad .t {
+    font-size: 30px; font-weight: 600; color: var(--cream-dim);
+    text-decoration: line-through; text-decoration-color: rgba(226, 121, 95, 0.55);
+    text-decoration-thickness: 2px; letter-spacing: -0.01em;
+  }
+  .row .good .t { font-size: 30px; font-weight: 650; color: var(--cream); letter-spacing: -0.01em; }
+  .row .good .t b { color: var(--amber); font-weight: 650; }
+</style>
+<body class="post">
+<div class="stage">
+  <div class="glow"></div>
+  <div class="sprockets" style="left:0;top:0;bottom:0;width:26px;border-left:0;"></div>
+  <div class="inner">
+
+    <div class="p-head">
+      <div class="p-lockup">
+        <svg viewBox="0 0 700 700" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="350" cy="350" r="310" fill="#15120d" stroke="#ffb83d" stroke-width="34"/>
+          <g fill="#0d0b08" stroke="#ffb83d" stroke-width="6" stroke-opacity="0.5">
+            <circle cx="350" cy="52" r="26"/><circle cx="648" cy="350" r="26"/>
+            <circle cx="350" cy="648" r="26"/><circle cx="52" cy="350" r="26"/>
+          </g>
+          <text x="352" y="470" text-anchor="middle" fill="#ffb83d"
+                font-family="Bricolage Grotesque" font-weight="800" font-size="360">J</text>
+        </svg>
+        <div>
+          <div class="name">JELLY<span style="color:var(--amber)">·</span>STUDIO</div>
+          <div class="by">BY TOLLEY.IO</div>
+        </div>
+      </div>
+      <div class="tag">PUBLIC BETA</div>
+    </div>
+
+    <div class="p-eyebrow">Why most faceless video looks like slop</div>
+    <h1 class="p-title">3 things the tools<br>get wrong — and<br><span class="it">what we do instead.</span></h1>
+
+    <div class="rows">
+      <div class="row">
+        <div class="bad"><span class="mark">✕</span><span class="t">A robotic stock TTS voice</span></div>
+        <div class="good"><span class="mark">✓</span><span class="t">A <b>cloned voice</b> you tune once and lock</span></div>
+      </div>
+      <div class="row">
+        <div class="bad"><span class="mark">✕</span><span class="t">The same stock B-roll everyone uses</span></div>
+        <div class="good"><span class="mark">✓</span><span class="t">Scenes <b>generated for your script</b>, shot by shot</span></div>
+      </div>
+      <div class="row">
+        <div class="bad"><span class="mark">✕</span><span class="t">Lip-sync that drifts off after a minute</span></div>
+        <div class="good"><span class="mark">✓</span><span class="t">Faceless by design — <b>hard cuts timed to narration</b></span></div>
+      </div>
+    </div>
+
+    <div class="p-foot">
+      <span class="url">tolley.io/animate</span>
+      <span class="note">Aug 2026 · invite only</span>
+    </div>
+  </div>
+  <div class="grain"></div>
+</div>

@@ -1,0 +1,103 @@
+<meta charset="utf-8">
+<title>Post 2 — what it costs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_base.css">
+<style>
+  /* No cost formula on this card by design — public messaging is the total a
+     finished video came to, never how the total is built. The breakdown lives
+     on the in-app receipt. Every figure here is a reconciled render from
+     lib/vater/demo-videos.ts. */
+  .p-title { font-size: 54px; }
+
+  .panel {
+    margin-top: 30px; padding: 26px 34px 22px;
+    background: linear-gradient(160deg, var(--panel), var(--ink-2));
+    border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: 0 34px 90px -34px rgba(0, 0, 0, 0.9);
+    font-family: var(--mono);
+  }
+  .panel .phead {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 15px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--cream-faint); padding-bottom: 16px; border-bottom: 1px dashed var(--line);
+  }
+
+  .row { display: flex; align-items: baseline; gap: 16px; margin-top: 19px; }
+  .row .len { font-size: 28px; font-weight: 600; color: var(--cream); min-width: 126px; }
+  .row .len small {
+    display: block; font-size: 13.5px; font-weight: 400; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--cream-faint); margin-top: 6px;
+  }
+  .row .dots { flex: 1; border-bottom: 1px dotted rgba(244, 234, 216, 0.2); transform: translateY(-7px); }
+  .row .amt { font-size: 33px; font-weight: 700; color: var(--good); }
+
+  .kicker {
+    margin-top: 26px; margin-bottom: 14px;
+    font-family: var(--display); font-weight: 650;
+    font-size: 32px; line-height: 1.3; color: var(--cream);
+  }
+  .kicker span { color: var(--amber); }
+</style>
+<body class="post">
+<div class="stage">
+  <div class="glow"></div>
+  <div class="sprockets" style="left:0;top:0;bottom:0;width:26px;border-left:0;"></div>
+  <div class="inner">
+
+    <div class="p-head">
+      <div class="p-lockup">
+        <svg viewBox="0 0 700 700" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="350" cy="350" r="310" fill="#15120d" stroke="#ffb83d" stroke-width="34"/>
+          <g fill="#0d0b08" stroke="#ffb83d" stroke-width="6" stroke-opacity="0.5">
+            <circle cx="350" cy="52" r="26"/><circle cx="648" cy="350" r="26"/>
+            <circle cx="350" cy="648" r="26"/><circle cx="52" cy="350" r="26"/>
+          </g>
+          <text x="352" y="470" text-anchor="middle" fill="#ffb83d"
+                font-family="Bricolage Grotesque" font-weight="800" font-size="360">J</text>
+        </svg>
+        <div>
+          <div class="name">JELLY<span style="color:var(--amber)">·</span>STUDIO</div>
+          <div class="by">BY TOLLEY.IO</div>
+        </div>
+      </div>
+      <div class="tag">PUBLIC BETA</div>
+    </div>
+
+    <div class="p-eyebrow">What a finished video costs</div>
+    <h1 class="p-title">Most long-form videos<br>cost <span class="it">$1–7.</span></h1>
+
+    <div class="panel">
+      <div class="phead">
+        <span>Four real renders</span>
+        <span>Aug 2026</span>
+      </div>
+
+      <div class="row">
+        <span class="len">0:29<small>Short</small></span>
+        <span class="dots"></span><span class="amt">$0.73</span>
+      </div>
+      <div class="row">
+        <span class="len">3:24<small>The Quiet Exit</small></span>
+        <span class="dots"></span><span class="amt">$3.04</span>
+      </div>
+      <div class="row">
+        <span class="len">8:38<small>Long-form</small></span>
+        <span class="dots"></span><span class="amt">$4.49</span>
+      </div>
+      <div class="row">
+        <span class="len">8:44<small>Long-form</small></span>
+        <span class="dots"></span><span class="amt">$5.56</span>
+      </div>
+    </div>
+
+    <div class="kicker">Pay only for what you render. <span>No subscription, no commitment.</span></div>
+
+    <div class="p-foot">
+      <span class="url">tolley.io/animate</span>
+      <span class="note">Real renders · no watermark</span>
+    </div>
+  </div>
+  <div class="grain"></div>
+</div>
