@@ -128,7 +128,7 @@ cut hard to the narration. This one came to $3.04 for 3:24, all in.
 Post as a **Reel** (vertical file). 16:9 twin for a feed post: `demo-dgd-bake-a-gpu-30s.mp4`.
 
 ```
-Same pipeline, totally different show. 29 seconds from an animated series
+Same pipeline, totally different show. 31 seconds from an animated series
 about two kids who bake a dead graphics card in the oven to bring it back to
 life — cast voices, one locked look, every scene generated for the script.
 True story, by the way.
