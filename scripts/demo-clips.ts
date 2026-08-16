@@ -18,6 +18,7 @@
  * Wrapper: ~/bin/demo-clip.sh <args>
  */
 import { prisma } from "../lib/prisma";
+import { DEFAULT_OPS_RATE_PER_MIN } from "../lib/vater/video-cost";
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -47,8 +48,10 @@ type Clip = {
   candidates: Win[]; caption: string;
   files: { wide: string; vertical: string; poster: string };
   review: { wide: string; vertical: string; poster: string };
+  cost: { videoAllInUsd: number; videoDurS: number; computeUsd: number; opsUsd: number; clipUsd: number; reconciledAt?: string } | null;
   status: "staged" | "posted" | "rejected"; createdAt: string;
   postedAt?: string; fbVideoId?: string; fbUrl?: string; note?: string;
+  storyPostedAt?: string; fbStoryId?: string;
 };
 
 for (const d of [DATA, CACHE, OUT, REVIEW_DIR]) fs.mkdirSync(d, { recursive: true });
@@ -67,7 +70,7 @@ const probeDur = (f: string) => Number(sh("ffprobe", ["-v", "error", "-show_entr
 async function finished() {
   const rows = await prisma.youTubeProject.findMany({
     where: { status: "ready", finalVideoUrl: { not: null }, projectType: "youtube", userId: { in: Object.keys(OWNERS) } },
-    select: { id: true, userId: true, sourceTitle: true, publishTitle: true, audioDuration: true, completedAt: true, finalVideoUrl: true, scenesJson: true },
+    select: { id: true, userId: true, sourceTitle: true, publishTitle: true, audioDuration: true, completedAt: true, finalVideoUrl: true, scenesJson: true, costJson: true },
     orderBy: { createdAt: "asc" },
   });
   return rows.filter(r => !EXCLUDE.test((r.publishTitle || r.sourceTitle || "")));
@@ -108,7 +111,16 @@ function scoreWindows(scenes: Scene[], target: number, minLen: number, maxLen: n
   return wins.sort((a, b) => b.score - a.score).slice(0, 5);
 }
 
-function caption(title: string, secs: number) {
+function usd(n: number) { return n < 0.10 ? `${Math.round(n * 100)}¢` : `$${n.toFixed(2)}`; }
+function clipCost(costJson: any, videoDurS: number, clipDurS: number) {
+  const compute = Number(costJson?.totalUsd ?? costJson?.allInUsd ?? NaN);
+  if (!Number.isFinite(compute) || !videoDurS) return null;
+  const opsUsd = (videoDurS / 60) * DEFAULT_OPS_RATE_PER_MIN;
+  const videoAllInUsd = compute + opsUsd;
+  const clipUsd = videoAllInUsd * (Math.min(clipDurS, videoDurS) / videoDurS);
+  return { videoAllInUsd: +videoAllInUsd.toFixed(2), videoDurS: +videoDurS.toFixed(1), computeUsd: +compute.toFixed(2), opsUsd: +opsUsd.toFixed(2), clipUsd: +clipUsd.toFixed(2), reconciledAt: costJson?.reconciledAt };
+}
+function caption(title: string, secs: number, cost: ReturnType<typeof clipCost>) {
   const n = Math.round(secs);
   const openers = [
     `${n} seconds of a real render from the studio — "${title}".`,
@@ -116,7 +128,10 @@ function caption(title: string, secs: number) {
     `From "${title}": ${n} seconds of a finished render.`,
   ];
   const o = openers[title.length % openers.length];
-  return `${o}\nScript in, cloned voice, every scene generated for the words, cut hard to the narration.\n#facelessvideo #aivideo #videoproduction`;
+  const costLine = cost ? (cost.videoDurS <= secs + 2
+    ? `This whole video cost ${usd(cost.clipUsd)} to generate, all in.`
+    : `These ${n} seconds cost ${usd(cost.clipUsd)} to generate, all in (the full ${Math.floor(cost.videoDurS / 60)}:${String(Math.round(cost.videoDurS % 60)).padStart(2, "0")} video: ${usd(cost.videoAllInUsd)}).`) : "";
+  return [o, "Script in, cloned voice, every scene generated for the words, cut hard to the narration.", costLine, "Make yours → tolley.io/animate (public beta, invite only — DM INVITE for a code)", "#facelessvideo #aivideo #videoproduction"].filter(Boolean).join("\n");
 }
 
 async function fetchFinal(id: string, url: string) {
@@ -167,6 +182,19 @@ async function postReel(file: string, text: string) {
   return { id: start.video_id as string, url: `https://www.facebook.com/reel/${start.video_id}` };
 }
 
+async function postStory(file: string) {
+  const tok = await pageToken();
+  const form = (o: Record<string, string>) => new URLSearchParams(o);
+  const start: any = await (await fetch(`https://graph.facebook.com/v21.0/${FB_PAGE}/video_stories`, { method: "POST", body: form({ upload_phase: "start", access_token: tok }) })).json();
+  if (!start.video_id) throw new Error("story start: " + JSON.stringify(start));
+  const size = fs.statSync(file).size;
+  const up: any = await (await fetch(start.upload_url, { method: "POST", headers: { Authorization: `OAuth ${tok}`, offset: "0", file_size: String(size) }, body: fs.readFileSync(file) })).json();
+  if (!up.success) throw new Error("story upload: " + JSON.stringify(up));
+  const fin: any = await (await fetch(`https://graph.facebook.com/v21.0/${FB_PAGE}/video_stories`, { method: "POST", body: form({ access_token: tok, video_id: start.video_id, upload_phase: "finish" }) })).json();
+  if (fin.error || fin.success === false) throw new Error("story finish: " + JSON.stringify(fin));
+  return { id: (fin.post_id || start.video_id) as string };
+}
+
 function arg(name: string, def?: string) { const i = process.argv.indexOf(name); return i > -1 ? process.argv[i + 1] : def; }
 const has = (name: string) => process.argv.includes(name);
 
@@ -203,10 +231,12 @@ async function cut(key: string, opts: { scenes?: string; start?: string; end?: s
   console.log(`✂ ${title} — scenes ${win.i}-${win.j} ${win.start}s→${win.end}s (${win.dur.toFixed(1)}s) [${win.reasons.join(",")}]`);
   const r = render(src, clipId, win.start, win.dur);
   const dur = probeDur(r.files.wide);
-  const clip: Clip = { clipId, projectId: p.id, libNo, title, owner: OWNERS[p.userId!] || "?", window: { start: win.start, end: win.end, scenes: [win.i, win.j], dur: +dur.toFixed(2) }, candidates: cands, caption: caption(title, dur), files: r.files, review: r.review, status: "staged", createdAt: new Date().toISOString(), note: opts.note };
+  const cost = clipCost(p.costJson, total, dur);
+  const clip: Clip = { clipId, projectId: p.id, libNo, title, owner: OWNERS[p.userId!] || "?", window: { start: win.start, end: win.end, scenes: [win.i, win.j], dur: +dur.toFixed(2) }, candidates: cands, caption: caption(title, dur, cost), cost, files: r.files, review: r.review, status: "staged", createdAt: new Date().toISOString(), note: opts.note };
   const q = readQueue(); q.push(clip); writeQueue(q);
   console.log(`staged ${clipId}\n  vertical: ${r.review.vertical}\n  16:9:     ${r.review.wide}`);
-  if (opts.notify) await telegram(`🎬 Demo clip staged — ${title} (${dur.toFixed(0)}s, ${clip.owner})\n${r.review.vertical}\n16:9: ${r.review.wide}\nPost: demo-clip.sh post ${clipId}`);
+  console.log(cost ? `  cost: ${usd(cost.clipUsd)} for ${dur.toFixed(0)}s (video ${usd(cost.videoAllInUsd)} / ${cost.videoDurS}s)` : "  cost: n/a (no costJson)");
+  if (opts.notify) await telegram(`🎬 Demo clip staged — ${title} (${dur.toFixed(0)}s, ${clip.owner}${cost ? `, ${usd(cost.clipUsd)}` : ""})\n${r.review.vertical}\n16:9: ${r.review.wide}\nPost: demo-clip.sh post ${clipId}`);
   return clip;
 }
 
@@ -234,7 +264,7 @@ async function main() {
     }
     console.log(`auto: staged ${n}`);
   } else if (cmd === "queue") {
-    for (const c of readQueue()) console.log([c.status.padEnd(8), c.clipId.padEnd(16), `#${c.libNo ?? "?"}`.padEnd(5), `${c.window.dur}s`.padStart(6), c.title.slice(0, 50).padEnd(51), c.fbUrl || c.review.vertical].join("  "));
+    for (const c of readQueue()) console.log([c.status.padEnd(8), c.clipId.padEnd(16), `#${c.libNo ?? "?"}`.padEnd(5), `${c.window.dur}s`.padStart(6), (c.cost ? usd(c.cost.clipUsd) : "n/a").padStart(6), c.fbStoryId ? "S" : " ", c.title.slice(0, 46).padEnd(47), c.fbUrl || c.review.vertical].join("  "));
   } else if (cmd === "post") {
     const q = readQueue();
     const c = a1 === "--next" ? q.find(c => c.status === "staged") : q.find(c => c.clipId === a1);
@@ -243,7 +273,41 @@ async function main() {
     const r = await postReel(c.files.vertical, text);
     c.status = "posted"; c.postedAt = new Date().toISOString(); c.fbVideoId = r.id; c.fbUrl = r.url; c.caption = text; writeQueue(q);
     console.log(`posted ${c.clipId} → ${r.url}`);
-    if (!has("--no-notify")) await telegram(`✅ Jelly reel posted — ${c.title} (${c.window.dur}s): ${r.url}`);
+    let storyNote = "";
+    if (!has("--no-story")) {
+      try { const st = await postStory(c.files.vertical); c.storyPostedAt = new Date().toISOString(); c.fbStoryId = st.id; writeQueue(q); storyNote = ` + Story ${st.id}`; console.log(`story ${c.clipId} → ${st.id}`); }
+      catch (e: any) { storyNote = ` (story FAILED: ${e.message.slice(0, 120)})`; console.error("story:", e.message); }
+    }
+    if (!has("--no-notify")) await telegram(`✅ Jelly reel posted — ${c.title} (${c.window.dur}s${c.cost ? `, ${usd(c.cost.clipUsd)}` : ""}): ${r.url}${storyNote}`);
+  } else if (cmd === "story") {
+    const q = readQueue(); const c = q.find(c => c.clipId === a1); if (!c) throw new Error("no such clip");
+    const st = await postStory(c.files.vertical); c.storyPostedAt = new Date().toISOString(); c.fbStoryId = st.id; writeQueue(q); console.log(`story ${c.clipId} → ${st.id}`);
+  } else if (cmd === "rotate") {
+    // Daily rotation: stage the newest un-clipped video (or, once every video has a
+    // clip, re-cut the least-recently-clipped one with its next-best window), then
+    // post it as a Reel + Story. One new piece of the library per day.
+    const q = readQueue(); const rows = (await finished()).reverse();
+    let target = rows.find(r => !q.some(c => c.projectId === r.id) && (r.audioDuration ?? 0) >= 20);
+    let scenesArg: string | undefined;
+    if (!target) {
+      const lastByProject = new Map<string, string>();
+      for (const c of q) if (c.status !== "rejected") lastByProject.set(c.projectId, (lastByProject.get(c.projectId) || "") > c.createdAt ? lastByProject.get(c.projectId)! : c.createdAt);
+      target = rows.filter(r => (r.audioDuration ?? 0) >= 60).sort((a, b) => (lastByProject.get(a.id) || "").localeCompare(lastByProject.get(b.id) || ""))[0];
+      if (target) {
+        const used = new Set(q.filter(c => c.projectId === target!.id).map(c => c.window.scenes.join("-")));
+        const cands = scoreWindows((target.scenesJson as Scene[]) || [], 30, 22, 38, target.audioDuration ?? 0).filter(w => !used.has(`${w.i}-${w.j}`) && !w.reasons.includes("mid-sentence"));
+        if (cands[0]) scenesArg = `${cands[0].i}-${cands[0].j}`;
+      }
+    }
+    if (!target) { console.log("rotate: nothing to do"); return; }
+    const clip = await cut(target.id, { scenes: scenesArg, notify: false });
+    const q2 = readQueue(); const c = q2.find(x => x.clipId === clip.clipId)!;
+    const r = await postReel(c.files.vertical, c.caption);
+    c.status = "posted"; c.postedAt = new Date().toISOString(); c.fbVideoId = r.id; c.fbUrl = r.url; writeQueue(q2);
+    let storyNote = "";
+    try { const st = await postStory(c.files.vertical); c.storyPostedAt = new Date().toISOString(); c.fbStoryId = st.id; writeQueue(q2); storyNote = ` + Story`; } catch (e: any) { storyNote = ` (story FAILED: ${e.message.slice(0, 120)})`; }
+    console.log(`rotate: posted ${c.clipId} → ${r.url}${storyNote}`);
+    await telegram(`🔁 Jelly daily rotation — ${c.title} (${c.window.dur}s${c.cost ? `, ${usd(c.cost.clipUsd)}` : ""}): ${r.url}${storyNote}`);
   } else if (cmd === "reject") {
     const q = readQueue(); const c = q.find(c => c.clipId === a1); if (!c) throw new Error("no such clip");
     c.status = "rejected"; c.note = process.argv.slice(4).join(" ") || c.note; writeQueue(q); console.log(`rejected ${a1}`);
@@ -251,7 +315,7 @@ async function main() {
     const p = await resolveProject(a1); const scenes = (p.scenesJson as Scene[]) || [];
     for (const w of scoreWindows(scenes, Number(arg("--target", "30")), 22, 38, p.audioDuration ?? 0)) console.log(`${w.score}  sc ${w.i}-${w.j}  ${w.start}→${w.end} (${w.dur}s)  [${w.reasons}]  ${w.hook}`);
   } else {
-    console.log("usage: list | cut <#N|id> [--scenes A-B|--start S --end E] [--target N] | auto [--max N] | queue | post <clipId|--next> [--caption ...] | reject <clipId> [why] | recut <clipId> --scenes A-B | candidates <#N>");
+    console.log("usage: rotate | story <clipId> | list | cut <#N|id> [--scenes A-B|--start S --end E] [--target N] | auto [--max N] | queue | post <clipId|--next> [--caption ...] | reject <clipId> [why] | recut <clipId> --scenes A-B | candidates <#N>");
   }
 }
 main().catch(e => { console.error("✗", e.message); process.exit(1); }).finally(() => prisma.$disconnect());

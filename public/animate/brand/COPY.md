@@ -254,10 +254,13 @@ Keep these true or the Page stops being worth trusting:
 - **Quote totals, and only real ones.** $0.73 / 0:29, $3.04 / 3:24, $4.49 / 8:38,
   $5.56 / 8:44 are reconciled renders from Aug 2026. "Most long-form videos cost
   $1–7" is the safe general claim.
-- **"The Quiet Exit" (3:24, $3.04) is the only render cleared to show.** It is
-  Jared's own script and voice. The other three are quoted as duration + total
-  only — no titles, no frames, no posters — because their consent status is
-  still pending in `demo-videos.ts`.
+- **Cleared to show (8/16): every finished video in Trey's library + Jared's own** —
+  Trey's consent is on file (`~/vater-studio/demo-clips/CONSENT.md`), so titles,
+  frames and clips are all fair game. Demo Reels/Stories come from `demo-clip.sh`.
+- **Quote the clip's own cost (Jared 8/16).** Every demo Reel/Story caption states
+  the reconciled all-in cost prorated to that clip's length — "$0.16 to generate
+  these 32 seconds" — a plain total for exactly what they just watched. Still no
+  mechanic: no per-minute rate, no "compute at cost". Viewers can do the math.
 - **Say "public beta, invite only" and date it "Aug 2026."** Don't imply general
   availability. Never say "unlimited" — beta max length is 9:00.
 - **Never call a generated character a real customer** or put a testimonial in a
