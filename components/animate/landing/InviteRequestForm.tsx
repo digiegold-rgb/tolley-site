@@ -49,7 +49,7 @@ export function InviteRequestForm(): React.ReactElement {
         <input name="email" type="email" required placeholder="Email for your invite link" maxLength={200} />
       </div>
       <textarea name="about" rows={2} maxLength={600} placeholder="What do you want to make? (channel, niche, how many videos a month)" />
-      <button className="jsl-btn jsl-btn-amber" type="submit" disabled={state === 'busy'}>
+      <button className="jsl-btn jsl-btn-pink" type="submit" disabled={state === 'busy'}>
         {state === 'busy' ? 'Sending…' : 'Request an invite'}
       </button>
       {state === 'error' && <div className="jsl-invite-err">{msg} — or email support@tolley.io</div>}

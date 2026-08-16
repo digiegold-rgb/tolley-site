@@ -7,11 +7,18 @@
  * valid session cookie, so the Shell is only rendered with a session.
  */
 import { auth } from "@/auth";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Shell } from "@/components/animate/Shell";
 import { AnimateLanding } from "@/components/animate/landing/AnimateLanding";
 
 export const dynamic = "force-dynamic";
+
+/* Brand page black (design/jelly-studio-logo-1c) — paints the mobile browser
+ * chrome to match the landing instead of leaving a white bar above it.
+ * themeColor belongs on `viewport`, not `metadata`, since Next 14. */
+export const viewport: Viewport = {
+  themeColor: "#0D0D10",
+};
 
 export const metadata: Metadata = {
   alternates: { canonical: "https://www.tolley.io/animate" },

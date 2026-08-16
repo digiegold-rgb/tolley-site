@@ -1,7 +1,12 @@
 /**
  * Public marketing landing for /animate — shown to signed-out visitors
- * (signed-in users get the studio Shell). "Midnight screening room":
- * warm near-black, projector-amber, film grain, CSS-only motion.
+ * (signed-in users get the studio Shell).
+ *
+ * Skinned to the Jelly Studio 1C brand system (design/jelly-studio-logo-1c/):
+ * page black, studio near-black surfaces, brand pink as the primary accent
+ * and violet as the secondary, Space Grotesk + IBM Plex Mono. The previous
+ * "midnight screening room" amber/serif treatment is gone — if you find an
+ * amber value or an italic serif anywhere under landing/, it is a leftover.
  *
  * Rewritten 2026-08-15 for the invite-only public beta. Rules for this file:
  *
@@ -17,11 +22,12 @@
  *      pipeline; it is gone, replaced by an actual finished video.
  */
 
-import { Bricolage_Grotesque, Instrument_Serif, JetBrains_Mono } from "next/font/google";
+import { Space_Grotesk, IBM_Plex_Mono } from "next/font/google";
 import { PIPELINE_STEPS, HELP_FAQ, HELP_SUPPORT_EMAIL } from "@/lib/vater/help-content";
 import { APP_VERSION } from "@/lib/vater/changelog";
 import { creditPackOptions } from "@/lib/vater/credit-packs";
 import { getOpsRate } from "@/lib/vater/billing/ops-fee";
+import { JellyMark } from "./JellyMark";
 import {
   LIVE_DEMOS,
   PENDING_DEMO_COUNT,
@@ -30,19 +36,17 @@ import {
 import { InviteRequestForm } from "./InviteRequestForm";
 import "./landing.css";
 
-const display = Bricolage_Grotesque({
+/* Brand type, per design/jelly-studio-logo-1c/README.md: Space Grotesk for
+ * display AND body, IBM Plex Mono for eyebrows, prices and labels. Space
+ * Grotesk tops out at 700 — the old sheet asked for 720/750/760 weights that
+ * only existed in Bricolage, so those are clamped in landing.css. */
+const display = Space_Grotesk({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["500", "600", "700"],
 });
-const serif = Instrument_Serif({
+const mono = IBM_Plex_Mono({
   subsets: ["latin"],
-  weight: "400",
-  style: "italic",
-  variable: "--font-jsl-serif",
-});
-const mono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "600"],
+  weight: ["400", "500"],
   variable: "--font-jsl-mono",
 });
 
@@ -148,12 +152,12 @@ export function AnimateLanding(): React.ReactElement {
   const opsFee = (durationSec: number) => (durationSec / 60) * opsRate;
 
   return (
-    <div className={`jsl ${display.className} ${serif.variable} ${mono.variable}`}>
+    <div className={`jsl ${display.className} ${mono.variable}`}>
       <div className="jsl-wrap">
         {/* nav */}
         <nav className="jsl-nav">
           <a className="jsl-mark" href="/animate">
-            JELLY<em>·</em>STUDIO <span>BY TOLLEY.IO</span>
+            <JellyMark variant="compact" size={46} />
           </a>
           <div className="jsl-nav-links">
             <span className="jsl-verpill">v{APP_VERSION} · public beta</span>
@@ -162,7 +166,7 @@ export function AnimateLanding(): React.ReactElement {
             <a href="#craft">Craft</a>
             <a href="#faq">FAQ</a>
             <a href={SIGNIN}>Sign in</a>
-            <a className="jsl-btn jsl-btn-amber" href={INVITE}>Request an invite</a>
+            <a className="jsl-btn jsl-btn-pink" href={INVITE}>Request an invite</a>
           </div>
         </nav>
 
@@ -186,7 +190,7 @@ export function AnimateLanding(): React.ReactElement {
               No subscription. No commitment. No watermark.
             </p>
             <div className="jsl-hero-ctas jsl-rev d4">
-              <a className="jsl-btn jsl-btn-amber" href={INVITE}>Request an invite</a>
+              <a className="jsl-btn jsl-btn-pink" href={INVITE}>Request an invite</a>
               <a className="jsl-btn jsl-btn-ghost" href={SIGNUP}>
                 Have an invite code? Sign up
               </a>
@@ -576,7 +580,10 @@ export function AnimateLanding(): React.ReactElement {
         </section>
 
         <footer className="jsl-foot">
-          <span>JELLY·STUDIO BY TOLLEY.IO — KANSAS CITY, MO</span>
+          <span className="jsl-foot-mark">
+            <JellyMark variant="compact" size={40} />
+            KANSAS CITY, MO
+          </span>
           <span className="jsl-foot-links">
             <a href="/animate/terms">Terms</a>
             <a href="/animate/privacy">Privacy</a>
