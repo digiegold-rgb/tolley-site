@@ -1,24 +1,34 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 
-/* Jelly Studio (Beta) — isolated layout.
+import { jellyDisplay, jellySerif } from '@/components/animate/fonts';
+import './animate.css';
+
+/* Jelly Studio — isolated layout.
  *
- * Path-isolated; uses inline styles + system fonts to stay independent
- * of the legacy site layout. The root layout already supplies <html>/<body>.
- */
+ * Path-isolated from the legacy site layout (the root layout already supplies
+ * <html>/<body>). Its ONE job is to hand every /animate surface — landing,
+ * studio shell, demo, terms/privacy/beta — the cinema type (Space Grotesk +
+ * Instrument Serif) and the shared keyframes/legacy skin in animate.css.
+ * `display: contents` generates no box, so no layout changes; the font
+ * variables inherit through it. */
 
 export const metadata: Metadata = {
   title: 'Jelly Studio (Beta) | Tolley.io',
-  description: 'AI-powered YouTube video production console',
+  description: 'Real cinematic films about people’s lives — pay per render, no subscription.',
+};
+
+export const viewport: Viewport = {
+  themeColor: '#0A0A14',
 };
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default function AnimateStudioLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  return <>{children}</>;
+export default function AnimateStudioLayout({ children }: { children: ReactNode }) {
+  return (
+    <div className={`${jellyDisplay.variable} ${jellySerif.variable}`} style={{ display: 'contents' }}>
+      {children}
+    </div>
+  );
 }

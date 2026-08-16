@@ -1,73 +1,150 @@
-/* Jelly by Tolley — Design Tokens (Phase 1 v2 shell)
+import type * as React from 'react';
+
+/* Jelly Studio — Design Tokens ("Cinema" language, 2026-08-16)
  *
- * Ported verbatim from
- *   /home/jelly/Shared/tubegen-ui-research/vater-design/tubegen/project/components/vater-core.jsx
- * (lines 4-49) and vater-editor.jsx (EDITOR_STEPS + SECTION_PRICES, lines 3-8).
+ * Source of truth: the design handoff at design/jelly-cinema-2026-08-16/README.md
+ * (Jared, "Live pricing receipt meter.zip"). A dark 3-D cinema aesthetic —
+ * projector light, film strips, title cards, reels, box-office ticket — on the
+ * violet / cyan pair. RULES:
+ *   • Never introduce a new hue. Violet #8F7DFF and cyan #6FD6FF only; the
+ *     semantic status colours (success/error/warning) are the sole exception.
+ *   • Instrument Serif italic is reserved for emotional / cinematic moments
+ *     (title cards, the hero accent phrase, "Directed by you.").
+ *   • Every panel is glass (translucent fill + hairline + blur). Anything that
+ *     must be opaque (modals, dropdowns, sticky bars) uses `t.panel`.
+ *   • Billing UI is always an ADMIT ONE ticket (components/animate/cinema/AdmitOneTicket).
  *
- * Single source of truth for v2 inline-style values. No Tailwind, no CSS modules.
+ * Single source of truth for inline-style values. No Tailwind, no CSS modules.
+ * Every key that existed before the cinema pass is still here (57 consumers).
  */
+
+const VIOLET = '#8F7DFF';
+const VIOLET_LIGHT = '#B3A6FF';
+const CYAN = '#6FD6FF';
+const INK = '#0A0A14';
+const GRAD_PRIMARY = 'linear-gradient(120deg, #8F7DFF, #6FD6FF)';
 
 export const JELLY_TOKENS = {
-  brand: '#8B5CF6',
-  brandLight: '#A78BFA',
-  brandDark: '#7C3AED',
-  brandGhost: 'rgba(139,92,246,0.08)',
-  brandOutline: 'rgba(139,92,246,0.4)',
-  brandGlow: '0 20px 38px rgba(139,92,246,0.24)',
-  accent: '#F59E0B',
-  accentDark: '#FBBF24',
-  success: '#16A34A',
-  error: '#DC2626',
-  warning: '#F59E0B',
+  /* ── brand pair ── */
+  brand: VIOLET,
+  brandLight: VIOLET_LIGHT,
+  brandDark: '#6C5CE7',
+  brandGhost: 'rgba(143,125,255,0.08)',
+  brandOutline: 'rgba(143,125,255,0.35)',
+  brandGlow: '0 12px 44px rgba(143,125,255,0.35)',
+  cyan: CYAN,
+  cyanGhost: 'rgba(111,214,255,0.08)',
+  /* `accent` was amber; it is used site-wide as the "in progress / live" colour,
+   * which in the cinema language is cyan ("● NOW FILMING"). */
+  accent: CYAN,
+  accentDark: '#3FB8EE',
+  /* semantic status — cooled to sit on the ink ground, never used as brand */
+  success: '#34C98A',
+  error: '#F0607A',
+  warning: '#F5B34B',
+  /* ── gradients ── */
+  gradPrimary: GRAD_PRIMARY,
+  gradText: 'linear-gradient(110deg, #B3A6FF, #6FD6FF)',
+  gradTicket: 'linear-gradient(160deg, rgba(143,125,255,0.12), rgba(111,214,255,0.06))',
+  gradChipOn: 'linear-gradient(120deg, rgba(143,125,255,0.25), rgba(111,214,255,0.18))',
+  onGradient: INK,
+  gradCreate: GRAD_PRIMARY,
+  gradCredits: 'linear-gradient(135deg, #6C5CE7, #8F7DFF)',
+  gradUpgrade: 'linear-gradient(135deg, #1B1533, #2A2350)',
+  gradTutorial: GRAD_PRIMARY,
   light: {
-    body: '#F5F3FA',
-    card: '#FFFFFF',
-    cardAlt: '#F5F3FA',
-    text: '#1A1726',
-    textSecondary: 'rgba(26,23,38,0.6)',
-    textDisabled: 'rgba(26,23,38,0.38)',
-    border: 'rgba(26,23,38,0.12)',
-    hover: 'rgba(26,23,38,0.04)',
-    sidebarBg: '#FFFFFF',
-    headerBg: '#FFFFFF',
+    body: '#F6F4FF',
+    card: 'rgba(255,255,255,0.72)',
+    cardAlt: '#EFEDF9',
+    panel: '#FFFFFF',
+    nebula: '#E9E4FF',
+    text: '#14122A',
+    textSecondary: '#5C5878',
+    textFaint: '#7A7694',
+    textDisabled: 'rgba(20,18,42,0.38)',
+    border: 'rgba(20,18,42,0.10)',
+    borderStrong: 'rgba(20,18,42,0.16)',
+    hover: 'rgba(143,125,255,0.08)',
+    link: '#5B4BD6',
+    sidebarBg: 'rgba(255,255,255,0.7)',
+    headerBg: 'rgba(246,244,255,0.75)',
+    glassBlur: 'blur(10px)',
+    cardShadow: '0 30px 60px rgba(60,50,120,0.12)',
+    halo: '0 0 60px rgba(143,125,255,0.18)',
+    heroWash: 'radial-gradient(90% 70% at 75% -10%, #E9E4FF 0%, #F6F4FF 55%)',
   },
   dark: {
-    body: '#0A0A10',
-    card: '#16141F',
-    cardAlt: '#1C1A28',
-    text: '#F1F0F5',
-    textSecondary: '#9794A8',
-    textDisabled: 'rgba(241,240,245,0.38)',
-    border: 'rgba(139,92,246,0.12)',
-    hover: 'rgba(255,255,255,0.04)',
-    sidebarBg: '#110F1A',
-    headerBg: '#110F1A',
+    body: INK,
+    card: 'rgba(240,238,248,0.04)',
+    cardAlt: '#08070F',
+    panel: '#0E0D19',
+    nebula: '#1B1533',
+    text: '#F0EEF8',
+    textSecondary: '#9A94B0',
+    textFaint: '#6B6584',
+    textDisabled: '#4A4560',
+    border: 'rgba(240,238,248,0.10)',
+    borderStrong: 'rgba(240,238,248,0.16)',
+    hover: 'rgba(143,125,255,0.07)',
+    link: VIOLET_LIGHT,
+    sidebarBg: 'rgba(8,7,15,0.72)',
+    headerBg: 'rgba(10,10,20,0.6)',
+    glassBlur: 'blur(10px)',
+    cardShadow: '0 40px 80px rgba(0,0,0,0.5)',
+    halo: '0 0 60px rgba(143,125,255,0.25)',
+    heroWash: 'radial-gradient(90% 70% at 75% -10%, #1B1533 0%, #0A0A14 55%)',
   },
-  gradCreate: 'linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)',
-  gradCredits: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
-  gradUpgrade: 'linear-gradient(135deg, #4B5563 0%, #6B7280 100%)',
-  gradTutorial: 'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)',
-  // Poppins was never loaded anywhere — the root layout loads Sora as
-  // --font-sora, so every /animate surface silently fell back to the
-  // system UI font. Use the font that is actually on the page.
-  font: "var(--font-sora), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  radius: { xs: 4, sm: 6, md: 8, lg: 12, xl: 16, pill: 24, full: 9999 },
-  shadow1:
-    '0 3px 3px -2px rgba(0,0,0,0.2), 0 3px 4px 0 rgba(0,0,0,0.14), 0 1px 8px 0 rgba(0,0,0,0.12)',
-  shadow4:
-    '0 3px 5px -1px rgba(0,0,0,0.2), 0 6px 10px 0 rgba(0,0,0,0.14), 0 1px 18px 0 rgba(0,0,0,0.12)',
-  shadow24:
-    '0 8px 10px -5px rgba(0,0,0,0.2), 0 16px 24px 2px rgba(0,0,0,0.14), 0 6px 30px 5px rgba(0,0,0,0.12)',
+  /* Fonts are loaded once in app/animate/layout.tsx (components/animate/fonts.ts).
+   * The Sora fallback keeps the two animate banners that /vater/youtube imports
+   * readable outside the /animate layout. */
+  font: "var(--font-jelly-display, var(--font-sora)), 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  fontSerif: "var(--font-jelly-serif), 'Instrument Serif', Georgia, serif",
+  fontMono: "var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace",
+  radius: { xs: 6, sm: 10, md: 12, lg: 14, xl: 18, xxl: 20, pill: 999, full: 9999 },
+  shadow1: '0 10px 30px rgba(0,0,0,0.35)',
+  shadow4: '0 24px 60px rgba(0,0,0,0.45)',
+  shadow24: '0 40px 90px rgba(0,0,0,0.6)',
+  /* micro-labels: "ACT I — THE STORY", "— TITLE CARD —" */
+  micro: { size: 11.5, tracking: '0.26em' },
+  motion: {
+    rise: 'jc-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both',
+    fadein: 'jc-fadein 1s both',
+    reel: 'jc-reel 14s linear infinite',
+    marquee: 'jc-marquee 30s linear infinite',
+    blink: 'jc-blink 1.6s infinite',
+    flicker: 'jc-flicker 6s infinite',
+  },
 } as const;
 
-/* `VaterTheme` is the structural shape shared by both the light and dark
- * token slices. We can't write `typeof JELLY_TOKENS.dark` directly because
- * the `as const` assertion narrows every value to its literal type, which
- * makes the light slice fail assignability against the dark slice. Mapping
- * each key to `string` keeps the per-slice readonly contract while letting
- * either slice flow through the same theme context.
- */
 export type VaterTheme = { readonly [K in keyof typeof JELLY_TOKENS.dark]: string };
+
+/** The glass panel recipe every card / bar / drawer shares. Spread it first,
+ *  then override radius / padding per use. */
+export function glass(t: VaterTheme, opts: { strong?: boolean } = {}): {
+  background: string;
+  border: string;
+  backdropFilter: string;
+  WebkitBackdropFilter: string;
+} {
+  return {
+    background: t.card,
+    border: `1px solid ${opts.strong ? t.borderStrong : t.border}`,
+    backdropFilter: t.glassBlur,
+    WebkitBackdropFilter: t.glassBlur,
+  };
+}
+
+/** Micro-label style ("ACT I — THE STORY"). */
+export function microLabelStyle(color: string): React.CSSProperties {
+  return {
+    fontSize: JELLY_TOKENS.micro.size,
+    letterSpacing: JELLY_TOKENS.micro.tracking,
+    textTransform: 'uppercase',
+    color,
+    fontFamily: JELLY_TOKENS.font,
+    fontWeight: 500,
+  };
+}
 
 export const EDITOR_STEPS = [
   'Title',

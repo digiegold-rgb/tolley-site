@@ -1,0 +1,117 @@
+/* Jelly Studio — cinema keyframes, reveal utility, legacy re-skin.
+ * Imported once by app/animate/layout.tsx. Everything here is scoped to
+ * classes that only /animate surfaces use (.jelly-cinema, .jc-*, .jelly-legacy)
+ * so nothing leaks into the rest of tolley.io. Colours here are the SAME
+ * values as components/animate/tokens.ts — keep them in step. */
+
+@keyframes jc-rise { from { opacity: 0; transform: translateY(56px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes jc-fadein { from { opacity: 0; } to { opacity: 1; } }
+@keyframes jc-floatA { 0%, 100% { transform: rotateY(-14deg) rotateX(3deg) translateY(0); } 50% { transform: rotateY(-14deg) rotateX(3deg) translateY(-14px); } }
+@keyframes jc-floatB { 0%, 100% { transform: rotateY(-22deg) rotateX(5deg) translateY(0) translateZ(-90px); } 50% { transform: rotateY(-22deg) rotateX(5deg) translateY(-22px) translateZ(-90px); } }
+@keyframes jc-floatC { 0%, 100% { transform: rotateY(-28deg) rotateX(7deg) translateY(0) translateZ(-180px); } 50% { transform: rotateY(-28deg) rotateX(7deg) translateY(-10px) translateZ(-180px); } }
+@keyframes jc-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+@keyframes jc-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes jc-reel { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+@keyframes jc-flicker { 0%, 100% { opacity: 0.5; } 92% { opacity: 0.5; } 94% { opacity: 0.34; } 96% { opacity: 0.55; } 98% { opacity: 0.42; } }
+@keyframes jc-spin { to { transform: rotate(360deg); } }
+
+/* ── root ─────────────────────────────────────────────────────────────── */
+.jelly-cinema {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.jelly-cinema ::selection { background: #8F7DFF; color: #0A0A14; }
+.jelly-cinema a { text-decoration: none; }
+.jelly-cinema a:hover { text-decoration: none; }
+.jelly-cinema .jc-link { color: var(--jelly-link, #B3A6FF); }
+.jelly-cinema .jc-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.jelly-cinema button { font-family: inherit; }
+.jelly-cinema h1, .jelly-cinema h2, .jelly-cinema h3 { text-wrap: balance; }
+.jelly-cinema p { text-wrap: pretty; }
+.jelly-cinema .jc-tabular { font-variant-numeric: tabular-nums; }
+
+/* ── scroll reveal ────────────────────────────────────────────────────── */
+/* Progressive: with scroll-driven animations the section rises as it
+ * enters; without support the element is simply visible. */
+.jc-rise { animation: jc-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@supports (animation-timeline: view()) {
+  .jc-rise { animation-timeline: view(); animation-range: entry 0% entry 55%; }
+}
+.jc-fadein { animation: jc-fadein 1s both; }
+.jc-rise-load { animation: jc-rise 1s both; }
+.jc-d1 { animation-delay: 0.1s; } .jc-d2 { animation-delay: 0.25s; } .jc-d3 { animation-delay: 0.4s; } .jc-d4 { animation-delay: 0.5s; }
+
+/* ── motion utilities ─────────────────────────────────────────────────── */
+.jc-floatA { animation: jc-floatA 5s ease-in-out infinite; }
+.jc-floatB { animation: jc-floatB 6s ease-in-out 0.6s infinite; }
+.jc-floatC { animation: jc-floatC 7s ease-in-out infinite; }
+.jc-blink { animation: jc-blink 1.6s infinite; }
+.jc-marquee-track { animation: jc-marquee 30s linear infinite; }
+.jc-reel { animation: jc-reel 14s linear infinite; }
+.jc-flicker { animation: jc-flicker 6s infinite; }
+.jc-spin { animation: jc-spin 0.8s linear infinite; }
+
+/* hover states that inline styles cannot express */
+.jc-glass-hover { transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease; }
+.jc-glass-hover:hover { border-color: rgba(143,125,255,0.5) !important; background: rgba(143,125,255,0.07) !important; }
+.jc-nav-link { color: var(--jelly-text-2, #9A94B0); transition: color 0.15s ease; }
+.jc-nav-link:hover { color: var(--jelly-text, #F0EEF8); }
+.jc-pill-gradient { transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease; }
+.jc-pill-gradient:hover { transform: translateY(-1px); box-shadow: 0 16px 50px rgba(143,125,255,0.45); filter: saturate(1.05); }
+.jc-pill-ghost { transition: border-color 0.2s ease, background 0.2s ease; }
+.jc-pill-ghost:hover { border-color: rgba(143,125,255,0.6) !important; background: rgba(143,125,255,0.08); }
+.jc-chip { transition: all 0.2s ease; }
+.jc-chip:hover { border-color: rgba(143,125,255,0.5) !important; }
+.jc-details > summary { list-style: none; cursor: pointer; }
+.jc-details > summary::-webkit-details-marker { display: none; }
+.jc-details > summary::after { content: '+'; float: right; color: #6FD6FF; font-weight: 500; }
+.jc-details[open] > summary::after { content: '–'; }
+
+/* ── legacy re-skin ───────────────────────────────────────────────────── */
+/* Legacy components/vater/* (Tailwind zinc/sky/amber) mounted inside the
+ * studio. Tailwind v4 emits utilities in @layer utilities, so these unlayered
+ * scoped rules win. The inset stays a dark "screening room" in BOTH themes on
+ * purpose (one skin to maintain). */
+.jelly-legacy { color: #F0EEF8; }
+.jelly-legacy .vater-card,
+.jelly-legacy .bg-zinc-950, .jelly-legacy .bg-zinc-900, .jelly-legacy .bg-zinc-900\/40, .jelly-legacy .bg-zinc-900\/60,
+.jelly-legacy .bg-zinc-800, .jelly-legacy .bg-zinc-800\/60, .jelly-legacy .bg-zinc-700\/20, .jelly-legacy .bg-black\/40 {
+  background: rgba(240,238,248,0.04); border-color: rgba(240,238,248,0.10); backdrop-filter: blur(10px);
+}
+.jelly-legacy .vater-card { border: 1px solid rgba(240,238,248,0.10); border-radius: 14px; }
+.jelly-legacy .border-zinc-800, .jelly-legacy .border-zinc-700, .jelly-legacy .border-zinc-600\/50, .jelly-legacy .border-zinc-700\/60 { border-color: rgba(240,238,248,0.10); }
+.jelly-legacy .text-zinc-100, .jelly-legacy .text-zinc-200, .jelly-legacy .text-white { color: #F0EEF8; }
+.jelly-legacy .text-zinc-300, .jelly-legacy .text-zinc-400 { color: #9A94B0; }
+.jelly-legacy .text-zinc-500, .jelly-legacy .text-zinc-600, .jelly-legacy .text-zinc-700 { color: #6B6584; }
+.jelly-legacy .text-sky-300, .jelly-legacy .text-sky-400, .jelly-legacy .text-sky-500, .jelly-legacy .text-cyan-300, .jelly-legacy .text-cyan-400 { color: #6FD6FF; }
+.jelly-legacy .border-sky-400\/40, .jelly-legacy .border-sky-500\/40, .jelly-legacy .border-sky-500 { border-color: rgba(111,214,255,0.4); }
+.jelly-legacy .bg-sky-500, .jelly-legacy .bg-sky-600, .jelly-legacy .bg-sky-500\/10, .jelly-legacy .bg-sky-500\/20 { background: linear-gradient(120deg, #8F7DFF, #6FD6FF); color: #0A0A14; }
+.jelly-legacy .bg-sky-500\/10, .jelly-legacy .bg-sky-500\/20 { background: rgba(111,214,255,0.10); color: inherit; }
+.jelly-legacy .text-amber-300, .jelly-legacy .text-amber-400, .jelly-legacy .text-yellow-300 { color: #B3A6FF; }
+.jelly-legacy .border-amber-500\/30, .jelly-legacy .border-amber-500\/40 { border-color: rgba(143,125,255,0.35); }
+.jelly-legacy .bg-amber-500\/10, .jelly-legacy .bg-amber-500\/20 { background: rgba(143,125,255,0.10); }
+.jelly-legacy .text-emerald-300, .jelly-legacy .text-emerald-400, .jelly-legacy .text-green-400 { color: #34C98A; }
+.jelly-legacy .border-emerald-500\/40 { border-color: rgba(52,201,138,0.4); }
+.jelly-legacy .bg-emerald-500\/10 { background: rgba(52,201,138,0.10); }
+.jelly-legacy .text-violet-300, .jelly-legacy .text-violet-400, .jelly-legacy .text-purple-300, .jelly-legacy .text-fuchsia-300 { color: #B3A6FF; }
+.jelly-legacy .bg-violet-600, .jelly-legacy .bg-violet-500, .jelly-legacy .bg-purple-600, .jelly-legacy .bg-fuchsia-600 { background: linear-gradient(120deg, #8F7DFF, #6FD6FF); color: #0A0A14; }
+.jelly-legacy .bg-gradient-to-r, .jelly-legacy .bg-gradient-to-br, .jelly-legacy .bg-gradient-to-b { background-image: linear-gradient(120deg, #8F7DFF, #6FD6FF); color: #0A0A14; }
+.jelly-legacy .rounded-lg, .jelly-legacy .rounded-xl { border-radius: 12px; }
+.jelly-legacy .rounded-2xl { border-radius: 16px; }
+.jelly-legacy input, .jelly-legacy textarea, .jelly-legacy select {
+  background: rgba(240,238,248,0.04); border-color: rgba(240,238,248,0.14); color: #F0EEF8; border-radius: 10px;
+}
+.jelly-legacy input:focus, .jelly-legacy textarea:focus, .jelly-legacy select:focus { border-color: #8F7DFF; outline: none; box-shadow: 0 0 0 3px rgba(143,125,255,0.2); }
+.jelly-legacy ::placeholder { color: #6B6584; }
+
+/* ── reduced motion ───────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .jelly-cinema *, .jelly-cinema *::before, .jelly-cinema *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+  }
+  .jc-rise, .jc-rise-load, .jc-fadein { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .jc-marquee-track { animation: none !important; transform: none !important; }
+  .jc-floatA, .jc-floatB, .jc-floatC { animation: none !important; }
+}

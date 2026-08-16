@@ -17,10 +17,12 @@ export interface ThemeContextValue {
   t: VaterTheme;
 }
 
+/* Default = dark. The public surfaces (landing, legal, demo) render without a
+ * Shell and must come out in the cinema dark palette. */
 const defaultThemeValue: ThemeContextValue = {
-  dark: false,
+  dark: true,
   toggle: () => {},
-  t: JELLY_TOKENS.light,
+  t: JELLY_TOKENS.dark,
 };
 
 export const ThemeContext = React.createContext<ThemeContextValue>(defaultThemeValue);

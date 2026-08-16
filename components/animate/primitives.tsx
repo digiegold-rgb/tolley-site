@@ -1,13 +1,16 @@
 'use client';
 
 /* Primitive UI components: VBtn, VCard, VInput, PillStepper, SectionHeader.
- * Ported from vater-core.jsx lines 116-200 and 423-447.
+ * Cinema language (2026-08-16): gradient pill CTAs, glass cards with
+ * hairlines, violet focus rings. API unchanged — every consumer of the
+ * pre-cinema primitives keeps compiling; only the look moved.
  *
- * Inline styles match the prototype exactly. No Tailwind, no CSS modules.
+ * Inline styles only. No Tailwind, no CSS modules.
  */
 
 import * as React from 'react';
-import { JELLY_TOKENS } from './tokens';
+import { JELLY_TOKENS, glass } from './tokens';
+import { MicroLabel } from './cinema/MicroLabel';
 import { useTheme } from './theme-context';
 import { Icon, type IconName } from './Icon';
 
@@ -50,22 +53,22 @@ export function VBtn({
 }: VBtnProps): React.ReactElement {
   const { t } = useTheme();
   const sizes: Record<VBtnSize, { padding: string; fontSize: number }> = {
-    sm: { padding: '6px 14px', fontSize: 13 },
-    md: { padding: '8px 22px', fontSize: 14 },
-    lg: { padding: '12px 32px', fontSize: 15 },
+    sm: { padding: '7px 14px', fontSize: 13 },
+    md: { padding: '9px 22px', fontSize: 14 },
+    lg: { padding: '14px 32px', fontSize: 15.5 },
   };
   const variants: Record<VBtnVariant, React.CSSProperties> = {
-    primary: { background: JELLY_TOKENS.brand, color: '#fff', border: 'none' },
-    accent: { background: JELLY_TOKENS.accent, color: '#000', border: 'none' },
+    primary: { background: JELLY_TOKENS.gradPrimary, color: JELLY_TOKENS.onGradient, border: '1px solid transparent', fontWeight: 700 },
+    accent: { background: JELLY_TOKENS.cyan, color: JELLY_TOKENS.onGradient, border: '1px solid transparent', fontWeight: 700 },
     outlined: {
-      background: 'transparent',
-      color: JELLY_TOKENS.brand,
+      background: JELLY_TOKENS.brandGhost,
+      color: t.text,
       border: `1px solid ${JELLY_TOKENS.brandOutline}`,
     },
-    text: { background: 'transparent', color: JELLY_TOKENS.brand, border: 'none' },
-    white: { background: 'rgba(255,255,255,0.95)', color: JELLY_TOKENS.brand, border: 'none' },
-    ghost: { background: t.hover, color: t.text, border: 'none' },
-    danger: { background: JELLY_TOKENS.error, color: '#fff', border: 'none' },
+    text: { background: 'transparent', color: t.link, border: '1px solid transparent' },
+    white: { background: t.panel, color: JELLY_TOKENS.brand, border: `1px solid ${t.border}` },
+    ghost: { background: t.hover, color: t.text, border: `1px solid ${t.border}` },
+    danger: { background: 'rgba(240,96,122,0.14)', color: JELLY_TOKENS.error, border: '1px solid rgba(240,96,122,0.4)' },
   };
   const v = variants[variant] ?? variants.primary;
   const s = sizes[size] ?? sizes.md;
@@ -85,15 +88,19 @@ export function VBtn({
         ...v,
         ...s,
         fontFamily: JELLY_TOKENS.font,
-        fontWeight: 500,
-        borderRadius: JELLY_TOKENS.radius.md,
+        fontWeight: v.fontWeight ?? 500,
+        borderRadius: JELLY_TOKENS.radius.pill,
         cursor: disabled ? 'not-allowed' : 'pointer',
         display: 'inline-flex',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: 8,
-        transition: 'all .15s ease',
-        opacity: disabled ? 0.5 : hovered ? 0.9 : 1,
-        boxShadow: hovered && variant === 'primary' ? JELLY_TOKENS.brandGlow : 'none',
+        lineHeight: 1.2,
+        transition: 'all .2s ease',
+        opacity: disabled ? 0.5 : 1,
+        transform: hovered && !disabled && variant === 'primary' ? 'translateY(-1px)' : 'none',
+        filter: hovered && !disabled && variant !== 'primary' ? 'brightness(1.08)' : 'none',
+        boxShadow: variant === 'primary' ? (hovered ? '0 16px 50px rgba(143,125,255,0.45)' : JELLY_TOKENS.brandGlow) : 'none',
         textTransform: 'none',
         letterSpacing: 0,
         ...style,
@@ -125,23 +132,24 @@ export function VCard({
   onClick,
   'data-testid': testId,
 }: VCardProps): React.ReactElement {
-  const { t, dark } = useTheme();
+  const { t } = useTheme();
   const base: React.CSSProperties = {
-    background: t.card,
-    borderRadius: JELLY_TOKENS.radius.md,
+    ...glass(t),
+    borderRadius: JELLY_TOKENS.radius.lg,
     padding: 24,
     fontFamily: JELLY_TOKENS.font,
+    color: t.text,
   };
   if (variant === 'elevated') {
-    base.boxShadow = dark ? '0 2px 8px rgba(0,0,0,0.3)' : JELLY_TOKENS.shadow1;
+    base.boxShadow = JELLY_TOKENS.shadow1;
   }
   if (variant === 'flat') {
-    base.border = `1px solid ${t.border}`;
     base.boxShadow = 'none';
   }
   if (variant === 'hero') {
-    base.borderRadius = JELLY_TOKENS.radius.xl;
-    base.boxShadow = dark ? '0 4px 16px rgba(0,0,0,0.4)' : JELLY_TOKENS.shadow1;
+    base.borderRadius = JELLY_TOKENS.radius.xxl;
+    base.boxShadow = `${t.cardShadow}, ${t.halo}`;
+    base.border = `1px solid ${JELLY_TOKENS.brandOutline}`;
   }
   if (onClick) base.cursor = 'pointer';
   return (
@@ -199,13 +207,15 @@ export function VInput({
           width: '100%',
           fontSize: 16,
           fontFamily: JELLY_TOKENS.font,
-          border: `${focused ? 2 : 1}px solid ${focused ? JELLY_TOKENS.brand : t.border}`,
+          border: `1px solid ${focused ? JELLY_TOKENS.brand : t.borderStrong}`,
           borderRadius: JELLY_TOKENS.radius.md,
           background: t.card,
           color: t.text,
           outline: 'none',
           boxSizing: 'border-box',
-          padding: focused ? '13px' : '14px',
+          padding: '13px 14px',
+          boxShadow: focused ? '0 0 0 3px rgba(143,125,255,0.2)' : 'none',
+          transition: 'border-color .15s ease, box-shadow .15s ease',
         }}
       />
       {helper && (
@@ -233,10 +243,9 @@ export function PillStepper({
     <div
       style={{
         display: 'inline-flex',
-        gap: 2,
+        gap: 4,
         padding: 4,
-        background: t.card,
-        border: `1px solid ${t.border}`,
+        ...glass(t),
         borderRadius: JELLY_TOKENS.radius.pill,
         flexWrap: 'wrap',
         justifyContent: 'center',
@@ -264,8 +273,9 @@ export function PillStepper({
             fontSize: 14,
             fontWeight: i === active ? 600 : 500,
             fontFamily: JELLY_TOKENS.font,
-            background: i === active ? JELLY_TOKENS.brand : 'transparent',
-            color: i === active ? '#fff' : t.textSecondary,
+            background: i === active ? JELLY_TOKENS.gradChipOn : 'transparent',
+            border: `1px solid ${i === active ? 'rgba(143,125,255,0.7)' : 'transparent'}`,
+            color: i === active ? t.text : t.textSecondary,
             transition: 'all .2s ease',
             whiteSpace: 'nowrap',
           }}
@@ -308,10 +318,11 @@ export function RetryError({
         gap: 12,
         padding: isBanner ? '12px 16px' : '10px 14px',
         borderRadius: JELLY_TOKENS.radius.md,
-        border: `1px solid ${JELLY_TOKENS.error}`,
-        background: 'rgba(220,38,38,0.08)',
+        border: `1px solid rgba(240,96,122,0.4)`,
+        background: 'rgba(240,96,122,0.08)',
         color: JELLY_TOKENS.error,
         fontSize: 13,
+        backdropFilter: 'blur(8px)',
         ...style,
       }}
     >
@@ -347,6 +358,8 @@ export interface SectionHeaderProps {
   actionLabel?: string;
   onAction?: () => void;
   creditCost?: string;
+  /** Cinema micro-label above the title, e.g. "REEL 02 — VOICE". */
+  eyebrow?: string;
 }
 
 export function SectionHeader({
@@ -356,6 +369,7 @@ export function SectionHeader({
   actionLabel,
   onAction,
   creditCost,
+  eyebrow,
 }: SectionHeaderProps): React.ReactElement {
   const { t } = useTheme();
   return (
@@ -374,16 +388,18 @@ export function SectionHeader({
             height: 40,
             borderRadius: JELLY_TOKENS.radius.md,
             background: JELLY_TOKENS.brandGhost,
+            border: `1px solid ${JELLY_TOKENS.brandOutline}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
           }}
         >
-          <Icon name={icon} size={20} color={JELLY_TOKENS.brand} />
+          <Icon name={icon} size={20} color={JELLY_TOKENS.brandLight} />
         </div>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: t.text }}>{title}</div>
+          {eyebrow && <MicroLabel tone="cyan" style={{ marginBottom: 4 }}>{eyebrow}</MicroLabel>}
+          <div style={{ fontSize: 17, fontWeight: 600, color: t.text, letterSpacing: '-0.01em' }}>{title}</div>
           {description && (
             <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 2 }}>
               {description}
@@ -456,12 +472,13 @@ export function Toast({
         gap: 12,
         maxWidth: 'min(560px, calc(100vw - 32px))',
         padding: '12px 16px',
-        borderRadius: JELLY_TOKENS.radius.md,
-        background: t.card,
+        borderRadius: JELLY_TOKENS.radius.lg,
+        background: t.panel,
         color: t.text,
-        border: `1px solid ${t.border}`,
+        border: `1px solid ${t.borderStrong}`,
         borderLeft: `3px solid ${accent}`,
         boxShadow: JELLY_TOKENS.shadow4,
+        backdropFilter: t.glassBlur,
         fontSize: 14,
         fontFamily: JELLY_TOKENS.font,
       }}
