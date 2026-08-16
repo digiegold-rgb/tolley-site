@@ -1,0 +1,1515 @@
+{
+ "_comment": "piece id -> Amazon product. Built by growth-engine/scripts/build-fit-catalog.py. Edit `asin`/`brand` by hand to override; re-run without --refresh keeps hand picks.",
+ "pieces": {
+  "dress-ribbed-midi": {
+   "slot": "dress",
+   "label": "Ribbed sleeveless midi dress",
+   "query": "women's ribbed sleeveless midi dress",
+   "prefer": [
+    "The Drop",
+    "Amazon Essentials",
+    "Calvin Klein"
+   ],
+   "asin": "B095CFFTY8",
+   "brand": "PRETTYGARDEN",
+   "title": "Women's Summer Ribbed Bodycon Midi Dresses",
+   "price": "$23.18",
+   "rating": 4.3,
+   "ratings": 2753,
+   "image": "https://m.media-amazon.com/images/I/61WC1FCiROL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "dress-wrap": {
+   "slot": "dress",
+   "label": "Tie-waist wrap dress",
+   "query": "women's wrap dress tie waist short sleeve",
+   "prefer": [
+    "Calvin Klein",
+    "Tommy Hilfiger",
+    "Lark & Ro",
+    "Amazon Essentials"
+   ],
+   "asin": "B09H2T7FQV",
+   "brand": "Amazon Essentials",
+   "title": "Women's Classic Cap Sleeve Wrap Dress with V Neck, Pleated Waist (Available in Plus Size)",
+   "price": "$23.62",
+   "rating": 4.2,
+   "ratings": 440,
+   "image": "https://m.media-amazon.com/images/I/616K3oNEceL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "dress-sheath": {
+   "slot": "dress",
+   "label": "Tailored sheath dress",
+   "query": "Calvin Klein women's sleeveless scuba crepe sheath dress",
+   "prefer": [
+    "Calvin Klein",
+    "Anne Klein",
+    "Tommy Hilfiger"
+   ],
+   "asin": "B01KKRHVTU",
+   "brand": "Calvin Klein",
+   "title": "Women's Scuba Crepe Sleeveless Princess Seam Sheath Dress",
+   "price": "$72.77",
+   "rating": 4.6,
+   "ratings": 367,
+   "image": "https://m.media-amazon.com/images/I/61OWfnIQoWL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "dress-linen-shirt": {
+   "slot": "dress",
+   "label": "Belted linen shirt dress",
+   "query": "women's linen shirt dress belted",
+   "prefer": [
+    "Amazon Essentials",
+    "Lands' End",
+    "The Drop"
+   ],
+   "asin": "B0DRD73KG5",
+   "brand": "ZESICA",
+   "title": "Womens Summer Button Midi Dress Casual Work Dresses",
+   "price": "$44.97",
+   "rating": 4.0,
+   "ratings": 489,
+   "image": "https://m.media-amazon.com/images/I/51KycSQEeVL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jumpsuit-tailored": {
+   "slot": "dress",
+   "label": "Belted wide-leg jumpsuit",
+   "query": "women's wide leg jumpsuit belted",
+   "prefer": [
+    "Calvin Klein",
+    "Vince Camuto",
+    "Amazon Essentials"
+   ],
+   "asin": "B0C73HT622",
+   "brand": "BessCops",
+   "title": "Womens Loose Short Sleeve Belted Wide Leg Pant Romper Jumpsuit Casual Business One Piece Outfits",
+   "price": "$34.19",
+   "rating": 4.3,
+   "ratings": 1221,
+   "image": "https://m.media-amazon.com/images/I/413+8LDZ7gL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "dress-sweater": {
+   "slot": "dress",
+   "label": "Fine-knit sweater dress",
+   "query": "women's fine knit sweater dress long sleeve",
+   "prefer": [
+    "Amazon Essentials",
+    "The Drop",
+    "Calvin Klein"
+   ],
+   "asin": "B0FBRJT842",
+   "brand": "PRETTYGARDEN",
+   "title": "Womens Sweater Dress 2026 Fall Long Sleeve V Neck A Line Fit and Flare Ribbed Short Dresses Knit Outfits Pockets",
+   "price": "$11.04",
+   "rating": 4.2,
+   "ratings": 204,
+   "image": "https://m.media-amazon.com/images/I/81Rzbw-oZZL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "dress-sundress-straps": {
+   "slot": "dress",
+   "label": "Cotton strappy sundress",
+   "query": "women's cotton sundress spaghetti strap",
+   "prefer": [
+    "Levi's",
+    "Amazon Essentials",
+    "PRETTYGARDEN"
+   ],
+   "asin": "B0D7Q86R4N",
+   "brand": "elescat",
+   "title": "Womens Summer Dresses Spaghetti Strap V Neck Sleeveless Beach Sundress",
+   "price": "$14.99",
+   "rating": 4.2,
+   "ratings": 1137,
+   "image": "https://m.media-amazon.com/images/I/41drxZgsYBL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "dress-smocked": {
+   "slot": "dress",
+   "label": "Smocked flutter-sleeve sundress",
+   "query": "women's smocked sundress flutter sleeve",
+   "prefer": [
+    "Amazon Essentials",
+    "PRETTYGARDEN",
+    "The Drop"
+   ],
+   "asin": "B0B1WWG6J8",
+   "brand": "PRETTYGARDEN",
+   "title": "Women's Casual Smocked Boho Floral A-Line Maxi Dress 2026",
+   "price": "$23.26",
+   "rating": 4.2,
+   "ratings": 4442,
+   "image": "https://m.media-amazon.com/images/I/91oBB7vNvxL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "dress-tennis": {
+   "slot": "dress",
+   "label": "Pleated tennis dress",
+   "query": "women's tennis dress pleated built in shorts",
+   "prefer": [
+    "adidas",
+    "Nike",
+    "CRZ YOGA"
+   ],
+   "asin": "B0DSVY4P5V",
+   "brand": "QINSEN",
+   "title": "Womens Square Neck Tennis Dress Pleated Sleeveless Built in Shorts Golf Athletic Dress with Pockets",
+   "price": "$35.99",
+   "rating": 4.2,
+   "ratings": 1387,
+   "image": "https://m.media-amazon.com/images/I/71nDSGGAx-L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "dress-elegant-midi": {
+   "slot": "dress",
+   "label": "Elegant defined-waist midi dress",
+   "query": "women's elegant midi dress defined waist",
+   "prefer": [
+    "Calvin Klein",
+    "Vince Camuto",
+    "Anne Klein"
+   ],
+   "asin": "B0CQ8HFR7M",
+   "brand": "PerZeal",
+   "title": "Women's Peplum Bodycon Midi Dress Elegant Office Workwear",
+   "price": "$39.99",
+   "rating": 4.1,
+   "ratings": 2405,
+   "image": "https://m.media-amazon.com/images/I/61ULuvGdhmL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "dress-satin-offshoulder": {
+   "slot": "dress",
+   "label": "Satin off-shoulder midi dress",
+   "query": "women's satin off shoulder midi dress",
+   "prefer": [
+    "Calvin Klein",
+    "The Drop",
+    "PRETTYGARDEN"
+   ],
+   "asin": "B0BY15971D",
+   "brand": "PRETTYGARDEN",
+   "title": "Women's Satin Backless Midi Cocktail Dress",
+   "price": "$27.99",
+   "rating": 4.0,
+   "ratings": 1177,
+   "image": "https://m.media-amazon.com/images/I/61Lbjh45NxL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "dress-sequin": {
+   "slot": "dress",
+   "label": "Long-sleeve sequin midi dress",
+   "query": "women's sequin midi dress long sleeve",
+   "prefer": [
+    "Calvin Klein",
+    "Vince Camuto"
+   ],
+   "asin": "B072B99JHX",
+   "brand": "Dress the Population",
+   "title": "Womens Emery Long Sleeve Stretch Sequin Midi Sheath Ddr147",
+   "price": "$278.00",
+   "rating": 4.3,
+   "ratings": 301,
+   "image": "https://m.media-amazon.com/images/I/71IxYLWhd8L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "dress-velvet-cocktail": {
+   "slot": "dress",
+   "label": "Velvet boat-neck cocktail dress",
+   "query": "women's velvet cocktail dress boat neck 3/4 sleeve",
+   "prefer": [
+    "Calvin Klein",
+    "Anne Klein"
+   ],
+   "asin": "B0D7HWXCM8",
+   "brand": "GRACE KARIN",
+   "title": "2026 Velvet Wedding Guest Cocktail Maxi Dresses for Women",
+   "price": "$35.97",
+   "rating": 4.4,
+   "ratings": 806,
+   "image": "https://m.media-amazon.com/images/I/61bPUIGWNLL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "dress-slip-silk": {
+   "slot": "dress",
+   "label": "Silk-satin slip dress",
+   "query": "women's silk satin slip dress midi",
+   "prefer": [
+    "The Drop",
+    "Calvin Klein"
+   ],
+   "asin": "B0C278QD86",
+   "brand": "",
+   "title": "Women's Spaghetti Strap Midi Satin Silk Dresses Slip Cowl Neck Party Cocktail Evening Sexy Dress",
+   "price": "$44.99",
+   "rating": 4.2,
+   "ratings": 1044,
+   "image": "https://m.media-amazon.com/images/I/61Q-pqILlHL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "dress-halter-maxi": {
+   "slot": "dress",
+   "label": "Pleated halter maxi dress",
+   "query": "women's halter maxi dress pleated",
+   "prefer": [
+    "Calvin Klein",
+    "Vince Camuto",
+    "PRETTYGARDEN"
+   ],
+   "asin": "B0GJD3W3L8",
+   "brand": "PRETTYGARDEN",
+   "title": "Women's Summer Wedding Guest Halter Maxi Dresses",
+   "price": "$42.99",
+   "rating": 4.2,
+   "ratings": 175,
+   "image": "https://m.media-amazon.com/images/I/61yDm1+I-DL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "blouse-white-sleeveless": {
+   "slot": "top",
+   "label": "White sleeveless blouse",
+   "query": "women's white sleeveless blouse",
+   "prefer": [
+    "Calvin Klein",
+    "Amazon Essentials",
+    "Tommy Hilfiger"
+   ],
+   "asin": "B0CSYVCR4B",
+   "brand": "EVALESS",
+   "title": "Business Casual Tops for Women Pleated V Neck",
+   "price": "$9.49",
+   "rating": 4.1,
+   "ratings": 3210,
+   "image": "https://m.media-amazon.com/images/I/619o9fowJrL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "blouse-silk": {
+   "slot": "top",
+   "label": "Silk-satin blouse",
+   "query": "women's silk satin blouse button down",
+   "prefer": [
+    "Calvin Klein",
+    "Amazon Essentials",
+    "The Drop"
+   ],
+   "asin": "B0FJFBT28C",
+   "brand": "Zeagoo",
+   "title": "Womens Tops Long Sleeve Satin Silk Button Down Shirts Dressy Blouses",
+   "price": "$16.99",
+   "rating": 4.2,
+   "ratings": 1650,
+   "image": "https://m.media-amazon.com/images/I/717AstO5vzL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "tee-cotton": {
+   "slot": "top",
+   "label": "Cotton crew-neck tee",
+   "query": "women's cotton crew neck t-shirt",
+   "prefer": [
+    "Hanes",
+    "Levi's",
+    "Amazon Essentials",
+    "Gap"
+   ],
+   "asin": "B0C1TCCS6C",
+   "brand": "Hanes",
+   "title": "Women's Perfect-T Crewneck T-Shirt, Lightweight Cotton Short Sleeve Tee for Women",
+   "price": "$10.00",
+   "rating": 4.2,
+   "ratings": 44277,
+   "image": "https://m.media-amazon.com/images/I/71A4X6vRrJL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "tank-linen": {
+   "slot": "top",
+   "label": "Linen tank",
+   "query": "women's linen tank top",
+   "prefer": [
+    "Amazon Essentials",
+    "Lands' End"
+   ],
+   "asin": "B0D6NLMFGP",
+   "brand": "IDEALSANXUN",
+   "title": "Womens Linen Crop Tank Tops 2026 Spring Summer Sleeveless Tops",
+   "price": "$14.99",
+   "rating": 4.0,
+   "ratings": 1814,
+   "image": "https://m.media-amazon.com/images/I/5117i1xOOlL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shirt-white-buttondown": {
+   "slot": "top",
+   "label": "Crisp white button-down",
+   "query": "women's white button down shirt",
+   "prefer": [
+    "Calvin Klein",
+    "Tommy Hilfiger",
+    "Amazon Essentials",
+    "Lands' End"
+   ],
+   "asin": "B07J38KJ8M",
+   "brand": "Amazon Essentials",
+   "title": "Women's Regular-Fit Long-Sleeve Button-Down Cotton Poplin Shirt, Business Casual",
+   "price": "$24.00",
+   "rating": 4.2,
+   "ratings": 18874,
+   "image": "https://m.media-amazon.com/images/I/81ESl28+PAL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "tank-knit": {
+   "slot": "top",
+   "label": "Ribbed knit tank",
+   "query": "women's ribbed knit tank top",
+   "prefer": [
+    "Amazon Essentials",
+    "The Drop",
+    "Hanes"
+   ],
+   "asin": "B0775B4YV5",
+   "brand": "Amazon Essentials",
+   "title": "Women's Slim-Fit Ribbed Scoop Neck Tank Tops, Pack of 2",
+   "price": "$20.00",
+   "rating": 4.6,
+   "ratings": 78022,
+   "image": "https://m.media-amazon.com/images/I/51lx2I-TUdS._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shirt-linen-oversized": {
+   "slot": "top",
+   "label": "Oversized linen shirt",
+   "query": "women's oversized linen shirt",
+   "prefer": [
+    "Amazon Essentials",
+    "Lands' End"
+   ],
+   "asin": "B0F5PYNKXG",
+   "brand": "",
+   "title": "Button Down Shirts for Women Cotton Long Sleeve Casual Tops Blouse",
+   "price": "$14.99",
+   "rating": 4.0,
+   "ratings": 549,
+   "image": "https://m.media-amazon.com/images/I/51AHZT2lodL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "tank-white": {
+   "slot": "top",
+   "label": "White tank",
+   "query": "women's white tank top",
+   "prefer": [
+    "Hanes",
+    "Amazon Essentials",
+    "Levi's"
+   ],
+   "asin": "B0775Q1K7R",
+   "brand": "Amazon Essentials",
+   "title": "Women's Slim-Fit Ribbed Scoop Neck Tank Tops, Pack of 2",
+   "price": "$20.00",
+   "rating": 4.6,
+   "ratings": 78022,
+   "image": "https://m.media-amazon.com/images/I/51lx2I-TUdS._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "tee-white": {
+   "slot": "top",
+   "label": "White tee",
+   "query": "women's white crew neck t-shirt",
+   "prefer": [
+    "Hanes",
+    "Levi's",
+    "Amazon Essentials"
+   ],
+   "asin": "B00KRYLKH6",
+   "brand": "Hanes",
+   "title": "Women's Perfect-T Crewneck T-Shirt, Lightweight Cotton Short Sleeve Tee for Women",
+   "price": "$10.00",
+   "rating": 4.2,
+   "ratings": 44277,
+   "image": "https://m.media-amazon.com/images/I/61AooVBs-ZL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "tee-striped": {
+   "slot": "top",
+   "label": "Breton striped tee",
+   "query": "women's breton striped shirt short sleeve",
+   "prefer": [
+    "Amazon Essentials",
+    "Levi's",
+    "Tommy Hilfiger"
+   ],
+   "asin": "B0FV7F39BN",
+   "brand": "ANRABESS",
+   "title": "Womens Striped Boat Neck Tops Short Sleeve T-Shirts",
+   "price": "$11.99",
+   "rating": 4.3,
+   "ratings": 425,
+   "image": "https://m.media-amazon.com/images/I/81LHOXoncIL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "cardigan-chunky": {
+   "slot": "top",
+   "label": "Chunky knit cardigan",
+   "query": "women's chunky knit cardigan",
+   "prefer": [
+    "Amazon Essentials",
+    "The Drop",
+    "ANRABESS"
+   ],
+   "asin": "B0DBH15MXC",
+   "brand": "VIISHOW",
+   "title": "Women Chunky Knit Cardigan Sweater Long Sleeve V Neck Button up Cardigan with Pocket Sweater Coat for Fall and Winter",
+   "price": "$22.09",
+   "rating": 4.5,
+   "ratings": 1097,
+   "image": "https://m.media-amazon.com/images/I/716hK-cYr3L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "hoodie-crop-zip": {
+   "slot": "top",
+   "label": "Cropped zip hoodie",
+   "query": "women's cropped zip up hoodie workout",
+   "prefer": [
+    "Champion",
+    "Nike",
+    "PUMA",
+    "Under Armour",
+    "CRZ YOGA"
+   ],
+   "asin": "B09GKBTS5K",
+   "brand": "",
+   "title": "Women's Zip Up Hoodies Cropped Cardigan Jacket Drawstring Hooded Sweatshirts Casual Long Sleeve Top…",
+   "price": "$18.99",
+   "rating": 4.3,
+   "ratings": 2831,
+   "image": "https://m.media-amazon.com/images/I/71tiiEI4iAL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "tank-sports": {
+   "slot": "top",
+   "label": "Sports tank",
+   "query": "women's sports tank top",
+   "prefer": [
+    "Under Armour",
+    "Nike",
+    "Champion",
+    "CRZ YOGA"
+   ],
+   "asin": "B0C12FKTX9",
+   "brand": "Under Armour",
+   "title": "Women's Tech Tank Top",
+   "price": "$18.75",
+   "rating": 4.3,
+   "ratings": 135,
+   "image": "https://m.media-amazon.com/images/I/5163h5C8KEL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "hoodie-oversized": {
+   "slot": "top",
+   "label": "Oversized hoodie",
+   "query": "women's oversized hoodie",
+   "prefer": [
+    "Champion",
+    "Hanes",
+    "Nike"
+   ],
+   "asin": "B0B4KFZQ3F",
+   "brand": "Nike",
+   "title": "Nike Women's Sportswear Club Fleece Pullover Hoodie",
+   "price": "$44.97",
+   "rating": 4.6,
+   "ratings": 126,
+   "image": "https://m.media-amazon.com/images/I/61YdNYCxB9L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "tee-crop-white": {
+   "slot": "top",
+   "label": "Cropped white tee",
+   "query": "women's cropped white t-shirt",
+   "prefer": [
+    "Hanes",
+    "Champion",
+    "Amazon Essentials"
+   ],
+   "asin": "B0DXKCSPGK",
+   "brand": "Amazon Essentials",
+   "title": "Women's Regular Fit Active Soft Cotton Crewneck Short Sleeve Yoga Workout Lightweight Cropped T-Shirt",
+   "price": "$14.50",
+   "rating": 4.1,
+   "ratings": 202,
+   "image": "https://m.media-amazon.com/images/I/71LY27b8q1L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "sweatsuit-set": {
+   "slot": "top",
+   "label": "Crewneck + jogger sweatsuit",
+   "query": "women's 2 piece sweatsuit crewneck joggers set",
+   "prefer": [
+    "Champion",
+    "Hanes",
+    "Amazon Essentials"
+   ],
+   "asin": "B0C3GF4M3D",
+   "brand": "Alunzoem",
+   "title": "Jogger Sets for Women 2 Piece Sweatsuit Outfits Pullover Sweatshirt Pants",
+   "price": "$36.99",
+   "rating": 4.1,
+   "ratings": 464,
+   "image": "https://m.media-amazon.com/images/I/51EjUvDdsBL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "skirt-midi-tailored": {
+   "slot": "bottom",
+   "label": "Tailored midi skirt",
+   "query": "women's tailored midi pencil skirt",
+   "prefer": [
+    "Calvin Klein",
+    "Amazon Essentials",
+    "The Drop"
+   ],
+   "asin": "B0C53FQYJ8",
+   "brand": "Amazon Essentials",
+   "title": "Women's Ponte Pull-On Fitted Pencil Skirt, Business Casual, Everyday Wear",
+   "price": "$20.90",
+   "rating": 4.0,
+   "ratings": 517,
+   "image": "https://m.media-amazon.com/images/I/61YFoi1rUlL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "trousers-cream": {
+   "slot": "bottom",
+   "label": "Tailored cream trousers",
+   "query": "women's tailored wide leg trousers cream",
+   "prefer": [
+    "Amazon Essentials",
+    "Calvin Klein",
+    "The Drop"
+   ],
+   "asin": "B00ESXENTE",
+   "brand": "Calvin Klein",
+   "title": "Women's Classic Fit Straight Leg Suit Pants",
+   "price": "$69.00",
+   "rating": 4.1,
+   "ratings": 670,
+   "image": "https://m.media-amazon.com/images/I/61J2tsxt7lL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shorts-denim-hw": {
+   "slot": "bottom",
+   "label": "High-waisted denim shorts",
+   "query": "Levi's women's high waisted denim shorts",
+   "prefer": [
+    "Levi's"
+   ],
+   "asin": "B0DJV935R4",
+   "brand": "Levi's",
+   "title": "Womens 501 Original Shorts",
+   "price": "$29.99",
+   "rating": 4.2,
+   "ratings": 3241,
+   "image": "https://m.media-amazon.com/images/I/51vP+UIE13L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "trousers-linen-wide": {
+   "slot": "bottom",
+   "label": "Wide-leg linen trousers",
+   "query": "women's wide leg linen pants",
+   "prefer": [
+    "Amazon Essentials",
+    "Lands' End"
+   ],
+   "asin": "B0F2HV3PX1",
+   "brand": "FireSwan",
+   "title": "Linen Pants Women Drawstring Elastic Waist Wide Leg Palazzo Pants",
+   "price": "$14.99",
+   "rating": 4.0,
+   "ratings": 1007,
+   "image": "https://m.media-amazon.com/images/I/51AppHrcZoL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jeans-dark-straight": {
+   "slot": "bottom",
+   "label": "Dark straight jeans",
+   "query": "Levi's women's 724 high rise straight jeans dark",
+   "prefer": [
+    "Levi's"
+   ],
+   "asin": "B07PM2NXTH",
+   "brand": "Levi's",
+   "title": "Women's 724 High Rise Straight Jeans",
+   "price": "$45.49",
+   "rating": 4.3,
+   "ratings": 1993,
+   "image": "https://m.media-amazon.com/images/I/71SLQJThJ3L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "skirt-midi-flowy": {
+   "slot": "bottom",
+   "label": "Flowy midi skirt",
+   "query": "women's flowy midi skirt",
+   "prefer": [
+    "Amazon Essentials",
+    "The Drop"
+   ],
+   "asin": "B0DPM8JXHL",
+   "brand": "FREEOAK",
+   "title": "High Waist Skirts for Women Below Knee Casual Flowy Summer Midi Skirts Palazzo A-Line Long Skirt with Pockets",
+   "price": "$16.99",
+   "rating": 4.3,
+   "ratings": 733,
+   "image": "https://m.media-amazon.com/images/I/61JQRNDr-PL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jeans-straight": {
+   "slot": "bottom",
+   "label": "Straight-leg jeans",
+   "query": "Levi's women's straight leg jeans",
+   "prefer": [
+    "Levi's"
+   ],
+   "asin": "B0BNJVVPF7",
+   "brand": "Levi's",
+   "title": "Women's 724 High Rise Straight Jeans",
+   "price": "$37.47",
+   "rating": 4.0,
+   "ratings": 207,
+   "image": "https://m.media-amazon.com/images/I/51EGn2XNgRL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jeans-boyfriend": {
+   "slot": "bottom",
+   "label": "Boyfriend jeans",
+   "query": "Levi's women's boyfriend jeans",
+   "prefer": [
+    "Levi's"
+   ],
+   "asin": "B08NV1VCHL",
+   "brand": "Levi's",
+   "title": "Women's New Boyfriend Jeans",
+   "price": "$39.99",
+   "rating": 4.3,
+   "ratings": 1266,
+   "image": "https://m.media-amazon.com/images/I/51ncCfJnzfL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "leggings-hw": {
+   "slot": "bottom",
+   "label": "High-waisted leggings",
+   "query": "women's high waisted leggings",
+   "prefer": [
+    "CRZ YOGA",
+    "lululemon",
+    "Nike",
+    "Under Armour",
+    "Colorfulkoala"
+   ],
+   "asin": "B0D49CSNS7",
+   "brand": "CRZ YOGA",
+   "title": "Butterlift Leggings 25\"",
+   "price": "$32.00",
+   "rating": 4.6,
+   "ratings": 3695,
+   "image": "https://m.media-amazon.com/images/I/615q2qxTR-L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shorts-bike": {
+   "slot": "bottom",
+   "label": "Black bike shorts",
+   "query": "women's black bike shorts",
+   "prefer": [
+    "CRZ YOGA",
+    "Nike",
+    "Under Armour",
+    "BALEAF"
+   ],
+   "asin": "B0B287V65J",
+   "brand": "CRZ YOGA",
+   "title": "Butterluxe Biker Shorts 6\"",
+   "price": "$24.00",
+   "rating": 4.7,
+   "ratings": 4555,
+   "image": "https://m.media-amazon.com/images/I/71iT4m9zD-L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "sweatpants-wide": {
+   "slot": "bottom",
+   "label": "Wide-leg sweatpants",
+   "query": "women's wide leg sweatpants",
+   "prefer": [
+    "Champion",
+    "Hanes",
+    "Nike"
+   ],
+   "asin": "B0FHH81JM3",
+   "brand": "JEKAOYI",
+   "title": "Wide Leg Sweatpants for Women High Waisted Baggy Sweat Track Pants Drawstring Casual Lounge Pants with Pockets",
+   "price": "$19.99",
+   "rating": 4.0,
+   "ratings": 478,
+   "image": "https://m.media-amazon.com/images/I/610Bm4L7HoL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shoe-nude-heels": {
+   "slot": "shoes",
+   "label": "Nude pointed-toe heels",
+   "query": "Steve Madden women's nude pointed toe pumps",
+   "prefer": [
+    "Steve Madden",
+    "Sam Edelman",
+    "Naturalizer",
+    "Nine West"
+   ],
+   "asin": "B0DW485KS4",
+   "brand": "Steve Madden",
+   "title": "Women's Alliance",
+   "price": "$89.95",
+   "rating": 4.4,
+   "ratings": 172,
+   "image": "https://m.media-amazon.com/images/I/71tDblP5uxL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shoe-strappy-black-heels": {
+   "slot": "shoes",
+   "label": "Strappy black heeled sandals",
+   "query": "women's strappy black heeled sandals",
+   "prefer": [
+    "Steve Madden",
+    "Sam Edelman",
+    "DREAM PAIRS",
+    "Nine West"
+   ],
+   "asin": "B0DN17HV27",
+   "brand": "DREAM PAIRS",
+   "title": "Women's Strappy High Heels Dress Shoes",
+   "price": "$36.99",
+   "rating": 4.3,
+   "ratings": 812,
+   "image": "https://m.media-amazon.com/images/I/710M+RrmmBL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shoe-black-pumps": {
+   "slot": "shoes",
+   "label": "Black pointed-toe pumps",
+   "query": "women's black pointed toe pumps",
+   "prefer": [
+    "Sam Edelman",
+    "Steve Madden",
+    "Naturalizer",
+    "Nine West"
+   ],
+   "asin": "B01EVTW6NE",
+   "brand": "Sam Edelman",
+   "title": "Women's Hazel Pointed Toe Pump",
+   "price": "$150.00",
+   "rating": 4.4,
+   "ratings": 4181,
+   "image": "https://m.media-amazon.com/images/I/61KqXhII2XL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shoe-tan-block-sandals": {
+   "slot": "shoes",
+   "label": "Tan block-heel sandals",
+   "query": "women's tan block heel sandals",
+   "prefer": [
+    "Sam Edelman",
+    "Naturalizer",
+    "Steve Madden",
+    "DREAM PAIRS"
+   ],
+   "asin": "B0DDX73V9B",
+   "brand": "Sam Edelman",
+   "title": "Women's Waylon Heeled Sandal",
+   "price": "$129.95",
+   "rating": 4.2,
+   "ratings": 327,
+   "image": "https://m.media-amazon.com/images/I/61wviSkpvUL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shoe-metallic-heels": {
+   "slot": "shoes",
+   "label": "Metallic strappy heels",
+   "query": "women's gold strappy block heel sandals",
+   "prefer": [
+    "Steve Madden",
+    "Sam Edelman",
+    "DREAM PAIRS"
+   ],
+   "asin": "B0D5L4ZVQ1",
+   "brand": "DREAM PAIRS",
+   "title": "Women's Chunky Heel Sandal",
+   "price": "$30.50",
+   "rating": 4.2,
+   "ratings": 1470,
+   "image": "https://m.media-amazon.com/images/I/61Gv0pIsN-L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shoe-white-leather-sneakers": {
+   "slot": "shoes",
+   "label": "White leather sneakers",
+   "query": "Reebok Club C 85 women's",
+   "prefer": [
+    "Reebok",
+    "adidas",
+    "PUMA",
+    "Keds"
+   ],
+   "asin": "B093WB7PZV",
+   "brand": "Reebok",
+   "title": "Club C 85 Vintage Tennis Sneakers for Women, Casual White Womens Shoes, Size 5 to 11",
+   "price": "$70.35",
+   "rating": 4.4,
+   "ratings": 2341,
+   "image": "https://m.media-amazon.com/images/I/71QC85udeLL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shoe-white-tennis": {
+   "slot": "shoes",
+   "label": "White low-top tennis shoes",
+   "query": "Keds women's white sneakers",
+   "prefer": [
+    "Keds",
+    "adidas",
+    "Reebok",
+    "Skechers"
+   ],
+   "asin": "B000EPYLH4",
+   "brand": "Keds",
+   "title": "Women's Champion Seasonal Lace-Up Fashion Sneaker",
+   "price": "$37.39",
+   "rating": 4.4,
+   "ratings": 31705,
+   "image": "https://m.media-amazon.com/images/I/61VMzXeEAML._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shoe-chunky-cream-trainers": {
+   "slot": "shoes",
+   "label": "Chunky cream trainers",
+   "query": "New Balance women's 530",
+   "prefer": [
+    "New Balance",
+    "PUMA",
+    "Skechers"
+   ],
+   "asin": "B07B422JC5",
+   "brand": "New Balance",
+   "title": "Women's 608 V5 Casual Comfort Cross Trainer",
+   "price": "$59.95",
+   "rating": 4.5,
+   "ratings": 36772,
+   "image": "https://m.media-amazon.com/images/I/613LIIH2peL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shoe-tan-sandals": {
+   "slot": "shoes",
+   "label": "Tan leather sandals",
+   "query": "women's tan leather flat sandals",
+   "prefer": [
+    "Birkenstock",
+    "Dr. Scholl's",
+    "Sam Edelman"
+   ],
+   "asin": "B0DJVL42VT",
+   "brand": "Sam Edelman",
+   "title": "Women's Gigi Flat Sandal",
+   "price": "$29.97",
+   "rating": 4.6,
+   "ratings": 1231,
+   "image": "https://m.media-amazon.com/images/I/61X1N39dYyL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shoe-espadrille-wedges": {
+   "slot": "shoes",
+   "label": "Espadrille wedges",
+   "query": "TOMS women's espadrille wedge",
+   "prefer": [
+    "TOMS",
+    "Sam Edelman",
+    "DREAM PAIRS"
+   ],
+   "asin": "B07FSKQ2B1",
+   "brand": "TOMS",
+   "title": "womens Classic Wedge",
+   "price": "$65.68",
+   "rating": 4.1,
+   "ratings": 5082,
+   "image": "https://m.media-amazon.com/images/I/910qTsJzaCS._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shoe-ballet-flats": {
+   "slot": "shoes",
+   "label": "Ballet flats",
+   "query": "women's ballet flats",
+   "prefer": [
+    "Sam Edelman",
+    "Naturalizer",
+    "Dr. Scholl's",
+    "Rothy's"
+   ],
+   "asin": "B01MS5RCBJ",
+   "brand": "Naturalizer",
+   "title": "Women's Flexy Ballet Flat",
+   "price": "$53.40",
+   "rating": 4.3,
+   "ratings": 8891,
+   "image": "https://m.media-amazon.com/images/I/71NMRv1OHJL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "shoe-tan-ankle-boots": {
+   "slot": "shoes",
+   "label": "Tan ankle boots",
+   "query": "women's tan ankle boots",
+   "prefer": [
+    "Sam Edelman",
+    "Dr. Scholl's",
+    "Blondo",
+    "DREAM PAIRS"
+   ],
+   "asin": "B0F1DKGKVB",
+   "brand": "Sam Edelman",
+   "title": "Women's Saige Ankle Boot",
+   "price": "$160.00",
+   "rating": 4.3,
+   "ratings": 238,
+   "image": "https://m.media-amazon.com/images/I/81M20jYy0-L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-gold-hoops": {
+   "slot": "jewelry",
+   "label": "Gold hoop earrings",
+   "query": "PAVOI 14K gold plated hoop earrings",
+   "prefer": [
+    "PAVOI",
+    "Kate Spade",
+    "Kendra Scott"
+   ],
+   "asin": "B08ZB54W1B",
+   "brand": "PAVOI",
+   "title": "Gold Hoop Earrings for Women, 14K Gold Plated Lightweight Hoops",
+   "price": "$17.45",
+   "rating": 4.6,
+   "ratings": 15208,
+   "image": "https://m.media-amazon.com/images/I/61jq4lB7sUL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-layered-gold-necklaces": {
+   "slot": "jewelry",
+   "label": "Layered dainty gold necklaces",
+   "query": "PAVOI layered gold necklace",
+   "prefer": [
+    "PAVOI",
+    "Kendra Scott"
+   ],
+   "asin": "B09LDBHHB8",
+   "brand": "PAVOI",
+   "title": "14K Gold Plated Layering Necklaces for Women, Cute Motif Pendants",
+   "price": "$14.95",
+   "rating": 4.4,
+   "ratings": 550,
+   "image": "https://m.media-amazon.com/images/I/610o36uJiIL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-diamond-studs": {
+   "slot": "jewelry",
+   "label": "Diamond-look stud earrings",
+   "query": "PAVOI cubic zirconia stud earrings",
+   "prefer": [
+    "PAVOI",
+    "Amazon Collection",
+    "Swarovski"
+   ],
+   "asin": "B0BNP4ZYDW",
+   "brand": "PAVOI",
+   "title": "Waterproof Stud Earrings for Women, 14K Gold Plated CZ Set of 5",
+   "price": "$18.65",
+   "rating": 4.6,
+   "ratings": 1467,
+   "image": "https://m.media-amazon.com/images/I/61lp-ht81aL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-tennis-bracelet": {
+   "slot": "jewelry",
+   "label": "Tennis bracelet",
+   "query": "PAVOI tennis bracelet",
+   "prefer": [
+    "PAVOI",
+    "Swarovski",
+    "Amazon Collection"
+   ],
+   "asin": "B07T9N5T79",
+   "brand": "PAVOI",
+   "title": "14K Gold Plated 3mm Cubic Zirconia Classic Tennis Bracelet | Gold Bracelets for Women",
+   "price": "$19.95",
+   "rating": 4.4,
+   "ratings": 12614,
+   "image": "https://m.media-amazon.com/images/I/612-BWdSbNL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-drop-earrings-sparkle": {
+   "slot": "jewelry",
+   "label": "Sparkling drop earrings",
+   "query": "crystal drop earrings",
+   "prefer": [
+    "Swarovski",
+    "PAVOI",
+    "Kate Spade"
+   ],
+   "asin": "B07DPRW46T",
+   "brand": "Swarovski",
+   "title": "Stilla Attract Trilogy Drop Pierced Earrings with White Crystals on a Rhodium Plated Setting with Hinged Closure",
+   "price": "$58.45",
+   "rating": 4.6,
+   "ratings": 5588,
+   "image": "https://m.media-amazon.com/images/I/61uyR77zcpL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-gold-anklet": {
+   "slot": "jewelry",
+   "label": "Dainty gold anklet",
+   "query": "14k gold anklet dainty",
+   "prefer": [
+    "PAVOI",
+    "Kendra Scott"
+   ],
+   "asin": "B0C8BP5PLH",
+   "brand": "PAVOI",
+   "title": "14K Gold Plated Anklets for Women, Trendy Link Chain Ankle Bracelet",
+   "price": "$13.95",
+   "rating": 4.5,
+   "ratings": 425,
+   "image": "https://m.media-amazon.com/images/I/61spDEBoFyL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-stacked-gold-rings": {
+   "slot": "jewelry",
+   "label": "Stacked gold rings",
+   "query": "PAVOI stackable rings for women gold set",
+   "prefer": [
+    "PAVOI"
+   ],
+   "asin": "B0BMGT4687",
+   "brand": "PAVOI",
+   "title": "18K Gold Plated 3 Rings Set, Gold Stacking Rings for Women",
+   "price": "$19.45",
+   "rating": 4.1,
+   "ratings": 1051,
+   "image": "https://m.media-amazon.com/images/I/61bba6DS62L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-gold-bangle": {
+   "slot": "jewelry",
+   "label": "Slim gold bangle",
+   "query": "gold bangle bracelet women thin",
+   "prefer": [
+    "PAVOI",
+    "Kate Spade",
+    "Kendra Scott"
+   ],
+   "asin": "B0DBRZDL3X",
+   "brand": "PAVOI",
+   "title": "Waterproof Bangle Bracelets for Women, 14K Gold Plated Bangle Stack",
+   "price": "$13.95",
+   "rating": 4.4,
+   "ratings": 308,
+   "image": "https://m.media-amazon.com/images/I/51p1adAS6RL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-huggie-earrings": {
+   "slot": "jewelry",
+   "label": "Gold huggie earrings",
+   "query": "PAVOI huggie earrings gold",
+   "prefer": [
+    "PAVOI"
+   ],
+   "asin": "B0B1494KHN",
+   "brand": "PAVOI",
+   "title": "Gold Huggie Earrings for Women, 14K Gold Plated CZ Set of 3",
+   "price": "$19.45",
+   "rating": 4.6,
+   "ratings": 2689,
+   "image": "https://m.media-amazon.com/images/I/61o6Q6K9zhL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-gold-pendant": {
+   "slot": "jewelry",
+   "label": "Fine gold pendant necklace",
+   "query": "dainty gold pendant necklace",
+   "prefer": [
+    "PAVOI",
+    "Kendra Scott",
+    "Kate Spade"
+   ],
+   "asin": "B0CQKPYKV4",
+   "brand": "PAVOI",
+   "title": "14K Gold Plated Dainty Pear Pendant Necklace for Women | Tear Pendant Necklaces",
+   "price": "$13.95",
+   "rating": 4.5,
+   "ratings": 1427,
+   "image": "https://m.media-amazon.com/images/I/61XchZnqiaL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-chunky-hoops": {
+   "slot": "jewelry",
+   "label": "Chunky gold hoops",
+   "query": "chunky gold hoop earrings",
+   "prefer": [
+    "PAVOI",
+    "Kate Spade",
+    "Kendra Scott"
+   ],
+   "asin": "B089NZ31C6",
+   "brand": "PAVOI",
+   "title": "Chunky Gold Hoop Earrings for Women, Lightweight 14K Gold Plated",
+   "price": "$15.35",
+   "rating": 4.6,
+   "ratings": 38546,
+   "image": "https://m.media-amazon.com/images/I/617D3oLZVEL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-cuff-bracelet": {
+   "slot": "jewelry",
+   "label": "Wide gold cuff bracelet",
+   "query": "PAVOI wide gold cuff bracelet women",
+   "prefer": [
+    "PAVOI",
+    "Kendra Scott",
+    "Kate Spade"
+   ],
+   "asin": "B0BNP5Z8J5",
+   "brand": "PAVOI",
+   "title": "Waterproof Bangle Bracelets for Women, 14K Gold Plated Mantra Cuff",
+   "price": "$18.45",
+   "rating": 4.5,
+   "ratings": 304,
+   "image": "https://m.media-amazon.com/images/I/51sxAJ0obqL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-pearl-drop-earrings": {
+   "slot": "jewelry",
+   "label": "Pearl drop earrings",
+   "query": "pearl drop earrings",
+   "prefer": [
+    "PAVOI",
+    "Kate Spade",
+    "Swarovski"
+   ],
+   "asin": "B07FG15JFY",
+   "brand": "PAVOI",
+   "title": "Handpicked AAA+ Quality Freshwater Cultured Pearl Earrings Leverback Dangle Stud Pearl Earrings",
+   "price": "$14.95",
+   "rating": 4.6,
+   "ratings": 5089,
+   "image": "https://m.media-amazon.com/images/I/613t43UX1CL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-pearl-bracelet": {
+   "slot": "jewelry",
+   "label": "Dainty pearl bracelet",
+   "query": "dainty pearl bracelet",
+   "prefer": [
+    "PAVOI",
+    "Kate Spade"
+   ],
+   "asin": "B09LJ1K2QH",
+   "brand": "PAVOI",
+   "title": "18K Gold Plated Beaded Freshwater Cultured Pearl Bracelet for Women | Dainty Bracelet with Pearl Beads",
+   "price": "$14.95",
+   "rating": 4.4,
+   "ratings": 1094,
+   "image": "https://m.media-amazon.com/images/I/51lgBav6WNL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-crystal-studs": {
+   "slot": "jewelry",
+   "label": "Crystal stud earrings",
+   "query": "Swarovski crystal stud earrings",
+   "prefer": [
+    "Swarovski",
+    "PAVOI"
+   ],
+   "asin": "B0B1F5ZYF7",
+   "brand": "Swarovski",
+   "title": "Constella Pierced Stud Earrings",
+   "price": "$51.82",
+   "rating": 4.5,
+   "ratings": 199,
+   "image": "https://m.media-amazon.com/images/I/61t1nfGDWoL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-rhinestone-necklace": {
+   "slot": "jewelry",
+   "label": "Layered rhinestone necklace",
+   "query": "layered rhinestone crystal necklace sparkly women",
+   "prefer": [
+    "Swarovski",
+    "PAVOI",
+    "Kate Spade"
+   ],
+   "asin": "B017MVK414",
+   "brand": "Humble Chic NY",
+   "title": "Simulated Diamond Statement Necklace for Women - Layered CZ Long Necklace",
+   "price": "$29.89",
+   "rating": 4.3,
+   "ratings": 322,
+   "image": "https://m.media-amazon.com/images/I/612v4i3BzIL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-fine-gold-chain": {
+   "slot": "jewelry",
+   "label": "Fine gold chain necklace",
+   "query": "14k gold chain necklace dainty",
+   "prefer": [
+    "PAVOI",
+    "Kendra Scott"
+   ],
+   "asin": "B08PC6MDVR",
+   "brand": "PAVOI",
+   "title": "Chain Necklace for Women, 14K Gold Plated Adjustable Layering Chain",
+   "price": "$13.95",
+   "rating": 4.6,
+   "ratings": 2774,
+   "image": "https://m.media-amazon.com/images/I/511ILKEZROL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-threader-earrings": {
+   "slot": "jewelry",
+   "label": "Gold threader earrings",
+   "query": "gold threader earrings",
+   "prefer": [
+    "PAVOI",
+    "Kendra Scott"
+   ],
+   "asin": "B082VMWQ8D",
+   "brand": "PAVOI",
+   "title": "14K Gold Plated Threader Earrings for Women, Statement Chain Earrings",
+   "price": "$15.95",
+   "rating": 4.4,
+   "ratings": 129,
+   "image": "https://m.media-amazon.com/images/I/51Yz04T2cKL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-beaded-bracelet": {
+   "slot": "jewelry",
+   "label": "Dainty beaded bracelet",
+   "query": "dainty gold beaded bracelet",
+   "prefer": [
+    "PAVOI",
+    "Kendra Scott"
+   ],
+   "asin": "B0DBSJ13S3",
+   "brand": "PAVOI",
+   "title": "14K Plated Beaded Bracelets for Women, Colorful Dainty Bracelet",
+   "price": "$19.95",
+   "rating": 4.4,
+   "ratings": 110,
+   "image": "https://m.media-amazon.com/images/I/61Hdbl4JufL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-diamond-drop-earrings": {
+   "slot": "jewelry",
+   "label": "Diamond-look drop earrings",
+   "query": "cubic zirconia drop earrings dangle",
+   "prefer": [
+    "PAVOI",
+    "Swarovski"
+   ],
+   "asin": "B08N148S16",
+   "brand": "MILACOLATO",
+   "title": "925 Sterling Silver Leverback Cubic Zirconia Earrings for Women",
+   "price": "$17.99",
+   "rating": 4.3,
+   "ratings": 456,
+   "image": "https://m.media-amazon.com/images/I/71d9SQJTmsL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "jw-diamond-pendant": {
+   "slot": "jewelry",
+   "label": "Diamond-look pendant",
+   "query": "cubic zirconia solitaire pendant necklace",
+   "prefer": [
+    "PAVOI",
+    "Swarovski",
+    "Amazon Collection"
+   ],
+   "asin": "B07QTFTCV2",
+   "brand": "PAVOI",
+   "title": "14K Gold Plated Crystal Solitaire 1.5 Carat (7.3mm) Cubic Zirconia Dainty Choker Necklace | Gold Necklaces for Women",
+   "price": "$14.95",
+   "rating": 4.4,
+   "ratings": 9473,
+   "image": "https://m.media-amazon.com/images/I/61X-F7dVj7L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "hair-elastics": {
+   "slot": "hair",
+   "label": "No-crease hair elastics",
+   "query": "Kitsch no crease hair elastics for women",
+   "prefer": [
+    "Kitsch",
+    "Scunci",
+    "Goody"
+   ],
+   "asin": "B08H6V3Q5Y",
+   "brand": "Kitsch",
+   "title": "Elastic Hair Ties No Damage | Stretchable Hair Bands - Blush 20pcs | Strong All-Day Hold Hair, Rubber Bands For Hair, Ponytail Holders | Hai",
+   "price": "$6.28",
+   "rating": 4.6,
+   "ratings": 8942,
+   "image": "https://m.media-amazon.com/images/I/81C2gKxGA1L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "hair-silk-bow-black": {
+   "slot": "hair",
+   "label": "Black silk hair bow",
+   "query": "black satin ribbon hair bow barrette long tails women",
+   "prefer": [
+    "Kitsch",
+    "Slip"
+   ],
+   "asin": "B0FQ519GCR",
+   "brand": "",
+   "title": "6Pcs Large Bows Hair Clips for Women Girls Long Tail Hair Ribbon Silky Satin Barrettes Coquette Hair Bows Accessories (Black)",
+   "price": "$9.99",
+   "rating": 4.8,
+   "ratings": 586,
+   "image": "https://m.media-amazon.com/images/I/81oWoaWHcCL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "hair-claw-clip-tortoise": {
+   "slot": "hair",
+   "label": "Tortoiseshell claw clip",
+   "query": "tortoiseshell claw clip small",
+   "prefer": [
+    "Kitsch",
+    "Scunci",
+    "Goody"
+   ],
+   "asin": "B09GYNVRG6",
+   "brand": "6 Count (Pack of 1)",
+   "title": "Kitsch Mini Claw Clips for Women - Tortoise & Black, 6pcs | Stylish Small Hair Clips for Kids – Stays In Place Without Pulling or Snagging –",
+   "price": "$6.35",
+   "rating": 4.6,
+   "ratings": 3961,
+   "image": "https://m.media-amazon.com/images/I/71ZrcObD37L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "hair-velvet-bow": {
+   "slot": "hair",
+   "label": "Velvet hair bow",
+   "query": "velvet hair bow barrette for women",
+   "prefer": [
+    "Kitsch"
+   ],
+   "asin": "B0CN4G5V68",
+   "brand": "",
+   "title": "Dark Red Velvet Ribbon Hair Bow Clips 3\" Cute Valentines Alligator Barrettes Pins Bowknot Decor Accessory Small for Little Teen Toddler Baby",
+   "price": "$7.99",
+   "rating": 4.7,
+   "ratings": 382,
+   "image": "https://m.media-amazon.com/images/I/610hOAZaVxL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "hair-pearl-clips": {
+   "slot": "hair",
+   "label": "Pearl hair clips",
+   "query": "pearl hair clips barrettes for women",
+   "prefer": [
+    "Kitsch"
+   ],
+   "asin": "B07Q4WKFKH",
+   "brand": "",
+   "title": "Pearl Hair Clips Barrettes Silver Wedding Decorative Bobby Pins Women Girls Bridal Her Valentines Mother’s Day Birthday Prom Party Daily Wea",
+   "price": "$8.99",
+   "rating": 4.5,
+   "ratings": 480,
+   "image": "https://m.media-amazon.com/images/I/71IXiFeKY1L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "acc-belt-slim": {
+   "slot": "accessory",
+   "label": "Slim leather belt",
+   "query": "women's slim leather belt",
+   "prefer": [
+    "Levi's",
+    "Calvin Klein",
+    "Fossil"
+   ],
+   "asin": "B0CP237239",
+   "brand": "TRIWORKS",
+   "title": "2 Pack Women Skinny Leather Belts for Jeans Pants Thin Faux Leather Belt with Gold Buckle",
+   "price": "$16.99",
+   "rating": 4.4,
+   "ratings": 387,
+   "image": "https://m.media-amazon.com/images/I/71kG5NFl5xL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "acc-linen-scarf": {
+   "slot": "accessory",
+   "label": "Light linen scarf",
+   "query": "women's linen scarf lightweight",
+   "prefer": [],
+   "asin": "B0F7L4J2ZW",
+   "brand": "Nydotd",
+   "title": "Women Summer Cotton Linen Scarf Crinkle Long Beach Shawl Wrap hijab with Fringe",
+   "price": "$7.49",
+   "rating": 4.2,
+   "ratings": 530,
+   "image": "https://m.media-amazon.com/images/I/51Pq1n5zm9L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "acc-sunglasses": {
+   "slot": "accessory",
+   "label": "Oversized sunglasses",
+   "query": "Ray-Ban women's oversized sunglasses",
+   "prefer": [
+    "Ray-Ban",
+    "SOJOS",
+    "Michael Kors"
+   ],
+   "asin": "B001W6BDG6",
+   "brand": "Ray-Ban",
+   "title": "RB4098 Jackie Ohh II Square Sunglasses for Men for Women",
+   "price": "",
+   "rating": 4.5,
+   "ratings": 1933,
+   "image": "https://m.media-amazon.com/images/I/51hFzdsiB3L._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "acc-cardigan-soft-knit": {
+   "slot": "accessory",
+   "label": "Soft knit cardigan",
+   "query": "women's soft knit cardigan",
+   "prefer": [
+    "Amazon Essentials",
+    "Lands' End"
+   ],
+   "asin": "B098DTR5FL",
+   "brand": "STYLEWORD",
+   "title": "Women's Fashion Cardigan Sweater Lightweight Open Front Long Casual Beach Kimonos Outfits with Pockets",
+   "price": "$18.98",
+   "rating": 4.3,
+   "ratings": 2760,
+   "image": "https://m.media-amazon.com/images/I/81QOQbHCGpL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  },
+  "acc-straw-hat": {
+   "slot": "accessory",
+   "label": "Straw sun hat",
+   "query": "women's straw sun hat",
+   "prefer": [
+    "FURTALK",
+    "Lanzom"
+   ],
+   "asin": "B0DPMF63V5",
+   "brand": "FURTALK",
+   "title": "Summer Straw Beach Sun Hats for Women Wide Brim Packable Bucket Hat",
+   "price": "$25.99",
+   "rating": 4.1,
+   "ratings": 668,
+   "image": "https://m.media-amazon.com/images/I/71xXYUem9SL._AC_UL320_.jpg",
+   "resolvedAt": "2026-08-16"
+  }
+ },
+ "updated": "2026-08-16"
+}

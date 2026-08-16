@@ -1,0 +1,701 @@
+{
+ "silhouettes": [
+  {
+   "id": "ribbed-midi",
+   "text": "a fitted {color} ribbed sleeveless midi dress",
+   "register": "elegant",
+   "pieces": [
+    "dress-ribbed-midi"
+   ]
+  },
+  {
+   "id": "wrap-dress",
+   "text": "a {color} wrap dress with a tie waist and short sleeves",
+   "register": "elegant",
+   "pieces": [
+    "dress-wrap"
+   ]
+  },
+  {
+   "id": "sheath-dress",
+   "text": "a tailored {color} sheath dress with a graceful neckline and a nipped waist",
+   "register": "elegant",
+   "pieces": [
+    "dress-sheath"
+   ]
+  },
+  {
+   "id": "linen-shirt-dress",
+   "text": "a {color} linen shirt dress with rolled sleeves and a belted waist",
+   "register": "elegant",
+   "pieces": [
+    "dress-linen-shirt"
+   ]
+  },
+  {
+   "id": "tailored-jumpsuit",
+   "text": "a sleek {color} tailored jumpsuit with a belted waist and wide legs",
+   "register": "elegant",
+   "pieces": [
+    "jumpsuit-tailored"
+   ]
+  },
+  {
+   "id": "sweater-dress",
+   "text": "a {color} fine-knit sweater dress with long sleeves",
+   "register": "elegant",
+   "pieces": [
+    "dress-sweater"
+   ]
+  },
+  {
+   "id": "blouse-midi-skirt",
+   "text": "a crisp white sleeveless blouse tucked into a tailored {color} midi skirt",
+   "register": "elegant",
+   "pieces": [
+    "blouse-white-sleeveless",
+    "skirt-midi-tailored"
+   ]
+  },
+  {
+   "id": "silk-blouse-trousers",
+   "text": "a {color} silk blouse tucked into tailored cream trousers",
+   "register": "elegant",
+   "pieces": [
+    "blouse-silk",
+    "trousers-cream"
+   ]
+  },
+  {
+   "id": "strappy-sundress",
+   "text": "a {color} cotton sundress with thin straps and a relaxed skirt",
+   "register": "casual",
+   "pieces": [
+    "dress-sundress-straps"
+   ]
+  },
+  {
+   "id": "smocked-sundress",
+   "text": "a {color} smocked sundress with short flutter sleeves",
+   "register": "casual",
+   "pieces": [
+    "dress-smocked"
+   ]
+  },
+  {
+   "id": "tee-denim-shorts",
+   "text": "a {color} cotton tee tucked into high-waisted denim shorts",
+   "register": "casual",
+   "pieces": [
+    "tee-cotton",
+    "shorts-denim-hw"
+   ]
+  },
+  {
+   "id": "linen-tank-trousers",
+   "text": "a {color} linen tank tucked into wide-leg linen trousers",
+   "register": "casual",
+   "pieces": [
+    "tank-linen",
+    "trousers-linen-wide"
+   ]
+  },
+  {
+   "id": "white-buttondown-denim",
+   "text": "a crisp white button-down tucked into tailored dark denim",
+   "register": "casual",
+   "pieces": [
+    "shirt-white-buttondown",
+    "jeans-dark-straight"
+   ]
+  },
+  {
+   "id": "knit-tank-midi-skirt",
+   "text": "a {color} knit tank with a flowing midi skirt",
+   "register": "casual",
+   "pieces": [
+    "tank-knit",
+    "skirt-midi-flowy"
+   ]
+  },
+  {
+   "id": "oversized-linen-shirt",
+   "text": "an oversized {color} linen shirt over a white tank and denim",
+   "register": "casual",
+   "pieces": [
+    "shirt-linen-oversized",
+    "tank-white",
+    "jeans-dark-straight"
+   ]
+  },
+  {
+   "id": "striped-tee-boyfriend",
+   "text": "a {color} striped tee with cuffed boyfriend jeans",
+   "register": "casual",
+   "pieces": [
+    "tee-striped",
+    "jeans-boyfriend"
+   ]
+  },
+  {
+   "id": "chunky-cardigan-jeans",
+   "text": "a chunky {color} cardigan over a white tee and straight-leg jeans",
+   "register": "casual",
+   "pieces": [
+    "cardigan-chunky",
+    "tee-white",
+    "jeans-straight"
+   ]
+  },
+  {
+   "id": "crop-hoodie-leggings",
+   "text": "matching {color} athleisure \u2014 a cropped zip hoodie and high-waisted leggings",
+   "register": "athleisure",
+   "pieces": [
+    "hoodie-crop-zip",
+    "leggings-hw"
+   ]
+  },
+  {
+   "id": "sports-tank-leggings",
+   "text": "a {color} sports tank with high-waisted black leggings",
+   "register": "athleisure",
+   "pieces": [
+    "tank-sports",
+    "leggings-hw"
+   ]
+  },
+  {
+   "id": "hoodie-bike-shorts",
+   "text": "an oversized {color} hoodie over black bike shorts",
+   "register": "athleisure",
+   "pieces": [
+    "hoodie-oversized",
+    "shorts-bike"
+   ]
+  },
+  {
+   "id": "tennis-dress",
+   "text": "a {color} tennis dress with a pleated skirt",
+   "register": "athleisure",
+   "pieces": [
+    "dress-tennis"
+   ]
+  },
+  {
+   "id": "crop-tee-sweatpants",
+   "text": "a cropped white tee with {color} wide-leg sweatpants",
+   "register": "athleisure",
+   "pieces": [
+    "tee-crop-white",
+    "sweatpants-wide"
+   ]
+  },
+  {
+   "id": "sweatsuit",
+   "text": "a {color} matching sweatsuit \u2014 relaxed crewneck and joggers",
+   "register": "athleisure",
+   "pieces": [
+    "sweatsuit-set"
+   ]
+  },
+  {
+   "id": "elegant-midi",
+   "text": "an elegant {color} midi dress with a smooth silhouette and a defined waist",
+   "register": "glam",
+   "pieces": [
+    "dress-elegant-midi"
+   ]
+  },
+  {
+   "id": "satin-offshoulder",
+   "text": "a {color} satin off-shoulder midi dress",
+   "register": "glam",
+   "pieces": [
+    "dress-satin-offshoulder"
+   ]
+  },
+  {
+   "id": "sequin-midi",
+   "text": "a {color} sequined midi dress with long sleeves",
+   "register": "glam",
+   "pieces": [
+    "dress-sequin"
+   ]
+  },
+  {
+   "id": "velvet-cocktail",
+   "text": "a {color} velvet cocktail dress with a boat neckline and three-quarter sleeves",
+   "register": "glam",
+   "pieces": [
+    "dress-velvet-cocktail"
+   ]
+  },
+  {
+   "id": "silk-slip",
+   "text": "a {color} silk slip dress with a graceful drape",
+   "register": "glam",
+   "pieces": [
+    "dress-slip-silk"
+   ]
+  },
+  {
+   "id": "halter-maxi",
+   "text": "a flowing {color} halter maxi dress with soft pleats",
+   "register": "glam",
+   "pieces": [
+    "dress-halter-maxi"
+   ]
+  }
+ ],
+ "footwear": [
+  {
+   "id": "nude-heels",
+   "text": "nude pointed-toe heels",
+   "registers": [
+    "elegant",
+    "glam"
+   ],
+   "pieces": [
+    "shoe-nude-heels"
+   ]
+  },
+  {
+   "id": "strappy-black-heels",
+   "text": "strappy black heeled sandals",
+   "registers": [
+    "elegant",
+    "glam"
+   ],
+   "pieces": [
+    "shoe-strappy-black-heels"
+   ]
+  },
+  {
+   "id": "black-pumps",
+   "text": "black pointed-toe pumps",
+   "registers": [
+    "elegant",
+    "glam"
+   ],
+   "pieces": [
+    "shoe-black-pumps"
+   ]
+  },
+  {
+   "id": "tan-block-sandals",
+   "text": "tan block-heel sandals",
+   "registers": [
+    "elegant",
+    "casual"
+   ],
+   "pieces": [
+    "shoe-tan-block-sandals"
+   ]
+  },
+  {
+   "id": "metallic-heels",
+   "text": "metallic strappy heels",
+   "registers": [
+    "glam"
+   ],
+   "pieces": [
+    "shoe-metallic-heels"
+   ]
+  },
+  {
+   "id": "white-leather-sneakers",
+   "text": "clean white leather sneakers",
+   "registers": [
+    "casual",
+    "athleisure"
+   ],
+   "pieces": [
+    "shoe-white-leather-sneakers"
+   ]
+  },
+  {
+   "id": "white-tennis-shoes",
+   "text": "white low-top tennis shoes",
+   "registers": [
+    "casual",
+    "athleisure"
+   ],
+   "pieces": [
+    "shoe-white-tennis"
+   ]
+  },
+  {
+   "id": "cream-trainers",
+   "text": "chunky cream trainers",
+   "registers": [
+    "athleisure",
+    "casual"
+   ],
+   "pieces": [
+    "shoe-chunky-cream-trainers"
+   ]
+  },
+  {
+   "id": "tan-sandals",
+   "text": "tan leather sandals",
+   "registers": [
+    "casual"
+   ],
+   "pieces": [
+    "shoe-tan-sandals"
+   ]
+  },
+  {
+   "id": "espadrille-wedges",
+   "text": "espadrille wedges",
+   "registers": [
+    "casual",
+    "elegant"
+   ],
+   "pieces": [
+    "shoe-espadrille-wedges"
+   ]
+  },
+  {
+   "id": "ballet-flats",
+   "text": "ballet flats",
+   "registers": [
+    "casual",
+    "elegant"
+   ],
+   "pieces": [
+    "shoe-ballet-flats"
+   ]
+  },
+  {
+   "id": "tan-ankle-boots",
+   "text": "tan ankle boots",
+   "registers": [
+    "casual",
+    "elegant"
+   ],
+   "pieces": [
+    "shoe-tan-ankle-boots"
+   ]
+  }
+ ],
+ "jewelry": [
+  {
+   "id": "gold-hoops-layered",
+   "text": "gold hoop earrings and layered dainty gold necklaces",
+   "pieces": [
+    "jw-gold-hoops",
+    "jw-layered-gold-necklaces"
+   ]
+  },
+  {
+   "id": "diamond-studs-tennis",
+   "text": "small diamond stud earrings and a fine diamond tennis bracelet",
+   "registers": [
+    "elegant",
+    "glam"
+   ],
+   "pieces": [
+    "jw-diamond-studs",
+    "jw-tennis-bracelet"
+   ]
+  },
+  {
+   "id": "drop-earrings-anklet",
+   "text": "sparkling drop earrings and a delicate gold anklet",
+   "registers": [
+    "glam",
+    "elegant"
+   ],
+   "pieces": [
+    "jw-drop-earrings-sparkle",
+    "jw-gold-anklet"
+   ]
+  },
+  {
+   "id": "stacked-rings-bangle",
+   "text": "stacked gold rings and a slim gold bangle",
+   "pieces": [
+    "jw-stacked-gold-rings",
+    "jw-gold-bangle"
+   ]
+  },
+  {
+   "id": "huggies-anklet",
+   "text": "tiny gold huggie earrings and a thin chain anklet",
+   "registers": [
+    "casual",
+    "athleisure"
+   ],
+   "pieces": [
+    "jw-huggie-earrings",
+    "jw-gold-anklet"
+   ]
+  },
+  {
+   "id": "pendant-stacked-rings",
+   "text": "a single fine gold pendant necklace and stacked thin rings",
+   "pieces": [
+    "jw-gold-pendant",
+    "jw-stacked-gold-rings"
+   ]
+  },
+  {
+   "id": "chunky-hoops-cuff",
+   "text": "chunky gold hoops and a wide cuff bracelet",
+   "registers": [
+    "casual",
+    "elegant",
+    "glam"
+   ],
+   "pieces": [
+    "jw-chunky-hoops",
+    "jw-cuff-bracelet"
+   ]
+  },
+  {
+   "id": "pearl-drops-bracelet",
+   "text": "pearl drop earrings and a dainty pearl bracelet",
+   "registers": [
+    "elegant",
+    "glam"
+   ],
+   "pieces": [
+    "jw-pearl-drop-earrings",
+    "jw-pearl-bracelet"
+   ]
+  },
+  {
+   "id": "crystal-studs-rhinestone",
+   "text": "sparkling crystal studs and a layered rhinestone necklace",
+   "registers": [
+    "glam"
+   ],
+   "pieces": [
+    "jw-crystal-studs",
+    "jw-rhinestone-necklace"
+   ]
+  },
+  {
+   "id": "fine-chain-rings",
+   "text": "no earrings, just a fine gold chain and one stacked ring set",
+   "registers": [
+    "athleisure",
+    "casual"
+   ],
+   "pieces": [
+    "jw-fine-gold-chain",
+    "jw-stacked-gold-rings"
+   ]
+  },
+  {
+   "id": "threaders-anklet-beaded",
+   "text": "gold threader earrings, a slim anklet and a beaded bracelet",
+   "registers": [
+    "casual",
+    "athleisure"
+   ],
+   "pieces": [
+    "jw-threader-earrings",
+    "jw-gold-anklet",
+    "jw-beaded-bracelet"
+   ]
+  },
+  {
+   "id": "diamond-drops-pendant",
+   "text": "diamond drop earrings and a delicate diamond pendant",
+   "registers": [
+    "glam",
+    "elegant"
+   ],
+   "pieces": [
+    "jw-diamond-drop-earrings",
+    "jw-diamond-pendant"
+   ]
+  }
+ ],
+ "hair": [
+  {
+   "id": "blowout-waves",
+   "text": "worn down in loose glamorous blowout waves",
+   "pieces": []
+  },
+  {
+   "id": "side-part",
+   "text": "worn down with a deep side part and soft face-framing pieces",
+   "pieces": []
+  },
+  {
+   "id": "high-sleek-pony",
+   "text": "pulled up into a high sleek ponytail",
+   "registers": [
+    "athleisure",
+    "casual",
+    "elegant"
+   ],
+   "pieces": [
+    "hair-elastics"
+   ]
+  },
+  {
+   "id": "pony-silk-bow",
+   "text": "in a bouncy mid-height ponytail tied with a black silk bow",
+   "registers": [
+    "casual",
+    "elegant",
+    "glam"
+   ],
+   "pieces": [
+    "hair-silk-bow-black"
+   ]
+  },
+  {
+   "id": "halfup-claw-clip",
+   "text": "half-up, secured with a small tortoiseshell claw clip",
+   "registers": [
+    "casual",
+    "elegant"
+   ],
+   "pieces": [
+    "hair-claw-clip-tortoise"
+   ]
+  },
+  {
+   "id": "low-twisted-bun",
+   "text": "in a low twisted bun with a few loose strands framing her face",
+   "registers": [
+    "elegant",
+    "glam"
+   ],
+   "pieces": [
+    "hair-elastics"
+   ]
+  },
+  {
+   "id": "side-braid",
+   "text": "in a loose side braid draped over one shoulder",
+   "registers": [
+    "casual",
+    "athleisure"
+   ],
+   "pieces": [
+    "hair-elastics"
+   ]
+  },
+  {
+   "id": "slick-low-pony",
+   "text": "pulled back in a slicked-back low ponytail",
+   "registers": [
+    "athleisure",
+    "elegant",
+    "glam"
+   ],
+   "pieces": [
+    "hair-elastics"
+   ]
+  },
+  {
+   "id": "messy-topknot",
+   "text": "in a messy topknot with soft tendrils down",
+   "registers": [
+    "athleisure",
+    "casual"
+   ],
+   "pieces": [
+    "hair-claw-clip-tortoise"
+   ]
+  },
+  {
+   "id": "halfup-velvet-bow",
+   "text": "half-up with a velvet bow at the crown",
+   "registers": [
+    "elegant",
+    "glam"
+   ],
+   "pieces": [
+    "hair-velvet-bow"
+   ]
+  },
+  {
+   "id": "pearl-hair-clips",
+   "text": "tucked behind one ear with a pair of pearl hair clips",
+   "registers": [
+    "elegant",
+    "glam",
+    "casual"
+   ],
+   "pieces": [
+    "hair-pearl-clips"
+   ]
+  },
+  {
+   "id": "loose-curls",
+   "text": "in soft loose curls swept over one shoulder",
+   "registers": [
+    "elegant",
+    "glam"
+   ],
+   "pieces": []
+  }
+ ],
+ "accents": [
+  {
+   "id": "slim-belt",
+   "text": "a slim leather belt",
+   "pieces": [
+    "acc-belt-slim"
+   ]
+  },
+  {
+   "id": "linen-scarf",
+   "text": "a light linen scarf tied at the neck",
+   "pieces": [
+    "acc-linen-scarf"
+   ]
+  },
+  {
+   "id": "oversized-sunglasses",
+   "text": "oversized sunglasses pushed up into her hair",
+   "pieces": [
+    "acc-sunglasses"
+   ]
+  },
+  {
+   "id": "knit-cardigan",
+   "text": "a soft knit cardigan draped over her shoulders",
+   "pieces": [
+    "acc-cardigan-soft-knit"
+   ]
+  },
+  {
+   "id": "straw-hat",
+   "text": "a straw sun hat in hand",
+   "pieces": [
+    "acc-straw-hat"
+   ]
+  }
+ ],
+ "colors": [
+  "olive-green",
+  "dusty-blue",
+  "sage-green",
+  "cream",
+  "camel-tan",
+  "deep forest-green",
+  "blush-pink",
+  "terracotta-rust",
+  "butter-yellow",
+  "charcoal-grey",
+  "bold red",
+  "emerald-green",
+  "navy",
+  "black",
+  "ivory",
+  "lavender",
+  "coral",
+  "deep-plum",
+  "soft white",
+  "chocolate-brown"
+ ]
+}

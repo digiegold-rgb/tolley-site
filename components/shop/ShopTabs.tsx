@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type TabKey = "all" | "sold" | "videos" | "reviews";
+type TabKey = "all" | "sold" | "videos" | "reviews" | "fit";
 
 interface TabDef {
   key: TabKey;
@@ -16,6 +16,8 @@ const TABS: ReadonlyArray<TabDef> = [
   { key: "sold", label: "Sold", href: "/shop/sold" },
   { key: "videos", label: "Videos", href: "/shop/videos" },
   { key: "reviews", label: "Reviews", href: "/shop/reviews" },
+  // Shoppable persona fits (2026-08-16) — "like the fit? shop her look".
+  { key: "fit", label: "👗 Her Looks", href: "/fit" },
 ];
 
 export interface ShopTabsProps {
