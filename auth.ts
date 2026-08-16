@@ -9,6 +9,9 @@ import nodemailer from "nodemailer";
 import { consumeRateLimit } from "@/lib/rate-limit";
 import { verifyPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
+import { isAdminEmail } from "@/lib/admin-auth";
+import { readSessionVersion } from "@/lib/auth/session-version";
+import { readViewAsUserId } from "@/lib/vater/acting-as";
 
 const emailPort = Number(process.env.EMAIL_SERVER_PORT || 587);
 const emailHost = process.env.EMAIL_SERVER_HOST || "localhost";
@@ -22,6 +25,12 @@ const authSecret =
     ? "dev-only-secret-change-before-production"
     : undefined);
 const AUTH_EMAIL_LOG_PREFIX = "[auth-email]";
+/**
+ * How often a live JWT re-reads User.sessionVersion. This is the worst-case
+ * delay between "I reset my password" and the attacker's cookie dying, traded
+ * against one extra DB round-trip per session per interval.
+ */
+const SESSION_VERSION_RECHECK_SECONDS = 60;
 
 let hasLoggedEmailConfig = false;
 
@@ -289,13 +298,92 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    session({ session, token }) {
+    /**
+     * Session revocation (2026-08-15).
+     *
+     * Sessions are 30-day JWTs with nothing server-side behind them, so
+     * changing a password used to log NOBODY out — a stolen cookie stayed
+     * valid for a month after the victim did the one thing everyone assumes
+     * fixes that. Every token now carries the User.sessionVersion it was
+     * minted against; a password reset bumps the column and this callback
+     * kills the token by returning null.
+     *
+     * Cost control: the DB is read on sign-in and then at most once per
+     * SESSION_VERSION_RECHECK_SECONDS, not on every request.
+     *
+     * ⚠️ FAILS OPEN. readSessionVersion() returns null when the column is
+     * missing (code deployed ahead of the migration) or the DB blips, and
+     * null means "keep the session". Failing closed would sign out every user
+     * on the site during a Neon hiccup — a much worse outage than a
+     * revocation that lands a minute late.
+     */
+    async jwt({ token, user }) {
+      const nowSeconds = Math.floor(Date.now() / 1000);
+
+      if (user?.id) {
+        token.sub = user.id;
+        token.sv = (await readSessionVersion(user.id)) ?? 0;
+        token.svAt = nowSeconds;
+        return token;
+      }
+
+      const checkedAt = typeof token.svAt === "number" ? token.svAt : 0;
+      if (token.sub && nowSeconds - checkedAt >= SESSION_VERSION_RECHECK_SECONDS) {
+        const current = await readSessionVersion(token.sub);
+        token.svAt = nowSeconds;
+        if (current !== null) {
+          const embedded = typeof token.sv === "number" ? token.sv : 0;
+          if (current > embedded) {
+            // Password was reset (or the account was force-signed-out) after
+            // this token was minted. Dropping it clears the session cookie.
+            return null;
+          }
+          token.sv = current;
+        }
+      }
+
+      return token;
+    },
+
+    async session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub;
       }
       if (typeof token.iat === "number") {
         session.issuedAt = new Date(token.iat * 1000).toISOString();
       }
+
+      /* "View as user" — admin support impersonation (lib/vater/acting-as.ts).
+       *
+       * 🔴 The cookie alone grants NOTHING. This is the only place it is
+       * honoured, and it is honoured only when the REAL token email is still
+       * an admin address, so a stolen/forged cookie presented by an ordinary
+       * session is inert. Writes stay blocked for the whole impersonated
+       * session by proxy.ts.
+       *
+       * Wrapped in try/catch because a failure here must degrade to "not
+       * impersonating" rather than break sign-in for everybody. */
+      try {
+        const realEmail = session.user?.email ?? null;
+        if (session.user && isAdminEmail(realEmail)) {
+          const targetUserId = await readViewAsUserId();
+          if (targetUserId && targetUserId !== session.user.id) {
+            const target = await prisma.user.findUnique({
+              where: { id: targetUserId },
+              select: { id: true, email: true, name: true },
+            });
+            if (target) {
+              session.impersonatedBy = realEmail;
+              session.user.id = target.id;
+              session.user.email = target.email ?? "";
+              session.user.name = target.name ?? null;
+            }
+          }
+        }
+      } catch (error) {
+        console.error("[auth] view-as resolution failed", error);
+      }
+
       return session;
     },
   },

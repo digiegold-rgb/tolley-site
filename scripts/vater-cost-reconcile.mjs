@@ -138,6 +138,8 @@ const projects = await prisma.youTubeProject.findMany({
 });
 
 let changed = 0;
+/** Projects whose costJson moved this run — their credit debits need a true-up. */
+const adjusted = [];
 for (const p of projects) {
   const mine = jobsForProject(p.id, p.autopilotJobId);
   const fileByJob = {};
@@ -214,6 +216,45 @@ for (const p of projects) {
       },
     },
   });
+
+  // ── Credit-ledger true-up ────────────────────────────────────────────────
+  // The compute number just moved. If this project has already been debited
+  // against the customer's prepaid balance, the debit is now wrong, so write
+  // a signed 'adjust' row bringing the total charge back in line.
+  //
+  // Never edits the original debit: a ledger that rewrites its own history
+  // cannot be audited, and the customer should SEE the correction rather than
+  // find a number that changed. adjustProjectDebit() is a no-op under $0.05,
+  // is idempotent per revision, and re-applies the repair cap so a true-up
+  // can't push a charge past 3x the project's estimate.
+  adjusted.push(p.id);
+}
+
+// Ledger adjusts run after the cost writes so a crash mid-loop leaves costs
+// correct and the ledger merely stale — the next run picks it back up.
+//
+// Handed off to a TypeScript sibling rather than reimplemented here: the
+// billing line (compute + finished-minutes x ops rate) and the repair cap
+// live in lib/vater/billing/, and a second copy of that arithmetic in this
+// file is exactly the fork that put a growing "Other" row on Trey's bill.
+// Non-fatal: a failed hand-off leaves the ledger stale, never wrong, and the
+// next reconcile run (or `npx tsx scripts/vater-credit-trueup.ts --all`)
+// picks it up.
+if (!DRY && adjusted.length > 0) {
+  const { spawnSync } = await import('node:child_process');
+  const res = spawnSync(
+    'npx',
+    ['tsx', new URL('vater-credit-trueup.ts', import.meta.url).pathname,
+     '--projects', adjusted.join(','), '--apply'],
+    { cwd: new URL('..', import.meta.url).pathname, stdio: 'inherit' },
+  );
+  if (res.status !== 0) {
+    console.error(
+      `   ! credit true-up hand-off failed (exit ${res.status ?? 'spawn error'}) for ` +
+      `${adjusted.length} project(s). Ledger is STALE, not wrong — re-run:\n` +
+      `     npx tsx scripts/vater-credit-trueup.ts --projects ${adjusted.join(',')} --apply`,
+    );
+  }
 }
 
 console.log(changed ? `\n${changed} project(s) ${DRY ? 'would be' : ''} updated.` : 'All project costs already accurate.');

@@ -38,6 +38,14 @@ const STUDIO_ONLY_DENIED = [
   "/vater",
 ];
 
+/**
+ * Admin "view as user" cookie. Duplicated from lib/vater/acting-as.ts on
+ * purpose — importing that module here would drag node:crypto and
+ * next/headers into the edge bundle. Only the NAME is needed here; the
+ * signature is verified server-side in auth.ts. Keep the two in sync.
+ */
+const VIEW_AS_COOKIE = "jelly_view_as";
+
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
 }
@@ -106,6 +114,32 @@ export async function proxy(request: NextRequest) {
       }
       return NextResponse.redirect(new URL("/animate", request.url));
     }
+  }
+
+  /* "View as user" is READ-ONLY, enforced here (2026-08-15).
+   *
+   * The admin support session in lib/vater/acting-as.ts swaps who the app
+   * thinks you are. Without this block, a support session could spend the
+   * customer's credits, rename their project, publish to their channel or
+   * touch their Stripe setup — under their identity, with the audit trail
+   * pointing at them.
+   *
+   * PRESENCE of the cookie is enough to block; no signature check happens
+   * here. That is the safe direction (over-blocking a write costs a 403, and
+   * an unsigned cookie grants nothing anyway because auth.ts refuses to
+   * honour it) and it keeps middleware free of node:crypto. */
+  if (
+    request.method !== "GET" &&
+    request.cookies.get(VIEW_AS_COOKIE) &&
+    (pathname.startsWith("/api/vater") || pathname.startsWith("/api/stripe"))
+  ) {
+    return NextResponse.json(
+      {
+        error: "read-only while viewing as user",
+        code: "VIEW_AS_READ_ONLY",
+      },
+      { status: 403 },
+    );
   }
 
   if (pathname === "/api/ask" && request.method !== "POST") {
