@@ -12,7 +12,12 @@
  * video came from has NOT yet signed the showcase-reuse consent. Nothing
  * pending is rendered on the page — the landing maps over LIVE_DEMOS only,
  * and shows a "more coming" tile for the rest. Flip an entry to 'live'
- * ONLY after the written consent is on file (Jared queues this on /hq).
+ * ONLY after the consent is on file (Jared queues this on /hq).
+ *
+ * 2026-08-16: Trey Vater's consent is on file for his WHOLE library, past and
+ * future ("anything in Vater you want to use to cut up for demos we can" —
+ * relayed by Jared). Record: ~/vater-studio/demo-clips/CONSENT.md. Everything
+ * of his below is therefore 'live'.
  *
  * Poster images are static frame grabs committed under public/animate/demos/
  * so the poster costs one small JPEG instead of a video preload.
@@ -109,35 +114,71 @@ export const DEMO_VIDEOS: readonly DemoVideo[] = [
   {
     id: "19",
     title: "The Three-Account System",
-    url: "",
-    poster: "",
+    url: "https://7c7wlwtbdnayflas.public.blob.vercel-storage.com/vater-finals/cmso1efqb0001l446nhl1psbl.mp4?v=1786418621471",
+    poster: "/animate/demos/three-account-system.jpg",
     duration: "8:44",
     durationSec: 524,
     allInUsd: 5.56,
-    consentStatus: "pending",
+    consentStatus: "live",
     blurb: "The long-form benchmark render — 8:44 finished, clean on the first pass.",
+    /* Source: YouTubeProject.costJson of cmso1efqb0001l446nhl1psbl: byStage.render 1.2426 + byStage.reconciliation.missedRuns 1.26 = totalUsd 2.50; ops 8.74 min × 0.35 = 3.06; 2.50 + 3.06 = 5.56 = allInUsd. */
+    receipt: {
+      stages: [
+        { key: "render", label: "compute at cost — render", usd: 1.24 },
+        { key: "reconciliation", label: "compute at cost — re-driven run (reconciled)", usd: 1.26 },
+      ],
+      opsUsd: 3.06,
+      opsRate: 0.35,
+      minutes: 8.74,
+      totalUsd: 5.56,
+      reconciledAt: "2026-08-11T03:40:06.573Z",
+    },
   },
   {
     id: "22",
     title: "The Millionaire Teacher Next Door",
-    url: "",
-    poster: "",
+    url: "https://7c7wlwtbdnayflas.public.blob.vercel-storage.com/vater-finals/cmss163f00001l46xgfygk8ix.mp4?v=1786664853414",
+    poster: "/animate/demos/millionaire-teacher.jpg",
     duration: "8:38",
     durationSec: 518,
     allInUsd: 4.49,
-    consentStatus: "pending",
+    consentStatus: "live",
     blurb: "Second long-form at length, same characters carried across every scene.",
+    /* Source: YouTubeProject.costJson of cmss163f00001l46xgfygk8ix: byStage.render 1.4706 (modal 1.3936 + gemini 0.0815) = totalUsd 1.47; ops 8.63 min × 0.35 = 3.02; 1.47 + 3.02 = 4.49 = allInUsd. */
+    receipt: {
+      stages: [
+        { key: "render", label: "compute at cost — render", usd: 1.47 },
+      ],
+      opsUsd: 3.02,
+      opsRate: 0.35,
+      minutes: 8.63,
+      totalUsd: 4.49,
+      reconciledAt: "2026-08-14T02:00:02.344Z",
+    },
   },
   {
     id: "16",
     title: "David & Cooper: Two Ways to Save",
-    url: "",
-    poster: "",
+    url: "https://7c7wlwtbdnayflas.public.blob.vercel-storage.com/vater-finals/cmsnuh74z0001l44efgn8p8hp.mp4?v=1786403956661",
+    poster: "/animate/demos/david-cooper.jpg",
     duration: "0:29",
     durationSec: 29,
     allInUsd: 0.73,
-    consentStatus: "pending",
+    consentStatus: "live",
     blurb: "A short cut from the same pipeline — two characters, one style, 29 seconds.",
+    /* Source: YouTubeProject.costJson of cmsnuh74z0001l44efgn8p8hp: stills 0.3492 + modal_overhead 0.2095 + gemini 0.006 (tts/compose local $0) = totalUsd 0.5647 → 0.56 at cents; ops 0.48 min × 0.35 = 0.17; 0.56 + 0.17 = 0.73 = allInUsd. Stage lines rounded to cents so they sum to the reconciled 0.56 (0.35+0.20+0.01). */
+    receipt: {
+      stages: [
+        { key: "stills", label: "compute at cost — stills · 12 calls", usd: 0.35 },
+        { key: "modal_overhead", label: "compute at cost — cold-start / CPU uplift", usd: 0.20 },
+        { key: "gemini", label: "compute at cost — scene QA vision", usd: 0.01 },
+      ],
+      opsUsd: 0.17,
+      opsRate: 0.35,
+      minutes: 0.48,
+      totalUsd: 0.73,
+      reconciledAt: "2026-08-10T23:19:17.301Z",
+    },
   },
 ];
 
