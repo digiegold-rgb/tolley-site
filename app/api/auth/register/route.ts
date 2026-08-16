@@ -58,17 +58,18 @@ export async function POST(request: Request) {
         },
       });
 
-      if (existingUser?.credentialAuth) {
+      // SECURITY (2026-08-15): never attach a password to a pre-existing User
+      // row (magic-link / seeded / admin accounts with no credentials) — that
+      // was an account-takeover vector. Existing email = 409, full stop.
+      if (existingUser) {
         return { error: "ACCOUNT_EXISTS" as const };
       }
 
-      const user =
-        existingUser ||
-        (await tx.user.create({
-          data: {
-            email,
-          },
-        }));
+      const user = await tx.user.create({
+        data: {
+          email,
+        },
+      });
 
       await tx.credentialAuth.create({
         data: {

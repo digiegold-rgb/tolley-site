@@ -6,6 +6,7 @@ import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import nodemailer from "nodemailer";
 
+import { consumeRateLimit } from "@/lib/rate-limit";
 import { verifyPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 
@@ -165,7 +166,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      authorize: async (credentials) => {
+      authorize: async (credentials, request) => {
         const email =
           typeof credentials?.email === "string"
             ? credentials.email.trim().toLowerCase()
@@ -177,6 +178,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!email || !password) {
           return null;
+        }
+
+        // Brute-force guard (2026-08-15): 10 attempts / 15 min per email+IP.
+        // Register was rate-limited; login was not.
+        try {
+          const xff = request?.headers?.get?.("x-forwarded-for");
+          const ip =
+            (xff ? xff.split(",")[0].trim() : null) ||
+            request?.headers?.get?.("x-real-ip") ||
+            "unknown";
+          const rl = await consumeRateLimit(`auth:login:${email}:${ip}`, 10, 900);
+          if (!rl.allowed) return null;
+        } catch {
+          // never let the limiter itself block login on a DB hiccup
         }
 
         const user = await prisma.user.findUnique({
