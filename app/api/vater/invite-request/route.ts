@@ -1,10 +1,13 @@
 /**
  * POST /api/vater/invite-request — public (signed-out) "Request an invite" form
- * on the /animate landing. Files a Must Complete item for Jared (source
- * 'animate-invite-request', with a ready-to-run mint command) and pings
- * Telegram. No auth; rate-limited per IP; honeypot field.
+ * on the /animate landing. Files an /hq INBOX lead (LeadAction subsite
+ * "animate" / action "invite-request" — Jared 8/16: "I want them in the inbox,
+ * not Must Complete"), emails the requester an instant ack, pings Telegram.
+ * Approval = the inbox row's "Approve → mint + email invite" button.
+ * No auth; rate-limited per IP; honeypot field.
  */
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { rateLimitByIp } from "@/lib/rate-limit";
 import { notifyTelegram } from "@/lib/budget/notify";
@@ -39,43 +42,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "A valid email is required." }, { status: 400 });
   }
 
-  const title = `Invite request — ${email}`;
-  const detail = [
-    `Name: ${name ?? "(not given)"}`,
-    `Email: ${email}`,
-    `What they make / why: ${about ?? "(not given)"}`,
-    "",
-    "TO APPROVE: /hq → Studio users → paste this email → \"Mint + email invite\" (mints an",
-    "email-locked code AND emails them the signup link — one click, done).",
-    "Or run the command below (mints + emails the same way from the CLI).",
-    "They already received an auto-ack (\"invite within 24h\") the moment they submitted.",
-  ].join("\n");
-
   try {
-    const existing = await prisma.mustCompleteItem.findFirst({ where: { title, status: "open" } });
+    // Dedup: one open inbox row per address (re-submits just bump nothing).
+    const existing = await prisma.leadAction.findFirst({
+      where: { subsite: "animate", action: "invite-request", email, status: { notIn: ["won", "lost"] } },
+      select: { id: true },
+    });
     if (!existing) {
-      const max = await prisma.mustCompleteItem.aggregate({ _max: { sortOrder: true } });
-      await prisma.mustCompleteItem.create({
+      await prisma.leadAction.create({
         data: {
-          sortOrder: (max._max.sortOrder ?? 0) + 10,
-          priority: "yellow",
-          category: "signups",
-          title,
-          detail,
-          links: [{ label: "Studio users (mint invite)", url: "https://www.tolley.io/hq" }],
-          // SECURITY: this string is copied into a shell by an admin. Only
-          // emit it for a strictly-safe email charset, single-quoted; anything
-          // else gets no command (use the /hq mint UI instead).
-          command: /^[a-z0-9._+-]+@[a-z0-9.-]+$/.test(email)
-            ? `cd ~/tolley-site && npx tsx scripts/mint-invite.ts --send --email '${email}'`
-            : null,
-          afterNote: null,
-          source: "animate-invite-request",
+          receiptToken: crypto.randomBytes(8).toString("base64url"),
+          subsite: "animate",
+          action: "invite-request",
+          email,
+          name,
+          structured: { about: about ?? "", source: "animate-landing" },
+          status: "new",
         },
       });
     }
   } catch (err) {
-    console.error("[vater/invite-request] queue write failed", err);
+    console.error("[vater/invite-request] inbox write failed", err);
     return NextResponse.json({ error: "Could not send your request. Email jared@yourkchomes.com." }, { status: 500 });
   }
 
@@ -90,7 +77,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await notifyTelegram(`📨 Jelly invite request: ${email}${name ? ` (${name})` : ""}${about ? ` — ${about.slice(0, 120)}` : ""} → https://www.tolley.io/hq${acked ? "" : " ⚠️ ack email FAILED"}`);
+    await notifyTelegram(`📨 Jelly invite request: ${email}${name ? ` (${name})` : ""}${about ? ` — ${about.slice(0, 120)}` : ""} → /hq Inbox (Approve → mint + email) https://www.tolley.io/hq${acked ? "" : " ⚠️ ack email FAILED"}`);
   } catch {
     /* never fail the user on a Telegram hiccup */
   }

@@ -254,8 +254,13 @@ export async function POST(request: NextRequest) {
         try {
           await sendInviteLinkEmail(email, inviteLink(created[0].code), formatInviteCode(created[0].code));
           sent = true;
+          const lower = email.toLowerCase();
+          await prisma.leadAction.updateMany({
+            where: { subsite: "animate", action: "invite-request", email: lower, status: { notIn: ["won", "lost"] } },
+            data: { status: "won", statusNote: `Invite ${formatInviteCode(created[0].code)} emailed`, statusUpdatedAt: new Date() },
+          }).catch(() => undefined);
           await prisma.mustCompleteItem.updateMany({
-            where: { source: "animate-invite-request", status: "open", title: `Invite request — ${email.toLowerCase()}` },
+            where: { source: "animate-invite-request", status: "open", title: `Invite request — ${lower}` },
             data: { status: "done", completedAt: new Date() },
           }).catch(() => undefined);
         } catch (err) {

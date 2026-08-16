@@ -74,7 +74,48 @@ function LeadCard({
   const [replyBody, setReplyBody] = useState("");
   const [replyArmed, setReplyArmed] = useState(false);
   const [replySending, setReplySending] = useState(false);
+  const [approveState, setApproveState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [approveMsg, setApproveMsg] = useState("");
   const fields = lead.structured ?? {};
+  // Jelly Studio invite requests (from /animate) get a one-click approve:
+  // mints an email-locked code, emails the signup link, marks the row won.
+  const isInviteRequest =
+    lead.subsite === "animate" && lead.action === "invite-request" && !!lead.email;
+  const canApprove = isInviteRequest && lead.status !== "won" && lead.status !== "lost";
+  const approveInvite = async () => {
+    if (!lead.email) return;
+    setApproveState("sending");
+    try {
+      const r = await fetch("/api/hq/vater-users", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "mint-invite", count: 1, email: lead.email, send: true }),
+      });
+      const data = (await r.json().catch(() => ({}))) as {
+        sent?: boolean;
+        sendError?: string | null;
+        error?: string;
+        message?: string;
+        invites?: Array<{ display: string; link: string }>;
+      };
+      if (!r.ok) {
+        setApproveState("error");
+        setApproveMsg(data.message || data.error || `HTTP ${r.status}`);
+        return;
+      }
+      if (data.sent) {
+        setApproveState("sent");
+        setApproveMsg(`Invite ${data.invites?.[0]?.display ?? ""} emailed to ${lead.email}`);
+        onAdvance(lead.id, "won");
+      } else {
+        setApproveState("error");
+        setApproveMsg(`Minted but email FAILED: ${data.sendError ?? "unknown"} — link: ${data.invites?.[0]?.link ?? "?"}`);
+      }
+    } catch (err) {
+      setApproveState("error");
+      setApproveMsg(err instanceof Error ? err.message : "network error");
+    }
+  };
   const upsellText = crossSellHint(lead.subsite).join(", ");
   const canReply = !!lead.email && lead.status !== "won" && lead.status !== "lost";
 
@@ -238,7 +279,23 @@ function LeadCard({
       )}
 
       {/* actions */}
+      {approveMsg && (
+        <div style={{ marginTop: 6, fontSize: 12, color: approveState === "error" ? "#c5221f" : "#0f766e" }}>
+          {approveMsg}
+        </div>
+      )}
       <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {canApprove && approveState !== "sent" && (
+          <button
+            className="btn btn-sm btn-primary"
+            disabled={busy || approveState === "sending"}
+            style={{ background: "#0f766e", borderColor: "#0f766e" }}
+            title="Mint an email-locked Jelly Studio invite and email them the signup link"
+            onClick={approveInvite}
+          >
+            {approveState === "sending" ? "Sending invite…" : "🎟 Approve → mint + email invite"}
+          </button>
+        )}
         {canReply && (
           <button className="btn btn-sm" disabled={busy} onClick={openReply}>
             {replyOpen ? "Hide reply" : "✉️ Reply"}
