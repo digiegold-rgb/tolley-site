@@ -84,7 +84,10 @@ const ASPECT_RATIOS = [
 ] as const;
 
 const QUALITY_OPTIONS = [
-  { value: 'firered-local', label: 'FireRed Local (DGX, default)' },
+  // Modal is the default for every new style — the local DGX lane is
+  // owner-only (vater-modal-only-never-local-gpu).
+  { value: 'firered-modal', label: 'FireRed Studio (cloud, default)' },
+  { value: 'firered-local', label: 'FireRed Local (DGX, owner only)' },
   { value: 'gemini-1k', label: 'Gemini 1K (cloud)' },
   { value: 'gemini-2k', label: 'Gemini 2K (cloud)' },
   { value: 'sdxl-local', label: 'SDXL Local' },
@@ -110,9 +113,9 @@ export function StyleWizardModal({
   const [name, setName] = React.useState('');
   const [defaultWordCount, setDefaultWordCount] = React.useState(500);
   const [language, setLanguage] = React.useState<string>('en');
-  const [voiceBackend, setVoiceBackend] = React.useState<'f5-tts' | 'elevenlabs'>(
-    'f5-tts',
-  );
+  const [voiceBackend, setVoiceBackend] = React.useState<
+    'indextts-modal' | 'elevenlabs'
+  >('indextts-modal');
   const [voice, setVoice] = React.useState<string>('');
   const [referenceUrls, setReferenceUrls] = React.useState<string[]>(['']);
 
@@ -143,7 +146,7 @@ export function StyleWizardModal({
   const [defaultVisualType, setDefaultVisualType] = React.useState('images');
   const [artStyleLabel] = React.useState('Realistic'); // v1 placeholder
   const [defaultAspectRatio, setDefaultAspectRatio] = React.useState('16x9');
-  const [defaultQuality, setDefaultQuality] = React.useState('firered-local');
+  const [defaultQuality, setDefaultQuality] = React.useState('firered-modal');
   const [visualAdditionalContext, setVisualAdditionalContext] = React.useState('');
 
   // ── Smart Overlay Defaults ──
@@ -215,7 +218,7 @@ export function StyleWizardModal({
     setName('');
     setDefaultWordCount(500);
     setLanguage('en');
-    setVoiceBackend('f5-tts');
+    setVoiceBackend('indextts-modal');
     setVoice('');
     setReferenceUrls(['']);
     setOpenScript(false);
@@ -231,7 +234,7 @@ export function StyleWizardModal({
     setVoiceExaggerationPct(0);
     setDefaultVisualType('images');
     setDefaultAspectRatio('16x9');
-    setDefaultQuality('firered-local');
+    setDefaultQuality('firered-modal');
     setVisualAdditionalContext('');
     setEnableCharts(false);
     setEnableMaps(false);
@@ -665,7 +668,7 @@ export function StyleWizardModal({
                   flexWrap: 'wrap',
                 }}
               >
-                {(['f5-tts', 'elevenlabs'] as const).map((b) => (
+                {(['indextts-modal', 'elevenlabs'] as const).map((b) => (
                   <button
                     key={b}
                     type="button"
@@ -695,7 +698,9 @@ export function StyleWizardModal({
                       fontFamily: JELLY_TOKENS.font,
                     }}
                   >
-                    {b === 'f5-tts' ? 'Voice Clones (F5)' : 'ElevenLabs'}
+                    {b === 'indextts-modal'
+                      ? 'Studio voice (cloud)'
+                      : 'ElevenLabs'}
                   </button>
                 ))}
               </div>
@@ -708,7 +713,7 @@ export function StyleWizardModal({
                 <option value="">
                   {voicesLoading ? 'Loading voices…' : 'Pick a voice…'}
                 </option>
-                {voiceBackend === 'f5-tts'
+                {voiceBackend === 'indextts-modal'
                   ? vaterVoices.map((v) => (
                       <option key={v.name} value={v.name}>
                         {v.name}
@@ -733,7 +738,7 @@ export function StyleWizardModal({
                 </div>
               )}
               {!voicesLoading &&
-                voiceBackend === 'f5-tts' &&
+                voiceBackend === 'indextts-modal' &&
                 vaterVoices.length === 0 && (
                   <input
                     value={voice}

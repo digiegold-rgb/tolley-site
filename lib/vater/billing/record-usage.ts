@@ -24,6 +24,16 @@ import {
   type VaterTier,
 } from "@/lib/vater-subscription";
 import { incrementTrialUsage } from "./check-trial-caps";
+
+/**
+ * Model A (charge-per-action on a card on file) is OFF for the beta.
+ * Set VATER_LEGACY_ACTION_BILLING=1 to re-enable the Stripe legs; with it
+ * off we still write the immutable VaterUsage row so analytics, trial caps
+ * and the monthly-limit cache keep working — we just never touch Stripe.
+ * TODO: replaced by the prepaid credit ledger (Model B) — when that lands,
+ * this whole module bills against the ledger instead of InvoiceItems.
+ */
+const LEGACY_ACTION_BILLING = process.env.VATER_LEGACY_ACTION_BILLING === "1";
 import { refreshMonthlyLimitCache } from "./period";
 import { finalizeVaterInvoice, getUnbilledCents } from "./finalize-invoice";
 
@@ -73,7 +83,7 @@ export async function recordUsage(input: RecordUsageInput): Promise<RecordUsageR
 
   let stripeInvoiceItemId: string | null = null;
 
-  if (!isTrial && sub?.stripeCustomerId) {
+  if (LEGACY_ACTION_BILLING && !isTrial && sub?.stripeCustomerId) {
     // Post the InvoiceItem — it accrues on the customer until the threshold
     // finalize (below) or the monthly sweep cron invoices it.
     const stripe = getStripeClient();
@@ -125,7 +135,7 @@ export async function recordUsage(input: RecordUsageInput): Promise<RecordUsageR
   // Charge batching: invoice once unbilled accrual crosses the threshold
   // ($25) to keep Stripe's fixed fee negligible without floating too long.
   let invoiceFinalized = false;
-  if (!isTrial && sub?.stripeCustomerId) {
+  if (LEGACY_ACTION_BILLING && !isTrial && sub?.stripeCustomerId) {
     const unbilledCents = await getUnbilledCents(userId);
     if (unbilledCents >= VATER_BATCH_INVOICE_THRESHOLD_CENTS) {
       try {

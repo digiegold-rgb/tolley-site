@@ -21,6 +21,7 @@ import type { YouTubeProject } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { autopilot, type StyleSnapshot } from "./autopilot-client";
 import { buildStyleSnapshot } from "./style-snapshot";
+import { ownerFieldsForProject } from "./owner-tier";
 
 /** Thrown when the project row is missing something the DGX requires. */
 export class ScriptGateError extends Error {
@@ -82,7 +83,12 @@ export async function startRunCreation(
     styleSnapshot = {
       ...styleSnapshot,
       voice: project.voiceName!,
-      voiceBackend: "f5-tts",
+      // Drop ElevenLabs routing, but never demote a Modal style to the local
+      // GPU lane (vater-modal-only-never-local-gpu).
+      voiceBackend:
+        styleSnapshot.voiceBackend === "elevenlabs"
+          ? "indextts-modal"
+          : styleSnapshot.voiceBackend,
     };
   }
 
@@ -105,6 +111,11 @@ export async function startRunCreation(
     ? Math.max(1, scriptOverride.split(/\s+/).filter(Boolean).length)
     : project.targetWordCount || project.targetDuration * 150;
 
+  // Per-tenant fairness + script cap (content-autopilot 9cbe9a6). Resolved
+  // from the project row so every caller — /approve-script,
+  // /script-from-reference and the course pipeline — gets it for free.
+  const ownerFields = await ownerFieldsForProject(project.userId);
+
   const job = await autopilot.runCreation({
     projectId: project.id,
     mode: project.transcript ? "transcribe" : "topic",
@@ -118,6 +129,7 @@ export async function startRunCreation(
     backgroundMusicId: project.backgroundMusicId ?? undefined,
     musicVolume: project.musicVolume ?? undefined,
     style,
+    ...ownerFields,
     ...(scriptOverride ? { scriptOverride } : {}),
     ...(opts.stopAfterScript ? { stopAfterScript: true } : {}),
   });

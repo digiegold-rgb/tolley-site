@@ -20,6 +20,13 @@ model User {
   subscriptionStatus   String               @default("none")
   subscriptionTier     String               @default("none")
   currentPeriodEnd     DateTime?
+  // Jelly Studio click-wrap (migration 20260815_animate_terms, applied to
+  // prod). termsVersion = lib/legal-animate.ts TOS_VERSION at acceptance.
+  // showcaseOptOut backs the Terms § 7 promotional-license opt-out: false
+  // (default) = inputs/outputs may appear in showcases, true = they may not.
+  termsAcceptedAt      DateTime?
+  termsVersion         String?
+  showcaseOptOut       Boolean              @default(false)
   accounts             Account[]
   agents               Agent[]
   credentialAuth       CredentialAuth?
@@ -5099,8 +5106,38 @@ model VaterCostSnapshot {
 
 // Payments received against the Vater render bill (Zelle etc). Current due
 // = billing.totalUsd − sum(payments); the all-time total never resets.
+/// Per-tenant Jelly Studio (/animate) entitlements. The env allowlists
+/// (VATER_STUDIO_ALLOWLIST_EMAILS / VATER_ADMIN_ALLOWLIST_EMAILS) remain as a
+/// bootstrap fallback, but this table is the durable source of truth so an
+/// invite doesn't need a Vercel env edit + redeploy.
+///
+///   tier "public" — ordinary paying/trial user; sees only their own projects
+///   tier "studio" — full studio feature set (script review, Direct, voices,
+///                   course), STILL scoped to their own projects.
+///                   🔴 Before granting this to a third account, read the
+///                   "KNOWN GAP — Phase 3" block in lib/vater/job-ownership.ts
+///                   — inline Style-editor jobs are shared across studio tier.
+///   tier "owner"  — sees every tenant's projects (support/admin)
+///
+/// unmetered = skip trial caps / card requirement / spend ceiling (Trey is
+/// billed out-of-band via Zelle — see vater-billing-ops-fee).
+model VaterAccount {
+  userId    String   @id
+  tier      String   @default("public")
+  unmetered Boolean  @default(false)
+  invitedBy String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tier])
+}
+
 model VaterPayment {
   id        String   @id @default(cuid())
+  // Tenant this payment settles. Nullable only for the pre-tenancy row(s);
+  // recordVaterPayment always writes it.
+  userId    String?
   amountUsd Float
   method    String   @default("zelle")
   note      String?
@@ -5110,6 +5147,8 @@ model VaterPayment {
   // "new since last payment" breakdown is current − this baseline, so Trey
   // can see what the fresh charge is made of instead of one bare number.
   snapshotJson Json?
+
+  @@index([userId, createdAt])
 }
 
 model RepriceEvent {

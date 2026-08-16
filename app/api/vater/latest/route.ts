@@ -16,7 +16,11 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { isVaterStudioEmail } from "@/lib/admin-auth";
 import { secretEquals } from "@/lib/secret-compare";
-import { getVaterBillingSummary, recordVaterPayment } from "@/lib/vater/billing/summary";
+import {
+  getVaterBillingSummary,
+  recordVaterPayment,
+  resolveVaterBillingTenant,
+} from "@/lib/vater/billing/summary";
 
 export const runtime = "nodejs";
 
@@ -39,7 +43,8 @@ export async function GET() {
   // Totals live in getVaterBillingSummary (shared with /api/hq/vater-payment).
   const [updates, billingCore] = await Promise.all([
     prisma.vaterUpdate.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
-    getVaterBillingSummary(),
+    // Per-tenant since 2026-08-15: the pill shows the SESSION user's bill.
+    getVaterBillingSummary({ userId: session.user.id }),
   ]);
   const { summary, costs } = billingCore;
 
@@ -61,7 +66,13 @@ export async function POST(req: Request) {
     update?: { message?: string; kind?: string; projectId?: string; url?: string };
     costs?: Partial<Record<(typeof COST_FIELDS)[number], number>> & { note?: string };
     costsMode?: "set" | "add";
-    payment?: { amountUsd?: number; method?: string; note?: string };
+    payment?: {
+      amountUsd?: number;
+      method?: string;
+      note?: string;
+      /** Tenant this payment settles; defaults to VATER_TREY_USER_ID. */
+      userId?: string;
+    };
   };
   try {
     body = await req.json();
@@ -118,9 +129,20 @@ export async function POST(req: Request) {
     if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
       return NextResponse.json({ error: "payment.amountUsd must be > 0" }, { status: 400 });
     }
+    // No session on this path (CONTENT_API_KEY bearer, called by
+    // scripts/vater-payment.mjs), so the tenant comes from the body or
+    // VATER_TREY_USER_ID. Never guess — a payment settles ONE tenant.
+    const tenantUserId = await resolveVaterBillingTenant(body.payment.userId);
+    if (!tenantUserId) {
+      return NextResponse.json(
+        { error: "No billing tenant — set VATER_TREY_USER_ID or pass payment.userId" },
+        { status: 400 },
+      );
+    }
     // recordVaterPayment snapshots the all-time state first, so the NEXT
     // due amount can be broken down by category instead of one bare number.
     const { payment, summary } = await recordVaterPayment({
+      userId: tenantUserId,
       amountUsd,
       method: body.payment.method,
       note: body.payment.note ?? null,

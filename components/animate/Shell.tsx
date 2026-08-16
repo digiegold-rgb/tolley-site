@@ -25,7 +25,7 @@ import { Toast, VBtn } from './primitives';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { HelpFAB } from './HelpFAB';
-import { HelpDrawer } from './HelpDrawer';
+import { HelpDrawer, type HelpFocus } from './HelpDrawer';
 import { ObserverSlot } from './ObserverSlot';
 import { BetaAccessBanner } from './BetaAccessBanner';
 import { DashboardScreen } from './screens/DashboardScreen';
@@ -99,6 +99,10 @@ function ShellInner(): React.ReactElement {
     { message: string; kind: 'success' | 'error' | 'info' } | null
   >(null);
   const [helpOpen, setHelpOpen] = React.useState(false);
+  // Which Help section the drawer should scroll to on open. The FAB and the
+  // dashboard tutorial card want the top; the header version pill wants the
+  // release notes.
+  const [helpFocus, setHelpFocus] = React.useState<HelpFocus>(null);
   const { tier, loading: tierLoading } = useTier();
 
   const requestNewVideo = React.useCallback(() => {
@@ -117,6 +121,12 @@ function ShellInner(): React.ReactElement {
   }, [route]);
 
   const openHelp = React.useCallback(() => {
+    setHelpFocus(null);
+    setHelpOpen(true);
+  }, []);
+
+  const openWhatsNew = React.useCallback(() => {
+    setHelpFocus('whats-new');
     setHelpOpen(true);
   }, []);
 
@@ -389,6 +399,7 @@ function ShellInner(): React.ReactElement {
               <Header
                 mobile={isMobile}
                 onOpenNav={() => setDrawerOpen(true)}
+                onOpenWhatsNew={openWhatsNew}
               />
               <main
                 key={route}
@@ -411,6 +422,9 @@ function ShellInner(): React.ReactElement {
         <HelpFAB onClick={openHelp} />
         <HelpDrawer
           open={helpOpen}
+          focus={helpFocus}
+          route={route}
+          projectId={selectedProjectId}
           onClose={() => setHelpOpen(false)}
           onGoBilling={() => {
             setHelpOpen(false);

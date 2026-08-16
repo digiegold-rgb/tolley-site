@@ -9,6 +9,8 @@ export const runtime = "nodejs";
 type RegisterPayload = {
   email?: string;
   password?: string;
+  /** Click-wrap stamp from the Jelly Studio signup (lib/legal-animate TOS_VERSION). */
+  termsVersion?: string;
 };
 
 function normalizeEmail(value: string) {
@@ -29,6 +31,10 @@ export async function POST(request: Request) {
     const payload = (await request.json()) as RegisterPayload;
     const email = typeof payload.email === "string" ? normalizeEmail(payload.email) : "";
     const password = typeof payload.password === "string" ? payload.password : "";
+    const termsVersion =
+      typeof payload.termsVersion === "string" && payload.termsVersion.trim()
+        ? payload.termsVersion.trim().slice(0, 32)
+        : null;
 
     if (!email || !password) {
       return NextResponse.json(
@@ -89,6 +95,24 @@ export async function POST(request: Request) {
         { error: "An account with this email already exists. Please sign in." },
         { status: 409 },
       );
+    }
+
+    // Click-wrap stamp, recorded as a separate best-effort write. The columns
+    // arrive with prisma/migrations/20260815_animate_terms; until that lands on
+    // a given environment the UPDATE fails, and a failed acceptance stamp must
+    // never cost the user their account — so it is raw SQL (the generated
+    // client may not know the columns yet) inside its own try/catch.
+    if (termsVersion) {
+      try {
+        await prisma.$executeRaw`
+          UPDATE "User"
+             SET "termsAcceptedAt" = NOW(),
+                 "termsVersion" = ${termsVersion}
+           WHERE "id" = ${outcome.userId}
+        `;
+      } catch (stampError) {
+        console.error("register: terms acceptance stamp failed", stampError);
+      }
     }
 
     return NextResponse.json({

@@ -18,6 +18,8 @@ import {
 } from "@/lib/vater/style-presets";
 import { buildStyleSnapshot } from "@/lib/vater/style-snapshot";
 import { auth } from "@/auth";
+import { checkBudget } from "@/lib/vater/billing/check-budget";
+import { ownerFieldsForSession } from "@/lib/vater/owner-tier";
 
 interface TopicBody {
   topic?: string;
@@ -124,6 +126,18 @@ export async function POST(req: NextRequest) {
     styleSnapshot = buildStyleSnapshot(style);
   }
 
+  // Budget gate (2026-08-15) — same check as /approve-script and /context.
+  // Topic mode went straight to runCreation, so a trial-capped or
+  // past-due account could render a full video for free through this door.
+  // Checked BEFORE the project row is created so a 402 leaves no orphan.
+  const budget = await checkBudget(session.user.id, "scene");
+  if (!budget.allow) {
+    return NextResponse.json(
+      { error: "Billing check failed", budget },
+      { status: 402 },
+    );
+  }
+
   const project = await prisma.youTubeProject.create({
     data: {
       userId: session.user.id,
@@ -170,6 +184,8 @@ export async function POST(req: NextRequest) {
       voiceCloneName: body.voiceCloneName,
       videoBackend: videoBackend as "sdxl" | "veo-3.0-fast" | "veo-3.0" | "veo-3.1" | "hybrid",
       style: styleSnapshot,
+      // Per-tenant fairness + script cap (content-autopilot 9cbe9a6).
+      ...ownerFieldsForSession(session, project.userId),
       ...(scriptOverride ? { scriptOverride } : {}),
     });
 

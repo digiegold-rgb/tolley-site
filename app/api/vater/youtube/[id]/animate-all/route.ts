@@ -20,6 +20,7 @@ import { canAccessProject } from "@/lib/vater/project-access";
 import { getAnimationPriceCents } from "@/lib/vater/pricing";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
 import { consumeRateLimit, rateLimited } from "@/lib/rate-limit";
+import { ownerFieldsForSession } from "@/lib/vater/owner-tier";
 
 // Just kicks off the DGX job and returns the animateAllJobId immediately.
 // The frontend polls /api/vater/jobs/<id> for progress + logs.
@@ -161,10 +162,18 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   let kickoff;
   try {
+    const { ownerId, ownerTier } = ownerFieldsForSession(
+      session,
+      project.userId,
+    );
     kickoff = await autopilot.animateAllScenes({
       jobId: project.autopilotJobId,
       scenes: targetScenes,
       quality,
+      // Per-tenant fairness (content-autopilot 9cbe9a6) — maxWords is
+      // script-only, so it isn't sent on the animate lane.
+      ownerId,
+      ownerTier,
     });
   } catch (err) {
     if (err instanceof AutopilotError) {

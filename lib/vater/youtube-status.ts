@@ -10,6 +10,10 @@
 
 export type YouTubeProjectStatus =
   | "draft"
+  // Accepted by the DGX but parked behind the per-tenant concurrency cap
+  // (content-autopilot 9cbe9a6). In-flight, not an error — it becomes a real
+  // render phase as soon as a slot frees.
+  | "queued"
   | "fetching"
   | "transcribing"
   | "transcribed"
@@ -28,6 +32,7 @@ export type YouTubeProjectStatus =
 
 export const STATUS_LABELS: Record<YouTubeProjectStatus, string> = {
   draft: "Draft",
+  queued: "Queued...",
   fetching: "Fetching source...",
   transcribing: "Transcribing...",
   transcribed: "Transcribed",
@@ -47,6 +52,7 @@ export const STATUS_LABELS: Record<YouTubeProjectStatus, string> = {
 
 export const STATUS_COLORS: Record<YouTubeProjectStatus, string> = {
   draft: "text-zinc-400 bg-zinc-400/10",
+  queued: "text-amber-400 bg-amber-400/10 animate-pulse",
   fetching: "text-yellow-400 bg-yellow-400/10 animate-pulse",
   transcribing: "text-yellow-400 bg-yellow-400/10 animate-pulse",
   transcribed: "text-sky-400 bg-sky-400/10",
@@ -70,6 +76,8 @@ export const STATUS_COLORS: Record<YouTubeProjectStatus, string> = {
  * the run-creation phase. `awaiting_context` is interactive — no poll.
  */
 export const IN_FLIGHT_STATUSES: ReadonlySet<YouTubeProjectStatus> = new Set([
+  // Queued jobs MUST keep polling — nothing else moves them off the queue.
+  "queued",
   "fetching",
   "transcribing",
   "extracting_principles",
@@ -163,6 +171,11 @@ export const CREATION_PHASES: readonly CreationPhase[] = [
 export function phaseToStatus(
   phase: string,
 ): YouTubeProjectStatus | undefined {
+  // Per-tenant queue (content-autopilot 9cbe9a6). The DGX emits the position
+  // inline — "queued (#3 in line)" — so match the prefix, not the whole
+  // string. Keeps the project in-flight so /poll keeps running.
+  if (phase.startsWith("queued")) return "queued";
+
   switch (phase) {
     // ---- fetch-source pipeline ----
     case "downloading":
@@ -216,6 +229,26 @@ export function phaseToStatus(
     default:
       return undefined;
   }
+}
+
+/**
+ * Human label for a queued job. The DGX phase already carries the position
+ * ("queued (#3 in line)"), and `JobStatus.queuePosition` carries it as a
+ * number — prefer the number, fall back to parsing the phase text.
+ *
+ * Returns null when the job isn't queued, so callers can do:
+ *   queueLabel(phase, job.queuePosition) ?? STATUS_LABELS[status]
+ */
+export function queueLabel(
+  phase: string | null | undefined,
+  queuePosition?: number | null,
+): string | null {
+  if (!phase || !phase.startsWith("queued")) return null;
+  const n =
+    typeof queuePosition === "number" && queuePosition > 0
+      ? queuePosition
+      : Number(/#(\d+)/.exec(phase)?.[1]) || null;
+  return n ? `Queued \u2014 #${n} in line` : "Queued";
 }
 
 export const WORDS_PER_MINUTE = 150;

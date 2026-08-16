@@ -13,7 +13,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { isVaterStudioEmail } from "@/lib/admin-auth";
+import { isVaterAdminEmail, isVaterStudioEmail } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,7 +65,14 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Tenant isolation (2026-08-15): the Direct lane is shared by every studio
+  // seat, so an unscoped list handed each seat everyone else's dictated
+  // briefs. Owner sees all (support); everyone else sees only their own.
+  const email = session.user?.email ?? null;
   const jobs = await prisma.vaterDirectJob.findMany({
+    ...(isVaterAdminEmail(email)
+      ? {}
+      : { where: { createdByEmail: email } }),
     orderBy: { createdAt: "desc" },
     take: 25,
     include: {

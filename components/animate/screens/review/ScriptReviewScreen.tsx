@@ -30,6 +30,7 @@ import { VBtn, VCard, VInput, RetryError, SectionHeader } from '../../primitives
 import {
   CREATION_PHASES,
   IN_FLIGHT_STATUSES,
+  queueLabel,
   type YouTubeProjectStatus,
 } from '@/lib/vater/youtube-status';
 import { PublishPanel } from './PublishPanel';
@@ -66,6 +67,13 @@ export interface ReviewProject {
   stepDetails: StepDetails | null;
 }
 
+/** One entry of `stepDetails.phaseTimings` — when a DGX phase ran. */
+export interface PhaseTiming {
+  startedAt: string;
+  /** Absent while the phase is still running. */
+  endedAt?: string;
+}
+
 /** What `/api/vater/youtube/[id]/poll` writes onto the row each tick. */
 export interface StepDetails {
   phase?: string | null;
@@ -74,6 +82,12 @@ export interface StepDetails {
   jobStatus?: string | null;
   /** Rolling tail of worker log lines, oldest first. */
   logs?: string[] | null;
+  /** First poll of this job — the clock elapsed time counts from. */
+  startedAt?: string | null;
+  /** Per-phase start/end, accumulated across polls. */
+  phaseTimings?: Record<string, PhaseTiming> | null;
+  /** Internal: job we already sent a failure alert for. Not shown. */
+  alertedJobId?: string | null;
 }
 
 export interface ScriptVersion {
@@ -688,6 +702,28 @@ function parseLogLine(raw: string): {
   return { time: m[1], tag: m[2] ?? null, text: m[3] };
 }
 
+/** "48s" / "3m 07s" / "1h 12m" — compact enough for an inline stat. */
+function formatDuration(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
+  if (m > 0) return `${m}m ${String(s).padStart(2, '0')}s`;
+  return `${s}s`;
+}
+
+/** Ticking clock so elapsed advances between the 5s project polls. */
+function useNowMs(active: boolean): number {
+  const [now, setNow] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    if (!active) return;
+    const h = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(h);
+  }, [active]);
+  return now;
+}
+
 function RenderProgress({
   project,
 }: {
@@ -714,6 +750,30 @@ function RenderProgress({
   const phase = details?.phase ?? null;
   const pct = Math.max(0, Math.min(100, project.progress ?? 0));
 
+  // Elapsed + per-stage durations. `startedAt` is stamped on the first poll of
+  // the job and `phaseTimings` accumulates across polls, so both survive a
+  // page reload — this is the row's own history, not a client-side timer.
+  const nowMs = useNowMs(true);
+  const startedMs = details?.startedAt ? Date.parse(details.startedAt) : NaN;
+  const elapsed = Number.isFinite(startedMs) ? formatDuration(nowMs - startedMs) : null;
+  const stageRows = React.useMemo(() => {
+    const timings = details?.phaseTimings;
+    if (!timings) return [];
+    return Object.entries(timings)
+      .map(([name, timing]) => {
+        const from = Date.parse(timing.startedAt);
+        const to = timing.endedAt ? Date.parse(timing.endedAt) : null;
+        return {
+          name,
+          from,
+          running: to === null,
+          ms: (to ?? nowMs) - from,
+        };
+      })
+      .filter((row) => Number.isFinite(row.from))
+      .sort((a, b) => a.from - b.from);
+  }, [details?.phaseTimings, nowMs]);
+
   // Where we are on the ladder. `status` is the authority; phase is a label.
   const ladder = CREATION_PHASES.filter((p) => !p.transcribeOnly);
   const activeIdx = ladder.findIndex((p) => p.status === project.status);
@@ -731,9 +791,15 @@ function RenderProgress({
           }}
         >
           <span style={{ fontWeight: 600, color: t.text }}>
-            {phase ? phase.replace(/_/g, ' ') : 'working'}
+            {/* A queued job is behind the per-tenant cap, not stalled — say
+                so explicitly instead of rendering the raw DGX phase text. */}
+            {queueLabel(phase) ??
+              (phase ? phase.replace(/_/g, ' ') : 'working')}
           </span>
-          <span>{pct}%</span>
+          <span data-testid="render-elapsed">
+            {elapsed ? `${elapsed} elapsed · ` : ''}
+            {pct}%
+          </span>
         </div>
         <div
           style={{
@@ -782,6 +848,38 @@ function RenderProgress({
           );
         })}
       </div>
+
+      {/* Per-stage durations — how long each phase actually took, so a slow
+          render can be blamed on the stage that ate the time. */}
+      {stageRows.length > 0 && (
+        <div
+          data-testid="stage-timings"
+          style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}
+        >
+          {stageRows.map((row) => (
+            <span
+              key={row.name}
+              title={
+                row.running
+                  ? `${row.name.replace(/_/g, ' ')} — running for ${formatDuration(row.ms)}`
+                  : `${row.name.replace(/_/g, ' ')} took ${formatDuration(row.ms)}`
+              }
+              style={{
+                fontSize: 10,
+                padding: '2px 8px',
+                borderRadius: JELLY_TOKENS.radius.pill,
+                border: `1px solid ${t.border}`,
+                color: row.running ? t.text : t.textSecondary,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {row.name.replace(/_/g, ' ')}{' '}
+              <span style={{ fontWeight: 700 }}>{formatDuration(row.ms)}</span>
+              {row.running ? '…' : ''}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Now / previous */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

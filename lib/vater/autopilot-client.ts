@@ -39,7 +39,9 @@ export type JobPhase =
   | string;
 
 export type JobStatus = {
-  status: "pending" | "running" | "done" | "failed";
+  /** "queued" = accepted but parked behind the per-tenant concurrency cap
+   *  (content-autopilot 9cbe9a6); it becomes "running" when a slot frees. */
+  status: "pending" | "running" | "queued" | "cancelled" | "done" | "failed";
   phase: JobPhase;
   progress: number;
   result?: unknown;
@@ -47,6 +49,8 @@ export type JobStatus = {
   /** Rolling log buffer (up to 30 lines, HH:MM:SS-prefixed, server-appended). */
   logs?: string[];
   updatedAt?: string;
+  /** 1-based place in line while status === "queued". See GET /vater/queue. */
+  queuePosition?: number;
 };
 
 export type ReferenceStatusEntry = {
@@ -161,7 +165,10 @@ export type StyleSnapshot = {
   id: string;
   name: string;
   voice: string;
-  voiceBackend: "f5-tts" | "elevenlabs";
+  // "indextts-modal" = IndexTTS-2 on Modal, the cloud TTS lane every
+  // non-owner render uses (vater-modal-only-never-local-gpu). "f5-tts" is
+  // the legacy LOCAL DGX lane, owner-only.
+  voiceBackend: "f5-tts" | "elevenlabs" | "indextts-modal";
   voiceSpeed: number;
   voiceStability: number;
   voiceSimilarity: number;
@@ -243,6 +250,14 @@ export type RunCreationInput = {
    *  spending nothing on audio/images. The render is kicked separately by
    *  /approve-script re-calling this endpoint with `scriptOverride`. */
   stopAfterScript?: boolean;
+  /** ── Per-tenant fairness (content-autopilot 9cbe9a6) ─────────────────
+   *  `ownerTier: "owner"` is exempt from the concurrency cap; anything else
+   *  is capped and over-cap jobs park as status "queued". Build these with
+   *  lib/vater/owner-tier.ts — never hand-roll. */
+  ownerId?: string;
+  ownerTier?: "owner" | "beta";
+  /** Hard script-length ceiling. Omitted = uncapped (owner only). */
+  maxWords?: number;
 };
 
 /**
@@ -788,6 +803,9 @@ export const autopilot = {
       | "modal-hunyuan-narrative"
       | "modal-hunyuan-narrative-fast";
     aspectRatio?: string;
+    /** Per-tenant fairness — see RunCreationInput.ownerTier. */
+    ownerId?: string;
+    ownerTier?: "owner" | "beta";
   }) =>
     call<{ animateAllJobId: string; jobId: string; sceneCount: number }>(
       "POST",

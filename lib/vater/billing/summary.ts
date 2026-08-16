@@ -1,12 +1,18 @@
 /**
- * getVaterBillingSummary — the ONE place Trey's render bill is computed.
+ * getVaterBillingSummary — the ONE place a tenant's render bill is computed.
  *
  * Consumed by /api/vater/latest (the /animate header pill) and
  * /api/hq/vater-payment (the /hq "Zelle received" reset button). All-time
  * total = compute at cost + render-operations fee; it NEVER resets.
  * Payments received (Zelle) accumulate in VaterPayment; current due is the
  * gap. Keep both surfaces on this helper — a fork here means the pill and
- * /hq disagree about what Trey owes.
+ * /hq disagree about what the tenant owes.
+ *
+ * 🔴 PER-TENANT since 2026-08-15. `userId` is REQUIRED — deliberately, so no
+ * caller can fall back to an unscoped total and bill one tenant for another's
+ * renders. Before scoping, the 11 legacy null-owner videos (April 2026, $0
+ * compute but 13.66 finished minutes) were putting $4.78 of ops fee on Trey's
+ * bill. Both the project population AND the payments are filtered by userId.
  *
  * The category breakdown lives here too (all-time AND "new since the last
  * payment"), because the same rows have to render on both surfaces. Every
@@ -19,6 +25,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { hasVaterPaymentUserId } from "@/lib/vater/schema-probe";
 
 import { getOpsRate } from "./ops-fee";
 
@@ -109,13 +116,126 @@ function sumRows(rows: BreakdownRow[]): number {
   return r2(rows.reduce((a, row) => a + row.usd, 0));
 }
 
-export async function getVaterBillingSummary(): Promise<{
+export interface VaterBillingScope {
+  /** Tenant whose bill this is. Required — see the header note. */
+  userId: string;
+}
+
+/** Login email of the one tenant currently on out-of-band (Zelle) billing. */
+const DEFAULT_BILLING_TENANT_EMAIL = "tvater326@gmail.com";
+
+/**
+ * Resolve the tenant for a machine caller that has no session — the /hq
+ * console and the CONTENT_API_KEY POST path (scripts/vater-payment.mjs).
+ * Explicit argument wins, then VATER_TREY_USER_ID, then a lookup by Trey's
+ * login email. Returns null rather than guessing, so a caller that can't
+ * name a tenant fails loudly instead of writing a payment against whoever
+ * happens to be first in the table.
+ */
+export async function resolveVaterBillingTenant(
+  explicitUserId?: string | null,
+): Promise<string | null> {
+  if (explicitUserId) return explicitUserId;
+  const fromEnv = process.env.VATER_TREY_USER_ID?.trim();
+  if (fromEnv) return fromEnv;
+  const user = await prisma.user.findUnique({
+    where: { email: DEFAULT_BILLING_TENANT_EMAIL },
+    select: { id: true },
+  });
+  return user?.id ?? null;
+}
+
+/**
+ * Columns VaterPayment had BEFORE the 2026-08-15 tenancy migration. Used to
+ * read payments while the deployed code is ahead of the database — see the
+ * warning in paymentsForTenant.
+ */
+const LEGACY_PAYMENT_SELECT = {
+  id: true,
+  amountUsd: true,
+  method: true,
+  note: true,
+  createdAt: true,
+  snapshotJson: true,
+} as const;
+
+/**
+ * Payment rows for one tenant.
+ *
+ * Pre-migration (VaterPayment.userId absent) the column can't be selected or
+ * filtered, so payments fall back to the ONE tenant that existed before
+ * tenancy — Trey, the only Zelle payer. Any other tenant correctly sees zero
+ * payments rather than being credited with his $144. Never "all payments
+ * count for everyone".
+ */
+async function paymentsForTenant(userId: string) {
+  if (await hasVaterPaymentUserId()) {
+    const [paidAgg, lastPayment] = await Promise.all([
+      prisma.vaterPayment.aggregate({
+        where: { userId },
+        _sum: { amountUsd: true },
+      }),
+      prisma.vaterPayment.findFirst({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+    return { paidUsd: paidAgg._sum.amountUsd ?? 0, lastPayment };
+  }
+
+  const legacyTenantId = await resolveVaterBillingTenant();
+  if (legacyTenantId && legacyTenantId !== userId) {
+    return { paidUsd: 0, lastPayment: null };
+  }
+  // ⚠️ Must select EXPLICITLY here. A bare findFirst/findMany asks for every
+  // column in the Prisma model — including the userId the database doesn't
+  // have yet — and throws P2022 even though nothing filters on it.
+  const [paidAgg, lastPayment] = await Promise.all([
+    prisma.vaterPayment.aggregate({ _sum: { amountUsd: true } }),
+    prisma.vaterPayment.findFirst({
+      orderBy: { createdAt: "desc" },
+      select: LEGACY_PAYMENT_SELECT,
+    }),
+  ]);
+  return { paidUsd: paidAgg._sum.amountUsd ?? 0, lastPayment };
+}
+
+/**
+ * Newest payments for one tenant, for the /hq history strip. Same
+ * pre-migration fallback as paymentsForTenant.
+ */
+export async function listVaterPayments(userId: string, take = 20) {
+  if (await hasVaterPaymentUserId()) {
+    return prisma.vaterPayment.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take,
+    });
+  }
+  const legacyTenantId = await resolveVaterBillingTenant();
+  if (legacyTenantId && legacyTenantId !== userId) return [];
+  // Explicit select — the userId column doesn't exist yet. See above.
+  return prisma.vaterPayment.findMany({
+    orderBy: { createdAt: "desc" },
+    take,
+    select: LEGACY_PAYMENT_SELECT,
+  });
+}
+
+export async function getVaterBillingSummary(scope: VaterBillingScope): Promise<{
   summary: VaterBillingSummary;
   costs: Awaited<ReturnType<typeof prisma.vaterCostSnapshot.findUnique>>;
 }> {
-  const [costs, projects, paidAgg, lastPayment] = await Promise.all([
+  const { userId } = scope;
+  const [costs, projects, payments] = await Promise.all([
+    // NOTE: the cost snapshot is the GLOBAL Vater-lane ledger (whole-lane
+    // spend incl. Jared's R&D), not a per-tenant figure. It is returned for
+    // internal cost-of-goods surfaces only and is never part of `summary`.
     prisma.vaterCostSnapshot.findUnique({ where: { id: "vater-costs" } }),
+    // youTubeProject.userId has existed since 2026-06-11, so this half of the
+    // scoping works with or without the tenancy migration applied.
     prisma.youTubeProject.findMany({
+      where: { userId },
       select: {
         status: true,
         finalVideoUrl: true,
@@ -125,9 +245,9 @@ export async function getVaterBillingSummary(): Promise<{
         completedAt: true,
       },
     }),
-    prisma.vaterPayment.aggregate({ _sum: { amountUsd: true } }),
-    prisma.vaterPayment.findFirst({ orderBy: { createdAt: "desc" } }),
+    paymentsForTenant(userId),
   ]);
+  const { lastPayment } = payments;
 
   const opsRatePerMinute = getOpsRate();
   const finished = projects.filter(
@@ -151,7 +271,7 @@ export async function getVaterBillingSummary(): Promise<{
     Number((p.costJson as { totalUsd?: number } | null)?.totalUsd ?? 0);
   const computeUsd = r2(finished.reduce((sum, p) => sum + cardUsd(p), 0));
   const opsUsd = r2(minutes * opsRatePerMinute);
-  const paidUsd = r2(paidAgg._sum.amountUsd ?? 0);
+  const paidUsd = r2(payments.paidUsd);
 
   // Due is SETTLEMENT-BASED: a payment settles everything delivered up to the
   // moment it landed, and due is only the videos delivered since. All-time is
@@ -379,13 +499,19 @@ function buildSince(args: {
  * breakdown silently degrades to activity attribution.
  *
  * Bookkeeping only: this never moves money.
+ *
+ * `userId` is REQUIRED and is stored on the row: a payment settles ONE
+ * tenant's balance, and an unattributed payment would zero out every
+ * tenant's due at once.
  */
 export async function recordVaterPayment(input: {
+  userId: string;
   amountUsd: number;
   method?: string;
   note?: string | null;
 }) {
-  const { summary } = await getVaterBillingSummary();
+  const scope = { userId: input.userId };
+  const { summary } = await getVaterBillingSummary(scope);
   const snapshot: VaterPaymentSnapshot = {
     computeUsd: summary.computeUsd,
     opsUsd: summary.opsUsd,
@@ -394,14 +520,20 @@ export async function recordVaterPayment(input: {
     videos: summary.videos,
     breakdown: summary.breakdown,
   };
+  // Pre-migration the userId column doesn't exist yet, so writing it would
+  // throw. Omit it and let scripts/apply-jelly-tenancy-2026-08-15.ts backfill
+  // — that script attributes every null-userId payment to the same default
+  // tenant this path would have written.
+  const canStoreUserId = await hasVaterPaymentUserId();
   const payment = await prisma.vaterPayment.create({
     data: {
+      ...(canStoreUserId ? { userId: input.userId } : {}),
       amountUsd: r2(input.amountUsd),
       method: (input.method || "zelle").slice(0, 40),
       note: typeof input.note === "string" ? input.note.slice(0, 300) : null,
       snapshotJson: snapshot as unknown as object,
     },
   });
-  const { summary: fresh } = await getVaterBillingSummary();
+  const { summary: fresh } = await getVaterBillingSummary(scope);
   return { payment, summary: fresh };
 }

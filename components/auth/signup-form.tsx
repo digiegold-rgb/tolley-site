@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 
+import { TOS_VERSION } from "@/lib/legal-animate";
+
 function resolveCallbackUrl(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
     return "/leads/dashboard";
@@ -34,6 +36,10 @@ export function SignupForm({ claimSlug }: SignupFormProps = {}) {
   const destination = claimSlug
     ? `/sales/portal?claim=${encodeURIComponent(claimSlug)}`
     : callbackUrl;
+  /* Jelly Studio signups click through the studio legal set (Terms + Privacy +
+   * Beta Addendum) and we stamp the version they accepted onto the User row. */
+  const isStudio = !claimSlug && callbackUrl.startsWith("/animate");
+  const requiresAgreement = Boolean(claimSlug) || isStudio;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -51,9 +57,13 @@ export function SignupForm({ claimSlug }: SignupFormProps = {}) {
       return;
     }
 
-    if (claimSlug && !agreed) {
+    if (requiresAgreement && !agreed) {
       setStatus("error");
-      setErrorMessage("Please agree to the operator terms to claim your storefront.");
+      setErrorMessage(
+        claimSlug
+          ? "Please agree to the operator terms to claim your storefront."
+          : "Please agree to the Terms, Privacy Policy and Beta Addendum to continue.",
+      );
       return;
     }
 
@@ -80,6 +90,7 @@ export function SignupForm({ claimSlug }: SignupFormProps = {}) {
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
           password,
+          ...(isStudio ? { termsVersion: TOS_VERSION } : {}),
         }),
       });
 
@@ -165,6 +176,50 @@ export function SignupForm({ claimSlug }: SignupFormProps = {}) {
               Launchpad operator terms
             </Link>{" "}
             — the cut, the buyout, who owns what, and the kill-switch.
+          </span>
+        </label>
+      ) : null}
+
+      {isStudio ? (
+        <label className="flex items-start gap-2 pt-1 text-xs text-white/75">
+          <input
+            type="checkbox"
+            required
+            checked={agreed}
+            onChange={(event) => setAgreed(event.target.checked)}
+            aria-describedby="studio-terms-note"
+            className="mt-0.5"
+          />
+          <span>
+            I agree to the Jelly Studio{" "}
+            <Link
+              href="/animate/terms"
+              target="_blank"
+              className="text-violet-200 underline underline-offset-2 transition hover:text-white"
+            >
+              Terms
+            </Link>
+            ,{" "}
+            <Link
+              href="/animate/privacy"
+              target="_blank"
+              className="text-violet-200 underline underline-offset-2 transition hover:text-white"
+            >
+              Privacy Policy
+            </Link>{" "}
+            and{" "}
+            <Link
+              href="/animate/beta"
+              target="_blank"
+              className="text-violet-200 underline underline-offset-2 transition hover:text-white"
+            >
+              Beta Addendum
+            </Link>
+            .
+            <span id="studio-terms-note" className="mt-1 block text-white/55">
+              Beta software, prepaid credits, you own your videos — and you confirm you
+              have the right to any voice you clone.
+            </span>
           </span>
         </label>
       ) : null}

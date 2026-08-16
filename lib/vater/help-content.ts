@@ -77,5 +77,11 @@ export const HELP_FAQ: readonly HelpFaq[] = [
   },
 ];
 
-/** Support inbox surfaced in the Help drawer. */
-export const HELP_SUPPORT_EMAIL = "digiegold@gmail.com";
+/** Support inbox surfaced in the Help drawer.
+ *
+ * The in-app feedback form (POST /api/vater/feedback) is the PRIMARY channel —
+ * it files a ticket on the /hq queue and pings Telegram, so nothing gets lost
+ * in a mailbox. This address is the secondary path for people who would
+ * rather write an email, and for signed-out visitors on the landing page.
+ */
+export const HELP_SUPPORT_EMAIL = "support@tolley.io";

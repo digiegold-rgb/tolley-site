@@ -21,6 +21,11 @@ import { useTier } from './tier-context';
 import { Icon } from './Icon';
 import { VBtn } from './primitives';
 import { VaterCostPill } from './LatestUpdate';
+import {
+  APP_VERSION,
+  LAST_SEEN_VERSION_KEY,
+  compareVersions,
+} from '@/lib/vater/changelog';
 
 function formatDollars(cents: number | null | undefined): string {
   if (typeof cents !== 'number' || !Number.isFinite(cents)) return '—';
@@ -113,14 +118,45 @@ export interface HeaderProps {
   /** True below 768px — shows the hamburger that opens the nav drawer. */
   mobile?: boolean;
   onOpenNav?: () => void;
+  /** Opens the Help drawer scrolled to its "What's new" section. */
+  onOpenWhatsNew?: () => void;
 }
 
-export function Header({ mobile = false, onOpenNav }: HeaderProps = {}): React.ReactElement {
+export function Header({
+  mobile = false,
+  onOpenNav,
+  onOpenWhatsNew,
+}: HeaderProps = {}): React.ReactElement {
   const { t, dark, toggle } = useTheme();
   const { setRoute } = useRoute();
   const { capabilities } = useTier();
   const [showSettings, setShowSettings] = React.useState(false);
   const { billing, loading: billingLoading } = useVaterBilling();
+
+  // Unread dot on the version pill until this browser has opened the release
+  // notes for the CURRENT version. Same per-browser localStorage pattern as
+  // LatestUpdate's SEEN_KEY — a version compare rather than an id match, so a
+  // user who skipped v1.2 still sees the dot on v1.3.
+  const [versionUnread, setVersionUnread] = React.useState(false);
+  React.useEffect(() => {
+    try {
+      const seen = window.localStorage.getItem(LAST_SEEN_VERSION_KEY);
+      setVersionUnread(compareVersions(seen, APP_VERSION) < 0);
+    } catch {
+      // Private mode — no nag rather than a dot that can never be cleared.
+      setVersionUnread(false);
+    }
+  }, []);
+
+  const openWhatsNew = React.useCallback(() => {
+    try {
+      window.localStorage.setItem(LAST_SEEN_VERSION_KEY, APP_VERSION);
+    } catch {
+      /* private mode — the dot simply returns next load */
+    }
+    setVersionUnread(false);
+    onOpenWhatsNew?.();
+  }, [onOpenWhatsNew]);
 
   // Trial pill: "Trial: 2 / 1 / 1" (transcripts / scenes / animations remaining)
   // Paid pill: "$X.XX of $250.00"
@@ -219,6 +255,48 @@ export function Header({ mobile = false, onOpenNav }: HeaderProps = {}): React.R
         >
           {pillText}
         </div>
+        <button
+          type="button"
+          data-testid="version-pill"
+          onClick={openWhatsNew}
+          aria-label={
+            versionUnread
+              ? `What's new in version ${APP_VERSION} — unread`
+              : `What's new in version ${APP_VERSION}`
+          }
+          title={`Jelly Studio v${APP_VERSION} — click for release notes`}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            flexShrink: 0,
+            padding: '5px 10px',
+            borderRadius: JELLY_TOKENS.radius.full,
+            border: `1px solid ${versionUnread ? JELLY_TOKENS.brand : t.border}`,
+            background: 'transparent',
+            color: versionUnread ? JELLY_TOKENS.brand : t.textSecondary,
+            fontFamily: JELLY_TOKENS.font,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.02em',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          v{APP_VERSION}
+          {versionUnread && (
+            <span
+              aria-hidden="true"
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: JELLY_TOKENS.brand,
+                flexShrink: 0,
+              }}
+            />
+          )}
+        </button>
         {capabilities.latestCosts && (
           <div
             role="button"

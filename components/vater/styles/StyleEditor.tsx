@@ -76,6 +76,7 @@ type Style = {
 };
 
 const VOICE_BACKENDS = [
+  { id: "indextts-modal", label: "Studio voice (cloud)", needsKey: false },
   { id: "f5-tts", label: "F5-TTS (local, free)", needsKey: false },
   { id: "elevenlabs", label: "ElevenLabs (cloud)", needsKey: true, envVar: "ELEVENLABS_API_KEY" },
 ] as const;

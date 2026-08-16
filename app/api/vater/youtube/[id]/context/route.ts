@@ -32,6 +32,8 @@ import {
 import { buildStyleSnapshot } from "@/lib/vater/style-snapshot";
 import { auth } from "@/auth";
 import { canAccessProject } from "@/lib/vater/project-access";
+import { isVaterAdminEmail } from "@/lib/admin-auth";
+import { ownerFieldsForSession } from "@/lib/vater/owner-tier";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -333,6 +335,24 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     const effectiveImageQuality =
       userImageQuality ?? (cloudRental ? "firered-modal" : undefined);
 
+    // ── Modal-only for non-owners (vater-modal-only-never-local-gpu) ──────
+    // A customer render must never occupy the DGX GB10. The owner keeps the
+    // local lane (that's the whole point of owning the box); everyone else is
+    // pinned to the serverless backends no matter what they asked for.
+    //   images: any *-local renderer → firered-modal
+    //   voice:  the local F5-TTS lane → indextts-modal. ElevenLabs is left
+    //           alone — it's already cloud, and rewriting it would hand an
+    //           EL voice_id to IndexTTS and 404 the render at the TTS step.
+    const isOwner = isVaterAdminEmail(session.user.email);
+    const isLocalImageBackend = (q: string | undefined) =>
+      !q || q.endsWith("-local") || q === "sdxl-ipadapter";
+    const forcedImageQuality =
+      isOwner || !isLocalImageBackend(effectiveImageQuality)
+        ? effectiveImageQuality
+        : "firered-modal";
+    const forceModalVoice =
+      !isOwner && styleSnapshot?.voiceBackend !== "elevenlabs";
+
     // Hybrid render window — animate the first N seconds, Ken Burns the rest.
     // Lives on the project row (set from the Script Review intake form) and
     // rides to the DGX inside the style snapshot as `defaultAnimUntilS`.
@@ -342,16 +362,21 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         : null;
 
     const styleWithAnim: StyleSnapshot | undefined =
-      animMode !== "none" || cloudRental || effectiveImageQuality || animUntilS
+      animMode !== "none" ||
+      cloudRental ||
+      forcedImageQuality ||
+      animUntilS ||
+      forceModalVoice
         ? ({
             ...(styleSnapshot ?? {}),
             ...(animMode !== "none"
               ? { defaultAnimMode: animMode, animQuality: effectiveAnimQuality }
               : {}),
             ...(animUntilS ? { defaultAnimUntilS: animUntilS } : {}),
-            ...(effectiveImageQuality
-              ? { defaultQuality: effectiveImageQuality }
+            ...(forcedImageQuality
+              ? { defaultQuality: forcedImageQuality }
               : {}),
+            ...(forceModalVoice ? { voiceBackend: "indextts-modal" } : {}),
             ...(cloudRental ? { cloudRental: true } : {}),
           } as unknown as StyleSnapshot)
         : styleSnapshot;
@@ -378,6 +403,8 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       consistency,
       videoBackend: videoBackend as RunCreationInput["videoBackend"],
       style: styleWithAnim,
+      // Per-tenant fairness + script cap (content-autopilot 9cbe9a6).
+      ...ownerFieldsForSession(session, project.userId),
       ...(scriptOverride ? { scriptOverride } : {}),
       ...(body.stopAfterScript === true ? { stopAfterScript: true } : {}),
     });

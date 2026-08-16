@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { autopilot, AutopilotError } from "@/lib/vater/autopilot-client";
+import { denyPrivateVoicePreview } from "@/lib/vater/voice-preview-access";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   }
   const pid = (await ctx.params).pid.replace(/[^a-f0-9]/g, "");
   if (!pid) return NextResponse.json({ error: "Invalid preview id" }, { status: 400 });
+  const denied = await denyPrivateVoicePreview(pid);
+  if (denied) return denied;
   const v = Number(req.nextUrl.searchParams.get("v") || "") || null;
   const raw = req.nextUrl.searchParams.get("raw") === "1";
   try {

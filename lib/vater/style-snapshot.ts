@@ -81,8 +81,14 @@ function asRefTranscripts(value: unknown): RefTranscript[] {
   return out;
 }
 
-function asVoiceBackend(value: string): "f5-tts" | "elevenlabs" {
-  return value === "elevenlabs" ? "elevenlabs" : "f5-tts";
+function asVoiceBackend(
+  value: string,
+): "f5-tts" | "elevenlabs" | "indextts-modal" {
+  if (value === "elevenlabs") return "elevenlabs";
+  // "indextts-modal" = IndexTTS-2 on Modal (cloud). Everything else falls
+  // back to the legacy local F5-TTS lane, which is owner-only in practice.
+  if (value === "indextts-modal") return "indextts-modal";
+  return "f5-tts";
 }
 
 export function buildStyleSnapshot(style: StyleWithRelations): StyleSnapshot {

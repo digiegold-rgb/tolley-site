@@ -17,21 +17,30 @@ import {
   type VaterAction,
   type VaterTier,
 } from "@/lib/vater-subscription";
-import { isVaterStudioEmail } from "@/lib/admin-auth";
+import { hasVaterUnmeteredAccess } from "@/lib/admin-auth";
 import { checkTrialCaps, type TrialCapResult } from "./check-trial-caps";
 import { getCurrentPeriod } from "./period";
 
 /**
- * Studio full-access users (owner + VATER_STUDIO_ALLOWLIST_EMAILS) generate
- * without trial caps, card, or spend ceiling. Work runs on the DGX at ~$0
- * marginal cost for these accounts, so there is nothing to bill.
+ * Unmetered accounts generate without trial caps, card, or spend ceiling —
+ * they are billed out-of-band instead (Trey settles by Zelle against the
+ * render bill; see lib/vater/billing/summary.ts).
+ *
+ * Two grants, unioned: the env allowlists (owner +
+ * VATER_STUDIO_ALLOWLIST_EMAILS) and VaterAccount.unmetered. The DB flag is
+ * the one to use for new invites — flipping a beta tester to unmetered is a
+ * row update, not a Vercel env edit + redeploy.
+ *
+ * ⚠️ Unmetered is now independent of tier: a studio-tier beta user who pays
+ * normally gets tier "studio" with unmetered=false and still hits the budget
+ * gate. Don't reintroduce "studio implies free".
  */
 async function hasUnmeteredStudioAccess(userId: string): Promise<boolean> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { email: true },
   });
-  return isVaterStudioEmail(user?.email);
+  return hasVaterUnmeteredAccess(userId, user?.email);
 }
 
 export type BudgetReason =

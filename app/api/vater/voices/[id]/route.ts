@@ -10,20 +10,29 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { requireVaterProxyAuth } from "@/lib/vater/proxy-auth";
+import { canAccessVoice } from "@/lib/vater/voice-privacy";
 
 const BASE = (process.env.AUTOPILOT_URL || "").replace(/\/$/, "");
 const KEY = process.env.CONTENT_API_KEY || "";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function DELETE(_req: NextRequest, ctx: Ctx) {
-  // Auth-gate: this permanently deletes a voice clone on the DGX. Leaving it
-  // open let any anonymous caller wipe the shared voice library.
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function DELETE(req: NextRequest, ctx: Ctx) {
+  // Auth-gate: this permanently deletes a voice clone on the DGX, and the
+  // library is SHARED — any signed-in user could wipe another customer's (or
+  // the owner's) clone. Studio tier is the bar for writes (2026-08-15).
+  const gate = await requireVaterProxyAuth(req);
+  if (!gate.ok) return gate.response;
   const { id } = await ctx.params;
+
+  // Owner-private clones can only be deleted by the owner. (No session =
+  // x-sync-secret server-to-server caller, already fully trusted.)
+  const session = await auth();
+  if (session?.user?.id && !canAccessVoice(id, session.user.email ?? null)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   if (!BASE || !KEY) {
     return NextResponse.json(
       { error: "AUTOPILOT_URL or CONTENT_API_KEY not configured" },

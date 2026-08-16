@@ -31,10 +31,12 @@ async function main() {
         // Reasonable defaults — system rows are starting points, not
         // opinionated about voice/word count. Users adjust on clone.
         voice: "MorganDeep",
-        voiceBackend: "f5-tts",
+        // Modal-only: system styles must never point a customer render at the
+        // local DGX GPU (vater-modal-only-never-local-gpu).
+        voiceBackend: "indextts-modal",
         defaultWordCount: 1500,
         defaultAspectRatio: "16x9",
-        defaultQuality: "firered-local",
+        defaultQuality: "firered-modal",
         defaultVisualType: "images",
         defaultAnimMode: "none",
         defaultConsistency: preset.id === "animated_explainer" ? 70 : 0,

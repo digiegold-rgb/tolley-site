@@ -41,8 +41,93 @@ import { canAccessProject } from "@/lib/vater/project-access";
 import { recordUsage } from "@/lib/vater/billing/record-usage";
 import { FLAT_ACTION_PRICES } from "@/lib/vater/pricing";
 import type { VaterAction } from "@/lib/vater-subscription";
+import { notifyTelegram } from "@/lib/budget/notify";
 
 type Ctx = { params: Promise<{ id: string }> };
+
+// ---------------------------------------------------------------------------
+// stepDetails carry-over
+//
+// `stepDetails` is rewritten wholesale on every tick, so anything that has to
+// SURVIVE a poll (when the job started, how long each phase took, whether we
+// already alerted on a failure) must be read off the previous value first.
+// ---------------------------------------------------------------------------
+
+// Type aliases, not interfaces: Prisma's InputJsonValue needs an implicit
+// index signature, which interfaces don't get.
+type PhaseTiming = {
+  startedAt: string;
+  endedAt?: string;
+};
+
+type PhaseTimings = Record<string, PhaseTiming>;
+
+interface PriorStepDetails {
+  phase?: string | null;
+  startedAt?: string | null;
+  phaseTimings?: PhaseTimings;
+  /** Job id we have already sent a Telegram failure alert for. */
+  alertedJobId?: string | null;
+}
+
+function readPriorStepDetails(raw: unknown): PriorStepDetails {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const d = raw as Record<string, unknown>;
+  const timings: PhaseTimings = {};
+  if (d.phaseTimings && typeof d.phaseTimings === "object" && !Array.isArray(d.phaseTimings)) {
+    for (const [phase, value] of Object.entries(
+      d.phaseTimings as Record<string, unknown>,
+    )) {
+      if (!value || typeof value !== "object") continue;
+      const v = value as { startedAt?: unknown; endedAt?: unknown };
+      if (typeof v.startedAt !== "string") continue;
+      timings[phase] = {
+        startedAt: v.startedAt,
+        ...(typeof v.endedAt === "string" ? { endedAt: v.endedAt } : {}),
+      };
+    }
+  }
+  return {
+    phase: typeof d.phase === "string" ? d.phase : null,
+    startedAt: typeof d.startedAt === "string" ? d.startedAt : null,
+    phaseTimings: timings,
+    alertedJobId: typeof d.alertedJobId === "string" ? d.alertedJobId : null,
+  };
+}
+
+/**
+ * Close out the phase we were in, open the one we're in now. Terminal jobs
+ * (done/failed) close the current phase so the last stage gets a duration
+ * instead of running forever in the UI.
+ */
+function advancePhaseTimings(
+  prior: PriorStepDetails,
+  nextPhase: string | null | undefined,
+  terminal: boolean,
+  nowIso: string,
+): PhaseTimings {
+  const timings: PhaseTimings = { ...(prior.phaseTimings ?? {}) };
+  const prevPhase = prior.phase ?? null;
+
+  if (nextPhase && nextPhase !== prevPhase) {
+    if (prevPhase && timings[prevPhase] && !timings[prevPhase].endedAt) {
+      timings[prevPhase] = { ...timings[prevPhase], endedAt: nowIso };
+    }
+    if (!timings[nextPhase]) timings[nextPhase] = { startedAt: nowIso };
+  }
+  if (terminal) {
+    const current = nextPhase ?? prevPhase;
+    if (current && timings[current] && !timings[current].endedAt) {
+      timings[current] = { ...timings[current], endedAt: nowIso };
+    }
+  }
+  return timings;
+}
+
+/** Telegram parse_mode is Markdown — unbalanced _ * ` [ ] 400s the send. */
+function tgSafe(v: string): string {
+  return v.replace(/[_*`[\]]/g, "");
+}
 
 // ---------------------------------------------------------------------------
 // Phase → status translation
@@ -183,6 +268,20 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     ? job.logs.slice(-60)
     : [];
 
+  // Timings + the failure-alert stamp have to survive the wholesale rewrite of
+  // stepDetails below, so read the previous value before building the payload.
+  const prior = readPriorStepDetails(project.stepDetails);
+  const nowIso = new Date().toISOString();
+  const terminalJob = job.status === "done" || job.status === "failed";
+  const phaseTimings = advancePhaseTimings(prior, job.phase, terminalJob, nowIso);
+  // First poll of this job establishes the clock the UI counts elapsed from.
+  const jobStartedAt = prior.startedAt ?? nowIso;
+  // Carried forward unless this tick is the one that sends the alert.
+  let alertedJobId = prior.alertedJobId ?? null;
+  const shouldAlertFailure =
+    job.status === "failed" && alertedJobId !== project.autopilotJobId;
+  if (shouldAlertFailure) alertedJobId = project.autopilotJobId;
+
   const data: Prisma.YouTubeProjectUpdateInput = {
     status: nextStatus,
     progress: typeof job.progress === "number" ? job.progress : project.progress,
@@ -192,14 +291,18 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       progress: job.progress,
       jobStatus: job.status,
       logs: recentLogs,
+      startedAt: jobStartedAt,
+      phaseTimings,
+      alertedJobId,
     } satisfies Prisma.InputJsonValue,
   };
 
+  let failureMessage: string | null = null;
   if (job.status === "failed") {
-    data.errorMessage =
-      job.error || `Autopilot job failed at phase=${job.phase}`;
+    failureMessage = job.error || `Autopilot job failed at phase=${job.phase}`;
+    data.errorMessage = failureMessage;
     console.error(
-      `[vater/poll] project=${id} job=${project.autopilotJobId} FAILED: ${data.errorMessage}`,
+      `[vater/poll] project=${id} job=${project.autopilotJobId} FAILED: ${failureMessage}`,
     );
   }
 
@@ -564,6 +667,31 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     where: { id },
     data,
   });
+
+  // ── Failure alert (once per job) ─────────────────────────────────────────
+  // A render that dies at 03:00 used to sit failed until someone opened the
+  // Queue screen. The dedupe stamp (`stepDetails.alertedJobId`) is written by
+  // the update above BEFORE the send, so a Telegram hiccup costs one alert
+  // rather than looping one every 5s poll. Best-effort throughout: the caller
+  // already has the project row, and notification plumbing must never turn a
+  // successful poll into a 500.
+  if (shouldAlertFailure && failureMessage) {
+    try {
+      let who = project.userId ?? "unknown user";
+      if (project.userId) {
+        const owner = await prisma.user.findUnique({
+          where: { id: project.userId },
+          select: { email: true },
+        });
+        if (owner?.email) who = owner.email;
+      }
+      await notifyTelegram(
+        `⚠️ /animate render failed — ${tgSafe(who)} · project ${tgSafe(id)} · phase ${tgSafe(String(job.phase ?? "unknown"))}: ${tgSafe(failureMessage).slice(0, 500)}`,
+      );
+    } catch (err) {
+      console.error(`[vater/poll] failure alert failed project=${id}`, err);
+    }
+  }
 
   // ── Record confirmed-success charges (owner-billed, idempotent) ──────────
   // Wrapped per-charge: the user already has their output, so a billing

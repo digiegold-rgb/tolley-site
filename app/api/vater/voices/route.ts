@@ -16,12 +16,20 @@ import {
   requireVaterProxyAuth,
   requireVaterProxyRead,
 } from "@/lib/vater/proxy-auth";
+import { auth } from "@/auth";
+import { filterVoicesForEmail } from "@/lib/vater/voice-privacy";
 
 export async function GET(req: NextRequest) {
   const gate = await requireVaterProxyRead(req);
   if (!gate.ok) return gate.response;
+  // Owner-private clones (Jared-A..D) never appear in a customer's picker.
+  // No session = x-sync-secret caller (DGX/cron) → unfiltered.
+  const session = await auth();
+  const email = session?.user?.id ? (session.user.email ?? null) : undefined;
   try {
-    const voices = await autopilot.getVoices();
+    const all = await autopilot.getVoices();
+    const voices =
+      email === undefined ? all : filterVoicesForEmail(all, email);
     return NextResponse.json({ voices });
   } catch (err) {
     if (err instanceof AutopilotError) {

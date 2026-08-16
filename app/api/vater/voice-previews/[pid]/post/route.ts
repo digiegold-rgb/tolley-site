@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { autopilot, AutopilotError } from "@/lib/vater/autopilot-client";
 import { requireVaterProxyAuth } from "@/lib/vater/proxy-auth";
+import { denyPrivateVoicePreview } from "@/lib/vater/voice-preview-access";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -17,6 +18,8 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   if (!gate.ok) return gate.response;
   const pid = (await ctx.params).pid.replace(/[^a-f0-9]/g, "");
   if (!pid) return NextResponse.json({ error: "Invalid preview id" }, { status: 400 });
+  const denied = await denyPrivateVoicePreview(pid);
+  if (denied) return denied;
   let body: { post?: unknown };
   try {
     body = await req.json();

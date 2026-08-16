@@ -28,9 +28,13 @@ const SOCIAL_LINKS: FooterLink[] = [
   { label: 'Instagram', href: 'https://www.instagram.com/vaterbytolley' },
 ];
 
+/* Studio-specific legal, not the T-Agent SMS/A2P pages the footer used to
+ * point at. A Jelly Studio customer needs the credits/voice-cloning/beta
+ * terms they actually clicked through, not a real-estate SaaS policy. */
 const BUSINESS_LINKS: FooterLink[] = [
-  { label: 'Terms of Use', path: '/terms' },
-  { label: 'Privacy', path: '/privacy' },
+  { label: 'Terms of Use', path: '/animate/terms' },
+  { label: 'Privacy', path: '/animate/privacy' },
+  { label: 'Beta program', path: '/animate/beta' },
 ];
 
 export function Footer(): React.ReactElement {

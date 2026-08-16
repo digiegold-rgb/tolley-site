@@ -291,6 +291,7 @@ export function StyleEditorSimple({ initialStyle }: { initialStyle: Style }) {
               onChange={(e) => persist({ voiceBackend: e.target.value })}
               className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm"
             >
+              <option value="indextts-modal">Studio voice (cloud)</option>
               <option value="f5-tts">F5-TTS (local, free)</option>
               <option value="elevenlabs">ElevenLabs (cloud, credits)</option>
             </select>

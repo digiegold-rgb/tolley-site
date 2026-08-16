@@ -19,6 +19,9 @@ export function wordCountForDuration(minutes: number): number {
 // ---------------------------------------------------------------------------
 export type YouTubeProjectStatus =
   | "draft"
+  // Parked behind the DGX per-tenant concurrency cap (content-autopilot
+  // 9cbe9a6). Kept in sync with lib/vater/youtube-status.ts.
+  | "queued"
   | "fetching"
   | "transcribing"
   | "transcribed"
@@ -37,6 +40,7 @@ export type YouTubeProjectStatus =
 
 export const STATUS_LABELS: Record<YouTubeProjectStatus, string> = {
   draft: "Draft",
+  queued: "Queued...",
   fetching: "Fetching source...",
   transcribing: "Transcribing...",
   transcribed: "Transcribed",
@@ -57,6 +61,7 @@ export const STATUS_LABELS: Record<YouTubeProjectStatus, string> = {
 const PULSE = "animate-pulse";
 export const STATUS_COLORS: Record<YouTubeProjectStatus, string> = {
   draft: "text-zinc-400 bg-zinc-400/10",
+  queued: `text-amber-400 bg-amber-400/10 ${PULSE}`,
   fetching: `text-yellow-400 bg-yellow-400/10 ${PULSE}`,
   transcribing: `text-yellow-400 bg-yellow-400/10 ${PULSE}`,
   transcribed: "text-sky-400 bg-sky-400/10",
@@ -76,6 +81,7 @@ export const STATUS_COLORS: Record<YouTubeProjectStatus, string> = {
 
 /** Statuses where the UI should be polling `/api/vater/youtube/[id]/poll`. */
 export const IN_FLIGHT_STATUSES: YouTubeProjectStatus[] = [
+  "queued",
   "fetching",
   "transcribing",
   "extracting_principles",

@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { isVaterStudioEmail } from "@/lib/admin-auth";
+import { isVaterAdminEmail, isVaterStudioEmail } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +27,15 @@ export async function GET(
     include: { messages: { orderBy: { createdAt: "asc" } } },
   });
   if (!job) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Tenant isolation (2026-08-15): studio seats share this lane — a seat may
+  // only touch its own dictation job. Owner sees all (support).
+  if (
+    !isVaterAdminEmail(session.user.email) &&
+    job.createdByEmail !== (session.user.email ?? null)
+  ) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

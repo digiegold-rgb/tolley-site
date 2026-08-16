@@ -14,10 +14,24 @@ import {
   requireVaterProxyAuth,
   requireVaterProxyRead,
 } from "@/lib/vater/proxy-auth";
+import { auth } from "@/auth";
+import { canAccessVoice } from "@/lib/vater/voice-privacy";
 
 export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ id: string }> };
+
+/**
+ * Owner-private clones (Jared-A..D) are hidden from every non-owner surface,
+ * tuning included. Returns a 403 response when denied, null when allowed.
+ * No session = x-sync-secret server-to-server caller → always allowed.
+ */
+async function denyPrivateVoice(name: string) {
+  const session = await auth();
+  if (!session?.user?.id) return null;
+  if (canAccessVoice(name, session.user.email ?? null)) return null;
+  return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+}
 
 function fail(err: unknown, what: string) {
   if (err instanceof AutopilotError) {
@@ -41,6 +55,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   if (!gate.ok) return gate.response;
   const name = safeName((await ctx.params).id);
   if (!name) return NextResponse.json({ error: "Invalid voice name" }, { status: 400 });
+  const denied = await denyPrivateVoice(name);
+  if (denied) return denied;
   try {
     return NextResponse.json(await autopilot.getVoiceTuning(name));
   } catch (err) {
@@ -53,6 +69,8 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   if (!gate.ok) return gate.response;
   const name = safeName((await ctx.params).id);
   if (!name) return NextResponse.json({ error: "Invalid voice name" }, { status: 400 });
+  const denied = await denyPrivateVoice(name);
+  if (denied) return denied;
   let body: { tuning?: unknown };
   try {
     body = await req.json();
@@ -75,6 +93,8 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
   if (!gate.ok) return gate.response;
   const name = safeName((await ctx.params).id);
   if (!name) return NextResponse.json({ error: "Invalid voice name" }, { status: 400 });
+  const denied = await denyPrivateVoice(name);
+  if (denied) return denied;
   try {
     return NextResponse.json(await autopilot.deleteVoiceTuning(name));
   } catch (err) {

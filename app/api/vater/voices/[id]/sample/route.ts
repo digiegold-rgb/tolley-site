@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { autopilot, AutopilotError } from "@/lib/vater/autopilot-client";
+import { canAccessVoice } from "@/lib/vater/voice-privacy";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,11 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   const safe = id.replace(/[^a-zA-Z0-9_-]/g, "");
   if (!safe) {
     return NextResponse.json({ error: "Invalid voice name" }, { status: 400 });
+  }
+  // Owner-private clones (Jared-A..D) are the owner's likeness — never
+  // streamable by a beta customer even though the name is guessable.
+  if (!canAccessVoice(safe, session.user.email ?? null)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   try {
     const upstream = await autopilot.fetchVoiceFile(safe);

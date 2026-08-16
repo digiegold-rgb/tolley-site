@@ -1,10 +1,19 @@
 type LegalPageShellProps = {
   title: string;
   subtitle: string;
+  /** Brand line above the title. Defaults to T-Agent; Jelly Studio's legal
+   *  pages pass their own so a studio customer never sees a real-estate SaaS
+   *  masthead on the document they are agreeing to. */
+  kicker?: string;
   children: React.ReactNode;
 };
 
-export function LegalPageShell({ title, subtitle, children }: LegalPageShellProps) {
+export function LegalPageShell({
+  title,
+  subtitle,
+  kicker = "t-agent | real estate unlocked",
+  children,
+}: LegalPageShellProps) {
   return (
     <main className="legal-page relative min-h-screen px-5 pt-10 pb-24 sm:px-8 sm:pt-14">
       <div aria-hidden="true" className="hp-dot-grid pointer-events-none fixed inset-0 z-0" />
@@ -12,9 +21,7 @@ export function LegalPageShell({ title, subtitle, children }: LegalPageShellProp
       <div aria-hidden="true" className="portal-spotlight portal-spotlight-right" />
       <section className="legal-card relative mx-auto w-full max-w-4xl rounded-3xl p-6 sm:p-10">
         <header className="mb-8 border-b border-white/14 pb-6">
-          <p className="text-[0.7rem] tracking-[0.38em] text-white/66 uppercase">
-            t-agent | real estate unlocked
-          </p>
+          <p className="text-[0.7rem] tracking-[0.38em] text-white/66 uppercase">{kicker}</p>
           <h1 className="mt-3 text-2xl font-semibold tracking-[0.01em] text-white/95 sm:text-3xl">
             {title}
           </h1>
