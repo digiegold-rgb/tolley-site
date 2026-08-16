@@ -639,6 +639,15 @@ function HqPageInner() {
               <summary className="tab-btn">📄 Docs ▾</summary>
               <div className="tab-docs-menu">
                 <a
+                  href="/research/jelly-beta-launch-2026-08.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeDocs}
+                >
+                  🚀 Jelly Beta Launch
+                  <span className="doc-sub">Research swarm findings + 4-phase plan to ship /animate as an invite-only beta — Aug 15, 2026</span>
+                </a>
+                <a
                   href="/research/hq-animate-overhaul-2026-08.pdf"
                   target="_blank"
                   rel="noopener noreferrer"

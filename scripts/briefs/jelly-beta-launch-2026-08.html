@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Jelly Studio — Invite-Only Public Beta: Findings &amp; Launch Plan</title>
+<style>
+  :root{
+    --navy:#12244a; --blue:#2a5298; --blue2:#5b8fd4; --gold:#c9a227; --gold-dark:#8f6a00;
+    --ink:#1b2233; --ink2:#4a556b; --muted:#7b849a;
+    --paper:#fcfcfb; --card:#ffffff; --line:#e3e6ee; --wash:#f2f5fa; --goldwash:#faf5e6;
+    --green:#1f7a4d; --greenwash:#eaf6ef; --red:#8c2318; --redwash:#fdf0ee; --redline:#efc3bd;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:#e9ebf0}
+  body{font-family:'Segoe UI','Helvetica Neue',Arial,'Liberation Sans',sans-serif;color:var(--ink);font-size:10.5pt;line-height:1.45}
+  .page{width:8.5in;min-height:11in;margin:0 auto;background:var(--paper);padding:.55in .6in .62in;page-break-after:always;position:relative;overflow:hidden}
+  .page:last-child{page-break-after:auto}
+  @media print{ html,body{background:var(--paper)} .page{margin:0;box-shadow:none} }
+  @page{size:letter;margin:0}
+  a{color:var(--blue);text-decoration:none;border-bottom:1px solid #b9c6de}
+  h1,h2,h3{color:var(--navy);letter-spacing:-.01em}
+  h2{font-size:15.5pt;margin-bottom:4pt;padding-bottom:5pt;border-bottom:2.5px solid var(--gold)}
+  h2.red{border-bottom-color:#c0392b}
+  h3{font-size:11pt;margin:9pt 0 4pt}
+  h3.first{margin-top:5pt}
+  p{margin:5pt 0}
+  code{font-family:'DejaVu Sans Mono','Consolas',monospace;font-size:.86em;background:var(--wash);border-radius:3px;padding:0 3px;color:#33405c}
+  .kicker{font-size:8pt;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-dark);margin-bottom:2pt}
+  .sub{color:var(--ink2);font-size:9.2pt;margin-bottom:6pt}
+  .footer{position:absolute;bottom:.3in;left:.6in;right:.6in;display:flex;justify-content:space-between;font-size:7.5pt;color:var(--muted);border-top:1px solid var(--line);padding-top:4pt}
+  .cover-band{background:linear-gradient(135deg,#0d1b38 0%,#1a3a75 70%,#24509b 100%);color:#fff;border-radius:10px;padding:26pt 24pt 22pt;margin-bottom:13pt;position:relative;overflow:hidden}
+  .cover-band::after{content:"";position:absolute;left:24pt;right:24pt;bottom:15pt;height:3px;background:linear-gradient(90deg,var(--gold),#e8c96a 55%,transparent)}
+  .cover-band .kicker{color:#e8c96a}
+  .cover-band h1{color:#fff;font-size:23pt;line-height:1.12;margin:2pt 0 6pt;max-width:6.2in}
+  .cover-band .date{color:#aebfdd;font-size:9.5pt}
+  .v2tag{position:absolute;top:22pt;right:24pt;background:var(--gold);color:#241c00;font-size:8.5pt;font-weight:800;border-radius:99px;padding:3pt 12pt;letter-spacing:.08em}
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8pt;margin:10pt 0}
+  .tile{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--blue);border-radius:8px;padding:9pt 10pt}
+  .tile.goldtop{border-top-color:var(--gold)}
+  .tile.greentop{border-top-color:var(--green)}
+  .tile.redtop{border-top-color:#c0392b}
+  .tile .num{font-size:16pt;font-weight:800;color:var(--navy);letter-spacing:-.02em}
+  .tile .lbl{font-size:7.6pt;color:var(--ink2);margin-top:2pt;line-height:1.3}
+  .verdict{display:grid;grid-template-columns:repeat(3,1fr);gap:9pt;margin-top:10pt}
+  .vcard{border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden}
+  .vcard .vhead{background:var(--navy);color:#fff;font-weight:700;font-size:9.2pt;padding:6pt 10pt;display:flex;align-items:center;gap:6pt}
+  .vcard .vhead .tag{background:var(--gold);color:#241c00;font-size:7pt;font-weight:800;border-radius:99px;padding:1.5pt 6pt;letter-spacing:.06em}
+  .vcard .vbody{padding:8pt 10pt;font-size:8.6pt;color:var(--ink2)}
+  .vcard .vbody b{color:var(--navy)}
+  .vcard .price{font-size:13.5pt;font-weight:800;color:var(--gold-dark);margin:2pt 0}
+  .cols2{display:grid;grid-template-columns:1fr 1fr;gap:11pt}
+  .dec{border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:8px;background:var(--card);padding:6.4pt 10pt;margin:4.6pt 0;display:flex;gap:9pt;align-items:flex-start}
+  .dec .rank{flex:0 0 auto;width:19pt;height:19pt;border-radius:50%;background:var(--navy);color:#f0d98a;font-weight:800;font-size:10pt;display:flex;align-items:center;justify-content:center;margin-top:1pt}
+  .dec .body{flex:1}
+  .dec .bt{font-weight:700;color:var(--navy);font-size:10pt}
+  .dec .bd{font-size:8.6pt;color:var(--ink2);margin-top:2pt}
+  .total{background:linear-gradient(135deg,#0d1b38,#1a3a75);color:#fff;border-radius:8px;padding:9pt 14pt;display:flex;justify-content:space-between;align-items:center;margin-top:9pt}
+  .total .t1{font-size:9.2pt;color:#c5d2ea;max-width:5.4in}
+  .total .t2{font-size:15pt;font-weight:800;color:#f0d98a;white-space:nowrap;padding-left:12pt}
+  table{width:100%;border-collapse:collapse;font-size:8.4pt}
+  th{text-align:left;color:var(--navy);font-size:7.6pt;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid var(--gold);padding:4pt 6pt}
+  td{padding:3.6pt 6pt;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+  td b{color:var(--navy)}
+  tr:nth-child(even) td{background:#f7f9fc}
+  .num-r{text-align:right;white-space:nowrap;font-weight:700;color:var(--navy)}
+  tr.best td{background:var(--goldwash)!important}
+  tr.bad td{background:var(--redwash)!important;color:#6e2018}
+  tr.bad td b{color:#6e2018}
+  .pill{display:inline-block;border-radius:99px;padding:1pt 7pt;font-size:7.2pt;font-weight:700;white-space:nowrap}
+  .pill.now{background:#fdebea;color:#8c2318}
+  .pill.soon{background:var(--goldwash);color:var(--gold-dark)}
+  .pill.later{background:#e9f0fa;color:var(--blue)}
+  .pill.done{background:var(--greenwash);color:var(--green)}
+  .callout{border:1px solid #ead9a0;background:var(--goldwash);border-radius:8px;padding:7pt 11pt;font-size:8.8pt;color:#4d3f10;margin:6pt 0}
+  .callout b{color:#241c00}
+  .danger{border:1px solid var(--redline);background:var(--redwash);border-radius:8px;padding:7pt 11pt;font-size:8.8pt;color:#6e2018;margin:6pt 0}
+  .danger b{color:#5a1710}
+  .good{border:1px solid #b8ddc7;background:var(--greenwash);border-radius:8px;padding:7pt 11pt;font-size:8.8pt;color:#14512f;margin:6pt 0}
+  .good b{color:#0b3a21}
+  ul{margin:4pt 0 4pt 14pt}
+  li{margin:2.4pt 0;font-size:8.7pt;color:var(--ink2)}
+  li b{color:var(--navy)}
+  ul.tight li{margin:1.8pt 0}
+  .chk{list-style:none;margin-left:0}
+  .chk li{position:relative;padding-left:17pt;margin:3.4pt 0;font-size:8.6pt}
+  .chk li::before{content:"";position:absolute;left:0;top:1.6pt;width:9.5pt;height:9.5pt;border:1.4px solid var(--blue2);border-radius:2.5px;background:#fff}
+  .chk li b{color:var(--navy)}
+  .phase{display:flex;align-items:baseline;gap:8pt;margin:10pt 0 2pt;border-bottom:1px solid var(--line);padding-bottom:3pt}
+  .phase .pn{background:var(--navy);color:#f0d98a;font-size:7.6pt;font-weight:800;letter-spacing:.08em;border-radius:99px;padding:2pt 9pt;white-space:nowrap}
+  .phase .pt{font-weight:700;color:var(--navy);font-size:11pt}
+  .phase .pd{font-size:8pt;color:var(--muted);margin-left:auto;white-space:nowrap}
+  .qa td{padding:2.35pt 6pt}
+  .qa td:first-child{font-weight:600;color:var(--navy);width:31%}
+  .src{font-size:7.6pt;color:var(--muted);line-height:1.5}
+  .lead{font-size:10.2pt;max-width:7.1in}
+</style>
+</head>
+<body>
+
+<!-- ============ PAGE 1 — COVER ============ -->
+<div class="page">
+  <div class="cover-band">
+    <div class="v2tag">FINDINGS + PLAN</div>
+    <div class="kicker">Tolley Empire · Product Launch Brief</div>
+    <h1>Jelly Studio — Invite-Only Public Beta:<br>Findings &amp; Launch Plan</h1>
+    <div class="date">Prepared for Jared · August 15, 2026 · tolley.io/animate</div>
+  </div>
+
+  <div class="kicker">The one-paragraph version</div>
+  <p class="lead">A 15-agent read-only research swarm — 12 finders plus 3 adversarial verifiers, ~1.5M tokens across 613 tool calls — went through <b>/animate</b> end to end on Aug 15. The verdict: <b>the product is real and the price is right, but the door is unlocked.</b> Trey Vater has paid for <b>24 videos</b>; the render quality is proven; and at <b>compute-at-cost + $0.35 per finished minute</b> you land <b>2–4.5× cheaper per minute than TubeGen</b> with no subscription — a gap nobody in the faceless-video market is selling into. What you cannot do is send an invite today. Seven security findings are verifier-confirmed, and one of them lets <b>anyone with a single POST claim your admin account</b>. There is also a live Stripe path armed at the <i>old</i> ~$25/video pricing that has never been tested and would fire on the first user who adds a card. <b>Phase 1 closes all of it in a day.</b> After that, the plan is four phases and roughly a week to a working invite-only beta with prepaid credits, per-video receipts, and legal pages that actually mention the product.</p>
+
+  <div class="tiles">
+    <div class="tile redtop"><div class="num">7</div><div class="lbl">Verifier-confirmed security findings, incl. <b>account takeover on the admin email</b>. All block invites.</div></div>
+    <div class="tile goldtop"><div class="num">$0.31/min</div><div class="lbl">Net margin at cost + $0.35/min after Stripe. A <b>flat</b> $0.35 loses money on 17 of the last 20 videos.</div></div>
+    <div class="tile greentop"><div class="num">2–4.5×</div><div class="lbl">Cheaper per finished minute than TubeGen ($1.94–2.47/min), with no cap and no subscription.</div></div>
+    <div class="tile"><div class="num">+$210/mo</div><div class="lbl">Realistic beta net at 5 users × 30 min/wk. Break-even ≈ <b>178 min/mo</b> against ~$55 fixed.</div></div>
+  </div>
+
+  <div class="kicker" style="margin-top:8pt">Three answers, up front</div>
+  <div class="verdict">
+    <div class="vcard">
+      <div class="vhead"><span class="tag">A</span> Can you ship it?</div>
+      <div class="vbody">
+        <div class="price">Yes — after Phase 1</div>
+        The product works and the economics work. But the <b>public golden path has never been run end-to-end by anyone</b> — the audit harness fakes every POST, and only Trey has projects. <b>Nothing goes out until the lockdown ships and one real signup-to-render runs clean.</b>
+      </div>
+    </div>
+    <div class="vcard">
+      <div class="vhead"><span class="tag">B</span> What does it cost you?</div>
+      <div class="vbody">
+        <div class="price">≤ $100</div>
+        Cash exposure for <b>$10 promo credit × 10 invitees</b> in stills mode (~$0.45/min all-in), not $300. Card on file via SetupIntent, <b>no $0.50 charge</b>. GTM adds $150 starter credits + $150 Meta test.
+      </div>
+    </div>
+    <div class="vcard">
+      <div class="vhead"><span class="tag">C</span> What do you have to buy?</div>
+      <div class="vbody">
+        <div class="price">Nothing</div>
+        Five users needs <b>zero hardware</b> — a render semaphore and Modal-only defaults. Ten to fifteen needs <b>Modal Team, $250/mo</b>. A second GB10 adds <b>zero</b> /animate capacity, because Vater is Modal-only.
+      </div>
+    </div>
+  </div>
+
+  <div class="danger" style="margin-top:11pt"><b>Read page 3 before you send a single invite.</b> Open signup plus an admin email with no credentials on file means the takeover is one unauthenticated request away — and today's job, voice, and billing endpoints leak across tenants to any signed-in account. These are not theoretical: each was independently re-confirmed by a verifier agent against live code.</div>
+
+  <div class="footer"><span>Tolley Empire · Jelly Studio Beta Launch Brief</span><span>Aug 15, 2026 · Page 1 of 13</span></div>
+</div>
+
+<!-- ============ PAGE 2 — TLDR / DECISIONS ============ -->
+<div class="page">
+  <h2>The six decisions, locked</h2>
+  <div class="sub">Agreed with Jared on Aug 15, 2026. Everything downstream in this brief is built on these — the plan does not re-open them.</div>
+
+  <div class="dec">
+    <div class="rank">1</div>
+    <div class="body">
+      <div class="bt">Price = compute at cost + $0.35 per finished minute — for everyone</div>
+      <div class="bd">Model B, the same deal Trey is on. Stripe's <b>2.9% + $0.30</b> is grossed into the pack prices rather than charged on top. This is the only version of the pricing that is profitable on your real render history.</div>
+    </div>
+  </div>
+  <div class="dec">
+    <div class="rank">2</div>
+    <div class="body">
+      <div class="bt">$10 free starter credit per invitee, card on file first</div>
+      <div class="bd">Collected with a Stripe <b>SetupIntent — $0</b>, not the $0.50 verification charge. Promo credit is stills-mode only; animation requires purchased credits.</div>
+    </div>
+  </div>
+  <div class="dec">
+    <div class="rank">3</div>
+    <div class="body">
+      <div class="bt">Stay on tolley.io/animate — alias only after 5 paying users</div>
+      <div class="bd">cordport.io is <b>not idle</b>: it serves the live CordPort marketplace with three crons. Do not repoint it. <code>studio.tolley.io</code> is unassigned and free to alias later.</div>
+    </div>
+  </div>
+  <div class="dec">
+    <div class="rank">4</div>
+    <div class="body">
+      <div class="bt">ToS reuse clause = showcase + product improvement, with an opt-out toggle</div>
+      <div class="bd">Modelled on Suno's "operating, improving, promoting" and Midjourney's survives-termination language, with a per-user opt-out switch.</div>
+    </div>
+  </div>
+  <div class="dec">
+    <div class="rank">5</div>
+    <div class="body">
+      <div class="bt">Trey scoped to his own projects</div>
+      <div class="bd">He keeps every feature plus Zelle / unmetered billing, via a DB flag instead of a see-everything tier. The <b>208 legacy null-owner projects</b> get assigned to Jared.</div>
+    </div>
+  </div>
+  <div class="dec">
+    <div class="rank">6</div>
+    <div class="body">
+      <div class="bt">GTM budget = $150 starter credits + $150 Meta test</div>
+      <div class="bd">From a <b>new "Jelly Studio" Facebook Page</b> under your existing Meta Business account, on Jared's ad account. <b>Jared sends every DM and every post</b> — nothing customer-facing goes out automatically.</div>
+    </div>
+  </div>
+
+  <h3>The verdict</h3>
+  <p style="font-size:9.4pt">Ship it — in four phases, in this order, and not a day sooner than Phase 1's completion. <b>Phase 1 (day 1)</b> locks the doors: no invite goes out while account takeover, cross-tenant reads and unmetered free renders are live. <b>Phase 2 (days 2–4)</b> makes money real — a prepaid credit ledger, a debit at render finish, a per-video receipt. <b>Phase 3 (days 3–6)</b> makes it a beta program: invite codes, password reset, click-wrap ToS, legal pages, feedback capture, a version pill, read-only view-as, a per-user system log. <b>Phase 4 (days 4–7)</b> makes it sellable: a rewritten landing page with real demos, one honest price everywhere, mobile fixes, GTM kit.</p>
+
+  <div class="total">
+    <div class="t1">Realistic beta economics — 5 users at 30 finished minutes a week (650 min/mo), priced at compute + $0.35/min, against ~$55/mo of fixed cost</div>
+    <div class="t2">≈ +$210/mo</div>
+  </div>
+
+  <div class="callout"><b>The one number that changes the model:</b> a <i>flat</i> $0.35/min all-in <b>loses money on 17 of the last 20 videos</b>. Blended all-time on Trey's account is <b>$1.35/min all-in</b> (32 videos, 108.5 min, $146.76); recent long-form runs $0.51–0.90/min. Cost-plus is the difference between a margin and a subsidy.</div>
+
+  <div class="danger"><b>Also armed right now:</b> the old per-action Stripe path in <code>lib/vater/pricing.ts</code> is wired to a <b>live key</b> and has never been tested. The first user to add a card would get InvoiceItems at roughly <b>$25/video</b> — contradicting the ~$3 the library card shows them. Phase 1 puts it behind a default-off flag before anything else touches Stripe.</div>
+
+  <div class="footer"><span>Decisions &amp; verdict</span><span>Aug 15, 2026 · Page 2 of 13</span></div>
+</div>
+
+<!-- ============ PAGE 3 — A0 SECURITY ============ -->
+<div class="page">
+  <h2 class="red">A0 · Security — fix before any invite goes out</h2>
+  <div class="sub">Every item below was independently re-confirmed by an adversarial verifier agent against live code. These are ordered by how much damage a stranger with a browser can do.</div>
+
+  <div class="danger" style="margin-top:7pt">
+    <b>1 · Account takeover on the admin email.</b> <code>app/api/auth/register/route.ts:62-77</code> attaches a new password to <b>any existing User that has no credentials</b>. The owner's admin address sits on both the admin and vater-owner allowlists, has <b>zero credentials</b>, and MFA is unenforced — so a single unauthenticated POST claims it. This is the finding that makes "just send a few invites" impossible today.
+  </div>
+
+  <div class="danger">
+    <b>2 · Cross-tenant job leak.</b> <code>GET /api/vater/pipeline-status</code> returns <b>every user's</b> jobIds, projectIds, and lastLog to any signed-in account. <code>GET /api/vater/autopilot/jobs/[jobId]</code> then proxies the whole job — script, prompts, costs, finalVideoUrl. Any invitee could read every other customer's work in two requests.
+  </div>
+
+  <div class="danger">
+    <b>3 · Voice library wide open.</b> <code>DELETE /api/vater/voices/[id]</code> and <code>GET /voices/[id]/sample</code> need only a session — any signup can <b>delete or download</b> your and Monroe's voice clones. <code>GET /api/vater/voices</code> lists all <b>22 clones</b>, including Jared-A through Jared-D.
+  </div>
+
+  <div class="danger">
+    <b>4 · Free unmetered renders, and a self-inflicted outage.</b> <code>POST /api/vater/topic</code> has no <code>checkBudget</code>, and all <b>17 system styles</b> default to <code>firered-local</code> + <code>f5-tts</code>. So a public user's render runs <b>on the GB10</b>, calls <code>vater_runway.clear()</code> — which stops <b>17 production services</b> — and auto-starts comfyui-vater, violating the standing VATER = MODAL-ONLY rule.
+  </div>
+
+  <div class="danger">
+    <b>5 · Studio tier sees and edits everything.</b> <code>lib/vater/project-access.ts:33</code> returns an empty filter for studio emails; <code>GET /api/vater/direct</code> lists all Direct jobs; and <code>summary.ts:118</code> sums <b>all</b> projects into Trey's bill — so a second studio user would both see his work and distort his invoice.
+  </div>
+
+  <div class="danger">
+    <b>6 · Model A Stripe path is armed and untested.</b> Live key, <code>pricing.ts</code> per-action prices, <b>zero charges ever made</b> and zero subscription rows — meaning the first real card triggers an untested billing path at ~$25/video against a UI promising ~$3.
+  </div>
+
+  <div class="danger">
+    <b>7 · The basics are missing.</b> No login rate-limit. No password reset. JWTs valid <b>30 days with no revocation</b>. One shared ElevenLabs key — any user can drain your plan.
+  </div>
+
+  <div class="callout"><b>What this costs to fix:</b> one day. Phase 1 on page 10 is nine concrete edits, all inside <code>~/tolley-site</code> except the render-semaphore change in <code>vater.py</code>. Nothing here needs new infrastructure and nothing here needs a decision from you.</div>
+
+  <div class="good"><b>The reassuring half:</b> isolation between users is <b>data-only by design</b> — there are no per-user Modal apps, containers, or notebooks to get wrong. The leaks above are all missing <code>WHERE userId = …</code> clauses and missing auth guards, not an architecture that has to be rebuilt.</div>
+
+  <div class="footer"><span>A0 · Security findings</span><span>Aug 15, 2026 · Page 3 of 13</span></div>
+</div>
+
+<!-- ============ PAGE 4 — A1 BILLING + A2 ECONOMICS ============ -->
+<div class="page">
+  <h2>A1 · Billing truth &nbsp;&middot;&nbsp; A2 · Unit economics</h2>
+  <div class="sub">What the system currently charges, what a minute of video actually costs, and where the money leaks.</div>
+
+  <h3 class="first">A1 — Three prices coexist today</h3>
+  <ul class="tight">
+    <li>The landing says <b>"~$25/video"</b>; <code>lib/vater/pricing.ts</code> holds per-action Stripe pricing (armed, <b>0 charges ever</b>, <b>0 VaterSubscription rows</b>); <code>ops-fee.ts</code>/<code>summary.ts</code> compute cost + <b>$0.35/min</b> (report-only, Zelle). Three answers to "what does this cost" is two too many.</li>
+    <li><b>No prepaid credit or balance concept exists for Vater</b> — but a proven prepaid-pack pattern <i>does</i> exist for /video/studio (<code>lib/stripe-webhook.ts:496-527 fulfillVideoCredits</code>, <code>STRIPE_PRICE_VIDEO_PACK_*</code>). Clone it.</li>
+    <li>Stripe Billing Credits require metered subscriptions and add <b>0.7% per applied credit</b> — do not use them. Own the Prisma ledger and use Checkout in <code>mode:'payment'</code>. (<a href="https://stripe.com/pricing">stripe.com/pricing</a>)</li>
+    <li><code>ops-fee.ts:18</code> reads a DGX path that does not exist on Vercel, so the production rate is effectively a hardcoded 0.35 — move it to <code>VATER_OPS_RATE_PER_MIN</code>.</li>
+    <li>Per-video receipt data (compute, ops, minutes) <b>already exists</b> on the cards and lightbox; render wall-time is shown nowhere.</li>
+  </ul>
+
+  <h3>Stripe gross-up — what a credit pack must actually cost</h3>
+  <div class="sub" style="margin-bottom:4pt">Formula: <code>gross = (net + 0.30) / 0.971</code>. Or sell round packs and absorb the fee with bonus credits.</div>
+  <table>
+    <tr><th>Credit value the user receives</th><th class="num-r" style="width:20%">Price to charge</th><th class="num-r" style="width:20%">Stripe keeps</th><th style="width:26%">Round-pack alternative</th></tr>
+    <tr><td><b>$10</b> starter pack</td><td class="num-r">$10.61</td><td class="num-r">$0.61</td><td>$10 → 9.43 credits</td></tr>
+    <tr><td><b>$25</b></td><td class="num-r">$26.06</td><td class="num-r">$1.06</td><td>$25 → 23.98 credits</td></tr>
+    <tr><td><b>$50</b></td><td class="num-r">$51.80</td><td class="num-r">$1.80</td><td>$50 → 48.25 credits</td></tr>
+    <tr><td><b>$100</b></td><td class="num-r">$103.30</td><td class="num-r">$3.30</td><td>$100 → 96.80 credits</td></tr>
+  </table>
+
+  <h3>A2 — What a finished minute really costs</h3>
+  <table>
+    <tr><th>Measure</th><th class="num-r" style="width:24%">Value</th><th style="width:44%">Why it matters</th></tr>
+    <tr><td>Stills-only long-form compute</td><td class="num-r">$0.16–0.55/min<br><span style="font-weight:400;color:var(--muted)">median ~$0.29</span></td><td>The headline cost — but not the true one.</td></tr>
+    <tr class="best"><td><b>True all-in, stills</b></td><td class="num-r"><b>~$0.45/min</b></td><td>After unbooked Modal TTS (<b>+$0.06</b>) and drift (<b>+$0.12</b>). Use this for exposure math.</td></tr>
+    <tr><td>Animated minutes</td><td class="num-r">$2.70–4.00/min</td><td>Six to nine times stills. Promo credits must not fund it.</td></tr>
+    <tr><td>All-time blended (Trey)</td><td class="num-r">$1.35/min all-in</td><td>32 videos, 108.5 min, <b>$146.76</b> total.</td></tr>
+    <tr><td>Recent long-form</td><td class="num-r">$0.51–0.90/min all-in</td><td>The trend is down — the pipeline is getting cheaper.</td></tr>
+    <tr class="bad"><td><b>Flat $0.35/min all-in</b></td><td class="num-r"><b>Loses money</b></td><td>On <b>17 of the last 20 videos</b>. Cost-plus is the only profitable version.</td></tr>
+    <tr class="best"><td><b>Margin at cost + $0.35</b></td><td class="num-r"><b>≈ $0.31/min</b></td><td>After Stripe fees.</td></tr>
+  </table>
+
+  <div class="danger"><b>Repairs are the margin killer.</b> Video #21 went from <b>$1.87 to $22.90 — 12× — via 496 re-rolls.</b> An uncapped repair loop can turn any single video into a month of margin. Phase 2 caps re-rolls at ~15% of scenes and prices the rest.</div>
+
+  <div class="callout"><b>On "5 clients × 500 hrs/day":</b> that is <b>150,000 minutes a day</b> — about <b>130 H100s running 24/7</b>, and ~20× more video than there are hours in a day. Not a real scenario. The realistic beta is <b>5 users × 30 min/wk = 650 min/mo</b>, break-even near <b>178 min/mo</b> against ~$55 fixed. Separately: the Modal workspace already runs <b>~$600/mo</b> across all lanes (Aug MTD <b>$339</b>), and the Starter budget cap <b>halts every app</b> when hit — beta users would fail silently. Raise the alert before invites. (<a href="https://modal.com/pricing">modal.com/pricing</a>)</div>
+
+  <div class="footer"><span>A1 Billing · A2 Unit economics</span><span>Aug 15, 2026 · Page 4 of 13</span></div>
+</div>
+
+<!-- ============ PAGE 5 — A3 COMPETITORS + A4 LENGTH ============ -->
+<div class="page">
+  <h2>A3 · Price position &nbsp;&middot;&nbsp; A4 · Length &amp; quality</h2>
+  <div class="sub">Where Jelly sits in the market, and what the render history says a beta is allowed to promise.</div>
+
+  <h3 class="first">A3 — The competitive board, per finished minute</h3>
+  <table>
+    <tr><th>Product</th><th class="num-r" style="width:19%">Effective $/min</th><th style="width:22%">Terms</th><th>The catch</th></tr>
+    <tr class="best"><td><b>Jelly Studio</b> (proposed)</td><td class="num-r"><b>$0.55–0.95</b></td><td><b>No subscription</b>, prepaid credits</td><td>Beta, invite-only, 9:00 cap.</td></tr>
+    <tr><td><a href="https://tubegen.ai/pricing">TubeGen</a></td><td class="num-r">$1.94–2.47</td><td>$149 / $297 / $849 per month</td><td>No trial, no refunds, 30-min max, voice clones Pro+ only.</td></tr>
+    <tr><td>Vidnoz</td><td class="num-r">$1.33–1.80</td><td>Subscription</td><td>60-minute maximum.</td></tr>
+    <tr><td>Argil</td><td class="num-r">~$1.50</td><td>Subscription</td><td>—</td></tr>
+    <tr><td>StoryShort</td><td class="num-r">$0.58–1.56</td><td>Subscription</td><td>—</td></tr>
+    <tr><td>NoLang</td><td class="num-r">$0.76–1.00</td><td>Subscription</td><td>3-minute cap.</td></tr>
+    <tr><td>Zebracat</td><td class="num-r">$0.25–0.50</td><td>Subscription</td><td><b>Only at 100% quota utilisation</b>, and a 5-minute cap.</td></tr>
+    <tr><td>Faceless.so</td><td class="num-r">n/a</td><td>Subscription</td><td>Shorts only — not a long-form competitor.</td></tr>
+  </table>
+
+  <div class="good"><b>The gap:</b> <b>nobody sells per-finished-minute with no subscription</b>, and <b>nobody markets a named anti-slop feature</b> in the faceless segment. That is the position — and price alone is not the moat. Per-minute honesty, generated scenes, and a cloned voice are.</div>
+
+  <h3>Feature parity — what the page may honestly claim</h3>
+  <div class="cols2">
+    <div>
+      <div class="kicker">Claim these — they exist</div>
+      <ul class="tight">
+        <li>Script writer</li>
+        <li>Custom voice clone + Voice Tuner <span class="pill later">studio-only today</span></li>
+        <li>Library</li>
+        <li>7-step editor</li>
+        <li>Upload ≤ 10 MB</li>
+        <li>YouTube publish <span class="pill later">studio-only today</span></li>
+        <li>Automation <span class="pill soon">owner-only</span></li>
+      </ul>
+    </div>
+    <div>
+      <div class="kicker">Do not claim — real gaps</div>
+      <ul class="tight">
+        <li>Visible thumbnail generator</li>
+        <li>Auto title / description / timestamps</li>
+      </ul>
+      <div class="callout" style="margin-top:6pt;font-size:8.4pt">Two of the "exists" rows are gated to the studio tier right now. Phase 3 ungates voice clone and YouTube publish for card-on-file users — claim them on the page only once that ships.</div>
+    </div>
+  </div>
+
+  <h3>A4 — What the render history actually supports</h3>
+  <ul class="tight">
+    <li>Shipped clean at <b>8:38–8:44 four times</b> (#15, #18, #19, #20, #22). <b>#19 — 8:44, $5.56 all-in — is the approved benchmark.</b></li>
+    <li>The only video over 9:00 (<b>#21, 15:12, 228 scenes</b>) failed QA on <b>63 scenes</b>, because the re-roll budget is a fixed 20 regardless of length. Hence: <b>beta hard cap 9:00, soft default 5:00, reject scripts over 1,700 words.</b></li>
+    <li>Scenes are uniformly <b>~4.0 s</b> (≈15 scenes per finished minute) in every approved render, but the site path defaults to <b>5.0 s</b> (<code>vater.py:3125</code>) — pin it to 4 s. Animated clips are 81 frames ≈ 5 s, clamped 2–8 s.</li>
+    <li>Wall-clock: <b>7–10 minutes per finished minute</b> stills-only — the planner LLM alone is <b>32 minutes of a 51-minute job</b>, the single biggest stage. Animated runs ~23 min per finished minute.</li>
+    <li>Guardrail rules for all users: <b>7, 19, 26–28, 31/137, 41, 42/129, 48/133, 62–66, 70, 91–97</b> plus positive-only headcount. Trey-only: <b>12–13, 23–34, 36, 38, 45, 49, 52–54, 58–59, 89, 120–136.</b></li>
+    <li>Demo candidates: <b>#19</b> (8:44), <b>#23</b> (3:24 — Jared's own script, usable now), <b>#22</b> (8:38), <b>#16</b> (0:29 teaser). All except #23 need <b>Trey's written consent</b>. Today the landing has <b>no demo videos at all</b> — only a fake CSS card reading "$24.85".</li>
+  </ul>
+
+  <div class="footer"><span>A3 Competitors · A4 Length &amp; quality</span><span>Aug 15, 2026 · Page 5 of 13</span></div>
+</div>
+
+<!-- ============ PAGE 6 — A5 ONBOARDING + A6 CAPACITY ============ -->
+<div class="page">
+  <h2>A5 · Onboarding, auth &amp; isolation &nbsp;&middot;&nbsp; A6 · Capacity</h2>
+  <div class="sub">What a tenth user would actually experience today, and what breaks first when they all render at once.</div>
+
+  <h3 class="first">A5 — The onboarding reality</h3>
+  <ul class="tight">
+    <li>Signup is <b>fully open</b> (<code>/signup?callbackUrl=/animate</code>): no invite code, no email verification, no password reset. Tiers are Vercel <b>environment-variable allowlists</b> — every new user is an edit plus a redeploy.</li>
+    <li><b>The public golden path has never been run end-to-end by anyone.</b> The audit harness fakes all POSTs, and Trey is the only account with projects. Nobody has actually walked signup → style → project → render → download.</li>
+    <li>Good news on infrastructure: a new user needs <b>no Modal app, container, or notebook</b>. Modal apps are shared, containers are per-call, the DGX runs one shared orchestrator. Isolation is <b>data-only (userId)</b> — which is exactly why the A0 leaks matter so much.</li>
+    <li><b>Voices and characters are flat shared directories</b> on the DGX keyed by name (<code>vater_voices/</code>, <code>~/vater-studio/characters</code>) — <b>user #2 collides with user #1</b>. Namespacing is a Phase 3 item.</li>
+    <li>No impersonation or view-as exists. No feedback capture beyond a mailto link. No version or changelog. <b>No error tracker</b> — <code>log.ts</code> is a production no-op.</li>
+    <li>Publishing: per-user YouTube OAuth exists but the start route is studio-gated (<b>403 for public users</b>). Every other platform is a stub.</li>
+  </ul>
+
+  <h3>A6 — What the stack can carry</h3>
+  <table>
+    <tr><th style="width:17%">Users</th><th style="width:30%">What it needs</th><th>Detail</th></tr>
+    <tr class="best"><td><b>5 users</b><br><span class="pill done">buy nothing</span></td><td>Render semaphore + Modal-only style defaults</td><td>Today's stack already serves <b>~5 users at 30 finished min/day</b> with queueing.</td></tr>
+    <tr><td><b>10–15 users</b></td><td><b>Modal Team — $250/mo</b>, 50 GPUs<br>+ semaphore + <code>max_workers</code> 4–6</td><td>Parallelism, not hardware. Decision gets queued once concurrency passes 4.</td></tr>
+    <tr class="bad"><td><b>A second GB10</b></td><td><b>Do not buy for this</b></td><td>Adds <b>zero</b> /animate capacity — Vater is Modal-only. Buy it for other reasons or not at all.</td></tr>
+  </table>
+
+  <div class="danger"><b>The concurrency ceiling right now:</b> <code>vater.py</code> spawns an <b>unbounded thread per render</b> with no semaphore, while Modal Starter allows <b>10 concurrent GPUs workspace-wide</b> — shared with the Lady and shorts lanes. That works out to <b>3–4 simultaneous Vater renders</b> today. The DGX side of the job is CPU (ffmpeg, whisper) and RAM: <b>27 GB free with swap at 86%.</b></div>
+
+  <div class="callout"><b>Two observability gaps that will bite during a beta:</b> per-user logs are not durable (a <b>30-line ring buffer</b> and a <b>40-job prune</b>), so a user's failure is gone before you can look at it. And the LLM cost meter is <b>process-wide</b>, so it mis-attributes spend across concurrent users — which quietly corrupts per-video receipts the moment two people render at once. Phase 1 makes the meter per-job; Phase 3 adds the durable <code>VaterEvent</code> log.</div>
+
+  <div class="good"><b>Onboarding is genuinely turnkey once styles default to Modal.</b> There are zero DGX steps and zero Modal steps for a new user — the entire "how do I set this person up" answer becomes: mint an invite code, they sign up, they add a card, they get $10.</div>
+
+  <div class="footer"><span>A5 Onboarding · A6 Capacity</span><span>Aug 15, 2026 · Page 6 of 13</span></div>
+</div>
+
+<!-- ============ PAGE 7 — A7 GTM ============ -->
+<div class="page">
+  <h2>A7 · Go-to-market — where the first five come from</h2>
+  <div class="sub">Ranked by cost per actual paying user, not by reach. Jared pulls every trigger; nothing customer-facing sends itself.</div>
+
+  <h3 class="first">The ranked channel plan</h3>
+  <div class="dec">
+    <div class="rank">1</div>
+    <div class="body">
+      <div class="bt">Trey referrals + warm DMs <span class="pill soon">target: 2 paying</span></div>
+      <div class="bd">Free, warmest, and already validated — he is the one person who has paid you for this. Ask for <b>3 referrals</b> in the same conversation as the demo-consent sign-off.</div>
+    </div>
+  </div>
+  <div class="dec">
+    <div class="rank">2</div>
+    <div class="body">
+      <div class="bt">Organic demo clips — TikTok @digitaljared, 30.3K <span class="pill soon">target: 1–2</span></div>
+      <div class="bd">$0. Three demo clips a week. The audience already exists; the product has never been shown to it.</div>
+    </div>
+  </div>
+  <div class="dec">
+    <div class="rank">3</div>
+    <div class="body">
+      <div class="bt">$150 Meta traffic test — new Jelly Studio Page <span class="pill later">target: ~1</span></div>
+      <div class="bd">Reels + Feed, $10–15/day, landing on an invite-request page. B2B SaaS cost per lead runs <b>$80–$380</b>, so $150 buys <b>1–2 leads</b> — treat it as a test of the funnel, not a growth channel.</div>
+    </div>
+  </div>
+  <div class="dec">
+    <div class="rank">4</div>
+    <div class="body">
+      <div class="bt">Faceless-creator Discords — DM-for-invite <span class="pill later">target: 1</span></div>
+      <div class="bd"><a href="https://discord.com/servers/faceless-incubator-1235228281800757318">Faceless Incubator (37.9K)</a> and YouTube Faceless (21.4K). Rules-compliant posts, invite by DM.</div>
+    </div>
+  </div>
+  <div class="dec">
+    <div class="rank">5</div>
+    <div class="body">
+      <div class="bt">Build-in-public — <a href="https://www.reddit.com/r/SideProject/">r/SideProject</a> + r/SaaS</div>
+      <div class="bd">Free. The per-minute pricing story is the post; the honest cost breakdown is the hook.</div>
+    </div>
+  </div>
+  <div class="dec">
+    <div class="rank">6</div>
+    <div class="body">
+      <div class="bt">Product Hunt + Show HN — week 2</div>
+      <div class="bd">Free. Hold until the landing page has real demo videos and the golden path has been walked by a stranger.</div>
+    </div>
+  </div>
+  <div class="dec">
+    <div class="rank">7</div>
+    <div class="body">
+      <div class="bt">Fiverr done-for-you gig, $35–60</div>
+      <div class="bd">Generates <b>cash, not signups</b>. Useful for validating what people will pay per video; it does not build the beta.</div>
+    </div>
+  </div>
+
+  <div class="callout"><b>Channels ruled out:</b> Google Ads at <b>$8.50–14 CPC</b> is too expensive to test at this budget. <b>BetaList is $39 with a 4–6 week queue</b> — too slow for an Aug 31 goal. <b>AppSumo is structurally incompatible</b>, since lifetime deals cannot work against per-minute compute cost. And the Instantly cold-email lane is killed — reviving it would need a new sender.</div>
+
+  <div class="danger"><b>Meta requires AI-generated creative to be labelled</b> — unlabelled AI creative accounted for <b>14% of 2026 rejections</b>. Lady and Ruthann outputs are usable as ad creative today; <b>Vater outputs only after Trey signs the consent</b>.</div>
+
+  <h3>Multi-platform hand-off — the scheduler question</h3>
+  <table>
+    <tr><th>Option</th><th class="num-r" style="width:16%">Cost</th><th style="width:14%">API?</th><th>Verdict</th></tr>
+    <tr class="best"><td><b><a href="https://postiz.com">Postiz</a></b>, self-hosted on the DGX</td><td class="num-r">$0</td><td>Yes</td><td><b>The pick</b> — Docker on hardware you already run.</td></tr>
+    <tr><td><a href="https://www.blotato.com">Blotato</a></td><td class="num-r">$29/mo</td><td>Yes</td><td>The no-ops fallback if self-hosting stalls.</td></tr>
+    <tr class="bad"><td>Repurpose.io</td><td class="num-r">$35/mo per creator</td><td><b>No API</b></td><td>Drive-folder watch only — not automatable.</td></tr>
+    <tr><td>Ayrshare</td><td class="num-r">$149–599/mo</td><td>Yes</td><td>Priced for a platform, not a five-user beta.</td></tr>
+  </table>
+
+  <div class="footer"><span>A7 · Go-to-market</span><span>Aug 15, 2026 · Page 7 of 13</span></div>
+</div>
+
+<!-- ============ PAGE 8 — A8 LEGAL + A9 DOMAIN ============ -->
+<div class="page">
+  <h2>A8 · Legal &nbsp;&middot;&nbsp; A9 · Domain &amp; brand</h2>
+  <div class="sub">The paperwork gap is real but small — and the pattern for closing it already exists in this codebase.</div>
+
+  <div class="danger" style="margin-top:7pt"><b>Today there is no legal coverage for /animate at all.</b> <code>/terms</code> and <code>/privacy</code> are T-Agent / SMS pages <b>dated February 2024</b> that never mention the product. <b>Nothing records ToS acceptance</b> for /animate users — there is no <code>termsAcceptedAt</code>, and <b>Trey has no acceptance on file</b> either.</div>
+
+  <div class="good"><b>The fix is a known pattern.</b> The estate lane already proved per-brand legal pages: <code>lib/legal-estate.ts</code> plus <code>app/estate/terms|privacy</code>. Phase 3 clones it as <code>lib/legal-animate.ts</code> + <code>app/animate/terms|privacy|beta</code> through the shared <code>components/legal/legal-page-shell.tsx</code>.</div>
+
+  <h3>Clauses the beta must have</h3>
+  <ul class="tight">
+    <li><b>User owns their outputs</b> — stated plainly, first.</li>
+    <li><b>Showcase + improvement licence with an opt-out</b> — modelled on Suno's "operating, improving, promoting" and Midjourney's survives-termination wording (decision #4).</li>
+    <li><b>Beta AS-IS, no SLA</b> — on its own <code>/animate/beta</code> addendum page.</li>
+    <li><b>Voice-clone consent attestation</b> — Tennessee ELVIS Act, California §3344, New York §§50–51.</li>
+    <li><b>Credit expiry:</b> prepaid credits non-refundable; <b>purchased credits do not expire</b> (or 12 months); <b>promo credits 30–60 days</b>.</li>
+    <li><b>YouTube API Services block</b> — Google policy III.A, reproduced verbatim; required by their terms.</li>
+    <li><b>Subprocessor list</b> — Modal, Kimi / Moonshot (China), fal, Gemini, ElevenLabs. The China disclosure is not optional.</li>
+    <li><b>Blob finals are public-unlisted URLs</b> — disclose it; users assume otherwise.</li>
+    <li><b>TAKE IT DOWN Act</b> — a 48-hour removal path.</li>
+  </ul>
+
+  <h3>Entity, tax and registration</h3>
+  <table>
+    <tr><th style="width:24%">Item</th><th style="width:16%">Status</th><th>Detail</th></tr>
+    <tr><td><b>Entity</b></td><td><span class="pill done">settled</span></td><td>Your KC Homes LLC (Missouri).</td></tr>
+    <tr><td><b>Sales tax</b></td><td><span class="pill later">later</span></td><td><b>Missouri does not tax SaaS. Pennsylvania does, at 6–8%</b> — register when PA nexus arrives with the move.</td></tr>
+    <tr class="best"><td><b>DMCA agent</b></td><td><span class="pill now">$6, do it</span></td><td>Registration at <a href="https://dmca.copyright.gov">dmca.copyright.gov</a>. Six dollars buys the safe-harbour defence.</td></tr>
+    <tr><td><b>Attorney review</b></td><td><span class="pill soon">~$300</span></td><td>One hour on the arbitration and showcase clauses. Optional before beta, sensible before scale.</td></tr>
+  </table>
+
+  <h3>A9 — Domain and brand</h3>
+  <ul class="tight">
+    <li><b>cordport.io serves the live CordPort marketplace</b> with three crons — <b>do not repoint it.</b> This was the single biggest factual correction the swarm made to the original plan.</li>
+    <li><code>studio.tolley.io</code> is <b>unassigned in DNS</b> and free to alias later. Note that auth cookies are host-only, so aliasing needs an <code>AUTH_URL</code> per host.</li>
+    <li>"Jelly Studio" collides with <b>Jellysmack's JellyStudio</b> (video-editing gigs) and a Jelly AI editor. Fine for a beta — <b>do not buy domains or file a trademark yet</b>.</li>
+  </ul>
+
+  <div class="danger"><b>The landing page currently lies in three places.</b> It has no demo videos, no ToS or privacy links, no beta badge and no version — while promising <b>"NO CARD REQUIRED"</b> and <b>"~$25/video"</b>. Both are wrong under the new model: the beta requires a card on file, and a typical long-form video costs the user <b>$1–7</b>. Phase 4 rewrites it.</div>
+
+  <div class="footer"><span>A8 Legal · A9 Domain &amp; brand</span><span>Aug 15, 2026 · Page 8 of 13</span></div>
+</div>
+
+<!-- ============ PAGE 9 — PART B (1) ============ -->
+<div class="page">
+  <h2>Part B · Direct answers to your questions</h2>
+  <div class="sub">Every question you asked, answered from measured data rather than estimate — length, pricing, capacity, distribution, and the contradictions that needed settling.</div>
+
+  <table class="qa" style="margin-top:7pt">
+    <tr><th style="width:31%">Your question</th><th>The answer</th></tr>
+    <tr><td>Long-form: what is a typical safe length? Have we cracked 9 minutes?</td><td><b>Clean up to 8:44</b>, five times. The one 15:12 attempt <b>failed QA</b>. Beta hard cap <b>9:00</b>, default <b>5:00</b>; going past 9 minutes needs the re-roll budget to scale with scene count first.</td></tr>
+    <tr><td>How long is each segment?</td><td><b>~4 s</b> for stills scenes (≈15 per finished minute); animated clips ~5 s. <b>Pin 4 s site-wide</b> — the site path currently defaults to 5 s.</td></tr>
+    <tr><td>Can we show the cost breakdown?</td><td><b>Yes.</b> Per-video receipt = compute at cost, broken out by stage + minutes × $0.35 + total + render wall-time. Balance ledger visible to the user; <b>margin visible only to you</b>.</td></tr>
+    <tr><td>Is $0.35/min plus Stripe fees accounted for?</td><td>Model is <b>compute at cost + $0.35/min</b>; packs are grossed up so Stripe's <b>2.9% + $0.30</b> is recovered rather than eaten. Net margin <b>≈ $0.31/min</b>.</td></tr>
+    <tr><td>Can I sign up 10 people with their own logins, and does the email link work?</td><td>Signup works but is <b>open and unsafe</b>. Ship invite codes, starter credit and password reset first — then yes: each gets their own login, projects and balance.</td></tr>
+    <tr><td>Can I log in as them without their password?</td><td><b>Not today.</b> Phase 3 ships <b>read-only view-as</b> — an HMAC cookie honoured only for admin emails, audit-logged, red banner, all writes blocked.</td></tr>
+    <tr><td>How do we label it a beta and collect feedback?</td><td>Beta badge in the nav and hero, a <b>Beta Addendum page</b>, and an in-app Feedback control that files to <b>/hq Must Complete</b> and pings Telegram.</td></tr>
+    <tr><td>Where do we ship and advertise it, and what does it cost to use?</td><td><b>tolley.io/animate</b>; channels ranked on page 7. Users pay roughly <b>$1–7 per long-form video</b> ($0.35/min + $0.15–0.55/min compute).</td></tr>
+    <tr><td>Can I get a system log per user, quarantine them, and stop cross-viewing?</td><td>Yes — a <code>VaterEvent</code> table plus a System Log screen, A0 leaks closed, <b>per-user voice and character namespaces</b>, Trey scoped to his own work.</td></tr>
+    <tr><td>What about terms of service and privacy?</td><td>New <b>/animate/terms</b>, <b>/animate/privacy</b> and <b>/animate/beta</b> per page 8, with <b>click-wrap on signup</b> and a re-prompt for existing users.</td></tr>
+
+    <tr><td>Does Modal run on my account per new user — does each need a new container or notebook?</td><td><b>No.</b> Modal apps are shared and containers are per-call. Onboarding involves <b>zero DGX and zero Modal steps</b> once the styles default to Modal backends.</td></tr>
+    <tr><td>Does the DGX have capacity for 5, 10 or 15 users?</td><td><b>5:</b> nothing to buy — semaphore plus Modal defaults. <b>10–15:</b> Modal Team at <b>$250/mo</b> plus parallelism. <b>Never a second GB10</b> for this workload.</td></tr>
+    <tr><td>What about the domain — should we use cordport.io?</td><td><b>No — it is live.</b> Stay on tolley.io/animate and leave CordPort alone. Alias <code>studio.tolley.io</code> once there are 5 paying users.</td></tr>
+    <tr><td>How do we handle versioning?</td><td>A <b>v1.3 pill</b> (Voice Tuner) in the header opening a changelog drawer, back-filled v1.0–1.3 from git. Rule: <b>minor bump per shipped feature</b>, entry in the same commit.</td></tr>
+    <tr><td>Is it usable on mobile?</td><td>Sidebar routes show <b>zero overflow</b>. Editor steps are <b>unverified</b> — extend the Playwright audit to the editor and fix <b>three <code>1fr 1fr</code> grids</b> at 390 px.</td></tr>
+    <tr><td>Can users upload to all platforms — should we use Repurpose?</td><td>Ungate <b>YouTube OAuth</b> for card-on-file users; everyone else gets download + a "Send to scheduler" hand-off (<b>Postiz self-hosted, $0</b>, or Blotato $29/mo). <b>Repurpose has no API.</b></td></tr>
+    <tr><td>Is there a real market, and can we undercut it?</td><td><b>Yes.</b> <b>2–4.5× cheaper than TubeGen</b> per finished minute, with no cap or quota. But the moat is <b>per-minute honesty, generated scenes and a cloned voice</b> — not price alone.</td></tr>
+    <tr><td>Can we give free credits without it costing $300?</td><td><b>Yes — ≤ $100.</b> $10 promo × 10 invitees at stills-mode cost (~$0.45/min). Card on file via <b>SetupIntent, no $0.50 charge</b>.</td></tr>
+    <tr class="best"><td><b>The contradictions — settled</b></td><td><b>Pricing</b> → cost + $0.35/min. <b>The $0.50 verification charge</b> → dropped. <b>cordport.io</b> → live, keep it. <b>"500 hrs/day"</b> → physically impossible, discard. <b>Free-tier copy vs card-on-file</b> → rewrite the copy. <b>Trey sees everything</b> → scope him to his own projects.</td></tr>
+  </table>
+
+  <div class="footer"><span>Part B · Your questions answered</span><span>Aug 15, 2026 · Page 9 of 13</span></div>
+</div>
+
+<!-- ============ PAGE 11 — STEP 0 + PHASE 1 ============ -->
+<div class="page">
+  <h2>Part C · Execution plan</h2>
+  <div class="sub">Four phases over roughly a week. Phase 1 is a hard gate — no invite leaves the building until every box on this page is ticked.</div>
+
+  <div class="phase"><span class="pn">STEP 0</span><span class="pt">Deliverables first</span><span class="pd">same session</span></div>
+  <ul class="chk">
+    <li>Render Parts A + B + C as this blue/gold PDF at <code>public/research/jelly-beta-launch-2026-08.pdf</code>, page-fit checked, linked in the <b>/hq Docs menu</b>, deployed; TLDR to Telegram <b>as a link</b>.</li>
+    <li>Write memory <code>jelly-beta-launch-plan-2026-08.md</code> — decisions, findings pointers, step list — plus its MEMORY.md index line.</li>
+  </ul>
+
+  <div class="phase"><span class="pn">PHASE 1</span><span class="pt">Lockdown — before any invite</span><span class="pd">day 1 · <code>~/tolley-site</code> unless noted</span></div>
+  <ul class="chk">
+    <li><b>Kill the takeover.</b> <code>app/api/auth/register/route.ts:62-77</code> → return <b>409 when the User already exists</b> (never attach a credential); add <code>rateLimitByIp</code> to the Credentials <code>authorize</code> at <code>auth.ts:162</code>.</li>
+    <li><b>Scope every read.</b> <code>pipeline-status/route.ts</code> — filter <code>activeJobs</code> to the session's projectIds (studio/admin exempt only via <code>isVaterAdminEmail</code>); <code>autopilot/jobs/[jobId]/route.ts</code> — verify <code>YouTubeProject.autopilotJobId</code> ownership; <code>direct/route.ts:68</code> — filter by <code>createdByEmail</code>.</li>
+    <li><b>Close the voice library.</b> <code>voices/[id]/route.ts</code> DELETE plus <code>[id]/sample</code> and <code>[id]/tuning</code> → <code>requireVaterProxyAuth</code> <i>and</i> an ownership check; hide the personal Jared-A–D clones from non-owner listings via a <code>vater_voices/&lt;Name&gt;.private</code> marker on the DGX.</li>
+    <li><b>Meter the free path.</b> <code>app/api/vater/topic/route.ts</code> — add <code>checkBudget(userId,'scene')</code> before <code>runCreation</code>, mirroring <code>approve-script/route.ts:58-63</code>.</li>
+    <li><b>Modal-only for non-owners.</b> <code>context/route.ts ~:303-356</code> — force <code>defaultQuality=firered-modal</code> and <code>voiceBackend=indextts-modal</code> unless <code>isVaterAdminEmail</code>; register <code>indextts-modal</code> in <code>lib/vater/style-snapshot.ts:84</code>, <code>lib/vater/autopilot-client.ts:164</code>, <code>StyleEditor*.tsx</code> and <code>StyleWizardModal.tsx:146</code>; migrate the <b>17 system YouTubeStyle rows</b> to the Modal backends.</li>
+    <li><b>Bound the render fan-out.</b> <code>~/content-autopilot/vater.py:_spawn</code> — <code>BoundedSemaphore</code> on <code>VATER_MAX_ACTIVE_RENDERS=4</code>, plus one active render per project owner and a <code>queued (#N)</code> phase; make the LLM meter <b>per-job</b> (<code>vater.py:435-470</code>); book Modal TTS into <code>byStage</code> so it stops reporting as "local DGX — $0"; H100 rate at <code>vater.py:418</code> → <b>0.001097</b> only alongside an overhead-multiplier re-tune (otherwise leave both alone).</li>
+    <li><b>Disarm Model A.</b> <code>record-usage.ts:77-102</code> — put the InvoiceItem branch behind <code>VATER_LEGACY_ACTION_BILLING=1</code>, default off. <b>Nothing posts to Stripe until the Phase 2 ledger is live.</b></li>
+    <li><b>Fix isolation.</b> <code>lib/vater/project-access.ts:33</code> → studio sees only its own; add <code>VaterAccount {userId, tier, unmetered, invitedBy, notes}</code> read by <code>lib/admin-auth.ts</code> with the env allowlist as fallback; assign the <b>208 null-owner projects</b> to Jared's userId; <code>summary.ts:getVaterBillingSummary(userId)</code> and <code>VaterPayment.userId</code> so Trey's Zelle path keeps working — scoped.</li>
+    <li><b>Verify and ship.</b> <code>npx vercel env pull</code> before and after to diff the production allowlists; run the Playwright audit; deploy via branch → main.</li>
+  </ul>
+
+  <div class="danger"><b>Gate:</b> Phase 1 is not "mostly done". Items 1–4 each independently allow a stranger to take the account, read other customers' work, delete your voice clones, or run free renders that stop 17 production services. <b>All nine ship together, then invites.</b></div>
+
+  <div class="footer"><span>Part C · Step 0 &amp; Phase 1 — Lockdown</span><span>Aug 15, 2026 · Page 10 of 13</span></div>
+</div>
+
+<!-- ============ PAGE 12 — PHASE 2 ============ -->
+<div class="page">
+  <h2>Phase 2 · Prepaid credits &amp; receipts</h2>
+  <div class="sub">Days 2–4. Turns "we track it and settle by Zelle" into a real prepaid balance with a debit at render finish and a receipt the user can read.</div>
+
+  <div class="phase"><span class="pn">PHASE 2</span><span class="pt">Money, made real</span><span class="pd">days 2–4</span></div>
+  <ul class="chk">
+    <li><b>The ledger.</b> Prisma <code>VaterCreditLedger {userId, deltaCents, kind purchase|grant|debit|refund|adjust, projectId?, stripeSessionId?, lineJson}</code>. <b>Balance is the sum</b> — no separate balance column to drift out of sync.</li>
+    <li><b>The packs.</b> <code>POST /api/vater/billing/packs</code> → Stripe Checkout in <code>mode:'payment'</code> at <b>$10 / $25 / $50 / $100</b>, grossed up or given bonus credits; <code>payment_intent_data.setup_future_usage</code> to keep the card. Webhook branch cloned from <code>lib/stripe-webhook.ts:496-527 fulfillVideoCredits</code> <b>with event-id idempotency</b>; keep the setup-mode route for card-on-file.</li>
+    <li><b>The debit.</b> At <code>poll/route.ts:266-313</code> (status → ready) call <code>buildVideoBillingLine(costJson.totalUsd, audioDuration)</code> from <code>ops-fee.ts</code> and write a ledger debit. True-ups reconcile through the <code>scripts/vater-cost-reconcile.mjs:202</code> hook as <code>adjust</code>. <b>Failed renders never debit.</b> Cap repairs per video (re-rolls ≤ 15% of scenes) so no bill can 12× the way #21 did.</li>
+    <li><b>The gate.</b> <code>check-budget.ts</code> → check the unmetered flag, then require <b>balance ≥ estimate</b> (planned minutes × ($0.35 + median compute $0.45)); otherwise <b>402</b> and the <code>BillingBlockModal</code> offers "Buy credits".</li>
+    <li><b>The starter credit.</b> On invite accept with a card saved, <b>grant $10</b> — promo kind, <b>60-day expiry, stills-mode only</b>. Animation requires purchased credits.</li>
+    <li><b>The receipt.</b> <code>GET /api/vater/youtube/[id]/receipt</code> — compute by stage, minutes, ops fee, total, and wall-time from a new <code>phaseTimings</code> — surfaced in the lightbox <b>for every tier</b>. The Billing screen shows balance + ledger + packs. Move the rate to <code>VATER_OPS_RATE_PER_MIN</code> in Vercel env.</li>
+    <li><b>Prove it before anyone pays.</b> Stripe <b>test-mode</b> key in <code>.env.local</code> plus <code>stripe listen</code>; run one complete <b>pack → webhook → render → debit</b> cycle. (Money-movement work here is explicitly authorised by decision #1.)</li>
+  </ul>
+
+  <div class="callout"><b>Why a Prisma ledger rather than Stripe Billing Credits:</b> Stripe's credit product requires metered subscriptions — which decision #3 rules out — and charges an extra <b>0.7% on every applied credit</b>. Owning the ledger costs one table and gives you refunds, promo expiry, and reconciliation adjustments that Stripe's version does not model.</div>
+
+  <div class="good"><b>The good news on effort:</b> almost nothing here is novel. The pack→webhook→fulfil path already runs in production for /video/studio, the cost math already runs in <code>ops-fee.ts</code>, and the per-video receipt data is already computed and displayed. Phase 2 is mostly <b>wiring three existing systems to each other</b> and adding the ledger they write to.</div>
+
+  <div class="danger"><b>Do not skip the idempotency key.</b> Stripe retries webhooks. A <code>fulfillVideoCredits</code> clone without event-id deduplication will credit a pack twice on any retry — and unlike a double charge, a double credit is invisible until the margin is already gone.</div>
+
+  <div class="footer"><span>Part C · Phase 2 — Credits &amp; receipts</span><span>Aug 15, 2026 · Page 11 of 13</span></div>
+</div>
+
+<!-- ============ PAGE 13 — PHASE 3 ============ -->
+<div class="page">
+  <h2>Phase 3 · Beta program surfaces</h2>
+  <div class="sub">Days 3–6. Everything that turns a working renderer into something ten strangers can be handed a login to.</div>
+
+  <div class="phase"><span class="pn">PHASE 3</span><span class="pt">Invites, legal, logs, view-as</span><span class="pd">days 3–6</span></div>
+  <ul class="chk">
+    <li><b>Invites.</b> <code>BetaInvite {code, email?, maxUses, usedCount, expiresAt}</code>; require <code>/signup?callbackUrl=/animate&amp;invite=CODE</code>. A <b>/hq "Studio users" card</b> mints codes, flips tier and unmetered, and shows balance and last error.</li>
+    <li><b>Password reset.</b> <code>VerificationToken</code> already exists — add <code>/reset-password</code> and wire SMTP env or Resend. Note the send-email allowlist <b>blocks unknown recipients by default</b>: add invitee domains, or <code>*</code> for transactional mail.</li>
+    <li><b>Click-wrap.</b> <code>User.termsAcceptedAt / termsVersion / showcaseOptOut</code>; a checkbox on animate signup; re-prompt existing users — including Trey, who has nothing on file.</li>
+    <li><b>Legal pages.</b> <code>lib/legal-animate.ts</code> + <code>app/animate/terms|privacy|beta</code> via <code>components/legal/legal-page-shell.tsx</code>; footer and landing links; <b>DMCA agent registration ($6)</b> queued to Jared; voice-consent checkbox writing <code>voiceConsentAt</code> on upload.</li>
+    <li><b>Feedback.</b> HelpDrawer "Report a problem / Feedback" → <code>POST /api/vater/feedback</code> → a MustCompleteItem (source <code>animate-feedback</code>, carrying route, projectId, APP_VERSION, user agent) + <code>notifyTelegram()</code>, with a <b>ticket id returned to the user</b>.</li>
+    <li><b>Versioning.</b> <code>lib/vater/changelog.ts</code> with <code>APP_VERSION='1.3'</code> and entries: <b>v1.0</b> (6/11 PPV launch), <b>v1.1</b> (8/5–8 studio tier, Blob library, Script Review), <b>v1.2</b> (8/9–13 Course, Direct, #N numbering, settlement-based due), <b>v1.3</b> (8/15 role-aware nav + mobile, Voice Tuner). Header pill opens a "What's new" section in the HelpDrawer with an unread dot.</li>
+    <li><b>View-as.</b> <code>POST /api/admin/vater/view-as</code> sets <code>jelly_view_as=&lt;uid&gt;.&lt;iat&gt;.&lt;hmac(AUTH_SECRET)&gt;</code> — same pattern as <code>wd_admin</code> — honoured in the <code>auth.ts</code> session callback <b>only for admin emails</b>, <b>read-only</b> (blocked on POST/PATCH/DELETE and on billing), writing an <code>AdminImpersonation</code> audit row, with a red "Viewing as X" bar.</li>
+    <li><b>Per-user system log.</b> <code>VaterEvent {userId, projectId?, jobId?, kind, level, message, dataJson, durationMs}</code> written from poll status transitions and the failure branch, plus ledger debits and feedback; <code>GET /api/vater/me/log</code> behind a new "System log" screen; failures alert Telegram (deduped per job). Add <code>@sentry/nextjs</code> free tier + <code>instrumentation.ts</code> — remember <code>log.ts</code> is a production no-op today.</li>
+    <li><b>Publishing.</b> Ungate <code>social-accounts/oauth/youtube/start</code> for card-on-file users and move the Connect button onto the PublishingScreen tiles. Library gets "Send to scheduler" — copy the Blob URL now, optional <b>Postiz self-host on the DGX</b> later.</li>
+    <li><b>Custom voices for beta users.</b> Open <code>POST /api/vater/voices</code> to card-on-file users with a <b>cap of 2</b> and a consent checkbox; namespace <code>vater_voices/&lt;userId&gt;/</code> and <code>characters/&lt;userId&gt;/</code> on the DGX (<code>vater.py:57,1805,3381</code>) so user #2 stops colliding with user #1.</li>
+    <li><b>Guardrails.</b> Beta cap <b>9:00</b> — reject scripts over <b>1,700 words</b> at both from-script and context entry points; default <b>5:00</b>; QA re-roll budget becomes <code>max(20, 15% of scenes)</code>; pin <code>defaultPacingSec=4</code>; promote the page-5 default rule set into the planner block for every non-Trey style.</li>
+  </ul>
+
+  <div class="footer"><span>Part C · Phase 3 — Beta surfaces</span><span>Aug 15, 2026 · Page 12 of 13</span></div>
+</div>
+
+<!-- ============ PAGE 14 — PHASE 4 + VERIFICATION + OPEN ============ -->
+<div class="page">
+  <h2>Phase 4 · Homepage, demos &amp; GTM &nbsp;&middot;&nbsp; Verification</h2>
+  <div class="sub">Days 4–7, then the proof that it all works — and the four things only you can do.</div>
+
+  <div class="phase"><span class="pn">PHASE 4</span><span class="pt">Make it sellable</span><span class="pd">days 4–7</span></div>
+  <ul class="chk">
+    <li><b>Rewrite <code>AnimateLanding.tsx</code>.</b> A <b>"PUBLIC BETA · INVITE ONLY"</b> badge; hero line <i>"Type a script. Get a finished faceless video for ~$1/min."</i>; <b>3–4 real demo <code>&lt;video&gt;</code> cards</b> served from Blob <code>demos/</code> copies — #23 now, #19/#22/#16 once Trey signs; a feature grid (script writer, custom voice + tuner, library, 7-step editor, upload, YouTube publish, scheduler hand-off, automation coming); an à-la-carte pricing block ($0.35/min + compute at cost, typical $1–7/video, packs, no subscription, date-stamped competitor $/min table with footnote); an honest free-starter line ($10 promo credit, card on file, no watermark, downloadable); ToS/privacy/beta links, version pill, feedback link. <b>Delete the fake "$24.85" card and "NO CARD REQUIRED".</b></li>
+    <li><b>One price everywhere.</b> Copy sweep across <code>help-content.ts:55-64</code>, <code>PricingScreen.tsx</code>, <code>BetaAccessBanner.tsx</code>, <code>Header.tsx:105</code>, <code>BillingBlock.tsx</code>, <code>DashboardScreen.tsx:160</code>, and the <code>app/animate/page.tsx:20</code> metadata.</li>
+    <li><b>Mobile.</b> Extend <code>tests/e2e/audit/animate.spec.ts</code> to editor steps 0–6 and the StyleWizardModal at <b>390 px</b>; fix the grids at <code>ScriptStep.tsx:482</code>, <code>VisualsStep.tsx:1017</code>, <code>StyleWizardModal.tsx:1063</code>.</li>
+    <li><b>GTM kit</b> — Jared executes, queued to /hq Must Complete. Create the <b>"Jelly Studio" Facebook Page</b> under the existing Meta Business account; run the <b>$150 Meta traffic campaign</b> (Reels + Feed, AI label on creative, $10–15/day, landing on an invite-request page); wire the invite-request form into Must Complete; DM scripts for Trey (3 referrals + consent) and the warm network (10); rules-compliant Discord and Reddit posts offering invite-by-DM; <b>3 TikTok demo clips a week</b>; free Product Hunt and Show HN in week 2; optional Fiverr gig.</li>
+    <li><b>Modal.</b> Raise the workspace budget-cap alert; stay on Starter for ≤ 5 users; queue the Team-plan decision at more than 4 concurrent renders.</li>
+  </ul>
+
+  <div class="phase"><span class="pn">VERIFY</span><span class="pt">How we prove it works</span><span class="pd">before invites go out</span></div>
+  <ul class="chk">
+    <li><b>Walk the golden path for real.</b> Extend the Playwright harness to a <b>write-enabled</b> run against a preview/staging DB (or production with a <code>beta-audit@</code> invite code): signup with code → ToS → card (Stripe test) → buy $10 pack → create style → project → render (<b>confirm Modal-only via job kwargs</b>) → receipt → feedback → view-as. Assert <b>zero cross-tenant reads</b> — a second account must not fetch the first's project, job, or voice.</li>
+    <li><b>Negative tests by curl</b> from a plain account against pipeline-status, the jobs proxy and voices DELETE; confirm <code>register</code> returns <b>409</b> for the owner's admin email.</li>
+    <li><b>Trey's money is unchanged.</b> <code>node scripts/vater-invoice.mjs --summary</code> must match after scoping; one test video's ledger debit must equal its receipt; the Stripe dashboard must show the pack payment; review the <code>vercel env pull</code> diff.</li>
+    <li><b>DGX behaviour.</b> Three concurrent test renders — the <b>fourth must queue</b>; <b>no <code>vater_runway.clear()</code></b> anywhere in the journal; earlyoom left untouched.</li>
+    <li><b>This brief.</b> Page-fit and link check on /hq; TLDR sent to Telegram as a link.</li>
+  </ul>
+
+  <div class="phase"><span class="pn">JARED</span><span class="pt">Open items — queued, not blocking the build</span><span class="pd">/hq Must Complete</span></div>
+  <ul class="chk">
+    <li><b>Trey:</b> collect written reuse consent for #19, #22 and #16 — and ask for <b>3 referrals</b> in the same conversation.</li>
+    <li><b>Stripe:</b> confirm the production webhook is subscribed to <code>checkout.session.completed</code>, <code>invoice.paid</code> and <code>invoice.payment_failed</code>.</li>
+    <li><b>Legal:</b> DMCA agent registration (<b>$6</b>, <a href="https://dmca.copyright.gov">dmca.copyright.gov</a>) and an optional 1-hour attorney review (~$300) of the arbitration and showcase clauses.</li>
+    <li><b>Marketing:</b> create the Jelly Studio Facebook Page and approve the <b>$150</b> Meta budget.</li>
+  </ul>
+
+  <div class="total">
+    <div class="t1">Target — five paying users by August 31, 2026, on tolley.io/animate, profitable per minute, with nothing customer-facing sending itself</div>
+    <div class="t2">5 by 8/31</div>
+  </div>
+
+  <div class="src" style="margin-top:8pt"><b>How this was produced:</b> a 15-agent read-only research swarm — 12 finders and 3 adversarial verifiers — run Aug 15, 2026 across ~1.5M tokens and 613 tool calls. Nothing in production was modified. Every claim traces to live code, live Stripe and Modal data, or measured render history; the verifiers' job was to disprove the finders. Source HTML: <code>scripts/briefs/jelly-beta-launch-2026-08.html</code>.</div>
+
+  <div class="footer"><span>Part C · Phase 4, Verification &amp; open items</span><span>Aug 15, 2026 · Page 13 of 13</span></div>
+</div>
+
+</body>
+</html>
