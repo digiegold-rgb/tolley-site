@@ -251,6 +251,91 @@ export function queueLabel(
   return n ? `Queued \u2014 #${n} in line` : "Queued";
 }
 
+/**
+ * Public counters for videos this account published, straight from
+ * `youtube.videos.list?part=statistics`.
+ *
+ * Deliberately takes the access token as an argument instead of reading it:
+ * this module is imported by client components, so it must stay free of
+ * prisma / server-only. The route at /api/vater/youtube/stats resolves the
+ * user's token (lib/vater/youtube-upload.getAccessToken) and calls this.
+ *
+ * `videos.list` accepts up to 50 ids per call, so longer lists are chunked.
+ * Ids YouTube doesn't return (deleted, private, wrong channel) are simply
+ * absent from the map — callers render "—" rather than a zero, because a
+ * fabricated 0 views is worse than an honest blank.
+ */
+export interface YouTubeVideoStats {
+  videoId: string;
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
+}
+
+const STATS_URL = "https://www.googleapis.com/youtube/v3/videos";
+const STATS_CHUNK = 50;
+
+function asCount(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+export async function fetchYouTubeStats(
+  videoIds: string[],
+  accessToken: string,
+): Promise<Record<string, YouTubeVideoStats>> {
+  const ids = Array.from(
+    new Set(videoIds.filter((v): v is string => typeof v === "string" && !!v)),
+  );
+  const out: Record<string, YouTubeVideoStats> = {};
+  if (ids.length === 0 || !accessToken) return out;
+
+  for (let i = 0; i < ids.length; i += STATS_CHUNK) {
+    const chunk = ids.slice(i, i + STATS_CHUNK);
+    const url = `${STATS_URL}?part=statistics&id=${chunk
+      .map(encodeURIComponent)
+      .join(",")}&maxResults=${STATS_CHUNK}`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `YouTube videos.list ${res.status}: ${text.slice(0, 200)}`,
+      );
+    }
+    const json = (await res.json()) as {
+      items?: Array<{
+        id?: string;
+        statistics?: Record<string, unknown>;
+      }>;
+    };
+    for (const item of json.items ?? []) {
+      if (!item.id) continue;
+      const s = item.statistics ?? {};
+      out[item.id] = {
+        videoId: item.id,
+        views: asCount(s.viewCount),
+        likes: asCount(s.likeCount),
+        comments: asCount(s.commentCount),
+      };
+    }
+  }
+
+  return out;
+}
+
+/** "12,481" / "—" for a maybe-missing counter. */
+export function formatCount(value: number | null | undefined): string {
+  return typeof value === "number" ? value.toLocaleString() : "—";
+}
+
 export const WORDS_PER_MINUTE = 150;
 
 export function wordCountForDuration(minutes: number): number {

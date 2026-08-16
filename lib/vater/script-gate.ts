@@ -132,6 +132,15 @@ export async function startRunCreation(
     ...ownerFields,
     ...(scriptOverride ? { scriptOverride } : {}),
     ...(opts.stopAfterScript ? { stopAfterScript: true } : {}),
+    // Optional feature bag (jelly-feature-contract 2026-08-16), sent verbatim
+    // so the approval path renders with the same captions / overlays / camera
+    // / brand kit the editor showed. Unknown keys are ignored by the worker;
+    // a NULL column sends nothing at all, which is today's behavior.
+    ...(project.settingsJson &&
+    typeof project.settingsJson === "object" &&
+    !Array.isArray(project.settingsJson)
+      ? { features: project.settingsJson as Record<string, unknown> }
+      : {}),
   });
 
   return job.jobId;

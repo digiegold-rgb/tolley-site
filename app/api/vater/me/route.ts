@@ -25,6 +25,7 @@ import { routeIdsForTier, type VaterTier } from "@/lib/vater/nav-visibility";
 import { resolveActor } from "@/lib/vater/acting-as";
 import { isMissingRelationError } from "@/lib/vater/beta-schema";
 import { TOS_VERSION } from "@/lib/legal-animate";
+import { scriptCapFor } from "@/lib/vater/billing/script-cap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,6 +82,12 @@ export async function GET() {
   const tier: VaterTier = owner ? "owner" : studio ? "studio" : "public";
   const flags = await readUserFlags(session.user.id);
 
+  /* How long a script this account may render. The editor needs the same
+   * number the from-script / context guards enforce — otherwise the Script
+   * screen greys out Approve at 1,700 words for someone the API would happily
+   * have taken 3,700 from. `undefined` = uncapped (owner). */
+  const cap = await scriptCapFor(session.user.id, email);
+
   return NextResponse.json(
     {
       tier,
@@ -104,6 +111,10 @@ export async function GET() {
         publishingPosts: siteAdmin,
       },
       routes: routeIdsForTier(tier),
+      /** Script length ceiling. null = uncapped. See script-cap.ts for the
+       *  rule; `capTier` is why, so the UI can say "buy credit for longer". */
+      maxWords: cap.maxWords ?? null,
+      capTier: cap.tier,
       /** Beta / legal state. `invited` is true once the account redeemed a
        *  BetaInvite — the durable signal for gating the studio itself. */
       beta: {

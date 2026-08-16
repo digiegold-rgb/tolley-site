@@ -39,6 +39,25 @@ const PRIVACY_OPTIONS = [
   { value: 'private', label: 'Private' },
 ] as const;
 
+/** `<input type="datetime-local">` wants local wall-clock with no zone. */
+function toLocalInputValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  );
+}
+
+/** Read `publishAt` off the project's feature bag, if a schedule was set. */
+function readPublishAt(settingsJson: unknown): string | null {
+  if (!settingsJson || typeof settingsJson !== 'object' || Array.isArray(settingsJson)) {
+    return null;
+  }
+  const raw = (settingsJson as Record<string, unknown>).publishAt;
+  if (typeof raw !== 'string' || !Number.isFinite(Date.parse(raw))) return null;
+  return raw;
+}
+
 export function PublishPanel({
   project,
   onChanged,
@@ -593,6 +612,17 @@ function UploadSection({
   const [watchUrl, setWatchUrl] = React.useState<string | null>(
     project.youtubeVideoId ? `https://youtu.be/${project.youtubeVideoId}` : null,
   );
+  // Schedule. Empty string = publish now, which stays the default — nothing
+  // about the existing one-click flow changes unless a time is entered.
+  const [scheduleAt, setScheduleAt] = React.useState('');
+  const scheduledAt = readPublishAt(project.settingsJson);
+  // Local-time floor for the picker: YouTube (and our route) reject the past.
+  const minSchedule = React.useMemo(
+    () => toLocalInputValue(new Date(Date.now() + 5 * 60_000)),
+    [],
+  );
+  const scheduleInPast =
+    scheduleAt !== '' && new Date(scheduleAt).getTime() <= Date.now();
 
   const loadAccount = React.useCallback(async () => {
     try {
@@ -624,7 +654,13 @@ function UploadSection({
       const res = await fetch(`/api/vater/youtube/${project.id}/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ privacyStatus: privacy }),
+        body: JSON.stringify({
+          privacyStatus: privacy,
+          // Local wall-clock from the picker → absolute UTC for YouTube.
+          ...(scheduleAt
+            ? { publishAt: new Date(scheduleAt).toISOString() }
+            : {}),
+        }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         url?: string;
@@ -648,13 +684,28 @@ function UploadSection({
       <VCard variant="flat" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <SectionHeader
           icon="upload"
-          title="Published"
+          title={scheduledAt ? 'Scheduled' : 'Published'}
           description={
-            project.publishedAt
-              ? `Uploaded ${new Date(project.publishedAt).toLocaleString()}`
-              : 'Live on YouTube.'
+            scheduledAt
+              ? `Uploaded private — YouTube makes it public on ${new Date(
+                  scheduledAt,
+                ).toLocaleString()}.`
+              : project.publishedAt
+                ? `Uploaded ${new Date(project.publishedAt).toLocaleString()}`
+                : 'Live on YouTube.'
           }
         />
+        {scheduledAt && (
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: JELLY_TOKENS.warning,
+            }}
+          >
+            Scheduled for {new Date(scheduledAt).toLocaleString()}
+          </div>
+        )}
         <a
           href={watchUrl}
           target="_blank"
@@ -746,6 +797,69 @@ function UploadSection({
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Schedule. Leaving this empty publishes immediately — the default. */}
+      <div style={{ maxWidth: 280 }}>
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 500,
+            color: t.textSecondary,
+            marginBottom: 6,
+          }}
+        >
+          Schedule for <span style={{ opacity: 0.7 }}>(optional)</span>
+        </div>
+        <input
+          type="datetime-local"
+          value={scheduleAt}
+          min={minSchedule}
+          onChange={(e) => setScheduleAt(e.target.value)}
+          style={{
+            width: '100%',
+            fontSize: 15,
+            fontFamily: JELLY_TOKENS.font,
+            border: `1px solid ${scheduleInPast ? JELLY_TOKENS.error : t.border}`,
+            borderRadius: JELLY_TOKENS.radius.md,
+            background: t.card,
+            color: t.text,
+            outline: 'none',
+            boxSizing: 'border-box',
+            padding: 12,
+          }}
+        />
+        <div
+          style={{
+            fontSize: 12,
+            color: scheduleInPast ? JELLY_TOKENS.error : t.textSecondary,
+            marginTop: 6,
+            lineHeight: 1.5,
+          }}
+        >
+          {scheduleInPast
+            ? 'That time has passed — pick a future time or clear the field.'
+            : scheduleAt
+              ? `Uploads private now, goes public ${new Date(scheduleAt).toLocaleString()}. Your Privacy choice above is overridden until then.`
+              : 'Empty = publish as soon as the upload finishes.'}
+        </div>
+        {scheduleAt && (
+          <button
+            type="button"
+            onClick={() => setScheduleAt('')}
+            style={{
+              marginTop: 6,
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              fontSize: 12,
+              color: JELLY_TOKENS.brand,
+              cursor: 'pointer',
+            }}
+          >
+            Clear schedule
+          </button>
+        )}
       </div>
 
       {error && <RetryError message={error} />}

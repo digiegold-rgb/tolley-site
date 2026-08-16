@@ -213,6 +213,15 @@ export type StyleSnapshot = {
   enableMaps: boolean;
   enableAutoHeaders: boolean;
   overlayTheme: string;
+  /** Brand kit frozen into the snapshot (2026-08-16 feature contract).
+   *  Absent = the composition's own defaults. Built by
+   *  lib/vater/style-snapshot.ts from `YouTubeStyle.brandKitJson`. */
+  brandKit?: {
+    logoUrl?: string;
+    captionFont?: string;
+    captionColor?: string;
+    accentColor?: string;
+  };
   customArtStyle: {
     id: string;
     name: string;
@@ -273,6 +282,13 @@ export type RunCreationInput = {
   ownerTier?: "owner" | "beta";
   /** Hard script-length ceiling. Omitted = uncapped (owner only). */
   maxWords?: number;
+  /** ── Optional feature bag (jelly-feature-contract 2026-08-16) ─────────
+   *  Verbatim `YouTubeProject.settingsJson`: captionPreset, overlays,
+   *  cameraDefault, transitionSec, musicMoods, language, pronunciations,
+   *  narrationUrl, aspect, brandKit, motionMode. Every key is optional and
+   *  the worker ignores ones it doesn't know, so a missing bag — or a key
+   *  the box hasn't shipped support for — is exactly today's behavior. */
+  features?: Record<string, unknown>;
 };
 
 /**

@@ -27,6 +27,7 @@ import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VBtn, VCard, SectionHeader } from '../../primitives';
+import { PricingCalculator } from '../../landing/PricingCalculator';
 
 // ─── GET /api/vater/billing/credits ───────────────────────────────────────
 
@@ -77,6 +78,22 @@ interface CreditsResponse {
   ledger: LedgerRow[];
 }
 
+// ─── GET /api/vater/me/referrals ──────────────────────────────────────────
+
+interface ReferralCode {
+  code: string;
+  display: string;
+  link: string;
+  used: boolean;
+}
+
+interface ReferralsResponse {
+  ready: boolean;
+  bonusCents: number;
+  earnedCents: number;
+  codes: ReferralCode[];
+}
+
 const KIND_LABEL: Record<string, string> = {
   purchase: 'Credit pack',
   grant: 'Welcome credit',
@@ -113,6 +130,9 @@ export function PricingScreen(): React.ReactElement {
   const [data, setData] = React.useState<CreditsResponse | null>(null);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
+
+  const [referrals, setReferrals] = React.useState<ReferralsResponse | null>(null);
+  const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
 
   const [buying, setBuying] = React.useState<number | null>(null);
   const [redirecting, setRedirecting] = React.useState<'setup' | 'portal' | null>(null);
@@ -175,6 +195,26 @@ export function PricingScreen(): React.ReactElement {
   React.useEffect(() => {
     void load();
   }, [load]);
+
+  /* Referrals load separately from the balance on purpose: the codes come out
+   * of a different table with its own migration, and a BetaInvite table that
+   * is not there yet must not stop the Billing screen showing a balance. */
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/vater/me/referrals', { cache: 'no-store' });
+        if (!res.ok) return;
+        const body = (await res.json()) as ReferralsResponse;
+        if (!cancelled && body.ready) setReferrals(body);
+      } catch {
+        /* the wallet still works without the referral card */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /**
    * Stripe's webhook credits the balance, and it can land a beat after the
@@ -489,6 +529,106 @@ export function PricingScreen(): React.ReactElement {
     );
   };
 
+  /* Referral card. Two single-use codes per account; the referrer is paid $5
+   * of credit when someone who signed up on their link renders their first
+   * billed video — not at signup, because signups are free to manufacture and
+   * a finished video is not. Lives on Billing because what it pays out IS
+   * credit, and this is the screen where credit is understood. */
+  const renderReferrals = () => {
+    if (!referrals || referrals.codes.length === 0) return null;
+    return (
+      <VCard variant="flat">
+        <SectionHeader
+          icon="affiliate"
+          title="Invite a friend, get credit"
+          description={`You have ${referrals.codes.length} invite ${
+            referrals.codes.length === 1 ? 'link' : 'links'
+          }. Each one is single-use — when someone you invited finishes their first video, ${usd(
+            referrals.bonusCents,
+          )} of credit lands here.`}
+        />
+        {referrals.earnedCents > 0 && (
+          <div style={{ fontSize: 13, color: JELLY_TOKENS.success, marginTop: 12, fontWeight: 600 }}>
+            {usd(referrals.earnedCents)} earned so far.
+          </div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+          {referrals.codes.map((c) => (
+            <div
+              key={c.code}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                flexWrap: 'wrap',
+                padding: '10px 14px',
+                borderRadius: JELLY_TOKENS.radius.md,
+                background: t.cardAlt,
+                border: `1px solid ${t.border}`,
+                opacity: c.used ? 0.55 : 1,
+              }}
+            >
+              <code style={{ fontSize: 14, color: t.text, letterSpacing: '0.04em' }}>
+                {c.display}
+              </code>
+              <span style={{ fontSize: 12, color: t.textSecondary, flex: '1 1 auto' }}>
+                {c.used ? 'Used — thank you' : 'Not used yet'}
+              </span>
+              {!c.used && (
+                <VBtn
+                  size="sm"
+                  variant="outlined"
+                  onClick={() => {
+                    void navigator.clipboard
+                      .writeText(c.link)
+                      // No silent catch: a blocked clipboard has to say so, or
+                      // the user pastes nothing and blames the link.
+                      .then(() => setCopiedCode(c.code))
+                      .catch(() =>
+                        setActionError(
+                          'Could not copy — your browser blocked clipboard access.',
+                        ),
+                      );
+                  }}
+                >
+                  {copiedCode === c.code ? 'Copied' : 'Copy link'}
+                </VBtn>
+              )}
+            </div>
+          ))}
+        </div>
+      </VCard>
+    );
+  };
+
+  /* The same calculator the public pricing page shows, themed for the studio.
+   * It belongs here too: "how much credit should I buy?" is the question the
+   * pack buttons above ask and do not answer, and a customer who has to guess
+   * either overbuys or runs dry mid-render. */
+  const renderCalculator = () => (
+    <VCard variant="flat">
+      <SectionHeader
+        icon="affiliate"
+        title="What will my month cost?"
+        description="Describe the videos you plan to make. Estimates only — every project is quoted before it renders."
+      />
+      <div style={{ marginTop: 16 }}>
+        <PricingCalculator
+          title={null}
+          fontFamily={JELLY_TOKENS.font}
+          palette={{
+            surface: t.cardAlt,
+            surfaceAlt: t.card,
+            text: t.text,
+            textSecondary: t.textSecondary,
+            border: t.border,
+            accent: JELLY_TOKENS.brand,
+          }}
+        />
+      </div>
+    </VCard>
+  );
+
   const renderExplainer = () => (
     <VCard variant="flat">
       <SectionHeader icon="help" title="How pricing works" />
@@ -560,10 +700,12 @@ export function PricingScreen(): React.ReactElement {
           {renderBalance()}
           {renderPacks()}
           {renderCard()}
+          {renderReferrals()}
           {renderLedger()}
         </>
       )}
 
+      {renderCalculator()}
       {renderExplainer()}
     </div>
   );

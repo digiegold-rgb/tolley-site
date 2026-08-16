@@ -3836,6 +3836,15 @@ model YouTubeProject {
   animateAllJobId     String?
   animateAllStartedAt DateTime?
 
+  // ── Optional feature settings (2026-08-16, jelly-feature-contract) ──
+  // Free-form bag of ADDITIVE, OPTIONAL knobs passed to run-creation as
+  // `features`: captionPreset, overlays, cameraDefault, transitionSec,
+  // musicMoods, language, pronunciations, narrationUrl, aspect, brandKit,
+  // motionMode. Any missing key = today's behavior. Written by PATCH
+  // /api/vater/youtube/[id] with body { settings: {...partial} }, which
+  // SHALLOW-MERGES so parallel editor steps never clobber each other.
+  settingsJson Json?
+
   // ── TubeGen-parity Style document (2026-04-14) ──────────────────────
   // styleId is the new path. When NULL, the legacy stylePreset string above
   // remains the source of truth (back-compat with all existing rows).
@@ -4140,6 +4149,13 @@ model YouTubeStyle {
   enableMaps        Boolean @default(false)
   enableAutoHeaders Boolean @default(false)
   overlayTheme      String  @default("dark")
+
+  // Brand kit (2026-08-16 feature contract) — logo + caption typography +
+  // accent color applied by Remotion on every render made from this style.
+  // Shape: { logoUrl, captionFont, captionColor, accentColor }; any missing
+  // key falls back to the composition default. Rides to the DGX inside the
+  // style snapshot as `brandKit`.
+  brandKitJson Json?
 
   // Provenance
   isSystem     Boolean        @default(false)
@@ -5176,8 +5192,10 @@ model VaterCreditLedger {
   note                  String?
   createdAt             DateTime  @default(now())
   /// DB-enforced idempotency key. "debit:<projectId>" (one debit per finished
-  /// video), "grant:starter:<userId>" (one starter grant per user),
-  /// "adjust:expiry:<grantRowId>" (one sweep per expired grant),
+  /// video), "refund:<projectId>" (one refund per failed render),
+  /// "grant:starter:<userId>" (one starter grant per user),
+  /// "ref:<inviteeUserId>" (one referral bonus per invitee, paid to the
+  /// referrer), "adjust:expiry:<grantRowId>" (one sweep per expired grant),
   /// "adjust:reconcile:<projectId>:<revision>". NOT reused for purchases —
   /// those dedupe on stripeSessionId.
   dedupeKey             String?   @unique
@@ -5259,9 +5277,16 @@ model BetaInvite {
   createdBy String?
   note      String?
   createdAt DateTime  @default(now())
+  /// Team seats (2026-08-16). When set, redeeming this code also drops the
+  /// new account into that VaterOrg. The join is done lazily by
+  /// lib/vater/org-access.ts (ensureOrgMembershipFromInvite) rather than in
+  /// the signup transaction, so the invite lane needs no change and an
+  /// account created before the org existed still lands in it on next load.
+  orgId     String?
 
   @@index([email])
   @@index([createdAt])
+  @@index([orgId])
 }
 
 /// Audit row written every time an admin starts a "view as user" session.
@@ -5306,4 +5331,79 @@ model VaterEvent {
   @@index([userId, createdAt])
   @@index([projectId, createdAt])
   @@index([createdAt])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Public API v1 + team seats (migration 20260816_api_keys_orgs, 2026-08-16)
+//
+// ⚠️ Like BetaInvite/VaterEvent before them, every read and write of these
+// three tables goes through RAW SQL (lib/vater/api-keys.ts,
+// lib/vater/org-access.ts) rather than the generated Prisma client. The
+// checked-in client is generated at deploy time from this file, but the PROD
+// migration is applied by hand from /hq → Must Complete, so there is a window
+// where the deployed code is newer than the database. Raw SQL + a probe keeps
+// that window a degraded feature instead of a 500 on every /animate boot.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// A bearer credential for the public API (POST /api/v1/videos et al).
+///
+/// The plaintext key is shown EXACTLY ONCE, at creation, and never stored:
+/// `keyHash` is sha256(plaintext) and is what the bearer check looks up.
+/// `prefix` is the first 14 visible characters ("jly_live_ab12cd") kept in the
+/// clear purely so the owner can tell two keys apart in the UI — it is not a
+/// secret and is not sufficient to authenticate.
+///
+/// Revocation is a timestamp, not a DELETE: a key that signed a webhook or
+/// created a project should stay attributable after it is turned off.
+model VaterApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  /// Human label ("n8n prod", "Zapier"). Not unique.
+  name       String
+  /// sha256(plaintext), lowercase hex. Unique — two keys cannot collide.
+  keyHash    String    @unique
+  /// Non-secret display prefix, e.g. "jly_live_ab12cd".
+  prefix     String
+  /// Optional HTTPS endpoint POSTed on render completion/failure.
+  webhookUrl String?
+  lastUsedAt DateTime?
+  /// Non-null = disabled. Rows are never deleted.
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([prefix])
+}
+
+/// A team. One org per owner in practice; `ownerUserId` is the account that
+/// pays and the only one that can invite or remove seats.
+///
+/// Orgs are a VISIBILITY grant layered on top of tenant isolation, never a
+/// billing grant: credits stay on the owning user, and project.userId keeps
+/// meaning "who paid for this render". See lib/vater/project-access.ts.
+model VaterOrg {
+  id          String   @id @default(cuid())
+  name        String
+  ownerUserId String
+  createdAt   DateTime @default(now())
+
+  @@index([ownerUserId])
+}
+
+/// Seat in a VaterOrg.
+///
+/// role — owner  : the paying account; invites, removes, full write
+///        editor : may open AND change any project owned by an org member
+///        viewer : read-only across the org's projects
+model VaterOrgMember {
+  id        String   @id @default(cuid())
+  orgId     String
+  userId    String
+  /// owner | editor | viewer
+  role      String   @default("viewer")
+  createdAt DateTime @default(now())
+
+  @@unique([orgId, userId])
+  @@index([userId])
+  @@index([orgId])
 }

@@ -47,10 +47,21 @@ interface ElevenVoice {
   name: string;
 }
 
+/** A character to mint onto the new style. `brief` is the one-line
+ *  description the DGX expands into a full descriptor. */
+export interface PreselectedCharacter {
+  name: string;
+  brief: string;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
   onCreated: (style: CreatedStyle) => void;
+  /** Characters to add to the style as soon as it exists — used by the
+   *  Characters library's "Use in new project". Best-effort: a character
+   *  that fails to mint is reported, it never blocks the style. */
+  initialCharacters?: PreselectedCharacter[];
 }
 
 /* Match the autopilot/Prisma defaults — keep in sync with schema. */
@@ -107,6 +118,7 @@ export function StyleWizardModal({
   open,
   onClose,
   onCreated,
+  initialCharacters,
 }: Props): React.ReactElement | null {
   const { t } = useTheme();
 
@@ -151,6 +163,17 @@ export function StyleWizardModal({
   const [visualAdditionalContext, setVisualAdditionalContext] = React.useState('');
 
   // ── Smart Overlay Defaults ──
+  // ── Brand kit (2026-08-16 feature contract) ──
+  // Optional on purpose: every empty field falls back to the composition
+  // default, so a style with no brand kit renders exactly as it does today.
+  const [logoUrl, setLogoUrl] = React.useState('');
+  const [logoUploading, setLogoUploading] = React.useState(false);
+  const [logoError, setLogoError] = React.useState<string | null>(null);
+  const [captionFont, setCaptionFont] = React.useState('');
+  const [captionColor, setCaptionColor] = React.useState('');
+  const [accentColor, setAccentColor] = React.useState('');
+  const [openBrand, setOpenBrand] = React.useState(false);
+
   const [enableCharts, setEnableCharts] = React.useState(false);
   const [enableMaps, setEnableMaps] = React.useState(false);
   const [enableAutoHeaders, setEnableAutoHeaders] = React.useState(false);
@@ -288,6 +311,46 @@ export function StyleWizardModal({
       prev.length === 1 ? [''] : prev.filter((_, idx) => idx !== i),
     );
 
+  /** Upload a logo to Blob and keep the returned public URL. */
+  const uploadLogo = async (file: File): Promise<void> => {
+    setLogoError(null);
+    setLogoUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/vater/upload', {
+        method: 'POST',
+        body: form,
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        url?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      setLogoUrl(data.url);
+    } catch (err) {
+      setLogoError(
+        err instanceof Error ? err.message : 'Could not upload that logo',
+      );
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  /** Only the fields the user actually filled in; null when none were.
+   *  Plain computation, not a hook: everything below the `!open` early
+   *  return runs conditionally, and four string trims are free. */
+  const brandKitBody = ((): Record<string, string> | null => {
+    const kit: Record<string, string> = {};
+    if (logoUrl.trim()) kit.logoUrl = logoUrl.trim();
+    if (captionFont.trim()) kit.captionFont = captionFont.trim();
+    if (captionColor.trim()) kit.captionColor = captionColor.trim();
+    if (accentColor.trim()) kit.accentColor = accentColor.trim();
+    return Object.keys(kit).length > 0 ? kit : null;
+  })();
+
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
@@ -333,6 +396,9 @@ export function StyleWizardModal({
         enableMaps,
         enableAutoHeaders,
         overlayTheme,
+        // Omit the key entirely when nothing was filled in — writing `{}`
+        // would look like "a brand kit exists but is blank".
+        ...(brandKitBody ? { brandKitJson: brandKitBody } : {}),
       };
 
       const patchRes = await fetch(
@@ -352,6 +418,47 @@ export function StyleWizardModal({
       const patchData = (await patchRes.json()) as {
         style?: CreatedStyle;
       };
+
+      // 2b. Mint any characters the caller preselected (Characters library →
+      //     "Use in new project"). Sequential on purpose: each POST asks the
+      //     DGX to expand the brief into a full descriptor, and firing them in
+      //     parallel just queues on the same box. Best-effort, like references
+      //     below — a failed character is reported, never rolled back over.
+      if (initialCharacters && initialCharacters.length > 0) {
+        const failed: string[] = [];
+        for (const c of initialCharacters) {
+          try {
+            const charRes = await fetch(
+              `/api/vater/youtube/styles/${encodeURIComponent(
+                styleId,
+              )}/characters`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: c.name, brief: c.brief }),
+              },
+            );
+            if (!charRes.ok) {
+              const data = (await charRes.json().catch(() => ({}))) as {
+                error?: string;
+              };
+              failed.push(`${c.name}: ${data.error || `HTTP ${charRes.status}`}`);
+            }
+          } catch (charErr) {
+            failed.push(
+              `${c.name}: ${charErr instanceof Error ? charErr.message : 'network error'}`,
+            );
+          }
+        }
+        if (failed.length > 0) {
+          devError('[StyleWizardModal] character mint failed:', failed);
+          alert(
+            `Style created, but ${failed.length} character(s) didn't attach:\n${failed.join(
+              '\n',
+            )}\nYou can add them from the Styles page.`,
+          );
+        }
+      }
 
       // 3. Kick off reference transcribe (best-effort — surfaces alert on
       //    failure but doesn't roll back the style).
@@ -1219,6 +1326,196 @@ export function StyleWizardModal({
               </div>
             )}
           </div>
+
+          {/* ── Collapsible 5: Brand Kit ── */}
+          <div style={sectionStyle}>
+            <button
+              type="button"
+              style={sectionHeaderStyle}
+              onClick={() => setOpenBrand((v) => !v)}
+            >
+              <span>
+                Brand Kit{' '}
+                <span style={{ color: t.textSecondary, fontWeight: 400 }}>
+                  (optional)
+                </span>
+              </span>
+              <Icon
+                name={openBrand ? 'chevronDown' : 'chevronRight'}
+                size={16}
+                color={t.textSecondary}
+              />
+            </button>
+            {openBrand && (
+              <div style={sectionBodyStyle}>
+                <div style={{ fontSize: 11, color: t.textSecondary }}>
+                  Applied to every video made from this style. Leave a field
+                  empty to keep the default look.
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Logo</label>
+                  <input
+                    type="url"
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    placeholder="https://… (PNG with transparency works best)"
+                    style={inputStyle}
+                  />
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      marginTop: 6,
+                    }}
+                  >
+                    <label
+                      style={{
+                        fontSize: 12,
+                        color: JELLY_TOKENS.brand,
+                        cursor: logoUploading ? 'progress' : 'pointer',
+                      }}
+                    >
+                      {logoUploading ? 'Uploading…' : 'Upload a file instead'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={logoUploading}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void uploadLogo(file);
+                          // Let the same file be re-picked after a failure.
+                          e.target.value = '';
+                        }}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                    {logoUrl && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={logoUrl}
+                        alt="Brand logo preview"
+                        style={{
+                          height: 24,
+                          maxWidth: 120,
+                          objectFit: 'contain',
+                        }}
+                      />
+                    )}
+                  </div>
+                  {logoError && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: JELLY_TOKENS.error,
+                        marginTop: 4,
+                      }}
+                    >
+                      {logoError}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Caption font</label>
+                  <input
+                    type="text"
+                    value={captionFont}
+                    onChange={(e) => setCaptionFont(e.target.value)}
+                    placeholder="Inter, Montserrat, Space Grotesk…"
+                    style={inputStyle}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 12,
+                  }}
+                >
+                  <div>
+                    <label style={labelStyle}>Caption color</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        type="color"
+                        value={captionColor || '#FFFFFF'}
+                        onChange={(e) => setCaptionColor(e.target.value)}
+                        style={{
+                          width: 40,
+                          height: 34,
+                          padding: 2,
+                          border: `1px solid ${t.border}`,
+                          borderRadius: JELLY_TOKENS.radius.sm,
+                          background: t.card,
+                          cursor: 'pointer',
+                        }}
+                        aria-label="Caption color"
+                      />
+                      <input
+                        type="text"
+                        value={captionColor}
+                        onChange={(e) => setCaptionColor(e.target.value)}
+                        placeholder="#FFFFFF"
+                        style={{ ...inputStyle, flex: 1 }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Accent color</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        type="color"
+                        value={accentColor || '#8B5CF6'}
+                        onChange={(e) => setAccentColor(e.target.value)}
+                        style={{
+                          width: 40,
+                          height: 34,
+                          padding: 2,
+                          border: `1px solid ${t.border}`,
+                          borderRadius: JELLY_TOKENS.radius.sm,
+                          background: t.card,
+                          cursor: 'pointer',
+                        }}
+                        aria-label="Accent color"
+                      />
+                      <input
+                        type="text"
+                        value={accentColor}
+                        onChange={(e) => setAccentColor(e.target.value)}
+                        placeholder="#8B5CF6"
+                        style={{ ...inputStyle, flex: 1 }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Characters carried in from the Characters library. Shown so the
+              user knows what they're about to attach — the actual mint runs
+              on save. */}
+          {initialCharacters && initialCharacters.length > 0 && (
+            <div style={sectionStyle}>
+              <div style={{ ...sectionBodyStyle, paddingTop: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>
+                  Characters to attach
+                </div>
+                {initialCharacters.map((c) => (
+                  <div
+                    key={c.name}
+                    style={{ fontSize: 12, color: t.textSecondary }}
+                  >
+                    <strong style={{ color: t.text }}>{c.name}</strong> —{' '}
+                    {c.brief.slice(0, 120)}
+                    {c.brief.length > 120 ? '…' : ''}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

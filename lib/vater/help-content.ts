@@ -54,7 +54,7 @@ export interface HelpFaq {
 export const HELP_FAQ: readonly HelpFaq[] = [
   {
     q: "What does a finished video actually cost?",
-    a: "Only what you render — most long-form videos land between $1 and $7 all in, no subscription. Your receipt itemizes it: GPU time at our cost plus a flat $0.35 per finished minute — our 8:44 benchmark render cost $5.56. You see the itemised receipt while the render is still running, so there is never a number you find out about later.",
+    a: "Only what you render — most long-form videos of generated stills land between $1 and $7 all in, no subscription. Your receipt itemizes it: GPU time at our cost plus a flat $0.35 per finished minute — our 8:44 benchmark render cost $5.56. Adding generated motion over the scenes is a different product and costs meaningfully more per animated minute; the calculator on the landing page quotes both before you spend anything. You see the itemised receipt while the render is still running, so there is never a number you find out about later.",
   },
   {
     q: "Is there a subscription?",

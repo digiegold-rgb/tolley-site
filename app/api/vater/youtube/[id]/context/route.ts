@@ -33,13 +33,13 @@ import { buildStyleSnapshot } from "@/lib/vater/style-snapshot";
 import { auth } from "@/auth";
 import { canAccessProject } from "@/lib/vater/project-access";
 import { isVaterAdminEmail } from "@/lib/admin-auth";
-import { ownerFieldsForSession } from "@/lib/vater/owner-tier";
+import { ownerFieldsForSessionWithCap } from "@/lib/vater/owner-tier";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
+import { maxWordsFor } from "@/lib/vater/billing/script-cap";
 import {
-  BETA_LENGTH_MESSAGE,
-  BETA_MAX_WORDS,
   isBetaLengthRejection,
-  isOverBetaLength,
+  isOverLength,
+  lengthMessageFor,
   runtimeClock,
 } from "@/lib/vater/script-limits";
 
@@ -181,22 +181,23 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       ? Math.round(body.targetWordCount)
       : targetDuration * 150;
 
-  // Beta runtime cap (9:00). The DGX rejects an over-cap `scriptOverride` too,
-  // but its 400 lands after the project row has been flipped to "scripted" —
-  // catching it here keeps the project clean and the message ours. The owner
-  // is uncapped; `ownerFields` below carries the same decision to the DGX.
-  if (
-    scriptOverride &&
-    !isVaterAdminEmail(session.user.email) &&
-    isOverBetaLength(overrideWordCount)
-  ) {
+  // Runtime cap. The DGX rejects an over-cap `scriptOverride` too, but its 400
+  // lands after the project row has been flipped to "scripted" — catching it
+  // here keeps the project clean and the message ours.
+  //
+  // Tier-aware (lib/vater/billing/script-cap.ts): owner uncapped, purchased
+  // balance ~20:00, otherwise ~9:00. `ownerFieldsForSessionWithCap` below
+  // carries the SAME number to the DGX, so the two can't disagree.
+  const sessionMaxWords = await maxWordsFor(session.user.id, session.user.email);
+  if (scriptOverride && isOverLength(overrideWordCount, sessionMaxWords)) {
+    const message = lengthMessageFor(sessionMaxWords);
     return NextResponse.json(
       {
         error: "script_too_long",
-        message: BETA_LENGTH_MESSAGE,
-        detail: `That script is ${overrideWordCount.toLocaleString()} words (≈ ${runtimeClock(overrideWordCount)}). ${BETA_LENGTH_MESSAGE}`,
+        message,
+        detail: `That script is ${overrideWordCount.toLocaleString()} words (≈ ${runtimeClock(overrideWordCount)}). ${message}`,
         wordCount: overrideWordCount,
-        maxWords: BETA_MAX_WORDS,
+        maxWords: sessionMaxWords,
       },
       { status: 400 },
     );
@@ -431,10 +432,19 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       consistency,
       videoBackend: videoBackend as RunCreationInput["videoBackend"],
       style: styleWithAnim,
-      // Per-tenant fairness + script cap (content-autopilot 9cbe9a6).
-      ...ownerFieldsForSession(session, project.userId),
+      // Per-tenant fairness + script cap (content-autopilot 9cbe9a6). The
+      // cap is the account's real one, not the beta floor — see script-cap.ts.
+      ...(await ownerFieldsForSessionWithCap(session, project.userId)),
       ...(scriptOverride ? { scriptOverride } : {}),
       ...(body.stopAfterScript === true ? { stopAfterScript: true } : {}),
+      // Optional feature bag (jelly-feature-contract 2026-08-16). Sent
+      // verbatim: the worker ignores keys it doesn't implement, and a NULL
+      // column means the key is simply absent — i.e. today's behavior.
+      ...(updated.settingsJson &&
+      typeof updated.settingsJson === "object" &&
+      !Array.isArray(updated.settingsJson)
+        ? { features: updated.settingsJson as Record<string, unknown> }
+        : {}),
     });
 
     const withJob = await prisma.youTubeProject.update({
@@ -458,16 +468,17 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       err.status === 400 &&
       isBetaLengthRejection(err.body)
     ) {
+      const message = lengthMessageFor(sessionMaxWords);
       const overLong = await prisma.youTubeProject.update({
         where: { id },
-        data: { status: "failed", errorMessage: BETA_LENGTH_MESSAGE },
+        data: { status: "failed", errorMessage: message },
       });
       return NextResponse.json(
         {
           error: "script_too_long",
-          message: BETA_LENGTH_MESSAGE,
-          detail: BETA_LENGTH_MESSAGE,
-          maxWords: BETA_MAX_WORDS,
+          message,
+          detail: message,
+          maxWords: sessionMaxWords,
           project: overLong,
         },
         { status: 400 },

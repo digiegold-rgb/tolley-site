@@ -61,10 +61,46 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     "animUntilS",
     // Short-form promo (2026-08-09) — user-edited caption for cross-posting.
     "shortDescription",
+    // Thumbnail A/B (2026-08-16) — "Use this one" on a generated variant.
+    "thumbnailUrl",
   ];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
     if (body[key] !== undefined) data[key] = body[key];
+  }
+
+  // Feature settings (2026-08-16, jelly-feature-contract). `settings` is a
+  // PARTIAL patch: shallow-merge over the stored bag so two editor steps
+  // saving different keys in the same session don't clobber each other.
+  // Explicit null on a key deletes it (back to default behavior).
+  if (body.settings !== undefined) {
+    if (
+      body.settings === null ||
+      typeof body.settings !== "object" ||
+      Array.isArray(body.settings)
+    ) {
+      return NextResponse.json(
+        { error: "settings must be an object" },
+        { status: 400 },
+      );
+    }
+    const existing = await prisma.youTubeProject.findUnique({
+      where: { id },
+      select: { settingsJson: true },
+    });
+    const current =
+      existing?.settingsJson && typeof existing.settingsJson === "object" &&
+      !Array.isArray(existing.settingsJson)
+        ? (existing.settingsJson as Record<string, unknown>)
+        : {};
+    const merged: Record<string, unknown> = { ...current };
+    for (const [key, value] of Object.entries(
+      body.settings as Record<string, unknown>,
+    )) {
+      if (value === null) delete merged[key];
+      else merged[key] = value;
+    }
+    data.settingsJson = merged;
   }
 
   // `tags` is a scalar list — a non-array would 500 inside Prisma, so

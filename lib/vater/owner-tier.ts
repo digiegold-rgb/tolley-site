@@ -24,12 +24,16 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { isVaterAdminEmail } from "@/lib/admin-auth";
+import { scriptCapFor } from "./billing/script-cap";
 import { BETA_MAX_WORDS } from "./script-limits";
 
 export type OwnerTier = "owner" | "beta";
 
-/** Script length ceiling for non-owner renders. Owner is uncapped.
- *  Defined in `script-limits.ts` so the browser can quote the same number. */
+/** Script length ceiling for a non-owner render with no purchased credit.
+ *  Defined in `script-limits.ts` so the browser can quote the same number.
+ *  ⚠️ This is the FLOOR, not the answer: an account with purchased balance
+ *  renders up to PAID_MAX_WORDS. Use the async entry points below (or
+ *  lib/vater/billing/script-cap.ts directly) rather than this constant. */
 export const NON_OWNER_MAX_WORDS = BETA_MAX_WORDS;
 
 export interface OwnerFields {
@@ -61,6 +65,23 @@ export function ownerFieldsForSession(
 }
 
 /**
+ * The async form of `ownerFieldsForSession`, and the one any path that sends
+ * a SCRIPT to the DGX should use.
+ *
+ * `ownerFieldsForSession` cannot answer "how long a script may this account
+ * render" — that depends on their purchased balance, which is a query. The
+ * sync version stays for the callers that only need ownerId/ownerTier (the
+ * concurrency cap), so nothing that does not care pays for a DB round trip.
+ */
+export async function ownerFieldsForSessionWithCap(
+  session: { user?: { id?: string | null; email?: string | null } | null },
+  projectUserId?: string | null,
+): Promise<OwnerFields> {
+  const base = ownerFieldsForSession(session, projectUserId);
+  return withCap(base, session?.user?.email);
+}
+
+/**
  * For lib-side kickoffs that only have the project row (script-gate,
  * course-pipeline). A null `userId` is a legacy pre-multi-tenancy project,
  * which is the owner's by definition.
@@ -73,5 +94,26 @@ export async function ownerFieldsForProject(
     where: { id: projectUserId },
     select: { email: true },
   });
-  return build(projectUserId, user?.email);
+  return withCap(build(projectUserId, user?.email), user?.email);
+}
+
+/**
+ * Replace the placeholder beta cap with this account's real one.
+ *
+ * The owner keeps NO maxWords key at all (the DGX reads a missing cap as
+ * uncapped), so this only ever touches the non-owner branch.
+ */
+async function withCap(
+  fields: OwnerFields,
+  email: string | null | undefined,
+): Promise<OwnerFields> {
+  if (fields.ownerTier === "owner") return fields;
+  const cap = await scriptCapFor(fields.ownerId, email ?? null);
+  if (cap.maxWords === undefined) {
+    // Uncapped: the key must be ABSENT, not undefined — it is JSON.stringify'd
+    // into the run-creation body, and `maxWords: undefined` and no key at all
+    // happen to serialise the same but only one of them says so.
+    return { ownerId: fields.ownerId, ownerTier: fields.ownerTier };
+  }
+  return { ...fields, maxWords: cap.maxWords };
 }

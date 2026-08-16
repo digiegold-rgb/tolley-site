@@ -22,6 +22,7 @@
  */
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { readBrandKit, type FeatureBrandKit } from "./project-features";
 
 /** Display name of the locked style. The DB row is renamed to match. */
 export const LOCKED_STYLE_NAME = "Jeff Whitfield 3-D style";
@@ -36,6 +37,8 @@ export interface LockedStyle {
   artStylePresetId: string;
   customArtStyleName: string | null;
   characterNames: string[];
+  /** Brand kit on the locked row, when one is set. Null = default look. */
+  brandKit: FeatureBrandKit | null;
 }
 
 export async function resolveLockedStyle(
@@ -46,6 +49,7 @@ export async function resolveLockedStyle(
     name: true,
     voice: true,
     artStylePresetId: true,
+    brandKitJson: true,
     customArtStyle: { select: { name: true } },
     characters: { select: { name: true }, orderBy: { createdAt: "asc" } },
   } as const;
@@ -82,6 +86,7 @@ function shape(row: {
   name: string;
   voice: string;
   artStylePresetId: string;
+  brandKitJson: unknown;
   customArtStyle: { name: string } | null;
   characters: { name: string }[];
 }): LockedStyle {
@@ -92,5 +97,6 @@ function shape(row: {
     artStylePresetId: row.artStylePresetId,
     customArtStyleName: row.customArtStyle?.name ?? null,
     characterNames: row.characters.map((c) => c.name),
+    brandKit: readBrandKit(row.brandKitJson),
   };
 }

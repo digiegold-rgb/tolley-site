@@ -159,6 +159,109 @@ export async function stampUserInvite(userId: string, inviteId: string): Promise
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Referrals
+//
+// A referral code IS a beta invite — same table, same redemption path, same
+// single-use guard. The only difference is provenance: `createdBy` is the
+// referring USER (admin-minted codes carry an admin id or null) and `note` is
+// exactly REFERRAL_NOTE, which is how both directions of the lookup work.
+//
+// The $5 payout lives in lib/vater/billing/ledger.ts, not here: every ledger
+// write belongs to the ledger module, and keeping the money out of this file
+// is also what stops the two modules importing each other in a cycle.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Exact `note` marking a BetaInvite as a user's referral code. Matched on. */
+export const REFERRAL_NOTE = "referral";
+
+/** How many codes each user gets. Single-use each — scarcity is the point. */
+export const REFERRAL_CODES_PER_USER = 2;
+
+/**
+ * Make sure `userId` has their referral codes, minting only what is missing.
+ *
+ * Idempotent by counting first: called from the register route on every
+ * studio signup, and safe to call again from GET /api/vater/me/referrals for
+ * accounts that predate this feature (which is how existing beta testers get
+ * theirs without a backfill script).
+ *
+ * Best-effort by contract — the caller is mid-signup, and a missing
+ * BetaInvite table or a mint failure must never cost someone their account.
+ */
+export async function ensureReferralCodes(
+  userId: string,
+): Promise<BetaInviteRow[]> {
+  if (!userId) return [];
+  if (!(await hasBetaInviteTable())) return [];
+
+  try {
+    const existing = await listReferralCodes(userId);
+    const missing = REFERRAL_CODES_PER_USER - existing.length;
+    if (missing <= 0) return existing;
+
+    const minted = await mintInvites({
+      count: missing,
+      maxUses: 1,
+      note: REFERRAL_NOTE,
+      createdBy: userId,
+    });
+    return [...existing, ...minted];
+  } catch (err) {
+    if (isMissingRelationError(err)) return [];
+    console.error("[beta-invites] ensureReferralCodes failed", { userId, err });
+    return [];
+  }
+}
+
+/** This user's own referral codes, oldest first (stable link order). */
+export async function listReferralCodes(userId: string): Promise<BetaInviteRow[]> {
+  if (!userId) return [];
+  if (!(await hasBetaInviteTable())) return [];
+  try {
+    return await prisma.$queryRaw<BetaInviteRow[]>`
+      SELECT "id", "code", "email", "maxUses", "usedCount", "expiresAt",
+             "createdBy", "note", "createdAt"
+      FROM "BetaInvite"
+      WHERE "createdBy" = ${userId} AND "note" = ${REFERRAL_NOTE}
+      ORDER BY "createdAt" ASC
+    `;
+  } catch (err) {
+    if (isMissingRelationError(err)) return [];
+    throw err;
+  }
+}
+
+/**
+ * Who referred `userId`, or null.
+ *
+ * Follows User.betaInviteId → BetaInvite.createdBy, and only counts it as a
+ * referral when the code was minted as one. An admin-minted invite has a
+ * `createdBy` too (the admin who minted it) and must never pay a bonus.
+ *
+ * Returns null rather than throwing on any missing column/table: this is read
+ * from the billing path, where a schema gap must degrade to "no referrer"
+ * instead of failing a charge.
+ */
+export async function referrerForUser(userId: string): Promise<string | null> {
+  if (!userId) return null;
+  if (!(await hasBetaInviteTable())) return null;
+  try {
+    const rows = await prisma.$queryRaw<Array<{ createdBy: string | null }>>`
+      SELECT i."createdBy"
+      FROM "User" u
+      JOIN "BetaInvite" i ON i."id" = u."betaInviteId"
+      WHERE u."id" = ${userId} AND i."note" = ${REFERRAL_NOTE}
+      LIMIT 1
+    `;
+    return rows[0]?.createdBy ?? null;
+  } catch (err) {
+    if (isMissingRelationError(err)) return null;
+    console.error("[beta-invites] referrerForUser failed", { userId, err });
+    return null;
+  }
+}
+
 /** Newest invites first, for the admin list + the /hq card. */
 export async function listInvites(limit = 100): Promise<BetaInviteRow[]> {
   if (!(await hasBetaInviteTable())) return [];

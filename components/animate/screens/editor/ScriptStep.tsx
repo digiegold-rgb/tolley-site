@@ -24,7 +24,16 @@ import * as React from 'react';
 import { JELLY_TOKENS, SECTION_PRICES } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { Icon } from '../../Icon';
-import { VBtn, VCard, VInput, SectionHeader } from '../../primitives';
+import { VBtn, VCard, VInput, SectionHeader, Toast } from '../../primitives';
+import {
+  readFeatures,
+  FEATURE_LANGUAGES,
+} from '@/lib/vater/project-features';
+import {
+  featureFetch,
+  FeatureUnavailableError,
+  COMING_ONLINE,
+} from './feature-fetch';
 import { YouTubeScriptEditor } from '@/components/vater/youtube-script-editor';
 import { YouTubeCreatorModelPicker } from '@/components/vater/youtube-creator-model-picker';
 import type {
@@ -72,6 +81,34 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
   const pastedWordCount = React.useMemo(
     () => pastedScript.trim().split(/\s+/).filter(Boolean).length,
     [pastedScript],
+  );
+
+  /* ── URL / PDF intake (2026-08-16) ────────────────────────────────────
+   * Pulls an article, PDF or YouTube transcript into the reference box so
+   * the writer has source material instead of just a title. The DGX handles
+   * all three; the site falls back to an HTML readability pass. */
+  const [importUrl, setImportUrl] = React.useState('');
+  const [importing, setImporting] = React.useState(false);
+  const [importError, setImportError] = React.useState<string | null>(null);
+  const [importOff, setImportOff] = React.useState(false);
+  const [toast, setToast] = React.useState<string | null>(null);
+
+  /* ── Translation (2026-08-16) ─────────────────────────────────────────
+   * Target language lives in the feature bag and is picked in the Voiceover
+   * step — one setting drives both the script and the TTS path. */
+  const [translating, setTranslating] = React.useState(false);
+  const [translateError, setTranslateError] = React.useState<string | null>(null);
+  const [translateOff, setTranslateOff] = React.useState(false);
+
+  const features = React.useMemo(
+    () => readFeatures(project?.settingsJson),
+    [project?.settingsJson],
+  );
+  const targetLanguage = features.language;
+  const targetLanguageLabel = React.useMemo(
+    () =>
+      FEATURE_LANGUAGES.find((l) => l.code === targetLanguage)?.label ?? null,
+    [targetLanguage],
   );
 
   // Hydrate from project on load
@@ -201,6 +238,96 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
     setAnimDirection(sceneSummaryFromProject);
     setAnimDirty(sceneSummaryFromProject !== lastSavedAnim.current);
   }, [sceneSummaryFromProject]);
+
+  const handleImportUrl = React.useCallback(async () => {
+    const url = importUrl.trim();
+    if (!url) {
+      setImportError('Paste a link first.');
+      return;
+    }
+    setImporting(true);
+    setImportError(null);
+    try {
+      const data = await featureFetch<{
+        title?: string;
+        text?: string;
+        source?: string;
+      }>('/api/vater/script/from-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const text = (data.text ?? '').trim();
+      if (!text) {
+        setImportError('Nothing readable came back from that link.');
+        return;
+      }
+      // Reference material, not the script itself — the writer works from it.
+      const header = `Source: ${data.source ?? url}\n\n`;
+      const clipped = text.length > 8000 ? `${text.slice(0, 8000)}…` : text;
+      setExtraContext((prev) =>
+        prev.trim() ? `${prev.trim()}\n\n---\n\n${header}${clipped}` : header + clipped,
+      );
+      if (!title.trim() && data.title) setTitle(data.title.slice(0, 100));
+      setShowOptions(true);
+      setImportUrl('');
+      setToast(
+        `Pulled ${text.split(/\s+/).filter(Boolean).length} words into Additional Context.`,
+      );
+    } catch (err) {
+      if (err instanceof FeatureUnavailableError) {
+        setImportOff(true);
+        setToast(err.message || COMING_ONLINE);
+      } else {
+        setImportError(err instanceof Error ? err.message : 'Import failed');
+      }
+    } finally {
+      setImporting(false);
+    }
+  }, [importUrl, title]);
+
+  const handleTranslate = React.useCallback(async () => {
+    if (!projectId || !project?.script || !targetLanguage) return;
+    setTranslating(true);
+    setTranslateError(null);
+    try {
+      const data = await featureFetch<{ text?: string }>(
+        '/api/vater/script/translate',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: project.script,
+            targetLanguage,
+          }),
+        },
+      );
+      const next = (data.text ?? '').trim();
+      if (!next) {
+        setTranslateError('Translation came back empty.');
+        return;
+      }
+      // Saved through the normal script path so it lands in scriptVersions
+      // and the original stays one revert away.
+      await handleScriptSave(next);
+      setToast(`Script translated to ${targetLanguageLabel ?? targetLanguage}.`);
+    } catch (err) {
+      if (err instanceof FeatureUnavailableError) {
+        setTranslateOff(true);
+        setToast(err.message || COMING_ONLINE);
+      } else {
+        setTranslateError(err instanceof Error ? err.message : 'Translate failed');
+      }
+    } finally {
+      setTranslating(false);
+    }
+  }, [
+    projectId,
+    project?.script,
+    targetLanguage,
+    targetLanguageLabel,
+    handleScriptSave,
+  ]);
 
   const handleSubmitOwnScript = React.useCallback(async () => {
     if (!projectId) {
@@ -396,6 +523,85 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
               helper={`${title.length} / 100 characters`}
               maxLength={100}
             />
+
+            {/* From a link or PDF — drops source material into Additional
+                Context so the writer isn't working from a title alone. */}
+            <div
+              style={{
+                marginTop: 12,
+                padding: 12,
+                borderRadius: JELLY_TOKENS.radius.md,
+                border: `1px solid ${t.border}`,
+                background: t.cardAlt,
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  marginBottom: 8,
+                }}
+              >
+                <Icon name="web" size={16} color={t.textSecondary} />
+                <span style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
+                  From a link or PDF
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <VInput
+                    value={importUrl}
+                    onChange={(v) => {
+                      setImportUrl(v);
+                      if (importError) setImportError(null);
+                    }}
+                    placeholder="https://example.com/article  •  …/paper.pdf  •  a YouTube link"
+                  />
+                </div>
+                <div
+                  title={importOff ? COMING_ONLINE : 'Pull the text into Additional Context'}
+                  style={{ flexShrink: 0 }}
+                >
+                  <VBtn
+                    size="sm"
+                    variant="outlined"
+                    icon="download"
+                    onClick={handleImportUrl}
+                    disabled={importing || importOff || !importUrl.trim()}
+                    data-testid="script-import-url"
+                  >
+                    {importing ? 'Reading…' : 'Import'}
+                  </VBtn>
+                </div>
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: t.textSecondary,
+                  marginTop: 6,
+                  lineHeight: 1.4,
+                }}
+              >
+                {importOff
+                  ? COMING_ONLINE
+                  : 'Articles, PDFs and YouTube transcripts land in Additional Context as reference — they don’t replace your script.'}
+              </div>
+              {importError && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: '8px 12px',
+                    borderRadius: JELLY_TOKENS.radius.md,
+                    background: 'rgba(220,38,38,0.08)',
+                    color: JELLY_TOKENS.error,
+                    fontSize: 12,
+                  }}
+                >
+                  {importError}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -683,7 +889,36 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
                 The exact words F5-TTS will read aloud for the voiceover.
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {/* Translate — target language is the project's `language`
+                  feature, picked in the Voiceover step so the script and the
+                  TTS path can never disagree. */}
+              <div
+                title={
+                  translateOff
+                    ? COMING_ONLINE
+                    : targetLanguage && targetLanguage !== 'en'
+                      ? `Rewrite the narration in ${targetLanguageLabel}`
+                      : 'Pick a language in the Voiceover step first'
+                }
+              >
+                <VBtn
+                  size="sm"
+                  variant="outlined"
+                  onClick={handleTranslate}
+                  disabled={
+                    translating ||
+                    translateOff ||
+                    !targetLanguage ||
+                    targetLanguage === 'en'
+                  }
+                  data-testid="script-translate"
+                >
+                  {translating
+                    ? 'Translating…'
+                    : `Translate script${targetLanguageLabel && targetLanguage !== 'en' ? ` → ${targetLanguageLabel}` : ' →'}`}
+                </VBtn>
+              </div>
               <div
                 style={{ cursor: 'pointer', padding: 6 }}
                 onClick={() => {
@@ -697,6 +932,21 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
               </div>
             </div>
           </div>
+
+          {translateError && (
+            <div
+              style={{
+                marginBottom: 12,
+                padding: '8px 12px',
+                borderRadius: JELLY_TOKENS.radius.md,
+                background: 'rgba(220,38,38,0.08)',
+                color: JELLY_TOKENS.error,
+                fontSize: 12,
+              }}
+            >
+              {translateError}
+            </div>
+          )}
 
           <YouTubeScriptEditor
             script={project.script}
@@ -739,6 +989,7 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
         reason={billingBlock}
         onClose={() => setBillingBlock(null)}
       />
+      {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
     </div>
   );
 }

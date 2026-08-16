@@ -56,6 +56,16 @@ import type {
   AnimationQuality,
   SceneSpec,
 } from '@/lib/vater/video-spec';
+import {
+  CAMERA_DEFAULTS,
+  CAPTION_PRESETS,
+  MAX_TRANSITION_SEC,
+  readFeatures,
+  saveFeatures,
+  type CameraMove,
+  type CaptionPreset,
+  type ProjectFeatures,
+} from '@/lib/vater/project-features';
 import type { EditorStepProps } from './ProjectShell';
 import {
   BillingBlockModal,
@@ -126,7 +136,39 @@ type ParsedScene = Pick<
   | 'mediaType'
   | 'animate'
   | 'animQuality'
->;
+> & {
+  /** Per-scene camera override (contract: scenesJson[i].camera). Undefined
+   *  means "inherit features.cameraDefault". */
+  camera?: CameraMove;
+  /** What the planner decided to overlay on this beat, if anything. Read
+   *  from the contract's `overlay` key, falling back to the flags the
+   *  existing /scene/overlay route writes (isChart / isMap / isHeader). */
+  overlay?: 'chart' | 'map' | 'header';
+};
+
+/** Read the planner's overlay marking off a raw scene record. */
+function parseOverlay(o: Record<string, unknown>): ParsedScene['overlay'] {
+  const raw =
+    typeof o.overlay === 'string'
+      ? o.overlay
+      : typeof (o.overlay as { type?: unknown } | undefined)?.type === 'string'
+        ? ((o.overlay as { type: string }).type)
+        : null;
+  if (raw === 'chart' || raw === 'map' || raw === 'header') return raw;
+  if (o.isChart === true) return 'chart';
+  if (o.isMap === true) return 'map';
+  if (o.isHeader === true) return 'header';
+  return undefined;
+}
+
+const OVERLAY_BADGES: Record<
+  NonNullable<ParsedScene['overlay']>,
+  { label: string; color: string }
+> = {
+  chart: { label: '📊 Chart', color: '#0EA5E9' },
+  map: { label: '🗺️ Map', color: '#16A34A' },
+  header: { label: '🔤 Section header', color: '#F59E0B' },
+};
 
 function parseScenes(raw: unknown): ParsedScene[] {
   if (!Array.isArray(raw)) return [];
@@ -149,9 +191,81 @@ function parseScenes(raw: unknown): ParsedScene[] {
           typeof o.animQuality === 'string'
             ? (o.animQuality as AnimationQuality)
             : undefined,
+        camera:
+          typeof o.camera === 'string' ? (o.camera as CameraMove) : undefined,
+        overlay: parseOverlay(o),
       };
     })
     .filter((s): s is ParsedScene => s !== null);
+}
+
+/* ─── Render estimate ─────────────────────────────────────────────────────
+ * GET /api/vater/youtube/[id]/estimate → { draftUsd, fullUsd, breakdown }.
+ * That route is lane-billing's; until it exists (or while the DGX side is
+ * still being built) it answers 404/501 and we show "est. —" rather than an
+ * error. Pure math on the server — polling it never spends anything.
+ */
+interface RenderEstimate {
+  draftUsd: number | null;
+  fullUsd: number | null;
+  /** True while the first fetch is in flight — the caller shows "est. …". */
+  loading: boolean;
+}
+
+function useRenderEstimate(projectId: string | null): RenderEstimate {
+  const [state, setState] = React.useState<RenderEstimate>({
+    draftUsd: null,
+    fullUsd: null,
+    loading: !!projectId,
+  });
+
+  React.useEffect(() => {
+    if (!projectId) {
+      setState({ draftUsd: null, fullUsd: null, loading: false });
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/vater/youtube/${projectId}/estimate`,
+          { cache: 'no-store' },
+        );
+        if (!res.ok) {
+          if (!cancelled) {
+            setState({ draftUsd: null, fullUsd: null, loading: false });
+          }
+          return;
+        }
+        const data = (await res.json()) as {
+          draftUsd?: number;
+          fullUsd?: number;
+        };
+        if (cancelled) return;
+        setState({
+          draftUsd: typeof data.draftUsd === 'number' ? data.draftUsd : null,
+          fullUsd: typeof data.fullUsd === 'number' ? data.fullUsd : null,
+          loading: false,
+        });
+      } catch {
+        if (!cancelled) {
+          setState({ draftUsd: null, fullUsd: null, loading: false });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  return state;
+}
+
+/** "$1.85" / "—" for a maybe-missing dollar figure. */
+function fmtUsd(usd: number | null, loading: boolean): string {
+  if (loading) return '…';
+  if (usd === null) return '—';
+  return `$${usd.toFixed(2)}`;
 }
 
 function fmtDur(seconds: number): string {
@@ -168,7 +282,6 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
   const [visualType, setVisualType] = React.useState<number>(1);
   const [stylePreset, setStylePreset] = React.useState<StylePresetId>(DEFAULT_STYLE_PRESET);
   const [styleDocId, setStyleDocId] = React.useState<string | null>(null);
-  const [smartOverlays, setSmartOverlays] = React.useState(true);
   const [cloudRental, setCloudRental] = React.useState<CloudOption['key']>('dgx');
   const [consistency, setConsistency] = React.useState(true);
   const [animQuality, setAnimQuality] = React.useState<AnimationQuality>('modal-wan22-narrative');
@@ -198,6 +311,77 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
     (acc, s) => Math.max(acc, s.endS),
     project?.audioDuration ?? 0,
   );
+
+  // ─── Feature bag (2026-08-16 contract) ────────────────────────────────
+  // Server state is the source of truth; `pending` holds the key the user
+  // just clicked so the control reflects the change before `refresh()`
+  // round-trips. Every write is a PARTIAL patch — the PATCH route shallow-
+  // merges, so writing `overlays` here can't wipe the Script step's
+  // `language`.
+  const saved = React.useMemo(
+    () => readFeatures(project?.settingsJson),
+    [project?.settingsJson],
+  );
+  const [pending, setPending] = React.useState<ProjectFeatures>({});
+  const [featureError, setFeatureError] = React.useState<string | null>(null);
+  const features: ProjectFeatures = React.useMemo(
+    () => ({ ...saved, ...pending }),
+    [saved, pending],
+  );
+
+  // Drop optimistic keys once the server echoes them back.
+  React.useEffect(() => {
+    setPending((prev) => {
+      const next: ProjectFeatures = {};
+      let changed = false;
+      for (const [k, v] of Object.entries(prev)) {
+        const server = (saved as Record<string, unknown>)[k];
+        if (JSON.stringify(server) === JSON.stringify(v)) changed = true;
+        else (next as Record<string, unknown>)[k] = v;
+      }
+      return changed ? next : prev;
+    });
+  }, [saved]);
+
+  const patchFeatures = React.useCallback(
+    async (patch: ProjectFeatures) => {
+      if (!projectId) return;
+      setPending((prev) => ({ ...prev, ...patch }));
+      setFeatureError(null);
+      try {
+        await saveFeatures(projectId, patch as Record<string, unknown>);
+        await refresh();
+      } catch (err) {
+        // Roll the optimistic value back — a control that stays flipped
+        // after a failed save is a lie about what will render.
+        setPending((prev) => {
+          const next = { ...prev };
+          for (const k of Object.keys(patch)) {
+            delete (next as Record<string, unknown>)[k];
+          }
+          return next;
+        });
+        setFeatureError(
+          err instanceof Error ? err.message : 'Could not save that setting',
+        );
+      }
+    },
+    [projectId, refresh],
+  );
+
+  const captionPreset: CaptionPreset = features.captionPreset ?? 'clean';
+  const cameraDefault: CameraMove = features.cameraDefault ?? 'alternate';
+  const transitionSec = features.transitionSec ?? 0;
+  const overlays = features.overlays ?? {};
+
+  // Live cost estimate for the motion pass. Lane-billing is building
+  // `useRenderEstimate` in lib/vater/use-estimate.ts against the same route;
+  // when it lands, delete this hook and import theirs — the shape is the same.
+  const estimate = useRenderEstimate(projectId);
+  const motionEstimate =
+    estimate.fullUsd !== null && estimate.draftUsd !== null
+      ? Math.max(0, estimate.fullUsd - estimate.draftUsd)
+      : null;
 
   // ─── Actions ──────────────────────────────────────────────────────────
 
@@ -244,10 +428,46 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
     [],
   );
 
+  /** Per-scene camera override. Merges server-side by sceneIdx (risk #1). */
+  const setSceneCamera = React.useCallback(
+    async (sceneIdx: number, camera: CameraMove | null) => {
+      if (!projectId) return;
+      setFeatureError(null);
+      try {
+        const res = await fetch(
+          `/api/vater/youtube/${projectId}/scene/camera`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sceneIdx, camera }),
+          },
+        );
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw new Error(data.error || `HTTP ${res.status}`);
+        }
+        await refresh();
+      } catch (err) {
+        setFeatureError(
+          err instanceof Error ? err.message : 'Could not set the camera move',
+        );
+      }
+    },
+    [projectId, refresh],
+  );
+
+  /* Stills draft is the DEFAULT render: it plans the scenes and renders one
+   * still per beat, with no i2v spend at all. Motion is a second, explicitly
+   * priced click (see requestAddMotion). */
   const handleGeneratePrompts = React.useCallback(async () => {
     if (!projectId) return;
     setGenerating(true);
     setActionError(null);
+    // Record the intent before kickoff so a tab close mid-render still leaves
+    // the project marked as a stills draft.
+    void patchFeatures({ motionMode: 'draft' });
     try {
       // Re-runs the context phase which produces scenes. Per risk #1, the
       // route's poll handler merges scenes per-idx so existing UI fields
@@ -278,7 +498,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
     } finally {
       setGenerating(false);
     }
-  }, [projectId, stylePreset, styleDocId, musicId, musicVolume, consistency, animQuality, cloudRental, refresh, describeGenerationError]);
+  }, [projectId, stylePreset, styleDocId, musicId, musicVolume, consistency, animQuality, cloudRental, refresh, describeGenerationError, patchFeatures]);
 
   /** Executes the batch animation after the user confirms the price.
    *  sceneIdxs null = whole project (animate-all default path); a list forces
@@ -318,9 +538,13 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
 
   // The batch buttons open the price-confirm modal; runBatchAnimate fires on
   // Confirm. Per-clip price comes from the selected quality tier.
-  const requestAnimateAll = React.useCallback(() => {
+  /** "Add motion" — the second, explicitly-priced pass over a stills draft.
+   *  Flips motionMode to "full" so the estimate + any re-render agree with
+   *  what the user just bought, then opens the price confirmation. */
+  const requestAddMotion = React.useCallback(() => {
+    void patchFeatures({ motionMode: 'full' });
     setConfirmAnimate({ sceneIdxs: null, count: scenes.length });
-  }, [scenes.length]);
+  }, [scenes.length, patchFeatures]);
 
   const requestAnimateSelected = React.useCallback(() => {
     const ids = Array.from(selectedScenes).sort((a, b) => a - b);
@@ -506,6 +730,21 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
                       <span style={{ fontSize: 11, color: t.textSecondary }}>
                         • {dur.toFixed(1)}s
                       </span>
+                      {sc.overlay && (
+                        <span
+                          title="The planner marked this beat for an overlay"
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            color: OVERLAY_BADGES[sc.overlay].color,
+                            border: `1px solid ${OVERLAY_BADGES[sc.overlay].color}`,
+                          }}
+                        >
+                          {OVERLAY_BADGES[sc.overlay].label}
+                        </span>
+                      )}
                     </div>
                     <div
                       style={{
@@ -559,6 +798,53 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
                       <Icon name="image" size={14} color={t.textSecondary} />
                       <Icon name="play" size={14} color={t.textSecondary} />
                       <Icon name="sparkle" size={14} color={t.textSecondary} />
+                      {/* Per-scene camera. Empty value = inherit the project
+                          default, which is what the label spells out so
+                          nobody has to guess what "Auto" means here. */}
+                      <label
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        <span>Camera:</span>
+                        <select
+                          value={sc.camera ?? ''}
+                          onChange={(e) =>
+                            void setSceneCamera(
+                              sc.idx,
+                              e.target.value
+                                ? (e.target.value as CameraMove)
+                                : null,
+                            )
+                          }
+                          style={{
+                            padding: '2px 6px',
+                            borderRadius: JELLY_TOKENS.radius.sm,
+                            border: `1px solid ${t.border}`,
+                            background: t.card,
+                            color: t.text,
+                            fontSize: 11,
+                            fontFamily: JELLY_TOKENS.font,
+                          }}
+                          aria-label={`Camera move for scene ${sc.idx + 1}`}
+                        >
+                          <option value="">
+                            Default (
+                            {CAMERA_DEFAULTS.find((c) => c.id === cameraDefault)
+                              ?.label ?? 'Auto'}
+                            )
+                          </option>
+                          {CAMERA_DEFAULTS.filter((c) => c.id !== 'alternate').map(
+                            (c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.label}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      </label>
                     </div>
                   </div>
 
@@ -605,6 +891,21 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
             }}
           >
             {actionError}
+          </div>
+        )}
+
+        {featureError && (
+          <div
+            style={{
+              marginTop: 12,
+              padding: '8px 12px',
+              fontSize: 13,
+              borderRadius: JELLY_TOKENS.radius.md,
+              background: 'rgba(220,38,38,0.08)',
+              color: JELLY_TOKENS.error,
+            }}
+          >
+            {featureError}
           </div>
         )}
 
@@ -699,14 +1000,21 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
                 ? 'Animating…'
                 : `Animate Selected (${selectedScenes.size})`}
             </VBtn>
-            <VBtn
-              size="sm"
-              onClick={requestAnimateAll}
-              disabled={animating || scenes.length === 0}
-              style={{ background: '#9C27B0' }}
-            >
-              {animating ? 'Animating…' : 'Animate All Images'}
-            </VBtn>
+            {/* Stills exist → motion becomes an explicit, priced second
+                step. The estimate is the DELTA over the draft, because the
+                draft is already paid for by the time this button shows. */}
+            <span title="Turns every still into a short animated clip">
+              <VBtn
+                size="sm"
+                onClick={requestAddMotion}
+                disabled={animating || scenes.length === 0}
+                style={{ background: '#9C27B0' }}
+              >
+                {animating
+                  ? 'Animating…'
+                  : `Add motion — est. ${fmtUsd(motionEstimate, estimate.loading)}`}
+              </VBtn>
+            </span>
             <VBtn size="sm" variant="outlined" icon="download">
               Download All Images
             </VBtn>
@@ -1126,48 +1434,187 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
         <YouTubeStylePicker value={stylePreset} onChange={setStylePreset} />
       </VCard>
 
-      {/* Smart Overlays toggle */}
+      {/* Captions — 6 burned-in looks, each with a live swatch so the choice
+          is made by eye instead of by name. */}
       <VCard style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <Icon name="description" size={16} color={t.textSecondary} />
+          <span style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
+            Captions
+          </span>
+        </div>
+        <div style={{ fontSize: 12, color: t.textSecondary, marginBottom: 12 }}>
+          Burned into the video — pick the look before you render.
+        </div>
         <div
           style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: 8,
+          }}
+        >
+          {CAPTION_PRESETS.map((p) => {
+            const active = captionPreset === p.id;
+            return (
+              <div
+                key={p.id}
+                onClick={() => void patchFeatures({ captionPreset: p.id })}
+                role="radio"
+                aria-checked={active}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    void patchFeatures({ captionPreset: p.id });
+                  }
+                }}
+                style={{
+                  padding: 10,
+                  borderRadius: JELLY_TOKENS.radius.md,
+                  cursor: 'pointer',
+                  border: active
+                    ? `2px solid ${JELLY_TOKENS.brand}`
+                    : `1px solid ${t.border}`,
+                  background: active ? JELLY_TOKENS.brandGhost : 'transparent',
+                }}
+              >
+                <CaptionSwatch preset={p.id} />
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: t.text,
+                    marginTop: 6,
+                  }}
+                >
+                  {p.label}
+                </div>
+                <div style={{ fontSize: 11, color: t.textSecondary }}>
+                  {p.note}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </VCard>
+
+      {/* Smart Overlays — three independent opt-ins. Off by default: the
+          planner only injects an overlay for a beat that asked for one. */}
+      <VCard style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Icon name="sparkle" size={16} color={t.textSecondary} />
+          <span style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
+            Smart Overlays
+          </span>
+        </div>
+        <div style={{ fontSize: 12, color: t.textSecondary, marginTop: 2, marginBottom: 12 }}>
+          Let the planner turn qualifying beats into a chart, a map, or a
+          section title card instead of a plain image.
+        </div>
+        <FeatureToggle
+          label="Charts"
+          hint="Numbers in the script become an animated bar/line chart"
+          value={overlays.charts === true}
+          onChange={(v) =>
+            void patchFeatures({ overlays: { ...overlays, charts: v } })
+          }
+        />
+        <FeatureToggle
+          label="Maps"
+          hint="Place names become a highlighted map beat"
+          value={overlays.maps === true}
+          onChange={(v) =>
+            void patchFeatures({ overlays: { ...overlays, maps: v } })
+          }
+        />
+        <FeatureToggle
+          label="Section headers"
+          hint="Chapter breaks become a full-screen title card"
+          value={overlays.headers === true}
+          onChange={(v) =>
+            void patchFeatures({ overlays: { ...overlays, headers: v } })
+          }
+        />
+      </VCard>
+
+      {/* Camera + transitions */}
+      <VCard style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <Icon name="play" size={16} color={t.textSecondary} />
+          <span style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
+            Camera &amp; transitions
+          </span>
+        </div>
+        <div style={{ fontSize: 12, color: t.textSecondary, marginBottom: 12 }}>
+          Applies to every scene. Override individual scenes from the prompts
+          view.
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: 12,
           }}
         >
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Icon name="sparkle" size={16} color={t.textSecondary} />
-              <span style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
-                Smart Overlays
-              </span>
+            <div style={{ fontSize: 12, color: t.textSecondary, marginBottom: 4 }}>
+              Default camera move
             </div>
-            <div style={{ fontSize: 12, color: t.textSecondary, marginTop: 2 }}>
-              Auto-detect chart / map / header beats and overlay them
-            </div>
-          </div>
-          <div
-            onClick={() => setSmartOverlays((v) => !v)}
-            style={{
-              width: 40,
-              height: 22,
-              borderRadius: 11,
-              cursor: 'pointer',
-              padding: 2,
-              background: smartOverlays ? JELLY_TOKENS.brand : t.border,
-              transition: 'background .2s',
-            }}
-          >
-            <div
+            <select
+              value={cameraDefault}
+              onChange={(e) =>
+                void patchFeatures({
+                  cameraDefault: e.target.value as CameraMove,
+                })
+              }
               style={{
-                width: 18,
-                height: 18,
-                borderRadius: '50%',
-                background: '#fff',
-                transform: smartOverlays ? 'translateX(18px)' : 'translateX(0)',
-                transition: 'transform .2s',
+                width: '100%',
+                padding: '8px 10px',
+                borderRadius: JELLY_TOKENS.radius.md,
+                border: `1px solid ${t.border}`,
+                background: t.card,
+                color: t.text,
+                fontSize: 13,
+                fontFamily: JELLY_TOKENS.font,
               }}
-            />
+            >
+              {CAMERA_DEFAULTS.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.id === 'alternate' ? 'Auto — alternate per scene' : c.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: t.textSecondary, marginBottom: 4 }}>
+              Transitions
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {TRANSITION_OPTIONS.map((opt) => {
+                const active = transitionSec === opt.sec;
+                return (
+                  <div
+                    key={opt.sec}
+                    onClick={() => void patchFeatures({ transitionSec: opt.sec })}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: JELLY_TOKENS.radius.md,
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      color: t.text,
+                      border: active
+                        ? `2px solid ${JELLY_TOKENS.brand}`
+                        : `1px solid ${t.border}`,
+                      background: active
+                        ? JELLY_TOKENS.brandGhost
+                        : 'transparent',
+                    }}
+                  >
+                    {opt.label}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </VCard>
@@ -1195,7 +1642,9 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
         </div>
       </VCard>
 
-      {/* Generate N Prompts */}
+      {/* Primary CTA — stills draft. This is the cheap default: it plans the
+          scenes and renders one still per beat, with no animation spend.
+          Motion is a separate, priced button in the prompts view. */}
       <VBtn
         onClick={handleGeneratePrompts}
         disabled={generating}
@@ -1203,11 +1652,25 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
         icon="sparkle"
       >
         {generating
-          ? 'Generating…'
+          ? 'Rendering stills…'
           : scenes.length > 0
-            ? `Regenerate ${scenes.length} Prompts`
-            : 'Generate Prompts'}
+            ? `Re-render ${scenes.length} stills`
+            : 'Render stills draft'}
       </VBtn>
+      <div
+        style={{
+          fontSize: 12,
+          color: t.textSecondary,
+          textAlign: 'center',
+          marginTop: 8,
+        }}
+      >
+        Stills only — no animation spend
+        {estimate.draftUsd !== null || estimate.loading
+          ? ` (est. ${fmtUsd(estimate.draftUsd, estimate.loading)})`
+          : ''}
+        . Add motion afterwards from the prompts view.
+      </div>
 
       {/* Cloud Rental */}
       <VCard style={{ marginTop: 16 }}>
@@ -1360,6 +1823,20 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
           {actionError}
         </div>
       )}
+      {featureError && (
+        <div
+          style={{
+            marginTop: 12,
+            padding: '8px 12px',
+            fontSize: 13,
+            borderRadius: JELLY_TOKENS.radius.md,
+            background: 'rgba(220,38,38,0.08)',
+            color: JELLY_TOKENS.error,
+          }}
+        >
+          {featureError}
+        </div>
+      )}
       <PromptReviewModal
         open={reviewOpen}
         onClose={() => setReviewOpen(false)}
@@ -1368,6 +1845,176 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
         onComplete={refresh}
       />
       <BillingBlockModal reason={billingBlock} onClose={() => setBillingBlock(null)} />
+    </div>
+  );
+}
+
+/* ─── Feature controls ────────────────────────────────────────────────────*/
+
+/** Transitions offered in the UI. 0 = hard cuts, today's behavior. Anything
+ *  above MAX_TRANSITION_SEC is clamped by the parser, so keep these in range. */
+const TRANSITION_OPTIONS: ReadonlyArray<{ sec: number; label: string }> = [
+  { sec: 0, label: 'Hard cuts' },
+  { sec: 0.5, label: 'Crossfade 0.5s' },
+  { sec: 1, label: 'Crossfade 1s' },
+].filter((o) => o.sec <= MAX_TRANSITION_SEC);
+
+interface FeatureToggleProps {
+  label: string;
+  hint: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+}
+
+/** Label + one-line hint + a switch, matching the switches already used on
+ *  this screen (Scene Consistency, Cloud Rental). */
+function FeatureToggle({
+  label,
+  hint,
+  value,
+  onChange,
+}: FeatureToggleProps): React.ReactElement {
+  const { t } = useTheme();
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 12,
+        padding: '8px 0',
+        borderTop: `1px solid ${t.border}`,
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: t.text }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 11, color: t.textSecondary }}>{hint}</div>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={value}
+        aria-label={label}
+        onClick={() => onChange(!value)}
+        style={{
+          width: 40,
+          height: 22,
+          borderRadius: 11,
+          cursor: 'pointer',
+          padding: 2,
+          border: 'none',
+          flexShrink: 0,
+          background: value ? JELLY_TOKENS.brand : t.border,
+          transition: 'background .2s',
+        }}
+      >
+        <div
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: '50%',
+            background: '#fff',
+            transform: value ? 'translateX(18px)' : 'translateX(0)',
+            transition: 'transform .2s',
+          }}
+        />
+      </button>
+    </div>
+  );
+}
+
+/** A 2-line mock of what the caption preset looks like over a frame. Not a
+ *  render — just enough contrast/weight/placement to tell them apart. */
+function CaptionSwatch({ preset }: { preset: CaptionPreset }): React.ReactElement {
+  const base: React.CSSProperties = {
+    height: 46,
+    borderRadius: JELLY_TOKENS.radius.sm,
+    background: 'linear-gradient(135deg, #3b3054 0%, #1f2937 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  };
+  const word: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: 0.3,
+  };
+
+  if (preset === 'none') {
+    return (
+      <div style={base}>
+        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>
+          no text
+        </span>
+      </div>
+    );
+  }
+  if (preset === 'bold-yellow') {
+    return (
+      <div style={base}>
+        <span
+          style={{
+            ...word,
+            fontSize: 13,
+            color: '#FDE047',
+            textShadow:
+              '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000',
+          }}
+        >
+          BIG IDEA
+        </span>
+      </div>
+    );
+  }
+  if (preset === 'karaoke-pink') {
+    return (
+      <div style={base}>
+        <span style={{ ...word, color: '#fff' }}>big </span>
+        <span style={{ ...word, color: '#F26BB0' }}>IDEA</span>
+      </div>
+    );
+  }
+  if (preset === 'minimal-lower') {
+    return (
+      <div style={{ ...base, alignItems: 'flex-end', paddingBottom: 5 }}>
+        <span style={{ ...word, fontSize: 9, fontWeight: 500, color: '#E5E7EB' }}>
+          big idea
+        </span>
+      </div>
+    );
+  }
+  if (preset === 'boxed') {
+    return (
+      <div style={base}>
+        <span
+          style={{
+            ...word,
+            color: '#111827',
+            background: '#fff',
+            padding: '3px 7px',
+            borderRadius: 3,
+          }}
+        >
+          BIG IDEA
+        </span>
+      </div>
+    );
+  }
+  // "clean" — the default
+  return (
+    <div style={base}>
+      <span
+        style={{
+          ...word,
+          color: '#fff',
+          textShadow: '0 1px 3px rgba(0,0,0,0.85)',
+        }}
+      >
+        Big idea
+      </span>
     </div>
   );
 }

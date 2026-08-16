@@ -542,3 +542,462 @@ export function timeAgo(dateStr: string): string {
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Jelly Studio — the no-signup demo project (/animate/demo)
+//
+// This is NOT invented sample data. It is a snapshot of library video #23,
+// "The Quiet Exit — My Money Mindset": the real script Trey wrote, the real
+// 52-beat scene schedule the planner produced from it, the real 3:24 runtime,
+// and the real reconciled all-in cost of $3.04. A prospect evaluating the
+// product should be looking at a thing that actually shipped, priced at what
+// it actually cost, not at a mock.
+//
+// ⚠️ Scene THUMBNAILS are deliberately absent. The live project's images are
+// served from /api/vater/youtube/{id}/scene/{n}, which is session-gated — a
+// signed-out visitor would get 52 broken tiles. The finished MP4 is on public
+// Vercel Blob and IS embedded, which is the artifact that matters anyway.
+//
+// Consent: #23 is the one showcase video with written consent on file (see
+// lib/vater/demo-videos.ts, consentStatus 'live'). Do not add another project
+// here without it.
+//
+// Refresh procedure, if #23 is ever re-rendered: re-read `script` and
+// `scenesJson` off the project row and regenerate this block. Nothing here
+// is hand-edited, so there is no local change to preserve.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Path to the signed-out demo. Exported so the landing lane can link it
+ *  without importing this whole module. */
+export const DEMO_PATH = '/animate/demo';
+
+/** The project id this snapshot came from — for the "refresh" procedure above. */
+export const DEMO_SOURCE_PROJECT_ID = 'cmst8pnwl0001l4ts3hx8hkux';
+
+export interface DemoScene {
+  idx: number;
+  startS: number;
+  endS: number;
+  beatText: string;
+  version: number;
+}
+
+export const DEMO_PROJECT_SCRIPT = "Two hundred thirty seven dollars. That is what sits in your checking account the Tuesday after payday. Not because you blew it. That is just how the math works when you are twenty six, making fifty two thousand dollars a year, in a city that charges one thousand eight hundred dollars a month just to sleep indoors.\n\nMy name is Jeff Whitfield, and welcome to My Money Mindset. I'm not a financial advisor and this isn't advice, but my goal here is to help you improve your mindset around money.\n\nYou go to work. You come home. You scroll. You sleep. You do it again. That is the rat race, and the strange part is it never feels like a trap while you are inside it. It just feels like life.\n\nThe shift happens quietly, on an ordinary Sunday, when you finally open a spreadsheet and add up everything you own against everything you owe. The number that comes back is negative three thousand one hundred dollars. You are thirty one and worth less than zero on paper.\n\nYou do not panic. You just finally see clearly. So you cancel the subscriptions you forgot you had, start packing lunch, stop buying coffee on the way in. Six hundred ninety dollars a month, gone from spending, redirected the same day your paycheck lands into a savings account earning interest. You barely notice it leaving. Thirteen months later, there is nine thousand dollars sitting there, and checking that balance gives you a calm you were not expecting.\n\nNine thousand will not pay off the loans or buy a house. But it is yours, and it means a car repair or a doctor's visit stops being a crisis.\n\nYou keep going. By thirty four, the credit cards are gone. Savings past twenty thousand. A Roth IRA started. The loans cut nearly in half. Friends are leasing cars and posting vacations they never explain, and some of those friendships were built on a shared complaint you have quietly stopped agreeing with.\n\nBy thirty seven, at nearly midnight, you open the real spreadsheet one more time and scroll to the bottom. One hundred twenty six thousand dollars, net of everything. The student loans, paid off over a year ago, so quietly you just made dinner afterward. Nobody claps. Nobody even knows the number.\n\nWhat actually changes is not the balance. At twenty six, losing your job would have been an emergency. Now it would be a decision, one you would have time to think through. That gap between crisis and inconvenience is the whole point, and almost nobody gets the chance to widen it, because life expands to fill every raise.\n\nThere were costs along the way the spreadsheet never counted. A relationship that ended partly over this, because you had already chosen a number before you told her you were choosing it.\n\nBy thirty eight, sitting at a kitchen table with good morning light, you have crossed one hundred seventy thousand dollars in assets, income near ninety thousand, and enough saved to cover two years of living without touching a single investment. Not two months, like most people. Two years, built with no mentor and no one watching.\n\nThe roof on a small property you co own needs repair, somewhere between four and eleven thousand dollars. At twenty six, that number would have ended your month. Now it is just an email you answer after breakfast. You still have problems. What changed is who they belong to, and whether they own a piece of you, or you are simply the person handling them today.";
+
+export const DEMO_PROJECT_SCENES: readonly DemoScene[] = [
+  {
+    "idx": 0,
+    "startS": 0,
+    "endS": 5.3,
+    "beatText": "$237, that is what sits in your checking account the Tuesday",
+    "version": 0
+  },
+  {
+    "idx": 1,
+    "startS": 5.3,
+    "endS": 7.82,
+    "beatText": "after payday. Not because you blew it. That is just how",
+    "version": 0
+  },
+  {
+    "idx": 2,
+    "startS": 7.82,
+    "endS": 11.64,
+    "beatText": "the math works when you are 26, making $52 ,000",
+    "version": 0
+  },
+  {
+    "idx": 3,
+    "startS": 11.64,
+    "endS": 15.78,
+    "beatText": "a year in a city that charges $1 ,800 a month just",
+    "version": 0
+  },
+  {
+    "idx": 4,
+    "startS": 15.78,
+    "endS": 19.32,
+    "beatText": "to sleep indoors. My name is Jeff Whitfield, and",
+    "version": 0
+  },
+  {
+    "idx": 5,
+    "startS": 19.32,
+    "endS": 23.52,
+    "beatText": "welcome to my Money Mindset. I'm not a financial advisor and this isn't",
+    "version": 0
+  },
+  {
+    "idx": 6,
+    "startS": 23.52,
+    "endS": 27.98,
+    "beatText": "advice, but my goal here is to help you improve your mindset around",
+    "version": 0
+  },
+  {
+    "idx": 7,
+    "startS": 27.98,
+    "endS": 31.68,
+    "beatText": "money. You go to work, you come home, you scroll,",
+    "version": 0
+  },
+  {
+    "idx": 8,
+    "startS": 31.68,
+    "endS": 34.3,
+    "beatText": "you sleep, you do it again. That is the rat race,",
+    "version": 0
+  },
+  {
+    "idx": 9,
+    "startS": 34.3,
+    "endS": 39.74,
+    "beatText": "and the strange part is it never feels like a trap while you are inside it.",
+    "version": 0
+  },
+  {
+    "idx": 10,
+    "startS": 39.74,
+    "endS": 41.78,
+    "beatText": "It just feels like life. The shift happens quietly",
+    "version": 0
+  },
+  {
+    "idx": 11,
+    "startS": 41.78,
+    "endS": 47.06,
+    "beatText": "on an ordinary Sunday. When you finally open a spreadsheet and",
+    "version": 0
+  },
+  {
+    "idx": 12,
+    "startS": 47.06,
+    "endS": 51.08,
+    "beatText": "add up everything you own against everything you owe, the number that comes",
+    "version": 0
+  },
+  {
+    "idx": 13,
+    "startS": 51.08,
+    "endS": 54.98,
+    "beatText": "back is negative $3 hundred You are",
+    "version": 0
+  },
+  {
+    "idx": 14,
+    "startS": 54.98,
+    "endS": 58.34,
+    "beatText": "31 and worth less than zero on paper. You do not",
+    "version": 0
+  },
+  {
+    "idx": 15,
+    "startS": 58.34,
+    "endS": 64,
+    "beatText": "panic, you just finally see clearly, so you cancel the subscriptions you",
+    "version": 0
+  },
+  {
+    "idx": 16,
+    "startS": 64,
+    "endS": 67.42,
+    "beatText": "forgot you had. Start packing lunch, stop buying coffee on the way",
+    "version": 0
+  },
+  {
+    "idx": 17,
+    "startS": 67.42,
+    "endS": 70.42,
+    "beatText": "in. $690 a month gone from spending, redirected",
+    "version": 0
+  },
+  {
+    "idx": 18,
+    "startS": 70.42,
+    "endS": 75.02,
+    "beatText": "the same day your paycheck lands into a savings account earning interest.",
+    "version": 0
+  },
+  {
+    "idx": 19,
+    "startS": 75.02,
+    "endS": 77.18,
+    "beatText": "You barely notice it leaving. Thirteen months later,",
+    "version": 0
+  },
+  {
+    "idx": 20,
+    "startS": 77.18,
+    "endS": 82.36,
+    "beatText": "there is $9 ,000 sitting there, and checking that balance gives you",
+    "version": 0
+  },
+  {
+    "idx": 21,
+    "startS": 82.36,
+    "endS": 86.32,
+    "beatText": "a calm you were not expecting. $9 ,000 will not pay off",
+    "version": 0
+  },
+  {
+    "idx": 22,
+    "startS": 86.32,
+    "endS": 89.52,
+    "beatText": "the loans or buy a house. But it is yours, and it means a car",
+    "version": 0
+  },
+  {
+    "idx": 23,
+    "startS": 89.52,
+    "endS": 93.68,
+    "beatText": "repair or a doctor's visit stops being a crisis. You keep",
+    "version": 0
+  },
+  {
+    "idx": 24,
+    "startS": 93.68,
+    "endS": 98.3,
+    "beatText": "going. By 34, the credit cards are gone.",
+    "version": 0
+  },
+  {
+    "idx": 25,
+    "startS": 98.3,
+    "endS": 102.18,
+    "beatText": "Savings past $20 ,000, Roth IRA started,",
+    "version": 0
+  },
+  {
+    "idx": 26,
+    "startS": 102.18,
+    "endS": 105.88,
+    "beatText": "loans cut nearly in half. Friends are leasing cars and posting",
+    "version": 0
+  },
+  {
+    "idx": 27,
+    "startS": 105.88,
+    "endS": 109.86,
+    "beatText": "vacations they never explain, and some of those friendships were",
+    "version": 0
+  },
+  {
+    "idx": 28,
+    "startS": 109.86,
+    "endS": 113.98,
+    "beatText": "built on a shared complaint you have quietly stopped agreeing with.",
+    "version": 0
+  },
+  {
+    "idx": 29,
+    "startS": 113.98,
+    "endS": 117.6,
+    "beatText": "By 37, at nearly midnight, you open the real spreadsheet",
+    "version": 0
+  },
+  {
+    "idx": 30,
+    "startS": 117.6,
+    "endS": 121.04,
+    "beatText": "one more time and scroll to the bottom. $126",
+    "version": 0
+  },
+  {
+    "idx": 31,
+    "startS": 121.04,
+    "endS": 124.22,
+    "beatText": ",000, net of everything. The student loans paid off",
+    "version": 0
+  },
+  {
+    "idx": 32,
+    "startS": 124.22,
+    "endS": 129.74,
+    "beatText": "over a year ago, so quietly you just made dinner afterward.",
+    "version": 0
+  },
+  {
+    "idx": 33,
+    "startS": 129.74,
+    "endS": 133.3,
+    "beatText": "Nobody claps. Nobody even knows the number. What",
+    "version": 0
+  },
+  {
+    "idx": 34,
+    "startS": 133.3,
+    "endS": 135.78,
+    "beatText": "actually changes is Not the balance. At 26, losing",
+    "version": 0
+  },
+  {
+    "idx": 35,
+    "startS": 135.78,
+    "endS": 140,
+    "beatText": "your job would have been an emergency. Now it. would be a decision,",
+    "version": 0
+  },
+  {
+    "idx": 36,
+    "startS": 140,
+    "endS": 145.22,
+    "beatText": "one you would have time to think through. That gap between crisis and inconvenience",
+    "version": 0
+  },
+  {
+    "idx": 37,
+    "startS": 145.22,
+    "endS": 149.46,
+    "beatText": "is the whole point, and almost nobody gets the chance to widen",
+    "version": 0
+  },
+  {
+    "idx": 38,
+    "startS": 149.46,
+    "endS": 152.3,
+    "beatText": "it, because life expands to fill every raise. There were costs",
+    "version": 0
+  },
+  {
+    "idx": 39,
+    "startS": 152.3,
+    "endS": 155.64,
+    "beatText": "along the way the spreadsheet never counted. A relationship that ended partly",
+    "version": 0
+  },
+  {
+    "idx": 40,
+    "startS": 155.64,
+    "endS": 161.44,
+    "beatText": "over this because you had already chosen a number before you told her you were choosing",
+    "version": 0
+  },
+  {
+    "idx": 41,
+    "startS": 161.44,
+    "endS": 165.18,
+    "beatText": "it. By 38, sitting at kitchen table with good morning light,",
+    "version": 0
+  },
+  {
+    "idx": 42,
+    "startS": 165.18,
+    "endS": 168.7,
+    "beatText": "you have crossed $170 ,000 in assets,",
+    "version": 0
+  },
+  {
+    "idx": 43,
+    "startS": 168.7,
+    "endS": 172.5,
+    "beatText": "income near $90 ,000, enough save to cover two years of",
+    "version": 0
+  },
+  {
+    "idx": 44,
+    "startS": 172.5,
+    "endS": 175.2,
+    "beatText": "living without touching a single investment. Not two months,",
+    "version": 0
+  },
+  {
+    "idx": 45,
+    "startS": 175.2,
+    "endS": 181.92,
+    "beatText": "like most people, two years, built with no mentor and no",
+    "version": 0
+  },
+  {
+    "idx": 46,
+    "startS": 181.92,
+    "endS": 184.26,
+    "beatText": "one watching. The roof on a small property you co -own needs",
+    "version": 0
+  },
+  {
+    "idx": 47,
+    "startS": 184.26,
+    "endS": 188.16,
+    "beatText": "repair, somewhere between $4 ,000 $11 ,000.",
+    "version": 0
+  },
+  {
+    "idx": 48,
+    "startS": 188.16,
+    "endS": 192.02,
+    "beatText": "At 26, that number would have ended your month. Now",
+    "version": 0
+  },
+  {
+    "idx": 49,
+    "startS": 192.02,
+    "endS": 197.04,
+    "beatText": "it is just an email you answer after breakfast. You still have problems.",
+    "version": 0
+  },
+  {
+    "idx": 50,
+    "startS": 197.04,
+    "endS": 199.54,
+    "beatText": "What changed is who they belong to, and whether they",
+    "version": 0
+  },
+  {
+    "idx": 51,
+    "startS": 199.54,
+    "endS": 204.01,
+    "beatText": "own a piece of you or you are simply the person handling them today.",
+    "version": 0
+  }
+];
+
+/**
+ * Shaped to match `EditorProject` in
+ * components/animate/screens/editor/ProjectShell.tsx so the real editor can
+ * render it unchanged. Kept as a plain object rather than importing that type:
+ * this module is also read by server code, and EditorProject lives in a
+ * 'use client' file.
+ */
+export const DEMO_PROJECT = {
+  id: 'demo',
+  styleId: null,
+  sourceTitle: '#23 — The Quiet Exit — My Money Mindset',
+  topic:
+    'Escaping the rat race quietly — a net-worth journey from negative three thousand at thirty-one to two years of freedom at thirty-eight',
+  status: 'ready',
+  audioUrl: null,
+  audioDuration: 204,
+  scenesJson: DEMO_PROJECT_SCENES as unknown,
+  captionTimings: null,
+  finalVideoUrl:
+    'https://7c7wlwtbdnayflas.public.blob.vercel-storage.com/vater-finals/cmst8pnwl0001l4ts3hx8hkux.mp4?v=1786734674199',
+  thumbnailUrl: '/animate/demos/money-mindset.jpg',
+  autopilotJobId: null,
+  script: DEMO_PROJECT_SCRIPT,
+  targetWordCount: 600,
+  targetDuration: 3,
+  voiceCloneName: 'Monroe',
+  voiceName: 'Monroe',
+  goalSuggestions: null,
+  sourceChannel: null,
+  sourceUrl: null,
+  backgroundMusicId: null,
+  musicVolume: 0.18,
+  titleSuggestions: null,
+  customStylePrompt: null,
+} as const;
+
+/** The reconciled receipt for #23 — the same numbers its owner sees in-app. */
+export const DEMO_RECEIPT = {
+  computeUsd: 1.85,
+  opsUsd: 1.19,
+  totalUsd: 3.04,
+  minutes: 3.4,
+  durationSeconds: 204,
+  perMinuteUsd: 0.89,
+} as const;
+
+/** Every action in demo mode is disabled and says this. */
+export const DEMO_CTA_LABEL = 'Sign up to render';
+/** Where that CTA points. */
+export const DEMO_CTA_HREF = '/animate#beta';

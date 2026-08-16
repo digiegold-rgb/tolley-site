@@ -38,6 +38,7 @@
  */
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { canAccessProjectAsync } from "@/lib/vater/project-access";
 
 export type JobOwnership =
   | { kind: "project"; projectId: string; projectUserId: string | null }
@@ -80,4 +81,36 @@ export async function jobBelongsToProject(
 ): Promise<boolean> {
   const ownership = await findJobOwnership(jobId);
   return ownership.kind === "project" && ownership.projectId === projectId;
+}
+
+/**
+ * Org-aware access check for a DGX job (team seats, 2026-08-16).
+ *
+ * The job proxy routes historically resolved ownership here and then called
+ * canAccessProject (sync) on the result. That sync helper cannot see team
+ * seats — it resolves the owner tier from env allowlists and nothing else —
+ * so a teammate polling a shared project's render got a 404 while the project
+ * itself opened fine.
+ *
+ * This is the async, org-aware version for the project branch. It deliberately
+ * does NOT touch the `unattributed` branch: that is the Phase 3 gap documented
+ * in the header above, and quietly widening it from "all studio users" to "all
+ * studio users plus their orgs" would make a known cross-tenant read bigger
+ * instead of smaller.
+ */
+export async function canAccessJob(
+  jobId: string,
+  sessionUserId: string,
+  sessionEmail: string | null | undefined,
+): Promise<{ allowed: boolean; ownership: JobOwnership }> {
+  const ownership = await findJobOwnership(jobId);
+  if (ownership.kind !== "project") return { allowed: false, ownership };
+  return {
+    allowed: await canAccessProjectAsync(
+      ownership.projectUserId,
+      sessionUserId,
+      sessionEmail,
+    ),
+    ownership,
+  };
 }

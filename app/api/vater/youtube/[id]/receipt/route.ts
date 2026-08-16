@@ -11,6 +11,7 @@
  * {
  *   computeUsd, byStage[{key,label,usd}], minutes, opsRate, opsUsd, totalUsd,
  *   estimateUsd, cappedAt?, debitedCents|null, debitedAt|null,
+ *   refundedCents|null, refundedAt|null, refundReason|null, netChargedCents,
  *   wallClockSec|null, unmetered
  * }
  *
@@ -30,6 +31,7 @@ import { getOpsRate } from "@/lib/vater/billing/ops-fee";
 import {
   buildDebitLine,
   getProjectDebit,
+  getProjectRefund,
   type VideoBillingLineJson,
 } from "@/lib/vater/billing/ledger";
 import { hasUnmeteredStudioAccess } from "@/lib/vater/billing/check-budget";
@@ -126,11 +128,15 @@ export async function GET(
     .sort((a, b) => b.usd - a.usd);
 
   const debit = project.userId ? await getProjectDebit(id) : null;
+  const refund = project.userId ? await getProjectRefund(id) : null;
   const unmetered = project.userId
     ? await hasUnmeteredStudioAccess(project.userId)
     : false;
 
   const debitLine = (debit?.lineJson ?? null) as VideoBillingLineJson | null;
+  const refundLine = (refund?.lineJson ?? null) as
+    | (VideoBillingLineJson & { reason?: string })
+    | null;
 
   return NextResponse.json({
     projectId: project.id,
@@ -148,6 +154,16 @@ export async function GET(
     cappedAt: line.cappedAt ?? debitLine?.cappedAt ?? null,
     debitedCents: debit ? -debit.deltaCents : null,
     debitedAt: debit?.createdAt ?? null,
+    // A refunded render is settled at zero. The charge is still reported
+    // above so the receipt reads as a history rather than as a video that
+    // mysteriously cost nothing — "Refunded $X — <reason>" sits under it.
+    refundedCents: refund ? refund.deltaCents : null,
+    refundedAt: refund?.createdAt ?? null,
+    refundReason: refundLine?.reason ?? null,
+    /** What the customer is actually out of pocket, after any refund. */
+    netChargedCents: debit
+      ? Math.max(0, -debit.deltaCents - (refund?.deltaCents ?? 0))
+      : null,
     unmetered,
     wallClockSec: readWallClockSec(project.stepDetails, project.completedAt),
   });

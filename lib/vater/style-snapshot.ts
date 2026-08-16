@@ -15,6 +15,7 @@ import type {
   CustomArtStyle,
 } from "@prisma/client";
 import type { StyleSnapshot } from "./autopilot-client";
+import { readBrandKit } from "./project-features";
 
 type StyleWithRelations = YouTubeStyle & {
   characters: YouTubeCharacter[];
@@ -92,7 +93,14 @@ function asVoiceBackend(
 }
 
 export function buildStyleSnapshot(style: StyleWithRelations): StyleSnapshot {
+  // Brand kit rides along as part of the snapshot, so it freezes with
+  // everything else: editing the style's logo later doesn't retroactively
+  // re-brand a video that already rendered. Omitted entirely when unset —
+  // the DGX treats a missing key as "use the composition defaults".
+  const brandKit = readBrandKit(style.brandKitJson);
+
   return {
+    ...(brandKit ? { brandKit } : {}),
     id: style.id,
     name: style.name,
     voice: style.voice,

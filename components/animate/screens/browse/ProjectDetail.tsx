@@ -25,9 +25,10 @@
 
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
-import { useTheme } from '../../theme-context';
-import { VCard } from '../../primitives';
+import { useTheme, useRoute } from '../../theme-context';
+import { VBtn, VCard } from '../../primitives';
 import { YouTubeProjectDetail } from '@/components/vater/youtube-project-detail';
+import { formatCount, type YouTubeVideoStats } from '@/lib/vater/youtube-status';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyProject = any;
@@ -52,6 +53,109 @@ export function ProjectDetail({
   onRecomposeStart,
 }: Props): React.ReactElement {
   const { t } = useTheme();
+  const { setRoute, setEditorStep, setSelectedProjectId } = useRoute();
+
+  const [busy, setBusy] = React.useState<'remix' | 'cut' | null>(null);
+  const [actionError, setActionError] = React.useState<string | null>(null);
+  const [cutJobId, setCutJobId] = React.useState<string | null>(null);
+  // null = not tried / unavailable; the button disables itself with a tooltip
+  // rather than pretending a feature exists.
+  const [cutUnavailable, setCutUnavailable] = React.useState(false);
+  const [stats, setStats] = React.useState<YouTubeVideoStats | null>(null);
+
+  const projectId: string | null =
+    typeof project?.id === 'string' ? project.id : null;
+  const youtubeVideoId: string | null =
+    typeof project?.youtubeVideoId === 'string' ? project.youtubeVideoId : null;
+
+  /* Public counters for a published video. Informational: a missing YouTube
+     connection or a fresh upload with no data yet just leaves this blank. */
+  React.useEffect(() => {
+    if (!youtubeVideoId) {
+      setStats(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/vater/youtube/stats?ids=${encodeURIComponent(youtubeVideoId)}`,
+          { cache: 'no-store' },
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          stats?: Record<string, YouTubeVideoStats>;
+        };
+        if (cancelled) return;
+        setStats(data.stats?.[youtubeVideoId] ?? null);
+      } catch {
+        /* leave blank — never break the detail view over a counter */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [youtubeVideoId]);
+
+  const remix = React.useCallback(async () => {
+    if (!projectId) return;
+    setBusy('remix');
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/vater/youtube/${projectId}/remix`, {
+        method: 'POST',
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        id?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.id) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      // Straight into the new draft at the Script step — the setup came
+      // along, the words are what still need writing.
+      setSelectedProjectId(data.id);
+      setEditorStep(1);
+      setRoute('editor');
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : 'Could not remix this project',
+      );
+    } finally {
+      setBusy(null);
+    }
+  }, [projectId, setRoute, setEditorStep, setSelectedProjectId]);
+
+  const makeVerticalCut = React.useCallback(async () => {
+    if (!projectId) return;
+    setBusy('cut');
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/vater/youtube/${projectId}/aspect-cut`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aspect: '9:16' }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        jobId?: string | null;
+        error?: string;
+        unavailable?: boolean;
+      };
+      if (res.status === 501 || data.unavailable) {
+        setCutUnavailable(true);
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setCutJobId(data.jobId ?? 'queued');
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : 'Could not start the vertical cut',
+      );
+    } finally {
+      setBusy(null);
+    }
+  }, [projectId]);
+
   const verification = project?.verificationReport as VerificationReport | null;
   const fabs = Array.isArray(verification?.fabrications)
     ? (verification?.fabrications as string[])
@@ -103,6 +207,114 @@ export function ProjectDetail({
           {fabs.length === 0 && verification?.ok === false && (
             <div style={{ fontSize: 13, color: t.text }}>
               The verifier flagged this script. Review the script before publishing.
+            </div>
+          )}
+        </VCard>
+      )}
+
+      {/* Make-another / re-cut actions + the public counters, sitting above
+          the canonical detail view so they're the first thing you see on a
+          finished video. */}
+      {projectId && (
+        <VCard style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              flexWrap: 'wrap',
+              alignItems: 'center',
+            }}
+          >
+            <span title="Opens a new draft with this project's style, voice, soundtrack and settings">
+              <VBtn
+                size="sm"
+                variant="outlined"
+                icon="sparkle"
+                onClick={() => void remix()}
+                disabled={busy !== null}
+              >
+                {busy === 'remix' ? 'Remixing…' : 'Remix this project'}
+              </VBtn>
+            </span>
+            <span
+              title={
+                cutUnavailable
+                  ? 'Vertical cuts are coming online — the render box does not serve them yet'
+                  : project?.status !== 'ready' || !project?.finalVideoUrl
+                    ? 'Finish the render first — the cut re-frames the finished video'
+                    : 'Re-frames this video as 9:16, reusing the narration and captions'
+              }
+            >
+              <VBtn
+                size="sm"
+                variant="outlined"
+                onClick={() => void makeVerticalCut()}
+                disabled={
+                  busy !== null ||
+                  cutUnavailable ||
+                  project?.status !== 'ready' ||
+                  !project?.finalVideoUrl
+                }
+              >
+                {busy === 'cut' ? 'Starting…' : 'Make a 9:16 cut'}
+              </VBtn>
+            </span>
+            {cutJobId && (
+              <span style={{ fontSize: 12, color: JELLY_TOKENS.success }}>
+                Vertical cut queued — it lands in the Library when it finishes.
+              </span>
+            )}
+            {cutUnavailable && (
+              <span style={{ fontSize: 12, color: t.textSecondary }}>
+                Vertical cuts are coming online.
+              </span>
+            )}
+          </div>
+
+          {youtubeVideoId && (
+            <div
+              style={{
+                display: 'flex',
+                gap: 20,
+                flexWrap: 'wrap',
+                fontSize: 13,
+                color: t.textSecondary,
+                borderTop: `1px solid ${t.border}`,
+                paddingTop: 12,
+              }}
+            >
+              <span>
+                Views:{' '}
+                <strong style={{ color: t.text }}>
+                  {formatCount(stats?.views)}
+                </strong>
+              </span>
+              <span>
+                Likes:{' '}
+                <strong style={{ color: t.text }}>
+                  {formatCount(stats?.likes)}
+                </strong>
+              </span>
+              <span>
+                Comments:{' '}
+                <strong style={{ color: t.text }}>
+                  {formatCount(stats?.comments)}
+                </strong>
+              </span>
+              <a
+                href={`https://youtu.be/${youtubeVideoId}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: JELLY_TOKENS.brand, textDecoration: 'none' }}
+              >
+                Watch on YouTube →
+              </a>
+            </div>
+          )}
+
+          {actionError && (
+            <div style={{ fontSize: 13, color: JELLY_TOKENS.error }}>
+              {actionError}
             </div>
           )}
         </VCard>

@@ -19,7 +19,7 @@ import {
 import { buildStyleSnapshot } from "@/lib/vater/style-snapshot";
 import { auth } from "@/auth";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
-import { ownerFieldsForSession } from "@/lib/vater/owner-tier";
+import { ownerFieldsForSessionWithCap } from "@/lib/vater/owner-tier";
 
 interface TopicBody {
   topic?: string;
@@ -184,8 +184,9 @@ export async function POST(req: NextRequest) {
       voiceCloneName: body.voiceCloneName,
       videoBackend: videoBackend as "sdxl" | "veo-3.0-fast" | "veo-3.0" | "veo-3.1" | "hybrid",
       style: styleSnapshot,
-      // Per-tenant fairness + script cap (content-autopilot 9cbe9a6).
-      ...ownerFieldsForSession(session, project.userId),
+      // Per-tenant fairness + script cap (content-autopilot 9cbe9a6). The
+      // cap is the account's real one, not the beta floor — see script-cap.ts.
+      ...(await ownerFieldsForSessionWithCap(session, project.userId)),
       ...(scriptOverride ? { scriptOverride } : {}),
     });
 

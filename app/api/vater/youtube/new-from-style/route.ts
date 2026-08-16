@@ -11,21 +11,28 @@
  * as the snapshot-revert system (post-generation editor). Naming this
  * collection-level endpoint `draft/` would be a confusing collision.
  *
- * Body: { styleId }
+ * Body: { styleId, remixOf? }
+ *   remixOf — optional project id to copy the SETUP from (voice, soundtrack,
+ *   length, feature bag). Same code path as POST /[id]/remix; see
+ *   lib/vater/project-remix.ts for exactly what does and doesn't carry over.
+ *   When omitted this behaves exactly as it always has.
  * Returns: { project }
  *
  * Errors (no silent catches per feedback_silent_failures_leads.md):
  *   401 — unauthenticated
  *   400 — missing/invalid styleId
  *   403 — style is owned by another user
- *   404 — style not found
+ *   404 — style (or remixOf project) not found
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { canAccessProject } from "@/lib/vater/project-access";
+import { createProjectFromStyle } from "@/lib/vater/project-remix";
 
 interface CreateBody {
   styleId?: string;
+  remixOf?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -48,31 +55,39 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Pre-validate: style must exist AND be either system or owned by this user.
-  const style = await prisma.youTubeStyle.findUnique({
-    where: { id: body.styleId },
-    select: { id: true, userId: true, isSystem: true },
-  });
-  if (!style) {
-    return NextResponse.json({ error: "Style not found" }, { status: 404 });
-  }
-  if (!style.isSystem && style.userId && style.userId !== session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Optional remix source — must be a project this caller can see, or we'd
+  // be handing them another tenant's setup.
+  let source = null;
+  if (typeof body.remixOf === "string" && body.remixOf.trim()) {
+    source = await prisma.youTubeProject.findUnique({
+      where: { id: body.remixOf.trim() },
+    });
+    if (
+      !source ||
+      !canAccessProject(source.userId, session.user.id, session.user.email)
+    ) {
+      return NextResponse.json(
+        { error: "Project to remix not found" },
+        { status: 404 },
+      );
+    }
   }
 
-  const project = await prisma.youTubeProject.create({
-    data: {
-      userId: session.user.id,
-      styleId: style.id,
-      mode: "topic",
-      status: "draft",
-      progress: 0,
-    },
+  // Style ownership + the actual insert live in the shared helper.
+  const created = await createProjectFromStyle({
+    userId: session.user.id,
+    styleId: body.styleId,
+    source,
   });
+  if (!created.ok) {
+    return NextResponse.json({ error: created.error }, { status: created.status });
+  }
 
   console.log(
-    `[vater/new-from-style] user=${session.user.id} style=${style.id} project=${project.id}`,
+    `[vater/new-from-style] user=${session.user.id} style=${body.styleId} project=${created.project.id}${
+      source ? ` remixOf=${source.id}` : ""
+    }`,
   );
 
-  return NextResponse.json({ project }, { status: 201 });
+  return NextResponse.json({ project: created.project }, { status: 201 });
 }

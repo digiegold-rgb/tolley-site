@@ -12,6 +12,7 @@ import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { VBtn } from '../../primitives';
+import { useRenderEstimate } from '@/lib/vater/use-estimate';
 
 /** 402 budget.reason values from the generation routes' billing gate. */
 export type BillingBlockReason =
@@ -106,12 +107,21 @@ export interface BillingBlockModalProps {
   reason: BillingBlockReason | null;
   /** Optional credit context from the 402 (balance, estimate). */
   context?: BillingBlockContext;
+  /**
+   * The project that got blocked. When supplied the wall shows what this
+   * specific render is expected to cost, split draft vs full — "add credit"
+   * with no number attached makes the customer guess how much, and the two
+   * numbers are far enough apart that guessing is how people overbuy or come
+   * back to the same wall. Optional: every existing caller still works.
+   */
+  projectId?: string | null;
   onClose: () => void;
 }
 
 export function BillingBlockModal({
   reason,
   context,
+  projectId,
   onClose,
 }: BillingBlockModalProps): React.ReactElement | null {
   const { t } = useTheme();
@@ -152,6 +162,14 @@ export function BillingBlockModal({
       cancelled = true;
     };
   }, [reason, context?.balanceCents]);
+
+  /* What this render is expected to cost, from the same endpoint the render
+   * button quotes. Only fetched on the credit wall — the legacy card-on-file
+   * reasons have nothing to do with a render's price. A failed fetch leaves
+   * `estimate` null and the wall renders exactly as it did before. */
+  const { estimate } = useRenderEstimate(
+    reason === 'insufficient_credits' ? (projectId ?? null) : null,
+  );
 
   const goStripe = React.useCallback(
     async (endpoint: '/api/vater/billing/setup' | '/api/vater/billing/portal') => {
@@ -271,6 +289,70 @@ export function BillingBlockModal({
         <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 8, lineHeight: 1.6 }}>
           {c.body}
         </div>
+
+        {/* Draft vs full, for THIS project. The gap between them is the whole
+          * decision: a stills draft often clears a balance that the animated
+          * cut does not, and someone staring at a wall should be told that
+          * rather than left to buy blind. */}
+        {estimate && (
+          <div
+            data-testid="billing-block-estimate"
+            style={{
+              marginTop: 14,
+              border: `1px solid ${t.border}`,
+              borderRadius: JELLY_TOKENS.radius.md,
+              overflow: 'hidden',
+              fontSize: 13,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '8px 12px',
+                background: t.cardAlt,
+                color: t.textSecondary,
+                fontSize: 11,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+              }}
+            >
+              <span>Estimated for this video</span>
+              <span>{estimate.minutes.toFixed(1)} min</span>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '8px 12px',
+                color: t.text,
+              }}
+            >
+              <span>Draft — still scenes</span>
+              <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
+                ${estimate.draftUsd.toFixed(2)}
+              </strong>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '8px 12px',
+                color: t.text,
+                borderTop: `1px solid ${t.border}`,
+              }}
+            >
+              <span>Full — with motion</span>
+              <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
+                ${estimate.fullUsd.toFixed(2)}
+              </strong>
+            </div>
+          </div>
+        )}
+
         {error && (
           <div
             style={{

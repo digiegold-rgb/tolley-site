@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { readBrandKit } from "@/lib/vater/project-features";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -92,6 +93,27 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   for (const key of PATCHABLE_FIELDS) {
     if (key in body) data[key] = body[key];
   }
+  // Brand kit is NOT in PATCHABLE_FIELDS: it's a JSON blob that ends up
+  // interpolated into a renderer, so it goes through the parser rather than
+  // straight from the request body. `null` clears it.
+  if ("brandKitJson" in body) {
+    if (body.brandKitJson === null) {
+      data.brandKitJson = null;
+    } else {
+      const kit = readBrandKit(body.brandKitJson);
+      if (!kit) {
+        return NextResponse.json(
+          {
+            error:
+              "brandKitJson must be an object with at least one of logoUrl (http/https), captionFont, captionColor, accentColor — or null to clear it",
+          },
+          { status: 400 },
+        );
+      }
+      data.brandKitJson = kit;
+    }
+  }
+
   // referenceTranscripts is set via the dedicated POST route (transcribes
   // a YT URL via DGX). Don't accept inline overwrites here.
 

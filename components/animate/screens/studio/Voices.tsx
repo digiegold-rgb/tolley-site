@@ -24,8 +24,52 @@ import { YouTubeVoiceClonePanel } from '@/components/vater/youtube-voice-clone-p
 import { YouTubePopularVoices } from '@/components/vater/youtube-popular-voices';
 import { VoiceTuner } from './VoiceTuner';
 
+interface ElevenVoice {
+  voice_id?: string;
+  name?: string;
+  category?: string;
+  labels?: Record<string, string>;
+}
+
 export function Voices(): React.ReactElement {
   const { t } = useTheme();
+  const [tab, setTab] = React.useState<'own' | 'elevenlabs'>('own');
+  const [elevenVoices, setElevenVoices] = React.useState<ElevenVoice[] | null>(
+    null,
+  );
+  const [elevenError, setElevenError] = React.useState<string | null>(null);
+
+  // Loaded once, lazily — nobody pays for opening a tab.
+  React.useEffect(() => {
+    if (tab !== 'elevenlabs' || elevenVoices !== null) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/vater/voices/elevenlabs', {
+          cache: 'no-store',
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          voices?: ElevenVoice[];
+          error?: string;
+        };
+        if (cancelled) return;
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        setElevenVoices(Array.isArray(data.voices) ? data.voices : []);
+        // The route reports a soft upstream failure in `error` with an empty
+        // list — surface it rather than showing a bare "no voices".
+        if (data.error) setElevenError(data.error);
+      } catch (err) {
+        if (cancelled) return;
+        setElevenVoices([]);
+        setElevenError(
+          err instanceof Error ? err.message : 'Could not reach ElevenLabs',
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, elevenVoices]);
   // Cloning your own voice is open to every tier (2026-08-15): uploads land in
   // a per-user namespace on the DGX, so one customer's clone is invisible to
   // everyone else. `voicesWrite` now only decides who gets the Voice Tuner,
@@ -39,8 +83,161 @@ export function Voices(): React.ReactElement {
     border: `1px solid ${t.border}`,
   };
 
+  const tabStrip = (
+    <div
+      style={{
+        display: 'flex',
+        gap: 4,
+        padding: 4,
+        background: t.card,
+        borderRadius: JELLY_TOKENS.radius.pill,
+        border: `1px solid ${t.border}`,
+        alignSelf: 'flex-start',
+      }}
+    >
+      {(
+        [
+          { id: 'own', label: 'Your voices' },
+          { id: 'elevenlabs', label: 'ElevenLabs (metered)' },
+        ] as const
+      ).map((x) => (
+        <div
+          key={x.id}
+          onClick={() => setTab(x.id)}
+          style={{
+            padding: '8px 16px',
+            borderRadius: JELLY_TOKENS.radius.pill,
+            cursor: 'pointer',
+            background: tab === x.id ? JELLY_TOKENS.brand : 'transparent',
+            color: tab === x.id ? '#fff' : t.textSecondary,
+            fontSize: 13,
+            fontWeight: tab === x.id ? 600 : 500,
+          }}
+        >
+          {x.label}
+        </div>
+      ))}
+    </div>
+  );
+
+  if (tab === 'elevenlabs') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {tabStrip}
+
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: JELLY_TOKENS.radius.md,
+            background: 'rgba(245,158,11,0.08)',
+            border: '1px solid rgba(245,158,11,0.4)',
+            fontSize: 12,
+            color: t.textSecondary,
+            lineHeight: 1.6,
+          }}
+        >
+          <strong style={{ color: JELLY_TOKENS.warning }}>Metered:</strong>{' '}
+          ElevenLabs narration bills per minute at cost — it is passed straight
+          through, with no markup. Your own F5-TTS clones stay free, so pick an
+          ElevenLabs voice only when you specifically want it (multilingual
+          narration is the usual reason).
+        </div>
+
+        <div style={cardStyle}>
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: t.text,
+              marginBottom: 6,
+            }}
+          >
+            ✦ Audition popular voices
+          </div>
+          <p
+            style={{
+              fontSize: 11,
+              color: t.textSecondary,
+              margin: '0 0 12px',
+              lineHeight: 1.5,
+            }}
+          >
+            Preview a shared ElevenLabs voice before you commit a project to
+            it.
+          </p>
+          <YouTubePopularVoices />
+        </div>
+
+        <div style={cardStyle}>
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: t.text,
+              marginBottom: 6,
+            }}
+          >
+            Voices on the connected ElevenLabs account
+          </div>
+          {elevenVoices === null && (
+            <div style={{ fontSize: 12, color: t.textSecondary }}>
+              Loading…
+            </div>
+          )}
+          {elevenError && (
+            <div
+              style={{
+                fontSize: 12,
+                color: JELLY_TOKENS.error,
+                marginBottom: 8,
+              }}
+            >
+              {elevenError}
+            </div>
+          )}
+          {elevenVoices !== null && elevenVoices.length === 0 && !elevenError && (
+            <div style={{ fontSize: 12, color: t.textSecondary }}>
+              No ElevenLabs voices are available on this account.
+            </div>
+          )}
+          {elevenVoices !== null && elevenVoices.length > 0 && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                gap: 8,
+              }}
+            >
+              {elevenVoices.map((v, i) => (
+                <div
+                  key={v.voice_id || `${v.name}-${i}`}
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: JELLY_TOKENS.radius.md,
+                    border: `1px solid ${t.border}`,
+                    fontSize: 12,
+                    color: t.text,
+                  }}
+                >
+                  <div style={{ fontWeight: 600 }}>{v.name || 'Unnamed'}</div>
+                  <div style={{ fontSize: 11, color: t.textSecondary }}>
+                    {[v.category, v.labels?.accent, v.labels?.gender]
+                      .filter(Boolean)
+                      .join(' • ') || '—'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {tabStrip}
+
       {/* Audition rail — top per contract */}
       <div style={cardStyle}>
         <div

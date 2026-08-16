@@ -42,6 +42,11 @@ import {
   IN_FLIGHT_STATUSES,
   type YouTubeProjectStatus,
 } from '@/lib/vater/youtube-status';
+import {
+  DEMO_CTA_HREF,
+  DEMO_CTA_LABEL,
+  DEMO_RECEIPT,
+} from '@/lib/vater/demo-data';
 
 import { TitleStep } from './TitleStep';
 import { ScriptStep } from './ScriptStep';
@@ -79,6 +84,10 @@ export interface EditorProject {
   musicVolume?: number | null;
   titleSuggestions?: unknown;
   customStylePrompt?: string | null;
+  description?: string | null;
+  /** Optional feature bag (jelly-feature-contract 2026-08-16). Parse with
+   *  readFeatures() from lib/vater/project-features. */
+  settingsJson?: unknown;
 }
 
 export interface EditorStepProps {
@@ -91,6 +100,20 @@ export type StepState = 'pending' | 'in-progress' | 'done';
 
 export interface ProjectShellProps {
   projectId: string;
+  /* ── Read-only demo mode (/animate/demo, 2026-08-16) ────────────────────
+   * Renders a real finished project to a signed-out visitor so they can see
+   * the actual editor before creating an account. When set:
+   *   - `project` comes from this prop; nothing is fetched and nothing polls
+   *     (every /api/vater route would 401 for a stranger anyway)
+   *   - `projectId` is passed to the steps as null, which is the guard every
+   *     step already uses to skip its own fetches — so no step needed a
+   *     demo-specific branch
+   *   - the step area is wrapped in a disabled <fieldset>, which natively
+   *     disables every button/input/select inside it, no matter which lane
+   *     added them or when
+   * The prop is optional and defaults off, so the signed-in editor path is
+   * byte-for-byte unchanged. */
+  demoProject?: EditorProject;
 }
 
 const SCRIPT_PHASES: ReadonlySet<YouTubeProjectStatus> = new Set([
@@ -181,10 +204,16 @@ function deriveStepStates(
   ];
 }
 
-export function ProjectShell({ projectId }: ProjectShellProps): React.ReactElement {
+export function ProjectShell({
+  projectId,
+  demoProject,
+}: ProjectShellProps): React.ReactElement {
   const { t } = useTheme();
   const { editorStep, setEditorStep, setRoute } = useRoute();
-  const [project, setProject] = React.useState<EditorProject | null>(null);
+  const isDemo = !!demoProject;
+  const [project, setProject] = React.useState<EditorProject | null>(
+    demoProject ?? null,
+  );
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [descriptionDone, setDescriptionDone] = React.useState(false);
   const prevStatesRef = React.useRef<StepState[]>([]);
@@ -197,6 +226,9 @@ export function ProjectShell({ projectId }: ProjectShellProps): React.ReactEleme
   /* Loader. Same pattern the legacy EditorScreen used: GET /api/vater/youtube/[id]
    * → { project }. We never silent-catch — surface to a banner. */
   const refresh = React.useCallback(async (): Promise<void> => {
+    // Demo mode has nothing to refresh from — the project is a constant and
+    // the API would 401 for a signed-out visitor.
+    if (isDemo) return;
     if (!projectId) {
       setProject(null);
       return;
@@ -213,7 +245,7 @@ export function ProjectShell({ projectId }: ProjectShellProps): React.ReactEleme
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Failed to load project');
     }
-  }, [projectId]);
+  }, [projectId, isDemo]);
 
   React.useEffect(() => {
     void refresh();
@@ -223,7 +255,7 @@ export function ProjectShell({ projectId }: ProjectShellProps): React.ReactEleme
    * advances autopilot state on the DB, so a follow-up GET picks up the new
    * shape via refresh(). 2s tick matches the legacy EditorShell cadence. */
   React.useEffect(() => {
-    if (!projectId || !project) return;
+    if (isDemo || !projectId || !project) return;
     const status = asStatus(project.status);
     if (!status || !IN_FLIGHT_STATUSES.has(status)) return;
     let cancelled = false;
@@ -245,7 +277,7 @@ export function ProjectShell({ projectId }: ProjectShellProps): React.ReactEleme
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [projectId, project, refresh]);
+  }, [isDemo, projectId, project, refresh]);
 
   /* Auto-advance when a step transitions to done. Compute current states,
    * compare against prevStatesRef, and on any non-done→done transition, if
@@ -276,9 +308,13 @@ export function ProjectShell({ projectId }: ProjectShellProps): React.ReactEleme
     prevStatesRef.current = stepStates;
   }, [stepStates, setEditorStep]);
 
+  /* projectId is deliberately NULL in demo mode. Every step already guards
+   * its own fetches with `if (!projectId) return` — that one line is what
+   * makes seven step components safe to render for a stranger without any of
+   * them knowing the demo exists. */
   const stepProps: EditorStepProps = React.useMemo(
-    () => ({ projectId: projectId ?? null, project, refresh }),
-    [projectId, project, refresh],
+    () => ({ projectId: isDemo ? null : (projectId ?? null), project, refresh }),
+    [isDemo, projectId, project, refresh],
   );
 
   /* Description-step "done" tracking. Description text is generated on-demand
@@ -309,6 +345,8 @@ export function ProjectShell({ projectId }: ProjectShellProps): React.ReactEleme
 
   return (
     <div>
+      {isDemo && <DemoBanner />}
+
       {/* Breadcrumb pill — top-right (clickable: back to Dashboard) */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
         <div
@@ -400,16 +438,97 @@ export function ProjectShell({ projectId }: ProjectShellProps): React.ReactEleme
       {/* Step content. Description step is rendered via a wrapper that
           marks the step done after a successful Generate; all other steps
           pass through stepProps unchanged. */}
-      {editorStep === 6 ? (
-        <DescriptionStepWrapper
-          stepProps={stepProps}
-          onCompleted={markDescriptionDone}
-        />
-      ) : (
-        <StepEl {...stepProps} />
-      )}
+      {/* In demo mode the whole step area is a disabled <fieldset>. Native
+          `disabled` propagates to every descendant form control, so a button
+          another lane adds tomorrow is inert here without anyone remembering
+          this file exists. `pointer-events: none` catches the click handlers
+          that live on plain <div>s. */}
+      <StepArea disabled={isDemo}>
+        {editorStep === 6 ? (
+          <DescriptionStepWrapper
+            stepProps={stepProps}
+            onCompleted={markDescriptionDone}
+          />
+        ) : (
+          <StepEl {...stepProps} />
+        )}
+      </StepArea>
 
       <Footer />
+    </div>
+  );
+}
+
+/* Wrapper that neutralises the step area in demo mode and renders it
+ * untouched otherwise — no extra DOM node in the signed-in path. */
+function StepArea({
+  disabled,
+  children,
+}: {
+  disabled: boolean;
+  children: React.ReactNode;
+}): React.ReactElement {
+  if (!disabled) return <>{children}</>;
+  return (
+    <fieldset
+      disabled
+      aria-label="Read-only demo — sign up to render"
+      style={{
+        border: 0,
+        margin: 0,
+        padding: 0,
+        minInlineSize: 0,
+        pointerEvents: 'none',
+      }}
+    >
+      {children}
+    </fieldset>
+  );
+}
+
+/* Sticky "this is a demo" strip with the only live control on the page. */
+function DemoBanner(): React.ReactElement {
+  const { t } = useTheme();
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        flexWrap: 'wrap',
+        padding: '12px 16px',
+        marginBottom: 16,
+        borderRadius: JELLY_TOKENS.radius.md,
+        border: `1px solid ${t.border}`,
+        background: t.card,
+      }}
+    >
+      <Icon name="sparkle" size={18} color={JELLY_TOKENS.brand} />
+      <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
+          You&rsquo;re looking at a real finished video — {DEMO_RECEIPT.minutes} minutes,
+          ${DEMO_RECEIPT.totalUsd.toFixed(2)} all in.
+        </div>
+        <div style={{ fontSize: 12, color: t.textSecondary, marginTop: 2 }}>
+          Every control below is switched off in this preview. Sign up to render
+          your own script.
+        </div>
+      </div>
+      <a
+        href={DEMO_CTA_HREF}
+        style={{
+          padding: '9px 18px',
+          borderRadius: JELLY_TOKENS.radius.full,
+          background: JELLY_TOKENS.gradCreate,
+          color: '#fff',
+          fontSize: 13,
+          fontWeight: 600,
+          textDecoration: 'none',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {DEMO_CTA_LABEL}
+      </a>
     </div>
   );
 }

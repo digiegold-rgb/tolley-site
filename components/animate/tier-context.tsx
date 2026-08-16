@@ -11,6 +11,7 @@
 import * as React from 'react';
 import type { VaterTier } from '@/lib/vater/nav-visibility';
 import { routeIdsForTier } from '@/lib/vater/nav-visibility';
+import { BETA_MAX_WORDS } from '@/lib/vater/script-limits';
 
 export interface VaterCapabilities {
   rules: boolean;
@@ -33,8 +34,19 @@ export interface BetaState {
   tosVersion: string | null;
 }
 
+export type ScriptCapTier = 'owner' | 'paid' | 'beta';
+
 export interface TierContextValue {
   tier: VaterTier;
+  /**
+   * Script length ceiling for this account, from GET /api/vater/me — the SAME
+   * number the from-script and context routes enforce. Infinity = uncapped
+   * (owner). Defaults to the beta floor so a slow /me fetch can never let a
+   * script through that the API will then reject.
+   */
+  maxWords: number;
+  /** Why that ceiling: 'beta' means buying credit raises it. */
+  capTier: ScriptCapTier;
   capabilities: VaterCapabilities;
   routes: string[];
   loading: boolean;
@@ -68,6 +80,8 @@ const DEFAULT_BETA: BetaState = {
 
 const defaultValue: TierContextValue = {
   tier: 'public',
+  maxWords: BETA_MAX_WORDS,
+  capTier: 'beta',
   capabilities: EMPTY_CAPS,
   routes: routeIdsForTier('public'),
   loading: true,
@@ -78,6 +92,8 @@ const defaultValue: TierContextValue = {
 
 interface MePayload {
   tier?: VaterTier;
+  maxWords?: number | null;
+  capTier?: ScriptCapTier;
   email?: string | null;
   capabilities?: Partial<VaterCapabilities>;
   routes?: string[];
@@ -143,6 +159,15 @@ export function TierProvider({
         setState((prev) => ({
           ...prev,
           tier,
+          // null from the API means "no cap" (owner), which is Infinity here
+          // so every `words > maxWords` comparison reads the same way.
+          maxWords:
+            data.maxWords === null
+              ? Number.POSITIVE_INFINITY
+              : typeof data.maxWords === 'number'
+                ? data.maxWords
+                : prev.maxWords,
+          capTier: data.capTier ?? prev.capTier,
           capabilities: { ...EMPTY_CAPS, ...(data.capabilities ?? {}) },
           routes: data.routes ?? routeIdsForTier(tier),
           loading: false,

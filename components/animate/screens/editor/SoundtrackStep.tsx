@@ -24,6 +24,7 @@ import { useTheme } from '../../theme-context';
 import { Icon } from '../../Icon';
 import { VBtn, VCard, SectionHeader } from '../../primitives';
 import { YouTubeMusicPicker } from '@/components/vater/youtube-music-picker';
+import { readFeatures, saveFeatures } from '@/lib/vater/project-features';
 import type { EditorStepProps } from './ProjectShell';
 
 interface SfxRow {
@@ -65,6 +66,35 @@ export function SoundtrackStep({ projectId, project, refresh }: EditorStepProps)
   }, []);
 
   const sfxAvailable = Array.isArray(sfx) && sfx.length > 0;
+
+  // Mood segments (2026-08-16 contract). Off = one track for the whole video,
+  // which is today's behavior. On = the planner splits the score into 2–4
+  // segments that follow the script's arc.
+  const savedMoods = readFeatures(project?.settingsJson).musicMoods === true;
+  const [moodsOptimistic, setMoodsOptimistic] = React.useState<boolean | null>(
+    null,
+  );
+  const musicMoods = moodsOptimistic ?? savedMoods;
+  React.useEffect(() => {
+    // Server caught up — stop holding the optimistic value.
+    setMoodsOptimistic((prev) => (prev === savedMoods ? null : prev));
+  }, [savedMoods]);
+
+  const toggleMoods = React.useCallback(async () => {
+    if (!projectId) return;
+    const next = !musicMoods;
+    setMoodsOptimistic(next);
+    setPersistError(null);
+    try {
+      await saveFeatures(projectId, { musicMoods: next });
+      await refresh();
+    } catch (err) {
+      setMoodsOptimistic(null);
+      setPersistError(
+        err instanceof Error ? err.message : 'Could not save that setting',
+      );
+    }
+  }, [projectId, musicMoods, refresh]);
 
   // Never strand the user on a tab that just disappeared.
   React.useEffect(() => {
@@ -182,8 +212,62 @@ export function SoundtrackStep({ projectId, project, refresh }: EditorStepProps)
             </div>
             {tab === 'music' && (
               <>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: 12,
+                    marginBottom: 12,
+                    borderRadius: JELLY_TOKENS.radius.md,
+                    border: `1px solid ${musicMoods ? JELLY_TOKENS.brandOutline : t.border}`,
+                    background: musicMoods ? JELLY_TOKENS.brandGhost : 'transparent',
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
+                      Change music with the story
+                    </div>
+                    <div style={{ fontSize: 12, color: t.textSecondary, marginTop: 2 }}>
+                      Scores the video in 2–4 mood segments that follow the
+                      script instead of looping one track end to end.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={musicMoods}
+                    aria-label="Change music with the story"
+                    onClick={() => void toggleMoods()}
+                    style={{
+                      width: 40,
+                      height: 22,
+                      borderRadius: 11,
+                      cursor: 'pointer',
+                      padding: 2,
+                      border: 'none',
+                      flexShrink: 0,
+                      background: musicMoods ? JELLY_TOKENS.brand : t.border,
+                      transition: 'background .2s',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        background: '#fff',
+                        transform: musicMoods ? 'translateX(18px)' : 'translateX(0)',
+                        transition: 'transform .2s',
+                      }}
+                    />
+                  </button>
+                </div>
                 <div style={{ fontSize: 12, color: t.textSecondary, marginBottom: 8 }}>
-                  CC-BY-4.0 Kevin MacLeod — optional
+                  {musicMoods
+                    ? 'The track you pick below seeds the opening segment; the rest are matched to it.'
+                    : 'CC-BY-4.0 Kevin MacLeod — optional'}
                 </div>
                 <YouTubeMusicPicker
                   value={musicId}

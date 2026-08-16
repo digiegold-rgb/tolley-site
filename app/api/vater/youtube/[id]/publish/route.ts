@@ -19,6 +19,7 @@ import {
   uploadVideoToYouTube,
   YouTubeUploadError,
   isPrivacyStatus,
+  isFuturePublishAt,
   type PrivacyStatus,
 } from "@/lib/vater/youtube-upload";
 
@@ -30,6 +31,9 @@ type Ctx = { params: Promise<{ id: string }> };
 
 interface PublishBody {
   privacyStatus?: unknown;
+  /** ISO timestamp. Present = schedule instead of publishing now; the video
+   *  is uploaded PRIVATE and YouTube flips it public at that moment. */
+  publishAt?: unknown;
 }
 
 export async function POST(req: NextRequest, ctx: Ctx) {
@@ -44,6 +48,24 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const privacyStatus: PrivacyStatus = isPrivacyStatus(body.privacyStatus)
     ? body.privacyStatus
     : "public";
+
+  // Reject a past timestamp loudly. YouTube would accept it and publish
+  // immediately — the exact opposite of what "schedule" means to the person
+  // who clicked it.
+  const wantsSchedule =
+    body.publishAt !== undefined &&
+    body.publishAt !== null &&
+    body.publishAt !== "";
+  if (wantsSchedule && !isFuturePublishAt(body.publishAt)) {
+    return NextResponse.json(
+      {
+        error:
+          "publishAt must be an ISO timestamp in the future — a past time would publish the video immediately",
+      },
+      { status: 400 },
+    );
+  }
+  const publishAt = wantsSchedule ? (body.publishAt as string) : undefined;
 
   const project = await prisma.youTubeProject.findUnique({ where: { id } });
   if (
@@ -128,8 +150,13 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       privacyStatus,
       media,
       thumbnail,
+      publishAt,
     });
 
+    // `publishedAt` records when WE handed it to YouTube — that's what the
+    // receipt and the library timeline mean by "uploaded". The scheduled
+    // go-live is a separate fact and lives in the feature bag so the panel can
+    // render "Scheduled for …" without a schema change.
     const updated = await prisma.youTubeProject.update({
       where: { id },
       data: {
@@ -138,17 +165,32 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         publishedTo: project.publishedTo.includes("youtube")
           ? project.publishedTo
           : [...project.publishedTo, "youtube"],
+        ...(result.publishAt
+          ? {
+              settingsJson: {
+                ...(project.settingsJson &&
+                typeof project.settingsJson === "object" &&
+                !Array.isArray(project.settingsJson)
+                  ? (project.settingsJson as Record<string, unknown>)
+                  : {}),
+                publishAt: result.publishAt,
+              },
+            }
+          : {}),
       },
     });
 
     console.log(
-      `[vater/publish] project=${id} → https://youtu.be/${result.videoId} (${privacyStatus})`,
+      `[vater/publish] project=${id} → https://youtu.be/${result.videoId} (${
+        result.publishAt ? `scheduled ${result.publishAt}` : privacyStatus
+      })`,
     );
 
     return NextResponse.json({
       ok: true,
       videoId: result.videoId,
       url: result.url,
+      publishAt: result.publishAt ?? null,
       project: updated,
     });
   } catch (err) {

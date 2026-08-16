@@ -17,6 +17,9 @@
  *   5. BETA       — apply prisma/migrations/20260815_beta_invites/migration.sql
  *                   (BetaInvite, AdminImpersonation, VaterEvent + two User
  *                   columns; all IF NOT EXISTS, nothing dropped)
+ *   8. API+TEAMS  — apply prisma/migrations/20260816_api_keys_orgs/migration.sql
+ *                   (VaterApiKey, VaterOrg, VaterOrgMember, BetaInvite.orgId;
+ *                   IF NOT EXISTS throughout, creates tables, drops nothing)
  *   6. CREDITS    — apply prisma/migrations/20260815_vater_credit_ledger/
  *                   migration.sql (creates VaterCreditLedger: the prepaid
  *                   credit ledger + its unique idempotency indexes). Also
@@ -80,6 +83,28 @@ const BETA_MIGRATION_SQL = path.join(
   "prisma",
   "migrations",
   "20260815_beta_invites",
+  "migration.sql",
+);
+
+/**
+ * Public API v1 + team seats (2026-08-16). Appended as STEP 8 rather than a
+ * new script for the same reason steps 5-6 were: one /hq item, one command,
+ * and a half-applied /animate is worse than a not-yet-applied one.
+ *
+ * Every statement is IF NOT EXISTS and nothing is dropped, so it is safe to
+ * run against a live database and safe to run twice.
+ *
+ * What stays dormant until it runs (all degrade, none 500):
+ *   - /animate "API Keys" + "Team" report FEATURE_NOT_READY (503)
+ *   - /api/v1/* returns 503 "not_ready" rather than a misleading 401
+ *   - project visibility is unchanged: owner-only, exactly as today
+ */
+const API_ORGS_SQL = path.join(
+  __dirname,
+  "..",
+  "prisma",
+  "migrations",
+  "20260816_api_keys_orgs",
   "migration.sql",
 );
 
@@ -450,6 +475,40 @@ async function stepStylesModal() {
   if (r.status !== 0) throw new Error(`migrate-styles-modal exited ${r.status}`);
 }
 
+// ---------------------------------------------------------------- step 8
+async function stepApiKeysOrgs() {
+  heading(8, "Migration — VaterApiKey, VaterOrg, VaterOrgMember, BetaInvite.orgId");
+
+  const before = {
+    apiKey: await tableExists("VaterApiKey"),
+    org: await tableExists("VaterOrg"),
+    member: await tableExists("VaterOrgMember"),
+    inviteOrgId: await columnExists("BetaInvite", "orgId"),
+  };
+  console.log(
+    `  current: VaterApiKey=${before.apiKey}, VaterOrg=${before.org}, ` +
+      `VaterOrgMember=${before.member}, BetaInvite.orgId=${before.inviteOrgId}`,
+  );
+  if (Object.values(before).every(Boolean)) {
+    console.log("  already applied — nothing to do.");
+    return;
+  }
+
+  for (const stmt of sqlStatements(API_ORGS_SQL)) {
+    console.log(`  ${tag(stmt.replace(/\s+/g, " "))}`);
+    if (APPLY) await prisma.$executeRawUnsafe(stmt);
+  }
+
+  if (APPLY) {
+    console.log(
+      `  now: VaterApiKey=${await tableExists("VaterApiKey")}, ` +
+        `VaterOrg=${await tableExists("VaterOrg")}, ` +
+        `VaterOrgMember=${await tableExists("VaterOrgMember")}, ` +
+        `BetaInvite.orgId=${await columnExists("BetaInvite", "orgId")}`,
+    );
+  }
+}
+
 async function main() {
   console.log(
     APPLY
@@ -479,6 +538,7 @@ async function main() {
   await stepBetaMigration();
   await stepCreditLedger();
   await stepStylesModal();
+  await stepApiKeysOrgs();
 
   console.log(
     APPLY

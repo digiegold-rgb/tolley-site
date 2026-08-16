@@ -9,6 +9,7 @@ import {
   isMissingRelationError,
 } from "@/lib/vater/beta-schema";
 import {
+  ensureReferralCodes,
   INVITE_REJECTION_MESSAGE,
   normalizeInviteCode,
   redeemInviteTx,
@@ -304,4 +305,9 @@ async function provisionStudioAccount(
   } catch (err) {
     console.error("register: starter credit grant failed", err);
   }
+
+  // Two single-use referral codes, minted at signup so they are already
+  // waiting the first time the user opens the referral card. Idempotent and
+  // self-swallowing (see ensureReferralCodes) — this can never fail a signup.
+  await ensureReferralCodes(userId);
 }

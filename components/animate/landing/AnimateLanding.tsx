@@ -34,6 +34,8 @@ import {
   demoPerMinute,
 } from "@/lib/vater/demo-videos";
 import { InviteRequestForm } from "./InviteRequestForm";
+import { PricingCalculator } from "./PricingCalculator";
+import { MOTION_USD_PER_MIN } from "@/lib/vater/billing/estimate";
 import "./landing.css";
 
 /* Brand type, per design/jelly-studio-logo-1c/README.md: Space Grotesk for
@@ -93,7 +95,7 @@ interface ComparisonRow {
   ours?: boolean;
 }
 const COMPARISON: readonly ComparisonRow[] = [
-  { name: "Jelly Studio", rate: "$0.55 – $0.95", note: "no subscription · beta cap 9:00", ours: true },
+  { name: "Jelly Studio", rate: "$0.55 – $0.95", note: "stills render · no subscription · beta cap 9:00", ours: true },
   { name: "Zebracat", rate: "$0.50 – $1.30", note: "5-minute cap" },
   { name: "StoryShort", rate: "$0.58 – $1.56", note: "" },
   { name: "NoLang", rate: "$0.76 – $1.00", note: "3-minute cap on Standard" },
@@ -184,8 +186,8 @@ export function AnimateLanding(): React.ReactElement {
               composed, downloadable, no watermark.{" "}
               <strong>
                 The most affordable way to make faceless videos — pay only for
-                what you render. A typical long-form video lands between $1 and
-                $7 all in.
+                what you render. A typical long-form video of generated stills
+                lands between $1 and $7 all in; add motion and it costs more.
               </strong>{" "}
               No subscription. No commitment. No watermark.
             </p>
@@ -356,7 +358,10 @@ export function AnimateLanding(): React.ReactElement {
           <div className="jsl-price-hero">
             <div className="jsl-bigprice">
               $1–7
-              <small> per finished long-form video · no subscription · no commitment</small>
+              <small>
+                {" "}per finished long-form video of stills · motion priced
+                separately · no subscription
+              </small>
             </div>
             {/* Each <li> is a flex row: the em-dash marker, then ONE span.
               * Put inline markup directly in the <li> and it becomes a second
@@ -366,7 +371,11 @@ export function AnimateLanding(): React.ReactElement {
                 <span>
                   A typical long-form video runs{" "}
                   <strong>$1 to $7 all in</strong>. Our {BENCHMARK.length}{" "}
-                  benchmark render cost {BENCHMARK.allIn}.
+                  benchmark render cost {BENCHMARK.allIn}. Both of those are
+                  stills renders, which is what the demos on this page are;
+                  generated motion adds about ${MOTION_USD_PER_MIN.toFixed(2)}{" "}
+                  per animated minute on top, and the calculator below
+                  quotes it before you spend anything.
                 </span>
               </li>
               <li>
@@ -400,6 +409,11 @@ export function AnimateLanding(): React.ReactElement {
               </li>
             </ul>
           </div>
+
+          {/* Three sliders → "≈ $X per video · $Y per month". Client island;
+            * it fetches the live ops rate rather than being handed this
+            * page's server-side copy, so the two can never disagree. */}
+          <PricingCalculator />
 
           {/* prepaid packs, with the Stripe fee shown rather than buried */}
           <h3 className="jsl-h3">Prepaid credit packs</h3>
@@ -501,7 +515,9 @@ export function AnimateLanding(): React.ReactElement {
             Subscription rates assume 100% of the monthly quota is used — leave
             any of it unused and the real rate is higher. Plans change; check
             before you buy. Our own range is measured across recent long-form
-            renders, all in.
+            renders, all in — those are stills renders, and a video with
+            generated motion over its scenes costs more per minute than the
+            row above. The calculator higher up the page prices both.
           </p>
         </section>
 

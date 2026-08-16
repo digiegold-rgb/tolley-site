@@ -34,6 +34,8 @@
 import { prisma } from "@/lib/prisma";
 import { autopilot, AutopilotError } from "@/lib/vater/autopilot-client";
 import { FLAT_ACTION_PRICES, getAnimationPrice } from "@/lib/vater/pricing";
+import { hasVaterCreditLedgerTable } from "@/lib/vater/schema-probe";
+import { refundOnFailure } from "./ledger";
 import { recordUsage } from "./record-usage";
 
 /** Statuses a compose-abandoned project can be parked in. compose/route.ts
@@ -51,11 +53,20 @@ export interface ReconcileHit {
   billed: boolean;
 }
 
+export interface RefundHit {
+  projectId: string;
+  userId: string;
+  refundedCents: number;
+  reason: string;
+}
+
 export interface ReconcileRendersResult {
   scanned: number;
   hits: ReconcileHit[];
   skipped: number;
   errors: Array<{ projectId: string; error: string }>;
+  /** Failed projects that were still carrying a charge (pass 3). */
+  refunds: RefundHit[];
 }
 
 interface ReconcileOptions {
@@ -126,6 +137,7 @@ export async function reconcileUnbilledRenders(
     hits: [],
     skipped: 0,
     errors: [],
+    refunds: [],
   };
 
   async function bill(
@@ -310,5 +322,98 @@ export async function reconcileUnbilledRenders(
     if (!anyBackfilled) result.skipped++;
   }
 
+  // ── Pass 3: refund failed renders that are still carrying a charge ───────
+  // The other two passes only ever ADD charges. This one is the counterweight,
+  // and it is the safety net under the promise printed on the landing page:
+  // failed renders are never charged.
+  //
+  // The poll route refunds on the transition into `failed`, so this normally
+  // finds nothing. It catches the cases the poll route cannot: a project that
+  // failed while nobody had the tab open and went terminal by another path, a
+  // debit written by an admin script, or a refund that threw mid-poll.
+  //
+  // dryRun is honoured — money moving on a "show me what you'd do" run is not
+  // a reconciliation, it is a surprise.
+  await refundFailedRenders({ dryRun, limit, since, result });
+
   return result;
+}
+
+async function refundFailedRenders(args: {
+  dryRun: boolean;
+  limit: number;
+  since: Date;
+  result: ReconcileRendersResult;
+}): Promise<void> {
+  const { dryRun, limit, since, result } = args;
+  if (!(await hasVaterCreditLedgerTable())) return;
+
+  const failed = await prisma.youTubeProject.findMany({
+    where: {
+      status: "failed",
+      userId: { not: null },
+      updatedAt: { gte: since },
+    },
+    select: { id: true, userId: true, errorMessage: true },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+  });
+  if (failed.length === 0) return;
+
+  // One query for every ledger row against those projects, rather than two
+  // per project: a reconciler that scales its query count with its candidate
+  // count is how a nightly cron becomes a database incident.
+  const rows = await prisma.vaterCreditLedger.findMany({
+    where: {
+      projectId: { in: failed.map((p) => p.id) },
+      kind: { in: ["debit", "adjust", "refund"] },
+    },
+    select: { projectId: true, kind: true, deltaCents: true },
+  });
+
+  const netByProject = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.projectId) continue;
+    netByProject.set(
+      row.projectId,
+      (netByProject.get(row.projectId) ?? 0) - row.deltaCents,
+    );
+  }
+
+  for (const project of failed) {
+    const owed = netByProject.get(project.id) ?? 0;
+    if (owed <= 0) continue;
+    result.scanned++;
+
+    const reason = project.errorMessage?.trim() || "Render failed";
+    if (dryRun) {
+      result.refunds.push({
+        projectId: project.id,
+        userId: project.userId as string,
+        refundedCents: owed,
+        reason,
+      });
+      continue;
+    }
+
+    try {
+      const refund = await refundOnFailure(project.id, reason);
+      if (refund.refunded) {
+        result.refunds.push({
+          projectId: project.id,
+          userId: project.userId as string,
+          refundedCents: refund.refundedCents ?? owed,
+          reason,
+        });
+        console.log(
+          `[vater-reconcile] refunded failed render project=${project.id} user=${project.userId} $${((refund.refundedCents ?? owed) / 100).toFixed(2)}`,
+        );
+      }
+    } catch (err) {
+      result.errors.push({
+        projectId: project.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 }

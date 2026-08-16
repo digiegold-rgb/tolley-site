@@ -11,6 +11,10 @@ import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VCard, SectionHeader } from '../../primitives';
+import {
+  formatCount,
+  type YouTubeVideoStats,
+} from '@/lib/vater/youtube-status';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyData = any;
@@ -20,6 +24,10 @@ export function AnalyticsScreen(): React.ReactElement {
   const [tab, setTab] = React.useState<'overview' | 'cost'>('overview');
   const [video, setVideo] = React.useState<AnyData>(null);
   const [loading, setLoading] = React.useState(true);
+  // Real per-video counters for everything this account published, read with
+  // the user's own YouTube token.
+  const [stats, setStats] = React.useState<Record<string, YouTubeVideoStats>>({});
+  const [ytConnected, setYtConnected] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -33,6 +41,34 @@ export function AnalyticsScreen(): React.ReactElement {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/vater/youtube/stats', { cache: 'no-store' });
+        if (!r.ok) return;
+        const data = (await r.json()) as {
+          connected?: boolean;
+          stats?: Record<string, YouTubeVideoStats>;
+        };
+        if (cancelled) return;
+        setYtConnected(data.connected !== false);
+        setStats(data.stats ?? {});
+      } catch {
+        /* counters are informational — never break the screen over them */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const rows = React.useMemo(
+    () =>
+      Object.values(stats).sort((a, b) => (b.views ?? 0) - (a.views ?? 0)),
+    [stats],
+  );
+  const totalViews = rows.reduce((sum, r) => sum + (r.views ?? 0), 0);
+  const totalLikes = rows.reduce((sum, r) => sum + (r.likes ?? 0), 0);
 
   const Tabs = (
     <div style={{
@@ -71,6 +107,82 @@ export function AnalyticsScreen(): React.ReactElement {
               </VCard>
             ))}
           </div>
+          {/* Your published Jelly videos, straight from YouTube. */}
+          <VCard variant="flat">
+            <div style={{ fontSize: 14, fontWeight: 600, color: t.text, marginBottom: 8 }}>
+              Your published videos
+            </div>
+            {ytConnected === false && (
+              <div style={{ fontSize: 13, color: t.textSecondary }}>
+                Connect YouTube from the publish panel to see views and likes
+                here.
+              </div>
+            )}
+            {ytConnected !== false && rows.length === 0 && (
+              <div style={{ fontSize: 13, color: t.textSecondary }}>
+                Nothing published yet — counters appear here after your first
+                upload.
+              </div>
+            )}
+            {rows.length > 0 && (
+              <>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 24,
+                    fontSize: 13,
+                    color: t.textSecondary,
+                    marginBottom: 10,
+                  }}
+                >
+                  <span>
+                    Total views:{' '}
+                    <strong style={{ color: t.text }}>
+                      {formatCount(totalViews)}
+                    </strong>
+                  </span>
+                  <span>
+                    Total likes:{' '}
+                    <strong style={{ color: t.text }}>
+                      {formatCount(totalLikes)}
+                    </strong>
+                  </span>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ color: t.textSecondary, textAlign: 'left' }}>
+                        <th style={{ padding: '6px 8px', fontWeight: 500 }}>Video</th>
+                        <th style={{ padding: '6px 8px', fontWeight: 500 }}>Views</th>
+                        <th style={{ padding: '6px 8px', fontWeight: 500 }}>Likes</th>
+                        <th style={{ padding: '6px 8px', fontWeight: 500 }}>Comments</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r) => (
+                        <tr key={r.videoId} style={{ borderTop: `1px solid ${t.border}` }}>
+                          <td style={{ padding: '6px 8px' }}>
+                            <a
+                              href={`https://youtu.be/${r.videoId}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ color: JELLY_TOKENS.brand, textDecoration: 'none' }}
+                            >
+                              {r.videoId}
+                            </a>
+                          </td>
+                          <td style={{ padding: '6px 8px', color: t.text }}>{formatCount(r.views)}</td>
+                          <td style={{ padding: '6px 8px', color: t.text }}>{formatCount(r.likes)}</td>
+                          <td style={{ padding: '6px 8px', color: t.text }}>{formatCount(r.comments)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </VCard>
+
           <VCard variant="flat">
             <div style={{ fontSize: 14, fontWeight: 600, color: t.text, marginBottom: 8 }}>Top Performers</div>
             <div style={{ fontSize: 13, color: t.textSecondary }}>

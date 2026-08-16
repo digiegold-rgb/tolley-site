@@ -29,10 +29,9 @@ import { useTheme } from '../../theme-context';
 import { useTier } from '../../tier-context';
 import { VBtn, VCard, VInput, RetryError, SectionHeader } from '../../primitives';
 import {
-  BETA_LENGTH_MESSAGE,
-  BETA_MAX_WORDS,
+  lengthMessageFor,
   WORDS_PER_MINUTE,
-  isOverBetaLength,
+  isOverLength,
   runtimeClock,
 } from '@/lib/vater/script-limits';
 import {
@@ -73,6 +72,9 @@ export interface ReviewProject {
   scriptVersions: ScriptVersion[] | null;
   /** Live worker state, refreshed by the 5s poll. Drives the rolling log. */
   stepDetails: StepDetails | null;
+  /** Optional feature bag (jelly-feature-contract 2026-08-16). Read it with
+   *  readFeatures() from lib/vater/project-features — never raw. */
+  settingsJson?: unknown;
 }
 
 /** One entry of `stepDetails.phaseTimings` — when a DGX phase ran. */
@@ -438,7 +440,7 @@ function ScriptIntake({
   onCreated: (project: ReviewProject) => void;
 }): React.ReactElement {
   const { t } = useTheme();
-  const { tier } = useTier();
+  const { tier, maxWords } = useTier();
   const [title, setTitle] = React.useState('');
   const [script, setScript] = React.useState('');
   const [animUntil, setAnimUntil] = React.useState('120');
@@ -447,10 +449,14 @@ function ScriptIntake({
   const fileRef = React.useRef<HTMLInputElement | null>(null);
 
   const words = React.useMemo(() => wordsIn(script), [script]);
-  // Only the owner renders past the beta cap — everyone else, including
-  // studio tier, is held to 9:00.
+  /* The ceiling comes from GET /api/vater/me (TierContext), which is the SAME
+   * number lib/vater/billing/script-cap.ts hands the from-script route: the
+   * owner is uncapped, an account with purchased credit gets ~20:00, and
+   * everyone else ~9:00. Hardcoding the beta cap here is what made a paying
+   * account's Approve button grey out at a limit the API had already raised. */
   const isOwner = tier === 'owner';
-  const overLimit = !isOwner && isOverBetaLength(words);
+  const overLimit = isOverLength(words, maxWords);
+  const lengthMessage = lengthMessageFor(maxWords);
 
   const readFile = async (file: File): Promise<void> => {
     setError(null);
@@ -479,9 +485,9 @@ function ScriptIntake({
     // Hard stop at the beta runtime cap. The server rejects it too, and so
     // does the DGX — this just saves the round trip and says it in the words
     // the user will see everywhere else.
-    if (!isOwner && isOverBetaLength(words)) {
+    if (overLimit) {
       setError(
-        `That's ${words.toLocaleString()} words (≈ ${runtimeClock(words)}). ${BETA_LENGTH_MESSAGE}`,
+        `That's ${words.toLocaleString()} words (≈ ${runtimeClock(words)}). ${lengthMessage}`,
       );
       return;
     }
@@ -559,7 +565,7 @@ function ScriptIntake({
             >
               {words.toLocaleString()} words · ≈ {runtimeClock(words)} at{' '}
               {WORDS_PER_MINUTE} wpm
-              {!isOwner && ` · limit ${BETA_MAX_WORDS.toLocaleString()}`}
+              {!isOwner && ` · limit ${maxWords.toLocaleString()}`}
             </span>
             <button
               type="button"
@@ -637,7 +643,7 @@ function ScriptIntake({
             lineHeight: 1.6,
           }}
         >
-          {BETA_LENGTH_MESSAGE}
+          {lengthMessage}
         </div>
       )}
 
@@ -1116,7 +1122,7 @@ function ReviewPanel({
   onChanged: () => void;
 }): React.ReactElement {
   const { t } = useTheme();
-  const { tier } = useTier();
+  const { maxWords } = useTier();
   /* `saved` is the text the server currently holds; `draft` is what's in the
    * box. Approve sends the DRAFT, so an unsaved edit can never silently
    * render the older text — but the button says so out loud too. */
@@ -1132,7 +1138,8 @@ function ReviewPanel({
   // Approve & Animate is the money click. The DGX rejects an over-cap script
   // with a 400, so stopping here costs the user one edit instead of a failed
   // project. Owner is uncapped.
-  const overLimit = tier !== 'owner' && isOverBetaLength(words);
+  const overLimit = isOverLength(words, maxWords);
+  const lengthMessage = lengthMessageFor(maxWords);
 
   const save = async (): Promise<void> => {
     setError(null);
@@ -1214,7 +1221,7 @@ function ReviewPanel({
           }}
         >
           {words.toLocaleString()} words is over the{' '}
-          {BETA_MAX_WORDS.toLocaleString()}-word ceiling. {BETA_LENGTH_MESSAGE}
+          {maxWords.toLocaleString()}-word ceiling. {lengthMessage}
         </div>
       )}
 
@@ -1306,7 +1313,7 @@ function ReviewPanel({
         </VBtn>
         <span style={{ fontSize: 12, color: t.textSecondary }}>
           {overLimit
-            ? BETA_LENGTH_MESSAGE
+            ? lengthMessage
             : dirty
               ? 'Unsaved edits — Approve sends the text in the box above.'
               : justSaved

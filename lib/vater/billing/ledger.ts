@@ -37,6 +37,12 @@ import {
   isMissingSchemaError,
 } from "@/lib/vater/schema-probe";
 
+import { referrerForUser } from "@/lib/vater/beta-invites";
+
+import {
+  MEDIAN_COMPUTE_USD_PER_MIN,
+  MIN_ESTIMATE_USD,
+} from "./estimate";
 import { buildVideoBillingLine, getOpsRate } from "./ops-fee";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -66,14 +72,28 @@ export const STARTER_GRANT_CENTS = 1000; // $10
 export const STARTER_GRANT_DAYS = 60;
 
 /**
- * Median measured compute for a finished minute of Jelly video ($/min).
- * Measured range 0.16–0.55 across the 8/07–8/14 renders (all-in, including
- * unbooked Modal TTS). Used ONLY for the pre-render estimate — never to bill.
+ * Referral bonus: paid to the REFERRER when someone who signed up on their
+ * code renders their first billed video. Paid on the first debit, not on
+ * signup, because signups are free to manufacture and a finished video is not.
  */
-export const MEDIAN_COMPUTE_USD_PER_MIN = 0.45;
+export const REFERRAL_BONUS_CENTS = 500; // $5
+/** Referral credit never expires — it was earned, not gifted. */
+export const REFERRAL_BONUS_DAYS: number | null = null;
 
-/** No estimate is ever below this, so a 30-second test still reserves credit. */
-export const MIN_ESTIMATE_USD = 1;
+/**
+ * Median measured compute for a finished minute of Jelly video ($/min), and
+ * the floor every quoted estimate is raised to.
+ *
+ * Both now live in lib/vater/billing/estimate.ts — the browser-safe module the
+ * pricing calculator, the 402 wall and the estimate route all read — and are
+ * re-exported here so the pre-existing server importers (check-budget.ts,
+ * scripts/vater-credits-smoke.ts) keep one import. ONE definition, or the
+ * marketing page and the budget gate quote different prices.
+ */
+export {
+  MEDIAN_COMPUTE_USD_PER_MIN,
+  MIN_ESTIMATE_USD,
+} from "./estimate";
 
 /**
  * 🔴 THE REPAIR CAP — the single constant that decides who eats an overrun.
@@ -350,19 +370,54 @@ export async function grantStarterCredit(
   }
   const cents = opts?.cents ?? STARTER_GRANT_CENTS;
   const days = opts?.days ?? STARTER_GRANT_DAYS;
-  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  return grantCredit({
+    userId,
+    cents,
+    dedupeKey: `grant:starter:${userId}`,
+    expiresInDays: days,
+    stillsOnly: true,
+    note:
+      opts?.note ??
+      `Welcome credit — $${(cents / 100).toFixed(2)}, expires in ${days} days`,
+  });
+}
+
+/**
+ * Write an arbitrary `grant` row. The generic behind grantStarterCredit and
+ * creditReferrerOnFirstDebit, and the ONLY way credit should be handed out —
+ * every ledger write lives in this module so "the ledger is the balance" stays
+ * true, and so idempotency is always the database's job via dedupeKey.
+ *
+ * `stillsOnly` grants fund scripts and still images but not the motion pass;
+ * see the stills-only note on grantStarterCredit.
+ */
+export async function grantCredit(input: {
+  userId: string;
+  cents: number;
+  dedupeKey: string;
+  note: string;
+  /** Days until the grant lapses. null/undefined = never expires. */
+  expiresInDays?: number | null;
+  stillsOnly?: boolean;
+}): Promise<{ granted: boolean; reason?: string }> {
+  if (input.cents <= 0) return { granted: false, reason: "zero_amount" };
+  if (!(await hasVaterCreditLedgerTable())) {
+    return { granted: false, reason: "not_ready" };
+  }
+  const expiresAt =
+    input.expiresInDays && input.expiresInDays > 0
+      ? new Date(Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000)
+      : null;
   try {
     await prisma.vaterCreditLedger.create({
       data: {
-        userId,
-        deltaCents: cents,
+        userId: input.userId,
+        deltaCents: input.cents,
         kind: "grant",
         expiresAt,
-        stillsOnly: true,
-        dedupeKey: `grant:starter:${userId}`,
-        note:
-          opts?.note ??
-          `Welcome credit — $${(cents / 100).toFixed(2)}, expires in ${days} days`,
+        stillsOnly: input.stillsOnly ?? false,
+        dedupeKey: input.dedupeKey,
+        note: input.note,
       },
     });
     return { granted: true };
@@ -371,6 +426,55 @@ export async function grantStarterCredit(
       return { granted: false, reason: "already_granted" };
     }
     if (isMissingSchemaError(err)) return { granted: false, reason: "not_ready" };
+    throw err;
+  }
+}
+
+/**
+ * Pay the referral bonus for `inviteeUserId`, if they came in on someone
+ * else's referral code.
+ *
+ * Called from debitForProject the moment the invitee's FIRST video is billed.
+ * Two guards, both cheap:
+ *   - dedupeKey `ref:<inviteeId>` — one bonus per invitee, ever, enforced by
+ *     the unique index rather than by remembering to check first
+ *   - self-referral is refused outright (mint your own code, sign up on it,
+ *     render one video, print $5)
+ *
+ * Best-effort by contract: the caller has already taken the customer's money
+ * for a video that exists, and a missing BetaInvite table or an unresolvable
+ * referrer must never turn that into an error.
+ */
+export async function creditReferrerOnFirstDebit(
+  inviteeUserId: string,
+): Promise<{ credited: boolean; reason?: string; referrerId?: string }> {
+  const referrerId = await referrerForUser(inviteeUserId);
+  if (!referrerId) return { credited: false, reason: "no_referrer" };
+  if (referrerId === inviteeUserId) {
+    return { credited: false, reason: "self_referral" };
+  }
+
+  const result = await grantCredit({
+    userId: referrerId,
+    cents: REFERRAL_BONUS_CENTS,
+    dedupeKey: `ref:${inviteeUserId}`,
+    note: `Referral bonus — $${(REFERRAL_BONUS_CENTS / 100).toFixed(2)} for a friend's first video`,
+    expiresInDays: REFERRAL_BONUS_DAYS,
+  });
+  return { credited: result.granted, reason: result.reason, referrerId };
+}
+
+/** Total referral credit this user has been paid, in cents. */
+export async function referralEarningsCents(userId: string): Promise<number> {
+  if (!(await hasVaterCreditLedgerTable())) return 0;
+  try {
+    const rows = await prisma.vaterCreditLedger.findMany({
+      where: { userId, kind: "grant", dedupeKey: { startsWith: "ref:" } },
+      select: { deltaCents: true },
+    });
+    return rows.reduce((a, r) => a + r.deltaCents, 0);
+  } catch (err) {
+    if (isMissingSchemaError(err)) return 0;
     throw err;
   }
 }
@@ -571,6 +675,27 @@ export async function debitForProject(
         `[vater-credits] repair-cap applied project=${project.id} cost=$${line.totalUsd.toFixed(2)} charged=$${chargeUsd.toFixed(2)} estimate=$${line.estimateUsd.toFixed(2)}`,
       );
     }
+
+    /* Referral bonus fires on a real billed video, and only ever once per
+     * invitee (dedupeKey `ref:<inviteeId>`), so calling it on every created
+     * debit is safe — the second one hits the unique index and no-ops.
+     * Wrapped: the customer has been charged and has their video, and a
+     * referral payout is not worth failing that on. */
+    try {
+      const ref = await creditReferrerOnFirstDebit(project.userId);
+      if (ref.credited) {
+        console.log(
+          `[vater-credits] referral bonus paid referrer=${ref.referrerId} invitee=${project.userId} project=${project.id}`,
+        );
+      }
+    } catch (err) {
+      console.error("[vater-credits] referral bonus failed", {
+        userId: project.userId,
+        projectId: project.id,
+        err,
+      });
+    }
+
     return { ok: true, outcome: "created", chargedCents: chargeCents, line };
   } catch (err) {
     if ((err as { code?: string })?.code === "P2002") {
@@ -589,6 +714,103 @@ export async function getProjectDebit(projectId: string) {
   try {
     return await prisma.vaterCreditLedger.findUnique({
       where: { dedupeKey: `debit:${projectId}` },
+    });
+  } catch (err) {
+    if (isMissingSchemaError(err)) return null;
+    throw err;
+  }
+}
+
+/**
+ * 🔴 REFUND A FAILED RENDER.
+ *
+ * "Failed renders are never charged" is printed on the landing page, on the
+ * Billing screen and inside the 402 wall. The debit path already honours it —
+ * debitForProject only fires on the transition into `ready` — but three routes
+ * can still leave a charge behind a failure:
+ *   - a render that reached `ready`, was charged, and then failed a later
+ *     revision pass that flipped it back
+ *   - the cost reconciler true-ing up a project that has since failed
+ *   - a manual/admin debit against a project that never delivered
+ * This is the one function that reverses those, and it is what the promise
+ * actually rests on.
+ *
+ * Reverses the FULL net charge for the project — the debit plus every adjust
+ * against it — so a refunded project nets to exactly zero rather than to
+ * whatever the original debit happened to be before a true-up.
+ *
+ * IDEMPOTENT on `refund:<projectId>`: the poll route calls this from a failure
+ * branch that fires on every poll of a failed job, and a refund that pays out
+ * twice is worse than one that never pays at all.
+ */
+export async function refundOnFailure(
+  projectId: string,
+  reason: string,
+): Promise<{
+  refunded: boolean;
+  reason?: string;
+  refundedCents?: number;
+}> {
+  if (!(await hasVaterCreditLedgerTable())) {
+    return { refunded: false, reason: "not_ready" };
+  }
+
+  try {
+    const rows = await prisma.vaterCreditLedger.findMany({
+      where: { projectId, kind: { in: ["debit", "adjust", "refund"] } },
+      select: { userId: true, deltaCents: true, kind: true, lineJson: true },
+    });
+    if (rows.length === 0) return { refunded: false, reason: "no_debit" };
+
+    // Net cents the customer is currently out of pocket for this project.
+    // Any prior refund row is in here too, so a partially-refunded project
+    // refunds only the remainder.
+    const netChargedCents = rows.reduce((a, r) => a - r.deltaCents, 0);
+    if (netChargedCents <= 0) return { refunded: false, reason: "nothing_charged" };
+
+    const debitRow = rows.find((r) => r.kind === "debit");
+    const userId = debitRow?.userId ?? rows[0].userId;
+    const priorLine = (debitRow?.lineJson ?? null) as VideoBillingLineJson | null;
+
+    const trimmedReason = reason.trim().slice(0, 300) || "Render failed";
+
+    await prisma.vaterCreditLedger.create({
+      data: {
+        userId,
+        deltaCents: netChargedCents,
+        kind: "refund",
+        projectId,
+        dedupeKey: `refund:${projectId}`,
+        // Carry the original billing line so the receipt can still show what
+        // the video would have cost, alongside the reason it cost nothing.
+        lineJson: {
+          ...(priorLine ?? {}),
+          reason: trimmedReason,
+          refundedCents: netChargedCents,
+        } as unknown as object,
+        note: `Refunded $${(netChargedCents / 100).toFixed(2)} — ${trimmedReason}`,
+      },
+    });
+
+    console.log(
+      `[vater-credits] refund project=${projectId} user=${userId} $${(netChargedCents / 100).toFixed(2)} — ${trimmedReason}`,
+    );
+    return { refunded: true, refundedCents: netChargedCents };
+  } catch (err) {
+    if ((err as { code?: string })?.code === "P2002") {
+      return { refunded: false, reason: "already_refunded" };
+    }
+    if (isMissingSchemaError(err)) return { refunded: false, reason: "not_ready" };
+    throw err;
+  }
+}
+
+/** The refund row for a project, if one exists (receipt + reconciler). */
+export async function getProjectRefund(projectId: string) {
+  if (!(await hasVaterCreditLedgerTable())) return null;
+  try {
+    return await prisma.vaterCreditLedger.findUnique({
+      where: { dedupeKey: `refund:${projectId}` },
     });
   } catch (err) {
     if (isMissingSchemaError(err)) return null;
@@ -623,6 +845,13 @@ export async function adjustProjectDebit(
 
   const debit = await getProjectDebit(projectId);
   if (!debit) return { adjusted: false, reason: "no_debit" };
+
+  // A refunded project is settled. Re-charging it because the cost reconciler
+  // found a truer compute number would silently undo the refund — the true-up
+  // and the refund are both "adjust the total", and the refund wins.
+  if (await getProjectRefund(projectId)) {
+    return { adjusted: false, reason: "refunded" };
+  }
 
   const project = (await prisma.youTubeProject.findUnique({
     where: { id: projectId },

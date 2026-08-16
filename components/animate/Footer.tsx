@@ -20,6 +20,9 @@ const COMPANY_LINKS: FooterLink[] = [
   { label: 'Affiliate', route: 'affiliate' },
   { label: 'Contact', href: 'mailto:digiegold@gmail.com' },
   { label: 'Pricing', route: 'pricing' },
+  /* The signed-out demo. Also the page's only inbound static href, which is
+   * what keeps scripts/audit-links.mjs from calling it an orphan. */
+  { label: 'Live demo', path: '/animate/demo' },
 ];
 
 const SOCIAL_LINKS: FooterLink[] = [

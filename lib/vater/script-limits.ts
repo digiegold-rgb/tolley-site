@@ -19,22 +19,78 @@
 /** Monroe's measured long-form pace (standing spec §5). */
 export const WORDS_PER_MINUTE = 185;
 
-/** Script length ceiling for non-owner renders. */
+/** Script length ceiling for a non-owner account with no purchased credit. */
 export const BETA_MAX_WORDS = 1700;
 
 /** The cap expressed as runtime, for copy. */
 export const BETA_MAX_SECONDS = 9 * 60;
 
+/**
+ * Ceiling for an account that has bought credit — ~20:00 at 185 wpm.
+ *
+ * Why the free cap exists at all: a 9:00 ceiling is a QA limit (clean renders
+ * topped out around 8:44, and #21 at 15:12 failed QA) AND a blast-radius
+ * limit, because a promotional grant is our money and a 20-minute render can
+ * spend most of one. Neither reason survives someone spending their own
+ * balance: the QA risk is theirs to take on a render they are paying for, and
+ * a longer video costs them proportionally more, not us.
+ *
+ * The gate is PURCHASED balance > 0, not "has ever purchased" — see
+ * lib/vater/billing/script-cap.ts.
+ */
+export const PAID_MAX_WORDS = 3700;
+
+/** The paid cap expressed as runtime, for copy. */
+export const PAID_MAX_SECONDS = 20 * 60;
+
+/**
+ * "9:00" / "20:00" — the cap as a clock.
+ *
+ * The published caps are ROUND RUNTIMES, and the word counts are those
+ * runtimes converted at 185 wpm and then rounded to a number a human can hold
+ * (1,700, not 1,665). Converting back would print "9:11", which is neither
+ * the number on the marketing page nor a limit anyone would state that way —
+ * so the two published caps map to their own runtime, and anything else falls
+ * back to the honest conversion.
+ */
+export function maxWordsClock(maxWords: number): string {
+  if (maxWords === BETA_MAX_WORDS) return clock(BETA_MAX_SECONDS);
+  if (maxWords === PAID_MAX_WORDS) return clock(PAID_MAX_SECONDS);
+  return runtimeClock(maxWords);
+}
+
+/** The one message a user should see about the limit they are actually on. */
+export function lengthMessageFor(maxWords: number): string {
+  // The owner's cap is Infinity (see lib/vater/billing/script-cap.ts). Callers
+  // compute this message eagerly and only render it when a script is actually
+  // over the line, so it has to be a sentence rather than "NaN:NaN".
+  if (!Number.isFinite(maxWords)) return "No length limit on this account.";
+  if (maxWords >= PAID_MAX_WORDS) {
+    return `Length limit is ${maxWordsClock(maxWords)} (~${maxWords.toLocaleString()} words). Split into two videos for now.`;
+  }
+  return `Beta limit is ${maxWordsClock(maxWords)} (~${maxWords.toLocaleString()} words), and rises to ${maxWordsClock(PAID_MAX_WORDS)} once you have purchased credit.`;
+}
+
+/** True when this script is over the given ceiling. */
+export function isOverLength(words: number, maxWords: number): boolean {
+  return words > maxWords;
+}
+
 export function countWords(text: string | null | undefined): number {
   return (text ?? "").split(/\s+/).filter(Boolean).length;
 }
 
-/** "8:44" — runtime at Monroe's pace, the format the cap is quoted in. */
-export function runtimeClock(words: number): string {
-  const total = Math.round((words / WORDS_PER_MINUTE) * 60);
+/** Seconds → "8:44". */
+export function clock(totalSeconds: number): string {
+  const total = Math.max(0, Math.round(totalSeconds));
   const m = Math.floor(total / 60);
   const s = total % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/** "8:44" — runtime at Monroe's pace, the format the cap is quoted in. */
+export function runtimeClock(words: number): string {
+  return clock((words / WORDS_PER_MINUTE) * 60);
 }
 
 /** "1,204 words · ≈ 6:30 at 185 wpm" — the line shown under a script box. */

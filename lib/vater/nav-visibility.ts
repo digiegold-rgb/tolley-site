@@ -52,6 +52,9 @@ export const NAV_ROUTES: readonly NavRouteDef[] = [
   { id: 'analytics', label: 'Analytics', icon: 'niche', minTier: 'public', section: 'primary', stub: true },
   { id: 'niche-finder', label: 'Creator Models', icon: 'search', minTier: 'public', section: 'primary' },
   { id: 'styles', label: 'Styles', icon: 'styles', minTier: 'public', section: 'primary' },
+  // Read-only view of the caller's own DGX character library — public tier:
+  // reusing your own cast is part of the golden path, not a studio perk.
+  { id: 'characters', label: 'Characters', icon: 'styles', minTier: 'public', section: 'primary' },
   { id: 'project-history', label: 'Project History', icon: 'history', minTier: 'public', section: 'primary' },
   { id: 'video-editor', label: 'Video Editor', icon: 'videoEditor', minTier: 'public', section: 'primary' },
   { id: 'course', label: 'Course Studio', icon: 'course', minTier: 'studio', section: 'primary' },
@@ -63,6 +66,17 @@ export const NAV_ROUTES: readonly NavRouteDef[] = [
   { id: 'pricing', label: 'Billing', icon: 'affiliate', minTier: 'public', section: 'secondary' },
   { id: 'discord', label: 'Discord Bot', icon: 'help', minTier: 'owner', section: 'secondary' },
   { id: 'affiliate', label: 'Affiliate', icon: 'affiliate', minTier: 'public', section: 'secondary', stub: true },
+  // ── Public API + team seats (2026-08-16) ────────────────────────────────
+  // Appended at the END on purpose: several lanes edit this array in the same
+  // cycle, and adding lines only at the tail keeps the merges trivial.
+  //
+  // Both are minTier 'public'. The API is a product feature every paying
+  // customer gets, not a studio perk — gating it behind a tier would mean the
+  // integrators most likely to use it (agent builders on the public plan) are
+  // the ones who cannot see it. The routes themselves are session-scoped, so
+  // visibility here grants nothing beyond a screen that lists your own rows.
+  { id: 'api-keys', label: 'API Keys', icon: 'lock', minTier: 'public', section: 'secondary' },
+  { id: 'team', label: 'Team', icon: 'affiliate', minTier: 'public', section: 'secondary' },
 ];
 
 /** True when `tier` is at least `minTier`. */

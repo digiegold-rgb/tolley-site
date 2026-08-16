@@ -35,12 +35,13 @@ import {
   type YouTubeProjectStatus,
 } from "@/lib/vater/youtube-status";
 import { mergeVideoCost } from "@/lib/vater/video-cost";
-import { debitForProject } from "@/lib/vater/billing/ledger";
+import { debitForProject, refundOnFailure } from "@/lib/vater/billing/ledger";
 import { hasUnmeteredStudioAccess } from "@/lib/vater/billing/check-budget";
 import { appendScriptVersion } from "@/lib/vater/script-versions";
 import { auth } from "@/auth";
 import { canAccessProject } from "@/lib/vater/project-access";
 import { recordUsage } from "@/lib/vater/billing/record-usage";
+import { notifyWebhooksForProject } from "@/lib/vater/api-webhooks";
 import { FLAT_ACTION_PRICES } from "@/lib/vater/pricing";
 import type { VaterAction } from "@/lib/vater-subscription";
 import { notifyTelegram } from "@/lib/budget/notify";
@@ -726,6 +727,30 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     }
   }
 
+  // ── Refund a failed render (idempotent, no-op in the normal case) ────────
+  // "Failed renders are never charged" is printed on the landing page and in
+  // the 402 wall. Nothing is normally charged before `ready`, so this usually
+  // finds no debit and returns "no_debit" — it exists for the paths that DO
+  // leave a charge behind a failure: a project that reached ready, was
+  // debited, and then failed a later revision pass. Dedupes on
+  // `refund:<projectId>`, so the 5-second re-polls of a failed job cannot
+  // refund twice. Best-effort: a refund hiccup must never 500 the poll.
+  if (updated.status === "failed" && updated.userId) {
+    try {
+      const refund = await refundOnFailure(
+        id,
+        failureMessage ?? updated.errorMessage ?? "Render failed",
+      );
+      if (refund.refunded) {
+        console.log(
+          `[vater/poll] project=${id} refunded $${((refund.refundedCents ?? 0) / 100).toFixed(2)} after failure`,
+        );
+      }
+    } catch (err) {
+      console.error(`[vater/poll] refund failed project=${id}`, err);
+    }
+  }
+
   // ── Debit prepaid credits for a FINISHED video (owner-billed, once) ─────
   // This is where the customer actually pays: compute at cost + $0.35 per
   // finished minute, charged the moment the video exists and never before.
@@ -782,6 +807,21 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
         );
       }
     }
+  }
+
+  // ── Public API completion webhook (at-most-once, best-effort) ───────────
+  // Fires only on the TRANSITION into a terminal state, so the 5-second
+  // re-polls of an already-done job cannot re-send. No-ops instantly when the
+  // owner has no API key with a webhook configured. Never throws — see
+  // lib/vater/api-webhooks.ts for why there is no retry queue.
+  if (
+    updated.status !== currentStatus &&
+    (updated.status === "ready" || updated.status === "failed")
+  ) {
+    await notifyWebhooksForProject(
+      id,
+      updated.status === "ready" ? "video.ready" : "video.failed",
+    );
   }
 
   return NextResponse.json({

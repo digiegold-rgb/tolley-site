@@ -1,0 +1,2526 @@
+{
+ "teardowns": [
+  {
+   "competitor": "Zebracat (zebracat.ai)",
+   "pricing_summary": "Subscription + dual credit meter, no pay-per-render. Free: $0, 5 total videos (marketing copy also says \"5 credits/week\"), 30 s max, 720p, watermark, standard voices only, no card required. Cat Mode $39/mo ($19\u201319.50/mo annual): 15 videos/mo, 2-min max, 1080p, no watermark, 350 generative-AI credits, 1 brand kit, 3 free edits/video, limited stock, AI chat support only. Super Cat $98\u201399/mo ($49 annual): 40 videos/mo (older copy says 30), 5-min max, 1,400 AI credits, 5 custom avatars + 5 voice clones/mo, 5 brand kits, full stock, video translation 25+ langs, priority live support + courses. Unlimited Cat $198\u2013199/mo ($99 annual): unlimited videos, 5-min max, 3,600 AI credits, 10 avatars + 10 clones/mo, unlimited brand kits, 5 free edits/video. Enterprise $398\u2013599+/mo: unlimited, API access, team roles/permissions, custom credits. Annual = ~50% off. Credits burn per minute of video by component (stock 2/min, standard voice 1/min, ultra-realistic or cloned voice 4/min, AI image visuals 5/min, infinite-zoom 8/min, avatar photo 20/min, avatar video 40/min, own footage 1/min, script 0.5/min, export 1/min; e.g. 2-min AI-image + standard voice video \u2248 15 credits). Credits reset monthly on purchase date, do NOT roll over, no partial-month refunds; 7-day money-back only if you downloaded no video. Reward Center gives 10 credits per external review. Cards, Apple/Google Pay, PayPal; USD/EUR/GBP/AUD/CAD. Also sold as AppSumo lifetime deal (source of \"bait-and-switch\" complaints when video caps were added). All exports capped at 1080p; 5-min hard max on every tier.",
+   "features": [
+    {
+     "feature": "Prompt/topic to video",
+     "how_it_works": "Type a brief idea; AI writes the script (0.5 credit/min), picks visuals, voice, music and renders a finished draft in ~2\u20135 min.",
+     "jelly_has": "yes",
+     "evidence_url": "https://help.zebracat.ai/article/930ed02bf73848769e67211451efe020-how-can-i-use-zebracat-a-complete-tutorial"
+    },
+    {
+     "feature": "Script to video",
+     "how_it_works": "Paste a full script; AI segments it into scenes and auto-matches visuals per sentence.",
+     "jelly_has": "yes",
+     "evidence_url": "https://help.zebracat.ai/article/f557ac2a861a48529c68be04506111e1-how-can-i-turn-a-script-into-a-video"
+    },
+    {
+     "feature": "Blog/URL to video",
+     "how_it_works": "Paste any URL; Zebracat scrapes the page text, summarizes it into a script and builds the video (Blog-to-Video feature).",
+     "jelly_has": "no",
+     "evidence_url": "https://help.zebracat.ai/article/f39a34c1e532459fa334b21138d4a62b-how-can-i-turn-a-blog-url-into-a-video"
+    },
+    {
+     "feature": "Audio/podcast to video",
+     "how_it_works": "Upload an audio file (podcast, recorded VO); Zebracat transcribes it, generates matching visuals and subtitles synced to the original audio.",
+     "jelly_has": "partial",
+     "evidence_url": "https://help.zebracat.ai/article/930ed02bf73848769e67211451efe020-how-can-i-use-zebracat-a-complete-tutorial"
+    },
+    {
+     "feature": "AI script generator (standalone + tone)",
+     "how_it_works": "Generates social-optimized short-form scripts with hook structures; also exposed as a standalone free tool page for SEO.",
+     "jelly_has": "yes",
+     "evidence_url": "https://www.zebracat.ai/features"
+    },
+    {
+     "feature": "Six selectable visual modes at start",
+     "how_it_works": "Before generating you pick: AI Image, AI Avatar + AI Image, Infinite Zoom (Ken-Burns-like continuous zoom), Stock Footage, AI Avatar, or AI + Stock Footage. Each mode has a different credit burn rate.",
+     "jelly_has": "partial",
+     "evidence_url": "https://help.zebracat.ai/article/930ed02bf73848769e67211451efe020-how-can-i-use-zebracat-a-complete-tutorial"
+    },
+    {
+     "feature": "AI image scenes in 78 preset styles",
+     "how_it_works": "AI Image mode offers 78 art styles; scenes generated per sentence, most in <60 s; can edit characters, locations, objects, camera angles before/after generation.",
+     "jelly_has": "yes",
+     "evidence_url": "https://help.zebracat.ai/article/930ed02bf73848769e67211451efe020-how-can-i-use-zebracat-a-complete-tutorial"
+    },
+    {
+     "feature": "Custom AI styles",
+     "how_it_works": "Paid plans can define their own visual style (free, no credit cost per help doc) that is reused across videos beyond the 78 presets.",
+     "jelly_has": "yes",
+     "evidence_url": "https://www.zebracat.ai/features/text-to-video"
+    },
+    {
+     "feature": "Character consistency toggle",
+     "how_it_works": "Single checkbox before generation; keeps the same character (age, hair, face) across all scenes.",
+     "jelly_has": "yes",
+     "evidence_url": "https://help.zebracat.ai/article/930ed02bf73848769e67211451efe020-how-can-i-use-zebracat-a-complete-tutorial"
+    },
+    {
+     "feature": "Generative video scenes via 3rd-party models",
+     "how_it_works": "'Generative AI credits' second meter buys clips from VEO3, Kling, Nano Banana, Seedance, Pixverse etc. (350/1,400/3,600 credits by tier).",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.zebracat.ai/pricing"
+    },
+    {
+     "feature": "Stock footage + music library (millions of clips)",
+     "how_it_works": "AI auto-picks stock clips (2 credits/min); Cat Mode gets limited library, Super Cat+ full. Music chosen by mood (energetic/happy/serious...) or off.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.zebracat.ai/features/ai-automated-video-editing"
+    },
+    {
+     "feature": "AI avatars (120+ library, custom, digital twin)",
+     "how_it_works": "Full-video talking avatars with lip sync; create custom avatars from a text prompt or your own likeness (5/mo Super Cat, 10/mo Unlimited); avatar video costs 40 credits/min, avatar photo 20/min.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.zebracat.ai/features/ai-avatar-generator"
+    },
+    {
+     "feature": "Voice cloning",
+     "how_it_works": "Upload a sample \u2192 digital clone; 5 clones/mo Super Cat, 10 Unlimited, unlimited Enterprise; cloned voice costs 4 credits/min.",
+     "jelly_has": "yes",
+     "evidence_url": "https://www.zebracat.ai/pricing"
+    },
+    {
+     "feature": "175+ language TTS, standard vs ultra-realistic tiers",
+     "how_it_works": "Standard voices (1 credit/min, free tier) vs premium ultra-realistic voices (4 credits/min, paid); language picked at setup.",
+     "jelly_has": "partial",
+     "evidence_url": "https://help.zebracat.ai/article/e9210101f8ad4466a7d75bddd18865eb-how-credits-work-in-zebracat"
+    },
+    {
+     "feature": "Video translation with lip-sync (25+ languages)",
+     "how_it_works": "Upload a finished video, pick target language; voice and lip movement adapt. Super Cat and above only.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.zebracat.ai/pricing"
+    },
+    {
+     "feature": "Auto captions with styling",
+     "how_it_works": "Toggle captions on/off at setup; editor offers caption style presets/fonts/colors; reviewers say no animated word-by-word karaoke styles.",
+     "jelly_has": "yes",
+     "evidence_url": "https://www.zebracat.ai/features/ai-automated-video-editing"
+    },
+    {
+     "feature": "Aspect ratio 9:16 / 1:1 / 16:9",
+     "how_it_works": "Chosen at setup; help docs map each to platforms (Shorts/Reels/TikTok, Feed, YouTube).",
+     "jelly_has": "partial",
+     "evidence_url": "https://help.zebracat.ai/article/56de65c7e13240ff914d45f6df81c624-can-i-export-videos-in-formats-suitable-for-social-media"
+    },
+    {
+     "feature": "Duration slider",
+     "how_it_works": "Target length set with a slider before generation (60 s recommended); hard caps 30 s free / 2 min Cat Mode / 5 min higher.",
+     "jelly_has": "partial",
+     "evidence_url": "https://help.zebracat.ai/article/930ed02bf73848769e67211451efe020-how-can-i-use-zebracat-a-complete-tutorial"
+    },
+    {
+     "feature": "Brand Kit",
+     "how_it_works": "Save logo, color palette, fonts, business name; auto-applied to every video (1 kit Cat Mode, 5 Super Cat, unlimited above).",
+     "jelly_has": "no",
+     "evidence_url": "https://help.zebracat.ai/article/0de66b0bbe864ddf97bcf877179bc727-what-are-brand-kits-and-how-do-i-use-them"
+    },
+    {
+     "feature": "Built-in post-generation editor",
+     "how_it_works": "Opens automatically after render or via Your Videos \u2192 \u22ef \u2192 Edit; swap scenes/clips, fix subtitles, upload own footage (1 credit/min), change voice/music/text/transitions. Not a frame-level timeline.",
+     "jelly_has": "yes",
+     "evidence_url": "https://help.zebracat.ai/article/c75eadbcbaec48bb9cd7a114cb5fc1cf-how-do-i-access-the-editing-studio-in-zebracat"
+    },
+    {
+     "feature": "Metered 'free edits per video' (3/3/5/unlimited)",
+     "how_it_works": "Each video gets N free re-renders after editing; beyond that edits consume credits \u2014 a frequent complaint.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.zebracat.ai/pricing"
+    },
+    {
+     "feature": "AI automated editing (cuts, transitions, sync)",
+     "how_it_works": "AI handles cutting, syncing visuals to VO, transitions and effects with no manual work.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.zebracat.ai/features/ai-automated-video-editing"
+    },
+    {
+     "feature": "Templates library",
+     "how_it_works": "'Ready-to-use video templates' resource section plus per-format landing pages (Shorts, TikTok, Reels, explainer, YouTube long-form).",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.zebracat.ai/features/text-to-video"
+    },
+    {
+     "feature": "Output: MP4 up to 1080p, watermark on free",
+     "how_it_works": "720p + watermark free; 1080p paid; no 4K on any tier; 5-min max even Enterprise (help doc says 'long-form' = >1 min).",
+     "jelly_has": "partial",
+     "evidence_url": "https://prizmad.com/review/zebracat"
+    },
+    {
+     "feature": "Direct publishing / scheduling",
+     "how_it_works": "NOT supported: 'Zebracat does not support automatic uploading to platforms like YouTube, TikTok, or Instagram'; download and post manually; feature is on the voting board.",
+     "jelly_has": "partial",
+     "evidence_url": "https://help.zebracat.ai/article/6a9b935eb42247c0bd73e5cef2cfdaeb-any-chance-of-adding-auto-upload-to-youtube-tiktok-or-instagram"
+    },
+    {
+     "feature": "Commercial rights + YouTube monetization FAQ",
+     "how_it_works": "Paid plans include commercial usage rights; help center has an explicit 'Can I get monetized on YouTube' article.",
+     "jelly_has": "partial",
+     "evidence_url": "https://help.zebracat.ai/article/fd3444f69a70452c9e484e5b3aafa8b2-can-i-get-monetized-on-youtube-using-videos-created-with-zebracat"
+    },
+    {
+     "feature": "API access (Enterprise only)",
+     "how_it_works": "Listed on Enterprise tier alongside custom credits; no public docs found.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.zebracat.ai/pricing"
+    },
+    {
+     "feature": "Teams / roles & permissions (Enterprise)",
+     "how_it_works": "Advanced team roles/permissions only at Enterprise; no seat-based collaboration on lower tiers.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.zebracat.ai/pricing"
+    },
+    {
+     "feature": "Credit system with published per-feature burn table",
+     "how_it_works": "Help article lists credits/min per component; total = sum of components \u00d7 minutes; monthly reset, no rollover.",
+     "jelly_has": "partial",
+     "evidence_url": "https://help.zebracat.ai/article/e9210101f8ad4466a7d75bddd18865eb-how-credits-work-in-zebracat"
+    },
+    {
+     "feature": "Reward Center (earn credits for reviews)",
+     "how_it_works": "Write a review on G2/Capterra/Trustpilot etc., submit proof, get 10 credits per approved review.",
+     "jelly_has": "no",
+     "evidence_url": "https://help.zebracat.ai/article/40dc81f5f4a64fb79024857f22ea64cd-how-does-the-reward-center-work"
+    },
+    {
+     "feature": "Affiliate program (30% recurring)",
+     "how_it_works": "Public affiliate program paying 30% recurring commission.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.zebracat.ai"
+    },
+    {
+     "feature": "7-day money-back guarantee (conditional)",
+     "how_it_works": "Full refund within 7 days only if no video was downloaded; no partial-month refunds.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.zebracat.ai/pricing"
+    },
+    {
+     "feature": "HelpCat in-app AI chatbot + tiered support",
+     "how_it_works": "AI chat support on Cat Mode; priority live support + exclusive courses on Super Cat+; email support@zebracat.ai.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.zebracat.ai"
+    },
+    {
+     "feature": "Skool community + public feature voting board",
+     "how_it_works": "Skool group for faceless-channel creators; help center 'Roadmap & features' category and a feature planning/voting board.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.skool.com/zebracat/about"
+    },
+    {
+     "feature": "Free SEO tool pages (calculators, per-platform generators)",
+     "how_it_works": "Aspect-ratio calculator, statistics posts, 'Nano Banana video generator', Shorts/TikTok/Reel generator landing pages funnel signups.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.zebracat.ai/calculator/aspect-ratio"
+    },
+    {
+     "feature": "Multi-currency + wallets checkout",
+     "how_it_works": "Visa/MC/Amex/Discover/JCB/UnionPay/Diners, Apple Pay, Google Pay, PayPal; USD/EUR/GBP/AUD/CAD.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.zebracat.ai/pricing"
+    },
+    {
+     "feature": "Free tier with no card",
+     "how_it_works": "Sign up free, 5 videos total, 30 s, 720p, watermark, standard voices; no storyboard preview.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.zebracat.ai/pricing"
+    },
+    {
+     "feature": "Analytics/SEO tools (titles, tags, thumbnails, trend finder)",
+     "how_it_works": "Not offered; homepage claims 'video performance tracking' for strategy but no title/tag/thumbnail generator or A/B tools found.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.zebracat.ai"
+    }
+   ],
+   "standout_ux": [
+    "Published per-feature credit burn table (credits/min per component) with a worked example \u2014 makes cost predictable before render; Jelly could show a similar pre-render estimate per step (voice tier, motion on/off, Wan clips).",
+    "Choose visual mode + aspect ratio + duration slider + character-consistency toggle on ONE pre-generation screen, then land straight in the editor \u2014 very low-friction 'first video in 2\u20135 min' path.",
+    "Brand Kit auto-applied to every video (logo, palette, fonts, business name) \u2014 one-time setup, zero per-video work.",
+    "Reward Center: 10 credits per external review \u2014 converts happy users into G2/Trustpilot/Capterra social proof (1,000+ 5-star reviews claimed).",
+    "Six per-format SEO landing pages/free tools (Shorts, TikTok, Reels, explainer, aspect-ratio calculator) plus a Skool community and public feature-voting board driving organic acquisition."
+   ],
+   "weaknesses_users_complain_about": [
+    "Credit bait-and-switch: AppSumo lifetime holders had credits replaced by a 30-videos/month cap plus separate AI-scene credits (AppSumo 3.9/5, 18 one-taco reviews).",
+    "Dual metering (video count + generative-AI credits) is opaque; unused credits expire monthly, no rollover, no partial refunds; refunds described as 'a nightmare'.",
+    "Limited post-generation editing: users report they could not change text/captions/voice/music after render and had to recreate and burn credits; only 3\u20135 free edits per video.",
+    "Export/render failures ('could not export 50% of the videos'), crashes at peak, 3\u201310 min render times; support unwilling to refund credits during outages.",
+    "Quality: AI faces distorted, images out of sync with audio, stock clips not matching script, avatars 'slightly robotic', synthetic look on human/lifestyle content.",
+    "Hard 5-minute max and 1080p cap on every tier (no 4K, no true long-form); free tier is 30 s with watermark and no storyboard preview.",
+    "Thin voice library vs. competitors and only basic caption styles (no word-by-word animation); no auto-posting/scheduling and no API below Enterprise ($599+)."
+   ],
+   "sources": [
+    "https://www.zebracat.ai",
+    "https://www.zebracat.ai/pricing",
+    "https://www.zebracat.ai/features",
+    "https://www.zebracat.ai/features/text-to-video",
+    "https://www.zebracat.ai/features/ai-avatar-generator",
+    "https://www.zebracat.ai/features/ai-scene-generator",
+    "https://www.zebracat.ai/features/ai-automated-video-editing",
+    "https://help.zebracat.ai",
+    "https://help.zebracat.ai/article/930ed02bf73848769e67211451efe020-how-can-i-use-zebracat-a-complete-tutorial",
+    "https://help.zebracat.ai/article/e9210101f8ad4466a7d75bddd18865eb-how-credits-work-in-zebracat",
+    "https://help.zebracat.ai/article/c75eadbcbaec48bb9cd7a114cb5fc1cf-how-do-i-access-the-editing-studio-in-zebracat",
+    "https://help.zebracat.ai/article/90a61f36ffd84014a8fb8d82ea2136a8--how-can-i-create-long-form-videos",
+    "https://help.zebracat.ai/article/6a9b935eb42247c0bd73e5cef2cfdaeb-any-chance-of-adding-auto-upload-to-youtube-tiktok-or-instagram",
+    "https://help.zebracat.ai/article/0de66b0bbe864ddf97bcf877179bc727-what-are-brand-kits-and-how-do-i-use-them",
+    "https://help.zebracat.ai/article/425286066fa5432daa8d2f47fb5ab9d6-do-credits-reset-or-roll-over",
+    "https://help.zebracat.ai/article/40dc81f5f4a64fb79024857f22ea64cd-how-does-the-reward-center-work",
+    "https://www.trustpilot.com/review/zebracat.ai",
+    "https://www.capterra.com/p/10020732/Zebracat/reviews/",
+    "https://appsumo.com/products/zebracat/reviews/",
+    "https://www.g2.com/products/zebracat/reviews",
+    "https://prizmad.com/review/zebracat",
+    "https://fluxnote.io/guides/zebracat-ai-video-review-2026",
+    "https://learnwirepro.com/zebracat-ai-review/",
+    "https://medium.com/@hungryclaw/zebracat-review-2026-a-practical-ai-video-workflow-test-75c73ddb642b",
+    "https://www.skool.com/zebracat/about",
+    "https://www.zebracat.ai/blog"
+   ]
+  },
+  {
+   "competitor": "Faceless.so (Faceless LLC / Side-Products; \"faceless channel on autopilot\" \u2014 shorts generator + 7-platform auto-poster + agent API)",
+   "pricing_summary": "Subscription + credits, \"sign up free, no credit card\" (free signup lets you explore/preview; rendering, uploading and captioning are disabled in the public demo, and their own compare pages admit \"No free tier\"). Plans (monthly / yearly): Starter $24/mo or $290/yr = 500 credits (~25 videos), 3 team seats; Growth $49/mo ($32/mo billed yearly, $390/yr) = 1,000 credits (~50 videos), 5 seats, adds AI Agent natural-language editing + UGC videos; Influencer $107/mo ($57/mo yearly, $690/yr) = 2,000 credits (~100 videos), 7 seats; Ultra $166/mo ($82/mo yearly, $990/yr) = 5,000 credits (~250 videos), 10 seats, API access, call support, early access. Yearly = 20% off. Marketing pages elsewhere still say \"$29/mo Starter\" (inconsistent). Credits are charged once at video creation by model: storyboard (static AI scenes + motion effects) 20 cr, motion_lite (animated transitions) 50 cr, motion_pro (cinematic AI motion video) 100 cr; render, re-render, captioning existing footage, publishing, scheduling, analytics are all free. Top-up packs $10 per 100 credits (bonus on larger packs) \u2192 effectively $2 / $5 / $10 per storyboard / lite / pro video at top-up rate, or ~$0.96 per storyboard video on Starter. Series (autopilot) require an active subscription; paid plans also cap total video projects (403 usage_limit_reached). No refunds once any credit is consumed (\"each video consumes paid GPU generation the moment it's created\"); prorated upgrades/downgrades; cancel in two clicks. Add-on: \"Warmed accounts\" \u2014 human-operated real-iPhone TikTok/IG accounts from $349/mo per pack. Also: AppSumo lifetime deal page, $FACELESS Solana token for credits, loyalty rewards, spin-and-win credits, affiliate program.",
+   "features": [
+    {
+     "feature": "Niche/series autopilot (set-and-forget channel)",
+     "how_it_works": "Pick one of 28 niches (Reddit Stories, Fake Text Drama, Scary Stories, True Crime, Motivation, History, Wealth, Conspiracy, Language Learning...) or a custom prompt, choose visual style, voice, caption theme, 30/60/90s duration, posting time/timezone/days and destination accounts; AI writes script \u2192 voice \u2192 B-roll/captions \u2192 auto-posts one episode per day per series. First episode generates immediately; pause/resume; 'generate next episode now' button; multiple concurrent series.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/developers/docs/series.md"
+    },
+    {
+     "feature": "Research-seeded scripting (Google Trends, Wikipedia, Google News, Reddit, fact grounding)",
+     "how_it_works": "Before writing, each daily script is seeded from live sources ('trending searches, Wikipedia events, news headlines, real Reddit posts') plus a fact-grounding snippet pass; marketed as anti-'AI slop' and safer to monetize.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/faceless/"
+    },
+    {
+     "feature": "Script & hook generation + free script/title/caption tools",
+     "how_it_works": "Built-in AI script + hook writer inside the flow; standalone free tools (/tools/ai-script-generator, youtube-title-generator, tiktok-caption-generator) and downloadable packs (200+ hooks, 5 script templates, 30-day calendar, niche list, channel-name generator).",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/templates/"
+    },
+    {
+     "feature": "Paste your own script (script-first) via UI or API",
+     "how_it_works": "POST /videos takes a finished narration script + voiceId + model; UI 'import scripts, footage and audio' during creation or in editor.",
+     "jelly_has": "yes",
+     "evidence_url": "https://faceless.so/developers/docs/videos.md"
+    },
+    {
+     "feature": "URL imports: Reddit post, blog article, tweet/X thread as source",
+     "how_it_works": "Series source types include 'Reddit post' (pick a subreddit), blog and tweet URL imports; dedicated Reddit-story and Twitter-story creators that render the post card over gameplay.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/compare/autoshorts-vs-faceless"
+    },
+    {
+     "feature": "Multiple video formats/creators (Reddit story, fake-text drama, ChatGPT-video, character story/animation, audio-to-visuals, split-screen, streamer-blur, montage, music video)",
+     "how_it_works": "Each format has its own /create wizard with format-specific rendering (e.g., iMessage bubble animations over background, split-screen gameplay, waveform audiogram).",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/llms.txt"
+    },
+    {
+     "feature": "Three visual 'models' priced by motion level (storyboard / motion_lite / motion_pro)",
+     "how_it_works": "20 cr static AI scenes with Ken-Burns-style motion effects; 50 cr animated transitions between scenes; 100 cr cinematic AI motion video; catalog with live costs via GET /options?kind=models so buyers pick by budget.",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/developers/docs/credits-and-limits.md"
+    },
+    {
+     "feature": "Frontier gen-video creators (Google Veo 3 / 3.1, Seedance v2) as separate tools",
+     "how_it_works": "Dedicated /veo3, /veo31, /seedance2 create pages and a Veo gallery for prompt-to-video clips.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/llms.txt"
+    },
+    {
+     "feature": "Background gameplay/footage library (Minecraft parkour, Subway Surfers style) + random background option",
+     "how_it_works": "Series field backgroundVideo or useRandomBackgroundVideo picks from a catalog (GET /options?kind=backgrounds) placed under captions/reddit cards.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/developers/docs/series.md"
+    },
+    {
+     "feature": "Stock B-roll (Pexels) swap in editor",
+     "how_it_works": "Editor lets you swap B-roll clips per scene; integrations page lists Pexels as the b-roll source; testimonials cite customizing B-roll.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/integrations/"
+    },
+    {
+     "feature": "Visual styles + masterStyle + globalNegativePrompt",
+     "how_it_works": "Pick a style from a catalog (GET /options?kind=styles); optional 'masterStyle' directive applied to every scene and a global negative prompt for image gen.",
+     "jelly_has": "yes",
+     "evidence_url": "https://faceless.so/llms-full.txt"
+    },
+    {
+     "feature": "AI actors/avatars, face-swap, virtual try-on, UGC videos",
+     "how_it_works": "/actors browser, /faceswap creator, male/female model try-on; 'UGC video creation' unlocked on Growth+.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/pricing"
+    },
+    {
+     "feature": "ElevenLabs voices (50+) in 70+ languages",
+     "how_it_works": "GET /voices returns ElevenLabs premade voices with preview URLs; native-sounding voiceover in 70+ languages; language catalog via GET /options?kind=languages.",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/faceless/"
+    },
+    {
+     "feature": "Voice cloning (custom voice library) on every paid plan",
+     "how_it_works": "/custom-voices page; team's cloned voices appear alongside stock voices in GET /voices; marketed as key differentiator vs AutoShorts.",
+     "jelly_has": "yes",
+     "evidence_url": "https://faceless.so/compare/autoshorts-vs-faceless"
+    },
+    {
+     "feature": "Cinematic captions with per-word styling and emphasis detection; caption themes; emoji overlay",
+     "how_it_works": "Caption theme catalog (GET /options?kind=captionThemes), showEmojis toggle, AI detects emphasis words and styles them per-word.",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/pricing"
+    },
+    {
+     "feature": "Caption existing footage (video or audio URL) for free",
+     "how_it_works": "POST /videos/captions transcribes an uploaded/hosted video or audio, adds styled captions + emojis, makes it editable; 0 credits; audio file becomes a captioned video.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/developers/docs/videos.md"
+    },
+    {
+     "feature": "Background music by mood (Suno) + sound effects",
+     "how_it_works": "enableBackgroundMusic + backgroundMusicMood catalog (GET /options?kind=music); editor adds SFX; Suno listed as music integration.",
+     "jelly_has": "yes",
+     "evidence_url": "https://faceless.so/integrations/"
+    },
+    {
+     "feature": "Faceless Studio timeline editor (real-time, effects, zooms, transitions, progress bars, animations, waveforms)",
+     "how_it_works": "Desktop editor with timeline control; tweak captions, music, B-roll, effects; 'Add sound effects, background music, transitions, progress bars, animations, waveforms'; any video editable until its scheduled post time.",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/"
+    },
+    {
+     "feature": "No-signup interactive editor demo",
+     "how_it_works": "'Click to Launch Editor \u2014 Fully interactive \u00b7 No sign-up required \u00b7 Try all features' at /demo (rendering, uploading, captioning disabled in demo mode).",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/demo"
+    },
+    {
+     "feature": "AI Agent natural-language editing (Growth+)",
+     "how_it_works": "Chat instruction inside the editor makes edits ('AI Agent for natural language video editing').",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/pricing"
+    },
+    {
+     "feature": "Phone review/approve, desktop polish",
+     "how_it_works": "Every episode is ready to review before its post time; approve from phone or open full editor on desktop.",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/"
+    },
+    {
+     "feature": "Interesting-clips detection per project",
+     "how_it_works": "/project/[id]/interesting-clips shows AI-detected highlight clips of a project.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/llms.txt"
+    },
+    {
+     "feature": "Brand kits (logos, colors, fonts)",
+     "how_it_works": "/brand-kits create/edit; applied to captions/templates for consistent channel look.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/llms.txt"
+    },
+    {
+     "feature": "Custom templates + unlimited exports, no watermark",
+     "how_it_works": "All plans: unlimited exports, custom templates, no watermark; MP4 h264 renders to exports.faceless.so; free re-renders.",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/pricing"
+    },
+    {
+     "feature": "Short-form only length presets (30/60/90s), 9:16 vertical output",
+     "how_it_works": "Series duration enum 30|60|90; product is Shorts/Reels/TikTok oriented (9:16). No long-form, no stated 4K.",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/developers/docs/series.md"
+    },
+    {
+     "feature": "Direct publishing to 7 platforms (YouTube, TikTok, Instagram, Facebook, LinkedIn, Threads, X)",
+     "how_it_works": "OAuth-connect accounts in dashboard (multiple accounts per platform); POST /posts publishes rendered MP4 with per-platform title/caption; YouTube privacy status.",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/developers/docs/publishing-and-scheduling.md"
+    },
+    {
+     "feature": "Scheduling + content calendar (weeks ahead), per-platform metadata",
+     "how_it_works": "PATCH per-platform metadata (youtubePost title\u2264100, xPost\u2264280, threadsPost\u2264500...) then POST /posts/schedule with ISO time; /calendar shows scheduled/posted/failed; cancel pending posts.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/developers/docs/publishing-and-scheduling.md"
+    },
+    {
+     "feature": "Auto-X (Twitter bot) audiogram/faceless posts",
+     "how_it_works": "/auto-x/create series that generates and auto-posts X content.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/roadmap"
+    },
+    {
+     "feature": "Cross-platform analytics dashboard",
+     "how_it_works": "Views, likes, comments, posting volume per platform/account over trailing 30d (YouTube, TikTok, IG, FB); GET /analytics.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/llms-full.txt"
+    },
+    {
+     "feature": "AI caption generator, hashtags, post ideas & audio trends",
+     "how_it_works": "Per-post AI captions/descriptions/hashtags appended automatically; 'New post ideas + audio trends' surfaced in publishing hub.",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/faceless/"
+    },
+    {
+     "feature": "Teams/workspaces with seat limits, invites, folders",
+     "how_it_works": "3\u201310 team members by plan; /team, invite links; project folders; public creator profile pages; shareable /share links.",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/pricing"
+    },
+    {
+     "feature": "REST API v1 with scoped keys, idempotency keys, rate limits, typed errors, OpenAPI spec",
+     "how_it_works": "Bearer fl_live_ keys with scopes (videos:write, series:write, posts:write, analytics:read...), Idempotency-Key replay for 24h, 402/403/429 semantics, openapi.json; API access listed on Ultra plan.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/llms.txt"
+    },
+    {
+     "feature": "MCP server (remote + local, 27 tools), CLI (npm faceless-cli), Claude Skill; llms.txt/llms-full.txt",
+     "how_it_works": "claude mcp add --transport http faceless https://faceless.so/api/v1/mcp; npx skills add Side-Products/faceless-skill installs CLI and workflow; CLI --json/--wait polling; docs readable as .md by appending .md.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/agents"
+    },
+    {
+     "feature": "Zapier / Make.com / Google Drive integrations",
+     "how_it_works": "Integrations directory says wire generation into Zapier, Make, Drive (pages 'will appear once seeded' \u2014 partially built).",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/integrations/"
+    },
+    {
+     "feature": "Register hosted assets by URL",
+     "how_it_works": "POST /assets registers media by public URL for use in projects (footage/audio imports).",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/llms.txt"
+    },
+    {
+     "feature": "Credits ledger + balance API, top-ups, prorated plan changes, cancel-anytime",
+     "how_it_works": "GET /credits history (purchases, grants, spends, refunds); packs at /billing?tab=credits; 'cancel in two clicks'; no refunds after any credit use.",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/developers/docs/credits-and-limits.md"
+    },
+    {
+     "feature": "Warmed human-run TikTok/IG accounts (from $349/mo)",
+     "how_it_works": "Real iPhone + carrier SIM + residential IP per account, 7-day niche warming by a person, you queue videos and an operator posts by hand (never API); results flow back per handle.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/warmed-accounts"
+    },
+    {
+     "feature": "Growth loops: affiliate program, loyalty rewards, spin-and-win credits, $FACELESS token, AppSumo LTD",
+     "how_it_works": "Solana token buys credits/holder perks; spin-to-win promo; affiliate; AppSumo lifetime deal.",
+     "jelly_has": "no",
+     "evidence_url": "https://faceless.so/llms.txt"
+    },
+    {
+     "feature": "Support: premium live chat all plans, call support on Ultra; tutorials, 72-post blog, glossary, public roadmap",
+     "how_it_works": "In-app chat; /tutorials, /blog (28 niche + 14 use-case SEO articles), /roadmap with quarterly phases.",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/roadmap"
+    },
+    {
+     "feature": "Full ownership + commercial rights; monetization FAQ (YPP, TikTok rewards)",
+     "how_it_works": "FAQ states you own all rights incl. commercial use; scripts uniquely written; ToS governed by Uttar Pradesh, India law; ToS bans 'automated means to access the Service' despite selling an API.",
+     "jelly_has": "partial",
+     "evidence_url": "https://faceless.so/terms"
+    }
+   ],
+   "standout_ux": [
+    "Agent-first surface: llms.txt + llms-full.txt, every doc readable as .md, OpenAPI, hosted MCP with 27 tools, CLI with --json/--wait, and a Claude Skill that installs itself \u2014 'give your agent one scoped key and it runs the channel'. Jelly's planner/QA already runs on LLMs; exposing render/publish/credits as MCP tools is cheap and differentiating.",
+    "Credits charged once at creation, everything downstream free (re-render, captions, publish, schedule, analytics) with model catalog + live costs (GET /options?kind=models) so users/agents pick quality by budget \u2014 a clean 3-tier (storyboard / motion_lite / motion_pro) that maps directly onto Jelly's stills-vs-Wan-motion choice.",
+    "'Review from your phone, polish on desktop': every scheduled episode sits in a queue that's editable until post time; approve on mobile, open timeline editor on desktop.",
+    "No-signup, fully interactive editor demo (/demo) with rendering/upload disabled \u2014 lets prospects feel the tool before creating an account.",
+    "Series wizard = 10-minute setup (niche/custom prompt \u2192 style \u2192 caption theme \u2192 voice \u2192 30/60/90s \u2192 posting time/days/timezone \u2192 destination accounts) then daily autopilot; plus a per-episode 'generate now' button and pause toggle.",
+    "Idempotency-Key on every mutating call (24h replay) so retries can never double-charge credits; 402 insufficient_credits vs 403 usage_limit_reached vs 429 with Retry-After are distinct, documented error types."
+   ],
+   "weaknesses_users_complain_about": [
+    "No refunds once a single credit is used ('unable to refund plans once credits have been used'); paid plans also cap total projects (403 usage_limit_reached) on top of credits \u2014 two ceilings surprise users.",
+    "'Sign up free' but no free render tier: their own comparison pages list 'No free tier; entry point is the $29/month Starter plan' and the public demo disables rendering/upload; pricing shown as $24 on /pricing but $29 across compare/templates/integrations pages \u2014 inconsistent.",
+    "Editor is admittedly 'workflow-focused, less granular than a general video editor' and 'voice library smaller than ElevenLabs's catalog directly'; scheduling UI called less polished than AutoShorts (calendar-based, no drag-to-reschedule).",
+    "Short-form only (30/60/90s presets, 9:16); no long-form/16:9 pipeline, no thumbnail generator, no stated resolution/4K.",
+    "'AI slop' / generic-niche risk: reviewers of this category note pure automation plateaus and needs human oversight; the product still leans on Pexels stock B-roll and gameplay backgrounds, so visuals are not unique per channel.",
+    "Trust signals are thin/mixed: very few independent reviews (Groupify 4.75/5 from only 4 reviews; no reachable Trustpilot page for faceless.so; sibling brands faceless.video/facelessreels have 1.8\u20133.9 TrustScores with refund complaints that spill over in search); ToS governed by Uttar Pradesh, India; ToS forbids 'automated means to access the Service' while selling an API; crypto token/spin-and-win/warmed-account upsells read gray-hat.",
+    "Integrations directory (Zapier/Make/Drive) says pages 'will appear here once they're seeded' \u2014 advertised but not delivered; several linked compare URLs 404."
+   ],
+   "sources": [
+    "https://faceless.so",
+    "https://faceless.so/faceless/",
+    "https://faceless.so/pricing",
+    "https://faceless.so/llms.txt",
+    "https://faceless.so/llms-full.txt",
+    "https://faceless.so/developers/docs/credits-and-limits.md",
+    "https://faceless.so/developers/docs/videos.md",
+    "https://faceless.so/developers/docs/series.md",
+    "https://faceless.so/developers/docs/publishing-and-scheduling.md",
+    "https://faceless.so/agents",
+    "https://faceless.so/warmed-accounts",
+    "https://faceless.so/integrations/",
+    "https://faceless.so/compare/",
+    "https://faceless.so/compare/autoshorts-vs-faceless",
+    "https://faceless.so/templates/",
+    "https://faceless.so/roadmap",
+    "https://faceless.so/terms",
+    "https://faceless.so/demo",
+    "https://faceless.so/blog/",
+    "https://groupify.ai/ai-tool/faceless-so",
+    "https://www.youtube.com/watch?v=Udq4s_vQnOk",
+    "https://onlinebizoffers.com/facelessso-review",
+    "https://www.trustpilot.com/review/faceless.video",
+    "https://toruclip.com/blog/facelessreels-review",
+    "https://crepal.ai/blog/aivideo/faceless-video-review/"
+   ]
+  },
+  {
+   "competitor": "Vidnoz AI (vidnoz.com) \u2014 avatar-first AI video generator + Vidnoz Flex (record/host/track) + Vidnoz Gen (image/video models) + Open API",
+   "pricing_summary": "Freemium + subscription + add-ons; credit-metered. Free: $0, no card, ~60 credits/day (\u22483 min of standard avatar video/day at 0.5 credit/sec; some reviewers state 8 credits/day for other tools), 720p, watermark, 3-min max per video, 1,800+ avatars, ~890 voices, translator capped at 60\u201390s. Starter: $26.99/mo or $19.99/mo billed yearly ($239.88/yr) \u2014 15 min/mo (\u2248450 credits), 1080p, no watermark, 60-min max video (some reviews cite 5-min per-video cap on Starter), 1,900+ avatars, 2,660+ voices, emotional voices, fast processing, SCORM export; no voice clone/translation. Business: $74.99/mo or $56.99/mo yearly \u2014 30 min/mo (\u2248900 credits), voice clone, video translation, unlimited photo avatars, brand kit, team seats (up to 1,000), SAML/SSO, video analytics, branded video pages, CTA buttons, embed. Enterprise: custom credits/length, Avatar Pro, API, dedicated AM, isolated data center. Add-ons: Voice Clone $9.99/mo (list $19.99), Avatar Pro digital twin $299/yr (list $598), extra credit packs that expire with the current cycle. Credit burn: standard video 0.5 credit/sec (min 1), Expressive Avatar 2 credits/sec, photo avatar/AI image/portrait effect 2 credits each. Unused credits do NOT roll over. Refunds: 7-day money-back on yearly only, none on monthly. Frequent 25%-off-first-month promos and coupon codes; Trustpilot complaints about 'billed yearly' fine print and surprise renewals.",
+   "features": [
+    {
+     "feature": "Script text input (paste script \u2192 avatar reads it)",
+     "how_it_works": "Core flow: pick template/avatar, paste script into scene text box, choose voice, click Generate; ~5 min render. Text per avatar segment limited (~5,000 chars via API).",
+     "jelly_has": "yes",
+     "evidence_url": "https://www.vidnoz.com/ai-video-generator.html"
+    },
+    {
+     "feature": "AI Video Wizard: topic/prompt \u2192 full video",
+     "how_it_works": "Enter a topic, choose input method (topic / script / document), number of scenes (beginning-middle-end), format 16:9/9:16/1:1, tone (General/Formal/Entertaining/Conversational/Inspiring), output language; it drafts a per-scene script (head/body/speech), you edit or 'recreate', then it assembles avatar + visuals.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.unite.ai/vidnoz-review/"
+    },
+    {
+     "feature": "URL / blog / article \u2192 video",
+     "how_it_works": "Paste a web URL; Wizard scrapes the article, summarizes into scenes, generates script and visuals; also accepts YouTube URLs for translation.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.vidnoz.com/how-to/index.html"
+    },
+    {
+     "feature": "PDF / PPT / DOC \u2192 video",
+     "how_it_works": "Upload PowerPoint or PDF; each slide/page becomes a scene with an avatar presenter and TTS of notes/text; you then edit scenes in the editor.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.vidnoz.com/how-to/index.html"
+    },
+    {
+     "feature": "AI Script Generator (standalone scripting aid)",
+     "how_it_works": "Separate tool: give a topic/keywords/tone \u2192 generates script; scripts can be pushed into the video editor. Also per-scene 'recreate' in Wizard.",
+     "jelly_has": "yes",
+     "evidence_url": "https://www.vidnoz.com/"
+    },
+    {
+     "feature": "Stock AI voice library (2,000\u20132,660+ voices, 140+ languages)",
+     "how_it_works": "Filter voices by language, gender, emotion (20+ emotion tags on paid tiers), preview, apply per scene; adjust speed, pauses (insert-pause markup), pronunciation correction, gender/language swap.",
+     "jelly_has": "partial",
+     "evidence_url": "https://thebusinessdive.com/vidnoz-ai-review"
+    },
+    {
+     "feature": "Voice cloning (Business tier or $9.99/mo add-on)",
+     "how_it_works": "Record 1\u20133 min or upload MP3/AAC/WAV >1 min (<200MB, some sources say 10\u201320s minimum); clone usable in 80+ languages; consent checkbox; clone appears in voice picker.",
+     "jelly_has": "yes",
+     "evidence_url": "https://www.vidnoz.com/ai-solutions/clone-my-voice.html"
+    },
+    {
+     "feature": "Emotional / expressive TTS",
+     "how_it_works": "Paid voices carry emotion presets (cheerful, sad, angry, etc.) selectable per segment; 'emotional voices' gated to Starter+.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.vidnoz.com/pricing.html"
+    },
+    {
+     "feature": "Video translation + AI dubbing with lip-sync",
+     "how_it_works": "Upload MP4/MOV/M4V \u2264500MB or YouTube link \u2192 pick target language(s) from 140+ \u2192 gets translated dubbed audio, lip-synced face, editable subtitles (upload SRT/ASS, proofread before finalize); multi-speaker handled; free capped 60\u201390s.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.vidnoz.com/ai-solutions/ai-video-translator-with-lip-sync.html"
+    },
+    {
+     "feature": "Realistic AI avatars (1,900+ stock, filters, half/circle/square crop)",
+     "how_it_works": "Library of real-actor avatars filterable by gender, age, region, posture, attire; drop into any scene; lip-sync only visible after render (not in preview).",
+     "jelly_has": "no",
+     "evidence_url": "https://thebusinessdive.com/vidnoz-ai-review"
+    },
+    {
+     "feature": "Talking Photo / Expressive Avatar (photo \u2192 talking head w/ emotions & gestures)",
+     "how_it_works": "Upload a photo or pick a stock face; TTS/audio drives lip-sync + facial expression + head movement; 60 free credits/day promo; costs 2 credits/sec.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.vidnoz.com/"
+    },
+    {
+     "feature": "Custom AI Avatar / Avatar Pro digital twin",
+     "how_it_works": "Record ~2 min of yourself per instructions \u2192 studio-quality clone avatar ($299/yr add-on) or lighter 'custom avatar' from video/photos/text prompt (anime, animated, product avatars).",
+     "jelly_has": "no",
+     "evidence_url": "https://www.vidnoz.com/ai-solutions/avatar-clone.html"
+    },
+    {
+     "feature": "AI Product Avatar / UGC ad generator",
+     "how_it_works": "Upload product image \u2192 avatar holds/presents it in a UGC-style spoken ad.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.unite.ai/vidnoz-review/"
+    },
+    {
+     "feature": "Templates (2,800\u20133,400+, landscape+portrait, by industry)",
+     "how_it_works": "Pre-built multi-scene layouts (explainer, news, training, sales, TikTok/Reels vertical); pick, swap avatar/text/media; each scene fully editable.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.vidnoz.com/ai-video-generator.html"
+    },
+    {
+     "feature": "Scene-based canvas editor with layers",
+     "how_it_works": "Scene list on left, canvas center; drag/drop text, images, shapes, icons, avatars; resize/position; per-scene duration, insert pauses, transitions presets, filters, animations, background image/color/video.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.unite.ai/vidnoz-review/"
+    },
+    {
+     "feature": "Free stock media library (images, music, icons, text presets)",
+     "how_it_works": "Built-in stock browser inside editor plus upload of own media; music tracks with volume control; vocal remover.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.vidnoz.com/ai-video-generator.html"
+    },
+    {
+     "feature": "AI Image inside editor (replace visuals with generated image)",
+     "how_it_works": "Select an image element \u2192 'AI Image' \u2192 prompt \u2192 generated (Flux/Imagen/Nano Banana models) replaces it; 2 credits each.",
+     "jelly_has": "yes",
+     "evidence_url": "https://www.unite.ai/vidnoz-review/"
+    },
+    {
+     "feature": "Vidnoz Gen: image-to-video / text-to-video via 3rd-party models",
+     "how_it_works": "Model picker (Veo 3.1, Sora, Kling 2.6/2.5, Seedance, Hailuo, Pixverse, Luma, Wan) \u2192 prompt or image \u2192 clip; separate credit costs.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.vidnoz.com/"
+    },
+    {
+     "feature": "Auto subtitles / captions with show/hide + style",
+     "how_it_works": "Subtitles auto-generated from script/TTS, toggle on/off per video, edit text, font/color/position; separate Auto Subtitle Generator tool.",
+     "jelly_has": "yes",
+     "evidence_url": "https://www.vidnoz.com/ai-solutions/auto-subtitle-generator.html"
+    },
+    {
+     "feature": "Aspect ratios 16:9 / 9:16 / 1:1",
+     "how_it_works": "Chosen at project/Wizard start; templates come in landscape and portrait variants.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.unite.ai/vidnoz-review/"
+    },
+    {
+     "feature": "Output limits: 720p+watermark free, 1080p paid, up to 60-min videos",
+     "how_it_works": "Free 3-min max & 720p & watermark; Starter/Business 1080p, no watermark, 60-min max (Business unlocks longest); no 4K.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.vidnoz.com/pricing.html"
+    },
+    {
+     "feature": "Brand Kit",
+     "how_it_works": "Business+: upload logo, brand colors, fonts, assets; auto-applied to templates and to branded share pages.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.vidnoz.com/how-to/index.html"
+    },
+    {
+     "feature": "Team workspace (up to 1,000 seats), comments, SAML/SSO",
+     "how_it_works": "Business+: create team, invite members, shared assets, comment on videos, group editing; Enterprise SSO.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.vidnoz.com/pricing.html"
+    },
+    {
+     "feature": "Hosted share page + embed + video email (Vidnoz Flex)",
+     "how_it_works": "Every video gets a shareable link/branded landing page with templates, embed code, email-embed (GIF/thumb) templates; CTA buttons, polls, forms on the page.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.vidnoz.com/video-creation/what-is-vidnoz-flex.html"
+    },
+    {
+     "feature": "Video analytics (views, watch rate, viewer location/device/source)",
+     "how_it_works": "Business+: per-video dashboard showing who watched, from where, device, traffic source, average watch %; CTA click tracking.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.vidnoz.com/video-creation/what-is-vidnoz-flex.html"
+    },
+    {
+     "feature": "Screen/webcam recorder + teleprompter (Chrome extension + web)",
+     "how_it_works": "Record screen/cam/both in browser, auto-saved to library; online teleprompter to read scripts.",
+     "jelly_has": "no",
+     "evidence_url": "https://chromewebstore.google.com/detail/vidnoz-flex-video-recorde/cplhlgabfijoiabgkigdafklbhhdkahj"
+    },
+    {
+     "feature": "Direct social publishing / scheduling",
+     "how_it_works": "Not offered \u2014 'share to social' is link sharing only; no YouTube OAuth push, no scheduler, no series/autopilot.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.vidnoz.com/how-to/index.html"
+    },
+    {
+     "feature": "SCORM export for LMS",
+     "how_it_works": "Starter+: export video as SCORM package for e-learning platforms.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.vidnoz.com/pricing.html"
+    },
+    {
+     "feature": "Open API (avatar video, talking photo, TTS, headshots, avatar creation)",
+     "how_it_works": "clientId/clientSecret \u2192 access token; endpoints for avatar video (text \u22645,000 chars or audio \u226410 min), talking photo, TTS; API credits separate; Enterprise/contact-sales gated; no Zapier/Make/MCP connectors found.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.vidnoz.com/docs/authentication.html"
+    },
+    {
+     "feature": "Credit-metered billing with daily free credits + credit history page",
+     "how_it_works": "Plans grant monthly/yearly credits; free users get daily reset; a Credit History page itemizes each spend; add-on packs; no rollover; 7-day refund on yearly only.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.vidnoz.com/credit-history.html"
+    },
+    {
+     "feature": "No-signup try-before-login for some tools",
+     "how_it_works": "Video translator and several Gen tools let you upload and preview without an account (watermarked/short).",
+     "jelly_has": "no",
+     "evidence_url": "https://www.vidnoz.com/ai-solutions/ai-video-translator-with-lip-sync.html"
+    },
+    {
+     "feature": "My Creations library + Tools Library dashboard",
+     "how_it_works": "Home shows six creation entry points; My Creations lists projects for edit/download/re-render; Tools Library aggregates 40+ AI mini-tools (voice changer, bg remover, image extender, music gen, etc.).",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.vidnoz.com/get-started/videos-library.html"
+    },
+    {
+     "feature": "Multi-language product UI + how-to help center",
+     "how_to_works": "",
+     "how_it_works": "Site/app localized in many languages; extensive how-to docs, get-started guides, YouTube tutorials; support = email tickets (priority for paid), no live chat/community.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.vidnoz.com/how-to/index.html"
+    },
+    {
+     "feature": "Trust/compliance: ISO/IEC 27001, isolated data center (Enterprise)",
+     "how_it_works": "Enterprise tier markets ISO 27001:2022 and dedicated data isolation; consumer ToS is strict (no monthly refunds, auto-renew).",
+     "jelly_has": "no",
+     "evidence_url": "https://www.aitoolspolice.com/reviews/vidnoz/"
+    },
+    {
+     "feature": "Interactive 24/7 avatars (chat-driven)",
+     "how_it_works": "Enterprise: avatar answers viewer questions live using a knowledge base.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.unite.ai/vidnoz-review/"
+    }
+   ],
+   "standout_ux": [
+    "Daily-reset free credits (60/day, no card) \u2014 every visitor can produce something today; the reset cadence pulls people back daily and converts better than a one-time trial.",
+    "AI Video Wizard intake form: one screen for topic|script|URL|PDF, scene count, aspect ratio, tone, and language \u2014 then an editable per-scene script draft with 'recreate' before any render credit is spent.",
+    "Avatar/voice pickers with rich filters (language, gender, age, region, emotion) plus instant preview; reviewers call the filter grid the fastest part of the flow.",
+    "'AI Image' button on any visual element in the editor \u2014 regenerate just that image from a prompt without leaving the scene.",
+    "Hosted share page with brand kit, CTA/polls/forms and per-viewer analytics (watch %, device, geo) \u2014 turns each render into a trackable landing page.",
+    "Transparent credit-cost table on pricing page (0.5 credit/sec standard, 2/sec expressive) plus a Credit History ledger page."
+   ],
+   "weaknesses_users_complain_about": [
+    "Billing traps: 'billed yearly' fine print, surprise auto-renewals, being charged $220 when expecting $19.99, no refunds on monthly plans \u2014 Trustpilot ~2.3/5 (~42% one-star) driven almost entirely by billing/cancellation, not product.",
+    "Credits are opaque/expire: no rollover, add-on packs die with the cycle, hard to predict monthly cost; misleading 'FREE' headline when most useful features are paid.",
+    "Lip-sync not visible in preview \u2014 you only see it after spending credits on a render, so fixes mean re-rendering and burning minutes.",
+    "Avatar/voice quality: voices sometimes robotic or rushed, lip-sync drifts on fast lines and long scripts, results feel 'AI' (70\u201380% there).",
+    "Editor is shallow vs pro tools \u2014 limited timeline control, few caption styles, slow rendering on free/standard queue at peak times.",
+    "Support is email-only with slow/inconsistent responsiveness; short per-video caps on lower tiers (3 min free, some report 5-min cap on Starter, translator 60\u201390s free)."
+   ],
+   "sources": [
+    "https://www.vidnoz.com/",
+    "https://www.vidnoz.com/pricing.html",
+    "https://www.vidnoz.com/ai-video-generator.html",
+    "https://www.vidnoz.com/how-to/index.html",
+    "https://www.vidnoz.com/ai-solutions/clone-my-voice.html",
+    "https://www.vidnoz.com/ai-solutions/ai-video-translator-with-lip-sync.html",
+    "https://www.vidnoz.com/get-started/how-does-vidnoz-ai-studio-billing-work.html",
+    "https://www.vidnoz.com/refundpolicy.html",
+    "https://www.vidnoz.com/docs/authentication.html",
+    "https://www.vidnoz.com/docs/limits.html",
+    "https://www.vidnoz.com/video-creation/what-is-vidnoz-flex.html",
+    "https://chromewebstore.google.com/detail/vidnoz-flex-video-recorde/cplhlgabfijoiabgkigdafklbhhdkahj",
+    "https://aiblogfirst.com/vidnoz-ai-pricing/",
+    "https://www.aitoolspolice.com/reviews/vidnoz/",
+    "https://thebusinessdive.com/vidnoz-ai-review",
+    "https://www.unite.ai/vidnoz-review/",
+    "https://aivideopicks.com/posts/vidnoz-review-2026.html",
+    "https://www.trustpilot.com/review/www.vidnoz.com",
+    "https://www.softwaresuggest.com/vidnoz-ai/pricing"
+   ]
+  },
+  {
+   "competitor": "TubeGen AI (tubegen.ai) \u2014 Eddie Eizner / TubeGen LTD; faceless-YouTube full-pipeline SaaS (Title \u2192 Script \u2192 Voiceover \u2192 Visuals \u2192 Music \u2192 Editor \u2192 Thumbnail \u2192 Description \u2192 YouTube publish)",
+   "pricing_summary": "Subscription + credits, no free trial, no refunds (FAQ: \"we do not offer refunds\"), cancel anytime. Starter $149/mo = 33,000 credits (~60 min finished video, \"typical\" $2.47/min), Pro $297/mo = 100,000 credits (~148 min, $2.01/min), Premium $849/mo = 340,000 credits (~438 min, $1.94/min); Enterprise custom (API access, pro voice clones, priority support). Credits/$ rise with tier (221/337/400); top-ups at 180/222/400 credits per $; unused credits roll over ONE extra cycle on structured plans (not on BYOP). \"Build Your Own Plan\" from $27/mo: pick up to 4 suites \u2014 Thumbnail $27, Writing (scripts/titles/descriptions) $27, Niche Finder $33, Audio (voiceover+soundtrack) $47, Visuals (images/animation/B-roll/avatars) $57 \u2014 every $ = 150 credits/mo. Per-image cost is transparent: Turbo 20 cr / Standard 40 cr / Best 90 cr per image; animation = fixed credits per scene; stills cost nothing extra. Plan gates: script length 3k/10k/20k words; animation per video 1 min/10 min/unlimited; avatar per video 30s/2min/unlimited; voice clones 0/3/10; saved styles 2/10/20; active projects 3/5/10; team seats 0/1/3. Editor exports max 30 min (longer via assets folder). Interactive pricing calculator (videos/mo \u00d7 length \u00d7 scene pacing \u00d7 visual mix) recommends a plan. Historical pricing (Grokipedia/Fortune era) was $149/$499/$1,199 with one-time non-export \"test credits\" at 150 cr/$ \u2014 since restructured. Trustpilot 4.1/5 from 18 reviews (Aug 2026), 12 of them posted 23 Apr 2026.",
+   "features": [
+    {
+     "feature": "Interactive no-signup homepage demo",
+     "how_it_works": "Homepage runs a fake-but-realistic 7-step walkthrough (Title\u2192Script\u2192Voiceover\u2192Visuals\u2192Thumbnail\u2192Soundtrack\u2192Video) with 'Start Demo' \u2014 shows channel-style titles, 296-word script, 30-image visual settings incl. '90 credits' pricing, thumbnail prompt, 3 music segments \u2014 before any account exists.",
+     "jelly_has": "no",
+     "evidence_url": "https://tubegen.ai/"
+    },
+    {
+     "feature": "Niche Finder (channel database + real-time trends)",
+     "how_it_works": "Searchable DB of YouTube channels with Monetized/Faceless tags, subs, median/avg views, upload freq, avg duration, representative videos, RPM estimates by niche; tracks trending channels/keywords; 'Copy channel' one-click seeds a Style for the whole pipeline. Sold standalone at $33/mo suite.",
+     "jelly_has": "no",
+     "evidence_url": "https://tubegen.ai/features/niche-finder"
+    },
+    {
+     "feature": "AI Title Generator (topic or channel-style)",
+     "how_it_works": "Paste a channel URL \u2192 analyzes its title patterns \u2192 returns ~10 style-matched titles; picking one flows into the script step.",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/features/ai-title-generator"
+    },
+    {
+     "feature": "Retention-structured Script Writer with Copy Style",
+     "how_it_works": "Topic or reference channel \u2192 hook/paced body/payoff script for spoken delivery in formats (Documentary/Story/List/Explainer/Faceless commentary); learns tone from a channel link or saved Style; caps 3k/10k/20k words (~2.5 h); streams tokens via SSE; copy/export or push to voiceover. Also accepts your own pasted script.",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/features/ai-script-writer"
+    },
+    {
+     "feature": "Multi-language script + voiceover (8 languages)",
+     "how_it_works": "English, German, Spanish, French, Portuguese, Polish, Czech, Korean; language is set on the Style; same script can be re-narrated per language for regional channels.",
+     "jelly_has": "no",
+     "evidence_url": "https://tubegen.ai/features/ai-voiceover"
+    },
+    {
+     "feature": "AI Voiceover library (ElevenLabs + Inworld engines)",
+     "how_it_works": "Hand-picked voice library; voice choice decides engine; speed/tone control; tone shifts detected from script sections; timed WAV output drives scene splitting; chunked parallel voice worker with SSE progress.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.tubegen.ai/glossary"
+    },
+    {
+     "feature": "Voice cloning (plan-gated)",
+     "how_it_works": "Clone from a sample; 0 on Starter, 3 on Pro, 10 on Premium; reused as consistent narrator; Enterprise adds 'professional voice clones'.",
+     "jelly_has": "yes",
+     "evidence_url": "https://tubegen.ai/pricing"
+    },
+    {
+     "feature": "Bring-your-own voiceover audio",
+     "how_it_works": "Upload narration; scene generation, soundtrack and description timestamps all work off uploaded audio too.",
+     "jelly_has": "no",
+     "evidence_url": "https://tubegen.ai/features/ai-descriptions"
+    },
+    {
+     "feature": "Scene Builder: one-pass image generation timed to narration",
+     "how_it_works": "Reads voiceover, splits into scenes, generates one image per scene and pins each to its timestamp; set aspect ratio, quality, image count (e.g. 30) and style up front; images from partner models (not in-house).",
+     "jelly_has": "yes",
+     "evidence_url": "https://tubegen.ai/features/ai-image-generator"
+    },
+    {
+     "feature": "Per-image quality tiers with visible credit price",
+     "how_it_works": "Turbo 20 cr, Standard 40 cr, Best 90 cr per image chosen before generation; UI shows total (e.g. 'Generate 30 images').",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/features/ai-image-generator"
+    },
+    {
+     "feature": "Custom Art Styles from reference images or a YouTube channel",
+     "how_it_works": "Upload 1\u20135 refs or paste a channel link (pulls frames) \u2192 learns palette/lighting/composition; 20 built-in presets (Comic, Anime, Pixel, Pixar 3D, Watercolor, Low Poly\u2026); saved styles 2/10/20 per plan; Style also stores voice/language/script mode as a channel preset.",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/features/custom-art-styles"
+    },
+    {
+     "feature": "Consistent Characters across scenes and videos, re-rendered in any style",
+     "how_it_works": "Create once \u2192 locked reference used directly in scene generation; same identity rendered as Comic/Pixar/Anime; downloadable character images standalone.",
+     "jelly_has": "yes",
+     "evidence_url": "https://tubegen.ai/features/consistent-characters"
+    },
+    {
+     "feature": "Per-scene animation (still \u2192 motion clip)",
+     "how_it_works": "After images, pick some/all scenes to animate; fixed credits per animated scene; per-video animation minutes gated 1/10/unlimited; images lock to 30 when animating.",
+     "jelly_has": "yes",
+     "evidence_url": "https://tubegen.ai/features/ai-animation"
+    },
+    {
+     "feature": "Storyblocks stock B-roll matched to script with mix ratio",
+     "how_it_works": "Scans script for lines suited to real footage, pulls licensed Storyblocks HD/4K clips at that moment; modes: full stock, stock+images, stock+animation; ratio slider 10:1 \u2026 1:10.",
+     "jelly_has": "no",
+     "evidence_url": "https://tubegen.ai/features/stock-footage"
+    },
+    {
+     "feature": "Auto Overlays (charts, maps, headers)",
+     "how_it_works": "Script-aware: numbers \u2192 auto chart, place names \u2192 globe/map pin, topic change \u2192 section header; replaces the scene image automatically, no setup.",
+     "jelly_has": "no",
+     "evidence_url": "https://tubegen.ai/features/auto-overlays"
+    },
+    {
+     "feature": "AI Avatars / talking-head presenter (HeyGen-powered)",
+     "how_it_works": "Upload a photo or use a generated character \u2192 lip-synced presenter driven by the voiceover; per-video avatar time 30s/2min/unlimited.",
+     "jelly_has": "no",
+     "evidence_url": "https://tubegen.ai/features/ai-avatars"
+    },
+    {
+     "feature": "AI Background Music scored per segment",
+     "how_it_works": "Splits voiceover into mood segments (e.g. 0:00\u20130:42 'soft mysterious ambient', 0:42\u20131:38 'driving', finale) and generates original music per segment; downloadable WAV; no licensing claims.",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/features/ai-background-music"
+    },
+    {
+     "feature": "Pre-assembled timeline editor",
+     "how_it_works": "Script, VO, scenes, soundtrack arrive already timed on one timeline (scenes/voice/music/captions tracks); refine rather than build; render via FFmpeg / Remotion Lambda.",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/features/video-editor"
+    },
+    {
+     "feature": "Camera effects per scene (pan/zoom, alternating)",
+     "how_it_works": "Pan L/R, zoom in/out, alternate across scenes, toggle off per scene for a still.",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/features/video-editor"
+    },
+    {
+     "feature": "Adjustable crossfade transitions",
+     "how_it_works": "Crossfade between image scenes 1\u201360 s or none.",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/features/video-editor"
+    },
+    {
+     "feature": "Styled captions",
+     "how_it_works": "On-screen captions toggle with styling to match the video.",
+     "jelly_has": "yes",
+     "evidence_url": "https://tubegen.ai/features/video-editor"
+    },
+    {
+     "feature": "Export up to 30 minutes (MP4), longer via assets folder",
+     "how_it_works": "Editor exports \u226430 min finished MP4 ('mid-roll ad eligible'); first-party review says longer videos render via the assets folder; Fortune profile cites multi-hour videos.",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/reviews/tubegen-review-honest-2026"
+    },
+    {
+     "feature": "Aspect ratio selection",
+     "how_it_works": "Aspect ratio chosen up front in Visual Generator (16:9 default shown).",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/"
+    },
+    {
+     "feature": "Thumbnail Studio (templates, characters, objects, text, region edits)",
+     "how_it_works": "Start from project or title+topic; layer templates (public/saved), art styles, saved characters, uploaded/described objects, AI or manual headline text with placement/color, multi-panel 'scenes'; region-edit, replace object, change expression, replace background, stack edits, 'reshoot'; upload own image or pull from a YouTube URL; 1280\u00d7720.",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/features/ai-thumbnail-generator"
+    },
+    {
+     "feature": "Thumbnail A/B variations + AI score + side-by-side compare",
+     "how_it_works": "Generate variants changing face/outfit/font/text position/props; built-in critic score overlay; 'light-shine' polish; compare side by side; publish chosen thumbnail to YouTube.",
+     "jelly_has": "no",
+     "evidence_url": "https://tubegen.ai/features/ai-thumbnail-generator"
+    },
+    {
+     "feature": "AI Descriptions with hashtags + auto chapter timestamps",
+     "how_it_works": "Reads script for summary/hashtags/subscribe CTA; if narration exists, adds bookmarked 0:00 chapters YouTube renders as clickable.",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/features/ai-descriptions"
+    },
+    {
+     "feature": "YouTube OAuth publish (video + thumbnail) and analytics link",
+     "how_it_works": "Connect channel via Google OAuth; publish finished renders and thumbnails from TubeGen; connection also used for analytics.",
+     "jelly_has": "yes",
+     "evidence_url": "https://docs.tubegen.ai/faq"
+    },
+    {
+     "feature": "Team seats",
+     "how_it_works": "0/1/3 seats on Starter/Pro/Premium; ToS bans account sharing beyond seats.",
+     "jelly_has": "no",
+     "evidence_url": "https://tubegen.ai/pricing"
+    },
+    {
+     "feature": "Active-project caps + archive",
+     "how_it_works": "3/5/10 active projects; archive/delete to free a slot; API returns PROJECT_LIMIT_REACHED.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.tubegen.ai/faq"
+    },
+    {
+     "feature": "Public API v2 + SSE progress streams + docs site",
+     "how_it_works": "docs.tubegen.ai: JWT Bearer (15-min access token + refresh cookie), POST/GET/DELETE /api/v2/projects, styleId snapshotting, SSE progress for script/voice/image jobs, OpenAPI playground; more AI endpoints 'to follow'; API access marketed on Enterprise.",
+     "jelly_has": "no",
+     "evidence_url": "https://docs.tubegen.ai/"
+    },
+    {
+     "feature": "Every tool works standalone",
+     "how_it_works": "Script, voiceover, images, music, thumbnails, descriptions, niche finder each usable alone with download/export; BYOP lets you buy only those suites.",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/features"
+    },
+    {
+     "feature": "Credit system: monthly allotment, 1-cycle rollover, top-ups, usage view",
+     "how_it_works": "Credits reset per cycle, roll over one extra cycle; buy top-ups at plan rate; usage visible under profile; support refunds credits for bad generations on request (Discord).",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/pricing"
+    },
+    {
+     "feature": "Pricing calculator",
+     "how_it_works": "Inputs: videos/mo, typical length, scene pacing (fast/med/slow ~8 s/visual), visual mix % (images/animation/B-roll/avatar), add script/VO/thumbnail/soundtrack \u2192 recommends a plan.",
+     "jelly_has": "no",
+     "evidence_url": "https://tubegen.ai/pricing"
+    },
+    {
+     "feature": "Built-in YouTube Automation Course / Learning Centre",
+     "how_it_works": "13+ lessons (~3.5 h) inside the app: how YouTube thinks, niches, titles/thumbnails, retention, analytics, building a team; members-only lessons.",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/features/youtube-automation-course"
+    },
+    {
+     "feature": "Discord community + support tickets + email",
+     "how_it_works": "Public Discord (incl. #dev channel), support@tubegen.ai, 'Chat With Us' sales; support refunds credits/gives prompting tips per Trustpilot replies.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.tubegen.ai/changelog"
+    },
+    {
+     "feature": "Affiliate program",
+     "how_it_works": "Public affiliate program with terms page; one Aug 2026 Trustpilot 1\u2605 alleges withheld commissions.",
+     "jelly_has": "no",
+     "evidence_url": "https://tubegen.ai/affiliate"
+    },
+    {
+     "feature": "Commercial rights + monetization claim",
+     "how_it_works": "FAQ: all output yours for any commercial use; ToS by TubeGen LTD (Nevada), 18+ only, no sharing.",
+     "jelly_has": "partial",
+     "evidence_url": "https://tubegen.ai/terms"
+    },
+    {
+     "feature": "Comparison / alternatives / first-party 'honest review' SEO pages",
+     "how_it_works": "/vs (Pictory, InVideo, VidRush, Fliki, TubeAI, Tubefy\u2026), /alternatives, /reviews incl. self-disclosed review listing its own weaknesses with dated sources.",
+     "jelly_has": "no",
+     "evidence_url": "https://tubegen.ai/vs"
+    },
+    {
+     "feature": "Scheduling / autopilot / series posting",
+     "how_it_works": "Not offered \u2014 publish is manual per render; no scheduler, no multi-platform posting, no Zapier/Make/MCP.",
+     "jelly_has": "no",
+     "evidence_url": "https://docs.tubegen.ai/faq"
+    }
+   ],
+   "standout_ux": [
+    "Interactive no-login product demo on the homepage that walks the exact 7 steps with real settings and credit prices (visuals '90 credits', 30 scenes, thumbnail prompt, 3 music segments) \u2014 de-risks a no-trial product; Jelly could ship the same with a canned project.",
+    "Price shown at the point of choice: Turbo 20 / Standard 40 / Best 90 credits per image, 'Generate 30 images' total, and a pricing calculator (videos \u00d7 length \u00d7 pacing \u00d7 visual mix) that recommends a plan \u2014 mirrors Jelly's per-video receipt but moves it BEFORE render.",
+    "'Copy channel' / Style presets: paste a YouTube channel URL and the whole pipeline (titles, script tone, art style from pulled frames, voice, language) inherits it in one click; Styles are saved objects snapshotted onto projects.",
+    "Voiceover-as-timeline: narration is generated first and every downstream step (scene split, image timing, per-segment music moods, chapter timestamps in the description) keys off it; editor opens pre-assembled with SSE progress per chunk.",
+    "Thumbnail Studio depth: region edits/expression swaps/background replace stacked in one apply, A/B variants with an AI critic score and side-by-side compare, publish straight to YouTube; plus 'every tool works standalone' + \u00e0-la-carte suites from $27 to lower the entry price."
+   ],
+   "weaknesses_users_complain_about": [
+    "High entry price ($149/mo Starter) with no free trial and no refunds; must buy blind (own FAQ + OutlierKit + tubeaitools reviews).",
+    "Image credits burn: 'Best' images at 90 cr, batch scene generations that fail or come out inconsistent still cost credits; users ask for cheap watermarked previews (Trustpilot 4\u2605/3\u2605, Apr 2026); TubeGen's answer is manual credit refunds via Discord support.",
+    "Consistent characters break down with complex descriptions; visual quality inconsistent across scenes (Trustpilot).",
+    "Scripts read generic and need substantial manual editing; hook/retention optimization is basic (OutlierKit, Grokipedia).",
+    "No keyword research/outlier detection/analytics suite despite 'Niche Finder' branding; reviewers steer research-first buyers elsewhere.",
+    "Interface described as less intuitive than competitors and support responsiveness limited by third-party reviewers; affiliate 1\u2605 (Aug 2026) alleges withheld commissions.",
+    "Monetization/AI-slop risk: YouTube July 2025 'inauthentic content' policy; a 1\u2605 Trustpilot review says AI content can't get monetized; Fortune profile ties the tool to 'AI slop' sleep-history channels.",
+    "Trust signals are thin/lumpy: only 18 Trustpilot reviews, 12 posted on a single day (23 Apr 2026); third-party sites report stale/contradictory prices ($29\u2013$99, 2.8/5) creating confusion.",
+    "Editor caps exports at 30 minutes and offers only crossfade + pan/zoom; no shorts/vertical-first workflow, no scheduling, no multi-platform posting."
+   ],
+   "sources": [
+    "https://tubegen.ai/",
+    "https://tubegen.ai/pricing",
+    "https://tubegen.ai/features",
+    "https://tubegen.ai/features/ai-script-writer",
+    "https://tubegen.ai/features/ai-voiceover",
+    "https://tubegen.ai/features/ai-image-generator",
+    "https://tubegen.ai/features/ai-animation",
+    "https://tubegen.ai/features/ai-avatars",
+    "https://tubegen.ai/features/stock-footage",
+    "https://tubegen.ai/features/auto-overlays",
+    "https://tubegen.ai/features/consistent-characters",
+    "https://tubegen.ai/features/custom-art-styles",
+    "https://tubegen.ai/features/ai-background-music",
+    "https://tubegen.ai/features/video-editor",
+    "https://tubegen.ai/features/ai-thumbnail-generator",
+    "https://tubegen.ai/features/ai-title-generator",
+    "https://tubegen.ai/features/ai-descriptions",
+    "https://tubegen.ai/features/niche-finder",
+    "https://tubegen.ai/features/youtube-automation-course",
+    "https://tubegen.ai/reviews/tubegen-review-honest-2026",
+    "https://tubegen.ai/terms",
+    "https://tubegen.ai/vs",
+    "https://tubegen.ai/blog",
+    "https://docs.tubegen.ai/",
+    "https://docs.tubegen.ai/faq",
+    "https://docs.tubegen.ai/glossary",
+    "https://docs.tubegen.ai/authentication",
+    "https://docs.tubegen.ai/webhooks",
+    "https://docs.tubegen.ai/changelog",
+    "https://www.trustpilot.com/review/tubegen.ai",
+    "https://outlierkit.com/blog/tubegen-ai-alternatives",
+    "https://tubeaitools.com/is-tubegen-ai-legit/",
+    "https://tubeaitools.com/tubegen-ai-tutorial-how-it-works-step-by-step/",
+    "https://grokipedia.com/page/TubeGen_AI",
+    "https://tubegen.ai/affiliate"
+   ]
+  },
+  {
+   "competitor": "NoLang (no-lang.com) \u2014 Mavericks Inc., Tokyo (Univ. of Tokyo alumni); launched Jul 2024; ~200K registered users, 100\u2013500+ corporate clients; ISO 27001/9001; UI in JA/EN/KO/VI",
+   "pricing_summary": "Subscription + credits, JPY only. Free \u00a50: 0 monthly credits but 3 video generations/mo, watermark, unlimited edits, videos viewable/editable/downloadable only for 2 weeks (Free tier still gets vertical shorts, dialogue mode, PDF/PPTX-to-video, script mode, audio/video transcription mode, own BGM/bg-video/SFX uploads, PSD/Live2D avatars, Chrome extension). Standard \u00a52,980/mo (~$20): 2,000 credits \u2248 20 min video/mo, set length up to 3 min, watermark removed, real-avatar videos, image-gen AI, character avatar creation, voice clone from ~1 min recording, video language conversion, buy extra credits, indefinite retention, API access, ~20 slide pages/mo. Premium \u00a57,980/mo (~$53): 7,000 credits \u2248 70 min/mo, videos longer than 3 min, upload up to 2 Live2D avatars, SNS auto-post (YouTube/Instagram/TikTok/Threads/Facebook), ~70 slide pages/mo. Business from \u00a5100,000/mo: unlimited generation (except some avatar gen), original avatars, voice clone from uploaded audio files, unlimited Live2D uploads, PPTX slide download, asset sharing/team tools, dedicated support, OEM/white-label. Annual = 10% off. Add-on credit packs reported at 150 credits \u00a5480 up to 8,000 credits \u00a59,800. Credits carry over while subscribed; expire on cancel; auto-refund within ~20 min if generation fails; NO refunds for unused service (Tokusho page). API is separately prepaid: 1 credit = \u00a52.5; standard-image video \u2248 40 credits (\u00a5100) per 1 min, 120 credits (\u00a5300) for 3 min, 200 (\u00a5500) for 4\u20136 min; with image-gen ON \u2248 140/280/420/700 credits (\u00a5350\u20131,750); language/aspect conversion 100\u2013500 credits; auto-recharge with monthly hard limit; API videos deleted after 2 weeks. Comparison to Jelly: NoLang's Standard tier works out to roughly \u00a5100\u2013350 (~$0.70\u20132.30) per generated minute of app credits (~\u00a5150/min at 2,000cr\u224820min) vs Jelly's ~$1\u20137 per long-form video with no subscription.",
+   "features": [
+    {
+     "feature": "Prompt-first generation (Aug 12 2026 'new generation')",
+     "how_it_works": "Home screen has one input box: type what video you want (e.g. '3-point vertical PR short for new earbuds'), pick aspect ratio (9:16/16:9/1:1/auto) and length (30s\u2013several min or auto), hit send. AI does structure, narration, visuals, captions; while generating it shows tips + sample videos; result plays inline on the watch page.",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/tutorial/updates/2026-08-12-new-generation"
+    },
+    {
+     "feature": "Iterative 'reference video' remix loop",
+     "how_it_works": "After generation the watch page keeps the just-made video pinned as a \u53c2\u7167\u52d5\u753b (reference video). Type 'narration slower' or 'more pop' and it regenerates a new video inheriting design/structure/speaking style. Any past video in Video Management can be used as a reference for series consistency.",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/tutorial/basic/use-template"
+    },
+    {
+     "feature": "Official sample gallery as templates",
+     "how_it_works": "'From sample' shows curated finished videos by category (history/famous people, trivia, business/economy\u2026). Pick one, preview it, then type your topic ('same structure, but on brewing tea') and it generates in that taste.",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/tutorial/basic/use-template"
+    },
+    {
+     "feature": "Script mode (verbatim read, single or multi-speaker)",
+     "how_it_works": "'From script' reads a pasted script word-for-word; choose 1 narrator or multiple speakers; multi-speaker scripts use 'A: \u2026 B: \u2026' line format and are voiced by different characters.",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/tutorial/basic/generation-methods"
+    },
+    {
+     "feature": "Dialogue ('yukkuri'-style) two-character videos",
+     "how_it_works": "Dialogue mode / dialogue samples produce a back-and-forth between two characters (default VOICEVOX chars like Zundamon & Shikoku Metan) with avatars on screen; AI turns any input into conversational exchange.",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/tutorial/video/dialogue"
+    },
+    {
+     "feature": "PDF/PPTX presentation-to-video",
+     "how_it_works": "Upload a PDF or PowerPoint; choose 'explain all pages' (in order) or 'key points only' (AI picks pages); PPTX speaker notes are used as narration if present. API also exposes summary and 'analysis' modes (doc + instruction).",
+     "jelly_has": "no",
+     "evidence_url": "https://no-lang.com/tutorial/basic/generation-methods"
+    },
+    {
+     "feature": "Audio/video-to-video (transcribe + captions + avatar)",
+     "how_it_works": "Upload MP3/WAV/M4A/AAC or MP4/MOV/WEBM; NoLang transcribes (JA/EN, set language + speaker count), adds captions, avatar, images, SFX; can cut a section of a long recording into a clip video.",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/tutorial/basic/generation-methods"
+    },
+    {
+     "feature": "Image-set to video",
+     "how_it_works": "Upload up to 10 images; choose 'one image per scene in order' or 'generate more images in the same style' to build a video around them.",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/api-docs/reference"
+    },
+    {
+     "feature": "Chrome extension: web page \u2192 video",
+     "how_it_works": "Extension (20K users, 4.5\u2605/11) turns the current page (incl. English pages, translated to Japanese) into a narrated summary video in ~2s and lets you ask follow-up questions in a thread. No direct URL input in the web app itself. Extension videos are flagged as not for commercial use.",
+     "jelly_has": "no",
+     "evidence_url": "https://chromewebstore.google.com/detail/nolang/kgakmojcjdelgadjdjlhpnejmeaphhgg"
+    },
+    {
+     "feature": "Saved settings (reusable generation presets)",
+     "how_it_works": "Sidebar 'Saved settings': fine-tune aspect ratio, language, BGM, voice, avatar, background, emotions/gestures, then generate repeatedly with identical settings; also required for API (video_setting_id).",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/tutorial/basic/generation-methods"
+    },
+    {
+     "feature": "Voice library 300+ voices with search/filter",
+     "how_it_works": "300+ TTS voices (VOICEVOX chars plus emotional synthesis voices), filterable in the setting panel; per-scene speaker switching in the editor.",
+     "jelly_has": "partial",
+     "evidence_url": "https://prtimes.jp/main/html/rd/p/000000150.000129953.html"
+    },
+    {
+     "feature": "Voice clone from ~1-min in-app recording",
+     "how_it_works": "'Avatar/Voice creation' \u2192 'Record': read displayed sentences (~1 min) in a quiet room; clone made from that. Business plan can also clone from uploaded audio files (\u226530s). Standard+.",
+     "jelly_has": "yes",
+     "evidence_url": "https://no-lang.com/tutorial/character/voice"
+    },
+    {
+     "feature": "Pronunciation correction + dictionary",
+     "how_it_works": "Fix readings via kana input per phrase; upgraded dialog searches across the whole video, batch-corrects and registers to a personal dictionary in one screen. Voice speed adjustable in editor.",
+     "jelly_has": "no",
+     "evidence_url": "https://x.com/PRTIMES_TECH/status/2080588820333179072"
+    },
+    {
+     "feature": "Multilingual output (18\u201320+ languages) + one-click language conversion",
+     "how_it_works": "Pick output language in settings; narration + captions rendered in that language with pacing auto-adjusted; existing videos can be converted to another language/aspect ratio (Standard+, API endpoint /conversions/). Recently added Dutch, Malay, Croatian, Bulgarian, Ukrainian, Greek; Latin-script caption fonts auto-optimized.",
+     "jelly_has": "no",
+     "evidence_url": "https://prtimes.jp/main/html/rd/p/000000150.000129953.html"
+    },
+    {
+     "feature": "Multilingual subtitle dubbing of uploaded media",
+     "how_it_works": "Upload video/audio \u2192 AI translates and outputs a video in another language with subtitles, BGM, SFX (e.g., Japanese audio \u2192 English subtitles).",
+     "jelly_has": "no",
+     "evidence_url": "https://note.com/note_maverick/n/n67783193a918"
+    },
+    {
+     "feature": "Avatar library 100+ (Live2D, PSD standing art, 3D 'real')",
+     "how_it_works": "Three avatar types: Live2D (animated illustration), PSD standing-art (tachie), and realistic 3D humans; talking avatar overlays lip-sync to narration; per-scene show/hide, position/size, 5 animations (e.g., scale-up when speaking) with speed/intensity.",
+     "jelly_has": "no",
+     "evidence_url": "https://no-lang.com/tutorial/video/dialogue"
+    },
+    {
+     "feature": "Photo \u2192 character avatar ('\u5199\u771f\u3092\u30ad\u30e3\u30e9\u5316')",
+     "how_it_works": "Upload a front-facing photo \u2192 AI converts to a stylized character (bust-up + full-body), choose 1\u20136 emotions; usable at no extra credit; with 'emotions/gestures ON' avatar expression changes automatically per content and can be edited per scene.",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/tutorial/character/avatar"
+    },
+    {
+     "feature": "Real avatar / 2D animation of uploaded image (Premium/Business)",
+     "how_it_works": "Video first renders with a static avatar; after edits you click 'Animate real avatar' which charges extra credits, runs async (hours), emails a link when done. 2D-animation and realistic-animation of your own uploaded character are Business-only.",
+     "jelly_has": "no",
+     "evidence_url": "https://no-lang.com/tutorial/video/real-avatar"
+    },
+    {
+     "feature": "Custom Live2D / PSD avatar upload + Live2D motion mapping",
+     "how_it_works": "Premium uploads 2 Live2D models, Business unlimited; PSD standing-art limited to recommended files; advanced guide to edit Live2D files so expressions/motions trigger from lines.",
+     "jelly_has": "no",
+     "evidence_url": "https://no-lang.com/tutorial/tips/live2d-edit"
+    },
+    {
+     "feature": "Image generation AI toggle (quality tier)",
+     "how_it_works": "Standard+ can turn on generated images instead of stock/CC images; on API this is 3.5x credit cost (140 vs 40 credits/min). Editor can regenerate an AI image for a scene.",
+     "jelly_has": "yes",
+     "evidence_url": "https://no-lang.com/api-docs/pricing"
+    },
+    {
+     "feature": "Stock/CC visuals + royalty-free BGM library + SFX + background videos",
+     "how_it_works": "Default visuals are licensed/CC-BY-SA stock images (attribution auto-listed on the video page); royalty-free BGM, SFX and looping background videos are library-provided; users can upload their own BGM/background video/SFX (even on Free).",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/pricing"
+    },
+    {
+     "feature": "AI recommendations for BGM/SFX/background video",
+     "how_it_works": "Editor suggests BGM, sound effects and background videos matching the script content so you don't keyword-search the library.",
+     "jelly_has": "partial",
+     "evidence_url": "https://x.com/PRTIMES_STUP/status/2083122266037268747"
+    },
+    {
+     "feature": "New editor (May 2026): character + preview/lane model",
+     "how_it_works": "Two core concepts: 'characters' (speaker = voice+avatar) and preview canvas vs lanes (timeline-like tracks). Edit captions/subtitle design, per-scene speaker, intervals between scenes, pauses inside a scene, insert/replace/delete images, image size/position, image animations (slide transitions), avatar, backgrounds; 'confirm' re-renders without full regeneration.",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/tutorial/new-editor-guide/overview"
+    },
+    {
+     "feature": "Tempo controls: apply interval to all scenes + in-script pauses",
+     "how_it_works": "'Apply to all scenes' button sets one inter-scene interval globally; pause markers can be inserted at any position within a scene's script text.",
+     "jelly_has": "no",
+     "evidence_url": "https://prtimes.jp/main/html/rd/p/000000161.000129953.html"
+    },
+    {
+     "feature": "Text style presets (gradients, shadows, neon), shapes and masks",
+     "how_it_works": "12 gradient presets + 5 shadow/glow effects one-click for text overlays; shape decorations (rectangle/circle/heart/star, borders, bg colors); crop images/videos/avatars into circle/hexagon/speech-bubble masks; cloud/lightning decorative shapes.",
+     "jelly_has": "no",
+     "evidence_url": "https://mantan-web.jp/prtimes/article/20260801prt00m200000080a/photopage/001.html"
+    },
+    {
+     "feature": "Aspect ratios 16:9 / 9:16 / 1:1 + post-hoc conversion",
+     "how_it_works": "Choose at generation or 'auto'; change aspect ratio afterwards from the edit screen; API/Standard 'conversion' re-renders existing video into another ratio for credits.",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/faq"
+    },
+    {
+     "feature": "Length caps and output",
+     "how_it_works": "Free/Standard up to 3 min (Standard can pin exact duration), Premium >3 min (API tiers up to ~4\u20136 min); MP4 download (Full HD reported), PC-only download; watermark on Free; green-screen-compatible export mentioned for Standard.",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/pricing"
+    },
+    {
+     "feature": "SNS auto-posting (YouTube, Instagram, TikTok, Threads, Facebook)",
+     "how_it_works": "Premium/Business: connect accounts and publish directly from NoLang to five platforms; no evidence of scheduling/series autopilot.",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/pricing"
+    },
+    {
+     "feature": "Share links, public gallery, privacy default",
+     "how_it_works": "'Share' \u2192 'Anyone with link' or 'Only you'; a user setting makes new videos public by default and they appear in the public gallery (reviewers flag this as a privacy gotcha).",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/faq"
+    },
+    {
+     "feature": "Slide generation (3 modes) + slide\u2192video handoff",
+     "how_it_works": "Text prompt \u2192 slides in ~30s: 'fast' business decks, 'infographic' designed slides for SNS posts/ads, 'PPTX' export (Business) editable in PowerPoint/Google Slides; templates + AI edit of text/layout; slides flow straight into video generation. Standard ~20 pages/mo, Premium ~70.",
+     "jelly_has": "no",
+     "evidence_url": "https://no-lang.com/tutorial/basic/slide-modes"
+    },
+    {
+     "feature": "Public REST API + OEM/white-label",
+     "how_it_works": "POST /v1/videos/generate/ (multipart: video_setting_id + text/pdf/pptx/audio/video/images), GET /videos/{id}/ (status running/completed/failed/expired, download_url, copyright array), GET /videos/ paginated, POST /videos/{id}/conversions/; Bearer key; rate limit 2/10s generate, 5/10s others; max 2 concurrent per account; Standard+ only; separate prepaid balance with auto-recharge + monthly hard limit; API videos expire in 2 weeks; unofficial MCP server exists.",
+     "jelly_has": "no",
+     "evidence_url": "https://no-lang.com/api-docs/reference"
+    },
+    {
+     "feature": "Credit UX: refresh on signup anniversary, rollover, auto-refund on failure",
+     "how_it_works": "Monthly credits refresh on registration-date cycle; unused credits roll over while subscribed; failed generations auto-refund within ~20 min; canceled plan \u2192 credits expire; failed payment keeps credits; upgrade carries credits; downgrade at cycle end.",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/faq"
+    },
+    {
+     "feature": "Attribution / CC-BY-SA licensing requirement",
+     "how_it_works": "Generated videos are licensed CC-BY-SA; commercial/YouTube use requires 'Video generated: NoLang (no-lang.com) / VOICEVOX: <voice names>' in description; per-video copyright list shown on video page and returned by API.",
+     "jelly_has": "no",
+     "evidence_url": "https://no-lang.com/faq"
+    },
+    {
+     "feature": "Team/asset sharing + dedicated support (Business)",
+     "how_it_works": "Business plan adds in-house asset sharing, team collaboration tools, security/admin features, dedicated support, custom studio-recorded avatars/voices.",
+     "jelly_has": "no",
+     "evidence_url": "https://no-lang.com/business"
+    },
+    {
+     "feature": "Referral/affiliate program",
+     "how_it_works": "'\u7d39\u4ecb\u30d7\u30ed\u30b0\u30e9\u30e0' page in main nav (/affiliate) for user referrals.",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/pricing"
+    },
+    {
+     "feature": "Support channels + status transparency",
+     "how_it_works": "Google Form inquiry, separate emails for personal vs corporate, tutorial site with dated update log (2025-03 \u2192 2026-08), FAQ, blog/news, X account; no live chat/Discord; no mobile app (edit/download PC-only).",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/tutorial"
+    },
+    {
+     "feature": "Script export + prompt saving + video management",
+     "how_it_works": "Expand 'Script' toggle on video page to copy the script; save frequently used prompts as templates; Video Management list to re-open, re-edit, delete, download.",
+     "jelly_has": "partial",
+     "evidence_url": "https://no-lang.com/faq"
+    }
+   ],
+   "standout_ux": [
+    "Watch page keeps the just-generated video as a pinned 'reference video' \u2014 you type a delta ('slower narration', 'more pop', 'same structure, new topic') and get a sibling video that inherits design/structure/voice; any past video can seed a series. Cheap way to give Jelly 'remix from this project'.",
+    "One-box prompt-first home with only two side choices (aspect ratio incl. 'auto', duration incl. 'auto'); everything else lives behind 'Saved settings' presets that power users (and the API) reuse \u2014 nice split between fast lane and power lane.",
+    "Failed-generation credits auto-refund within ~20 min, credits roll over, and the API pricing page publishes an exact credit table per minute (image-gen ON/OFF) plus auto-recharge with a monthly hard limit \u2014 copy the transparent per-minute table and the hard-limit safety UX.",
+    "Real-avatar flow renders a static-avatar draft first, lets you finish all edits, then a separate 'Animate' button spends the expensive credits (with a warning if the video isn't updated) \u2014 a good pattern for gating Jelly's costly Wan2.2 motion pass.",
+    "Editor quality-of-life: 'apply interval to all scenes', in-script pause markers, cross-video pronunciation search + dictionary, and AI-suggested BGM/SFX/background per script instead of keyword search.",
+    "Curated sample gallery by content category (trivia, news, yukkuri history) with playable examples that become templates, plus per-genre tutorials built entirely with the product itself."
+   ],
+   "weaknesses_users_complain_about": [
+    "Free tier is nearly a demo: 3 generations/month, watermark, videos disappear after 2 weeks; most wanted features (avatars, no watermark, real avatar, image gen) are paywalled.",
+    "Generic, formulaic visuals \u2014 AI-picked stock/CC images feel unoriginal; videos look 'one-dimensional' vs human-made; fixed transitions, hard to place logos or fine-tune timing/audio fades.",
+    "TTS mispronunciations and mechanical intonation in Japanese (e.g., \u5c71\u7a4d\u307f read wrong); non-Japanese output quality noticeably weaker; scripts get unintentionally summarized or misinterpreted on long inputs.",
+    "PC-only editing/download, no mobile app; Chrome-extension videos and CC-BY-SA attribution requirement limit commercial use; default-public sharing setting is a privacy trap.",
+    "Copyright: royalty-free BGM triggers YouTube false-positive claims; stock images can later prove unlicensed; no refunds for unused subscription/credits and credits vanish on cancel.",
+    "Discoverability: no Trustpilot/G2/Product Hunt footprint (0 English reviews found); pricing only in JPY; auto-post lacks scheduling; API is a separate prepaid wallet from app credits and API videos expire after 2 weeks."
+   ],
+   "sources": [
+    "https://no-lang.com",
+    "https://no-lang.com/en",
+    "https://no-lang.com/pricing",
+    "https://no-lang.com/en/pricing",
+    "https://no-lang.com/faq",
+    "https://no-lang.com/business",
+    "https://no-lang.com/api-docs",
+    "https://no-lang.com/api-docs/pricing",
+    "https://no-lang.com/api-docs/reference",
+    "https://no-lang.com/tutorial",
+    "https://no-lang.com/tutorial/updates/2026-08-12-new-generation",
+    "https://no-lang.com/tutorial/updates/2026-05-31-new-editor",
+    "https://no-lang.com/tutorial/basic/generate-video",
+    "https://no-lang.com/tutorial/basic/generation-methods",
+    "https://no-lang.com/tutorial/basic/use-template",
+    "https://no-lang.com/tutorial/basic/slide-modes",
+    "https://no-lang.com/tutorial/video/dialogue",
+    "https://no-lang.com/tutorial/video/real-avatar",
+    "https://no-lang.com/tutorial/character/avatar",
+    "https://no-lang.com/tutorial/character/voice",
+    "https://no-lang.com/tutorial/new-editor-guide/overview",
+    "https://no-lang.com/tutorial/new-editor-guide/subtitle-interval",
+    "https://no-lang.com/tutorial/new-editor-guide/image-insert",
+    "https://no-lang.com/tutorial/new-editor-guide/avatar",
+    "https://chromewebstore.google.com/detail/nolang/kgakmojcjdelgadjdjlhpnejmeaphhgg",
+    "https://prtimes.jp/main/html/rd/p/000000150.000129953.html",
+    "https://prtimes.jp/main/html/rd/p/000000042.000129953.html",
+    "https://prtimes.jp/main/html/rd/p/000000161.000129953.html",
+    "https://mantan-web.jp/prtimes/article/20260801prt00m200000080a/photopage/001.html",
+    "https://finance.biggo.com/news/44e06582-f4ad-4daf-a1d7-79beba50f4c8",
+    "https://finance.biggo.com/news/96036aef-e1f7-44c2-a54d-7294eeb3f63b",
+    "https://note.com/note_maverick/n/n67783193a918",
+    "https://glama.ai/mcp/servers/team-tissis/nolang-mcp",
+    "https://ai-skills.jp/nolang-reviews/",
+    "https://note.com/witty_ixora1236/n/nb02c034d1cb7",
+    "https://note.com/witty_ixora1236/n/ned2d8d44c8b9",
+    "https://morin-ai.com/archives/5796",
+    "https://weel.co.jp/media/innovator/nolang/",
+    "https://walker-s.co.jp/ai/what-is-nolang/",
+    "https://genpiq.com/nolang-how-to-use/",
+    "https://note.com/doerstokyo_kb/n/nb9537d2322ef",
+    "https://gigazine.net/gsc_news/en/20240716-ai-movie-maker-nolang/"
+   ]
+  },
+  {
+   "competitor": "Argil (argil.ai) \u2014 Paris/YC-backed AI clone-avatar short-form video platform, mid-pivot (Aug 2026) to an agentic \"Director / Playground / Templates\" multi-model studio",
+   "pricing_summary": "Subscription + credits, no pure pay-per-render. Docs (docs.argil.ai/resources/subscription-and-plans, live Aug 2026): Classic $39/mo = 1,500 credits, 10 avatar styles, 100+ stock avatars, Magic editing, Fictions/Avatar Action playground (Veo3/Hailuo), API access; Pro $149/mo = 6,000 credits, unlimited styles, style editing, faster generation, Pro avatars/voices; Scale $499/mo = 18,000 credits, 3 workspace seats, priority support; Enterprise $1,000+/mo custom credits/avatars/integrations. Yearly = \"2 months free\" (~30% off; third-party sites list $27/$104/$349 annual-equivalent). Pay-as-you-go top-up credits never expire; app has Auto Top-Up (threshold + max monthly spend) and a \"Platform fee\" line. Credit costs: video (Atom model) 160 cr/min, voice 20 cr/min, AI-image B-roll 10 cr, stock-video B-roll 20 cr, royalty 20 cr/video for Argil v1 licensed avatars (waived on your own clone); legacy v1 = 60 cr per 3 min. Example: 30 s video + 2 video B-rolls \u2248 120 credits (~$3 at Classic rate). Effective all-in \u2248 $1.5\u20135 per finished minute depending on model/plan (marketing says \"$39 \u2248 25 min\"; Atom math at $0.026\u20130.028/credit \u2248 $4.2\u20134.7/min). Failed/moderated generations auto-refund credits. Free tier: docs say \"basic avatars\"; app strings show 3 trial generations, watermark until you start a paid plan, \"{daily} daily credits (up to {cap}/month)\", 5-day trial that converts to a paid plan (Seedance 2.0 / clips locked during trial). New www pricing UI (loads plans from the app) is Pro / Business / Enterprise credit tiers, monthly or yearly, launch-offer % at Stripe Checkout, \"Payments not available in your region\" geo-lock. Cancellation = end of period; Trustpilot complaint: no pro-rata refund on annual.",
+   "features": [
+    {
+     "feature": "AI clone avatar from your own footage (Personal avatar)",
+     "how_it_works": "Upload a single well-lit photo (720p+, mouth slightly open) or a ~2-min video; live-verification (nod/turn head) required to prevent unauthorized cloning; training ~10 min; clone keeps the training outfit, so different outfits = separate avatars/styles. Own-clone videos have no content restrictions and no royalty credits.",
+     "jelly_has": "no",
+     "evidence_url": "https://docs.argil.ai/resources/create-an-avatar"
+    },
+    {
+     "feature": "AI Influencer / synthetic avatar builder",
+     "how_it_works": "Prompt-built avatar: toggles for age/gender/ethnicity, background camera-angle + time-of-day toggles, then free-text (10\u201330 lines advised); drop product/logo/clothing images to have the avatar wear/hold them. Costs credits to generate.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/create-an-avatar"
+    },
+    {
+     "feature": "100+ licensed stock avatars (public + Pro), horizontal & vertical, tag filters",
+     "how_it_works": "Pick a pre-trained human (Argil Legacy) or AI-generated (Atom) avatar by tags (age, accessories); Pro avatars (higher quality, more scene variety, Pro voice attached) gated to Pro plan; licensed human avatars carry a 20-credit royalty and strict content moderation.",
+     "jelly_has": "no",
+     "evidence_url": "https://docs.argil.ai/resources/create-your-own-ai-clone/public-avatars"
+    },
+    {
+     "feature": "Avatar Styles (same face, new outfit/scene) + Vary / Use settings / Copy the style of an image",
+     "how_it_works": "Hover avatar \u2192 New style \u2192 prompt clothing, setting, lighting, framing; choose vertical/horizontal; costs a few credits per image; 'Vary' makes a near-duplicate, 'Use settings' recalls the prompt; edit shirt color/haircut on an existing style; upload any image to transfer its look (clothes/background) to your avatar. Classic = 10 style slots, Pro/Scale unlimited.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/create-avatar-styles"
+    },
+    {
+     "feature": "Script-first creation (write/paste script or prompt) with paragraph = clip model",
+     "how_it_works": "Enter script; each paragraph becomes a clip (max 500 chars/paragraph, 60 paragraphs \u2248 10\u201315 min max); 'dynamic splitting' auto-cuts into more clips; script edits/cuts do not require regenerating already-rendered lipsync.",
+     "jelly_has": "yes",
+     "evidence_url": "https://docs.argil.ai/resources/create-a-video"
+    },
+    {
+     "feature": "Voice-to-video: upload audio or record in-app, then voice transformation",
+     "how_it_works": "Accepts mp3/wav/m4a \u226450 MB or in-browser recorder; auto-transcribes; optional voice-to-voice transform into any avatar voice preserving emotion/tone; 'AI cleanup' removes background noise/echo. API: audioUrl per moment (\u226440 s) bypasses TTS.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/audio-and-voicetovoice"
+    },
+    {
+     "feature": "Article-to-video (URL \u2192 script + pulled media)",
+     "how_it_works": "Pick template, paste article URL, choose social (short, social tone) or classic (longer, embeddable) format, pick avatar; Argil writes the script and scrapes the article's images/videos as candidate B-roll; also available via API. New agent UI adds 'Enter URL to crawl' headless content extraction and news/recipe templates.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/article-to-video"
+    },
+    {
+     "feature": "Voice cloning (20 s\u20135 min upload) + generated 'voices for your face'",
+     "how_it_works": "Voices panel \u2192 create voice from any 20 s\u20135 min clip (guidance: no silence, no hesitations); when creating an avatar you can select existing, clone, or 'generate my voice' (3 candidates matched to the face). ElevenLabs-backed; speed 1.05\u20131.1 tip; '...' / '--' add pauses.",
+     "jelly_has": "yes",
+     "evidence_url": "https://docs.argil.ai/resources/voices-and-provoices"
+    },
+    {
+     "feature": "Prompt-a-voice (text-described voice design)",
+     "how_it_works": "Describe audio quality, timbre, age, pacing, accent (e.g. 'older woman, thick Southern accent, sweet and sarcastic') and Argil synthesizes a new voice; example prompt library provided.",
+     "jelly_has": "no",
+     "evidence_url": "https://docs.argil.ai/resources/prompt-a-voice"
+    },
+    {
+     "feature": "Bring-your-own ElevenLabs / MiniMax voices (Pro voices) + per-generation model & settings override",
+     "how_it_works": "Paste your ElevenLabs API key \u2192 synchronize voices (incl. 30-min-dataset ElevenLabs Pro clone; multiple EL accounts allowed); voice charges waived when using your own EL account. API voice object accepts model (eleven_v3, turbo, flash, MiniMax speech-2.8-hd\u2026) and settings (stability, similarity, style, speed 0.7\u20131.2, speakerBoost, MiniMax emotion/languageBoost).",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/voices-and-provoices"
+    },
+    {
+     "feature": "~30+ languages via ElevenLabs; captions in any language",
+     "how_it_works": "Same cloned voice speaks EN/FR/DE/ES/JA/ZH/HI/AR/\u2026 from a single script (multilingual v2 models); no separate dubbing pipeline \u2014 you swap script language and re-render; captions auto-generate for any language.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/voices-and-provoices"
+    },
+    {
+     "feature": "Magic editing pre-sets at creation (voice, captions, B-roll type, layout, music) \u2192 pre-edited video in one click",
+     "how_it_works": "Before render you toggle Auto-captions, pick B-roll source and intensity (low/med/high), layout (Auto mixes), background music; result lands pre-edited in the studio, everything editable per clip afterwards.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/create-a-video"
+    },
+    {
+     "feature": "Auto B-roll from 4 sources: AI image, Getty stock video, Google Images, upload (+ Avatar Action clips)",
+     "how_it_works": "Auto-placement by AI at 'most relevant' moments; per clip you can shuffle up to 3 alternatives, set Display front/behind avatar and Length 1/2; uploads jpg/png/mp4/mov \u226450 MB; API autoBrolls {source: GENERATION|GOOGLE_IMAGES|STOCKS_VIDEO|AVATAR_ACTION, intensity, layout}. BYO Getty API key/secret supported.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/brolls"
+    },
+    {
+     "feature": "Layouts / avatar positioning (full, PiP corner, split top/bottom or left/right, background)",
+     "how_it_works": "Per media choose Full-screen avatar, Small avatar in one of 4 corners over media, Splitscreen (top/bottom for 9:16, left/right for 16:9), or Back avatar (media full screen); 'apply to all medias'; API layout enum of 10 values.",
+     "jelly_has": "no",
+     "evidence_url": "https://docs.argil.ai/resources/layouts"
+    },
+    {
+     "feature": "Camera angles / zooms / body-language (gesture) per clip",
+     "how_it_works": "Editor lets you set zoom-in emphasis on a clip (tip: split sentences to add zooms), switch camera angle, and pick avatar body language/gestures; API exposes gestureSlug and zoom per moment. Reviewers note gestures can look repetitive/clip through body.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/pages/get-started/quickstart"
+    },
+    {
+     "feature": "Caption styling (style presets, size S/M/L, position top/middle/bottom) + word-level typo fix + subtitle export",
+     "how_it_works": "CC icon opens style picker; for audio-input videos click segment \u2192 click word \u2192 correct \u2192 regenerate; API lists subtitle styles and exports VTT/ASS with styling; app has 'Download subtitles'.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/captions"
+    },
+    {
+     "feature": "Background music library with preview & volume",
+     "how_it_works": "Sidebar Music \u2192 preview tracks, set volume (API default 0.14), attach; own-music upload was 'not yet' in docs but API backgroundMusic.assetId now accepts audio assets; new UI adds a Lyria 3 Pro 'Music Studio' (mood palette, lead/accompaniment hints, negative prompt, lyrics, seed).",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/music"
+    },
+    {
+     "feature": "Studio editor with preview-before-render (lipsync generated only at final render)",
+     "how_it_works": "Play button previews with still avatar + generated audio; edit script, B-rolls, captions, background, voice, music, body language; only 'Generate' spends credits (5\u201315 min, faster on Pro). Rendering ~2\u20133 min per output minute reported.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/create-a-video"
+    },
+    {
+     "feature": "Aspect ratios 9:16 and 16:9 (1:1 claimed in blog), multi-aspect render from one script",
+     "how_it_works": "aspectRatio param 16:9 or 9:16 (default per avatar); avatars exist in horizontal/vertical variants; blog claims same script \u2192 9:16 + 1:1 + 16:9 in one render.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/api-reference/endpoint/videos.create"
+    },
+    {
+     "feature": "Length / watermark limits",
+     "how_it_works": "Max ~10\u201315 min (60\u00d7500-char paragraphs); reviewers say best \u226490 s; watermark on free/trial output until a paid plan is active ('Remove watermark' upsell); no published resolution spec (1080p implied by 720p/1080p input guidance).",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/create-a-video"
+    },
+    {
+     "feature": "Direct publishing to TikTok (OAuth) with Branded-Content disclosure",
+     "how_it_works": "Connect a TikTok account; post from the app ('By posting, you agree to TikTok's\u2026 Branded Content Policy', Brand Organic/Branded Content toggles); session-expiry re-connect prompt; blog claims platform-optimized exports/'direct publishing' but no calendar/scheduler surfaced.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.argil.ai/blog/how-do-leading-ai-avatar-services-compare-on-pricing-in-2026"
+    },
+    {
+     "feature": "Batch/cadence workflow (queue many scripts, hook/A-B variants)",
+     "how_it_works": "Blog positions a 'cadence engine': queue 5\u201310 scripts per session, get all back within hours; A/B hooks, avatars, languages, or scripts from a single source script; realized via API/Make rather than a native scheduler.",
+     "jelly_has": "no",
+     "evidence_url": "https://www.argil.ai/blog/runway-pricing-plans"
+    },
+    {
+     "feature": "Public REST API (api.argil.ai/v1) + webhooks + OpenAPI spec",
+     "how_it_works": "Endpoints for avatars (create from image/video), voices (clone, sync providers), videos (create moments \u2192 render \u2192 poll), assets (upload B-roll by URL), subtitles (styles, export), webhooks (video/avatar success/failed); API access included from Classic; credits shared with app; \u226560k credits/mo \u2192 enterprise pricing.",
+     "jelly_has": "no",
+     "evidence_url": "https://docs.argil.ai/pages/get-started/quickstart"
+    },
+    {
+     "feature": "Make (Integromat) automation tutorial + Argil CLI + connectors",
+     "how_it_works": "Notion step-by-step for Make \u2192 Argil; new workspace settings expose 'connectors' (enable/disable AI providers/models, 'Auto-approve connector spend', custom connectors on Enterprise) and an 'Argil CLI'; no Zapier/MCP listing found.",
+     "jelly_has": "no",
+     "evidence_url": "https://docs.argil.ai/resources/make-automation"
+    },
+    {
+     "feature": "Fictions \u2192 'Avatar Action' (Veo 3 / Veo 3.1 Fast / Hailuo / Nano Banana 8-second clips with your avatar)",
+     "how_it_works": "Pick avatar or image as first frame, optionally add outfit/product image (Nano Banana), choose Veo3 Fast/Normal, sound on/off, keep platform voice or let Veo voice; prompt Subject/Setting/Action/Camera/Audio; 'Remix' reuses prompt+frame; results auto-saved to Assets for reuse as B-roll; 3rd-party moderation, failures auto-refunded.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/avatar-actions"
+    },
+    {
+     "feature": "Story \u2014 multi-scene mini-film/ad from one prompt (Kling 3.0 / 3.0 Pro)",
+     "how_it_works": "One prompt \u2192 auto-split into 2\u20136 scenes (3\u201315 s each, \u226415 s total) with camera movement + timing; edit/reorder/delete scenes or 'Write scenes manually'; @-mention avatars/uploaded refs; up to 7 image refs or 4 incl. one 3\u201310 s video; 9:16/16:9, sound on/off.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/story"
+    },
+    {
+     "feature": "Motion Control (transfer body movement from a reference video to avatar photo)",
+     "how_it_works": "Upload a dance/gesture video + full-body avatar still \u2192 system extracts body position, arms, head, walking/dancing and applies to avatar (no audio, approximate fingers).",
+     "jelly_has": "no",
+     "evidence_url": "https://docs.argil.ai/resources/motion-control"
+    },
+    {
+     "feature": "Product Interaction / Product Presentation / Product Visual / Animate an Image",
+     "how_it_works": "Dedicated flows: avatar physically holds/uses an uploaded product; avatar presents product; clean product stills; first-frame\u2192last-frame image animation to short clip.",
+     "jelly_has": "no",
+     "evidence_url": "https://docs.argil.ai/llms.txt"
+    },
+    {
+     "feature": "Playground \u2014 model-by-model image/video/audio generation (Seedance 2.0/2.5/1.5, MiniMax H3 2K, Sora 2 Pro, Veo 3.1, Kling, Lyria 3)",
+     "how_it_works": "New surface: pick a model, prompt with @-references to avatars/uploads/prior generations, start frame / image ref / audio ref, per-model format/resolution/duration, Trim/Extend/Crop video, 'Use as Ref'/'Reuse input'/'Copy prompt', 'Describe image' turns an upload into a prompt; Seedance/Sora gated behind paid plans, refunds on model-side rejections.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.argil.ai/product"
+    },
+    {
+     "feature": "Director \u2014 agentic chat 'idea to finished video' with Agent Plan, storyboard, shots, Agent Skills",
+     "how_it_works": "Conversation UI ('Ask Argil to\u2026 create a documentary about Nikola Tesla / turn your blog post into a video / repurpose your podcast'); agent proposes a plan, script board, storyboard, shot list, generates & assembles; edits by chat ('swap b-roll on beat 3', 'shorter hook', 'Fix in chat'); planner LLM choices include Claude Sonnet 4.5 and Gemini 3 Pro; workspace 'Agent Skills for Director' catalog (create/duplicate).",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.argil.ai/product"
+    },
+    {
+     "feature": "Templates gallery (Playground + Director recipes)",
+     "how_it_works": "8 templates at launch: Seedance Clip, MiniMax H3 video, Music Video (drop a track), Remake (upload video, recreate with a twist), Shot Rebuild, From an Idea, Frame Lock (storyboard/characters/locked panels\u2192motion), Trailer, plus Product shot, Cinematic still, News Take, Cooking Recipe; templates have entry/variables/instructions; several 'Coming soon'.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.argil.ai/templates"
+    },
+    {
+     "feature": "Assets library + folders + video-project folders",
+     "how_it_works": "Central Assets section for uploaded images/videos/audio (Getty clips excluded), auto-stores anything uploaded in studio and all Veo/Hailuo generations; folder create/rename/delete for projects; 'Share with workspace'.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/assets"
+    },
+    {
+     "feature": "Team workspaces (seats, invitations, member management, audit logs on Enterprise)",
+     "how_it_works": "Scale includes 3 seats; workspace settings: members & invitations by email, transaction history/usage CSV export, plan & credits, display language, connectors; Business = team workspace; Enterprise adds audit logs, onboarding services.",
+     "jelly_has": "no",
+     "evidence_url": "https://docs.argil.ai/resources/subscription-and-plans"
+    },
+    {
+     "feature": "Multi-language UI (Display Language setting) + iOS app",
+     "how_it_works": "Per-account interface language switcher (i18n bundles incl. DE/NL/SV/HR seen); apple-itunes-app meta tag \u2192 App Store id 6755382056.",
+     "jelly_has": "no",
+     "evidence_url": "https://app.argil.ai"
+    },
+    {
+     "feature": "Billing UX: credits balance/renewal date, PAYG credits that never expire, Auto Top-Up with threshold + monthly cap, usage CSV, cost-per-feature table in-app",
+     "how_it_works": "Settings\u2192Credits shows plan allotment vs PAYG balance, 'Credits renew on', 'Buy Credits', Auto Top-Up (when balance < X, max monthly spend), 'Credit costs per feature and model' page, transaction history export; upgrade = immediate full credit top-up prorated.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/pay-as-you-go-pricings"
+    },
+    {
+     "feature": "Free tier / trial: 3 free generations, daily credits with monthly cap, watermark, 5-day trial that converts",
+     "how_it_works": "Trial allows 3 generations and limited projects with watermark; 'Cancel trial and pay now' removes watermark; premium models (Seedance 2.0, clips) blocked in trial; free tier lists '{daily} daily credits (up to {cap}/month)'. Trustpilot complaint: paywall hits immediately after signup.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.producthunt.com/products/argil/reviews"
+    },
+    {
+     "feature": "Content moderation policy tiers by avatar type + auto-refund + email appeal",
+     "how_it_works": "Own clone = no restrictions; Argil human (Legacy) avatars = strict list (finance/crypto/gambling/politics/misinfo etc.); Atom AI avatars = lighter; failed generations refunded; appeal via support@argil.ai with transcript; violators banned.",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/moderated-content"
+    },
+    {
+     "feature": "Support & community: email, Typeform, Discord, YouTube/Loom tutorials embedded in docs, affiliate program",
+     "how_it_works": "support@argil.ai, in-doc Typeform, Discord community; docs pages embed video walkthroughs; Mintlify docs with llms.txt for AI agents; affiliate/referral program (Tolt attribution).",
+     "jelly_has": "partial",
+     "evidence_url": "https://docs.argil.ai/resources/contactsupport"
+    },
+    {
+     "feature": "Solutions verticals: Creators, Politics & campaigns, Media, Cinema",
+     "how_it_works": "New site pitches four paths ('Maximum leverage for Western civilization'): creators, political campaigns ('Convince. Mobilize. Win attention.'), newsrooms ('Inform. Report. Publish faster.'), cinema ('Shorts. Features. Films of the future.').",
+     "jelly_has": "no",
+     "evidence_url": "https://www.argil.ai/solutions"
+    }
+   ],
+   "standout_ux": [
+    "Preview-before-you-pay: full script/voice/B-roll/caption preview with a still avatar; credits are only burned when you hit Generate (lipsync). Jelly could show a free 'animatic' (stills + TTS) before charging for motion.",
+    "Per-clip B-roll 'shuffle' (3 free re-rolls) with Display front/behind and Length 1/2 toggles \u2014 a zero-prompt way to fix a bad shot; plus 'apply to all medias' for layout changes.",
+    "Transparent credit table (video/voice/B-roll/royalty per unit) with a worked 30-second example, PAYG credits that never expire, and Auto Top-Up with a monthly spend cap \u2014 reduces billing anxiety while keeping usage-based feel.",
+    "'Remix' on any generated clip (reuse prompt + voice + first frame) and everything auto-saved to Assets so generations become reusable B-roll \u2014 compounding library value.",
+    "Editing-tips doc baked into the flow: 'split sentences to add a zoom', 'shorter clips', 'record your voice instead of typing' \u2014 opinionated guidance that raises output quality without more features.",
+    "Docs published as Mintlify + llms.txt/OpenAPI, and model-side rejections (Seedance/Veo moderation) auto-refund credits with a plain-language reason \u2014 trust signals worth copying for a receipts-based product."
+   ],
+   "weaknesses_users_complain_about": [
+    "Lip-sync is 'a bit off' / uncanny at times; reviewers advise hiding it with B-roll every 5\u20137 s; blinks and repetitive hand gestures clip through the body; static camera.",
+    "Trustpilot 2.8/5 (3 reviews): advertised 5-day trial hits a paywall immediately after signup; annual subscriber refused any pro-rata refund on cancellation; no G2 listing.",
+    "Subscription required (no true pay-per-video); credit math is confusing (marketing '25 min for $39' vs docs 160 credits/min Atom \u21d2 ~9 min), plan names/limits differ across pages (Classic/Pro/Scale vs new Pro/Business/Enterprise; docs still show old plans).",
+    "Watermark on free/trial output, premium models (Seedance 2.0) and clips locked during trial, billing geo-restricted ('Payments not available in your region').",
+    "Quality complaints on stock avatars: 'low-effort, unconvincing actors', output 'leans corporate'; not suitable for 10+ minute long-form; each outfit change = new avatar/style; render 5\u201315 min (Pro faster).",
+    "Strict content moderation on licensed avatars (finance/crypto/politics banned) that is 'too strict and sometimes doesn't work'; product-direction whiplash (site now pitches politics/cinema, legacy docs still clone-avatar shorts)."
+   ],
+   "sources": [
+    "https://www.argil.ai",
+    "https://www.argil.ai/product",
+    "https://www.argil.ai/pricing",
+    "https://www.argil.ai/templates",
+    "https://www.argil.ai/solutions",
+    "https://www.argil.ai/blog",
+    "https://www.argil.ai/blog/runway-pricing-plans",
+    "https://www.argil.ai/blog/how-do-leading-ai-avatar-services-compare-on-pricing-in-2026",
+    "https://www.argil.ai/blog/how-to-upload-a-youtube-short",
+    "https://docs.argil.ai/llms.txt",
+    "https://docs.argil.ai/resources/subscription-and-plans",
+    "https://docs.argil.ai/resources/pay-as-you-go-pricings",
+    "https://docs.argil.ai/resources/api-pricings",
+    "https://docs.argil.ai/resources/create-a-video",
+    "https://docs.argil.ai/resources/create-an-avatar",
+    "https://docs.argil.ai/resources/create-avatar-styles",
+    "https://docs.argil.ai/resources/create-your-own-ai-clone/public-avatars",
+    "https://docs.argil.ai/resources/voices-and-provoices",
+    "https://docs.argil.ai/resources/prompt-a-voice",
+    "https://docs.argil.ai/resources/audio-and-voicetovoice",
+    "https://docs.argil.ai/resources/article-to-video",
+    "https://docs.argil.ai/resources/story",
+    "https://docs.argil.ai/resources/avatar-actions",
+    "https://docs.argil.ai/resources/motion-control",
+    "https://docs.argil.ai/resources/layouts",
+    "https://docs.argil.ai/resources/captions",
+    "https://docs.argil.ai/resources/brolls",
+    "https://docs.argil.ai/resources/music",
+    "https://docs.argil.ai/resources/assets",
+    "https://docs.argil.ai/resources/editingtips",
+    "https://docs.argil.ai/resources/moderated-content",
+    "https://docs.argil.ai/resources/make-automation",
+    "https://docs.argil.ai/resources/contactsupport",
+    "https://docs.argil.ai/pages/get-started/quickstart",
+    "https://docs.argil.ai/api-reference/endpoint/videos.create",
+    "https://app.argil.ai (public JS bundle strings: TikTok publish, trial/watermark, Seedance/Sora/Veo models, Getty BYO keys, workspaces)",
+    "https://traksource.com/argil-ai-review/",
+    "https://www.clickhive.co.uk/post/argil-ai-review",
+    "https://tagshop.ai/review/argil-ai",
+    "https://www.producthunt.com/products/argil/reviews",
+    "https://www.trustpilot.com/review/argil.ai (2.8/5, 3 reviews \u2014 via secondary citations; page 403s)",
+    "https://www.allaboutai.com/ai-reviews/argil-ai/ (4.2/5 summary via search snippet)",
+    "https://tracxn.com/d/companies/argil/__8qVJMOYIhnT2pMsJ6aetNy_omlgSXP1OYHNfBo4GW98"
+   ]
+  },
+  {
+   "competitor": "StoryShort AI (storyshort.ai)",
+   "pricing_summary": "Subscription-only, credit-metered (Stripe checkout; Paddle IDs also present). Live plan array in the pricing bundle: Starter $39/mo ($23/mo = $279 yearly) 400 credits, 1 series, ~25-40 shorts; Growth $69/mo ($42/mo = $499 yr) 1,200 credits, 2 series, ~80-120 shorts (featured); Influencer $129/mo ($75/mo = $899 yr) 2,400 credits, 3 series, ~160-240 shorts + long-form + UGC; Ultra $199/mo ($117/mo = $1,399 yr) 5,000 credits, 4 series, ~330-500 shorts. All paid tiers list voiceovers, AI content, background music, no watermark, auto-post, download; long-form + UGC are Influencer/Ultra only (\"Not in plan\" for Starter/Growth). \"Save 40% with yearly billing\", cancel anytime. Credit guide table on /pricing: short (AI images) 8-20 cr; ASMR ~50; AI movie ~110; long-form 85-150; UGC ad ~115; talking avatar 270+; \"you always see the exact estimate before generating\". In-app add-ons: animate segments +10/+20/+30 credits, Animate Image 10 cr, frame regen 1 cr, music gen 3 cr, video clips 5/10/15 cr per clip by model tier, ultra image quality tier. Free account: sign up no card, ~10 free credits per reviews; app upgrade modal lists 'Export watermark-free HD', 'Auto-post with Series', 'Longer videos (up to 10 min)', 'Advanced AI models', 'Sora, Veo 3, Kling & more' as paid-only (marketing FAQ nonetheless claims \"free tier with no watermark\" \u2014 inconsistent). Refund policy: \"we do not offer refunds for any unused portion... All sales are final\" (last updated 27/07/2024, contact placeholder \"[your contact email]\"). Cancellation flow has retention offers (Accept 50% off / 30% off / Pause instead). API usage draws from plan credits, no separate API pricing. Affiliate 30% lifetime recurring, $100 min payout. Credits-never-expire claim from the brief was NOT found on the pricing page (app tracks 'monthly_credits').",
+   "features": [
+    {
+     "feature": "Prompt-to-video (topic/idea input)",
+     "how_it_works": "Enter a one-line idea; AI writes script, generates visuals, voiceover, captions, music and renders. Create-v2 wizard fields: prompt/script, voice, language, aspect ratio, duration (30/60/120/180 s presets for shorts), media type, model quality (basic/premium/ultra), image style, character, animate-first-segments, background video, audio, number of videos.",
+     "jelly_has": "yes",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/app/create-v2/%5Bslug%5D/page-96d0f301ab670ab0.js"
+    },
+    {
+     "feature": "Script-to-video (paste script)",
+     "how_it_works": "Paste your own script; visuals generated per line/segment. Sidebar entry '/app/create-v2/script_to_video'.",
+     "jelly_has": "yes",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/layout-8f612c0172a388e3.js"
+    },
+    {
+     "feature": "URL / article / Reddit / PDF / video inputs",
+     "how_it_works": "'Website URL' field for script gen and 'Additional Knowledge' for long-form; 'Add reference' accepts PDF, MP4/MOV, documents with modes 'Use as facts source' or 'Style reference'; SEO tools for Reddit-post-to-video, Article-to-video, Blog-to-video, PDF-to-Brainrot, Clone-video (extract transcript from TikTok/YouTube/IG and recreate).",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/tools"
+    },
+    {
+     "feature": "AI Agent (chat-based creation)",
+     "how_it_works": "v12.0 (2026-04-14): describe video in natural language; agent writes script, picks visuals/models, asks tone/language/topic, confirms character/voice, generates video; streams tool calls; 'Open Editor' after.",
+     "jelly_has": "no",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/layout-8f612c0172a388e3.js"
+    },
+    {
+     "feature": "AI script writer with random idea + long-form script generator",
+     "how_it_works": "'AI script writer' / 'AI screenplay writer' with 'Random idea' roll, tone presets (e.g., Documentary: serious, authoritative), Website URL knowledge; long-form generator makes 8/9/10-minute scripts (480/540/600 s options) with language selector.",
+     "jelly_has": "yes",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/create/page-d515d48e0dd7cfab.js"
+    },
+    {
+     "feature": "Voice library (100+ voices, ElevenLabs + OpenAI)",
+     "how_it_works": "'100+ Premium AI Voices... 50+ languages... Powered by ElevenLabs and OpenAI'; OpenAI Alloy/Echo/Fable/Onyx/Nova/Shimmer listed; preview before generating; change voice later in editor without regenerating visuals; voice speed adjustable per reviews.",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/ai-long-form-video-generator"
+    },
+    {
+     "feature": "Voice cloning",
+     "how_it_works": "'clone your own voice and use it across your series'; Characters page attaches a voice sample (Upload File / Upload Demo Video) to a character used for talking-avatar/lip-sync.",
+     "jelly_has": "yes",
+     "evidence_url": "https://storyshort.ai/alternatives"
+    },
+    {
+     "feature": "Multi-language generation (30-50+ languages) + 5-language UI",
+     "how_it_works": "Videos in 30+/50+ languages; caption tool auto-detects language; UI localized EN/ES/FR/DE/PT (/es /fr /de /pt routes).",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/alternatives"
+    },
+    {
+     "feature": "Media type choice: AI images / AI video clips / stock footage / Google Images",
+     "how_it_works": "Per project choose 'AI Images', 'AI Videos', 'Stock Videos' (Pexels search in editor) or google_images; documentary workflow uses 'real images from the web'.",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/create/page-d515d48e0dd7cfab.js"
+    },
+    {
+     "feature": "Image style presets (12+) + Basic/Premium/Ultra image models",
+     "how_it_works": "Styles like 4K Realistic, Cinematic, Anime, Japanese Ink, Neon Futuristic, Comic Book, Cartoon, Kawaii, Line Art, Digital Art, Collage, Playground, Uncanny Cartoons; quality tiers Basic (standard) / Premium (enhanced) / Ultra with per-image credit cost shown.",
+     "jelly_has": "yes",
+     "evidence_url": "https://contentcreators.com/tools/storyshort-review"
+    },
+    {
+     "feature": "Frontier video-model picker (Veo 3.1, Kling v3 Pro, Seedance 2.0, Veo 3, Wan 2.2, P-Video 720p/1080p, Grok Imagine, Sora 2)",
+     "how_it_works": "Per-clip model selection with cost/quality copy: 'Fast, affordable clips with sound effects and ambience (5 credits/clip)', 'Full HD clips (10)', 'Best cinematic quality, native audio, characters can speak (15)'; Seedance 2.0 up to 15 s with reference images; 'AI creates realistic ambient sound that matches each scene'; continuous mode stitches scenes without visible cuts.",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/app/v2/video/%5Bid%5D/page-54394608b9804e7a.js"
+    },
+    {
+     "feature": "Animate first segments / Animate Image (image-to-video motion)",
+     "how_it_works": "Toggle 'Animate segments' (+10/+20/+30 credits, premium) so opening stills become motion; in editor 'Turn your image into a video' with Basic/Standard/Premium/Cinematic models (10 credits), regenerate end frame (1 credit).",
+     "jelly_has": "yes",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/app/video/%5Bid%5D/page-7e400797b5f79123.js"
+    },
+    {
+     "feature": "Consistent characters + Character library",
+     "how_it_works": "v11: generate a character once (AI Image Generator) and reuse across videos/series; /characters page: name, description, image upload, voice sample; 'Change Character Image', search characters; character passed into every generation.",
+     "jelly_has": "yes",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/characters/page-9c91de253b40310a.js"
+    },
+    {
+     "feature": "Talking Avatar / UGC avatar / Lip Sync videos",
+     "how_it_works": "Two models: Kling Avatar (talking video from a single image) and Lip Sync (lip-syncs cloned audio onto an existing video); UGC Sora presenters; motivational workflow has narrator speaking hook to camera with lip-sync.",
+     "jelly_has": "no",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/layout-8f612c0172a388e3.js"
+    },
+    {
+     "feature": "Motion Control (video-to-image motion transfer)",
+     "how_it_works": "Upload image (<10MB, AR 1:2.5-2.5:1) + reference video (<100MB); Kling v2.6 transfers body/facial motion; Standard vs Pro modes; up to 10 s image mode / 30 s video mode; keeps original audio.",
+     "jelly_has": "no",
+     "evidence_url": "https://storyshort.ai/motion-control"
+    },
+    {
+     "feature": "Workflow templates (21+ formats)",
+     "how_it_works": "Sidebar and /workflow pages: prompt-to-video, script-to-video, AI video ads, long-form, music video, talking avatar, AI documentary, AI movie maker, ASMR, cat/fruit drama, short drama, news, podcast (2 AI hosts), tier list, commentator, animated lyrics, music visualizer (8 styles), gameplay/brainrot, anatomy, renovation timelapse, motivational; category grid (Creation/Social/Music/Editing/Avatars/Brainrot/UGC/Marketing/Education).",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/sitemaps/workflows.xml"
+    },
+    {
+     "feature": "Long-form videos (10-30 min) 16:9",
+     "how_it_works": "Documentary/educational scripts, 'up to 30 minutes or longer', 4K export claim, Influencer/Ultra plans only; app free-plan modal says 'Longer videos (up to 10 min)' as upgrade perk.",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/ai-long-form-video-generator"
+    },
+    {
+     "feature": "Full timeline editor (drag/trim tracks)",
+     "how_it_works": "Editor v1 has multi-track timeline: segments, narration, background music, extra audio, text overlays; drag to move/trim (min 0.5 s), space to play, collapse timeline; per-segment media swap/regenerate, delete/new segment.",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/app/video/%5Bid%5D/page-7e400797b5f79123.js"
+    },
+    {
+     "feature": "Per-segment voiceover text edit + audio regenerate",
+     "how_it_works": "'Voiceover Text' box per segment with 'Regenerate Audio'/'Generate Audio'; auto-save indicator; word timings drive captions.",
+     "jelly_has": "yes",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/app/video/%5Bid%5D/page-7e400797b5f79123.js"
+    },
+    {
+     "feature": "Media browser: Pexels stock, Giphy stickers, Google Images, uploads, website capture",
+     "how_it_works": "Editor 'Add Media' with Search Photos/Videos (Pexels), trending stickers (Giphy), Google Images, upload image/video/audio, generate image/video from prompt in 9:16/1:1/16:9, capture website as static screenshot or scrolling video, particle overlays and video effects.",
+     "jelly_has": "no",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/app/video/%5Bid%5D/page-7e400797b5f79123.js"
+    },
+    {
+     "feature": "Caption styling (fonts, layouts, emojis, colors, position)",
+     "how_it_works": "Caption editor: fonts (Work Sans, Montserrat, Poppins, Oswald, Playfair, Roboto, Lato, Nunito, Raleway, Inter, Komika, TheBold, Gabarito, Noto Sans KR), layouts, highlighted-word style, position from bottom, 'Generate emojis', 'Randomize All'; free caption tool auto-transcribes any upload with word-by-word styles.",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/app/video/%5Bid%5D/page-7e400797b5f79123.js"
+    },
+    {
+     "feature": "Music: library of 1000s, sound effects, upload own, extract from YouTube URL, AI music generation",
+     "how_it_works": "Audio panel tabs Music / Sound effects / Upload (MP3, WAV up to 50MB) / YouTube ('Extract Audio'); music-video generator makes a track (3 credits) or upload; audio visualizer with 8 beat-reactive styles.",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/app/video/%5Bid%5D/page-7e400797b5f79123.js"
+    },
+    {
+     "feature": "Aspect ratios 9:16 / 1:1 / 16:9 (switch in editor)",
+     "how_it_works": "'Video format updated' - switch Portrait/Square/Landscape (1080x1080 etc.) inside the editor; default 9:16 for shorts.",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/alternatives"
+    },
+    {
+     "feature": "Thumbnail generation/upload",
+     "how_it_works": "Editor 'Generate Thumbnail' or 'Upload Custom Image'; free standalone TikTok/YouTube thumbnail generators (no signup).",
+     "jelly_has": "yes",
+     "evidence_url": "https://storyshort.ai/tools"
+    },
+    {
+     "feature": "Watermark toggle / HD export",
+     "how_it_works": "Editor 'Watermark setting updated'; free plan exports watermarked ('Export watermark-free HD' is an upgrade perk); paid = no watermark; long-form page claims up to 4K/2160p, other pages say 1080p MP4.",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/create/page-d515d48e0dd7cfab.js"
+    },
+    {
+     "feature": "Direct publishing to TikTok, YouTube (Shorts), Instagram Reels",
+     "how_it_works": "/app/accounts connects TikTok, YouTube, Instagram (Business/Creator); publish dialog with TikTok privacy status ('Only you'), content disclosure (Brand Organic / Branded Content), duration checks; account groups.",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/app/accounts/page-31cf745248937346.js"
+    },
+    {
+     "feature": "Series (autopilot channels) + Calendar scheduling",
+     "how_it_works": "Series 'writes the script, generates the video, posts a video every day' to connected accounts on chosen cadence; 1-4 series by plan; pause/resume/delete; series_paused notifications; Calendar page (v10.1.6) visualizes series and manual scheduling; every series video can be opened in editor before it posts.",
+     "jelly_has": "no",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/app/series/page-f9d7e21167b2c373.js"
+    },
+    {
+     "feature": "Bulk generation (number of videos)",
+     "how_it_works": "'numberOfVideos' selector generates N variations at once; marketing: '30 days of content in under 30 minutes'.",
+     "jelly_has": "no",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/create/page-d515d48e0dd7cfab.js"
+    },
+    {
+     "feature": "Stats dashboard (cross-platform analytics)",
+     "how_it_works": "v12 Stats page: views, likes, comments, shares, engagement per TikTok/YouTube/Instagram account or group, date ranges, reconnect prompts.",
+     "jelly_has": "no",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/app/stats/page-9305a876fa7604a5.js"
+    },
+    {
+     "feature": "Inspiration: Discover / Watchlist / Ideas (trend finder)",
+     "how_it_works": "'Breakout videos from creators in your niche' and 'creators you follow'; one-click 'Analyze the video first, then create a similar video that keeps the same hook style... original, not a copy'; Ideas generator per workflow.",
+     "jelly_has": "no",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/7538-f892d73c1e82f54c.js"
+    },
+    {
+     "feature": "Public REST API + webhooks + Zapier/Make",
+     "how_it_works": "api.storyshort.ai, Bearer 'ss_' keys; POST /ai-agent/api/generate (prompt, videoType faceless|ugc_ads|hook_demo, duration, language, characterId, webhookUrl), status endpoint, /api/v1/accounts, /api/v1/videos, /api/v1/publish (tiktok/youtube/instagram/zapier accountIds, visibility); native Zapier; 'Connect Make / Zapier' custom webhook integration in-app; 'Copy for LLM' docs button.",
+     "jelly_has": "no",
+     "evidence_url": "https://storyshort.ai/api-docs"
+    },
+    {
+     "feature": "Credit transparency + video metadata",
+     "how_it_works": "'Estimated cost: N credits' before generate; 'Video Metadata' dialog shows script and credits used per video; credits refunded on failed/moderated generations; low-credit notifications.",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/8139-667d4bdbc6c30e34.js"
+    },
+    {
+     "feature": "Library with favorites, share link, publish, download",
+     "how_it_works": "/app/dashboard/library: paginated (30), filter AI Image/AI Video/Upload/Faceless/Hook+Demo, favorite, delete, 'Publish to social media', download render, 'Copy link' share.",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/app/dashboard/library/page-aee5d7b23c1bf342.js"
+    },
+    {
+     "feature": "Standalone AI Image / AI Video generators",
+     "how_it_works": "/ai-image (Flux 2 Pro, SeedDream 4, Flux Kontext, Nano Banana Pro/2, Qwen Edit Pro; up to 8 reference images) and /ai-video (Sora 2, Wan 2.2, Veo 3...) usable outside a project; community gallery of Sora 2/Veo 3/Wan 2.5 creations.",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/community"
+    },
+    {
+     "feature": "In-app changelog ('What's New' modal) + onboarding checklist/survey",
+     "how_it_works": "Versioned modal (v12.0.0 2026-04-14 etc.) with feature media; dashboard checklist and goal survey ('My own channel', 'Client work', 'Agency or freelance'...).",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/layout-8f612c0172a388e3.js"
+    },
+    {
+     "feature": "Support: Crisp live chat, in-app help, contact page",
+     "how_it_works": "Crisp widget injected with plan/credits metadata (hidden inside editor); 'Contact support' links, hello@storyshort.ai; no public docs/help center or Discord found (docs/help/changelog URLs 404).",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/contact"
+    },
+    {
+     "feature": "Billing UX: Stripe portal, retention offers, promo codes",
+     "how_it_works": "Billing page opens Stripe portal; cancel flow forces survey (min 5 words) then offers 'Accept 50% Off' / 'Accept 30% Off' / 'Pause Instead'; yearly toggle 'save 40%'.",
+     "jelly_has": "partial",
+     "evidence_url": "https://storyshort.ai/_next/static/chunks/app/(app)/app/billing/page-6db3f9f08e8fa86c.js"
+    },
+    {
+     "feature": "Trust / policies",
+     "how_it_works": "Trustpilot ~2.5/5 from 5 reviews; ToS governed by French law; content license grant to StoryShort; no-refund policy; 30% lifetime affiliate; SourceForge lists UK 2024.",
+     "jelly_has": "partial",
+     "evidence_url": "https://www.trustpilot.com/review/storyshort.ai"
+    }
+   ],
+   "standout_ux": [
+    "Credit-cost table on the pricing page ('What do credits actually make?') plus 'Estimated cost: N credits' before every generate and a per-video metadata dialog showing script + credits used \u2014 cost is legible at every step.",
+    "Series = 'set topic, style, cadence once' with pause/resume, calendar view, and every queued video openable in the full editor before it auto-posts (edit-then-let-schedule-resume).",
+    "Inspiration tab: breakout videos in your niche with a one-click 'analyze then make an original with the same hook style' prefill into the create wizard.",
+    "Media picker inside the editor pulls Pexels/Giphy/Google Images/website-scroll capture/AI gen in one panel; audio panel lets you paste a YouTube URL to extract a track and upload MP3/WAV.",
+    "API docs page with a 'Copy for LLM' button and webhook-first flow; Zapier/Make connect via a generic 'Custom webhooks' publishing target.",
+    "Model picker with plain-language tiers and price per clip ('Fast, affordable clips (5 credits/clip)' vs 'Best cinematic quality, characters can speak (15 credits/clip)') and automatic credit refunds on moderation/failed renders."
+   ],
+   "weaknesses_users_complain_about": [
+    "Support silence: Trustpilot reviewers report no reply to emails, no complaint path, no refund; affiliate says >$1,000 commissions marked paid then reversed (Trustpilot 2.5/5).",
+    "Output quality below the marketing examples and generation times 'far longer than promised' (Trustpilot); reviewers cite visual inconsistency between scenes and 'visibly artificial' AI images.",
+    "No refunds, no PayPal, subscription-only; free account can only preview (export watermarked/locked), 10 free credits \u2014 'restrictive free plan' and 'pricier than competitors'.",
+    "Limited manual control: basic transitions/effects, prompt-to-video accepts image but not video references, editor learning curve; long-form and UGC gated to $129+/mo plans.",
+    "Music library copyright risk (some tracks flagged as likely copyrighted) requiring manual checks; occasional struggles with specialized terminology needing human review.",
+    "Marketing inconsistencies erode trust: FAQ says free tier has 'no watermark' while app gates 'Export watermark-free HD'; refund page still says 'contact us at [your contact email]'."
+   ],
+   "sources": [
+    "https://storyshort.ai/",
+    "https://storyshort.ai/pricing",
+    "https://storyshort.ai/_next/static/chunks/app/(marketing)/pricing/page-9d462bc6a0263bbe.js",
+    "https://storyshort.ai/ai-long-form-video-generator",
+    "https://storyshort.ai/motion-control",
+    "https://storyshort.ai/automate-ai-ugc",
+    "https://storyshort.ai/api-docs",
+    "https://storyshort.ai/tools",
+    "https://storyshort.ai/alternatives",
+    "https://storyshort.ai/community",
+    "https://storyshort.ai/affiliate",
+    "https://storyshort.ai/refund",
+    "https://storyshort.ai/terms",
+    "https://storyshort.ai/sitemaps/workflows.xml",
+    "https://storyshort.ai/_next/static/chunks/app/(app)/layout-8f612c0172a388e3.js",
+    "https://storyshort.ai/_next/static/chunks/app/(app)/create/page-d515d48e0dd7cfab.js",
+    "https://storyshort.ai/_next/static/chunks/app/(app)/app/create-v2/%5Bslug%5D/page-96d0f301ab670ab0.js",
+    "https://storyshort.ai/_next/static/chunks/app/(app)/app/video/%5Bid%5D/page-7e400797b5f79123.js",
+    "https://storyshort.ai/_next/static/chunks/app/(app)/app/v2/video/%5Bid%5D/page-54394608b9804e7a.js",
+    "https://storyshort.ai/_next/static/chunks/app/(app)/app/billing/page-6db3f9f08e8fa86c.js",
+    "https://storyshort.ai/_next/static/chunks/app/(app)/app/stats/page-9305a876fa7604a5.js",
+    "https://storyshort.ai/_next/static/chunks/app/(app)/app/accounts/page-31cf745248937346.js",
+    "https://storyshort.ai/_next/static/chunks/app/(app)/characters/page-9c91de253b40310a.js",
+    "https://storyshort.ai/_next/static/chunks/8181-8ed48d44f98835c7.js",
+    "https://storyshort.ai/_next/static/chunks/7538-f892d73c1e82f54c.js",
+    "https://www.trustpilot.com/review/storyshort.ai",
+    "https://flowshorts.app/blog/storyshort-ai-review",
+    "https://filmora.wondershare.com/video-editor-review/storyshort-ai-review.html",
+    "https://www.digitalizelife.com/tools/storyshort-ai/",
+    "https://moralreview.com/storyshort-ai-review/",
+    "https://contentcreators.com/tools/storyshort-review",
+    "https://www.swipestory.click/en/blog/storyshort-ai-alternative",
+    "https://aiprotips.net/storyshort-ai/",
+    "https://sourceforge.net/software/product/StoryShort/",
+    "https://www.producthunt.com/products/storyshort-ai/reviews"
+   ]
+  }
+ ],
+ "synthesis": {
+  "gap_matrix": [
+   {
+    "feature": "Pre-render cost estimate shown at the point of choice (per-image tier, motion on/off, per-minute table)",
+    "who_has_it": [
+     "TubeGen",
+     "StoryShort",
+     "Zebracat",
+     "Faceless.so",
+     "Argil",
+     "NoLang"
+    ],
+    "why_it_matters": "Every competitor makes cost legible before the button; Jelly's receipt arrives after the spend, which is the wrong moment for a first-time paying user.",
+    "jelly_status": "partial \u2014 check-budget.ts already computes estimateCents for the 402 path and BillingBlock.tsx can display it, but no visible line item per step before Generate",
+    "how_we_add_it": "Surface the existing estimateCents from lib/vater/billing/check-budget.ts as an always-on 'Estimated: $X.XX' row in components/animate/screens/editor/BillingBlock.tsx and VisualsStep.tsx (stills vs +Wan motion delta), plus a static per-minute table on components/animate/screens/browse/PricingScreen.tsx.",
+    "files_or_services": "lib/vater/billing/check-budget.ts, lib/vater/video-cost.ts, components/animate/screens/editor/BillingBlock.tsx, VisualsStep.tsx, browse/PricingScreen.tsx",
+    "effort": "S",
+    "cost": "$0 (uses existing cost math)",
+    "priority": "now"
+   },
+   {
+    "feature": "Free animatic preview before paid motion (stills + TTS draft, then opt-in Wan pass)",
+    "who_has_it": [
+     "Argil",
+     "NoLang"
+    ],
+    "why_it_matters": "Argil and NoLang render a cheap static draft first and only spend expensive credits on the final; it kills the 'I paid and it came out wrong' complaint that dominates TubeGen/Zebracat reviews.",
+    "jelly_status": "partial \u2014 post_compose_video and post_animate_all_scenes are separate calls in vater.py, but the UI does not frame stills-first as the default flow",
+    "how_we_add_it": "In VisualsStep.tsx make 'Render stills draft' the default button, then expose post_animate_all_scenes (vater.py:9679) as a second explicit 'Add motion ($X)' step with the estimate inline; keep Gemini scene QA gate before motion.",
+    "files_or_services": "~/content-autopilot/vater.py post_compose_video/post_animate_all_scenes, components/animate/screens/editor/VisualsStep.tsx",
+    "effort": "S",
+    "cost": "$0; actually lowers per-video cost",
+    "priority": "now"
+   },
+   {
+    "feature": "Bring-your-own voiceover audio (upload narration, scenes/captions/chapters key off it)",
+    "who_has_it": [
+     "TubeGen",
+     "Argil",
+     "Zebracat",
+     "NoLang",
+     "Faceless.so"
+    ],
+    "why_it_matters": "Many faceless creators already record or buy narration; without an upload path Jelly cannot ingest their existing workflow and forces a cloned voice.",
+    "jelly_status": "no \u2014 VoiceoverStep.tsx only offers catalog/cloned voices; app/api/vater/upload exists but only for voice-clone samples",
+    "how_we_add_it": "Add an 'Upload narration (WAV/MP3)' card in components/animate/screens/editor/VoiceoverStep.tsx that posts to app/api/vater/upload/route.ts, then a vater.py branch that skips _run_indextts_modal and runs the existing forced-alignment caption pass on the uploaded file before _schedule_scenes.",
+    "files_or_services": "components/animate/screens/editor/VoiceoverStep.tsx, app/api/vater/upload/route.ts, ~/content-autopilot/vater.py (audio phase + captions alignment)",
+    "effort": "M",
+    "cost": "$0 (Whisper/alignment already local)",
+    "priority": "now"
+   },
+   {
+    "feature": "Multi-language narration (same script re-voiced in other languages)",
+    "who_has_it": [
+     "TubeGen",
+     "Vidnoz",
+     "Argil",
+     "StoryShort",
+     "NoLang",
+     "Zebracat",
+     "Faceless.so"
+    ],
+    "why_it_matters": "Regional-channel duplication is a top faceless-creator play and every rival ships 8\u2013175 languages; Jelly is English-only in practice.",
+    "jelly_status": "partial \u2014 vater.py carries a `language` field (default 'en') and an ElevenLabs voices route already exists (app/api/vater/voices/elevenlabs), but no language picker and IndexTTS-2 clones are English-tuned",
+    "how_we_add_it": "Add a language select in VoiceoverStep.tsx that sets meta.language, route non-English jobs to the existing ElevenLabs path (multilingual v2) via app/api/vater/voices/elevenlabs, and add a Kimi 'translate script' action in ScriptStep.tsx.",
+    "files_or_services": "components/animate/screens/editor/VoiceoverStep.tsx, ScriptStep.tsx, app/api/vater/voices/elevenlabs/route.ts, vater.py language plumbing (line ~3600)",
+    "effort": "M",
+    "cost": "ElevenLabs ~$0.15\u20130.30/min metered per video",
+    "priority": "next"
+   },
+   {
+    "feature": "9:16 vertical output and post-hoc aspect conversion of an existing project",
+    "who_has_it": [
+     "Vidnoz",
+     "Argil",
+     "StoryShort",
+     "NoLang",
+     "Zebracat",
+     "Faceless.so"
+    ],
+    "why_it_matters": "Long-form creators repurpose to Shorts for discovery; a one-click 9:16 cut of a finished project is cheap retention.",
+    "jelly_status": "partial \u2014 _normalize_aspect/_aspect_image_dims exist in vater.py and an aspect setting exists, but no re-render-to-9:16 flow and Remotion compositions default 16:9",
+    "how_we_add_it": "Add 'Make a 9:16 cut' on browse/ProjectDetail.tsx that re-runs _generate_scenes_worker with aspect=9:16 reusing narration and captions, and register a vertical composition in ~/content-autopilot/remotion/src/compositions.",
+    "files_or_services": "~/content-autopilot/vater.py _normalize_aspect (4383), remotion/src/compositions, components/animate/screens/browse/ProjectDetail.tsx",
+    "effort": "M",
+    "cost": "~$0.50\u20131.50 per re-render (image regen only)",
+    "priority": "next"
+   },
+   {
+    "feature": "Chapter timestamps + hashtags in the generated description",
+    "who_has_it": [
+     "TubeGen"
+    ],
+    "why_it_matters": "YouTube renders 0:00 chapters as clickable, which measurably lifts retention on 8\u20139 min videos; Jelly already has scene timings so this is nearly free.",
+    "jelly_status": "partial \u2014 DescriptionStep.tsx generates a description but no chapters/hashtags",
+    "how_we_add_it": "In DescriptionStep.tsx read scenes_meta start times from _schedule_scenes output and have the Kimi prompt emit '0:00 Intro' chapter lines plus 3\u20135 hashtags; pass through lib/vater/youtube-upload.ts unchanged.",
+    "files_or_services": "components/animate/screens/editor/DescriptionStep.tsx, lib/vater/youtube-upload.ts, vater.py _schedule_scenes (5108)",
+    "effort": "S",
+    "cost": "$0",
+    "priority": "now"
+   },
+   {
+    "feature": "Camera motion and transition controls per scene (pan/zoom alternate, crossfade length, off)",
+    "who_has_it": [
+     "TubeGen",
+     "StoryShort",
+     "NoLang",
+     "Zebracat"
+    ],
+    "why_it_matters": "Cheap Ken-Burns motion is what makes still-based long-form watchable without paying for Wan clips; users expect to toggle it per scene.",
+    "jelly_status": "partial \u2014 remotion/src/animations/TransitionAnimations.tsx and animation planner exist, but no user-facing per-scene motion/transition picker",
+    "how_we_add_it": "Expose a small per-scene control row in VisualsStep.tsx (pan L/R, zoom in/out, still, crossfade 0\u20132s) that writes into the Remotion props consumed by remotion/src/animations/TransitionAnimations.tsx.",
+    "files_or_services": "components/animate/screens/editor/VisualsStep.tsx, ~/content-autopilot/remotion/src/animations/*, vater.py _plan_scene_animations (3353)",
+    "effort": "S",
+    "cost": "$0",
+    "priority": "now"
+   },
+   {
+    "feature": "Auto overlays (charts, maps, section headers) surfaced as a user toggle",
+    "who_has_it": [
+     "TubeGen"
+    ],
+    "why_it_matters": "Number-heavy finance/history scripts look richer with charts and maps; TubeGen markets it as a differentiator and Jelly already has the engine.",
+    "jelly_status": "partial \u2014 vater.py _classify_scenes_for_overlays + remotion ChartScene/MapScene/HeaderScene exist, but not clearly toggled or previewed in the editor",
+    "how_we_add_it": "Add three toggles (charts/maps/headers) in VisualsStep.tsx wired to enable_charts/enable_maps/enable_headers on _annotate_scenes_with_overlays, and show an overlay badge on the scene card.",
+    "files_or_services": "vater.py _classify_scenes_for_overlays (6105), remotion/src/scenes/*, components/animate/screens/editor/VisualsStep.tsx",
+    "effort": "S",
+    "cost": "$0 (Qwen local)",
+    "priority": "now"
+   },
+   {
+    "feature": "URL / article / PDF / transcript intake to script",
+    "who_has_it": [
+     "Vidnoz",
+     "Argil",
+     "StoryShort",
+     "NoLang",
+     "Zebracat",
+     "Faceless.so"
+    ],
+    "why_it_matters": "Creators repurpose blogs, docs and old videos; paste-a-URL is the lowest-friction way to get to a script.",
+    "jelly_status": "partial \u2014 ScriptStep.tsx accepts topic/transcript, app/api/vater/topic and rss routes exist, no URL/PDF fetch",
+    "how_we_add_it": "Add a 'From URL/PDF' input in ScriptStep.tsx that calls a new app/api/vater/topic?url= branch using the existing lib/vater/rss-parser.ts fetch plus pdf-parse, then feeds text into the Kimi script generator.",
+    "files_or_services": "components/animate/screens/editor/ScriptStep.tsx, app/api/vater/topic/route.ts, lib/vater/rss-parser.ts",
+    "effort": "S",
+    "cost": "$0",
+    "priority": "next"
+   },
+   {
+    "feature": "Remix / 'same structure, new topic' from an existing project (reference-video loop, saved presets)",
+    "who_has_it": [
+     "NoLang",
+     "Argil",
+     "TubeGen"
+    ],
+    "why_it_matters": "Series consistency is the whole game for a channel; one-click 'new video like this one' cuts setup to zero and drives repeat renders.",
+    "jelly_status": "partial \u2014 locked-style.ts, style-snapshot.ts and youtube/new-from-style route exist, but no 'duplicate this project with new topic' action",
+    "how_we_add_it": "Add 'Remix' on browse/ProjectDetail.tsx that calls app/api/vater/youtube/new-from-style with the source project's style snapshot, voice id, aspect, soundtrack and character set pre-filled, dropping the user into ScriptStep with the topic box focused.",
+    "files_or_services": "components/animate/screens/browse/ProjectDetail.tsx, app/api/vater/youtube/new-from-style, lib/vater/style-snapshot.ts",
+    "effort": "S",
+    "cost": "$0",
+    "priority": "now"
+   },
+   {
+    "feature": "No-signup interactive demo / sample gallery on the landing page",
+    "who_has_it": [
+     "TubeGen",
+     "Faceless.so",
+     "NoLang",
+     "Vidnoz"
+    ],
+    "why_it_matters": "Jelly is invite-only with no trial; a canned walkthrough is the only way a stranger can feel the product before asking for a code.",
+    "jelly_status": "partial \u2014 lib/vater/demo-data.ts and demo-videos.ts exist and view-as mode exists, but landing has no clickable demo",
+    "how_we_add_it": "Add a read-only 'Try the editor' route reusing ProjectShell.tsx with demo-data.ts and render disabled, linked from components/animate/landing/AnimateLanding.tsx next to the invite form.",
+    "files_or_services": "components/animate/landing/AnimateLanding.tsx, lib/vater/demo-data.ts, lib/vater/demo-videos.ts, components/animate/screens/editor/ProjectShell.tsx",
+    "effort": "M",
+    "cost": "$0",
+    "priority": "next"
+   },
+   {
+    "feature": "Thumbnail A/B variants with side-by-side compare (optionally scored)",
+    "who_has_it": [
+     "TubeGen"
+    ],
+    "why_it_matters": "CTR is the top lever for faceless channels and creators already generate 3 thumbnails elsewhere; keeping them in Jelly keeps the publish step in Jelly.",
+    "jelly_status": "partial \u2014 ThumbnailStep.tsx generates one thumbnail via post_thumbnail; no variants/compare",
+    "how_we_add_it": "Let ThumbnailStep.tsx call post_thumbnail (vater.py:10321) 2\u20133 times with text/expression variations, show a compare grid, and pass the chosen one to lib/vater/youtube-upload.ts; a Gemini 'which is clearer' score is optional.",
+    "files_or_services": "components/animate/screens/editor/ThumbnailStep.tsx, vater.py post_thumbnail, lib/vater/youtube-upload.ts",
+    "effort": "S",
+    "cost": "~$0.05\u20130.15 extra per video",
+    "priority": "next"
+   },
+   {
+    "feature": "Longer exports (up to 20\u201330 min) beyond the 9:00 beta cap",
+    "who_has_it": [
+     "TubeGen",
+     "StoryShort",
+     "Vidnoz"
+    ],
+    "why_it_matters": "Mid-roll ad eligibility needs 8+ min and many documentary channels run 15\u201325 min; TubeGen exports 30 min, StoryShort claims 30.",
+    "jelly_status": "partial \u2014 9:00 cap enforced in lib/vater/script-limits.ts / check-trial-caps.ts",
+    "how_we_add_it": "Raise the cap for paid-credit accounts in lib/vater/script-limits.ts and lib/vater/billing/check-trial-caps.ts once the Remotion render (vater.py _render_remotion) is validated at 20 min on Modal, keeping the estimate visible.",
+    "files_or_services": "lib/vater/script-limits.ts, lib/vater/billing/check-trial-caps.ts, vater.py _render_remotion (5198)",
+    "effort": "M",
+    "cost": "linear render cost, no new spend",
+    "priority": "next"
+   },
+   {
+    "feature": "Stock B-roll mix (Pexels/Pixabay/Storyblocks) with ratio slider",
+    "who_has_it": [
+     "TubeGen",
+     "StoryShort",
+     "Zebracat",
+     "Faceless.so",
+     "Argil",
+     "NoLang"
+    ],
+    "why_it_matters": "Real footage helps news/true-crime niches, but it is also the source of the 'generic AI slop' complaint every rival gets.",
+    "jelly_status": "no \u2014 deliberate 'no stock footage' stance",
+    "how_we_add_it": "If ever added, wire a Pexels/Pixabay search in VisualsStep.tsx as a per-scene 'replace with footage' option only, never as the default fill.",
+    "files_or_services": "components/animate/screens/editor/VisualsStep.tsx, Pexels API (free), Pixabay API (free)",
+    "effort": "M",
+    "cost": "$0 API, but brand cost",
+    "priority": "skip"
+   },
+   {
+    "feature": "Talking avatars / lip-synced presenters / digital twins",
+    "who_has_it": [
+     "Vidnoz",
+     "Argil",
+     "Zebracat",
+     "StoryShort",
+     "NoLang",
+     "TubeGen",
+     "Faceless.so"
+    ],
+    "why_it_matters": "Avatars are the default pitch of half the market, but faceless long-form creators explicitly do not want a face and users report uncanny lip-sync everywhere.",
+    "jelly_status": "no \u2014 Animate2 driver clips exist for characters, not talking heads",
+    "how_we_add_it": "Do not build; at most keep Animate2 character-motion clips as the 'presenter' analogue.",
+    "files_or_services": "n/a",
+    "effort": "L",
+    "cost": "HeyGen-style API $$$ per minute",
+    "priority": "skip"
+   },
+   {
+    "feature": "Autopilot series that auto-generates and posts daily",
+    "who_has_it": [
+     "StoryShort",
+     "Faceless.so"
+    ],
+    "why_it_matters": "'Channel on autopilot' sells, but it produces the spam that YouTube's inauthentic-content policy targets and it removes the human review that Jelly's Gemini QA is built around.",
+    "jelly_status": "no \u2014 AutopilotScreen.tsx is a status view of internal crons, not user-facing series",
+    "how_we_add_it": "Do not build user-facing autopilot; instead offer 'draft next episode' from a series template (see Remix) that lands in the editor for review.",
+    "files_or_services": "components/animate/screens/live/AutopilotScreen.tsx (keep as internal)",
+    "effort": "L",
+    "cost": "$0",
+    "priority": "skip"
+   },
+   {
+    "feature": "Scheduling / calendar for YouTube publish (publishAt) and multi-platform posting",
+    "who_has_it": [
+     "StoryShort",
+     "Faceless.so",
+     "NoLang",
+     "Argil"
+    ],
+    "why_it_matters": "Creators batch-render then drip-post; YouTube's API supports a scheduled publishAt on the same OAuth Jelly already has, which is a one-field win.",
+    "jelly_status": "partial \u2014 YouTube OAuth publish is live; social-accounts route has stubs for other platforms; no scheduler",
+    "how_we_add_it": "Add a 'Publish at' datetime to components/animate/screens/review/PublishPanel.tsx passing status.publishAt with privacyStatus=private in lib/vater/youtube-upload.ts; defer TikTok/IG (Postiz/Blotato) until users ask.",
+    "files_or_services": "components/animate/screens/review/PublishPanel.tsx, lib/vater/youtube-upload.ts, app/api/vater/youtube/route.ts",
+    "effort": "S",
+    "cost": "$0",
+    "priority": "next"
+   },
+   {
+    "feature": "Cross-platform analytics dashboard (views/likes per video)",
+    "who_has_it": [
+     "StoryShort",
+     "Faceless.so",
+     "Vidnoz"
+    ],
+    "why_it_matters": "Nice to have, but creators live in YouTube Studio; a per-video 'views since publish' line next to cost is enough to show ROI.",
+    "jelly_status": "partial \u2014 AnalyticsScreen.tsx shows cost subview; lib/vater/youtube-status.ts polls upload state",
+    "how_we_add_it": "Extend lib/vater/youtube-status.ts to pull videos.list statistics for published ids and show views next to the receipt in AnalyticsScreen.tsx and ProjectDetail.tsx.",
+    "files_or_services": "lib/vater/youtube-status.ts, components/animate/screens/live/AnalyticsScreen.tsx, browse/ProjectDetail.tsx",
+    "effort": "S",
+    "cost": "$0 (YouTube Data API quota)",
+    "priority": "later"
+   },
+   {
+    "feature": "Public REST API + webhooks + MCP/CLI",
+    "who_has_it": [
+     "TubeGen",
+     "Argil",
+     "StoryShort",
+     "NoLang",
+     "Faceless.so",
+     "Vidnoz"
+    ],
+    "why_it_matters": "Agencies and agent-driven users want to script renders, and Faceless.so shows MCP is a cheap differentiator; but nobody in the first 5 payers will need it.",
+    "jelly_status": "no \u2014 autopilot-client.ts and app/api/vater/** are session/proxy gated",
+    "how_we_add_it": "Later: issue scoped API keys via lib/vater/direct-auth.ts, expose POST /api/vater/youtube/from-script and pipeline-status with bearer auth, and publish an llms.txt; MCP wrapper over the same routes.",
+    "files_or_services": "lib/vater/direct-auth.ts, app/api/vater/youtube/from-script, app/api/vater/pipeline-status",
+    "effort": "L",
+    "cost": "$0",
+    "priority": "later"
+   },
+   {
+    "feature": "Team seats / shared workspaces",
+    "who_has_it": [
+     "TubeGen",
+     "Vidnoz",
+     "Argil",
+     "Faceless.so",
+     "Zebracat",
+     "NoLang"
+    ],
+    "why_it_matters": "Only matters once an agency buys; solo faceless creators do not need it.",
+    "jelly_status": "no \u2014 project-access.ts and job-ownership.ts are single-owner",
+    "how_we_add_it": "Later: extend lib/vater/project-access.ts with an org id and invite via beta-invites.ts.",
+    "files_or_services": "lib/vater/project-access.ts, lib/vater/job-ownership.ts, lib/vater/beta-invites.ts",
+    "effort": "L",
+    "cost": "$0",
+    "priority": "later"
+   },
+   {
+    "feature": "Brand kit (logo, colors, fonts auto-applied to captions/thumbnails/end card)",
+    "who_has_it": [
+     "Vidnoz",
+     "Zebracat",
+     "Faceless.so"
+    ],
+    "why_it_matters": "Channel recognizability across videos; cheap once you have a locked style object.",
+    "jelly_status": "partial \u2014 locked style covers art style; no logo/caption font/colors",
+    "how_we_add_it": "Add logo + caption font/color fields to the style object in lib/vater/locked-style.ts and StyleWizardModal.tsx and read them in Remotion caption/thumbnail props.",
+    "files_or_services": "lib/vater/locked-style.ts, components/animate/screens/dashboard/StyleWizardModal.tsx, remotion/src/animations/TextAnimations.tsx",
+    "effort": "S",
+    "cost": "$0",
+    "priority": "later"
+   },
+   {
+    "feature": "Caption style presets (fonts, highlight color, position, emoji, karaoke word emphasis)",
+    "who_has_it": [
+     "StoryShort",
+     "Faceless.so",
+     "Argil",
+     "Zebracat",
+     "TubeGen"
+    ],
+    "why_it_matters": "Captions are the most visible styling element and Jelly already has per-word alignment, so presets are just UI over existing data.",
+    "jelly_status": "partial \u2014 per-word karaoke captions exist; no user-facing style picker",
+    "how_we_add_it": "Add 4\u20136 caption presets (font/size/position/highlight) selectable in VisualsStep.tsx or a Captions sub-card, saved on the project and consumed by remotion TextAnimations.",
+    "files_or_services": "components/animate/screens/editor/VisualsStep.tsx, remotion/src/animations/TextAnimations.tsx, vater.py caption props (5112)",
+    "effort": "S",
+    "cost": "$0",
+    "priority": "next"
+   },
+   {
+    "feature": "Pronunciation dictionary / per-word fix and re-voice one line",
+    "who_has_it": [
+     "NoLang",
+     "Vidnoz",
+     "Argil"
+    ],
+    "why_it_matters": "Cloned voices mispronounce names and numbers; users otherwise re-render the whole narration.",
+    "jelly_status": "partial \u2014 vater.py has a spoken-vs-written text pass (line ~4100) but no user dictionary or single-line regen",
+    "how_we_add_it": "Add a 'Say it as\u2026' pronunciation map on the project in VoiceoverStep.tsx feeding the existing spoken-text normalizer, plus a per-scene 're-voice this line' calling the IndexTTS chunk for that scene only.",
+    "files_or_services": "components/animate/screens/editor/VoiceoverStep.tsx, vater.py spoken-text normalizer (~4100), _run_indextts_modal (3773)",
+    "effort": "M",
+    "cost": "pennies per re-voice",
+    "priority": "next"
+   },
+   {
+    "feature": "Per-segment generated music moods (score changes with narration)",
+    "who_has_it": [
+     "TubeGen",
+     "Argil"
+    ],
+    "why_it_matters": "A single loop for 9 minutes reads amateur; mood segments are the cheapest 'cinematic' upgrade.",
+    "jelly_status": "partial \u2014 soundtrack/SFX catalog and per-scene SFX injection exist; one track per video",
+    "how_we_add_it": "In SoundtrackStep.tsx let the Kimi planner split the script into 2\u20134 mood segments and pick a catalog track per segment with crossfades in Remotion, no generative music needed.",
+    "files_or_services": "components/animate/screens/editor/SoundtrackStep.tsx, app/api/vater/music-catalog/route.ts, vater.py get_music_catalog (10026)",
+    "effort": "S",
+    "cost": "$0",
+    "priority": "later"
+   },
+   {
+    "feature": "Prompt-a-voice / voice design and larger stock voice library",
+    "who_has_it": [
+     "Argil",
+     "Vidnoz",
+     "StoryShort",
+     "Faceless.so"
+    ],
+    "why_it_matters": "Users without a consented sample want a distinctive narrator fast; a bigger curated library plus optional ElevenLabs picker covers it.",
+    "jelly_status": "partial \u2014 shared IndexTTS library + ElevenLabs popular-voices route exist; no voice-design",
+    "how_we_add_it": "Expose the existing app/api/vater/voices/elevenlabs list in Voices.tsx as an 'ElevenLabs (metered)' tab and add 6\u201310 more curated IndexTTS presets; skip voice-design.",
+    "files_or_services": "components/animate/screens/studio/Voices.tsx, app/api/vater/voices/elevenlabs/route.ts, lib/vater/voice-catalog.ts",
+    "effort": "S",
+    "cost": "ElevenLabs metered per minute",
+    "priority": "later"
+   },
+   {
+    "feature": "Character library page (reuse named characters across projects, re-render in any style)",
+    "who_has_it": [
+     "TubeGen",
+     "StoryShort"
+    ],
+    "why_it_matters": "Recurring hosts across a channel are Jelly's strength but characters are buried inside the style flow.",
+    "jelly_status": "partial \u2014 consistent characters + _generate_character_descriptor exist; no standalone browse/manage screen",
+    "how_we_add_it": "Add a Characters list under components/animate/screens/browse (mirror StylesListEmbed.tsx) reading character descriptors and letting users pick them in StyleWizardModal.tsx.",
+    "files_or_services": "components/animate/screens/browse/StylesListEmbed.tsx (pattern), dashboard/StyleWizardModal.tsx, vater.py _generate_character_descriptor (10568)",
+    "effort": "S",
+    "cost": "$0",
+    "priority": "later"
+   },
+   {
+    "feature": "Failed-render auto-refund with plain reason",
+    "who_has_it": [
+     "Argil",
+     "NoLang",
+     "StoryShort",
+     "Faceless.so"
+    ],
+    "why_it_matters": "Trust for a receipts-based product; rivals refund credits automatically within minutes and say why.",
+    "jelly_status": "partial \u2014 billing/reconcile-renders.ts and ledger.ts exist; refund on failure is manual",
+    "how_we_add_it": "In lib/vater/billing/reconcile-renders.ts credit back the ledger entry when pipeline-status reports failed, and show 'Refunded $X \u2014 reason' in the receipt and System log.",
+    "files_or_services": "lib/vater/billing/reconcile-renders.ts, lib/vater/billing/ledger.ts, app/api/vater/pipeline-status/route.ts",
+    "effort": "S",
+    "cost": "$0",
+    "priority": "now"
+   },
+   {
+    "feature": "Community + roadmap voting + affiliate/referral",
+    "who_has_it": [
+     "TubeGen",
+     "Zebracat",
+     "Faceless.so",
+     "StoryShort",
+     "Argil"
+    ],
+    "why_it_matters": "Growth loops matter after product-market fit; for 5 payers a personal Telegram/Discord thread beats a program.",
+    "jelly_status": "partial \u2014 feedback + changelog exist; no referral",
+    "how_we_add_it": "Later: give each user 2 invite codes via lib/vater/beta-invites.ts with a $5 credit on the invitee's first render (lib/vater/credit-packs.ts).",
+    "files_or_services": "lib/vater/beta-invites.ts, lib/vater/credit-packs.ts",
+    "effort": "S",
+    "cost": "$5 credit per referral",
+    "priority": "later"
+   },
+   {
+    "feature": "Niche Finder with real channel data / trend research",
+    "who_has_it": [
+     "TubeGen",
+     "StoryShort",
+     "Faceless.so"
+    ],
+    "why_it_matters": "Research-first buyers want it, but every reviewer says TubeGen's is thin and it is a different product.",
+    "jelly_status": "partial \u2014 NicheFinderScreen.tsx is a creator-model browser with no live data",
+    "how_we_add_it": "Do not build live channel scraping; keep CREATOR_MODELS as opinionated title formulas.",
+    "files_or_services": "components/animate/screens/browse/NicheFinderScreen.tsx, lib/vater/creator-models.ts",
+    "effort": "L",
+    "cost": "$$ data APIs",
+    "priority": "skip"
+   },
+   {
+    "feature": "Frontier model picker (Veo/Kling/Sora/Seedance per clip)",
+    "who_has_it": [
+     "StoryShort",
+     "Argil",
+     "Vidnoz",
+     "Zebracat",
+     "Faceless.so"
+    ],
+    "why_it_matters": "Buyers like the menu, but per-clip $0.50\u20132 shots blow up the $1\u20137 per video promise and break style lock.",
+    "jelly_status": "partial \u2014 Wan2.2 + Animate2 only, deliberately",
+    "how_we_add_it": "Do not add a model menu; keep one locked motion path and let quality be a single 'motion on/off' choice.",
+    "files_or_services": "vater.py post_animate_scene (9265)",
+    "effort": "M",
+    "cost": "high per clip",
+    "priority": "skip"
+   },
+   {
+    "feature": "Interactive pricing calculator (videos \u00d7 length \u00d7 motion \u2192 cost)",
+    "who_has_it": [
+     "TubeGen",
+     "Zebracat"
+    ],
+    "why_it_matters": "Converts a 'no subscription' pitch into a number a creator can compare to $149/mo.",
+    "jelly_status": "no",
+    "how_we_add_it": "Add a 3-slider calculator to components/animate/screens/browse/PricingScreen.tsx and the landing page using DEFAULT_OPS_RATE_PER_MIN and average compute from lib/vater/video-cost.ts.",
+    "files_or_services": "components/animate/screens/browse/PricingScreen.tsx, components/animate/landing/AnimateLanding.tsx, lib/vater/video-cost.ts",
+    "effort": "S",
+    "cost": "$0",
+    "priority": "now"
+   }
+  ],
+  "top10_now": [
+   "Show 'Estimated $X' before every Generate (stills vs +motion) using check-budget.ts estimateCents in BillingBlock/VisualsStep, plus a per-minute table on PricingScreen.",
+   "Make stills-draft the default and motion an explicit second paid step (post_animate_all_scenes) so first renders are cheap and QA'd before spend.",
+   "Auto-refund failed renders in reconcile-renders.ts and show the reason in the receipt.",
+   "Chapter timestamps + hashtags in DescriptionStep from scene timings.",
+   "Per-scene motion/transition controls (pan/zoom/still, crossfade) in VisualsStep over existing Remotion animations.",
+   "Surface chart/map/header overlay toggles in VisualsStep (engine already in vater.py + remotion/scenes).",
+   "'Remix this project' on ProjectDetail via new-from-style with style, voice, characters, soundtrack pre-filled.",
+   "Pricing calculator on landing/PricingScreen (videos \u00d7 minutes \u00d7 motion \u2192 dollars) to beat the $149/mo comparison.",
+   "Bring-your-own narration upload in VoiceoverStep with alignment-driven captions and scene timing.",
+   "YouTube 'Publish at' scheduling in PublishPanel using publishAt on the existing OAuth path."
+  ],
+  "things_to_NOT_copy": [
+   "Autopilot series that generate and post daily unattended \u2014 it is the exact 'AI slop' pattern YouTube's inauthentic-content policy demonetizes and it removes the human review Jelly's QA depends on.",
+   "Stock B-roll as default fill (Pexels/Storyblocks) \u2014 reviewers of TubeGen, StoryShort, Zebracat and NoLang all cite the generic stock look; Jelly's generated-only visuals are the differentiator.",
+   "Talking avatars / lip-synced presenters \u2014 every rival gets 'uncanny lip-sync' complaints and faceless creators do not want a face.",
+   "Monthly subscriptions with expiring credits, no refunds and 'billed yearly' traps \u2014 Vidnoz (2.3/5), StoryShort (2.5/5), Zebracat and Argil reviews are dominated by billing anger; pay-per-render is Jelly's trust edge.",
+   "Frontier-model menus (Veo/Kling/Sora per clip) \u2014 breaks locked style, explodes per-video cost past $7, and shifts the product from channel tool to model playground.",
+   "Gray-hat growth loops (warmed accounts, crypto tokens, spin-and-win, review-for-credits) \u2014 cheap trust signals that read as spam.",
+   "Live Niche Finder / channel scraping \u2014 TubeGen's is called thin by every reviewer and it is a separate product from rendering.",
+   "Dual metering (video caps plus AI credits) or per-video 'free edit' counts \u2014 Zebracat's biggest complaint; keep one number, dollars."
+  ],
+  "jelly_unique_advantages": [
+   "True pay-per-render at ~$1\u20137 per long-form video with an itemized receipt, versus $39\u2013$849/mo subscriptions with expiring credits everywhere else.",
+   "No stock footage, no avatars: every frame is generated in a locked art style with consistent characters, which is exactly what rivals' users complain they cannot get.",
+   "IndexTTS-2 cloned voices with a Voice Tuner and consent-gated uploads, cheaper than ElevenLabs-metered narration on every competitor.",
+   "Kimi planner + Gemini scene QA + a 137-rule production doctrine means output is reviewed, not sprayed, which is the monetization-safe posture post July 2025.",
+   "Own GPU pipeline (DGX + Modal) so cost per minute is controlled and can be shown honestly before render.",
+   "Long-form 16:9 first with a 7-step editor and YouTube OAuth publish; most rivals are 30\u201390 s vertical tools bolted onto long-form claims.",
+   "Invite-only beta with view-as, feedback and changelog already wired, so the 5 target users can be hand-held into paying."
+  ],
+  "one_paragraph_verdict": "Jelly already has the hard parts (generated visuals, cloned voices, locked style, YouTube publish, receipts) and most rivals win on legibility and convenience rather than capability, so the month should go to cheap UI over existing engines: show the price before the click, make stills-draft the default with motion as an opt-in second spend, refund failures automatically, add chapters, per-scene motion toggles, overlay toggles, Remix, a pricing calculator, BYO narration and scheduled publish. Skip avatars, stock footage, autopilot series, model menus and subscriptions on purpose and say so on the landing page, because those are the sources of every competitor's 2-star reviews and Jelly's absence of them is the pitch. Multi-language, 9:16 cuts, thumbnail A/B, longer exports and an API are real gaps but belong after the first five payers prove the core loop."
+ }
+}

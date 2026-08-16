@@ -152,11 +152,37 @@ export interface UploadVideoInput {
   /** Optional custom thumbnail bytes; a failure here never fails the upload. */
   thumbnail?: Response | null;
   categoryId?: string;
+  /**
+   * Scheduled publish time as an ISO-8601 / RFC-3339 UTC string.
+   *
+   * YouTube only honours `status.publishAt` on a video that is uploaded
+   * PRIVATE — set it on a public/unlisted upload and the API either ignores it
+   * or 400s. So when this is present we force `privacyStatus: "private"`
+   * regardless of what the caller passed, and YouTube flips the video public
+   * at the scheduled moment. See `isFuturePublishAt` for the validation the
+   * route runs before it gets here.
+   */
+  publishAt?: string;
+}
+
+/**
+ * True when `value` is an ISO timestamp strictly in the future.
+ *
+ * A past `publishAt` is the dangerous case: YouTube accepts it and publishes
+ * the video IMMEDIATELY, which is the opposite of what someone clicking
+ * "schedule" wants. Callers reject rather than silently publish.
+ */
+export function isFuturePublishAt(value: unknown): value is string {
+  if (typeof value !== "string" || !value.trim()) return false;
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) && ms > Date.now();
 }
 
 export interface UploadVideoResult {
   videoId: string;
   url: string;
+  /** Echo of the honoured schedule, so callers can persist/report it. */
+  publishAt?: string;
 }
 
 export async function uploadVideoToYouTube(
@@ -179,6 +205,11 @@ export async function uploadVideoToYouTube(
   const contentType = input.media.headers.get("content-type") || "video/mp4";
   const buffer = Buffer.from(await input.media.arrayBuffer());
 
+  // A scheduled upload MUST go up private — see UploadVideoInput.publishAt.
+  const scheduled = input.publishAt
+    ? new Date(input.publishAt).toISOString()
+    : null;
+
   const metadata = {
     snippet: {
       title: input.title.slice(0, 100),
@@ -187,8 +218,9 @@ export async function uploadVideoToYouTube(
       categoryId: input.categoryId || YOUTUBE_CATEGORY_EDUCATION,
     },
     status: {
-      privacyStatus: input.privacyStatus,
+      privacyStatus: scheduled ? "private" : input.privacyStatus,
       selfDeclaredMadeForKids: false,
+      ...(scheduled ? { publishAt: scheduled } : {}),
     },
   };
 
@@ -254,5 +286,9 @@ export async function uploadVideoToYouTube(
     }
   }
 
-  return { videoId: json.id, url: `https://youtu.be/${json.id}` };
+  return {
+    videoId: json.id,
+    url: `https://youtu.be/${json.id}`,
+    ...(scheduled ? { publishAt: scheduled } : {}),
+  };
 }

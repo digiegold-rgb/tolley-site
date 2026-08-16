@@ -39,6 +39,8 @@ import { Feeds } from './screens/studio/Feeds';
 import { Queue } from './screens/studio/Queue';
 import { Recent } from './screens/studio/Recent';
 import { SystemLog } from './screens/studio/SystemLog';
+import { ApiKeys } from './screens/studio/ApiKeys';
+import { Team } from './screens/studio/Team';
 import { ViewAsBanner } from './ViewAsBanner';
 import { BetaGate } from './BetaGate';
 import { AutopilotScreen } from './screens/live/AutopilotScreen';
@@ -51,6 +53,7 @@ import { NicheFinderScreen } from './screens/browse/NicheFinderScreen';
 import { VideoEditorScreen } from './screens/browse/VideoEditorScreen';
 import { VideoEditorEmbed } from './screens/browse/VideoEditorEmbed';
 import { StylesListEmbed } from './screens/browse/StylesListEmbed';
+import { CharactersScreen } from './screens/browse/CharactersScreen';
 import { StyleEditEmbed } from './screens/browse/StyleEditEmbed';
 import { CustomArtStylesEmbed } from './screens/browse/CustomArtStylesEmbed';
 import { LearningCenterScreen } from './screens/browse/LearningCenterScreen';
@@ -494,6 +497,7 @@ function renderScreen(
         ? <StyleEditEmbed styleId={selectedStyleId} />
         : <StylesListEmbed />;
     case 'custom-art-styles': return <CustomArtStylesEmbed />;
+    case 'characters': return <CharactersScreen />;
     case 'project-history': return <ProjectHistoryScreen />;
     case 'video-editor':
       // When a project is selected, render the timeline editor inline.
@@ -507,6 +511,10 @@ function renderScreen(
     case 'course': return <CourseScreen />;
     case 'rules': return <RulesScreen />;
     case 'affiliate': return <ComingSoonScreen route="affiliate" />;
+    case 'api-keys':
+      return <StudioPanelFrame title="API Keys" subtitle="Drive Jelly from your own code or an agent — create a key, set a webhook."><ApiKeys /></StudioPanelFrame>;
+    case 'team':
+      return <StudioPanelFrame title="Team" subtitle="Share your videos with teammates. Seats share visibility, not credits."><Team /></StudioPanelFrame>;
     default: return <ComingSoonScreen route={route} />;
   }
 }
