@@ -37,7 +37,13 @@ const ORPHAN_ALLOWLIST = new Set([
 
   "/login", // auth entry; linked via redirects/headers, not always static href
   "/signup",
+  "/reset-password", // reached only via emailed password-reset token links
   "/settings",
+  // Linked from the login form's "Forgot password?" and from the emailed
+  // reset link. Both carry a query string built at runtime
+  // (href={`/reset-password?callbackUrl=${…}`}), which this static scan
+  // cannot see — same reason /login is here. NOT an unreachable route.
+  "/reset-password",
   // Owner dashboards — linked from the /admin quick-links strip, which is
   // data-driven (href={...}) and therefore invisible to this static scan.
   "/action",
