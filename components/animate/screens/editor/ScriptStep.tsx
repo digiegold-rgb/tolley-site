@@ -47,6 +47,8 @@ import {
   assertOk,
   type BillingBlockReason,
 } from './BillingBlock';
+import { TINT_BG } from '../tint';
+import { reelLabel } from './reel-label';
 
 export function ScriptStep({ projectId, project, refresh }: EditorStepProps): React.ReactElement {
   const { t } = useTheme();
@@ -384,6 +386,7 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
       <VCard style={{ marginBottom: 16 }}>
         <SectionHeader
           icon="description"
+          eyebrow={reelLabel(1)}
           title="Script Generator"
           description="Generate engaging video scripts optimized for viewer retention and engagement"
           actionLabel={
@@ -505,7 +508,7 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
                   marginTop: 8,
                   padding: '8px 12px',
                   borderRadius: JELLY_TOKENS.radius.md,
-                  background: 'rgba(220,38,38,0.08)',
+                  ...TINT_BG.error,
                   color: JELLY_TOKENS.error,
                   fontSize: 12,
                 }}
@@ -593,7 +596,7 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
                     marginTop: 8,
                     padding: '8px 12px',
                     borderRadius: JELLY_TOKENS.radius.md,
-                    background: 'rgba(220,38,38,0.08)',
+                    ...TINT_BG.error,
                     color: JELLY_TOKENS.error,
                     fontSize: 12,
                   }}
@@ -633,7 +636,7 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
                 width: 18,
                 height: 18,
                 borderRadius: '50%',
-                background: '#fff',
+                background: JELLY_TOKENS.onGradient,
                 transform: webSearch ? 'translateX(18px)' : 'translateX(0)',
                 transition: 'transform .2s',
               }}
@@ -740,9 +743,13 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
               />
             </div>
 
-            {/* Creator Model — wraps existing component. It uses Tailwind, but
-                that's fine; it's mounted inside our card and rendered as-is. */}
-            <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 12 }}>
+            {/* Creator Model — wraps the existing Tailwind component. The
+                `jelly-legacy` class re-skins it onto the cinema palette
+                without editing anything under components/vater/. */}
+            <div
+              className="jelly-legacy"
+              style={{ borderTop: `1px solid ${t.border}`, paddingTop: 12 }}
+            >
               <YouTubeCreatorModelPicker
                 value={creatorModel}
                 onChange={handleCreatorModelChange}
@@ -758,7 +765,7 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
               padding: '8px 12px',
               fontSize: 13,
               borderRadius: JELLY_TOKENS.radius.md,
-              background: 'rgba(220,38,38,0.08)',
+              ...TINT_BG.error,
               color: JELLY_TOKENS.error,
             }}
           >
@@ -845,7 +852,7 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
                 marginTop: 8,
                 padding: '8px 12px',
                 borderRadius: JELLY_TOKENS.radius.md,
-                background: 'rgba(220,38,38,0.08)',
+                ...TINT_BG.error,
                 color: JELLY_TOKENS.error,
                 fontSize: 12,
               }}
@@ -939,7 +946,7 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
                 marginBottom: 12,
                 padding: '8px 12px',
                 borderRadius: JELLY_TOKENS.radius.md,
-                background: 'rgba(220,38,38,0.08)',
+                ...TINT_BG.error,
                 color: JELLY_TOKENS.error,
                 fontSize: 12,
               }}
@@ -948,13 +955,15 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
             </div>
           )}
 
-          <YouTubeScriptEditor
-            script={project.script}
-            targetWordCount={project.targetWordCount ?? wordCount}
-            onSave={handleScriptSave}
-            onRegenerate={handleScriptRegenerate}
-            isRegenerating={generating}
-          />
+          <div className="jelly-legacy">
+            <YouTubeScriptEditor
+              script={project.script}
+              targetWordCount={project.targetWordCount ?? wordCount}
+              onSave={handleScriptSave}
+              onRegenerate={handleScriptRegenerate}
+              isRegenerating={generating}
+            />
+          </div>
 
           <div
             style={{
@@ -971,7 +980,7 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
                 padding: '3px 8px',
                 borderRadius: 4,
                 background: JELLY_TOKENS.success,
-                color: '#fff',
+                color: JELLY_TOKENS.onGradient,
               }}
             >
               {project?.status ?? 'Completed'}

@@ -61,7 +61,9 @@ export function Recent(): React.ReactElement {
           <div style={{ color: t.textSecondary, fontSize: 14 }}>No finished or failed projects yet. Anything you render shows up here, newest first.</div>
         </VCard>
       ) : (
-        <YouTubeImportTracker projects={projects} onCreated={() => { /* no-op */ }} />
+        <div className="jelly-legacy">
+          <YouTubeImportTracker projects={projects} onCreated={() => { /* no-op */ }} />
+        </div>
       )}
     </div>
   );

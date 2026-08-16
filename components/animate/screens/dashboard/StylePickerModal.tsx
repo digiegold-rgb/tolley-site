@@ -23,6 +23,8 @@ import { useTheme } from '../../theme-context';
 import { Icon } from '../../Icon';
 import { StyleWizardModal, type CreatedStyle } from './StyleWizardModal';
 import { devError } from '../../log';
+import { TINT_BG } from '../tint';
+import { ON_GRADIENT_PLATE } from '../tint';
 
 interface StyleSummary {
   id: string;
@@ -268,9 +270,11 @@ export function StylePickerModal({
           width: '100%',
           maxWidth: 980,
           maxHeight: '90vh',
-          background: t.card,
-          border: `1px solid ${t.border}`,
-          borderRadius: JELLY_TOKENS.radius.lg,
+          /* Opaque panel — `t.card` is translucent glass now. */
+          background: t.panel,
+          border: `1px solid ${t.borderStrong}`,
+          borderRadius: JELLY_TOKENS.radius.xxl,
+          boxShadow: JELLY_TOKENS.shadow24,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -435,7 +439,7 @@ export function StylePickerModal({
                     padding: '8px 12px',
                     borderRadius: JELLY_TOKENS.radius.md,
                     border: `1px solid ${JELLY_TOKENS.error}`,
-                    background: 'rgba(220,38,38,0.08)',
+                    ...TINT_BG.error,
                     color: JELLY_TOKENS.error,
                     fontSize: 12,
                   }}
@@ -452,7 +456,7 @@ export function StylePickerModal({
                 padding: '10px 14px',
                 borderRadius: JELLY_TOKENS.radius.md,
                 border: `1px solid ${JELLY_TOKENS.error}`,
-                background: 'rgba(220,38,38,0.08)',
+                ...TINT_BG.error,
                 color: JELLY_TOKENS.error,
                 fontSize: 13,
                 marginBottom: 16,
@@ -486,7 +490,7 @@ export function StylePickerModal({
                 ...baseCardStyle,
                 background: JELLY_TOKENS.gradCreate,
                 border: 'none',
-                color: '#fff',
+                color: JELLY_TOKENS.onGradient,
                 alignItems: 'center',
                 justifyContent: 'center',
                 textAlign: 'center',
@@ -499,14 +503,14 @@ export function StylePickerModal({
                   width: 56,
                   height: 56,
                   borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.2)',
+                  background: ON_GRADIENT_PLATE,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: 8,
                 }}
               >
-                <Icon name="plus" size={28} color="#fff" />
+                <Icon name="plus" size={28} color={JELLY_TOKENS.onGradient} />
               </div>
               <div style={{ fontWeight: 700, fontSize: 16 }}>Create Style</div>
               <div style={{ fontSize: 12, opacity: 0.85 }}>

@@ -20,6 +20,39 @@
 
 export type DemoConsentStatus = "live" | "pending";
 
+/** One reconciled line of a finished render's receipt. */
+export interface DemoReceiptStage {
+  key: string;
+  label: string;
+  usd: number;
+}
+
+/**
+ * The reconciled receipt for a demo — the SAME breakdown its owner sees in
+ * the studio, transcribed from `YouTubeProject.costJson` after the nightly
+ * cost reconciler merged the metered spend (memory: vater-cost-truth-automated).
+ *
+ * This exists so the public landing's ADMIT ONE meter can itemise a real
+ * render instead of an invented pipeline. If a demo has no `receipt`, the
+ * landing falls back to the two lines it can derive safely — compute
+ * (allInUsd − ops) and ops (minutes × getOpsRate()) — and never guesses at
+ * per-stage splits.
+ */
+export interface DemoReceipt {
+  /** Compute lines, at cost, in the order the render incurred them. */
+  stages: DemoReceiptStage[];
+  /** Render operations: `minutes` × `opsRate`. */
+  opsUsd: number;
+  /** The ops rate in force when this render was billed ($/finished minute). */
+  opsRate: number;
+  /** Finished minutes the ops line was billed on. */
+  minutes: number;
+  /** stages + opsUsd — must equal the demo's `allInUsd`. */
+  totalUsd: number;
+  /** When the reconciler last wrote this breakdown (ISO 8601). */
+  reconciledAt: string;
+}
+
 export interface DemoVideo {
   /** Stable key — also the library "#N" number where one exists. */
   id: string;
@@ -39,6 +72,8 @@ export interface DemoVideo {
   consentStatus: DemoConsentStatus;
   /** One line of context under the title. */
   blurb: string;
+  /** Reconciled receipt, when one has been transcribed off the project. */
+  receipt?: DemoReceipt;
 }
 
 export const DEMO_VIDEOS: readonly DemoVideo[] = [
@@ -53,6 +88,23 @@ export const DEMO_VIDEOS: readonly DemoVideo[] = [
     consentStatus: "live",
     blurb:
       "Written as a script, narrated in a cloned voice, every frame generated in one locked art style.",
+    /* Source: YouTubeProject.costJson of cmst8pnwl0001l4ts3hx8hkux (the render
+     * behind this MP4), as reconciled 2026-08-14T19:00:03.681Z. The project
+     * booked its compute as a single reconciled render line covering two jobs
+     * — that is the granularity the ledger actually holds, so that is the
+     * granularity printed here. Splitting $1.85 into invented voice / scene /
+     * motion lines would be exactly the fake artifact this page exists to
+     * avoid. 1.85 + 1.19 = 3.04 = allInUsd. */
+    receipt: {
+      stages: [
+        { key: "render", label: "compute at cost — render · 2 jobs", usd: 1.85 },
+      ],
+      opsUsd: 1.19,
+      opsRate: 0.35,
+      minutes: 3.4,
+      totalUsd: 3.04,
+      reconciledAt: "2026-08-14T19:00:03.681Z",
+    },
   },
   {
     id: "19",

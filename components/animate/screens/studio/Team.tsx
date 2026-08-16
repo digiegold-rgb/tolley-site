@@ -25,6 +25,7 @@ import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VBtn, VCard, VInput } from '../../primitives';
+import { TINT_BG } from '../tint';
 
 type Role = 'owner' | 'editor' | 'viewer';
 
@@ -437,7 +438,7 @@ function Banner({
         borderRadius: JELLY_TOKENS.radius.md,
         border: `1px solid ${color}`,
         background:
-          tone === 'error' ? 'rgba(220,38,38,0.08)' : 'rgba(245,158,11,0.08)',
+          tone === 'error' ? TINT_BG.error.background : TINT_BG.warning.background,
         color,
         fontSize: 13,
       }}

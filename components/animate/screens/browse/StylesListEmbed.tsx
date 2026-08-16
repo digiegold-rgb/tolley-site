@@ -65,7 +65,11 @@ export function StylesListEmbed(): React.ReactElement {
 
       {error && <RetryError message={`Could not load styles — ${error}`} onRetry={load} />}
 
-      {!loading && !error && <StylesGallery styles={styles} userId={userId} />}
+      {!loading && !error && (
+        <div className="jelly-legacy">
+          <StylesGallery styles={styles} userId={userId} />
+        </div>
+      )}
     </div>
   );
 }

@@ -33,6 +33,7 @@ import { Icon, type IconName } from '../../Icon';
 import { VCard, VBtn } from '../../primitives';
 import { PipelineLiveStatus } from '@/components/vater/pipeline-live-status';
 import { YouTubeCreationProgress } from '@/components/vater/youtube-creation-progress';
+import { TINT_BG, TINT_BORDER } from '../tint';
 
 interface ObserverNote {
   id: string;
@@ -296,7 +297,7 @@ export function AutopilotScreen(): React.ReactElement {
       {/* DGX live probe — wrap, don't reimplement */}
       <VCard style={{ marginBottom: 16 }}>
         <SectionTitle icon="sparkle" title="Pipeline status" sub="DGX VRAM + ComfyUI queues, polled every 3s." />
-        <div style={{ marginTop: 12 }}>
+        <div className="jelly-legacy" style={{ marginTop: 12 }}>
           <PipelineLiveStatus />
         </div>
       </VCard>
@@ -424,7 +425,7 @@ export function AutopilotScreen(): React.ReactElement {
           sub="When a project is selected from Project History, its phase ladder + DGX worker tail render here."
         />
         {activeProject ? (
-          <div style={{ marginTop: 12 }}>
+          <div className="jelly-legacy" style={{ marginTop: 12 }}>
             <YouTubeCreationProgress
               project={activeProject}
               onUpdate={(p: unknown) =>
@@ -624,8 +625,8 @@ export function ErrorBar({ message }: { message: string }): React.ReactElement {
       style={{
         marginTop: 12,
         padding: '8px 12px',
-        background: 'rgba(220,38,38,0.08)',
-        border: `1px solid rgba(220,38,38,0.4)`,
+        ...TINT_BG.error,
+        border: `1px solid ${TINT_BORDER.error}`,
         borderRadius: JELLY_TOKENS.radius.md,
         color: JELLY_TOKENS.error,
         fontSize: 12,

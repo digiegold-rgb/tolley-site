@@ -19,10 +19,15 @@
 
 import * as React from 'react';
 import { JELLY_TOKENS } from './tokens';
+import { useTheme } from './theme-context';
+import { MicroLabel } from './cinema';
 
 const DISMISS_KEY = 'vater-beta-banner-dismissed-v1.3';
 
 export function BetaAccessBanner(): React.ReactElement | null {
+  // useTheme() has a dark default, so this stays correct on /vater/youtube
+  // where there is no ThemeProvider above it.
+  const { t } = useTheme();
   // Start hidden, reveal after the localStorage check — avoids a hydration
   // mismatch between server (no localStorage) and a dismissed client.
   const [visible, setVisible] = React.useState(false);
@@ -53,24 +58,29 @@ export function BetaAccessBanner(): React.ReactElement | null {
       role="status"
       data-testid="vater-launch-banner"
       style={{
-        background: JELLY_TOKENS.gradCreate,
-        color: '#fff',
+        background: JELLY_TOKENS.gradTicket,
+        backdropFilter: t.glassBlur,
+        WebkitBackdropFilter: t.glassBlur,
+        color: t.textSecondary,
         padding: '10px 16px',
         display: 'flex',
         alignItems: 'center',
         gap: 12,
         justifyContent: 'center',
-        fontSize: 14,
+        fontSize: 13.5,
         fontWeight: 500,
-        borderBottom: `1px solid ${JELLY_TOKENS.brandDark}`,
+        fontFamily: JELLY_TOKENS.font,
+        borderBottom: `1px solid ${JELLY_TOKENS.brandOutline}`,
         textAlign: 'center',
         flexWrap: 'wrap',
       }}
     >
+      <MicroLabel tone="violet" as="span" size={10.5} tracking="0.26em">
+        Public beta · invite only
+      </MicroLabel>
       <span>
-        <strong>Public beta · invite only</strong> — pay only for what you
-        render. No subscription, no commitment, no watermark. Failed renders are
-        never charged.
+        Pay only for what you render. No subscription, no commitment, no
+        watermark. Failed renders are never charged.
       </span>
       <button
         onClick={dismiss}
@@ -78,7 +88,7 @@ export function BetaAccessBanner(): React.ReactElement | null {
         style={{
           background: 'transparent',
           border: 'none',
-          color: '#fff',
+          color: t.textFaint,
           fontSize: 16,
           lineHeight: 1,
           cursor: 'pointer',

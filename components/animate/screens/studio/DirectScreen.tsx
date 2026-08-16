@@ -10,8 +10,10 @@
  */
 
 import * as React from 'react';
+import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VCard, VBtn, SectionHeader } from '../../primitives';
+import { TINT_BG } from '../tint';
 
 type JobSummary = {
   id: string;
@@ -29,13 +31,15 @@ type Message = {
   createdAt: string;
 };
 
+/* In-flight is cyan (the "● NOW FILMING" colour), finished is success,
+ * blocked-on-you is warning, dead is error. Nothing off-palette. */
 const STATUS_COLORS: Record<string, string> = {
-  queued: '#8b8b9e',
-  running: '#3b82f6',
-  awaiting_reply: '#f59e0b',
-  done: '#22c55e',
-  failed: '#ef4444',
-  canceled: '#8b8b9e',
+  queued: JELLY_TOKENS.dark.textFaint,
+  running: JELLY_TOKENS.cyan,
+  awaiting_reply: JELLY_TOKENS.warning,
+  done: JELLY_TOKENS.success,
+  failed: JELLY_TOKENS.error,
+  canceled: JELLY_TOKENS.dark.textFaint,
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -48,7 +52,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function StatusChip({ status }: { status: string }): React.ReactElement {
-  const color = STATUS_COLORS[status] ?? '#8b8b9e';
+  const color = STATUS_COLORS[status] ?? JELLY_TOKENS.dark.textFaint;
   return (
     <span
       style={{
@@ -57,7 +61,7 @@ function StatusChip({ status }: { status: string }): React.ReactElement {
         borderRadius: 999,
         fontSize: 12,
         fontWeight: 600,
-        color: '#fff',
+        color: JELLY_TOKENS.onGradient,
         background: color,
         whiteSpace: 'nowrap',
       }}
@@ -207,7 +211,7 @@ export function DirectScreen(): React.ReactElement {
 
       {error && (
         <VCard variant="flat">
-          <div style={{ color: '#ef4444', fontSize: 14 }}>{error}</div>
+          <div style={{ color: JELLY_TOKENS.error, fontSize: 14 }}>{error}</div>
         </VCard>
       )}
 
@@ -273,21 +277,40 @@ export function DirectScreen(): React.ReactElement {
                           whiteSpace: 'pre-wrap',
                           overflowWrap: 'anywhere',
                           background: mine
-                            ? '#3b82f6'
+                            ? JELLY_TOKENS.gradPrimary
                             : isSystem
                               ? 'transparent'
                               : t.cardAlt,
-                          color: mine ? '#fff' : isSystem ? t.textSecondary : t.text,
+                          color: mine
+                            ? JELLY_TOKENS.onGradient
+                            : isSystem
+                              ? t.textSecondary
+                              : t.text,
                           border: mine || isSystem ? 'none' : `1px solid ${t.border}`,
                           fontStyle: isSystem ? 'italic' : 'normal',
                           ...(m.kind === 'question'
-                            ? { borderLeft: '3px solid #f59e0b' }
+                            ? {
+                                ...TINT_BG.warning,
+                                borderLeft: `3px solid ${JELLY_TOKENS.warning}`,
+                              }
                             : {}),
-                          ...(m.kind === 'error' ? { borderLeft: '3px solid #ef4444' } : {}),
+                          ...(m.kind === 'error'
+                            ? {
+                                ...TINT_BG.error,
+                                borderLeft: `3px solid ${JELLY_TOKENS.error}`,
+                              }
+                            : {}),
                         }}
                       >
                         {m.kind === 'question' && (
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: JELLY_TOKENS.warning,
+                              marginBottom: 4,
+                            }}
+                          >
                             QUESTION FOR YOU
                           </div>
                         )}

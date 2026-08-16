@@ -25,6 +25,7 @@ import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VBtn } from '../../primitives';
 import { Icon } from '../../Icon';
+import { TINT_BORDER } from '../tint';
 
 export interface PromptReviewScene {
   idx: number;
@@ -227,9 +228,11 @@ export function PromptReviewModal({
           width: '100%',
           maxWidth: 920,
           maxHeight: '90vh',
-          background: t.card,
-          border: `1px solid ${t.border}`,
-          borderRadius: JELLY_TOKENS.radius.lg,
+          /* Opaque panel — `t.card` is translucent glass now. */
+          background: t.panel,
+          border: `1px solid ${t.borderStrong}`,
+          borderRadius: JELLY_TOKENS.radius.xxl,
+          boxShadow: JELLY_TOKENS.shadow24,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -355,9 +358,9 @@ export function PromptReviewModal({
                     padding: 12,
                     border: `1px solid ${
                       rowStatus === 'success'
-                        ? 'rgba(34,197,94,0.5)'
+                        ? TINT_BORDER.success
                         : rowStatus === 'error'
-                          ? 'rgba(220,38,38,0.5)'
+                          ? TINT_BORDER.error
                           : t.border
                     }`,
                     borderRadius: JELLY_TOKENS.radius.md,
@@ -412,7 +415,7 @@ export function PromptReviewModal({
                       )}
                       {rowStatus === 'success' && (
                         <span
-                          style={{ fontSize: 11, color: '#22c55e' }}
+                          style={{ fontSize: 11, color: JELLY_TOKENS.success }}
                           title="Image regenerated"
                         >
                           ✓ done

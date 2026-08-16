@@ -46,7 +46,7 @@ export function VideoEditorScreen(): React.ReactElement {
         description="Timeline-based editing — drag clips, edit captions, swap audio, export. Pick a project below to open."
       />
 
-      <VCard variant="hero" style={{ background: JELLY_TOKENS.gradTutorial, color: '#fff' }}>
+      <VCard variant="hero" style={{ background: JELLY_TOKENS.gradTutorial, color: JELLY_TOKENS.onGradient }}>
         <div style={{ fontSize: 18, fontWeight: 700 }}>Beta Notice</div>
         <div style={{ fontSize: 14, opacity: 0.9, marginTop: 4 }}>
           The Video Editor is in beta. Save your work often. Range-based scrubbing requires the proxy routes — don&apos;t introduce middleware that strips Range headers.

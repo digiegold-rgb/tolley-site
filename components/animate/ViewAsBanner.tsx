@@ -16,6 +16,15 @@
 import * as React from 'react';
 
 import { JELLY_TOKENS } from './tokens';
+import { useTheme } from './theme-context';
+import { MicroLabel } from './cinema';
+
+/* The impersonation bar keeps its RED semantics — this is the one place in the
+ * studio where the cinema palette gives way, because "you are inside someone
+ * else's account" must not read as decoration. Glass, but error-tinted. */
+const ERROR_TINT = 'linear-gradient(160deg, rgba(240,96,122,0.20), rgba(240,96,122,0.10))';
+const ERROR_OUTLINE = 'rgba(240,96,122,0.55)';
+const ERROR_INK = 'rgba(240,96,122,0.14)';
 
 interface MeImpersonation {
   impersonation?: {
@@ -27,6 +36,7 @@ interface MeImpersonation {
 }
 
 export function ViewAsBanner(): React.ReactElement | null {
+  const { t } = useTheme();
   const [state, setState] = React.useState<{
     active: boolean;
     viewingEmail: string | null;
@@ -82,8 +92,11 @@ export function ViewAsBanner(): React.ReactElement | null {
         flexWrap: 'wrap',
         gap: 12,
         padding: '10px 16px',
-        background: JELLY_TOKENS.error,
-        color: '#fff',
+        background: ERROR_TINT,
+        backdropFilter: t.glassBlur,
+        WebkitBackdropFilter: t.glassBlur,
+        borderBottom: `1px solid ${ERROR_OUTLINE}`,
+        color: JELLY_TOKENS.error,
         fontFamily: JELLY_TOKENS.font,
         fontSize: 13,
         fontWeight: 600,
@@ -91,6 +104,9 @@ export function ViewAsBanner(): React.ReactElement | null {
         textAlign: 'center',
       }}
     >
+      <MicroLabel tone="text" as="span" color={JELLY_TOKENS.error} size={10.5} tracking="0.26em">
+        ● Support session
+      </MicroLabel>
       <span>
         Viewing as {state.viewingEmail ?? 'this customer'} — read-only
         {state.adminEmail ? ` · signed in as ${state.adminEmail}` : ''}
@@ -102,10 +118,10 @@ export function ViewAsBanner(): React.ReactElement | null {
         data-testid="view-as-exit"
         style={{
           padding: '4px 14px',
-          borderRadius: 999,
-          border: '1px solid rgba(255,255,255,0.7)',
-          background: 'rgba(0,0,0,0.18)',
-          color: '#fff',
+          borderRadius: JELLY_TOKENS.radius.pill,
+          border: `1px solid ${ERROR_OUTLINE}`,
+          background: ERROR_INK,
+          color: JELLY_TOKENS.error,
           fontFamily: JELLY_TOKENS.font,
           fontSize: 12,
           fontWeight: 700,

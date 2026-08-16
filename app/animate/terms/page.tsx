@@ -1,8 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { LegalPageShell } from "@/components/legal/legal-page-shell";
-import { LegalSection, type LegalSectionContent } from "@/components/legal/legal-section";
+import {
+  CinemaLegalMeta,
+  CinemaLegalShell,
+} from "@/components/animate/legal/CinemaLegalShell";
+import {
+  CinemaLegalSection,
+  LEGAL_BODY_STYLE,
+  LEGAL_LINK_STYLE,
+  LEGAL_STRONG_STYLE,
+} from "@/components/animate/legal/CinemaLegalSection";
+import type { LegalSectionContent } from "@/components/legal/legal-section";
+import { JELLY_TOKENS } from "@/components/animate/tokens";
 import {
   ANIMATE_ARBITRATION_OPT_OUT_DAYS,
   ANIMATE_LEGAL_ADDRESS,
@@ -61,12 +71,9 @@ const SECTIONS: LegalSectionContent[] = [
       "We may change, suspend, or discontinue any part of the Studio at any time. We will give reasonable notice of changes that materially affect paid credits, and Section 6 says what happens to your balance if we shut the service down.",
     ],
     children: (
-      <p className="text-sm leading-6 text-white/83 sm:text-[0.95rem]">
+      <p style={LEGAL_BODY_STYLE}>
         The{" "}
-        <Link
-          href={ANIMATE_LINKS.beta}
-          className="text-violet-200 underline underline-offset-2 transition hover:text-white"
-        >
+        <Link href={ANIMATE_LINKS.beta} className="jc-link" style={LEGAL_LINK_STYLE}>
           Beta Addendum
         </Link>{" "}
         explains this in plain English, with a worked pricing example. It is part of
@@ -105,8 +112,8 @@ const SECTIONS: LegalSectionContent[] = [
       "You grant us a perpetual, worldwide, non-exclusive, royalty-free, sublicensable license to use, host, store, reproduce, modify, adapt, and publicly display and perform your Inputs and Outputs for three purposes: to operate the Studio, to improve it, and to promote it — showcases, demo reels, sample galleries, social posts, and marketing material. Sublicensable means we can pass that permission to the vendors and platforms that host or distribute the material for us.",
     ],
     children: (
-      <p className="text-sm leading-6 text-white/83 sm:text-[0.95rem]">
-        <span className="font-semibold text-white/94">The promotional half is optional. </span>
+      <p style={LEGAL_BODY_STYLE}>
+        <span style={LEGAL_STRONG_STYLE}>The promotional half is optional. </span>
         Your account has a showcase opt-out toggle. Turn it on and we will not use your
         Inputs or Outputs in new marketing, showcases, or demos from that point forward.
         Opting out does not reach backwards — material already published or already
@@ -179,52 +186,56 @@ const SECTIONS: LegalSectionContent[] = [
   {
     heading: "13. YouTube API Services",
     children: (
-      <div className="space-y-3 text-sm leading-6 text-white/83 sm:text-[0.95rem]">
-        <p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <p style={LEGAL_BODY_STYLE}>
           {ANIMATE_LEGAL_BRAND} uses YouTube API Services. By using the features of the
           Studio that connect to YouTube, you agree to be bound by the{" "}
           <a
             href={ANIMATE_LINKS.youtubeTerms}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-violet-200 underline underline-offset-2 transition hover:text-white"
+            className="jc-link"
+            style={LEGAL_LINK_STYLE}
           >
             YouTube Terms of Service
           </a>
           .
         </p>
-        <p>
+        <p style={LEGAL_BODY_STYLE}>
           Google&apos;s Privacy Policy, which describes how Google handles information
           obtained through YouTube API Services, is available at{" "}
           <a
             href={ANIMATE_LINKS.googlePrivacy}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-violet-200 underline underline-offset-2 transition hover:text-white"
+            className="jc-link"
+            style={{ ...LEGAL_LINK_STYLE, wordBreak: "break-word" }}
           >
             {ANIMATE_LINKS.googlePrivacy}
           </a>
           .
         </p>
-        <p>
+        <p style={LEGAL_BODY_STYLE}>
           You can revoke this application&apos;s access to your data through the Google
           security settings page at{" "}
           <a
             href={ANIMATE_LINKS.googleSecuritySettings}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-violet-200 underline underline-offset-2 transition hover:text-white"
+            className="jc-link"
+            style={{ ...LEGAL_LINK_STYLE, wordBreak: "break-word" }}
           >
             {ANIMATE_LINKS.googleSecuritySettings}
           </a>
           . You can also disconnect the channel inside the Studio, which deletes the
           stored tokens on our side.
         </p>
-        <p>
+        <p style={LEGAL_BODY_STYLE}>
           What we access, what we store, and how long we keep it is described in our{" "}
           <Link
             href={ANIMATE_LINKS.privacy}
-            className="text-violet-200 underline underline-offset-2 transition hover:text-white"
+            className="jc-link"
+            style={LEGAL_LINK_STYLE}
           >
             Privacy Policy
           </Link>
@@ -320,67 +331,59 @@ const SECTIONS: LegalSectionContent[] = [
 
 export default function AnimateTermsPage() {
   return (
-    <LegalPageShell
-      kicker="jelly studio · beta"
+    <CinemaLegalShell
+      kicker="Jelly Studio — Terms"
       title="Terms of Service"
       subtitle="These Terms govern your use of Jelly Studio — the beta, the credits, what you own, what we may show off, and what you may not make here. Read Sections 5 through 10 even if you skim the rest."
     >
-      <section className="grid gap-3 rounded-2xl border border-white/14 bg-white/[0.03] p-4 text-sm text-white/84 sm:grid-cols-2 sm:text-[0.94rem]">
-        <p>
-          <span className="font-semibold text-white/94">Service: </span>
-          {ANIMATE_LEGAL_BRAND}
-        </p>
-        <p>
-          <span className="font-semibold text-white/94">Operator: </span>
-          {ANIMATE_LEGAL_ENTITY}
-        </p>
-        <p>
-          <span className="font-semibold text-white/94">Effective: </span>
-          {ANIMATE_LEGAL_EFFECTIVE_DATE}
-        </p>
-        <p>
-          <span className="font-semibold text-white/94">Last updated: </span>
-          {ANIMATE_LEGAL_LAST_UPDATED} (version {TOS_VERSION})
-        </p>
-        <p>
-          <span className="font-semibold text-white/94">Address: </span>
-          {ANIMATE_LEGAL_ADDRESS}
-        </p>
-        <p>
-          <span className="font-semibold text-white/94">Contact: </span>
-          <a
-            className="underline decoration-white/35 underline-offset-4"
-            href={`mailto:${ANIMATE_LEGAL_EMAIL}`}
-          >
-            {ANIMATE_LEGAL_EMAIL}
-          </a>
-        </p>
-      </section>
+      <CinemaLegalMeta
+        rows={[
+          { label: "Service", value: ANIMATE_LEGAL_BRAND },
+          { label: "Operator", value: ANIMATE_LEGAL_ENTITY },
+          { label: "Effective", value: ANIMATE_LEGAL_EFFECTIVE_DATE },
+          {
+            label: "Last updated",
+            value: `${ANIMATE_LEGAL_LAST_UPDATED} (version ${TOS_VERSION})`,
+          },
+          { label: "Address", value: ANIMATE_LEGAL_ADDRESS },
+          {
+            label: "Contact",
+            value: (
+              <a
+                href={`mailto:${ANIMATE_LEGAL_EMAIL}`}
+                className="jc-link"
+                style={LEGAL_LINK_STYLE}
+              >
+                {ANIMATE_LEGAL_EMAIL}
+              </a>
+            ),
+          },
+        ]}
+      />
 
       {SECTIONS.map((section) => (
-        <LegalSection key={section.heading} {...section} />
+        <CinemaLegalSection key={section.heading} {...section} />
       ))}
 
-      <section className="flex flex-wrap gap-x-4 gap-y-2 border-t border-white/14 pt-5 text-sm text-white/78">
-        <Link
-          href={ANIMATE_LINKS.privacy}
-          className="underline decoration-white/35 underline-offset-4 transition hover:text-white"
-        >
+      <section
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "10px 20px",
+          borderTop: `1px solid ${JELLY_TOKENS.dark.border}`,
+          paddingTop: 22,
+        }}
+      >
+        <Link href={ANIMATE_LINKS.privacy} className="jc-link" style={LEGAL_LINK_STYLE}>
           Privacy Policy
         </Link>
-        <Link
-          href={ANIMATE_LINKS.beta}
-          className="underline decoration-white/35 underline-offset-4 transition hover:text-white"
-        >
+        <Link href={ANIMATE_LINKS.beta} className="jc-link" style={LEGAL_LINK_STYLE}>
           Beta Addendum
         </Link>
-        <Link
-          href="/animate"
-          className="underline decoration-white/35 underline-offset-4 transition hover:text-white"
-        >
+        <Link href="/animate" className="jc-link" style={LEGAL_LINK_STYLE}>
           Back to the Studio
         </Link>
       </section>
-    </LegalPageShell>
+    </CinemaLegalShell>
   );
 }

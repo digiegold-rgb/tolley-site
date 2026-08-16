@@ -40,17 +40,17 @@ const SUPPORTED_PLATFORMS = [
 ] as const;
 type Platform = (typeof SUPPORTED_PLATFORMS)[number];
 
-const PLATFORM_META: Record<
-  Platform,
-  { label: string; emoji: string; tint: string }
-> = {
-  youtube: { label: 'YouTube', emoji: '▶️', tint: '#EF4444' },
-  tiktok: { label: 'TikTok', emoji: '🎵', tint: '#D946EF' },
-  instagram: { label: 'Instagram', emoji: '📷', tint: '#EC4899' },
-  facebook: { label: 'Facebook', emoji: '📘', tint: '#3B82F6' },
-  pinterest: { label: 'Pinterest', emoji: '📌', tint: '#DC2626' },
-  twitter: { label: 'X', emoji: '🐦', tint: '#71717A' },
-  linkedin: { label: 'LinkedIn', emoji: '💼', tint: '#0EA5E9' },
+/* Label + emoji only. Each platform used to carry a brand `tint` hex that
+ * nothing ever rendered — seven off-palette colours kept alive by a field with
+ * no consumer. The emoji already identifies the platform. */
+const PLATFORM_META: Record<Platform, { label: string; emoji: string }> = {
+  youtube: { label: 'YouTube', emoji: '▶️' },
+  tiktok: { label: 'TikTok', emoji: '🎵' },
+  instagram: { label: 'Instagram', emoji: '📷' },
+  facebook: { label: 'Facebook', emoji: '📘' },
+  pinterest: { label: 'Pinterest', emoji: '📌' },
+  twitter: { label: 'X', emoji: '🐦' },
+  linkedin: { label: 'LinkedIn', emoji: '💼' },
 };
 
 type StatusFilter = 'all' | 'pending' | 'posted' | 'failed';
@@ -291,8 +291,8 @@ export function PublishingScreen(): React.ReactElement {
                   fontSize: 12,
                   fontWeight: 500,
                   textTransform: 'capitalize',
-                  background: filter === s ? JELLY_TOKENS.brand : 'transparent',
-                  color: filter === s ? '#fff' : t.textSecondary,
+                  background: filter === s ? JELLY_TOKENS.gradPrimary : 'transparent',
+                  color: filter === s ? JELLY_TOKENS.onGradient : t.textSecondary,
                   fontFamily: JELLY_TOKENS.font,
                 }}
               >
@@ -473,7 +473,7 @@ function PostRow({
   const { t } = useTheme();
   const meta =
     (PLATFORM_META as Record<string, (typeof PLATFORM_META)[Platform]>)[post.platform.toLowerCase()] ??
-    { label: post.platform, emoji: '•', tint: JELLY_TOKENS.brand };
+    { label: post.platform, emoji: '•' };
   const statusColor =
     post.status === 'posted'
       ? JELLY_TOKENS.success

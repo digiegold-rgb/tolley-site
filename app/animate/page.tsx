@@ -13,19 +13,21 @@ import { AnimateLanding } from "@/components/animate/landing/AnimateLanding";
 
 export const dynamic = "force-dynamic";
 
-/* Brand page black (design/jelly-studio-logo-1c) — paints the mobile browser
- * chrome to match the landing instead of leaving a white bar above it.
+/* Cinema stage black (design/jelly-cinema-2026-08-16) — paints the mobile
+ * browser chrome to match the landing instead of leaving a white bar above it.
+ * app/animate/layout.tsx sets the same value for every /animate surface; this
+ * export keeps the two in step for the one route that overrides metadata.
  * themeColor belongs on `viewport`, not `metadata`, since Next 14. */
 export const viewport: Viewport = {
-  themeColor: "#0D0D10",
+  themeColor: "#0A0A14",
 };
 
 export const metadata: Metadata = {
   alternates: { canonical: "https://www.tolley.io/animate" },
   title:
-    "Jelly Studio — faceless videos from your script, ~$1/min, no subscription · public beta",
+    "Jelly Studio — your life is already a motion picture · pay per film, no subscription · public beta",
   description:
-    "Type a script, get a finished faceless video: cloned voice, generated cinematic scenes, optional motion, no watermark. The most affordable way to make faceless videos — pay only for what you render, no subscription. A typical long-form video runs $1–7 all in. No subscription. Invite-only public beta.",
+    "Write the story only you can tell and Jelly develops the film: your cloned voice, a generated cinematic scene for every line, no stock footage and no watermark. You pay per picture, never per month — most films land at $1–7 all in, failed renders are never charged, and a $10 starter credit is waiting on signup. Invite-only public beta.",
 };
 
 export default async function AnimateStudioPage() {

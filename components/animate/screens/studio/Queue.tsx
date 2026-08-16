@@ -58,7 +58,9 @@ export function Queue(): React.ReactElement {
           <div style={{ color: t.textSecondary, fontSize: 14 }}>Nothing rendering right now. Hit “+ Create Video” and this screen will track it beat by beat.</div>
         </VCard>
       ) : (
-        <YouTubeImportTracker projects={projects} onCreated={() => { void refresh(); }} />
+        <div className="jelly-legacy">
+          <YouTubeImportTracker projects={projects} onCreated={() => { void refresh(); }} />
+        </div>
       )}
     </div>
   );

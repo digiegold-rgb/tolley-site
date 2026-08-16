@@ -27,6 +27,7 @@ import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { VBtn, VCard } from '../../primitives';
+import { RenderReceiptTicket } from './RenderReceiptTicket';
 import { YouTubeProjectDetail } from '@/components/vater/youtube-project-detail';
 import { formatCount, type YouTubeVideoStats } from '@/lib/vater/youtube-status';
 
@@ -168,7 +169,7 @@ export function ProjectDetail({
         <VCard
           style={{
             borderColor: JELLY_TOKENS.warning,
-            background: 'rgba(245,158,11,0.08)',
+            borderLeft: `3px solid ${JELLY_TOKENS.warning}`,
           }}
         >
           <div
@@ -320,13 +321,31 @@ export function ProjectDetail({
         </VCard>
       )}
 
+      {/* The stub for this render, beside the legacy detail. Same numbers the
+          editor shows when the MP4 lands — the receipt endpoint is the single
+          source, so the two surfaces cannot disagree. */}
+      {projectId && project?.status === 'ready' && project?.finalVideoUrl && (
+        <RenderReceiptTicket
+          projectId={projectId}
+          title={project?.publishTitle ?? project?.sourceTitle ?? null}
+          duration={
+            typeof project?.audioDuration === 'number' ? project.audioDuration : null
+          }
+          style={{ maxWidth: 460 }}
+        />
+      )}
+
       {/* The canonical 7-status routing lives inside the wrapped
-          YouTubeProjectDetail. We don't re-implement its branching. */}
-      <YouTubeProjectDetail
-        project={project}
-        onUpdate={onUpdate}
-        onRecomposeStart={onRecomposeStart}
-      />
+          YouTubeProjectDetail. We don't re-implement its branching. The
+          `jelly-legacy` wrapper re-skins its Tailwind classes onto the cinema
+          palette without touching components/vater/*. */}
+      <div className="jelly-legacy">
+        <YouTubeProjectDetail
+          project={project}
+          onUpdate={onUpdate}
+          onRecomposeStart={onRecomposeStart}
+        />
+      </div>
     </div>
   );
 }

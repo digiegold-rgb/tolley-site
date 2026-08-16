@@ -6,10 +6,15 @@
 
 import * as React from 'react';
 import { JELLY_TOKENS } from './tokens';
+import { useTheme } from './theme-context';
+import { MicroLabel } from './cinema';
 
 const STORAGE_KEY = 'jelly:legacyV1BannerDismissed';
 
 export function LegacyV1Banner(): React.ReactElement | null {
+  // Rendered on the legacy /vater/youtube page, outside any ThemeProvider —
+  // useTheme()'s dark default is exactly the palette that page wants.
+  const { t } = useTheme();
   const [hidden, setHidden] = React.useState(true);
 
   // Mount-only: restore dismissed state from localStorage. Default hidden
@@ -41,28 +46,35 @@ export function LegacyV1Banner(): React.ReactElement | null {
       role="alert"
       data-testid="legacy-v1-banner"
       style={{
-        background: JELLY_TOKENS.gradCreate,
-        color: '#fff',
+        background: JELLY_TOKENS.gradTicket,
+        backdropFilter: t.glassBlur,
+        WebkitBackdropFilter: t.glassBlur,
+        color: t.textSecondary,
         padding: '10px 16px',
         display: 'flex',
         alignItems: 'center',
         gap: 12,
         justifyContent: 'center',
-        fontSize: 14,
+        fontSize: 13.5,
         fontWeight: 500,
-        borderBottom: `1px solid ${JELLY_TOKENS.brandDark}`,
+        fontFamily: JELLY_TOKENS.font,
+        borderBottom: `1px solid ${JELLY_TOKENS.brandOutline}`,
         textAlign: 'center',
         flexWrap: 'wrap',
       }}
     >
+      <MicroLabel tone="violet" as="span" size={10.5} tracking="0.26em">
+        Now showing
+      </MicroLabel>
       <span>
         Try the new flow at{' '}
         <a
           href="/animate"
           style={{
-            color: '#fff',
+            color: JELLY_TOKENS.cyan,
             textDecoration: 'underline',
-            fontWeight: 700,
+            textUnderlineOffset: 3,
+            fontWeight: 600,
           }}
         >
           tolley.io/animate
@@ -75,12 +87,13 @@ export function LegacyV1Banner(): React.ReactElement | null {
         aria-label="Dismiss legacy banner"
         style={{
           marginLeft: 8,
-          background: 'rgba(255,255,255,0.18)',
-          color: '#fff',
-          border: '1px solid rgba(255,255,255,0.4)',
-          borderRadius: 6,
-          padding: '4px 10px',
+          background: 'transparent',
+          color: t.textFaint,
+          border: `1px solid ${t.borderStrong}`,
+          borderRadius: JELLY_TOKENS.radius.pill,
+          padding: '4px 12px',
           cursor: 'pointer',
+          fontFamily: JELLY_TOKENS.font,
           fontSize: 12,
           fontWeight: 600,
         }}

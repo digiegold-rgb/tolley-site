@@ -18,6 +18,7 @@ import { JELLY_TOKENS, SECTION_PRICES } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VBtn, VCard, VInput, SectionHeader, Toast } from '../../primitives';
 import type { EditorStepProps } from './ProjectShell';
+import { reelLabel } from './reel-label';
 import {
   featureFetch,
   FeatureUnavailableError,
@@ -189,6 +190,7 @@ export function DescriptionStep({ projectId, project, refresh }: EditorStepProps
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <SectionHeader
         icon="description"
+        eyebrow={reelLabel(6)}
         title="Description Generator"
         description={`Generate SEO-optimized YouTube descriptions with relevant keywords and hashtags. ${SECTION_PRICES.description}.`}
         actionLabel={busy ? 'Generating…' : 'Generate'}

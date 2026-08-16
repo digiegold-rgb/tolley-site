@@ -24,9 +24,10 @@
  */
 
 import * as React from 'react';
-import { JELLY_TOKENS } from '../../tokens';
+import { JELLY_TOKENS, glass } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VBtn, VCard, SectionHeader } from '../../primitives';
+import { AdmitOneTicket, GlassCard, MicroLabel, type TicketNote } from '../../cinema';
 import { PricingCalculator } from '../../landing/PricingCalculator';
 
 // ─── GET /api/vater/billing/credits ───────────────────────────────────────
@@ -264,144 +265,191 @@ export function PricingScreen(): React.ReactElement {
 
   // ─── Sub-renders ─────────────────────────────────────────────────────
 
-  const banner = (tone: 'ok' | 'warn' | 'error', text: string) => (
-    <div
-      style={{
-        padding: '10px 14px',
-        fontSize: 13,
-        borderRadius: JELLY_TOKENS.radius.md,
-        background:
-          tone === 'ok'
-            ? 'rgba(22,163,74,0.10)'
-            : tone === 'warn'
-              ? 'rgba(245,158,11,0.10)'
-              : 'rgba(220,38,38,0.08)',
-        color:
-          tone === 'ok'
-            ? JELLY_TOKENS.success
-            : tone === 'warn'
-              ? JELLY_TOKENS.warning
-              : JELLY_TOKENS.error,
-      }}
-    >
-      {text}
-    </div>
-  );
+  /* Glass notice strip. The hue is the semantic token and the fill is the
+   * glass recipe, so a banner reads as part of the same surface family as
+   * every other panel rather than a coloured block bolted on. */
+  const banner = (tone: 'ok' | 'warn' | 'error', text: string) => {
+    const hue =
+      tone === 'ok'
+        ? JELLY_TOKENS.success
+        : tone === 'warn'
+          ? JELLY_TOKENS.warning
+          : JELLY_TOKENS.error;
+    return (
+      <div
+        style={{
+          ...glass(t),
+          padding: '10px 14px',
+          fontSize: 13,
+          borderRadius: JELLY_TOKENS.radius.md,
+          borderLeft: `3px solid ${hue}`,
+          color: hue,
+        }}
+      >
+        {text}
+      </div>
+    );
+  };
 
+  /* The balance IS the ticket. Same stub the landing page's live meter uses,
+   * so the number a customer watches tick up before signing up and the number
+   * in their wallet afterwards are visibly the same object. */
   const renderBalance = () => {
     if (!data) return null;
     const { balance } = data;
 
+    /* Unmetered gets the ticket shell but no fare: there is no number here,
+     * and printing "$0.00" would read as a balance rather than as "this
+     * account is not metered". */
     if (data.unmetered) {
       return (
-        <VCard variant="hero" style={{ borderTop: `4px solid ${JELLY_TOKENS.brand}` }}>
-          <div style={{ fontSize: 12, color: JELLY_TOKENS.brand, fontWeight: 600 }}>
-            Unmetered account
+        <GlassCard
+          data-testid="credit-balance-ticket"
+          variant="ticket"
+          padding={30}
+          halo
+          shadow
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              gap: 12,
+            }}
+          >
+            <MicroLabel tone="violet" size={11} tracking="0.24em">
+              ADMIT ONE — UNMETERED
+            </MicroLabel>
+            <div style={{ fontSize: 11, color: JELLY_TOKENS.cyan, letterSpacing: '0.04em' }}>
+              ● SEASON PASS
+            </div>
           </div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: t.text, marginTop: 6 }}>
+          <div
+            style={{
+              fontSize: 44,
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+              color: t.text,
+              marginTop: 6,
+              lineHeight: 1.1,
+            }}
+          >
             No credit needed
           </div>
-          <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 8, lineHeight: 1.6 }}>
+          <div style={{ borderTop: `1px dashed ${t.borderStrong}`, margin: '18px 0 12px' }} />
+          <div style={{ fontSize: 11.5, color: t.textFaint, lineHeight: 1.5 }}>
             This account is billed outside the app, so renders never draw down a
             balance. Every video still shows its full cost on its receipt.
           </div>
-        </VCard>
+        </GlassCard>
       );
     }
 
+    const notes: TicketNote[] = [];
+    if (balance.grantCents > 0) {
+      notes.push({
+        label: balance.grantExpiresAt
+          ? `welcome credit — expires ${fmtDay(balance.grantExpiresAt)}`
+          : 'welcome credit',
+        value: usd(balance.grantCents),
+        tone: 'cyan',
+      });
+    }
+    notes.push({ label: 'purchased to date', value: usd(balance.lifetimePurchasedCents) });
+    notes.push({ label: 'spent on videos', value: usd(balance.lifetimeSpentCents) });
+
     return (
-      <VCard variant="hero" style={{ borderTop: `4px solid ${JELLY_TOKENS.brand}` }}>
-        <div style={{ fontSize: 12, color: JELLY_TOKENS.brand, fontWeight: 600 }}>
-          Credit balance
-        </div>
-        <div style={{ fontSize: 44, fontWeight: 700, color: t.text, marginTop: 2 }}>
-          {usd(balance.balanceCents)}
-        </div>
-
-        {balance.grantCents > 0 && (
-          <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 8, lineHeight: 1.6 }}>
-            Includes <strong style={{ color: t.text }}>{usd(balance.grantCents)}</strong>{' '}
-            of welcome credit
-            {balance.grantExpiresAt ? ` — expires ${fmtDay(balance.grantExpiresAt)}` : ''}.
-            It covers scripts and still images; animation runs on purchased
-            credit.
-          </div>
-        )}
-
-        <div
-          style={{
-            display: 'flex',
-            gap: 24,
-            flexWrap: 'wrap',
-            marginTop: 16,
-            fontSize: 12,
-            color: t.textSecondary,
-          }}
-        >
-          <span>
-            Purchased to date{' '}
-            <strong style={{ color: t.text }}>{usd(balance.lifetimePurchasedCents)}</strong>
-          </span>
-          <span>
-            Spent on videos{' '}
-            <strong style={{ color: t.text }}>{usd(balance.lifetimeSpentCents)}</strong>
-          </span>
-        </div>
-
+      <div>
+        <AdmitOneTicket
+          data-testid="credit-balance-ticket"
+          size="hero"
+          label="ADMIT ONE — CREDIT BALANCE"
+          state={balance.balanceCents > 0 ? 'GOOD FOR ONE PICTURE' : 'BOX OFFICE CLOSED'}
+          totalUsd={balance.balanceCents / 100}
+          notes={notes}
+          action={
+            <VBtn
+              size="md"
+              onClick={() => {
+                document
+                  .getElementById('credit-packs')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }}
+            >
+              Buy credits
+            </VBtn>
+          }
+          footer={
+            balance.grantCents > 0
+              ? 'Welcome credit covers scripts and still images; animation runs on purchased credit. Credit you buy never expires.'
+              : 'Credit is prepaid, so your balance is your spending limit. Failed renders are never charged.'
+          }
+        />
         {balance.balanceCents <= 0 && (
-          <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 12 }}>
             {banner('warn', 'Out of credit — add a pack below to keep rendering.')}
           </div>
         )}
-      </VCard>
+      </div>
     );
   };
 
+  /* Each pack is its own stub. The fare is what Stripe charges; the notes are
+   * the credit it lands, the fee that is not ours, and what that buys in
+   * finished minutes at the ops rate — the last one being the number people
+   * actually want and previously had to work out themselves. */
   const renderPacks = () => {
     if (!data || data.unmetered) return null;
+    const opsRate = data.opsRatePerMinute || 0.35;
     return (
-      <VCard variant="flat">
+      <div id="credit-packs">
         <SectionHeader
           icon="affiliate"
+          eyebrow="THE BOX OFFICE"
           title="Add credit"
           description="One-off purchase. No subscription, and credit you buy does not expire."
         />
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-            gap: 12,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+            gap: 14,
             marginTop: 18,
           }}
         >
           {data.packs.map((p) => (
-            <button
+            <AdmitOneTicket
               key={p.pack}
-              type="button"
-              onClick={() => void buyPack(p.pack)}
-              disabled={buying !== null}
-              data-testid={`credit-pack-${p.pack}`}
-              style={{
-                textAlign: 'left',
-                cursor: buying !== null ? 'default' : 'pointer',
-                opacity: buying !== null && buying !== p.pack ? 0.5 : 1,
-                background: t.cardAlt,
-                border: `1px solid ${t.border}`,
-                borderRadius: JELLY_TOKENS.radius.lg,
-                padding: '16px 18px',
-                fontFamily: JELLY_TOKENS.font,
-              }}
-            >
-              <div style={{ fontSize: 24, fontWeight: 700, color: t.text }}>
-                ${p.pack}
-              </div>
-              <div style={{ fontSize: 13, color: JELLY_TOKENS.brand, fontWeight: 600, marginTop: 2 }}>
-                {buying === p.pack ? 'Redirecting…' : `${usd(p.creditsCents)} credit`}
-              </div>
-              <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 6, lineHeight: 1.5 }}>
-                {usd(p.priceCents - p.creditsCents)} Stripe fee
-              </div>
-            </button>
+              data-testid={`credit-pack-ticket-${p.pack}`}
+              size="card"
+              label="ADMIT ONE — CREDIT PACK"
+              totalUsd={p.priceCents / 100}
+              notes={[
+                { label: 'credit', value: usd(p.creditsCents), tone: 'cyan' },
+                { label: 'Stripe fee', value: usd(p.priceCents - p.creditsCents), tone: 'faint' },
+                {
+                  label: 'ops covered',
+                  value: `≈ ${(p.creditsCents / 100 / opsRate).toFixed(0)} min`,
+                  tone: 'faint',
+                },
+              ]}
+              action={
+                /* The pack testid stays on the thing that starts checkout —
+                 * it used to be the whole card, and a testid on a non-clickable
+                 * wrapper is a click that silently does nothing. */
+                <VBtn
+                  size="sm"
+                  data-testid={`credit-pack-${p.pack}`}
+                  onClick={() => void buyPack(p.pack)}
+                  disabled={buying !== null}
+                  style={{ width: '100%' }}
+                >
+                  {buying === p.pack ? 'Redirecting…' : `Buy $${p.pack} pack`}
+                </VBtn>
+              }
+              style={{ opacity: buying !== null && buying !== p.pack ? 0.5 : 1 }}
+            />
           ))}
         </div>
         <div
@@ -414,9 +462,11 @@ export function PricingScreen(): React.ReactElement {
         >
           {/* Say it plainly rather than hiding the fee behind a $10.61 price. */}
           A $10 pack is $9.41 of credit. The difference is Stripe&apos;s card
-          processing fee — we don&apos;t add anything on top of it.
+          processing fee — we don&apos;t add anything on top of it. &ldquo;Ops
+          covered&rdquo; is finished minutes at the ${opsRate.toFixed(2)}/min
+          render-ops rate; compute is on top of it, at cost.
         </div>
-      </VCard>
+      </div>
     );
   };
 
@@ -427,6 +477,7 @@ export function PricingScreen(): React.ReactElement {
       <VCard variant="flat">
         <SectionHeader
           icon="affiliate"
+          eyebrow="THE BOX OFFICE — ON FILE"
           title="Card on file"
           description="Optional. Saved automatically when you buy a pack, so a top-up is one click."
         />
@@ -476,6 +527,7 @@ export function PricingScreen(): React.ReactElement {
       <VCard variant="flat">
         <SectionHeader
           icon="history"
+          eyebrow="THE LEDGER"
           title="Activity"
           description="Every credit in and every credit out, with the video it paid for."
         />
@@ -540,6 +592,7 @@ export function PricingScreen(): React.ReactElement {
       <VCard variant="flat">
         <SectionHeader
           icon="affiliate"
+          eyebrow="COMP TICKETS"
           title="Invite a friend, get credit"
           description={`You have ${referrals.codes.length} invite ${
             referrals.codes.length === 1 ? 'link' : 'links'
@@ -609,6 +662,7 @@ export function PricingScreen(): React.ReactElement {
     <VCard variant="flat">
       <SectionHeader
         icon="affiliate"
+        eyebrow="THE ESTIMATE"
         title="What will my month cost?"
         description="Describe the videos you plan to make. Estimates only — every project is quoted before it renders."
       />
@@ -616,9 +670,12 @@ export function PricingScreen(): React.ReactElement {
         <PricingCalculator
           title={null}
           fontFamily={JELLY_TOKENS.font}
+          /* Cinema palette, built from the live theme slice so the calculator
+           * tracks the studio's light/dark toggle instead of pinning the
+           * landing page's own ink colours. */
           palette={{
-            surface: t.cardAlt,
-            surfaceAlt: t.card,
+            surface: t.card,
+            surfaceAlt: t.cardAlt,
             text: t.text,
             textSecondary: t.textSecondary,
             border: t.border,
@@ -631,7 +688,7 @@ export function PricingScreen(): React.ReactElement {
 
   const renderExplainer = () => (
     <VCard variant="flat">
-      <SectionHeader icon="help" title="How pricing works" />
+      <SectionHeader icon="help" eyebrow="THE FINE PRINT" title="How pricing works" />
       <div style={{ fontSize: 14, color: t.text, lineHeight: 1.8, marginTop: 14 }}>
         <p style={{ margin: '0 0 12px' }}>
           A finished video costs{' '}

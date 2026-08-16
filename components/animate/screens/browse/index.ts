@@ -5,3 +5,4 @@ export { NicheFinderScreen } from './NicheFinderScreen';
 export { VideoEditorScreen } from './VideoEditorScreen';
 export { LearningCenterScreen } from './LearningCenterScreen';
 export { PricingScreen } from './PricingScreen';
+export { RenderReceiptTicket, type RenderReceipt } from './RenderReceiptTicket';

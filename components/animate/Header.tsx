@@ -13,19 +13,22 @@
  */
 
 import * as React from 'react';
-import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
 import { JELLY_TOKENS } from './tokens';
 import { useTheme, useRoute } from './theme-context';
 import { useTier } from './tier-context';
 import { Icon } from './Icon';
 import { VBtn } from './primitives';
+import { MicroLabel, PillButton } from './cinema';
 import { VaterCostPill } from './LatestUpdate';
 import {
   APP_VERSION,
   LAST_SEEN_VERSION_KEY,
   compareVersions,
 } from '@/lib/vater/changelog';
+
+/** Modal scrim — the ink base at 66%, not a palette hue. */
+const SCRIM = 'rgba(8,7,15,0.66)';
 
 function formatDollars(cents: number | null | undefined): string {
   if (typeof cents !== 'number' || !Number.isFinite(cents)) return '—';
@@ -198,6 +201,8 @@ export function Header({
           padding: mobile ? '10px 12px' : '0 24px',
           gap: mobile ? 8 : 12,
           background: t.headerBg,
+          backdropFilter: t.glassBlur,
+          WebkitBackdropFilter: t.glassBlur,
           borderBottom: `1px solid ${t.border}`,
           position: 'sticky',
           top: 0,
@@ -238,22 +243,42 @@ export function Header({
             Billing
           </VBtn>
         )}
+        {/* Billing is always a box-office ticket. At header scale that is a
+            compact ADMIT ONE pill: violet outline, ticket tint, cyan tabular
+            balance. Numbers and tooltip are byte-for-byte what they were. */}
         <div
+          data-testid="usage-chip"
           style={{
-            background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-            borderRadius: JELLY_TOKENS.radius.full,
-            padding: '6px 14px',
-            fontSize: mobile ? 12 : 14,
-            fontWeight: 500,
-            color: t.text,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            background: JELLY_TOKENS.gradTicket,
+            border: `1px solid ${JELLY_TOKENS.brandOutline}`,
+            borderRadius: JELLY_TOKENS.radius.pill,
+            padding: mobile ? '5px 11px' : '6px 14px',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
-            textOverflow: 'ellipsis',
             maxWidth: mobile ? 150 : undefined,
           }}
           title={pillTitle}
         >
-          {pillText}
+          {!mobile && (
+            <MicroLabel tone="violet" as="span" size={9.5} tracking="0.22em">
+              Admit one
+            </MicroLabel>
+          )}
+          <span
+            className="jc-tabular"
+            style={{
+              fontSize: mobile ? 12 : 13.5,
+              fontWeight: 600,
+              color: JELLY_TOKENS.cyan,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {pillText}
+          </span>
         </div>
         <button
           type="button"
@@ -351,14 +376,15 @@ export function Header({
             width: 40,
             height: 40,
             borderRadius: '50%',
-            background: JELLY_TOKENS.brand,
+            background: JELLY_TOKENS.gradPrimary,
+            boxShadow: JELLY_TOKENS.brandGlow,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
           }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill={JELLY_TOKENS.onGradient} aria-hidden="true">
             <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
           </svg>
         </div>
@@ -399,7 +425,9 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.5)',
+        background: SCRIM,
+        backdropFilter: 'blur(3px)',
+        WebkitBackdropFilter: 'blur(3px)',
         zIndex: 200,
         display: 'flex',
         alignItems: 'center',
@@ -407,16 +435,20 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
       }}
       onClick={onClose}
     >
+      {/* Opaque `t.panel`, never glass: a menu you can read the page through
+          is a menu nobody can read. */}
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: t.card,
-          borderRadius: JELLY_TOKENS.radius.lg,
-          boxShadow: JELLY_TOKENS.shadow24,
+          background: t.panel,
+          border: `1px solid ${t.border}`,
+          borderRadius: JELLY_TOKENS.radius.xl,
+          boxShadow: `${JELLY_TOKENS.shadow24}, ${t.halo}`,
           width: 'min(720px, calc(100vw - 24px))',
           maxHeight: '85vh',
           display: 'flex',
           overflow: 'hidden',
+          fontFamily: JELLY_TOKENS.font,
         }}
       >
         <div
@@ -430,16 +462,9 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
             gap: 2,
           }}
         >
-          <div
-            style={{
-              padding: '0 24px 16px',
-              fontSize: 18,
-              fontWeight: 700,
-              color: t.text,
-            }}
-          >
+          <MicroLabel tone="faint" color={t.textFaint} size={10.5} tracking="0.26em" style={{ padding: '0 24px 16px' }}>
             Account
-          </div>
+          </MicroLabel>
           {SETTINGS_TABS.map((tb) => (
             <div
               key={tb.key}
@@ -447,10 +472,11 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
               style={{
                 padding: '10px 24px',
                 cursor: 'pointer',
-                fontSize: 14,
-                fontWeight: tab === tb.key ? 600 : 400,
-                color: tab === tb.key ? JELLY_TOKENS.brand : t.text,
-                background: tab === tb.key ? JELLY_TOKENS.brandGhost : 'transparent',
+                fontSize: 13.5,
+                fontWeight: tab === tb.key ? 600 : 500,
+                color: tab === tb.key ? t.text : t.textSecondary,
+                background: tab === tb.key ? JELLY_TOKENS.gradChipOn : 'transparent',
+                borderLeft: `2px solid ${tab === tb.key ? JELLY_TOKENS.brand : 'transparent'}`,
               }}
             >
               {tb.label}
@@ -583,24 +609,17 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
                 >
                   {plan.detail}
                 </div>
-                <div
-                  onClick={() => {
-                    setRoute('pricing');
-                    onClose();
-                  }}
-                  style={{
-                    marginTop: 12,
-                    display: 'inline-block',
-                    padding: '8px 14px',
-                    borderRadius: JELLY_TOKENS.radius.md,
-                    background: JELLY_TOKENS.brandGhost,
-                    color: JELLY_TOKENS.brand,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Manage billing →
+                <div style={{ marginTop: 12 }}>
+                  <PillButton
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setRoute('pricing');
+                      onClose();
+                    }}
+                  >
+                    Manage billing →
+                  </PillButton>
                 </div>
               </div>
               <ShowcaseOptOutToggle />
@@ -617,24 +636,17 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
                 Per-section usage breakdown ships with the credit ledger. Section pricing
                 and current rates live on the Pricing page.
               </div>
-              <div
-                onClick={() => {
-                  setRoute('pricing');
-                  onClose();
-                }}
-                style={{
-                  alignSelf: 'flex-start',
-                  padding: '10px 16px',
-                  borderRadius: JELLY_TOKENS.radius.md,
-                  background: JELLY_TOKENS.brandGhost,
-                  color: JELLY_TOKENS.brand,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontFamily: JELLY_TOKENS.font,
-                }}
-              >
-                See Pricing →
+              <div style={{ alignSelf: 'flex-start' }}>
+                <PillButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setRoute('pricing');
+                    onClose();
+                  }}
+                >
+                  See Pricing →
+                </PillButton>
               </div>
             </div>
           )}
@@ -795,25 +807,9 @@ function SettingsExternalLink({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ color: t.textSecondary, fontSize: 14, lineHeight: 1.6 }}>{description}</div>
-      <Link
-        href={href}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          alignSelf: 'flex-start',
-          gap: 6,
-          padding: '10px 16px',
-          borderRadius: JELLY_TOKENS.radius.md,
-          background: JELLY_TOKENS.brandGhost,
-          color: JELLY_TOKENS.brand,
-          fontSize: 14,
-          fontWeight: 600,
-          textDecoration: 'none',
-          fontFamily: JELLY_TOKENS.font,
-        }}
-      >
+      <PillButton variant="outline" size="sm" href={href} style={{ alignSelf: 'flex-start' }}>
         {label}
-      </Link>
+      </PillButton>
     </div>
   );
 }

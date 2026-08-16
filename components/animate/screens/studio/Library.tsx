@@ -16,7 +16,8 @@
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
-import { RetryError } from '../../primitives';
+import { RetryError, VCard } from '../../primitives';
+import { GlassCard, MicroLabel } from '../../cinema';
 import { LatestUpdateStrip } from '../../LatestUpdate';
 import { YouTubeLibrary } from '@/components/vater/youtube-library';
 
@@ -137,12 +138,12 @@ export function Library(): React.ReactElement {
           Loading library…
         </div>
       ) : ready.length === 0 && !error ? (
-        <div
+        <VCard
+          variant="flat"
           style={{
             padding: 32,
             textAlign: 'center',
-            border: `1px dashed ${t.border}`,
-            borderRadius: JELLY_TOKENS.radius.lg,
+            border: `1px dashed ${t.borderStrong}`,
           }}
         >
           <div style={{ fontSize: 15, fontWeight: 600, color: t.text }}>
@@ -164,27 +165,29 @@ export function Library(): React.ReactElement {
             onClick={requestNewVideo}
             style={{
               marginTop: 16,
-              background: JELLY_TOKENS.brand,
+              background: JELLY_TOKENS.gradPrimary,
               border: 'none',
               borderRadius: JELLY_TOKENS.radius.md,
               padding: '9px 18px',
               fontSize: 13,
               fontWeight: 600,
-              color: '#fff',
+              color: JELLY_TOKENS.onGradient,
               cursor: 'pointer',
               fontFamily: JELLY_TOKENS.font,
             }}
           >
             Create your first video
           </button>
-        </div>
+        </VCard>
       ) : (
         <>
-          <YouTubeLibrary
-            projects={ready}
-            onDelete={handleDelete}
-            onRecomposeStart={handleRecomposeStart}
-          />
+          <div className="jelly-legacy">
+            <YouTubeLibrary
+              projects={ready}
+              onDelete={handleDelete}
+              onRecomposeStart={handleRecomposeStart}
+            />
+          </div>
           <SendToScheduler projects={ready} />
         </>
       )}
@@ -224,14 +227,10 @@ function SendToScheduler({
   }, []);
 
   return (
-    <div
-      style={{
-        marginTop: 24,
-        border: `1px solid ${t.border}`,
-        borderRadius: JELLY_TOKENS.radius.lg,
-        padding: 16,
-      }}
-    >
+    <GlassCard style={{ marginTop: 24 }} padding={16}>
+      <MicroLabel tone="cyan" size={10.5} tracking="0.22em" style={{ marginBottom: 6 }}>
+        Distribution
+      </MicroLabel>
       <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
         Send to scheduler
       </div>
@@ -306,7 +305,7 @@ function SendToScheduler({
           </div>
         ))}
       </div>
-    </div>
+    </GlassCard>
   );
 }
 

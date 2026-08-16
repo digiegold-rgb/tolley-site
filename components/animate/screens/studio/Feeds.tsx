@@ -18,7 +18,9 @@ export function Feeds(): React.ReactElement {
         title="RSS Feeds"
         description="Add a feed and Jelly polls it every 15 minutes. Toggle auto-pipeline per feed and new items kick off a project automatically."
       />
-      <YouTubeRssPanel onProjectCreated={() => { /* no-op: parent route refreshes via polling */ }} />
+      <div className="jelly-legacy">
+        <YouTubeRssPanel onProjectCreated={() => { /* no-op: parent route refreshes via polling */ }} />
+      </div>
     </div>
   );
 }

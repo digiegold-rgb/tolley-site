@@ -25,14 +25,16 @@ interface CourseRow {
   status: string;
 }
 
+/* Status hues on the cinema palette: not-started is faint, waiting-on-a-human
+ * is warning, in-flight is violet, live/finished is success, dead is error. */
 export const LESSON_STATUS_META: Record<string, { label: string; color: string }> = {
-  planned: { label: 'Planned', color: '#8b8b94' },
-  script_requested: { label: 'Writing script…', color: '#b58900' },
-  script_ready: { label: 'Awaiting approval', color: '#c65d00' },
+  planned: { label: 'Planned', color: JELLY_TOKENS.dark.textFaint as string },
+  script_requested: { label: 'Writing script…', color: JELLY_TOKENS.cyan as string },
+  script_ready: { label: 'Awaiting approval', color: JELLY_TOKENS.warning as string },
   approved: { label: 'Approved', color: JELLY_TOKENS.brand as string },
   rendering: { label: 'Rendering', color: JELLY_TOKENS.brand as string },
   concat: { label: 'Stitching', color: JELLY_TOKENS.brand as string },
-  ready: { label: 'Ready', color: '#1a7f37' },
+  ready: { label: 'Ready', color: JELLY_TOKENS.success as string },
   failed: { label: 'Failed', color: JELLY_TOKENS.error as string },
 };
 
@@ -340,7 +342,7 @@ export function CourseScreen(): React.ReactElement {
                         style={{
                           fontSize: 11,
                           fontWeight: 600,
-                          color: '#fff',
+                          color: JELLY_TOKENS.onGradient,
                           background: meta.color,
                           borderRadius: JELLY_TOKENS.radius.pill,
                           padding: '3px 10px',

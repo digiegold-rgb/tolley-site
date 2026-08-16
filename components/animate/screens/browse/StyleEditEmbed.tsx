@@ -89,7 +89,9 @@ export function StyleEditEmbed({ styleId }: StyleEditEmbedProps): React.ReactEle
             border: `1px solid ${t.border}`,
           }}
         >
-          <StyleEditorSimple initialStyle={style} />
+          <div className="jelly-legacy">
+            <StyleEditorSimple initialStyle={style} />
+          </div>
         </div>
       )}
     </div>

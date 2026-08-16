@@ -50,6 +50,8 @@ import {
   assertOk,
   type BillingBlockReason,
 } from './BillingBlock';
+import { TINT_BG } from '../tint';
+import { reelLabel } from './reel-label';
 
 const CUT_MODES = ['Smooth', 'Natural', 'Jumpy'] as const;
 type CutMode = (typeof CUT_MODES)[number];
@@ -341,6 +343,7 @@ export function VoiceoverStep({
       <VCard>
         <SectionHeader
           icon="mic"
+          eyebrow={reelLabel(2)}
           title="Voiceover Generator"
           description="Generate professional AI voiceovers from your script using multiple voice options"
           actionLabel={generating ? 'Generating…' : 'Generate'}
@@ -538,11 +541,13 @@ export function VoiceoverStep({
             >
               Voice Settings
             </div>
-            <YouTubeVoiceClonePanel
-              mode="select"
-              value={voiceClone}
-              onChange={handleVoiceChange}
-            />
+            <div className="jelly-legacy">
+              <YouTubeVoiceClonePanel
+                mode="select"
+                value={voiceClone}
+                onChange={handleVoiceChange}
+              />
+            </div>
           </div>
         )}
 
@@ -774,7 +779,7 @@ export function VoiceoverStep({
               padding: '8px 12px',
               fontSize: 13,
               borderRadius: JELLY_TOKENS.radius.md,
-              background: 'rgba(220,38,38,0.08)',
+              ...TINT_BG.error,
               color: JELLY_TOKENS.error,
             }}
           >
@@ -833,7 +838,7 @@ export function VoiceoverStep({
               padding: '8px 12px',
               fontSize: 13,
               borderRadius: JELLY_TOKENS.radius.md,
-              background: 'rgba(220,38,38,0.08)',
+              ...TINT_BG.error,
               color: JELLY_TOKENS.error,
             }}
           >
@@ -845,7 +850,7 @@ export function VoiceoverStep({
       {/* Popular voices auditioning panel (demo-only — preview audio).
           Hidden while BYO narration is set: nothing here would be used. */}
       {!narrationUrl && (
-        <div style={{ marginTop: 16 }}>
+        <div className="jelly-legacy" style={{ marginTop: 16 }}>
           <YouTubePopularVoices />
         </div>
       )}

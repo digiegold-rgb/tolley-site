@@ -95,7 +95,11 @@
 .jelly-legacy .bg-emerald-500\/10 { background: rgba(52,201,138,0.10); }
 .jelly-legacy .text-violet-300, .jelly-legacy .text-violet-400, .jelly-legacy .text-purple-300, .jelly-legacy .text-fuchsia-300 { color: #B3A6FF; }
 .jelly-legacy .bg-violet-600, .jelly-legacy .bg-violet-500, .jelly-legacy .bg-purple-600, .jelly-legacy .bg-fuchsia-600 { background: linear-gradient(120deg, #8F7DFF, #6FD6FF); color: #0A0A14; }
-.jelly-legacy .bg-gradient-to-r, .jelly-legacy .bg-gradient-to-br, .jelly-legacy .bg-gradient-to-b { background-image: linear-gradient(120deg, #8F7DFF, #6FD6FF); color: #0A0A14; }
+.jelly-legacy .bg-gradient-to-br.from-sky-500\/5, .jelly-legacy .bg-gradient-to-br.from-sky-500\/20, .jelly-legacy .bg-gradient-to-br.from-fuchsia-500\/20 { background-image: linear-gradient(160deg, rgba(143,125,255,0.12), rgba(111,214,255,0.06)); color: inherit; }
+.jelly-legacy .bg-gradient-to-br.from-fuchsia-500\/20, .jelly-legacy .bg-gradient-to-br.from-sky-500\/20, .jelly-legacy .bg-gradient-to-br.from-emerald-500\/20 { border-color: rgba(143,125,255,0.5); }
+.jelly-legacy .text-fuchsia-200, .jelly-legacy .text-sky-200, .jelly-legacy .text-emerald-200 { color: #F0EEF8; }
+.jelly-legacy .border-fuchsia-400\/50, .jelly-legacy .border-sky-400\/50 { border-color: rgba(143,125,255,0.5); }
+.jelly-legacy .border-sky-500\/25 { border-color: rgba(111,214,255,0.25); }
 .jelly-legacy .rounded-lg, .jelly-legacy .rounded-xl { border-radius: 12px; }
 .jelly-legacy .rounded-2xl { border-radius: 16px; }
 .jelly-legacy input, .jelly-legacy textarea, .jelly-legacy select {

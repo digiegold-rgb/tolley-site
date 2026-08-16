@@ -26,6 +26,7 @@ import { Icon } from '../../Icon';
 import { isSharedVoiceId, voiceDisplayName } from '@/lib/vater/voice-ids';
 import { devError } from '../../log';
 import { VBtn } from '../../primitives';
+import { TINT_BG, TINT_BORDER } from '../tint';
 
 /* ─── Types ─── */
 
@@ -621,9 +622,11 @@ export function StyleWizardModal({
           width: '100%',
           maxWidth: 720,
           maxHeight: '92vh',
-          background: t.card,
-          border: `1px solid ${t.border}`,
-          borderRadius: JELLY_TOKENS.radius.lg,
+          /* Opaque panel — `t.card` is translucent glass now. */
+          background: t.panel,
+          border: `1px solid ${t.borderStrong}`,
+          borderRadius: JELLY_TOKENS.radius.xxl,
+          boxShadow: JELLY_TOKENS.shadow24,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -690,7 +693,7 @@ export function StyleWizardModal({
                 padding: '10px 14px',
                 borderRadius: JELLY_TOKENS.radius.md,
                 border: `1px solid ${JELLY_TOKENS.error}`,
-                background: 'rgba(220,38,38,0.08)',
+                ...TINT_BG.error,
                 color: JELLY_TOKENS.error,
                 fontSize: 13,
               }}
@@ -944,8 +947,8 @@ export function StyleWizardModal({
                     marginTop: 8,
                     padding: '8px 12px',
                     borderRadius: JELLY_TOKENS.radius.md,
-                    background: 'rgba(245,158,11,0.12)',
-                    border: `1px solid rgba(245,158,11,0.45)`,
+                    ...TINT_BG.warning,
+                    border: `1px solid ${TINT_BORDER.warning}`,
                     color: JELLY_TOKENS.warning,
                     fontSize: 12,
                   }}
@@ -1435,6 +1438,10 @@ export function StyleWizardModal({
                     gap: 12,
                   }}
                 >
+                  {/* Caption/accent colour are burned into the rendered video,
+                      not UI chrome — `#FFFFFF` is the real default caption
+                      colour and stays a literal. The accent default moved to
+                      JELLY_TOKENS.brand when the old #8B5CF6 violet retired. */}
                   <div>
                     <label style={labelStyle}>Caption color</label>
                     <div style={{ display: 'flex', gap: 8 }}>
@@ -1467,7 +1474,7 @@ export function StyleWizardModal({
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input
                         type="color"
-                        value={accentColor || '#8B5CF6'}
+                        value={accentColor || JELLY_TOKENS.brand}
                         onChange={(e) => setAccentColor(e.target.value)}
                         style={{
                           width: 40,
@@ -1484,7 +1491,7 @@ export function StyleWizardModal({
                         type="text"
                         value={accentColor}
                         onChange={(e) => setAccentColor(e.target.value)}
-                        placeholder="#8B5CF6"
+                        placeholder={JELLY_TOKENS.brand}
                         style={{ ...inputStyle, flex: 1 }}
                       />
                     </div>

@@ -1,8 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { LegalPageShell } from "@/components/legal/legal-page-shell";
-import { LegalSection, type LegalSectionContent } from "@/components/legal/legal-section";
+import { MicroLabel } from "@/components/animate/cinema";
+import {
+  CinemaLegalMeta,
+  CinemaLegalShell,
+} from "@/components/animate/legal/CinemaLegalShell";
+import {
+  CinemaLegalSection,
+  LEGAL_BODY_STYLE,
+  LEGAL_LINK_STYLE,
+  LEGAL_STRONG_STYLE,
+} from "@/components/animate/legal/CinemaLegalSection";
+import type { LegalSectionContent } from "@/components/legal/legal-section";
+import { JELLY_TOKENS } from "@/components/animate/tokens";
 import {
   ANIMATE_LEGAL_ADDRESS,
   ANIMATE_LEGAL_BRAND,
@@ -31,6 +42,25 @@ const EXAMPLE_MINUTES = 3 + 24 / 60;
 const EXAMPLE_OPS = EXAMPLE_MINUTES * ANIMATE_OPS_RATE_PER_MIN;
 const EXAMPLE_COMPUTE = 1.0;
 
+/* Receipt rows in the worked example — laid out like a box-office stub. */
+const EXAMPLE_ROW: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "baseline",
+  gap: 16,
+  fontFamily: JELLY_TOKENS.font,
+  fontSize: 14.5,
+  lineHeight: 1.6,
+  color: JELLY_TOKENS.dark.textSecondary,
+};
+
+const EXAMPLE_FIGURE: React.CSSProperties = {
+  margin: 0,
+  fontWeight: 600,
+  whiteSpace: "nowrap",
+  color: JELLY_TOKENS.dark.text,
+};
+
 const SECTIONS: LegalSectionContent[] = [
   {
     heading: "1. What beta means here",
@@ -48,31 +78,63 @@ const SECTIONS: LegalSectionContent[] = [
       "You see an estimate before the render starts, and the itemized actual after it finishes. The actual is what you pay.",
     ],
     children: (
-      <div className="rounded-2xl border border-white/14 bg-black/25 p-4 text-sm leading-6 text-white/86 sm:p-5 sm:text-[0.95rem]">
-        <p className="text-[0.7rem] tracking-[0.28em] text-white/60 uppercase">
+      <div
+        style={{
+          background: JELLY_TOKENS.dark.cardAlt,
+          border: `1px solid ${JELLY_TOKENS.dark.border}`,
+          borderRadius: JELLY_TOKENS.radius.xl,
+          padding: 20,
+        }}
+      >
+        <MicroLabel tone="cyan" size={10.5} tracking="0.28em" as="p" style={{ whiteSpace: "normal" }}>
           Worked example — a 3:24 video
-        </p>
-        <dl className="mt-3 space-y-2">
-          <div className="flex justify-between gap-4">
-            <dt>
+        </MicroLabel>
+        <dl
+          style={{
+            margin: "14px 0 0",
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
+          <div style={EXAMPLE_ROW}>
+            <dt style={{ margin: 0 }}>
               Operations fee — 3.4 min × ${ANIMATE_OPS_RATE_PER_MIN.toFixed(2)}/min
             </dt>
-            <dd className="font-semibold text-white/94">${EXAMPLE_OPS.toFixed(2)}</dd>
+            <dd className="jc-tabular" style={EXAMPLE_FIGURE}>
+              ${EXAMPLE_OPS.toFixed(2)}
+            </dd>
           </div>
-          <div className="flex justify-between gap-4">
-            <dt>Compute at cost — GPU, models, voice</dt>
-            <dd className="font-semibold text-white/94">
+          <div style={EXAMPLE_ROW}>
+            <dt style={{ margin: 0 }}>Compute at cost — GPU, models, voice</dt>
+            <dd className="jc-tabular" style={EXAMPLE_FIGURE}>
               ≈ ${EXAMPLE_COMPUTE.toFixed(2)}
             </dd>
           </div>
-          <div className="flex justify-between gap-4 border-t border-white/14 pt-2">
-            <dt className="font-semibold text-white/94">All-in</dt>
-            <dd className="font-semibold text-white/94">
+          <div
+            style={{
+              ...EXAMPLE_ROW,
+              borderTop: `1px dashed ${JELLY_TOKENS.dark.borderStrong}`,
+              paddingTop: 10,
+            }}
+          >
+            <dt style={{ ...LEGAL_STRONG_STYLE, margin: 0 }}>All-in</dt>
+            <dd
+              className="jc-tabular"
+              style={{ ...EXAMPLE_FIGURE, color: JELLY_TOKENS.cyan }}
+            >
               ≈ ${(EXAMPLE_OPS + EXAMPLE_COMPUTE).toFixed(2)}
             </dd>
           </div>
         </dl>
-        <p className="mt-3 text-xs text-white/70">
+        <p
+          style={{
+            ...LEGAL_BODY_STYLE,
+            marginTop: 14,
+            fontSize: 13,
+            color: JELLY_TOKENS.dark.textFaint,
+          }}
+        >
           Compute varies with the models and shot count a job uses — that half of the bill
           is metered, not quoted. The operations fee is fixed per finished minute.
         </p>
@@ -111,12 +173,9 @@ const SECTIONS: LegalSectionContent[] = [
       "Making a real person appear to say or do something they did not. That includes deepfakes, fabricated endorsements, and fake reviews or testimonials — the FTC fines per violation for those.",
     ],
     children: (
-      <p className="text-sm leading-6 text-white/83 sm:text-[0.95rem]">
+      <p style={LEGAL_BODY_STYLE}>
         The full list is in Sections 9 and 10 of the{" "}
-        <Link
-          href={ANIMATE_LINKS.terms}
-          className="text-violet-200 underline underline-offset-2 transition hover:text-white"
-        >
+        <Link href={ANIMATE_LINKS.terms} className="jc-link" style={LEGAL_LINK_STYLE}>
           Terms
         </Link>
         . Non-consensual intimate imagery is removed within 48 hours of a credible report
@@ -154,67 +213,59 @@ const SECTIONS: LegalSectionContent[] = [
 
 export default function AnimateBetaPage() {
   return (
-    <LegalPageShell
-      kicker="jelly studio · beta"
+    <CinemaLegalShell
+      kicker="Jelly Studio — Beta"
       title="Beta Addendum"
       subtitle="The short, plain-English version of what you are signing up for. It is part of the Terms — where the two say the same thing differently, the Terms control."
     >
-      <section className="grid gap-3 rounded-2xl border border-white/14 bg-white/[0.03] p-4 text-sm text-white/84 sm:grid-cols-2 sm:text-[0.94rem]">
-        <p>
-          <span className="font-semibold text-white/94">Service: </span>
-          {ANIMATE_LEGAL_BRAND} (beta)
-        </p>
-        <p>
-          <span className="font-semibold text-white/94">Operator: </span>
-          {ANIMATE_LEGAL_ENTITY}
-        </p>
-        <p>
-          <span className="font-semibold text-white/94">Effective: </span>
-          {ANIMATE_LEGAL_EFFECTIVE_DATE}
-        </p>
-        <p>
-          <span className="font-semibold text-white/94">Last updated: </span>
-          {ANIMATE_LEGAL_LAST_UPDATED} (version {TOS_VERSION})
-        </p>
-        <p>
-          <span className="font-semibold text-white/94">Address: </span>
-          {ANIMATE_LEGAL_ADDRESS}
-        </p>
-        <p>
-          <span className="font-semibold text-white/94">Contact: </span>
-          <a
-            className="underline decoration-white/35 underline-offset-4"
-            href={`mailto:${ANIMATE_LEGAL_EMAIL}`}
-          >
-            {ANIMATE_LEGAL_EMAIL}
-          </a>
-        </p>
-      </section>
+      <CinemaLegalMeta
+        rows={[
+          { label: "Service", value: `${ANIMATE_LEGAL_BRAND} (beta)` },
+          { label: "Operator", value: ANIMATE_LEGAL_ENTITY },
+          { label: "Effective", value: ANIMATE_LEGAL_EFFECTIVE_DATE },
+          {
+            label: "Last updated",
+            value: `${ANIMATE_LEGAL_LAST_UPDATED} (version ${TOS_VERSION})`,
+          },
+          { label: "Address", value: ANIMATE_LEGAL_ADDRESS },
+          {
+            label: "Contact",
+            value: (
+              <a
+                href={`mailto:${ANIMATE_LEGAL_EMAIL}`}
+                className="jc-link"
+                style={LEGAL_LINK_STYLE}
+              >
+                {ANIMATE_LEGAL_EMAIL}
+              </a>
+            ),
+          },
+        ]}
+      />
 
       {SECTIONS.map((section) => (
-        <LegalSection key={section.heading} {...section} />
+        <CinemaLegalSection key={section.heading} {...section} />
       ))}
 
-      <section className="flex flex-wrap gap-x-4 gap-y-2 border-t border-white/14 pt-5 text-sm text-white/78">
-        <Link
-          href={ANIMATE_LINKS.terms}
-          className="underline decoration-white/35 underline-offset-4 transition hover:text-white"
-        >
+      <section
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "10px 20px",
+          borderTop: `1px solid ${JELLY_TOKENS.dark.border}`,
+          paddingTop: 22,
+        }}
+      >
+        <Link href={ANIMATE_LINKS.terms} className="jc-link" style={LEGAL_LINK_STYLE}>
           Terms of Service
         </Link>
-        <Link
-          href={ANIMATE_LINKS.privacy}
-          className="underline decoration-white/35 underline-offset-4 transition hover:text-white"
-        >
+        <Link href={ANIMATE_LINKS.privacy} className="jc-link" style={LEGAL_LINK_STYLE}>
           Privacy Policy
         </Link>
-        <Link
-          href="/animate"
-          className="underline decoration-white/35 underline-offset-4 transition hover:text-white"
-        >
+        <Link href="/animate" className="jc-link" style={LEGAL_LINK_STYLE}>
           Back to the Studio
         </Link>
       </section>
-    </LegalPageShell>
+    </CinemaLegalShell>
   );
 }

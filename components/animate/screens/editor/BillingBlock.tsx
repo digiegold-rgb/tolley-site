@@ -9,9 +9,10 @@
  */
 
 import * as React from 'react';
-import { JELLY_TOKENS } from '../../tokens';
+import { JELLY_TOKENS, glass } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { VBtn } from '../../primitives';
+import { AdmitOneTicket, GlassCard, MicroLabel, type TicketNote } from '../../cinema';
 import { useRenderEstimate } from '@/lib/vater/use-estimate';
 
 /** 402 budget.reason values from the generation routes' billing gate. */
@@ -203,9 +204,24 @@ export function BillingBlockModal({
       ? Math.max(0, context.estimateCents - balanceCents)
       : null;
 
+  /* Every reason keeps its own copy and its own CTA; what the cinema pass adds
+   * is the stub around it. `ticket` is the "NOT ADMITTED — …" label, `state`
+   * the blinking status line, and `amountUsd` the one number worth printing
+   * big: what is missing, or failing that what the render is quoted at. When
+   * there is no honest number (the legacy card-on-file reasons are not about a
+   * price) the fare is omitted rather than faked as $0.00. */
   const content: Record<
     BillingBlockReason,
-    { title: string; body: string; cta: string; onCta: () => void }
+    {
+      title: string;
+      body: string;
+      cta: string;
+      onCta: () => void;
+      ticket: string;
+      state: string;
+      amountUsd: number | null;
+      amountNote: string | null;
+    }
   > = {
     // The live wall. Name the two numbers — a customer who is told only "add
     // credit" has to go and work out how much.
@@ -228,33 +244,79 @@ export function BillingBlockModal({
           }${shortBy ? ` — about ${usd(shortBy)} short` : ''}. You are only ever charged for videos that finish; failed renders are free.`,
       cta: 'Buy credits',
       onCta: openBilling,
+      ticket: context?.grantBlocked
+        ? 'NOT ADMITTED — PURCHASED CREDIT REQUIRED'
+        : 'NOT ADMITTED — OUT OF CREDIT',
+      state: context?.grantBlocked ? 'WELCOME CREDIT — STILLS ONLY' : 'BOX OFFICE CLOSED',
+      amountUsd:
+        shortBy !== null && shortBy > 0
+          ? shortBy / 100
+          : context?.estimateCents !== undefined
+            ? context.estimateCents / 100
+            : null,
+      amountNote:
+        shortBy !== null && shortBy > 0 ? 'short by' : 'estimated for this render',
     },
     trial_cap_reached: {
       title: 'Free tier used up',
       body: "You've hit the free-tier cap. Add a card to keep going — pay per clip, no subscription, nothing charged until you generate.",
       cta: 'Add a card',
       onCta: () => void goStripe('/api/vater/billing/setup'),
+      ticket: 'NOT ADMITTED — FREE TIER USED UP',
+      state: 'NO CARD ON FILE',
+      amountUsd: null,
+      amountNote: null,
     },
     subscription_inactive: {
       title: 'Add a card to keep going',
       body: 'Generation needs a card on file. No subscription — you only pay the per-action price for what you make.',
       cta: 'Add a card',
       onCta: () => void goStripe('/api/vater/billing/setup'),
+      ticket: 'NOT ADMITTED — CARD REQUIRED',
+      state: 'NO CARD ON FILE',
+      amountUsd: null,
+      amountNote: null,
     },
     payment_past_due: {
       title: 'Payment failed — update your card',
       body: 'Your last invoice could not be charged, so rendering is paused. Update your card to resume — your projects are safe.',
       cta: 'Update card',
       onCta: () => void goStripe('/api/vater/billing/portal'),
+      ticket: 'NOT ADMITTED — PAYMENT FAILED',
+      state: 'CARD DECLINED',
+      amountUsd: null,
+      amountNote: null,
     },
     monthly_limit_exceeded: {
       title: 'Monthly limit reached',
       body: 'This action would put you over your self-set monthly spending limit. Raise the limit on the Pricing screen to continue.',
       cta: 'Open Billing',
       onCta: openBilling,
+      ticket: 'NOT ADMITTED — MONTHLY LIMIT',
+      state: 'SELF-SET CEILING',
+      amountUsd: null,
+      amountNote: null,
     },
   };
   const c = content[reason];
+
+  /* Fine print under the fare: only numbers we actually have. */
+  const wallNotes: TicketNote[] = [];
+  if (reason === 'insufficient_credits') {
+    if (balanceCents !== undefined) {
+      wallNotes.push({ label: 'your balance', value: usd(balanceCents) });
+    }
+    if (context?.estimateCents !== undefined && c.amountNote !== 'estimated for this render') {
+      wallNotes.push({ label: 'this render', value: usd(context.estimateCents) });
+    }
+    wallNotes.push({
+      label: 'failed renders',
+      value: 'never charged',
+      tone: 'cyan',
+    });
+  } else {
+    wallNotes.push({ label: 'charged so far', value: 'nothing', tone: 'cyan' });
+  }
 
   return (
     <div
@@ -275,92 +337,151 @@ export function BillingBlockModal({
         if (e.target === e.currentTarget && !working) onClose();
       }}
     >
+      {/* Opaque `t.panel`, not `t.card`: a modal that lets the editor show
+        * through is a modal you cannot read. */}
       <div
         style={{
           width: '100%',
-          maxWidth: 440,
-          background: t.card,
-          border: `1px solid ${t.border}`,
-          borderRadius: JELLY_TOKENS.radius.lg,
+          maxWidth: 460,
+          background: t.panel,
+          border: `1px solid ${t.borderStrong}`,
+          borderRadius: JELLY_TOKENS.radius.xxl,
           padding: 20,
+          boxShadow: JELLY_TOKENS.shadow24,
+          fontFamily: JELLY_TOKENS.font,
         }}
       >
-        <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>{c.title}</div>
-        <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 8, lineHeight: 1.6 }}>
-          {c.body}
-        </div>
+        {c.amountUsd !== null ? (
+          <AdmitOneTicket
+            data-testid="billing-block-ticket"
+            size="card"
+            label={c.ticket}
+            state={c.state}
+            totalUsd={c.amountUsd}
+            notes={wallNotes}
+            footer={c.body}
+          />
+        ) : (
+          /* No number to print, so the stub carries the headline instead of a
+           * fare. Same ticket furniture, no invented amount. */
+          <GlassCard variant="ticket" data-testid="billing-block-ticket" padding={22}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                gap: 12,
+              }}
+            >
+              <MicroLabel tone="violet" size={11} tracking="0.24em">
+                {c.ticket}
+              </MicroLabel>
+              <div style={{ fontSize: 11, color: JELLY_TOKENS.cyan, letterSpacing: '0.04em' }}>
+                ● {c.state}
+              </div>
+            </div>
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                letterSpacing: '-0.01em',
+                color: t.text,
+                marginTop: 8,
+                lineHeight: 1.25,
+              }}
+            >
+              {c.title}
+            </div>
+            <div style={{ borderTop: `1px dashed ${t.borderStrong}`, margin: '16px 0' }} />
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 12,
+                fontSize: 12.5,
+                color: JELLY_TOKENS.cyan,
+              }}
+            >
+              <span>charged so far</span>
+              <span>nothing</span>
+            </div>
+            <div
+              style={{
+                fontSize: 11.5,
+                color: t.textFaint,
+                lineHeight: 1.5,
+                marginTop: 12,
+              }}
+            >
+              {c.body}
+            </div>
+          </GlassCard>
+        )}
 
         {/* Draft vs full, for THIS project. The gap between them is the whole
           * decision: a stills draft often clears a balance that the animated
           * cut does not, and someone staring at a wall should be told that
           * rather than left to buy blind. */}
         {estimate && (
-          <div
+          <GlassCard
             data-testid="billing-block-estimate"
-            style={{
-              marginTop: 14,
-              border: `1px solid ${t.border}`,
-              borderRadius: JELLY_TOKENS.radius.md,
-              overflow: 'hidden',
-              fontSize: 13,
-            }}
+            padding={0}
+            radius={JELLY_TOKENS.radius.lg}
+            style={{ marginTop: 14, overflow: 'hidden', fontSize: 13 }}
           >
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 gap: 12,
-                padding: '8px 12px',
-                background: t.cardAlt,
-                color: t.textSecondary,
-                fontSize: 11,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
+                padding: '9px 14px',
+                borderBottom: `1px dashed ${t.border}`,
               }}
             >
-              <span>Estimated for this video</span>
-              <span>{estimate.minutes.toFixed(1)} min</span>
+              <MicroLabel tone="faint" size={10.5} tracking="0.2em" color={t.textFaint}>
+                Estimated for this video
+              </MicroLabel>
+              <span className="jc-tabular" style={{ fontSize: 11, color: t.textFaint }}>
+                {estimate.minutes.toFixed(1)} min
+              </span>
             </div>
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 gap: 12,
-                padding: '8px 12px',
+                padding: '8px 14px',
                 color: t.text,
               }}
             >
               <span>Draft — still scenes</span>
-              <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
-                ${estimate.draftUsd.toFixed(2)}
-              </strong>
+              <strong className="jc-tabular">${estimate.draftUsd.toFixed(2)}</strong>
             </div>
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 gap: 12,
-                padding: '8px 12px',
+                padding: '8px 14px',
                 color: t.text,
                 borderTop: `1px solid ${t.border}`,
               }}
             >
               <span>Full — with motion</span>
-              <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
-                ${estimate.fullUsd.toFixed(2)}
-              </strong>
+              <strong className="jc-tabular">${estimate.fullUsd.toFixed(2)}</strong>
             </div>
-          </div>
+          </GlassCard>
         )}
 
         {error && (
           <div
             style={{
+              ...glass(t),
               marginTop: 12,
               padding: '8px 12px',
               fontSize: 13,
               borderRadius: JELLY_TOKENS.radius.md,
-              background: 'rgba(220,38,38,0.08)',
+              borderLeft: `3px solid ${JELLY_TOKENS.error}`,
               color: JELLY_TOKENS.error,
             }}
           >

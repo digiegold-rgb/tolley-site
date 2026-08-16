@@ -193,7 +193,10 @@ export function LessonDetailPanel({
         />
       )}
       {warnings.length > 0 && (
-        <VCard variant="flat" style={{ padding: '10px 14px', fontSize: 12, color: '#b58900' }}>
+        <VCard
+          variant="flat"
+          style={{ padding: '10px 14px', fontSize: 12, color: JELLY_TOKENS.warning }}
+        >
           {warnings.map((w, i) => (
             <div key={i}>⚠ {w}</div>
           ))}
@@ -237,7 +240,9 @@ export function LessonDetailPanel({
                   <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>
                     Chapter {ch.idx}: {ch.title}
                   </div>
-                  <div style={{ fontSize: 12, color: off ? '#b58900' : t.textSecondary }}>
+                  <div
+                    style={{ fontSize: 12, color: off ? JELLY_TOKENS.warning : t.textSecondary }}
+                  >
                     {wc} words {off ? `(target ~${CHAPTER_TARGET})` : ''}
                   </div>
                 </div>
@@ -310,12 +315,12 @@ export function LessonDetailPanel({
             {segments.map((s) => {
               const color =
                 s.status === 'ready'
-                  ? '#1a7f37'
+                  ? (JELLY_TOKENS.success as string)
                   : s.status === 'failed'
                     ? (JELLY_TOKENS.error as string)
                     : s.status === 'rendering'
                       ? (JELLY_TOKENS.brand as string)
-                      : '#8b8b94';
+                      : (JELLY_TOKENS.dark.textFaint as string);
               return (
                 <div
                   key={s.idx}
@@ -372,7 +377,11 @@ export function LessonDetailPanel({
           <video
             controls
             src={lesson.finalVideoUrl}
-            style={{ width: '100%', borderRadius: JELLY_TOKENS.radius.md, background: '#000' }}
+            style={{
+              width: '100%',
+              borderRadius: JELLY_TOKENS.radius.md,
+              background: JELLY_TOKENS.dark.cardAlt,
+            }}
           />
           <div style={{ fontSize: 12, color: t.textSecondary, marginTop: 8 }}>
             {cost !== null ? `${fmtUsd(cost)} all-in · ` : ''}

@@ -61,7 +61,11 @@ export function CustomArtStylesEmbed(): React.ReactElement {
 
       {error && <RetryError message={`Could not load — ${error}`} onRetry={load} />}
 
-      {!loading && !error && <CustomArtStyleGallery items={items} />}
+      {!loading && !error && (
+        <div className="jelly-legacy">
+          <CustomArtStyleGallery items={items} />
+        </div>
+      )}
     </div>
   );
 }

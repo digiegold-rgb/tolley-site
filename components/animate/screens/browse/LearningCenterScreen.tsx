@@ -14,6 +14,7 @@ import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VCard, SectionHeader } from '../../primitives';
+import { ON_GRADIENT_PLATE } from '../tint';
 
 const STORAGE_KEY = 'vater:learning:v1';
 
@@ -112,7 +113,7 @@ export function LearningCenterScreen(): React.ReactElement {
         description="Master every tool in your workflow. Earn credits as you complete modules."
       />
 
-      <VCard variant="hero" style={{ background: JELLY_TOKENS.gradTutorial, color: '#fff' }}>
+      <VCard variant="hero" style={{ background: JELLY_TOKENS.gradTutorial, color: JELLY_TOKENS.onGradient }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 700 }}>Complete modules to earn credits</div>
@@ -127,12 +128,19 @@ export function LearningCenterScreen(): React.ReactElement {
             <div style={{ fontSize: 28, fontWeight: 700 }}>{pct}%</div>
           </div>
         </div>
-        <div style={{ height: 6, background: 'rgba(255,255,255,0.2)', borderRadius: 3, marginTop: 12 }}>
+        <div
+          style={{
+            height: 6,
+            background: ON_GRADIENT_PLATE,
+            borderRadius: 3,
+            marginTop: 12,
+          }}
+        >
           <div
             style={{
               width: `${pct}%`,
               height: '100%',
-              background: '#fff',
+              background: JELLY_TOKENS.onGradient,
               borderRadius: 3,
               transition: 'width .3s ease',
             }}

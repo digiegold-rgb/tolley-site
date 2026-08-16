@@ -80,7 +80,7 @@ export function AnalyticsScreen(): React.ReactElement {
           style={{
             padding: '8px 16px', borderRadius: JELLY_TOKENS.radius.pill, cursor: 'pointer',
             background: tab === x ? JELLY_TOKENS.brand : 'transparent',
-            color: tab === x ? '#fff' : t.textSecondary,
+            color: tab === x ? JELLY_TOKENS.onGradient : t.textSecondary,
             fontSize: 13, fontWeight: tab === x ? 600 : 500,
           }}>{x === 'overview' ? 'Overview' : 'Cost'}</div>
       ))}

@@ -14,12 +14,16 @@
  */
 
 import * as React from 'react';
-import { JELLY_TOKENS } from './tokens';
+import { JELLY_TOKENS, glass } from './tokens';
 import { useTheme } from './theme-context';
 import { useTier } from './tier-context';
 import { Icon } from './Icon';
 import { VBtn } from './primitives';
+import { MicroLabel, PillButton } from './cinema';
 import { devError } from './log';
+
+/** Modal scrim — the ink base at 66%, not a palette hue. */
+const SCRIM = 'rgba(8,7,15,0.66)';
 import {
   PIPELINE_STEPS,
   HELP_FAQ,
@@ -110,10 +114,15 @@ export function HelpDrawer({
 
   return (
     <div
+      // The drawer renders as a sibling of the shell root, so it needs its own
+      // `.jelly-cinema` scope for the `.jc-*` utilities to apply inside it.
+      className="jelly-cinema"
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.5)',
+        background: SCRIM,
+        backdropFilter: 'blur(3px)',
+        WebkitBackdropFilter: 'blur(3px)',
         zIndex: 250,
         display: 'flex',
         justifyContent: 'flex-end',
@@ -131,12 +140,14 @@ export function HelpDrawer({
           width: 'min(440px, 100vw)',
           maxWidth: '100vw',
           height: '100%',
-          background: t.card,
+          // Opaque: a drawer you can read the studio through is unreadable.
+          background: t.panel,
           borderLeft: `1px solid ${t.border}`,
           boxShadow: JELLY_TOKENS.shadow24,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          fontFamily: JELLY_TOKENS.font,
         }}
       >
         <div
@@ -149,8 +160,20 @@ export function HelpDrawer({
             flexShrink: 0,
           }}
         >
-          <div style={{ fontSize: 18, fontWeight: 700, color: t.text }}>
-            How Jelly works
+          <div>
+            <MicroLabel tone="cyan" style={{ marginBottom: 6 }}>
+              Studio — help
+            </MicroLabel>
+            <div
+              style={{
+                fontSize: 21,
+                fontWeight: 600,
+                letterSpacing: '-0.02em',
+                color: t.text,
+              }}
+            >
+              How Jelly works
+            </div>
           </div>
           <button
             type="button"
@@ -181,13 +204,23 @@ export function HelpDrawer({
         >
           <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {PIPELINE_STEPS.map((s) => (
-              <div key={s.n} style={{ display: 'flex', gap: 12 }}>
+              <div
+                key={s.n}
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  ...glass(t),
+                  borderRadius: JELLY_TOKENS.radius.md,
+                  padding: 12,
+                }}
+              >
                 <div
+                  className="jc-tabular"
                   style={{
-                    fontFamily: 'monospace',
+                    fontFamily: JELLY_TOKENS.fontMono,
                     fontSize: 12,
                     fontWeight: 700,
-                    color: JELLY_TOKENS.brand,
+                    color: JELLY_TOKENS.cyan,
                     paddingTop: 2,
                     flexShrink: 0,
                   }}
@@ -219,7 +252,10 @@ export function HelpDrawer({
             <SectionLabel>Common questions</SectionLabel>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {HELP_FAQ.map((f) => (
-                <div key={f.q}>
+                <div
+                  key={f.q}
+                  style={{ ...glass(t), borderRadius: JELLY_TOKENS.radius.md, padding: 12 }}
+                >
                   <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
                     {f.q}
                   </div>
@@ -254,43 +290,23 @@ export function HelpDrawer({
           <VBtn size="sm" onClick={onGoBilling}>
             Billing
           </VBtn>
-          <a
+          <PillButton
+            variant="ghost"
+            size="sm"
             href={`mailto:${HELP_SUPPORT_EMAIL}?subject=Jelly%20Studio%20support`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              padding: '8px 16px',
-              borderRadius: JELLY_TOKENS.radius.md,
-              border: `1px solid ${t.border}`,
-              color: t.text,
-              fontSize: 13,
-              fontWeight: 600,
-              textDecoration: 'none',
-              fontFamily: JELLY_TOKENS.font,
-            }}
           >
             {HELP_SUPPORT_EMAIL}
-          </a>
+          </PillButton>
           {capabilities.rules && (
-            <a
+            <PillButton
+              variant="ghost"
+              size="sm"
               href="/api/vater/rules"
               target="_blank"
               rel="noreferrer"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: '8px 16px',
-                borderRadius: JELLY_TOKENS.radius.md,
-                border: `1px solid ${t.border}`,
-                color: t.text,
-                fontSize: 13,
-                fontWeight: 600,
-                textDecoration: 'none',
-                fontFamily: JELLY_TOKENS.font,
-              }}
             >
               Rules PDF
-            </a>
+            </PillButton>
           )}
         </div>
       </div>
@@ -303,18 +319,15 @@ export function HelpDrawer({
 function SectionLabel({ children }: { children: React.ReactNode }): React.ReactElement {
   const { t } = useTheme();
   return (
-    <div
-      style={{
-        fontSize: 12,
-        fontWeight: 700,
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase',
-        color: t.textSecondary,
-        marginBottom: 12,
-      }}
+    <MicroLabel
+      tone="faint"
+      color={t.textFaint}
+      size={10.5}
+      tracking="0.26em"
+      style={{ marginBottom: 12, whiteSpace: 'normal' }}
     >
       {children}
-    </div>
+    </MicroLabel>
   );
 }
 
@@ -344,13 +357,14 @@ const WhatsNewSection = React.forwardRef<HTMLDivElement>(
                   }}
                 >
                   <span
+                    className="jc-tabular"
                     style={{
                       fontSize: 11,
                       fontWeight: 700,
                       padding: '2px 8px',
                       borderRadius: JELLY_TOKENS.radius.full,
-                      color: current ? '#fff' : t.textSecondary,
-                      background: current ? JELLY_TOKENS.brand : t.cardAlt,
+                      color: current ? JELLY_TOKENS.onGradient : t.textSecondary,
+                      background: current ? JELLY_TOKENS.gradPrimary : t.card,
                       border: `1px solid ${current ? 'transparent' : t.border}`,
                     }}
                   >
@@ -499,8 +513,10 @@ const FeedbackSection = React.forwardRef<HTMLDivElement, FeedbackSectionProps>(
                 boxSizing: 'border-box',
                 padding: 12,
                 borderRadius: JELLY_TOKENS.radius.md,
-                border: `1px solid ${t.border}`,
-                background: t.cardAlt,
+                border: `1px solid ${t.borderStrong}`,
+                background: t.card,
+                backdropFilter: t.glassBlur,
+                WebkitBackdropFilter: t.glassBlur,
                 color: t.text,
                 fontFamily: JELLY_TOKENS.font,
                 fontSize: 13,

@@ -214,7 +214,7 @@ export function VoiceSamples({ voice, onOpenInTuner, onLocked, canWrite }: Props
                   aria-hidden
                   style={{
                     width: 30, height: 30, borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    background: ready ? JELLY_TOKENS.brand : t.hover, color: ready ? '#fff' : t.textSecondary, fontSize: 13, flexShrink: 0,
+                    background: ready ? JELLY_TOKENS.brand : t.hover, color: ready ? JELLY_TOKENS.onGradient : t.textSecondary, fontSize: 13, flexShrink: 0,
                   }}
                 >
                   {!ready ? '…' : isPlaying && !paused ? '⏸' : '▶'}

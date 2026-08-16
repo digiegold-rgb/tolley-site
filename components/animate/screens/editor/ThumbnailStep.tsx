@@ -21,6 +21,7 @@ import {
   COMING_ONLINE,
 } from './feature-fetch';
 import type { EditorStepProps } from './ProjectShell';
+import { reelLabel } from './reel-label';
 import {
   BillingBlockModal,
   BillingBlockedError,
@@ -147,6 +148,7 @@ export function ThumbnailStep({ projectId, project, refresh }: EditorStepProps):
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <SectionHeader
         icon="thumbnail"
+        eyebrow={reelLabel(5)}
         title="Thumbnail Generator"
         description={`AI-generated thumbnails based on your style. ${SECTION_PRICES.thumbnail} per generation.`}
       />
@@ -157,7 +159,7 @@ export function ThumbnailStep({ projectId, project, refresh }: EditorStepProps):
             style={{
               padding: '8px 16px', borderRadius: JELLY_TOKENS.radius.sm, cursor: 'pointer',
               background: mode === m ? JELLY_TOKENS.brand : 'transparent',
-              color: mode === m ? '#fff' : t.textSecondary,
+              color: mode === m ? JELLY_TOKENS.onGradient : t.textSecondary,
               fontSize: 14, fontWeight: mode === m ? 600 : 500,
             }}>{m === 'auto' ? 'Auto Generate' : 'Manual'}</div>
         ))}

@@ -31,6 +31,7 @@ import { VBtn, VCard } from '../../primitives';
 import { Footer } from '../../Footer';
 import { YouTubeProjectCard } from '@/components/vater/youtube-project-card';
 import { ProjectDetail } from './ProjectDetail';
+import { TINT_BG } from '../tint';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyProject = any;
@@ -75,15 +76,17 @@ function statusColor(s: SimpleStatus): string {
     case 'Failed':
       return JELLY_TOKENS.error;
     case 'Cancelled':
-      return '#6B7280';
+      return JELLY_TOKENS.dark.textFaint;
     case 'Archived':
       return JELLY_TOKENS.warning;
+    /* In-flight is cyan — the "● NOW FILMING" colour. Queued is still
+     * violet: it is waiting, not running. */
     case 'Running':
     case 'InProgress':
-      return JELLY_TOKENS.brand;
+      return JELLY_TOKENS.cyan;
     case 'Queued':
     default:
-      return JELLY_TOKENS.brandDark;
+      return JELLY_TOKENS.brand;
   }
 }
 
@@ -214,7 +217,7 @@ export function ProjectHistoryScreen(): React.ReactElement {
           style={{
             marginBottom: 16,
             borderColor: JELLY_TOKENS.warning,
-            background: 'rgba(245,158,11,0.08)',
+            ...TINT_BG.warning,
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -261,7 +264,7 @@ export function ProjectHistoryScreen(): React.ReactElement {
                 {/* Wrap YouTubeProjectCard inside a hidden helper so the
                     rich preview (style emoji, scene image, progress bar) is
                     preserved without re-implementing it. */}
-                <div style={{ display: 'none' }}>
+                <div className="jelly-legacy" style={{ display: 'none' }}>
                   <YouTubeProjectCard
                     project={p}
                     isActive={false}
@@ -294,7 +297,9 @@ export function ProjectHistoryScreen(): React.ReactElement {
                       backgroundPosition: 'center',
                     }}
                   >
-                    {!p.thumbnailUrl && <Icon name="play" size={20} color="#fff" />}
+                    {!p.thumbnailUrl && (
+                      <Icon name="play" size={20} color={JELLY_TOKENS.dark.text} />
+                    )}
                   </div>
                   <div
                     style={{ flex: 1, minWidth: 0 }}
@@ -332,7 +337,7 @@ export function ProjectHistoryScreen(): React.ReactElement {
                           padding: '2px 8px',
                           borderRadius: 4,
                           background: statusColor(ss),
-                          color: '#fff',
+                          color: JELLY_TOKENS.onGradient,
                         }}
                       >
                         {ss}

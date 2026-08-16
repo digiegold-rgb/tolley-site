@@ -21,6 +21,7 @@ export function HelpFAB({ onClick }: HelpFABProps): React.ReactElement {
       tabIndex={0}
       aria-label="Help"
       data-testid="help-fab"
+      className="jc-pill-gradient"
       onClick={onClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -34,17 +35,17 @@ export function HelpFAB({ onClick }: HelpFABProps): React.ReactElement {
         right: 24,
         width: 48,
         height: 48,
-        borderRadius: '50%',
-        background: JELLY_TOKENS.brand,
+        borderRadius: JELLY_TOKENS.radius.full,
+        background: JELLY_TOKENS.gradPrimary,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
-        boxShadow: JELLY_TOKENS.shadow4,
+        boxShadow: `${JELLY_TOKENS.shadow4}, ${JELLY_TOKENS.brandGlow}`,
         zIndex: 80,
       }}
     >
-      <Icon name="help" size={24} color="#fff" />
+      <Icon name="help" size={24} color={JELLY_TOKENS.onGradient} />
     </div>
   );
 }

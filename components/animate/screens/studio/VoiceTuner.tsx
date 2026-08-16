@@ -29,6 +29,7 @@ import type {
   VoiceTuningDoc,
   VoicePreviewStatus,
 } from '@/lib/vater/autopilot-client';
+import { TINT_BG } from '../tint';
 
 type VoiceRow = { name: string; sampleText?: string };
 type Post = VoiceTuning['post'];
@@ -108,7 +109,7 @@ function Tag({ live }: { live: boolean }): React.ReactElement {
       style={{
         fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase',
         padding: '1px 6px', borderRadius: 999,
-        background: live ? 'rgba(22,163,74,0.12)' : 'rgba(139,92,246,0.12)',
+        background: live ? TINT_BG.success.background : TINT_BG.brand.background,
         color: live ? JELLY_TOKENS.success : JELLY_TOKENS.brand,
       }}
     >
@@ -459,7 +460,7 @@ export function VoiceTuner(): React.ReactElement {
               style={{
                 fontSize: 11.5, padding: '4px 12px', border: 'none', cursor: 'pointer', fontWeight: 600,
                 background: tab === k ? JELLY_TOKENS.brand : 'transparent',
-                color: tab === k ? '#fff' : t.textSecondary,
+                color: tab === k ? JELLY_TOKENS.onGradient : t.textSecondary,
               }}
             >
               {k === 'samples' ? '🎧 Samples' : '🎛 Tuner'}
@@ -469,7 +470,7 @@ export function VoiceTuner(): React.ReactElement {
         {doc && (
           <span style={{
             fontSize: 10.5, padding: '2px 8px', borderRadius: 999,
-            background: doc.locked ? 'rgba(22,163,74,0.12)' : t.hover,
+            background: doc.locked ? TINT_BG.success.background : t.hover,
             color: doc.locked ? JELLY_TOKENS.success : t.textSecondary,
           }}>
             {doc.locked

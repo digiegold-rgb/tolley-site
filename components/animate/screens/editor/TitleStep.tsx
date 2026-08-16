@@ -35,6 +35,9 @@ import {
   BillingBlockedError,
   type BillingBlockReason,
 } from './BillingBlock';
+import { TINT_BG } from '../tint';
+import { MicroLabel } from '../../cinema';
+import { reelLabel } from './reel-label';
 
 interface CardDef {
   kind: 'sample' | 'channel' | 'style';
@@ -55,14 +58,14 @@ const CARDS: CardDef[] = [
   {
     kind: 'channel',
     icon: 'play',
-    color: '#E87040',
+    color: JELLY_TOKENS.cyan,
     title: 'Generate from YouTube Channel',
     desc: 'Paste a YouTube video URL. We transcribe it and generate titles in that channel’s voice.',
   },
   {
     kind: 'style',
     icon: 'sparkle',
-    color: '#9C27B0',
+    color: JELLY_TOKENS.brandLight,
     title: 'Generate from Your Style',
     desc: 'Use your style’s reference videos to generate titles in your own voice.',
   },
@@ -294,6 +297,9 @@ export function TitleStep({
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
+      <MicroLabel tone="cyan" style={{ marginBottom: 6 }}>
+        {reelLabel(0)}
+      </MicroLabel>
       <div
         style={{
           fontSize: 11,
@@ -312,7 +318,7 @@ export function TitleStep({
             marginBottom: 16,
             padding: 16,
             border: `1px solid ${JELLY_TOKENS.success}`,
-            background: 'rgba(34,197,94,0.08)',
+            ...TINT_BG.success,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -452,7 +458,7 @@ export function TitleStep({
             padding: '10px 14px',
             fontSize: 13,
             borderRadius: JELLY_TOKENS.radius.md,
-            background: 'rgba(220,38,38,0.08)',
+            ...TINT_BG.error,
             color: JELLY_TOKENS.error,
             border: `1px solid ${JELLY_TOKENS.error}`,
           }}
@@ -482,7 +488,7 @@ export function TitleStep({
                     border: active
                       ? `2px solid ${JELLY_TOKENS.success}`
                       : `1px solid ${t.border}`,
-                    background: active ? 'rgba(34,197,94,0.08)' : t.card,
+                    background: active ? TINT_BG.success.background : t.card,
                     cursor: picking ? 'progress' : 'pointer',
                     fontSize: 14,
                     color: t.text,

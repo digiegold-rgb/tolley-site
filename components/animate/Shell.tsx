@@ -11,6 +11,12 @@
  *
  * Routes the caller's tier can't reach render <NotAvailableScreen /> rather
  * than a screen that 401s on every fetch.
+ *
+ * Cinema pass (2026-08-16): the shell is a stage. <CinemaBackdrop/> paints the
+ * fixed nebula + space-dust ground at z0; the sidebar/main column ride above it
+ * in a transparent z1 layer. The light/dark choice persists in localStorage
+ * under `jelly.theme` so a customer who picked light doesn't get flash-banged
+ * on every reload.
  */
 
 import * as React from 'react';
@@ -18,10 +24,12 @@ import { JELLY_TOKENS } from './tokens';
 import {
   ThemeProvider,
   RouteContext,
+  useTheme,
   type RouteContextValue,
 } from './theme-context';
 import { TierProvider, useTier } from './tier-context';
 import { Toast, VBtn } from './primitives';
+import { CinemaBackdrop, GlassCard, MicroLabel } from './cinema';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { HelpFAB } from './HelpFAB';
@@ -59,7 +67,23 @@ import { CustomArtStylesEmbed } from './screens/browse/CustomArtStylesEmbed';
 import { LearningCenterScreen } from './screens/browse/LearningCenterScreen';
 import { RulesScreen } from './screens/browse/RulesScreen';
 import { PricingScreen } from './screens/browse/PricingScreen';
-import { canSeeRoute } from '@/lib/vater/nav-visibility';
+import { canSeeRoute, NAV_ROUTES } from '@/lib/vater/nav-visibility';
+
+/** Where the light/dark choice lives between visits. */
+const THEME_KEY = 'jelly.theme';
+
+/** Section id → the first half of a screen eyebrow ("STUDIO — LIBRARY"). */
+const SECTION_EYEBROW: Record<'primary' | 'secondary', string> = {
+  primary: 'STUDIO',
+  secondary: 'ACCOUNT',
+};
+
+/** "STUDIO — LIBRARY" from the route's own NAV_ROUTES entry. */
+function eyebrowFor(routeId: string, fallbackLabel: string): string {
+  const def = NAV_ROUTES.find((r) => r.id === routeId);
+  const section = SECTION_EYEBROW[def?.section ?? 'primary'];
+  return `${section} — ${(def?.label ?? fallbackLabel).toUpperCase()}`;
+}
 
 export function Shell(): React.ReactElement {
   return (
@@ -70,7 +94,19 @@ export function Shell(): React.ReactElement {
 }
 
 function ShellInner(): React.ReactElement {
+  // Dark is the default and the SSR value — reading localStorage during render
+  // would desync hydration, so the stored preference is applied on mount.
   const [dark, setDark] = React.useState(true);
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = window.localStorage.getItem(THEME_KEY);
+      if (stored === 'light') setDark(false);
+      else if (stored === 'dark') setDark(true);
+    } catch {
+      /* private mode — dark stays the default */
+    }
+  }, []);
   const [route, setRouteState] = React.useState('dashboard');
   const [editorStep, setEditorStep] = React.useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
@@ -137,7 +173,15 @@ function ShellInner(): React.ReactElement {
   }, []);
 
   const toggleDark = React.useCallback(() => {
-    setDark((prev) => !prev);
+    setDark((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(THEME_KEY, next ? 'dark' : 'light');
+      } catch {
+        /* private mode — the choice just doesn't survive the reload */
+      }
+      return next;
+    });
   }, []);
 
   // Wrapping setRoute so leaving the editor / styles routes clears the
@@ -370,20 +414,43 @@ function ShellInner(): React.ReactElement {
 
   return (
     <ThemeProvider dark={dark} toggle={toggleDark}>
+      {/* The stage: fixed, click-through, z0. The shell below is transparent
+          and rides above it, so `t.body` is painted exactly once. */}
+      <CinemaBackdrop density="sparse" />
       <RouteContext.Provider value={routeValue}>
         <div
-          className="animate-shell"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            minHeight: '100vh',
-            width: '100%',
-            maxWidth: '100%',
-            overflowX: 'hidden',
-            background: t.body,
-            color: t.text,
-            fontFamily: JELLY_TOKENS.font,
-          }}
+          className="animate-shell jelly-cinema"
+          style={
+            {
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: '100vh',
+              width: '100%',
+              maxWidth: '100%',
+              overflowX: 'hidden',
+              /* Positioned so the shell paints after the fixed z0 backdrop —
+               * but deliberately WITHOUT a z-index. A z-index here would make
+               * the shell a stacking context and trap every overlay inside it
+               * at that one level: BetaGate (9999) would fall behind the Help
+               * FAB (80) and the drawer (250), and the FAB would float over
+               * the open mobile nav (210). `position: relative` + z-index auto
+               * lifts the content above the backdrop and leaves every existing
+               * overlay relationship exactly as it was. */
+              position: 'relative',
+              background: 'transparent',
+              color: t.text,
+              fontFamily: JELLY_TOKENS.font,
+              /* Legacy skin hooks: .jelly-legacy / .jc-link read these, so the
+                 Tailwind-era components inside the studio follow the theme. */
+              '--jelly-text': t.text,
+              '--jelly-text-2': t.textSecondary,
+              '--jelly-link': t.link,
+              '--jelly-card': t.card,
+              '--jelly-border': t.border,
+              '--jelly-brand': JELLY_TOKENS.brand,
+              '--jelly-cyan': JELLY_TOKENS.cyan,
+            } as React.CSSProperties
+          }
         >
           {/* Above everything, including the beta banner: an admin must never
               be one scroll away from forgetting whose account they are in. */}
@@ -413,6 +480,7 @@ function ShellInner(): React.ReactElement {
               />
               <main
                 key={route}
+                className="jc-fadein"
                 style={{
                   flex: 1,
                   // minWidth:0 keeps a wide child (scene grid, queue row) from
@@ -475,15 +543,15 @@ function renderScreen(
     // the key as a backwards-compat alias that lands on Library.
     case 'studio':
     case 'library':
-      return <StudioPanelFrame title="Library" subtitle="Completed videos and ready-to-publish projects."><Library /></StudioPanelFrame>;
+      return <StudioPanelFrame routeId="library" title="Library" subtitle="Completed videos and ready-to-publish projects."><Library /></StudioPanelFrame>;
     case 'voices':
-      return <StudioPanelFrame title="Voices" subtitle="F5-TTS clone management and ElevenLabs audition rail."><Voices /></StudioPanelFrame>;
+      return <StudioPanelFrame routeId="voices" title="Voices" subtitle="F5-TTS clone management and ElevenLabs audition rail."><Voices /></StudioPanelFrame>;
     case 'feeds':
-      return <StudioPanelFrame title="Feeds" subtitle="RSS feeds — auto-pipeline new items into projects."><Feeds /></StudioPanelFrame>;
+      return <StudioPanelFrame routeId="feeds" title="Feeds" subtitle="RSS feeds — auto-pipeline new items into projects."><Feeds /></StudioPanelFrame>;
     case 'queue':
-      return <StudioPanelFrame title="Queue" subtitle="In-flight pipeline jobs — transcribing, scripting, animating."><Queue /></StudioPanelFrame>;
+      return <StudioPanelFrame routeId="queue" title="Queue" subtitle="In-flight pipeline jobs — transcribing, scripting, animating."><Queue /></StudioPanelFrame>;
     case 'recent':
-      return <StudioPanelFrame title="Recent" subtitle="Recently-completed and failed projects."><Recent /></StudioPanelFrame>;
+      return <StudioPanelFrame routeId="recent" title="Recent" subtitle="Recently-completed and failed projects."><Recent /></StudioPanelFrame>;
     case 'autopilot': return <AutopilotScreen />;
     case 'publishing': return <PublishingScreen />;
     case 'animation': return <AnimationScreen />;
@@ -512,9 +580,9 @@ function renderScreen(
     case 'rules': return <RulesScreen />;
     case 'affiliate': return <ComingSoonScreen route="affiliate" />;
     case 'api-keys':
-      return <StudioPanelFrame title="API Keys" subtitle="Drive Jelly from your own code or an agent — create a key, set a webhook."><ApiKeys /></StudioPanelFrame>;
+      return <StudioPanelFrame routeId="api-keys" title="API Keys" subtitle="Drive Jelly from your own code or an agent — create a key, set a webhook."><ApiKeys /></StudioPanelFrame>;
     case 'team':
-      return <StudioPanelFrame title="Team" subtitle="Share your videos with teammates. Seats share visibility, not credits."><Team /></StudioPanelFrame>;
+      return <StudioPanelFrame routeId="team" title="Team" subtitle="Share your videos with teammates. Seats share visibility, not credits."><Team /></StudioPanelFrame>;
     default: return <ComingSoonScreen route={route} />;
   }
 }
@@ -524,21 +592,43 @@ function renderScreen(
  * routes (Library / Voices / Feeds / Queue / Recent). Replicates the page
  * heading the old StudioScreen rendered above its tab strip so each panel
  * still gets a clear title and subtitle.
+ *
+ * Cinema pattern: cyan micro-label eyebrow ("STUDIO — LIBRARY", derived from
+ * the route's own NAV_ROUTES section) over a Space Grotesk H2 and a secondary
+ * subtitle. Same heading rhythm as every section on the landing page.
  */
 function StudioPanelFrame({
+  routeId,
   title,
   subtitle,
   children,
 }: {
+  routeId: string;
   title: string;
   subtitle: string;
   children: React.ReactNode;
 }): React.ReactElement {
+  const { t } = useTheme();
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div>
-        <div style={{ fontSize: 28, fontWeight: 700 }}>{title}</div>
-        <div style={{ fontSize: 14, opacity: 0.7, marginTop: 4 }}>{subtitle}</div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1100, width: '100%' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <MicroLabel tone="cyan">{eyebrowFor(routeId, title)}</MicroLabel>
+        <h2
+          style={{
+            margin: 0,
+            fontFamily: JELLY_TOKENS.font,
+            fontWeight: 600,
+            fontSize: 'clamp(28px, 3vw, 34px)',
+            letterSpacing: '-0.02em',
+            color: t.text,
+            lineHeight: 1.15,
+          }}
+        >
+          {title}
+        </h2>
+        <div style={{ fontSize: 15, lineHeight: 1.6, color: t.textSecondary, maxWidth: 640 }}>
+          {subtitle}
+        </div>
       </div>
       <div>{children}</div>
     </div>
@@ -546,6 +636,7 @@ function StudioPanelFrame({
 }
 
 function ComingSoonScreen({ route }: { route: string }): React.ReactElement {
+  const { t } = useTheme();
   return (
     <div
       style={{
@@ -554,19 +645,20 @@ function ComingSoonScreen({ route }: { route: string }): React.ReactElement {
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: 400,
-        textAlign: 'center',
         padding: 32,
       }}
     >
-      <div>
-        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
+      <GlassCard variant="glass" padding={32} shadow style={{ maxWidth: 460, textAlign: 'center' }}>
+        <MicroLabel tone="faint" style={{ marginBottom: 10 }}>— NOT IN THE PROGRAMME —</MicroLabel>
+        <div style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 8, color: t.text }}>
           Not built yet
         </div>
-        <div style={{ fontSize: 14, opacity: 0.7 }}>
-          <code style={{ fontFamily: 'monospace' }}>{route}</code> isn&apos;t part of the
-          studio yet. Everything you need to make and publish a video already is.
+        <div style={{ fontSize: 14, color: t.textSecondary, lineHeight: 1.6 }}>
+          <code style={{ fontFamily: JELLY_TOKENS.fontMono, color: JELLY_TOKENS.cyan }}>{route}</code>{' '}
+          isn&apos;t part of the studio yet. Everything you need to make and publish a
+          video already is.
         </div>
-      </div>
+      </GlassCard>
     </div>
   );
 }
@@ -577,6 +669,7 @@ function ComingSoonScreen({ route }: { route: string }): React.ReactElement {
  * whose every fetch 401s.
  */
 function NotAvailableScreen({ onHome }: { onHome: () => void }): React.ReactElement {
+  const { t } = useTheme();
   return (
     <div
       style={{
@@ -587,16 +680,25 @@ function NotAvailableScreen({ onHome }: { onHome: () => void }): React.ReactElem
         padding: 32,
       }}
     >
-      <div style={{ maxWidth: 420, textAlign: 'center' }}>
-        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
+      <GlassCard variant="glass" padding={32} shadow halo style={{ maxWidth: 440, textAlign: 'center' }}>
+        <MicroLabel tone="violet" style={{ marginBottom: 10 }}>— PRIVATE SCREENING —</MicroLabel>
+        <div
+          style={{
+            fontSize: 20,
+            fontWeight: 600,
+            letterSpacing: '-0.02em',
+            marginBottom: 8,
+            color: t.text,
+          }}
+        >
           This area is part of the studio tier
         </div>
-        <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 20, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 14, color: t.textSecondary, marginBottom: 22, lineHeight: 1.6 }}>
           Your account doesn&apos;t have access to this screen. Everything you need to
           write, render and publish a video is on your dashboard.
         </div>
         <VBtn onClick={onHome}>Back to Dashboard</VBtn>
-      </div>
+      </GlassCard>
     </div>
   );
 }

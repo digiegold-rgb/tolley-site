@@ -23,6 +23,7 @@ import { useTier } from '../../tier-context';
 import { YouTubeVoiceClonePanel } from '@/components/vater/youtube-voice-clone-panel';
 import { YouTubePopularVoices } from '@/components/vater/youtube-popular-voices';
 import { VoiceTuner } from './VoiceTuner';
+import { TINT_BG, TINT_BORDER } from '../tint';
 
 interface ElevenVoice {
   voice_id?: string;
@@ -109,7 +110,7 @@ export function Voices(): React.ReactElement {
             borderRadius: JELLY_TOKENS.radius.pill,
             cursor: 'pointer',
             background: tab === x.id ? JELLY_TOKENS.brand : 'transparent',
-            color: tab === x.id ? '#fff' : t.textSecondary,
+            color: tab === x.id ? JELLY_TOKENS.onGradient : t.textSecondary,
             fontSize: 13,
             fontWeight: tab === x.id ? 600 : 500,
           }}
@@ -129,8 +130,8 @@ export function Voices(): React.ReactElement {
           style={{
             padding: '10px 14px',
             borderRadius: JELLY_TOKENS.radius.md,
-            background: 'rgba(245,158,11,0.08)',
-            border: '1px solid rgba(245,158,11,0.4)',
+            ...TINT_BG.warning,
+            border: `1px solid ${TINT_BORDER.warning}`,
             fontSize: 12,
             color: t.textSecondary,
             lineHeight: 1.6,
@@ -165,7 +166,9 @@ export function Voices(): React.ReactElement {
             Preview a shared ElevenLabs voice before you commit a project to
             it.
           </p>
-          <YouTubePopularVoices />
+          <div className="jelly-legacy">
+            <YouTubePopularVoices />
+          </div>
         </div>
 
         <div style={cardStyle}>
@@ -262,7 +265,9 @@ export function Voices(): React.ReactElement {
           you still need a local F5-TTS clone (default backend, free, runs
           on the DGX).
         </p>
-        <YouTubePopularVoices />
+        <div className="jelly-legacy">
+          <YouTubePopularVoices />
+        </div>
       </div>
 
       {/* Voice Tuner — EQ / delivery control panel with instant ~30s samples,
@@ -297,18 +302,20 @@ export function Voices(): React.ReactElement {
           at it. Voices marked <strong>Shared</strong> come with the studio and
           are available to everyone.
         </p>
-        <YouTubeVoiceClonePanel
-          mode="manage"
-          unlimited={capabilities.voicesWrite}
-        />
+        <div className="jelly-legacy">
+          <YouTubeVoiceClonePanel
+            mode="manage"
+            unlimited={capabilities.voicesWrite}
+          />
+        </div>
       </div>
 
       <div
         style={{
           padding: '10px 14px',
           borderRadius: JELLY_TOKENS.radius.md,
-          background: 'rgba(245,158,11,0.08)',
-          border: '1px solid rgba(245,158,11,0.4)',
+          ...TINT_BG.warning,
+          border: `1px solid ${TINT_BORDER.warning}`,
           fontSize: 11,
           color: t.textSecondary,
           lineHeight: 1.6,

@@ -10,6 +10,7 @@ import { JELLY_TOKENS } from '../tokens';
 import { useTheme, useRoute } from '../theme-context';
 import { Icon, type IconName } from '../Icon';
 import { VBtn, VCard } from '../primitives';
+import { GlassCard, MicroLabel } from '../cinema';
 import { Footer } from '../Footer';
 import { StylePickerModal } from './dashboard/StylePickerModal';
 import { LatestUpdateBanner } from '../LatestUpdate';
@@ -107,7 +108,20 @@ export function DashboardScreen(): React.ReactElement {
   return (
     <div>
       <div style={{ marginBottom: 8 }}>
-        <h2 style={{ fontSize: 28, fontWeight: 700, color: t.text, margin: 0 }}>Dashboard</h2>
+        <MicroLabel tone="cyan" style={{ marginBottom: 6 }}>
+          Now showing
+        </MicroLabel>
+        <h2
+          style={{
+            fontSize: 28,
+            fontWeight: 700,
+            color: t.text,
+            margin: 0,
+            letterSpacing: '-0.02em',
+          }}
+        >
+          Dashboard
+        </h2>
         <p style={{ fontSize: 14, color: t.textSecondary, margin: '4px 0 0' }}>
           Create and manage your video styles and voice clones
         </p>
@@ -117,7 +131,9 @@ export function DashboardScreen(): React.ReactElement {
         <LatestUpdateBanner />
       </div>
 
-      {/* Hero Cards */}
+      {/* Hero cards. Glass with a gradient icon tile, not three slabs of solid
+          gradient — the gradient is the CTA's job now. Billing is the ticket
+          variant, because every billing surface in the studio is a stub. */}
       <div
         style={{
           display: 'grid',
@@ -126,69 +142,31 @@ export function DashboardScreen(): React.ReactElement {
           marginTop: 24,
         }}
       >
-        <div
-          style={{
-            background: JELLY_TOKENS.gradCreate,
-            borderRadius: JELLY_TOKENS.radius.xl,
-            padding: 24,
-            color: '#fff',
-          }}
-        >
-          <div style={{ fontSize: 18, fontWeight: 700 }}>Create Video</div>
-          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-            Start a new video project
-          </div>
-          <VBtn
-            variant="white"
-            size="sm"
-            onClick={() => setStylePickerOpen(true)}
-            style={{ marginTop: 16 }}
-          >
-            Create Video
-          </VBtn>
-        </div>
-        <div
-          style={{
-            background: JELLY_TOKENS.gradCredits,
-            borderRadius: JELLY_TOKENS.radius.xl,
-            padding: 24,
-            color: '#fff',
-          }}
-        >
-          <div style={{ fontSize: 18, fontWeight: 700 }}>Billing</div>
-          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-            Prepaid credit — pay only for what you render, no subscription
-          </div>
-          <VBtn
-            variant="white"
-            size="sm"
-            onClick={() => setRoute('pricing')}
-            style={{ marginTop: 16 }}
-          >
-            Open Billing
-          </VBtn>
-        </div>
-        <div
-          style={{
-            background: JELLY_TOKENS.gradUpgrade,
-            borderRadius: JELLY_TOKENS.radius.xl,
-            padding: 24,
-            color: '#fff',
-          }}
-        >
-          <div style={{ fontSize: 18, fontWeight: 700 }}>Your Library</div>
-          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-            Finished videos, ready to download or publish
-          </div>
-          <VBtn
-            variant="white"
-            size="sm"
-            onClick={() => setRoute('library')}
-            style={{ marginTop: 16 }}
-          >
-            Open Library
-          </VBtn>
-        </div>
+        <HeroCard
+          eyebrow="ACT I — THE STORY"
+          icon="sparkle"
+          title="Create Video"
+          body="Start a new video project"
+          cta="Create Video"
+          onCta={() => setStylePickerOpen(true)}
+        />
+        <HeroCard
+          variant="ticket"
+          eyebrow="ADMIT ONE — THE BOX OFFICE"
+          icon="affiliate"
+          title="Billing"
+          body="Prepaid credit — pay only for what you render, no subscription"
+          cta="Open Billing"
+          onCta={() => setRoute('pricing')}
+        />
+        <HeroCard
+          eyebrow="THE REELS"
+          icon="videoEditor"
+          title="Your Library"
+          body="Finished videos, ready to download or publish"
+          cta="Open Library"
+          onCta={() => setRoute('library')}
+        />
       </div>
 
       {!loading && projects.length === 0 && (
@@ -253,66 +231,75 @@ export function DashboardScreen(): React.ReactElement {
             </div>
           </VCard>
         ))}
-        <div
-          role="button"
-          tabIndex={0}
+        <GlassCard
+          hover
           data-testid="tutorial-card"
-          onClick={openHelp}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              openHelp();
-            }
-          }}
+          padding={24}
           style={{
-            background: JELLY_TOKENS.gradTutorial,
-            borderRadius: JELLY_TOKENS.radius.xl,
-            padding: 24,
-            color: '#fff',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
-            position: 'relative',
             cursor: 'pointer',
           }}
+          onClick={openHelp}
         >
           <div
-            style={{
-              position: 'absolute',
-              top: 12,
-              left: 12,
-              fontSize: 10,
-              fontWeight: 600,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              background: 'rgba(255,255,255,0.2)',
-              padding: '3px 8px',
-              borderRadius: 4,
+            role="button"
+            tabIndex={0}
+            aria-label="Getting Started with Jelly"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openHelp();
+              }
             }}
+            style={{ outline: 'none' }}
           >
-            TUTORIAL
+            <MicroLabel
+              tone="cyan"
+              size={10.5}
+              tracking="0.24em"
+              style={{ position: 'absolute', top: 14, left: 20 }}
+            >
+              Tutorial
+            </MicroLabel>
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                background: JELLY_TOKENS.gradTutorial,
+                boxShadow: JELLY_TOKENS.brandGlow,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '10px auto 12px',
+              }}
+            >
+              <Icon name="play" size={24} color={JELLY_TOKENS.onGradient} />
+            </div>
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: 16,
+                textAlign: 'center',
+                color: t.text,
+              }}
+            >
+              Getting Started with Jelly
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: t.textSecondary,
+                textAlign: 'center',
+                marginTop: 4,
+              }}
+            >
+              Learn how every part of our platform works
+            </div>
           </div>
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              background: 'rgba(255,255,255,0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 12px',
-            }}
-          >
-            <Icon name="play" size={24} color="#fff" />
-          </div>
-          <div style={{ fontWeight: 700, fontSize: 16, textAlign: 'center' }}>
-            Getting Started with Jelly
-          </div>
-          <div style={{ fontSize: 12, opacity: 0.85, textAlign: 'center', marginTop: 4 }}>
-            Learn how every part of our platform works
-          </div>
-        </div>
+        </GlassCard>
       </div>
 
       {/* Spend timeline placeholder — Stage 1c wires real data from
@@ -354,5 +341,69 @@ export function DashboardScreen(): React.ReactElement {
         }}
       />
     </div>
+  );
+}
+
+/* One hero card: micro-label, gradient icon tile, headline, gradient CTA.
+ * `ticket` tints the glass violet/cyan — reserved for the billing card, so
+ * the wallet reads as the same object as every receipt in the studio. */
+function HeroCard({
+  eyebrow,
+  icon,
+  title,
+  body,
+  cta,
+  onCta,
+  variant = 'glass',
+}: {
+  eyebrow: string;
+  icon: IconName;
+  title: string;
+  body: string;
+  cta: string;
+  onCta: () => void;
+  variant?: 'glass' | 'ticket';
+}): React.ReactElement {
+  const { t } = useTheme();
+  return (
+    <GlassCard variant={variant} hover padding={24} halo={variant === 'ticket'}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div
+          style={{
+            width: 34,
+            height: 34,
+            flexShrink: 0,
+            borderRadius: JELLY_TOKENS.radius.sm,
+            background: JELLY_TOKENS.gradPrimary,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: JELLY_TOKENS.brandGlow,
+          }}
+        >
+          <Icon name={icon} size={18} color={JELLY_TOKENS.onGradient} />
+        </div>
+        <MicroLabel tone={variant === 'ticket' ? 'violet' : 'cyan'} size={10.5} tracking="0.22em">
+          {eyebrow}
+        </MicroLabel>
+      </div>
+      <div
+        style={{
+          fontSize: 18,
+          fontWeight: 700,
+          color: t.text,
+          marginTop: 14,
+          letterSpacing: '-0.01em',
+        }}
+      >
+        {title}
+      </div>
+      <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 4, lineHeight: 1.55 }}>
+        {body}
+      </div>
+      <VBtn size="sm" onClick={onCta} style={{ marginTop: 16 }}>
+        {cta}
+      </VBtn>
+    </GlassCard>
   );
 }

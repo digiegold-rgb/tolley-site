@@ -1,8 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { LegalPageShell } from "@/components/legal/legal-page-shell";
-import { LegalSection, type LegalSectionContent } from "@/components/legal/legal-section";
+import {
+  CinemaLegalMeta,
+  CinemaLegalShell,
+} from "@/components/animate/legal/CinemaLegalShell";
+import {
+  CinemaLegalSection,
+  LEGAL_BODY_STYLE,
+  LEGAL_LINK_STYLE,
+  LEGAL_ROW_STYLE,
+  LEGAL_STRONG_STYLE,
+} from "@/components/animate/legal/CinemaLegalSection";
+import type { LegalSectionContent } from "@/components/legal/legal-section";
+import { JELLY_TOKENS } from "@/components/animate/tokens";
 import {
   ANIMATE_LEGAL_ADDRESS,
   ANIMATE_LEGAL_BRAND,
@@ -70,29 +81,52 @@ const SECTIONS: LegalSectionContent[] = [
       "Running a video pipeline means sending your material to other companies. We name every one of them, including where the processing happens, so you can make an informed decision before you paste anything sensitive into a prompt.",
     ],
     children: (
-      <div className="space-y-3">
-        <ul className="space-y-3">
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            margin: 0,
+            padding: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
           {ANIMATE_SUBPROCESSORS.map((sub) => (
-            <li
-              key={sub.name}
-              className="rounded-2xl border border-white/12 bg-white/[0.03] p-3 text-sm leading-6 text-white/83 sm:p-4 sm:text-[0.94rem]"
-            >
-              <span className="font-semibold text-white/94">{sub.name}</span>
-              {sub.location ? (
-                <span className="ml-2 rounded-full border border-amber-200/30 bg-amber-300/10 px-2 py-0.5 text-[0.7rem] tracking-[0.08em] text-amber-100/90 uppercase">
-                  {sub.location}
+            <li key={sub.name} style={LEGAL_ROW_STYLE}>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <span
+                  style={{
+                    ...LEGAL_STRONG_STYLE,
+                    fontFamily: JELLY_TOKENS.font,
+                    fontSize: 14.5,
+                  }}
+                >
+                  {sub.name}
                 </span>
-              ) : null}
-              {sub.planned ? (
-                <span className="ml-2 rounded-full border border-white/20 bg-white/[0.06] px-2 py-0.5 text-[0.7rem] tracking-[0.08em] text-white/75 uppercase">
-                  planned
-                </span>
-              ) : null}
-              <p className="mt-1.5">{sub.purpose}</p>
+                {sub.location ? (
+                  <SubprocessorChip
+                    tone={
+                      sub.location.includes("United States") ? "faint" : "warning"
+                    }
+                  >
+                    {sub.location}
+                  </SubprocessorChip>
+                ) : null}
+                {sub.planned ? <SubprocessorChip tone="faint">planned</SubprocessorChip> : null}
+              </div>
+              <p style={{ ...LEGAL_BODY_STYLE, marginTop: 6 }}>{sub.purpose}</p>
             </li>
           ))}
         </ul>
-        <p className="text-sm leading-6 text-white/83 sm:text-[0.95rem]">
+        <p style={LEGAL_BODY_STYLE}>
           We may also disclose information to law enforcement or other authorities where
           we are legally required to, and to a successor entity if the business is sold —
           in which case this policy travels with the data.
@@ -111,14 +145,28 @@ const SECTIONS: LegalSectionContent[] = [
   {
     heading: "7. How long we keep things",
     children: (
-      <ul className="space-y-3">
+      <ul
+        style={{
+          listStyle: "none",
+          margin: 0,
+          padding: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+        }}
+      >
         {ANIMATE_RETENTION.map((row) => (
-          <li
-            key={row.data}
-            className="rounded-2xl border border-white/12 bg-white/[0.03] p-3 text-sm leading-6 text-white/83 sm:p-4 sm:text-[0.94rem]"
-          >
-            <span className="font-semibold text-white/94">{row.data}</span>
-            <p className="mt-1.5">{row.period}</p>
+          <li key={row.data} style={LEGAL_ROW_STYLE}>
+            <span
+              style={{
+                ...LEGAL_STRONG_STYLE,
+                fontFamily: JELLY_TOKENS.font,
+                fontSize: 14.5,
+              }}
+            >
+              {row.data}
+            </span>
+            <p style={{ ...LEGAL_BODY_STYLE, marginTop: 6 }}>{row.period}</p>
           </li>
         ))}
       </ul>
@@ -142,16 +190,17 @@ const SECTIONS: LegalSectionContent[] = [
       "Marketing email: every non-transactional email has an unsubscribe link. Service and billing notices are not optional while you have an account.",
     ],
     children: (
-      <p className="text-sm leading-6 text-white/83 sm:text-[0.95rem]">
-        <span className="font-semibold text-white/94">California residents: </span>
+      <p style={LEGAL_BODY_STYLE}>
+        <span style={LEGAL_STRONG_STYLE}>California residents: </span>
         we extend the CCPA rights to know, delete, correct, and opt out of sale or sharing
         to every user as a courtesy, regardless of where you live, and we do not
         discriminate against you for exercising them. We do not sell or share personal
         information as those terms are defined, but we honor{" "}
-        <span className="font-semibold text-white/94">Global Privacy Control</span> signals
+        <span style={LEGAL_STRONG_STYLE}>Global Privacy Control</span> signals
         as an opt-out request anyway. Submit requests to{" "}
         <a
-          className="underline decoration-white/35 underline-offset-4"
+          className="jc-link"
+          style={LEGAL_LINK_STYLE}
           href={`mailto:${ANIMATE_LEGAL_EMAIL}`}
         >
           {ANIMATE_LEGAL_EMAIL}
@@ -163,21 +212,22 @@ const SECTIONS: LegalSectionContent[] = [
   {
     heading: "10. YouTube API Services and Google data",
     children: (
-      <div className="space-y-3 text-sm leading-6 text-white/83 sm:text-[0.95rem]">
-        <p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <p style={LEGAL_BODY_STYLE}>
           {ANIMATE_LEGAL_BRAND} uses YouTube API Services. When you connect a channel, we
           receive and store an OAuth access and refresh token, your channel ID and name,
           and the metadata of uploads and analytics we retrieve on your behalf. We use it
           only to publish and manage the videos you ask us to publish, and to show you
           performance data in the Studio.
         </p>
-        <p>
+        <p style={LEGAL_BODY_STYLE}>
           By using those features you agree to the{" "}
           <a
             href={ANIMATE_LINKS.youtubeTerms}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-violet-200 underline underline-offset-2 transition hover:text-white"
+            className="jc-link"
+            style={LEGAL_LINK_STYLE}
           >
             YouTube Terms of Service
           </a>
@@ -187,20 +237,22 @@ const SECTIONS: LegalSectionContent[] = [
             href={ANIMATE_LINKS.googlePrivacy}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-violet-200 underline underline-offset-2 transition hover:text-white"
+            className="jc-link"
+            style={{ ...LEGAL_LINK_STYLE, wordBreak: "break-word" }}
           >
             {ANIMATE_LINKS.googlePrivacy}
           </a>
           .
         </p>
-        <p>
+        <p style={LEGAL_BODY_STYLE}>
           You can revoke the Studio&apos;s access to your Google and YouTube data at any
           time through the Google security settings page at{" "}
           <a
             href={ANIMATE_LINKS.googleSecuritySettings}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-violet-200 underline underline-offset-2 transition hover:text-white"
+            className="jc-link"
+            style={{ ...LEGAL_LINK_STYLE, wordBreak: "break-word" }}
           >
             {ANIMATE_LINKS.googleSecuritySettings}
           </a>
@@ -242,67 +294,92 @@ const SECTIONS: LegalSectionContent[] = [
 
 export default function AnimatePrivacyPage() {
   return (
-    <LegalPageShell
-      kicker="jelly studio · beta"
+    <CinemaLegalShell
+      kicker="Jelly Studio — Privacy"
       title="Privacy Policy"
       subtitle="What Jelly Studio collects, who else touches it, where in the world it goes, how long it stays, and how to get it deleted. Sections 5, 6 and 8 are the ones people are usually surprised by."
     >
-      <section className="grid gap-3 rounded-2xl border border-white/14 bg-white/[0.03] p-4 text-sm text-white/84 sm:grid-cols-2 sm:text-[0.94rem]">
-        <p>
-          <span className="font-semibold text-white/94">Service: </span>
-          {ANIMATE_LEGAL_BRAND}
-        </p>
-        <p>
-          <span className="font-semibold text-white/94">Operator: </span>
-          {ANIMATE_LEGAL_ENTITY}
-        </p>
-        <p>
-          <span className="font-semibold text-white/94">Effective: </span>
-          {ANIMATE_LEGAL_EFFECTIVE_DATE}
-        </p>
-        <p>
-          <span className="font-semibold text-white/94">Last updated: </span>
-          {ANIMATE_LEGAL_LAST_UPDATED} (version {TOS_VERSION})
-        </p>
-        <p>
-          <span className="font-semibold text-white/94">Hosting: </span>
-          United States
-        </p>
-        <p>
-          <span className="font-semibold text-white/94">Contact: </span>
-          <a
-            className="underline decoration-white/35 underline-offset-4"
-            href={`mailto:${ANIMATE_LEGAL_EMAIL}`}
-          >
-            {ANIMATE_LEGAL_EMAIL}
-          </a>
-        </p>
-      </section>
+      <CinemaLegalMeta
+        rows={[
+          { label: "Service", value: ANIMATE_LEGAL_BRAND },
+          { label: "Operator", value: ANIMATE_LEGAL_ENTITY },
+          { label: "Effective", value: ANIMATE_LEGAL_EFFECTIVE_DATE },
+          {
+            label: "Last updated",
+            value: `${ANIMATE_LEGAL_LAST_UPDATED} (version ${TOS_VERSION})`,
+          },
+          { label: "Hosting", value: "United States" },
+          {
+            label: "Contact",
+            value: (
+              <a
+                href={`mailto:${ANIMATE_LEGAL_EMAIL}`}
+                className="jc-link"
+                style={LEGAL_LINK_STYLE}
+              >
+                {ANIMATE_LEGAL_EMAIL}
+              </a>
+            ),
+          },
+        ]}
+      />
 
       {SECTIONS.map((section) => (
-        <LegalSection key={section.heading} {...section} />
+        <CinemaLegalSection key={section.heading} {...section} />
       ))}
 
-      <section className="flex flex-wrap gap-x-4 gap-y-2 border-t border-white/14 pt-5 text-sm text-white/78">
-        <Link
-          href={ANIMATE_LINKS.terms}
-          className="underline decoration-white/35 underline-offset-4 transition hover:text-white"
-        >
+      <section
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "10px 20px",
+          borderTop: `1px solid ${JELLY_TOKENS.dark.border}`,
+          paddingTop: 22,
+        }}
+      >
+        <Link href={ANIMATE_LINKS.terms} className="jc-link" style={LEGAL_LINK_STYLE}>
           Terms of Service
         </Link>
-        <Link
-          href={ANIMATE_LINKS.beta}
-          className="underline decoration-white/35 underline-offset-4 transition hover:text-white"
-        >
+        <Link href={ANIMATE_LINKS.beta} className="jc-link" style={LEGAL_LINK_STYLE}>
           Beta Addendum
         </Link>
-        <Link
-          href="/animate"
-          className="underline decoration-white/35 underline-offset-4 transition hover:text-white"
-        >
+        <Link href="/animate" className="jc-link" style={LEGAL_LINK_STYLE}>
           Back to the Studio
         </Link>
       </section>
-    </LegalPageShell>
+    </CinemaLegalShell>
+  );
+}
+
+/* Location / status chip on a subprocessor row. `warning` is the sanctioned
+ * semantic exception to the violet-cyan rule: the "China" flag on the Kimi row
+ * is the single most consequential fact on this page and has to read as a
+ * caution, not as decoration. */
+function SubprocessorChip({
+  tone,
+  children,
+}: {
+  tone: "warning" | "faint";
+  children: React.ReactNode;
+}) {
+  const warn = tone === "warning";
+  return (
+    <span
+      style={{
+        fontFamily: JELLY_TOKENS.font,
+        fontSize: 10.5,
+        fontWeight: 500,
+        letterSpacing: "0.16em",
+        textTransform: "uppercase",
+        borderRadius: JELLY_TOKENS.radius.pill,
+        padding: "3px 10px",
+        whiteSpace: "nowrap",
+        color: warn ? JELLY_TOKENS.warning : JELLY_TOKENS.dark.textFaint,
+        border: `1px solid ${warn ? "rgba(245,179,75,0.35)" : JELLY_TOKENS.dark.border}`,
+        background: warn ? "rgba(245,179,75,0.10)" : JELLY_TOKENS.dark.hover,
+      }}
+    >
+      {children}
+    </span>
   );
 }

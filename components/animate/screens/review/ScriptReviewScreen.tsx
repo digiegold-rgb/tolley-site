@@ -41,6 +41,7 @@ import {
   type YouTubeProjectStatus,
 } from '@/lib/vater/youtube-status';
 import { PublishPanel } from './PublishPanel';
+import { TINT_BG } from '../tint';
 
 /* ─── Types ─── */
 
@@ -397,7 +398,7 @@ function LockedStyleCard(): React.ReactElement {
     <div
       style={{
         border: `1px solid ${missing ? JELLY_TOKENS.error : t.border}`,
-        background: missing ? 'rgba(239, 68, 68, 0.06)' : t.cardAlt,
+        background: missing ? TINT_BG.error.background : t.cardAlt,
         borderRadius: JELLY_TOKENS.radius.md,
         padding: 14,
         display: 'flex',
@@ -636,7 +637,7 @@ function ScriptIntake({
           style={{
             padding: '10px 14px',
             borderRadius: JELLY_TOKENS.radius.md,
-            background: 'rgba(220,38,38,0.08)',
+            ...TINT_BG.error,
             border: `1px solid ${JELLY_TOKENS.error}`,
             fontSize: 12,
             color: t.text,
@@ -883,7 +884,7 @@ function RenderProgress({
                 fontWeight: 600,
                 padding: '2px 8px',
                 borderRadius: JELLY_TOKENS.radius.pill,
-                color: active ? '#fff' : done ? t.textSecondary : t.textDisabled,
+                color: active ? JELLY_TOKENS.onGradient : done ? t.textSecondary : t.textDisabled,
                 background: active
                   ? JELLY_TOKENS.brand
                   : done
@@ -1213,7 +1214,7 @@ function ReviewPanel({
           style={{
             padding: '10px 14px',
             borderRadius: JELLY_TOKENS.radius.md,
-            background: 'rgba(220,38,38,0.08)',
+            ...TINT_BG.error,
             border: `1px solid ${JELLY_TOKENS.error}`,
             fontSize: 12,
             color: t.text,

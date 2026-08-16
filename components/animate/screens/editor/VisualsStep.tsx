@@ -71,6 +71,9 @@ import {
   BillingBlockModal,
   type BillingBlockReason,
 } from './BillingBlock';
+import { TINT_BG } from '../tint';
+import { MicroLabel } from '../../cinema';
+import { reelLabel } from './reel-label';
 
 /* Mirrors the route's VALID_QUALITIES exactly. Any new tier added to the
  * route (app/api/vater/youtube/[id]/scene/animate/route.ts) MUST be added here
@@ -165,9 +168,9 @@ const OVERLAY_BADGES: Record<
   NonNullable<ParsedScene['overlay']>,
   { label: string; color: string }
 > = {
-  chart: { label: '📊 Chart', color: '#0EA5E9' },
-  map: { label: '🗺️ Map', color: '#16A34A' },
-  header: { label: '🔤 Section header', color: '#F59E0B' },
+  chart: { label: '📊 Chart', color: JELLY_TOKENS.cyan },
+  map: { label: '🗺️ Map', color: JELLY_TOKENS.success },
+  header: { label: '🔤 Section header', color: JELLY_TOKENS.warning },
 };
 
 function parseScenes(raw: unknown): ParsedScene[] {
@@ -857,7 +860,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
                           window.open(previewSrc, '_blank');
                         }
                       }}
-                      style={{ color: '#0EA5E9' }}
+                      style={{ color: JELLY_TOKENS.cyan }}
                     >
                       Preview Image
                     </VBtn>
@@ -865,7 +868,10 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
                       size="sm"
                       variant="outlined"
                       onClick={() => handleAnimateScene(sc.idx)}
-                      style={{ color: '#9C27B0', borderColor: 'rgba(156,39,176,0.4)' }}
+                      style={{
+                        color: JELLY_TOKENS.brandLight,
+                        borderColor: JELLY_TOKENS.brandOutline,
+                      }}
                     >
                       Re-Animate ({formatPrice(getAnimationPriceCents(animQuality))})
                     </VBtn>
@@ -886,7 +892,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
               padding: '8px 12px',
               fontSize: 13,
               borderRadius: JELLY_TOKENS.radius.md,
-              background: 'rgba(220,38,38,0.08)',
+              ...TINT_BG.error,
               color: JELLY_TOKENS.error,
             }}
           >
@@ -901,7 +907,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
               padding: '8px 12px',
               fontSize: 13,
               borderRadius: JELLY_TOKENS.radius.md,
-              background: 'rgba(220,38,38,0.08)',
+              ...TINT_BG.error,
               color: JELLY_TOKENS.error,
             }}
           >
@@ -992,8 +998,8 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
               onClick={requestAnimateSelected}
               disabled={animating || selectedScenes.size === 0}
               style={{
-                color: '#9C27B0',
-                borderColor: 'rgba(156,39,176,0.4)',
+                color: JELLY_TOKENS.brandLight,
+                borderColor: JELLY_TOKENS.brandOutline,
               }}
             >
               {animating
@@ -1008,7 +1014,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
                 size="sm"
                 onClick={requestAddMotion}
                 disabled={animating || scenes.length === 0}
-                style={{ background: '#9C27B0' }}
+                style={{ background: JELLY_TOKENS.gradPrimary }}
               >
                 {animating
                   ? 'Animating…'
@@ -1022,7 +1028,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
               size="sm"
               onClick={handleCompose}
               disabled={composing}
-              style={{ background: '#0EA5E9' }}
+              style={{ background: JELLY_TOKENS.cyan, color: JELLY_TOKENS.onGradient }}
             >
               {composing ? 'Rendering…' : 'Render Video'}
             </VBtn>
@@ -1056,6 +1062,9 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
+      <MicroLabel tone="cyan" style={{ marginBottom: 6 }}>
+        {reelLabel(3)}
+      </MicroLabel>
       <div
         style={{
           display: 'flex',
@@ -1431,7 +1440,9 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
             Art Style
           </span>
         </div>
-        <YouTubeStylePicker value={stylePreset} onChange={setStylePreset} />
+        <div className="jelly-legacy">
+          <YouTubeStylePicker value={stylePreset} onChange={setStylePreset} />
+        </div>
       </VCard>
 
       {/* Captions — 6 burned-in looks, each with a live swatch so the choice
@@ -1624,10 +1635,12 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
         <div style={{ fontSize: 14, fontWeight: 600, color: t.text, marginBottom: 8 }}>
           Characters
         </div>
-        <YouTubeStyleDocumentPicker
-          value={styleDocId}
-          onChange={(id) => setStyleDocId(id)}
-        />
+        <div className="jelly-legacy">
+          <YouTubeStyleDocumentPicker
+            value={styleDocId}
+            onChange={(id) => setStyleDocId(id)}
+          />
+        </div>
         <div style={{ marginTop: 12 }}>
           <div
             style={{
@@ -1638,7 +1651,9 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
           >
             Upload a new character reference image
           </div>
-          <VaterFileUpload />
+          <div className="jelly-legacy">
+            <VaterFileUpload />
+          </div>
         </div>
       </VCard>
 
@@ -1680,7 +1695,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
               width: 36,
               height: 36,
               borderRadius: JELLY_TOKENS.radius.md,
-              background: 'rgba(245,158,11,0.12)',
+              ...TINT_BG.warning,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1772,7 +1787,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
                 width: 18,
                 height: 18,
                 borderRadius: '50%',
-                background: '#fff',
+                background: JELLY_TOKENS.onGradient,
                 transform: consistency ? 'translateX(18px)' : 'translateX(0)',
                 transition: 'transform .2s',
               }}
@@ -1799,14 +1814,16 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
             • CC-BY-4.0 Kevin MacLeod — optional
           </span>
         </div>
-        <YouTubeMusicPicker
-          value={musicId}
-          volume={musicVolume}
-          onChange={(id, vol) => {
-            setMusicId(id);
-            setMusicVolume(vol);
-          }}
-        />
+        <div className="jelly-legacy">
+          <YouTubeMusicPicker
+            value={musicId}
+            volume={musicVolume}
+            onChange={(id, vol) => {
+              setMusicId(id);
+              setMusicVolume(vol);
+            }}
+          />
+        </div>
       </VCard>
 
       {actionError && (
@@ -1816,7 +1833,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
             padding: '8px 12px',
             fontSize: 13,
             borderRadius: JELLY_TOKENS.radius.md,
-            background: 'rgba(220,38,38,0.08)',
+            ...TINT_BG.error,
             color: JELLY_TOKENS.error,
           }}
         >
@@ -1830,7 +1847,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
             padding: '8px 12px',
             fontSize: 13,
             borderRadius: JELLY_TOKENS.radius.md,
-            background: 'rgba(220,38,38,0.08)',
+            ...TINT_BG.error,
             color: JELLY_TOKENS.error,
           }}
         >
@@ -1915,7 +1932,7 @@ function FeatureToggle({
             width: 18,
             height: 18,
             borderRadius: '50%',
-            background: '#fff',
+            background: JELLY_TOKENS.onGradient,
             transform: value ? 'translateX(18px)' : 'translateX(0)',
             transition: 'transform .2s',
           }}
@@ -1926,12 +1943,18 @@ function FeatureToggle({
 }
 
 /** A 2-line mock of what the caption preset looks like over a frame. Not a
- *  render — just enough contrast/weight/placement to tell them apart. */
+ *  render — just enough contrast/weight/placement to tell them apart.
+ *
+ *  The literal colours below (#FDE047, #F26BB0, #E5E7EB, #111827, white on
+ *  black outline) are NOT UI chrome and are deliberately outside the token
+ *  system: they are the colours ffmpeg actually burns into the video for each
+ *  preset. Re-tinting them to violet/cyan would make the swatch lie about the
+ *  output. Only the mock frame behind them uses theme tokens. */
 function CaptionSwatch({ preset }: { preset: CaptionPreset }): React.ReactElement {
   const base: React.CSSProperties = {
     height: 46,
     borderRadius: JELLY_TOKENS.radius.sm,
-    background: 'linear-gradient(135deg, #3b3054 0%, #1f2937 100%)',
+    background: `linear-gradient(135deg, ${JELLY_TOKENS.dark.nebula} 0%, ${JELLY_TOKENS.dark.cardAlt} 100%)`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2068,9 +2091,12 @@ function BatchAnimateConfirmModal({
         style={{
           width: '100%',
           maxWidth: 440,
-          background: t.card,
-          border: `1px solid ${t.border}`,
-          borderRadius: JELLY_TOKENS.radius.lg,
+          /* Opaque panel, not glass: `t.card` is translucent in the cinema
+           * language, and a see-through modal is unreadable over the editor. */
+          background: t.panel,
+          border: `1px solid ${t.borderStrong}`,
+          borderRadius: JELLY_TOKENS.radius.xxl,
+          boxShadow: JELLY_TOKENS.shadow24,
           padding: 20,
         }}
       >
@@ -2103,7 +2129,7 @@ function BatchAnimateConfirmModal({
           <VBtn size="sm" variant="ghost" onClick={onCancel}>
             Cancel
           </VBtn>
-          <VBtn size="sm" onClick={onConfirm} style={{ background: '#9C27B0' }}>
+          <VBtn size="sm" onClick={onConfirm} style={{ background: JELLY_TOKENS.gradPrimary }}>
             Confirm — {formatPrice(totalCents)}
           </VBtn>
         </div>

@@ -44,16 +44,103 @@ and becomes an off-canvas drawer opened by the Header hamburger
 into horizontal scroll on a 390px viewport. `Shell` owns the breakpoint via
 `matchMedia` and closes the drawer on every route change.
 
-The Shell root carries `className="animate-shell"`, which `app/globals.css`
-uses to opt this page out of the site-wide body bottom padding.
+The Shell root carries `className="animate-shell jelly-cinema"`.
+`app/globals.css` keys the site-wide body bottom padding off `animate-shell`;
+`jelly-cinema` scopes the `.jc-*` utilities in `app/animate/animate.css`. The
+shell also mounts `<CinemaBackdrop density="sparse" />` as the fixed z0 stage
+and sets `--jelly-*` CSS variables on the root for the legacy skin.
+
+## Cinema design language
+
+The whole studio speaks one visual language, handed off in
+`design/jelly-cinema-2026-08-16/README.md`: a dark 3-D cinema — projector
+light, film strips, title cards, reels, a box-office ticket — on a **violet /
+cyan pair and nothing else**.
+
+**Tokens** — `tokens.ts` is the only source of colour. `JELLY_TOKENS` carries
+the brand pair (`brand` `#8F7DFF`, `brandLight`, `cyan` `#6FD6FF`, plus
+`brandGhost` / `brandOutline` / `brandGlow` / `cyanGhost`), the gradients
+(`gradPrimary`, `gradText`, `gradTicket`, `gradChipOn`, `onGradient`), `font` /
+`fontSerif` / `fontMono`, `radius`, `shadow1/4/24`, `micro`, and `motion`.
+Themed values live in the `light` / `dark` slices and are read through
+`useTheme().t` — `body`, `card`, `cardAlt`, `panel`, `nebula`, `text`,
+`textSecondary`, `textFaint`, `textDisabled`, `border`, `borderStrong`,
+`hover`, `link`, `sidebarBg`, `headerBg`, `glassBlur`, `cardShadow`, `halo`,
+`heroWash`. Two helpers: `glass(t)` (the translucent fill + hairline + blur
+recipe every panel shares) and `microLabelStyle(color)`.
+
+**Primitives** — `primitives.tsx`: `VBtn` (primary = gradient pill), `VCard`
+(glass; `hero` adds the halo), `VInput`, `PillStepper`, `RetryError`,
+`SectionHeader` (takes an `eyebrow`), `Toast`.
+
+**Cinema components** — `cinema/`: `CinemaBackdrop` (fixed z0 stage: nebula
+wash + three.js space dust, optional projector `beam`), `CinemaRoot` (the same
+thing pre-wired for public pages), `MicroLabel`, `GradientText`, `GlassCard`
+(`glass` | `ticket` | `panel`), `PillButton` (`gradient` | `ghost` | `outline`
+| `subtle`), `Marquee`, `ReelSpinner`, `FilmFrame` + `FILM_MEDIA_STYLE`,
+`TitleCard`, `AdmitOneTicket` (`hero` | `card` | `chip`).
+
+**CSS utilities** — `app/animate/animate.css`, imported by the /animate layout:
+`.jc-rise` / `.jc-rise-load` / `.jc-fadein` / `.jc-d1..d4`, `.jc-floatA/B/C`,
+`.jc-blink`, `.jc-marquee-track`, `.jc-reel`, `.jc-flicker`, `.jc-spin`,
+`.jc-glass-hover`, `.jc-nav-link`, `.jc-pill-gradient`, `.jc-pill-ghost`,
+`.jc-chip`, `.jc-details`, `.jc-tabular`, `.jc-link`.
+
+### Rules
+
+- **Violet and cyan only.** Never introduce a hue. `success` / `error` /
+  `warning` are semantic status colours, not brand colours — the "view as"
+  bar is the one place red is allowed to lead, because impersonation must not
+  read as decoration.
+- **Instrument Serif italic is for emotional moments only** — title cards, the
+  hero accent phrase, "Directed by you." Never for UI chrome, labels or data.
+- **Micro-label + H2** is the section-heading pattern everywhere: a 10.5–11.5px
+  / 0.26em uppercase `MicroLabel` over a Space Grotesk 600 heading at
+  −0.02em tracking, then a `t.textSecondary` subtitle. `Shell.StudioPanelFrame`
+  derives its eyebrow ("STUDIO — LIBRARY") from the route's own section in
+  `lib/vater/nav-visibility.ts`, so a new nav entry gets a correct heading for
+  free.
+- **All billing is an ADMIT ONE ticket.** Receipts, balances, estimates and
+  402 walls use `AdmitOneTicket`; at header scale, a violet-outlined ticket
+  pill with a cyan tabular figure. Never a plain grey chip.
+- **Film frames for video thumbs.** Any video still goes in `FilmFrame` with
+  `FILM_MEDIA_STYLE` on the media (`position:absolute; inset:0` — intrinsic
+  aspect ratio otherwise blows out grid tracks).
+- **Every panel is glass**, except anything you have to read *through* —
+  modals, dropdowns, drawers and sticky menus use the opaque `t.panel` plus a
+  hairline and `shadow24`.
+- **No hardcoded colour.** If a value isn't in `JELLY_TOKENS` or the active
+  slice, it needs a named local constant with a comment saying which token it
+  derives from (scrims, glows and the error tint are the only current
+  examples).
+- **Legacy Tailwind gets the `.jelly-legacy` wrapper.** Components under
+  `components/vater/*` mounted inside the studio are wrapped in
+  `<div className="jelly-legacy">`, which re-skins their zinc/sky/amber
+  utilities. Arbitrary-value classes (`bg-[#06050a]/95`) can't be reached that
+  way — see `observer/ObserverPanel.tsx` for the scoped-style pattern that
+  covers them.
+- **Root class names are load-bearing.** The studio shell root is
+  `animate-shell jelly-cinema`; the landing is `jsl`; legal pages `jc-legal`;
+  the demo `jc-demo`. `app/globals.css` keys the site-wide footer padding on
+  these, and the `.jc-*` utilities are scoped under `.jelly-cinema` — anything
+  rendered as a sibling of the shell root (the Help drawer) needs its own
+  `jelly-cinema` class.
+- **The shell root is `position: relative` with NO z-index** so it paints over
+  the fixed z0 `CinemaBackdrop` without becoming a stacking context. Adding one
+  would trap `BetaGate` (9999), the mobile nav drawer (210) and the Help FAB
+  (80) at a single level and reorder them all.
+- Light mode is not optional: the studio keeps its toggle, the choice persists
+  in `localStorage['jelly.theme']`, and every value must come from `t`.
 
 ## Styling
 
 Inline styles only. No Tailwind, no CSS modules, no new deps. All values come
 from `tokens.ts` (`JELLY_TOKENS`), which has a light and a dark slice selected
-by `useTheme()`. The font token resolves to `var(--font-sora)`, loaded by the
-root layout. The landing page is the one exception: it has its own
-`landing/landing.css` and its own fonts.
+by `useTheme()`. `JELLY_TOKENS.font` resolves to Space Grotesk and
+`JELLY_TOKENS.fontSerif` to Instrument Serif, both loaded once by
+`app/animate/layout.tsx` via `fonts.ts` — never call `next/font` yourself. See
+**Cinema design language** above for the full token/primitive inventory and the
+rules that govern them.
 
 ## Files
 

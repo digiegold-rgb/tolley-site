@@ -122,7 +122,9 @@ export function VideoEditorEmbed({ projectId }: VideoEditorEmbedProps): React.Re
             border: `1px solid ${t.border}`,
           }}
         >
-          <EditorShell project={project} />
+          <div className="jelly-legacy">
+            <EditorShell project={project} />
+          </div>
         </div>
       )}
 

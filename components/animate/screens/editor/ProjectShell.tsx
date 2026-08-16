@@ -47,6 +47,10 @@ import {
   DEMO_CTA_LABEL,
   DEMO_RECEIPT,
 } from '@/lib/vater/demo-data';
+import {
+  RenderReceiptTicket,
+  type RenderReceipt,
+} from '../browse/RenderReceiptTicket';
 
 import { TitleStep } from './TitleStep';
 import { ScriptStep } from './ScriptStep';
@@ -55,6 +59,7 @@ import { VisualsStep } from './VisualsStep';
 import { SoundtrackStep } from './SoundtrackStep';
 import { ThumbnailStep } from './ThumbnailStep';
 import { DescriptionStep } from './DescriptionStep';
+import { TINT_BG } from '../tint';
 
 /* Common project shape every step receives. Mirrors what the legacy v1
  * EditorScreen exported, plus the v2-specific fields (titleSuggestions,
@@ -426,7 +431,7 @@ export function ProjectShell({
             padding: '10px 14px',
             borderRadius: JELLY_TOKENS.radius.md,
             border: `1px solid ${JELLY_TOKENS.error}`,
-            background: 'rgba(220,38,38,0.08)',
+            ...TINT_BG.error,
             color: JELLY_TOKENS.error,
             fontSize: 13,
           }}
@@ -454,10 +459,56 @@ export function ProjectShell({
         )}
       </StepArea>
 
+      {/* The stub for a finished film. A render that quietly costs money and
+          shows one opaque total is exactly the thing customers do not trust —
+          so as soon as there is an MP4, there is an itemised ticket under it.
+          Demo mode renders DEMO_RECEIPT statically: the route needs a session,
+          and these are the real reconciled numbers for #23. */}
+      {isDemo ? (
+        <div style={{ maxWidth: 460, margin: '28px auto 0' }}>
+          <RenderReceiptTicket
+            projectId="demo"
+            title={DEMO_PROJECT_TITLE}
+            duration={DEMO_RECEIPT.durationSeconds}
+            receipt={DEMO_RECEIPT_TICKET}
+          />
+        </div>
+      ) : project?.finalVideoUrl && projectId ? (
+        <div style={{ maxWidth: 460, margin: '28px auto 0' }}>
+          <RenderReceiptTicket
+            projectId={projectId}
+            title={project.sourceTitle ?? null}
+            duration={project.audioDuration ?? null}
+          />
+        </div>
+      ) : null}
+
       <Footer />
     </div>
   );
 }
+
+/* DEMO_RECEIPT in the shape the receipt endpoint returns. Nothing is invented:
+ * the ops rate is opsUsd ÷ minutes, and the single compute line is the
+ * reconciled compute total — #23's per-stage split is not in the demo bundle,
+ * so it is shown as one honest row rather than a made-up breakdown. */
+const DEMO_PROJECT_TITLE = 'The Quiet Exit — My Money Mindset';
+const DEMO_RECEIPT_TICKET: RenderReceipt = {
+  computeUsd: DEMO_RECEIPT.computeUsd,
+  byStage: [{ key: 'compute', label: 'compute — at cost', usd: DEMO_RECEIPT.computeUsd }],
+  minutes: DEMO_RECEIPT.minutes,
+  opsRate: Math.round((DEMO_RECEIPT.opsUsd / DEMO_RECEIPT.minutes) * 100) / 100,
+  opsUsd: DEMO_RECEIPT.opsUsd,
+  totalUsd: DEMO_RECEIPT.totalUsd,
+  estimateUsd: DEMO_RECEIPT.totalUsd,
+  cappedAt: null,
+  debitedCents: Math.round(DEMO_RECEIPT.totalUsd * 100),
+  refundedCents: null,
+  refundReason: null,
+  netChargedCents: Math.round(DEMO_RECEIPT.totalUsd * 100),
+  wallClockSec: null,
+  unmetered: false,
+};
 
 /* Wrapper that neutralises the step area in demo mode and renders it
  * untouched otherwise — no extra DOM node in the signed-in path. */
@@ -520,7 +571,7 @@ function DemoBanner(): React.ReactElement {
           padding: '9px 18px',
           borderRadius: JELLY_TOKENS.radius.full,
           background: JELLY_TOKENS.gradCreate,
-          color: '#fff',
+          color: JELLY_TOKENS.onGradient,
           fontSize: 13,
           fontWeight: 600,
           textDecoration: 'none',
@@ -559,7 +610,8 @@ function StepStateRow({ states }: { states: StepState[] }): React.ReactElement {
           color = JELLY_TOKENS.success;
         } else if (s === 'in-progress') {
           badge = '…';
-          color = JELLY_TOKENS.brand;
+          // In-flight reads cyan everywhere in the cinema language.
+          color = JELLY_TOKENS.cyan;
         } else {
           badge = '·';
         }

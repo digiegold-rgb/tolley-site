@@ -356,7 +356,7 @@ function ShortPromoSection({
               width: 180,
               aspectRatio: '9 / 16',
               borderRadius: JELLY_TOKENS.radius.md,
-              background: '#000',
+              background: JELLY_TOKENS.dark.cardAlt,
               flex: '0 0 auto',
             }}
           />

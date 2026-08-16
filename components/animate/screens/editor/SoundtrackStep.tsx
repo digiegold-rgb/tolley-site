@@ -26,6 +26,7 @@ import { VBtn, VCard, SectionHeader } from '../../primitives';
 import { YouTubeMusicPicker } from '@/components/vater/youtube-music-picker';
 import { readFeatures, saveFeatures } from '@/lib/vater/project-features';
 import type { EditorStepProps } from './ProjectShell';
+import { reelLabel } from './reel-label';
 
 interface SfxRow {
   id: string;
@@ -142,7 +143,7 @@ export function SoundtrackStep({ projectId, project, refresh }: EditorStepProps)
       <div style={{
         width: 28, height: 28, borderRadius: '50%',
         background: done ? JELLY_TOKENS.success : active ? JELLY_TOKENS.brand : t.cardAlt,
-        color: done || active ? '#fff' : t.textSecondary,
+        color: done || active ? JELLY_TOKENS.onGradient : t.textSecondary,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 14, fontWeight: 600,
       }}>{done ? '✓' : n}</div>
@@ -154,6 +155,7 @@ export function SoundtrackStep({ projectId, project, refresh }: EditorStepProps)
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <SectionHeader
         icon="music"
+        eyebrow={reelLabel(4)}
         title="Soundtrack"
         description={`Build a background-music bed for your video. ${SECTION_PRICES.soundtrack}.`}
       />
@@ -257,7 +259,7 @@ export function SoundtrackStep({ projectId, project, refresh }: EditorStepProps)
                         width: 18,
                         height: 18,
                         borderRadius: '50%',
-                        background: '#fff',
+                        background: JELLY_TOKENS.onGradient,
                         transform: musicMoods ? 'translateX(18px)' : 'translateX(0)',
                         transition: 'transform .2s',
                       }}
@@ -269,15 +271,17 @@ export function SoundtrackStep({ projectId, project, refresh }: EditorStepProps)
                     ? 'The track you pick below seeds the opening segment; the rest are matched to it.'
                     : 'CC-BY-4.0 Kevin MacLeod — optional'}
                 </div>
-                <YouTubeMusicPicker
-                  value={musicId}
-                  volume={volume}
-                  onChange={(id, v) => {
-                    setMusicId(id);
-                    setVolume(v);
-                    void persistMusic(id, v);
-                  }}
-                />
+                <div className="jelly-legacy">
+                  <YouTubeMusicPicker
+                    value={musicId}
+                    volume={volume}
+                    onChange={(id, v) => {
+                      setMusicId(id);
+                      setVolume(v);
+                      void persistMusic(id, v);
+                    }}
+                  />
+                </div>
                 {persistError && (
                   <div
                     style={{

@@ -22,17 +22,19 @@
  *  4. It is an estimate and it says so. A real project gets a real quote from
  *     GET /api/vater/youtube/[id]/estimate before anything renders.
  *
- * TWO HOSTS, ONE COMPONENT. It renders on the public landing page (inside
- * `.jsl`, whose CSS variables it picks up) and on the in-app Billing screen
- * (which passes its theme through `palette`). It therefore imports NEITHER
- * design system — no landing.css class names, no useTheme() — because the
- * landing has no ThemeProvider and the studio has no `.jsl` ancestor.
+ * TWO HOSTS, ONE COMPONENT. It renders on the public landing page (which takes
+ * the CINEMA_PALETTE default below) and on the in-app Billing screen (which
+ * passes its live theme slice through `palette`). It therefore uses NO
+ * class names and NO useTheme() — the studio's palette can be light, and the
+ * landing has no ThemeProvider above it. Every colour arrives as a prop.
+ * JELLY_TOKENS is imported for the token VALUES only, never for a theme hook.
  */
 
 import * as React from 'react';
 
 import { planEstimate } from '@/lib/vater/billing/estimate';
 import { usePricingRates } from '@/lib/vater/use-estimate';
+import { JELLY_TOKENS } from '../tokens';
 
 /* ── the one competitor line ───────────────────────────────────────────────
  * Published subscription price, read off the vendor's own pricing page on the
@@ -52,16 +54,20 @@ export interface CalculatorPalette {
   accent: string;
 }
 
-/* Landing default. The var() names are the ones declared on `.jsl` in
- * landing.css; the fallbacks are the same values, so the component still looks
- * right if it is ever dropped somewhere outside that wrapper. */
-const LANDING_PALETTE: CalculatorPalette = {
-  surface: 'var(--ink-2, #131318)',
-  surfaceAlt: 'var(--panel, #1a1a21)',
-  text: 'var(--text, #f7f5fa)',
-  textSecondary: 'var(--faint, rgba(168,164,176,0.78))',
-  border: 'var(--line, rgba(247,245,250,0.1))',
-  accent: 'var(--pink, #f26bb0)',
+/**
+ * The cinema palette — the landing default, and the one to pass from any
+ * other dark public surface. Literal token values (not var() names) so the
+ * calculator is correct wherever it is mounted, including outside `.jsl`.
+ * `surface` is the glass fill; `surfaceAlt` is the deep panel the answer sits
+ * on. Violet is the accent, which is what tints the sliders.
+ */
+export const CINEMA_PALETTE: CalculatorPalette = {
+  surface: JELLY_TOKENS.dark.card, // rgba(240,238,248,0.04)
+  surfaceAlt: JELLY_TOKENS.dark.cardAlt, // #08070F
+  text: JELLY_TOKENS.dark.text, // #F0EEF8
+  textSecondary: JELLY_TOKENS.dark.textSecondary, // #9A94B0
+  border: 'rgba(240,238,248,0.12)',
+  accent: JELLY_TOKENS.brand, // #8F7DFF
 };
 
 export interface PricingCalculatorProps {
@@ -122,6 +128,10 @@ function Slider({
           {readout}
         </strong>
       </label>
+      {/* accentColor paints the track fill AND the thumb from one value, which
+        * is the only way to tint a native range without a stylesheet — and a
+        * stylesheet is off the table because this component has two hosts with
+        * two different palettes. */}
       <input
         id={id}
         type="range"
@@ -130,16 +140,23 @@ function Slider({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.currentTarget.value))}
-        style={{ width: '100%', accentColor: accent, cursor: 'pointer' }}
+        style={{
+          width: '100%',
+          accentColor: accent,
+          cursor: 'pointer',
+          height: 22,
+          borderRadius: 999,
+          background: 'transparent',
+        }}
       />
     </div>
   );
 }
 
 export function PricingCalculator({
-  palette = LANDING_PALETTE,
+  palette = CINEMA_PALETTE,
   title = 'Price your month',
-  fontFamily,
+  fontFamily = JELLY_TOKENS.font,
 }: PricingCalculatorProps): React.ReactElement {
   const [videosPerMonth, setVideosPerMonth] = React.useState(8);
   const [minutesPerVideo, setMinutesPerVideo] = React.useState(6);
@@ -172,17 +189,22 @@ export function PricingCalculator({
       style={{
         background: palette.surface,
         border: `1px solid ${palette.border}`,
-        borderRadius: 14,
-        padding: '22px 20px',
+        borderRadius: JELLY_TOKENS.radius.xl,
+        padding: '24px 22px',
         color: palette.text,
         fontFamily,
         display: 'flex',
         flexDirection: 'column',
         gap: 18,
+        /* Glass. Harmless on an opaque studio surface (there is nothing behind
+         * it to blur), correct on the landing's translucent one. */
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        fontVariantNumeric: 'tabular-nums',
       }}
     >
       {title ? (
-        <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em' }}>
+        <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.01em' }}>
           {title}
         </div>
       ) : null}
@@ -237,8 +259,8 @@ export function PricingCalculator({
         style={{
           background: palette.surfaceAlt,
           border: `1px solid ${palette.border}`,
-          borderRadius: 12,
-          padding: '16px 18px',
+          borderRadius: JELLY_TOKENS.radius.lg,
+          padding: '18px 20px',
         }}
       >
         <div

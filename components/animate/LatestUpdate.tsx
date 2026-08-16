@@ -1,6 +1,6 @@
 'use client';
 
-/* LatestUpdate — green pulsing "what's new" surfaces + estimated cost pill.
+/* LatestUpdate — cyan pulsing "what's new" surfaces + estimated cost pill.
  *
  * Data source: GET /api/vater/latest (studio session). One fetch per mount,
  * shared by three consumers:
@@ -19,7 +19,12 @@ import { useTheme, useRoute } from './theme-context';
 import { useTier } from './tier-context';
 
 const SEEN_KEY = 'vater-latest-seen-id';
-const GREEN = '#22c55e';
+/* "New / live" is CYAN in the cinema language — the same colour as the
+ * "● NOW FILMING" state on the box-office ticket. There is no green here. */
+const LIVE = JELLY_TOKENS.cyan;
+/** Halo for the pulsing dot — the cyan at two alphas, not a new hue. */
+const LIVE_PULSE_FROM = 'rgba(111,214,255,0.6)';
+const LIVE_PULSE_TO = 'rgba(111,214,255,0)';
 
 interface VaterUpdateRow {
   id: string;
@@ -113,29 +118,32 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-/** Pulsing (unseen) or steady (seen) green dot. */
-export function GreenDot({ pulse }: { pulse: boolean }): React.ReactElement {
+/** Pulsing (unseen) or steady (seen) live dot. */
+export function LiveDot({ pulse }: { pulse: boolean }): React.ReactElement {
   return (
     <>
       <span
         style={{
-          width: 10,
-          height: 10,
-          borderRadius: '50%',
-          background: GREEN,
+          width: 9,
+          height: 9,
+          borderRadius: JELLY_TOKENS.radius.full,
+          background: LIVE,
           flexShrink: 0,
-          boxShadow: pulse ? `0 0 0 0 ${GREEN}` : 'none',
+          boxShadow: pulse ? `0 0 0 0 ${LIVE}` : 'none',
           animation: pulse ? 'vaterPulse 1.6s ease-out infinite' : 'none',
         }}
       />
       <style>{`@keyframes vaterPulse {
-        0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
-        70% { box-shadow: 0 0 0 9px rgba(34,197,94,0); }
-        100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+        0% { box-shadow: 0 0 0 0 ${LIVE_PULSE_FROM}; }
+        70% { box-shadow: 0 0 0 9px ${LIVE_PULSE_TO}; }
+        100% { box-shadow: 0 0 0 0 ${LIVE_PULSE_TO}; }
       }`}</style>
     </>
   );
 }
+
+/** @deprecated Name kept for existing imports; the dot is cyan, not green. */
+export const GreenDot = LiveDot;
 
 function useSeen(latestId: string | undefined): [boolean, () => void] {
   const [seen, setSeen] = React.useState(true);
@@ -189,17 +197,30 @@ export function LatestUpdateBanner(): React.ReactElement | null {
         textAlign: 'left',
         padding: '12px 16px',
         marginBottom: 20,
-        borderRadius: JELLY_TOKENS.radius.md,
-        border: `1px solid ${seen ? t.border : GREEN}`,
-        background: t.card,
+        borderRadius: JELLY_TOKENS.radius.lg,
+        border: `1px solid ${seen ? t.border : JELLY_TOKENS.brandOutline}`,
+        background: seen ? t.card : JELLY_TOKENS.gradTicket,
+        backdropFilter: t.glassBlur,
+        WebkitBackdropFilter: t.glassBlur,
         color: t.text,
         cursor: 'pointer',
         fontFamily: JELLY_TOKENS.font,
       }}
     >
-      <GreenDot pulse={!seen} />
+      <LiveDot pulse={!seen} />
       <span style={{ fontSize: 13, lineHeight: 1.4, flex: 1, minWidth: 0 }}>
-        <span style={{ fontWeight: 700, marginRight: 8, color: GREEN }}>NEW</span>
+        <span
+          style={{
+            fontWeight: 500,
+            marginRight: 10,
+            fontSize: 10.5,
+            letterSpacing: '0.26em',
+            textTransform: 'uppercase',
+            color: LIVE,
+          }}
+        >
+          New
+        </span>
         {latest.message}
       </span>
       <span style={{ fontSize: 11, color: t.textSecondary, flexShrink: 0 }}>
@@ -228,8 +249,18 @@ export function LatestUpdateStrip(): React.ReactElement | null {
         fontFamily: JELLY_TOKENS.font,
       }}
     >
-      <GreenDot pulse={!seen} />
-      <span style={{ fontWeight: 700, color: GREEN }}>Latest</span>
+      <LiveDot pulse={!seen} />
+      <span
+        style={{
+          fontWeight: 500,
+          fontSize: 10.5,
+          letterSpacing: '0.26em',
+          textTransform: 'uppercase',
+          color: LIVE,
+        }}
+      >
+        Latest
+      </span>
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {latest.message}
       </span>
@@ -312,8 +343,9 @@ export function VaterCostPill(): React.ReactElement | null {
           alignItems: 'center',
           gap: 6,
           padding: '6px 12px',
-          borderRadius: JELLY_TOKENS.radius.full,
-          border: `1px solid ${t.border}`,
+          borderRadius: JELLY_TOKENS.radius.pill,
+          border: `1px solid ${JELLY_TOKENS.brandOutline}`,
+          background: JELLY_TOKENS.gradTicket,
           fontSize: 12,
           color: t.textSecondary,
           fontFamily: JELLY_TOKENS.font,
@@ -321,9 +353,11 @@ export function VaterCostPill(): React.ReactElement | null {
           whiteSpace: 'nowrap',
         }}
       >
-        <span style={{ color: GREEN, fontWeight: 700 }}>≈</span>
-        <span>${dueUsd.toFixed(2)}</span>
-        <span style={{ opacity: 0.6, fontSize: 10 }}>due</span>
+        <span style={{ color: LIVE, fontWeight: 700 }}>≈</span>
+        <span className="jc-tabular" style={{ color: LIVE, fontWeight: 600 }}>
+          ${dueUsd.toFixed(2)}
+        </span>
+        <span style={{ color: t.textFaint, fontSize: 10 }}>due</span>
       </div>
       {open && (
         <div
@@ -336,8 +370,9 @@ export function VaterCostPill(): React.ReactElement | null {
             padding: '12px 14px',
             borderRadius: JELLY_TOKENS.radius.lg,
             border: `1px solid ${t.border}`,
-            background: t.card,
-            boxShadow: JELLY_TOKENS.shadow4,
+            // Opaque: a hover panel over live numbers has to be readable.
+            background: t.panel,
+            boxShadow: JELLY_TOKENS.shadow24,
             fontFamily: JELLY_TOKENS.font,
             fontSize: 12,
             color: t.text,
@@ -351,10 +386,10 @@ export function VaterCostPill(): React.ReactElement | null {
               <div
                 style={{
                   fontSize: 10,
-                  letterSpacing: 0.6,
+                  letterSpacing: '0.22em',
                   textTransform: 'uppercase',
-                  color: GREEN,
-                  fontWeight: 700,
+                  color: LIVE,
+                  fontWeight: 500,
                   marginBottom: 4,
                 }}
               >
@@ -372,7 +407,7 @@ export function VaterCostPill(): React.ReactElement | null {
                   }}
                 >
                   <span>{r.label}</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                  <span className="jc-tabular" style={{ fontWeight: 600 }}>
                     {r.value}
                   </span>
                 </div>
@@ -380,10 +415,10 @@ export function VaterCostPill(): React.ReactElement | null {
               <div
                 style={{
                   fontSize: 10,
-                  letterSpacing: 0.6,
+                  letterSpacing: '0.22em',
                   textTransform: 'uppercase',
-                  color: t.textSecondary,
-                  fontWeight: 700,
+                  color: t.textFaint,
+                  fontWeight: 500,
                   margin: '10px 0 4px',
                   paddingTop: 8,
                   borderTop: `1px solid ${t.border}`,
@@ -405,7 +440,7 @@ export function VaterCostPill(): React.ReactElement | null {
               }}
             >
               <span>{r.label}</span>
-              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+              <span className="jc-tabular" style={{ fontWeight: 600 }}>
                 {r.value}
               </span>
             </div>
