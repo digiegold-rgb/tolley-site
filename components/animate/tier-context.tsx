@@ -26,12 +26,22 @@ export interface VaterCapabilities {
   publishingPosts: boolean;
 }
 
+export interface BetaState {
+  invited: boolean;
+  accessAllowed: boolean;
+  termsAccepted: boolean;
+  tosVersion: string | null;
+}
+
 export interface TierContextValue {
   tier: VaterTier;
   capabilities: VaterCapabilities;
   routes: string[];
   loading: boolean;
   email: string | null;
+  beta: BetaState;
+  /** Optimistic local update after the click-wrap modal succeeds. */
+  markTermsAccepted: () => void;
 }
 
 const EMPTY_CAPS: VaterCapabilities = {
@@ -48,12 +58,22 @@ const EMPTY_CAPS: VaterCapabilities = {
   publishingPosts: false,
 };
 
+const DEFAULT_BETA: BetaState = {
+  // Optimistic defaults so a transient /me failure never locks anyone out.
+  invited: true,
+  accessAllowed: true,
+  termsAccepted: true,
+  tosVersion: null,
+};
+
 const defaultValue: TierContextValue = {
   tier: 'public',
   capabilities: EMPTY_CAPS,
   routes: routeIdsForTier('public'),
   loading: true,
   email: null,
+  beta: DEFAULT_BETA,
+  markTermsAccepted: () => {},
 };
 
 interface MePayload {
@@ -61,6 +81,7 @@ interface MePayload {
   email?: string | null;
   capabilities?: Partial<VaterCapabilities>;
   routes?: string[];
+  beta?: Partial<BetaState>;
 }
 
 export const TierContext = React.createContext<TierContextValue>(defaultValue);
@@ -101,6 +122,9 @@ export function TierProvider({
   children: React.ReactNode;
 }): React.ReactElement {
   const [state, setState] = React.useState<TierContextValue>(defaultValue);
+  const markTermsAccepted = React.useCallback(() => {
+    setState((prev) => ({ ...prev, beta: { ...prev.beta, termsAccepted: true } }));
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -116,13 +140,15 @@ export function TierProvider({
         const data = (await r.json()) as MePayload;
         if (cancelled) return;
         const tier: VaterTier = data.tier ?? 'public';
-        setState({
+        setState((prev) => ({
+          ...prev,
           tier,
           capabilities: { ...EMPTY_CAPS, ...(data.capabilities ?? {}) },
           routes: data.routes ?? routeIdsForTier(tier),
           loading: false,
           email: data.email ?? null,
-        });
+          beta: { ...DEFAULT_BETA, ...(data.beta ?? {}) },
+        }));
       } catch {
         if (!cancelled) setState((prev) => ({ ...prev, loading: false }));
       }
@@ -132,5 +158,6 @@ export function TierProvider({
     };
   }, []);
 
-  return <TierContext.Provider value={state}>{children}</TierContext.Provider>;
+  const value = React.useMemo(() => ({ ...state, markTermsAccepted }), [state, markTermsAccepted]);
+  return <TierContext.Provider value={value}>{children}</TierContext.Provider>;
 }

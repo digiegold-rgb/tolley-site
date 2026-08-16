@@ -24,6 +24,7 @@ import {
 import { routeIdsForTier, type VaterTier } from "@/lib/vater/nav-visibility";
 import { resolveActor } from "@/lib/vater/acting-as";
 import { isMissingRelationError } from "@/lib/vater/beta-schema";
+import { TOS_VERSION } from "@/lib/legal-animate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,23 +40,24 @@ const NO_STORE = { "Cache-Control": "private, no-store" } as const;
  */
 async function readUserFlags(
   userId: string,
-): Promise<{ showcaseOptOut: boolean; invited: boolean }> {
+): Promise<{ showcaseOptOut: boolean; invited: boolean; termsVersion: string | null }> {
   try {
     const rows = await prisma.$queryRaw<
-      Array<{ showcaseOptOut: boolean; betaInviteId: string | null }>
+      Array<{ showcaseOptOut: boolean; betaInviteId: string | null; termsVersion: string | null }>
     >`
-      SELECT "showcaseOptOut", "betaInviteId" FROM "User" WHERE "id" = ${userId} LIMIT 1
+      SELECT "showcaseOptOut", "betaInviteId", "termsVersion" FROM "User" WHERE "id" = ${userId} LIMIT 1
     `;
     const row = rows[0];
     return {
       showcaseOptOut: Boolean(row?.showcaseOptOut),
       invited: Boolean(row?.betaInviteId),
+      termsVersion: row?.termsVersion ?? null,
     };
   } catch (err) {
     if (!isMissingRelationError(err)) {
       console.error("[vater/me] flag read failed", err);
     }
-    return { showcaseOptOut: false, invited: false };
+    return { showcaseOptOut: false, invited: false, termsVersion: null };
   }
 }
 
@@ -107,6 +109,13 @@ export async function GET() {
       beta: {
         invited: flags.invited,
         showcaseOptOut: flags.showcaseOptOut,
+        /** Owner + studio accounts (Trey) are grandfathered; everyone else
+         *  must have redeemed an invite to use the studio at all. */
+        accessAllowed: owner || studio || flags.invited,
+        /** Current click-wrap version accepted? Existing accounts (pre-8/15)
+         *  get a one-time accept modal in the Shell (BetaGate). */
+        termsAccepted: flags.termsVersion === TOS_VERSION,
+        tosVersion: TOS_VERSION,
       },
       /** Set only during an admin support session. readOnly is enforced in
        *  proxy.ts, not here — this is just what the banner reads. */
@@ -135,11 +144,26 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "LOGIN_REQUIRED" }, { status: 401, headers: NO_STORE });
   }
 
-  let body: { showcaseOptOut?: unknown };
+  let body: { showcaseOptOut?: unknown; acceptTerms?: unknown };
   try {
     body = (await request.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: NO_STORE });
+  }
+
+  // One-time click-wrap for accounts that pre-date the Terms (or a new
+  // TOS_VERSION). Stamps the CURRENT version + timestamp; never downgrades.
+  if (body.acceptTerms === true) {
+    try {
+      await prisma.user.update({
+        where: { id: session.user.id },
+        data: { termsAcceptedAt: new Date(), termsVersion: TOS_VERSION },
+      });
+    } catch (err) {
+      console.error("[vater/me] acceptTerms failed", err);
+      return NextResponse.json({ error: "Could not record acceptance." }, { status: 500, headers: NO_STORE });
+    }
+    return NextResponse.json({ ok: true, termsAccepted: true, tosVersion: TOS_VERSION }, { headers: NO_STORE });
   }
 
   if (typeof body.showcaseOptOut !== "boolean") {

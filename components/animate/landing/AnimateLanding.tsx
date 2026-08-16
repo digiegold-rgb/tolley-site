@@ -27,6 +27,7 @@ import {
   PENDING_DEMO_COUNT,
   demoPerMinute,
 } from "@/lib/vater/demo-videos";
+import { InviteRequestForm } from "./InviteRequestForm";
 import "./landing.css";
 
 const display = Bricolage_Grotesque({
@@ -47,7 +48,7 @@ const mono = JetBrains_Mono({
 
 /* Until an invite-request form exists, "request an invite" is an email.
  * Keep it that way rather than shipping a form that drops leads. */
-const INVITE = `mailto:${HELP_SUPPORT_EMAIL}?subject=Jelly%20Studio%20beta%20invite`;
+const INVITE = "#beta";
 const SIGNUP = "/signup?callbackUrl=%2Fanimate";
 const SIGNIN = "/login?callbackUrl=%2Fanimate";
 
@@ -566,8 +567,8 @@ export function AnimateLanding(): React.ReactElement {
             finished still scenes — is waiting on the other side of the card
             form.
           </p>
+          <InviteRequestForm />
           <div className="jsl-final-ctas">
-            <a className="jsl-btn jsl-btn-amber" href={INVITE}>Request an invite</a>
             <a className="jsl-btn jsl-btn-ghost" href={SIGNUP}>
               Have an invite code? Sign up
             </a>
