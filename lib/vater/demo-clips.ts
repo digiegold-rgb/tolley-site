@@ -6,7 +6,10 @@
  * vater-finals Blob store under `animate-demo-clips/`. Nothing here is a
  * mock-up: the 16:9 clips are Trey's consented library films (they only
  * render while that film is in LIVE_DEMOS — same consent gate as the hero),
- * the 9:16 clips are the persona shorts Jared picked on 2026-08-16.
+ * the 9:16 clips are the persona shorts Jared picked on 2026-08-16, and the
+ * Digital Gold Diggers excerpt is the Chip-only "Bake a GPU" cut (EP1
+ * payoff, 3.0–11.0 s of demo-dgd-bake-a-gpu-30s.mp4 — Chip voice only, per
+ * the 8/16 rule; Andy's voice never ships in a demo).
  *
  * Source masters + cut recipe: ~/vater-studio/demo-clips/{trey,lady,clips}.
  */
@@ -14,7 +17,7 @@
 import { LIVE_DEMOS, type DemoVideo } from "./demo-videos";
 
 export type ClipAspect = "16x9" | "9x16";
-export type ClipOwner = "trey" | "lady";
+export type ClipOwner = "trey" | "lady" | "dgd";
 
 export interface DemoClip {
   /** Stable key. */
@@ -42,6 +45,11 @@ const ALL_CLIPS: readonly DemoClip[] = [
     id: "trey-23", owner: "trey", aspect: "16x9", demoId: "23",
     src: `${BLOB}/trey-23-16x9.mp4`, poster: `${BLOB}/trey-23-poster.jpg`,
     title: "The Quiet Exit — My Money Mindset", href: "", fullDuration: "",
+  },
+  {
+    id: "dgd-bake-a-gpu", owner: "dgd", aspect: "16x9",
+    src: `${BLOB}/dgd-bake-a-gpu-16x9.mp4`, poster: `${BLOB}/dgd-bake-a-gpu-poster.jpg`,
+    title: "Digital Gold Diggers — “You can bake a GPU”", href: "https://www.facebook.com/reel/2276500076219769", fullDuration: "0:31",
   },
   {
     id: "lady-kc-housing", owner: "lady", aspect: "9x16",

@@ -67,9 +67,13 @@ function ClipCard({ clip, height, maxWidth, unmuted, onToggleSound }: {
   let width = Math.round(isWide ? (media * 16) / 9 : (media * 9) / 16);
   if (width > cap) { width = cap; media = Math.round((width * 9) / 16); }
   const frameHeight = media + 40;
-  const ownerLabel = clip.owner === 'trey' ? `TREY'S LIBRARY · #${clip.demoId}` : 'OUR LADY · SHORTS';
+  const ownerLabel =
+    clip.owner === 'trey' ? `TREY'S LIBRARY · #${clip.demoId}`
+    : clip.owner === 'dgd' ? 'DIGITAL GOLD DIGGERS · EP 1'
+    : 'OUR LADY · SHORTS';
   const meta = clip.demo
     ? `${clip.demo.duration} · ${usd(clip.demo.allInUsd)} all in`
+    : clip.owner === 'dgd' ? `${clip.fullDuration} clip · Facebook`
     : `${clip.fullDuration} short · YouTube`;
 
   return (

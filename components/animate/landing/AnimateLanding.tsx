@@ -511,7 +511,8 @@ export function AnimateLanding(): React.ReactElement {
             <h2 style={{ ...H2, margin: "0 0 12px" }}>See what comes out the other end.</h2>
             <p style={{ ...LEAD, margin: "0 auto 8px", maxWidth: 620 }}>
               Eight-second excerpts of finished renders — long-form films from
-              Trey&apos;s library and vertical shorts from our own channels. Every
+              Trey&apos;s library, an episode of Digital Gold Diggers, and vertical
+              shorts from our own channels. Every
               frame is generated; nothing is stock. Tap any card for the full piece.
             </p>
           </div>
