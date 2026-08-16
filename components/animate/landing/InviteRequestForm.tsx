@@ -92,7 +92,7 @@ export function InviteRequestForm(): React.ReactElement {
         </PillButton>
       </div>
       {state === 'error' && (
-        <div style={{ fontSize: 13, color: JELLY_TOKENS.error }}>{msg} — or email support@tolley.io</div>
+        <div style={{ fontSize: 13, color: JELLY_TOKENS.error }}>{msg} — or email jared@yourkchomes.com</div>
       )}
     </form>
   );

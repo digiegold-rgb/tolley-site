@@ -33,6 +33,7 @@ import {
   mintInvites,
 } from "@/lib/vater/beta-invites";
 import { readLastErrorByUser } from "@/lib/vater/events";
+import { sendInviteLinkEmail } from "@/lib/vater/animate-email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -245,9 +246,28 @@ export async function POST(request: NextRequest) {
         note: typeof body.note === "string" ? body.note : "minted from /hq",
         createdBy: "hq",
       });
+      // { send: true } + a locked email → email the link too and close any
+      // open invite-request Must Complete item for that address.
+      let sent = false;
+      let sendError: string | null = null;
+      if (body.send === true && email && created[0]) {
+        try {
+          await sendInviteLinkEmail(email, inviteLink(created[0].code), formatInviteCode(created[0].code));
+          sent = true;
+          await prisma.mustCompleteItem.updateMany({
+            where: { source: "animate-invite-request", status: "open", title: `Invite request — ${email.toLowerCase()}` },
+            data: { status: "done", completedAt: new Date() },
+          }).catch(() => undefined);
+        } catch (err) {
+          sendError = err instanceof Error ? err.message : String(err);
+          console.error("[hq/vater-users] invite email failed", err);
+        }
+      }
       return NextResponse.json(
         {
           ok: true,
+          sent,
+          sendError,
           invites: created.map((i) => ({
             code: i.code,
             display: formatInviteCode(i.code),

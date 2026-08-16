@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { rateLimitByIp } from "@/lib/rate-limit";
 import { notifyTelegram } from "@/lib/budget/notify";
+import { sendInviteRequestAck } from "@/lib/vater/animate-email";
 
 export const runtime = "nodejs";
 
@@ -44,9 +45,10 @@ export async function POST(request: NextRequest) {
     `Email: ${email}`,
     `What they make / why: ${about ?? "(not given)"}`,
     "",
-    "TO APPROVE: /hq → Studio users → Mint invite (email-locked to this address) → send them:",
-    "https://www.tolley.io/signup?callbackUrl=%2Fanimate&invite=CODE",
-    "Or run the command below (mints 1 email-locked code and prints the link).",
+    "TO APPROVE: /hq → Studio users → paste this email → \"Mint + email invite\" (mints an",
+    "email-locked code AND emails them the signup link — one click, done).",
+    "Or run the command below (mints + emails the same way from the CLI).",
+    "They already received an auto-ack (\"invite within 24h\") the moment they submitted.",
   ].join("\n");
 
   try {
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
           // emit it for a strictly-safe email charset, single-quoted; anything
           // else gets no command (use the /hq mint UI instead).
           command: /^[a-z0-9._+-]+@[a-z0-9.-]+$/.test(email)
-            ? `cd ~/tolley-site && npx tsx scripts/mint-invite.ts --email '${email}'`
+            ? `cd ~/tolley-site && npx tsx scripts/mint-invite.ts --send --email '${email}'`
             : null,
           afterNote: null,
           source: "animate-invite-request",
@@ -74,11 +76,21 @@ export async function POST(request: NextRequest) {
     }
   } catch (err) {
     console.error("[vater/invite-request] queue write failed", err);
-    return NextResponse.json({ error: "Could not send your request. Email support@tolley.io." }, { status: 500 });
+    return NextResponse.json({ error: "Could not send your request. Email jared@yourkchomes.com." }, { status: 500 });
+  }
+
+  // Auto-ack so the requester never sits in silence (Jared 8/16). Failure is
+  // logged, never surfaced — the request itself is already filed.
+  let acked = false;
+  try {
+    await sendInviteRequestAck(email, name);
+    acked = true;
+  } catch (err) {
+    console.error("[vater/invite-request] ack email failed", err);
   }
 
   try {
-    await notifyTelegram(`📨 Jelly invite request: ${email}${name ? ` (${name})` : ""}${about ? ` — ${about.slice(0, 120)}` : ""} → https://www.tolley.io/hq`);
+    await notifyTelegram(`📨 Jelly invite request: ${email}${name ? ` (${name})` : ""}${about ? ` — ${about.slice(0, 120)}` : ""} → https://www.tolley.io/hq${acked ? "" : " ⚠️ ack email FAILED"}`);
   } catch {
     /* never fail the user on a Telegram hiccup */
   }

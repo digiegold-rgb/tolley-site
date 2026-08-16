@@ -19,7 +19,7 @@ export const ANIMATE_LEGAL_ENTITY =
   "Your KC Homes LLC, a Missouri limited liability company, d/b/a Jelly Studio / Tolley";
 export const ANIMATE_LEGAL_ENTITY_SHORT = "Your KC Homes LLC";
 export const ANIMATE_LEGAL_ADDRESS = "Independence, Missouri, United States";
-export const ANIMATE_LEGAL_EMAIL = "support@tolley.io";
+export const ANIMATE_LEGAL_EMAIL = "jared@yourkchomes.com"; // tolley.io has no MX — support@ does not exist
 
 /** Click-wrap version stamp — stored on User.termsVersion. */
 export const TOS_VERSION = "2026-08-15";

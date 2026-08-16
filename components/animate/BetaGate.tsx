@@ -24,7 +24,7 @@ import { MicroLabel } from './cinema';
 import { JELLY_TOKENS } from './tokens';
 
 const SUPPORT_MAILTO =
-  'mailto:support@tolley.io?subject=Jelly%20Studio%20beta%20invite';
+  'mailto:jared@yourkchomes.com?subject=Jelly%20Studio%20beta%20invite';
 
 /** Full-bleed scrim — the ink base, opaque enough to stop the studio bleeding
  *  through a gate the user has to act on. Not a palette hue. */

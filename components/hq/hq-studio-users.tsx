@@ -127,16 +127,21 @@ export function HqStudioUsers() {
     [toast],
   );
 
-  const mintInvite = useCallback(async () => {
-    setBusyId("mint");
+  const mintInvite = useCallback(async (send = false) => {
+    setBusyId(send ? "mint-send" : "mint");
     try {
       const email = inviteEmail.trim();
+      if (send && !email.includes("@")) {
+        toast({ title: "Enter the email to send the invite to", variant: "error" });
+        return;
+      }
       const r = await fetch("/api/hq/vater-users", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           action: "mint-invite",
           count: 1,
+          send,
           ...(email.includes("@") ? { email } : {}),
         }),
       });
@@ -144,9 +149,20 @@ export function HqStudioUsers() {
         toast({ title: await readApiError(r, "Invite NOT minted"), variant: "error" });
         return;
       }
-      const data = (await r.json()) as { invites?: Array<{ display: string; link: string }> };
+      const data = (await r.json()) as {
+        invites?: Array<{ display: string; link: string }>;
+        sent?: boolean;
+        sendError?: string | null;
+      };
       const first = data.invites?.[0];
-      if (first) {
+      if (send) {
+        if (data.sent) {
+          toast({ title: `Invite ${first?.display ?? ""} emailed to ${email}` });
+        } else {
+          toast({ title: `Minted but email FAILED (${data.sendError ?? "unknown"}) — link copied`, variant: "error" });
+          if (first) await copy(first.link, `Invite ${first.display} link`);
+        }
+      } else if (first) {
         await copy(first.link, `Invite ${first.display} link`);
       }
       setInviteEmail("");
@@ -315,7 +331,29 @@ export function HqStudioUsers() {
         />
         <button
           type="button"
-          onClick={mintInvite}
+          onClick={() => void mintInvite(true)}
+          disabled={busyId === "mint-send" || !inviteReady || !inviteEmail.includes("@")}
+          title={
+            inviteReady
+              ? "Mint an email-locked code AND email them the signup link (closes the invite-request item)"
+              : "Run migration 20260815_beta_invites first"
+          }
+          style={{
+            padding: "5px 12px",
+            border: "1px solid var(--hq-border)",
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: inviteReady && inviteEmail.includes("@") ? "pointer" : "not-allowed",
+            background: "#0f766e",
+            color: "#fff",
+          }}
+        >
+          {busyId === "mint-send" ? "Sending…" : "✉ Mint + email invite"}
+        </button>
+        <button
+          type="button"
+          onClick={() => void mintInvite(false)}
           disabled={busyId === "mint" || !inviteReady}
           title={
             inviteReady
