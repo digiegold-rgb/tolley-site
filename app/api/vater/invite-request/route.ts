@@ -61,7 +61,12 @@ export async function POST(request: NextRequest) {
           title,
           detail,
           links: [{ label: "Studio users (mint invite)", url: "https://www.tolley.io/hq" }],
-          command: `cd ~/tolley-site && npx tsx scripts/mint-invite.ts --email ${email}`,
+          // SECURITY: this string is copied into a shell by an admin. Only
+          // emit it for a strictly-safe email charset, single-quoted; anything
+          // else gets no command (use the /hq mint UI instead).
+          command: /^[a-z0-9._+-]+@[a-z0-9.-]+$/.test(email)
+            ? `cd ~/tolley-site && npx tsx scripts/mint-invite.ts --email '${email}'`
+            : null,
           afterNote: null,
           source: "animate-invite-request",
         },
