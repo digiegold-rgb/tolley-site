@@ -6,6 +6,10 @@ import { VIEW_CHANNELS, CHANNEL_KEYS } from "@/lib/view-counter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Facebook pushes a few hundred per-video rows per run on top of the daily
+// series. Set here rather than in vercel.json — that file's `functions` map is
+// capped at 50 entries and is already full.
+export const maxDuration = 120;
 
 // POST /api/hq/view-counter — the DGX pushes snapshot + daily rows hourly
 // (collect.mjs, x-sync-secret auth). Upsert on channelKey+day; a null field in
