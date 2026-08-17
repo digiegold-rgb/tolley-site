@@ -100,7 +100,7 @@ export function Voices(): React.ReactElement {
       {(
         [
           { id: 'own', label: 'Your voices' },
-          { id: 'elevenlabs', label: 'ElevenLabs (metered)' },
+          { id: 'elevenlabs', label: 'ElevenLabs (your key)' },
         ] as const
       ).map((x) => (
         <div
