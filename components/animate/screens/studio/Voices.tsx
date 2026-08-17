@@ -40,6 +40,9 @@ export function Voices(): React.ReactElement {
     null,
   );
   const [elevenError, setElevenError] = React.useState<string | null>(null);
+  /* "You have no key" is not an error — the Connect card directly above is the
+   * answer, so repeating the DGX's instructions in red under it just shouts. */
+  const [notConnected, setNotConnected] = React.useState(false);
 
   // Loaded once, lazily — nobody pays for opening a tab.
   React.useEffect(() => {
@@ -53,13 +56,17 @@ export function Voices(): React.ReactElement {
         const data = (await res.json().catch(() => ({}))) as {
           voices?: ElevenVoice[];
           error?: string;
+          keySource?: 'byo' | 'house' | null;
         };
         if (cancelled) return;
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         setElevenVoices(Array.isArray(data.voices) ? data.voices : []);
-        // The route reports a soft upstream failure in `error` with an empty
-        // list — surface it rather than showing a bare "no voices".
-        if (data.error) setElevenError(data.error);
+        // No keySource means the tenant never connected a key — that is the
+        // Connect card's job, not a failure. Anything else IS a real upstream
+        // failure and gets surfaced rather than showing a bare "no voices".
+        const missingKey = !!data.error && !data.keySource;
+        setNotConnected(missingKey);
+        if (data.error && !missingKey) setElevenError(data.error);
       } catch (err) {
         if (cancelled) return;
         setElevenVoices([]);
@@ -155,6 +162,7 @@ export function Voices(): React.ReactElement {
           onChanged={() => {
             setElevenVoices(null);
             setElevenError(null);
+            setNotConnected(false);
           }}
         />
 
@@ -212,12 +220,15 @@ export function Voices(): React.ReactElement {
               {elevenError}
             </div>
           )}
-          {elevenVoices !== null && elevenVoices.length === 0 && !elevenError && (
-            <div style={{ fontSize: 12, color: t.textSecondary }}>
-              Connect your ElevenLabs key above to list the voices on your
-              account.
-            </div>
-          )}
+          {elevenVoices !== null &&
+            elevenVoices.length === 0 &&
+            !elevenError && (
+              <div style={{ fontSize: 12, color: t.textSecondary }}>
+                {notConnected
+                  ? 'Connect your key above and your account’s voices appear here.'
+                  : 'No voices on this ElevenLabs account yet.'}
+              </div>
+            )}
           {elevenVoices !== null && elevenVoices.length > 0 && (
             <div
               style={{
