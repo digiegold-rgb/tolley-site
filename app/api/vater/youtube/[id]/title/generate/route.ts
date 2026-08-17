@@ -295,6 +295,20 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   }
 
   // mode === 'style'
+  // The style path mirrors the style's OWN reference videos. A style with
+  // none (every system style ships with zero) gives the DGX nothing to
+  // mirror, and it answers with an empty list — which used to render as a
+  // button that visibly did nothing. Say so instead.
+  if (!styleSnapshot.referenceTranscripts?.length) {
+    return NextResponse.json(
+      {
+        error:
+          "This style has no reference videos yet, so there's nothing to mirror. Paste a few titles you admire into \u201cGenerate from Sample List\u201d, or add reference videos to the style first.",
+      },
+      { status: 409 },
+    );
+  }
+
   let result: { titles: string[] };
   try {
     result = await autopilot.suggestTitles({

@@ -112,27 +112,64 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       ? body.scriptOverride.trim()
       : null;
 
-  // Goal is required only when DGX is generating the script. With a
-  // user-supplied script, goal becomes optional metadata.
-  if (!scriptOverride && (!body.goal || typeof body.goal !== "string")) {
-    return NextResponse.json(
-      { error: "goal is required" },
-      { status: 400 },
-    );
-  }
-  if (!body.voiceCloneName || typeof body.voiceCloneName !== "string") {
-    return NextResponse.json(
-      { error: "voiceCloneName is required" },
-      { status: 400 },
-    );
-  }
-
   const project = await prisma.youTubeProject.findUnique({ where: { id } });
   if (
     !project ||
     !canAccessProject(project.userId, session.user.id, session.user.email)
   ) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  // ── Goal + voice resolution (2026-08-17) ─────────────────────────────
+  // This endpoint is BOTH "kick the pipeline" and "save a setting" — the
+  // Soundtrack, Visuals and Voiceover steps all POST here with only their
+  // own field. Requiring the caller to restate goal + voice every time meant
+  // four of the seven editor steps 400'd with "goal is required" on the very
+  // first click. Fall back to what the project already knows (and, failing
+  // that, to its Style) so a partial POST is a valid POST.
+  const projectGoal =
+    typeof body.goal === "string" && body.goal.trim()
+      ? body.goal.trim()
+      : project.goal?.trim() ||
+        project.sourceTitle?.trim() ||
+        project.topic?.trim() ||
+        "";
+
+  let resolvedVoice =
+    typeof body.voiceCloneName === "string" && body.voiceCloneName.trim()
+      ? body.voiceCloneName.trim()
+      : project.voiceName?.trim() || "";
+
+  // Legacy projects created before the Style→project voice copy landed have
+  // voiceName=null; read it off the attached Style rather than 400-ing.
+  if (!resolvedVoice && project.styleId) {
+    const styleVoice = await prisma.youTubeStyle.findUnique({
+      where: { id: project.styleId },
+      select: { voice: true },
+    });
+    resolvedVoice = styleVoice?.voice?.trim() || "";
+  }
+
+  if (!resolvedVoice) {
+    return NextResponse.json(
+      {
+        error:
+          "This project has no voice yet — pick one in the Voiceover step (or attach a Style that has one) before generating.",
+      },
+      { status: 400 },
+    );
+  }
+
+  // The DGX writes the script from the goal. A user-supplied script makes it
+  // optional metadata; without one it is the only brief the writer gets.
+  if (!scriptOverride && !projectGoal) {
+    return NextResponse.json(
+      {
+        error:
+          "This project has no title or goal yet — commit a title in the Title step before generating a script.",
+      },
+      { status: 400 },
+    );
   }
 
   // ── Billing gate: run-creation generates the scene plan + images. The
@@ -170,10 +207,18 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   // When the user is supplying their own script, we let "draft" / "scripted"
   // through too — the worker skips principle extraction + script generation
   // and uses the override verbatim. Mirrors the V1 topic-form path.
-  const allowOwnScriptKickoff =
-    !!scriptOverride &&
-    (project.status === "draft" || project.status === "scripted");
-  if (project.status !== "transcribed" && !allowOwnScriptKickoff) {
+  //
+  // Topic mode is the v2 default: a project started from a Style card has no
+  // transcript and never will — the DGX writes the script from the goal. Only
+  // transcribe-mode projects (started from a YouTube URL) need a transcript
+  // before context can be submitted.
+  const isTopicMode = project.mode === "topic";
+  const allowKickoffFromDraft =
+    (!!scriptOverride || isTopicMode) &&
+    (project.status === "draft" ||
+      project.status === "scripted" ||
+      project.status === "failed");
+  if (project.status !== "transcribed" && !allowKickoffFromDraft) {
     return NextResponse.json(
       {
         error: `Project must be in 'transcribed' status to submit context, currently '${project.status}'`,
@@ -181,7 +226,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       { status: 409 },
     );
   }
-  if (!scriptOverride && !project.transcript) {
+  if (!scriptOverride && !isTopicMode && !project.transcript) {
     return NextResponse.json(
       { error: "Project has no transcript yet" },
       { status: 409 },
@@ -226,10 +271,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     );
   }
 
-  const effectiveGoal =
-    typeof body.goal === "string" && body.goal.trim()
-      ? body.goal.trim()
-      : "User-supplied script";
+  const effectiveGoal = projectGoal || "User-supplied script";
 
   const stylePreset =
     body.stylePreset && isStylePresetId(body.stylePreset)
@@ -285,7 +327,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       targetWordCount,
       stylePreset,
       customStylePrompt: body.customStylePrompt ?? null,
-      voiceName: body.voiceCloneName,
+      voiceName: resolvedVoice,
       backgroundMusicId,
       musicVolume,
       styleId, // null is fine, falls back to stylePreset path
@@ -453,14 +495,33 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         ? "topic"
         : ((project.mode as "transcribe" | "topic") || "transcribe");
 
+    // The DGX rejects topic mode without a `topic` ("topic required in topic
+    // mode"). We never sent one — which is why EVERY v2 render died at
+    // kickoff. The topic is the brief: the committed title, else the goal.
+    const effectiveTopic =
+      project.topic?.trim() ||
+      project.sourceTitle?.trim() ||
+      effectiveGoal.trim() ||
+      undefined;
+    if (effectiveMode === "topic" && !effectiveTopic) {
+      return NextResponse.json(
+        {
+          error:
+            "This project has no title or goal yet — commit a title in the Title step before generating.",
+        },
+        { status: 400 },
+      );
+    }
+
     const job = await autopilot.runCreation({
       projectId: id,
       mode: effectiveMode,
+      topic: effectiveTopic,
       transcript: project.transcript ?? undefined,
       goal: effectiveGoal,
       targetWordCount,
       stylePreset,
-      voiceCloneName: body.voiceCloneName,
+      voiceCloneName: resolvedVoice,
       customStylePrompt: body.customStylePrompt,
       backgroundMusicId: backgroundMusicId ?? undefined,
       musicVolume,

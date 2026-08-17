@@ -93,9 +93,13 @@ export function VoiceoverStep({
   const [generating, setGenerating] = React.useState(false);
   const [genError, setGenError] = React.useState<string | null>(null);
 
+  // The saved column is `voiceName` — `voiceCloneName` has never been on the
+  // API payload, so hydrating from it alone meant the picker forgot the
+  // user's choice the moment they left the step and came back.
   React.useEffect(() => {
-    if (project?.voiceCloneName) setVoiceClone(project.voiceCloneName);
-  }, [project?.voiceCloneName]);
+    const saved = project?.voiceName ?? project?.voiceCloneName ?? null;
+    if (saved) setVoiceClone(saved);
+  }, [project?.voiceName, project?.voiceCloneName]);
 
   /* ── Feature bag (2026-08-16): language, pronunciations, BYO narration ── */
   const features = React.useMemo(
@@ -320,6 +324,10 @@ export function VoiceoverStep({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           voiceCloneName: voiceClone,
+          // Pin the script that's already on the project. Without this the
+          // kickoff re-runs the WRITER and the user's approved script is
+          // replaced by a fresh one behind their back.
+          scriptOverride: project?.script?.trim() || undefined,
         }),
       });
       await assertOk(res);
@@ -333,7 +341,7 @@ export function VoiceoverStep({
     } finally {
       setGenerating(false);
     }
-  }, [projectId, voiceClone, refresh]);
+  }, [projectId, voiceClone, project?.script, refresh]);
 
   // Audio URL — prefer the project-scoped proxy so Range works (risk #10).
   const audioSrc = projectId ? `/api/vater/youtube/${projectId}/audio` : null;

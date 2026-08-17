@@ -63,6 +63,12 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     "shortDescription",
     // Thumbnail A/B (2026-08-16) — "Use this one" on a generated variant.
     "thumbnailUrl",
+    // Soundtrack (2026-08-17) — picking a music bed is a SAVE, not a render.
+    // These used to be POSTed to /context, which kicks the whole creation
+    // pipeline; every click on a track queued a job.
+    "backgroundMusicId",
+    "musicVolume",
+    "sfxEnabled",
   ];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
@@ -116,6 +122,17 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       .filter((t): t is string => typeof t === "string")
       .map((t) => t.trim())
       .filter(Boolean);
+  }
+
+  if (data.musicVolume !== undefined) {
+    const vol = Number(data.musicVolume);
+    if (!Number.isFinite(vol)) {
+      return NextResponse.json(
+        { error: "musicVolume must be a number between 0 and 1" },
+        { status: 400 },
+      );
+    }
+    data.musicVolume = Math.max(0, Math.min(1, vol));
   }
 
   if (data.targetDuration) {

@@ -82,6 +82,7 @@ export interface EditorProject {
   targetDuration?: number | null;
   voiceCloneName?: string | null;
   voiceName?: string | null;
+  goal?: string | null;
   goalSuggestions?: unknown;
   sourceChannel?: string | null;
   sourceUrl?: string | null;

@@ -91,7 +91,17 @@ export function DescriptionStep({ projectId, project, refresh }: EditorStepProps
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/vater/youtube/${projectId}/social-metadata?platform=youtube`, { cache: 'no-store' });
+      // POST, not GET — the route only exports POST, so the default-method
+      // fetch this used to send came back 405 every time.
+      const res = await fetch(
+        `/api/vater/youtube/${projectId}/social-metadata?platform=youtube`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+          cache: 'no-store',
+        },
+      );
       await assertOk(res);
       const data = await res.json();
       const next = {

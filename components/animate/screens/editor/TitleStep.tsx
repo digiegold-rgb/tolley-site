@@ -228,7 +228,10 @@ export function TitleStep({
             throw new Error('Paste at least one sample title before generating.');
           }
           const data = await callGenerate({ mode: 'sample', sampleTitles: samples });
-          setTitles(data.titles ?? []);
+          if (!data.titles?.length) {
+            throw new Error('No titles came back — try again, or add another sample or two.');
+          }
+          setTitles(data.titles);
         } else if (kind === 'channel') {
           const url = channelUrl.trim();
           if (!url) {
@@ -247,9 +250,15 @@ export function TitleStep({
           }
           await refresh();
         } else {
-          // style mode
+          // style mode. An empty list here is a dead end, not a result —
+          // surface it rather than leaving the button looking inert.
           const data = await callGenerate({ mode: 'style' });
-          setTitles(data.titles ?? []);
+          if (!data.titles?.length) {
+            throw new Error(
+              'This style has no reference videos to mirror yet — use Sample List instead.',
+            );
+          }
+          setTitles(data.titles);
         }
       } catch (err) {
         if (err instanceof BillingBlockedError) {

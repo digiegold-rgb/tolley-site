@@ -78,7 +78,17 @@ export async function createProjectFromStyle(
 
   const style = await prisma.youTubeStyle.findUnique({
     where: { id: styleId },
-    select: { id: true, userId: true, isSystem: true },
+    select: {
+      id: true,
+      userId: true,
+      isSystem: true,
+      // The Style IS the voice + look contract. Carrying these onto the
+      // project is what makes a style-created draft renderable without the
+      // user re-picking a voice the picker already showed them.
+      voice: true,
+      voiceCloneId: true,
+      artStylePresetId: true,
+    },
   });
   if (!style) {
     return { ok: false, status: 404, error: "Style not found" };
@@ -89,12 +99,19 @@ export async function createProjectFromStyle(
 
   // Unchecked (scalar) create: `userId` is a plain nullable column on this
   // model, not a relation, so the connect form isn't available.
+  // Seed voice + art preset FROM THE STYLE. Before 2026-08-17 these were
+  // only set on the remix path, so every project started from a Style card
+  // landed with voiceName=null — and every /context kickoff then failed
+  // ("voiceCloneName is required", then "topic required in topic mode").
   const carried: Prisma.YouTubeProjectUncheckedCreateInput = {
     userId,
     styleId: style.id,
     mode: "topic",
     status: "draft",
     progress: 0,
+    voiceName: style.voice,
+    voiceCloneId: style.voiceCloneId,
+    stylePreset: style.artStylePresetId,
   };
 
   if (source) {

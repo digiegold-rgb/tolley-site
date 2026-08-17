@@ -118,8 +118,12 @@ export function SoundtrackStep({ projectId, project, refresh }: EditorStepProps)
       if (!projectId) return;
       setPersistError(null);
       try {
-        const res = await fetch(`/api/vater/youtube/${projectId}/context`, {
-          method: 'POST',
+        // PATCH, not POST /context — /context KICKS the creation pipeline.
+        // Picking a track is a preference, not a render; routing it through
+        // /context both 400'd ("goal is required") and, once that was fixed,
+        // would have queued a paid job on every click.
+        const res = await fetch(`/api/vater/youtube/${projectId}`, {
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             backgroundMusicId: id,

@@ -166,6 +166,14 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          // The goal IS the brief the DGX writes from. Sending it was never
+          // wired up, so this button 400'd ("goal is required") for everyone.
+          goal:
+            title.trim() ||
+            project?.sourceTitle?.trim() ||
+            project?.goal?.trim() ||
+            undefined,
+          voiceCloneName: project?.voiceName ?? project?.voiceCloneName ?? undefined,
           targetWordCount: wordCount,
           stylePreset: 'cinematic',
           creatorModelId: creatorModel,
@@ -185,6 +193,11 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
     }
   }, [
     projectId,
+    title,
+    project?.sourceTitle,
+    project?.goal,
+    project?.voiceName,
+    project?.voiceCloneName,
     wordCount,
     creatorModel,
     extraContext,
