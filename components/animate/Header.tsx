@@ -161,27 +161,37 @@ export function Header({
     onOpenWhatsNew?.();
   }, [onOpenWhatsNew]);
 
-  // Trial pill: "Trial: 2 / 1 / 1" (transcripts / scenes / animations remaining)
-  // Paid pill: "$X.XX of $250.00"
+  // Trial pill — desktop: "Trial · 3 transcripts · 1 scene · 1 animation";
+  // mobile: "Trial 3T·1S·1A". Paid pill: "$X.XX of $250.00".
+  // A native `title=` tooltip was the only explainer before, which needs a
+  // ~1s still hover and never fires on touch — so the pill read as noise.
+  // It now opens a real popover (hover or click) that spells out each cap.
+  const trialRemaining = (() => {
+    if (!billing?.isTrial || !billing.trial) return null;
+    const t = billing.trial;
+    return {
+      tr: Math.max(0, t.caps.transcripts - t.transcripts),
+      sc: Math.max(0, t.caps.scenes - t.scenes),
+      an: Math.max(0, t.caps.animations - t.animations),
+      caps: t.caps,
+    };
+  })();
+
   const pillText = (() => {
     if (billingLoading) return '…';
     if (!billing) return '—';
-    if (billing.isTrial && billing.trial) {
-      const t = billing.trial;
-      const remaining = {
-        tr: Math.max(0, t.caps.transcripts - t.transcripts),
-        sc: Math.max(0, t.caps.scenes - t.scenes),
-        an: Math.max(0, t.caps.animations - t.animations),
-      };
-      return `Trial: ${remaining.tr}T · ${remaining.sc}S · ${remaining.an}A`;
+    if (trialRemaining) {
+      const r = trialRemaining;
+      if (mobile) return `Trial ${r.tr}T·${r.sc}S·${r.an}A`;
+      return `Trial · ${r.tr} transcript${r.tr === 1 ? '' : 's'} · ${r.sc} scene${r.sc === 1 ? '' : 's'} · ${r.an} animation${r.an === 1 ? '' : 's'}`;
     }
     return `${formatDollars(billing.usage.usedCents)} of ${formatDollars(billing.usage.includedCents)}`;
   })();
 
   const pillTitle = (() => {
     if (!billing) return 'Loading billing…';
-    if (billing.isTrial && billing.trial) {
-      return `Trial caps remaining — ${billing.trial.caps.transcripts - billing.trial.transcripts} transcripts, ${billing.trial.caps.scenes - billing.trial.scenes} scene generations, ${billing.trial.caps.animations - billing.trial.animations} animations`;
+    if (trialRemaining) {
+      return `Free trial — ${trialRemaining.tr} transcripts, ${trialRemaining.sc} scene generations, ${trialRemaining.an} animations left. Click for details.`;
     }
     const overage = billing.usage.usedCents - billing.usage.includedCents;
     if (overage > 0) {
@@ -189,6 +199,35 @@ export function Header({
     }
     return `Used ${formatDollars(billing.usage.usedCents)} of ${formatDollars(billing.usage.includedCents)} included this period. Limit: ${formatDollars(billing.usage.limitCents)}`;
   })();
+
+  // Popover state: opens on hover (desktop) or tap (any); closes on outside
+  // click / Escape. Hover-close is delayed so the cursor can travel into it.
+  const [pillOpen, setPillOpen] = React.useState(false);
+  const pillWrapRef = React.useRef<HTMLDivElement | null>(null);
+  const hoverTimer = React.useRef<number | null>(null);
+  const openPill = React.useCallback(() => {
+    if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
+    setPillOpen(true);
+  }, []);
+  const closePillSoon = React.useCallback(() => {
+    if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = window.setTimeout(() => setPillOpen(false), 180);
+  }, []);
+  React.useEffect(() => {
+    if (!pillOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!pillWrapRef.current?.contains(e.target as Node)) setPillOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPillOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [pillOpen]);
 
   return (
     <>
@@ -245,40 +284,135 @@ export function Header({
         )}
         {/* Billing is always a box-office ticket. At header scale that is a
             compact ADMIT ONE pill: violet outline, ticket tint, cyan tabular
-            balance. Numbers and tooltip are byte-for-byte what they were. */}
+            balance. Hover or click opens the explainer popover. */}
         <div
-          data-testid="usage-chip"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            background: JELLY_TOKENS.gradTicket,
-            border: `1px solid ${JELLY_TOKENS.brandOutline}`,
-            borderRadius: JELLY_TOKENS.radius.pill,
-            padding: mobile ? '5px 11px' : '6px 14px',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            maxWidth: mobile ? 150 : undefined,
-          }}
-          title={pillTitle}
+          ref={pillWrapRef}
+          style={{ position: 'relative', display: 'inline-flex', flexShrink: 1, minWidth: 0 }}
+          onMouseEnter={mobile ? undefined : openPill}
+          onMouseLeave={mobile ? undefined : closePillSoon}
         >
-          {!mobile && (
-            <MicroLabel tone="violet" as="span" size={9.5} tracking="0.22em">
-              Admit one
-            </MicroLabel>
-          )}
-          <span
-            className="jc-tabular"
+          <button
+            type="button"
+            data-testid="usage-chip"
+            aria-haspopup="dialog"
+            aria-expanded={pillOpen}
+            aria-label={pillTitle}
+            title={pillOpen ? undefined : pillTitle}
+            onClick={() => setPillOpen((v) => !v)}
             style={{
-              fontSize: mobile ? 12 : 13.5,
-              fontWeight: 600,
-              color: JELLY_TOKENS.cyan,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              background: JELLY_TOKENS.gradTicket,
+              border: `1px solid ${pillOpen ? JELLY_TOKENS.brand : JELLY_TOKENS.brandOutline}`,
+              borderRadius: JELLY_TOKENS.radius.pill,
+              padding: mobile ? '5px 11px' : '6px 14px',
+              whiteSpace: 'nowrap',
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
+              maxWidth: mobile ? 170 : undefined,
+              cursor: 'pointer',
+              color: 'inherit',
+              font: 'inherit',
             }}
           >
-            {pillText}
-          </span>
+            {!mobile && (
+              <MicroLabel tone="violet" as="span" size={9.5} tracking="0.22em">
+                Admit one
+              </MicroLabel>
+            )}
+            <span
+              className="jc-tabular"
+              style={{
+                fontSize: mobile ? 12 : 13.5,
+                fontWeight: 600,
+                color: JELLY_TOKENS.cyan,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {pillText}
+            </span>
+          </button>
+          {pillOpen && (
+            <div
+              role="dialog"
+              aria-label="Your ticket"
+              onMouseEnter={openPill}
+              onMouseLeave={mobile ? undefined : closePillSoon}
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 8px)',
+                right: 0,
+                zIndex: 60,
+                width: 300,
+                maxWidth: 'calc(100vw - 24px)',
+                padding: 14,
+                borderRadius: 14,
+                background: t.cardAlt,
+                border: `1px solid ${JELLY_TOKENS.brandOutline}`,
+                boxShadow: '0 18px 48px rgba(8,7,15,0.45)',
+                color: t.text,
+                fontFamily: JELLY_TOKENS.font,
+                textAlign: 'left',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+                <MicroLabel tone="violet" as="span" size={9.5} tracking="0.22em">
+                  Admit one
+                </MicroLabel>
+                <span style={{ fontSize: 11, color: t.textSecondary }}>
+                  {trialRemaining ? 'Free trial' : billing?.delinquent ? 'Past due' : 'Pay per video'}
+                </span>
+              </div>
+              {trialRemaining ? (
+                <>
+                  <div style={{ fontSize: 12.5, lineHeight: 1.45, color: t.textSecondary, marginBottom: 10 }}>
+                    Your ticket is a free trial. Every new account gets a small allowance of each step so you can try the whole pipeline before adding a card:
+                  </div>
+                  <TicketRow
+                    k="T"
+                    label="Transcripts"
+                    hint="Scripts / transcripts Jelly writes or pulls from a video"
+                    left={trialRemaining.tr}
+                    cap={trialRemaining.caps.transcripts}
+                    t={t}
+                  />
+                  <TicketRow
+                    k="S"
+                    label="Scene generations"
+                    hint="Full sets of still images for a script"
+                    left={trialRemaining.sc}
+                    cap={trialRemaining.caps.scenes}
+                    t={t}
+                  />
+                  <TicketRow
+                    k="A"
+                    label="Animations"
+                    hint="Rendered, voiced MP4s"
+                    left={trialRemaining.an}
+                    cap={trialRemaining.caps.animations}
+                    t={t}
+                  />
+                  <div style={{ fontSize: 11.5, lineHeight: 1.45, color: t.textSecondary, margin: '10px 0 12px' }}>
+                    When one runs out, add a card and you move to pay-per-video — you are only billed for what you render.
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 12.5, lineHeight: 1.45, color: t.textSecondary, marginBottom: 12 }}>
+                  {pillTitle}
+                </div>
+              )}
+              <VBtn
+                size="sm"
+                onClick={() => {
+                  setPillOpen(false);
+                  setShowSettings(true);
+                }}
+              >
+                {trialRemaining ? 'Add a card / view plan' : 'View plan & usage'}
+              </VBtn>
+            </div>
+          )}
         </div>
         <button
           type="button"
@@ -391,6 +525,36 @@ export function Header({
       </div>
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </>
+  );
+}
+
+function TicketRow({
+  k,
+  label,
+  hint,
+  left,
+  cap,
+  t,
+}: {
+  k: string;
+  label: string;
+  hint: string;
+  left: number;
+  cap: number;
+  t: ReturnType<typeof useTheme>['t'];
+}): React.ReactElement {
+  const out = left <= 0;
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '22px 1fr auto', gap: 8, alignItems: 'start', padding: '5px 0', borderTop: `1px solid ${t.border}` }}>
+      <span className="jc-tabular" style={{ fontSize: 11, fontWeight: 700, color: JELLY_TOKENS.brand, marginTop: 1 }}>{k}</span>
+      <span>
+        <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: t.text }}>{label}</span>
+        <span style={{ display: 'block', fontSize: 11, color: t.textSecondary, lineHeight: 1.35 }}>{hint}</span>
+      </span>
+      <span className="jc-tabular" style={{ fontSize: 12.5, fontWeight: 700, color: out ? t.textSecondary : JELLY_TOKENS.cyan, whiteSpace: 'nowrap' }}>
+        {left} / {cap} left
+      </span>
+    </div>
   );
 }
 

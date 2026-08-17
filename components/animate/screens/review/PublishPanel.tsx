@@ -250,8 +250,347 @@ export function PublishPanel({
         onChanged={onChanged}
       />
 
+      <SocialPublishSection
+        project={project}
+        defaultCaption={description}
+        canPublish={project.status === 'ready' && !!project.finalVideoUrl}
+      />
+
       <ShortPromoSection project={project} onChanged={onChanged} />
     </div>
+  );
+}
+
+/* ─── Social (TikTok / IG / FB / Pinterest / X / LinkedIn via aggregator) ─── */
+
+const SOCIAL_PLATFORMS = [
+  { id: 'tiktok', label: 'TikTok', emoji: '🎵' },
+  { id: 'instagram', label: 'Instagram', emoji: '📷' },
+  { id: 'facebook', label: 'Facebook', emoji: '📘' },
+  { id: 'pinterest', label: 'Pinterest', emoji: '📌' },
+  { id: 'twitter', label: 'X', emoji: '🐦' },
+  { id: 'linkedin', label: 'LinkedIn', emoji: '💼' },
+] as const;
+type SocialPlatformId = (typeof SOCIAL_PLATFORMS)[number]['id'];
+
+interface VendorAccount extends SocialAccount {
+  provider?: string;
+  username?: string | null;
+}
+
+interface SocialPostResult {
+  id: string;
+  status: string;
+  platforms: Array<{ platform: string; status?: string; publishedUrl?: string; error?: string }>;
+  lastError?: string | null;
+}
+
+/**
+ * Post the finished MP4 to the user's OWN connected non-YouTube accounts.
+ * Every platform here is a checkbox the user ticks; nothing is pre-selected
+ * and nothing fires without the button (feedback_no_autonomous_sends.md).
+ */
+function SocialPublishSection({
+  project,
+  defaultCaption,
+  canPublish,
+}: {
+  project: ReviewProject;
+  defaultCaption: string;
+  canPublish: boolean;
+}): React.ReactElement | null {
+  const { t } = useTheme();
+  const [accounts, setAccounts] = React.useState<Record<string, VendorAccount> | null>(null);
+  const [vendorOn, setVendorOn] = React.useState<boolean | null>(null);
+  const [picked, setPicked] = React.useState<Set<SocialPlatformId>>(new Set());
+  const [caption, setCaption] = React.useState(defaultCaption);
+  const [captionTouched, setCaptionTouched] = React.useState(false);
+  const [scheduleAt, setScheduleAt] = React.useState('');
+  const [tiktokPrivacy, setTiktokPrivacy] = React.useState('PUBLIC_TO_EVERYONE');
+  const [tiktokLevels, setTiktokLevels] = React.useState<string[]>([]);
+  const [boards, setBoards] = React.useState<Array<{ id: string; name: string }>>([]);
+  const [boardId, setBoardId] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [results, setResults] = React.useState<SocialPostResult[]>([]);
+
+  // Keep the caption in step with the description until the user edits it.
+  React.useEffect(() => {
+    if (!captionTouched) setCaption(defaultCaption);
+  }, [defaultCaption, captionTouched]);
+
+  const load = React.useCallback(async () => {
+    try {
+      const sync = await fetch('/api/vater/social-accounts/sync', { method: 'POST', cache: 'no-store' });
+      if (sync.ok) {
+        const sd = (await sync.json()) as { vendor?: string | null };
+        setVendorOn(Boolean(sd.vendor));
+      }
+      const res = await fetch('/api/vater/social-accounts', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { byPlatform: Record<string, VendorAccount> };
+      setAccounts(data.byPlatform ?? {});
+      const prior = await fetch(`/api/vater/social-posts?projectId=${project.id}&limit=10`, { cache: 'no-store' });
+      if (prior.ok) {
+        const pd = (await prior.json()) as { posts: SocialPostResult[] };
+        setResults(pd.posts ?? []);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not read connected accounts');
+    }
+  }, [project.id]);
+
+  React.useEffect(() => {
+    void load();
+  }, [load]);
+
+  const connected = React.useMemo(
+    () =>
+      SOCIAL_PLATFORMS.filter((p) => {
+        const a = accounts?.[p.id];
+        return a && a.provider === 'zernio' && a.status === 'active';
+      }),
+    [accounts],
+  );
+
+  // Lazy per-platform options.
+  React.useEffect(() => {
+    if (!picked.has('tiktok') || tiktokLevels.length) return;
+    void (async () => {
+      const r = await fetch('/api/vater/social-accounts/tiktok/options', { cache: 'no-store' });
+      if (!r.ok) return;
+      const d = (await r.json()) as { privacyLevels?: string[] };
+      if (d.privacyLevels?.length) {
+        setTiktokLevels(d.privacyLevels);
+        if (!d.privacyLevels.includes(tiktokPrivacy)) setTiktokPrivacy(d.privacyLevels[0]);
+      }
+    })();
+  }, [picked, tiktokLevels.length, tiktokPrivacy]);
+  React.useEffect(() => {
+    if (!picked.has('pinterest') || boards.length) return;
+    void (async () => {
+      const r = await fetch('/api/vater/social-accounts/pinterest/options', { cache: 'no-store' });
+      if (!r.ok) return;
+      const d = (await r.json()) as { boards?: Array<{ id: string; name: string }> };
+      if (d.boards?.length) {
+        setBoards(d.boards);
+        setBoardId((b) => b || d.boards![0].id);
+      }
+    })();
+  }, [picked, boards.length]);
+
+  if (vendorOn === false) return null; // aggregator not enabled → no section
+  if (accounts && connected.length === 0) {
+    return (
+      <VCard>
+        <SectionHeader
+          icon="upload"
+          title="Post to your socials"
+          description="Connect TikTok, Instagram, Facebook, Pinterest, X or LinkedIn on the Publishing screen and this video can go out to all of them from here."
+        />
+        <VBtn variant="outlined" onClick={() => { window.location.hash = '#r=publishing'; }}>
+          Connect platforms
+        </VBtn>
+      </VCard>
+    );
+  }
+
+  const toggle = (id: SocialPlatformId) => {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const scheduleInPast = scheduleAt !== '' && new Date(scheduleAt).getTime() <= Date.now() + 60_000;
+  const needsBoard = picked.has('pinterest') && !boardId;
+  const ready = canPublish && picked.size > 0 && caption.trim().length > 0 && !scheduleInPast && !needsBoard && !busy;
+
+  const publish = async (): Promise<void> => {
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/vater/youtube/${project.id}/publish-social`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platforms: [...picked],
+          caption,
+          ...(scheduleAt
+            ? {
+                scheduleAt: new Date(scheduleAt).toISOString(),
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              }
+            : {}),
+          ...(picked.has('tiktok') ? { tiktok: { privacyLevel: tiktokPrivacy } } : {}),
+          ...(picked.has('pinterest') ? { pinterest: { boardId } } : {}),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; post?: SocialPostResult };
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      if (data.post) setResults((r) => [data.post!, ...r]);
+      setPicked(new Set());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Publish failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <VCard>
+      <SectionHeader
+        icon="upload"
+        title="Post to your socials"
+        description="Same MP4, your caption, straight to the accounts you connected. Tick the platforms, then press Post."
+      />
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '4px 0 12px' }}>
+        {connected.map((p) => {
+          const on = picked.has(p.id);
+          const a = accounts?.[p.id];
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => toggle(p.id)}
+              aria-pressed={on}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 12px',
+                borderRadius: JELLY_TOKENS.radius.pill,
+                border: `1px solid ${on ? JELLY_TOKENS.brand : t.border}`,
+                background: on ? JELLY_TOKENS.gradTicket : t.card,
+                color: t.text,
+                fontFamily: JELLY_TOKENS.font,
+                fontSize: 13,
+                cursor: 'pointer',
+              }}
+            >
+              <span>{p.emoji}</span>
+              <span style={{ fontWeight: 600 }}>{p.label}</span>
+              {a?.username && (
+                <span style={{ fontSize: 11, color: t.textSecondary }}>@{a.username.replace(/^@/, '')}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: t.textSecondary, marginBottom: 6 }}>
+          Caption <span style={{ opacity: 0.7 }}>(X gets the first 270 characters)</span>
+        </div>
+        <textarea
+          value={caption}
+          onChange={(e) => {
+            setCaptionTouched(true);
+            setCaption(e.target.value);
+          }}
+          rows={4}
+          style={{
+            width: '100%',
+            fontSize: 14,
+            fontFamily: JELLY_TOKENS.font,
+            border: `1px solid ${t.border}`,
+            borderRadius: JELLY_TOKENS.radius.md,
+            background: t.card,
+            color: t.text,
+            outline: 'none',
+            boxSizing: 'border-box',
+            padding: 12,
+            resize: 'vertical',
+          }}
+        />
+      </div>
+
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12 }}>
+        {picked.has('tiktok') && (
+          <label style={{ fontSize: 12, color: t.textSecondary, display: 'grid', gap: 4 }}>
+            TikTok visibility
+            <select
+              value={tiktokPrivacy}
+              onChange={(e) => setTiktokPrivacy(e.target.value)}
+              style={{ padding: 8, borderRadius: JELLY_TOKENS.radius.md, border: `1px solid ${t.border}`, background: t.card, color: t.text, fontFamily: JELLY_TOKENS.font }}
+            >
+              {(tiktokLevels.length ? tiktokLevels : ['PUBLIC_TO_EVERYONE', 'FOLLOWER_OF_CREATOR', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY']).map((lvl) => (
+                <option key={lvl} value={lvl}>{lvl.replace(/_/g, ' ').toLowerCase()}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {picked.has('pinterest') && (
+          <label style={{ fontSize: 12, color: t.textSecondary, display: 'grid', gap: 4 }}>
+            Pinterest board
+            <select
+              value={boardId}
+              onChange={(e) => setBoardId(e.target.value)}
+              style={{ padding: 8, borderRadius: JELLY_TOKENS.radius.md, border: `1px solid ${needsBoard ? JELLY_TOKENS.error : t.border}`, background: t.card, color: t.text, fontFamily: JELLY_TOKENS.font }}
+            >
+              {boards.length === 0 && <option value="">Loading boards…</option>}
+              {boards.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label style={{ fontSize: 12, color: t.textSecondary, display: 'grid', gap: 4 }}>
+          Schedule <span style={{ opacity: 0.7 }}>(optional)</span>
+          <input
+            type="datetime-local"
+            value={scheduleAt}
+            min={toLocalInputValue(new Date(Date.now() + 5 * 60_000))}
+            onChange={(e) => setScheduleAt(e.target.value)}
+            style={{ padding: 8, borderRadius: JELLY_TOKENS.radius.md, border: `1px solid ${scheduleInPast ? JELLY_TOKENS.error : t.border}`, background: t.card, color: t.text, fontFamily: JELLY_TOKENS.font }}
+          />
+        </label>
+      </div>
+
+      {error && <RetryError message={error} />}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <VBtn onClick={() => void publish()} disabled={!ready} icon="upload">
+          {busy ? 'Posting…' : scheduleAt ? `Schedule to ${picked.size || '…'} platform${picked.size === 1 ? '' : 's'}` : `Post to ${picked.size || '…'} platform${picked.size === 1 ? '' : 's'}`}
+        </VBtn>
+        <span style={{ fontSize: 12, color: t.textSecondary }}>
+          {!canPublish
+            ? 'Finish rendering first.'
+            : picked.size === 0
+              ? 'Pick at least one platform.'
+              : !caption.trim()
+                ? 'Write a caption.'
+                : needsBoard
+                  ? 'Pick a Pinterest board.'
+                  : 'Posts go out under your own accounts.'}
+        </span>
+      </div>
+
+      {results.length > 0 && (
+        <div style={{ marginTop: 14, display: 'grid', gap: 6 }}>
+          {results.map((r) => (
+            <div key={r.id} style={{ fontSize: 12, color: t.textSecondary, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600, color: r.status === 'published' ? JELLY_TOKENS.success : ['failed', 'partial'].includes(r.status) ? JELLY_TOKENS.error : t.text }}>
+                {r.status}
+              </span>
+              {r.platforms.map((pl, i) =>
+                pl.publishedUrl ? (
+                  <a key={i} href={pl.publishedUrl} target="_blank" rel="noreferrer" style={{ color: JELLY_TOKENS.brand }}>
+                    {pl.platform} ↗
+                  </a>
+                ) : (
+                  <span key={i} title={pl.error ?? ''}>{pl.platform}{pl.status ? ` · ${pl.status}` : ''}</span>
+                ),
+              )}
+              {r.lastError && <span style={{ color: JELLY_TOKENS.error }}>{r.lastError}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </VCard>
   );
 }
 

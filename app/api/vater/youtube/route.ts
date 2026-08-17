@@ -77,9 +77,21 @@ export async function POST(req: Request) {
   if (body.rssItemId) {
     const item = await prisma.vaterRssItem.findUnique({
       where: { id: body.rssItemId },
-      select: { id: true, url: true, title: true, project: { select: { id: true } } },
+      select: {
+        id: true,
+        url: true,
+        title: true,
+        project: { select: { id: true } },
+        feed: { select: { userId: true } },
+      },
     });
-    if (!item) {
+    // Feeds are per-user (2026-08-17): an item is only promotable by the user
+    // who follows the feed. A NULL owner must FAIL CLOSED — treating it as
+    // "unowned, so anyone may take it" would let any signed-in /animate user
+    // promote it. The rest of the RSS surface (app/api/vater/rss/*) already
+    // scopes hard on `userId: session.user.id`, so a NULL-owner feed is
+    // invisible there; this route now matches.
+    if (!item || item.feed.userId !== session.user.id) {
       return NextResponse.json({ error: "RSS item not found" }, { status: 404 });
     }
     if (item.project) {

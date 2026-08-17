@@ -32,7 +32,8 @@ import {
 import { buildStyleSnapshot } from "@/lib/vater/style-snapshot";
 import { auth } from "@/auth";
 import { canAccessProject } from "@/lib/vater/project-access";
-import { isVaterAdminEmail } from "@/lib/admin-auth";
+import { isVaterAdminEmail, isVaterStudioEmail } from "@/lib/admin-auth";
+import { canUseCreatorModel } from "@/lib/vater/creator-models";
 import { ownerFieldsForSessionWithCap } from "@/lib/vater/owner-tier";
 import {
   elevenLabsKeyMissing,
@@ -139,6 +140,24 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   // (25¢, action "scene"). The actual charges (script + voiceover + per-scene
   // images) are recorded by the poll route once the job is confirmed done,
   // idempotent per jobId — kickoff never bills.
+  // Creator models are tier-gated (studio-only models are private channel
+  // DNA). Reject ids the caller cannot see so the browse gate can't be
+  // bypassed by POSTing the id directly.
+  if (body.creatorModelId) {
+    const email = session.user.email;
+    const callerTier = isVaterAdminEmail(email)
+      ? "owner"
+      : isVaterStudioEmail(email)
+        ? "studio"
+        : "public";
+    if (!canUseCreatorModel(body.creatorModelId, callerTier)) {
+      return NextResponse.json(
+        { error: "creator model not available on your plan" },
+        { status: 403 },
+      );
+    }
+  }
+
   const budget = await checkBudget(session.user.id, "scene");
   if (!budget.allow) {
     return NextResponse.json(

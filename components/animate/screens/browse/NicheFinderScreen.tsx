@@ -15,17 +15,20 @@ import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { VBtn, VCard, VInput, SectionHeader } from '../../primitives';
-import { CREATOR_MODELS } from '@/lib/vater/creator-models';
+import { creatorModelsForTier } from '@/lib/vater/creator-models';
+import { useTier } from '../../tier-context';
 
 export function NicheFinderScreen(): React.ReactElement {
   const { t } = useTheme();
   const { requestNewVideo } = useRoute();
   const [query, setQuery] = React.useState('');
+  const { tier } = useTier();
+  const models = React.useMemo(() => creatorModelsForTier(tier), [tier]);
 
   const filtered = React.useMemo(() => {
-    if (!query.trim()) return CREATOR_MODELS;
+    if (!query.trim()) return models;
     const q = query.toLowerCase();
-    return CREATOR_MODELS.filter((m) => {
+    return models.filter((m) => {
       const haystack = [
         m.name,
         m.tagline,
@@ -35,7 +38,7 @@ export function NicheFinderScreen(): React.ReactElement {
       ];
       return haystack.some((s) => typeof s === 'string' && s.toLowerCase().includes(q));
     });
-  }, [query]);
+  }, [query, models]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -91,7 +94,7 @@ export function NicheFinderScreen(): React.ReactElement {
           <VCard variant="flat">
             <div style={{ fontSize: 14, color: t.textSecondary }}>
               No creator model matches &ldquo;{query}&rdquo;. Clear the filter to see all
-              {' '}{CREATOR_MODELS.length}.
+              {' '}{models.length}.
             </div>
           </VCard>
         )}

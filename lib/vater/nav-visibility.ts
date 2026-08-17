@@ -11,7 +11,8 @@
  *   studio — isVaterStudioEmail(): the full production studio (script
  *            review, Direct dictation lane, Course Studio, Rules).
  *   owner  — isVaterAdminEmail() / isAdminEmail(): ops surfaces that touch
- *            the owner's own accounts (RSS feeds, autopilot, Discord bot).
+ *            the owner's own accounts (autopilot, Discord bot). RSS feeds went
+ *            per-user / public on 2026-08-17 (auto-pipeline stays owner).
  *
  * Anything NOT listed here (editor, styles-edit, custom-art-styles, …) is
  * reachable by everyone — those are sub-routes of a nav entry that already
@@ -45,12 +46,12 @@ export const NAV_ROUTES: readonly NavRouteDef[] = [
   { id: 'queue', label: 'Queue', icon: 'history', minTier: 'public', section: 'primary' },
   { id: 'recent', label: 'Recent', icon: 'sparkle', minTier: 'public', section: 'primary' },
   { id: 'voices', label: 'Voices', icon: 'mic', minTier: 'public', section: 'primary' },
-  { id: 'feeds', label: 'RSS Feeds', icon: 'web', minTier: 'owner', section: 'primary' },
+  { id: 'feeds', label: 'RSS Feeds', icon: 'web', minTier: 'public', section: 'primary' },
   { id: 'autopilot', label: 'Autopilot', icon: 'sparkle', minTier: 'owner', section: 'primary' },
   { id: 'publishing', label: 'Publishing', icon: 'upload', minTier: 'public', section: 'primary' },
   { id: 'animation', label: 'AI Animation', icon: 'image', minTier: 'studio', section: 'primary', stub: true },
   { id: 'analytics', label: 'Analytics', icon: 'niche', minTier: 'public', section: 'primary', stub: true },
-  { id: 'niche-finder', label: 'Creator Models', icon: 'search', minTier: 'public', section: 'primary' },
+  { id: 'niche-finder', label: 'Creator Models', icon: 'search', minTier: 'studio', section: 'primary' },
   { id: 'styles', label: 'Styles', icon: 'styles', minTier: 'public', section: 'primary' },
   // Read-only view of the caller's own DGX character library — public tier:
   // reusing your own cast is part of the golden path, not a studio perk.

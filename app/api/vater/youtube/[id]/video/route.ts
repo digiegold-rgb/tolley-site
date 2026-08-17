@@ -9,6 +9,10 @@
  * stays server-side. The body is streamed back to the browser without
  * buffering.
  */
+// NOTE (Video Editor scrubbing): the timeline editor scrubs via HTTP Range
+// requests against this route. Do NOT introduce middleware/proxy layers that
+// strip `Range` / `Content-Range` / `Accept-Ranges` headers — scrubbing breaks
+// silently. (This used to be a user-facing "Beta Notice"; it is a dev note.)
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {

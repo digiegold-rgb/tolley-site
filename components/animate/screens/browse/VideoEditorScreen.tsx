@@ -18,7 +18,7 @@ type AnyProject = any;
 
 export function VideoEditorScreen(): React.ReactElement {
   const { t } = useTheme();
-  const { openProjectInVideoEditor } = useRoute();
+  const { openProjectInVideoEditor, requestNewVideo } = useRoute();
   const [projects, setProjects] = React.useState<AnyProject[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -42,14 +42,14 @@ export function VideoEditorScreen(): React.ReactElement {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <SectionHeader
         icon="videoEditor"
-        title="Video Editor (Beta)"
+        title="Video Editor"
         description="Timeline-based editing — drag clips, edit captions, swap audio, export. Pick a project below to open."
       />
 
       <VCard variant="hero" style={{ background: JELLY_TOKENS.gradTutorial, color: JELLY_TOKENS.onGradient }}>
-        <div style={{ fontSize: 18, fontWeight: 700 }}>Beta Notice</div>
+        <div style={{ fontSize: 18, fontWeight: 700 }}>How it works</div>
         <div style={{ fontSize: 14, opacity: 0.9, marginTop: 4 }}>
-          The Video Editor is in beta. Save your work often. Range-based scrubbing requires the proxy routes — don&apos;t introduce middleware that strips Range headers.
+          Every rendered video is editable: trim or reorder scenes, fix a caption, swap the voice track, then export a fresh MP4 to your Library. Edits save as you go — you can always come back.
         </div>
       </VCard>
 
@@ -59,7 +59,10 @@ export function VideoEditorScreen(): React.ReactElement {
           <div style={{ color: t.textSecondary, fontSize: 13 }}>Loading…</div>
         ) : projects.length === 0 ? (
           <VCard variant="flat">
-            <div style={{ color: t.textSecondary, fontSize: 14 }}>No projects yet. Create one from Topic, Transcribe, or RSS.</div>
+            <div style={{ color: t.textSecondary, fontSize: 14, marginBottom: 12 }}>
+              No projects yet. Render your first video and it will show up here, ready to edit.
+            </div>
+            <VBtn onClick={requestNewVideo}>Create your first video</VBtn>
           </VCard>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>

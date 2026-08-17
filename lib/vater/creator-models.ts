@@ -72,7 +72,16 @@ export interface CreatorModel {
   descriptionTemplate: string;
   /** Hashtags to append to descriptions */
   hashtags: string[];
+  /**
+   * Minimum /animate tier that may see + use this model. Studio-tier models
+   * are private channel DNA (e.g. Trey's Vater channels) and must never
+   * render for public-tier customers. Defaults to "public" when omitted.
+   */
+  minTier?: CreatorModelTier;
 }
+
+export type CreatorModelTier = "public" | "studio" | "owner";
+const CREATOR_TIER_RANK: Record<CreatorModelTier, number> = { public: 0, studio: 1, owner: 2 };
 
 // ---------------------------------------------------------------------------
 // Nick Invests (@nickinvestsUS) — 167K subs, 224 videos
@@ -244,6 +253,7 @@ export const NICK_INVESTS: CreatorModel = {
   id: "nick_invests",
   name: "Nick Invests",
   channelUrl: "https://www.youtube.com/@nickinvestsUS",
+  minTier: "studio", // Vater-lane private model — never shown to public tier
   tagline: "A DOLA IS A DOLA",
   description:
     "Whiteboard-animation personal finance channel. No face on camera — entirely cartoon-driven with a recurring character avatar. Near-daily 20-minute uploads covering wealth milestones, financial traps, and money psychology with specific dollar amounts and compound math.",
@@ -319,6 +329,25 @@ export type CreatorModelId = (typeof CREATOR_MODELS)[number]["id"];
 
 export function getCreatorModel(id: string): CreatorModel | undefined {
   return CREATOR_MODELS.find((m) => m.id === id);
+}
+
+/** Models visible to a given tier (public sees only public models). */
+export function creatorModelsForTier(
+  tier: CreatorModelTier | null | undefined,
+): readonly CreatorModel[] {
+  const rank = CREATOR_TIER_RANK[tier ?? "public"] ?? 0;
+  return CREATOR_MODELS.filter(
+    (m) => CREATOR_TIER_RANK[m.minTier ?? "public"] <= rank,
+  );
+}
+
+/** True when `tier` is entitled to use model `id`. Unknown ids → false. */
+export function canUseCreatorModel(
+  id: string | null | undefined,
+  tier: CreatorModelTier | null | undefined,
+): boolean {
+  if (!id) return true;
+  return creatorModelsForTier(tier).some((m) => m.id === id);
 }
 
 export function isCreatorModelId(value: unknown): value is CreatorModelId {

@@ -17,6 +17,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isVaterAdminEmail } from "@/lib/admin-auth";
 import { parseFeed, type FeedType } from "@/lib/vater/rss-parser";
 import {
   autopilot,
@@ -44,7 +45,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const feeds = await prisma.vaterRssFeed.findMany();
+  // Feeds are per-user. Include the owner's email so autoPipeline (unattended
+  // spend) can be restricted to vater-admin owners; everyone else's new items
+  // are discovered here and promoted manually from the Feeds screen.
+  const feeds = await prisma.vaterRssFeed.findMany({
+    include: { user: { select: { id: true, email: true } } },
+  });
   const results: PerFeedResult[] = [];
 
   for (const feed of feeds) {
@@ -114,8 +120,9 @@ export async function GET(req: NextRequest) {
         r.newItems += 1;
         lastSeenGuid = item.guid;
 
-        // Auto-pipeline gate
+        // Auto-pipeline gate — owner-only (unattended spend).
         if (!feed.autoPipeline) continue;
+        if (feed.userId && !isVaterAdminEmail(feed.user?.email)) continue;
         if (itemRow.project) continue; // already has a project
         if (!item.url) continue;
 
@@ -123,6 +130,7 @@ export async function GET(req: NextRequest) {
           const project = await prisma.youTubeProject.create({
             data: {
               mode: "transcribe",
+              userId: feed.userId ?? undefined,
               sourceUrl: item.url,
               sourceTitle: item.title,
               sourceType: "rss",

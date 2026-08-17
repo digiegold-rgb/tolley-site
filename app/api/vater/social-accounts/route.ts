@@ -38,6 +38,9 @@ export async function GET() {
       lastError: true,
       connectedAt: true,
       lastUsedAt: true,
+      provider: true,
+      username: true,
+      profileUrl: true,
     },
     orderBy: { connectedAt: "desc" },
   });

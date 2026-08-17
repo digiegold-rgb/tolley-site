@@ -7,6 +7,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { STYLE_PRESETS } from "@/lib/vater/style-presets";
+
+/** Preview image + one-line description for the card hero, joined on the
+ *  art-style preset. System presets always resolve; user clones keep the
+ *  preset they were cloned from so they get a picture too. */
+function presetFor(id: string | null | undefined) {
+  if (!id) return undefined;
+  return STYLE_PRESETS.find((p) => p.id === id);
+}
 
 type StyleRow = {
   id: string;
@@ -147,8 +156,23 @@ function CardGrid({
           key={s.id}
           className="group relative flex flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/40"
         >
-          <div className="relative flex aspect-video w-full items-center justify-center bg-gradient-to-br from-zinc-900 to-zinc-800 text-5xl">
-            <span aria-hidden="true">{s.emoji}</span>
+          <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden bg-gradient-to-br from-zinc-900 to-zinc-800 text-5xl">
+            {presetFor(s.artStylePresetId)?.sampleImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={presetFor(s.artStylePresetId)!.sampleImageUrl}
+                alt={`${s.name} — sample frame`}
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+              />
+            ) : (
+              <span aria-hidden="true">{s.emoji}</span>
+            )}
+            {presetFor(s.artStylePresetId)?.description && (
+              <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2 pb-1.5 pt-6 text-[10px] leading-tight text-zinc-200 line-clamp-2">
+                {presetFor(s.artStylePresetId)!.description}
+              </span>
+            )}
             {s.isSystem && (
               <span className="absolute right-2 top-2 rounded-md bg-zinc-700/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-300">
                 System

@@ -126,7 +126,7 @@ export const STYLE_PRESETS: readonly StylePreset[] = [
   // ── Animated Explainer (2026-04-14) — TubeGen-style ──────────────────
   // Same visual aesthetic as whiteboard_cartoon; differs in pacing
   // (2.5s/scene vs 4s) and auto-locks character consistency. Sample image
-  // is shared with whiteboard_cartoon since the stills look identical.
+  // regenerated 2026-08-17 (scripts/vater-style-samples.py, seed 4243).
   {
     id: "animated_explainer",
     name: "Animated Explainer",
@@ -137,7 +137,7 @@ export const STYLE_PRESETS: readonly StylePreset[] = [
       "TubeGen-style — same cartoon look as Whiteboard, but fast scene cuts (~2.5s) and locked character across scenes",
     bestFor:
       "Punchy explainer videos with a recurring protagonist — matches the TubeGen.ai faceless-channel format",
-    sampleImageUrl: "/vater/styles/whiteboard_cartoon.webp",
+    sampleImageUrl: "/vater/styles/animated_explainer.webp",
   },
   // ── 1D flat cartoon (2026-04-12) ────────────────────────────────────
   {

@@ -36,6 +36,8 @@ import {
 } from './feature-fetch';
 import { YouTubeScriptEditor } from '@/components/vater/youtube-script-editor';
 import { YouTubeCreatorModelPicker } from '@/components/vater/youtube-creator-model-picker';
+import { creatorModelsForTier } from '@/lib/vater/creator-models';
+import { useTier } from '../../tier-context';
 import type {
   CreatorModel,
   CreatorModelId,
@@ -52,6 +54,8 @@ import { reelLabel } from './reel-label';
 
 export function ScriptStep({ projectId, project, refresh }: EditorStepProps): React.ReactElement {
   const { t } = useTheme();
+  const { tier } = useTier();
+  const creatorModelsAvailable = creatorModelsForTier(tier).length > 0;
   const [title, setTitle] = React.useState('');
   // 402 from a generation route → actionable modal, not a raw error string.
   const [billingBlock, setBillingBlock] = React.useState<BillingBlockReason | null>(null);
@@ -746,15 +750,17 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
             {/* Creator Model — wraps the existing Tailwind component. The
                 `jelly-legacy` class re-skins it onto the cinema palette
                 without editing anything under components/vater/. */}
-            <div
-              className="jelly-legacy"
-              style={{ borderTop: `1px solid ${t.border}`, paddingTop: 12 }}
-            >
-              <YouTubeCreatorModelPicker
-                value={creatorModel}
-                onChange={handleCreatorModelChange}
-              />
-            </div>
+            {creatorModelsAvailable && (
+              <div
+                className="jelly-legacy"
+                style={{ borderTop: `1px solid ${t.border}`, paddingTop: 12 }}
+              >
+                <YouTubeCreatorModelPicker
+                  value={creatorModel}
+                  onChange={handleCreatorModelChange}
+                />
+              </div>
+            )}
           </div>
         )}
 

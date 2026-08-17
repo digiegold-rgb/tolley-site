@@ -64,6 +64,9 @@ model User {
   budgetRecurring      BudgetRecurring[]
   budgetPlaidAccounts  BudgetPlaidAccount[]
   shareLinks           ShareLink[]
+  rssFeeds             VaterRssFeed[]       @relation("UserRssFeeds")
+  socialProfile        VaterSocialProfile?
+  socialPosts          VaterSocialPost[]
 }
 
 /// Per-user credentials for posting to external social platforms from the
@@ -80,17 +83,62 @@ model SocialAccount {
   platform    String // "youtube" | "tiktok" | "instagram" | "facebook" | "pinterest" | "twitter" | "linkedin"
   displayName String? // handle / channel name shown in the UI
   avatarUrl   String?
-  credentials Json // platform-specific token blob
+  credentials Json // platform-specific token blob (empty {} for vendor-managed rows)
   status      String    @default("active") // active | expired | error
   lastError   String?
   connectedAt DateTime  @default(now())
   lastUsedAt  DateTime?
   updatedAt   DateTime  @updatedAt
+  /// "native" = we hold the OAuth token (YouTube). "zernio" = the aggregator
+  /// holds it; we only keep the vendor account id and post through its API.
+  provider          String  @default("native")
+  externalAccountId String? // vendor's account id (Zernio SocialAccount._id)
+  username          String?
+  profileUrl        String?
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, platform])
+  @@index([provider, externalAccountId])
   @@index([userId])
   @@index([platform])
+}
+
+/// One aggregator (Zernio) profile per /animate user — the tenant boundary
+/// on the vendor side. Created lazily on the first "Connect <platform>".
+model VaterSocialProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  vendor            String   @default("zernio")
+  externalProfileId String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([vendor, externalProfileId])
+}
+
+/// A multi-platform publish of one project through the aggregator. Gives
+/// every user their own pending / posted / failed queue on the Publishing
+/// screen. Status mirrors the vendor: scheduled | publishing | published |
+/// partial | failed | cancelled.
+model VaterSocialPost {
+  id             String   @id @default(cuid())
+  userId         String
+  projectId      String
+  vendor         String   @default("zernio")
+  externalPostId String   @unique
+  platforms      Json // [{platform, accountId, status, publishedUrl?, error?}]
+  caption        String?
+  status         String   @default("scheduled")
+  scheduledFor   DateTime?
+  publishedAt    DateTime?
+  lastError      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([projectId])
 }
 
 /// Tracks an outbound upload from a vater/youtube project to a social
@@ -3679,7 +3727,12 @@ model PriceChangeLog {
 
 model VaterRssFeed {
   id             String         @id @default(cuid())
-  url            String         @unique
+  /// Owning /animate user. NULL = legacy owner-side rows (backfilled by the
+  /// 20260817 migration). Every feed is scoped per user; the same URL may be
+  /// followed by many users.
+  userId         String?
+  user           User?          @relation("UserRssFeeds", fields: [userId], references: [id], onDelete: Cascade)
+  url            String
   title          String?
   feedType       String // "youtube" | "podcast" | "blog" | "social"
   autoPipeline   Boolean        @default(false)
@@ -3694,7 +3747,9 @@ model VaterRssFeed {
   updatedAt      DateTime       @updatedAt
   items          VaterRssItem[]
 
+  @@unique([userId, url])
   @@index([feedType])
+  @@index([userId])
 }
 
 model VaterRssItem {

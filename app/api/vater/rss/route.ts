@@ -1,11 +1,18 @@
 /**
- * GET  /api/vater/rss          → list all VaterRssFeed rows
+ * GET  /api/vater/rss          → list the caller's VaterRssFeed rows
  * POST /api/vater/rss          → probe a feed URL via autopilot, then create
+ *
+ * Multi-tenant since 2026-08-17: every signed-in /animate user owns their
+ * own feeds (scoped by userId). `autoPipeline` (render every new item with
+ * no click) stays owner-only — for everyone else new items land in the
+ * feed's inbox and are promoted manually via POST /api/vater/youtube
+ * {rssItemId}, which runs the normal trial-cap / billing checks.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { autopilot, AutopilotError } from "@/lib/vater/autopilot-client";
-import { requireVaterAdminApiSession } from "@/lib/admin-auth";
+import { auth } from "@/auth";
+import { isVaterAdminEmail } from "@/lib/admin-auth";
 import { assertPublicUrl, UnsafeUrlError } from "@/lib/net/assert-public-url";
 import {
   detectFeedTypeFromUrl,
@@ -20,9 +27,12 @@ const VALID_TYPES: ReadonlySet<FeedType> = new Set([
 ]);
 
 export async function GET() {
-  const auth = await requireVaterAdminApiSession();
-  if (!auth.ok) return auth.response;
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const feeds = await prisma.vaterRssFeed.findMany({
+    where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { items: true } } },
   });
@@ -30,8 +40,11 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireVaterAdminApiSession();
-  if (!auth.ok) return auth.response;
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const canAutoPipeline = isVaterAdminEmail(session.user.email);
 
   let body: {
     url?: string;
@@ -95,10 +108,11 @@ export async function POST(req: NextRequest) {
   try {
     const feed = await prisma.vaterRssFeed.create({
       data: {
+        userId: session.user.id,
         url,
         title: probe.title || null,
         feedType,
-        autoPipeline: body.autoPipeline ?? false,
+        autoPipeline: canAutoPipeline ? (body.autoPipeline ?? false) : false,
         defaultGoal: body.defaultGoal ?? null,
         defaultWords: body.defaultWords ?? null,
         defaultVoiceId: body.defaultVoiceId ?? null,
@@ -110,10 +124,10 @@ export async function POST(req: NextRequest) {
       { status: 201 },
     );
   } catch (err) {
-    // Most likely a unique constraint on `url`
+    // Most likely the (userId, url) unique — this user already follows it.
     return NextResponse.json(
       {
-        error: "Failed to create feed",
+        error: "You already follow this feed",
         detail: err instanceof Error ? err.message : "unknown",
       },
       { status: 409 },

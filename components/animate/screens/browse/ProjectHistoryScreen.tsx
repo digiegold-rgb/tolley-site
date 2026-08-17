@@ -240,7 +240,7 @@ export function ProjectHistoryScreen(): React.ReactElement {
             No projects yet
           </div>
           <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 6 }}>
-            Head to Studio › Transcribe or Topic to start your first project.
+            Hit Create Video on the Dashboard — paste a script, a topic, or a YouTube link — and your first project lands here.
           </div>
         </VCard>
       ) : (

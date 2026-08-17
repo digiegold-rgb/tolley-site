@@ -6,13 +6,15 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireVaterAdminApiSession } from "@/lib/admin-auth";
+import { auth } from "@/auth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(req: NextRequest, ctx: Ctx) {
-  const auth = await requireVaterAdminApiSession();
-  if (!auth.ok) return auth.response;
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const { id } = await ctx.params;
   const limitRaw = Number(req.nextUrl.searchParams.get("limit") ?? "50");
   const limit = Math.min(
@@ -20,8 +22,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 50),
   );
 
-  const feed = await prisma.vaterRssFeed.findUnique({
-    where: { id },
+  const feed = await prisma.vaterRssFeed.findFirst({
+    where: { id, userId: session.user.id },
     select: { id: true },
   });
   if (!feed) {

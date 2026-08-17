@@ -56,10 +56,13 @@ interface RssItem {
 type CreatedProject = any;
 
 interface Props {
+  /** When false (public tier), the auto-pipeline controls are hidden —
+   *  unattended rendering is owner-only; items are promoted manually. */
+  allowAutoPipeline?: boolean;
   onProjectCreated?: (project: CreatedProject) => void;
 }
 
-export function YouTubeRssPanel({ onProjectCreated }: Props) {
+export function YouTubeRssPanel({ onProjectCreated, allowAutoPipeline = true }: Props) {
   const { toast } = useToast();
   const [feeds, setFeeds] = useState<RssFeed[]>([]);
   const [loading, setLoading] = useState(true);
@@ -232,16 +235,18 @@ export function YouTubeRssPanel({ onProjectCreated }: Props) {
             </button>
           </div>
 
-          <label className="flex items-center gap-2 text-xs text-zinc-400">
-            <input
-              type="checkbox"
-              checked={newAutoPipeline}
-              onChange={(e) => setNewAutoPipeline(e.target.checked)}
-              className="h-3.5 w-3.5 accent-sky-400"
-            />
-            Auto-pipeline new items (cron creates a project on every new
-            entry)
-          </label>
+          {allowAutoPipeline && (
+            <label className="flex items-center gap-2 text-xs text-zinc-400">
+              <input
+                type="checkbox"
+                checked={newAutoPipeline}
+                onChange={(e) => setNewAutoPipeline(e.target.checked)}
+                className="h-3.5 w-3.5 accent-sky-400"
+              />
+              Auto-pipeline new items (cron creates a project on every new
+              entry)
+            </label>
+          )}
 
           {newAutoPipeline && (
             <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
@@ -327,7 +332,7 @@ export function YouTubeRssPanel({ onProjectCreated }: Props) {
                     expandedFeedId === feed.id ? null : feed.id,
                   )
                 }
-                onToggleAutoPipeline={() => handleToggleAutoPipeline(feed)}
+                onToggleAutoPipeline={allowAutoPipeline ? () => handleToggleAutoPipeline(feed) : undefined}
                 onDelete={() => handleDeleteFeed(feed)}
                 onProjectCreated={onProjectCreated}
               />
@@ -354,7 +359,7 @@ function FeedRow({
   feed: RssFeed;
   expanded: boolean;
   onExpandToggle: () => void;
-  onToggleAutoPipeline: () => void;
+  onToggleAutoPipeline?: () => void;
   onDelete: () => void;
   onProjectCreated?: (project: CreatedProject) => void;
 }) {
@@ -459,6 +464,7 @@ function FeedRow({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          {onToggleAutoPipeline && (
           <button
             type="button"
             onClick={onToggleAutoPipeline}
@@ -471,6 +477,7 @@ function FeedRow({
           >
             {feed.autoPipeline ? "AUTO" : "manual"}
           </button>
+          )}
           <button
             type="button"
             onClick={onExpandToggle}

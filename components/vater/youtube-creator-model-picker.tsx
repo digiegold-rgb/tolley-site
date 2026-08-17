@@ -9,12 +9,13 @@
  * and duration slider.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  CREATOR_MODELS,
+  creatorModelsForTier,
   type CreatorModel,
   type CreatorModelId,
 } from "@/lib/vater/creator-models";
+import { useTier } from "@/components/animate/tier-context";
 
 interface Props {
   value: CreatorModelId | null;
@@ -28,6 +29,11 @@ export function YouTubeCreatorModelPicker({
   disabled,
 }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  // Tier-gated: public customers only ever see public models. Outside the
+  // TierProvider (legacy /vater pages) useTier() returns the 'public' default.
+  const { tier } = useTier();
+  const CREATOR_MODELS = useMemo(() => creatorModelsForTier(tier), [tier]);
+  if (CREATOR_MODELS.length === 0) return null;
 
   const handleSelect = (model: CreatorModel) => {
     if (disabled) return;

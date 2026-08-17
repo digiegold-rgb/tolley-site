@@ -103,8 +103,9 @@ export async function GET() {
         voicesRead: true,
         voicesWrite: studio,
         pipelineStatus: true,
+        // RSS feeds are per-user since 2026-08-17 (auto-pipeline stays owner).
+        rss: true,
         // Owner-only surfaces (isVaterAdminEmail).
-        rss: owner,
         chat: owner,
         observer: owner,
         // Site-admin content calendar (/api/content/posts).
