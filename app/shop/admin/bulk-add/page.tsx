@@ -30,6 +30,13 @@ interface BatchJob {
   completedAt: string | null;
 }
 
+interface WorkerStatus {
+  name: string;
+  alive: boolean;
+  lastSeen: string | null;
+  ageSec: number | null;
+}
+
 const FB_DRAFTS_URL = "https://www.facebook.com/marketplace/you/selling?state=DRAFT";
 
 function shortId(): string {
@@ -68,6 +75,8 @@ export default function BulkAddPage() {
   });
 
   const [batchId, setBatchId] = useState<string | null>(null);
+  const [worker, setWorker] = useState<WorkerStatus | null>(null);
+  const [pollingSince, setPollingSince] = useState<number | null>(null);
   const [jobs, setJobs] = useState<BatchJob[]>([]);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -147,8 +156,9 @@ export default function BulkAddPage() {
           cache: "no-store",
         });
         if (!res.ok) return;
-        const data = (await res.json()) as { jobs: BatchJob[] };
+        const data = (await res.json()) as { jobs: BatchJob[]; worker?: WorkerStatus };
         setJobs(data.jobs);
+        if (data.worker) setWorker(data.worker);
         const allDone = data.jobs.every(
           (j) => j.status === "drafted" || j.status === "failed"
         );
@@ -213,6 +223,7 @@ export default function BulkAddPage() {
       setCurrentPhotos([]);
 
       setStage("polling");
+      setPollingSince(Date.now());
       startPolling(newBatchId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Submit failed");
@@ -380,6 +391,28 @@ export default function BulkAddPage() {
 
         {(stage === "polling" || stage === "done") && (
           <div className="space-y-4">
+            {stage === "polling" && worker && !worker.alive && (
+              <div className="rounded-xl border border-red-400/40 bg-red-500/10 p-3 text-sm text-red-200">
+                <p className="font-semibold">⚠️ The listing worker is offline — nothing is being processed right now.</p>
+                <p className="mt-1 text-xs text-red-200/80">
+                  Your photos are safely saved and will be processed automatically as soon as it comes
+                  back (it self-heals within ~5 minutes). Don&apos;t re-upload — that creates duplicates.
+                  {worker.ageSec != null && worker.ageSec < 86_400 && (
+                    <> Last seen {Math.round(worker.ageSec / 60)} min ago.</>
+                  )}
+                </p>
+              </div>
+            )}
+            {stage === "polling" &&
+              worker?.alive &&
+              pollingSince != null &&
+              Date.now() - pollingSince > 5 * 60_000 &&
+              jobs.some((j) => j.status === "queued") && (
+                <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+                  Still queued after 5 min — the worker is alive but slow (backlog or Amazon lookup).
+                  Safe to leave this page; it keeps going in the background.
+                </div>
+              )}
             <div className="flex items-center justify-between">
               <p className="text-sm text-white/60">
                 Batch {batchId?.slice(-8)} · {jobs.length} item{jobs.length === 1 ? "" : "s"}

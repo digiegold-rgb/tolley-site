@@ -2245,6 +2245,17 @@ model ListingJob {
 /// /shop/admin/bulk-add. The bulk-ingest-worker drains these: Gemini vision
 /// → Amazon SerpAPI lookup → create Product → enqueue ListingJob for FB.
 /// Then walks away — the existing fb-draft-worker handles the rest.
+/// Liveness stamp for background drainers (bulk-ingest-worker, fb-draft-worker).
+/// Written every poll tick; read by /api/shop/products/bulk-ingest/[batchId]
+/// so the UI can distinguish "queued, worker busy" from "worker is DOWN".
+model WorkerHeartbeat {
+  name     String   @id
+  lastSeen DateTime @default(now())
+  hostname String?
+  pid      Int?
+  meta     Json?
+}
+
 model BulkIngestJob {
   id               String    @id @default(cuid())
   batchId          String

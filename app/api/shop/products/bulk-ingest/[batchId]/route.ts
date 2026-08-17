@@ -13,7 +13,8 @@ export async function GET(
   }
   const { batchId } = await params;
 
-  const jobs = await prisma.bulkIngestJob.findMany({
+  const [jobs, hb] = await Promise.all([
+    prisma.bulkIngestJob.findMany({
     where: { batchId },
     orderBy: { createdAt: "asc" },
     select: {
@@ -32,7 +33,9 @@ export async function GET(
       completedAt: true,
       createdAt: true,
     },
-  });
+    }),
+    prisma.workerHeartbeat.findUnique({ where: { name: "bulk-ingest-worker" } }),
+  ]);
 
   if (jobs.length === 0) {
     return NextResponse.json({ error: "Batch not found" }, { status: 404 });
@@ -61,5 +64,17 @@ export async function GET(
     };
   });
 
-  return NextResponse.json({ batchId, jobs: compact });
+  // Worker liveness — the drainer stamps WorkerHeartbeat every 15s tick.
+  // >90s stale = down (covers a restart window without false alarms).
+  const WORKER_STALE_MS = 90_000;
+  const lastSeen = hb?.lastSeen ?? null;
+  const ageMs = lastSeen ? Date.now() - lastSeen.getTime() : null;
+  const worker = {
+    name: "bulk-ingest-worker",
+    alive: ageMs != null && ageMs < WORKER_STALE_MS,
+    lastSeen,
+    ageSec: ageMs != null ? Math.round(ageMs / 1000) : null,
+  };
+
+  return NextResponse.json({ batchId, jobs: compact, worker });
 }
