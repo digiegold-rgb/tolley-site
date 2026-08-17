@@ -20,6 +20,10 @@ import { buildStyleSnapshot } from "@/lib/vater/style-snapshot";
 import { auth } from "@/auth";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
 import { ownerFieldsForSessionWithCap } from "@/lib/vater/owner-tier";
+import {
+  elevenLabsKeyMissing,
+  ELEVENLABS_KEY_REQUIRED,
+} from "@/lib/vater/elevenlabs-key-gate";
 
 interface TopicBody {
   topic?: string;
@@ -164,6 +168,18 @@ export async function POST(req: NextRequest) {
         : {}),
     },
   });
+
+  // ElevenLabs is bring-your-own-key (2026-08-17): refuse before the render
+  // spends anything, not at the TTS step after the images are paid for.
+  if (
+    styleSnapshot?.voiceBackend === "elevenlabs" &&
+    (await elevenLabsKeyMissing(project.userId ?? session.user.id))
+  ) {
+    return NextResponse.json(
+      { error: ELEVENLABS_KEY_REQUIRED, code: "ELEVENLABS_KEY_REQUIRED" },
+      { status: 400 },
+    );
+  }
 
   try {
     const validBackends = new Set([
