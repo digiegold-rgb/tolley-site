@@ -53,7 +53,7 @@ const WINDOW_LABELS: Record<WindowKey, string> = {
 
 // cardBg/cardBorder tint the whole card so platforms read as groups at a
 // glance even after the views-sort interleaves them.
-const PLATFORM_BADGE: Record<string, { label: string; bg: string; fg: string; cardBg: string; cardBorder: string }> = {
+export const PLATFORM_BADGE: Record<string, { label: string; bg: string; fg: string; cardBg: string; cardBorder: string }> = {
   youtube: { label: "▶ YouTube", bg: "#fdecea", fg: "#c4302b", cardBg: "#fff6f5", cardBorder: "#f5dcd9" },
   facebook: { label: "ⓕ Facebook", bg: "#e7f0fd", fg: "#1877f2", cardBg: "#f3f7fe", cardBorder: "#d9e6fa" },
   tiktok: { label: "♪ TikTok", bg: "#e6fafa", fg: "#0d8a84", cardBg: "#f0fbfa", cardBorder: "#d2efec" },
@@ -62,7 +62,7 @@ const PLATFORM_BADGE: Record<string, { label: string; bg: string; fg: string; ca
   linkedin: { label: "in LinkedIn", bg: "#e2edfb", fg: "#0a66c2", cardBg: "#f1f6fd", cardBorder: "#d3e3f7" },
   pinterest: { label: "P Pinterest", bg: "#fce8e9", fg: "#e60023", cardBg: "#fef4f5", cardBorder: "#f7d6d9" },
 };
-const FALLBACK_BADGE = { label: "•", bg: "#eee", fg: "#333", cardBg: "#fff", cardBorder: "var(--hq-line)" };
+export const FALLBACK_BADGE = { label: "•", bg: "#eee", fg: "#333", cardBg: "#fff", cardBorder: "var(--hq-line)" };
 
 /** One rolling digit column, 0–9 stacked; translateY slides to the value. */
 function Digit({ d, height }: { d: number; height: number }) {

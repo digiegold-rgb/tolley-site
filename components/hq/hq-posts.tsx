@@ -8,6 +8,7 @@ import { HqShowMore, HQ_PAGE_SIZE } from "./hq-show-more";
 import { HqVideoCosts } from "./hq-video-costs";
 import { HqVideoFootprint } from "./hq-video-footprint";
 import { HqViewCounter } from "./hq-view-counter";
+import { HqVideoViews } from "./hq-video-views";
 import HqCityRanks from "./hq-city-ranks";
 
 // Posts tab — did every automated channel actually fire?
@@ -196,6 +197,13 @@ export function HqPosts() {
 
       {/* ── Live view counter across every channel ── */}
       <HqViewCounter />
+
+      {/* ── Every individual video and what it got. Sits right under the
+           channel cards because it's the same question one level down: the
+           cards say a channel is up, this says which video did it. Also the
+           only place FB reel views are visible — Meta's Page insights don't
+           count Reels-feed distribution at all. ── */}
+      <HqVideoViews />
 
       {/* ── Monthly city search-rank sweep (renders after first sweep) ── */}
       <HqCityRanks />

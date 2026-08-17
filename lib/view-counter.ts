@@ -161,6 +161,26 @@ export const VIEW_CHANNELS: readonly ViewChannel[] = [
     note: "real estate page",
     url: "https://www.facebook.com/230414410149647",
   },
+  {
+    // The /animate (Jelly Studio) brand Page — reels only, opened 2026-08-16.
+    // Page-level `page_video_views` badly undercounts a reels-only Page (150
+    // vs 705 real reel views on day two), which is why this card's numbers
+    // come from the summed per-reel counts instead. See collectFbVideos().
+    key: "fb-jelly",
+    platform: "facebook",
+    label: "Jelly Studio",
+    note: "/animate brand · reels",
+    url: "https://www.facebook.com/1250965801434969",
+    contentSince: "2026-08-16",
+  },
+  {
+    key: "fb-estate",
+    platform: "facebook",
+    label: "Tolley Estate Sales",
+    note: "estate sale reels",
+    url: "https://www.facebook.com/1192241847311343",
+    contentSince: "2026-08-02",
+  },
 ];
 
 export const CHANNEL_KEYS = new Set(VIEW_CHANNELS.map((c) => c.key));

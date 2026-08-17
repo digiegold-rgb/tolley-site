@@ -30,6 +30,13 @@ export async function POST(request: NextRequest) {
   let upserted = 0;
   let videos = 0;
   let skipped = 0;
+  // Per-video rows are independent of each other, so they go up in parallel
+  // chunks — Facebook pushes a few hundred of them per run and one-at-a-time
+  // round trips blew past the function timeout.
+  const videoWrites: Promise<unknown>[] = [];
+  const flushVideos = async () => {
+    while (videoWrites.length) await Promise.all(videoWrites.splice(0, 20));
+  };
   for (const raw of body) {
     if (!raw || typeof raw !== "object") { skipped++; continue; }
     const item = raw as Record<string, unknown>;
@@ -40,17 +47,24 @@ export async function POST(request: NextRequest) {
     if (typeof item.videoId === "string" && item.videoId) {
       const publishedMs = Date.parse(String(item.publishedAt ?? ""));
       if (!CHANNEL_KEYS.has(channelKey) || Number.isNaN(publishedMs)) { skipped++; continue; }
+      const videoId = item.videoId;
+      const url = typeof item.url === "string" && item.url ? item.url.slice(0, 500) : null;
       const data = {
         title: String(item.title ?? "").slice(0, 300),
         publishedAt: new Date(publishedMs),
         views: BigInt(Math.max(0, Math.round(Number(item.views ?? 0)))),
+        // A push that omits the url must not erase one an earlier push stored.
+        ...(url ? { url } : {}),
         pulledAt: new Date(),
       };
-      await prisma.channelVideoStat.upsert({
-        where: { channelKey_videoId: { channelKey, videoId: item.videoId } },
-        create: { channelKey, videoId: item.videoId, ...data },
-        update: data,
-      });
+      videoWrites.push(
+        prisma.channelVideoStat.upsert({
+          where: { channelKey_videoId: { channelKey, videoId } },
+          create: { channelKey, videoId, ...data },
+          update: data,
+        }),
+      );
+      if (videoWrites.length >= 20) await Promise.all(videoWrites.splice(0, 20));
       videos++;
       continue;
     }
@@ -80,6 +94,7 @@ export async function POST(request: NextRequest) {
     });
     upserted++;
   }
+  await flushVideos();
 
   return NextResponse.json({ ok: true, upserted, videos, skipped });
 }

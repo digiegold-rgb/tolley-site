@@ -149,6 +149,9 @@
     },
     "app/api/cron/shop/enrich-pending-descriptions/route.ts": {
       "maxDuration": 300
+    },
+    "app/api/hq/view-counter/route.ts": {
+      "maxDuration": 120
     }
   },
   "git": {

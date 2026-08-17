@@ -5103,6 +5103,10 @@ model ChannelVideoStat {
   title       String
   publishedAt DateTime
   views       BigInt   @default(0)
+  // Permalink as the platform reports it. YouTube ids build a watch URL on
+  // their own, but a Facebook reel id does not — /reel/<id> and
+  // /<page>/videos/<id> are both real and only the API knows which.
+  url         String?
   pulledAt    DateTime @default(now())
 
   @@unique([channelKey, videoId])
