@@ -292,10 +292,19 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   // and build a snapshot; the snapshot rides inline in the runCreation
   // payload so the DGX worker has everything (no callback). When NULL, we
   // stay on the legacy stylePreset path — fully back-compat.
+  //
+  // 2026-08-17: fall back to the project's OWN styleId when the caller
+  // omits the key. ScriptStep never sent one, so a customer who picked
+  // "Cinematic" got a kickoff with no snapshot at all — and the DGX filled
+  // the hole with the standing spec, rendering their video in Vater's house
+  // art style with Vater's house host. An explicit `styleId: null` still
+  // means "legacy preset path", so nothing that used to opt out changes.
   const styleId =
     typeof body.styleId === "string" && body.styleId.trim()
       ? body.styleId.trim()
-      : null;
+      : body.styleId === null
+        ? null
+        : project.styleId;
 
   let styleSnapshot: StyleSnapshot | undefined;
   if (styleId) {
