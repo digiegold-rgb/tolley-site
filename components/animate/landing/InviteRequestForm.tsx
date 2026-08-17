@@ -13,9 +13,40 @@ import { PillButton } from '../cinema';
  *  so this form looks identical whether it is dropped on the landing or on a
  *  legal page. The honeypot field and data-testid are unchanged — they are
  *  load-bearing for spam filtering and the audit sweep. */
+const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const;
+const UTM_STORAGE = 'jelly_utm';
+
+/** First-touch UTMs, captured on any /animate page and kept for the session so an
+ *  ad click that wanders through /animate/privacy before requesting still gets
+ *  attributed (and, for the FB paid campaign, auto-approved server-side). */
+function readUtm(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fresh: Record<string, string> = {};
+    for (const k of UTM_KEYS) {
+      const v = params.get(k);
+      if (v) fresh[k] = v.slice(0, 80);
+    }
+    if (Object.keys(fresh).length) {
+      window.sessionStorage.setItem(UTM_STORAGE, JSON.stringify(fresh));
+      return fresh;
+    }
+    const stored = window.sessionStorage.getItem(UTM_STORAGE);
+    return stored ? (JSON.parse(stored) as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
 export function InviteRequestForm(): React.ReactElement {
   const [state, setState] = React.useState<'idle' | 'busy' | 'done' | 'error'>('idle');
   const [msg, setMsg] = React.useState<string>('');
+  const [autoApproved, setAutoApproved] = React.useState(false);
+  const utmRef = React.useRef<Record<string, string>>({});
+  React.useEffect(() => {
+    utmRef.current = readUtm();
+  }, []);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -30,10 +61,12 @@ export function InviteRequestForm(): React.ReactElement {
           email: fd.get('email'),
           about: fd.get('about'),
           website: fd.get('website'), // honeypot
+          utm: utmRef.current,
         }),
       });
-      const j = (await r.json().catch(() => ({}))) as { error?: string };
+      const j = (await r.json().catch(() => ({}))) as { error?: string; autoApproved?: boolean };
       if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      setAutoApproved(Boolean(j.autoApproved));
       setState('done');
     } catch (err) {
       setMsg(err instanceof Error ? err.message : 'Something went wrong');
@@ -59,9 +92,13 @@ export function InviteRequestForm(): React.ReactElement {
           color: t.text,
         }}
       >
-        <strong style={{ fontSize: 16 }}>Got it — you&apos;re on the list.</strong>
+        <strong style={{ fontSize: 16 }}>
+          {autoApproved ? 'You\u2019re in — check your email.' : 'Got it — you\u2019re on the list.'}
+        </strong>
         <span style={{ fontSize: 14, color: t.textSecondary }}>
-          Invites go out in small batches; you&apos;ll get a signup link by email.
+          {autoApproved
+            ? 'Your personal invite link is on its way right now (check spam if it\u2019s not there in a minute).'
+            : 'Invites go out in small batches; you\u2019ll get a signup link by email.'}
         </span>
       </div>
     );
