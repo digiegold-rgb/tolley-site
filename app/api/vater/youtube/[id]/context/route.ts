@@ -34,6 +34,10 @@ import { auth } from "@/auth";
 import { canAccessProject } from "@/lib/vater/project-access";
 import { isVaterAdminEmail } from "@/lib/admin-auth";
 import { ownerFieldsForSessionWithCap } from "@/lib/vater/owner-tier";
+import {
+  elevenLabsKeyMissing,
+  ELEVENLABS_KEY_REQUIRED,
+} from "@/lib/vater/elevenlabs-key-gate";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
 import { maxWordsFor } from "@/lib/vater/billing/script-cap";
 import {
@@ -381,6 +385,19 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         : "firered-modal";
     const forceModalVoice =
       !isOwner && styleSnapshot?.voiceBackend !== "elevenlabs";
+
+    // ── ElevenLabs is bring-your-own-key (2026-08-17) ────────────────────
+    // Ask before spending: without a connected key the DGX refuses at the
+    // TTS step, which is after the script and images have been paid for.
+    if (styleSnapshot?.voiceBackend === "elevenlabs") {
+      const ownerIdForKey = project.userId ?? session.user.id;
+      if (await elevenLabsKeyMissing(ownerIdForKey)) {
+        return NextResponse.json(
+          { error: ELEVENLABS_KEY_REQUIRED, code: "ELEVENLABS_KEY_REQUIRED" },
+          { status: 400 },
+        );
+      }
+    }
 
     // Hybrid render window — animate the first N seconds, Ken Burns the rest.
     // Lives on the project row (set from the Script Review intake form) and

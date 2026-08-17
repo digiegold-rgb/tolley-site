@@ -127,6 +127,35 @@ export type ElevenLabsVoice = {
   preview_url?: string;
 };
 
+/**
+ * Status of one tenant's bring-your-own provider key. Deliberately has no
+ * field that could carry the key: the DGX never returns it after the connect
+ * call, so there is nothing here to leak into a log or a client bundle.
+ */
+export type UserProviderKeyStatus = {
+  configured: boolean;
+  provider: string;
+  /** Last 4 characters, so the UI can say WHICH key without showing it. */
+  last4?: string;
+  /** Account facts captured when the key was validated. */
+  meta?: {
+    tier?: string;
+    status?: string;
+    characterCount?: number;
+    characterLimit?: number;
+    charactersRemaining?: number;
+    nextResetUnix?: number;
+    voiceCount?: number;
+    verifiedAt?: string;
+    label?: string;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+  /** True for the owner's own accounts, which narrate on the box's key and
+   *  therefore never need to connect one. */
+  houseKey?: boolean;
+};
+
 export type FeedSampleItem = {
   guid: string;
   title: string;
@@ -954,21 +983,58 @@ export const autopilot = {
     return Array.isArray(data?.voices) ? data.voices : [];
   },
 
-  /** List ElevenLabs voices on the authenticated account. Returns `{voices, error?}`
-   * — empty voices + error string when the key is missing or the upstream call failed. */
-  getElevenLabsVoices: async (): Promise<{
+  /** List ElevenLabs voices on the caller's OWN connected account.
+   *
+   * `ownerId` is the session user — the DGX resolves their bring-your-own key
+   * from `vater_user_keys` so the picker only ever shows voices the render
+   * will actually be allowed to use. Omitting it means owner-side tooling and
+   * falls back to the box's own key.
+   *
+   * Returns `{voices, error?}` — empty voices + an error string when the
+   * tenant has no key connected or the upstream call failed. */
+  getElevenLabsVoices: async (
+    ownerId?: string,
+  ): Promise<{
     voices: ElevenLabsVoice[];
     error?: string;
+    keySource?: "byo" | "house" | null;
   }> => {
+    const qs = ownerId ? `?owner=${encodeURIComponent(ownerId)}` : "";
     const data = await call<{
       voices?: ElevenLabsVoice[];
       error?: string;
-    }>("GET", "/vater/voices/elevenlabs");
+      keySource?: "byo" | "house" | null;
+    }>("GET", `/vater/voices/elevenlabs${qs}`);
     return {
       voices: Array.isArray(data?.voices) ? data.voices : [],
       error: typeof data?.error === "string" ? data.error : undefined,
+      keySource: data?.keySource ?? null,
     };
   },
+
+  /** ── Bring-your-own provider keys (2026-08-17) ────────────────────────
+   * Every tenant connects their own ElevenLabs account from Jelly Studio.
+   * The plaintext key crosses this boundary exactly once, on connect: the
+   * DGX validates it against ElevenLabs, stores it encrypted per user, and
+   * from then on only ever reports status. `ownerId` is always the SESSION
+   * user id — never a value the browser supplied. */
+  getUserProviderKey: (provider: "elevenlabs", ownerId: string) =>
+    call<UserProviderKeyStatus>(
+      "GET",
+      `/vater/user-keys/${provider}?owner=${encodeURIComponent(ownerId)}`,
+    ),
+
+  setUserProviderKey: (provider: "elevenlabs", ownerId: string, apiKey: string) =>
+    call<UserProviderKeyStatus>("PUT", `/vater/user-keys/${provider}`, {
+      owner: ownerId,
+      apiKey,
+    }),
+
+  deleteUserProviderKey: (provider: "elevenlabs", ownerId: string) =>
+    call<{ ok: boolean; removed: boolean }>(
+      "DELETE",
+      `/vater/user-keys/${provider}?owner=${encodeURIComponent(ownerId)}`,
+    ),
 
   /** Background-music catalog (CC-BY-4.0 Kevin MacLeod). */
   fetchMusicCatalog: async (): Promise<MusicTrack[]> => {

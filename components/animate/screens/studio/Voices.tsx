@@ -23,6 +23,7 @@ import { useTier } from '../../tier-context';
 import { YouTubeVoiceClonePanel } from '@/components/vater/youtube-voice-clone-panel';
 import { YouTubePopularVoices } from '@/components/vater/youtube-popular-voices';
 import { VoiceTuner } from './VoiceTuner';
+import { ElevenLabsConnect } from './ElevenLabsConnect';
 import { TINT_BG, TINT_BORDER } from '../tint';
 
 interface ElevenVoice {
@@ -137,12 +138,25 @@ export function Voices(): React.ReactElement {
             lineHeight: 1.6,
           }}
         >
-          <strong style={{ color: JELLY_TOKENS.warning }}>Metered:</strong>{' '}
-          ElevenLabs narration bills per minute at cost — it is passed straight
-          through, with no markup. Your own F5-TTS clones stay free, so pick an
-          ElevenLabs voice only when you specifically want it (multilingual
+          <strong style={{ color: JELLY_TOKENS.warning }}>
+            Bring your own account:
+          </strong>{' '}
+          ElevenLabs narration runs on the key you connect below, so the
+          characters come off your own ElevenLabs plan and Jelly bills you
+          nothing for the narration. Your own voice clones stay free, so pick
+          an ElevenLabs voice only when you specifically want it (multilingual
           narration is the usual reason).
         </div>
+
+        {/* Connect / replace / disconnect. Clearing the cached voice list on
+            change is the point of the callback: the picker below must always
+            be showing the account the render will actually use. */}
+        <ElevenLabsConnect
+          onChanged={() => {
+            setElevenVoices(null);
+            setElevenError(null);
+          }}
+        />
 
         <div style={cardStyle}>
           <div
@@ -180,7 +194,7 @@ export function Voices(): React.ReactElement {
               marginBottom: 6,
             }}
           >
-            Voices on the connected ElevenLabs account
+            Voices on your ElevenLabs account
           </div>
           {elevenVoices === null && (
             <div style={{ fontSize: 12, color: t.textSecondary }}>
@@ -200,7 +214,8 @@ export function Voices(): React.ReactElement {
           )}
           {elevenVoices !== null && elevenVoices.length === 0 && !elevenError && (
             <div style={{ fontSize: 12, color: t.textSecondary }}>
-              No ElevenLabs voices are available on this account.
+              Connect your ElevenLabs key above to list the voices on your
+              account.
             </div>
           )}
           {elevenVoices !== null && elevenVoices.length > 0 && (

@@ -78,7 +78,7 @@ type Style = {
 const VOICE_BACKENDS = [
   { id: "indextts-modal", label: "Studio voice (cloud)", needsKey: false },
   { id: "f5-tts", label: "F5-TTS (local, free)", needsKey: false },
-  { id: "elevenlabs", label: "ElevenLabs (cloud)", needsKey: true, envVar: "ELEVENLABS_API_KEY" },
+  { id: "elevenlabs", label: "ElevenLabs (cloud, your own key)", needsKey: true, envVar: "your ElevenLabs key (Voices → ElevenLabs)" },
 ] as const;
 
 const QUALITY_BACKENDS = [
@@ -320,7 +320,9 @@ export function StyleEditor({ initialStyle }: { initialStyle: Style }) {
             </select>
             {style.voiceBackend === "elevenlabs" && (
               <p className="mt-1 text-xs text-amber-400">
-                ⚠️ Requires ELEVENLABS_API_KEY env on autopilot. Falls back to F5-TTS if unset.
+                ⚠️ Bring your own ElevenLabs account — connect your API key in
+                Voices → ElevenLabs. Narration bills your own subscription, and
+                a render is refused up front if no key is connected.
               </p>
             )}
           </Field>

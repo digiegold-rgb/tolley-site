@@ -22,6 +22,10 @@ import { prisma } from "@/lib/prisma";
 import { autopilot, type StyleSnapshot } from "./autopilot-client";
 import { buildStyleSnapshot } from "./style-snapshot";
 import { ownerFieldsForProject } from "./owner-tier";
+import {
+  elevenLabsKeyMissing,
+  ELEVENLABS_KEY_REQUIRED,
+} from "./elevenlabs-key-gate";
 
 /** Thrown when the project row is missing something the DGX requires. */
 export class ScriptGateError extends Error {
@@ -115,6 +119,15 @@ export async function startRunCreation(
   // from the project row so every caller — /approve-script,
   // /script-from-reference and the course pipeline — gets it for free.
   const ownerFields = await ownerFieldsForProject(project.userId);
+
+  // ElevenLabs is bring-your-own-key (2026-08-17): refuse here, for free,
+  // rather than at the TTS step after the images have been paid for.
+  if (
+    style?.voiceBackend === "elevenlabs" &&
+    (await elevenLabsKeyMissing(project.userId))
+  ) {
+    throw new ScriptGateError(ELEVENLABS_KEY_REQUIRED);
+  }
 
   const job = await autopilot.runCreation({
     projectId: project.id,

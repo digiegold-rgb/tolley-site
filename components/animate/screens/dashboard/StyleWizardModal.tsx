@@ -873,8 +873,9 @@ export function StyleWizardModal({
                       marginTop: 4,
                     }}
                   >
-                    No ElevenLabs voices available — set
-                    ELEVENLABS_API_KEY on autopilot or use F5 clones.
+                    No ElevenLabs voices yet — connect your own ElevenLabs
+                    key in Voices → ElevenLabs, or pick a Studio voice
+                    (free, no key needed).
                   </div>
                 )}
             </div>
