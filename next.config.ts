@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 // Content-Security-Policy in REPORT-ONLY mode: browsers report violations but
 // block nothing, so this can't break Stripe/Maps/Pixel/GA4/blob usage. Review
@@ -231,4 +232,27 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+
+  // Build-time secret, separate from the DSN. Without it the build still
+  // succeeds — source maps just aren't uploaded and prod traces stay minified.
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Source maps are only worth generating when there's a token to upload them
+  // with. Building them unconditionally cost ~4GB of extra webpack heap and
+  // OOM'd local `npm run build` on the DGX for zero benefit — without
+  // SENTRY_AUTH_TOKEN the plugin has nowhere to send them. Set the token
+  // (Vercel build env) and this switches itself on.
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+
+  // Upload the wider client file set so browser stack traces resolve.
+  widenClientFileUpload: true,
+
+  // Route events through tolley.io so ad blockers don't eat them. Excluded
+  // from the proxy.ts matcher below so auth/redirect logic never touches it.
+  tunnelRoute: "/monitoring",
+
+  silent: !process.env.CI,
+});

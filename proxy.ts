@@ -177,6 +177,6 @@ export const config = {
   // per-prefix list so studio-only accounts can be confined on every route;
   // anonymous requests short-circuit before any JWT work (see above).
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|mp4|webm|woff|woff2|ttf|otf|css|js|map)$).*)",
+    "/((?!monitoring|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|mp4|webm|woff|woff2|ttf|otf|css|js|map)$).*)",
   ],
 };

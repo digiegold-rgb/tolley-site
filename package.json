@@ -33,6 +33,7 @@
     "@react-three/fiber": "^9.5.0",
     "@react-three/postprocessing": "^3.0.4",
     "@remotion/player": "^4.0.448",
+    "@sentry/nextjs": "^10.70.0",
     "@types/dagre": "^0.7.54",
     "@uppy/core": "^5.2.0",
     "@uppy/dashboard": "^5.1.1",
