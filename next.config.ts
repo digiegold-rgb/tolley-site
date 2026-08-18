@@ -250,9 +250,13 @@ export default withSentryConfig(nextConfig, {
   // Upload the wider client file set so browser stack traces resolve.
   widenClientFileUpload: true,
 
-  // Route events through tolley.io so ad blockers don't eat them. Excluded
-  // from the proxy.ts matcher below so auth/redirect logic never touches it.
-  tunnelRoute: "/monitoring",
+  // NO `tunnelRoute`. It reads as free ad-blocker resistance, but it publishes
+  // an unauthenticated POST endpoint on tolley.io that forwards straight into
+  // this Sentry project — anyone who finds it can drain the event quota (and
+  // the Vercel invocation budget) and blind us exactly when we need Sentry.
+  // Client events go direct to ingest.us.sentry.io instead; CSP connect-src
+  // already allows it. If ad blockers turn out to eat real volume, re-add it
+  // WITH a Vercel WAF rate-limit rule on /monitoring, not on its own.
 
   silent: !process.env.CI,
 });

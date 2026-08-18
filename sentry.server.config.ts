@@ -18,8 +18,10 @@ Sentry.init({
 
   tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.1,
 
-  // Attach local variable values to server stack frames.
-  includeLocalVariables: true,
+  // `includeLocalVariables` is deliberately OFF. It attaches the *values* of
+  // locals to every stack frame, and on this codebase locals hold Stripe
+  // objects, Plaid payloads and customer rows — the exact data the omitted
+  // `dataCollection` block above exists to keep out of Sentry.
 
   enableLogs: true,
 

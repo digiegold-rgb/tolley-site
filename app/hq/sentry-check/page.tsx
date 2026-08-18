@@ -22,7 +22,9 @@ export default function HqSentryCheck() {
     try {
       const res = await fetch("/api/hq/sentry-check", { cache: "no-store" });
       setServerResult(
-        `Server responded ${res.status} — expected 500. Error is on its way to Sentry.`,
+        res.status === 401
+          ? "401 — sign in to HQ first; this route is admin-gated so it can't be used to drain the Sentry quota."
+          : `Server responded ${res.status} — expected 500. Error is on its way to Sentry.`,
       );
     } catch (err) {
       setServerResult(`Request failed: ${(err as Error).message}`);

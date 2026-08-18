@@ -1,4 +1,7 @@
+import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
+
+import { validateWdAdmin } from "@/lib/wd-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,11 +13,15 @@ export const dynamic = "force-dynamic";
  * is what reports it. That exercises the same path a genuine /hq route crash
  * takes; capturing it by hand here would prove nothing about the wiring.
  *
- * Deliberately NOT admin-gated: a monitoring canary that needs a session
- * can't be probed from a healthcheck, and the only thing it leaks is that
- * Sentry is installed. It emits nothing but a synthetic error.
+ * Admin-gated like the rest of /hq. It was briefly left open so a healthcheck
+ * could probe it, which was a mistake: every unauthenticated GET mints a
+ * billable Sentry event, so an open endpoint is a quota-drain button that
+ * blinds us right when we need the error stream.
  */
 export async function GET() {
+  const { authed } = await validateWdAdmin();
+  if (!authed) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   await Sentry.startSpan(
     { name: "hq.sentry-check", op: "hq.diagnostic" },
     async () => {
