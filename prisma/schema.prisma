@@ -5289,6 +5289,14 @@ model VaterPayment {
   // "new since last payment" breakdown is current − this baseline, so Trey
   // can see what the fresh charge is made of instead of one bare number.
   snapshotJson Json?
+  // Unpaid remainder FROZEN at the instant this payment was recorded:
+  // (due at that moment) − amountUsd. Positive = Trey underpaid and the
+  // shortfall rolls into the next bill; negative = overpayment credit.
+  // Frozen, never recomputed — that is what keeps corrections to
+  // pre-payment history from moving the current due. Without it a $100
+  // Zelle against a $114.62 due read as "Paid up ✓" and quietly ate the
+  // $14.62 (2026-08-18).
+  carryUsd     Float    @default(0)
 
   @@index([userId, createdAt])
 }

@@ -296,9 +296,19 @@ export async function getVaterBillingSummary(scope: VaterBillingScope): Promise<
   for (const p of finishedSince) {
     minutesSince += Math.max(0, Number(p.audioDuration ?? 0)) / 60;
   }
+  // A payment settles up to its AMOUNT, not merely up to its timestamp.
+  // carryUsd is the shortfall frozen when the payment was recorded, so a
+  // partial Zelle rolls its remainder forward instead of writing off the
+  // difference: $100 against a $114.62 due used to read "Paid up ✓" and
+  // drop $14.62 off the all-time total too (2026-08-18). Frozen at write
+  // time, so corrections to pre-payment history still can't move due.
+  const carryUsd = r2(
+    Number((lastPayment as { carryUsd?: number } | null)?.carryUsd ?? 0),
+  );
   const dueUsd = r2(
     finishedSince.reduce((sum, p) => sum + cardUsd(p), 0) +
-      minutesSince * opsRatePerMinute,
+      minutesSince * opsRatePerMinute +
+      carryUsd,
   );
   const totalUsd = r2(paidUsd + dueUsd);
 
@@ -512,6 +522,10 @@ export async function recordVaterPayment(input: {
 }) {
   const scope = { userId: input.userId };
   const { summary } = await getVaterBillingSummary(scope);
+  // What this payment leaves unpaid (or overpays). summary.dueUsd already
+  // includes any earlier carry, so this is cumulative by construction.
+  const amountUsd = r2(input.amountUsd);
+  const carryUsd = r2(summary.dueUsd - amountUsd);
   const snapshot: VaterPaymentSnapshot = {
     computeUsd: summary.computeUsd,
     opsUsd: summary.opsUsd,
@@ -528,7 +542,8 @@ export async function recordVaterPayment(input: {
   const payment = await prisma.vaterPayment.create({
     data: {
       ...(canStoreUserId ? { userId: input.userId } : {}),
-      amountUsd: r2(input.amountUsd),
+      amountUsd,
+      carryUsd,
       method: (input.method || "zelle").slice(0, 40),
       note: typeof input.note === "string" ? input.note.slice(0, 300) : null,
       snapshotJson: snapshot as unknown as object,
