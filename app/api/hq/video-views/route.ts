@@ -30,15 +30,29 @@ export async function GET() {
   if (!authed) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
+    // Cap high enough that the leaderboard is the WHOLE tracked set, not a
+    // truncated view of it — a silent cut here would quietly under-report the
+    // roll-up totals in the filter chips. The collector keeps 14d of YouTube
+    // and 180d of Facebook uploads, which is ~500 rows today.
     const rows = await prisma.channelVideoStat.findMany({
       orderBy: { publishedAt: "desc" },
-      take: 500,
+      take: 5000,
     });
 
     const videos = rows
       // A key can be retired from the roster while its rows linger; without a
       // channel to attribute them to they'd render as orphan cards.
       .filter((r) => CHANNEL_META.has(r.channelKey))
+      // Same repoint clamp the view-counter cards apply to ChannelViewStat: a
+      // card that was moved to a different account (yt-ykh left @digitalgold on
+      // 2026-08-03) still has the OLD account's videos stored under its key,
+      // frozen at the last pull before the switch. Showing them here attributes
+      // 60 of @digitalgold's uploads to "Your KC Homes". The rows stay in the
+      // table — auditable, just not attributed to the wrong channel.
+      .filter((r) => {
+        const since = CHANNEL_META.get(r.channelKey)!.rowsSince;
+        return !since || r.publishedAt.getTime() >= Date.parse(since);
+      })
       .map((r) => {
         const cfg = CHANNEL_META.get(r.channelKey)!;
         return {

@@ -146,8 +146,10 @@ export async function GET() {
     // received in the last N days" — a play on a 2-year-old video is not
     // counted. It tracks the lagged windows closely only because this channel's
     // traffic is overwhelmingly on fresh content.
+    // Pulled over the full window horizon, not just the live strip's 8 days:
+    // Facebook's view WINDOWS are built from these rows too (see fbWindow).
     const vidRows = await prisma.channelVideoStat.findMany({
-      where: { publishedAt: { gte: new Date(Date.now() - 8 * 86400_000) } },
+      where: { publishedAt: { gte: new Date(Date.now() - 370 * 86400_000) } },
       orderBy: { publishedAt: "desc" },
     });
     const vidsByChannel = new Map<string, typeof vidRows>();
@@ -180,6 +182,16 @@ export async function GET() {
             : null;
 
       const contentSinceMs = cfg.contentSince ? Date.parse(cfg.contentSince) : null;
+
+      // Repoint clamp, same as `hist` above: pre-repoint uploads under this key
+      // belong to the account the card used to point at.
+      const allVids = (vidsByChannel.get(cfg.key) ?? []).filter(
+        (v) => !rowsSinceMs || v.publishedAt.getTime() >= rowsSinceMs,
+      );
+      // The live strip is deliberately narrow — "did this morning's post land".
+      const vids = allVids.filter(
+        (v) => v.publishedAt.getTime() >= now - 8 * 86400_000,
+      );
 
       const latestSubs = subs[subs.length - 1]?.subscribers ?? null;
       // Subscriber deltas must never reach back past contentSince. When a card
@@ -227,7 +239,39 @@ export async function GET() {
           windows[`d${days}`] = { views: lifetimeViews, partial: false, since: null };
           continue;
         }
-        // Daily series (FB insights / YT Analytics backfill).
+        // 🔴 Facebook must NEVER fall through to its daily series. Meta's
+        // `page_video_views` does not count Reels-feed distribution, and every
+        // one of these Pages is reels-first, so that metric reads 4-6x low:
+        // measured 2026-08-17, page_video_views vs summed per-reel views on the
+        // same 30 days — Treasure Haul 1,314 vs 5,377, Your KC Homes 537 vs
+        // 2,112, Wash & Dry 150 vs 937. The undercount was visible on the cards
+        // themselves: W&D showed "150 views · 30 days" above a live strip
+        // reporting 257 views on a single reel from the last 24 hours.
+        //
+        // The per-reel counts are the real number, so window = the views on
+        // reels PUBLISHED inside the window. Same caveat as the live strip:
+        // that is not "views received in the window" — a play today on a reel
+        // from two months ago lands outside it. For these Pages the two are
+        // close because reel traffic is almost entirely front-loaded, and it
+        // beats a metric that structurally omits the main distribution surface.
+        // Once 30d of lifetime snapshots exist (collectFbVideos started
+        // 2026-08-17) the exact snapshot-delta branch above takes over on its
+        // own and this stops being used for the 30d window.
+        if (cfg.platform === "facebook" && allVids.length > 0) {
+          const inWin = allVids.filter((v) => v.publishedAt.getTime() >= startMs);
+          // The collector keeps FB_VIDEO_DAYS = 180 of reels, so a 365d window
+          // genuinely cannot see the whole year — say so rather than implying
+          // the coverage is complete.
+          const oldest = allVids[allVids.length - 1].publishedAt;
+          const covered = oldest.getTime() <= startMs + 2 * 86400_000;
+          windows[`d${days}`] = {
+            views: inWin.reduce((sum, v) => sum + Number(v.views), 0),
+            partial: !covered,
+            since: covered ? null : oldest.toISOString().slice(0, 10),
+          };
+          continue;
+        }
+        // Daily series (YT Analytics backfill; see above for why not FB).
         const inWindow = dailies.filter((r) => r.day.getTime() >= startMs);
         if (inWindow.length > 0) {
           const first = inWindow[0].day.getTime();
@@ -263,7 +307,6 @@ export async function GET() {
           ? new Date(Math.max(lastDaily.getTime(), lastSnapDay.getTime()))
           : (lastDaily ?? lastSnapDay);
 
-      const vids = vidsByChannel.get(cfg.key) ?? [];
       const liveFor = (hours: number) => {
         const since = now - hours * 3600_000;
         const inRange = vids.filter((v) => v.publishedAt.getTime() >= since);

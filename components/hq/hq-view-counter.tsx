@@ -354,9 +354,16 @@ export function HqViewCounter() {
               {(() => {
                 const behind = daysBehind(c.viewsThrough);
                 if (behind === null || behind < 2) return null;
+                // YouTube Analytics and LinkedIn's digest genuinely publish
+                // late — that IS platform lag. X and TikTok are scraped, and a
+                // scrape only goes stale because it is FAILING (x-ykh has
+                // returned nothing since 2026-08-13). Calling that "platform
+                // lag" tells you to wait for a number that is never coming, so
+                // name the two cases differently.
+                const scraped = c.platform === "x" || c.platform === "tiktok";
                 return (
-                  <div style={{ fontSize: 10, color: "var(--hq-amber)", marginTop: 2 }}>
-                    views through {c.viewsThrough} · {behind}d platform lag
+                  <div style={{ fontSize: 10, color: scraped ? "var(--hq-red)" : "var(--hq-amber)", marginTop: 2 }}>
+                    views through {c.viewsThrough} · {behind}d {scraped ? "stale — collector failing" : "platform lag"}
                   </div>
                 );
               })()}
