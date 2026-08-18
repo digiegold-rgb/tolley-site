@@ -20,18 +20,10 @@
  *   - Audio-only <audio> preview removed — video already has audio.
  */
 
-import { useEffect, useRef, useState } from "react";
-import { fetchVaterCapabilities } from "@/components/animate/tier-context";
+import { useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { VideoSpeedChips } from "@/components/ui/VideoSpeedChips";
 import { isFinalMp4Stale, finalVideoPlaybackUrl } from "@/lib/vater/youtube-status";
-import {
-  parseVideoCost,
-  formatUsd,
-  costProviderRows,
-  buildVideoBilling,
-  DEFAULT_OPS_RATE_PER_MIN,
-} from "@/lib/vater/video-cost";
 import { YouTubeShareModal } from "./youtube-share-modal";
 
 interface VerificationReport {
@@ -64,30 +56,6 @@ interface ProjectShape {
   finalVideoUrl?: string | null;
 }
 
-/** GET /api/vater/youtube/[id]/receipt */
-interface VideoReceipt {
-  computeUsd: number;
-  byStage: { key: string; label: string; usd: number }[];
-  minutes: number;
-  opsRate: number;
-  opsUsd: number;
-  totalUsd: number;
-  estimateUsd: number;
-  cappedAt: number | null;
-  debitedCents: number | null;
-  unmetered: boolean;
-  wallClockSec: number | null;
-}
-
-/** "51 min" / "1 h 12 min" / "48 s" — render wall-clock, not video length. */
-function formatWallClock(seconds: number): string {
-  if (seconds < 90) return `${Math.round(seconds)} s`;
-  const mins = Math.round(seconds / 60);
-  if (mins < 90) return `${mins} min`;
-  const h = Math.floor(mins / 60);
-  return `${h} h ${mins % 60} min`;
-}
-
 interface Props {
   project: ProjectShape;
   /**
@@ -100,60 +68,6 @@ interface Props {
 
 export function YouTubeFinalPlayer({ project, onRecomposeStart }: Props) {
   const { toast } = useToast();
-  // Ops rate is server config (VATER_OPS_RATE_PER_MIN) — fetched, never
-  // hardcoded, so the rate can change without a deploy.
-  const [opsRatePerMinute, setOpsRatePerMinute] = useState<number | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const caps = await fetchVaterCapabilities();
-        // /api/vater/latest is owner-only; without this guard every public
-        // account 401'd on it on every screen that renders this component.
-        if (!caps.latestCosts) return;
-        const r = await fetch("/api/vater/latest", { cache: "no-store" });
-        if (!r.ok) return;
-        const j = (await r.json()) as { billing?: { opsRatePerMinute?: number } };
-        const v = j?.billing?.opsRatePerMinute;
-        if (!cancelled && typeof v === "number") setOpsRatePerMinute(v);
-      } catch {
-        /* default rate */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  /* The receipt: what this video actually cost and how long it took.
-   *
-   * Fetched for EVERY tier, not just owners. A render that quietly spends
-   * money and shows one opaque total is the thing customers don't trust —
-   * see memory vater-billing-ops-fee ("he doesn't have to wonder where all
-   * the money is spent"). The endpoint is owner-checked server-side via
-   * checkProjectAccess, so anyone who can see this player can see its bill.
-   *
-   * Best-effort: if it 404s (project not finished) or errors, the chips fall
-   * back to the costJson-derived numbers that were already here. */
-  const [receipt, setReceipt] = useState<VideoReceipt | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const r = await fetch(`/api/vater/youtube/${project.id}/receipt`, {
-          cache: "no-store",
-        });
-        if (!r.ok) return;
-        const j = (await r.json()) as VideoReceipt;
-        if (!cancelled) setReceipt(j);
-      } catch {
-        /* chips fall back to costJson */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [project.id]);
-
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [showFabrications, setShowFabrications] = useState(false);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(
@@ -231,7 +145,6 @@ export function YouTubeFinalPlayer({ project, onRecomposeStart }: Props) {
   const videoSrc = finalVideoPlaybackUrl(project);
   const downloadHref = `/api/vater/youtube/${project.id}/video?download=1`;
 
-  const videoCost = parseVideoCost(project.costJson);
   const sceneCount = Array.isArray(project.scenesJson)
     ? project.scenesJson.length
     : 0;
@@ -366,75 +279,11 @@ export function YouTubeFinalPlayer({ project, onRecomposeStart }: Props) {
         <MetaChip label="Scenes" value={sceneCount.toString()} />
         <MetaChip label="Script" value={`${scriptWordCount.toLocaleString()} words`} />
         <MetaChip label="Verify" value={verificationLabel} tone={verificationTone} />
-        {/* ── Receipt chips: compute at cost · render ops · total · wall clock.
-              The receipt endpoint is authoritative (it re-derives the billing
-              line server-side and knows what was actually debited); the
-              costJson maths is the fallback for the first render pass before
-              the fetch lands, and for projects the endpoint can't price. */}
-        {(receipt || videoCost) && (() => {
-          const bill = buildVideoBilling(
-            videoCost?.totalUsd ?? 0,
-            project.audioDuration,
-            opsRatePerMinute ?? DEFAULT_OPS_RATE_PER_MIN,
-          );
-          const computeUsd = receipt?.computeUsd ?? bill.computeUsd;
-          const opsUsd = receipt?.opsUsd ?? bill.opsUsd;
-          const totalUsd = receipt?.totalUsd ?? bill.totalUsd;
-          const minutes = receipt?.minutes ?? bill.minutes;
-          const rate = receipt?.opsRate ?? opsRatePerMinute ?? DEFAULT_OPS_RATE_PER_MIN;
-          const stageRows = receipt?.byStage.length
-            ? receipt.byStage.map((r) => `${r.label}  ${formatUsd(r.usd)}`)
-            : videoCost
-              ? costProviderRows(videoCost).map((r) => `${r.label}  ${formatUsd(r.usd)}`)
-              : [];
-          return (
-            <>
-              <span
-                title={stageRows.join("\n")}
-                className="inline-flex items-center gap-1 rounded-full border border-zinc-600/50 bg-zinc-700/20 px-2 py-0.5 font-medium text-zinc-300"
-              >
-                Compute {formatUsd(computeUsd)}
-                {videoCost?.estimated ? " est" : ""}
-              </span>
-              <span
-                title={`${minutes.toFixed(1)} finished min x ${formatUsd(rate)}/min`}
-                className="inline-flex items-center gap-1 rounded-full border border-zinc-600/50 bg-zinc-700/20 px-2 py-0.5 font-medium text-zinc-300"
-              >
-                Render ops {formatUsd(opsUsd)} ({minutes.toFixed(1)} min x {formatUsd(rate)})
-              </span>
-              <span
-                title={
-                  totalUsd > 0 && minutes > 0
-                    ? `${formatUsd(totalUsd / minutes)} per finished minute`
-                    : undefined
-                }
-                className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-300"
-              >
-                Total {formatUsd(totalUsd)}
-              </span>
-              {receipt?.wallClockSec ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-zinc-600/50 bg-zinc-700/20 px-2 py-0.5 font-medium text-zinc-300">
-                  Rendered in {formatWallClock(receipt.wallClockSec)}
-                </span>
-              ) : null}
-              {/* The repair cap fired: the customer paid less than the video
-                  cost, and saying so is the whole point of the promise. */}
-              {receipt?.cappedAt != null && receipt.debitedCents != null ? (
-                <span
-                  title={`Cost ${formatUsd(receipt.totalUsd)} — capped, we covered the difference`}
-                  className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-300"
-                >
-                  You paid {formatUsd(receipt.debitedCents / 100)}
-                </span>
-              ) : null}
-              {receipt?.unmetered ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900/40 px-2 py-0.5 font-medium text-zinc-400">
-                  Not charged
-                </span>
-              ) : null}
-            </>
-          );
-        })()}
+        {/* Cost chips (Compute / Render ops / Total) were removed from the
+            player on 2026-08-17 at Jared's request — the itemised
+            RenderReceiptTicket sits right under the video in the editor and
+            on the project detail page, so the numbers are one glance away
+            without crowding the metadata row. */}
         <span className="text-zinc-400">
           Created{" "}
           {new Date(project.completedAt || project.createdAt).toLocaleDateString(undefined, {
