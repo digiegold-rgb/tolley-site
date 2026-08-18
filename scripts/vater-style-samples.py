@@ -43,16 +43,50 @@ SCRATCH = Path(
 )
 
 # Positive phrasing only — negations ("no text") summon the thing they name.
+#
+# 2026-08-17 rewrite. The old subject was three lines long and ended in
+# "golden hour", so it out-weighed every style prefix and pinned one warm
+# cream palette on all 17 renders — "Cinematic" came back as the same cartoon
+# as "Pixel Art". The subject is now SHORT and carries no lighting or palette
+# language, leaving those to the style. See build_prompt() for the sandwich.
 SUBJECT = (
-    "a friendly young woman with a red scarf and a small orange fox sitting "
-    "together on a park bench under a big oak tree, golden hour, wide shot, "
-    "clean composition, open empty sky, plain uncluttered scene"
+    "a woman in a red scarf sitting on a park bench beside a small orange "
+    "fox, one large tree behind them, wide shot"
 )
 DEFAULT_SEED = 4242
-# Per-style overrides so identical-prompt presets still read distinct.
-SEED_OVERRIDE = {"animated_explainer": 4243}
+# Per-style overrides. Two reasons a style gets one: identical-prompt presets
+# need to diverge, or the default seed produced a render that did not read as
+# the medium. These are the exact seeds behind the images currently shipped.
+SEED_OVERRIDE = {
+    "animated_explainer": 7781,
+    "comic_book": 7781,
+    "pixar": 7781,
+    "pixel_art": 3311,
+}
+# Per-style reinforcement for the presets whose medium the model under-reads.
+# Each line names the physical TELL of that medium — the thing a viewer uses to
+# identify it at thumbnail size — because the bare preset prefix alone came
+# back as a generic painted illustration for these four.
 SUBJECT_SUFFIX = {
-    "animated_explainer": ", clean vector explainer motion-graphics look, flat icons",
+    "animated_explainer": (
+        ", flat vector motion-graphics, simple filled shapes, full-bleed frame "
+        "filling the whole canvas edge to edge"
+    ),
+    "pixar": (
+        ", 3D CGI render, subsurface-scattering skin, rounded stylised "
+        "proportions, glossy specular highlights, ray-traced soft shadows, a "
+        "frame from a Pixar feature film"
+    ),
+    "pixel_art": (
+        ", a low-resolution 16-bit SNES game screenshot, roughly 160 pixels "
+        "wide upscaled with hard nearest-neighbour edges, every shape made of "
+        "big blocky squares, aliased stair-stepped diagonals, 32-colour "
+        "indexed palette, dithered shading"
+    ),
+    "comic_book": (
+        ", inked comic panel with heavy black linework, visible halftone Ben-Day "
+        "dot shading, flat spot colour, a bold panel border"
+    ),
 }
 EXPECTED_IDS = [
     "cinematic", "comic_book", "anime", "pixel_art", "pixar", "digital_art",
@@ -120,7 +154,20 @@ def parse_presets() -> list[tuple[str, str]]:
 
 
 def build_prompt(style_id: str, prefix: str) -> str:
-    return f"{prefix}, {SUBJECT}{SUBJECT_SUFFIX.get(style_id, '')}"
+    """Style sandwich: medium first, subject in the middle, medium restated.
+
+    Diffusion and Gemini image models both weight the head and tail of a
+    prompt most heavily. Naming the medium at BOTH ends — and describing the
+    subject only in between — is what stops a long subject clause from
+    flattening every style into the same illustration.
+    """
+    suffix = SUBJECT_SUFFIX.get(style_id, "")
+    return (
+        f"{prefix}. "
+        f"Subject: {SUBJECT}{suffix}. "
+        f"The entire image is rendered as {prefix} — the medium is unmistakable "
+        f"at a glance."
+    )
 
 
 def to_webp(src_png: Path, dst: Path) -> tuple[int, int]:
@@ -163,6 +210,7 @@ def main() -> int:
     ap.add_argument("--fallback", default="gemini-1k", help="quality to retry with if primary raises ('' to disable)")
     ap.add_argument("--seed", type=int, default=DEFAULT_SEED)
     ap.add_argument("--budget", type=float, default=5.0, help="USD cap; abort when projected total exceeds it")
+    ap.add_argument("--out-dir", default=str(OUT_DIR), help="where to write .webp (A/B runs point this at scratch)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--no-backup", action="store_true")
     args = ap.parse_args()
@@ -170,6 +218,7 @@ def main() -> int:
     if args.quality.startswith(("firered-local", "sdxl")):
         raise SystemExit("refusing local-GPU quality for Vater work — use firered-modal / gemini-1k")
 
+    out_dir = Path(args.out_dir)
     presets = parse_presets()
     only = {s for chunk in args.only for s in chunk.split(",") if s.strip()}
     if only:
@@ -191,7 +240,7 @@ def main() -> int:
     load_env_files()
     V = load_vater_module()
 
-    if not args.no_backup:
+    if not args.no_backup and out_dir == OUT_DIR:
         backup_existing()
 
     SCRATCH.mkdir(parents=True, exist_ok=True)
@@ -230,7 +279,7 @@ def main() -> int:
         secs = time.time() - t0
         cost = est_cost(used, secs)
         total += cost
-        size = to_webp(raw, OUT_DIR / f"{sid}.webp")
+        size = to_webp(raw, out_dir / f"{sid}.webp")
         entry = {"id": sid, "quality": used, "seed": p["seed"], "secs": round(secs, 1),
                  "usd": round(cost, 4), "size": size, "primary_error": err}
         log.append(entry)

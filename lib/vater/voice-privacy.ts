@@ -45,6 +45,26 @@ const DEFAULT_PRIVATE_VOICES = "Jared-A,Jared-B,Jared-C,Jared-D";
 /** Hard-coded shape that is private no matter what the env says. */
 const OWNER_VOICE_PATTERN = /^Jared(-[A-D])?$/i;
 
+/**
+ * Shared-library entries that are not narration options at all.
+ *
+ * `Sample` is the voice-cloning smoke test — its reference audio is literally
+ * "This is a test of the voice cloning system" — and until 2026-08-17 it sat
+ * in the customer picker between Rae and Sterling as if it were a voice you
+ * could ship a video with.
+ *
+ * Kept separate from the private list on purpose: private is a TENANCY rule
+ * (whose voice is this), this is a CATALOG rule (is this a product). The
+ * internal x-sync-secret path deliberately still sees it so harnesses can
+ * keep using it.
+ */
+const NON_PRODUCT_VOICE_PATTERN = /^Sample$/i;
+
+/** True when this shared voice is a test fixture rather than a real option. */
+export function isNonProductVoiceName(name?: string | null): boolean {
+  return NON_PRODUCT_VOICE_PATTERN.test((name ?? "").trim());
+}
+
 function configuredPrivateVoices(): Set<string> {
   const raw = process.env.VATER_PRIVATE_VOICES ?? DEFAULT_PRIVATE_VOICES;
   return new Set(
@@ -79,7 +99,9 @@ export function filterVoicesForEmail<T extends { name?: string | null }>(
   email: string | null | undefined,
 ): T[] {
   if (isVaterAdminEmail(email)) return voices;
-  return voices.filter((v) => !isPrivateVoiceName(v?.name));
+  return voices.filter(
+    (v) => !isPrivateVoiceName(v?.name) && !isNonProductVoiceName(v?.name),
+  );
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -122,7 +144,7 @@ export function canReadVoice(
   if (isVaterAdminEmail(caller.email)) return true;
   const { owner, stem } = splitVoiceId(voiceId);
   if (owner !== SHARED_VOICE_OWNER) return ownsVoice(voiceId, caller.userId);
-  return !isPrivateVoiceName(stem);
+  return !isPrivateVoiceName(stem) && !isNonProductVoiceName(stem);
 }
 
 /**

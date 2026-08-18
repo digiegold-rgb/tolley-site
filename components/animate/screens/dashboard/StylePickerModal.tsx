@@ -24,6 +24,7 @@ import { Icon } from '../../Icon';
 import { StyleWizardModal, type CreatedStyle } from './StyleWizardModal';
 import { devError } from '../../log';
 import { TINT_BG } from '../tint';
+import { getStylePreset } from '@/lib/vater/style-presets';
 import { ON_GRADIENT_PLATE } from '../tint';
 
 interface StyleSummary {
@@ -32,6 +33,8 @@ interface StyleSummary {
   emoji: string | null;
   voice: string | null;
   isSystem: boolean;
+  /** Drives the card's sample image via STYLE_PRESETS[].sampleImageUrl. */
+  artStylePresetId?: string | null;
   referenceTranscripts: unknown;
   characters?: Array<{ id: string; imageUrl: string | null; name: string }>;
   _count?: { characters: number };
@@ -224,6 +227,7 @@ export function StylePickerModal({
         emoji: style.emoji ?? null,
         voice: style.voice ?? null,
         isSystem: false,
+        artStylePresetId: null,
         referenceTranscripts: style.referenceTranscripts ?? [],
         _count: { characters: 0 },
       },
@@ -562,6 +566,12 @@ export function StylePickerModal({
                     (c) => c.imageUrl,
                   )?.imageUrl;
                   const isCreating = creatingFromId === s.id;
+                  // The whole point of a style card is showing the style.
+                  // Until now every card rendered a 40px emoji tile while the
+                  // real 16:9 sample sat unused in /public/vater/styles.
+                  const sampleImg = s.artStylePresetId
+                    ? getStylePreset(s.artStylePresetId)?.sampleImageUrl
+                    : undefined;
                   return (
                     <div
                       key={s.id}
@@ -588,36 +598,49 @@ export function StylePickerModal({
                     >
                       <div
                         style={{
+                          position: 'relative',
+                          margin: '-18px -18px 2px',
+                          aspectRatio: '16 / 9',
+                          overflow: 'hidden',
+                          borderTopLeftRadius: JELLY_TOKENS.radius.lg,
+                          borderTopRightRadius: JELLY_TOKENS.radius.lg,
+                          background: JELLY_TOKENS.brandGhost,
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 10,
+                          justifyContent: 'center',
+                          fontSize: 30,
                         }}
                       >
-                        <div
-                          style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 8,
-                            background: JELLY_TOKENS.brandGhost,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 22,
-                          }}
-                        >
-                          {s.emoji || '🎨'}
-                        </div>
+                        {sampleImg ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={sampleImg}
+                            alt={`${s.name} sample frame`}
+                            loading="lazy"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              display: 'block',
+                            }}
+                          />
+                        ) : (
+                          <span aria-hidden="true">{s.emoji || '🎨'}</span>
+                        )}
                         {charImg && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={charImg}
                             alt=""
                             style={{
-                              width: 36,
-                              height: 36,
+                              position: 'absolute',
+                              left: 8,
+                              bottom: 8,
+                              width: 34,
+                              height: 34,
                               borderRadius: '50%',
                               objectFit: 'cover',
-                              border: `1px solid ${t.border}`,
+                              border: `2px solid ${t.card}`,
                             }}
                           />
                         )}

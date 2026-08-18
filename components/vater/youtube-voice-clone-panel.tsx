@@ -22,7 +22,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { getVoiceMeta } from "@/lib/vater/voice-catalog";
+import { getVoiceMeta, registerFor } from "@/lib/vater/voice-catalog";
 import {
   MAX_OWN_VOICES_DEFAULT,
   isSharedVoiceId,
@@ -301,6 +301,15 @@ function SelectMode({
                       <p className="line-clamp-1 text-[11px] text-zinc-400">
                         {meta.character}
                       </p>
+                      {/* Register is the one property you actually pick a
+                          narrator on, and it is measured (median speaking F0
+                          of the reference WAV) rather than asserted. */}
+                      <span
+                        className="w-fit rounded-full bg-zinc-800/80 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-zinc-400"
+                        title={`Median speaking pitch ${meta.hz} Hz`}
+                      >
+                        {registerFor(meta.hz)} · {meta.hz} Hz
+                      </span>
                       <p className="line-clamp-2 text-[10px] text-zinc-500">
                         {meta.description}
                       </p>
