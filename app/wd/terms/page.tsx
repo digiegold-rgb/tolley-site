@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { WD_BRAND, WD_COMPANY, WD_CONTACT_EMAIL, WD_CONTACT_PHONE } from "@/lib/wd";
 
@@ -149,23 +150,75 @@ const sections: TermsSection[] = [
         <p className="mt-2">
           The Company will never sell or share customer data except as required by law.
         </p>
-        <p className="mt-2">
-          For reference, our privacy practices align closely with RentSomethingKC&apos;s
-          published standards:{" "}
-          <a
-            href="https://docs.google.com/document/d/1z21n6CiHZaeZVzYqG909H4KzTc7oH1zS_rzIcSDLX54/edit?usp=sharing"
-            target="_blank"
-            rel="noopener noreferrer"
+                <p className="mt-2">
+          For the full privacy policy, including how we handle mobile numbers and SMS,
+          see{" "}
+          <Link
+            href="/wd/privacy"
             className="font-semibold text-blue-600 underline decoration-blue-300 underline-offset-4 transition hover:text-blue-800"
           >
-            View reference document
-          </a>
+            https://tolley.io/wd/privacy
+          </Link>
+          .
         </p>
       </>
     ),
   },
   {
-    heading: "9. Governing Law",
+    heading: "9. SMS Communications (Account Notifications)",
+    content: (
+      <>
+        <p>
+          Wash &amp; Dry Rental (DBA Your KC Homes LLC) (&ldquo;Company&rdquo;) may send
+          automated informational text messages to the mobile number you provide about
+          your washer and dryer rental account. Message types include payment reminders,
+          past-due balance notices, delivery or pickup scheduling, and replies to
+          questions you send us. This is not marketing.
+        </p>
+        <p className="mt-2">
+          Message frequency varies and is typically up to 8 messages per month while
+          your account is past due, and fewer when your account is current. Message and
+          data rates may apply.
+        </p>
+        <p className="mt-2">
+          Consent to receive texts is not required to rent equipment and is not a
+          condition of purchase. You may rent and receive email-only billing if you do
+          not opt in to SMS.
+        </p>
+        <p className="mt-2">
+          Opt out at any time by replying STOP. For help, reply HELP or contact
+          Jared@yourkchomes.com or 913-283-3826. After you reply STOP, we will send one
+          confirmation and then no further SMS unless you opt in again.
+        </p>
+        <p className="mt-2">
+          Mobile numbers are not sold, rented, or shared with third parties or
+          affiliates for marketing or promotional purposes. We may share numbers only
+          with service providers who send messages on our behalf (for example, our SMS
+          provider) or when required by law.
+        </p>
+        <p className="mt-2">
+          By providing your mobile number at checkout, on a rental form, or by texting
+          YES or START to our business number, you agree to receive the informational
+          messages described above. Full terms:{" "}
+          <Link
+            href="/wd/terms"
+            className="font-semibold text-blue-600 underline decoration-blue-300 underline-offset-4"
+          >
+            https://tolley.io/wd/terms
+          </Link>{" "}
+          Privacy:{" "}
+          <Link
+            href="/wd/privacy"
+            className="font-semibold text-blue-600 underline decoration-blue-300 underline-offset-4"
+          >
+            https://tolley.io/wd/privacy
+          </Link>
+        </p>
+      </>
+    ),
+  },
+  {
+    heading: "10. Governing Law",
     content: (
       <>
         <p>This agreement is governed by the laws of the State of Missouri.</p>
@@ -177,12 +230,12 @@ const sections: TermsSection[] = [
     ),
   },
   {
-    heading: "10. Customer Acknowledgment",
+    heading: "11. Customer Acknowledgment",
     content: (
       <p>
         By submitting payment through Stripe checkout, the customer acknowledges having
         reviewed and agreed to these terms and authorizes recurring monthly charges to the
-        selected payment method.
+        selected payment method. Providing a mobile number at checkout includes the SMS consent described in SMS Communications (Account Notifications).
       </p>
     ),
   },
