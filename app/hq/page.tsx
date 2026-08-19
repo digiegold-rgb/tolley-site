@@ -35,6 +35,7 @@ import {
   HqMustComplete,
   type MustCompleteItem,
 } from "@/components/hq/hq-must-complete";
+import { HqFable5, type Fable5Queue } from "@/components/hq/hq-fable5";
 import {
   STAGE_LABEL,
   readApiError,
@@ -44,9 +45,9 @@ import {
   type HqInboundLead,
 } from "@/components/hq/types";
 
-type Tab = "empire" | "must" | "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats" | "site" | "chats" | "hauls" | "posts" | "tiktok" | "bk";
+type Tab = "empire" | "must" | "fable5" | "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats" | "site" | "chats" | "hauls" | "posts" | "tiktok" | "bk";
 
-const TABS: readonly Tab[] = ["empire", "must", "pipeline", "inbound", "approvals", "money", "dnc", "estates", "stats", "site", "chats", "hauls", "posts", "tiktok", "bk"];
+const TABS: readonly Tab[] = ["empire", "must", "fable5", "pipeline", "inbound", "approvals", "money", "dnc", "estates", "stats", "site", "chats", "hauls", "posts", "tiktok", "bk"];
 
 function isTab(v: string | null): v is Tab {
   return v != null && (TABS as readonly string[]).includes(v);
@@ -97,6 +98,8 @@ function HqPageInner() {
   const [licenseReviews, setLicenseReviews] = useState<HqLicenseReview[]>([]);
   const [licenseLoading, setLicenseLoading] = useState(false);
   const [licenseBusyId, setLicenseBusyId] = useState<string | null>(null);
+  const [fable5, setFable5] = useState<Fable5Queue | null>(null);
+  const [fable5Loading, setFable5Loading] = useState(false);
 
   // ─── Data loaders ───
   const loadLeads = useCallback(async () => {
@@ -258,6 +261,25 @@ function HqPageInner() {
     }
   }
 
+  // Fable 5 Concierge queue — PIN cookie auth (same-origin fetch sends it).
+  const loadFable5 = useCallback(async () => {
+    setFable5Loading(true);
+    try {
+      const r = await fetch("/api/vater/concierge/queue", { credentials: "same-origin" });
+      if (!r.ok) throw new Error(await readApiError(r, "Failed to load Fable 5 queue"));
+      const d = (await r.json()) as Fable5Queue;
+      setFable5(d);
+    } catch (err) {
+      toast({
+        title: "Failed to load Fable 5 queue",
+        description: err instanceof Error ? err.message : String(err),
+        variant: "error",
+      });
+    } finally {
+      setFable5Loading(false);
+    }
+  }, [toast]);
+
   const loadMoney = useCallback(async () => {
     setMoneyLoading(true);
     try {
@@ -305,8 +327,18 @@ function HqPageInner() {
       loadMoney();
       loadLicenseReviews();
       loadInbound();
+      loadFable5();
     }
-  }, [authed, loadMust, loadDrafts, loadMoney, loadLicenseReviews, loadInbound]);
+  }, [authed, loadMust, loadDrafts, loadMoney, loadLicenseReviews, loadInbound, loadFable5]);
+
+  // Keep the 📜 Fable 5 pill count honest while another tab is open.
+  useEffect(() => {
+    if (!authed) return;
+    const t = setInterval(() => {
+      void loadFable5();
+    }, 30_000);
+    return () => clearInterval(t);
+  }, [authed, loadFable5]);
 
   // ─── Login ───
   async function handleLogin(e: React.FormEvent) {
@@ -350,6 +382,7 @@ function HqPageInner() {
     setDrafts([]);
     setInbound([]);
     setMoney(null);
+    setFable5(null);
     setSelected(null);
   }
 
@@ -542,6 +575,7 @@ function HqPageInner() {
               loadMoney();
               loadLicenseReviews();
               loadInbound();
+              loadFable5();
             }}
           >
             ↻ Refresh
@@ -586,6 +620,12 @@ function HqPageInner() {
             {/* Ops */}
             {tabPill("empire", "🗺️ Empire", undefined, "tab-empire")}
             {tabPill("must", "🎯 Must Complete", mustOpen.length, "tab-must")}
+            {tabPill(
+              "fable5",
+              "📜 Fable 5",
+              (fable5?.counts.queued ?? 0) + (fable5?.counts.needs_info ?? 0),
+              "tab-fable5",
+            )}
             {tabPill("money", "Money", moneyCount)}
             {tabPill("site", "🌐 Site")}
 
@@ -728,6 +768,8 @@ function HqPageInner() {
               onSetStatus={setMustStatus}
             />
           </>
+        ) : tab === "fable5" ? (
+          <HqFable5 data={fable5} loading={fable5Loading} onRefresh={loadFable5} />
         ) : tab === "pipeline" ? (
           <HqBoard leads={boardLeads} onSelect={setSelected} />
         ) : tab === "inbound" ? (

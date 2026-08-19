@@ -90,6 +90,16 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         { status: 400 },
       );
     }
+    // Fable 5 Concierge (2026-08-19): `engine` and `concierge` are written
+    // only by the concierge lib/routes. A customer PATCH must never flip the
+    // engine or rewrite a ticket — including `null`, which would delete it.
+    const settingsPatch = body.settings as Record<string, unknown>;
+    if ("engine" in settingsPatch || "concierge" in settingsPatch) {
+      return NextResponse.json(
+        { error: "settings.engine and settings.concierge are server-owned" },
+        { status: 400 },
+      );
+    }
     const existing = await prisma.youTubeProject.findUnique({
       where: { id },
       select: { settingsJson: true },

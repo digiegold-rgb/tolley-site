@@ -26,6 +26,16 @@ import { devError } from '../../log';
 import { TINT_BG } from '../tint';
 import { getStylePreset } from '@/lib/vater/style-presets';
 import { ON_GRADIENT_PLATE } from '../tint';
+import { VBtn } from '../../primitives';
+import { EnginePicker, type ConciergeEngine } from '../../engine/EnginePicker';
+import { quickEstimateUsd } from '@/lib/vater/billing/estimate';
+import {
+  BillingBlockModal,
+  BillingBlockedError,
+  assertOk,
+  type BillingBlockContext,
+  type BillingBlockReason,
+} from '../editor/BillingBlock';
 
 interface StyleSummary {
   id: string;
@@ -51,6 +61,18 @@ function refCount(s: StyleSummary): number {
 }
 
 const WORDS_PER_MINUTE = 150;
+const MAX_BATCH_SCRIPTS = 10;
+
+const countWords = (text: string): number => text.trim().split(/\s+/).filter(Boolean).length;
+
+interface BatchTicket {
+  projectId: string;
+  code: string;
+  words: number;
+  estMinutes: number;
+  estimateUsd: number;
+  title: string;
+}
 
 export function StylePickerModal({
   open,
@@ -68,13 +90,31 @@ export function StylePickerModal({
   // script-generation. Mirrors V1's youtube-topic-form scriptOverride flow,
   // routed through /api/vater/topic with mode="topic" + scriptOverride.
   const [useOwnScript, setUseOwnScript] = React.useState(false);
-  const [scriptText, setScriptText] = React.useState('');
+  // One textarea per script. Jelly Auto takes exactly one; Fable 5 takes a
+  // batch (≤10) → POST /api/vater/concierge/submit, one ticket per script.
+  const [scripts, setScripts] = React.useState<string[]>(['']);
+  const [engine, setEngine] = React.useState<ConciergeEngine>('auto');
   const [submittingOwn, setSubmittingOwn] = React.useState(false);
   const [ownScriptError, setOwnScriptError] = React.useState<string | null>(null);
-  const scriptWordCount = React.useMemo(
-    () => scriptText.trim().split(/\s+/).filter(Boolean).length,
-    [scriptText],
+  const [billingBlock, setBillingBlock] = React.useState<BillingBlockReason | null>(null);
+  const [billingCtx, setBillingCtx] = React.useState<BillingBlockContext | undefined>(undefined);
+  // After a Fable 5 batch lands: the tickets, shown in place of the picker.
+  const [queued, setQueued] = React.useState<BatchTicket[] | null>(null);
+  const scriptWordCounts = React.useMemo(() => scripts.map(countWords), [scripts]);
+  const totalWords = React.useMemo(
+    () => scriptWordCounts.reduce((a, b) => a + b, 0),
+    [scriptWordCounts],
   );
+  const scriptWordCount = scriptWordCounts[0] ?? 0;
+  const multi = scripts.length > 1;
+  const autoDisabledReason = multi
+    ? 'Jelly Auto renders one script at a time — Fable 5 takes the whole batch, or remove the extra scripts.'
+    : null;
+
+  // Fresh confirmation state every time the modal opens.
+  React.useEffect(() => {
+    if (open) setQueued(null);
+  }, [open]);
 
   // Load styles whenever modal opens.
   React.useEffect(() => {
@@ -133,12 +173,67 @@ export function StylePickerModal({
     // so the worker uses the pasted text verbatim. Voice clone is taken from
     // the style record — block submit if the style has no voice set.
     if (useOwnScript) {
-      const trimmed = scriptText.trim();
-      if (!trimmed) {
-        setOwnScriptError('Paste a script before picking a style.');
+      const trimmedAll = scripts.map((x) => x.trim());
+      const emptyIdx = trimmedAll.findIndex((x) => !x);
+      if (emptyIdx !== -1) {
+        setOwnScriptError(
+          trimmedAll.length === 1
+            ? 'Paste a script before picking a style.'
+            : `Script ${emptyIdx + 1} is empty — paste it or remove it.`,
+        );
         return;
       }
       const style = styles.find((s) => s.id === styleId);
+
+      // ── Fable 5 Concierge: one POST for the whole batch. The server
+      // validates every script, authorises the style, pre-checks the
+      // cumulative credit and queues N tickets. Nothing is rendered here. ──
+      if (engine === 'fable5') {
+        setSubmittingOwn(true);
+        setOwnScriptError(null);
+        setCreatingFromId(styleId);
+        try {
+          const res = await fetch('/api/vater/concierge/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              styleId,
+              scripts: trimmedAll.map((script) => ({ script })),
+            }),
+          });
+          await assertOk(res);
+          const data = (await res.json()) as { tickets?: BatchTicket[] };
+          const tickets = Array.isArray(data.tickets) ? data.tickets : [];
+          if (tickets.length === 0) throw new Error('No ticket returned');
+          if (tickets.length === 1) {
+            // Single script → straight into the editor; the ticket card is
+            // the confirmation.
+            onProjectCreated(tickets[0].projectId);
+          } else {
+            setQueued(tickets);
+          }
+        } catch (err) {
+          devError('[StylePickerModal] concierge batch submit failed:', err);
+          if (err instanceof BillingBlockedError) {
+            setBillingBlock(err.reason);
+            setBillingCtx(err.context);
+          } else {
+            setOwnScriptError(err instanceof Error ? err.message : 'Could not send to Fable 5');
+          }
+        } finally {
+          setSubmittingOwn(false);
+          setCreatingFromId(null);
+        }
+        return;
+      }
+
+      // ── Jelly Auto: exactly one script through /api/vater/topic with
+      // scriptOverride (unchanged). Voice clone comes from the style. ──────
+      if (multi) {
+        setOwnScriptError(autoDisabledReason);
+        return;
+      }
+      const trimmed = trimmedAll[0];
       if (!style?.voice) {
         setOwnScriptError(
           `Style "${style?.name ?? 'selected'}" has no voice clone configured. Pick a style with a voice or set one up first.`,
@@ -298,7 +393,7 @@ export function StylePickerModal({
         >
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: t.text }}>
-              {useOwnScript ? 'Pick a Style for Voice' : 'Select a Style'}
+              {queued ? 'Sent to Fable 5' : useOwnScript ? 'Pick a Style for Voice' : 'Select a Style'}
             </div>
             <div
               style={{
@@ -307,9 +402,13 @@ export function StylePickerModal({
                 marginTop: 2,
               }}
             >
-              {useOwnScript
-                ? 'Picking a style uses its voice clone for narration and starts the project with your script.'
-                : 'Pick an existing style to start, or create a new one tuned to your channel.'}
+              {queued
+                ? `${queued.length} scripts queued — one ticket each. You'll get an email per video as it lands.`
+                : useOwnScript
+                  ? engine === 'fable5'
+                    ? 'Picking a style sends your script(s) to Fable 5 in that style and voice.'
+                    : 'Picking a style uses its voice clone for narration and starts the project with your script.'
+                  : 'Pick an existing style to start, or create a new one tuned to your channel.'}
             </div>
           </div>
           <button
@@ -340,6 +439,7 @@ export function StylePickerModal({
           {/* Use-my-own-script toggle. ON → script-paste mode (skips DGX
               script gen, F5-TTS reads pasted text verbatim). OFF → normal
               new-from-style flow. */}
+          {!queued && (
           <label
             style={{
               display: 'flex',
@@ -383,63 +483,169 @@ export function StylePickerModal({
               >
                 Skips principle extraction + script generation. F5-TTS reads
                 your text verbatim; scenes plan off it directly. Pick a style
-                below for voice + visual direction.
+                below for voice + visual direction — or send it to Fable 5.
               </span>
             </span>
           </label>
+          )}
 
-          {useOwnScript && (
+          {useOwnScript && !queued && (
             <div style={{ marginBottom: 16 }}>
-              <div
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: t.textSecondary,
-                  marginBottom: 6,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.4,
-                }}
-              >
-                Your script
+              {scripts.map((text, i) => (
+                <div key={i} style={{ marginBottom: 12 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: t.textSecondary,
+                      marginBottom: 6,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.4,
+                    }}
+                  >
+                    {multi ? `Script ${i + 1}` : 'Your script'}
+                    {multi && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setScripts((prev) => prev.filter((_, j) => j !== i));
+                          setOwnScriptError(null);
+                        }}
+                        disabled={submittingOwn}
+                        aria-label={`Remove script ${i + 1}`}
+                        style={{
+                          marginLeft: 'auto',
+                          background: 'transparent',
+                          border: 'none',
+                          color: t.textFaint,
+                          cursor: submittingOwn ? 'not-allowed' : 'pointer',
+                          fontSize: 11,
+                          textTransform: 'none',
+                          letterSpacing: 0,
+                          fontFamily: JELLY_TOKENS.font,
+                        }}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <textarea
+                    value={text}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setScripts((prev) => prev.map((x, j) => (j === i ? v : x)));
+                      if (ownScriptError) setOwnScriptError(null);
+                    }}
+                    disabled={submittingOwn}
+                    rows={multi ? 7 : 10}
+                    placeholder={
+                      multi
+                        ? `Paste script ${i + 1} here.`
+                        : 'Paste your script here. Picking a style below will start the project.'
+                    }
+                    style={{
+                      width: '100%',
+                      resize: 'vertical',
+                      padding: 12,
+                      borderRadius: JELLY_TOKENS.radius.md,
+                      border: `1px solid ${t.border}`,
+                      background: t.card,
+                      color: t.text,
+                      fontFamily: JELLY_TOKENS.font,
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                      outline: 'none',
+                    }}
+                  />
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: t.textSecondary,
+                      marginTop: 4,
+                    }}
+                  >
+                    {scriptWordCounts[i]} words ≈{' '}
+                    {(scriptWordCounts[i] / WORDS_PER_MINUTE).toFixed(1)} min narration
+                    at {WORDS_PER_MINUTE} wpm
+                  </div>
+                </div>
+              ))}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                {scripts.length < MAX_BATCH_SCRIPTS && (
+                  <button
+                    type="button"
+                    data-testid="add-another-script"
+                    onClick={() => {
+                      setScripts((prev) => [...prev, '']);
+                      // A batch is a Fable 5 thing — Auto takes one script.
+                      setEngine('fable5');
+                      setOwnScriptError(null);
+                    }}
+                    disabled={submittingOwn}
+                    style={{
+                      background: 'transparent',
+                      border: `1px dashed ${t.borderStrong}`,
+                      borderRadius: JELLY_TOKENS.radius.pill,
+                      padding: '6px 12px',
+                      color: t.text,
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      cursor: submittingOwn ? 'not-allowed' : 'pointer',
+                      fontFamily: JELLY_TOKENS.font,
+                    }}
+                  >
+                    + Add another script
+                  </button>
+                )}
+                {multi && (
+                  <span style={{ fontSize: 11.5, color: t.textFaint }}>
+                    {scripts.length} scripts · {totalWords.toLocaleString()} words ·{' '}
+                    {scripts.length} Fable 5 tickets
+                  </span>
+                )}
               </div>
-              <textarea
-                value={scriptText}
-                onChange={(e) => {
-                  setScriptText(e.target.value);
-                  if (ownScriptError) setOwnScriptError(null);
-                }}
-                disabled={submittingOwn}
-                rows={10}
-                placeholder="Paste your script here. Any length — no minimum, no maximum. Picking a style below will start the project."
-                style={{
-                  width: '100%',
-                  resize: 'vertical',
-                  padding: 12,
-                  borderRadius: JELLY_TOKENS.radius.md,
-                  border: `1px solid ${t.border}`,
-                  background: t.card,
-                  color: t.text,
-                  fontFamily: JELLY_TOKENS.font,
-                  fontSize: 13,
-                  lineHeight: 1.5,
-                  outline: 'none',
-                }}
-              />
-              <div
-                style={{
-                  fontSize: 11,
-                  color: t.textSecondary,
-                  marginTop: 4,
-                }}
-              >
-                {scriptWordCount} words ≈{' '}
-                {(scriptWordCount / WORDS_PER_MINUTE).toFixed(1)} min narration
-                at {WORDS_PER_MINUTE} wpm
+
+              {/* Engine — under the textareas, above the styles. */}
+              <div style={{ marginTop: 14 }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: t.textSecondary,
+                    marginBottom: 6,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.4,
+                  }}
+                >
+                  Engine
+                </div>
+                <EnginePicker
+                  value={engine}
+                  onChange={(e) => {
+                    setEngine(e);
+                    setOwnScriptError(null);
+                  }}
+                  estimateUsd={
+                    totalWords > 0
+                      ? multi
+                        ? scriptWordCounts.reduce((a, w) => a + (w > 0 ? quickEstimateUsd(w) : 0), 0)
+                        : quickEstimateUsd(scriptWordCount)
+                      : null
+                  }
+                  disabled={submittingOwn}
+                  autoDisabledReason={autoDisabledReason}
+                  compact
+                />
               </div>
+
               {ownScriptError && (
                 <div
                   style={{
-                    marginTop: 8,
+                    marginTop: 10,
                     padding: '8px 12px',
                     borderRadius: JELLY_TOKENS.radius.md,
                     border: `1px solid ${JELLY_TOKENS.error}`,
@@ -454,7 +660,86 @@ export function StylePickerModal({
             </div>
           )}
 
-          {loadError && (
+          {/* Fable 5 batch confirmation — replaces the picker once the
+              tickets exist. The editor's ticket card takes over from here. */}
+          {queued && (
+            <div
+              data-testid="concierge-batch-queued"
+              style={{
+                padding: 18,
+                borderRadius: JELLY_TOKENS.radius.xl,
+                background: JELLY_TOKENS.gradTicket,
+                border: `1px solid ${JELLY_TOKENS.brandOutline}`,
+              }}
+            >
+              <div style={{ fontSize: 18, fontWeight: 700, color: t.text }}>
+                {queued.length} scripts queued for Fable 5
+              </div>
+              <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 4, lineHeight: 1.5 }}>
+                Each one is directed in your style and voice, rendered in the studio and watched by a
+                person before it lands in your Library. Typical turnaround is a few hours, up to ~24h in
+                beta. Billed only when each video lands — same price as Auto.
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '14px 0 0', display: 'grid', gap: 6 }}>
+                {queued.map((tk) => (
+                  <li
+                    key={tk.projectId}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '8px 12px',
+                      borderRadius: JELLY_TOKENS.radius.md,
+                      background: t.card,
+                      border: `1px solid ${t.border}`,
+                      fontSize: 13,
+                      color: t.text,
+                    }}
+                  >
+                    <span style={{ fontFamily: JELLY_TOKENS.fontMono, color: JELLY_TOKENS.brandLight, fontSize: 12 }}>
+                      {tk.code}
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {tk.title}
+                    </span>
+                    <span style={{ fontSize: 11.5, color: t.textFaint, whiteSpace: 'nowrap' }}>
+                      {tk.words.toLocaleString()} w · ~{tk.estMinutes} min · est. ${tk.estimateUsd.toFixed(2)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onProjectCreated(tk.projectId)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: t.link,
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        fontFamily: JELLY_TOKENS.font,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Open
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end' }}>
+                <VBtn variant="ghost" size="sm" onClick={onClose}>
+                  Done
+                </VBtn>
+                <VBtn
+                  variant="primary"
+                  size="sm"
+                  icon="sparkle"
+                  onClick={() => onProjectCreated(queued[0].projectId)}
+                >
+                  Open the first one
+                </VBtn>
+              </div>
+            </div>
+          )}
+
+          {!queued && loadError && (
             <div
               style={{
                 padding: '10px 14px',
@@ -470,6 +755,7 @@ export function StylePickerModal({
             </div>
           )}
 
+          {!queued && (
           <div
             style={{
               display: 'grid',
@@ -711,8 +997,9 @@ export function StylePickerModal({
                   );
                 })}
           </div>
+          )}
 
-          {!loading && styles.length === 0 && !loadError && (
+          {!queued && !loading && styles.length === 0 && !loadError && (
             <div
               style={{
                 marginTop: 24,
@@ -735,6 +1022,11 @@ export function StylePickerModal({
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
         onCreated={handleWizardCreated}
+      />
+      <BillingBlockModal
+        reason={billingBlock}
+        context={billingCtx}
+        onClose={() => setBillingBlock(null)}
       />
     </div>
   );

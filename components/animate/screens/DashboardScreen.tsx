@@ -33,6 +33,10 @@ const ACTIVE_STATUSES = new Set([
   'composing',
   'editing',
   'in_progress',
+  // Fable 5 Concierge tickets (2026-08-19) count as in progress.
+  'concierge_queued',
+  'concierge_in_progress',
+  'concierge_needs_info',
 ]);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

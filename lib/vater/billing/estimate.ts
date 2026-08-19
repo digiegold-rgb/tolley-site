@@ -59,6 +59,27 @@ export const MEDIAN_COMPUTE_USD_PER_MIN = STILLS_USD_PER_MIN;
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
+/**
+ * Default ops rate ($/finished minute) when no env-backed rate is available —
+ * mirrors DEFAULT_OPS_RATE in lib/vater/billing/ops-fee.ts, which is
+ * server-only and cannot be imported here. If one changes, change both.
+ */
+export const DEFAULT_OPS_RATE_USD_PER_MIN = 0.35;
+
+/**
+ * One-number quick quote for a pasted script: stills compute + default ops
+ * rate per finished minute, floored at MIN_ESTIMATE_USD. Client-safe. Used by
+ * the Fable 5 Concierge engine card / ticket ("est. $X.XX") where there is no
+ * project row yet to ask the DGX about. Same price as Auto by construction.
+ */
+export function quickEstimateUsd(words: number): number {
+  const w = Number(words);
+  if (!Number.isFinite(w) || w <= 0) return MIN_ESTIMATE_USD;
+  const minutes = w / ESTIMATE_WORDS_PER_MINUTE;
+  const usd = minutes * (MEDIAN_COMPUTE_USD_PER_MIN + DEFAULT_OPS_RATE_USD_PER_MIN);
+  return r2(Math.max(MIN_ESTIMATE_USD, usd));
+}
+
 export interface EstimateBreakdown {
   /** Image generation + assembly, at cost. */
   stills: number;

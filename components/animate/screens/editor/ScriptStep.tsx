@@ -51,6 +51,9 @@ import {
 } from './BillingBlock';
 import { TINT_BG } from '../tint';
 import { reelLabel } from './reel-label';
+import { EnginePicker, type ConciergeEngine } from '../../engine/EnginePicker';
+import { useRenderEstimate } from './use-render-estimate';
+import { quickEstimateUsd } from '@/lib/vater/billing/estimate';
 
 export function ScriptStep({ projectId, project, refresh }: EditorStepProps): React.ReactElement {
   const { t } = useTheme();
@@ -84,6 +87,10 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
   const [pastedScript, setPastedScript] = React.useState('');
   const [submittingOwn, setSubmittingOwn] = React.useState(false);
   const [ownError, setOwnError] = React.useState<string | null>(null);
+  // Engine for the own-script lane (2026-08-19): Jelly Auto → /context as
+  // before; Fable 5 Concierge → POST .../concierge (human-directed ticket).
+  const [engine, setEngine] = React.useState<ConciergeEngine>('auto');
+  const projectEstimate = useRenderEstimate(projectId);
   const pastedWordCount = React.useMemo(
     () => pastedScript.trim().split(/\s+/).filter(Boolean).length,
     [pastedScript],
@@ -358,6 +365,35 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
       setOwnError('Paste a script first.');
       return;
     }
+
+    // ── Fable 5 Concierge: one POST, the server validates style/voice/cap/
+    // credits and queues the ticket. No DGX kickoff from the browser. ──────
+    if (engine === 'fable5') {
+      setSubmittingOwn(true);
+      setOwnError(null);
+      try {
+        const res = await fetch(`/api/vater/youtube/${projectId}/concierge`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ script: trimmed }),
+        });
+        await assertOk(res);
+        setPastedScript('');
+        setUseOwnScript(false);
+        setToast('Sent to Fable 5 — you’ll get an email when it lands.');
+        await refresh();
+      } catch (err) {
+        if (err instanceof BillingBlockedError) {
+          setBillingBlock(err.reason);
+        } else {
+          setOwnError(err instanceof Error ? err.message : 'Submit failed');
+        }
+      } finally {
+        setSubmittingOwn(false);
+      }
+      return;
+    }
+
     const voice = project?.voiceCloneName ?? project?.voiceName;
     if (!voice) {
       setOwnError(
@@ -396,7 +432,7 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
     } finally {
       setSubmittingOwn(false);
     }
-  }, [projectId, pastedScript, pastedWordCount, project, refresh]);
+  }, [projectId, pastedScript, pastedWordCount, project, refresh, engine]);
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
@@ -409,8 +445,12 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
           actionLabel={
             useOwnScript
               ? submittingOwn
-                ? 'Starting…'
-                : 'Use This Script'
+                ? engine === 'fable5'
+                  ? 'Sending…'
+                  : 'Starting…'
+                : engine === 'fable5'
+                  ? 'Send to Fable 5'
+                  : 'Use This Script'
               : generating
                 ? 'Generating…'
                 : 'Generate'
@@ -500,7 +540,11 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
               }}
               disabled={submittingOwn}
               rows={14}
-              placeholder="Paste your script here. Any length — no minimum, no maximum. Click Use This Script above to lock it in and start the pipeline."
+              placeholder={
+                engine === 'fable5'
+                  ? 'Paste your finished script here. Click Send to Fable 5 above — Fable 5 directs and renders it in your style, and emails you when it lands.'
+                  : 'Paste your script here. Click Use This Script above to lock it in and start the pipeline.'
+              }
               style={{
                 width: '100%',
                 resize: 'vertical',
@@ -518,6 +562,40 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
             <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 4 }}>
               {pastedWordCount} words ≈ {(pastedWordCount / 150).toFixed(1)} min
               narration at 150 wpm
+            </div>
+
+            {/* Engine — who renders this script. Fable 5 is a ticket, not a
+                kickoff: the button above turns into "Send to Fable 5". */}
+            <div style={{ marginTop: 14 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: t.textSecondary,
+                  marginBottom: 6,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.4,
+                }}
+              >
+                Engine
+              </div>
+              <EnginePicker
+                value={engine}
+                onChange={(e) => {
+                  setEngine(e);
+                  setOwnError(null);
+                }}
+                estimateUsd={
+                  projectEstimate.draftUsd !== null
+                    ? projectEstimate.draftUsd
+                    : pastedWordCount > 0
+                      ? quickEstimateUsd(pastedWordCount)
+                      : null
+                }
+                estimateLoading={projectEstimate.loading}
+                disabled={submittingOwn}
+                compact
+              />
             </div>
             {ownError && (
               <div

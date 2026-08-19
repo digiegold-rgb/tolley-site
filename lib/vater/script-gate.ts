@@ -27,6 +27,19 @@ import {
   ELEVENLABS_KEY_REQUIRED,
 } from "./elevenlabs-key-gate";
 
+/**
+ * `settingsJson` doubles as the home of the Fable 5 Concierge ticket
+ * (`engine`, `concierge` — lib/vater/concierge.ts). Those keys are site-side
+ * bookkeeping, not render features; the DGX must never see them.
+ */
+function stripServerOwnedFeatures(bag: object): Record<string, unknown> {
+  const { engine: _engine, concierge: _concierge, ...features } =
+    bag as Record<string, unknown>;
+  void _engine;
+  void _concierge;
+  return features;
+}
+
 /** Thrown when the project row is missing something the DGX requires. */
 export class ScriptGateError extends Error {
   constructor(message: string) {
@@ -152,7 +165,7 @@ export async function startRunCreation(
     ...(project.settingsJson &&
     typeof project.settingsJson === "object" &&
     !Array.isArray(project.settingsJson)
-      ? { features: project.settingsJson as Record<string, unknown> }
+      ? { features: stripServerOwnedFeatures(project.settingsJson) }
       : {}),
   });
 

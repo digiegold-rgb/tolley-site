@@ -36,12 +36,20 @@ import * as React from 'react';
 import { JELLY_TOKENS, EDITOR_STEPS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { Icon } from '../../Icon';
-import { PillStepper } from '../../primitives';
+import { PillStepper, EDITOR_STEP_HINTS } from '../../primitives';
 import { Footer } from '../../Footer';
 import {
   IN_FLIGHT_STATUSES,
+  isConciergeStatus,
   type YouTubeProjectStatus,
 } from '@/lib/vater/youtube-status';
+import {
+  readConciergeClient,
+  readEngineClient,
+} from '@/lib/vater/concierge-client';
+import { HowItWorksStrip } from '../../engine/HowItWorksStrip';
+import { EngineBar } from '../../engine/EngineBar';
+import { ConciergeStatusCard } from './ConciergeStatusCard';
 import {
   DEMO_CTA_HREF,
   DEMO_CTA_LABEL,
@@ -285,6 +293,19 @@ export function ProjectShell({
     };
   }, [isDemo, projectId, project, refresh]);
 
+  /* Fable 5 Concierge (2026-08-19). A concierge project is NOT in-flight for
+   * the auto pipeline — /poll must never run for it (it would read a DGX job
+   * the operator owns and rewrite status). Instead a plain GET every 20 s so
+   * the stage chips move when the operator moves them. */
+  React.useEffect(() => {
+    if (isDemo || !projectId || !project) return;
+    if (!isConciergeStatus(project.status)) return;
+    const interval = window.setInterval(() => {
+      void refresh();
+    }, 20_000);
+    return () => window.clearInterval(interval);
+  }, [isDemo, projectId, project, refresh]);
+
   /* Auto-advance when a step transitions to done. Compute current states,
    * compare against prevStatesRef, and on any non-done→done transition, if
    * the user is still on that step, bump them to the next non-done step. */
@@ -349,6 +370,42 @@ export function ProjectShell({
     project?.topic?.trim() ||
     'Untitled Project';
 
+  /* ── Fable 5 Concierge surface ─────────────────────────────────────────
+   * engine + ticket live on settingsJson (server-owned). The card shows for
+   * a live concierge status OR a delivered ticket (status is `ready` then);
+   * the steps are locked while the operator owns the project (queued /
+   * in_progress) and re-enabled for needs_info so the customer can edit the
+   * script and resubmit. The EngineBar offers the choice only when there is
+   * a script and nothing has been rendered yet. */
+  const engine = readEngineClient(project?.settingsJson);
+  const ticket = readConciergeClient(project?.settingsJson);
+  const projStatus = project?.status ?? null;
+  const showConciergeCard =
+    !isDemo &&
+    !!project &&
+    engine === 'fable5' &&
+    !!ticket &&
+    ticket.stage !== 'cancelled' &&
+    (isConciergeStatus(projStatus) || ticket.stage !== 'queued');
+  const conciergeLocked =
+    projStatus === 'concierge_queued' || projStatus === 'concierge_in_progress';
+  const sceneCount = Array.isArray(project?.scenesJson)
+    ? (project.scenesJson as unknown[]).length
+    : 0;
+  const scriptWords = (project?.script ?? '').split(/\s+/).filter(Boolean).length;
+  const showEngineBar =
+    !isDemo &&
+    !!project &&
+    !!projectId &&
+    engine !== 'fable5' &&
+    scriptWords > 0 &&
+    !project.audioUrl &&
+    sceneCount === 0 &&
+    (projStatus === 'draft' ||
+      projStatus === 'scripted' ||
+      projStatus === 'awaiting_script_approval' ||
+      projStatus === 'failed');
+
   return (
     <div>
       {isDemo && <DemoBanner />}
@@ -397,18 +454,19 @@ export function ProjectShell({
         <h2 style={{ fontSize: 28, fontWeight: 700, color: t.text, margin: 0 }}>
           Create Video
         </h2>
-        <p
-          style={{
-            fontSize: 14,
-            color: t.textSecondary,
-            marginTop: 4,
-            maxWidth: 500,
-            margin: '4px auto 0',
-          }}
-        >
-          Follow the steps below to generate your video. Each step kicks
-          autopilot on the DGX and unlocks the next.
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+          <HowItWorksStrip
+            active={
+              showConciergeCard || showEngineBar
+                ? 2
+                : project?.finalVideoUrl
+                  ? 3
+                  : project?.script
+                    ? 1
+                    : 0
+            }
+          />
+        </div>
       </div>
 
       {/* Pill stepper with per-step state badges */}
@@ -417,6 +475,7 @@ export function ProjectShell({
           steps={EDITOR_STEPS as unknown as ReadonlyArray<string>}
           active={editorStep}
           onSelect={setEditorStep}
+          hints={EDITOR_STEP_HINTS}
         />
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
@@ -441,6 +500,20 @@ export function ProjectShell({
         </div>
       )}
 
+      {/* Fable 5 Concierge: ticket card while the operator owns the render,
+          engine choice when a script exists and nothing has rendered yet. */}
+      {showConciergeCard && ticket && projectId && (
+        <ConciergeStatusCard
+          projectId={projectId}
+          status={projStatus}
+          ticket={ticket}
+          refresh={refresh}
+        />
+      )}
+      {showEngineBar && projectId && (
+        <EngineBar projectId={projectId} words={scriptWords} refresh={refresh} />
+      )}
+
       {/* Step content. Description step is rendered via a wrapper that
           marks the step done after a successful Generate; all other steps
           pass through stepProps unchanged. */}
@@ -449,7 +522,14 @@ export function ProjectShell({
           another lane adds tomorrow is inert here without anyone remembering
           this file exists. `pointer-events: none` catches the click handlers
           that live on plain <div>s. */}
-      <StepArea disabled={isDemo}>
+      <StepArea
+        disabled={isDemo || conciergeLocked}
+        label={
+          conciergeLocked
+            ? 'Fable 5 has this project — steps unlock when it is delivered'
+            : undefined
+        }
+      >
         {editorStep === 6 ? (
           <DescriptionStepWrapper
             stepProps={stepProps}
@@ -515,22 +595,26 @@ const DEMO_RECEIPT_TICKET: RenderReceipt = {
  * untouched otherwise — no extra DOM node in the signed-in path. */
 function StepArea({
   disabled,
+  label,
   children,
 }: {
   disabled: boolean;
+  /** aria-label for the disabled wrapper; defaults to the demo wording. */
+  label?: string;
   children: React.ReactNode;
 }): React.ReactElement {
   if (!disabled) return <>{children}</>;
   return (
     <fieldset
       disabled
-      aria-label="Read-only demo — sign up to render"
+      aria-label={label ?? 'Read-only demo — sign up to render'}
       style={{
         border: 0,
         margin: 0,
         padding: 0,
         minInlineSize: 0,
         pointerEvents: 'none',
+        opacity: label ? 0.55 : undefined,
       }}
     >
       {children}

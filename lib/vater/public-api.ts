@@ -50,7 +50,7 @@ import { readFeatures } from "@/lib/vater/project-features";
 import { isMissingRelationError } from "@/lib/vater/beta-schema";
 
 /** Same guard rails as /api/vater/youtube/from-script. Keep the two in step. */
-const MIN_WORDS = 20;
+export const MIN_WORDS = 20;
 const MAX_CHARS = 200_000;
 
 export interface CreateVideoInput {
@@ -122,6 +122,61 @@ async function persistFeatures(projectId: string, features: unknown): Promise<vo
   }
 }
 
+/**
+ * Style resolution + authorization shared by the public API, the Script-first
+ * lane and the Fable 5 Concierge batch submit. A supplied styleId must be a
+ * system style or the caller's own; with no styleId the account's locked style
+ * is used, but never another account's locked look (VATER_LOCKED_STYLE_ID pins
+ * the owner's row for every caller).
+ *
+ * Pure extraction of the block that used to live inline in
+ * createVideoFromScript — same lookups, same status codes, same messages.
+ */
+export async function resolveStyleForUser(
+  userId: string,
+  email: string | null,
+  styleId: unknown,
+): Promise<{ ok: true; styleId: string } | CreateVideoFailure> {
+  if (typeof styleId === "string" && styleId) {
+    const style = await prisma.youTubeStyle.findUnique({
+      where: { id: styleId },
+      select: { id: true, userId: true, isSystem: true },
+    });
+    if (!style) {
+      return fail(404, "style_not_found", "No style with that id.");
+    }
+    if (!style.isSystem && style.userId && style.userId !== userId) {
+      return fail(403, "forbidden", "That style belongs to another account.");
+    }
+    return { ok: true, styleId: style.id };
+  }
+  const locked = await resolveLockedStyle(userId);
+  if (!locked) {
+    return fail(
+      409,
+      "no_style",
+      `No “${LOCKED_STYLE_NAME}” style on this account — create one in Jelly Studio → Styles, or pass a styleId.`,
+    );
+  }
+  // With VATER_LOCKED_STYLE_ID pinned, resolveLockedStyle() returns the
+  // owner's row for ANY caller. A public account must never silently render
+  // in someone else's locked look.
+  if (!isVaterStudioEmail(email)) {
+    const owner = await prisma.youTubeStyle.findUnique({
+      where: { id: locked.id },
+      select: { userId: true, isSystem: true },
+    });
+    if (owner && !owner.isSystem && owner.userId && owner.userId !== userId) {
+      return fail(
+        409,
+        "no_style",
+        "This account has no style of its own yet — create one in Jelly Studio → Styles, or pass a styleId.",
+      );
+    }
+  }
+  return { ok: true, styleId: locked.id };
+}
+
 export async function createVideoFromScript(
   userId: string,
   email: string | null,
@@ -171,46 +226,9 @@ export async function createVideoFromScript(
   ).slice(0, 200);
 
   // ── Style resolution + authorization (mirrors from-script) ──────────────
-  let styleId: string;
-  if (typeof input.styleId === "string" && input.styleId) {
-    const style = await prisma.youTubeStyle.findUnique({
-      where: { id: input.styleId },
-      select: { id: true, userId: true, isSystem: true },
-    });
-    if (!style) {
-      return fail(404, "style_not_found", "No style with that id.");
-    }
-    if (!style.isSystem && style.userId && style.userId !== userId) {
-      return fail(403, "forbidden", "That style belongs to another account.");
-    }
-    styleId = style.id;
-  } else {
-    const locked = await resolveLockedStyle(userId);
-    if (!locked) {
-      return fail(
-        409,
-        "no_style",
-        `No “${LOCKED_STYLE_NAME}” style on this account — create one in Jelly Studio → Styles, or pass a styleId.`,
-      );
-    }
-    // With VATER_LOCKED_STYLE_ID pinned, resolveLockedStyle() returns the
-    // owner's row for ANY caller. A public account must never silently render
-    // in someone else's locked look.
-    if (!isVaterStudioEmail(email)) {
-      const owner = await prisma.youTubeStyle.findUnique({
-        where: { id: locked.id },
-        select: { userId: true, isSystem: true },
-      });
-      if (owner && !owner.isSystem && owner.userId && owner.userId !== userId) {
-        return fail(
-          409,
-          "no_style",
-          "This account has no style of its own yet — create one in Jelly Studio → Styles, or pass a styleId.",
-        );
-      }
-    }
-    styleId = locked.id;
-  }
+  const resolved = await resolveStyleForUser(userId, email, input.styleId);
+  if (!resolved.ok) return resolved;
+  const styleId = resolved.styleId;
 
   // `targetDuration` is minutes and drives nothing at render time now that the
   // script is fixed — it is the Library/estimate figure. Round up so a 40s

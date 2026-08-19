@@ -41,7 +41,12 @@ export type VaterEventKind =
   | "feedback.sent"
   | "render.phase"
   | "render.ready"
-  | "render.failed";
+  | "render.failed"
+  // Fable 5 Concierge lane (2026-08-19)
+  | "concierge.queued"
+  | "concierge.stage"
+  | "concierge.delivered"
+  | "concierge.cancelled";
 
 export interface VaterEventInput {
   userId: string;

@@ -13,6 +13,7 @@ import { JELLY_TOKENS, glass } from './tokens';
 import { MicroLabel } from './cinema/MicroLabel';
 import { useTheme } from './theme-context';
 import { Icon, type IconName } from './Icon';
+import { StepHint } from './engine/StepHint';
 
 /* ─── VBtn ─── */
 
@@ -231,12 +232,31 @@ export interface PillStepperProps {
   steps: ReadonlyArray<string>;
   active: number;
   onSelect: (index: number) => void;
+  /**
+   * Optional per-step tooltip copy (same index as `steps`). When a hint is
+   * present a small "?" sits inside the pill; hover / tap / focus shows it.
+   * Pass EDITOR_STEP_HINTS for the Create Video editor. Undefined → the
+   * pre-existing pill, byte for byte.
+   */
+  hints?: ReadonlyArray<React.ReactNode | null | undefined>;
 }
+
+/** Tooltip copy for the seven Create Video steps (EDITOR_STEPS order). */
+export const EDITOR_STEP_HINTS: readonly string[] = [
+  'Name the video and set the goal. The title is the brief every later step reads — commit it first.',
+  'Jelly writes the script in your voice, or paste your own. You approve it before anything is rendered — and pick the engine: Jelly Auto (now) or Fable 5 Concierge (hand-directed, a few hours).',
+  'Narration from your style’s voice — your own ElevenLabs voice, a cloned voice, or a studio voice. Re-record single lines later without re-rendering the video.',
+  'One still per beat in your art style, then optional motion. Review every scene, regenerate the ones you don’t love, add animation where it earns its keep.',
+  'Background music under the narration. Included — pick a track and a level, or leave it off.',
+  'A thumbnail in the same art style as the video, from concepts you choose.',
+  'Title, description, tags and chapters for YouTube and the socials — generated from the finished script.',
+] as const;
 
 export function PillStepper({
   steps,
   active,
   onSelect,
+  hints,
 }: PillStepperProps): React.ReactElement {
   const { t } = useTheme();
   return (
@@ -278,9 +298,15 @@ export function PillStepper({
             color: i === active ? t.text : t.textSecondary,
             transition: 'all .2s ease',
             whiteSpace: 'nowrap',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
           }}
         >
           {s}
+          {hints?.[i] ? (
+            <StepHint text={hints[i]} label={`About the ${String(s)} step`} />
+          ) : null}
         </div>
       ))}
     </div>

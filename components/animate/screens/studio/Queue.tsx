@@ -19,6 +19,9 @@ type AnyProject = any;
 const ACTIVE_STATUSES = new Set([
   'queued', 'transcribing', 'extracting_principles', 'scripting',
   'voicing', 'generating_scenes', 'animating', 'composing',
+  // Fable 5 Concierge tickets (2026-08-19) — owned by the operator, still
+  // "active" from the customer's chair.
+  'concierge_queued', 'concierge_in_progress', 'concierge_needs_info',
 ]);
 
 export function Queue(): React.ReactElement {

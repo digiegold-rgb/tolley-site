@@ -69,3 +69,140 @@ export async function sendInviteLinkEmail(to: string, link: string, display: str
     ].join("\n"),
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fable 5 Concierge (2026-08-19) — the three customer-facing ticket emails plus
+// the batch ack. Plain text, same sender/reply-to as the invite funnel. All
+// four are best-effort at the call sites (a mail failure never fails a ticket).
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CONCIERGE_SIGNOFF = ["— Jared", "Jelly Studio · https://www.tolley.io/animate"];
+
+function conciergeTitleLine(title: string | null | undefined): string {
+  const t = (title || "").trim();
+  return t ? `"${t.length > 90 ? t.slice(0, 87) + "…" : t}"` : "your script";
+}
+
+/** Ack for a single ticket: the customer's script is in the Fable 5 queue. */
+export async function sendConciergeQueuedEmail(
+  to: string,
+  opts: {
+    code: string;
+    title?: string | null;
+    words: number;
+    estMinutes: number;
+    libraryUrl: string;
+  },
+): Promise<void> {
+  await send(
+    to,
+    `Fable 5 has your script (${opts.code})`,
+    [
+      "Hi,",
+      "",
+      `Fable 5 has ${conciergeTitleLine(opts.title)} — ticket ${opts.code}.`,
+      `${opts.words.toLocaleString()} words, about ${Math.max(1, Math.round(opts.estMinutes))} minute${Math.max(1, Math.round(opts.estMinutes)) === 1 ? "" : "s"} of video.`,
+      "",
+      "What happens next:",
+      "  1. Fable 5 picks up the ticket and directs every scene in your own style and voice.",
+      "  2. The studio renders it and a person watches it before you do.",
+      "  3. It lands in your Library and you get an email.",
+      "",
+      "Typical turnaround is a few hours, up to ~24h while we're in beta. You're billed only when",
+      "the finished video lands — same price as Auto. Failed renders are never charged.",
+      "",
+      `Your Library: ${opts.libraryUrl}`,
+      "",
+      "Nothing to do until then. Reply to this email if anything changes.",
+      "",
+      ...CONCIERGE_SIGNOFF,
+    ].join("\n"),
+  );
+}
+
+/** Ack for a batch submit: N tickets queued at once. */
+export async function sendConciergeBatchQueuedEmail(
+  to: string,
+  opts: { tickets: Array<{ code: string; title?: string | null; words: number }>; libraryUrl?: string },
+): Promise<void> {
+  const n = opts.tickets.length;
+  const codes = opts.tickets.map((t) => t.code).join(", ");
+  await send(
+    to,
+    n === 1
+      ? `Fable 5 has your script (${opts.tickets[0]?.code ?? ""})`
+      : `Fable 5 has your ${n} scripts (${codes})`,
+    [
+      "Hi,",
+      "",
+      `Fable 5 has ${n === 1 ? "your script" : `your ${n} scripts`}:`,
+      "",
+      ...opts.tickets.map(
+        (t) => `  ${t.code} · ${conciergeTitleLine(t.title)} · ${t.words.toLocaleString()} words`,
+      ),
+      "",
+      "Each one is directed in your own style and voice, rendered in the studio, and watched by a",
+      "person before it lands in your Library. You'll get an email per video as it's delivered.",
+      "",
+      "Typical turnaround is a few hours, up to ~24h while we're in beta. You're billed only when",
+      "each finished video lands — same price as Auto. Failed renders are never charged.",
+      "",
+      ...(opts.libraryUrl ? [`Your Library: ${opts.libraryUrl}`, ""] : []),
+      "Reply to this email if anything changes.",
+      "",
+      ...CONCIERGE_SIGNOFF,
+    ].join("\n"),
+  );
+}
+
+/** The operator needs something from the customer before the render can go on. */
+export async function sendConciergeNeedsInfoEmail(
+  to: string,
+  opts: { code: string; title?: string | null; note: string; editorUrl: string },
+): Promise<void> {
+  await send(
+    to,
+    `Fable 5 needs one thing from you (${opts.code})`,
+    [
+      "Hi,",
+      "",
+      `Fable 5 paused ${conciergeTitleLine(opts.title)} (ticket ${opts.code}) and needs one thing from you:`,
+      "",
+      ...opts.note.trim().split("\n").map((l) => `  ${l}`),
+      "",
+      "Open the project, make the change, and hit \"Send to Fable 5\" again — the ticket keeps its",
+      "place in line:",
+      opts.editorUrl,
+      "",
+      "Nothing has been charged. Reply to this email if you'd rather talk it through.",
+      "",
+      ...CONCIERGE_SIGNOFF,
+    ].join("\n"),
+  );
+}
+
+/** Delivered: the finished video is in the customer's Library. */
+export async function sendConciergeDeliveredEmail(
+  to: string,
+  opts: { code: string; title?: string | null; libraryUrl: string; chargeLine?: string | null; note?: string | null },
+): Promise<void> {
+  await send(
+    to,
+    `Your Fable 5 video is ready (${opts.code})`,
+    [
+      "Hi,",
+      "",
+      `${conciergeTitleLine(opts.title)} is done (ticket ${opts.code}) and waiting in your Library:`,
+      opts.libraryUrl,
+      "",
+      ...(opts.note?.trim()
+        ? ["A note from the studio:", ...opts.note.trim().split("\n").map((l) => `  ${l}`), ""]
+        : []),
+      ...(opts.chargeLine?.trim() ? [opts.chargeLine.trim(), ""] : []),
+      "Watch it, download it, post it. If something looks off, reply to this email and we'll",
+      "fix the scene — repairs are never charged.",
+      "",
+      ...CONCIERGE_SIGNOFF,
+    ].join("\n"),
+  );
+}

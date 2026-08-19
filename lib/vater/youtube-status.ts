@@ -28,7 +28,14 @@ export type YouTubeProjectStatus =
   | "generating_scenes"
   | "composing_video"
   | "ready"
-  | "failed";
+  | "failed"
+  // Fable 5 Concierge lane (2026-08-19). A human-directed render: the ticket
+  // lives on `settingsJson.concierge`; the customer sees stage chips, never
+  // DGX phases. Delivered = `ready`, cancelled = `scripted`. NOT in-flight —
+  // the editor polls GET /api/vater/youtube/[id], never /poll.
+  | "concierge_queued"
+  | "concierge_in_progress"
+  | "concierge_needs_info";
 
 export const STATUS_LABELS: Record<YouTubeProjectStatus, string> = {
   draft: "Draft",
@@ -48,6 +55,9 @@ export const STATUS_LABELS: Record<YouTubeProjectStatus, string> = {
   composing_video: "Composing video...",
   ready: "Ready",
   failed: "Failed",
+  concierge_queued: "Fable 5 — in queue",
+  concierge_in_progress: "Fable 5 — in the studio",
+  concierge_needs_info: "Fable 5 — needs your input",
 };
 
 export const STATUS_COLORS: Record<YouTubeProjectStatus, string> = {
@@ -68,7 +78,26 @@ export const STATUS_COLORS: Record<YouTubeProjectStatus, string> = {
   composing_video: "text-yellow-400 bg-yellow-400/10 animate-pulse",
   ready: "text-emerald-400 bg-emerald-400/10",
   failed: "text-red-400 bg-red-400/10",
+  concierge_queued: "text-violet-400 bg-violet-400/10",
+  concierge_in_progress: "text-violet-400 bg-violet-400/10 animate-pulse",
+  concierge_needs_info: "text-amber-400 bg-amber-400/10",
 };
+
+/**
+ * Fable 5 Concierge statuses. A project in one of these is owned by the
+ * concierge lane: the customer's editor steps are disabled (except
+ * needs_info), Queue/Dashboard count it as active, and the auto pipeline's
+ * /poll route is never called for it.
+ */
+export const CONCIERGE_STATUSES: ReadonlySet<YouTubeProjectStatus> = new Set<
+  YouTubeProjectStatus
+>(["concierge_queued", "concierge_in_progress", "concierge_needs_info"]);
+
+export function isConciergeStatus(
+  s: string | null | undefined,
+): s is "concierge_queued" | "concierge_in_progress" | "concierge_needs_info" {
+  return !!s && CONCIERGE_STATUSES.has(s as YouTubeProjectStatus);
+}
 
 /**
  * Statuses where the UI should keep polling `/poll` for updates.
