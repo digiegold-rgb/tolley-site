@@ -93,6 +93,34 @@ function stageOf(job) {
   }
 }
 
+/** Provider-level split of one job's dollars, from the DGX's own
+ *  result.costs.byStage (stills / gemini / elevenlabs / modal_overhead / anim /
+ *  fal / llm / tts …). Falls back to the coarse job kind when the job carries
+ *  no per-provider detail (legacy records). Only positive buckets survive. */
+function providerSplit(job, usd) {
+  const by = job?.result?.costs?.byStage;
+  const out = {};
+  if (by && typeof by === 'object') {
+    for (const [k, v] of Object.entries(by)) {
+      const n = Number(v?.usd ?? v);
+      if (Number.isFinite(n) && n > 0) out[k] = Number(n.toFixed(4));
+    }
+  }
+  if (!Object.keys(out).length) out[stageOf(job)] = Number(usd.toFixed(4));
+  return out;
+}
+
+/** Rescale a split so its buckets sum exactly to `total` (the job's booked
+ *  amount — which already carries the cold-start uplift the buckets may not). */
+function scaleSplit(split, total) {
+  const sum = Object.values(split).reduce((a, b) => a + (Number(b) || 0), 0);
+  if (!(sum > 0) || !(total > 0)) return { ...split };
+  const k = total / sum;
+  const out = {};
+  for (const [b, v] of Object.entries(split)) out[b] = Number(((Number(v) || 0) * k).toFixed(4));
+  return out;
+}
+
 /** Stages that are booked by hand and have no job behind them. Carried over
  *  from the stored costJson untouched; never derived, never dropped. */
 const MANUAL_STAGES = new Set(['reconciliation']);
@@ -144,19 +172,31 @@ for (const p of projects) {
   const mine = jobsForProject(p.id, p.autopilotJobId);
   const fileByJob = {};
   const fileStage = {};
+  const fileSplit = {};
   for (const j of mine) {
     const c = jobCost(j);
     if (!c) continue;
     fileByJob[j.id] = Number(c.toFixed(4));
     fileStage[j.id] = stageOf(j);
+    fileSplit[j.id] = providerSplit(j, fileByJob[j.id]);
   }
 
   const prevByJob = p.costJson?.byJob && typeof p.costJson.byJob === 'object' ? p.costJson.byJob : {};
   const prevStage = p.costJson?.byJobStage && typeof p.costJson.byJobStage === 'object' ? p.costJson.byJobStage : {};
+  const prevSplit = p.costJson?.byJobStages && typeof p.costJson.byJobStages === 'object' ? p.costJson.byJobStages : {};
   const prevByStage = p.costJson?.byStage && typeof p.costJson.byStage === 'object' ? p.costJson.byStage : {};
 
   const byJob = {};
   const byJobStage = {};
+  // ⚠️ byStage keeps PROVIDER buckets (stills / gemini / elevenlabs /
+  // modal_overhead / anim / fal / llm …), never just the job kind. The old
+  // rebuild collapsed every job to "render"/"regen"/"reanimate", which buried
+  // the elevenlabs dollars inside "render" — and lib/vater/billing/billable.ts
+  // strips ElevenLabs from the customer's bill BY KEY (rule 154), so a
+  // collapsed card would have billed Trey for narration again. Per-job
+  // splits are remembered on the card (byJobStages) so a job pruned from
+  // vater_jobs.json keeps its provider detail forever.
+  const byJobStages = {};
   const byStage = {};
   for (const [jid, usdRaw] of Object.entries({ ...prevByJob, ...fileByJob })) {
     const usd = Number(usdRaw);
@@ -164,9 +204,27 @@ for (const p of projects) {
     byJob[jid] = Number(usd.toFixed(4));
     const s = fileStage[jid] ?? prevStage[jid] ?? 'prior';
     byJobStage[jid] = s;
-    byStage[s] ??= { usd: 0, calls: 0 };
-    byStage[s].usd = Number((byStage[s].usd + byJob[jid]).toFixed(4));
-    byStage[s].calls += 1;
+    let split = fileSplit[jid] ?? prevSplit[jid];
+    // A single-job card written by the site's mergeVideoCost already holds
+    // provider buckets in byStage — inherit them rather than collapsing to
+    // the job kind when the job has rotated out of vater_jobs.json.
+    if ((!split || !Object.keys(split).length) && Object.keys(prevByJob).length === 1 && prevByJob[jid] !== undefined) {
+      const inherited = {};
+      for (const [k, v] of Object.entries(prevByStage)) {
+        if (MANUAL_STAGES.has(k)) continue;
+        const n = Number(v?.usd ?? 0);
+        if (n > 0) inherited[k] = n;
+      }
+      if (Object.keys(inherited).length) split = inherited;
+    }
+    if (!split || !Object.keys(split).length) split = { [s]: byJob[jid] };
+    split = scaleSplit(split, byJob[jid]);
+    byJobStages[jid] = split;
+    for (const [bucket, part] of Object.entries(split)) {
+      byStage[bucket] ??= { usd: 0, calls: 0 };
+      byStage[bucket].usd = Number((byStage[bucket].usd + part).toFixed(4));
+      byStage[bucket].calls += 1;
+    }
   }
   // Hand-booked stages ride along untouched.
   let booked = false;
@@ -190,6 +248,12 @@ for (const p of projects) {
     : Number(captureUsd.toFixed(2));
   if (!total) continue;
 
+  // A card whose stage SHAPE is stale (collapsed "render" where the jobs
+  // carry provider detail, or a missing byJobStages memory) is rewritten even
+  // when the total is unchanged — the bill reads stages by key.
+  const shape = (m) => JSON.stringify(Object.fromEntries(Object.entries(m).map(([k, v]) => [k, Number(Number(v?.usd ?? 0).toFixed(2))]).sort()));
+  if (shape(byStage) !== shape(prevByStage) || !p.costJson?.byJobStages) restage = true;
+
   if (Math.abs(prev - total) < 0.005 && !restage) continue;
 
   const label = (p.publishTitle || p.sourceTitle || p.id).slice(0, 40);
@@ -210,6 +274,7 @@ for (const p of projects) {
         byStage,
         byJob,
         byJobStage,
+        byJobStages,
         estimated: true,
         reconciledAt: new Date().toISOString(),
         reconciledBy: 'vater-cost-reconcile',

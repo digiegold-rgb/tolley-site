@@ -365,6 +365,14 @@ export async function getVaterBillingSummary(scope: VaterBillingScope): Promise<
       minutes,
       breakdown,
       opsRatePerMinute,
+      // The exact population the due is priced on (see dueUsd above), so
+      // the "where the $ went" rows are read straight off those cards.
+      deliveredSince: {
+        rows: stageRows(readStages(finishedSince)),
+        computeUsd: r2(finishedSince.reduce((sum, p) => sum + cardUsd(p), 0)),
+        opsUsd: r2(minutesSince * opsRatePerMinute),
+        carryUsd,
+      },
       newStagesFor: (since) => readStages(projects, since),
       newMinutesFor: (since) => {
         let m = 0;
@@ -390,10 +398,18 @@ function buildSince(args: {
   opsRatePerMinute: number;
   newStagesFor: (since: Date) => StageMap;
   newMinutesFor: (since: Date) => number;
+  /** Stage rows + totals of the videos DELIVERED since the last payment —
+   *  the same population dueUsd is priced on. */
+  deliveredSince?: {
+    rows: BreakdownRow[];
+    computeUsd: number;
+    opsUsd: number;
+    carryUsd: number;
+  };
 }): VaterSinceLastPayment {
   const {
     lastPayment, dueUsd, computeUsd, opsUsd, breakdown,
-    opsRatePerMinute, newStagesFor, newMinutesFor,
+    opsRatePerMinute, newStagesFor, newMinutesFor, deliveredSince,
   } = args;
 
   // Never paid: the whole all-time bill IS the new amount.
@@ -420,7 +436,19 @@ function buildSince(args: {
   let newOps: number;
   let rows: BreakdownRow[];
 
-  if (snap && typeof snap.computeUsd === "number") {
+  if (deliveredSince) {
+    // 2026-08-19: rows come off the delivered-since cards themselves — the
+    // exact population the due is priced on — instead of an all-time minus
+    // snapshot diff. The diff broke whenever a card's stage SHAPE changed
+    // after the payment (the reconciler splitting "render" into stills /
+    // overhead / gemini): per-key diffs then over-read stills by a few
+    // dollars and clamped the missing "render" at 0. Settlement math is
+    // untouched; this is only the explanation of the same dueUsd.
+    basis = "snapshot";
+    rows = deliveredSince.rows.filter((row) => isBillableStage(row.key));
+    newCompute = deliveredSince.computeUsd;
+    newOps = deliveredSince.opsUsd;
+  } else if (snap && typeof snap.computeUsd === "number") {
     // Exact diff: every all-time row minus what it was at payment time.
     basis = "snapshot";
     const before = new Map(
