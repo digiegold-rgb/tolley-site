@@ -426,6 +426,15 @@ function buildSince(args: {
     const before = new Map(
       (snap.breakdown ?? []).map((row) => [row.key, Number(row.usd) || 0]),
     );
+    // Snapshots taken before 2026-08-19 still carry ElevenLabs inside their
+    // computeUsd. Today's compute is EL-free (billable.ts), so diffing against
+    // the raw snapshot under-counts new compute by exactly the settled EL and
+    // that gap fell into "Unpaid before last payment" ($14.62 read as $23.28).
+    // Strip the non-billable rows from the baseline so both sides match.
+    const snapNonBillable = (snap.breakdown ?? [])
+      .filter((row) => !isBillableStage(row.key))
+      .reduce((a, row) => a + (Number(row.usd) || 0), 0);
+    const snapCompute = Math.max(0, (Number(snap.computeUsd) || 0) - snapNonBillable);
     rows = breakdown
       .filter((row) => isBillableStage(row.key))
       .map((row) => ({
@@ -433,7 +442,7 @@ function buildSince(args: {
         usd: r2(Math.max(0, row.usd - (before.get(row.key) ?? 0))),
       }))
       .filter((row) => row.usd > 0.005);
-    newCompute = r2(Math.max(0, computeUsd - snap.computeUsd));
+    newCompute = r2(Math.max(0, computeUsd - snapCompute));
     newOps = r2(Math.max(0, opsUsd - (Number(snap.opsUsd) || 0)));
   } else {
     // Pre-snapshot payment: attribute by which projects moved after it.
