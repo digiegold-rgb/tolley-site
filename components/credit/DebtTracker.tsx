@@ -14,6 +14,7 @@ type Debt = {
   phone: string | null;
   notes: string | null;
   settled: boolean;
+  originalBalance?: number;
 };
 
 const phaseLabels: Record<string, { label: string; color: string }> = {
@@ -174,7 +175,7 @@ export function DebtTracker({
               <span className="font-bold">
                 {d.creditor} {d.accountLast4}
               </span>{" "}
-              {d.status === "paid" ? "-- PAID IN FULL" : d.status === "dismissed" ? "-- DISMISSED (not counted against you)" : `-- ${d.notes}`}
+              {d.status === "paid" ? "-- PAID IN FULL" : d.status === "dismissed" ? `-- DISMISSED${d.originalBalance ? ` ($${d.originalBalance.toLocaleString()} gone)` : ""} — not counted against you` : `-- ${d.notes}`}
             </p>
           ))}
         </div>
