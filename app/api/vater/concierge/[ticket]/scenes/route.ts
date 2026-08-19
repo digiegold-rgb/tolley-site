@@ -1,6 +1,6 @@
 /**
  * POST /api/vater/concierge/[ticket]/scenes
- *   body {scenes:[{idx, version, imagePrompt?, startS?, endS?}], captionTimings?}
+ *   body {scenes:[{idx, version?, imagePrompt?, startS?, endS?}], captionTimings?}  (no version = timing-only)
  *
  * Records the operator's authored repairs on the project row after the DGX
  * regen wrote `scenes/NNN_vN.png` into the job work dir. Idx-keyed MERGE
@@ -33,7 +33,8 @@ type Ctx = { params: Promise<{ ticket: string }> };
 
 interface ScenePatch {
   idx: number;
-  version: number;
+  /** Absent = timing-only row (beat-snap neighbour): startS/endS move, media untouched. */
+  version?: number;
   imagePrompt?: string;
   startS?: number;
   endS?: number;
@@ -52,8 +53,11 @@ function parsePatches(raw: unknown): ScenePatch[] | string {
     if (!item || typeof item !== "object") return "each scene must be an object";
     const s = item as Record<string, unknown>;
     if (!Number.isInteger(s.idx) || (s.idx as number) < 0) return "scene.idx must be a non-negative integer";
-    if (!Number.isInteger(s.version) || (s.version as number) < 0) return "scene.version must be a non-negative integer";
-    const p: ScenePatch = { idx: s.idx as number, version: s.version as number };
+    const p: ScenePatch = { idx: s.idx as number };
+    if (s.version !== undefined && s.version !== null) {
+      if (!Number.isInteger(s.version) || (s.version as number) < 0) return "scene.version must be a non-negative integer";
+      p.version = s.version as number;
+    }
     if (s.imagePrompt !== undefined) {
       if (typeof s.imagePrompt !== "string") return "scene.imagePrompt must be a string";
       p.imagePrompt = s.imagePrompt;
@@ -125,19 +129,26 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const patched: number[] = [];
   for (const p of patches) {
     const existing = scenes[p.idx];
+    const timingOnly = p.version === undefined;
     scenes[p.idx] = {
       ...existing,
       idx: p.idx,
-      imageUrl: `/api/vater/youtube/${project.id}/scene/${p.idx}?v=${p.version}`,
-      version: p.version,
-      ...(p.imagePrompt !== undefined ? { imagePrompt: p.imagePrompt } : {}),
       ...(p.startS !== undefined ? { startS: p.startS } : {}),
       ...(p.endS !== undefined ? { endS: p.endS } : {}),
-      // A regenerated still invalidates any animation made from the old one.
-      mediaType: "image",
-      videoUrl: undefined,
-      videoVersion: 0,
-      animate: false,
+      // Timing-only rows (beat-snap neighbours) keep their media — they may be
+      // animated clips. Only a re-rolled still (row carries `version`) swaps the
+      // image and invalidates any animation made from the old one.
+      ...(timingOnly
+        ? {}
+        : {
+            imageUrl: `/api/vater/youtube/${project.id}/scene/${p.idx}?v=${p.version}`,
+            version: p.version,
+            ...(p.imagePrompt !== undefined ? { imagePrompt: p.imagePrompt } : {}),
+            mediaType: "image",
+            videoUrl: undefined,
+            videoVersion: 0,
+            animate: false,
+          }),
     };
     patched.push(p.idx);
   }
