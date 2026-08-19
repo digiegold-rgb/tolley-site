@@ -20,7 +20,7 @@ import { canAccessProject } from "@/lib/vater/project-access";
 import { getAnimationPriceCents } from "@/lib/vater/pricing";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
 import { consumeRateLimit, rateLimited } from "@/lib/rate-limit";
-import { ownerFieldsForSession } from "@/lib/vater/owner-tier";
+import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
 
 // Just kicks off the DGX job and returns the animateAllJobId immediately.
 // The frontend polls /api/vater/jobs/<id> for progress + logs.
@@ -162,10 +162,8 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   let kickoff;
   try {
-    const { ownerId, ownerTier } = ownerFieldsForSession(
-      session,
-      project.userId,
-    );
+    const { ownerId, ownerTier, ownerLane } =
+      await ownerFieldsForSessionWithLane(session, project.userId);
     kickoff = await autopilot.animateAllScenes({
       jobId: project.autopilotJobId,
       scenes: targetScenes,
@@ -174,6 +172,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       // script-only, so it isn't sent on the animate lane.
       ownerId,
       ownerTier,
+      // Batch animate is the single most expensive call in the product.
+      // ownerLane decides which Modal invoice line its GPU-seconds land on.
+      ownerLane,
     });
   } catch (err) {
     if (err instanceof AutopilotError) {

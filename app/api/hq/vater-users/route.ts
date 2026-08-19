@@ -21,6 +21,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
 import { getBalance } from "@/lib/vater/billing/ledger";
+import { gpuForQuality } from "@/lib/vater/pricing";
 import { hasVaterAccountTable } from "@/lib/vater/schema-probe";
 import {
   hasBetaInviteTable,
@@ -53,6 +54,87 @@ interface StudioUserRow {
   lastError: { message: string; at: string } | null;
   invited: boolean;
   createdAt: string | null;
+  /** What this account actually consumed, split by GPU tier. The abuse
+   *  tripwire: Modal's invoice arrives at the end of the month and cannot be
+   *  split by user at all, so a tenant burning H100 minutes past their
+   *  balance has to be visible HERE or it is not visible until the bill. */
+  usage: UsageRollup;
+}
+
+/** Chargeable actions and their cost, per GPU tier, over two windows. */
+interface UsageRollup {
+  /** Rows exist for this user (false = nothing recorded, not "$0 spent"). */
+  ready: boolean;
+  d7: TierSplit;
+  d30: TierSplit;
+}
+
+interface TierSplit {
+  /** Keyed by GPU ("L40S", "H100", "Kling", "local", "other"), resolved from
+   *  the quality tier via gpuForQuality. VaterUsage.tier holds the quality
+   *  KEY ("modal-wan22-fast"), which is not a GPU name. */
+  byTier: Record<string, { actions: number; usd: number }>;
+  actions: number;
+  usd: number;
+  /** Animation actions only — the expensive half, and the one worth watching. */
+  animations: number;
+}
+
+/**
+ * Per-user consumption, split by GPU tier, for the whole roster in ONE query.
+ *
+ * Grouped in the database rather than per user: the roster is small today but
+ * this card is the thing an admin opens when they suspect abuse, and a query
+ * per tenant makes it slower exactly as the tenant count grows.
+ *
+ * Cost comes from VaterUsage.costCents — what the account was CHARGED, which
+ * is the number that matters for "is someone taking advantage". Compute-at-cost
+ * lives on the project cards and in ledger.jsonl.
+ */
+async function usageByUser(ids: string[]): Promise<Map<string, UsageRollup>> {
+  const empty = (): TierSplit => ({ byTier: {}, actions: 0, usd: 0, animations: 0 });
+  const out = new Map<string, UsageRollup>(
+    ids.map((id) => [id, { ready: false, d7: empty(), d30: empty() }]),
+  );
+  const now = Date.now();
+  const since30 = new Date(now - 30 * 86_400_000);
+  const since7 = new Date(now - 7 * 86_400_000);
+
+  let rows: Array<{
+    userId: string;
+    tier: string | null;
+    action: string;
+    ts: Date;
+    costCents: number;
+  }>;
+  try {
+    rows = await prisma.vaterUsage.findMany({
+      where: { userId: { in: ids }, ts: { gte: since30 } },
+      select: { userId: true, tier: true, action: true, ts: true, costCents: true },
+    });
+  } catch {
+    // Table not migrated in this environment — report "unknown", never a
+    // confident zero. A zero here reads as "this user spent nothing".
+    return out;
+  }
+
+  for (const r of rows) {
+    const roll = out.get(r.userId);
+    if (!roll) continue;
+    roll.ready = true;
+    const usd = (r.costCents ?? 0) / 100;
+    const tier = gpuForQuality(r.tier);
+    const windows: TierSplit[] = r.ts >= since7 ? [roll.d7, roll.d30] : [roll.d30];
+    for (const w of windows) {
+      const slot = (w.byTier[tier] ??= { actions: 0, usd: 0 });
+      slot.actions += 1;
+      slot.usd = Math.round((slot.usd + usd) * 100) / 100;
+      w.actions += 1;
+      w.usd = Math.round((w.usd + usd) * 100) / 100;
+      if (r.action === "animation") w.animations += 1;
+    }
+  }
+  return out;
 }
 
 async function unauthorized() {
@@ -154,6 +236,7 @@ export async function GET() {
       }),
     );
     const balanceByUser = new Map<string, number | null>(balances);
+    const usageByUserId = await usageByUser(ids);
 
     const rows: StudioUserRow[] = users
       .map((u) => {
@@ -173,6 +256,11 @@ export async function GET() {
           lastError: err ? { message: err.message, at: err.createdAt.toISOString() } : null,
           invited: invitedSet.has(u.id),
           createdAt: u.createdAt ? u.createdAt.toISOString() : null,
+          usage: usageByUserId.get(u.id) ?? {
+            ready: false,
+            d7: { byTier: {}, actions: 0, usd: 0, animations: 0 },
+            d30: { byTier: {}, actions: 0, usd: 0, animations: 0 },
+          },
         };
       })
       .sort((a, b) => (b.lastProjectAt ?? "").localeCompare(a.lastProjectAt ?? ""));

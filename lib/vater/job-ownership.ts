@@ -16,32 +16,35 @@
  * work (reference transcribe, character gen, custom-art-style describer)
  * that never belongs to a project. Those stay reachable by studio tier only.
  *
- * ── KNOWN GAP — Phase 3 (logged 2026-08-15, confirmed with the tenancy
- *    agent; deliberately NOT fixed in Phase 1) ─────────────────────────────
- * The unattributed branch is the one place studio tier is not owner-scoped,
- * so ALL studio-tier users share a single job pool: any studio user can poll
- * any other studio user's inline Style-editor job. Today the studio tier is
- * an env allowlist of two people (Trey + Jared), so it is a non-issue — but
- * VaterAccount.tier='studio' is meant to be handed to beta invites, and the
- * moment a second studio tenant exists this becomes a real cross-tenant read.
+ * ── Phase 3 — CLOSED 2026-08-17 ────────────────────────────────────────────
+ * The unattributed branch used to be the one place studio tier was not
+ * owner-scoped: ALL studio-tier users shared a single job pool, so any studio
+ * user could poll any other studio user's inline Style-editor job. That was
+ * survivable only while studio was an env allowlist of two people, and
+ * VaterAccount.tier='studio' is meant to be handed to beta invites.
  *
- * Not enumerable in the meantime: live job ids are 16-char hex (64 bits) and
- * the route regex rejects anything outside [a-zA-Z0-9_-]{8,64}, so it only
- * matters if a job id leaks.
+ * The fix, as planned: every inline kickoff now stamps the requesting userId
+ * on the DGX job (`_inline_owner` in content-autopilot/vater.py), and
+ * `resolveInlineOwner` below reads it back, so an inline job resolves to a
+ * real owner. The poll route scopes on that owner and treats an inline job
+ * with NO owner as a hard deny rather than a tier check.
  *
- * The fix, when Phase 3 lands: stamp the requesting userId at inline-job
- * creation, then extend JobOwnership with a third variant
- * `{ kind: "inline"; userId: string }` so findJobOwnership can return an
- * owner for these too — and make unattributed-with-no-owner a hard deny
- * instead of a tier check. Self-contained to this file plus the callers that
- * start inline jobs; needs nothing from schema.prisma or admin-auth.ts.
+ * ⚠️ Jobs created before this landed carry no ownerId and are therefore
+ * deniable to everyone but the owner tier. That is deliberate — they are
+ * minutes-long Style-editor jobs, so the window is small, and failing closed
+ * on an un-ownable job is the whole point of the change.
  */
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { canAccessProjectAsync } from "@/lib/vater/project-access";
+import { autopilot } from "@/lib/vater/autopilot-client";
 
 export type JobOwnership =
   | { kind: "project"; projectId: string; projectUserId: string | null }
+  /** An inline Style-editor job that carries the requester's id (Phase 3).
+   *  Not reachable from Postgres — the DGX job dict is the only record, so
+   *  `resolveInlineOwner` below reads it from there. */
+  | { kind: "inline"; userId: string }
   | { kind: "unattributed" };
 
 /** Callers must validate jobId shape before calling (raw SQL interpolation). */
@@ -72,6 +75,28 @@ export async function findJobOwnership(jobId: string): Promise<JobOwnership> {
   }
 
   return { kind: "unattributed" };
+}
+
+/**
+ * Owner of an INLINE job, read from the DGX job dict.
+ *
+ * Deliberately a second call rather than folded into `findJobOwnership`:
+ * that function is a pure Postgres lookup used on every poll, and inline jobs
+ * are the rare branch. Callers reach here only after Postgres has already said
+ * "no project owns this".
+ *
+ * Returns `unattributed` — which callers must treat as a DENY — when the job
+ * is gone, unreachable, or predates the ownerId stamp. Never fail open: an
+ * inline job payload carries prompts, scripts and log tails.
+ */
+export async function resolveInlineOwner(jobId: string): Promise<JobOwnership> {
+  try {
+    const job = (await autopilot.getJob(jobId)) as { ownerId?: unknown };
+    const ownerId = typeof job.ownerId === "string" ? job.ownerId : "";
+    return ownerId ? { kind: "inline", userId: ownerId } : { kind: "unattributed" };
+  } catch {
+    return { kind: "unattributed" };
+  }
 }
 
 /** True when `jobId` is recorded on the given project. */

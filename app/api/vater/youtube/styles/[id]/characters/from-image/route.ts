@@ -60,7 +60,15 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ styleId: id, name, imageUrl, callbackUrl }),
+      body: JSON.stringify({
+        styleId: id,
+        name,
+        imageUrl,
+        callbackUrl,
+        // Inline jobs have no project row, so this is the ONLY record of
+        // whose job it is — the poll route scopes on it.
+        ownerId: session.user.id,
+      }),
     });
     if (!r.ok) {
       const detail = await r.text();

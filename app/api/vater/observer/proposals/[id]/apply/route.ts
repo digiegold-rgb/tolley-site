@@ -43,6 +43,12 @@ export async function POST(
           throw new Error("sceneIdx + imagePrompt required in params");
         }
         const out = await autopilot.regenScene({
+          // Deliberately the OWNER lane even when the proposal targets a
+          // customer's project: this is an admin support action Trey chose to
+          // run, so the Modal spend is his, not the customer's. Flip this to
+          // the project's owner fields only if support regens should be
+          // billed onward.
+          ownerTier: "owner",
           jobId: proposal.jobId,
           sceneIdx,
           imagePrompt,

@@ -16,6 +16,7 @@ import {
   type HqLicenseReview,
 } from "@/components/hq/hq-license-reviews";
 import { HqMoney } from "@/components/hq/hq-money";
+import { HqJellyPnl } from "@/components/hq/hq-jelly-pnl";
 import { HqEngineStatus } from "@/components/hq/hq-engine-status";
 import { HqAiPnl } from "@/components/hq/hq-ai-pnl";
 import { HqInbound } from "@/components/hq/hq-inbound";
@@ -640,6 +641,15 @@ function HqPageInner() {
               <summary className="tab-btn">📄 Docs ▾</summary>
               <div className="tab-docs-menu">
                 <a
+                  href="/research/lady-video-system-2026-08.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeDocs}
+                >
+                  🎬 Lady Video System
+                  <span className="doc-sub">How a lady video is actually made — every stage with real frames + timestamps, all four lanes, every internet call, how the links are built, what it costs — Aug 18, 2026</span>
+                </a>
+                <a
                   href="/research/jelly-competitor-gaps-2026-08.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -732,7 +742,10 @@ function HqPageInner() {
             onReply={replyInbound}
           />
         ) : tab === "money" ? (
-          <HqMoney money={money} loading={moneyLoading} onRefresh={loadMoney} />
+          <>
+            <HqJellyPnl />
+            <HqMoney money={money} loading={moneyLoading} onRefresh={loadMoney} />
+          </>
         ) : tab === "estates" ? (
           <>
             <HqEsnKit />

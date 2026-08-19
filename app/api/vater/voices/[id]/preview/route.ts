@@ -45,6 +45,12 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Sample text too short" }, { status: 400 });
   }
   try {
+    // No ownerTier on purpose. The DGX would route this to the customer
+    // Modal lane (`jelly-tts`) for a studio-tier caller, but per the gate
+    // above a Tuner sample is NOT metered against anyone's credits — it is
+    // house spend, so it belongs on the house lane. content-autopilot reads a
+    // missing tier as "internal", which lands it there. If Tuner samples ever
+    // start billing a customer, send the owner fields here at the same time.
     const out = await autopilot.startVoicePreview(name, {
       text: text.slice(0, 2000),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

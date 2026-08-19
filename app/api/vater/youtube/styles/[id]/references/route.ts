@@ -69,7 +69,12 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ urls, callbackUrl }),
+      body: JSON.stringify({
+        urls,
+        callbackUrl,
+        // See the from-image route: inline jobs are scoped by ownerId.
+        ownerId: session.user.id,
+      }),
     });
     if (!r.ok) {
       const detail = await r.text();

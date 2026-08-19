@@ -14,16 +14,17 @@
  *                                 to read someone else's job)
  *   - otherwise                 → the job must resolve to a YouTubeProject
  *                                 the caller can access
- *   - unattributed jobs (inline Style-editor work that belongs to no
- *     project) → studio tier only
+ *   - inline jobs (Style-editor work that belongs to no project) → only the
+ *     account whose id the DGX stamped on the job at kickoff. An inline job
+ *     with no owner recorded is denied to everyone but the owner tier.
  * Every denial is a 404 so job existence never leaks.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { autopilot, AutopilotError } from "@/lib/vater/autopilot-client";
-import { isVaterAdminEmail, isVaterStudioEmail } from "@/lib/admin-auth";
+import { isVaterAdminEmail } from "@/lib/admin-auth";
 import { canAccessProject, checkProjectAccess } from "@/lib/vater/project-access";
-import { findJobOwnership } from "@/lib/vater/job-ownership";
+import { findJobOwnership, resolveInlineOwner } from "@/lib/vater/job-ownership";
 
 type Ctx = { params: Promise<{ jobId: string }> };
 
@@ -60,13 +61,17 @@ export async function GET(req: NextRequest, ctx: Ctx) {
         if (!canAccessProject(ownership.projectUserId, userId, email)) {
           return notFound();
         }
-      } else if (!isVaterStudioEmail(email)) {
-        // Inline Style-editor job with no project row behind it. Only the
-        // studio tier runs those; beta customers never should.
-        // NOTE: studio users are NOT scoped to each other here — see the
-        // "KNOWN GAP — Phase 3" block in lib/vater/job-ownership.ts before
-        // widening the studio tier past the current two-person allowlist.
-        return notFound();
+      } else {
+        // Inline Style-editor job — no project row behind it, so the only
+        // record of who started it is the ownerId the DGX stamped at kickoff.
+        // Scope on THAT (Phase 3, 2026-08-17). This used to be a bare studio
+        // tier check, which meant every studio user shared one job pool.
+        const inline = await resolveInlineOwner(jobId);
+        if (inline.kind !== "inline" || inline.userId !== userId) {
+          // Includes jobs created before the ownerId stamp: un-ownable, so
+          // deniable. Failing closed is the point of the change.
+          return notFound();
+        }
       }
     }
   }

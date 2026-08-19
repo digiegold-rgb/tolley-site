@@ -7,8 +7,18 @@
  * three renders and its card said $1.87, and nothing noticed until Trey's
  * invoice was already wrong. This compares the two sides that should agree:
  *
- *   Modal billing for the vater-* apps  vs  the Modal share of every Vater
- *   project's costJson, over the same window.
+ *   Modal billing for the vater-* AND jelly-* apps  vs  the Modal share of
+ *   every Vater project's costJson, over the same window.
+ *
+ * Both lanes are counted (2026-08-17). Since the customer lane split off onto
+ * `jelly-*` apps, filtering to `vater-*` alone would have made every beta
+ * user's spend invisible AND driven the drift negative — the alarm would go
+ * quiet exactly as the money started coming from someone other than Trey.
+ * `lady-*` stays excluded: different business, different books.
+ *
+ * The per-lane and per-tenant breakdowns come from ~/vater-studio/ledger.jsonl,
+ * which stamps `lane` and `ownerId` on every row the pipeline books, so an
+ * alarm can say WHOSE spend drifted instead of only how much.
  *
  * Over the threshold it writes a warning to ~/vater-studio/ledger.jsonl and
  * pings Telegram. It NEVER edits costJson — a drift is a question for a human
@@ -36,7 +46,10 @@ const STATE = '/home/jelly/vater-studio/.cost-drift-state.json';
 const MODAL = '/home/jelly/.local/bin/modal';
 const NOTIFY_ENV = '/home/jelly/.config/actioncam-notify.env';
 const TELEGRAM_CHAT = '1680894605'; // Jared
-const APP_PREFIX = 'vater-'; // Trey's lane; lady-* is a different business
+// Both /animate lanes. lady-* is a different business and stays out.
+const APP_PREFIXES = ['vater-', 'jelly-'];
+/** Lane an app name belongs to: 'vater-wan22' -> 'vater'. */
+const laneOfApp = (app) => String(app).split('-')[0];
 
 const argv = process.argv.slice(2);
 const arg = (f, d) => {
@@ -66,7 +79,7 @@ function modalSpend() {
   const byApp = {};
   for (const row of rows) {
     const app = String(row.description ?? '');
-    if (!app.startsWith(APP_PREFIX)) continue;
+    if (!APP_PREFIXES.some((pre) => app.startsWith(pre))) continue;
     byApp[app] = r2((byApp[app] ?? 0) + Number(row.cost ?? 0));
   }
   return byApp;
@@ -101,6 +114,46 @@ function bookedModalUsd(costJson) {
   return Math.max(0, total - nonModal);
 }
 
+/**
+ * The pipeline's own record of who spent what, from ~/vater-studio/ledger.jsonl.
+ *
+ * This is the ONLY place a Modal dollar can be tied to a tenant. Modal's
+ * billing rows carry no user field, so without this the alarm can say "the
+ * cards are $22 light" but never "on whose renders" — which is exactly the
+ * question that made #21 take a week to unpick.
+ *
+ * Rows written before 2026-08-17 have no `lane`/`ownerId`; they are all
+ * pre-split owner spend, so an absent lane reads as `vater` and an absent
+ * owner as "unattributed" rather than being dropped.
+ */
+function ledgerModalSpend() {
+  const byLane = {};
+  const byOwner = {};
+  let rows = 0;
+  let text = '';
+  try {
+    text = readFileSync(LEDGER, 'utf8');
+  } catch {
+    return { byLane, byOwner, rows };
+  }
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    let e;
+    try { e = JSON.parse(line); } catch { continue; }
+    if (e.source !== 'modal') continue;
+    const ts = new Date(e.ts).getTime();
+    if (!Number.isFinite(ts) || ts < start.getTime()) continue;
+    const usd = Number(e.usd) || 0;
+    if (usd <= 0) continue;
+    const lane = e.lane || 'vater';
+    const owner = e.ownerId || 'unattributed';
+    byLane[lane] = r2((byLane[lane] ?? 0) + usd);
+    byOwner[owner] = r2((byOwner[owner] ?? 0) + usd);
+    rows += 1;
+  }
+  return { byLane, byOwner, rows };
+}
+
 const prisma = new PrismaClient();
 const allProjects = await prisma.youTubeProject.findMany({
   select: {
@@ -115,6 +168,13 @@ await prisma.$disconnect();
 const projects = allProjects.filter((p) => bookedModalUsd(p.costJson) > 0 && bookedAt(p) >= start);
 const byApp = modalSpend();
 const modalUsd = r2(Object.values(byApp).reduce((a, b) => a + b, 0));
+// Modal's side, folded to lanes, next to the pipeline's own per-tenant record.
+const modalByLane = {};
+for (const [app, usd] of Object.entries(byApp)) {
+  const lane = laneOfApp(app);
+  modalByLane[lane] = r2((modalByLane[lane] ?? 0) + usd);
+}
+const ledger = ledgerModalSpend();
 const bookedUsd = r2(projects.reduce((a, p) => a + bookedModalUsd(p.costJson), 0));
 const driftUsd = r2(modalUsd - bookedUsd);
 const over = driftUsd > THRESHOLD;
@@ -122,6 +182,14 @@ const over = driftUsd > THRESHOLD;
 const report = {
   window: { start: START, end: END, days: DAYS },
   apps: byApp,
+  /** Modal's billing folded to lanes: what each lane actually cost. */
+  modalByLane,
+  /** The pipeline's own attribution for the same window. A lane total here
+   *  that is far under `modalByLane` means that lane booked spend it never
+   *  recorded — the same blind spot as the headline drift, but scoped. */
+  ledgerByLane: ledger.byLane,
+  ledgerByOwner: ledger.byOwner,
+  ledgerRows: ledger.rows,
   modalUsd,
   bookedUsd,
   driftUsd,
@@ -133,8 +201,17 @@ const report = {
 if (AS_JSON) {
   console.log(JSON.stringify(report, null, 2));
 } else {
-  console.log(`vater-* Modal billing ${START}..${END}: $${modalUsd.toFixed(2)}  ` +
+  console.log(`Modal billing ${START}..${END} (vater-* + jelly-*): $${modalUsd.toFixed(2)}  ` +
     `(${Object.entries(byApp).map(([a, v]) => `${a} $${v.toFixed(2)}`).join(', ') || 'no charges'})`);
+  const laneLine = Object.entries(modalByLane)
+    .sort((a, b) => b[1] - a[1])
+    .map(([l, v]) => `${l} $${v.toFixed(2)}`).join(', ');
+  console.log(`  by lane: ${laneLine || 'none'}   ` +
+    `(vater = Trey's own renders, jelly = /animate customers)`);
+  const ownerLine = Object.entries(ledger.byOwner)
+    .sort((a, b) => b[1] - a[1]).slice(0, 8)
+    .map(([o, v]) => `${o} $${v.toFixed(2)}`).join(', ');
+  console.log(`  ledger attribution (${ledger.rows} row(s)): ${ownerLine || 'none'}`);
   console.log(`Booked on ${projects.length} project card(s) with Modal spend in window: $${bookedUsd.toFixed(2)}`);
   console.log(`Drift: $${driftUsd.toFixed(2)}  (threshold $${THRESHOLD.toFixed(2)}) — ${over ? 'ALERT' : 'ok'}`);
 }
@@ -155,9 +232,15 @@ if (sameDay && sameSize) {
 }
 
 const biggest = Object.entries(byApp).sort((a, b) => b[1] - a[1])[0];
+const laneSummary = Object.entries(modalByLane)
+  .sort((a, b) => b[1] - a[1])
+  .map(([l, v]) => `${l} $${v.toFixed(2)}`).join(', ') || 'none';
+const topOwner = Object.entries(ledger.byOwner).sort((a, b) => b[1] - a[1])[0];
 const note =
   `Vater cost drift $${driftUsd.toFixed(2)} over ${DAYS}d: Modal billed ` +
-  `$${modalUsd.toFixed(2)} for vater-* apps, project cards book $${bookedUsd.toFixed(2)}. ` +
+  `$${modalUsd.toFixed(2)} for vater-*/jelly-* apps, project cards book $${bookedUsd.toFixed(2)}. ` +
+  `By lane: ${laneSummary}. ` +
+  `Top tenant in ledger: ${topOwner ? `${topOwner[0]} $${topOwner[1].toFixed(2)}` : 'n/a'}. ` +
   `Biggest app: ${biggest ? `${biggest[0]} $${biggest[1].toFixed(2)}` : 'n/a'}. ` +
   `Spend may be missing from a card — book it into costJson.byStage.reconciliation ` +
   `(and totalUsd) if it belongs to a video.`;
@@ -170,6 +253,7 @@ appendFileSync(LEDGER, JSON.stringify({
   driftUsd,
   modalUsd,
   bookedUsd,
+  modalByLane,
   window: `${START}..${END}`,
   note,
 }) + '\n');

@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { canAccessProject } from "@/lib/vater/project-access";
+import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
 import { autopilot, AutopilotError } from "@/lib/vater/autopilot-client";
 
 // Download + ffmpeg + blob upload on the DGX runs well under this, but a
@@ -106,6 +107,8 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   try {
     const { jobId } = await autopilot.makeShort({
+      // Routes this cut's Modal spend to the right invoice lane.
+      ...(await ownerFieldsForSessionWithLane(session, project.userId)),
       projectId: id,
       videoUrl: project.finalVideoUrl,
       maxSeconds,

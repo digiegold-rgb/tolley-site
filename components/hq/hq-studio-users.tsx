@@ -39,6 +39,20 @@ interface StudioUser {
   lastError: { message: string; at: string } | null;
   invited: boolean;
   createdAt: string | null;
+  usage?: UsageRollup;
+}
+
+interface TierSplit {
+  byTier: Record<string, { actions: number; usd: number }>;
+  actions: number;
+  usd: number;
+  animations: number;
+}
+
+interface UsageRollup {
+  ready: boolean;
+  d7: TierSplit;
+  d30: TierSplit;
 }
 
 interface StudioInvite {
@@ -72,6 +86,51 @@ function shortDate(iso: string | null): string {
 
 function money(value: number | null): string {
   return value === null ? "—" : `$${value.toFixed(2)}`;
+}
+
+/**
+ * One tenant's charged consumption, split by GPU tier.
+ *
+ * This column exists because Modal's invoice cannot be split by user — its
+ * billing rows carry no tenant field. If a `public` account's H100 minutes run
+ * away, this is the only place it shows up before the bill arrives.
+ *
+ * `ready: false` renders "—", never "$0.00": no rows means nothing was
+ * recorded, which is not the same claim as nothing was spent.
+ */
+function renderUsage(u: StudioUser): React.ReactNode {
+  const usage = u.usage;
+  if (!usage || !usage.ready) {
+    return <span style={{ color: "var(--hq-muted)" }}>—</span>;
+  }
+  const line = (w: TierSplit) => {
+    if (w.actions === 0) return "none";
+    const tiers = Object.entries(w.byTier)
+      .sort((a, b) => b[1].usd - a[1].usd)
+      .map(([gpu, v]) => `${gpu} ×${v.actions}`)
+      .join(", ");
+    return `$${w.usd.toFixed(2)} · ${tiers}`;
+  };
+  // A tenant whose spend is concentrated in animation is the one worth a look:
+  // it is the expensive action and the only one funded by purchased credit.
+  const hot =
+    usage.d7.animations > 0 &&
+    u.balanceUsd !== null &&
+    usage.d7.usd > u.balanceUsd;
+  return (
+    <div style={{ fontSize: 11, lineHeight: 1.5 }}>
+      <div style={{ fontWeight: 600, color: hot ? "var(--hq-red, #b42318)" : undefined }}>
+        7d {line(usage.d7)}
+        {usage.d7.animations > 0 ? ` · ${usage.d7.animations} anim` : ""}
+      </div>
+      <div style={{ color: "var(--hq-muted)" }}>30d {line(usage.d30)}</div>
+      {hot ? (
+        <div style={{ color: "var(--hq-red, #b42318)" }}>
+          spend exceeds balance — check
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 const CELL: React.CSSProperties = {
@@ -406,6 +465,9 @@ export function HqStudioUsers() {
                 <th style={{ padding: "6px 9px" }}>Tier</th>
                 <th style={{ padding: "6px 9px" }}>Balance</th>
                 <th style={{ padding: "6px 9px" }}>Videos</th>
+                <th style={{ padding: "6px 9px" }} title="Charged usage from VaterUsage, split by GPU tier. Modal's invoice cannot be split by user — this is where per-tenant consumption is visible.">
+                  GPU usage 7d / 30d
+                </th>
                 <th style={{ padding: "6px 9px" }}>Last project</th>
                 <th style={{ padding: "6px 9px" }}>Last error</th>
                 <th style={{ padding: "6px 9px" }}>Actions</th>
@@ -414,7 +476,7 @@ export function HqStudioUsers() {
             <tbody>
               {users.length === 0 && !loading ? (
                 <tr>
-                  <td style={{ ...CELL, color: "var(--hq-muted)" }} colSpan={7}>
+                  <td style={{ ...CELL, color: "var(--hq-muted)" }} colSpan={8}>
                     No studio accounts yet. Mint an invite to get the first tester in.
                   </td>
                 </tr>
@@ -450,6 +512,7 @@ export function HqStudioUsers() {
                     </td>
                     <td style={CELL}>{money(u.balanceUsd)}</td>
                     <td style={CELL}>{u.projectCount}</td>
+                    <td style={CELL}>{renderUsage(u)}</td>
                     <td style={CELL}>
                       <div>{u.lastProjectTitle ?? "—"}</div>
                       <div style={{ color: "var(--hq-muted)", fontSize: 11 }}>

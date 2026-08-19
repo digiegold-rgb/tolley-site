@@ -16,6 +16,7 @@ import { prisma } from "@/lib/prisma";
 import { autopilot, AutopilotError } from "@/lib/vater/autopilot-client";
 import { buildVideoSpec } from "@/lib/vater/video-spec";
 import { canAccessProject } from "@/lib/vater/project-access";
+import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
 import { consumeRateLimit, rateLimited } from "@/lib/rate-limit";
 
@@ -87,6 +88,8 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
 
   try {
     const job = await autopilot.composeVideo({
+      // Routes this compose's Modal spend to the right invoice lane.
+      ...(await ownerFieldsForSessionWithLane(session, project.userId)),
       jobId: project.autopilotJobId,
       projectId: project.id,
       props: spec,

@@ -84,3 +84,30 @@ export function animationOptionLabel(quality: AnimationQuality): string {
   const p = ANIMATION_PRICES[quality];
   return `${p.label} — ${formatPrice(p.priceCents)}/clip (${p.etaLabel})`;
 }
+
+/**
+ * Which compute a quality tier actually runs on — "L40S", "H100", "local", or
+ * the third-party vendor's name.
+ *
+ * `VaterUsage.tier` stores the quality KEY ("modal-wan22-fast"), not a GPU, so
+ * this is what turns a usage row into the answer to "what is this account
+ * burning?". Read off the existing `label` rather than a parallel table: a
+ * second copy of the mapping is a second thing to forget when a tier's GPU
+ * changes, and the label is what the customer was shown when they picked it.
+ */
+export function gpuForQuality(quality: string | null | undefined): string {
+  if (!quality) return "other";
+  const spec = ANIMATION_PRICES[quality as AnimationQuality];
+  if (!spec) return "other";
+  if (/\bH100\b/i.test(spec.label)) return "H100";
+  if (/\bL40S\b/i.test(spec.label)) return "L40S";
+  if (/local/i.test(spec.label)) return "local";
+  if (/^kling/i.test(quality)) return "Kling";
+  if (/^luma/i.test(quality)) return "Luma";
+  if (/veo/i.test(spec.label)) return "Veo";
+  // EasyAnimate and anything else on rented Modal GPUs with no GPU in the
+  // label. Deliberately not guessed into L40S/H100 — a wrong GPU attribution
+  // is worse than an honest "Modal".
+  if (quality.startsWith("modal-")) return "Modal";
+  return "other";
+}

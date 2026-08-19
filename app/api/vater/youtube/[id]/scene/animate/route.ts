@@ -34,6 +34,7 @@ import {
 } from "@/lib/vater/autopilot-client";
 import type { SceneSpec } from "@/lib/vater/video-spec";
 import { canAccessProject } from "@/lib/vater/project-access";
+import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
 import { getAnimationPriceCents } from "@/lib/vater/pricing";
 import { mergeVideoCost } from "@/lib/vater/video-cost";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
@@ -237,6 +238,8 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   try {
     try {
       const { animateJobId } = await autopilot.animateScene({
+        // Routes this clip's Modal spend to the right invoice lane.
+        ...(await ownerFieldsForSessionWithLane(session, project.userId)),
         jobId: project.autopilotJobId,
         sceneIdx,
         animationPrompt,

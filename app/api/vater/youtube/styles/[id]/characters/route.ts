@@ -96,6 +96,8 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         briefDescription: brief,
         customArtStyleDescription: style.customArtStyle?.description ?? null,
         callbackUrl,
+        // See the from-image route: inline jobs are scoped by ownerId.
+        ownerId: session.user.id,
       }),
     });
     if (!r.ok) {

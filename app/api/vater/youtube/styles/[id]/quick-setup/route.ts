@@ -85,6 +85,8 @@ export async function POST(req: NextRequest, ctx: Ctx) {
           name: characterName,
           imageUrl: photoUrl,
           callbackUrl,
+          // See the from-image route: inline jobs are scoped by ownerId.
+          ownerId: session.user.id,
         }),
       });
       if (r.ok) {

@@ -174,7 +174,7 @@ export function DebtTracker({
               <span className="font-bold">
                 {d.creditor} {d.accountLast4}
               </span>{" "}
-              {d.status === "paid" ? "-- PAID IN FULL" : `-- ${d.notes}`}
+              {d.status === "paid" ? "-- PAID IN FULL" : d.status === "dismissed" ? "-- DISMISSED (not counted against you)" : `-- ${d.notes}`}
             </p>
           ))}
         </div>
