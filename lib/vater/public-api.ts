@@ -136,11 +136,22 @@ export async function resolveStyleForUser(
   userId: string,
   email: string | null,
   styleId: unknown,
-): Promise<{ ok: true; styleId: string } | CreateVideoFailure> {
+): Promise<
+  | {
+      ok: true;
+      styleId: string;
+      /** Seed values the row must carry so the render matches the Style
+       *  (createProjectFromStyle does the same; without these the row keeps
+       *  the schema defaults — `stylePreset:"cinematic"` — and a "Pixar 3D"
+       *  project renders cinematic. Found on concierge ticket F5-7HR425.) */
+      seed: { stylePreset: string | null; voiceName: string | null; voiceCloneId: string | null };
+    }
+  | CreateVideoFailure
+> {
   if (typeof styleId === "string" && styleId) {
     const style = await prisma.youTubeStyle.findUnique({
       where: { id: styleId },
-      select: { id: true, userId: true, isSystem: true },
+      select: { id: true, userId: true, isSystem: true, artStylePresetId: true, voice: true, voiceCloneId: true },
     });
     if (!style) {
       return fail(404, "style_not_found", "No style with that id.");
@@ -148,7 +159,11 @@ export async function resolveStyleForUser(
     if (!style.isSystem && style.userId && style.userId !== userId) {
       return fail(403, "forbidden", "That style belongs to another account.");
     }
-    return { ok: true, styleId: style.id };
+    return {
+      ok: true,
+      styleId: style.id,
+      seed: { stylePreset: style.artStylePresetId ?? null, voiceName: style.voice ?? null, voiceCloneId: style.voiceCloneId ?? null },
+    };
   }
   const locked = await resolveLockedStyle(userId);
   if (!locked) {
@@ -174,7 +189,19 @@ export async function resolveStyleForUser(
       );
     }
   }
-  return { ok: true, styleId: locked.id };
+  const lockedRow = await prisma.youTubeStyle.findUnique({
+    where: { id: locked.id },
+    select: { artStylePresetId: true, voice: true, voiceCloneId: true },
+  });
+  return {
+    ok: true,
+    styleId: locked.id,
+    seed: {
+      stylePreset: lockedRow?.artStylePresetId ?? null,
+      voiceName: lockedRow?.voice ?? null,
+      voiceCloneId: lockedRow?.voiceCloneId ?? null,
+    },
+  };
 }
 
 export async function createVideoFromScript(
@@ -249,6 +276,11 @@ export async function createVideoFromScript(
       targetDuration,
       targetWordCount: wordCount,
       styleId,
+      // Seed look + voice from the Style (same as createProjectFromStyle) so the
+      // render matches what the caller picked instead of the schema defaults.
+      ...(resolved.seed.stylePreset ? { stylePreset: resolved.seed.stylePreset } : {}),
+      voiceName: resolved.seed.voiceName,
+      voiceCloneId: resolved.seed.voiceCloneId,
       // The API call IS the approval — there is no human to click the gate.
       scriptApprovedAt: new Date(),
       status: "scripted",

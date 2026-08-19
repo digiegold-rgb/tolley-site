@@ -215,6 +215,12 @@ export async function POST(req: NextRequest) {
         targetDuration: s.targetDuration,
         targetWordCount: s.words,
         styleId,
+        // Seed look + voice from the Style (mirrors createProjectFromStyle) —
+        // otherwise the row keeps `stylePreset:"cinematic"` and a "Pixar 3D"
+        // ticket renders cinematic (seen on F5-7HR425).
+        ...(resolved.seed.stylePreset ? { stylePreset: resolved.seed.stylePreset } : {}),
+        voiceName: resolved.seed.voiceName,
+        voiceCloneId: resolved.seed.voiceCloneId,
         scriptApprovedAt: new Date(),
         status: "scripted",
         progress: 30,
