@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/audit-links.mjs && prisma generate && next build --webpack",
+    "build": "node scripts/audit-links.mjs && prisma generate && tsc --noEmit -p tsconfig.build.json && next build --webpack",
     "audit:links": "node scripts/audit-links.mjs",
     "start": "next start",
     "lint": "eslint",

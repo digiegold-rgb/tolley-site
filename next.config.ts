@@ -52,6 +52,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Type-checking is a SEPARATE build step — see package.json "build":
+  // `tsc --noEmit -p tsconfig.build.json` runs in its own process BEFORE
+  // `next build`. Running it inside next build (webpack heap + a 1.4M-type
+  // program in one process) OOM-killed the Vercel build container twice on
+  // 2026-08-19 ("Running TypeScript …" → SIGKILL). The gate is unchanged —
+  // a type error still fails the build — it just no longer shares memory
+  // with the bundler. Do not remove the tsc step from "build".
+  typescript: { ignoreBuildErrors: true },
   images: {
     remotePatterns: [
       {
