@@ -165,7 +165,6 @@ const sections: TermsSection[] = [
     ),
   },
   {
-  {
     heading: "9. SMS Communications (Account Notifications)",
     content: (
       <>

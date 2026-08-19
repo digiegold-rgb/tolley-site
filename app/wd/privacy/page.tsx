@@ -70,7 +70,6 @@ const sections: PrivacySection[] = [
     ],
   },
   {
-  {
     heading: "8. SMS and mobile numbers",
     items: [
       "If you provide a mobile number and opt in, we use it to send informational account texts (payment reminders, past-due notices, delivery or pickup scheduling, and replies to you).",
