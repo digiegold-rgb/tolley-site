@@ -37,20 +37,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid role/kind" }, { status: 400 });
   }
 
-  const job = await prisma.vaterDirectJob.findUnique({ where: { id: jobId } });
-  if (!job) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  try {
+    const job = await prisma.vaterDirectJob.findUnique({ where: { id: jobId } });
+    if (!job) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const message = await prisma.vaterDirectMessage.create({
+      data: {
+        jobId,
+        role,
+        kind,
+        text: text.slice(0, 50_000),
+        deliveredToRunner: true, // runner-authored — never re-delivered
+      },
+    });
+
+    return NextResponse.json({ message: { id: message.id } });
+  } catch (err) {
+    console.error("[vater/direct/runner/message] query failed", err);
+    return NextResponse.json({ error: "message failed" }, { status: 500 });
   }
-
-  const message = await prisma.vaterDirectMessage.create({
-    data: {
-      jobId,
-      role,
-      kind,
-      text: text.slice(0, 50_000),
-      deliveredToRunner: true, // runner-authored — never re-delivered
-    },
-  });
-
-  return NextResponse.json({ message: { id: message.id } });
 }
