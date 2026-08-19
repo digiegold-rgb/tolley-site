@@ -27,6 +27,7 @@
 import { prisma } from "@/lib/prisma";
 import { hasVaterPaymentUserId } from "@/lib/vater/schema-probe";
 
+import { billableComputeUsd, isBillableStage } from "./billable";
 import { getOpsRate } from "./ops-fee";
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -267,8 +268,11 @@ export async function getVaterBillingSummary(scope: VaterBillingScope): Promise<
   // different populations and the difference surfaced on the customer's bill
   // as a growing "Other" line ($34.70 by 2026-08-13). The snapshot stays the
   // internal cost-of-goods number; it is not what the customer owes.
+  //
+  // 🔴 ElevenLabs is stripped from every card (billable.ts): narration is
+  // billed by the customer's OWN ElevenLabs subscription, never by us.
   const cardUsd = (p: { costJson: unknown }) =>
-    Number((p.costJson as { totalUsd?: number } | null)?.totalUsd ?? 0);
+    billableComputeUsd(p.costJson as Parameters<typeof billableComputeUsd>[0]);
   const computeUsd = r2(finished.reduce((sum, p) => sum + cardUsd(p), 0));
   const opsUsd = r2(minutes * opsRatePerMinute);
   const paidUsd = r2(payments.paidUsd);
@@ -323,6 +327,7 @@ export async function getVaterBillingSummary(scope: VaterBillingScope): Promise<
         | { byStage?: Record<string, { usd?: number }> }
         | null;
       for (const [key, v] of Object.entries(cj?.byStage ?? {})) {
+        if (!isBillableStage(key)) continue;
         const usd = Number(v?.usd ?? 0);
         if (!usd) continue;
         totals.set(key, (totals.get(key) ?? 0) + usd);
@@ -422,6 +427,7 @@ function buildSince(args: {
       (snap.breakdown ?? []).map((row) => [row.key, Number(row.usd) || 0]),
     );
     rows = breakdown
+      .filter((row) => isBillableStage(row.key))
       .map((row) => ({
         ...row,
         usd: r2(Math.max(0, row.usd - (before.get(row.key) ?? 0))),

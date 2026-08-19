@@ -56,7 +56,7 @@ export function Voices(): React.ReactElement {
         const data = (await res.json().catch(() => ({}))) as {
           voices?: ElevenVoice[];
           error?: string;
-          keySource?: 'byo' | 'house' | null;
+          keySource?: 'byo' | 'house' | 'shared' | null;
         };
         if (cancelled) return;
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);

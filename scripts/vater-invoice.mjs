@@ -81,7 +81,10 @@ const lines = projects.map((p) => {
   const durationSeconds = Number(p.audioDuration ?? 0);
   const minutes = Math.max(0, durationSeconds) / 60;
   // Compute is passed through EXACTLY as reconciled — never recalculated here.
-  const computeUsd = r2(Number(p.costJson?.totalUsd ?? 0));
+  // ElevenLabs is a separate charge on the customer's own subscription —
+  // never on the invoice (mirrors lib/vater/billing/billable.ts).
+  const elUsd = Number(p.costJson?.byStage?.elevenlabs?.usd ?? 0) || 0;
+  const computeUsd = r2(Math.max(0, Number(p.costJson?.totalUsd ?? 0) - elUsd));
   const opsUsd = r2(minutes * RATE);
   const totalUsd = r2(computeUsd + opsUsd);
   return {

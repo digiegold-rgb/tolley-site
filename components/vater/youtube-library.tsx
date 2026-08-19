@@ -13,6 +13,7 @@ import {
   buildVideoBilling,
   DEFAULT_OPS_RATE_PER_MIN,
 } from "@/lib/vater/video-cost";
+import { billableComputeUsd } from "@/lib/vater/billing/billable";
 
 interface LibraryProject {
   id: string;
@@ -384,8 +385,9 @@ function LibraryCard({
           <span>{dateStr}</span>
           {cost && (() => {
             // Billed price = compute (at cost) + render operations.
+            // ElevenLabs never bills (customer's own account) — billable.ts.
             const bill = buildVideoBilling(
-              cost.totalUsd ?? 0,
+              billableComputeUsd(cost),
               project.audioDuration,
               opsRatePerMinute ?? DEFAULT_OPS_RATE_PER_MIN,
             );

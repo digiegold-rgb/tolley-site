@@ -27,6 +27,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { checkProjectAccess } from "@/lib/vater/project-access";
 import { stageLabel } from "@/lib/vater/billing/summary";
+import { isBillableStage } from "@/lib/vater/billing/billable";
 import { getOpsRate } from "@/lib/vater/billing/ops-fee";
 import {
   buildDebitLine,
@@ -122,7 +123,9 @@ export async function GET(
   const byStageRaw =
     ((project.costJson as { byStage?: Record<string, { usd?: number }> } | null)
       ?.byStage) ?? {};
+  // ElevenLabs rows are dropped: separate charge on the customer's own account.
   const byStage = Object.entries(byStageRaw)
+    .filter(([key]) => isBillableStage(key))
     .map(([key, v]) => ({ key, label: stageLabel(key), usd: r2(Number(v?.usd ?? 0)) }))
     .filter((row) => row.usd > 0)
     .sort((a, b) => b.usd - a.usd);

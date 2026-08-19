@@ -268,7 +268,29 @@ export type StyleSnapshot = {
   }>;
 };
 
-export type RunCreationInput = {
+/**
+ * Who this job is for. Spread `ownerFieldsForSession(...)` (lib/vater/owner-tier.ts)
+ * into EVERY request that makes the DGX spend money.
+ *
+ * Two things ride on it, neither of which can be recovered afterwards:
+ *   - per-tenant admission control (one active heavy render per owner)
+ *   - the Modal LANE (content-autopilot/vater_lane.py). Modal bills by app and
+ *     its billing rows carry no tenant, so `ownerTier` is the only thing that
+ *     decides whether these GPU-seconds appear on the `jelly-*` (customer) or
+ *     `vater-*` (owner) invoice line. Omit it and a customer's render is billed
+ *     to Trey, silently and unrecoverably.
+ */
+export type OwnerRouting = {
+  ownerId?: string;
+  ownerTier?: "owner" | "beta";
+  /** Which Modal app family the GPU work dispatches to. Resolved from
+   *  unmetered access, NOT from ownerTier — the two disagree for the studio
+   *  accounts. Always obtain it from `ownerFieldsForSessionWithLane` /
+   *  `...WithCap` rather than deriving it here. */
+  ownerLane?: "vater" | "jelly";
+};
+
+export type RunCreationInput = OwnerRouting & {
   projectId: string;
   mode: CreationMode;
   transcript?: string;
@@ -395,19 +417,19 @@ export type FetchSourceInput = {
   sourceUrl: string;
 };
 
-export type TtsInput = {
+export type TtsInput = OwnerRouting & {
   script: string;
   voiceCloneName: string;
 };
 
-export type GenerateScenesInput = {
+export type GenerateScenesInput = OwnerRouting & {
   script: string;
   stylePreset: string;
   sceneCount: number;
 };
 
 /** Regenerate ONE scene image. Sync — caller shows a spinner. */
-export type RegenSceneInput = {
+export type RegenSceneInput = OwnerRouting & {
   jobId: string;
   sceneIdx: number;
   imagePrompt: string;
@@ -468,7 +490,7 @@ export type AnimationQuality =
  * action beats. Honored only by the modal-wan22 / modal-wan22-fast backends. */
 export type MotionIntensity = "subtle" | "normal" | "bold";
 
-export type AnimateSceneInput = {
+export type AnimateSceneInput = OwnerRouting & {
   jobId: string;
   sceneIdx: number;
   /** Free-form motion text, TubeGen-style ("Slowly zoom in on the notebook"). */
@@ -515,7 +537,7 @@ export type AnimateSceneResult = {
 };
 
 /** Re-compose an existing project with an edited VideoSpec. */
-export type ComposeVideoInput = {
+export type ComposeVideoInput = OwnerRouting & {
   /** The existing pipeline job id — final.mp4 is written into its work dir. */
   jobId: string;
   /** Prisma project id, round-tripped so the async worker knows the row. */
@@ -824,7 +846,13 @@ export const autopilot = {
 
   /** Async — cut a vertical 9:16 promo short from a finished long-form.
    *  Poll getJob(); result.shortVideoUrl on done. Pure ffmpeg, no GPU. */
-  makeShort: (input: { projectId: string; videoUrl: string; maxSeconds?: number }) =>
+  makeShort: (
+    input: OwnerRouting & {
+      projectId: string;
+      videoUrl: string;
+      maxSeconds?: number;
+    },
+  ) =>
     call<{ jobId: string }>("POST", "/vater/make-short", input),
 
   /** Async — chaptered course-lesson script generation (financial-literacy
@@ -906,6 +934,8 @@ export const autopilot = {
     /** Per-tenant fairness — see RunCreationInput.ownerTier. */
     ownerId?: string;
     ownerTier?: "owner" | "beta";
+    /** Modal invoice lane — see OwnerRouting.ownerLane. */
+    ownerLane?: "vater" | "jelly";
   }) =>
     call<{ animateAllJobId: string; jobId: string; sceneCount: number }>(
       "POST",
@@ -997,13 +1027,13 @@ export const autopilot = {
   ): Promise<{
     voices: ElevenLabsVoice[];
     error?: string;
-    keySource?: "byo" | "house" | null;
+    keySource?: "byo" | "house" | "shared" | null;
   }> => {
     const qs = ownerId ? `?owner=${encodeURIComponent(ownerId)}` : "";
     const data = await call<{
       voices?: ElevenLabsVoice[];
       error?: string;
-      keySource?: "byo" | "house" | null;
+      keySource?: "byo" | "house" | "shared" | null;
     }>("GET", `/vater/voices/elevenlabs${qs}`);
     return {
       voices: Array.isArray(data?.voices) ? data.voices : [],

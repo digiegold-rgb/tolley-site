@@ -43,6 +43,7 @@ import {
   MEDIAN_COMPUTE_USD_PER_MIN,
   MIN_ESTIMATE_USD,
 } from "./estimate";
+import { billableComputeUsd } from "./billable";
 import { buildVideoBillingLine, getOpsRate } from "./ops-fee";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -580,8 +581,9 @@ export function buildDebitLine(project: DebitProjectShape): {
   line: VideoBillingLineJson;
   chargeUsd: number;
 } {
-  const computeUsd = Number(
-    (project.costJson as { totalUsd?: number } | null)?.totalUsd ?? 0,
+  // ElevenLabs never bills (customer's own subscription) — see billable.ts.
+  const computeUsd = billableComputeUsd(
+    project.costJson as Parameters<typeof billableComputeUsd>[0],
   );
   const bill = buildVideoBillingLine({
     projectId: project.id,
