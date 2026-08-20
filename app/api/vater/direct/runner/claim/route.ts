@@ -29,37 +29,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "jobId required" }, { status: 400 });
   }
 
-  if (body.replyId) {
-    const claimed = await prisma.$transaction(async (tx) => {
-      const reply = await tx.vaterDirectMessage.updateMany({
-        where: { id: body.replyId, jobId, deliveredToRunner: false },
-        data: { deliveredToRunner: true },
+  try {
+    if (body.replyId) {
+      const claimed = await prisma.$transaction(async (tx) => {
+        const reply = await tx.vaterDirectMessage.updateMany({
+          where: { id: body.replyId, jobId, deliveredToRunner: false },
+          data: { deliveredToRunner: true },
+        });
+        if (reply.count === 0) return false;
+        await tx.vaterDirectJob.updateMany({
+          where: { id: jobId, status: "awaiting_reply" },
+          data: { status: "running" },
+        });
+        return true;
       });
-      if (reply.count === 0) return false;
-      await tx.vaterDirectJob.updateMany({
-        where: { id: jobId, status: "awaiting_reply" },
-        data: { status: "running" },
-      });
-      return true;
+      if (!claimed) {
+        return NextResponse.json({ error: "Already claimed" }, { status: 409 });
+      }
+      return NextResponse.json({ ok: true });
+    }
+
+    const res = await prisma.vaterDirectJob.updateMany({
+      where: { id: jobId, status: "queued" },
+      data: { status: "running" },
     });
-    if (!claimed) {
+    if (res.count === 0) {
       return NextResponse.json({ error: "Already claimed" }, { status: 409 });
     }
+    // The brief travels inside the claimed job payload — mark it delivered so
+    // a later awaiting_reply poll never re-serves it as if it were the answer.
+    await prisma.vaterDirectMessage.updateMany({
+      where: { jobId, role: "trey", deliveredToRunner: false },
+      data: { deliveredToRunner: true },
+    });
     return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[vater/direct/runner/claim] query failed", err);
+    return NextResponse.json({ error: "claim failed" }, { status: 500 });
   }
-
-  const res = await prisma.vaterDirectJob.updateMany({
-    where: { id: jobId, status: "queued" },
-    data: { status: "running" },
-  });
-  if (res.count === 0) {
-    return NextResponse.json({ error: "Already claimed" }, { status: 409 });
-  }
-  // The brief travels inside the claimed job payload — mark it delivered so
-  // a later awaiting_reply poll never re-serves it as if it were the answer.
-  await prisma.vaterDirectMessage.updateMany({
-    where: { jobId, role: "trey", deliveredToRunner: false },
-    data: { deliveredToRunner: true },
-  });
-  return NextResponse.json({ ok: true });
 }

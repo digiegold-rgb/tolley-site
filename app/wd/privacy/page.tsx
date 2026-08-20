@@ -70,7 +70,16 @@ const sections: PrivacySection[] = [
     ],
   },
   {
-    heading: "8. Governing Law",
+    heading: "8. SMS and mobile numbers",
+    items: [
+      "If you provide a mobile number and opt in, we use it to send informational account texts (payment reminders, past-due notices, delivery or pickup scheduling, and replies to you).",
+      "We do not sell, rent, or share mobile numbers with third parties or affiliates for marketing or promotional purposes.",
+      "Message frequency varies (typically up to 8 messages per month while past due). Message and data rates may apply.",
+      "Reply STOP to cancel. Reply HELP for help. See https://tolley.io/wd/terms",
+    ],
+  },
+  {
+    heading: "9. Governing Law",
     items: [
       "This privacy policy is governed by the laws of the State of Missouri.",
     ],
@@ -122,7 +131,7 @@ export default function WdPrivacyPage() {
 
         <section className="mt-8 space-y-3 border-t border-blue-100 pt-5">
           <h2 className="text-lg font-bold text-blue-900 sm:text-xl">
-            9. Related Documents
+            10. Related Documents
           </h2>
           <p className="text-sm leading-6 text-slate-700">
             See our{" "}
@@ -138,7 +147,7 @@ export default function WdPrivacyPage() {
 
         <section className="mt-7 space-y-3 border-t border-blue-100 pt-5">
           <h2 className="text-lg font-bold text-blue-900 sm:text-xl">
-            10. Contact Us
+            11. Contact Us
           </h2>
           <p className="text-sm leading-6 text-slate-700">
             {WD_BRAND} (DBA {WD_COMPANY})
@@ -162,7 +171,7 @@ export default function WdPrivacyPage() {
         </section>
 
         <div className="mt-7 rounded-xl border border-blue-100 bg-blue-50/50 p-4 text-center text-xs text-slate-500">
-          Last updated: March 2026
+          Last updated: August 2026
         </div>
       </section>
     </main>

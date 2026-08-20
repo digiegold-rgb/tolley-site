@@ -19,7 +19,7 @@ export const ES_STEPS = [
   {
     num: "2",
     title: "We stage, price & advertise",
-    desc: "We research real sold prices (not guesses), stage the home, photograph everything, and push the sale to every platform estate shoppers actually use — plus our own audience of thousands of KC buyers.",
+    desc: "We research real sold prices (not guesses), stage the home, photograph everything, and push the sale to Facebook, Craigslist, Nextdoor, and our early list — plus our own audience of thousands of KC buyers.",
   },
   {
     num: "3",
@@ -51,7 +51,7 @@ export const ES_DIFFS = [
   },
   {
     title: "Real marketing, not a lawn sign",
-    desc: "Professional photos, short-form video walkthroughs, email address-drops to our buyer list, and listings on every major estate sale platform. Most companies post once and pray.",
+    desc: "Professional photos, short-form video walkthroughs, email address-drops to our buyer list, and listings on Facebook, Craigslist, and Nextdoor. Most companies post once and pray.",
   },
   {
     title: "Nothing goes to waste",
@@ -60,7 +60,6 @@ export const ES_DIFFS = [
 ] as const;
 
 export const ES_ADVERTISED_ON = [
-  { name: "EstateSales.NET", note: "the #1 estate sale site in the country — every sale gets a full listing" },
   { name: "Our buyer network", note: "thousands of KC buyers who already shop with us weekly" },
   { name: "Facebook", note: "Marketplace, Events, and every KC estate & garage sale group" },
   { name: "gsalr network", note: "one listing syndicates to YardSaleSearch, GarageSaleFinder + more" },
@@ -81,7 +80,7 @@ export const ES_INCLUDED = [
   { label: "Staging & setup", note: "We unpack, sort, and set the whole home" },
   { label: "Real pricing research", note: "Priced against actual sold comps, not guesses" },
   { label: "Professional photography", note: "Every room, every notable item" },
-  { label: "All advertising", note: "EstateSales.NET, Facebook, Craigslist, Nextdoor, signs, our buyer list" },
+  { label: "All advertising", note: "Facebook, Craigslist, Nextdoor, signs, our buyer list" },
   { label: "Staffing the sale", note: "We run the doors, the floor, and checkout" },
   { label: "Card & tap payments", note: "Processing fees are ours, not yours" },
   { label: "Donation hauling", note: "Hauled and delivered, receipts back to you for taxes" },
