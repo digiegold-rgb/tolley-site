@@ -43,7 +43,10 @@ type SimpleStatus =
   | 'Failed'
   | 'Cancelled'
   | 'Archived'
-  | 'InProgress';
+  | 'InProgress'
+  | 'Fable 5 — in queue'
+  | 'Fable 5 — directing'
+  | 'Fable 5 — needs you';
 
 function mapStatus(p: AnyProject): SimpleStatus {
   if (p?.archivedAt) return 'Archived';
@@ -51,6 +54,14 @@ function mapStatus(p: AnyProject): SimpleStatus {
   if (s === 'ready') return 'Completed';
   if (s === 'failed') return 'Failed';
   if (s === 'cancelled') return 'Cancelled';
+  // Concierge tickets used to fall through to "InProgress", which read as
+  // "something is rendering" when the ticket was only waiting in the queue.
+  if (s === 'concierge_queued') return 'Fable 5 — in queue';
+  if (s === 'concierge_in_progress') return 'Fable 5 — directing';
+  if (s === 'concierge_needs_info') return 'Fable 5 — needs you';
+  // A saved script with nothing running is a draft waiting on the user,
+  // not work in progress.
+  if (s === 'scripted' || s === 'awaiting_script_approval') return 'Queued';
   if (s === 'draft' || s === 'transcribed' || s === 'awaiting_context') return 'Queued';
   if (
     s === 'fetching' ||
@@ -91,7 +102,12 @@ function statusColor(s: SimpleStatus): string {
      * violet: it is waiting, not running. */
     case 'Running':
     case 'InProgress':
+    case 'Fable 5 — directing':
       return JELLY_TOKENS.cyan;
+    case 'Fable 5 — needs you':
+      return JELLY_TOKENS.warning;
+    case 'Fable 5 — in queue':
+      return JELLY_TOKENS.brand;
     case 'Queued':
     default:
       return JELLY_TOKENS.brand;

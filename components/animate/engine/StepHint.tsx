@@ -9,6 +9,7 @@
  */
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { JELLY_TOKENS } from '../tokens';
 import { useTheme } from '../theme-context';
 
@@ -23,6 +24,12 @@ export interface StepHintProps {
   width?: number;
   /** Preferred side. Falls back automatically near the viewport edge. */
   side?: 'top' | 'bottom';
+  /**
+   * Hover-only mode for wrapping a label that is itself clickable (a stepper
+   * pill, a chip). Renders a <span> instead of a <button>, never pins, and
+   * lets clicks bubble to the real control underneath.
+   */
+  clickThrough?: boolean;
   style?: React.CSSProperties;
 }
 
@@ -32,6 +39,7 @@ export function StepHint({
   children,
   width = 260,
   side = 'top',
+  clickThrough = false,
   style,
 }: StepHintProps): React.ReactElement {
   const { t } = useTheme();
@@ -39,7 +47,7 @@ export function StepHint({
   const [open, setOpen] = React.useState(false);
   const [pinned, setPinned] = React.useState(false);
   const [pos, setPos] = React.useState<{ left: number; top: number; place: 'top' | 'bottom' } | null>(null);
-  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const triggerRef = React.useRef<HTMLElement | null>(null);
 
   const show = open || pinned;
 
@@ -56,7 +64,10 @@ export function StepHint({
   }, [side, width]);
 
   React.useEffect(() => {
-    if (!show) return;
+    if (!show) {
+      setPos(null); // a stale pos from the last open would flash at the old spot
+      return;
+    }
     place();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -83,10 +94,31 @@ export function StepHint({
     };
   }, [show, place]);
 
+  const setTrigger = (el: HTMLElement | null) => {
+    triggerRef.current = el;
+  };
+
   return (
     <>
+      {clickThrough ? (
+        <span
+          ref={setTrigger}
+          aria-describedby={show ? id : undefined}
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            color: 'inherit',
+            font: 'inherit',
+            ...style,
+          }}
+        >
+          {children}
+        </span>
+      ) : (
       <button
-        ref={triggerRef}
+        ref={setTrigger}
         type="button"
         aria-label={label}
         aria-describedby={show ? id : undefined}
@@ -136,7 +168,11 @@ export function StepHint({
           </span>
         )}
       </button>
-      {show && pos && (
+      )}
+      {/* Portal to body: several mount points sit inside glass() panels whose
+          backdrop-filter creates a containing block for fixed descendants,
+          which re-based these viewport coords and pushed bubbles off-screen. */}
+      {show && pos && typeof document !== 'undefined' && createPortal(
         <div
           role="tooltip"
           id={id}
@@ -163,7 +199,8 @@ export function StepHint({
           }}
         >
           {text}
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

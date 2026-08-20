@@ -87,8 +87,9 @@ export function HowItWorksStrip({ active = null, style }: HowItWorksStripProps):
                 whiteSpace: 'nowrap',
               }}
             >
-              {b.label}
-              <StepHint text={b.hint} label={`About ${b.label}`} />
+              <StepHint text={b.hint} label={`About ${b.label}`} clickThrough>
+                {b.label}
+              </StepHint>
             </span>
           </React.Fragment>
         );

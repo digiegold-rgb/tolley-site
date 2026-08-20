@@ -52,10 +52,11 @@ import {
 import { TINT_BG } from '../tint';
 import { reelLabel } from './reel-label';
 import { EnginePicker, type ConciergeEngine } from '../../engine/EnginePicker';
+import { RenderConfirmModal, type RenderManifest } from '../../engine/RenderConfirmModal';
 import { useRenderEstimate } from './use-render-estimate';
 import { quickEstimateUsd } from '@/lib/vater/billing/estimate';
 
-export function ScriptStep({ projectId, project, refresh }: EditorStepProps): React.ReactElement {
+export function ScriptStep({ projectId, project, refresh, goToStep }: EditorStepProps): React.ReactElement {
   const { t } = useTheme();
   const { tier } = useTier();
   const creatorModelsAvailable = creatorModelsForTier(tier).length > 0;
@@ -91,6 +92,12 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
   // before; Fable 5 Concierge → POST .../concierge (human-directed ticket).
   const [engine, setEngine] = React.useState<ConciergeEngine>('auto');
   const projectEstimate = useRenderEstimate(projectId);
+  // Confirm-before-Fable-5 (2026-08-20): "Send to Fable 5" opens the manifest
+  // modal; the ticket POST only fires from the modal's confirm button.
+  const [f5Confirm, setF5Confirm] = React.useState(false);
+  const [f5Manifest, setF5Manifest] = React.useState<RenderManifest | null>(null);
+  const [f5ManifestLoading, setF5ManifestLoading] = React.useState(false);
+  const [f5ManifestError, setF5ManifestError] = React.useState<string | null>(null);
   const pastedWordCount = React.useMemo(
     () => pastedScript.trim().split(/\s+/).filter(Boolean).length,
     [pastedScript],
@@ -371,30 +378,30 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
       return;
     }
 
-    // ── Fable 5 Concierge: one POST, the server validates style/voice/cap/
-    // credits and queues the ticket. No DGX kickoff from the browser. ──────
+    // ── Fable 5 Concierge: open the confirm modal first. The ticket POST
+    // only fires from the modal — clicking "Send" alone must never queue a
+    // ticket the customer didn't read the terms of (2026-08-20). ───────────
     if (engine === 'fable5') {
-      setSubmittingOwn(true);
-      setOwnError(null);
+      setF5Confirm(true);
+      setF5ManifestLoading(true);
+      setF5ManifestError(null);
       try {
-        const res = await fetch(`/api/vater/youtube/${projectId}/concierge`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ script: trimmed }),
+        const res = await fetch(`/api/vater/youtube/${projectId}/preflight`);
+        if (!res.ok) throw new Error(`Could not check the project setup (${res.status})`);
+        const m = (await res.json()) as RenderManifest;
+        // The pasted script hasn't been saved yet — quote ITS length, not the
+        // stale project script's.
+        const words = trimmed.split(/\s+/).filter(Boolean).length;
+        setF5Manifest({
+          ...m,
+          words,
+          estMinutes: Math.max(1, Math.ceil(words / 150)),
+          blockers: m.blockers.filter((b) => b.code !== 'no_script' || words < 20),
         });
-        await assertOk(res);
-        setPastedScript('');
-        setUseOwnScript(false);
-        setToast('Sent to Fable 5 — you’ll get an email when it lands.');
-        await refresh();
       } catch (err) {
-        if (err instanceof BillingBlockedError) {
-          setBillingBlock(err.reason);
-        } else {
-          setOwnError(err instanceof Error ? err.message : 'Submit failed');
-        }
+        setF5ManifestError(err instanceof Error ? err.message : 'Could not check the project setup');
       } finally {
-        setSubmittingOwn(false);
+        setF5ManifestLoading(false);
       }
       return;
     }
@@ -427,6 +434,36 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
       setSubmittingOwn(false);
     }
   }, [projectId, pastedScript, refresh, engine]);
+
+  /* The actual Fable 5 ticket POST — reachable only via the confirm modal. */
+  const submitFable5 = React.useCallback(async () => {
+    if (!projectId) return;
+    const trimmed = pastedScript.trim();
+    setSubmittingOwn(true);
+    setOwnError(null);
+    try {
+      const res = await fetch(`/api/vater/youtube/${projectId}/concierge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script: trimmed }),
+      });
+      await assertOk(res);
+      setF5Confirm(false);
+      setPastedScript('');
+      setUseOwnScript(false);
+      setToast('Sent to Fable 5 — you’ll get an email when it lands.');
+      await refresh();
+    } catch (err) {
+      setF5Confirm(false);
+      if (err instanceof BillingBlockedError) {
+        setBillingBlock(err.reason);
+      } else {
+        setOwnError(err instanceof Error ? err.message : 'Submit failed');
+      }
+    } finally {
+      setSubmittingOwn(false);
+    }
+  }, [projectId, pastedScript, refresh]);
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
@@ -1085,6 +1122,17 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
           </div>
         </VCard>
       )}
+      <RenderConfirmModal
+        engine={f5Confirm ? 'fable5' : null}
+        manifest={f5Manifest}
+        loading={f5ManifestLoading}
+        loadError={f5ManifestError}
+        estimateUsd={pastedWordCount > 0 ? quickEstimateUsd(pastedWordCount) : null}
+        confirming={submittingOwn}
+        onConfirm={() => void submitFable5()}
+        onClose={() => setF5Confirm(false)}
+        onGoToStep={goToStep}
+      />
       <BillingBlockModal
         reason={billingBlock}
         onClose={() => setBillingBlock(null)}

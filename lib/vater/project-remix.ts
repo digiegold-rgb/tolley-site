@@ -12,16 +12,20 @@
  * video that was already made. The result is a fresh draft parked at the
  * Script step, which is where the user is sent.
  *
- * Two feature keys are dropped on purpose:
+ * Four feature keys are dropped on purpose:
  *   narrationUrl — a BYO narration file matches the OLD script's words.
  *   publishAt    — a schedule belongs to the video it was set on.
+ *   engine       — Fable 5 vs Jelly Auto is a per-submission decision.
+ *   concierge    — the F5-XXXXXX ticket belongs to the project it was opened
+ *                  on; copying it made remixes show a stale "Fable 5 — in
+ *                  queue" card and blocked the Generate bar (found 2026-08-20).
  */
 import "server-only";
 import type { Prisma, YouTubeProject } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 /** Feature keys that must not survive into a remix. */
-const NON_TRANSFERABLE_FEATURES = ["narrationUrl", "publishAt"] as const;
+const NON_TRANSFERABLE_FEATURES = ["narrationUrl", "publishAt", "engine", "concierge"] as const;
 
 export type CreateProjectResult =
   | { ok: true; project: YouTubeProject }

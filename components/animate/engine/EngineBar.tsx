@@ -28,6 +28,7 @@ import {
 } from '../screens/editor/BillingBlock';
 import { useRenderEstimate } from '../screens/editor/use-render-estimate';
 import { EnginePicker, type ConciergeEngine } from './EnginePicker';
+import { RenderConfirmModal, type RenderManifest } from './RenderConfirmModal';
 
 export interface EngineBarProps {
   projectId: string;
@@ -37,9 +38,11 @@ export interface EngineBarProps {
    *  silently rewrite it. */
   script?: string | null;
   refresh: () => Promise<void>;
+  /** Jump to an editor step so a confirm-modal blocker can be fixed. */
+  goToStep?: (step: number) => void;
 }
 
-export function EngineBar({ projectId, words, script, refresh }: EngineBarProps): React.ReactElement {
+export function EngineBar({ projectId, words, script, refresh, goToStep }: EngineBarProps): React.ReactElement {
   const { t } = useTheme();
   const [engine, setEngine] = React.useState<ConciergeEngine>('auto');
   const [sending, setSending] = React.useState(false);
@@ -47,6 +50,28 @@ export function EngineBar({ projectId, words, script, refresh }: EngineBarProps)
   const [billingBlock, setBillingBlock] = React.useState<BillingBlockReason | null>(null);
   const [billingCtx, setBillingCtx] = React.useState<BillingBlockContext | undefined>(undefined);
   const estimate = useRenderEstimate(projectId);
+
+  /* Confirm-before-money (2026-08-20): both buttons open the manifest modal;
+   * the POST only fires from the modal's confirm. */
+  const [confirmEngine, setConfirmEngine] = React.useState<ConciergeEngine | null>(null);
+  const [manifest, setManifest] = React.useState<RenderManifest | null>(null);
+  const [manifestLoading, setManifestLoading] = React.useState(false);
+  const [manifestError, setManifestError] = React.useState<string | null>(null);
+
+  const openConfirm = async (which: ConciergeEngine) => {
+    setConfirmEngine(which);
+    setManifestLoading(true);
+    setManifestError(null);
+    try {
+      const res = await fetch(`/api/vater/youtube/${projectId}/preflight`);
+      if (!res.ok) throw new Error(`Could not check the project setup (${res.status})`);
+      setManifest((await res.json()) as RenderManifest);
+    } catch (err) {
+      setManifestError(err instanceof Error ? err.message : 'Could not check the project setup');
+    } finally {
+      setManifestLoading(false);
+    }
+  };
 
   const send = async () => {
     if (sending) return;
@@ -59,8 +84,10 @@ export function EngineBar({ projectId, words, script, refresh }: EngineBarProps)
         body: JSON.stringify({}),
       });
       await assertOk(res);
+      setConfirmEngine(null);
       await refresh();
     } catch (err) {
+      setConfirmEngine(null);
       if (err instanceof BillingBlockedError) {
         setBillingBlock(err.reason);
         setBillingCtx(err.context);
@@ -88,8 +115,10 @@ export function EngineBar({ projectId, words, script, refresh }: EngineBarProps)
         }),
       });
       await assertOk(res);
+      setConfirmEngine(null);
       await refresh();
     } catch (err) {
+      setConfirmEngine(null);
       if (err instanceof BillingBlockedError) {
         setBillingBlock(err.reason);
         setBillingCtx(err.context);
@@ -146,18 +175,18 @@ export function EngineBar({ projectId, words, script, refresh }: EngineBarProps)
             variant="primary"
             size="sm"
             icon="sparkle"
-            onClick={() => void send()}
+            onClick={() => void openConfirm('fable5')}
             disabled={sending}
             data-testid="engine-bar-send"
           >
-            {sending ? 'Sending…' : 'Send to Fable 5'}
+            {sending ? 'Sending…' : 'Review & send to Fable 5'}
           </VBtn>
         ) : (
           <VBtn
             variant="primary"
             size="sm"
             icon="play"
-            onClick={() => void generate()}
+            onClick={() => void openConfirm('auto')}
             disabled={sending}
             data-testid="engine-bar-generate"
           >
@@ -184,6 +213,17 @@ export function EngineBar({ projectId, words, script, refresh }: EngineBarProps)
           {error}
         </div>
       )}
+      <RenderConfirmModal
+        engine={confirmEngine}
+        manifest={manifest}
+        loading={manifestLoading}
+        loadError={manifestError}
+        estimateUsd={estimate.draftUsd}
+        confirming={sending}
+        onConfirm={() => void (confirmEngine === 'fable5' ? send() : generate())}
+        onClose={() => setConfirmEngine(null)}
+        onGoToStep={goToStep}
+      />
       <BillingBlockModal
         reason={billingBlock}
         context={billingCtx}

@@ -30,6 +30,7 @@ import { getStylePreset } from '@/lib/vater/style-presets';
 import { ON_GRADIENT_PLATE } from '../tint';
 import { VBtn } from '../../primitives';
 import { EnginePicker, type ConciergeEngine } from '../../engine/EnginePicker';
+import { RenderConfirmModal, type RenderManifest } from '../../engine/RenderConfirmModal';
 import { quickEstimateUsd } from '@/lib/vater/billing/estimate';
 import {
   BillingBlockModal,
@@ -104,6 +105,15 @@ export function StylePickerModal({
   const [billingCtx, setBillingCtx] = React.useState<BillingBlockContext | undefined>(undefined);
   // After a Fable 5 batch lands: the tickets, shown in place of the picker.
   const [queued, setQueued] = React.useState<BatchTicket[] | null>(null);
+  // Confirm-before-ticket (2026-08-20): clicking a style card with Fable 5
+  // selected used to submit the batch on the spot — a customer who pasted a
+  // script and clicked a card had opened a ticket without ever reading what
+  // it would use. Now the click opens this manifest modal; the POST only
+  // fires from its confirm button.
+  const [f5Pending, setF5Pending] = React.useState<{
+    styleId: string;
+    manifest: RenderManifest;
+  } | null>(null);
   const scriptWordCounts = React.useMemo(() => scripts.map(countWords), [scripts]);
   const totalWords = React.useMemo(
     () => scriptWordCounts.reduce((a, b) => a + b, 0),
@@ -187,45 +197,62 @@ export function StylePickerModal({
         );
         return;
       }
-      // ── Fable 5 Concierge: one POST for the whole batch. The server
-      // validates every script, authorises the style, pre-checks the
-      // cumulative credit and queues N tickets. Nothing is rendered here. ──
+      // ── Fable 5 Concierge: the style click opens the confirm modal — the
+      // batch POST fires ONLY from the modal's confirm button. Clicking a
+      // card must never open a ticket by itself (2026-08-20 F5-PXQWJC). ────
       if (engine === 'fable5') {
-        setSubmittingOwn(true);
-        setOwnScriptError(null);
-        setCreatingFromId(styleId);
-        try {
-          const res = await fetch('/api/vater/concierge/submit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              styleId,
-              scripts: trimmedAll.map((script) => ({ script })),
-            }),
+        const style = styles.find((s) => s.id === styleId) ?? null;
+        const chars = style?.characters ?? [];
+        const charCount = style?._count?.characters ?? chars.length;
+        const preset = style?.artStylePresetId ? getStylePreset(style.artStylePresetId) : null;
+        const blockers: RenderManifest['blockers'] = [];
+        if (!style?.voice) {
+          blockers.push({
+            code: 'no_voice',
+            message:
+              'This style has no voice set — open the style and pick one before sending to Fable 5.',
+            step: null,
+            engines: ['fable5'],
           });
-          await assertOk(res);
-          const data = (await res.json()) as { tickets?: BatchTicket[] };
-          const tickets = Array.isArray(data.tickets) ? data.tickets : [];
-          if (tickets.length === 0) throw new Error('No ticket returned');
-          if (tickets.length === 1) {
-            // Single script → straight into the editor; the ticket card is
-            // the confirmation.
-            onProjectCreated(tickets[0].projectId);
-          } else {
-            setQueued(tickets);
-          }
-        } catch (err) {
-          devError('[StylePickerModal] concierge batch submit failed:', err);
-          if (err instanceof BillingBlockedError) {
-            setBillingBlock(err.reason);
-            setBillingCtx(err.context);
-          } else {
-            setOwnScriptError(err instanceof Error ? err.message : 'Could not send to Fable 5');
-          }
-        } finally {
-          setSubmittingOwn(false);
-          setCreatingFromId(null);
         }
+        if (charCount === 0) {
+          blockers.push({
+            code: 'no_character',
+            message:
+              'This style has no character built yet. Fable 5 directs around YOUR character — build one in the style first so every video stays the same person.',
+            step: null,
+            engines: ['fable5'],
+          });
+        }
+        setOwnScriptError(null);
+        setF5Pending({
+          styleId,
+          manifest: {
+            words: totalWords,
+            estMinutes: Math.max(1, Math.ceil(totalWords / WORDS_PER_MINUTE)),
+            style: style ? { id: style.id, name: style.name } : null,
+            voice: style?.voice
+              ? { name: style.voice, backend: null, source: 'style' }
+              : null,
+            character: chars[0]
+              ? {
+                  id: chars[0].id,
+                  name: chars[0].name,
+                  imageUrl: chars[0].imageUrl,
+                  others: Math.max(0, charCount - 1),
+                }
+              : null,
+            artStyle: {
+              kind: 'preset',
+              id: style?.artStylePresetId ?? 'cinematic',
+              name: preset?.name ?? 'Cinematic',
+              defaulted: !style?.artStylePresetId,
+            },
+            soundtrack: { backgroundMusicId: null, musicVolume: null, sfxEnabled: false },
+            animUntilS: null,
+            blockers,
+          },
+        });
         return;
       }
 
@@ -308,6 +335,50 @@ export function StylePickerModal({
       const msg = err instanceof Error ? err.message : 'Failed to create project';
       setCreateError(`Could not create project: ${msg}`);
     } finally {
+      setCreatingFromId(null);
+    }
+  };
+
+  /* The Fable 5 batch POST — reachable only via the confirm modal. The
+   * server still validates every script, authorises the style, pre-checks
+   * the cumulative credit and queues N tickets. Nothing is rendered here. */
+  const submitF5Batch = async (styleId: string) => {
+    const trimmedAll = scripts.map((x) => x.trim()).filter(Boolean);
+    setSubmittingOwn(true);
+    setOwnScriptError(null);
+    setCreatingFromId(styleId);
+    try {
+      const res = await fetch('/api/vater/concierge/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          styleId,
+          scripts: trimmedAll.map((script) => ({ script })),
+        }),
+      });
+      await assertOk(res);
+      const data = (await res.json()) as { tickets?: BatchTicket[] };
+      const tickets = Array.isArray(data.tickets) ? data.tickets : [];
+      if (tickets.length === 0) throw new Error('No ticket returned');
+      setF5Pending(null);
+      if (tickets.length === 1) {
+        // Single script → straight into the editor; the ticket card is
+        // the confirmation.
+        onProjectCreated(tickets[0].projectId);
+      } else {
+        setQueued(tickets);
+      }
+    } catch (err) {
+      devError('[StylePickerModal] concierge batch submit failed:', err);
+      setF5Pending(null);
+      if (err instanceof BillingBlockedError) {
+        setBillingBlock(err.reason);
+        setBillingCtx(err.context);
+      } else {
+        setOwnScriptError(err instanceof Error ? err.message : 'Could not send to Fable 5');
+      }
+    } finally {
+      setSubmittingOwn(false);
       setCreatingFromId(null);
     }
   };
@@ -1044,6 +1115,19 @@ export function StylePickerModal({
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
         onCreated={handleWizardCreated}
+      />
+      <RenderConfirmModal
+        engine={f5Pending ? 'fable5' : null}
+        manifest={f5Pending?.manifest ?? null}
+        estimateUsd={scriptWordCounts.reduce(
+          (sum, w) => sum + (w > 0 ? quickEstimateUsd(w) : 0),
+          0,
+        )}
+        confirming={submittingOwn}
+        onConfirm={() => {
+          if (f5Pending) void submitF5Batch(f5Pending.styleId);
+        }}
+        onClose={() => setF5Pending(null)}
       />
       <BillingBlockModal
         reason={billingBlock}

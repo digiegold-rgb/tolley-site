@@ -110,6 +110,8 @@ export interface EditorStepProps {
   projectId: string | null;
   project: EditorProject | null;
   refresh: () => Promise<void>;
+  /** Jump to another editor step (confirm-modal "Fix it" buttons). */
+  goToStep?: (step: number) => void;
 }
 
 export type StepState = 'pending' | 'in-progress' | 'done';
@@ -342,8 +344,13 @@ export function ProjectShell({
    * makes seven step components safe to render for a stranger without any of
    * them knowing the demo exists. */
   const stepProps: EditorStepProps = React.useMemo(
-    () => ({ projectId: isDemo ? null : (projectId ?? null), project, refresh }),
-    [isDemo, projectId, project, refresh],
+    () => ({
+      projectId: isDemo ? null : (projectId ?? null),
+      project,
+      refresh,
+      goToStep: setEditorStep,
+    }),
+    [isDemo, projectId, project, refresh, setEditorStep],
   );
 
   /* Description-step "done" tracking. Description text is generated on-demand
@@ -495,9 +502,10 @@ export function ProjectShell({
           marginBottom: 24,
         }}
       >
-        Steps unlock in order — each lights up when the green checks before it
-        are done. Nothing renders (or costs anything) until you press Generate
-        Video or send the script to Fable 5.
+        Hover any step name for what it does. Steps unlock in order — each
+        lights up when the green checks before it are done. Nothing renders (or
+        costs anything) until you press Generate Video or send the script to
+        Fable 5.
       </div>
 
       {/* Load-error banner */}
@@ -534,6 +542,7 @@ export function ProjectShell({
           words={scriptWords}
           script={project?.script}
           refresh={refresh}
+          goToStep={setEditorStep}
         />
       )}
       {inFlight && projectId && (

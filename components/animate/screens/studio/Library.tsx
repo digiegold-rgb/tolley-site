@@ -221,10 +221,117 @@ export function Library(): React.ReactElement {
               onRecomposeStart={handleRecomposeStart}
             />
           </div>
+          <ThumbnailShelf projects={ready} />
           <SendToScheduler projects={ready} />
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Thumbnail shelf (2026-08-20) — every generated thumbnail in one place, so
+ * a YouTube upload never means hunting through projects for the artwork.
+ * Only projects that actually have a thumbnail appear.
+ */
+function ThumbnailShelf({ projects }: { projects: AnyProject[] }): React.ReactElement | null {
+  const { t } = useTheme();
+  const [copied, setCopied] = React.useState<string | null>(null);
+  const withThumbs = projects.filter((p) => !!p?.thumbnailUrl);
+
+  const copyLink = React.useCallback(async (id: string) => {
+    const url = `${window.location.origin}/api/vater/youtube/${id}/thumbnail`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(id);
+      window.setTimeout(() => setCopied((c) => (c === id ? null : c)), 2000);
+    } catch {
+      window.prompt('Copy this thumbnail link:', url);
+    }
+  }, []);
+
+  if (withThumbs.length === 0) {
+    return (
+      <GlassCard style={{ marginTop: 24 }} padding={16}>
+        <MicroLabel tone="violet" size={10.5} tracking="0.22em" style={{ marginBottom: 6 }}>
+          Thumbnails
+        </MicroLabel>
+        <div style={{ fontSize: 13, color: t.textSecondary, lineHeight: 1.6 }}>
+          No thumbnails yet — generate one in a project&apos;s Thumbnail step and it
+          shows up here, ready for your YouTube upload.
+        </div>
+      </GlassCard>
+    );
+  }
+
+  return (
+    <GlassCard style={{ marginTop: 24 }} padding={16}>
+      <MicroLabel tone="violet" size={10.5} tracking="0.22em" style={{ marginBottom: 6 }}>
+        Thumbnails
+      </MicroLabel>
+      <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
+        Every generated thumbnail, ready for YouTube
+      </div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+          gap: 12,
+          marginTop: 12,
+        }}
+      >
+        {withThumbs.map((p) => (
+          <div
+            key={p.id}
+            style={{
+              border: `1px solid ${t.border}`,
+              borderRadius: JELLY_TOKENS.radius.md,
+              overflow: 'hidden',
+              background: t.cardAlt,
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/api/vater/youtube/${p.id}/thumbnail`}
+              alt={p.publishTitle || p.sourceTitle || 'thumbnail'}
+              loading="lazy"
+              style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', display: 'block' }}
+            />
+            <div style={{ padding: 8 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: t.text,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  marginBottom: 6,
+                }}
+              >
+                {p.publishTitle || p.sourceTitle || p.topic || p.id}
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <a
+                  href={`/api/vater/youtube/${p.id}/thumbnail`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ ...linkBtn(t.border, t.textSecondary), textDecoration: 'none' }}
+                >
+                  Download
+                </a>
+                <button
+                  type="button"
+                  onClick={() => void copyLink(p.id)}
+                  style={linkBtn(t.border, t.textSecondary)}
+                >
+                  {copied === p.id ? 'Copied ✓' : 'Copy link'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </GlassCard>
   );
 }
 

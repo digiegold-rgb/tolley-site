@@ -304,10 +304,13 @@ export function PillStepper({
             gap: 6,
           }}
         >
-          {s}
           {hints?.[i] ? (
-            <StepHint text={hints[i]} label={`About the ${String(s)} step`} />
-          ) : null}
+            <StepHint text={hints[i]} label={`About the ${String(s)} step`} clickThrough>
+              {s}
+            </StepHint>
+          ) : (
+            s
+          )}
         </div>
       ))}
     </div>

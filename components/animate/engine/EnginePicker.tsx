@@ -163,7 +163,11 @@ export function EnginePicker({
                 }}
               />
               <Icon name={c.icon} size={16} color={isF5 ? JELLY_TOKENS.brand : JELLY_TOKENS.cyan} />
-              <span style={{ fontSize: compact ? 13.5 : 14.5, fontWeight: 700 }}>{c.name}</span>
+              <span style={{ fontSize: compact ? 13.5 : 14.5, fontWeight: 700 }}>
+                <StepHint text={c.hint} label={`About ${c.name}`} clickThrough>
+                  {c.name}
+                </StepHint>
+              </span>
               {c.badge && (
                 <span
                   style={{
@@ -181,9 +185,6 @@ export function EnginePicker({
                   {c.badge}
                 </span>
               )}
-              <span style={{ marginLeft: 'auto', display: 'inline-flex' }}>
-                <StepHint text={c.hint} label={`About ${c.name}`} />
-              </span>
             </div>
             <div style={{ fontSize: compact ? 12 : 12.5, lineHeight: 1.45, color: t.textSecondary }}>
               {c.blurb}
