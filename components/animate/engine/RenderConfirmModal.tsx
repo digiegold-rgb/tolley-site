@@ -61,6 +61,8 @@ export interface RenderConfirmModalProps {
   onClose: () => void;
   /** Jump to an editor step to fix a blocker (closes the modal first). */
   onGoToStep?: (step: number) => void;
+  /** Open the Styles screen for style/character blockers (closes the modal first). */
+  onOpenStyles?: () => void;
 }
 
 function voiceLine(v: NonNullable<RenderManifest['voice']>): string {
@@ -85,6 +87,7 @@ export function RenderConfirmModal({
   onConfirm,
   onClose,
   onGoToStep,
+  onOpenStyles,
 }: RenderConfirmModalProps): React.ReactElement | null {
   const { t } = useTheme();
   if (!engine || typeof document === 'undefined') return null;
@@ -261,7 +264,7 @@ export function RenderConfirmModal({
                 style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12.5, color: t.text }}
               >
                 <span style={{ flex: 1, lineHeight: 1.5 }}>{b.message}</span>
-                {b.step != null && onGoToStep && (
+                {b.step != null && onGoToStep ? (
                   <VBtn
                     size="sm"
                     variant="ghost"
@@ -272,7 +275,18 @@ export function RenderConfirmModal({
                   >
                     Fix it
                   </VBtn>
-                )}
+                ) : (b.code === 'no_character' || b.code === 'no_style') && onOpenStyles ? (
+                  <VBtn
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      onClose();
+                      onOpenStyles();
+                    }}
+                  >
+                    Open Styles
+                  </VBtn>
+                ) : null}
               </div>
             ))}
           </div>

@@ -18,7 +18,7 @@ type AnyStyle = any;
 
 export function StylesListEmbed(): React.ReactElement {
   const { t } = useTheme();
-  const { setRoute } = useRoute();
+  const { setRoute, openStyleEditor } = useRoute();
   const [styles, setStyles] = React.useState<AnyStyle[]>([]);
   const [userId, setUserId] = React.useState<string>('');
   const [loading, setLoading] = React.useState(true);
@@ -67,7 +67,10 @@ export function StylesListEmbed(): React.ReactElement {
 
       {!loading && !error && (
         <div className="jelly-legacy">
-          <StylesGallery styles={styles} userId={userId} />
+          {/* onOpenStyle keeps Create/Clone & Edit INSIDE the studio — the
+              gallery's own router.push would hard-navigate to the legacy
+              /vater chrome (2026-08-20 walkthrough finding). */}
+          <StylesGallery styles={styles} userId={userId} onOpenStyle={openStyleEditor} />
         </div>
       )}
     </div>

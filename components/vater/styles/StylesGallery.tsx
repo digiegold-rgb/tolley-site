@@ -40,19 +40,34 @@ type StyleRow = {
 export function StylesGallery({
   styles,
   userId: _userId,
+  onOpenStyle,
 }: {
   styles: StyleRow[];
   userId: string;
+  /**
+   * In-studio navigation override. The /animate embed passes this so
+   * Create/Clone open the style INSIDE the studio; router.push here is
+   * programmatic, so the Shell's anchor interceptor never sees it and the
+   * user was hard-navigated to the legacy /vater chrome (2026-08-20).
+   */
+  onOpenStyle?: (id: string) => void;
 }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [createBusy, setCreateBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const mine = styles.filter((s) => !s.isSystem);
   const system = styles.filter((s) => s.isSystem);
 
+  const openStyle = (id: string) => {
+    if (onOpenStyle) onOpenStyle(id);
+    else router.push(`/vater/youtube/styles/${id}`);
+  };
+
   async function createEmpty() {
     setCreateBusy(true);
+    setActionError(null);
     try {
       const r = await fetch("/api/vater/youtube/styles", {
         method: "POST",
@@ -61,9 +76,9 @@ export function StylesGallery({
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || "create failed");
-      router.push(`/vater/youtube/styles/${data.style.id}`);
+      openStyle(data.style.id);
     } catch (e) {
-      alert(`Create failed: ${e instanceof Error ? e.message : "unknown"}`);
+      setActionError(`Create failed: ${e instanceof Error ? e.message : "unknown"}`);
     } finally {
       setCreateBusy(false);
     }
@@ -71,6 +86,7 @@ export function StylesGallery({
 
   async function clone(systemId: string, name: string) {
     setBusyId(systemId);
+    setActionError(null);
     try {
       const r = await fetch("/api/vater/youtube/styles", {
         method: "POST",
@@ -79,9 +95,9 @@ export function StylesGallery({
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || "clone failed");
-      router.push(`/vater/youtube/styles/${data.style.id}`);
+      openStyle(data.style.id);
     } catch (e) {
-      alert(`Clone failed: ${e instanceof Error ? e.message : "unknown"}`);
+      setActionError(`Clone failed: ${e instanceof Error ? e.message : "unknown"}`);
     } finally {
       setBusyId(null);
     }
@@ -93,6 +109,14 @@ export function StylesGallery({
 
   return (
     <div className="space-y-10">
+      {actionError && (
+        <p
+          role="alert"
+          className="rounded-md border border-red-800 bg-red-950/40 px-3 py-2 text-sm text-red-300"
+        >
+          {actionError}
+        </p>
+      )}
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-zinc-200">
@@ -113,7 +137,7 @@ export function StylesGallery({
             from scratch.
           </p>
         ) : (
-          <CardGrid styles={mine} refCount={refCount} variant="mine" />
+          <CardGrid styles={mine} refCount={refCount} variant="mine" onOpenStyle={onOpenStyle} />
         )}
       </section>
 
@@ -142,12 +166,14 @@ function CardGrid({
   variant,
   onClone,
   busyId,
+  onOpenStyle,
 }: {
   styles: StyleRow[];
   refCount: (s: StyleRow) => number;
   variant: "mine" | "system";
   onClone?: (id: string, name: string) => void;
   busyId?: string | null;
+  onOpenStyle?: (id: string) => void;
 }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -220,6 +246,14 @@ function CardGrid({
             {variant === "mine" ? (
               <Link
                 href={`/vater/youtube/styles/${s.id}`}
+                onClick={(e) => {
+                  // In-studio: stay in the studio (don't rely on the Shell's
+                  // anchor interceptor being mounted).
+                  if (onOpenStyle) {
+                    e.preventDefault();
+                    onOpenStyle(s.id);
+                  }
+                }}
                 className="block w-full rounded-md bg-zinc-800 px-3 py-1.5 text-center text-xs font-medium text-zinc-200 hover:bg-zinc-700"
               >
                 Edit

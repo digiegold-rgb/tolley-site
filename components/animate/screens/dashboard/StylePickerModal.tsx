@@ -21,7 +21,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { JELLY_TOKENS } from '../../tokens';
-import { useTheme } from '../../theme-context';
+import { useTheme, useRoute } from '../../theme-context';
 import { Icon } from '../../Icon';
 import { StyleWizardModal, type CreatedStyle } from './StyleWizardModal';
 import { devError } from '../../log';
@@ -83,6 +83,7 @@ export function StylePickerModal({
   onProjectCreated,
 }: Props): React.ReactElement | null {
   const { t } = useTheme();
+  const { setRoute } = useRoute();
   const [styles, setStyles] = React.useState<StyleSummary[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
@@ -1128,6 +1129,12 @@ export function StylePickerModal({
           if (f5Pending) void submitF5Batch(f5Pending.styleId);
         }}
         onClose={() => setF5Pending(null)}
+        onOpenStyles={() => {
+          // Close BOTH modals, then land on the in-studio Styles screen.
+          setF5Pending(null);
+          onClose();
+          setRoute('styles-list');
+        }}
       />
       <BillingBlockModal
         reason={billingBlock}

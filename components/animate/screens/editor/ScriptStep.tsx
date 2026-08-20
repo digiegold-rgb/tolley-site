@@ -22,7 +22,7 @@
 
 import * as React from 'react';
 import { JELLY_TOKENS, SECTION_PRICES } from '../../tokens';
-import { useTheme } from '../../theme-context';
+import { useTheme, useRoute } from '../../theme-context';
 import { Icon } from '../../Icon';
 import { VBtn, VCard, VInput, SectionHeader, Toast } from '../../primitives';
 import {
@@ -58,6 +58,7 @@ import { quickEstimateUsd } from '@/lib/vater/billing/estimate';
 
 export function ScriptStep({ projectId, project, refresh, goToStep }: EditorStepProps): React.ReactElement {
   const { t } = useTheme();
+  const { setRoute } = useRoute();
   const { tier } = useTier();
   const creatorModelsAvailable = creatorModelsForTier(tier).length > 0;
   const [title, setTitle] = React.useState('');
@@ -1132,6 +1133,7 @@ export function ScriptStep({ projectId, project, refresh, goToStep }: EditorStep
         onConfirm={() => void submitFable5()}
         onClose={() => setF5Confirm(false)}
         onGoToStep={goToStep}
+        onOpenStyles={() => setRoute('styles-list')}
       />
       <BillingBlockModal
         reason={billingBlock}

@@ -366,6 +366,16 @@ function ShellInner(): React.ReactElement {
         setRouteState('video-editor');
         return;
       }
+      // Catch-all: ANY other legacy /vater page link stays in the studio.
+      // Found 2026-08-20: EditorShell's "← Channel" (/vater/youtube) fell
+      // through the specific matches above and hard-navigated users into the
+      // old Vater chrome. /api/vater/* (downloads, streams) is not touched.
+      if (href === '/vater' || (href.startsWith('/vater/') && !href.startsWith('/vater/api'))) {
+        e.preventDefault();
+        const projectsHome = /^\/vater\/youtube(?:[/?#].*)?$/.test(href);
+        setRouteState(projectsHome ? 'project-history' : 'dashboard');
+        return;
+      }
     };
     document.addEventListener('click', handler, true);
     return () => document.removeEventListener('click', handler, true);

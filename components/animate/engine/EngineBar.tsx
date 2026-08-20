@@ -15,7 +15,7 @@
 
 import * as React from 'react';
 import { JELLY_TOKENS, glass } from '../tokens';
-import { useTheme } from '../theme-context';
+import { useTheme, useRoute } from '../theme-context';
 import { VBtn } from '../primitives';
 import { MicroLabel } from '../cinema';
 import { TINT_BG } from '../screens/tint';
@@ -44,6 +44,7 @@ export interface EngineBarProps {
 
 export function EngineBar({ projectId, words, script, refresh, goToStep }: EngineBarProps): React.ReactElement {
   const { t } = useTheme();
+  const { setRoute } = useRoute();
   const [engine, setEngine] = React.useState<ConciergeEngine>('auto');
   const [sending, setSending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -223,6 +224,7 @@ export function EngineBar({ projectId, words, script, refresh, goToStep }: Engin
         onConfirm={() => void (confirmEngine === 'fable5' ? send() : generate())}
         onClose={() => setConfirmEngine(null)}
         onGoToStep={goToStep}
+        onOpenStyles={() => setRoute('styles-list')}
       />
       <BillingBlockModal
         reason={billingBlock}
