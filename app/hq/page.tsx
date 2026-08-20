@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { HQ_BOARD_STAGES, HQ_OFFERS } from "@/lib/hq";
+import { HQ_OFFERS } from "@/lib/hq";
 import { useToast } from "@/components/ui/Toast";
 import { HqBk } from "@/components/hq/hq-bk";
 import { HqVaterDue } from "@/components/hq/hq-vater-due";
@@ -37,7 +37,6 @@ import {
 } from "@/components/hq/hq-must-complete";
 import { HqFable5, type Fable5Queue } from "@/components/hq/hq-fable5";
 import {
-  STAGE_LABEL,
   readApiError,
   type HqLead,
   type HqMoney as HqMoneyData,
@@ -471,9 +470,6 @@ function HqPageInner() {
   }
 
   // ─── Derived stats ───
-  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const addedThisWeek = leads.filter((l) => new Date(l.createdAt).getTime() >= weekAgo).length;
-  const deadCount = leads.filter((l) => l.stage === "dead").length;
   const dncCount = leads.filter((l) => l.stage === "do_not_contact").length;
   const moneyCount = money
     ? money.wd.pastDue.length + money.wd.pendingApproval.length + money.invoices.open.length
@@ -496,19 +492,27 @@ function HqPageInner() {
     );
   }
 
-  // <details> has no built-in dismiss, so a stray open Docs menu would sit over
-  // the page until re-clicked. Close it on outside-click and on Escape.
+  // <details> has no built-in dismiss, so a stray open Docs/Ideas menu would
+  // sit over the page until re-clicked. Close on outside-click and on Escape.
   const docsRef = useRef<HTMLDetailsElement>(null);
+  const ideasRef = useRef<HTMLDetailsElement>(null);
   const closeDocs = () => {
     if (docsRef.current) docsRef.current.open = false;
   };
+  const closeIdeas = () => {
+    if (ideasRef.current) ideasRef.current.open = false;
+  };
   useEffect(() => {
     function onPointerDown(e: MouseEvent) {
-      const el = docsRef.current;
-      if (el?.open && !el.contains(e.target as Node)) el.open = false;
+      for (const el of [docsRef.current, ideasRef.current]) {
+        if (el?.open && !el.contains(e.target as Node)) el.open = false;
+      }
     }
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && docsRef.current?.open) docsRef.current.open = false;
+      if (e.key !== "Escape") return;
+      for (const el of [docsRef.current, ideasRef.current]) {
+        if (el?.open) el.open = false;
+      }
     }
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -587,31 +591,11 @@ function HqPageInner() {
       </div>
 
       <div className="hq-content">
-        {/* Stat row */}
-        <div className="stat-row">
-          {HQ_BOARD_STAGES.map((s) => (
-            <div key={s} className={`stat-card${s === "client" ? " accent-green" : ""}`}>
-              <h4>{STAGE_LABEL[s] || s}</h4>
-              <div className="val">{leads.filter((l) => l.stage === s).length}</div>
-            </div>
-          ))}
-          <div className="stat-card accent-yellow">
-            <h4>Drafts Pending</h4>
-            <div className="val">{drafts.length}</div>
-          </div>
-          <div className="stat-card accent-purple">
-            <h4>New This Week</h4>
-            <div className="val">{addedThisWeek}</div>
-          </div>
-          {deadCount > 0 && (
-            <div className="stat-card accent-gray">
-              <h4>Dead</h4>
-              <div className="val">{deadCount}</div>
-            </div>
-          )}
-        </div>
+        {/* The funnel stat row (Scraped/Enriched/…/New This Week) lived here
+            until 2026-08-19 — Jared never read it, so it's gone. The same
+            numbers still exist inside the Pipeline board itself. */}
 
-        {/* Tab bar. Grouped Ops | Growth | Content; the strip scrolls sideways
+        {/* Tab bar. Grouped Ops | Growth; the strip scrolls sideways
             (see hq.css) so adding a tab never widens the page. Docs and the
             offer filter sit outside the scroller — an overflow container would
             clip the open Docs menu. */}
@@ -634,47 +618,52 @@ function HqPageInner() {
             {/* Growth */}
             {tabPill("pipeline", "Pipeline")}
             {tabPill("inbound", "Inbox", inboundCounts.new)}
-            {tabPill("approvals", "Approvals", drafts.length + licenseReviews.length)}
-            {tabPill("estates", "Estates")}
-            {tabPill("dnc", "Contacted / DNC", dncCount)}
-
-            <span className="tab-sep" aria-hidden="true" />
-
-            {/* Content — the two /generate and /persona pills are their own
-                routes, not tab states, so they stay plain links. */}
-            <a
-              className="tab-btn"
-              href="/generate"
-              title="Quick Generate — prompt → image / video (Gemini + Wan2.2)"
-            >
-              ✨ Generate
-            </a>
-            {/* /persona is gated by a NextAuth admin session, not the /hq PIN
-                (HQ-03), so from here it 401s. Keep the link — it works once
-                you're signed into the site — but say so and open it in its own
-                tab so a dead-end doesn't cost you the HQ session. */}
-            <a
-              className="tab-btn"
-              href="/persona"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Persona Editor — edit her description, wardrobe, and face. Needs a site login (NextAuth admin), not the HQ PIN — opens in a new tab."
-            >
-              💃 Persona <span style={{ opacity: 0.6, fontWeight: 500 }}>(needs site login)</span>
-            </a>
-            {tabPill("stats", "Stats")}
-            {tabPill("chats", "Chats")}
-            {tabPill("hauls", "💎 Hauls")}
             {tabPill("posts", "📡 Posts")}
-            {tabPill("tiktok", "🛍 TikTok")}
-            {/* Storefront stocking is its own route (big static worklist), not a tab state. */}
-            <a className="tab-btn" href="/hq/storefront">
-              🛒 Storefront
-            </a>
             {tabPill("bk", "⚡ BK", undefined, "tab-bk")}
           </div>
 
           <div className="tab-bar-end">
+            {/* Everything reviewed-occasionally lives in the Ideas dropdown
+                (2026-08-19): Approvals, Estates, DNC, Generate, Persona,
+                Stats, Chats, Hauls, TikTok. Sits outside the scroller for the
+                same clipping reason as Docs. */}
+            <details className="tab-docs" ref={ideasRef}>
+              <summary className="tab-btn">💡 Ideas ▾</summary>
+              <div className="tab-docs-menu">
+                <button onClick={() => { setTab("approvals"); closeIdeas(); }}>
+                  Approvals{drafts.length + licenseReviews.length ? ` (${drafts.length + licenseReviews.length})` : ""}
+                </button>
+                <button onClick={() => { setTab("estates"); closeIdeas(); }}>Estates</button>
+                <button onClick={() => { setTab("dnc"); closeIdeas(); }}>
+                  Contacted / DNC{dncCount ? ` (${dncCount})` : ""}
+                </button>
+                <button onClick={() => { setTab("stats"); closeIdeas(); }}>Stats</button>
+                <button onClick={() => { setTab("chats"); closeIdeas(); }}>Chats</button>
+                <button onClick={() => { setTab("hauls"); closeIdeas(); }}>💎 Hauls</button>
+                <button onClick={() => { setTab("tiktok"); closeIdeas(); }}>🛍 TikTok</button>
+                {/* Route links, not tab states. */}
+                <a
+                  href="/generate"
+                  onClick={closeIdeas}
+                  title="Quick Generate — prompt → image / video (Gemini + Wan2.2)"
+                >
+                  ✨ Generate
+                </a>
+                {/* /persona is gated by a NextAuth admin session, not the /hq
+                    PIN (HQ-03) — opens in its own tab so a 401 doesn't cost
+                    the HQ session. */}
+                <a
+                  href="/persona"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeIdeas}
+                  title="Persona Editor — needs a site login (NextAuth admin), not the HQ PIN — opens in a new tab."
+                >
+                  💃 Persona <span className="doc-sub">needs site login</span>
+                </a>
+              </div>
+            </details>
+
             {/* Read-once briefs live in one dropdown so the next PDF doesn't
                 cost another tab's worth of bar. Static files in /public/research. */}
             <details className="tab-docs" ref={docsRef}>
@@ -742,6 +731,12 @@ function HqPageInner() {
                 >
                   📄 YT Length Study
                   <span className="doc-sub">What video length is actually correct for YouTube — Aug 2026</span>
+                </a>
+                {/* Storefront stocking worklist — parked here 2026-08-19; the
+                    shelves shipped 8/13 and this is reference now. */}
+                <a href="/hq/storefront" onClick={closeDocs}>
+                  🛒 Storefront
+                  <span className="doc-sub">Amazon storefront stocking worklist — shelves shipped Aug 13, kept for reference</span>
                 </a>
               </div>
             </details>

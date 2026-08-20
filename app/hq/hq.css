@@ -214,7 +214,8 @@
   flex-direction: column;
   gap: 2px;
 }
-.hq-admin .tab-docs-menu a {
+.hq-admin .tab-docs-menu a,
+.hq-admin .tab-docs-menu button {
   display: block;
   padding: 8px 10px;
   border-radius: 8px;
@@ -222,8 +223,16 @@
   font-weight: 600;
   color: #1a1a1a;
   text-decoration: none;
+  /* buttons (Ideas tab switches) — match the anchors */
+  background: none;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
 }
-.hq-admin .tab-docs-menu a:hover { background: #f0f0f5; }
+.hq-admin .tab-docs-menu a:hover,
+.hq-admin .tab-docs-menu button:hover { background: #f0f0f5; }
 .hq-admin .tab-docs-menu .doc-sub {
   display: block;
   font-size: 10.5px;
