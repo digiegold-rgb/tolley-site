@@ -797,8 +797,9 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
           {tab === 'usage' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ fontSize: 14, color: t.textSecondary, lineHeight: 1.6 }}>
-                Per-section usage breakdown ships with the credit ledger. Section pricing
-                and current rates live on the Pricing page.
+                Your itemized ledger — every debit, refund, and pack purchase —
+                lives on the Billing page, and each finished video carries its
+                own line-by-line receipt in the Library.
               </div>
               <div style={{ alignSelf: 'flex-start' }}>
                 <PillButton
@@ -809,7 +810,7 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
                     onClose();
                   }}
                 >
-                  See Pricing →
+                  Open Billing →
                 </PillButton>
               </div>
             </div>
@@ -822,10 +823,24 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
             />
           )}
           {tab === 'team' && (
-            <div style={{ fontSize: 14, color: t.textSecondary, lineHeight: 1.6 }}>
-              Jelly Studio accounts are single-seat today — there are no
-              teammates to invite yet. Projects and billing belong to{' '}
-              {session?.user?.email || 'your account'} alone.
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ fontSize: 14, color: t.textSecondary, lineHeight: 1.6 }}>
+                Invite teammates to see and work on this account&apos;s
+                projects. Credits are never shared — a render is always billed
+                to whoever owns the project.
+              </div>
+              <div style={{ alignSelf: 'flex-start' }}>
+                <PillButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setRoute('team');
+                    onClose();
+                  }}
+                >
+                  Manage team →
+                </PillButton>
+              </div>
             </div>
           )}
         </div>

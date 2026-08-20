@@ -186,11 +186,13 @@ export function SoundtrackStep({ projectId, project, refresh }: EditorStepProps)
         <Stage n={2} title="Create Audio Segments" active={stage === 2} done={stage > 2} />
         {stage === 2 && (
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <VBtn
-              variant={splitMode === 'auto' ? 'primary' : 'outlined'}
-              icon="sparkle"
-              onClick={() => setSplitMode('auto')}
-            >Auto-Split with AI</VBtn>
+            {/* Disabled until the backend exposes a segmentation endpoint —
+                a selectable choice that changes nothing is a lie. */}
+            <span title="Coming soon — the AI segmenter isn't wired up yet.">
+              <VBtn variant="outlined" icon="sparkle" disabled>
+                Auto-Split with AI
+              </VBtn>
+            </span>
             <VBtn
               variant={splitMode === 'manual' ? 'primary' : 'outlined'}
               icon="scissors"

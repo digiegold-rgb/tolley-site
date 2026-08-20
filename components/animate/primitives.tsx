@@ -9,6 +9,7 @@
  */
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { JELLY_TOKENS, glass } from './tokens';
 import { MicroLabel } from './cinema/MicroLabel';
 import { useTheme } from './theme-context';
@@ -372,6 +373,92 @@ export function RetryError({
         </button>
       )}
     </div>
+  );
+}
+
+/* ─── ConfirmDialog ───
+ * Shared confirmation modal replacing native window.confirm() across the
+ * studio. Portalled to <body>: fixed overlays rendered inside <main> stack
+ * BELOW the studio header/sidebar (2026-08-19 beta finding).
+ */
+
+export interface ConfirmDialogProps {
+  open: boolean;
+  title: string;
+  body?: React.ReactNode;
+  confirmLabel: string;
+  /** Danger = error-red confirm button; default = brand gradient. */
+  danger?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+export function ConfirmDialog({
+  open,
+  title,
+  body,
+  confirmLabel,
+  danger,
+  onConfirm,
+  onCancel,
+}: ConfirmDialogProps): React.ReactElement | null {
+  const { t } = useTheme();
+  if (!open) return null;
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.55)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 440,
+          /* Opaque panel, not glass: `t.card` is translucent in the cinema
+           * language, and a see-through modal is unreadable over the studio. */
+          background: t.panel,
+          border: `1px solid ${t.borderStrong}`,
+          borderRadius: JELLY_TOKENS.radius.xxl,
+          boxShadow: JELLY_TOKENS.shadow24,
+          padding: 20,
+          fontFamily: JELLY_TOKENS.font,
+        }}
+      >
+        <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>{title}</div>
+        {body && (
+          <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 8, lineHeight: 1.6 }}>
+            {body}
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+          <VBtn size="sm" variant="ghost" onClick={onCancel}>
+            Cancel
+          </VBtn>
+          <VBtn
+            size="sm"
+            variant={danger ? 'danger' : 'primary'}
+            onClick={onConfirm}
+            style={danger ? undefined : { background: JELLY_TOKENS.gradPrimary }}
+          >
+            {confirmLabel}
+          </VBtn>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 

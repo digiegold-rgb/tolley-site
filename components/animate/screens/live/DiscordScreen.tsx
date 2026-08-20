@@ -9,7 +9,7 @@
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
-import { VBtn, VCard, VInput, SectionHeader } from '../../primitives';
+import { VBtn, VCard, VInput, RetryError, SectionHeader } from '../../primitives';
 
 interface ChatMsg { role: 'user' | 'assistant'; text: string; }
 
@@ -20,17 +20,27 @@ export function DiscordScreen(): React.ReactElement {
   const [sending, setSending] = React.useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [status, setStatus] = React.useState<any>(null);
+  const [statusError, setStatusError] = React.useState<string | null>(null);
+  const [statusReload, setStatusReload] = React.useState(0);
 
   React.useEffect(() => {
     let cancelled = false;
+    setStatusError(null);
     (async () => {
       try {
         const r = await fetch('/api/vater/pipeline-status', { cache: 'no-store' });
-        if (r.ok && !cancelled) setStatus(await r.json());
-      } catch { /* swallow */ }
+        if (!r.ok) throw new Error(`Pipeline status — HTTP ${r.status}`);
+        if (!cancelled) setStatus(await r.json());
+      } catch (err) {
+        if (!cancelled) {
+          setStatusError(
+            err instanceof Error ? err.message : 'Could not load pipeline status',
+          );
+        }
+      }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [statusReload]);
 
   const send = async () => {
     if (!input.trim()) return;
@@ -67,6 +77,13 @@ export function DiscordScreen(): React.ReactElement {
 
       <VCard variant="flat">
         <div style={{ fontSize: 14, fontWeight: 600, color: t.text, marginBottom: 8 }}>Bot Status</div>
+        {statusError && (
+          <RetryError
+            message={statusError}
+            onRetry={() => setStatusReload((k) => k + 1)}
+            style={{ marginBottom: 8 }}
+          />
+        )}
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           {[
             { label: 'DGX Pipeline', val: status?.pipelineHealthy ? 'healthy' : status ? 'degraded' : '…' },

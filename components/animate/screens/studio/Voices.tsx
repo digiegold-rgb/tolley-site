@@ -23,6 +23,7 @@ import { useTier } from '../../tier-context';
 import { YouTubeVoiceClonePanel } from '@/components/vater/youtube-voice-clone-panel';
 import { YouTubePopularVoices } from '@/components/vater/youtube-popular-voices';
 import { VoiceTuner } from './VoiceTuner';
+import { RetryError } from '../../primitives';
 import { ElevenLabsConnect } from './ElevenLabsConnect';
 import { TINT_BG, TINT_BORDER } from '../tint';
 
@@ -210,15 +211,15 @@ export function Voices(): React.ReactElement {
             </div>
           )}
           {elevenError && (
-            <div
-              style={{
-                fontSize: 12,
-                color: JELLY_TOKENS.error,
-                marginBottom: 8,
+            <RetryError
+              message={elevenError}
+              onRetry={() => {
+                // The load effect re-fires whenever elevenVoices is null.
+                setElevenError(null);
+                setElevenVoices(null);
               }}
-            >
-              {elevenError}
-            </div>
+              style={{ marginBottom: 8 }}
+            />
           )}
           {elevenVoices !== null &&
             elevenVoices.length === 0 &&

@@ -66,19 +66,22 @@ export function Library(): React.ReactElement {
     [projects],
   );
 
+  /* Delete failures surface as an inline banner (same RetryError pattern as
+   * the load error above) — never a native alert(). */
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+
   const handleDelete = React.useCallback(async (id: string) => {
     try {
       const res = await fetch(`/api/vater/youtube/${id}`, { method: 'DELETE' });
       if (!res.ok) {
-        // eslint-disable-next-line no-alert
-        alert(`Delete failed: HTTP ${res.status}`);
+        setDeleteError(`Delete failed: HTTP ${res.status}`);
         return;
       }
     } catch (err) {
-      // eslint-disable-next-line no-alert
-      alert(`Delete failed: ${err instanceof Error ? err.message : 'network error'}`);
+      setDeleteError(`Delete failed: ${err instanceof Error ? err.message : 'network error'}`);
       return;
     }
+    setDeleteError(null);
     setProjects((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
@@ -147,6 +150,12 @@ export function Library(): React.ReactElement {
               void fetchProjects();
             }}
           />
+        </div>
+      )}
+
+      {deleteError && (
+        <div style={{ marginBottom: 16 }}>
+          <RetryError message={deleteError} />
         </div>
       )}
 

@@ -2,14 +2,15 @@
 
 /* DashboardScreen — ported from vater-screens.jsx lines 4-100.
  * 4 hero cards (Create / Buy Credits / Upgrade / Tutorial),
- * 3 KPI tiles (live from /api/vater/youtube), credit-usage timeline placeholder.
+ * 3 KPI tiles (live from /api/vater/youtube), spend timeline (live from
+ * /api/vater/billing/usage), first-video checklist for zero-project users.
  */
 
 import * as React from 'react';
 import { JELLY_TOKENS } from '../tokens';
 import { useTheme, useRoute } from '../theme-context';
 import { Icon, type IconName } from '../Icon';
-import { VBtn, VCard } from '../primitives';
+import { VBtn, VCard, RetryError } from '../primitives';
 import { GlassCard, MicroLabel } from '../cinema';
 import { Footer } from '../Footer';
 import { StylePickerModal } from './dashboard/StylePickerModal';
@@ -46,6 +47,32 @@ const ACTIVE_STATUSES = new Set([
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyProject = any;
 
+/* One immutable VaterUsage ledger row — GET /api/vater/billing/usage `items`.
+ * Fields mirror prisma VaterUsage; only what the timeline reads is typed. */
+interface UsageItem {
+  id: string;
+  action: string;
+  costCents: number;
+  description: string | null;
+  ts: string;
+}
+
+function usd(cents: number): string {
+  const sign = cents < 0 ? '-' : '';
+  return `${sign}$${Math.abs(cents / 100).toFixed(2)}`;
+}
+
+/* First-video checklist dismissal — same localStorage idiom as
+ * BetaAccessBanner: start hidden, reveal after the client-side check. */
+const CHECKLIST_DISMISS_KEY = 'jelly-first-video-checklist-dismissed';
+
+const FIRST_VIDEO_STEPS: ReadonlyArray<{ label: string; sub: string }> = [
+  { label: 'Pick a style', sub: 'Locks the look and the voice for every video on your channel' },
+  { label: 'Paste or generate a script', sub: 'You approve it before anything renders' },
+  { label: 'Render a stills draft', sub: 'One image per beat — your first stills are free' },
+  { label: 'Add motion & publish', sub: 'Animate the scenes that earn it, then export' },
+];
+
 export function DashboardScreen(): React.ReactElement {
   const { t } = useTheme();
   const {
@@ -57,7 +84,16 @@ export function DashboardScreen(): React.ReactElement {
   } = useRoute();
   const [projects, setProjects] = React.useState<AnyProject[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [loadTick, setLoadTick] = React.useState(0);
   const [stylePickerOpen, setStylePickerOpen] = React.useState(false);
+
+  const [usageItems, setUsageItems] = React.useState<UsageItem[]>([]);
+  const [usageLoading, setUsageLoading] = React.useState(true);
+  const [usageError, setUsageError] = React.useState<string | null>(null);
+  const [usageTick, setUsageTick] = React.useState(0);
+
+  const [checklistVisible, setChecklistVisible] = React.useState(false);
 
   // Sidebar (or any other surface) calling requestNewVideo() bumps the
   // counter — open the picker, then clear the flag so subsequent route
@@ -71,15 +107,19 @@ export function DashboardScreen(): React.ReactElement {
 
   React.useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
     (async () => {
       try {
         const r = await fetch('/api/vater/youtube', { cache: 'no-store' });
-        if (!r.ok) return;
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const data = await r.json();
         if (cancelled) return;
         setProjects(Array.isArray(data?.projects) ? data.projects : []);
-      } catch {
-        /* swallow — KPIs show "—" */
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(e instanceof Error ? e.message : 'Request failed');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -87,6 +127,53 @@ export function DashboardScreen(): React.ReactElement {
     return () => {
       cancelled = true;
     };
+  }, [loadTick]);
+
+  // Spend timeline — the immutable VaterUsage ledger (same endpoint the
+  // Settings → Usage tab reads). period=all so the 30-day window doesn't get
+  // clipped by a billing period that started mid-window.
+  React.useEffect(() => {
+    let cancelled = false;
+    setUsageLoading(true);
+    setUsageError(null);
+    (async () => {
+      try {
+        const r = await fetch('/api/vater/billing/usage?period=all&limit=200', {
+          cache: 'no-store',
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
+        if (cancelled) return;
+        setUsageItems(Array.isArray(data?.items) ? data.items : []);
+      } catch (e) {
+        if (!cancelled) {
+          setUsageError(e instanceof Error ? e.message : 'Request failed');
+        }
+      } finally {
+        if (!cancelled) setUsageLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [usageTick]);
+
+  React.useEffect(() => {
+    try {
+      setChecklistVisible(window.localStorage.getItem(CHECKLIST_DISMISS_KEY) !== '1');
+    } catch {
+      // localStorage unavailable (private mode etc.) — show the checklist.
+      setChecklistVisible(true);
+    }
+  }, []);
+
+  const dismissChecklist = React.useCallback(() => {
+    setChecklistVisible(false);
+    try {
+      window.localStorage.setItem(CHECKLIST_DISMISS_KEY, '1');
+    } catch {
+      // Best-effort persistence only — already hidden for this session.
+    }
   }, []);
 
   const kpis: KpiTile[] = React.useMemo(() => {
@@ -113,6 +200,34 @@ export function DashboardScreen(): React.ReactElement {
       },
     ];
   }, [projects, loading]);
+
+  // Ledger → 30 daily buckets (oldest first), this-month total, 3 latest rows.
+  const spend = React.useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const dayKey = (d: Date): string =>
+      `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const days: { key: string; date: Date; cents: number }[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      days.push({ key: dayKey(d), date: d, cents: 0 });
+    }
+    const byKey = new Map(days.map((d) => [d.key, d]));
+    let monthCents = 0;
+    let windowCents = 0;
+    for (const it of usageItems) {
+      const d = new Date(it.ts);
+      if (Number.isNaN(d.getTime())) continue;
+      if (d >= monthStart) monthCents += it.costCents;
+      const bucket = byKey.get(dayKey(d));
+      if (bucket) {
+        bucket.cents += it.costCents;
+        windowCents += it.costCents;
+      }
+    }
+    const maxDayCents = Math.max(...days.map((d) => d.cents), 1);
+    return { days, maxDayCents, monthCents, windowCents, recent: usageItems.slice(0, 3) };
+  }, [usageItems]);
 
   return (
     <div>
@@ -178,7 +293,15 @@ export function DashboardScreen(): React.ReactElement {
         />
       </div>
 
-      {!loading && projects.length === 0 && (
+      {loadError && (
+        <RetryError
+          message={`Couldn't load your videos (${loadError}).`}
+          onRetry={() => setLoadTick((n) => n + 1)}
+          style={{ marginTop: 24 }}
+        />
+      )}
+
+      {!loading && !loadError && projects.length === 0 && (
         <VCard style={{ marginTop: 24, padding: 24 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>
             No videos yet
@@ -204,6 +327,74 @@ export function DashboardScreen(): React.ReactElement {
               How it works
             </VBtn>
           </div>
+        </VCard>
+      )}
+
+      {/* First-video checklist — zero-project users only, dismissible. Plain
+          checklist, not interactive gating: the editor's PillStepper does the
+          real walking; this is the map. */}
+      {!loading && !loadError && projects.length === 0 && checklistVisible && (
+        <VCard style={{ marginTop: 16, padding: 24, position: 'relative' }}>
+          <button
+            onClick={dismissChecklist}
+            aria-label="Dismiss checklist"
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 14,
+              background: 'transparent',
+              border: 'none',
+              color: t.textFaint,
+              fontSize: 16,
+              lineHeight: 1,
+              cursor: 'pointer',
+              padding: '2px 6px',
+              fontWeight: 700,
+            }}
+          >
+            ×
+          </button>
+          <MicroLabel tone="violet" style={{ marginBottom: 8 }}>
+            The shot list
+          </MicroLabel>
+          <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>
+            Your first video
+          </div>
+          <div style={{ marginTop: 14, display: 'grid', gap: 12 }}>
+            {FIRST_VIDEO_STEPS.map((step, i) => (
+              <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div
+                  style={{
+                    width: 24,
+                    height: 24,
+                    flexShrink: 0,
+                    borderRadius: '50%',
+                    border: `1px solid ${JELLY_TOKENS.brandOutline}`,
+                    background: JELLY_TOKENS.brandGhost,
+                    color: JELLY_TOKENS.brandLight,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 12,
+                    fontWeight: 700,
+                  }}
+                >
+                  {i + 1}
+                </div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
+                    {step.label}
+                  </div>
+                  <div style={{ fontSize: 12, color: t.textSecondary, marginTop: 2 }}>
+                    {step.sub}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <VBtn size="sm" onClick={() => setStylePickerOpen(true)} style={{ marginTop: 18 }}>
+            Create your first video
+          </VBtn>
         </VCard>
       )}
 
@@ -315,32 +506,117 @@ export function DashboardScreen(): React.ReactElement {
         </GlassCard>
       </div>
 
-      {/* Spend timeline placeholder — Stage 1c wires real data from
-          /api/vater/billing/usage. Stage 0 removed the hardcoded "April 2026"
-          + 92,202-credit static SVG so we don't ship fake metrics. */}
+      {/* Spend timeline — the VaterUsage ledger from /api/vater/billing/usage,
+          bucketed per day. Stage 0 removed the hardcoded "April 2026" +
+          92,202-credit static SVG so we don't ship fake metrics; this is the
+          real replacement. No chart library — one div per day. */}
       <VCard style={{ marginTop: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 16, fontWeight: 700, color: t.text }}>Spend Timeline</span>
           <span style={{ fontSize: 13, color: t.textSecondary }}>Per-render charges, last 30 days</span>
+          {!usageLoading && !usageError && usageItems.length > 0 && (
+            <span style={{ fontSize: 13, color: t.textSecondary, marginLeft: 'auto' }}>
+              This month:{' '}
+              <span style={{ color: t.text, fontWeight: 700 }}>{usd(spend.monthCents)}</span>
+            </span>
+          )}
         </div>
-        <div
-          style={{
-            height: 180,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            borderTop: `1px dashed ${t.border}`,
-            borderBottom: `1px dashed ${t.border}`,
-            color: t.textSecondary,
-            textAlign: 'center',
-            padding: '0 16px',
-          }}
-        >
-          <div style={{ fontSize: 14, fontWeight: 600 }}>No charges yet</div>
-          <div style={{ fontSize: 12 }}>Your render-by-render spend will appear here once you generate your first video.</div>
-        </div>
+        {usageError ? (
+          <RetryError
+            message={`Couldn't load your spend history (${usageError}).`}
+            onRetry={() => setUsageTick((n) => n + 1)}
+          />
+        ) : usageLoading || usageItems.length === 0 ? (
+          <div
+            style={{
+              height: 180,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              borderTop: `1px dashed ${t.border}`,
+              borderBottom: `1px dashed ${t.border}`,
+              color: t.textSecondary,
+              textAlign: 'center',
+              padding: '0 16px',
+            }}
+          >
+            {usageLoading ? (
+              <div style={{ fontSize: 14, fontWeight: 600 }}>…</div>
+            ) : (
+              <>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>No charges yet</div>
+                <div style={{ fontSize: 12 }}>
+                  Pay only for what you render — every charge lands here, line by line.
+                </div>
+                <VBtn size="sm" onClick={() => setStylePickerOpen(true)} style={{ marginTop: 8 }}>
+                  Create Video
+                </VBtn>
+              </>
+            )}
+          </div>
+        ) : (
+          <div>
+            <div
+              style={{
+                height: 120,
+                display: 'flex',
+                alignItems: 'flex-end',
+                gap: 3,
+                borderBottom: `1px solid ${t.border}`,
+                paddingBottom: 1,
+              }}
+            >
+              {spend.days.map((day) => (
+                <div
+                  key={day.key}
+                  title={`${day.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} — ${usd(day.cents)}`}
+                  style={{
+                    flex: 1,
+                    height: day.cents > 0
+                      ? Math.max(6, Math.round((day.cents / spend.maxDayCents) * 116))
+                      : 2,
+                    borderRadius: 2,
+                    background: day.cents > 0 ? JELLY_TOKENS.gradPrimary : t.border,
+                  }}
+                />
+              ))}
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: 11,
+                color: t.textFaint,
+                marginTop: 6,
+              }}
+            >
+              <span>30 days ago</span>
+              <span>{usd(spend.windowCents)} in window</span>
+              <span>Today</span>
+            </div>
+            <div style={{ marginTop: 14, display: 'grid', gap: 8 }}>
+              {spend.recent.map((it) => (
+                <div
+                  key={it.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    fontSize: 13,
+                    color: t.textSecondary,
+                  }}
+                >
+                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {it.description || it.action}
+                  </span>
+                  <span style={{ color: t.text, fontWeight: 600 }}>{usd(it.costCents)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </VCard>
 
       <Footer />

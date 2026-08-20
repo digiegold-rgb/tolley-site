@@ -16,7 +16,7 @@
 import * as React from 'react';
 import { JELLY_TOKENS, SECTION_PRICES } from '../../tokens';
 import { useTheme } from '../../theme-context';
-import { VBtn, VCard, VInput, SectionHeader, Toast } from '../../primitives';
+import { VBtn, VCard, VInput, RetryError, SectionHeader, Toast } from '../../primitives';
 import type { EditorStepProps } from './ProjectShell';
 import { reelLabel } from './reel-label';
 import {
@@ -203,7 +203,7 @@ export function DescriptionStep({ projectId, project, refresh }: EditorStepProps
         eyebrow={reelLabel(6)}
         title="Description Generator"
         description={`Generate SEO-optimized YouTube descriptions with relevant keywords and hashtags. ${SECTION_PRICES.description}.`}
-        actionLabel={busy ? 'Generating…' : 'Generate'}
+        actionLabel={busy ? 'Generating…' : `Generate (${SECTION_PRICES.description})`}
         onAction={generate}
       />
 
@@ -213,9 +213,7 @@ export function DescriptionStep({ projectId, project, refresh }: EditorStepProps
       </VCard>
 
       {error && (
-        <VCard variant="flat" style={{ borderColor: JELLY_TOKENS.error }}>
-          <div style={{ color: JELLY_TOKENS.error, fontSize: 13 }}>{error}</div>
-        </VCard>
+        <RetryError message={error} onRetry={() => void generate()} />
       )}
 
       <VCard variant="flat">

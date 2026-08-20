@@ -435,6 +435,12 @@ export function TitleStep({
                   }}
                 />
               )}
+              {card.kind === 'channel' && (
+                <div style={{ fontSize: 11, color: t.textFaint, marginTop: 4 }}>
+                  Paste a specific video URL — whole channel pages are coming
+                  soon.
+                </div>
+              )}
 
               {card.kind === 'style' && (
                 <div style={{ fontSize: 12, color: t.textSecondary, padding: '6px 0' }}>

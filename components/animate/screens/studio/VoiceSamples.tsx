@@ -17,7 +17,7 @@
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
-import { VBtn } from '../../primitives';
+import { ConfirmDialog, RetryError, VBtn } from '../../primitives';
 import { voiceDisplayName } from '@/lib/vater/voice-ids';
 import type { VoiceSample, VoiceSampleGallery, VoiceTuning } from '@/lib/vater/autopilot-client';
 
@@ -100,8 +100,12 @@ export function VoiceSamples({ voice, onOpenInTuner, onLocked, canWrite }: Props
     } finally { setBusy(null); }
   };
 
+  /* Money click: request/run pair replacing window.confirm(). The Re-render
+   * button opens the dialog; only the dialog's priced confirm spends. */
+  const [rebuildAsk, setRebuildAsk] = React.useState(false);
+
   const rebuild = async () => {
-    if (!window.confirm(`Re-render all 10 samples for ${voiceDisplayName(voice)} on Modal (≈ $0.10–0.30 total)?`)) return;
+    setRebuildAsk(false);
     setBusy('__all');
     try {
       const r = await fetch(`/api/vater/voices/${encodeURIComponent(voice)}/samples`, {
@@ -149,7 +153,7 @@ export function VoiceSamples({ voice, onOpenInTuner, onLocked, canWrite }: Props
         <span style={{ flex: 1 }} />
         {toast && <span style={{ fontSize: 11, color: t.text }}>{toast}</span>}
         {canWrite && (
-          <VBtn size="sm" variant="outlined" disabled={busy === '__all' || generating} onClick={() => void rebuild()}>
+          <VBtn size="sm" variant="outlined" disabled={busy === '__all' || generating} onClick={() => setRebuildAsk(true)}>
             {samples.length ? '↻ Re-render all 10' : '▶ Build 10 samples'}
           </VBtn>
         )}
@@ -159,7 +163,7 @@ export function VoiceSamples({ voice, onOpenInTuner, onLocked, canWrite }: Props
         floor: no room echo, gentle glue compression, matched loudness (−16 LUFS), rumble cut. <strong>Click a card to listen.</strong>{' '}
         “Use this” locks the read in for every render; “Open in tuner” lets you nudge it first.
       </p>
-      {err && <div style={{ color: JELLY_TOKENS.error, fontSize: 12 }}>samples: {err}</div>}
+      {err && <RetryError message={`samples: ${err}`} onRetry={() => void load()} />}
 
       {/* top picks */}
       {picks.length > 0 && (
@@ -271,6 +275,14 @@ export function VoiceSamples({ voice, onOpenInTuner, onLocked, canWrite }: Props
         <div style={{ fontSize: 12, color: t.textSecondary }}>No sample gallery for {voiceDisplayName(voice)} yet — hit “Build 10 samples”.</div>
       )}
       {!gal && !err && <div style={{ fontSize: 12, color: t.textSecondary }}>Loading samples…</div>}
+      <ConfirmDialog
+        open={rebuildAsk}
+        title={`Re-render all 10 samples for ${voiceDisplayName(voice)}?`}
+        body="Rendered on Modal with the same code path real renders use. Existing samples are replaced."
+        confirmLabel="Re-render 10 — ≈ $0.10–0.30"
+        onConfirm={() => void rebuild()}
+        onCancel={() => setRebuildAsk(false)}
+      />
     </div>
   );
 }

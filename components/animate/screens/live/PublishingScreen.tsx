@@ -26,7 +26,7 @@ import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { useTier } from '../../tier-context';
-import { VCard, VBtn } from '../../primitives';
+import { VCard, VBtn, ConfirmDialog } from '../../primitives';
 import { SectionTitle, EmptyState, ErrorBar, SkeletonRows } from './AutopilotScreen';
 
 const SUPPORTED_PLATFORMS = [
@@ -514,10 +514,13 @@ function VendorTileActions({
 }): React.ReactElement {
   const { t } = useTheme();
   const [busy, setBusy] = React.useState(false);
+  /* Request/run pair replacing window.confirm() — which confirmation (if any)
+   * is open for this tile. */
+  const [ask, setAsk] = React.useState<'disconnect' | 'connect' | null>(null);
   const needsReconnect = connected && status && status !== 'active';
 
-  const disconnect = async (): Promise<void> => {
-    if (!window.confirm(`Disconnect ${label}? Jelly forgets the connection; nothing already posted is affected.`)) return;
+  const runDisconnect = async (): Promise<void> => {
+    setAsk(null);
     setBusy(true);
     try {
       await fetch(`/api/vater/social-accounts/${platform}`, { method: 'DELETE' });
@@ -527,20 +530,20 @@ function VendorTileActions({
     }
   };
 
+  const startOAuth = (force: boolean) => {
+    window.location.href = `/api/vater/social-accounts/oauth/${platform}/start?return=publishing${force ? '&force=1' : ''}`;
+  };
+
   const go = (force: boolean) => {
     // Direct connections run through our publishing partner and cost
     // $6/month per connected account. Say so BEFORE the OAuth dance —
     // surprise charges are how beta trust dies. Reconnecting an
     // already-connected account is not a new charge.
     if (!connected) {
-      const ok = window.confirm(
-        `Connecting ${label} directly costs $6/month per account (billed to your Jelly credit). ` +
-          `Want more than one ${label} account? Connect this one, then add another profile — each connected account is its own $6/month. ` +
-          `Or skip the charge: download the MP4 and post it yourself. Connect now?`,
-      );
-      if (!ok) return;
+      setAsk('connect');
+      return;
     }
-    window.location.href = `/api/vater/social-accounts/oauth/${platform}/start?return=publishing${force ? '&force=1' : ''}`;
+    startOAuth(force);
   };
 
   return (
@@ -553,10 +556,37 @@ function VendorTileActions({
         {needsReconnect ? 'Reconnect' : connected ? 'Reconnect' : `Connect ${label}`}
       </VBtn>
       {connected && (
-        <VBtn size="sm" variant="text" onClick={() => void disconnect()} disabled={busy}>
+        <VBtn size="sm" variant="text" onClick={() => setAsk('disconnect')} disabled={busy}>
           {busy ? '…' : 'Disconnect'}
         </VBtn>
       )}
+      <ConfirmDialog
+        open={ask === 'disconnect'}
+        title={`Disconnect ${label}?`}
+        body="Jelly forgets the connection; nothing already posted is affected."
+        confirmLabel="Disconnect"
+        danger
+        onConfirm={() => void runDisconnect()}
+        onCancel={() => setAsk(null)}
+      />
+      <ConfirmDialog
+        open={ask === 'connect'}
+        title={`Connect ${label} — $6/month`}
+        body={
+          <>
+            Connecting {label} directly costs $6/month per account (billed to
+            your Jelly credit). Want more than one {label} account? Connect this
+            one, then add another profile — each connected account is its own
+            $6/month. Or skip the charge: download the MP4 and post it yourself.
+          </>
+        }
+        confirmLabel="Connect — $6/month"
+        onConfirm={() => {
+          setAsk(null);
+          startOAuth(false);
+        }}
+        onCancel={() => setAsk(null)}
+      />
       {needsReconnect && (
         <span style={{ fontSize: 10, color: JELLY_TOKENS.error, alignSelf: 'center' }}>
           {status} — reconnect to fix

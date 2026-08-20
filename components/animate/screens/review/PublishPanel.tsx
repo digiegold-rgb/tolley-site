@@ -220,7 +220,9 @@ export function PublishPanel({
           helper={`Comma-separated — ${parsedTags.length} tag${parsedTags.length === 1 ? '' : 's'}`}
         />
 
-        {metaError && <RetryError message={metaError} />}
+        {metaError && (
+          <RetryError message={metaError} onRetry={() => void generateMetadata()} />
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <VBtn

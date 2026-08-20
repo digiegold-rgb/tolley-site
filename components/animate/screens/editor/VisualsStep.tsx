@@ -37,7 +37,7 @@ import { createPortal } from 'react-dom';
 import { JELLY_TOKENS, SECTION_PRICES } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { Icon } from '../../Icon';
-import { VBtn, VCard } from '../../primitives';
+import { RetryError, VBtn, VCard } from '../../primitives';
 import { YouTubeStylePicker } from '@/components/vater/youtube-style-picker';
 import { YouTubeStyleDocumentPicker } from '@/components/vater/youtube-style-document-picker';
 import { YouTubeMusicPicker } from '@/components/vater/youtube-music-picker';
@@ -233,6 +233,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
   const [generating, setGenerating] = React.useState(false);
   const [animating, setAnimating] = React.useState(false);
   const [composing, setComposing] = React.useState(false);
+  const [downloadingImages, setDownloadingImages] = React.useState(false);
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = React.useState(false);
   // Billing gate (402 budget.reason from the generation routes) — rendered as
@@ -558,6 +559,52 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
     }
   }, [projectId, refresh, describeGenerationError]);
 
+  /** Zips every rendered scene still into one download. Scenes whose image
+   *  isn't ready yet are skipped and reported, so a half-rendered project
+   *  still yields whatever exists instead of failing wholesale. */
+  const handleDownloadAllImages = React.useCallback(async () => {
+    if (!projectId || scenes.length === 0) return;
+    setDownloadingImages(true);
+    setActionError(null);
+    try {
+      const { default: JSZip } = await import('jszip');
+      const zip = new JSZip();
+      let added = 0;
+      for (const sc of scenes) {
+        const res = await fetch(
+          `/api/vater/youtube/${projectId}/scene/${sc.idx}?v=${sc.version}&variant=image`,
+        );
+        if (!res.ok) continue;
+        const blob = await res.blob();
+        const ext = blob.type.includes('png') ? 'png' : 'jpg';
+        zip.file(`scene-${String(sc.idx + 1).padStart(2, '0')}.${ext}`, blob);
+        added++;
+      }
+      if (added === 0) {
+        setActionError('No scene images are ready to download yet.');
+        return;
+      }
+      const out = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(out);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `jelly-scenes-${projectId}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      if (added < scenes.length) {
+        setActionError(
+          `Downloaded ${added} of ${scenes.length} images — the rest aren't rendered yet.`,
+        );
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Download failed');
+    } finally {
+      setDownloadingImages(false);
+    }
+  }, [projectId, scenes]);
+
   // ─── Render: scenes view ──────────────────────────────────────────────
 
   if (view === 'scenes') {
@@ -813,8 +860,8 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
                       variant="outlined"
                       onClick={() => handleAnimateScene(sc.idx)}
                       style={{
-                        color: JELLY_TOKENS.brandLight,
-                        borderColor: JELLY_TOKENS.brandOutline,
+                        color: JELLY_TOKENS.warning,
+                        borderColor: JELLY_TOKENS.warning,
                       }}
                     >
                       Re-Animate ({formatPrice(getAnimationPriceCents(animQuality))})
@@ -830,33 +877,11 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
         </div>
 
         {actionError && (
-          <div
-            style={{
-              marginTop: 12,
-              padding: '8px 12px',
-              fontSize: 13,
-              borderRadius: JELLY_TOKENS.radius.md,
-              ...TINT_BG.error,
-              color: JELLY_TOKENS.error,
-            }}
-          >
-            {actionError}
-          </div>
+          <RetryError message={actionError} style={{ marginTop: 12 }} />
         )}
 
         {featureError && (
-          <div
-            style={{
-              marginTop: 12,
-              padding: '8px 12px',
-              fontSize: 13,
-              borderRadius: JELLY_TOKENS.radius.md,
-              ...TINT_BG.error,
-              color: JELLY_TOKENS.error,
-            }}
-          >
-            {featureError}
-          </div>
+          <RetryError message={featureError} style={{ marginTop: 12 }} />
         )}
 
         {/* Sticky bottom bar */}
@@ -942,8 +967,8 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
               onClick={requestAnimateSelected}
               disabled={animating || selectedScenes.size === 0}
               style={{
-                color: JELLY_TOKENS.brandLight,
-                borderColor: JELLY_TOKENS.brandOutline,
+                color: JELLY_TOKENS.warning,
+                borderColor: JELLY_TOKENS.warning,
               }}
             >
               {animating
@@ -952,21 +977,33 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
             </VBtn>
             {/* Stills exist → motion becomes an explicit, priced second
                 step. The estimate is the DELTA over the draft, because the
-                draft is already paid for by the time this button shows. */}
+                draft is already paid for by the time this button shows.
+                Warning amber = "this click costs money" (semantic status
+                colour, the one sanctioned non-brand hue) so paid motion
+                never reads like a free primary action. */}
             <span title="Turns every still into a short animated clip">
               <VBtn
                 size="sm"
                 onClick={requestAddMotion}
                 disabled={animating || scenes.length === 0}
-                style={{ background: JELLY_TOKENS.gradPrimary }}
+                style={{
+                  background: JELLY_TOKENS.warning,
+                  color: JELLY_TOKENS.onGradient,
+                }}
               >
                 {animating
                   ? 'Animating…'
                   : `Add motion — est. ${fmtUsd(motionEstimate, estimate.loading)}`}
               </VBtn>
             </span>
-            <VBtn size="sm" variant="outlined" icon="download">
-              Download All Images
+            <VBtn
+              size="sm"
+              variant="outlined"
+              icon="download"
+              onClick={handleDownloadAllImages}
+              disabled={downloadingImages || scenes.length === 0}
+            >
+              {downloadingImages ? 'Zipping…' : 'Download All Images'}
             </VBtn>
             <VBtn
               size="sm"
@@ -1280,27 +1317,6 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
             marginBottom: 12,
           }}
         >
-          <div>
-            <div style={{ fontSize: 12, color: t.textSecondary, marginBottom: 4 }}>
-              Type
-            </div>
-            <select
-              defaultValue="image"
-              style={{
-                width: '100%',
-                padding: '8px 10px',
-                borderRadius: JELLY_TOKENS.radius.md,
-                border: `1px solid ${t.border}`,
-                background: t.card,
-                color: t.text,
-                fontSize: 13,
-                fontFamily: JELLY_TOKENS.font,
-              }}
-            >
-              <option value="image">Still image</option>
-              <option value="video">Animated</option>
-            </select>
-          </div>
           <div>
             <div style={{ fontSize: 12, color: t.textSecondary, marginBottom: 4 }}>
               Animation Quality
@@ -1771,32 +1787,10 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
       </VCard>
 
       {actionError && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: '8px 12px',
-            fontSize: 13,
-            borderRadius: JELLY_TOKENS.radius.md,
-            ...TINT_BG.error,
-            color: JELLY_TOKENS.error,
-          }}
-        >
-          {actionError}
-        </div>
+        <RetryError message={actionError} style={{ marginTop: 12 }} />
       )}
       {featureError && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: '8px 12px',
-            fontSize: 13,
-            borderRadius: JELLY_TOKENS.radius.md,
-            ...TINT_BG.error,
-            color: JELLY_TOKENS.error,
-          }}
-        >
-          {featureError}
-        </div>
+        <RetryError message={featureError} style={{ marginTop: 12 }} />
       )}
       <PromptReviewModal
         open={reviewOpen}

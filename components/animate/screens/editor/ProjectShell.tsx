@@ -36,7 +36,7 @@ import * as React from 'react';
 import { JELLY_TOKENS, EDITOR_STEPS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { Icon } from '../../Icon';
-import { PillStepper, EDITOR_STEP_HINTS } from '../../primitives';
+import { PillStepper, EDITOR_STEP_HINTS, ConfirmDialog } from '../../primitives';
 import { Footer } from '../../Footer';
 import {
   IN_FLIGHT_STATUSES,
@@ -809,6 +809,8 @@ function RenderInFlightBar({
 }): React.ReactElement {
   const { t } = useTheme();
   const [cancelling, setCancelling] = React.useState(false);
+  /* Request/run pair replacing window.confirm() before the cancel POST. */
+  const [confirmStop, setConfirmStop] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const label =
     (status && STATUS_LABELS[status as YouTubeProjectStatus]) || 'Rendering';
@@ -819,7 +821,7 @@ function RenderInFlightBar({
 
   const cancel = async (): Promise<void> => {
     if (cancelling) return;
-    if (!window.confirm('Stop this render? You are never charged for a render that does not finish.')) return;
+    setConfirmStop(false);
     setCancelling(true);
     setError(null);
     try {
@@ -872,7 +874,7 @@ function RenderInFlightBar({
         </span>
         <button
           type="button"
-          onClick={() => void cancel()}
+          onClick={() => setConfirmStop(true)}
           disabled={cancelling}
           style={{
             fontSize: 12,
@@ -913,6 +915,15 @@ function RenderInFlightBar({
           {error}
         </div>
       )}
+      <ConfirmDialog
+        open={confirmStop}
+        title="Stop this render?"
+        body="You are never charged for a render that does not finish."
+        confirmLabel="Stop render"
+        danger
+        onConfirm={() => void cancel()}
+        onCancel={() => setConfirmStop(false)}
+      />
     </div>
   );
 }

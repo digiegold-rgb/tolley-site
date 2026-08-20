@@ -13,6 +13,7 @@
  * immediately without waiting for round-trips.
  */
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
@@ -71,6 +72,14 @@ export function EditorShell({ project: initialProject }: Props) {
     | "modal-wan22"
     | "modal-wan22-fast"
   >("modal-wan22-narrative");
+  // Money-click confirmations render as a portalled modal, never a native
+  // confirm() — browser dialogs block the event loop (and our automation).
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    lines: string[];
+    confirmLabel: string;
+    onConfirm: () => void;
+  } | null>(null);
   const [animateAllProgress, setAnimateAllProgress] = useState<{
     sceneCount: number;
     done: number;
@@ -240,15 +249,18 @@ export function EditorShell({ project: initialProject }: Props) {
       });
       return;
     }
-    if (
-      !confirm(
-        `Regenerate ${targets.length} image${targets.length > 1 ? 's' : ''}?\n\n` +
-          `Each scene reuses its current prompt. To edit prompts first, open a scene and use the drawer.\n` +
-          `Animation clips on those scenes will be invalidated (scene reverts to the still until re-animated).`,
-      )
-    ) {
-      return;
-    }
+    setPendingConfirm({
+      title: `Regenerate ${targets.length} image${targets.length > 1 ? 's' : ''}?`,
+      lines: [
+        'Each scene reuses its current prompt. To edit prompts first, open a scene and use the drawer.',
+        'Animation clips on those scenes will be invalidated (scene reverts to the still until re-animated).',
+      ],
+      confirmLabel: `Regenerate ${targets.length} image${targets.length > 1 ? 's' : ''}`,
+      onConfirm: () => runBulkRegen(targets),
+    });
+  };
+
+  const runBulkRegen = (targets: SceneSpec[]) => {
     startBulkRegen(async () => {
       setBulkRegenProgress({ total: targets.length, done: 0, failed: 0 });
       let done = 0;
@@ -345,16 +357,19 @@ export function EditorShell({ project: initialProject }: Props) {
     };
     const perClip = perClipCost[batchQuality];
     const estCost = (targetCount * perClip).toFixed(2);
-    if (
-      !confirm(
-        `${verb} ${targetCount} scenes via ${qualityLabel[batchQuality]}?\n\n` +
-          `Estimated total cost: ~$${estCost} (≈ $${perClip.toFixed(2)}/scene × ${targetCount}).\n` +
-          `Each scene keeps its own motion preset (Subtle / Normal / Bold, Hold start pose).\n` +
-          `Progress is shown live.`,
-      )
-    ) {
-      return;
-    }
+    setPendingConfirm({
+      title: `${verb} ${targetCount} scenes via ${qualityLabel[batchQuality]}?`,
+      lines: [
+        `Estimated total cost: ~$${estCost} (≈ $${perClip.toFixed(2)}/scene × ${targetCount}).`,
+        'Each scene keeps its own motion preset (Subtle / Normal / Bold, Hold start pose).',
+        'Progress is shown live.',
+      ],
+      confirmLabel: `Confirm — ~$${estCost}`,
+      onConfirm: () => runAnimateAll(forceAll, sceneIdxs),
+    });
+  };
+
+  const runAnimateAll = (forceAll: boolean, sceneIdxs?: number[]) => {
     startAnimateAll(async () => {
       try {
         // Step 1: kick off the batch (returns immediately)
@@ -724,6 +739,54 @@ export function EditorShell({ project: initialProject }: Props) {
         />
       </div>
 
+      {pendingConfirm && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
+              onClick={() => setPendingConfirm(null)}
+              role="dialog"
+              aria-modal="true"
+              aria-label={pendingConfirm.title}
+            >
+              <div
+                className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-sm font-semibold text-zinc-100">
+                  {pendingConfirm.title}
+                </h3>
+                <div className="mt-3 space-y-2">
+                  {pendingConfirm.lines.map((line, i) => (
+                    <p key={i} className="text-xs leading-relaxed text-zinc-400">
+                      {line}
+                    </p>
+                  ))}
+                </div>
+                <div className="mt-5 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPendingConfirm(null)}
+                    className="rounded-lg border border-zinc-800 px-4 py-2 text-xs font-semibold text-zinc-300 transition-colors hover:bg-zinc-900"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const action = pendingConfirm.onConfirm;
+                      setPendingConfirm(null);
+                      action();
+                    }}
+                    className="rounded-lg bg-amber-500/20 px-4 py-2 text-xs font-semibold text-amber-300 transition-colors hover:bg-amber-500/30"
+                  >
+                    {pendingConfirm.confirmLabel}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

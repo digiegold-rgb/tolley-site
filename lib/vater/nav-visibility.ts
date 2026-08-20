@@ -51,7 +51,9 @@ export const NAV_ROUTES: readonly NavRouteDef[] = [
   { id: 'publishing', label: 'Publishing', icon: 'upload', minTier: 'public', section: 'primary' },
   { id: 'animation', label: 'AI Animation', icon: 'image', minTier: 'studio', section: 'primary', stub: true },
   { id: 'analytics', label: 'Analytics', icon: 'niche', minTier: 'public', section: 'primary', stub: true },
-  { id: 'niche-finder', label: 'Creator Models', icon: 'search', minTier: 'studio', section: 'primary' },
+  // Creator Models went public 2026-08-20 — a read-only archetype browser is
+  // topic research for customers, not a studio secret (TubeGen parity).
+  { id: 'niche-finder', label: 'Creator Models', icon: 'search', minTier: 'public', section: 'primary' },
   { id: 'styles', label: 'Styles', icon: 'styles', minTier: 'public', section: 'primary' },
   // Read-only view of the caller's own DGX character library — public tier:
   // reusing your own cast is part of the golden path, not a studio perk.
@@ -60,7 +62,8 @@ export const NAV_ROUTES: readonly NavRouteDef[] = [
   { id: 'video-editor', label: 'Video Editor', icon: 'videoEditor', minTier: 'public', section: 'primary' },
   { id: 'course', label: 'Course Studio', icon: 'course', minTier: 'studio', section: 'primary' },
   { id: 'rules', label: 'Rules', icon: 'description', minTier: 'studio', section: 'primary' },
-  { id: 'learning-center', label: 'Learning Center', icon: 'learning', minTier: 'public', section: 'primary', stub: true },
+  // Un-stubbed 2026-08-20: now a real read-only guide (no fake credit rewards).
+  { id: 'learning-center', label: 'Learning Center', icon: 'learning', minTier: 'public', section: 'primary' },
   // Every tier gets the System Log: when a render fails, the first thing a
   // customer needs is to see what happened without opening a support ticket.
   { id: 'system-log', label: 'System Log', icon: 'description', minTier: 'public', section: 'secondary' },

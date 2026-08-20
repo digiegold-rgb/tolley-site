@@ -449,6 +449,10 @@ function AnimationPanel({
     scene.holdStartPose ?? true,
   );
   const [isAnimating, startAnim] = useTransition();
+  // Armed after the first click on a Veo tier with a cartoon-unsafe warning;
+  // the second click proceeds. Reset whenever the tier changes.
+  const [veoConfirm, setVeoConfirm] = useState(false);
+  useEffect(() => setVeoConfirm(false), [quality]);
   const [isReverting, startRevert] = useTransition();
   const [isSuggesting, startSuggest] = useTransition();
   const [statusMsg, setStatusMsg] = useState<
@@ -492,12 +496,17 @@ function AnimationPanel({
       });
       return;
     }
-    if (qualityInfo?.cartoonUnsafe) {
-      const ok = confirm(
-        `${qualityInfo.label} blocks cartoon-style images via Google Veo's safety filter.\n\nIf this scene is photoreal, click OK. If it's a cartoon (FireRed/SDXL), click Cancel and pick Wan2.2 or Kling instead.`,
-      );
-      if (!ok) return;
+    if (qualityInfo?.cartoonUnsafe && !veoConfirm) {
+      // Inline warning instead of a native confirm() — browser dialogs block
+      // the event loop. The button re-fires once the user acknowledges.
+      setVeoConfirm(true);
+      setStatusMsg({
+        kind: "error",
+        text: `${qualityInfo.label} blocks cartoon-style images via Google Veo's safety filter. If this scene is photoreal, click Animate again to proceed; if it's a cartoon (FireRed/SDXL), pick Wan2.2 or Kling instead.`,
+      });
+      return;
     }
+    setVeoConfirm(false);
     // Animation prompt is OPTIONAL — if blank, the DGX worker runs the
     // auto-planner and picks motion based on imagePrompt + beatText.
     const prompt = animationPrompt.trim();

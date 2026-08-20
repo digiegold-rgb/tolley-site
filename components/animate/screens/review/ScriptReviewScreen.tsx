@@ -42,6 +42,7 @@ import {
 } from '@/lib/vater/youtube-status';
 import { PublishPanel } from './PublishPanel';
 import { TINT_BG } from '../tint';
+import { useRenderEstimate } from '../editor/use-render-estimate';
 
 /* ─── Types ─── */
 
@@ -1133,6 +1134,11 @@ function ReviewPanel({
   const [approving, setApproving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [justSaved, setJustSaved] = React.useState(false);
+  // Approve is a money click — quote the price on the button itself, same
+  // number the Visuals step shows. Degrades to a plain label if the estimate
+  // route is absent.
+  const estimate = useRenderEstimate(project.id);
+  const approveUsd = estimate.fullUsd ?? estimate.draftUsd;
 
   const words = React.useMemo(() => wordsIn(draft), [draft]);
   const dirty = draft !== saved;
@@ -1310,7 +1316,11 @@ function ReviewPanel({
           disabled={approving || saving || words === 0 || overLimit}
           icon="play"
         >
-          {approving ? 'Starting render…' : 'Approve & Animate'}
+          {approving
+            ? 'Starting render…'
+            : approveUsd !== null
+              ? `Approve & Animate — est. $${approveUsd.toFixed(2)}`
+              : 'Approve & Animate'}
         </VBtn>
         <span style={{ fontSize: 12, color: t.textSecondary }}>
           {overLimit

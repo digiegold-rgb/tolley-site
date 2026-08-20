@@ -13,7 +13,8 @@
  *      successful save, the wizard hands back the new style and we treat
  *      it the same as clicking a style card (auto-select + create project).
  *
- * No silent catches — every failure surfaces via alert() + console.error.
+ * No silent catches — every failure surfaces as an inline error banner
+ * inside the modal (plus console.error). No native dialogs.
  * Inline styles only; theming via JELLY_TOKENS / useTheme.
  */
 
@@ -85,6 +86,8 @@ export function StylePickerModal({
   const [loading, setLoading] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [creatingFromId, setCreatingFromId] = React.useState<string | null>(null);
+  /* new-from-style failure — inline banner above the style grid (was alert()). */
+  const [createError, setCreateError] = React.useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = React.useState(false);
 
   // Own-script mode — paste a script and skip principle-extraction +
@@ -283,6 +286,7 @@ export function StylePickerModal({
     }
 
     setCreatingFromId(styleId);
+    setCreateError(null);
     try {
       const res = await fetch('/api/vater/youtube/new-from-style', {
         method: 'POST',
@@ -302,7 +306,7 @@ export function StylePickerModal({
     } catch (err) {
       devError('[StylePickerModal] new-from-style failed:', err);
       const msg = err instanceof Error ? err.message : 'Failed to create project';
-      alert(`Could not create project: ${msg}`);
+      setCreateError(`Could not create project: ${msg}`);
     } finally {
       setCreatingFromId(null);
     }
@@ -754,6 +758,22 @@ export function StylePickerModal({
               }}
             >
               {loadError}
+            </div>
+          )}
+
+          {!queued && createError && (
+            <div
+              style={{
+                padding: '10px 14px',
+                borderRadius: JELLY_TOKENS.radius.md,
+                border: `1px solid ${JELLY_TOKENS.error}`,
+                ...TINT_BG.error,
+                color: JELLY_TOKENS.error,
+                fontSize: 13,
+                marginBottom: 16,
+              }}
+            >
+              {createError}
             </div>
           )}
 

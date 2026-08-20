@@ -27,7 +27,7 @@ import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { Icon } from '../../Icon';
-import { VBtn, VCard } from '../../primitives';
+import { VBtn, VCard, ConfirmDialog, RetryError } from '../../primitives';
 import { Footer } from '../../Footer';
 import { YouTubeProjectCard } from '@/components/vater/youtube-project-card';
 import { ProjectDetail } from './ProjectDetail';
@@ -67,6 +67,14 @@ function mapStatus(p: AnyProject): SimpleStatus {
     return 'Running';
   }
   return 'InProgress';
+}
+
+/** "3:42" from seconds; null when the duration isn't known. */
+function formatDuration(secs: unknown): string | null {
+  if (typeof secs !== 'number' || !Number.isFinite(secs) || secs <= 0) return null;
+  const m = Math.floor(secs / 60);
+  const s = Math.round(secs % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 function statusColor(s: SimpleStatus): string {
@@ -120,27 +128,36 @@ export function ProjectHistoryScreen(): React.ReactElement {
     void refresh();
   }, [refresh]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this project? This cannot be undone.')) return;
+  /* Per-action error banner (delete/duplicate failures). One state — the
+   * latest failure overwrites the previous one. Replaces alert(). */
+  const [actionError, setActionError] = React.useState<string | null>(null);
+  /* Delete confirm: request/run pair replacing the native confirm(). */
+  const [pendingDelete, setPendingDelete] = React.useState<string | null>(null);
+
+  const runDelete = async () => {
+    const id = pendingDelete;
+    setPendingDelete(null);
+    if (!id) return;
     try {
       const res = await fetch(`/api/vater/youtube/${id}`, { method: 'DELETE' });
       if (!res.ok) {
-        alert(`Delete failed (HTTP ${res.status})`);
+        setActionError(`Delete failed (HTTP ${res.status})`);
         return;
       }
+      setActionError(null);
       setProjects((prev) => prev.filter((p) => p.id !== id));
       if (activeProject?.id === id) setActiveProject(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Delete failed');
+      setActionError(err instanceof Error ? err.message : 'Delete failed');
     }
   };
 
   const handleDuplicate = async (p: AnyProject) => {
     // Duplication endpoint isn't built in the inventory; fall back to topic
-    // mode using the same topic + style. Surface a toast-equivalent alert
-    // when the project lacks a topic (no clean duplication path).
+    // mode using the same topic + style. Surface an inline error when the
+    // project lacks a topic (no clean duplication path).
     if (!p?.topic) {
-      alert('Duplicate is not yet available for transcribe-mode projects.');
+      setActionError('Duplicate is not yet available for transcribe-mode projects.');
       return;
     }
     try {
@@ -154,12 +171,13 @@ export function ProjectHistoryScreen(): React.ReactElement {
         }),
       });
       if (!res.ok) {
-        alert(`Duplicate failed (HTTP ${res.status})`);
+        setActionError(`Duplicate failed (HTTP ${res.status})`);
         return;
       }
+      setActionError(null);
       await refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Duplicate failed');
+      setActionError(err instanceof Error ? err.message : 'Duplicate failed');
     }
   };
 
@@ -227,6 +245,10 @@ export function ProjectHistoryScreen(): React.ReactElement {
             </VBtn>
           </div>
         </VCard>
+      )}
+
+      {actionError && (
+        <RetryError message={actionError} variant="banner" style={{ marginBottom: 16 }} />
       )}
 
       {loading && projects.length === 0 ? (
@@ -342,6 +364,35 @@ export function ProjectHistoryScreen(): React.ReactElement {
                       >
                         {ss}
                       </span>
+                      {/* Status-pill + metric pairing (TubeGen): every pill
+                          carries its evidence when the row has the data. */}
+                      {ss === 'Completed' && formatDuration(p.audioDuration) && (
+                        <span style={{ fontSize: 12, color: t.textSecondary }}>
+                          {formatDuration(p.audioDuration)}
+                        </span>
+                      )}
+                      {ss === 'Completed' &&
+                        Array.isArray(p.scenesJson) &&
+                        p.scenesJson.length > 0 && (
+                          <span style={{ fontSize: 12, color: t.textSecondary }}>
+                            {p.scenesJson.length} scene{p.scenesJson.length === 1 ? '' : 's'}
+                          </span>
+                        )}
+                      {ss === 'Failed' && p.errorMessage && (
+                        <span
+                          style={{
+                            fontSize: 12,
+                            color: JELLY_TOKENS.error,
+                            maxWidth: 320,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                          title={String(p.errorMessage)}
+                        >
+                          {String(p.errorMessage).slice(0, 120)}
+                        </span>
+                      )}
                       {p.stylePreset && (
                         <span style={{ fontSize: 12, color: t.textSecondary }}>
                           Style: {p.stylePreset}
@@ -418,7 +469,7 @@ export function ProjectHistoryScreen(): React.ReactElement {
                       variant="text"
                       icon="delete"
                       style={{ color: JELLY_TOKENS.error }}
-                      onClick={() => handleDelete(p.id)}
+                      onClick={() => setPendingDelete(p.id)}
                     >
                       Delete
                     </VBtn>
@@ -429,6 +480,15 @@ export function ProjectHistoryScreen(): React.ReactElement {
           })}
         </div>
       )}
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this project?"
+        body="This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => void runDelete()}
+        onCancel={() => setPendingDelete(null)}
+      />
       <Footer />
     </div>
   );

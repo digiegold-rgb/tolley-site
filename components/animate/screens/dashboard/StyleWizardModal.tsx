@@ -12,8 +12,11 @@
  *   3. POST  /api/vater/youtube/styles/[id]/references { urls } → kicks DGX transcribe
  *
  * Steps 1+2 are awaited; step 3 is best-effort (the DGX side runs async and
- * the callback writes referenceTranscripts later). We surface step-3 errors
- * via alert() so the user can retry from the gallery if it fails.
+ * the callback writes referenceTranscripts later). Every failure — hard save
+ * errors and best-effort step 2b/3 warnings alike — surfaces in ONE inline
+ * notice pinned above the footer (no native dialogs). Post-save warnings hold
+ * the wizard open with a Continue button so the message is actually read
+ * before the modal closes.
  *
  * No silent catches. Inline styles only. PATCHABLE_FIELDS list lives in
  * /app/api/vater/youtube/styles/[id]/route.ts — kept in sync below.
@@ -184,6 +187,10 @@ export function StyleWizardModal({
   // ── Save state ──
   const [saving, setSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
+  /* Set when the style WAS created but a best-effort step (characters /
+   * reference kickoff) failed: the warning sits in the saveError notice and
+   * the wizard stays open until the user clicks Continue → onCreated. */
+  const [pendingCreated, setPendingCreated] = React.useState<CreatedStyle | null>(null);
 
   // Load voice catalog on open.
   React.useEffect(() => {
@@ -268,6 +275,7 @@ export function StyleWizardModal({
     setOverlayTheme('dark');
     setSaving(false);
     setSaveError(null);
+    setPendingCreated(null);
   }, [open]);
 
   // Esc closes (when not saving).
@@ -426,6 +434,10 @@ export function StyleWizardModal({
       //     DGX to expand the brief into a full descriptor, and firing them in
       //     parallel just queues on the same box. Best-effort, like references
       //     below — a failed character is reported, never rolled back over.
+      // Best-effort warnings (characters, reference kickoff) accumulate here
+      // and surface in the single inline notice — the style itself is saved.
+      const warnings: string[] = [];
+
       if (initialCharacters && initialCharacters.length > 0) {
         const failed: string[] = [];
         for (const c of initialCharacters) {
@@ -454,16 +466,14 @@ export function StyleWizardModal({
         }
         if (failed.length > 0) {
           devError('[StyleWizardModal] character mint failed:', failed);
-          alert(
-            `Style created, but ${failed.length} character(s) didn't attach:\n${failed.join(
-              '\n',
-            )}\nYou can add them from the Styles page.`,
+          warnings.push(
+            `${failed.length} character(s) didn't attach: ${failed.join('; ')}. You can add them from the Styles page.`,
           );
         }
       }
 
-      // 3. Kick off reference transcribe (best-effort — surfaces alert on
-      //    failure but doesn't roll back the style).
+      // 3. Kick off reference transcribe (best-effort — failures surface in
+      //    the inline notice but don't roll back the style).
       try {
         const refRes = await fetch(
           `/api/vater/youtube/styles/${encodeURIComponent(
@@ -483,35 +493,42 @@ export function StyleWizardModal({
             '[StyleWizardModal] references kickoff failed:',
             data.error,
           );
-          alert(
-            `Style created, but reference transcribe didn't kick off: ${
+          warnings.push(
+            `Reference transcribe didn't kick off: ${
               data.error || `HTTP ${refRes.status}`
             }. You can retry from the Styles page.`,
           );
         }
       } catch (refErr) {
         devError('[StyleWizardModal] references kickoff error:', refErr);
-        alert(
-          'Style created, but reference transcribe call failed (network). Retry from the Styles page.',
+        warnings.push(
+          'Reference transcribe call failed (network). Retry from the Styles page.',
         );
       }
 
       // We optimistically pass a reference list reflecting the URLs the user
       // entered — actual transcripts populate async via the references
       // callback. The picker list refresh on next open will show real counts.
-      onCreated({
+      const created: CreatedStyle = {
         id: styleId,
         name: patchData?.style?.name ?? name.trim(),
         emoji: patchData?.style?.emoji ?? null,
         voice: patchData?.style?.voice ?? voice.trim(),
         referenceTranscripts: validReferenceUrls.map((url) => ({ url })),
-      });
+      };
+      if (warnings.length > 0) {
+        // Style exists — show the warning and wait for an explicit Continue
+        // instead of closing the wizard over an unread message.
+        setSaveError(`Style created, but: ${warnings.join(' ')}`);
+        setPendingCreated(created);
+        return;
+      }
+      onCreated(created);
     } catch (err) {
       devError('[StyleWizardModal] save failed:', err);
       const msg =
         err instanceof Error ? err.message : 'Failed to create style';
-      setSaveError(msg);
-      alert(`Could not create style: ${msg}`);
+      setSaveError(`Could not create style: ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -690,21 +707,6 @@ export function StyleWizardModal({
             gap: 14,
           }}
         >
-          {saveError && (
-            <div
-              style={{
-                padding: '10px 14px',
-                borderRadius: JELLY_TOKENS.radius.md,
-                border: `1px solid ${JELLY_TOKENS.error}`,
-                ...TINT_BG.error,
-                color: JELLY_TOKENS.error,
-                fontSize: 13,
-              }}
-            >
-              {saveError}
-            </div>
-          )}
-
           {/* Required fields */}
           <div
             style={{
@@ -1159,7 +1161,7 @@ export function StyleWizardModal({
                       // v1: simple notice. The art-style picker is shipped
                       // separately — clicking this in v2 will open it once
                       // we plumb /styles/art-style.
-                      alert(
+                      setSaveError(
                         'Art-style preset picker ships in a follow-up. Default is "Realistic" for now.',
                       );
                     }}
@@ -1529,6 +1531,34 @@ export function StyleWizardModal({
           )}
         </div>
 
+        {/* Inline notice — the ONE surface for every save error, best-effort
+            warning, and heads-up in this wizard (replaced alert()). Pinned
+            outside the scrollable body so it is always visible. */}
+        {saveError && (
+          <div
+            style={{
+              margin: '0 18px 12px',
+              padding: '10px 14px',
+              borderRadius: JELLY_TOKENS.radius.md,
+              border: `1px solid ${pendingCreated ? TINT_BORDER.warning : JELLY_TOKENS.error}`,
+              ...(pendingCreated ? TINT_BG.warning : TINT_BG.error),
+              color: pendingCreated ? JELLY_TOKENS.warning : JELLY_TOKENS.error,
+              fontSize: 13,
+              lineHeight: 1.5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            <span style={{ flex: 1 }}>{saveError}</span>
+            {pendingCreated && (
+              <VBtn size="sm" onClick={() => onCreated(pendingCreated)}>
+                Continue
+              </VBtn>
+            )}
+          </div>
+        )}
+
         {/* Footer */}
         <div
           style={{
@@ -1544,15 +1574,17 @@ export function StyleWizardModal({
           <div style={{ fontSize: 11, color: t.textSecondary }}>
             {saving
               ? 'Creating style…'
-              : canSave
-                ? 'Ready to save.'
-                : 'Need name, word count, voice, and ≥1 reference video.'}
+              : pendingCreated
+                ? 'Style saved — hit Continue above.'
+                : canSave
+                  ? 'Ready to save.'
+                  : 'Need name, word count, voice, and ≥1 reference video.'}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <VBtn size="sm" variant="ghost" onClick={onClose} disabled={saving}>
               Cancel
             </VBtn>
-            <VBtn size="sm" onClick={handleSave} disabled={!canSave}>
+            <VBtn size="sm" onClick={handleSave} disabled={!canSave || !!pendingCreated}>
               {saving ? 'Saving…' : 'Create Style'}
             </VBtn>
           </div>

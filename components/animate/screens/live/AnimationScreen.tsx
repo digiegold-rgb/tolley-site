@@ -14,7 +14,7 @@
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
-import { VCard, SectionHeader } from '../../primitives';
+import { RetryError, VCard, SectionHeader } from '../../primitives';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyJob = any;
@@ -86,7 +86,7 @@ export function AnimationScreen(): React.ReactElement {
         {loading ? (
           <div style={{ color: t.textSecondary, fontSize: 13 }}>Loading…</div>
         ) : error ? (
-          <div style={{ color: JELLY_TOKENS.error, fontSize: 13 }}>{error}</div>
+          <RetryError message={error} onRetry={() => void refresh()} />
         ) : jobs.length === 0 ? (
           <div style={{ color: t.textSecondary, fontSize: 13 }}>No animation jobs running. Start one from any project&apos;s Visuals step.</div>
         ) : (
