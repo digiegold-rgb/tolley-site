@@ -64,7 +64,7 @@ export class ZernioError extends Error {
 }
 
 async function call<T>(
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
   extraHeaders?: Record<string, string>,
@@ -108,6 +108,40 @@ export interface ZernioProfile {
  * Resolve (or lazily create) the vendor profile for a user. Profile names
  * are unique per team — we key on our userId so retries are idempotent.
  */
+/** Human-findable vendor profile name: the user's email local-part plus a
+ *  short id suffix (two customers can share a local-part). Jared looks
+ *  profiles up on the Zernio dashboard by asking the customer their email —
+ *  `animate_<cuid>` made that impossible (2026-08-19). */
+async function profileNameFor(
+  userId: string,
+  label?: string | null,
+): Promise<string> {
+  let email = (label ?? "").includes("@") ? (label as string) : "";
+  if (!email) {
+    const u = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    email = u?.email ?? "";
+  }
+  const local = email
+    .split("@")[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, "")
+    .slice(0, 30);
+  return local ? `${local}__${userId.slice(-6)}` : `animate_${userId}`;
+}
+
+/** Rename an existing vendor profile (dashboard display only). */
+export async function renameProfile(
+  externalProfileId: string,
+  name: string,
+): Promise<void> {
+  await call("PUT", `/profiles/${encodeURIComponent(externalProfileId)}`, {
+    name,
+  });
+}
+
 export async function ensureProfileForUser(
   userId: string,
   label?: string | null,
@@ -118,7 +152,7 @@ export async function ensureProfileForUser(
   });
   if (existing) return existing;
 
-  const name = `animate_${userId}`;
+  const name = await profileNameFor(userId, label);
   let profileId: string | undefined;
   try {
     const created = await call<{ profile: ZernioProfile }>(
