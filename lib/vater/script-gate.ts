@@ -146,7 +146,13 @@ export async function startRunCreation(
     projectId: project.id,
     mode: project.transcript ? "transcribe" : "topic",
     transcript: project.transcript ?? undefined,
-    topic: project.topic ?? undefined,
+    // The DGX rejects topic-mode runs without a topic. Script-first projects
+    // (remix, concierge, own-script) may have topic=null — the script IS the
+    // content and topic is display metadata, so fall back to the title.
+    topic:
+      project.topic ??
+      project.sourceTitle ??
+      (scriptOverride ? "User-supplied script" : undefined),
     goal: project.goal || project.sourceTitle || "Original video from reference",
     targetWordCount,
     stylePreset: project.stylePreset,
