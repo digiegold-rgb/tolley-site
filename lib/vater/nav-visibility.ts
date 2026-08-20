@@ -43,6 +43,9 @@ export const NAV_ROUTES: readonly NavRouteDef[] = [
   { id: 'direct', label: 'Direct', icon: 'sparkle', minTier: 'studio', section: 'primary' },
   { id: 'script-review', label: 'Script Review', icon: 'scriptReview', minTier: 'studio', section: 'primary' },
   { id: 'library', label: 'Library', icon: 'videoEditor', minTier: 'public', section: 'primary' },
+  // Shorts Library (2026-08-20): every short cut from a long-form, in one
+  // place — sits right under Library on purpose.
+  { id: 'shorts-library', label: 'Shorts Library', icon: 'videoEditor', minTier: 'public', section: 'primary' },
   { id: 'queue', label: 'Queue', icon: 'history', minTier: 'public', section: 'primary' },
   { id: 'recent', label: 'Recent', icon: 'sparkle', minTier: 'public', section: 'primary' },
   { id: 'voices', label: 'Voices', icon: 'mic', minTier: 'public', section: 'primary' },

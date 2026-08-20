@@ -96,10 +96,16 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   }
 
   let maxSeconds = 30;
+  let startSeconds = 0;
   try {
-    const body = (await req.json()) as { maxSeconds?: unknown };
+    const body = (await req.json()) as { maxSeconds?: unknown; startSeconds?: unknown };
     if (typeof body.maxSeconds === "number") {
       maxSeconds = Math.max(10, Math.min(60, Math.round(body.maxSeconds)));
+    }
+    // Segment start (Shorts Library 2026-08-20): chop anywhere in the
+    // long-form, not just the opening hook.
+    if (typeof body.startSeconds === "number" && body.startSeconds > 0) {
+      startSeconds = Math.max(0, Math.round(body.startSeconds));
     }
   } catch {
     // empty body is fine
@@ -112,6 +118,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       projectId: id,
       videoUrl: project.finalVideoUrl,
       maxSeconds,
+      ...(startSeconds > 0 ? { startSeconds } : {}),
     });
 
     // The cut is minutes of work at most; poll until done or our own budget
@@ -153,11 +160,41 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         : null,
     });
 
+    // Shorts Library (2026-08-20): every cut is APPENDED to the feature
+    // bag's `shorts` list so one long-form can carry many segments; the
+    // legacy single-column `shortVideoUrl` keeps pointing at the newest cut
+    // so the existing promo section is unchanged. Re-read the bag fresh —
+    // the cut took minutes and another tab may have saved settings since.
+    const fresh = await prisma.youTubeProject.findUnique({
+      where: { id },
+      select: { settingsJson: true },
+    });
+    const bag =
+      fresh?.settingsJson &&
+      typeof fresh.settingsJson === "object" &&
+      !Array.isArray(fresh.settingsJson)
+        ? { ...(fresh.settingsJson as Record<string, unknown>) }
+        : {};
+    const priorShorts = Array.isArray(bag.shorts) ? bag.shorts : [];
+    bag.shorts = [
+      ...priorShorts.filter(
+        (s) => (s as { url?: string })?.url !== shortVideoUrl,
+      ),
+      {
+        url: shortVideoUrl,
+        startSeconds,
+        maxSeconds,
+        createdAt: new Date().toISOString(),
+        ...(shortDescription ? { description: shortDescription } : {}),
+      },
+    ];
+
     const updated = await prisma.youTubeProject.update({
       where: { id },
       data: {
         shortVideoUrl,
         ...(shortDescription ? { shortDescription } : {}),
+        settingsJson: bag as object,
       },
     });
     return NextResponse.json({ project: updated });

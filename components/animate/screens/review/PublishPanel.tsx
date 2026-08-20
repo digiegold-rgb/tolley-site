@@ -18,6 +18,7 @@ import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VBtn, VCard, VInput, RetryError, SectionHeader } from '../../primitives';
+import { PublishDecisionModal } from './PublishDecisionModal';
 import type { ReviewProject } from './ScriptReviewScreen';
 
 interface ThumbnailConcept {
@@ -38,15 +39,6 @@ const PRIVACY_OPTIONS = [
   { value: 'unlisted', label: 'Unlisted' },
   { value: 'private', label: 'Private' },
 ] as const;
-
-/** `<input type="datetime-local">` wants local wall-clock with no zone. */
-function toLocalInputValue(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return (
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
-  );
-}
 
 /** Read `publishAt` off the project's feature bag, if a schedule was set. */
 function readPublishAt(settingsJson: unknown): string | null {
@@ -307,7 +299,10 @@ function SocialPublishSection({
   const [picked, setPicked] = React.useState<Set<SocialPlatformId>>(new Set());
   const [caption, setCaption] = React.useState(defaultCaption);
   const [captionTouched, setCaptionTouched] = React.useState(false);
-  const [scheduleAt, setScheduleAt] = React.useState('');
+  // Post-now vs schedule is decided in the PublishDecisionModal (2026-08-20)
+  // — the old inline datetime field was invisible enough that batch-produced
+  // videos all went live instantly.
+  const [decisionOpen, setDecisionOpen] = React.useState(false);
   const [tiktokPrivacy, setTiktokPrivacy] = React.useState('PUBLIC_TO_EVERYONE');
   const [tiktokLevels, setTiktokLevels] = React.useState<string[]>([]);
   const [boards, setBoards] = React.useState<Array<{ id: string; name: string }>>([]);
@@ -406,11 +401,11 @@ function SocialPublishSection({
     });
   };
 
-  const scheduleInPast = scheduleAt !== '' && new Date(scheduleAt).getTime() <= Date.now() + 60_000;
   const needsBoard = picked.has('pinterest') && !boardId;
-  const ready = canPublish && picked.size > 0 && caption.trim().length > 0 && !scheduleInPast && !needsBoard && !busy;
+  const ready = canPublish && picked.size > 0 && caption.trim().length > 0 && !needsBoard && !busy;
 
-  const publish = async (): Promise<void> => {
+  /* scheduleIso comes from the decision modal — '' means post immediately. */
+  const publish = async (scheduleIso: string): Promise<void> => {
     setError(null);
     setBusy(true);
     try {
@@ -420,9 +415,9 @@ function SocialPublishSection({
         body: JSON.stringify({
           platforms: [...picked],
           caption,
-          ...(scheduleAt
+          ...(scheduleIso
             ? {
-                scheduleAt: new Date(scheduleAt).toISOString(),
+                scheduleAt: scheduleIso,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
               }
             : {}),
@@ -432,9 +427,11 @@ function SocialPublishSection({
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string; post?: SocialPostResult };
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setDecisionOpen(false);
       if (data.post) setResults((r) => [data.post!, ...r]);
       setPicked(new Set());
     } catch (err) {
+      setDecisionOpen(false);
       setError(err instanceof Error ? err.message : 'Publish failed');
     } finally {
       setBusy(false);
@@ -540,23 +537,13 @@ function SocialPublishSection({
             </select>
           </label>
         )}
-        <label style={{ fontSize: 12, color: t.textSecondary, display: 'grid', gap: 4 }}>
-          Schedule <span style={{ opacity: 0.7 }}>(optional)</span>
-          <input
-            type="datetime-local"
-            value={scheduleAt}
-            min={toLocalInputValue(new Date(Date.now() + 5 * 60_000))}
-            onChange={(e) => setScheduleAt(e.target.value)}
-            style={{ padding: 8, borderRadius: JELLY_TOKENS.radius.md, border: `1px solid ${scheduleInPast ? JELLY_TOKENS.error : t.border}`, background: t.card, color: t.text, fontFamily: JELLY_TOKENS.font }}
-          />
-        </label>
       </div>
 
       {error && <RetryError message={error} />}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <VBtn onClick={() => void publish()} disabled={!ready} icon="upload">
-          {busy ? 'Posting…' : scheduleAt ? `Schedule to ${picked.size || '…'} platform${picked.size === 1 ? '' : 's'}` : `Post to ${picked.size || '…'} platform${picked.size === 1 ? '' : 's'}`}
+        <VBtn onClick={() => setDecisionOpen(true)} disabled={!ready} icon="upload">
+          {busy ? 'Posting…' : `Post to ${picked.size || '…'} platform${picked.size === 1 ? '' : 's'}…`}
         </VBtn>
         <span style={{ fontSize: 12, color: t.textSecondary }}>
           {!canPublish
@@ -592,6 +579,15 @@ function SocialPublishSection({
           ))}
         </div>
       )}
+
+      <PublishDecisionModal
+        open={decisionOpen}
+        mode="social"
+        contextLine={`${picked.size} platform${picked.size === 1 ? '' : 's'}: ${[...picked].join(', ')}`}
+        busy={busy}
+        onConfirm={(scheduleIso) => void publish(scheduleIso)}
+        onClose={() => setDecisionOpen(false)}
+      />
     </VCard>
   );
 }
@@ -953,17 +949,9 @@ function UploadSection({
   const [watchUrl, setWatchUrl] = React.useState<string | null>(
     project.youtubeVideoId ? `https://youtu.be/${project.youtubeVideoId}` : null,
   );
-  // Schedule. Empty string = publish now, which stays the default — nothing
-  // about the existing one-click flow changes unless a time is entered.
-  const [scheduleAt, setScheduleAt] = React.useState('');
+  // Post-now vs schedule is decided in the PublishDecisionModal (2026-08-20).
+  const [decisionOpen, setDecisionOpen] = React.useState(false);
   const scheduledAt = readPublishAt(project.settingsJson);
-  // Local-time floor for the picker: YouTube (and our route) reject the past.
-  const minSchedule = React.useMemo(
-    () => toLocalInputValue(new Date(Date.now() + 5 * 60_000)),
-    [],
-  );
-  const scheduleInPast =
-    scheduleAt !== '' && new Date(scheduleAt).getTime() <= Date.now();
 
   const loadAccount = React.useCallback(async () => {
     try {
@@ -988,7 +976,8 @@ function UploadSection({
     void loadAccount();
   }, [loadAccount]);
 
-  const upload = async (): Promise<void> => {
+  /* scheduleIso comes from the decision modal — '' means publish now. */
+  const upload = async (scheduleIso: string): Promise<void> => {
     setError(null);
     setUploading(true);
     try {
@@ -997,10 +986,7 @@ function UploadSection({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           privacyStatus: privacy,
-          // Local wall-clock from the picker → absolute UTC for YouTube.
-          ...(scheduleAt
-            ? { publishAt: new Date(scheduleAt).toISOString() }
-            : {}),
+          ...(scheduleIso ? { publishAt: scheduleIso } : {}),
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -1011,9 +997,11 @@ function UploadSection({
       if (!res.ok || !data.url) {
         throw new Error(data.detail || data.error || `HTTP ${res.status}`);
       }
+      setDecisionOpen(false);
       setWatchUrl(data.url);
       onChanged();
     } catch (err) {
+      setDecisionOpen(false);
       setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setUploading(false);
@@ -1140,87 +1128,37 @@ function UploadSection({
         </select>
       </div>
 
-      {/* Schedule. Leaving this empty publishes immediately — the default. */}
-      <div style={{ maxWidth: 280 }}>
-        <div
-          style={{
-            fontSize: 13,
-            fontWeight: 500,
-            color: t.textSecondary,
-            marginBottom: 6,
-          }}
-        >
-          Schedule for <span style={{ opacity: 0.7 }}>(optional)</span>
-        </div>
-        <input
-          type="datetime-local"
-          value={scheduleAt}
-          min={minSchedule}
-          onChange={(e) => setScheduleAt(e.target.value)}
-          style={{
-            width: '100%',
-            fontSize: 15,
-            fontFamily: JELLY_TOKENS.font,
-            border: `1px solid ${scheduleInPast ? JELLY_TOKENS.error : t.border}`,
-            borderRadius: JELLY_TOKENS.radius.md,
-            background: t.card,
-            color: t.text,
-            outline: 'none',
-            boxSizing: 'border-box',
-            padding: 12,
-          }}
-        />
-        <div
-          style={{
-            fontSize: 12,
-            color: scheduleInPast ? JELLY_TOKENS.error : t.textSecondary,
-            marginTop: 6,
-            lineHeight: 1.5,
-          }}
-        >
-          {scheduleInPast
-            ? 'That time has passed — pick a future time or clear the field.'
-            : scheduleAt
-              ? `Uploads private now, goes public ${new Date(scheduleAt).toLocaleString()}. Your Privacy choice above is overridden until then.`
-              : 'Empty = publish as soon as the upload finishes.'}
-        </div>
-        {scheduleAt && (
-          <button
-            type="button"
-            onClick={() => setScheduleAt('')}
-            style={{
-              marginTop: 6,
-              background: 'transparent',
-              border: 'none',
-              padding: 0,
-              fontSize: 12,
-              color: JELLY_TOKENS.brand,
-              cursor: 'pointer',
-            }}
-          >
-            Clear schedule
-          </button>
-        )}
-      </div>
-
       {error && <RetryError message={error} />}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <VBtn
-          onClick={() => void upload()}
+          onClick={() => setDecisionOpen(true)}
           disabled={!connected || !canUpload || uploading}
           icon="upload"
         >
-          {uploading ? 'Uploading…' : 'Upload to YouTube'}
+          {uploading ? 'Uploading…' : 'Upload to YouTube…'}
         </VBtn>
         <span style={{ fontSize: 12, color: t.textSecondary }}>
           {!connected
             ? 'Connect a channel first.'
             : !canUpload
               ? 'Save a title and description first.'
-              : 'The upload can take a couple of minutes.'}
+              : 'Next: choose post now or schedule. The upload can take a couple of minutes.'}
         </span>
       </div>
+
+      <PublishDecisionModal
+        open={decisionOpen}
+        mode="youtube"
+        contextLine={
+          account?.displayName
+            ? `Channel: ${account.displayName}`
+            : 'Your connected YouTube channel'
+        }
+        busy={uploading}
+        onConfirm={(scheduleIso) => void upload(scheduleIso)}
+        onClose={() => setDecisionOpen(false)}
+      />
     </VCard>
   );
 }

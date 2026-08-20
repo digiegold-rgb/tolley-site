@@ -851,6 +851,8 @@ export const autopilot = {
       projectId: string;
       videoUrl: string;
       maxSeconds?: number;
+      /** Segment start (Shorts Library 2026-08-20). 0/omitted = hook cut. */
+      startSeconds?: number;
     },
   ) =>
     call<{ jobId: string }>("POST", "/vater/make-short", input),

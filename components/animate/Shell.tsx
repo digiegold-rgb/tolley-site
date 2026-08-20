@@ -41,6 +41,7 @@ import { ProjectShell } from './screens/editor/ProjectShell';
 import { ScriptReviewScreen } from './screens/review/ScriptReviewScreen';
 import { CourseScreen } from './screens/course/CourseScreen';
 import { Library } from './screens/studio/Library';
+import { ShortsLibrary } from './screens/studio/ShortsLibrary';
 import { DirectScreen } from './screens/studio/DirectScreen';
 import { Voices } from './screens/studio/Voices';
 import { Feeds } from './screens/studio/Feeds';
@@ -554,6 +555,8 @@ function renderScreen(
     case 'studio':
     case 'library':
       return <StudioPanelFrame routeId="library" title="Library" subtitle="Completed videos and ready-to-publish projects."><Library /></StudioPanelFrame>;
+    case 'shorts-library':
+      return <StudioPanelFrame routeId="shorts-library" title="Shorts Library" subtitle="Chop any finished video into short-form segments and post them anywhere."><ShortsLibrary /></StudioPanelFrame>;
     case 'voices':
       return <StudioPanelFrame routeId="voices" title="Voices" subtitle="F5-TTS clone management and ElevenLabs audition rail."><Voices /></StudioPanelFrame>;
     case 'feeds':
