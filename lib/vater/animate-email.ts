@@ -181,6 +181,33 @@ export async function sendConciergeNeedsInfoEmail(
   );
 }
 
+/** A social connection was broken because the $6 monthly cycle couldn't be
+ *  covered by the customer's credit. */
+export async function sendSocialDisconnectedEmail(
+  to: string,
+  platform: string,
+): Promise<void> {
+  const label = platform.charAt(0).toUpperCase() + platform.slice(1);
+  await send(
+    to,
+    `Your ${label} connection was paused — credit ran out`,
+    [
+      "Hi,",
+      "",
+      `Direct connections cost $6/month per connected account, and your Jelly credit couldn't cover this month's charge — so we disconnected ${label} rather than keep billing you.`,
+      "",
+      "Nothing you already posted is affected, and reconnecting takes one click:",
+      "",
+      "  1. Top up your credit:  https://www.tolley.io/animate#r=pricing",
+      `  2. Reconnect ${label}:   https://www.tolley.io/animate#r=publishing`,
+      "",
+      "You can always download any finished MP4 and post it yourself for free.",
+      "",
+      "— Jelly Studio",
+    ].join("\n"),
+  );
+}
+
 /** Delivered: the finished video is in the customer's Library. */
 export async function sendConciergeDeliveredEmail(
   to: string,

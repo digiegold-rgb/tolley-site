@@ -15,6 +15,7 @@ import {
   syncAccountsForUser,
 } from "@/lib/vater/social-vendor/zernio";
 import { notifyTelegram } from "@/lib/budget/notify";
+import { chargeConnectCycle } from "@/lib/vater/billing/social-billing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,10 +44,24 @@ export async function GET(request: Request, ctx: Ctx) {
     console.error(`[social/connect] ${platform} sync failed:`, err);
   }
   if (connected) {
-    // New vendor profile = a $6/mo line on the Zernio bill — Jared needs to
-    // SEE every one land, not discover them on the invoice. Best-effort.
+    // First $6 cycle lands NOW (idempotent per row+cycle). If the balance was
+    // spent mid-OAuth the link is broken again immediately — the house never
+    // carries an unpaid vendor account.
+    let charge = "uncharged";
+    try {
+      charge = await chargeConnectCycle(session.user.id, platform);
+    } catch (err) {
+      console.error(`[social/connect] cycle-0 charge failed for ${platform}:`, err);
+    }
+    if (charge === "insufficient") {
+      return NextResponse.redirect(
+        `${url.origin}/animate?social=billing&platform=${platform}#r=${ret}`,
+      );
+    }
+    // Jared needs to SEE every connection land, not discover it on the
+    // Zernio invoice. Best-effort.
     void notifyTelegram(
-      `🔌 /animate social connect: ${session.user.email ?? session.user.id} connected ${platform} (Zernio profile — $6/mo per connected account).`,
+      `🔌 /animate social connect: ${session.user.email ?? session.user.id} connected ${platform} — $6/mo cycle 1 ${charge === "charged" ? "debited" : charge}.`,
     ).catch(() => undefined);
   }
   const flag = connected ? "connected" : "pending";

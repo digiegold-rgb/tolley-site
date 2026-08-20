@@ -18,6 +18,9 @@ import {
   isZernioEnabled,
   ZernioError,
 } from "@/lib/vater/social-vendor/zernio";
+import { getBalance } from "@/lib/vater/billing/ledger";
+import { hasUnmeteredStudioAccess } from "@/lib/vater/billing/check-budget";
+import { SOCIAL_MONTHLY_CENTS } from "@/lib/vater/billing/social-billing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +46,18 @@ export async function GET(request: Request, ctx: Ctx) {
   const url = new URL(request.url);
   const force = url.searchParams.get("force") === "1";
   const ret = url.searchParams.get("return") || "publishing";
+
+  // $6/month per connected account, debited from Jelly credit — refuse the
+  // OAuth outright when the first cycle can't be covered, instead of letting
+  // the user authorize an account we'd have to break minutes later.
+  if (!(await hasUnmeteredStudioAccess(session.user.id))) {
+    const balance = await getBalance(session.user.id);
+    if (!balance.ready || balance.balanceCents < SOCIAL_MONTHLY_CENTS) {
+      return NextResponse.redirect(
+        `${url.origin}/animate?social=billing&platform=${platform}#r=${ret}`,
+      );
+    }
+  }
   const callback = `${url.origin}/api/vater/social-accounts/oauth/${platform}/callback?return=${encodeURIComponent(ret)}`;
 
   try {

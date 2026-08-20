@@ -277,6 +277,7 @@ export function PublishingScreen(): React.ReactElement {
           {flash.kind === 'pending' && `Almost there — ${PLATFORM_META[flash.platform as Platform]?.label ?? flash.platform} hasn't reported back yet. Refresh in a few seconds; if it stays disconnected, hit Connect again.`}
           {flash.kind === 'error' && `Could not start the ${PLATFORM_META[flash.platform as Platform]?.label ?? flash.platform} connection. Try again in a moment.`}
           {flash.kind === 'signin' && 'Your session expired mid-connect. Sign in and try again.'}
+          {flash.kind === 'billing' && `Connecting ${PLATFORM_META[flash.platform as Platform]?.label ?? 'an account'} costs $6/month from your Jelly credit, and your balance is under $6 — top up on the Billing page, then connect.`}
         </div>
       )}
 
