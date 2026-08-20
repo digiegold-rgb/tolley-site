@@ -182,9 +182,14 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
             undefined,
           voiceCloneName: project?.voiceName ?? project?.voiceCloneName ?? undefined,
           targetWordCount: wordCount,
-          stylePreset: 'cinematic',
           creatorModelId: creatorModel,
           scriptGuidelines: extraContext.trim() || undefined,
+          // Script-review gate: the worker writes the script and PARKS.
+          // Without this flag the whole paid pipeline (voice, scenes,
+          // compose) ran silently off a 5¢ "generate script" click — the
+          // 2026-08-19 runaway-render bug. Rendering is an explicit,
+          // priced click on the Generate Video bar.
+          stopAfterScript: true,
         }),
       });
       await assertOk(res);
@@ -394,34 +399,23 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
       return;
     }
 
-    const voice = project?.voiceCloneName ?? project?.voiceName;
-    if (!voice) {
-      setOwnError(
-        'This project has no voice clone set yet. Pick a style with a voice (or set one on the project) before submitting an own-script run.',
-      );
-      return;
-    }
+    // Jelly Auto: SAVE the script only. Rendering is a separate, explicit,
+    // priced click (Generate Video bar) — pasting a script must never start
+    // a paid pipeline by itself (2026-08-19 runaway-render bug).
     setSubmittingOwn(true);
     setOwnError(null);
     try {
-      const res = await fetch(`/api/vater/youtube/${projectId}/context`, {
-        method: 'POST',
+      const res = await fetch(`/api/vater/youtube/${projectId}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          goal: 'User-supplied script',
-          targetDuration: Math.max(
-            1,
-            Math.min(30, Math.round(pastedWordCount / 150)),
-          ),
-          targetWordCount: Math.max(1, pastedWordCount),
-          stylePreset: 'cinematic',
-          voiceCloneName: voice,
-          scriptOverride: trimmed,
-        }),
+        body: JSON.stringify({ script: trimmed }),
       });
       await assertOk(res);
       setPastedScript('');
       setUseOwnScript(false);
+      setToast(
+        'Script saved ✓ — pick a voice, then hit Generate Video when you’re ready to render.',
+      );
       await refresh();
     } catch (err) {
       if (err instanceof BillingBlockedError) {
@@ -432,7 +426,7 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
     } finally {
       setSubmittingOwn(false);
     }
-  }, [projectId, pastedScript, pastedWordCount, project, refresh, engine]);
+  }, [projectId, pastedScript, refresh, engine]);
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
@@ -447,7 +441,7 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
               ? submittingOwn
                 ? engine === 'fable5'
                   ? 'Sending…'
-                  : 'Starting…'
+                  : 'Saving…'
                 : engine === 'fable5'
                   ? 'Send to Fable 5'
                   : 'Use This Script'
@@ -543,7 +537,7 @@ export function ScriptStep({ projectId, project, refresh }: EditorStepProps): Re
               placeholder={
                 engine === 'fable5'
                   ? 'Paste your finished script here. Click Send to Fable 5 above — Fable 5 directs and renders it in your style, and emails you when it lands.'
-                  : 'Paste your script here. Click Use This Script above to lock it in and start the pipeline.'
+                  : 'Paste your script here. Click Use This Script above to save it — nothing renders (or costs anything) until you hit Generate Video.'
               }
               style={{
                 width: '100%',

@@ -14,6 +14,7 @@ import {
   isVendorPlatform,
   syncAccountsForUser,
 } from "@/lib/vater/social-vendor/zernio";
+import { notifyTelegram } from "@/lib/budget/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,6 +41,13 @@ export async function GET(request: Request, ctx: Ctx) {
     connected = platforms.includes(platform);
   } catch (err) {
     console.error(`[social/connect] ${platform} sync failed:`, err);
+  }
+  if (connected) {
+    // New vendor profile = a $6/mo line on the Zernio bill — Jared needs to
+    // SEE every one land, not discover them on the invoice. Best-effort.
+    void notifyTelegram(
+      `🔌 /animate social connect: ${session.user.email ?? session.user.id} connected ${platform} (Zernio profile — $6/mo per connected account).`,
+    ).catch(() => undefined);
   }
   const flag = connected ? "connected" : "pending";
   return NextResponse.redirect(

@@ -40,6 +40,7 @@ import { PillStepper, EDITOR_STEP_HINTS } from '../../primitives';
 import { Footer } from '../../Footer';
 import {
   IN_FLIGHT_STATUSES,
+  STATUS_LABELS,
   isConciergeStatus,
   type YouTubeProjectStatus,
 } from '@/lib/vater/youtube-status';
@@ -78,6 +79,7 @@ export interface EditorProject {
   sourceTitle?: string | null;
   topic?: string | null;
   status?: string | null;
+  progress?: number | null;
   audioUrl?: string | null;
   audioDuration?: number | null;
   scenesJson?: unknown;
@@ -393,6 +395,10 @@ export function ProjectShell({
     ? (project.scenesJson as unknown[]).length
     : 0;
   const scriptWords = (project?.script ?? '').split(/\s+/).filter(Boolean).length;
+  const inFlight =
+    !isDemo &&
+    !!projStatus &&
+    IN_FLIGHT_STATUSES.has(projStatus as YouTubeProjectStatus);
   const showEngineBar =
     !isDemo &&
     !!project &&
@@ -478,8 +484,20 @@ export function ProjectShell({
           hints={EDITOR_STEP_HINTS}
         />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
         <StepStateRow states={stepStates} />
+      </div>
+      <div
+        style={{
+          textAlign: 'center',
+          fontSize: 11.5,
+          color: t.textFaint,
+          marginBottom: 24,
+        }}
+      >
+        Steps unlock in order — each lights up when the green checks before it
+        are done. Nothing renders (or costs anything) until you press Generate
+        Video or send the script to Fable 5.
       </div>
 
       {/* Load-error banner */}
@@ -511,7 +529,20 @@ export function ProjectShell({
         />
       )}
       {showEngineBar && projectId && (
-        <EngineBar projectId={projectId} words={scriptWords} refresh={refresh} />
+        <EngineBar
+          projectId={projectId}
+          words={scriptWords}
+          script={project?.script}
+          refresh={refresh}
+        />
+      )}
+      {inFlight && projectId && (
+        <RenderInFlightBar
+          projectId={projectId}
+          status={projStatus}
+          progress={project?.progress ?? null}
+          refresh={refresh}
+        />
       )}
 
       {/* Step content. Description step is rendered via a wrapper that
@@ -755,5 +786,133 @@ function DescriptionStepWrapper({
       project={stepProps.project}
       refresh={wrappedRefresh}
     />
+  );
+}
+
+
+/* ── RenderInFlightBar ───────────────────────────────────────────────────
+ * Shown whenever the project status is an in-flight pipeline phase. Beta
+ * testers watched "generating a voice… running on its own" with no banner,
+ * no % and no way to stop it — this is that banner. Cancel goes through
+ * POST /api/vater/youtube/[id]/cancel (refund logic is server-side).
+ */
+function RenderInFlightBar({
+  projectId,
+  status,
+  progress,
+  refresh,
+}: {
+  projectId: string;
+  status: string | null;
+  progress: number | null;
+  refresh: () => Promise<void>;
+}): React.ReactElement {
+  const { t } = useTheme();
+  const [cancelling, setCancelling] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const label =
+    (status && STATUS_LABELS[status as YouTubeProjectStatus]) || 'Rendering';
+  const pct =
+    typeof progress === 'number' && Number.isFinite(progress)
+      ? Math.max(0, Math.min(100, Math.round(progress)))
+      : null;
+
+  const cancel = async (): Promise<void> => {
+    if (cancelling) return;
+    if (!window.confirm('Stop this render? You are never charged for a render that does not finish.')) return;
+    setCancelling(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/vater/youtube/${projectId}/cancel`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error || `Cancel failed (HTTP ${res.status})`);
+      }
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Cancel failed');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  return (
+    <div
+      data-testid="render-inflight-bar"
+      style={{
+        maxWidth: 700,
+        margin: '0 auto 20px',
+        padding: '12px 16px',
+        borderRadius: JELLY_TOKENS.radius.xl,
+        border: `1px solid ${JELLY_TOKENS.brand}55`,
+        background: `${JELLY_TOKENS.brand}0d`,
+        fontFamily: JELLY_TOKENS.font,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span
+          aria-hidden
+          style={{
+            width: 9,
+            height: 9,
+            borderRadius: '50%',
+            background: JELLY_TOKENS.brand,
+            animation: 'jc-blink 1.6s ease-in-out infinite',
+            flex: 'none',
+          }}
+        />
+        <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>
+          {label}
+          {pct != null ? ` · ${pct}%` : ''}
+        </span>
+        <span style={{ fontSize: 12, color: t.textSecondary, flex: '1 1 200px' }}>
+          This page updates itself — you can leave and watch it from the Queue.
+        </span>
+        <button
+          type="button"
+          onClick={() => void cancel()}
+          disabled={cancelling}
+          style={{
+            fontSize: 12,
+            padding: '6px 12px',
+            borderRadius: JELLY_TOKENS.radius.md,
+            border: `1px solid ${JELLY_TOKENS.error}66`,
+            background: 'transparent',
+            color: JELLY_TOKENS.error,
+            cursor: cancelling ? 'default' : 'pointer',
+          }}
+        >
+          {cancelling ? 'Stopping…' : 'Cancel render'}
+        </button>
+      </div>
+      {pct != null && (
+        <div
+          style={{
+            marginTop: 10,
+            height: 5,
+            borderRadius: 999,
+            background: `${JELLY_TOKENS.brand}22`,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              width: `${pct}%`,
+              height: '100%',
+              borderRadius: 999,
+              background: JELLY_TOKENS.brand,
+              transition: 'width 600ms ease',
+            }}
+          />
+        </div>
+      )}
+      {error && (
+        <div style={{ marginTop: 8, fontSize: 12, color: JELLY_TOKENS.error }}>
+          {error}
+        </div>
+      )}
+    </div>
   );
 }

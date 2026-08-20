@@ -92,7 +92,7 @@ function statusColor(s: SimpleStatus): string {
 
 export function ProjectHistoryScreen(): React.ReactElement {
   const { t } = useTheme();
-  const { setRoute, openProjectInVideoEditor } = useRoute();
+  const { setRoute, openProjectInEditor, openProjectInVideoEditor } = useRoute();
   const [projects, setProjects] = React.useState<AnyProject[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -376,10 +376,24 @@ export function ProjectHistoryScreen(): React.ReactElement {
                       icon="edit"
                       onClick={() => {
                         setActiveProject(p);
-                        openProjectInVideoEditor(p.id);
+                        // "Edit" means the big step editor (Title → Script →
+                        // … → Generate Video) — beta testers who clicked Edit
+                        // landed in the timeline preview with no way back.
+                        openProjectInEditor(p.id);
                       }}
                     >
                       Edit
+                    </VBtn>
+                    <VBtn
+                      size="sm"
+                      variant="text"
+                      icon="scissors"
+                      onClick={() => {
+                        setActiveProject(p);
+                        openProjectInVideoEditor(p.id);
+                      }}
+                    >
+                      Timeline
                     </VBtn>
                     {p.topic && (
                       <VBtn

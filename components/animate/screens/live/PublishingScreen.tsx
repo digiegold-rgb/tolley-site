@@ -288,7 +288,7 @@ export function PublishingScreen(): React.ReactElement {
           sub={
             vendorEnabled === false
               ? 'YouTube connects directly. Other platforms: download the MP4 and post through your scheduler.'
-              : 'Each connection is to YOUR account — Jelly never posts without you pressing Publish.'
+              : 'Each connection is to YOUR account — Jelly never posts without you pressing Publish. YouTube is free; every other direct connection is $6/month per connected account (you can always download the MP4 and post it yourself for free).'
           }
         />
         {accountsErr && <ErrorBar message={`Could not load social accounts: ${accountsErr}`} />}
@@ -597,6 +597,18 @@ function VendorTileActions({
   };
 
   const go = (force: boolean) => {
+    // Direct connections run through our publishing partner and cost
+    // $6/month per connected account. Say so BEFORE the OAuth dance —
+    // surprise charges are how beta trust dies. Reconnecting an
+    // already-connected account is not a new charge.
+    if (!connected) {
+      const ok = window.confirm(
+        `Connecting ${label} directly costs $6/month per account (billed to your Jelly credit). ` +
+          `Want more than one ${label} account? Connect this one, then add another profile — each connected account is its own $6/month. ` +
+          `Or skip the charge: download the MP4 and post it yourself. Connect now?`,
+      );
+      if (!ok) return;
+    }
     window.location.href = `/api/vater/social-accounts/oauth/${platform}/start?return=publishing${force ? '&force=1' : ''}`;
   };
 

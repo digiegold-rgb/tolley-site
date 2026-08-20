@@ -33,10 +33,13 @@ export interface EngineBarProps {
   projectId: string;
   /** Word count of the saved script, for the quote line. */
   words: number;
+  /** The saved script — pinned as scriptOverride so a render can never
+   *  silently rewrite it. */
+  script?: string | null;
   refresh: () => Promise<void>;
 }
 
-export function EngineBar({ projectId, words, refresh }: EngineBarProps): React.ReactElement {
+export function EngineBar({ projectId, words, script, refresh }: EngineBarProps): React.ReactElement {
   const { t } = useTheme();
   const [engine, setEngine] = React.useState<ConciergeEngine>('auto');
   const [sending, setSending] = React.useState(false);
@@ -63,6 +66,35 @@ export function EngineBar({ projectId, words, refresh }: EngineBarProps): React.
         setBillingCtx(err.context);
       } else {
         setError(err instanceof Error ? err.message : 'Could not send to Fable 5');
+      }
+    } finally {
+      setSending(false);
+    }
+  };
+
+  /* Jelly Auto: THE render button. One explicit, priced click — nothing else
+   * in the editor starts a paid render any more (2026-08-19 runaway fix).
+   * Pins the saved script so the writer can't replace it. */
+  const generate = async () => {
+    if (sending) return;
+    setSending(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/vater/youtube/${projectId}/context`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scriptOverride: script?.trim() || undefined,
+        }),
+      });
+      await assertOk(res);
+      await refresh();
+    } catch (err) {
+      if (err instanceof BillingBlockedError) {
+        setBillingBlock(err.reason);
+        setBillingCtx(err.context);
+      } else {
+        setError(err instanceof Error ? err.message : 'Could not start the render');
       }
     } finally {
       setSending(false);
@@ -107,9 +139,9 @@ export function EngineBar({ projectId, words, refresh }: EngineBarProps): React.
         <span style={{ fontSize: 12, color: t.textSecondary, flex: '1 1 240px' }}>
           {engine === 'fable5'
             ? 'Fable 5 takes it from here — you get an email when it lands in your Library.'
-            : 'Continue with the steps below — Voiceover and Visuals render on the Jelly pipeline now.'}
+            : 'Nothing renders (or costs anything) until you press Generate Video. Voice + visual options from the steps below are applied to the render.'}
         </span>
-        {engine === 'fable5' && (
+        {engine === 'fable5' ? (
           <VBtn
             variant="primary"
             size="sm"
@@ -119,6 +151,21 @@ export function EngineBar({ projectId, words, refresh }: EngineBarProps): React.
             data-testid="engine-bar-send"
           >
             {sending ? 'Sending…' : 'Send to Fable 5'}
+          </VBtn>
+        ) : (
+          <VBtn
+            variant="primary"
+            size="sm"
+            icon="play"
+            onClick={() => void generate()}
+            disabled={sending}
+            data-testid="engine-bar-generate"
+          >
+            {sending
+              ? 'Starting…'
+              : estimate.draftUsd != null
+                ? `Generate Video · est. $${estimate.draftUsd.toFixed(2)}`
+                : 'Generate Video'}
           </VBtn>
         )}
       </div>

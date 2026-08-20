@@ -16,6 +16,10 @@ import { StylePickerModal } from './dashboard/StylePickerModal';
 import { LatestUpdateBanner } from '../LatestUpdate';
 
 interface KpiTile {
+  /** Route to open when the tile is clicked — beta testers saw "2 total
+   *  videos" with no way to get TO those videos from here. */
+  route?: string;
+
   label: string;
   value: string;
   sub: string;
@@ -98,13 +102,14 @@ export function DashboardScreen(): React.ReactElement {
     ).length;
     const fmt = (n: number): string => (loading ? '…' : String(n));
     return [
-      { label: 'Total Videos', value: fmt(totalVideos), sub: 'All time', icon: 'videoEditor' },
-      { label: 'This Month', value: fmt(thisMonth), sub: 'Created this month', icon: 'sparkle' },
+      { label: 'Total Videos', value: fmt(totalVideos), sub: 'All time — click to browse', icon: 'videoEditor', route: 'project-history' },
+      { label: 'This Month', value: fmt(thisMonth), sub: 'Created this month — click to browse', icon: 'sparkle', route: 'project-history' },
       {
         label: 'In Progress',
         value: fmt(inProgress),
-        sub: inProgress === 0 ? 'No active jobs' : 'Currently editing',
+        sub: inProgress === 0 ? 'No active jobs' : 'Rendering now — click for the Queue',
         icon: 'history',
+        route: 'queue',
       },
     ];
   }, [projects, loading]);
@@ -212,7 +217,11 @@ export function DashboardScreen(): React.ReactElement {
         }}
       >
         {kpis.map((kpi, i) => (
-          <VCard key={i} style={{ padding: 20 }}>
+          <VCard
+            key={i}
+            style={{ padding: 20, cursor: kpi.route ? 'pointer' : undefined }}
+            onClick={kpi.route ? () => setRoute(kpi.route as never) : undefined}
+          >
             <div
               style={{
                 display: 'flex',

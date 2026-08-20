@@ -426,6 +426,10 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
           videoBackend: 'sdxl',
           animQuality,
           cloudRental: cloudRental === 'modal',
+          // Pin the script that's already on the project — without this the
+          // kickoff re-runs the WRITER and the user's approved script is
+          // silently replaced (same guard VoiceoverStep always had).
+          scriptOverride: project?.script?.trim() || undefined,
         }),
       });
       if (!res.ok) {
@@ -440,7 +444,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
     } finally {
       setGenerating(false);
     }
-  }, [projectId, stylePreset, styleDocId, musicId, musicVolume, consistency, animQuality, cloudRental, refresh, describeGenerationError, patchFeatures]);
+  }, [projectId, project?.script, stylePreset, styleDocId, musicId, musicVolume, consistency, animQuality, cloudRental, refresh, describeGenerationError, patchFeatures]);
 
   /** Executes the batch animation after the user confirms the price.
    *  sceneIdxs null = whole project (animate-all default path); a list forces

@@ -29,6 +29,11 @@ import {
   isStylePresetId,
   DEFAULT_STYLE_PRESET,
 } from "@/lib/vater/style-presets";
+import {
+  IN_FLIGHT_STATUSES,
+  STATUS_LABELS,
+  type YouTubeProjectStatus,
+} from "@/lib/vater/youtube-status";
 import { buildStyleSnapshot } from "@/lib/vater/style-snapshot";
 import { auth } from "@/auth";
 import { canAccessProject } from "@/lib/vater/project-access";
@@ -219,9 +224,17 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       project.status === "scripted" ||
       project.status === "failed");
   if (project.status !== "transcribed" && !allowKickoffFromDraft) {
+    // A pipeline status here means a render is ALREADY running — say that in
+    // plain words instead of leaking status-machine jargon ("must be
+    // transcribed … currently generating_audio" confused every beta tester).
+    const inFlight = IN_FLIGHT_STATUSES.has(
+      project.status as YouTubeProjectStatus,
+    );
     return NextResponse.json(
       {
-        error: `Project must be in 'transcribed' status to submit context, currently '${project.status}'`,
+        error: inFlight
+          ? `A render is already in progress on this project (${STATUS_LABELS[project.status as YouTubeProjectStatus] ?? project.status}). Watch it in the Queue — or cancel it there — before starting another.`
+          : `This project isn't ready to render yet (status: ${project.status}). Finish the earlier steps first.`,
       },
       { status: 409 },
     );
@@ -273,10 +286,15 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   const effectiveGoal = projectGoal || "User-supplied script";
 
+  // Fall back to the preset already seeded on the project (from its Style)
+  // before the global default — a "Classic Cartoon" project must never
+  // silently render cinematic just because the caller omitted the field.
   const stylePreset =
     body.stylePreset && isStylePresetId(body.stylePreset)
       ? body.stylePreset
-      : DEFAULT_STYLE_PRESET;
+      : project.stylePreset && isStylePresetId(project.stylePreset)
+        ? project.stylePreset
+        : DEFAULT_STYLE_PRESET;
 
   // Optional music picker (frontend sends backgroundMusicId from /vater/music-catalog)
   const backgroundMusicId =

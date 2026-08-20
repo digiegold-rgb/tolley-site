@@ -46,8 +46,6 @@ import {
 import type { EditorStepProps } from './ProjectShell';
 import {
   BillingBlockModal,
-  BillingBlockedError,
-  assertOk,
   type BillingBlockReason,
 } from './BillingBlock';
 import { TINT_BG } from '../tint';
@@ -90,8 +88,6 @@ export function VoiceoverStep({
   const [billingBlock, setBillingBlock] = React.useState<BillingBlockReason | null>(null);
   const [showScript, setShowScript] = React.useState(false);
   const [voiceClone, setVoiceClone] = React.useState<string | null>(null);
-  const [generating, setGenerating] = React.useState(false);
-  const [genError, setGenError] = React.useState<string | null>(null);
 
   // The saved column is `voiceName` — `voiceCloneName` has never been on the
   // API payload, so hydrating from it alone meant the picker forgot the
@@ -310,38 +306,6 @@ export function VoiceoverStep({
     [projectId, refresh],
   );
 
-  const handleGenerate = React.useCallback(async () => {
-    // Re-running TTS through the existing pipeline goes via context.
-    if (!projectId) {
-      setGenError('Start a project before generating voiceover.');
-      return;
-    }
-    setGenerating(true);
-    setGenError(null);
-    try {
-      const res = await fetch(`/api/vater/youtube/${projectId}/context`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          voiceCloneName: voiceClone,
-          // Pin the script that's already on the project. Without this the
-          // kickoff re-runs the WRITER and the user's approved script is
-          // replaced by a fresh one behind their back.
-          scriptOverride: project?.script?.trim() || undefined,
-        }),
-      });
-      await assertOk(res);
-      await refresh();
-    } catch (err) {
-      if (err instanceof BillingBlockedError) {
-        setBillingBlock(err.reason);
-      } else {
-        setGenError(err instanceof Error ? err.message : 'Generate failed');
-      }
-    } finally {
-      setGenerating(false);
-    }
-  }, [projectId, voiceClone, project?.script, refresh]);
 
   // Audio URL — prefer the project-scoped proxy so Range works (risk #10).
   const audioSrc = projectId ? `/api/vater/youtube/${projectId}/audio` : null;
@@ -353,9 +317,7 @@ export function VoiceoverStep({
           icon="mic"
           eyebrow={reelLabel(2)}
           title="Voiceover Generator"
-          description="Generate professional AI voiceovers from your script using multiple voice options"
-          actionLabel={generating ? 'Generating…' : 'Generate'}
-          onAction={generating ? undefined : handleGenerate}
+          description="Pick the voice for this video — your choice saves instantly and is used when the video renders (Generate Video below the steps)."
           creditCost={SECTION_PRICES.voiceover}
         />
 
@@ -839,20 +801,6 @@ export function VoiceoverStep({
           </div>
         </div>
 
-        {genError && (
-          <div
-            style={{
-              marginTop: 12,
-              padding: '8px 12px',
-              fontSize: 13,
-              borderRadius: JELLY_TOKENS.radius.md,
-              ...TINT_BG.error,
-              color: JELLY_TOKENS.error,
-            }}
-          >
-            {genError}
-          </div>
-        )}
       </VCard>
 
       {/* Popular voices auditioning panel (demo-only — preview audio).

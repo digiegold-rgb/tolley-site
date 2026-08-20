@@ -26,7 +26,7 @@ type AnyProject = any;
 
 export function Library(): React.ReactElement {
   const { t } = useTheme();
-  const { requestNewVideo } = useRoute();
+  const { requestNewVideo, setRoute } = useRoute();
   const [projects, setProjects] = React.useState<AnyProject[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -49,6 +49,13 @@ export function Library(): React.ReactElement {
     fetchProjects();
   }, [fetchProjects]);
 
+  const unfinishedCount = React.useMemo(
+    () =>
+      projects.filter(
+        (p) => p?.status && p.status !== 'ready' && p.status !== 'editing',
+      ).length,
+    [projects],
+  );
   const ready = React.useMemo(
     // Show 'ready' AND 'editing' so a re-animate / re-compose in progress
     // never hides the project from Library (the underlying scenesJson + audio
@@ -93,8 +100,25 @@ export function Library(): React.ReactElement {
         }}
       >
         <div style={{ fontSize: 13, color: t.textSecondary }}>
-          {ready.length} {ready.length === 1 ? 'video' : 'videos'} in library —
-          play, download, share, or delete.
+          {ready.length} finished {ready.length === 1 ? 'video' : 'videos'} —
+          play, download, share, or delete. Unfinished projects live in{' '}
+          <button
+            type="button"
+            onClick={() => setRoute('project-history')}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              color: JELLY_TOKENS.brand,
+              cursor: 'pointer',
+              fontSize: 13,
+              fontFamily: 'inherit',
+              textDecoration: 'underline',
+            }}
+          >
+            Project History
+          </button>
+          {unfinishedCount > 0 ? ` (${unfinishedCount} in progress there)` : ''}.
         </div>
         <button
           type="button"
