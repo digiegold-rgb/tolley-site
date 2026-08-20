@@ -24,8 +24,12 @@ const BASE = "https://zernio.com/api/v1";
 
 export const VENDOR = "zernio" as const;
 
-/** Platforms we route through the vendor. YouTube is native. */
+/** Platforms we route through the vendor. YouTube moved from native OAuth to
+ *  the vendor on 2026-08-19 (Jared: every direct connection = one Zernio
+ *  profile per customer at $6/mo per connected account). Legacy provider
+ *  "native" YouTube rows keep working through ./publish. */
 export const VENDOR_PLATFORMS = [
+  "youtube",
   "tiktok",
   "instagram",
   "facebook",

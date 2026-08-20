@@ -2,8 +2,8 @@
  * POST /api/vater/youtube/[id]/publish-social
  *
  * Publish a finished project to the user's OWN connected TikTok / Instagram /
- * Facebook / Pinterest / X / LinkedIn accounts through the aggregator
- * (Zernio). YouTube stays on ./publish (native upload).
+ * Facebook / Pinterest / X / LinkedIn / YouTube accounts through the
+ * aggregator (Zernio). Legacy native-token YouTube rows still use ./publish.
  *
  * Only ever runs from an explicit click in the publish panel — nothing
  * schedules it, no cron touches it (feedback_no_autonomous_sends.md).
@@ -211,6 +211,8 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       continue;
     }
     if (p === "linkedin") psd.disableLinkPreview = false;
+    // YouTube wants a real video title, not just a caption body.
+    if (p === "youtube" && title) psd.title = title.slice(0, 100);
     targets.push({
       platform: p,
       accountId,

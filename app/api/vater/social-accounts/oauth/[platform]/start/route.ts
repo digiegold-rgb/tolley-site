@@ -1,15 +1,13 @@
 /**
  * GET /api/vater/social-accounts/oauth/[platform]/start?return=<route>
  *
- * Connect a NON-YouTube platform (tiktok / instagram / facebook / pinterest /
+ * Connect a platform (youtube / tiktok / instagram / facebook / pinterest /
  * twitter / linkedin) to the signed-in user's OWN account through the
- * aggregator (Zernio). We create the user's vendor profile lazily, ask the
+ * aggregator (Zernio) — $6/month per connected account. We create the user's vendor profile lazily, ask the
  * vendor for a hosted OAuth URL and 302 the browser there. The vendor
  * handles consent + any page/board/org selection and then redirects back to
  * our /callback, which mirrors the account into SocialAccount.
  *
- * YouTube has its own native flow at ./youtube/start (Google refresh token
- * lives on our row) — this route 404s for it on purpose.
  */
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";

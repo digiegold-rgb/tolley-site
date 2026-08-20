@@ -10,12 +10,12 @@
  *      to auto-generate title + description + hashtags tailored to that
  *      platform (editable preview).
  *   3. User clicks "Post to <platform>":
- *      - If credentials missing → redirect to /vater/youtube/social-accounts?connect=<p>
- *      - Else → POST /api/vater/youtube/[id]/share (queues the upload;
- *        actual platform API call is deferred until OAuth ships)
+ *      - If not connected → $6/month disclosure, then the vendor (Zernio)
+ *        hosted OAuth for the user's OWN account (?return=library).
+ *      - Else → POST /api/vater/youtube/[id]/publish-social — a real post
+ *        through the aggregator, same path the Publish panel uses.
  */
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
 
 type Platform =
@@ -54,7 +54,6 @@ export function YouTubeShareModal({
   onClose,
 }: Props) {
   const { toast } = useToast();
-  const router = useRouter();
   const [connectedPlatforms, setConnectedPlatforms] = useState<Set<Platform>>(
     new Set(),
   );
@@ -129,34 +128,42 @@ export function YouTubeShareModal({
   const handlePost = async () => {
     if (!selected) return;
     if (!connectedPlatforms.has(selected)) {
-      router.push(`/vater/youtube/social-accounts?connect=${selected}`);
+      // Direct connections run through our publishing partner (one Zernio
+      // profile per customer, created on first connect). Say the price
+      // BEFORE the OAuth dance — never after.
+      const label =
+        PLATFORM_CARDS.find((c) => c.id === selected)?.label ?? selected;
+      const ok = window.confirm(
+        `Connecting ${label} costs $6/month per connected account (billed to your Jelly credit). ` +
+          `You'll approve access on ${label} itself — Jelly never sees your password, and nothing posts without you pressing Post. Connect now?`,
+      );
+      if (!ok) return;
+      window.location.href = `/api/vater/social-accounts/oauth/${selected}/start?return=library`;
       return;
     }
     setPosting(true);
     try {
-      const r = await fetch(`/api/vater/youtube/${projectId}/share`, {
+      // Real post through the aggregator — same path the Publish panel uses.
+      const caption = [
+        title.trim(),
+        description.trim(),
+        hashtags.length ? hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ") : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+      const r = await fetch(`/api/vater/youtube/${projectId}/publish-social`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          platform: selected,
-          title,
-          description,
-          hashtags,
-        }),
+        body: JSON.stringify({ platforms: [selected], caption }),
       });
       const data = await r.json();
       if (!r.ok) {
-        if (data?.error === "NO_CREDENTIALS" && data.connectUrl) {
-          router.push(data.connectUrl);
-          return;
-        }
         throw new Error(data?.error ?? `HTTP ${r.status}`);
       }
       toast({
-        title: `Queued for ${selected}`,
+        title: `Posting to ${selected}`,
         description:
-          data.note ??
-          "Your metadata is saved. Actual posting to the platform ships in a follow-up.",
+          "Sent to your account — watch progress on the Publishing tab.",
         variant: "success",
       });
       onClose();
@@ -329,7 +336,7 @@ export function YouTubeShareModal({
             <p className="text-[10px] text-zinc-400">
               {connectedPlatforms.has(selected)
                 ? `✓ ${selected} is connected — metadata will be saved and queued for posting.`
-                : `⚠ ${selected} isn't connected — you'll be sent to the accounts page.`}
+                : `⚠ ${selected} isn't connected — connect it in one click ($6/month per connected account, billed to your Jelly credit).`}
             </p>
             <button
               type="button"

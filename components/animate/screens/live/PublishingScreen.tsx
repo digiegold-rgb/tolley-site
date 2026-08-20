@@ -288,7 +288,7 @@ export function PublishingScreen(): React.ReactElement {
           sub={
             vendorEnabled === false
               ? 'YouTube connects directly. Other platforms: download the MP4 and post through your scheduler.'
-              : 'Each connection is to YOUR account — Jelly never posts without you pressing Publish. YouTube is free; every other direct connection is $6/month per connected account (you can always download the MP4 and post it yourself for free).'
+              : 'Each connection is to YOUR account — Jelly never posts without you pressing Publish. Every direct connection is $6/month per connected account (you can always download the MP4 and post it yourself for free).'
           }
         />
         {accountsErr && <ErrorBar message={`Could not load social accounts: ${accountsErr}`} />}
@@ -337,18 +337,12 @@ export function PublishingScreen(): React.ReactElement {
                       ? 'not connected'
                       : 'via your scheduler'}
                 </div>
-                {/* YouTube = native per-user OAuth (Google refresh token on your
-                    own row). Every other platform = the aggregator's hosted
-                    OAuth, still to YOUR account; we only keep the vendor's
-                    account id. If the vendor is off, fall back to the
-                    download-and-schedule hint. */}
-                {p === 'youtube' ? (
-                  <YouTubeTileActions
-                    connected={connected}
-                    status={acc?.status}
-                    onChanged={() => void loadAccounts()}
-                  />
-                ) : vendorEnabled === false ? (
+                {/* Every platform (YouTube included, 2026-08-19) = the
+                    aggregator's hosted OAuth to YOUR account — one Zernio
+                    profile per customer, $6/month per connected account; we
+                    only keep the vendor's account id. If the vendor is off,
+                    fall back to the download-and-schedule hint. */}
+                {vendorEnabled === false ? (
                   <SchedulerHint platform={meta.label} />
                 ) : (
                   <VendorTileActions
@@ -494,70 +488,6 @@ export function PublishingScreen(): React.ReactElement {
           </div>
         )}
       </VCard>
-      )}
-    </div>
-  );
-}
-
-/**
- * Connect / reconnect / disconnect for the one platform Jelly uploads to
- * directly. Ungated in the beta (2026-08-15): the OAuth is per-user, so a
- * customer connecting their channel touches nothing shared.
- */
-function YouTubeTileActions({
-  connected,
-  status,
-  onChanged,
-}: {
-  connected: boolean;
-  status?: string;
-  onChanged: () => void;
-}): React.ReactElement {
-  const { t } = useTheme();
-  const [busy, setBusy] = React.useState(false);
-
-  const disconnect = async (): Promise<void> => {
-    if (
-      !window.confirm(
-        'Disconnect this YouTube channel? Jelly forgets the token; nothing already uploaded is affected.',
-      )
-    ) {
-      return;
-    }
-    setBusy(true);
-    try {
-      await fetch('/api/vater/social-accounts/youtube', { method: 'DELETE' });
-      onChanged();
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-      <VBtn
-        size="sm"
-        variant={connected ? 'outlined' : 'primary'}
-        onClick={() => {
-          window.location.href = '/api/vater/social-accounts/oauth/youtube/start';
-        }}
-      >
-        {connected ? 'Reconnect' : 'Connect YouTube'}
-      </VBtn>
-      {connected && (
-        <VBtn size="sm" variant="text" onClick={() => void disconnect()} disabled={busy}>
-          {busy ? '…' : 'Disconnect'}
-        </VBtn>
-      )}
-      {status && status !== 'active' && (
-        <span style={{ fontSize: 10, color: JELLY_TOKENS.error, alignSelf: 'center' }}>
-          {status} — reconnect to fix
-        </span>
-      )}
-      {!connected && (
-        <span style={{ fontSize: 10, color: t.textDisabled, alignSelf: 'center' }}>
-          uploads to your own channel
-        </span>
       )}
     </div>
   );
