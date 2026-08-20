@@ -122,6 +122,7 @@ export interface HqSpendEntry {
   id: string;
   label: string;
   amount: number;
+  ai: boolean;
   createdAt: string;
 }
 

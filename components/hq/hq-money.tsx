@@ -36,6 +36,7 @@ function SpendLog({ money, onRefresh }: { money: HqMoney; onRefresh: () => void 
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("");
   const [amount, setAmount] = useState("");
+  const [ai, setAi] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,11 +54,12 @@ function SpendLog({ money, onRefresh }: { money: HqMoney; onRefresh: () => void 
       const r = await fetch("/api/hq/money", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ label: label.trim(), amount: amt }),
+        body: JSON.stringify({ label: label.trim(), amount: amt, ai }),
       });
       if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error || "Failed to add");
       setLabel("");
       setAmount("");
+      setAi(false);
       setOpen(false);
       onRefresh();
     } catch (e) {
@@ -115,6 +117,13 @@ function SpendLog({ money, onRefresh }: { money: HqMoney; onRefresh: () => void 
             style={{ width: 110, fontSize: 13, padding: "6px 8px", border: "1px solid #d7dbe0", borderRadius: 6 }}
             onKeyDown={(e) => e.key === "Enter" && add()}
           />
+          <label
+            style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--hq-ink-2)", cursor: "pointer", whiteSpace: "nowrap" }}
+            title="Also count this in the AI P&L ledger (top-bar pill)"
+          >
+            <input type="checkbox" checked={ai} onChange={(e) => setAi(e.target.checked)} />
+            AI spend
+          </label>
           <button className="btn btn-sm btn-primary" onClick={add} disabled={busy}>
             {busy ? "…" : "Add"}
           </button>
@@ -133,7 +142,17 @@ function SpendLog({ money, onRefresh }: { money: HqMoney; onRefresh: () => void 
             style={{ display: "flex", alignItems: "center", gap: 8, borderTop: "1px solid #eef0f2", padding: "6px 0", flexWrap: "wrap" }}
           >
             <span style={{ fontSize: 11, color: "var(--hq-ink-2)", minWidth: 52 }}>{shortDate(e.createdAt)}</span>
-            <span style={{ fontSize: 12, fontWeight: 600, flex: "1 1 auto" }}>{e.label}</span>
+            <span style={{ fontSize: 12, fontWeight: 600, flex: "1 1 auto" }}>
+              {e.label}
+              {e.ai && (
+                <span
+                  title="Counted in the AI P&L ledger"
+                  style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: "#6d5bd0", border: "1px solid #d8d2f2", borderRadius: 4, padding: "0 4px" }}
+                >
+                  AI
+                </span>
+              )}
+            </span>
             <span style={{ fontSize: 12, fontWeight: 700, color: "#b91c1c" }}>−{usd(e.amount)}</span>
             <button
               onClick={() => remove(e.id)}

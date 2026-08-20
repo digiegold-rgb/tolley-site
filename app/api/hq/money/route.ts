@@ -192,6 +192,7 @@ export async function GET() {
           id: e.id,
           label: e.label,
           amount: e.amountCents / 100,
+          ai: e.ai,
           createdAt: e.createdAt,
         })),
         monthTotal: (spendMonthAgg._sum.amountCents ?? 0) / 100,
@@ -203,8 +204,29 @@ export async function GET() {
   }
 }
 
-// POST /api/hq/money — add a manual spend-log entry: { label, amount }.
+// Flagged-AI spend entries roll up into ONE AiSpendLive row so the AI P&L
+// ledger stays provider-keyed: added on POST, backed out on DELETE.
+const MANUAL_AI_PROVIDER = "manual-hq";
+const MANUAL_AI_LABEL = "Manual purchases (Money-tab +)";
+
+async function bumpManualAiSpend(deltaCents: number) {
+  await prisma.aiSpendLive.upsert({
+    where: { provider: MANUAL_AI_PROVIDER },
+    create: {
+      provider: MANUAL_AI_PROVIDER,
+      label: MANUAL_AI_LABEL,
+      amountCents: Math.max(0, deltaCents),
+      kind: "verified",
+      note: "Sum of Money-tab spend-log entries flagged as AI spend",
+      asOf: new Date(),
+    },
+    update: { amountCents: { increment: deltaCents }, asOf: new Date() },
+  });
+}
+
+// POST /api/hq/money — add a manual spend-log entry: { label, amount, ai? }.
 // amount is dollars ("200", "12.50"); stored as positive cents = money out.
+// ai: true also counts it in the AI P&L ledger.
 export async function POST(req: Request) {
   const { authed } = await validateWdAdmin();
   if (!authed) {
@@ -222,12 +244,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Amount must be a positive dollar value" }, { status: 400 });
     }
 
+    const ai = body.ai === true;
     const entry = await prisma.hqSpendEntry.create({
-      data: { label, amountCents: Math.round(amount * 100) },
+      data: { label, amountCents: Math.round(amount * 100), ai },
     });
+    if (ai) await bumpManualAiSpend(entry.amountCents);
     return NextResponse.json({
       ok: true,
-      entry: { id: entry.id, label: entry.label, amount: entry.amountCents / 100, createdAt: entry.createdAt },
+      entry: { id: entry.id, label: entry.label, amount: entry.amountCents / 100, ai: entry.ai, createdAt: entry.createdAt },
     });
   } catch (err) {
     console.error("[hq/money POST]", err);
@@ -247,7 +271,8 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
   try {
-    await prisma.hqSpendEntry.delete({ where: { id } });
+    const entry = await prisma.hqSpendEntry.delete({ where: { id } });
+    if (entry.ai) await bumpManualAiSpend(-entry.amountCents);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[hq/money DELETE]", err);

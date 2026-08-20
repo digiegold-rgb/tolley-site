@@ -5493,6 +5493,8 @@ model HqSpendEntry {
   id          String   @id @default(cuid())
   label       String
   amountCents Int
+  /// true = also counted in the AI P&L ledger (AiSpendLive 'manual-hq' row)
+  ai          Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   @@index([createdAt])
