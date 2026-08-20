@@ -426,7 +426,7 @@ export function CharacterLab({
                   onClick={() => void generate()}
                   data-testid="character-lab-generate"
                 >
-                  {busy ? 'Starting…' : 'Generate 3 takes · $0.99'}
+                  {busy ? 'Starting…' : 'Generate 3 takes · $0.68'}
                 </VBtn>
                 <span style={{ fontSize: 11.5, color: t.textFaint }}>
                   Billed per batch. You pick the take you like; the others cost nothing extra.
@@ -567,7 +567,7 @@ export function CharacterLab({
       {takes.length > 0 && takes.every((tk) => tk.status !== 'running') && (
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <VBtn size="sm" variant="ghost" icon="sparkle" onClick={() => void generate()}>
-            Not quite? Generate 3 more · $0.99
+            Not quite? Generate 3 more · $0.68
           </VBtn>
           {styleId && (
             <VBtn size="sm" variant="ghost" onClick={() => openStyleEditor(styleId)}>

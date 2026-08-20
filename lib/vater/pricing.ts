@@ -59,10 +59,11 @@ export const FLAT_ACTION_PRICES = {
   description: { priceCents: 10, unit: "/generation" },
   transcription: { priceCents: 50, unit: "/10 min" },
   // Character Lab (2026-08-20). A batch = 3 portrait takes (descriptor +
-  // SDXL still each). Compute is local SDXL + one metered LLM call per take
-  // (< 5¢ all-in), so 99¢ keeps the standing 4-6x+ margin while staying far
-  // cheaper than auditioning characters via $7 test renders.
-  character: { priceCents: 99, unit: "/batch of 3 takes" },
+  // FireRed-Modal still each — same model customer scenes render on).
+  // ~$0.11/batch all-in (3 × $0.03 L40S + metered LLM), so 68¢ holds the
+  // standing 4-6x margin while staying far cheaper than auditioning
+  // characters via $7 test renders.
+  character: { priceCents: 68, unit: "/batch of 3 takes" },
   // Import = Gemini Vision descriptor + one stylized anchor render.
   character_import: { priceCents: 49, unit: "/import" },
 } as const;
