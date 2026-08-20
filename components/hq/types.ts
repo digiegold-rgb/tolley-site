@@ -112,6 +112,17 @@ export interface HqMoney {
     monthActions: number;
     videoOfferClients: number;
   };
+  spend?: {
+    entries: HqSpendEntry[];
+    monthTotal: number;
+  };
+}
+
+export interface HqSpendEntry {
+  id: string;
+  label: string;
+  amount: number;
+  createdAt: string;
 }
 
 export const STAGE_LABEL: Record<string, string> = {

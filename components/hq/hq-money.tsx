@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import type { HqMoney } from "./types";
 
 interface Props {
@@ -27,6 +29,126 @@ const DUNNING_LABEL: Record<number, string> = {
   2: "day 3",
   3: "day 7+",
 };
+
+// Manual spend log — the one writable thing on this tab. "+" opens a one-line
+// form (label + amount) that POSTs to /api/hq/money; rows are deletable.
+function SpendLog({ money, onRefresh }: { money: HqMoney; onRefresh: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [label, setLabel] = useState("");
+  const [amount, setAmount] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const spend = money.spend;
+
+  async function add() {
+    const amt = Number(amount.replace(/[$,\s]/g, ""));
+    if (!label.trim() || !Number.isFinite(amt) || amt <= 0) {
+      setError("Need a label and a positive amount.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/hq/money", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: label.trim(), amount: amt }),
+      });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error || "Failed to add");
+      setLabel("");
+      setAmount("");
+      setOpen(false);
+      onRefresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to add");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(id: string) {
+    setBusy(true);
+    try {
+      await fetch(`/api/hq/money?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      onRefresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="panel">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
+        <div style={{ fontWeight: 700, fontSize: 14 }}>
+          Spend log{" "}
+          <span style={{ fontWeight: 600, fontSize: 12, color: "var(--hq-ink-2)" }}>
+            {usd(spend?.monthTotal ?? 0)} this month · manual entries
+          </span>
+        </div>
+        <button
+          className="btn btn-sm btn-primary"
+          onClick={() => { setOpen(!open); setError(null); }}
+          disabled={busy}
+          title="Add a spend entry"
+        >
+          {open ? "✕ Cancel" : "+ Add"}
+        </button>
+      </div>
+
+      {open && (
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", padding: "4px 0 10px" }}>
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="What was it? (e.g. Grok Bot subscription)"
+            maxLength={200}
+            style={{ flex: "1 1 240px", fontSize: 13, padding: "6px 8px", border: "1px solid #d7dbe0", borderRadius: 6 }}
+            onKeyDown={(e) => e.key === "Enter" && add()}
+            autoFocus
+          />
+          <input
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="$ amount"
+            inputMode="decimal"
+            style={{ width: 110, fontSize: 13, padding: "6px 8px", border: "1px solid #d7dbe0", borderRadius: 6 }}
+            onKeyDown={(e) => e.key === "Enter" && add()}
+          />
+          <button className="btn btn-sm btn-primary" onClick={add} disabled={busy}>
+            {busy ? "…" : "Add"}
+          </button>
+          {error && <span style={{ fontSize: 12, color: "#b91c1c" }}>{error}</span>}
+        </div>
+      )}
+
+      {!spend || spend.entries.length === 0 ? (
+        <div style={{ fontSize: 13, color: "#999", padding: "4px 0" }}>
+          No entries yet. Hit + to log a purchase.
+        </div>
+      ) : (
+        spend.entries.map((e) => (
+          <div
+            key={e.id}
+            style={{ display: "flex", alignItems: "center", gap: 8, borderTop: "1px solid #eef0f2", padding: "6px 0", flexWrap: "wrap" }}
+          >
+            <span style={{ fontSize: 11, color: "var(--hq-ink-2)", minWidth: 52 }}>{shortDate(e.createdAt)}</span>
+            <span style={{ fontSize: 12, fontWeight: 600, flex: "1 1 auto" }}>{e.label}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#b91c1c" }}>−{usd(e.amount)}</span>
+            <button
+              onClick={() => remove(e.id)}
+              disabled={busy}
+              title="Delete entry"
+              style={{ border: "none", background: "none", color: "#b0b6bd", cursor: "pointer", fontSize: 12, padding: "0 2px" }}
+            >
+              ✕
+            </button>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
 
 // Money tab — Engine 5 consolidation. Read-only: every W/D row links to
 // /wd/admin where the actual approve/send buttons live.
@@ -91,6 +213,9 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
           </button>
         </div>
       </div>
+
+      {/* ─── Manual spend log ─── */}
+      <SpendLog money={money} onRefresh={onRefresh} />
 
       {/* ─── W/D section ─── */}
       <div className="panel">

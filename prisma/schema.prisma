@@ -5485,3 +5485,15 @@ model VaterOrgMember {
   @@index([userId])
   @@index([orgId])
 }
+
+/// Manual one-line spend log on the /hq Money tab ("+" button): Jared types a
+/// label + amount for purchases no reconciler sees (subscriptions, hardware…).
+/// amountCents is always positive = money OUT.
+model HqSpendEntry {
+  id          String   @id @default(cuid())
+  label       String
+  amountCents Int
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+}

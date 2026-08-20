@@ -109,16 +109,26 @@ export async function GET() {
     // Animate Studio (pay-per-video) — this month's metered usage + video-offer
     // sales. Separate await: keeps the destructured tuple above untouched.
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const [animateMonthAgg, videoOfferClients] = await Promise.all([
-      prisma.vaterUsage.aggregate({
-        where: { ts: { gte: monthStart } },
-        _sum: { costCents: true },
-        _count: true,
-      }),
-      prisma.growthLead.count({
-        where: { offer: "video", stage: "client" },
-      }),
-    ]);
+    const [animateMonthAgg, videoOfferClients, spendEntries, spendMonthAgg] =
+      await Promise.all([
+        prisma.vaterUsage.aggregate({
+          where: { ts: { gte: monthStart } },
+          _sum: { costCents: true },
+          _count: true,
+        }),
+        prisma.growthLead.count({
+          where: { offer: "video", stage: "client" },
+        }),
+        // Manual spend log (the "+" button on the Money tab).
+        prisma.hqSpendEntry.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 25,
+        }),
+        prisma.hqSpendEntry.aggregate({
+          where: { createdAt: { gte: monthStart } },
+          _sum: { amountCents: true },
+        }),
+      ]);
 
     const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -177,9 +187,70 @@ export async function GET() {
         monthActions: animateMonthAgg._count,
         videoOfferClients,
       },
+      spend: {
+        entries: spendEntries.map((e) => ({
+          id: e.id,
+          label: e.label,
+          amount: e.amountCents / 100,
+          createdAt: e.createdAt,
+        })),
+        monthTotal: (spendMonthAgg._sum.amountCents ?? 0) / 100,
+      },
     });
   } catch (err) {
     console.error("[hq/money GET]", err);
     return NextResponse.json({ error: "Failed to load money data" }, { status: 500 });
+  }
+}
+
+// POST /api/hq/money — add a manual spend-log entry: { label, amount }.
+// amount is dollars ("200", "12.50"); stored as positive cents = money out.
+export async function POST(req: Request) {
+  const { authed } = await validateWdAdmin();
+  if (!authed) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const body = await req.json().catch(() => ({}));
+    const label = typeof body.label === "string" ? body.label.trim() : "";
+    const amount = Number(body.amount);
+    if (!label || label.length > 200) {
+      return NextResponse.json({ error: "Label required (max 200 chars)" }, { status: 400 });
+    }
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000) {
+      return NextResponse.json({ error: "Amount must be a positive dollar value" }, { status: 400 });
+    }
+
+    const entry = await prisma.hqSpendEntry.create({
+      data: { label, amountCents: Math.round(amount * 100) },
+    });
+    return NextResponse.json({
+      ok: true,
+      entry: { id: entry.id, label: entry.label, amount: entry.amountCents / 100, createdAt: entry.createdAt },
+    });
+  } catch (err) {
+    console.error("[hq/money POST]", err);
+    return NextResponse.json({ error: "Failed to add spend entry" }, { status: 500 });
+  }
+}
+
+// DELETE /api/hq/money?id=… — remove a spend-log entry (typo fix).
+export async function DELETE(req: Request) {
+  const { authed } = await validateWdAdmin();
+  if (!authed) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const id = new URL(req.url).searchParams.get("id");
+  if (!id) {
+    return NextResponse.json({ error: "id required" }, { status: 400 });
+  }
+  try {
+    await prisma.hqSpendEntry.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[hq/money DELETE]", err);
+    return NextResponse.json({ error: "Failed to delete spend entry" }, { status: 500 });
   }
 }
