@@ -19,6 +19,11 @@ Sentry.init({
   tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.1,
 
   enableLogs: true,
+
+  // Safari modern-media-controls (WebKit 318284): NullMedia.buffered/played/seekable
+  // references unqualified EmptyRanges. Not in our /animate bundles. Page still loads.
+  // https://github.com/WebKit/WebKit/commit/b13f9879ad3ca87db952d919932d0f31e52b38ea
+  ignoreErrors: ["Can't find variable: EmptyRanges"],
 });
 
 // App Router navigation spans.
