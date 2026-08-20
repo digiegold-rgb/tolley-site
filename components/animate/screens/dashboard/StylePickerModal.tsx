@@ -183,8 +183,6 @@ export function StylePickerModal({
         );
         return;
       }
-      const style = styles.find((s) => s.id === styleId);
-
       // ── Fable 5 Concierge: one POST for the whole batch. The server
       // validates every script, authorises the style, pre-checks the
       // cumulative credit and queues N tickets. Nothing is rendered here. ──
@@ -234,31 +232,18 @@ export function StylePickerModal({
         return;
       }
       const trimmed = trimmedAll[0];
-      if (!style?.voice) {
-        setOwnScriptError(
-          `Style "${style?.name ?? 'selected'}" has no voice clone configured. Pick a style with a voice or set one up first.`,
-        );
-        return;
-      }
       setSubmittingOwn(true);
       setOwnScriptError(null);
       setCreatingFromId(styleId);
       try {
-        const res = await fetch('/api/vater/topic', {
+        // Create the project + SAVE the script. No render — the old path
+        // went through /api/vater/topic, which kicked the full paid pipeline
+        // off a style click with zero price shown (2026-08-19 runaway-render
+        // family). The editor's Generate Video button is the only paid click.
+        const res = await fetch('/api/vater/youtube/new-from-style', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            topic: trimmed.slice(0, 80),
-            goal: 'User-supplied script',
-            targetDuration: Math.max(
-              1,
-              Math.min(30, Math.round(scriptWordCount / WORDS_PER_MINUTE)),
-            ),
-            targetWordCount: Math.max(1, scriptWordCount),
-            voiceCloneName: style.voice,
-            styleId,
-            scriptOverride: trimmed,
-          }),
+          body: JSON.stringify({ styleId }),
         });
         if (!res.ok) {
           const data = (await res.json().catch(() => ({}))) as {
@@ -272,9 +257,21 @@ export function StylePickerModal({
         if (!projectId || typeof projectId !== 'string') {
           throw new Error('No project id returned');
         }
+        const patch = await fetch(`/api/vater/youtube/${projectId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            script: trimmed,
+            sourceTitle: trimmed.slice(0, 80),
+          }),
+        });
+        if (!patch.ok) {
+          const data = (await patch.json().catch(() => ({}))) as { error?: string };
+          throw new Error(data.error || `Could not save the script (HTTP ${patch.status})`);
+        }
         onProjectCreated(projectId);
       } catch (err) {
-        devError('[StylePickerModal] own-script topic kickoff failed:', err);
+        devError('[StylePickerModal] own-script create failed:', err);
         const msg = err instanceof Error ? err.message : 'Failed to create project';
         setOwnScriptError(msg);
       } finally {
