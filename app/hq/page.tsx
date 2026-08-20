@@ -681,6 +681,15 @@ function HqPageInner() {
               <summary className="tab-btn">📄 Docs ▾</summary>
               <div className="tab-docs-menu">
                 <a
+                  href="/research/zernio-integration-2026-08.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeDocs}
+                >
+                  🔌 Zernio Integration
+                  <span className="doc-sub">The one social-publishing API under tolley.io + /animate — both lanes, the 18 connected accounts, pricing, webhooks, every gotcha — Aug 19, 2026</span>
+                </a>
+                <a
                   href="/research/lady-video-system-2026-08.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
