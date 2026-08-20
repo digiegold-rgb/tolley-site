@@ -33,6 +33,7 @@
  */
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { JELLY_TOKENS, SECTION_PRICES } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { Icon } from '../../Icon';
@@ -2011,7 +2012,9 @@ function BatchAnimateConfirmModal({
   if (!request) return null;
   const { count } = request;
   const totalCents = count * priceCents;
-  return (
+  // Portalled to <body>: fixed overlays rendered inside <main> stack BELOW
+  // the studio header/sidebar (2026-08-19 beta finding).
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -2077,6 +2080,7 @@ function BatchAnimateConfirmModal({
           </VBtn>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

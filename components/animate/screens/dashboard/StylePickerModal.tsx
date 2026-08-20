@@ -18,6 +18,7 @@
  */
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { Icon } from '../../Icon';
@@ -342,7 +343,11 @@ export function StylePickerModal({
     fontFamily: JELLY_TOKENS.font,
   };
 
-  return (
+  // Portal to <body>: the studio Shell's header/sidebar live in a HIGHER
+  // stacking context than <main>, so a fixed overlay rendered in place sat
+  // BEHIND the header bar — the own-script + engine row at the top of this
+  // modal was invisible/unclickable for every beta tester (2026-08-19).
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -1025,6 +1030,7 @@ export function StylePickerModal({
         context={billingCtx}
         onClose={() => setBillingBlock(null)}
       />
-    </div>
+    </div>,
+    document.body,
   );
 }

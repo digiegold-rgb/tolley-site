@@ -20,6 +20,7 @@
  */
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { Icon } from '../../Icon';
@@ -598,7 +599,9 @@ export function StyleWizardModal({
     </div>
   );
 
-  return (
+  // Portalled to <body>: fixed overlays rendered inside <main> stack BELOW
+  // the studio header/sidebar (2026-08-19 beta finding).
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -1555,6 +1558,7 @@ export function StyleWizardModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

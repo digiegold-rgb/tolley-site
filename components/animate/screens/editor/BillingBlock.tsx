@@ -9,6 +9,7 @@
  */
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { JELLY_TOKENS, glass } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { VBtn } from '../../primitives';
@@ -318,7 +319,9 @@ export function BillingBlockModal({
     wallNotes.push({ label: 'charged so far', value: 'nothing', tone: 'cyan' });
   }
 
-  return (
+  // Portalled to <body>: fixed overlays rendered inside <main> stack BELOW
+  // the studio header/sidebar (2026-08-19 beta finding).
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -497,6 +500,7 @@ export function BillingBlockModal({
           </VBtn>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
