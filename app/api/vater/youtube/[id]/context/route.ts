@@ -222,6 +222,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     (!!scriptOverride || isTopicMode) &&
     (project.status === "draft" ||
       project.status === "scripted" ||
+      // A stopAfterScript run parks here with the draft persisted — the
+      // Generate Video button IS the approval, same as /approve-script.
+      project.status === "awaiting_script_approval" ||
       project.status === "failed");
   if (project.status !== "transcribed" && !allowKickoffFromDraft) {
     // A pipeline status here means a render is ALREADY running — say that in
