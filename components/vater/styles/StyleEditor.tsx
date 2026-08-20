@@ -114,7 +114,15 @@ type ElevenLabsVoiceOption = {
   preview_url?: string;
 };
 
-export function StyleEditor({ initialStyle }: { initialStyle: Style }) {
+export function StyleEditor({
+  initialStyle,
+  onDeleted,
+}: {
+  initialStyle: Style;
+  /** In-studio override: after delete, go back in-studio instead of the
+   *  legacy /vater route (router.push bypasses the Shell interceptor). */
+  onDeleted?: () => void;
+}) {
   const router = useRouter();
   const [style, setStyle] = useState<Style>(initialStyle);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -211,8 +219,10 @@ export function StyleEditor({ initialStyle }: { initialStyle: Style }) {
   async function deleteStyle() {
     if (!confirm(`Delete "${style.name}" permanently?`)) return;
     const r = await fetch(`/api/vater/youtube/styles/${style.id}`, { method: "DELETE" });
-    if (r.ok) router.push("/vater/youtube/styles");
-    else alert(`Delete failed: ${r.status}`);
+    if (r.ok) {
+      if (onDeleted) onDeleted();
+      else router.push("/vater/youtube/styles");
+    } else alert(`Delete failed: ${r.status}`);
   }
 
   const transcripts = useMemo<Transcript[]>(

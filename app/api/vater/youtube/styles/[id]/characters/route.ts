@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { publicSiteUrl } from "@/lib/vater/site-url";
+import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
+import { ownerKeyForUser } from "@/lib/vater/voice-ids";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -96,8 +98,11 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         briefDescription: brief,
         customArtStyleDescription: style.customArtStyle?.description ?? null,
         callbackUrl,
+        // Scope the DGX-library sidecar to this user (CharactersScreen
+        // lists per-owner) and route GPU spend to the right lane.
+        ownerKey: ownerKeyForUser(session.user.id),
         // See the from-image route: inline jobs are scoped by ownerId.
-        ownerId: session.user.id,
+        ...(await ownerFieldsForSessionWithLane(session)),
       }),
     });
     if (!r.ok) {

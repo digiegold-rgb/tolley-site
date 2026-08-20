@@ -61,15 +61,18 @@ async function handle(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Style not found" }, { status: 404 });
   }
 
-  // Construct full imageUrl. DGX gives us a relative path like
-  // "/vater/file/style/{styleId}/{filename}.png" — the frontend hits the
-  // autopilot through tolley.io's vater file proxy.
-  const dgxBase = (process.env.AUTOPILOT_URL || "").replace(/\/+$/, "");
-  const imageUrl = body.imageUrl
-    ? body.imageUrl.startsWith("http")
+  // Store the SITE proxy path (2026-08-20). DGX gives a relative path like
+  // "/vater/file/style/{styleId}/{filename}.png"; the old absolute
+  // AUTOPILOT_URL form is bearer-authed → a broken image in every customer
+  // browser. /api/vater/file/style/... streams it with the server key.
+  const fileMatch = body.imageUrl?.match(
+    /\/vater\/file\/style\/([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)$/,
+  );
+  const imageUrl = fileMatch
+    ? `/api/vater/file/style/${fileMatch[1]}/${fileMatch[2]}`
+    : body.imageUrl?.startsWith("http")
       ? body.imageUrl
-      : `${dgxBase}${body.imageUrl}`
-    : null;
+      : null;
 
   const character = await prisma.youTubeCharacter.create({
     data: {

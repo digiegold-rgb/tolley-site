@@ -15,6 +15,7 @@ import { JELLY_TOKENS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { VBtn, RetryError } from '../../primitives';
 import { StyleEditorSimple } from '@/components/vater/styles/StyleEditorSimple';
+import { StyleEditor } from '@/components/vater/styles/StyleEditor';
 
 // The wrapped editor's exact Style shape includes characters + customArtStyle —
 // those come back from the server alongside the style row.
@@ -31,6 +32,11 @@ export function StyleEditEmbed({ styleId }: StyleEditEmbedProps): React.ReactEle
   const [style, setStyle] = React.useState<AnyStyle | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  /* Simple ↔ Advanced (2026-08-20): the advanced editor (pacing, quality
+   * backend, smart overlays, multi-character) used to be reachable only on
+   * the legacy /vater page — in-studio, its link looped back to the simple
+   * editor and read as a dead feature. */
+  const [advanced, setAdvanced] = React.useState(false);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -70,6 +76,30 @@ export function StyleEditEmbed({ styleId }: StyleEditEmbedProps): React.ReactEle
         <div style={{ fontSize: 13, color: t.textSecondary }}>
           {style?.name?.trim() || (loading ? 'Loading style…' : `Style ${styleId.slice(0, 8)}`)}
         </div>
+        {style && (
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+            <VBtn
+              size="sm"
+              variant={advanced ? 'ghost' : 'outlined'}
+              onClick={() => {
+                setAdvanced(false);
+                void load();
+              }}
+            >
+              Simple
+            </VBtn>
+            <VBtn
+              size="sm"
+              variant={advanced ? 'outlined' : 'ghost'}
+              onClick={() => {
+                setAdvanced(true);
+                void load();
+              }}
+            >
+              Advanced
+            </VBtn>
+          </div>
+        )}
       </div>
 
       {loading && !style && (
@@ -90,7 +120,27 @@ export function StyleEditEmbed({ styleId }: StyleEditEmbedProps): React.ReactEle
           }}
         >
           <div className="jelly-legacy">
-            <StyleEditorSimple initialStyle={style} />
+            {advanced ? (
+              /* key remounts the editor after a Simple-side save so it never
+                 shows stale fields; onDeleted keeps delete in-studio. */
+              <StyleEditor
+                key={`adv-${style.updatedAt ?? ''}`}
+                initialStyle={style}
+                onDeleted={() => {
+                  setSelectedStyleId(null);
+                  setRoute('styles-list');
+                }}
+              />
+            ) : (
+              <StyleEditorSimple
+                key={`simple-${style.updatedAt ?? ''}`}
+                initialStyle={style}
+                onAdvancedView={() => {
+                  setAdvanced(true);
+                  void load();
+                }}
+              />
+            )}
           </div>
         </div>
       )}

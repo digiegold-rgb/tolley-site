@@ -24,6 +24,7 @@ import {
   type CreatedStyle,
   type PreselectedCharacter,
 } from '../dashboard/StyleWizardModal';
+import { CharacterLab } from './CharacterLab';
 
 interface VaterCharacter {
   id: string;
@@ -119,6 +120,11 @@ export function CharactersScreen(): React.ReactElement {
         title="Characters"
         description="Every character you've minted. Reuse one in a new video and it keeps the same face across every scene."
       />
+
+      {/* Character Lab (2026-08-20): generate 3 priced portrait takes or
+          import a character image — the cheap audition instead of $7 test
+          renders. */}
+      <CharacterLab onCharacterSaved={() => void load()} />
 
       {loading && (
         <div

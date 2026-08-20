@@ -53,7 +53,19 @@ type ElevenLabsVoiceOption = {
   category?: string;
 };
 
-export function StyleEditorSimple({ initialStyle }: { initialStyle: Style }) {
+export function StyleEditorSimple({
+  initialStyle,
+  onAdvancedView,
+}: {
+  initialStyle: Style;
+  /**
+   * In-studio override (2026-08-20). The advanced-view <Link> targets the
+   * legacy /vater page; inside /animate the Shell interceptor routes that
+   * URL back to THIS simple editor — an infinite loop that made "Switch to
+   * advanced view" appear dead. The embed passes a callback instead.
+   */
+  onAdvancedView?: () => void;
+}) {
   const router = useRouter();
   const [style, setStyle] = useState<Style>(initialStyle);
   const [saving, setSaving] = useState(false);
@@ -173,9 +185,19 @@ export function StyleEditorSimple({ initialStyle }: { initialStyle: Style }) {
         </div>
         <div className="flex items-center gap-3 text-xs">
           {saving && <span className="text-zinc-400">Saving…</span>}
-          <Link href={advancedHref} className="text-rose-400 hover:text-rose-300">
-            Advanced view →
-          </Link>
+          {onAdvancedView ? (
+            <button
+              type="button"
+              onClick={onAdvancedView}
+              className="text-rose-400 hover:text-rose-300"
+            >
+              Advanced view →
+            </button>
+          ) : (
+            <Link href={advancedHref} className="text-rose-400 hover:text-rose-300">
+              Advanced view →
+            </Link>
+          )}
         </div>
       </div>
 
@@ -356,9 +378,19 @@ export function StyleEditorSimple({ initialStyle }: { initialStyle: Style }) {
       {/* Footer */}
       <div className="mt-8 rounded-xl border border-dashed border-zinc-800 p-4 text-center text-xs text-zinc-500">
         Need pacing, quality backend, smart overlays, or multi-character control?{" "}
-        <Link href={advancedHref} className="text-rose-400 hover:text-rose-300">
-          Switch to advanced view
-        </Link>
+        {onAdvancedView ? (
+          <button
+            type="button"
+            onClick={onAdvancedView}
+            className="text-rose-400 hover:text-rose-300"
+          >
+            Switch to advanced view
+          </button>
+        ) : (
+          <Link href={advancedHref} className="text-rose-400 hover:text-rose-300">
+            Switch to advanced view
+          </Link>
+        )}
       </div>
 
       {/* Toast */}

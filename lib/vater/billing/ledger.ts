@@ -710,6 +710,46 @@ export async function debitForProject(
   }
 }
 
+/**
+ * Debit a small NON-project action (Character Lab batches/imports). Unlike
+ * small actions routed through recordUsage (usage rows only — money never
+ * moves), this writes a real VaterCreditLedger debit so the balance drops.
+ * Idempotent via the caller-supplied dedupeKey (e.g. `charbatch:<id>`).
+ * Callers must skip this entirely for unmetered accounts (checkBudget
+ * already reports costCents 0 for them).
+ */
+export async function debitForAction(
+  userId: string,
+  cents: number,
+  dedupeKey: string,
+  note: string,
+): Promise<DebitResult> {
+  if (cents <= 0) return { ok: true, outcome: "skipped", reason: "zero_charge" };
+  if (!(await hasVaterCreditLedgerTable())) {
+    return { ok: false, outcome: "not_ready", reason: "ledger table missing" };
+  }
+  try {
+    await prisma.vaterCreditLedger.create({
+      data: {
+        userId,
+        deltaCents: -cents,
+        kind: "debit",
+        dedupeKey,
+        note,
+      },
+    });
+    return { ok: true, outcome: "created", chargedCents: cents };
+  } catch (err) {
+    if ((err as { code?: string })?.code === "P2002") {
+      return { ok: true, outcome: "existing", chargedCents: cents };
+    }
+    if (isMissingSchemaError(err)) {
+      return { ok: false, outcome: "not_ready", reason: "ledger table missing" };
+    }
+    throw err;
+  }
+}
+
 /** The debit row for a project, if one exists (receipt + reconciler). */
 export async function getProjectDebit(projectId: string) {
   if (!(await hasVaterCreditLedgerTable())) return null;

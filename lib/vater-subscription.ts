@@ -76,7 +76,9 @@ export type VaterAction =
   | "render"
   | "thumbnail"
   | "description"
-  | "transcription";
+  | "transcription"
+  | "character"
+  | "character_import";
 
 /** Animation tier = AnimationQuality name. Other actions take no tier. */
 export type VaterTier = string;
@@ -117,6 +119,8 @@ export function describeAction(
     thumbnail: "Thumbnail",
     description: "Description",
     transcription: "Transcription",
+    character: "Character generation (3 takes)",
+    character_import: "Character import",
   };
   if (action === "animation" && tier) {
     const spec = ANIMATION_PRICES[tier as keyof typeof ANIMATION_PRICES];
