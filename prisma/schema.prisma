@@ -5323,6 +5323,14 @@ model DgxActivity {
   updatedAt DateTime @default(now())
 }
 
+// Live DGX vitals for the /hq top banner (dgx-health-push.sh every 30s).
+// Single-row upsert like DgxActivity; payload = full JSON vitals blob.
+model DgxHealth {
+  id        Int      @id @default(1)
+  payload   Json
+  updatedAt DateTime @default(now())
+}
+
 // ═════════════════════════════════════════════════════════════════════════
 // Jelly Studio beta — invites, impersonation audit, system log
 // (2026-08-15, migration prisma/migrations/20260815_beta_invites)

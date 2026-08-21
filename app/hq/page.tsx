@@ -18,6 +18,7 @@ import {
 import { HqMoney } from "@/components/hq/hq-money";
 import { HqJellyPnl } from "@/components/hq/hq-jelly-pnl";
 import { HqEngineStatus } from "@/components/hq/hq-engine-status";
+import { HqDgxHealth } from "@/components/hq/hq-dgx-health";
 import { HqAiPnl } from "@/components/hq/hq-ai-pnl";
 import { HqInbound } from "@/components/hq/hq-inbound";
 import { HqDnc } from "@/components/hq/hq-dnc";
@@ -594,6 +595,12 @@ function HqPageInner() {
         {/* The funnel stat row (Scraped/Enriched/…/New This Week) lived here
             until 2026-08-19 — Jared never read it, so it's gone. The same
             numbers still exist inside the Pipeline board itself. */}
+
+        {/* Live DGX vitals — pushed every 30s by dgx-health-push.sh, visible
+            on every tab. Stale >2 min = the box itself is dark. */}
+        <div className="dgx-health">
+          <HqDgxHealth />
+        </div>
 
         {/* Tab bar. Grouped Ops | Growth; the strip scrolls sideways
             (see hq.css) so adding a tab never widens the page. Docs and the
