@@ -25,6 +25,7 @@ import {
   type PreselectedCharacter,
 } from '../dashboard/StyleWizardModal';
 import { CharacterLab } from './CharacterLab';
+import { ImageLightbox } from '../../ImageLightbox';
 
 interface VaterCharacter {
   id: string;
@@ -49,6 +50,7 @@ export function CharactersScreen(): React.ReactElement {
   );
   const [creating, setCreating] = React.useState(false);
   const [createError, setCreateError] = React.useState<string | null>(null);
+  const [lightbox, setLightbox] = React.useState<{ src: string; caption?: string } | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -211,8 +213,12 @@ export function CharactersScreen(): React.ReactElement {
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     src={c.previewUrl}
-                    alt={c.name}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    alt={`${c.name} — click to view full screen`}
+                    title="Click to view full screen"
+                    onClick={() =>
+                      setLightbox({ src: c.previewUrl!, caption: `${c.name} — ${c.descriptor}` })
+                    }
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'zoom-in' }}
                   />
                 ) : (
                   <Icon name="image" size={28} color={t.textSecondary} />
@@ -259,6 +265,11 @@ export function CharactersScreen(): React.ReactElement {
         </div>
       )}
 
+      <ImageLightbox
+        src={lightbox?.src ?? null}
+        caption={lightbox?.caption}
+        onClose={() => setLightbox(null)}
+      />
       <StyleWizardModal
         open={wizardFor !== null}
         onClose={() => setWizardFor(null)}

@@ -23,6 +23,7 @@ import { useTheme, useRoute } from '../../theme-context';
 import { VBtn, VCard } from '../../primitives';
 import { MicroLabel } from '../../cinema';
 import { Icon } from '../../Icon';
+import { ImageLightbox } from '../../ImageLightbox';
 import {
   BillingBlockModal,
   BillingBlockedError,
@@ -114,6 +115,7 @@ export function CharacterLab({
   const [adoptingJob, setAdoptingJob] = React.useState<string | null>(null);
   const [importFile, setImportFile] = React.useState<File | null>(null);
   const [importJob, setImportJob] = React.useState<Take | null>(null);
+  const [lightbox, setLightbox] = React.useState<{ src: string; caption?: string } | null>(null);
   const pollStop = React.useRef(false);
 
   React.useEffect(() => {
@@ -515,8 +517,15 @@ export function CharacterLab({
                     /* DGX-relative /vater/file/... → the site's authed proxy;
                        the raw autopilot URL 401s in browsers. */
                     src={tk.imageUrl.includes('://') ? tk.imageUrl : `/api${tk.imageUrl}`}
-                    alt={`Take ${tk.take}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    alt={`Take ${tk.take} — click to view full screen`}
+                    title="Click to view full screen"
+                    onClick={() =>
+                      setLightbox({
+                        src: tk.imageUrl!.includes('://') ? tk.imageUrl! : `/api${tk.imageUrl}`,
+                        caption: tk.description,
+                      })
+                    }
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'zoom-in' }}
                   />
                 ) : tk.status === 'failed' ? (
                   <span style={{ fontSize: 12, color: JELLY_TOKENS.error, padding: 10, textAlign: 'center' }}>
@@ -577,6 +586,11 @@ export function CharacterLab({
         </div>
       )}
 
+      <ImageLightbox
+        src={lightbox?.src ?? null}
+        caption={lightbox?.caption}
+        onClose={() => setLightbox(null)}
+      />
       <BillingBlockModal reason={billingBlock} onClose={() => setBillingBlock(null)} />
     </VCard>
   );

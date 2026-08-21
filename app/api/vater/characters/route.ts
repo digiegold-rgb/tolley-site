@@ -29,6 +29,20 @@ export interface VaterCharacter {
   styleId: string | null;
 }
 
+/**
+ * DGX file paths → the site's authed proxy (2026-08-20). The library's
+ * previewUrl is a DGX-relative `/vater/file/style/...` path (or an absolute
+ * autopilot URL) — both are broken images in a browser: the relative form
+ * 404s against the site, the absolute form 401s at the bearer-authed
+ * autopilot. `/api/vater/file/style/...` streams with the server key.
+ */
+function proxyFileUrl(url: string | null): string | null {
+  if (!url) return null;
+  const m = url.match(/\/vater\/file\/style\/([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)$/);
+  if (m) return `/api/vater/file/style/${m[1]}/${m[2]}`;
+  return url.includes("://") ? url : null;
+}
+
 /** The DGX answers with either a bare array or `{ characters: [...] }`. */
 function readCharacters(data: unknown): VaterCharacter[] {
   const rows = Array.isArray(data)
@@ -56,12 +70,13 @@ function readCharacters(data: unknown): VaterCharacter[] {
           : typeof r.description === "string"
             ? r.description
             : "",
-      previewUrl:
+      previewUrl: proxyFileUrl(
         typeof r.previewUrl === "string"
           ? r.previewUrl
           : typeof r.imageUrl === "string"
             ? r.imageUrl
             : null,
+      ),
       styleId: typeof r.styleId === "string" ? r.styleId : null,
     });
   }
