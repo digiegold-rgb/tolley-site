@@ -7,8 +7,11 @@ import { rateLimitByIp } from "@/lib/rate-limit";
 const LLM_URL =
   process.env.LLM_PUBLIC_CHAT_URL ||
   process.env.LLM_ENDPOINT ||
-  "https://vllm.tolley.io/v1/chat/completions";
-const LLM_MODEL = process.env.LLM_PUBLIC_CHAT_MODEL || "Qwen/Qwen3.5-35B-A3B-FP8";
+  "https://llm.tolley.io/v1/chat/completions";
+const LLM_MODEL = process.env.LLM_PUBLIC_CHAT_MODEL || "Qwen/Qwen3.6-27B";
+// Scoped LiteLLM virtual key (budget-capped). vllm.tolley.io was removed from
+// the tunnel 2026-08-21 — it served raw unauthenticated vLLM to the internet.
+const LLM_KEY = process.env.LLM_PUBLIC_CHAT_KEY || "";
 
 const RATE_LIMIT_MAP = new Map<string, { count: number; reset: number }>();
 const MAX_PER_MIN = 10;
@@ -248,7 +251,10 @@ export async function POST(req: NextRequest) {
   try {
     const res = await fetch(LLM_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(LLM_KEY ? { Authorization: `Bearer ${LLM_KEY}` } : {}),
+      },
       body: JSON.stringify({
         model: LLM_MODEL,
         messages,

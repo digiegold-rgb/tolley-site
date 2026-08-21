@@ -139,8 +139,13 @@ export function HqDgxHealth() {
   const v = vitals;
   const llmT = llmTone(v.llm.state);
   const ramT = ramTone(v.mem.usedPct, v.mem.swapGb);
+  // Display names only — internal payload keys/unit names unchanged. All three
+  // ComfyUI ports are PRIVATE (localhost/LAN; no public tunnel). Jelly Studio
+  // customers render on Modal + the :8096 queue — they can never reach these.
   const comfyLanes: Array<[string, ComfyLane]> = [
-    ["8188", v.comfy.main], ["vater", v.comfy.vater], ["wan", v.comfy.wan],
+    ["private studio (8188)", v.comfy.main],
+    ["spare (8189, dormant)", v.comfy.vater],
+    ["Wan lane (8190)", v.comfy.wan],
   ];
 
   return (
@@ -208,7 +213,7 @@ export function HqDgxHealth() {
       {(v.vater.active > 0 || v.vater.queued > 0) && (
         <Seg>
           <span style={{ color: "var(--hq-blue)", fontWeight: 600 }}>
-            Vater {v.vater.active}▶{v.vater.queued > 0 ? ` ${v.vater.queued}q` : ""}
+            Jelly Studio {v.vater.active}▶{v.vater.queued > 0 ? ` ${v.vater.queued}q` : ""}
           </span>
         </Seg>
       )}
@@ -243,7 +248,7 @@ export function HqDgxHealth() {
           {comfyLanes.map(([k, lane]) => (
             <Row key={k} label={`Comfy ${k}`} value={`${lane.state} · ${lane.running}▶ ${lane.pending}q`} />
           ))}
-          <Row label="Vater queue" value={`${v.vater.active} active · ${v.vater.queued} queued`} />
+          <Row label="Jelly Studio queue" value={`${v.vater.active} active · ${v.vater.queued} queued`} />
           <Row label="Headroom" value={v.headroom} />
           {v.running.length > 0 && (
             <div style={{ marginTop: 8 }}>

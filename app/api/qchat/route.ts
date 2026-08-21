@@ -7,8 +7,11 @@ import { rateLimitByIp } from "@/lib/rate-limit";
 //   LLM_PUBLIC_CHAT_MODEL (default: Qwen/Qwen3.6-27B-FP8)
 const LLM_URL =
   process.env.LLM_PUBLIC_CHAT_URL ||
-  "https://vllm.tolley.io/v1/chat/completions";
-const LLM_MODEL = process.env.LLM_PUBLIC_CHAT_MODEL || "Qwen/Qwen3.6-27B-FP8";
+  "https://llm.tolley.io/v1/chat/completions";
+const LLM_MODEL = process.env.LLM_PUBLIC_CHAT_MODEL || "Qwen/Qwen3.6-27B";
+// Scoped LiteLLM virtual key (budget-capped). vllm.tolley.io was removed from
+// the tunnel 2026-08-21 — it served raw unauthenticated vLLM to the internet.
+const LLM_KEY = process.env.LLM_PUBLIC_CHAT_KEY || "";
 
 const SYSTEM =
   "You are Qwen3.6, a helpful, direct AI assistant running locally on Tolley's DGX Spark. " +
@@ -60,7 +63,10 @@ export async function POST(req: NextRequest) {
   try {
     const res = await fetch(LLM_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(LLM_KEY ? { Authorization: `Bearer ${LLM_KEY}` } : {}),
+      },
       body: JSON.stringify({
         model: LLM_MODEL,
         messages,
