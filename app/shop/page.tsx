@@ -282,6 +282,18 @@ export default async function ShopPage({
         </a>
       )}
 
+      {!hasAnyFilter(filters) && (
+        <a
+          href="/shop/picks"
+          className="my-4 flex items-center justify-between rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 transition hover:border-amber-500/60"
+        >
+          <p className="text-sm font-semibold text-amber-200">
+            3 Amazon picks — tagged tolleyshop-20
+          </p>
+          <span className="text-sm text-amber-400">Open picks →</span>
+        </a>
+      )}
+
       {/* Amazon free-trial / signup bounties (renders nothing if none configured) */}
       <AmazonBountyStrip />
 
