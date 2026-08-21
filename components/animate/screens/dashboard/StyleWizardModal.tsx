@@ -25,7 +25,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { JELLY_TOKENS } from '../../tokens';
-import { useTheme } from '../../theme-context';
+import { useTheme, useRoute } from '../../theme-context';
 import { Icon } from '../../Icon';
 import { isSharedVoiceId, voiceDisplayName } from '@/lib/vater/voice-ids';
 import { devError } from '../../log';
@@ -126,6 +126,7 @@ export function StyleWizardModal({
   initialCharacters,
 }: Props): React.ReactElement | null {
   const { t } = useTheme();
+  const { setRoute } = useRoute();
 
   // ── Required fields ──
   const [name, setName] = React.useState('');
@@ -580,7 +581,9 @@ export function StyleWizardModal({
     display: 'flex',
     flexDirection: 'column',
     gap: 12,
-    background: t.card,
+    /* Opaque, not the translucent glass card — see-through section bodies
+       read as "everything below is blurred out" (2026-08-20 walkthrough). */
+    background: t.panel,
   };
 
   const slider = (
@@ -672,7 +675,10 @@ export function StyleWizardModal({
               size="sm"
               variant="ghost"
               onClick={() => {
-                /* tutorial placeholder — Phase 1 ships without */
+                // Until the DGX-produced tutorial video ships, land on the
+                // written guide — a dead button is worse than a detour.
+                onClose();
+                setRoute('learning-center');
               }}
               icon="play"
             >
@@ -696,10 +702,15 @@ export function StyleWizardModal({
           </div>
         </div>
 
-        {/* Body */}
+        {/* Body. minHeight: 0 is load-bearing: a flex child defaults to
+            min-height auto, so without it the body refuses to shrink below
+            its content, overflowY never activates, and everything past the
+            fold is clipped and unreachable (2026-08-20 walkthrough: "it
+            doesn't let me browse down"). */}
         <div
           style={{
             flex: 1,
+            minHeight: 0,
             overflowY: 'auto',
             padding: 18,
             display: 'flex',
@@ -878,9 +889,28 @@ export function StyleWizardModal({
                       marginTop: 4,
                     }}
                   >
-                    No ElevenLabs voices yet — connect your own ElevenLabs
-                    key in Voices → ElevenLabs, or pick a Studio voice
-                    (free, no key needed).
+                    No ElevenLabs voices yet — ElevenLabs uses YOUR own
+                    subscription, so connect your key first (or pick a Studio
+                    voice: free, no key needed).{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        setRoute('voices');
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        color: JELLY_TOKENS.brand,
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        fontFamily: 'inherit',
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      Open Voices to connect ElevenLabs →
+                    </button>
                   </div>
                 )}
             </div>

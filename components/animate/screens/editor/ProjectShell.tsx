@@ -482,31 +482,55 @@ export function ProjectShell({
         </div>
       </div>
 
-      {/* Pill stepper with per-step state badges */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-        <PillStepper
-          steps={EDITOR_STEPS as unknown as ReadonlyArray<string>}
-          active={editorStep}
-          onSelect={setEditorStep}
-          hints={EDITOR_STEP_HINTS}
-        />
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
-        <StepStateRow states={stepStates} />
-      </div>
-      <div
-        style={{
-          textAlign: 'center',
-          fontSize: 11.5,
-          color: t.textFaint,
-          marginBottom: 24,
-        }}
-      >
-        Hover any step name for what it does. Steps unlock in order — each
-        lights up when the green checks before it are done. Nothing renders (or
-        costs anything) until you press Generate Video or send the script to
-        Fable 5.
-      </div>
+      {/* Pill stepper with per-step state badges. HIDDEN while Fable 5 owns
+          the render — a wall of locked Voiceover/Visuals/Soundtrack pills
+          under a queued ticket read as "a big mess" of things to do when the
+          honest answer is "nothing" (2026-08-20 walkthrough). */}
+      {!conciergeLocked && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+            <PillStepper
+              steps={EDITOR_STEPS as unknown as ReadonlyArray<string>}
+              active={editorStep}
+              onSelect={setEditorStep}
+              hints={EDITOR_STEP_HINTS}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
+            <StepStateRow states={stepStates} />
+          </div>
+          <div
+            style={{
+              textAlign: 'center',
+              fontSize: 11.5,
+              color: t.textFaint,
+              marginBottom: 24,
+            }}
+          >
+            Hover any step name for what it does. Steps unlock in order — each
+            lights up when the green checks before it are done. Nothing renders (or
+            costs anything) until you press Generate Video or send the script to
+            Fable 5.
+          </div>
+        </>
+      )}
+      {conciergeLocked && (
+        <div
+          style={{
+            textAlign: 'center',
+            fontSize: 13,
+            color: t.textSecondary,
+            maxWidth: 640,
+            margin: '0 auto 20px',
+            lineHeight: 1.6,
+          }}
+        >
+          Fable 5 has this one — voiceover, visuals, soundtrack and thumbnail
+          are all directed for you. Sit back; you&apos;ll get an email when it
+          lands in your Library. Changed your mind? Cancel from the ticket
+          card below.
+        </div>
+      )}
 
       {/* Load-error banner */}
       {loadError && (
@@ -562,23 +586,20 @@ export function ProjectShell({
           another lane adds tomorrow is inert here without anyone remembering
           this file exists. `pointer-events: none` catches the click handlers
           that live on plain <div>s. */}
-      <StepArea
-        disabled={isDemo || conciergeLocked}
-        label={
-          conciergeLocked
-            ? 'Fable 5 has this project — steps unlock when it is delivered'
-            : undefined
-        }
-      >
-        {editorStep === 6 ? (
-          <DescriptionStepWrapper
-            stepProps={stepProps}
-            onCompleted={markDescriptionDone}
-          />
-        ) : (
-          <StepEl {...stepProps} />
-        )}
-      </StepArea>
+      {/* Step content is fully hidden while Fable 5 owns the project — the
+          ticket card above is the whole story until delivery. */}
+      {!conciergeLocked && (
+        <StepArea disabled={isDemo}>
+          {editorStep === 6 ? (
+            <DescriptionStepWrapper
+              stepProps={stepProps}
+              onCompleted={markDescriptionDone}
+            />
+          ) : (
+            <StepEl {...stepProps} />
+          )}
+        </StepArea>
+      )}
 
       {/* The stub for a finished film. A render that quietly costs money and
           shows one opaque total is exactly the thing customers do not trust —

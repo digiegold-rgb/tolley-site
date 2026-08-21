@@ -51,6 +51,8 @@ export function CharactersScreen(): React.ReactElement {
   const [creating, setCreating] = React.useState(false);
   const [createError, setCreateError] = React.useState<string | null>(null);
   const [lightbox, setLightbox] = React.useState<{ src: string; caption?: string } | null>(null);
+  /* Cards with no preview image expand their descriptor in place instead. */
+  const [expandedId, setExpandedId] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -196,7 +198,17 @@ export function CharactersScreen(): React.ReactElement {
             <VCard
               key={c.id}
               variant="flat"
-              style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+              onClick={() => {
+                // The whole card views the character — not just the image
+                // (2026-08-20 walkthrough: "when I click on the character it
+                // doesn't show me anything").
+                if (c.previewUrl) {
+                  setLightbox({ src: c.previewUrl, caption: `${c.name} — ${c.descriptor}` });
+                } else {
+                  setExpandedId((prev) => (prev === c.id ? null : c.id));
+                }
+              }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 10, cursor: 'pointer' }}
             >
               <div
                 style={{
@@ -232,10 +244,14 @@ export function CharactersScreen(): React.ReactElement {
                   fontSize: 12,
                   color: t.textSecondary,
                   lineHeight: 1.5,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical' as const,
-                  overflow: 'hidden',
+                  ...(expandedId === c.id
+                    ? {}
+                    : {
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical' as const,
+                        overflow: 'hidden',
+                      }),
                 }}
               >
                 {c.descriptor || 'No descriptor recorded.'}
@@ -245,7 +261,8 @@ export function CharactersScreen(): React.ReactElement {
                 variant="outlined"
                 icon="sparkle"
                 disabled={creating}
-                onClick={() =>
+                onClick={(e) => {
+                  e.stopPropagation();
                   setWizardFor({
                     name: c.name,
                     // The wizard's character endpoint expects a brief it can
@@ -255,8 +272,8 @@ export function CharactersScreen(): React.ReactElement {
                       c.descriptor.trim().length >= 8
                         ? c.descriptor.trim()
                         : `${c.name} — recurring character carried over from the character library.`,
-                  })
-                }
+                  });
+                }}
               >
                 {creating ? 'Opening…' : 'Use in new project'}
               </VBtn>

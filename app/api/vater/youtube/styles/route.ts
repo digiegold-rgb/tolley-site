@@ -21,6 +21,15 @@ export async function GET() {
     },
     include: {
       _count: { select: { characters: true } },
+      // The confirm-before-money modal and style-card avatars need to SHOW
+      // the cast, not just count it (2026-08-20 walkthrough: modal said
+      // "Character: none" on a style that had one). Oldest-first mirrors
+      // style-snapshot.ts — characters[0] is the show HOST.
+      characters: {
+        orderBy: { createdAt: "asc" },
+        take: 3,
+        select: { id: true, name: true, imageUrl: true },
+      },
     },
     orderBy: [{ isSystem: "asc" }, { updatedAt: "desc" }],
   });

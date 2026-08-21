@@ -242,7 +242,16 @@ export function StylePickerModal({
                   imageUrl: chars[0].imageUrl,
                   others: Math.max(0, charCount - 1),
                 }
-              : null,
+              : charCount > 0
+                ? {
+                    // Count says the style HAS a cast but the payload lacks
+                    // details — never display "None" when a character exists.
+                    id: 'style-cast',
+                    name: `${charCount} character${charCount === 1 ? '' : 's'} set on this style`,
+                    imageUrl: null,
+                    others: 0,
+                  }
+                : null,
             artStyle: {
               kind: 'preset',
               id: style?.artStylePresetId ?? 'cinematic',
@@ -849,6 +858,36 @@ export function StylePickerModal({
             </div>
           )}
 
+          {/* Next-step guidance (2026-08-20 walkthrough: "what do I click
+              now?"). Only in own-script mode once something is pasted. */}
+          {!queued && useOwnScript && totalWords > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 14px',
+                marginBottom: 14,
+                borderRadius: JELLY_TOKENS.radius.md,
+                border: `1px solid ${JELLY_TOKENS.brandOutline}`,
+                background: JELLY_TOKENS.brandGhost,
+                fontSize: 13,
+                color: t.text,
+              }}
+            >
+              <span style={{ fontWeight: 700, color: JELLY_TOKENS.brand }}>
+                Step 2
+              </span>
+              <span>
+                Now click a Style below — it carries the character, the voice
+                and the art direction your video renders with.
+                {engine === 'fable5'
+                  ? ' You confirm everything before the ticket is opened.'
+                  : ' Nothing renders until you press Generate in the editor.'}
+              </span>
+            </div>
+          )}
+
           {!queued && (
           <div
             style={{
@@ -1058,7 +1097,13 @@ export function StylePickerModal({
                             color: t.textSecondary,
                           }}
                         >
-                          {refs} ref video{refs === 1 ? '' : 's'}
+                          {/* Character presence is the signal people need
+                              when picking a render style — refs alone read
+                              as "0 reference videos??" (2026-08-20). */}
+                          {(s._count?.characters ?? s.characters?.length ?? 0) > 0
+                            ? `👤 ${s.characters?.[0]?.name ?? `${s._count?.characters} character${(s._count?.characters ?? 0) === 1 ? '' : 's'}`}`
+                            : 'No character yet'}
+                          {refs > 0 ? ` · ${refs} ref${refs === 1 ? '' : 's'}` : ''}
                         </span>
                         {s.isSystem && (
                           <span
