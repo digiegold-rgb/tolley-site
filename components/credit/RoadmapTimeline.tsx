@@ -48,7 +48,7 @@ const phases = [
     cash: "$3,000-4,750",
     items: [
       { text: "Settle Apple/Goldman if served — $3K-4.75K on $9,485 (pay-for-delete)", done: false },
-      { text: "PNC 8534 — JUDGMENT, $200/mo no-interest plan (~$4.6K left) · PNC 9439 ($16,912) DISMISSED 8/19 ✅", done: false },
+      { text: "PNC 8534 — JUDGMENT SETTLED 8/21: paid $3,624 on a $5,704 payoff ✅ (~$2.1K forgiven, $200/mo ends) · PNC 9439 ($16,912) DISMISSED 8/19 ✅", done: true },
       { text: "Pay yourself a W-2 salary from the S-corp — gold-standard provable income", done: false },
     ],
   },
