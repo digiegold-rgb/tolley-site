@@ -189,10 +189,13 @@ export function HqDgxHealth() {
       {SEP}
       <Seg>
         Comfy
+        {/* Comfy lanes are started/stopped on demand by render scripts —
+            "inactive" is a normal resting state (vater is dormant by rule 73).
+            Red = failed only. Green = up, white = off. */}
         {comfyLanes.map(([k, lane]) => (
           <Dot
             key={k}
-            tone={lane.state !== "active" ? "red" : lane.running > 0 ? "green" : "white"}
+            tone={lane.state === "failed" ? "red" : lane.state === "active" ? "green" : "white"}
           />
         ))}
         {comfyLanes.some(([, l]) => l.running + l.pending > 0) && (
