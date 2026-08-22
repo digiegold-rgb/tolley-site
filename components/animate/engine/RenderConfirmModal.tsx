@@ -31,6 +31,14 @@ export interface RenderManifestBlocker {
   engines: Array<'auto' | 'fable5'>;
 }
 
+/** Non-blocking heads-up. Unlike a blocker it never disables confirm — it is
+ *  for choices that are legal but probably not what you meant, the canonical
+ *  case being "this render will NOT use your locked house cast". */
+export interface RenderManifestWarning {
+  code: string;
+  message: string;
+}
+
 export interface RenderManifest {
   words: number;
   estMinutes: number;
@@ -45,6 +53,7 @@ export interface RenderManifest {
   };
   animUntilS: number | null;
   blockers: RenderManifestBlocker[];
+  warnings?: RenderManifestWarning[];
 }
 
 export interface RenderConfirmModalProps {
@@ -94,6 +103,7 @@ export function RenderConfirmModal({
 
   const isF5 = engine === 'fable5';
   const blockers = (manifest?.blockers ?? []).filter((b) => b.engines.includes(engine));
+  const warnings = manifest?.warnings ?? [];
   const blocked = loading || !!loadError || blockers.length > 0;
   const est = estimateUsd != null ? `$${estimateUsd.toFixed(2)}` : null;
 
@@ -244,6 +254,27 @@ export function RenderConfirmModal({
             </>
           )}
         </div>
+
+        {warnings.length > 0 && (
+          <div
+            style={{
+              marginTop: 14,
+              padding: '10px 12px',
+              borderRadius: JELLY_TOKENS.radius.md,
+              border: `1px solid ${JELLY_TOKENS.canon}`,
+              background: 'rgba(231,184,75,0.10)',
+            }}
+          >
+            {warnings.map((w) => (
+              <div
+                key={w.code}
+                style={{ fontSize: 12.5, color: t.text, lineHeight: 1.6 }}
+              >
+                ⭐ {w.message}
+              </div>
+            ))}
+          </div>
+        )}
 
         {blockers.length > 0 && (
           <div

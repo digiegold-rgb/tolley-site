@@ -16,6 +16,7 @@ import { auth } from "@/auth";
 import { canAccessProject } from "@/lib/vater/project-access";
 import { readEngine, isKickable, wordCount } from "@/lib/vater/concierge";
 import { getStylePreset, DEFAULT_STYLE_PRESET } from "@/lib/vater/style-presets";
+import { resolveOwnedLockedStyle } from "@/lib/vater/locked-style";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -124,6 +125,29 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
 
   const preset = presetId ? getStylePreset(presetId) : null;
 
+  // Canon check (2026-08-22). Not a blocker — rendering off-canon is legal —
+  // but the confirm modal must SAY it, because the only visible difference
+  // between "the show" and "some other style" was a card you had to recognise
+  // by name. See lib/vater/locked-style.ts.
+  const warnings: Array<{ code: string; message: string }> = [];
+  try {
+    const locked = await resolveOwnedLockedStyle(
+      project.userId ?? session.user.id,
+      session.user.email,
+    );
+    if (locked && style && style.id !== locked.id) {
+      const host = locked.characterNames[0];
+      warnings.push({
+        code: "not_canon_style",
+        message: `This is NOT your canon style ("${locked.name}") — this render will not use your locked house cast${
+          host ? ` (${host})` : ""
+        }. Switch the project's style if you meant to keep them.`,
+      });
+    }
+  } catch {
+    /* canon is advisory — never let it break a preflight */
+  }
+
   return NextResponse.json({
     projectId: project.id,
     engine: readEngine(project.settingsJson),
@@ -162,5 +186,6 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     },
     animUntilS: project.animUntilS ?? null,
     blockers,
+    warnings,
   });
 }

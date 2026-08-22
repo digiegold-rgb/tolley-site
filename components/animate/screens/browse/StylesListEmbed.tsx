@@ -21,6 +21,10 @@ export function StylesListEmbed(): React.ReactElement {
   const { setRoute, openStyleEditor } = useRoute();
   const [styles, setStyles] = React.useState<AnyStyle[]>([]);
   const [userId, setUserId] = React.useState<string>('');
+  /* Which row carries the locked house cast — see lib/vater/locked-style.ts.
+     The gallery renders every style identically, so without this the style
+     that IS the show looked like any other card. */
+  const [lockedStyleId, setLockedStyleId] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -33,6 +37,9 @@ export function StylesListEmbed(): React.ReactElement {
       const data = await r.json();
       setStyles(Array.isArray(data?.styles) ? data.styles : []);
       setUserId(typeof data?.userId === 'string' ? data.userId : '');
+      setLockedStyleId(
+        typeof data?.lockedStyleId === 'string' ? data.lockedStyleId : null,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'network error');
     } finally {
@@ -43,6 +50,11 @@ export function StylesListEmbed(): React.ReactElement {
   React.useEffect(() => {
     void load();
   }, [load]);
+
+  const canonStyle = React.useMemo(
+    () => (lockedStyleId ? styles.find((s) => s?.id === lockedStyleId) ?? null : null),
+    [styles, lockedStyleId],
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -56,6 +68,39 @@ export function StylesListEmbed(): React.ReactElement {
           Custom Art Styles →
         </VBtn>
       </div>
+
+      {!loading && !error && canonStyle && (
+        <div
+          style={{
+            padding: '12px 14px',
+            borderRadius: JELLY_TOKENS.radius.lg,
+            border: `1px solid ${JELLY_TOKENS.canon}55`,
+            background: 'linear-gradient(120deg, rgba(231,184,75,0.10), transparent 60%)',
+            fontSize: 13,
+            color: t.text,
+            lineHeight: 1.6,
+          }}
+        >
+          <strong>⭐ {canonStyle.name}</strong> is your canon style — the locked
+          house cast, art style and voice every video ships with. Videos made on
+          any other style use a different character.{' '}
+          <button
+            type="button"
+            onClick={() => setRoute('characters')}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              font: 'inherit',
+              color: JELLY_TOKENS.canon,
+              textDecoration: 'underline',
+              cursor: 'pointer',
+            }}
+          >
+            See the house cast →
+          </button>
+        </div>
+      )}
 
       {loading && (
         <div style={{ padding: 32, textAlign: 'center', fontSize: 13, color: t.textSecondary }}>

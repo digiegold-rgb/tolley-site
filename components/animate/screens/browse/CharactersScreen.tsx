@@ -25,6 +25,7 @@ import {
   type PreselectedCharacter,
 } from '../dashboard/StyleWizardModal';
 import { CharacterLab } from './CharacterLab';
+import { HouseCastPanel } from './HouseCastPanel';
 import { ImageLightbox } from '../../ImageLightbox';
 
 interface VaterCharacter {
@@ -122,8 +123,17 @@ export function CharactersScreen(): React.ReactElement {
       <SectionHeader
         icon="styles"
         title="Characters"
-        description="Every character you've minted. Reuse one in a new video and it keeps the same face across every scene."
+        description="Your locked house cast first, then every character you've minted. Reuse one in a new video and it keeps the same face across every scene."
       />
+
+      {/* Canon roster (2026-08-22). Pinned ABOVE the Lab because it is the
+          answer to "who is in my videos" — the minted library below is the
+          scratch space. Renders nothing on accounts with no house cast. */}
+      <HouseCastPanel onClone={setWizardFor} cloning={creating} />
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: t.textSecondary }}>
+        Your minted characters
+      </div>
 
       {/* Character Lab (2026-08-20): generate 3 priced portrait takes or
           import a character image — the cheap audition instead of $7 test

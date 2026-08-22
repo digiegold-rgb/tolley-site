@@ -81,6 +81,33 @@ export async function resolveLockedStyle(
   return byArtStyle ? shape(byArtStyle) : null;
 }
 
+/**
+ * `resolveLockedStyle` scoped to a row the caller may actually see.
+ *
+ * With `VATER_LOCKED_STYLE_ID` pinned, `resolveLockedStyle` returns Trey's row
+ * for ANY caller — fine for the render paths that already re-check ownership
+ * (see app/api/vater/youtube/from-script/route.ts), but wrong for UI signals:
+ * a public /animate customer must never be told their project "isn't the canon
+ * style" and shown the name of someone else's style. Use this for anything
+ * that decorates or warns.
+ */
+export async function resolveOwnedLockedStyle(
+  userId: string,
+  email?: string | null,
+): Promise<LockedStyle | null> {
+  const locked = await resolveLockedStyle(userId);
+  if (!locked) return null;
+  const owner = await prisma.youTubeStyle.findUnique({
+    where: { id: locked.id },
+    select: { userId: true, isSystem: true },
+  });
+  if (!owner) return null;
+  if (owner.isSystem || !owner.userId || owner.userId === userId) return locked;
+  // Studio members share the house lane; everyone else gets nothing.
+  const { isVaterStudioEmail, isVaterAdminEmail } = await import("@/lib/admin-auth");
+  return isVaterStudioEmail(email) || isVaterAdminEmail(email) ? locked : null;
+}
+
 function shape(row: {
   id: string;
   name: string;

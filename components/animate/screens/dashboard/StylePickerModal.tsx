@@ -63,6 +63,10 @@ function refCount(s: StyleSummary): number {
   return Array.isArray(s.referenceTranscripts) ? s.referenceTranscripts.length : 0;
 }
 
+/** Canon marker colour — deliberately outside the violet/cyan brand pair so
+ *  "this is THE style" never reads as ordinary UI chrome. */
+const CANON_GOLD = JELLY_TOKENS.canon;
+
 const WORDS_PER_MINUTE = 150;
 const MAX_BATCH_SCRIPTS = 10;
 
@@ -115,11 +119,24 @@ export function StylePickerModal({
     styleId: string;
     manifest: RenderManifest;
   } | null>(null);
+  /* CANON (2026-08-22). The style carrying the locked house cast — Jeff
+     Whitfield and the roster every video is built around. Until now the
+     picker rendered every style as an equal card, so picking a scratch style
+     silently swapped the host of the show and nothing said so. */
+  const [lockedStyleId, setLockedStyleId] = React.useState<string | null>(null);
   const scriptWordCounts = React.useMemo(() => scripts.map(countWords), [scripts]);
   const totalWords = React.useMemo(
     () => scriptWordCounts.reduce((a, b) => a + b, 0),
     [scriptWordCounts],
   );
+  /* Canon first, then whatever order the API returned. A style that renders
+     the show's real cast should never be buried under scratch styles. */
+  const orderedStyles = React.useMemo(() => {
+    if (!lockedStyleId) return styles;
+    const canon = styles.filter((s) => s.id === lockedStyleId);
+    return canon.length ? [...canon, ...styles.filter((s) => s.id !== lockedStyleId)] : styles;
+  }, [styles, lockedStyleId]);
+
   const scriptWordCount = scriptWordCounts[0] ?? 0;
   const multi = scripts.length > 1;
   const autoDisabledReason = multi
@@ -146,8 +163,14 @@ export function StylePickerModal({
           const data = (await res.json().catch(() => ({}))) as { error?: string };
           throw new Error(data.error || `HTTP ${res.status}`);
         }
-        const data = (await res.json()) as { styles?: StyleSummary[] };
+        const data = (await res.json()) as {
+          styles?: StyleSummary[];
+          lockedStyleId?: string | null;
+        };
         if (cancelled) return;
+        setLockedStyleId(
+          typeof data.lockedStyleId === 'string' ? data.lockedStyleId : null,
+        );
         setStyles(Array.isArray(data.styles) ? data.styles : []);
       } catch (err) {
         if (cancelled) return;
@@ -261,6 +284,20 @@ export function StylePickerModal({
             soundtrack: { backgroundMusicId: null, musicVolume: null, sfxEnabled: false },
             animUntilS: null,
             blockers,
+            // Loud, non-blocking: choosing a style that isn't the canon one is
+            // legal, but it silently changes WHO is in the video. Trey has
+            // spent months locking Jeff in — the picker must say when a render
+            // is about to walk away from him.
+            warnings:
+              lockedStyleId && styleId !== lockedStyleId
+                ? [
+                    {
+                      code: 'not_canon_style',
+                      message:
+                        'This is NOT your canon style — this video will not use your locked house cast (Jeff Whitfield). Back out and pick the ⭐ Canon card if you meant to keep him.',
+                    },
+                  ]
+                : [],
           },
         });
         return;
@@ -979,7 +1016,8 @@ export function StylePickerModal({
                     />
                   </div>
                 ))
-              : styles.map((s) => {
+              : orderedStyles.map((s) => {
+                  const isCanon = lockedStyleId != null && s.id === lockedStyleId;
                   const refs = refCount(s);
                   const charImg = s.characters?.find(
                     (c) => c.imageUrl,
@@ -1012,7 +1050,12 @@ export function StylePickerModal({
                         opacity: creatingFromId && !isCreating ? 0.5 : 1,
                         borderColor: isCreating
                           ? JELLY_TOKENS.brand
-                          : t.border,
+                          : isCanon
+                            ? CANON_GOLD
+                            : t.border,
+                        boxShadow: isCanon
+                          ? `0 0 0 1px ${CANON_GOLD}33, 0 10px 30px ${CANON_GOLD}1A`
+                          : undefined,
                       }}
                     >
                       <div
@@ -1046,6 +1089,25 @@ export function StylePickerModal({
                         ) : (
                           <span aria-hidden="true">{s.emoji || '🎨'}</span>
                         )}
+                        {isCanon && (
+                          <span
+                            style={{
+                              position: 'absolute',
+                              top: 8,
+                              right: 8,
+                              fontSize: 10,
+                              fontWeight: 800,
+                              letterSpacing: 0.5,
+                              textTransform: 'uppercase',
+                              padding: '3px 8px',
+                              borderRadius: JELLY_TOKENS.radius.pill,
+                              background: CANON_GOLD,
+                              color: '#14122A',
+                            }}
+                          >
+                            ⭐ Canon
+                          </span>
+                        )}
                         {charImg && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -1077,9 +1139,10 @@ export function StylePickerModal({
                       <div
                         style={{
                           fontSize: 12,
-                          color: t.textSecondary,
+                          color: isCanon ? CANON_GOLD : t.textSecondary,
                         }}
                       >
+                        {isCanon ? 'Your house cast · ' : ''}
                         {s.voice || 'No voice set'}
                       </div>
                       <div

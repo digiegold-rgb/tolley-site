@@ -38,6 +38,10 @@ export const JELLY_TOKENS = {
    * which in the cinema language is cyan ("● NOW FILMING"). */
   accent: CYAN,
   accentDark: '#3FB8EE',
+  /* CANON — the locked house cast / canon style marker (2026-08-22).
+   * Deliberately OUTSIDE the violet/cyan brand pair so "this is the show"
+   * never reads as ordinary UI chrome or as a status colour. */
+  canon: '#E7B84B',
   /* semantic status — cooled to sit on the ink ground, never used as brand */
   success: '#34C98A',
   error: '#F0607A',

@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { resolveOwnedLockedStyle } from "@/lib/vater/locked-style";
 
 export async function GET() {
   const session = await auth();
@@ -34,7 +35,21 @@ export async function GET() {
     orderBy: [{ isSystem: "asc" }, { updatedAt: "desc" }],
   });
 
-  return NextResponse.json({ styles });
+  // Which row is CANON (2026-08-22). Every picker used to render N equal
+  // cards, so the style carrying the locked Jeff Whitfield host looked exactly
+  // like a scratch style — and picking the wrong one silently swapped the host
+  // of the show. The client stars it, sorts it first, and warns on anything
+  // else. Resolution lives in lib/vater/locked-style.ts so the UI and the
+  // render kickoff can never disagree about which row that is.
+  let lockedStyleId: string | null = null;
+  try {
+    const locked = await resolveOwnedLockedStyle(session.user.id, session.user.email);
+    lockedStyleId = locked?.id ?? null;
+  } catch {
+    lockedStyleId = null;
+  }
+
+  return NextResponse.json({ styles, lockedStyleId });
 }
 
 interface CreateBody {

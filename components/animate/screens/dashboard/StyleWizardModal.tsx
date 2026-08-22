@@ -57,6 +57,19 @@ interface ElevenVoice {
 export interface PreselectedCharacter {
   name: string;
   brief: string;
+  /**
+   * Write this descriptor VERBATIM instead of running `brief` through the
+   * generator (2026-08-22).
+   *
+   * The default path POSTs to /characters, which kicks the Qwen descriptor
+   * writer + an SDXL portrait — it *invents* an identity from the brief and
+   * costs money. That is right for "make me a new character", and exactly
+   * wrong for "clone Jeff and make his hair green": re-generating from his
+   * descriptor produces a near-Jeff, not Jeff. When set, we adopt the text as
+   * given (free, no model in the loop) so every locked feature survives the
+   * clone and only the words the user edited actually change.
+   */
+  exactDescriptor?: string;
 }
 
 interface Props {
@@ -443,16 +456,28 @@ export function StyleWizardModal({
         const failed: string[] = [];
         for (const c of initialCharacters) {
           try {
-            const charRes = await fetch(
-              `/api/vater/youtube/styles/${encodeURIComponent(
-                styleId,
-              )}/characters`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: c.name, brief: c.brief }),
-              },
-            );
+            const exact = c.exactDescriptor?.trim();
+            const charRes = exact && exact.length >= 50
+              ? await fetch(
+                  `/api/vater/youtube/styles/${encodeURIComponent(
+                    styleId,
+                  )}/characters/adopt`,
+                  {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: c.name, description: exact }),
+                  },
+                )
+              : await fetch(
+                  `/api/vater/youtube/styles/${encodeURIComponent(
+                    styleId,
+                  )}/characters`,
+                  {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: c.name, brief: c.brief }),
+                  },
+                );
             if (!charRes.ok) {
               const data = (await charRes.json().catch(() => ({}))) as {
                 error?: string;
