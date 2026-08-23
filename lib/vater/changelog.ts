@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.3';
+export const APP_VERSION = '1.6';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,38 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.6',
+    date: '2026-08-23',
+    title: 'One live view, deletable projects, honest billing',
+    items: [
+      'The live render view — phase ladder, the step running now, the rolling worker log — is on the Dashboard and in Project History, not just Script Review. Clicking away no longer loses it.',
+      'Project History opens the real detail panel instead of the old progress bars. One view of a render, everywhere.',
+      'Projects can be deleted, with a warning that credits already spent on renders are not refunded.',
+      'Billing shows what an invoiced account has actually been delivered, paid and owes, instead of an empty credit balance next to a legacy usage figure.',
+      'Direct is now Dictate, and a video it starts links straight to its render.',
+    ],
+  },
+  {
+    version: '1.5',
+    date: '2026-08-23',
+    title: 'No length cap, one honest estimate',
+    items: [
+      'Script length is no longer capped on any plan — the 9:00 beta limit is gone, front to back.',
+      'The price you are quoted is now the same number everywhere, and it is quoted conservatively: renders come in under the estimate rather than over it.',
+      'A render can no longer be cancelled by anyone who did not start it.',
+    ],
+  },
+  {
+    version: '1.4',
+    date: '2026-08-22',
+    title: 'Your house cast, visible and editable',
+    items: [
+      'Characters now shows your locked cast — the host and supporting roster every video is built around — with reference portraits.',
+      'Any cast member can be edited in place, or cloned and tweaked for a one-off without touching the original.',
+      'The style that carries your cast is marked as canon, sorts first, and warns you before a render uses anyone else.',
+    ],
+  },
   {
     version: '1.3',
     date: '2026-08-15',

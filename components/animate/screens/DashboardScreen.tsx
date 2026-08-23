@@ -15,6 +15,7 @@ import { GlassCard, MicroLabel } from '../cinema';
 import { Footer } from '../Footer';
 import { StylePickerModal } from './dashboard/StylePickerModal';
 import { LatestUpdateBanner } from '../LatestUpdate';
+import { InFlightStrip } from './live/InFlightStrip';
 
 interface KpiTile {
   /** Route to open when the tile is clicked — beta testers saw "2 total
@@ -254,6 +255,10 @@ export function DashboardScreen(): React.ReactElement {
       <div style={{ marginTop: 16 }}>
         <LatestUpdateBanner />
       </div>
+
+      {/* Anything rendering right now, watchable without leaving the dashboard
+          (2026-08-23). Renders nothing when nothing is in flight. */}
+      <InFlightStrip />
 
       {/* Hero cards. Glass with a gradient icon tile, not three slabs of solid
           gradient — the gradient is the CTA's job now. Billing is the ticket

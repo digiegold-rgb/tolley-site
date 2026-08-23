@@ -882,12 +882,24 @@ export const autopilot = {
   /** Cooperatively cancel a running job. The worker checks the cancel flag
    *  at each pipeline stage boundary and bails cleanly. Status ends as
    *  "cancelled" (not "failed"). */
-  cancelJob: (input: { jobId: string }) =>
-    call<{ ok: boolean; jobId: string; wasRunning: boolean }>(
-      "POST",
-      "/vater/cancel-job",
-      input,
-    ),
+  /** ⚠️ The DGX requires PROOF that you may cancel this job (2026-08-23):
+   *  the `cancelToken` minted when it was created, a matching `ownerId`, or an
+   *  explicit operator `override` + `reason`. Without one it answers 403.
+   *  Everyone shares one API key, so reaching the endpoint is not authority —
+   *  an autonomous agent used to be able to kill any render on the box. */
+  cancelJob: (input: {
+    jobId: string;
+    cancelToken?: string;
+    ownerId?: string;
+    override?: boolean;
+    reason?: string;
+  }) =>
+    call<{
+      ok: boolean;
+      jobId: string;
+      wasRunning: boolean;
+      authorizedBy?: string;
+    }>("POST", "/vater/cancel-job", input),
 
   /** Async — TTS only via F5-TTS through ComfyUI. */
   tts: (input: TtsInput) =>

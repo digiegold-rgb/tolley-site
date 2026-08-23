@@ -29,6 +29,12 @@ import { useTheme, useRoute } from '../../theme-context';
 import { VBtn, VCard } from '../../primitives';
 import { RenderReceiptTicket } from './RenderReceiptTicket';
 import { YouTubeProjectDetail } from '@/components/vater/youtube-project-detail';
+import {
+  IN_FLIGHT_STATUSES,
+  type YouTubeProjectStatus,
+} from '@/lib/vater/youtube-status';
+import { ProjectLiveDetail } from '../live/ProjectLiveDetail';
+import type { ReviewProject } from '../review/ScriptReviewScreen';
 import { formatCount, type YouTubeVideoStats } from '@/lib/vater/youtube-status';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -66,6 +72,14 @@ export function ProjectDetail({
 
   const projectId: string | null =
     typeof project?.id === 'string' ? project.id : null;
+
+  /* Which projects get the new panel: anything the render pipeline has touched.
+     Drafts and transcribe-mode intake still need the legacy form, which owns
+     the context/goal inputs the new panel deliberately does not duplicate. */
+  const status = typeof project?.status === 'string' ? project.status : '';
+  const inFlightOrDone =
+    IN_FLIGHT_STATUSES.has(status as YouTubeProjectStatus) ||
+    ['ready', 'published', 'failed', 'awaiting_script_approval'].includes(status);
   const youtubeVideoId: string | null =
     typeof project?.youtubeVideoId === 'string' ? project.youtubeVideoId : null;
 
@@ -335,17 +349,27 @@ export function ProjectDetail({
         />
       )}
 
-      {/* The canonical 7-status routing lives inside the wrapped
-          YouTubeProjectDetail. We don't re-implement its branching. The
-          `jelly-legacy` wrapper re-skins its Tailwind classes onto the cinema
-          palette without touching components/vater/*. */}
-      <div className="jelly-legacy">
-        <YouTubeProjectDetail
-          project={project}
-          onUpdate={onUpdate}
-          onRecomposeStart={onRecomposeStart}
-        />
-      </div>
+      {/* ONE detail panel (2026-08-23). This used to render the legacy
+          YouTubeProjectDetail, whose in-flight branch is the old green step
+          bars — a second, worse view of exactly what Script Review already
+          showed, and the one you hit by clicking a video in your own history.
+          ProjectLiveDetail is now the single view: phase ladder, the step
+          running now, the rolling worker log, and the publish panel when the
+          render is done.
+
+          The legacy component is still used by other (non-/animate) surfaces,
+          so it stays on disk; it is simply no longer reachable from here. */}
+      {inFlightOrDone ? (
+        <ProjectLiveDetail project={project as ReviewProject} onChanged={() => onUpdate(project)} />
+      ) : (
+        <div className="jelly-legacy">
+          <YouTubeProjectDetail
+            project={project}
+            onUpdate={onUpdate}
+            onRecomposeStart={onRecomposeStart}
+          />
+        </div>
+      )}
     </div>
   );
 }

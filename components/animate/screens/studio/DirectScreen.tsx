@@ -11,7 +11,7 @@
 
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
-import { useTheme } from '../../theme-context';
+import { useTheme, useRoute } from '../../theme-context';
 import { VCard, VBtn, SectionHeader } from '../../primitives';
 import { TINT_BG } from '../tint';
 
@@ -21,6 +21,8 @@ type JobSummary = {
   createdAt: string;
   updatedAt: string;
   preview: string;
+  /** The render this brief started, once there is one. */
+  projectId?: string | null;
 };
 
 type Message = {
@@ -73,6 +75,7 @@ function StatusChip({ status }: { status: string }): React.ReactElement {
 
 export function DirectScreen(): React.ReactElement {
   const { t } = useTheme();
+  const { openProjectInEditor } = useRoute();
   const [jobs, setJobs] = React.useState<JobSummary[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [thread, setThread] = React.useState<Message[]>([]);
@@ -189,7 +192,7 @@ export function DirectScreen(): React.ReactElement {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <SectionHeader
         icon="sparkle"
-        title="🎙️ Direct"
+        title="🎙️ Dictate"
         description="Dictate a video brief. Claude runs it in the studio sandbox and asks here if it needs anything."
       />
 
@@ -335,8 +338,29 @@ export function DirectScreen(): React.ReactElement {
                     </div>
                   )}
                   {threadStatus === 'running' && (
-                    <div style={{ fontSize: 13, color: t.textSecondary, fontStyle: 'italic' }}>
-                      Claude is working — updates land here automatically.
+                    /* "Claude is working" said nothing you could act on — not
+                     * what it was doing, not how long, not where the video
+                     * went (2026-08-23, Trey). */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                      <div style={{ fontSize: 13, color: t.textSecondary }}>
+                        Working on your brief — writing the scene plan and
+                        driving the render. This thread updates on its own; you
+                        can leave the page.
+                      </div>
+                      {job.projectId ? (
+                        <VBtn
+                          size="sm"
+                          variant="text"
+                          onClick={() => openProjectInEditor(job.projectId as string)}
+                        >
+                          View the render →
+                        </VBtn>
+                      ) : (
+                        <div style={{ fontSize: 12, color: t.textFaint }}>
+                          The render appears on your Dashboard and in Project
+                          History as soon as it starts.
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

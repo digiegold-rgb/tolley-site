@@ -4038,12 +4038,16 @@ model VaterDirectJob {
   status          String   @default("queued") // queued | running | awaiting_reply | done | failed | canceled
   claudeSessionId String?  @db.VarChar(64)
   createdByEmail  String?
+  /// YouTubeProject this brief produced, once the runner has created one.
+  /// Without it a dictated video showed up in no other screen (2026-08-23).
+  projectId       String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   messages VaterDirectMessage[]
 
   @@index([status, createdAt])
+  @@index([projectId])
 }
 
 model VaterDirectMessage {

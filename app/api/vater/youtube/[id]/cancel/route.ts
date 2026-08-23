@@ -54,7 +54,21 @@ export async function POST(_req: Request, ctx: Ctx) {
 
   if (project.autopilotJobId) {
     try {
-      const r = await autopilot.cancelJob({ jobId: project.autopilotJobId });
+      // canAccessProject() above already established that this session may
+      // act on this project, so ownerId IS the proof the DGX asks for. An
+      // admin cancelling someone else's project falls back to an explicit,
+      // logged override rather than silently borrowing the owner's identity.
+      const actingAsOwner =
+        !project.userId || project.userId === session.user.id;
+      const r = await autopilot.cancelJob({
+        jobId: project.autopilotJobId,
+        ...(actingAsOwner
+          ? { ownerId: project.userId ?? session.user.id }
+          : {
+              override: true,
+              reason: `admin ${session.user.email ?? session.user.id} cancelled project ${project.id}`,
+            }),
+      });
       dgxResult = { ok: r.ok, wasRunning: r.wasRunning };
     } catch (err) {
       if (err instanceof AutopilotError) {

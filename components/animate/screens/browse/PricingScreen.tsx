@@ -197,6 +197,37 @@ export function PricingScreen(): React.ReactElement {
     void load();
   }, [load]);
 
+  /* Invoiced-account view. Absent for a normal credit-pack customer, in which
+   * case everything below renders exactly as before. */
+  const [settlement, setSettlement] = React.useState<{
+    viewingOwnAccount: boolean;
+    summary: {
+      videos: number;
+      minutes: number;
+      opsRatePerMinute: number;
+      totalUsd: number;
+      paidUsd: number;
+      dueUsd: number;
+    };
+  } | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/vater/billing/settlement', { cache: 'no-store' });
+        if (!r.ok) return;
+        const body = await r.json();
+        if (!cancelled && body?.settlement === true) setSettlement(body);
+      } catch {
+        /* a normal credit-pack account simply has no settlement view */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   /* Referrals load separately from the balance on purpose: the codes come out
    * of a different table with its own migration, and a BetaInvite table that
    * is not there yet must not stop the Billing screen showing a balance. */
@@ -297,6 +328,55 @@ export function PricingScreen(): React.ReactElement {
   const renderBalance = () => {
     if (!data) return null;
     const { balance } = data;
+
+    /* INVOICED ACCOUNT (2026-08-23). Credit packs are not how this tenant pays,
+     * so the credit ticket is structurally $0.00 for them forever — which read
+     * as "you have no money" next to a legacy usage figure of ~$91, while the
+     * real books said ~$244 paid. Show the real books instead. */
+    if (settlement) {
+      const row = (label: string, value: string, strong = false) => (
+        <div
+          key={label}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 12,
+            padding: '8px 0',
+            borderBottom: `1px solid ${t.border}`,
+            fontSize: strong ? 15 : 13,
+            fontWeight: strong ? 700 : 400,
+            color: strong ? t.text : t.textSecondary,
+          }}
+        >
+          <span>{label}</span>
+          <span className="jc-tabular" style={{ color: t.text }}>{value}</span>
+        </div>
+      );
+      return (
+        <GlassCard data-testid="settlement-ticket" variant="ticket" padding={30} halo shadow>
+          <MicroLabel tone="cyan" style={{ marginBottom: 8 }}>
+            {settlement.viewingOwnAccount ? 'Your account' : 'Invoiced account'}
+          </MicroLabel>
+          <div style={{ fontSize: 30, fontWeight: 700, color: t.text, letterSpacing: '-0.02em' }}>
+            {usd(Math.round(settlement.summary.dueUsd * 100))}
+          </div>
+          <div style={{ fontSize: 13, color: t.textSecondary, margin: '2px 0 14px' }}>
+            currently due
+          </div>
+          {row(
+            `Delivered — ${settlement.summary.videos} video${settlement.summary.videos === 1 ? '' : 's'}, ${settlement.summary.minutes.toFixed(1)} min`,
+            usd(Math.round(settlement.summary.totalUsd * 100)),
+          )}
+          {row('Paid to date', usd(Math.round(settlement.summary.paidUsd * 100)))}
+          {row('Currently due', usd(Math.round(settlement.summary.dueUsd * 100)), true)}
+          <div style={{ fontSize: 12, color: t.textFaint, marginTop: 12, lineHeight: 1.6 }}>
+            This account is invoiced per delivered video — compute at cost plus{' '}
+            {usd(Math.round(settlement.summary.opsRatePerMinute * 100))}/min of finished
+            video. Credit packs do not apply.
+          </div>
+        </GlassCard>
+      );
+    }
 
     /* Unmetered gets the ticket shell but no fare: there is no number here,
      * and printing "$0.00" would read as a balance rather than as "this

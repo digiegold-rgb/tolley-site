@@ -31,6 +31,10 @@ import { VBtn, VCard, ConfirmDialog, RetryError } from '../../primitives';
 import { Footer } from '../../Footer';
 import { YouTubeProjectCard } from '@/components/vater/youtube-project-card';
 import { ProjectDetail } from './ProjectDetail';
+import {
+  IN_FLIGHT_STATUSES,
+  type YouTubeProjectStatus,
+} from '@/lib/vater/youtube-status';
 import { TINT_BG } from '../tint';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -116,7 +120,7 @@ function statusColor(s: SimpleStatus): string {
 
 export function ProjectHistoryScreen(): React.ReactElement {
   const { t } = useTheme();
-  const { setRoute, openProjectInEditor, openProjectInVideoEditor } = useRoute();
+  const { openProjectInEditor, openProjectInVideoEditor } = useRoute();
   const [projects, setProjects] = React.useState<AnyProject[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -155,6 +159,18 @@ export function ProjectHistoryScreen(): React.ReactElement {
     setPendingDelete(null);
     if (!id) return;
     try {
+      // Stop first, delete second. Deleting the row while the DGX is still
+      // rendering leaves a job burning GPU with nothing to report back to —
+      // the cancel route sends the ownerId proof the box now requires.
+      const target = projects.find((p) => p.id === id);
+      if (
+        target?.autopilotJobId &&
+        IN_FLIGHT_STATUSES.has(target.status as YouTubeProjectStatus)
+      ) {
+        await fetch(`/api/vater/youtube/${id}/cancel`, { method: 'POST' }).catch(
+          () => undefined,
+        );
+      }
       const res = await fetch(`/api/vater/youtube/${id}`, { method: 'DELETE' });
       if (!res.ok) {
         setActionError(`Delete failed (HTTP ${res.status})`);
@@ -213,6 +229,17 @@ export function ProjectHistoryScreen(): React.ReactElement {
             onClick={() => setActiveProject(null)}
           >
             Back to Project History
+          </VBtn>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <VBtn
+            size="sm"
+            variant="text"
+            icon="delete"
+            style={{ color: JELLY_TOKENS.error }}
+            onClick={() => setPendingDelete(activeProject.id)}
+          >
+            Delete project
           </VBtn>
         </div>
         <ProjectDetail
@@ -499,7 +526,11 @@ export function ProjectHistoryScreen(): React.ReactElement {
       <ConfirmDialog
         open={pendingDelete !== null}
         title="Delete this project?"
-        body="This cannot be undone."
+        body={
+          'This removes the video, its script and its scenes permanently. ' +
+          'Credits already spent on renders are NOT refunded. ' +
+          'If it is still rendering, the render is stopped first.'
+        }
         confirmLabel="Delete"
         danger
         onConfirm={() => void runDelete()}

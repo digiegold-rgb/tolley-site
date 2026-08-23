@@ -40,7 +40,7 @@ export interface NavRouteDef {
 
 export const NAV_ROUTES: readonly NavRouteDef[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', minTier: 'public', section: 'primary' },
-  { id: 'direct', label: 'Direct', icon: 'sparkle', minTier: 'studio', section: 'primary' },
+  { id: 'direct', label: 'Dictate', icon: 'sparkle', minTier: 'studio', section: 'primary' },
   { id: 'script-review', label: 'Script Review', icon: 'scriptReview', minTier: 'studio', section: 'primary' },
   { id: 'library', label: 'Library', icon: 'videoEditor', minTier: 'public', section: 'primary' },
   // Shorts Library (2026-08-20): every short cut from a long-form, in one

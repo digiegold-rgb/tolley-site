@@ -87,6 +87,10 @@ export async function GET() {
       createdAt: j.createdAt,
       updatedAt: j.updatedAt,
       preview: j.messages[0]?.text.slice(0, 140) ?? "",
+      // The render this brief produced, so the thread can link to it. Null
+      // until the runner records one — a dictated video used to be invisible
+      // in every other screen (2026-08-23).
+      projectId: j.projectId ?? null,
     })),
   });
 }
