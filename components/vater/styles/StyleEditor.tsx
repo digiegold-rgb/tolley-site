@@ -82,7 +82,7 @@ const VOICE_BACKENDS = [
 ] as const;
 
 const QUALITY_BACKENDS = [
-  { id: "firered-local", label: "FireRed-Image-Edit-1.1 (local DGX, character-consistent, default)", needsKey: false, costPerScene: 0 },
+  { id: "firered-local", label: "FireRed local (DGX) — unavailable, renders fall back to FireRed Studio", needsKey: false, costPerScene: 0 },
   { id: "firered-modal", label: "FireRed-Image-Edit-1.1 (Modal H100 BF16, ~$0.002/scene + $0.10 warmup)", needsKey: false, costPerScene: 0.002 },
   { id: "firered-modal-fast", label: "FireRed-Image-Edit-1.1 (Modal H100 BF16 — alias of firered-modal)", needsKey: false, costPerScene: 0.002 },
   { id: "gemini-1k", label: "Gemini Nano Banana 2 1K (cloud, ~$0.067/scene)", needsKey: true, envVar: "GEMINI_API_KEY", costPerScene: 0.067 },

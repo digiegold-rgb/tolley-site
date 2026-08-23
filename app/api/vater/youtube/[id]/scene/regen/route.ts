@@ -22,6 +22,7 @@ import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
 import { recordUsage } from "@/lib/vater/billing/record-usage";
 import { consumeRateLimit, rateLimited } from "@/lib/rate-limit";
+import { renderableQuality } from "@/lib/vater/style-snapshot";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -136,12 +137,12 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   // Call the DGX. Any upstream failure bubbles up as AutopilotError and
   // gets surfaced to the frontend as a 502 below. No silent catch.
   // quality: per-request `quality` override wins; otherwise use what the
-  // project's style was generated with, default to firered-local for
-  // consistency with original generation.
-  const projectQuality =
-    qualityOverride ||
-    project.style?.defaultQuality ||
-    "firered-local";
+  // project's style was generated with. `firered-local` is dead on the DGX
+  // (2026-08-23) — coerce it like style-snapshot does, so a regen never lands
+  // on a backend whose model is not on disk.
+  const projectQuality = renderableQuality(
+    qualityOverride || project.style?.defaultQuality,
+  );
 
   let result;
   try {

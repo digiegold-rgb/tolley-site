@@ -92,6 +92,16 @@ function asVoiceBackend(
   return "f5-tts";
 }
 
+/** `firered-local` is DEAD on the DGX (2026-08-23: the FireRed q4 GGUF is no
+ *  longer on disk; both ComfyUI instances only carry Wan2.2 unets) and the
+ *  studio doctrine is Modal-only anyway. Rows created before the schema default
+ *  flipped still carry it, and a render with it fails at scene 1 with
+ *  `unet_name … not in list` — after TTS + planner spend. Coerce at snapshot
+ *  time so every render (Auto or Fable 5, any lane) lands on FireRed Studio. */
+export function renderableQuality(q: string | null | undefined): string {
+  return q === "firered-local" || !q ? "firered-modal" : q;
+}
+
 export function buildStyleSnapshot(style: StyleWithRelations): StyleSnapshot {
   // Brand kit rides along as part of the snapshot, so it freezes with
   // everything else: editing the style's logo later doesn't retroactively
@@ -117,7 +127,7 @@ export function buildStyleSnapshot(style: StyleWithRelations): StyleSnapshot {
     referenceTranscripts: asRefTranscripts(style.referenceTranscripts),
     artStylePresetId: style.artStylePresetId,
     defaultAspectRatio: style.defaultAspectRatio,
-    defaultQuality: style.defaultQuality,
+    defaultQuality: renderableQuality(style.defaultQuality),
     defaultVisualType: style.defaultVisualType,
     defaultAnimMode: style.defaultAnimMode,
     defaultAnimMin: style.defaultAnimMin,

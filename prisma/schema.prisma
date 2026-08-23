@@ -4205,7 +4205,7 @@ model YouTubeStyle {
   defaultAspectRatio String  @default("16x9")
   // firered-local (default, local DGX + Qwen-Image-Edit arch) | gemini-1k | gemini-2k
   // | sdxl-local | sdxl-ipadapter | flux-schnell | ideogram-default | ideogram-turbo | ideogram-quality
-  defaultQuality     String  @default("firered-local")
+  defaultQuality     String  @default("firered-modal")
   // images | animated | broll | broll-mix
   defaultVisualType  String  @default("images")
   defaultAnimMode    String  @default("none") // none | all | longer-only
