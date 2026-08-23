@@ -32,13 +32,35 @@
  * care which one it got.
  */
 
-/** Monroe's measured long-form pace. Mirrors lib/vater/script-limits.ts,
- *  which cannot be imported here without dragging its copy into every bundle
- *  that only wants the math. If one changes, change both. */
-export const ESTIMATE_WORDS_PER_MINUTE = 185;
+/**
+ * QUOTE PACE — deliberately SLOWER than we actually narrate (Jared 2026-08-22:
+ * "weighted heavy so that if it's cheaper they are happy").
+ *
+ * This was 185 ("Monroe's measured pace"), which turned out to be the fast
+ * edge of the distribution rather than the middle. Measured across 26 finished
+ * stills renders: median 170 wpm, p10 147, slowest 136. At 185 a 2,291-word
+ * script quoted $9.91 while the same script actually bills ~$9.26 at the
+ * median and up to $13.18 at the worst observed — i.e. roughly HALF of renders
+ * came in ABOVE the number the customer was shown.
+ *
+ * 145 sits just under p10, so a script narrates FASTER than quoted ~9 times
+ * out of 10, and the invoice lands under the estimate.
+ *
+ * ⚠️ A quote constant, not a fact about the voice. Anything that wants the real
+ * pace (a runtime ETA, a P&L model) must measure, not read this.
+ */
+export const ESTIMATE_WORDS_PER_MINUTE = 145;
 
-/** Median measured compute for a finished minute of stills video ($/min). */
-export const STILLS_USD_PER_MIN = 0.45;
+/**
+ * QUOTE RATE for a finished minute of stills ($/min) — the WORST observed, not
+ * the median (same 2026-08-22 change).
+ *
+ * Measured compute per finished minute across those 26 renders: p50 $0.337,
+ * p90 $0.512, max $0.550. Quoting the median guarantees ~half of all invoices
+ * exceed the quote. Quoting the max means the customer is over-quoted on a
+ * typical render and surprised in the right direction.
+ */
+export const STILLS_USD_PER_MIN = 0.55;
 
 /** Additional compute for a finished minute of ANIMATED video ($/min). */
 export const MOTION_USD_PER_MIN = 2.7;
@@ -60,6 +82,24 @@ export const MEDIAN_COMPUTE_USD_PER_MIN = STILLS_USD_PER_MIN;
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
+ * Words → billable whole minutes, the ONE conversion every money path uses.
+ *
+ * Before this existed the codebase had two: `quickEstimateUsd` divided by 185
+ * (the engine card the customer reads) while `concierge-submit` divided by 150
+ * and ceil'd (the ticket, the ledger reservation and the /hq operator view).
+ * The same 2,291-word script therefore quoted $9.91 to the customer and
+ * reserved $12.80 against their balance — the bug that started this.
+ *
+ * Ceil, because the ledger reserves and bills in whole planned minutes and a
+ * partial minute still costs a full one's worth of setup.
+ */
+export function quoteMinutes(words: number): number {
+  const w = Number(words);
+  if (!Number.isFinite(w) || w <= 0) return 1;
+  return Math.max(1, Math.ceil(w / ESTIMATE_WORDS_PER_MINUTE));
+}
+
+/**
  * Default ops rate ($/finished minute) when no env-backed rate is available —
  * mirrors DEFAULT_OPS_RATE in lib/vater/billing/ops-fee.ts, which is
  * server-only and cannot be imported here. If one changes, change both.
@@ -75,7 +115,7 @@ export const DEFAULT_OPS_RATE_USD_PER_MIN = 0.35;
 export function quickEstimateUsd(words: number): number {
   const w = Number(words);
   if (!Number.isFinite(w) || w <= 0) return MIN_ESTIMATE_USD;
-  const minutes = w / ESTIMATE_WORDS_PER_MINUTE;
+  const minutes = quoteMinutes(w);
   const usd = minutes * (MEDIAN_COMPUTE_USD_PER_MIN + DEFAULT_OPS_RATE_USD_PER_MIN);
   return r2(Math.max(MIN_ESTIMATE_USD, usd));
 }

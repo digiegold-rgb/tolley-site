@@ -32,6 +32,7 @@ import { appendScriptVersion } from "@/lib/vater/script-versions";
 import { startRunCreation, ScriptGateError } from "@/lib/vater/script-gate";
 import { AutopilotError } from "@/lib/vater/autopilot-client";
 import { queueVaterEvent } from "@/lib/vater/events";
+import { quoteMinutes } from "@/lib/vater/billing/estimate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         scriptVersions: appendScriptVersion(project.scriptVersions, "approved", override),
         scriptApprovedAt: new Date(),
         targetWordCount: words,
-        targetDuration: Math.max(1, Math.ceil(words / 150)),
+        targetDuration: quoteMinutes(words),
         scriptMeta: { wordCount: words, targetWordCount: words, source: "fable5-operator" },
       },
     });

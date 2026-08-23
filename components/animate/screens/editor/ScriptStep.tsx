@@ -54,7 +54,7 @@ import { reelLabel } from './reel-label';
 import { EnginePicker, type ConciergeEngine } from '../../engine/EnginePicker';
 import { RenderConfirmModal, type RenderManifest } from '../../engine/RenderConfirmModal';
 import { useRenderEstimate } from './use-render-estimate';
-import { quickEstimateUsd } from '@/lib/vater/billing/estimate';
+import { quickEstimateUsd, quoteMinutes, ESTIMATE_WORDS_PER_MINUTE } from '@/lib/vater/billing/estimate';
 
 export function ScriptStep({ projectId, project, refresh, goToStep }: EditorStepProps): React.ReactElement {
   const { t } = useTheme();
@@ -396,7 +396,7 @@ export function ScriptStep({ projectId, project, refresh, goToStep }: EditorStep
         setF5Manifest({
           ...m,
           words,
-          estMinutes: Math.max(1, Math.ceil(words / 150)),
+          estMinutes: quoteMinutes(words),
           blockers: m.blockers.filter((b) => b.code !== 'no_script' || words < 20),
         });
       } catch (err) {
@@ -592,7 +592,7 @@ export function ScriptStep({ projectId, project, refresh, goToStep }: EditorStep
               }}
             />
             <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 4 }}>
-              {pastedWordCount} words ≈ {(pastedWordCount / 150).toFixed(1)} min
+              {pastedWordCount} words ≈ {(pastedWordCount / ESTIMATE_WORDS_PER_MINUTE).toFixed(1)} min
               narration at 150 wpm
             </div>
 
@@ -830,7 +830,7 @@ export function ScriptStep({ projectId, project, refresh, goToStep }: EditorStep
                   if (!Number.isNaN(n)) setWordCount(Math.max(150, Math.min(10000, n)));
                 }}
                 placeholder="1800"
-                helper={`~${Math.round(wordCount / 150)} min narration`}
+                helper={`~${Math.round(wordCount / ESTIMATE_WORDS_PER_MINUTE)} min narration`}
               />
             </div>
             <VInput

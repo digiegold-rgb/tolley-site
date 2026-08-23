@@ -35,6 +35,7 @@ import { resolveStyleForUser } from "@/lib/vater/public-api";
 import { hasUnmeteredStudioAccess } from "@/lib/vater/billing/check-budget";
 import { estimateUsdFor, getBalance } from "@/lib/vater/billing/ledger";
 import { maxWordsFor } from "@/lib/vater/billing/script-cap";
+import { quoteMinutes } from "@/lib/vater/billing/estimate";
 import { isOverLength, lengthMessageFor, runtimeClock } from "@/lib/vater/script-limits";
 import { sendConciergeBatchQueuedEmail } from "@/lib/vater/animate-email";
 import { CONCIERGE_MIN_WORDS, isKickable, wordCount } from "@/lib/vater/concierge";
@@ -144,7 +145,7 @@ export async function POST(req: NextRequest) {
     }
     const titleRaw = typeof item === "object" && item && typeof item.title === "string" ? item.title.trim() : "";
     const title = (titleRaw || firstLineAsTitle(text)).slice(0, 200);
-    scripts.push({ script: text, title, words, targetDuration: Math.max(1, Math.ceil(words / 150)) });
+    scripts.push({ script: text, title, words, targetDuration: quoteMinutes(words) });
   }
   const note = typeof body.note === "string" && body.note.trim() ? body.note.trim().slice(0, 2000) : null;
 

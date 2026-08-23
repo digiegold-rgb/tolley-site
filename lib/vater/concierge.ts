@@ -26,6 +26,7 @@ import type { Prisma, YouTubeProject } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { countWords } from "@/lib/vater/script-limits";
 import { elevenLabsKeyMissing, ELEVENLABS_KEY_REQUIRED } from "@/lib/vater/elevenlabs-key-gate";
+import { quoteMinutes } from "@/lib/vater/billing/estimate";
 import {
   CONCIERGE_STATUSES,
   isConciergeStatus,
@@ -473,7 +474,7 @@ export async function buildPackText(project: PackProject, owner: PackOwner): Pro
   const title = (project.sourceTitle || project.topic || "Untitled").replace(/\s*\n+\s*/g, " ").trim();
   const code = ticket?.code ?? ticketCodeFor(project.id);
   const est = ticket?.estimateUsd ?? 0;
-  const estMin = ticket?.estMinutes ?? Math.max(1, Math.ceil(words / 150));
+  const estMin = ticket?.estMinutes ?? quoteMinutes(words);
   const note = (ticket?.customerNote || "").replace(/\s*\n+\s*/g, " ").trim() || "—";
   return [
     `### FABLE5 TICKET ${code} · project ${project.id} · owner ${owner.email || "—"} (${owner.userId}) · lane ${owner.lane} · words ${words}`,

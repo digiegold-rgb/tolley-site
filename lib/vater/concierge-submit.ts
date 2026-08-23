@@ -34,7 +34,7 @@ import { appendScriptVersion } from "@/lib/vater/script-versions";
 import { checkBudget, type BudgetCheckResult } from "@/lib/vater/billing/check-budget";
 import { maxWordsFor } from "@/lib/vater/billing/script-cap";
 import { estimateUsdFor } from "@/lib/vater/billing/ledger";
-import { quickEstimateUsd } from "@/lib/vater/billing/estimate";
+import { quickEstimateUsd, quoteMinutes } from "@/lib/vater/billing/estimate";
 import { isOverLength, lengthMessageFor, runtimeClock } from "@/lib/vater/script-limits";
 import { queueVaterEvent } from "@/lib/vater/events";
 import { sendConciergeQueuedEmail } from "@/lib/vater/animate-email";
@@ -177,7 +177,7 @@ export async function submitConcierge(input: SubmitConciergeInput): Promise<Subm
   }
 
   // ── Write ────────────────────────────────────────────────────────────────
-  const targetDuration = Math.max(1, Math.ceil(words / 150));
+  const targetDuration = quoteMinutes(words);
   const estMinutes = targetDuration;
   // estimateUsdFor wants the row's planned minutes; quickEstimateUsd is the
   // words-only quote the engine card showed. Prefer the row (it is what the

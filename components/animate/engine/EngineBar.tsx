@@ -18,6 +18,7 @@ import { JELLY_TOKENS, glass } from '../tokens';
 import { useTheme, useRoute } from '../theme-context';
 import { VBtn } from '../primitives';
 import { MicroLabel } from '../cinema';
+import { quoteMinutes } from '@/lib/vater/billing/estimate';
 import { TINT_BG } from '../screens/tint';
 import {
   BillingBlockModal,
@@ -151,7 +152,7 @@ export function EngineBar({ projectId, words, script, refresh, goToStep }: Engin
           Your script is ready — who renders it?
         </span>
         <span style={{ marginLeft: 'auto', fontSize: 11.5, color: t.textFaint, fontFamily: JELLY_TOKENS.fontMono }}>
-          {words.toLocaleString()} words · ~{Math.max(1, Math.ceil(words / 150))} min
+          {words.toLocaleString()} words · ~{quoteMinutes(words)} min
         </span>
       </div>
       <EnginePicker

@@ -17,6 +17,7 @@ import { canAccessProject } from "@/lib/vater/project-access";
 import { readEngine, isKickable, wordCount } from "@/lib/vater/concierge";
 import { getStylePreset, DEFAULT_STYLE_PRESET } from "@/lib/vater/style-presets";
 import { resolveOwnedLockedStyle } from "@/lib/vater/locked-style";
+import { quoteMinutes } from "@/lib/vater/billing/estimate";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -152,7 +153,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     projectId: project.id,
     engine: readEngine(project.settingsJson),
     words,
-    estMinutes: Math.max(1, Math.ceil(words / 150)),
+    estMinutes: quoteMinutes(words),
     style: style ? { id: style.id, name: style.name } : null,
     voice: voiceName
       ? {

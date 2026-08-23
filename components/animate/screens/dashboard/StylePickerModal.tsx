@@ -31,7 +31,7 @@ import { ON_GRADIENT_PLATE } from '../tint';
 import { VBtn } from '../../primitives';
 import { EnginePicker, type ConciergeEngine } from '../../engine/EnginePicker';
 import { RenderConfirmModal, type RenderManifest } from '../../engine/RenderConfirmModal';
-import { quickEstimateUsd } from '@/lib/vater/billing/estimate';
+import { quickEstimateUsd, quoteMinutes, ESTIMATE_WORDS_PER_MINUTE } from '@/lib/vater/billing/estimate';
 import {
   BillingBlockModal,
   BillingBlockedError,
@@ -67,7 +67,6 @@ function refCount(s: StyleSummary): number {
  *  "this is THE style" never reads as ordinary UI chrome. */
 const CANON_GOLD = JELLY_TOKENS.canon;
 
-const WORDS_PER_MINUTE = 150;
 const MAX_BATCH_SCRIPTS = 10;
 
 const countWords = (text: string): number => text.trim().split(/\s+/).filter(Boolean).length;
@@ -276,7 +275,7 @@ export function StylePickerModal({
           styleId,
           manifest: {
             words: totalWords,
-            estMinutes: Math.max(1, Math.ceil(totalWords / WORDS_PER_MINUTE)),
+            estMinutes: quoteMinutes(totalWords),
             style: style ? { id: style.id, name: style.name } : null,
             voice: style?.voice
               ? { name: style.voice, backend: null, source: 'style' }
@@ -715,8 +714,8 @@ export function StylePickerModal({
                     }}
                   >
                     {scriptWordCounts[i]} words ≈{' '}
-                    {(scriptWordCounts[i] / WORDS_PER_MINUTE).toFixed(1)} min narration
-                    at {WORDS_PER_MINUTE} wpm
+                    {(scriptWordCounts[i] / ESTIMATE_WORDS_PER_MINUTE).toFixed(1)} min narration
+                    at {ESTIMATE_WORDS_PER_MINUTE} wpm
                   </div>
                 </div>
               ))}
