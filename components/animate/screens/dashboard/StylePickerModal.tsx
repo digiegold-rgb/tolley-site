@@ -124,6 +124,14 @@ export function StylePickerModal({
      picker rendered every style as an equal card, so picking a scratch style
      silently swapped the host of the show and nothing said so. */
   const [lockedStyleId, setLockedStyleId] = React.useState<string | null>(null);
+  /* Portrait of the canon HOST. The card image otherwise falls back to the art
+     preset's stock sample — /vater/styles/pixar.webp, a stranger on a park
+     bench — which read as "this style makes videos about that woman" directly
+     under the line "Jeff Whitfield". Show the actual cast. */
+  const [canonHost, setCanonHost] = React.useState<{
+    name: string;
+    referenceUrl: string | null;
+  } | null>(null);
   const scriptWordCounts = React.useMemo(() => scripts.map(countWords), [scripts]);
   const totalWords = React.useMemo(
     () => scriptWordCounts.reduce((a, b) => a + b, 0),
@@ -172,6 +180,21 @@ export function StylePickerModal({
           typeof data.lockedStyleId === 'string' ? data.lockedStyleId : null,
         );
         setStyles(Array.isArray(data.styles) ? data.styles : []);
+        // Best-effort: a tenant with no house cast just keeps the preset art.
+        void (async () => {
+          try {
+            const rr = await fetch('/api/vater/roster', { cache: 'no-store' });
+            const rb = (await rr.json().catch(() => ({}))) as {
+              roster?: Array<{ role: string; name: string; referenceUrl: string | null }>;
+            };
+            const host = (rb.roster ?? []).find((c) => c.role === 'host');
+            if (!cancelled && host) {
+              setCanonHost({ name: host.name, referenceUrl: host.referenceUrl });
+            }
+          } catch {
+            /* decoration only */
+          }
+        })();
       } catch (err) {
         if (cancelled) return;
         const msg = err instanceof Error ? err.message : 'Failed to load styles';
@@ -1026,9 +1049,12 @@ export function StylePickerModal({
                   // The whole point of a style card is showing the style.
                   // Until now every card rendered a 40px emoji tile while the
                   // real 16:9 sample sat unused in /public/vater/styles.
-                  const sampleImg = s.artStylePresetId
+                  const presetImg = s.artStylePresetId
                     ? getStylePreset(s.artStylePresetId)?.sampleImageUrl
                     : undefined;
+                  // Canon shows the real host; everything else keeps the preset sample.
+                  const sampleImg =
+                    isCanon && canonHost?.referenceUrl ? canonHost.referenceUrl : presetImg;
                   return (
                     <div
                       key={s.id}
@@ -1077,12 +1103,19 @@ export function StylePickerModal({
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={sampleImg}
-                            alt={`${s.name} sample frame`}
+                            alt={
+                              isCanon && canonHost?.referenceUrl
+                                ? `${canonHost.name} — your locked host`
+                                : `${s.name} sample frame`
+                            }
                             loading="lazy"
                             style={{
                               width: '100%',
                               height: '100%',
-                              objectFit: 'cover',
+                              // A cast portrait is 3:4 — cropping it to 16:9
+                              // beheads him. Contain, on the card ground.
+                              objectFit:
+                                isCanon && canonHost?.referenceUrl ? 'contain' : 'cover',
                               display: 'block',
                             }}
                           />

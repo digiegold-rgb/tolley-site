@@ -82,6 +82,14 @@ export function HouseCastPanel({
     name: string;
     descriptor: string;
   } | null>(null);
+  /* Editing CANON itself — writes the spec file the renderer reads. */
+  const [edit, setEdit] = React.useState<{ slug: string; name: string; descriptor: string } | null>(
+    null,
+  );
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
+  const [saveNote, setSaveNote] = React.useState<string | null>(null);
+  const [rendering, setRendering] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -101,6 +109,66 @@ export function HouseCastPanel({
   React.useEffect(() => {
     void load();
   }, [load]);
+
+  const saveCanon = React.useCallback(async () => {
+    if (!edit) return;
+    setSaving(true);
+    setSaveError(null);
+    setSaveNote(null);
+    try {
+      const res = await fetch(`/api/vater/roster/${encodeURIComponent(edit.slug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ descriptor: edit.descriptor }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        notes?: string[];
+        dbSynced?: boolean;
+        backupStamp?: string;
+      };
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      setSaveNote(
+        [
+          `Saved. Previous version kept as .bak-${body.backupStamp}.`,
+          body.dbSynced ? 'Site renders updated too.' : null,
+          ...(body.notes ?? []),
+        ]
+          .filter(Boolean)
+          .join(' '),
+      );
+      setEdit(null);
+      await load();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Could not save');
+    } finally {
+      setSaving(false);
+    }
+  }, [edit, load]);
+
+  const renderPortrait = React.useCallback(
+    async (slug: string) => {
+      setRendering(slug);
+      setSaveError(null);
+      setSaveNote(null);
+      try {
+        const res = await fetch(`/api/vater/roster/${encodeURIComponent(slug)}/reference`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ overwrite: true }),
+        });
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+        setSaveNote('New portrait rendered from the locked descriptor (~$0.03).');
+        await load();
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : 'Portrait render failed');
+      } finally {
+        setRendering(null);
+      }
+    },
+    [load],
+  );
 
   const roster = data?.roster ?? [];
 
@@ -154,6 +222,7 @@ export function HouseCastPanel({
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
                 src={c.referenceUrl}
+                key={c.referenceUrl}
                 alt={`${c.name} — locked reference`}
                 title="Click to view full screen"
                 onClick={() =>
@@ -303,6 +372,29 @@ export function HouseCastPanel({
           >
             {cloning ? 'Opening…' : 'Clone & tweak'}
           </VBtn>
+          <VBtn
+            size="sm"
+            variant="outlined"
+            icon="edit"
+            onClick={() =>
+              setEdit({ slug: c.slug, name: c.name, descriptor: c.descriptor })
+            }
+          >
+            Edit canon
+          </VBtn>
+          <VBtn
+            size="sm"
+            variant="text"
+            icon="image"
+            disabled={rendering !== null}
+            onClick={() => void renderPortrait(c.slug)}
+          >
+            {rendering === c.slug
+              ? 'Rendering…'
+              : c.referenceUrl
+                ? 'Re-render portrait'
+                : 'Generate portrait'}
+          </VBtn>
         </div>
       </VCard>
     );
@@ -369,6 +461,71 @@ export function HouseCastPanel({
             {supporting.map((c) => card(c, false))}
           </div>
         </>
+      )}
+
+      {(saveError || saveNote) && (
+        <div
+          style={{
+            fontSize: 12.5,
+            lineHeight: 1.6,
+            padding: '10px 12px',
+            borderRadius: JELLY_TOKENS.radius.md,
+            color: saveError ? JELLY_TOKENS.error : t.text,
+            border: `1px solid ${saveError ? JELLY_TOKENS.error : GOLD}55`,
+            background: saveError ? 'rgba(240,96,122,0.08)' : `${GOLD}12`,
+          }}
+        >
+          {saveError ?? saveNote}
+        </div>
+      )}
+
+      {edit && (
+        <VCard variant="flat" style={{ padding: 16, border: `1px solid ${GOLD}` }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>
+            Edit {edit.name} — this is canon
+          </div>
+          <div style={{ fontSize: 12, color: t.textSecondary, marginTop: 6, lineHeight: 1.6 }}>
+            You are editing the identity every future render uses, in both the overnight harness and
+            the site. The previous version is kept next to the file, so this is undoable. To try
+            something without committing to it, use <strong>Clone &amp; tweak</strong> instead.
+          </div>
+          <textarea
+            value={edit.descriptor}
+            onChange={(e) => setEdit({ ...edit, descriptor: e.target.value })}
+            rows={9}
+            style={{
+              width: '100%',
+              marginTop: 10,
+              padding: '9px 11px',
+              fontSize: 12.5,
+              lineHeight: 1.6,
+              color: t.text,
+              background: t.cardAlt,
+              border: `1px solid ${t.border}`,
+              borderRadius: JELLY_TOKENS.radius.md,
+              resize: 'vertical',
+              fontFamily: 'inherit',
+            }}
+          />
+          <div style={{ fontSize: 11, color: t.textFaint, marginTop: 6, lineHeight: 1.6 }}>
+            {edit.descriptor.trim().length} characters. Describe what the frame SHOULD contain —
+            &ldquo;never&rdquo; and &ldquo;not&rdquo; backfire: image models render what you negate.
+            (Rob&apos;s &ldquo;never a different length&rdquo; is why his portrait keeps growing
+            hair.)
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            <VBtn
+              size="sm"
+              disabled={saving || edit.descriptor.trim().length < 50}
+              onClick={() => void saveCanon()}
+            >
+              {saving ? 'Saving…' : 'Save to canon'}
+            </VBtn>
+            <VBtn size="sm" variant="text" disabled={saving} onClick={() => setEdit(null)}>
+              Cancel
+            </VBtn>
+          </div>
+        </VCard>
       )}
 
       {clone && (
