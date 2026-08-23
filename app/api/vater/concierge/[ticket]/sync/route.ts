@@ -1,5 +1,5 @@
 /**
- * POST /api/vater/concierge/[ticket]/sync   body {jobId?, by?}
+ * POST /api/vater/concierge/[ticket]/sync   body {jobId?, by?, repointOnly?}
  *
  * Pulls the DGX job state onto the project row through the SAME poll core
  * the customer's /poll route uses (`syncProjectFromJob`, policy
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const auth = await authorizeConcierge(req);
   if (!auth.ok) return auth.response;
 
-  const body = await readBody<{ jobId?: unknown; by?: unknown }>(req);
+  const body = await readBody<{ jobId?: unknown; by?: unknown; repointOnly?: unknown }>(req);
   if (!body) return jsonError(400, "Invalid JSON body");
 
   const { ticket: param } = await ctx.params;
@@ -64,6 +64,24 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       },
     );
     project = res.project;
+  }
+
+  /* repointOnly (2026-08-23): move autopilotJobId WITHOUT re-running the sync.
+   * Scene assets live in the RENDER job's workdir (`vater_work/<job>/scenes/`);
+   * a compose job has no workdir at all. Syncing the compose job picks up the
+   * fresh finalVideoUrl `?v=` but leaves autopilotJobId on a job the
+   * /scene/[idx] proxy can't serve — every scene image (and the Library card
+   * artwork) 404s. The CLI now syncs the compose job, then repoints back to
+   * the render job with this flag so BOTH survive. Re-syncing the render job
+   * instead would regress finalVideoUrl to the r1 cache-buster. */
+  if (body.repointOnly === true) {
+    if (!jobId) return jsonError(400, "repointOnly requires jobId");
+    const fresh = (await prisma.youTubeProject.findUnique({ where: { id: project.id } })) ?? project;
+    return NextResponse.json({
+      outcome: "repointed",
+      project: projectBrief(fresh),
+      ticket: readConcierge(fresh.settingsJson),
+    });
   }
 
   try {
