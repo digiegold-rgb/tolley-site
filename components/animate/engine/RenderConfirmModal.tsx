@@ -163,7 +163,7 @@ export function RenderConfirmModal({
         </div>
         <div style={{ fontSize: 12.5, color: t.textSecondary, marginTop: 6, lineHeight: 1.55 }}>
           {isF5
-            ? 'Fable 5 hand-directs this script with the setup below. Nothing is billed until it is delivered to your Library.'
+            ? 'Fable 5 picks this ticket up automatically and directs the whole render with the setup below — you will get an email when it lands in your Library. Nothing is billed until then.'
             : 'This is the render. Everything below is exactly what will be used — nothing is guessed.'}
         </div>
 

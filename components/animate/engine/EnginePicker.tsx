@@ -3,7 +3,7 @@
 /* EnginePicker — "who renders this?" Two cards, one choice:
  *
  *   Jelly Auto            renders now on the Jelly pipeline (10–30 min)
- *   Fable 5 Concierge     hand-directed by Fable 5 in the studio (hours, beta)
+ *   Fable 5 Concierge     directed end-to-end by Fable 5 (headless runner on the DGX; 1–3 h, beta)
  *
  * Same price either way — the card says so, because that is the first
  * question everyone asks. Pure controlled input: the parent owns `value`
@@ -38,7 +38,7 @@ export interface EnginePickerProps {
 const AUTO_HINT =
   'Fully automatic: Jelly plans the scenes, renders the stills, records the voice and composes the MP4 on its own. Best when you want it now.';
 const FABLE5_HINT =
-  'A human-in-the-loop render. Fable 5 reads your script, writes a scene plan in your style, watches the result and fixes what the pipeline gets wrong — then a person checks it before delivery. Beta: a few hours, up to ~24h.';
+  'Fable 5 runs your ticket end-to-end on our studio box: reads your script, writes a scene plan in your style, kicks the render, reviews every contact sheet and repairs weak scenes, then delivers. A person can step in if it flags something. Typically 1–3 hours.';
 
 export function EnginePicker({
   value,

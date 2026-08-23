@@ -192,8 +192,9 @@ export const CONCIERGE_ENGINE_COPY = {
     name: "Fable 5 Concierge",
     badge: "beta",
     blurb:
-      "Hand-directed by Fable 5 in the Jelly studio. Same price as Auto — billed only when the " +
-      "finished video lands. Typical turnaround a few hours, up to ~24h in beta. Needs a finished script.",
+      "Fable 5 directs your script itself in the Jelly studio — plans every scene in your style, renders, " +
+      "reviews the frames and fixes what the pipeline gets wrong, then delivers to your Library and emails you. " +
+      "Same price as Auto — billed only when the finished video lands. Typically 1–3 hours (longer scripts take longer). Needs a finished script.",
   },
 } as const;
 

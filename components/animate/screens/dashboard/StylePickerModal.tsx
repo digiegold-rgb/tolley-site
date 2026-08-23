@@ -582,57 +582,120 @@ export function StylePickerModal({
             padding: 20,
           }}
         >
-          {/* Use-my-own-script toggle. ON → script-paste mode (skips DGX
-              script gen, F5-TTS reads pasted text verbatim). OFF → normal
-              new-from-style flow. */}
+          {/* Path chooser (2026-08-23). Was a 12px checkbox card that Jared
+              and testers kept missing ("where am I supposed to click?").
+              Now a big gradient banner with two explicit, full-width choices:
+              "I have my own script" vs "Jelly writes it". Either is one click;
+              the selected one is unmistakable (checkmark + SELECTED pill). */}
           {!queued && (
-          <label
+          <div
+            role="radiogroup"
+            aria-label="How do you want to start?"
             style={{
-              display: 'flex',
-              gap: 12,
-              alignItems: 'flex-start',
-              padding: 12,
-              borderRadius: JELLY_TOKENS.radius.md,
-              border: `1px solid ${useOwnScript ? JELLY_TOKENS.brand : t.border}`,
-              background: useOwnScript ? JELLY_TOKENS.brandGhost : t.cardAlt,
-              cursor: submittingOwn ? 'not-allowed' : 'pointer',
               marginBottom: 16,
+              padding: 14,
+              borderRadius: JELLY_TOKENS.radius.lg,
+              background: JELLY_TOKENS.gradPrimary,
+              boxShadow: '0 10px 30px rgba(143,125,255,0.35)',
               opacity: submittingOwn ? 0.6 : 1,
             }}
           >
-            <input
-              type="checkbox"
-              checked={useOwnScript}
-              disabled={submittingOwn}
-              onChange={(e) => {
-                setUseOwnScript(e.target.checked);
-                setOwnScriptError(null);
-              }}
+            <div
               style={{
-                marginTop: 3,
-                accentColor: JELLY_TOKENS.brand,
-                cursor: submittingOwn ? 'not-allowed' : 'pointer',
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+                color: '#0A0A14',
+                opacity: 0.85,
+                marginBottom: 8,
               }}
-            />
-            <span style={{ flex: 1 }}>
-              <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: t.text }}>
-                I already have a script — use mine
-              </span>
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: 12,
-                  color: t.textSecondary,
-                  marginTop: 2,
-                  lineHeight: 1.4,
-                }}
-              >
-                Skips principle extraction + script generation. F5-TTS reads
-                your text verbatim; scenes plan off it directly. Pick a style
-                below for voice + visual direction — or send it to Fable 5.
-              </span>
-            </span>
-          </label>
+            >
+              Step 1 · Choose how to start — click one
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {[
+                {
+                  own: true,
+                  icon: '✍️',
+                  title: 'I already have my script',
+                  body: 'Paste it below. Your words are read verbatim — pick Jelly Auto or Fable 5, then a Style for the voice.',
+                  cta: 'Paste my script',
+                },
+                {
+                  own: false,
+                  icon: '✨',
+                  title: 'Jelly writes the script',
+                  body: 'Pick a Style below and Jelly drafts the script from its references and your topic.',
+                  cta: 'Start from a Style',
+                },
+              ].map((opt) => {
+                const selected = useOwnScript === opt.own;
+                return (
+                  <button
+                    key={opt.title}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    disabled={submittingOwn}
+                    data-testid={opt.own ? 'path-own-script' : 'path-jelly-writes'}
+                    onClick={() => {
+                      setUseOwnScript(opt.own);
+                      setOwnScriptError(null);
+                    }}
+                    style={{
+                      textAlign: 'left',
+                      padding: '14px 16px',
+                      borderRadius: JELLY_TOKENS.radius.md,
+                      border: selected ? '3px solid #0A0A14' : '3px solid rgba(255,255,255,0.55)',
+                      background: selected ? '#0A0A14' : 'rgba(255,255,255,0.92)',
+                      color: selected ? '#FFFFFF' : '#0A0A14',
+                      cursor: submittingOwn ? 'not-allowed' : 'pointer',
+                      boxShadow: selected ? '0 0 0 4px rgba(255,255,255,0.55)' : 'none',
+                      transform: selected ? 'scale(1.01)' : 'none',
+                      transition: 'all 120ms ease',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6,
+                      minHeight: 132,
+                    }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 22 }} aria-hidden>{opt.icon}</span>
+                      <span style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.2 }}>{opt.title}</span>
+                      {selected && (
+                        <span
+                          style={{
+                            marginLeft: 'auto',
+                            fontSize: 11,
+                            fontWeight: 800,
+                            letterSpacing: 0.8,
+                            padding: '3px 8px',
+                            borderRadius: 999,
+                            background: JELLY_TOKENS.gradPrimary,
+                            color: '#0A0A14',
+                          }}
+                        >
+                          ✓ SELECTED
+                        </span>
+                      )}
+                    </span>
+                    <span style={{ fontSize: 12.5, lineHeight: 1.45, opacity: selected ? 0.9 : 0.8 }}>{opt.body}</span>
+                    <span
+                      style={{
+                        marginTop: 'auto',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: selected ? '#B3A6FF' : JELLY_TOKENS.brand,
+                      }}
+                    >
+                      {selected ? (opt.own ? '▼ Paste your script below' : '▼ Pick a Style below') : `Click to ${opt.cta.toLowerCase()} →`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           )}
 
           {useOwnScript && !queued && (
