@@ -40,6 +40,12 @@ import {
 } from '@/lib/vater/youtube-status';
 import { TINT_BG } from '../tint';
 import { ProjectLiveDetail } from '../live/ProjectLiveDetail';
+import { ConciergeStatusCard } from '../editor/ConciergeStatusCard';
+import {
+  readConciergeClient,
+  readEngineClient,
+  type ConciergeStage,
+} from '@/lib/vater/concierge-client';
 import { useRenderEstimate } from '../editor/use-render-estimate';
 
 /* ─── Types ─── */
@@ -124,6 +130,7 @@ export type ReviewStage =
   | 'preparing'
   | 'awaiting_approval'
   | 'rendering'
+  | 'fable5'
   | 'ready_to_publish'
   | 'published'
   | 'failed';
@@ -132,6 +139,7 @@ const STAGE_LABELS: Record<ReviewStage, string> = {
   preparing: 'Preparing',
   awaiting_approval: 'Awaiting script approval',
   rendering: 'Rendering',
+  fable5: 'Fable 5',
   ready_to_publish: 'Ready to publish',
   published: 'Published',
   failed: 'Failed',
@@ -141,15 +149,45 @@ const STAGE_COLORS: Record<ReviewStage, string> = {
   preparing: JELLY_TOKENS.accent,
   awaiting_approval: JELLY_TOKENS.brand,
   rendering: JELLY_TOKENS.accent,
+  fable5: JELLY_TOKENS.brand,
   ready_to_publish: JELLY_TOKENS.success,
   published: JELLY_TOKENS.success,
   failed: JELLY_TOKENS.error,
 };
 
+
+/** Live pill text for a Fable 5 row — the ticket stage, not the DB status. */
+const FABLE5_STAGE_TEXT: Record<ConciergeStage, string> = {
+  queued: 'Fable 5 — in queue',
+  picked_up: 'Fable 5 — picked up',
+  directing: 'Fable 5 — directing',
+  rendering: 'Fable 5 — rendering',
+  qa: 'Fable 5 — quality check',
+  delivered: 'Fable 5 — delivered',
+  needs_info: 'Fable 5 — needs your input',
+  cancelled: 'Fable 5 — cancelled',
+};
+
+function stagePill(p: ReviewProject): { label: string; color: string } {
+  const stage = stageOf(p);
+  if (stage === 'fable5') {
+    const ticket = readConciergeClient(p.settingsJson);
+    const cs = ticket?.stage;
+    return {
+      label: cs ? FABLE5_STAGE_TEXT[cs] : 'Fable 5',
+      color: cs === 'needs_info' ? JELLY_TOKENS.warning : JELLY_TOKENS.brand,
+    };
+  }
+  return { label: STAGE_LABELS[stage], color: STAGE_COLORS[stage] };
+}
+
 export function stageOf(p: ReviewProject): ReviewStage {
   if (p.youtubeVideoId) return 'published';
   if (p.status === 'failed') return 'failed';
   if (p.status === 'awaiting_script_approval') return 'awaiting_approval';
+  // Fable 5 Concierge: the ticket owns the project until it delivers
+  // (status flips to `ready`, handled below) or is cancelled.
+  if (p.status.startsWith('concierge_')) return 'fable5';
   if (p.status === 'ready' && p.finalVideoUrl) return 'ready_to_publish';
   if (IN_FLIGHT_STATUSES.has(p.status as YouTubeProjectStatus)) {
     // Everything after the approval click is a render; everything before it
@@ -237,7 +275,18 @@ export function ScriptReviewScreen(): React.ReactElement {
     [projects],
   );
 
-  const busy = inFlightIds.length > 0;
+  /* A live Fable 5 ticket moves via operator/runner stage posts, not DGX
+   * polling — so keep refreshing the list while one is queued/in progress,
+   * but NEVER call /poll for it (concierge policy: the sync route owns it). */
+  const conciergeLive = React.useMemo(
+    () =>
+      (projects ?? []).some(
+        (p) => p.status === 'concierge_queued' || p.status === 'concierge_in_progress',
+      ),
+    [projects],
+  );
+
+  const busy = inFlightIds.length > 0 || conciergeLive;
 
   // The tick reads the id list through a ref so a project-list refresh doesn't
   // tear down and re-arm the interval on every pass.
@@ -675,7 +724,7 @@ function PipelineRow({
 }): React.ReactElement {
   const { t } = useTheme();
   const stage = stageOf(project);
-  const color = STAGE_COLORS[stage];
+  const { label: pillLabel, color } = stagePill(project);
   const title =
     project.publishTitle || project.sourceTitle || project.sourceUrl || 'Untitled';
 
@@ -715,7 +764,7 @@ function PipelineRow({
             borderRadius: JELLY_TOKENS.radius.pill,
           }}
         >
-          {STAGE_LABELS[stage]}
+          {pillLabel}
         </span>
         {stage === 'rendering' && (
           <span style={{ fontSize: 11, color: t.textSecondary }}>
@@ -742,11 +791,24 @@ function DetailPanel({
   onChanged: () => void;
 }): React.ReactElement {
   const stage = stageOf(project);
+  const ticket = stage === 'fable5' ? readConciergeClient(project.settingsJson) : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {project.errorMessage && (
         <RetryError message={project.errorMessage} variant="banner" />
+      )}
+
+      {/* Fable 5 Concierge — the same live ticket card the editor shows:
+          stage chips (queued → picked up → directing → rendering → quality
+          check → delivered), the operator note, cancel-while-queued. */}
+      {ticket && (
+        <ConciergeStatusCard
+          projectId={project.id}
+          status={project.status}
+          ticket={ticket}
+          refresh={async () => onChanged()}
+        />
       )}
 
       {stage === 'awaiting_approval' ? (
