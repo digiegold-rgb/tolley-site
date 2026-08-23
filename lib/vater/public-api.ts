@@ -35,13 +35,9 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { appendScriptVersion } from "@/lib/vater/script-versions";
 import { resolveLockedStyle, LOCKED_STYLE_NAME } from "@/lib/vater/locked-style";
-import { isVaterAdminEmail, isVaterStudioEmail } from "@/lib/admin-auth";
+import { isVaterStudioEmail } from "@/lib/admin-auth";
 import {
-  BETA_LENGTH_MESSAGE,
-  BETA_MAX_WORDS,
   WORDS_PER_MINUTE,
-  isOverBetaLength,
-  runtimeClock,
 } from "@/lib/vater/script-limits";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
 import { startRunCreation, ScriptGateError } from "@/lib/vater/script-gate";
@@ -237,14 +233,6 @@ export async function createVideoFromScript(
   // Beta runtime cap. Stopped here for the same reason the browser lane stops
   // it at intake: the DGX rejects an over-cap script anyway, and finding out
   // after the project exists leaves an unrenderable row behind. Owner exempt.
-  if (!isVaterAdminEmail(email) && isOverBetaLength(wordCount)) {
-    return fail(
-      400,
-      "script_too_long",
-      `${BETA_LENGTH_MESSAGE} That script is ${wordCount.toLocaleString()} words (≈ ${runtimeClock(wordCount)}).`,
-      { wordCount, maxWords: BETA_MAX_WORDS },
-    );
-  }
 
   const title = (
     typeof input.title === "string" && input.title.trim()

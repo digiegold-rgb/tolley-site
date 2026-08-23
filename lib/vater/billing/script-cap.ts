@@ -25,9 +25,6 @@
  */
 import "server-only";
 
-import { prisma } from "@/lib/prisma";
-import { isVaterAdminEmail } from "@/lib/admin-auth";
-import { BETA_MAX_WORDS, PAID_MAX_WORDS } from "@/lib/vater/script-limits";
 
 import { getBalance } from "./ledger";
 
@@ -59,21 +56,24 @@ export async function scriptCapFor(
   userId: string | null | undefined,
   email?: string | null,
 ): Promise<ScriptCap> {
-  if (!userId) return { maxWords: BETA_MAX_WORDS, tier: "beta" };
-
-  let ownerEmail = email;
-  if (ownerEmail === undefined) {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    ownerEmail = user?.email ?? null;
-  }
-  if (isVaterAdminEmail(ownerEmail)) return { tier: "owner" };
-
-  return (await hasPurchasedBalance(userId))
-    ? { maxWords: PAID_MAX_WORDS, tier: "paid" }
-    : { maxWords: BETA_MAX_WORDS, tier: "beta" };
+  // ── SCRIPT LENGTH IS UNCAPPED (Jared, 2026-08-22) ────────────────────────
+  // Every tier renders any length. `{ tier: "owner" }` carries no `maxWords`,
+  // which is already the uncapped shape: `maxWordsFor` turns it into Infinity,
+  // every `isOverLength(words, Infinity)` is false, and `ownerFields*` sends no
+  // maxWords to the DGX — which now only caps when one is explicitly supplied.
+  //
+  // Removing the number here removes it EVERYWHERE by construction: the
+  // from-script guard, the context/run-creation guard, the concierge submit
+  // guard and GET /api/vater/me all read this one function.
+  //
+  // ⚠️ What this gave up: the cap was a blast-radius limit on OUR money. A
+  // promotional $10 grant could previously fund at most ~9:00 of render; it can
+  // now fund a script of any length. If that ever bites, put the ceiling back
+  // for the grant-funded case only (`hasPurchasedBalance` is still here) rather
+  // than reinstating a flat beta cap.
+  void userId;
+  void email;
+  return { tier: "owner" };
 }
 
 /**

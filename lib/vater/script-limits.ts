@@ -5,7 +5,14 @@
  * route handler (no server-only imports here — `owner-tier.ts` re-exports the
  * number so there is still exactly one source of truth).
  *
- * Why 1,700 words: the beta hard cap is 9:00 of finished video (jelly beta
+ * ⚠️ 2026-08-22: the cap is GONE (Jared). `scriptCapFor()` returns no ceiling
+ * for any tier, so the guards below never fire and the DGX only caps when a
+ * caller explicitly supplies `maxWords`. The constants survive because the
+ * runtime-clock helpers (`scriptLengthLabel`, used under every script box) are
+ * still wanted — a word count and an ETA are useful without being a limit.
+ *
+ * Historic rationale, for whoever puts a ceiling back:
+ * Why 1,700 words: the beta hard cap was 9:00 of finished video (jelly beta
  * launch plan, decision 7 — clean renders top out around 8:44, and #21 at
  * 15:12 failed QA). At Monroe's measured 185 wpm that is ~1,700 words. The DGX
  * already rejects an over-cap `scriptOverride` with a 400 (`vater.py`
@@ -65,10 +72,7 @@ export function lengthMessageFor(maxWords: number): string {
   // compute this message eagerly and only render it when a script is actually
   // over the line, so it has to be a sentence rather than "NaN:NaN".
   if (!Number.isFinite(maxWords)) return "No length limit on this account.";
-  if (maxWords >= PAID_MAX_WORDS) {
-    return `Length limit is ${maxWordsClock(maxWords)} (~${maxWords.toLocaleString()} words). Split into two videos for now.`;
-  }
-  return `Beta limit is ${maxWordsClock(maxWords)} (~${maxWords.toLocaleString()} words), and rises to ${maxWordsClock(PAID_MAX_WORDS)} once you have purchased credit.`;
+  return `Length limit is ${maxWordsClock(maxWords)} (~${maxWords.toLocaleString()} words). Split into two videos for now.`;
 }
 
 /** True when this script is over the given ceiling. */
@@ -98,13 +102,19 @@ export function scriptLengthLabel(words: number): string {
   return `${words.toLocaleString()} words · ≈ ${runtimeClock(words)} at ${WORDS_PER_MINUTE} wpm`;
 }
 
-/** The one message a user should ever see about this limit. */
-export const BETA_LENGTH_MESSAGE =
-  `Beta limit is 9:00 (~${BETA_MAX_WORDS.toLocaleString()} words). Split into two videos for now.`;
+/**
+ * ⚠️ RETIRED 2026-08-22 — script length is uncapped on every tier.
+ *
+ * `scriptCapFor()` returns no ceiling now, so `isOverLength(words, Infinity)`
+ * is false everywhere and `lengthMessageFor(Infinity)` is the "no limit"
+ * sentence. These two are kept ONLY so an old client that still reads them
+ * compiles; nothing in the app calls them. Delete once nothing imports them.
+ */
+export const BETA_LENGTH_MESSAGE = "No length limit on this account.";
 
-/** True when this script is over the cap for a non-owner account. */
-export function isOverBetaLength(words: number): boolean {
-  return words > BETA_MAX_WORDS;
+/** @deprecated Always false — there is no beta length cap. */
+export function isOverBetaLength(): boolean {
+  return false;
 }
 
 /**

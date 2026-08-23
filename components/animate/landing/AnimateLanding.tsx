@@ -90,7 +90,6 @@ const PACKS = creditPackOptions();
 const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 const usd = (n: number) => `$${n.toFixed(2)}`;
 
-const BETA_MAX_MINUTES = "9:00";
 const BENCHMARK = { length: "8:44", allIn: "$5.56" };
 /* Measured across recent renders — the ops half is fixed, the compute half
  * genuinely is not, and the page should not imply otherwise. */
@@ -107,7 +106,7 @@ interface ComparisonRow {
   ours?: boolean;
 }
 const COMPARISON: readonly ComparisonRow[] = [
-  { name: "Jelly Studio", rate: "$0.55 – $0.95", note: "stills render · no subscription · beta cap 9:00", ours: true },
+  { name: "Jelly Studio", rate: "$0.55 – $0.95", note: "stills render · no subscription · no length cap", ours: true },
   { name: "Zebracat", rate: "$0.50 – $1.30", note: "5-minute cap" },
   { name: "StoryShort", rate: "$0.58 – $1.56", note: "" },
   { name: "NoLang", rate: "$0.76 – $1.00", note: "3-minute cap on Standard" },
@@ -673,8 +672,8 @@ export function AnimateLanding(): React.ReactElement {
                   buy does not expire.
                 </>,
                 <>
-                  Beta maximum length is {BETA_MAX_MINUTES}. It is proven clean
-                  to just under nine minutes; longer is coming.
+                  No maximum length. Renders are proven clean to just under nine
+                  minutes; past that you are ahead of our QA, not behind a limit.
                 </>,
               ].map((node, i) => (
                 <li key={i} style={{ display: "flex", gap: 12, ...LEAD, fontSize: 15.5 }}>

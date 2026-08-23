@@ -11,7 +11,6 @@
 import * as React from 'react';
 import type { VaterTier } from '@/lib/vater/nav-visibility';
 import { routeIdsForTier } from '@/lib/vater/nav-visibility';
-import { BETA_MAX_WORDS } from '@/lib/vater/script-limits';
 
 export interface VaterCapabilities {
   rules: boolean;
@@ -80,7 +79,9 @@ const DEFAULT_BETA: BetaState = {
 
 const defaultValue: TierContextValue = {
   tier: 'public',
-  maxWords: BETA_MAX_WORDS,
+  // Uncapped by default (2026-08-22). GET /api/vater/me sends null for
+  // "no cap", which the reducer below maps to Infinity.
+  maxWords: Number.POSITIVE_INFINITY,
   capTier: 'beta',
   capabilities: EMPTY_CAPS,
   routes: routeIdsForTier('public'),
