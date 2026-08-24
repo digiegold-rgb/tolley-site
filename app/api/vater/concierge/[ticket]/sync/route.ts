@@ -27,6 +27,8 @@ import { prisma } from "@/lib/prisma";
 import { actorLabel, authorizeConcierge } from "@/lib/vater/concierge-auth";
 import { readConcierge, writeConcierge } from "@/lib/vater/concierge";
 import { jsonError, loadTicketProject, projectBrief, readBody } from "@/lib/vater/concierge-operator";
+import { revalidateTag } from "next/cache";
+
 import { syncProjectFromJob } from "@/lib/vater/project-sync";
 import { AutopilotConfigError, AutopilotError } from "@/lib/vater/autopilot-client";
 
@@ -64,6 +66,12 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       },
     );
     project = res.project;
+    // The scene/audio/video proxies resolve autopilotJobId through a 1h
+    // unstable_cache (project-jobid-cache) that persists across deploys —
+    // built when the id was immutable. It isn't any more: without this, a
+    // repoint leaves every /scene/[idx] hit (Library artwork) resolving the
+    // OLD job for up to an hour.
+    revalidateTag("vater-youtube-project", "max");
   }
 
   /* repointOnly (2026-08-23): move autopilotJobId WITHOUT re-running the sync.
@@ -76,6 +84,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
    * instead would regress finalVideoUrl to the r1 cache-buster. */
   if (body.repointOnly === true) {
     if (!jobId) return jsonError(400, "repointOnly requires jobId");
+    // Unconditional on this branch: re-running a repoint to the SAME id is
+    // the operator's way to flush a stale jobid cache entry.
+    revalidateTag("vater-youtube-project", "max");
     const fresh = (await prisma.youTubeProject.findUnique({ where: { id: project.id } })) ?? project;
     return NextResponse.json({
       outcome: "repointed",

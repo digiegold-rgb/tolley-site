@@ -6,9 +6,10 @@
  * means 12+ parallel DB queries per editor page load, which on Neon
  * serverless adds seconds-to-minutes of latency from pool cold-start.
  *
- * autopilotJobId is IMMUTABLE per project (set once by run-creation).
- * So we cache it for 1 hour — first fetch hits DB, remaining 11 parallel
- * fetches resolve from memory in microseconds.
+ * autopilotJobId is ALMOST immutable (set by run-creation) — the concierge
+ * sync route can re-point it (compose ↔ render). Any writer that changes it
+ * MUST revalidateTag("vater-youtube-project") or the proxies serve the old
+ * job for up to an hour (this cache persists across deployments).
  */
 import "server-only";
 import { unstable_cache } from "next/cache";
