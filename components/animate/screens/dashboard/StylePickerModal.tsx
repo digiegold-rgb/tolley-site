@@ -95,6 +95,11 @@ export function StylePickerModal({
   /* new-from-style failure — inline banner above the style grid (was alert()). */
   const [createError, setCreateError] = React.useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = React.useState(false);
+  /* Portals need document.body. Next still SSR-renders 'use client' trees, so
+     an open modal (or anything that imports this on the server) used to throw
+     ReferenceError: document is not defined. Mounted-gate keeps SSR and the
+     first client paint identical (null), then the portal attaches. */
+  const [mounted, setMounted] = React.useState(false);
 
   // Own-script mode — paste a script and skip principle-extraction +
   // script-generation. Mirrors V1's youtube-topic-form scriptOverride flow,
@@ -155,6 +160,10 @@ export function StylePickerModal({
   React.useEffect(() => {
     if (open) setQueued(null);
   }, [open]);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Load styles whenever modal opens.
   React.useEffect(() => {
@@ -492,6 +501,8 @@ export function StylePickerModal({
   // stacking context than <main>, so a fixed overlay rendered in place sat
   // BEHIND the header bar — the own-script + engine row at the top of this
   // modal was invisible/unclickable for every beta tester (2026-08-19).
+  if (!mounted || typeof document === 'undefined') return null;
+
   return createPortal(
     <div
       role="dialog"
