@@ -1,5 +1,5 @@
 {
-  "ignoreCommand": "if [ -n \"$VERCEL_GIT_COMMIT_REF\" ] && [ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ] && [ \"${VERCEL_GIT_COMMIT_REF#cursor/animate-try-}\" = \"$VERCEL_GIT_COMMIT_REF\" ]; then echo 'skip: branch preview builds disabled (2026-08-20 — stray branch builds were stalling and blocking the single build slot)'; exit 0; else exit 1; fi",
+  "ignoreCommand": "case $VERCEL_GIT_COMMIT_REF in ''|main|cursor/animate-try-*) exit 1;; *) echo skip; exit 0;; esac",
   "functions": {
     "app/api/cron/sequence-process/route.ts": {
       "maxDuration": 120
