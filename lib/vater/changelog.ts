@@ -49,6 +49,15 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
+    version: '1.6.1',
+    date: '2026-08-24',
+    title: 'Your own script is now the obvious first click',
+    items: [
+      'Starting a video from a script you already have is a big, unmistakable choice next to Jelly writing it — stacked on a phone, with a real Paste my script button.',
+      'Your words are still read verbatim. After you paste, you pick a Style for the voice, same as before.',
+    ],
+  },
+  {
     version: '1.6',
     date: '2026-08-23',
     title: 'One live view, deletable projects, honest billing',
