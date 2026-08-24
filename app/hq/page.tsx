@@ -686,13 +686,22 @@ function HqPageInner() {
                   <span className="doc-sub">The one social-publishing API under tolley.io + /animate — both lanes, the 18 connected accounts, pricing, webhooks, every gotcha — Aug 19, 2026</span>
                 </a>
                 <a
+                  href="/research/lady-video-system-v2-2026-08.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeDocs}
+                >
+                  🎬 Lady Video System V2
+                  <span className="doc-sub">The four daily lanes + the new cinema lane (Seedance 2.0 on fal.ai) — the fal payload that worked, the boxed proof-estate-01 post-mortem ($57.39, 26 takes, the upscale + audio lessons), and the go-forward playbook — Aug 23, 2026</span>
+                </a>
+                <a
                   href="/research/lady-video-system-2026-08.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={closeDocs}
                 >
-                  🎬 Lady Video System
-                  <span className="doc-sub">How a lady video is actually made — every stage with real frames + timestamps, all four lanes, every internet call, how the links are built, what it costs — Aug 18, 2026</span>
+                  🎬 Lady Video System <span className="doc-sub">(V1 archive)</span>
+                  <span className="doc-sub">How a lady video is actually made — every stage with real frames + timestamps, all four lanes, every internet call, how the links are built, what it costs — Aug 18, 2026 · superseded by V2</span>
                 </a>
                 <a
                   href="/research/jelly-competitor-gaps-2026-08.pdf"

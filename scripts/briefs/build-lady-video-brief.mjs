@@ -1,25 +1,30 @@
 /**
- * Lady Video System — visual explainer for /hq → Docs.
+ * Lady Video System V2 — visual explainer for /hq → Docs.
  *
  *   node scripts/briefs/build-lady-video-brief.mjs
  *
  * Emits a US-Letter navy/gold HTML brief with real frames from real renders
  * (base64-inlined so the PDF is self-contained), then prints a per-page fit
- * table and renders to public/research/lady-video-system-2026-08.pdf.
+ * table and renders to public/research/lady-video-system-v2-2026-08.pdf.
  *
- * Every number, path, port and URL in here was read off the live box on
- * 2026-08-18 — see the sources block at the bottom of the last page.
+ * Pages 1–11: the four daily lanes (read off the box 2026-08-18).
+ * Pages 12–16: the V2 chapter — the cinema/Seedance lane and the full
+ * proof-estate-01 post-mortem (read off the box 2026-08-23).
+ * V1 PDF stays published unchanged at lady-video-system-2026-08.pdf.
  */
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 const IMG = '/tmp/claude-1000/-home-jelly/5f801079-2983-4f1b-9929-2dec02269d3c/scratchpad/lady-doc/img';
+// V2 frames (cinema lane, proof-estate-01) — regenerate from the project mp4s if this dir is gone:
+// ffmpeg -ss <t> -i cinema/projects/proof-estate-01/<file>.mp4 -frames:v 1 -vf scale=480:-1 <name>.jpg
+const IMG2 = '/tmp/claude-1000/-home-jelly/18a65cf1-9afe-468b-abce-a7ab2893fb9c/scratchpad/lady-v2-img';
 const CSS = readFileSync('/home/jelly/tolley-site/scripts/briefs/lady-video-system.css', 'utf8');
-const OUT_HTML = '/home/jelly/tolley-site/scripts/briefs/lady-video-system-2026-08.html';
-const OUT_PDF = '/home/jelly/tolley-site/public/research/lady-video-system-2026-08.pdf';
+const OUT_HTML = '/home/jelly/tolley-site/scripts/briefs/lady-video-system-v2-2026-08.html';
+const OUT_PDF = '/home/jelly/tolley-site/public/research/lady-video-system-v2-2026-08.pdf';
 
-const img = (name) => {
-  const p = `${IMG}/${name}`;
+const img = (name, dir = IMG) => {
+  const p = `${dir}/${name}`;
   if (!existsSync(p)) throw new Error('missing image: ' + p);
   const mime = name.endsWith('.png') ? 'image/png' : 'image/jpeg';
   return `data:${mime};base64,${readFileSync(p).toString('base64')}`;
@@ -28,30 +33,42 @@ const img = (name) => {
 /** one film frame + caption */
 const frame = (file, stamp, cap, tall) =>
   `<div class="frame"><img src="${img(file)}"><div class="fcap${tall ? ' tall' : ''}"><b>${stamp}</b>${cap}</div></div>`;
+const frame2 = (file, stamp, cap, tall) =>
+  `<div class="frame"><img src="${img(file, IMG2)}"><div class="fcap${tall ? ' tall' : ''}"><b>${stamp}</b>${cap}</div></div>`;
 
 let PAGE = 0;
 const page = (body) => {
   PAGE++;
   return `<div class="page"><div class="pinner">${body}</div>
-    <div class="footer"><span>The Lady Video System — how a video gets made, start to finish</span><span>tolley.io/hq · Aug 18, 2026 · p${PAGE}</span></div>
+    <div class="footer"><span>The Lady Video System V2 — how a video gets made, start to finish</span><span>tolley.io/hq · Aug 23, 2026 · p${PAGE}</span></div>
   </div>`;
 };
 
 /* ─────────────────────────────────────────────────── 1. cover ───────── */
 const p1 = page(`
   <div class="cover-band">
-    <div class="v2tag">SYSTEM MAP</div>
+    <div class="v2tag">SYSTEM MAP · V2</div>
     <div class="kicker">HQ · Docs · Engineering brief</div>
-    <h1>The Lady Video System</h1>
-    <div class="date">One renderer, four businesses, ~1,100 lines of decisions — drawn out so you can change it · August 18, 2026</div>
+    <h1>The Lady Video System V2</h1>
+    <div class="date">Two renderers now: the four daily lanes, plus the new cinema lane that is Lady going forward · August 23, 2026</div>
   </div>
 
-  <p class="lede">Every "lady video" you have ever posted — the Treasure&nbsp;Haul product ads, the washer/dryer
-  spots, the estate-sale spots and the daily KC housing brief — is produced by <b>one program</b>:
-  <code>growth-engine/shorts/make-product-short.mjs</code>. The four businesses are not four pipelines.
-  They are four <b>briefs</b> handed to the same renderer, each with its own clock, its own Facebook page
-  and its own link. This document shows that one program end to end: what it touches, in what order,
-  what it costs, what leaves your building, and every knob you can turn.</p>
+  <p class="lede">Every daily "lady video" — the Treasure&nbsp;Haul product ads, the washer/dryer
+  spots, the estate-sale spots and the daily KC housing brief — is still produced by <b>one program</b>:
+  <code>growth-engine/shorts/make-product-short.mjs</code>, four <b>briefs</b> handed to the same renderer.
+  <b>V2 adds a second renderer:</b> the <b>cinema lane</b> (<code>growth-engine/cinema/</code>, Seedance&nbsp;2.0
+  ref-to-video on fal.ai) — photoreal, handheld, she speaks on camera in her own voice. It shipped its first
+  video on 8/23 (<i>"I walked an estate sale before the doors opened"</i>, 72&nbsp;s, live on FB + YouTube) and
+  it is <b>the new Lady going forward</b>. Pages 1–11 map the daily system; <b>pages 12–16 are the V2 chapter</b>:
+  the cinema pipeline, the exact fal payload that finally worked, and — boxed — everything that run cost,
+  broke, and taught us.</p>
+
+  <div class="box gold">
+    <p><b>V2 in one line.</b> Old Lady: $1/video, keyframes + local voice clone, 30&nbsp;s, fully automatic, good enough
+    to run four times a day. New Lady (cinema): ~$57 for the first 72&nbsp;s proof (retries included, next one budgeted
+    ~$25–30), Seedance native voice, phone-vlog realism you cannot get from the old pipeline — reserved for flagship
+    pieces, with a human eyeball between every stage.</p>
+  </div>
 
   <div class="tiles five">
     <div class="tile goldtop"><div class="num">1</div><div class="lbl">renderer<br>(make-product-short.mjs)</div></div>
@@ -803,16 +820,283 @@ const p11 = page(`
   </div>
 `);
 
+/* ───────────────────────────── 12. V2: the cinema lane ───────── */
+const p12 = page(`
+  <h2><span class="n">12</span>Lady V2 — the cinema lane</h2>
+  <div class="sub">A second renderer: <code>growth-engine/cinema/</code> → Seedance 2.0 ref-to-video on fal.ai.
+  She is photoreal, handheld, and speaks her lines on camera in her own voice. First shipped video:
+  <code>proof-estate-01</code>, 72 s, live on FB + YouTube 8/23.</div>
+
+  <div class="tiles">
+    <div class="tile goldtop"><div class="num">$57.39</div><div class="lbl">all-in, first proof<br>(incl. all retries + tests)</div></div>
+    <div class="tile redtop"><div class="num">26 → 8</div><div class="lbl">paid generations<br>→ shipped shots (2.75×)</div></div>
+    <div class="tile greentop"><div class="num">72 s</div><div class="lbl">8 clips · 9:16 · 720p<br>Seedance native voice</div></div>
+    <div class="tile purpletop"><div class="num">2</div><div class="lbl">finished cuts<br>v1 posted · v2 unposted</div></div>
+  </div>
+
+  <div class="strip s4">
+    ${frame2('v1-open.jpg', '0:01', ' the posted opener', false)}
+    ${frame2('v1-mid.jpg', '0:30', ' living-room walkthrough', false)}
+    ${frame2('v1-cta.jpg', '1:08', ' payoff + CTA', false)}
+    ${frame2('v2cut-open.jpg', 'CUT 2', ' unposted alternate cut', false)}
+  </div>
+
+  <div class="cols2" style="margin-top:6pt">
+    <div>
+      <h3 class="first">The pipeline (all CLI, all resumable)</h3>
+      <ul>
+        <li><code>cinema script</code> — brief.json → Kimi-K3 plans 8 clips → <code>shotlist.json</code> + full printed preview. <b>Free. Nothing hits fal yet.</b></li>
+        <li><code>cinema sheet</code> — 4-panel character sheet (Gemini) + inswapper face-lock → the ref pack</li>
+        <li><code>cinema render</code> — the only paid step; queue at <code>queue.fal.run</code></li>
+        <li><code>cinema qa</code> — ArcFace identity gate (≥0.45, faces ≥100 px only) + Gemini judge vs the sheet</li>
+        <li><code>cinema retake</code> — re-render one clip (<code>--take=-t2</code> — equals sign required)</li>
+        <li><code>cinema post</code> — trim, concat, music bed, burned POV labels, loudnorm −14 LUFS, CTA captions</li>
+        <li><code>gallery.py</code> — phone-review page, every take, green border = the pick</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="first">Rate card (billed by <i>requested</i> seconds)</h3>
+      <table>
+        <tr><th>Tier</th><th>Rate</th><th>10 s clip</th></tr>
+        <tr><td>720p 9:16 (used)</td><td><b>$0.3024/s</b></td><td>$3.02</td></tr>
+        <tr><td>1080p</td><td>$0.682/s</td><td>$6.82</td></tr>
+        <tr><td>mini 480p (tests)</td><td>$0.0696/s</td><td>$0.70</td></tr>
+        <tr><td>chained clip</td><td>×0.6</td><td>$1.81</td></tr>
+      </table>
+      <div class="box blue" style="margin-top:4pt">
+        <p><b>Budget guard.</b> <code>CINEMA_MAX_USD=60</code> in <code>common.py</code> hard-refuses any call that
+        would cross the cap. The proof landed at <b>92%</b> of it. Every request is written to the project's
+        <code>cost.json</code> with its fal request id — that file is the ledger of record.</p>
+      </div>
+      <div class="box" style="margin-top:4pt">
+        <p><b>Review surfaces.</b> SMB share <code>[Cinema]</code> (Finder → <code>smb://192.168.2.104</code>, read-only)
+        · tailnet gallery <code>gx10-adc6…ts.net:8444/&lt;project&gt;/</code> · never funnel it, never SMB the symlink dirs.</p>
+      </div>
+    </div>
+  </div>
+`);
+
+/* ───────────────────── 13. the payload that worked ───────── */
+const p13 = page(`
+  <h2><span class="n">13</span>What we send to fal — the recipe that finally worked</h2>
+  <div class="sub">This exact reference set + prompt grammar is what held her face, her outfit and her voice
+  across 8 independent generations. It is now the <b>default</b> in <code>script.py</code> (fixed 8/23).</div>
+
+  <div class="cols2">
+    <div>
+      <h3 class="first">The reference set, per clip</h3>
+      <table>
+        <tr><th>Slot</th><th>File</th><th>Why</th></tr>
+        <tr><td><b>@Image1</b></td><td><code>pack/estate-a/front.png</code></td><td><b>FULL-BODY</b>, face-locked — the wardrobe anchor</td></tr>
+        <tr><td>@Image2</td><td><code>pack/estate-a/bust.png</code></td><td>face detail</td></tr>
+        <tr><td>@Image3</td><td><code>identity/front.jpg</code></td><td>identity ground truth</td></tr>
+        <tr><td><b>@Audio1</b></td><td><code>voice/lady-anchor.wav</code></td><td>5.8 s of her own Seedance speech — timbre only</td></tr>
+        <tr><td>@Video1</td><td>parent clip mp4</td><td>chained clips only (c03←c02, c07←c06, c08←c07)</td></tr>
+      </table>
+      <div class="box red" style="margin-top:4pt">
+        <p><b>The $9 lesson.</b> The original default put <code>bust.png</code> first. Seedance then <i>invented her
+        lower half</i> — the olive sweater dress came back as a crop top + denim shorts on three separate takes.
+        <b>@Image1 must always be full-body.</b> <code>render.py</code> even had a "helper" that downgraded a full
+        sheet back to the bust — removed 8/23.</p>
+      </div>
+      <div class="box" style="margin-top:4pt">
+        <p><b>Identity chain.</b> AI-generated identity photos (real faces are refused by Seedance's filter) →
+        Gemini 4-panel sheet → <code>face_lock.py</code> (inswapper) swaps her true face onto every panel → pack
+        crops. Measured ArcFace vs ground truth: front 0.95, bust 0.95, profile 0.86.
+        <b>Face packs expire ~30 days</b> on the fal side — regenerate every ~25.</p>
+      </div>
+    </div>
+    <div>
+      <h3 class="first">The prompt grammar</h3>
+      <div class="box blue">
+        <p style="font-style:italic">"Photoreal handheld selfie phone-vlog, slight micro-jitter, hyper-realistic, natural
+        light, 9:16 vertical. The character in @Image1 (full-body reference — same face as @Image2 and @Image3;
+        same outfit head to toe: same olive-green fine-knit sweater dress in every shot).
+        <b>Shot 1 (0-3s):</b> … <b>Shot 2 (3-6s):</b> … <b>Shot 3 (6-10s):</b> …
+        She says exactly: "I'm inside this Kansas City estate sale an hour before the line…"
+        Use @Audio1 as her voice and timbre reference only; she speaks the quoted line exactly once, naturally,
+        no echo, no repeated reads. Sound: quiet suburban morning, birdsong.
+        No captions, no subtitles, no on-screen text, no lettering on boxes or props, no watermark."</p>
+      </div>
+      <ul>
+        <li><b>Multi-shot inside one generation</b> — labelled <code>Shot N (a-bs):</code>, one primary action per shot, camera named every time.</li>
+        <li><b>Native speech</b> — <code>She says exactly: "…"</code> + <code>generate_audio: true</code>. All 8 lines verified by whisper at 0.86–0.99 match.</li>
+        <li><b>Positive descriptions only</b> — negations drift; describe what IS there.</li>
+        <li><b>The no-text tail is load-bearing</b> — without it, boxes grow legible garbage lettering ("FIBESJA").</li>
+        <li><b>Chained clips</b> open on "a NEW angle, do NOT match the final frame" — hard cut, not a morph.</li>
+        <li><b>No seed input.</b> Seedance on fal exposes seed as <i>output only</i> — you cannot pin a look; you retake.</li>
+        <li><b>Endpoint quirks:</b> ids carry no <code>fal-ai/</code> prefix; storage host is <code>rest.alpha.fal.ai</code>
+        (legacy <code>rest.fal.ai</code> 403s on our key).</li>
+      </ul>
+    </div>
+  </div>
+`);
+
+/* ───────────────── 14. THE BOX: what the proof cost + broke, pt 1 ── */
+const p14 = page(`
+  <h2><span class="n">14</span>⬛ What we learned — the money and the retries</h2>
+  <div class="sub">Boxed post-mortem, part 1 — every number from <code>cost.json</code> and <code>run.log</code>.</div>
+
+  <div class="box red">
+    <div class="bt">💸 WHERE THE $57.39 WENT</div>
+    <table>
+      <tr><th>Wave</th><th>What</th><th>$</th></tr>
+      <tr><td>smoke + packtest</td><td>4 clips @ 480p mini — proved the plumbing for pocket change</td><td>2.23</td></tr>
+      <tr><td>r1</td><td>first 6 clips, VO-era</td><td>16.15</td></tr>
+      <tr><td>unblock + c08</td><td>c07, c06 retake, c08 after the balance top-up</td><td>5.99</td></tr>
+      <tr><td>-n native set</td><td><b>all 8 re-rendered</b> when we switched to Seedance native voice</td><td>19.19</td></tr>
+      <tr><td>-n2 / -n3 retakes</td><td>5 more takes: wardrobe drift, identity dips, opener line</td><td>13.61</td></tr>
+      <tr><td colspan="2"><b>Total — 26 paid generations for 8 shipped shots (14 retakes ≈ $25 was rework)</b></td><td><b>57.39</b></td></tr>
+    </table>
+    <p><b>Next one is budgeted ~$25–30:</b> the voice-mode flip-flop ($19.19) and the bust-ref wardrobe drift (~$9)
+    are both now impossible by default — native voice and full-body @Image1 are baked into the generator.</p>
+  </div>
+
+  <div class="box gold" style="margin-top:5pt">
+    <div class="bt">🔁 WHY EVERY RETAKE HAPPENED, RANKED</div>
+    <p><b>1. Wardrobe drift (dominant).</b> Bust-only @Image1 → invented lower half, 3 takes burned. Fixed at the ref level, not the prompt level.</p>
+    <p><b>2. Voice engine swap.</b> Built VO-first, then the Seedance native audio won — all 8 clips re-rendered. Decide voice mode <i>before</i> clip 1.</p>
+    <p><b>3. Identity dips.</b> ArcFace min hit 0.06 (gate 0.45). Trust the gate on close shots; wide/back shots are judge-only.</p>
+    <p><b>4. Prop + blocking misses.</b> Garbage lettering, not-Pyrex bowls, walking the wrong way. One retake each — patch the prompt, not the concept.</p>
+    <p><b>5. Judge pedantry.</b> Two "retake" verdicts flipped to pass on the <i>same frames</i> once the rule softened. <b>Eyeball the strip before paying $3.</b></p>
+  </div>
+
+  <div class="box" style="margin-top:5pt">
+    <div class="bt">⛔ THE 6.5-HOUR STALL</div>
+    <p>fal balance ran out mid-run and surfaced as <b>HTTP 403 on the <i>storage upload</i></b> ("User is locked.
+    Exhausted balance") — not on submit; easy to misread as an auth bug. The run sat 00:55→07:26 waiting on a ~$25
+    top-up. <b>Check the fal balance before any overnight render.</b></p>
+  </div>
+
+  <div class="strip s3" style="margin-top:5pt">
+    ${frame2('drift-c01n.jpg', 'DRIFT', ' bust-ref take: top + shorts, not the dress', true)}
+    ${frame2('drift-c05n.jpg', 'DRIFT', ' same failure, clip 5 — midriff top', true)}
+    ${frame2('fixed-c05n2.jpg', 'FIXED', ' full-body @Image1: the dress holds', true)}
+  </div>
+`);
+
+/* ───────────── 15. THE BOX pt 2: upscale + audio ───────── */
+const p15 = page(`
+  <h2><span class="n">15</span>⬛ What we learned — the upscale failure and the audio</h2>
+
+  <div class="box red">
+    <div class="bt">📈 THE UPSCALE: 6 HOURS FOR "LOOKS ABOUT THE SAME"</div>
+    <p>720p → 1440p via 4x-UltraSharp/ESRGAN (<code>tools/upscale.py</code>, frame-by-frame on the GB10):
+    <b>6.0 hours, 1,739 frames at 12.4 s/frame, $0 cash — and rejected.</b> Verdict on the couch test:
+    <i>"from a human eye standpoint it looks about the same."</i></p>
+    <p><b>Why it can never work here:</b> Seedance output is AI-generated — there is no latent detail to recover,
+    only plausible texture to invent. A static 1:1 crop looks dramatically better, and <b>that still-frame
+    comparison is exactly what misled us</b>. Rule: never judge a video upscale on a still frame.</p>
+    <p><b>If resolution ever matters: render native 1080p at fal ($0.682/s ≈ +$27 on a 72 s piece) — never upscale 720p.</b></p>
+    <p class="small"><b>GB10 findings from the run:</b> fp16 is <i>slower</i> than fp32 here — use <code>--fp32</code> ·
+    throughput halved the moment system RAM passed ~88% (CPU+GPU share one LPDDR5X pool — clear the box first) ·
+    torch has no sm_121 kernels for this GPU, so the whole pass ran ~10× slow; fixing the torch build turns 6 h into ~20 min (open item).</p>
+    <div class="strip s4" style="margin-top:3pt">
+      <div></div>
+      ${frame2('up-720.jpg', '720p', ' the shipped resolution', false)}
+      ${frame2('up-1440.jpg', '1440p', ' 6 hours later', false)}
+      <div></div>
+    </div>
+    <div style="margin-top:3pt"><img src="${img('v1-strip.jpg', IMG2)}" style="width:100%;border-radius:6px">
+    <p class="small" style="margin-top:1pt"><b>FULL CUT</b> — 12-frame strip of the posted 72 s video.</p></div>
+  </div>
+
+  <div class="box gold" style="margin-top:5pt">
+    <div class="bt">🔊 THE AUDIO SAGA — FIVE SEPARATE PROBLEMS</div>
+    <p><b>1. Wrong engine first.</b> Built VO-first with the IndexTTS "Jessica" clone, then Jared heard Seedance's
+    own native speech and chose it — the entire clip set was re-rendered ($19.19). Native is now the default.</p>
+    <p><b>2. The opener says the wrong script — and it shipped.</b> The posted clip 1 speaks the <i>curb-find</i>
+    line ("walking out to get the mail…") on an <i>estate-sale</i> video. The correct take exists — <code>c01-n3</code>,
+    right line, right dress — but Jared called ship on the take that was up. It's still on disk, unused.</p>
+    <p><b>3. A false alarm that cost $3.</b> Clip 5's whisper check scored 0.39 and triggered a retake — but it was a
+    <i>two-speaker shot</i>: the cashier's line plus hers in one track, checked against her line only. Two-speaker
+    clips need both lines in the transcript check.</p>
+    <p><b>4. Inaudible music bed.</b> First mix put the lofi bed at −31 dB in the speech gaps — effectively silent.
+    Raised +7.5 dB (<code>--music-gain</code>, now a flag). And the file Jared graded first was <code>assembled.mp4</code>
+    — the no-music intermediate — because it sits next to <code>final.mp4</code> on the SMB share. Grade finals only.</p>
+    <p><b>5. Every final shipped at 96 kHz.</b> <code>loudnorm</code> resamples internally and the AAC encoder clamps
+    to 96 kHz unless pinned — off-spec for every platform, silently. <code>-ar 48000</code> now forced in
+    <code>post.py</code> (fixed 8/23, verified by ffprobe).</p>
+    <p class="small">Pronunciation nits that survived QA: "Pyrax" for Pyrex, "Tolia State Sales" for Tolley Estate
+    Sales — spell risky words phonetically in the spoken line next time.</p>
+  </div>
+
+  <div class="box" style="margin-top:5pt">
+    <div class="bt">🚚 SHIPPING BUGS (all fixed in code the same day)</div>
+    <p>v1 went live on FB + YouTube <b>with no CTA links at all</b> — the video says "link below" over a bare caption
+    (fixed live at 13:41; <code>cta_block()</code> now builds the tolley.io/estate + /fit links from settings) ·
+    <code>post.py</code> wrote <code>platforms.fb.message</code> but the publisher reads <code>.caption</code> — FB was
+    silently dropping the whole caption · the FB publish call had a 60 s timeout while FB transcodes the reel inside
+    that call — every big reel failed and orphaned its upload; now 300 s.</p>
+  </div>
+`);
+
+/* ───────────── 16. script preview + leftovers + playbook ───────── */
+const p16 = page(`
+  <h2><span class="n">16</span>Script first, spend second — and what's still on the shelf</h2>
+  <div class="sub">Where the script came from, how to see it before it costs money, and the $16 of footage
+  nobody has used yet.</div>
+
+  <div class="cols2">
+    <div>
+      <h3 class="first">Where the script comes from</h3>
+      <ul>
+        <li><b>You write ~10 lines of <code>brief.json</code></b> — title, premise, open loop, payoff, CTA, 3 facts, locations, supporting cast.</li>
+        <li><code>cinema script --project X</code> → <b>Kimi-K3</b> plans 6–8 clips against the Chloe format bible
+        (55% selfie / 17% third-person / 11% inserts / 8% B-roll; open loop planted in the first 2 s, paid off in the
+        last clip, one CTA). Free local fallback: <code>--provider vllm</code> (Qwen on :8356).</li>
+        <li>Output is a plain, editable <code>shotlist.json</code> — every prompt, spoken line and ref, printed in
+        full to the terminal. <b>Nothing touches fal until <code>cinema render</code> is a separate decision.</b></li>
+      </ul>
+      <h3>How to preview it better (all of this exists today)</h3>
+      <ul>
+        <li><b>Read the printed shotlist</b> — clip id, seconds, VO line, prompt head. Edit the JSON; the proof's shipped shotlist was hand-patched twice and both patches paid off.</li>
+        <li><b>Telegram the shotlist for approval</b> before rendering — same gate the Vater lane runs (<code>stopAfterScript</code> → approve → spend). One paste, zero dollars.</li>
+        <li><b>Proof the look for pennies</b> — render clip 1 only on <b>mini 480p ($0.70)</b> before committing the set at 720p.</li>
+        <li>Sibling gates if you'd rather click than read: shorts <code>--script-only</code>, Vater preflight/estimate on /animate.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="first">On the shelf right now (documented, not decided)</h3>
+      <table>
+        <tr><th>Asset</th><th>What it is</th></tr>
+        <tr><td><b><code>final-2.mp4</code></b></td><td>A complete <b>second 72 s cut</b> built entirely from takes the posted
+        video didn't use — sitting in <code>estate/review/…-v2.mp4</code>, unposted, $0 to finish</td></tr>
+        <tr><td>6 unused takes</td><td>≈ <b>$16.33</b> of paid footage, incl. <code>c01-n3</code> — the opener with the
+        <i>correct</i> line</td></tr>
+        <tr><td>30 s teaser option</td><td>Best 3–4 unused takes re-cut short — noted as an option, no cut made</td></tr>
+        <tr><td>~250 MB dead artifacts</td><td>rejected 1440p upscale, Jessica-VO cut, duplicate segments — untouched, listed for a later sweep</td></tr>
+      </table>
+      <div class="box green" style="margin-top:5pt">
+        <div class="bt">✅ THE V2 PLAYBOOK — defaults now enforced in code</div>
+        <p>Full-body @Image1, always · Seedance native voice, always · 8–10 s clips (billing is by <i>requested</i>
+        seconds; ask for 15 only when the action needs it) · check fal balance before overnight runs · eyeball the QA
+        strip before any paid retake · decide voice mode before clip 1 · proof at mini 480p first · never upscale —
+        buy 1080p if it matters · grade <code>final.mp4</code>, never <code>assembled.mp4</code> · <code>--take=-t2</code>
+        needs the equals sign.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="box" style="margin-top:4pt;background:var(--wash)">
+    <p class="small"><b>V2 sources.</b> Read off the DGX on Aug 23, 2026: <code>cinema/projects/proof-estate-01/</code>
+    (<code>cost.json</code> — 22 entries + fal request ids, <code>run.log</code>, <code>qa/transcripts-n.json</code>,
+    <code>take-map*.json</code>, <code>final*.json</code>) · <code>cinema/{script,render,qa,post}.py</code> +
+    <code>providers/seedance/fal.py</code> · <code>cinema/PRINCIPLES.md</code> · <code>tools/upscale.py</code> run log ·
+    the live FB reel and YouTube Short. Posted: FB reel <code>1061448036257009</code> · YouTube <code>uwyYmpGAnf8</code>.</p>
+  </div>
+`);
+
 /* ─────────────────────────────────────────────────────── build ── */
 const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>The Lady Video System — how a video gets made, start to finish</title>
+<title>The Lady Video System V2 — how a video gets made, start to finish</title>
 <style>${CSS}</style>
 </head>
 <body>
-${p1}${p2}${p3}${p4}${p5}${p6}${p7}${p8}${p8b}${p9}${p10}${p11}
+${p1}${p2}${p3}${p4}${p5}${p6}${p7}${p8}${p8b}${p9}${p10}${p11}${p12}${p13}${p14}${p15}${p16}
 </body>
 </html>`;
 

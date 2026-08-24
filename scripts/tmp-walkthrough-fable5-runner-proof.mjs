@@ -127,10 +127,14 @@ if (await confirm.count()) {
     await confirm.click();
     await page.waitForTimeout(8000);
     await shot(page, '06-after-submit');
-    const queued = page.getByTestId('concierge-batch-queued');
+    // 1 script → the editor opens with the ConciergeStatusCard ("Fable 5 has
+    // your script." + F5 code); 2+ scripts → the batch card in the modal.
+    const queued = (await page.getByTestId('concierge-batch-queued').count())
+      ? page.getByTestId('concierge-batch-queued')
+      : page.getByText(/Fable 5 has your script|Concierge render/i).first();
     if (await queued.count()) {
-      const text = await queued.innerText();
-      const code = (text.match(/F5-[A-Z2-7]{6}/) || [])[0];
+      const text = await page.locator('body').innerText();
+      const code = (text.match(/F5-[A-Z0-9]{6}/) || [])[0];
       pass(`ticket queued: ${code || '(code not on screen)'}`);
       writeFileSync(`${SHOTS}/ticket.txt`, `${code || ''}\n${text}`);
       console.log(text.slice(0, 600));
