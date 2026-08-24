@@ -1,12 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import { fetchVaterCapabilities } from "@/components/animate/tier-context";
 import { YouTubeFinalPlayer } from "./youtube-final-player";
 import { YouTubeShareModal } from "./youtube-share-modal";
 import { getStylePreset } from "@/lib/vater/style-presets";
-import { isFinalMp4Stale, finalVideoPlaybackUrl } from "@/lib/vater/youtube-status";
+import {
+  isFinalMp4Stale,
+  finalVideoPlaybackUrl,
+  customerStage,
+  CUSTOMER_STAGE_LABELS,
+  customerStageDetail,
+} from "@/lib/vater/youtube-status";
 import {
   parseVideoCost,
   formatUsd,
@@ -14,6 +20,9 @@ import {
   DEFAULT_OPS_RATE_PER_MIN,
 } from "@/lib/vater/video-cost";
 import { billableComputeUsd } from "@/lib/vater/billing/billable";
+import { isPostedToYoutube } from "@/lib/vater/youtube-posted";
+import { JELLY_TOKENS } from "@/components/animate/tokens";
+import { useTheme } from "@/components/animate/theme-context";
 
 interface LibraryProject {
   id: string;
@@ -37,6 +46,9 @@ interface LibraryProject {
   editedAt: string | null;
   costJson?: unknown;
   finalVideoUrl?: string | null;
+  youtubeVideoId?: string | null;
+  publishedAt?: string | null;
+  settingsJson?: unknown;
 }
 
 interface Props {
@@ -44,6 +56,10 @@ interface Props {
   onDelete: (id: string) => void;
   /** Optimistically flip status to `editing` so the card leaves the library. */
   onRecomposeStart?: (id: string) => void;
+  /** After a successful posted mark/unmark, so parent lists stay in sync. */
+  onPostedChange?: (id: string, project: LibraryProject) => void;
+  /** Same optimistic flip when a Library motion layer is queued. */
+  onAnimateLayerStart?: (id: string) => void;
 }
 
 function formatDuration(seconds: number): string {
@@ -51,6 +67,31 @@ function formatDuration(seconds: number): string {
   const m = Math.floor(safe / 60);
   const s = safe % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+const STAGE_CHIP_CLASS: Record<string, string> = {
+  queued: "text-violet-200 bg-violet-500/20 border-violet-400/50",
+  in_progress: "text-sky-200 bg-sky-500/20 border-sky-400/50",
+  done: "text-emerald-200 bg-emerald-500/20 border-emerald-400/50",
+};
+
+function LibraryStageChip({ status }: { status: string }): ReactElement {
+  const stage = customerStage(status);
+  const label = stage
+    ? CUSTOMER_STAGE_LABELS[stage]
+    : customerStageDetail(status) ?? status;
+  const cls = (stage && STAGE_CHIP_CLASS[stage]) ||
+    "text-zinc-200 bg-zinc-500/20 border-zinc-500/40";
+  return (
+    <span
+      data-testid="library-card-stage"
+      data-stage={stage ?? status}
+      title={customerStageDetail(status) ?? label}
+      className={`absolute left-2 top-2 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider backdrop-blur-sm ${cls}`}
+    >
+      {label}
+    </span>
+  );
 }
 
 /** Ops rate comes from server config (VATER_OPS_RATE_PER_MIN), never a
@@ -81,7 +122,13 @@ function useOpsRate(): number | null {
   return rate;
 }
 
-export function YouTubeLibrary({ projects, onDelete, onRecomposeStart }: Props) {
+export function YouTubeLibrary({
+  projects,
+  onDelete,
+  onRecomposeStart,
+  onPostedChange,
+  onAnimateLayerStart,
+}: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const opsRatePerMinute = useOpsRate();
 
@@ -114,6 +161,7 @@ export function YouTubeLibrary({ projects, onDelete, onRecomposeStart }: Props) 
               if (activeId === p.id) setActiveId(null);
               onDelete(p.id);
             }}
+            onPostedChange={onPostedChange}
           />
         ))}
       </div>
@@ -129,6 +177,9 @@ export function YouTubeLibrary({ projects, onDelete, onRecomposeStart }: Props) 
           onRecomposeStart={() =>
             onRecomposeStart?.(activeProject.id)
           }
+          onAnimateLayerStart={() =>
+            onAnimateLayerStart?.(activeProject.id)
+          }
         />
       )}
     </div>
@@ -139,10 +190,12 @@ function PlayerLightbox({
   project,
   onClose,
   onRecomposeStart,
+  onAnimateLayerStart,
 }: {
   project: LibraryProject;
   onClose: () => void;
   onRecomposeStart?: () => void;
+  onAnimateLayerStart?: () => void;
 }) {
   // ESC-to-close + body-scroll lock while the lightbox is mounted.
   useEffect(() => {
@@ -177,10 +230,29 @@ function PlayerLightbox({
         className="relative w-full max-w-5xl overflow-hidden rounded-2xl border border-sky-500/30 bg-zinc-950 shadow-[0_0_60px_rgba(56,189,248,0.25)]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-3">
-          <h3 className="line-clamp-1 text-sm font-semibold text-zinc-100">
-            {title}
-          </h3>
+        <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-5 py-3">
+          <div className="flex min-w-0 items-center">
+            <h3 className="line-clamp-1 text-sm font-semibold text-zinc-100">
+              {title}
+            </h3>
+            {isPostedToYoutube(project) && (
+              <span
+                style={{
+                  flexShrink: 0,
+                  marginLeft: 10,
+                  background: JELLY_TOKENS.success,
+                  color: JELLY_TOKENS.onGradient,
+                  borderRadius: JELLY_TOKENS.radius.xs,
+                  padding: "3px 8px",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  fontFamily: JELLY_TOKENS.font,
+                }}
+              >
+                Posted to YouTube
+              </span>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -197,6 +269,7 @@ function PlayerLightbox({
           <YouTubeFinalPlayer
             project={project}
             onRecomposeStart={onRecomposeStart}
+            onAnimateLayerStart={onAnimateLayerStart}
           />
         </div>
       </div>
@@ -209,14 +282,17 @@ function LibraryCard({
   isActive,
   onSelect,
   onDelete,
+  onPostedChange,
   opsRatePerMinute,
 }: {
   project: LibraryProject;
   isActive: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  onPostedChange?: (id: string, project: LibraryProject) => void;
   opsRatePerMinute: number | null;
 }) {
+  const { t } = useTheme();
   const preset = getStylePreset(project.stylePreset ?? "cinematic");
   const title =
     project.sourceTitle ??
@@ -238,7 +314,52 @@ function LibraryCard({
   const downloadHref = `/api/vater/youtube/${project.id}/video?download=1`;
   const [hoverPreview, setHoverPreview] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [posted, setPosted] = useState(() => isPostedToYoutube(project));
+  const [postedSaving, setPostedSaving] = useState(false);
+  const [postedError, setPostedError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    setPosted(isPostedToYoutube(project));
+  }, [project]);
+
+  const togglePosted = async () => {
+    const next = !posted;
+    setPosted(next);
+    setPostedSaving(true);
+    setPostedError(null);
+    try {
+      const res = await fetch(`/api/vater/youtube/${project.id}/posted`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ posted: next }),
+      });
+      if (!res.ok) {
+        const fail = (await res.json().catch(() => null)) as {
+          error?: unknown;
+        } | null;
+        const message =
+          typeof fail?.error === "string" && fail.error.trim()
+            ? fail.error
+            : `Could not update posted status (HTTP ${res.status})`;
+        throw new Error(message);
+      }
+      const data = (await res.json()) as {
+        posted?: boolean;
+        project?: LibraryProject;
+      };
+      const confirmed = typeof data.posted === "boolean" ? data.posted : next;
+      setPosted(confirmed);
+      if (data.project) onPostedChange?.(project.id, data.project);
+    } catch (err) {
+      setPosted(!next);
+      setPostedError(
+        err instanceof Error ? err.message : "Could not update posted status",
+      );
+    } finally {
+      setPostedSaving(false);
+    }
+  };
 
   // Play silent video loop while hovering the thumbnail — gives the user an
   // instant preview of the finished product without clicking. Reset on leave
@@ -353,6 +474,8 @@ function LibraryCard({
           </span>
         </div>
 
+        <LibraryStageChip status={project.status} />
+
         {/* Stale-final badge — scenes edited after last compose */}
         {stale && (
           <div
@@ -360,6 +483,30 @@ function LibraryCard({
             title="Final MP4 is older than your latest scene edits — re-compose to refresh."
           >
             ⚠ stale
+          </div>
+        )}
+
+        {posted && (
+          <div
+            title="Posted to YouTube"
+            style={{
+              position: "absolute",
+              top: 8,
+              left: 8,
+              zIndex: 2,
+              maxWidth: "calc(100% - 16px)",
+              background: JELLY_TOKENS.success,
+              color: JELLY_TOKENS.onGradient,
+              borderRadius: JELLY_TOKENS.radius.xs,
+              padding: "3px 6px",
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.04em",
+              lineHeight: 1.25,
+              fontFamily: JELLY_TOKENS.font,
+            }}
+          >
+            Posted to YouTube
           </div>
         )}
 
@@ -454,6 +601,59 @@ function LibraryCard({
             ✕
           </button>
         </div>
+
+        <button
+          type="button"
+          disabled={postedSaving}
+          aria-pressed={posted}
+          aria-label={
+            posted
+              ? "Unmark as posted to YouTube"
+              : "Mark as posted to YouTube"
+          }
+          title={
+            posted
+              ? "Unmark as posted to YouTube"
+              : "Mark as posted to YouTube — for VidIQ or a manual upload"
+          }
+          onClick={(e) => {
+            e.stopPropagation();
+            void togglePosted();
+          }}
+          style={{
+            width: "100%",
+            marginTop: 6,
+            background: posted ? JELLY_TOKENS.success : "transparent",
+            color: posted ? JELLY_TOKENS.onGradient : t.textSecondary,
+            border: `1px solid ${posted ? JELLY_TOKENS.success : t.border}`,
+            borderRadius: JELLY_TOKENS.radius.xs,
+            padding: "5px 8px",
+            fontSize: 10,
+            fontWeight: 600,
+            cursor: postedSaving ? "wait" : "pointer",
+            fontFamily: JELLY_TOKENS.font,
+            opacity: postedSaving ? 0.7 : 1,
+          }}
+        >
+          {postedSaving
+            ? "Saving…"
+            : posted
+              ? "Unmark posted"
+              : "Mark as posted"}
+        </button>
+        {postedError && (
+          <div
+            style={{
+              marginTop: 4,
+              fontSize: 9,
+              lineHeight: 1.35,
+              color: JELLY_TOKENS.error,
+              fontFamily: JELLY_TOKENS.font,
+            }}
+          >
+            {postedError}
+          </div>
+        )}
       </div>
       {shareOpen && (
         <YouTubeShareModal

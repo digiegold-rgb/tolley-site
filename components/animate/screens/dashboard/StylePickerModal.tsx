@@ -24,6 +24,7 @@ import { JELLY_TOKENS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { Icon } from '../../Icon';
 import { StyleWizardModal, type CreatedStyle } from './StyleWizardModal';
+import { PathChooser } from './PathChooser';
 import { devError } from '../../log';
 import { TINT_BG } from '../tint';
 import { getStylePreset } from '@/lib/vater/style-presets';
@@ -31,6 +32,7 @@ import { ON_GRADIENT_PLATE } from '../tint';
 import { VBtn } from '../../primitives';
 import { EnginePicker, type ConciergeEngine } from '../../engine/EnginePicker';
 import { RenderConfirmModal, type RenderManifest } from '../../engine/RenderConfirmModal';
+import { hintVoicesElevenLabsTab } from '../studio/voices-tab-hint';
 import { quickEstimateUsd, quoteMinutes, ESTIMATE_WORDS_PER_MINUTE } from '@/lib/vater/billing/estimate';
 import {
   BillingBlockModal,
@@ -94,6 +96,11 @@ export function StylePickerModal({
   /* new-from-style failure — inline banner above the style grid (was alert()). */
   const [createError, setCreateError] = React.useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = React.useState(false);
+  /* Portals need document.body. Next still SSR-renders 'use client' trees, so
+     an open modal (or anything that imports this on the server) used to throw
+     ReferenceError: document is not defined. Mounted-gate keeps SSR and the
+     first client paint identical (null), then the portal attaches. */
+  const [mounted, setMounted] = React.useState(false);
 
   // Own-script mode — paste a script and skip principle-extraction +
   // script-generation. Mirrors V1's youtube-topic-form scriptOverride flow,
@@ -154,6 +161,10 @@ export function StylePickerModal({
   React.useEffect(() => {
     if (open) setQueued(null);
   }, [open]);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Load styles whenever modal opens.
   React.useEffect(() => {
@@ -491,6 +502,8 @@ export function StylePickerModal({
   // stacking context than <main>, so a fixed overlay rendered in place sat
   // BEHIND the header bar — the own-script + engine row at the top of this
   // modal was invisible/unclickable for every beta tester (2026-08-19).
+  if (!mounted || typeof document === 'undefined') return null;
+
   return createPortal(
     <div
       role="dialog"
@@ -539,7 +552,7 @@ export function StylePickerModal({
         >
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: t.text }}>
-              {queued ? 'Sent to Fable 5' : useOwnScript ? 'Pick a Style for Voice' : 'Select a Style'}
+              {queued ? 'Sent to Fable 5' : useOwnScript ? 'Pick a Style for Voice' : 'Start a video'}
             </div>
             <div
               style={{
@@ -554,7 +567,7 @@ export function StylePickerModal({
                   ? engine === 'fable5'
                     ? 'Picking a style sends your script(s) to Fable 5 in that style and voice.'
                     : 'Picking a style uses its voice clone for narration and starts the project with your script.'
-                  : 'Pick an existing style to start, or create a new one tuned to your channel.'}
+                  : 'First, choose how you want to begin — your script, or Jelly writes it.'}
             </div>
           </div>
           <button
@@ -582,124 +595,41 @@ export function StylePickerModal({
             padding: 20,
           }}
         >
-          {/* Path chooser (2026-08-23). Was a 12px checkbox card that Jared
-              and testers kept missing ("where am I supposed to click?").
-              Now a big gradient banner with two explicit, full-width choices:
-              "I have my own script" vs "Jelly writes it". Either is one click;
-              the selected one is unmistakable (checkmark + SELECTED pill). */}
           {!queued && (
-          <div
-            role="radiogroup"
-            aria-label="How do you want to start?"
-            style={{
-              marginBottom: 16,
-              padding: 14,
-              borderRadius: JELLY_TOKENS.radius.lg,
-              background: JELLY_TOKENS.gradPrimary,
-              boxShadow: '0 10px 30px rgba(143,125,255,0.35)',
-              opacity: submittingOwn ? 0.6 : 1,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 800,
-                letterSpacing: 1,
-                textTransform: 'uppercase',
-                color: '#0A0A14',
-                opacity: 0.85,
-                marginBottom: 8,
+            <PathChooser
+              useOwnScript={useOwnScript}
+              disabled={submittingOwn}
+              onChange={(own) => {
+                setUseOwnScript(own);
+                setOwnScriptError(null);
               }}
-            >
-              Step 1 · Choose how to start — click one
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              {[
-                {
-                  own: true,
-                  icon: '✍️',
-                  title: 'I already have my script',
-                  body: 'Paste it below. Your words are read verbatim — pick Jelly Auto or Fable 5, then a Style for the voice.',
-                  cta: 'Paste my script',
-                },
-                {
-                  own: false,
-                  icon: '✨',
-                  title: 'Jelly writes the script',
-                  body: 'Pick a Style below and Jelly drafts the script from its references and your topic.',
-                  cta: 'Start from a Style',
-                },
-              ].map((opt) => {
-                const selected = useOwnScript === opt.own;
-                return (
-                  <button
-                    key={opt.title}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    disabled={submittingOwn}
-                    data-testid={opt.own ? 'path-own-script' : 'path-jelly-writes'}
-                    onClick={() => {
-                      setUseOwnScript(opt.own);
-                      setOwnScriptError(null);
-                    }}
-                    style={{
-                      textAlign: 'left',
-                      padding: '14px 16px',
-                      borderRadius: JELLY_TOKENS.radius.md,
-                      border: selected ? '3px solid #0A0A14' : '3px solid rgba(255,255,255,0.55)',
-                      background: selected ? '#0A0A14' : 'rgba(255,255,255,0.92)',
-                      color: selected ? '#FFFFFF' : '#0A0A14',
-                      cursor: submittingOwn ? 'not-allowed' : 'pointer',
-                      boxShadow: selected ? '0 0 0 4px rgba(255,255,255,0.55)' : 'none',
-                      transform: selected ? 'scale(1.01)' : 'none',
-                      transition: 'all 120ms ease',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 6,
-                      minHeight: 132,
-                    }}
-                  >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 22 }} aria-hidden>{opt.icon}</span>
-                      <span style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.2 }}>{opt.title}</span>
-                      {selected && (
-                        <span
-                          style={{
-                            marginLeft: 'auto',
-                            fontSize: 11,
-                            fontWeight: 800,
-                            letterSpacing: 0.8,
-                            padding: '3px 8px',
-                            borderRadius: 999,
-                            background: JELLY_TOKENS.gradPrimary,
-                            color: '#0A0A14',
-                          }}
-                        >
-                          ✓ SELECTED
-                        </span>
-                      )}
-                    </span>
-                    <span style={{ fontSize: 12.5, lineHeight: 1.45, opacity: selected ? 0.9 : 0.8 }}>{opt.body}</span>
-                    <span
-                      style={{
-                        marginTop: 'auto',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: selected ? '#B3A6FF' : JELLY_TOKENS.brand,
-                      }}
-                    >
-                      {selected ? (opt.own ? '▼ Paste your script below' : '▼ Pick a Style below') : `Click to ${opt.cta.toLowerCase()} →`}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+            />
           )}
 
           {useOwnScript && !queued && (
-            <div style={{ marginBottom: 16 }}>
+            <div
+              data-testid="own-script-plate"
+              style={{
+                marginBottom: 16,
+                padding: 16,
+                borderRadius: JELLY_TOKENS.radius.xl,
+                border: `1px solid ${JELLY_TOKENS.brandOutline}`,
+                background: JELLY_TOKENS.gradTicket,
+                boxShadow: `0 0 0 1px ${JELLY_TOKENS.brandOutline}`,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: JELLY_TOKENS.micro.size,
+                  letterSpacing: JELLY_TOKENS.micro.tracking,
+                  textTransform: 'uppercase',
+                  fontWeight: 600,
+                  color: JELLY_TOKENS.cyan,
+                  marginBottom: 10,
+                }}
+              >
+                Your script · read verbatim
+              </div>
               {scripts.map((text, i) => (
                 <div key={i} style={{ marginBottom: 12 }}>
                   <div
@@ -715,7 +645,7 @@ export function StylePickerModal({
                       letterSpacing: 0.4,
                     }}
                   >
-                    {multi ? `Script ${i + 1}` : 'Your script'}
+                    {multi ? `Script ${i + 1}` : 'Paste below'}
                     {multi && (
                       <button
                         type="button"
@@ -749,24 +679,28 @@ export function StylePickerModal({
                       if (ownScriptError) setOwnScriptError(null);
                     }}
                     disabled={submittingOwn}
+                    autoFocus={i === 0}
+                    data-testid={i === 0 ? 'own-script-textarea' : undefined}
                     rows={multi ? 7 : 10}
                     placeholder={
                       multi
-                        ? `Paste script ${i + 1} here.`
-                        : 'Paste your script here. Picking a style below will start the project.'
+                        ? `Paste script ${i + 1} here. Multilingual / ElevenLabs voices need your key in Voices → ElevenLabs.`
+                        : 'Paste your script here. Picking a Style below starts the project with these words. Multilingual / ElevenLabs voices need your key in Voices → ElevenLabs.'
                     }
                     style={{
                       width: '100%',
                       resize: 'vertical',
-                      padding: 12,
+                      minHeight: multi ? 140 : 200,
+                      padding: 16,
                       borderRadius: JELLY_TOKENS.radius.md,
-                      border: `1px solid ${t.border}`,
-                      background: t.card,
+                      border: `2px solid ${JELLY_TOKENS.brandOutline}`,
+                      background: t.panel,
                       color: t.text,
                       fontFamily: JELLY_TOKENS.font,
-                      fontSize: 13,
-                      lineHeight: 1.5,
+                      fontSize: 15,
+                      lineHeight: 1.55,
                       outline: 'none',
+                      boxShadow: `inset 0 0 0 1px ${JELLY_TOKENS.brandGhost}`,
                     }}
                   />
                   <div
@@ -782,6 +716,42 @@ export function StylePickerModal({
                   </div>
                 </div>
               ))}
+
+              <div
+                data-testid="own-script-elevenlabs-hint"
+                style={{
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  color: t.textSecondary,
+                  marginBottom: 12,
+                }}
+              >
+                Multilingual or ElevenLabs voices need your own key connected.{' '}
+                <button
+                  type="button"
+                  data-testid="own-script-open-voices"
+                  onClick={() => {
+                    hintVoicesElevenLabsTab();
+                    onClose();
+                    setRoute('voices');
+                  }}
+                  disabled={submittingOwn}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    color: t.link,
+                    cursor: submittingOwn ? 'not-allowed' : 'pointer',
+                    fontSize: 12,
+                    fontFamily: JELLY_TOKENS.font,
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Voices → ElevenLabs
+                </button>
+                {' '}
+                — this doesn&apos;t block pasting.
+              </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 {scripts.length < MAX_BATCH_SCRIPTS && (

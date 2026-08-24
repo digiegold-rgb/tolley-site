@@ -13,6 +13,26 @@ import { isAdminEmail } from "@/lib/admin-auth";
 import { readSessionVersion } from "@/lib/auth/session-version";
 import { readViewAsUserId } from "@/lib/vater/acting-as";
 
+/**
+ * try-preview SSO: Vercel preview hosts fail Auth.js host checks when
+ * AUTH_URL/NEXTAUTH_URL is pinned to production (tolley.io) and trustHost
+ * is unset. trustHost accepts the preview Host header. On preview we strip
+ * the pinned URL so Auth.js uses the incoming Host (git alias or unique
+ * deploy). Do not re-pin to VERCEL_URL — that host differs from the alias
+ * Jared opens, so CSRF + the session cookie would miss /animate.
+ * Production (VERCEL_ENV === "production") is unchanged.
+ */
+if (
+  process.env.VERCEL_ENV === "preview" ||
+  (process.env.VERCEL === "1" &&
+    process.env.VERCEL_ENV !== "production" &&
+    Boolean(process.env.VERCEL_URL))
+) {
+  delete process.env.AUTH_URL;
+  delete process.env.NEXTAUTH_URL;
+  process.env.AUTH_TRUST_HOST = "true";
+}
+
 const emailPort = Number(process.env.EMAIL_SERVER_PORT || 587);
 const emailHost = process.env.EMAIL_SERVER_HOST || "localhost";
 const emailUser = process.env.EMAIL_SERVER_USER || "";
@@ -160,6 +180,8 @@ If you did not request this email, you can safely ignore it.`;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: authSecret,
+  // try-preview SSO — see AUTH_URL strip above.
+  trustHost: true,
   adapter: PrismaAdapter(prisma),
   pages: {
     signIn: "/login",

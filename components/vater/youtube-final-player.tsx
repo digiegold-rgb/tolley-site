@@ -25,6 +25,7 @@ import { useToast } from "@/components/ui/Toast";
 import { VideoSpeedChips } from "@/components/ui/VideoSpeedChips";
 import { isFinalMp4Stale, finalVideoPlaybackUrl } from "@/lib/vater/youtube-status";
 import { YouTubeShareModal } from "./youtube-share-modal";
+import { AnimateLayerModal } from "@/components/animate/screens/studio/AnimateLayerModal";
 
 interface VerificationReport {
   ok?: boolean;
@@ -64,9 +65,15 @@ interface Props {
    * project from the Library until the DGX poll route refreshes it).
    */
   onRecomposeStart?: () => void;
+  /** Same optimistic flip when the opening motion layer is queued. */
+  onAnimateLayerStart?: () => void;
 }
 
-export function YouTubeFinalPlayer({ project, onRecomposeStart }: Props) {
+export function YouTubeFinalPlayer({
+  project,
+  onRecomposeStart,
+  onAnimateLayerStart,
+}: Props) {
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [showFabrications, setShowFabrications] = useState(false);
@@ -76,6 +83,7 @@ export function YouTubeFinalPlayer({ project, onRecomposeStart }: Props) {
   const [generatingThumb, setGeneratingThumb] = useState(false);
   const [recomposing, setRecomposing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [layerOpen, setLayerOpen] = useState(false);
   const stale = isFinalMp4Stale({
     status: project.status ?? "ready",
     editedAt: project.editedAt ?? null,
@@ -218,6 +226,27 @@ export function YouTubeFinalPlayer({ project, onRecomposeStart }: Props) {
       {/* Playback speed — review long videos at 2x/4x without using the
           native context menu. */}
       <VideoSpeedChips videoRef={videoRef} large className="justify-end" />
+
+      {/* Opening motion layer — finished-cut product, quoted before kickoff. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-violet-400/40 bg-violet-500/10 p-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-violet-200">
+            Opening motion layer
+          </p>
+          <p className="mt-0.5 text-[11px] text-violet-100/75">
+            Wan pass on the scenes that begin in the first 30 seconds. Quoted
+            before anything starts — whole scenes, not a sliced 30s file.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setLayerOpen(true)}
+          data-testid="animate-layer-player-open"
+          className="shrink-0 rounded-lg bg-violet-500/20 px-4 py-2 text-xs font-semibold text-violet-100 transition-colors hover:bg-violet-500/30"
+        >
+          Animate opening
+        </button>
+      </div>
 
       {/* ── Stale-final banner (pinned below video so it's visible but not in the way) */}
       {stale && (
@@ -381,6 +410,15 @@ export function YouTubeFinalPlayer({ project, onRecomposeStart }: Props) {
           projectId={project.id}
           projectTitle={title}
           onClose={() => setShareOpen(false)}
+        />
+      )}
+      {layerOpen && (
+        <AnimateLayerModal
+          projectId={project.id}
+          projectTitle={title}
+          open
+          onClose={() => setLayerOpen(false)}
+          onStarted={onAnimateLayerStart}
         />
       )}
     </div>
