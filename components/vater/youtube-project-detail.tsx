@@ -27,12 +27,14 @@ interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdate: (project: any) => void;
   onRecomposeStart?: (id: string) => void;
+  onAnimateLayerStart?: (id: string) => void;
 }
 
 export function YouTubeProjectDetail({
   project,
   onUpdate,
   onRecomposeStart,
+  onAnimateLayerStart,
 }: Props) {
   const status = project.status as YouTubeProjectStatus;
   const statusLabel = STATUS_LABELS[status] || status;
@@ -40,7 +42,8 @@ export function YouTubeProjectDetail({
     STATUS_COLORS[status] || "text-zinc-400 bg-zinc-400/10";
   const isInFlight = IN_FLIGHT_STATUSES.has(status);
   const isTranscribed = status === "transcribed";
-  const isReady = status === "ready";
+  const isReady =
+    status === "ready" || project.status === "editing";
   const isFailed = status === "failed";
   const isFetching = status === "fetching" || status === "transcribing";
   const isTopicMode = (project.mode || "transcribe") === "topic";
@@ -91,6 +94,11 @@ export function YouTubeProjectDetail({
           project={project}
           onRecomposeStart={
             onRecomposeStart ? () => onRecomposeStart(project.id) : undefined
+          }
+          onAnimateLayerStart={
+            onAnimateLayerStart
+              ? () => onAnimateLayerStart(project.id)
+              : undefined
           }
         />
       ) : isFailed ? (

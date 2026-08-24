@@ -28,6 +28,7 @@ import {
   type CustomerStage,
   type YouTubeProjectStatus,
 } from '@/lib/vater/youtube-status';
+import { AnimateLayerShelf } from './AnimateLayerShelf';
 import { CustomerStageChip } from './CustomerStageChip';
 import { CustomerStageRail } from './CustomerStageRail';
 
@@ -164,7 +165,7 @@ export function Library(): React.ReactElement {
               in_progress: buckets.in_progress.length,
               done: buckets.done.length,
             }}
-            caption="Every video moves queued → in progress → done. Finished ones play below."
+            caption="Every video moves queued → in progress → done. Finished ones play below. Add an opening motion layer on a finished cut."
           />
         </div>
         <button
@@ -271,8 +272,13 @@ export function Library(): React.ReactElement {
               onDelete={handleDelete}
               onRecomposeStart={handleRecomposeStart}
               onPostedChange={handlePostedChange}
+              onAnimateLayerStart={handleRecomposeStart}
             />
           </div>
+          <AnimateLayerShelf
+            projects={ready}
+            onStarted={handleRecomposeStart}
+          />
           <ThumbnailShelf projects={ready} />
           <SendToScheduler projects={ready} />
         </>
