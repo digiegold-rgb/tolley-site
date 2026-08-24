@@ -754,7 +754,7 @@ export function StylePickerModal({
                     placeholder={
                       multi
                         ? `Paste script ${i + 1} here. Multilingual / ElevenLabs voices need your key in Voices → ElevenLabs.`
-                        : 'Paste your script here. Picking a style below starts the project.\n\nMultilingual / ElevenLabs voices need your key connected first — Voices → ElevenLabs. Paste still works either way.'
+                        : 'Paste your script here. Multilingual / ElevenLabs voices need your key in Voices → ElevenLabs. Picking a style below starts the project — paste still works either way.'
                     }
                     style={{
                       width: '100%',
