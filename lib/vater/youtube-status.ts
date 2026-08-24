@@ -119,6 +119,64 @@ export const IN_FLIGHT_STATUSES: ReadonlySet<YouTubeProjectStatus> = new Set([
 ]);
 
 /**
+ * The three stages a customer should be able to read at a glance on
+ * Library and Queue. This is a grouping of the existing statuses — not a
+ * second status enum.
+ *
+ *   queued      → `queued` + `concierge_queued`
+ *   in_progress → other IN_FLIGHT_STATUSES + `concierge_in_progress`
+ *   done        → `ready` (delivered concierge flips to `ready`)
+ *
+ * Chip copy still comes from STATUS_LABELS / CUSTOMER_STAGE_LABELS.
+ * Parked drafts, script review, failed, and `concierge_needs_info` stay
+ * on STATUS_LABELS and are not forced into this journey.
+ */
+export type CustomerStage = "queued" | "in_progress" | "done";
+
+export const CUSTOMER_STAGE_ORDER: readonly CustomerStage[] = [
+  "queued",
+  "in_progress",
+  "done",
+] as const;
+
+export const CUSTOMER_STAGE_LABELS: Record<CustomerStage, string> = {
+  queued: "Queued",
+  in_progress: "In progress",
+  done: "Done",
+};
+
+/** Waiting in line — not yet being worked. Subset of IN_FLIGHT + concierge. */
+export const QUEUED_STATUSES: ReadonlySet<YouTubeProjectStatus> = new Set([
+  "queued",
+  "concierge_queued",
+]);
+
+export function customerStage(
+  status: string | null | undefined,
+): CustomerStage | null {
+  if (!status) return null;
+  if (status === "ready") return "done";
+  if (QUEUED_STATUSES.has(status as YouTubeProjectStatus)) return "queued";
+  if (status === "concierge_in_progress") return "in_progress";
+  // Optimistic Library flip while a re-compose is running — the finished
+  // video stays visible, but the customer should see it is moving again.
+  if (status === "editing") return "in_progress";
+  if (IN_FLIGHT_STATUSES.has(status as YouTubeProjectStatus)) return "in_progress";
+  return null;
+}
+
+/** Specific phrase on the chip — STATUS_LABELS, never a parallel dictionary. */
+export function customerStageDetail(
+  status: string | null | undefined,
+): string | null {
+  if (!status) return null;
+  const known = STATUS_LABELS[status as YouTubeProjectStatus];
+  if (known) return known;
+  if (status === "editing") return "Refreshing final…";
+  return null;
+}
+
+/**
  * Ordered list of run-creation phases used by `<YouTubeCreationProgress>`
  * to render the step indicator. The first two phases are part of the
  * fetch-source pipeline and only appear in transcribe mode.

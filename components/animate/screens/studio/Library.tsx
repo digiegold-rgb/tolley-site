@@ -2,12 +2,13 @@
 
 /* Library tab — wraps the existing YouTubeLibrary lightbox grid.
  *
- * Source: components/vater/youtube-library.tsx (399 lines).
+ * Source: components/vater/youtube-library.tsx.
  * Contract: feature-inventory.md §2.2.
  *
- * Self-loads the project list via GET /api/vater/youtube and filters to
- * status==='ready'. Owns optimistic delete + recompose-start handlers so
- * cards leave the grid immediately when the user acts on them.
+ * Self-loads GET /api/vater/youtube. The playable grid is still
+ * ready/editing, but the page now shows the three customer stages
+ * (queued → in progress → done) via CustomerStageRail + a live
+ * pipeline strip. Owns optimistic delete + recompose-start handlers.
  *
  * Inline styles only. The wrapped YouTubeLibrary keeps its own Tailwind
  * styling — that's intentional, we are NOT re-skinning it here.
@@ -16,14 +17,40 @@
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
-import { RetryError, VCard } from '../../primitives';
+import { RetryError, VBtn, VCard } from '../../primitives';
 import { GlassCard, MicroLabel } from '../../cinema';
 import { LatestUpdateStrip } from '../../LatestUpdate';
 import { YouTubeLibrary } from '@/components/vater/youtube-library';
+import {
+  customerStage,
+  IN_FLIGHT_STATUSES,
+  type CustomerStage,
+  type YouTubeProjectStatus,
+} from '@/lib/vater/youtube-status';
+import { isPostedToYoutube } from '@/lib/vater/youtube-posted';
+import { CustomerStageChip } from './CustomerStageChip';
+import { CustomerStageRail } from './CustomerStageRail';
 import { AnimateLayerShelf } from './AnimateLayerShelf';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyProject = any;
+
+function titleOf(p: AnyProject): string {
+  return p?.publishTitle || p?.sourceTitle || p?.topic || p?.sourceUrl || p?.id || 'Untitled';
+}
+
+function bucketProjects(projects: AnyProject[]): Record<CustomerStage, AnyProject[]> {
+  const queued: AnyProject[] = [];
+  const in_progress: AnyProject[] = [];
+  const done: AnyProject[] = [];
+  for (const p of projects) {
+    const stage = customerStage(p?.status);
+    if (stage === 'queued') queued.push(p);
+    else if (stage === 'in_progress') in_progress.push(p);
+    else if (stage === 'done') done.push(p);
+  }
+  return { queued, in_progress, done };
+}
 
 export function Library(): React.ReactElement {
   const { t } = useTheme();
@@ -50,22 +77,44 @@ export function Library(): React.ReactElement {
     fetchProjects();
   }, [fetchProjects]);
 
-  const unfinishedCount = React.useMemo(
+  const buckets = React.useMemo(() => bucketProjects(projects), [projects]);
+  const needsInfo = React.useMemo(
+    () => projects.filter((p) => p?.status === 'concierge_needs_info'),
+    [projects],
+  );
+  const pipeline = React.useMemo(
+    () => [...buckets.queued, ...buckets.in_progress, ...needsInfo],
+    [buckets, needsInfo],
+  );
+  // Playable grid stays finished videos. A re-compose (`editing`) is also
+  // in the in-progress bucket so the rail moves, but the card stays here
+  // because the scenes + audio are still intact.
+  const ready = React.useMemo(
     () =>
       projects.filter(
-        (p) => p?.status && p.status !== 'ready' && p.status !== 'editing',
-      ).length,
+        (p) => p?.status === 'ready' || p?.status === 'editing',
+      ),
     [projects],
   );
-  const ready = React.useMemo(
-    // Show 'ready' AND 'editing' so a re-animate / re-compose in progress
-    // never hides the project from Library (the underlying scenesJson + audio
-    // are intact even when editedAt > completedAt). Without this filter
-    // expansion, status=='editing' projects vanished after Re-Animate clicks
-    // and looked deleted to users.
-    () => projects.filter((p) => p?.status === 'ready' || p?.status === 'editing'),
-    [projects],
-  );
+  const livePipeline = pipeline.length > 0;
+
+  React.useEffect(() => {
+    if (!livePipeline) return;
+    const i = setInterval(() => {
+      void fetchProjects();
+      buckets.in_progress
+        .filter(
+          (p) =>
+            IN_FLIGHT_STATUSES.has(p.status as YouTubeProjectStatus) &&
+            p.autopilotJobId,
+        )
+        .slice(0, 4)
+        .forEach((p) => {
+          void fetch(`/api/vater/youtube/${p.id}/poll`).catch(() => undefined);
+        });
+    }, 5000);
+    return () => clearInterval(i);
+  }, [livePipeline, fetchProjects, buckets.in_progress]);
 
   /* Delete failures surface as an inline banner (same RetryError pattern as
    * the load error above) — never a native alert(). */
@@ -92,38 +141,32 @@ export function Library(): React.ReactElement {
     );
   }, []);
 
+  const handlePostedChange = React.useCallback((id: string, project: AnyProject) => {
+    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...project } : p)));
+  }, []);
+
   return (
     <div>
       <LatestUpdateStrip />
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
           marginBottom: 16,
         }}
       >
-        <div style={{ fontSize: 13, color: t.textSecondary }}>
-          {ready.length} finished {ready.length === 1 ? 'video' : 'videos'} —
-          play, download, share, add an opening motion layer, or delete.
-          Unfinished projects live in{' '}
-          <button
-            type="button"
-            onClick={() => setRoute('project-history')}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              color: JELLY_TOKENS.brand,
-              cursor: 'pointer',
-              fontSize: 13,
-              fontFamily: 'inherit',
-              textDecoration: 'underline',
+        <div style={{ minWidth: 0, flex: '1 1 280px' }}>
+          <CustomerStageRail
+            counts={{
+              queued: buckets.queued.length,
+              in_progress: buckets.in_progress.length,
+              done: buckets.done.length,
             }}
-          >
-            Project History
-          </button>
-          {unfinishedCount > 0 ? ` (${unfinishedCount} in progress there)` : ''}.
+            caption="Every video moves queued → in progress → done. Finished ones play below — add an opening motion layer anytime."
+          />
         </div>
         <button
           type="button"
@@ -161,6 +204,13 @@ export function Library(): React.ReactElement {
         </div>
       )}
 
+      {!loading && pipeline.length > 0 && (
+        <LibraryPipeline
+          items={pipeline}
+          onOpenQueue={() => setRoute('queue')}
+        />
+      )}
+
       {loading ? (
         <div
           style={{
@@ -172,7 +222,7 @@ export function Library(): React.ReactElement {
         >
           Loading library…
         </div>
-      ) : ready.length === 0 && !error ? (
+      ) : ready.length === 0 && pipeline.length === 0 && !error ? (
         <VCard
           variant="flat"
           style={{
@@ -192,8 +242,8 @@ export function Library(): React.ReactElement {
               lineHeight: 1.6,
             }}
           >
-            Finished videos land here, ready to download or publish. Projects
-            still rendering live on the Queue screen.
+            Finished videos land here when they hit done. Anything still queued
+            or in progress shows on this page and on Queue.
           </div>
           <button
             type="button"
@@ -214,7 +264,7 @@ export function Library(): React.ReactElement {
             Create your first video
           </button>
         </VCard>
-      ) : (
+      ) : ready.length === 0 ? null : (
         <>
           <div className="jelly-legacy">
             <YouTubeLibrary
@@ -222,6 +272,7 @@ export function Library(): React.ReactElement {
               onDelete={handleDelete}
               onRecomposeStart={handleRecomposeStart}
               onAnimateLayerStart={handleRecomposeStart}
+              onPostedChange={handlePostedChange}
             />
           </div>
           <AnimateLayerShelf
@@ -233,6 +284,83 @@ export function Library(): React.ReactElement {
         </>
       )}
     </div>
+  );
+}
+
+function LibraryPipeline({
+  items,
+  onOpenQueue,
+}: {
+  items: AnyProject[];
+  onOpenQueue: () => void;
+}): React.ReactElement {
+  const { t } = useTheme();
+  const { openProjectInEditor } = useRoute();
+
+  return (
+    <GlassCard
+      data-testid="library-pipeline"
+      style={{ marginBottom: 20 }}
+      padding={16}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+          marginBottom: 10,
+        }}
+      >
+        <MicroLabel tone="cyan" size={10.5} tracking="0.22em">
+          Moving now
+        </MicroLabel>
+        <VBtn size="sm" variant="text" onClick={onOpenQueue}>
+          Open Queue →
+        </VBtn>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {items.map((p) => (
+          <div
+            key={p.id}
+            data-testid={`library-pipeline-${p.id}`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              flexWrap: 'wrap',
+              padding: 10,
+              background: t.cardAlt,
+              border: `1px solid ${t.border}`,
+              borderRadius: JELLY_TOKENS.radius.md,
+            }}
+          >
+            <CustomerStageChip status={p.status} />
+            <span
+              style={{
+                flex: '1 1 180px',
+                minWidth: 0,
+                fontSize: 13,
+                color: t.text,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {titleOf(p)}
+            </span>
+            <VBtn
+              size="sm"
+              variant="text"
+              onClick={() => openProjectInEditor(p.id)}
+            >
+              Open project →
+            </VBtn>
+          </div>
+        ))}
+      </div>
+    </GlassCard>
   );
 }
 
@@ -423,6 +551,23 @@ function SendToScheduler({
             >
               {p.publishTitle || p.sourceTitle || p.topic || p.id}
             </div>
+            {isPostedToYoutube(p) && (
+              <span
+                title="Posted to YouTube"
+                style={{
+                  flexShrink: 0,
+                  background: JELLY_TOKENS.success,
+                  color: JELLY_TOKENS.onGradient,
+                  borderRadius: JELLY_TOKENS.radius.xs,
+                  padding: '3px 8px',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  fontFamily: JELLY_TOKENS.font,
+                }}
+              >
+                Posted to YouTube
+              </span>
+            )}
             <button
               type="button"
               onClick={() => void copyLink(p.id)}
