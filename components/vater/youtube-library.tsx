@@ -44,6 +44,8 @@ interface Props {
   onDelete: (id: string) => void;
   /** Optimistically flip status to `editing` so the card leaves the library. */
   onRecomposeStart?: (id: string) => void;
+  /** Same optimistic flip when a Library motion layer is queued. */
+  onAnimateLayerStart?: (id: string) => void;
 }
 
 function formatDuration(seconds: number): string {
@@ -81,7 +83,12 @@ function useOpsRate(): number | null {
   return rate;
 }
 
-export function YouTubeLibrary({ projects, onDelete, onRecomposeStart }: Props) {
+export function YouTubeLibrary({
+  projects,
+  onDelete,
+  onRecomposeStart,
+  onAnimateLayerStart,
+}: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const opsRatePerMinute = useOpsRate();
 
@@ -129,6 +136,9 @@ export function YouTubeLibrary({ projects, onDelete, onRecomposeStart }: Props) 
           onRecomposeStart={() =>
             onRecomposeStart?.(activeProject.id)
           }
+          onAnimateLayerStart={() =>
+            onAnimateLayerStart?.(activeProject.id)
+          }
         />
       )}
     </div>
@@ -139,10 +149,12 @@ function PlayerLightbox({
   project,
   onClose,
   onRecomposeStart,
+  onAnimateLayerStart,
 }: {
   project: LibraryProject;
   onClose: () => void;
   onRecomposeStart?: () => void;
+  onAnimateLayerStart?: () => void;
 }) {
   // ESC-to-close + body-scroll lock while the lightbox is mounted.
   useEffect(() => {
@@ -197,6 +209,7 @@ function PlayerLightbox({
           <YouTubeFinalPlayer
             project={project}
             onRecomposeStart={onRecomposeStart}
+            onAnimateLayerStart={onAnimateLayerStart}
           />
         </div>
       </div>

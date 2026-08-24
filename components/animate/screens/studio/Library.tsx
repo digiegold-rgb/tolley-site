@@ -20,6 +20,7 @@ import { RetryError, VCard } from '../../primitives';
 import { GlassCard, MicroLabel } from '../../cinema';
 import { LatestUpdateStrip } from '../../LatestUpdate';
 import { YouTubeLibrary } from '@/components/vater/youtube-library';
+import { AnimateLayerShelf } from './AnimateLayerShelf';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyProject = any;
@@ -104,7 +105,8 @@ export function Library(): React.ReactElement {
       >
         <div style={{ fontSize: 13, color: t.textSecondary }}>
           {ready.length} finished {ready.length === 1 ? 'video' : 'videos'} —
-          play, download, share, or delete. Unfinished projects live in{' '}
+          play, download, share, add an opening motion layer, or delete.
+          Unfinished projects live in{' '}
           <button
             type="button"
             onClick={() => setRoute('project-history')}
@@ -219,8 +221,13 @@ export function Library(): React.ReactElement {
               projects={ready}
               onDelete={handleDelete}
               onRecomposeStart={handleRecomposeStart}
+              onAnimateLayerStart={handleRecomposeStart}
             />
           </div>
+          <AnimateLayerShelf
+            projects={ready}
+            onStarted={handleRecomposeStart}
+          />
           <ThumbnailShelf projects={ready} />
           <SendToScheduler projects={ready} />
         </>
