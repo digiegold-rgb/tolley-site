@@ -28,15 +28,23 @@ import {
 } from "./elevenlabs-key-gate";
 
 /**
- * `settingsJson` doubles as the home of the Fable 5 Concierge ticket
- * (`engine`, `concierge` — lib/vater/concierge.ts). Those keys are site-side
- * bookkeeping, not render features; the DGX must never see them.
+ * `settingsJson` doubles as the home of site-side bookkeeping that is not a
+ * render feature. The DGX must never see these keys:
+ *   engine / concierge — Fable 5 Concierge ticket (lib/vater/concierge.ts)
+ *   postedToYoutube / postedToYoutubeAt — Library "posted" mark
  */
 function stripServerOwnedFeatures(bag: object): Record<string, unknown> {
-  const { engine: _engine, concierge: _concierge, ...features } =
-    bag as Record<string, unknown>;
+  const {
+    engine: _engine,
+    concierge: _concierge,
+    postedToYoutube: _posted,
+    postedToYoutubeAt: _postedAt,
+    ...features
+  } = bag as Record<string, unknown>;
   void _engine;
   void _concierge;
+  void _posted;
+  void _postedAt;
   return features;
 }
 
