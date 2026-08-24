@@ -31,6 +31,7 @@ import { isSharedVoiceId, voiceDisplayName } from '@/lib/vater/voice-ids';
 import { devError } from '../../log';
 import { VBtn } from '../../primitives';
 import { TINT_BG, TINT_BORDER } from '../tint';
+import { hintVoicesElevenLabsTab } from '../studio/voices-tab-hint';
 
 /* ─── Types ─── */
 
@@ -920,6 +921,7 @@ export function StyleWizardModal({
                     <button
                       type="button"
                       onClick={() => {
+                        hintVoicesElevenLabsTab();
                         onClose();
                         setRoute('voices');
                       }}
