@@ -281,7 +281,7 @@ function LibraryCard({
 
   useEffect(() => {
     setPosted(isPostedToYoutube(project));
-  }, [project.youtubeVideoId, project.publishedAt, project.settingsJson]);
+  }, [project]);
 
   const togglePosted = async () => {
     const next = !posted;

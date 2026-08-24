@@ -5,7 +5,7 @@ import {
   isPostedToYoutube,
   YOUTUBE_POSTED_AT_KEY,
   YOUTUBE_POSTED_KEY,
-} from "./youtube-posted";
+} from "./youtube-posted.ts";
 
 describe("isPostedToYoutube", () => {
   it("treats in-app publish id as posted", () => {
