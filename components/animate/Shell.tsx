@@ -554,7 +554,7 @@ function renderScreen(
     // the key as a backwards-compat alias that lands on Library.
     case 'studio':
     case 'library':
-      return <StudioPanelFrame routeId="library" title="Library" subtitle="Completed videos and ready-to-publish projects."><Library /></StudioPanelFrame>;
+      return <StudioPanelFrame routeId="library" title="Library" subtitle="Queued → in progress → done. Play the ones that have landed."><Library /></StudioPanelFrame>;
     case 'shorts-library':
       return <StudioPanelFrame routeId="shorts-library" title="Shorts Library" subtitle="Chop any finished video into short-form segments and post them anywhere."><ShortsLibrary /></StudioPanelFrame>;
     case 'voices':
@@ -562,7 +562,7 @@ function renderScreen(
     case 'feeds':
       return <StudioPanelFrame routeId="feeds" title="Feeds" subtitle="RSS feeds — auto-pipeline new items into projects."><Feeds /></StudioPanelFrame>;
     case 'queue':
-      return <StudioPanelFrame routeId="queue" title="Queue" subtitle="In-flight pipeline jobs — transcribing, scripting, animating."><Queue /></StudioPanelFrame>;
+      return <StudioPanelFrame routeId="queue" title="Queue" subtitle="Queued → in progress → done. Watch each job move."><Queue /></StudioPanelFrame>;
     case 'recent':
       return <StudioPanelFrame routeId="recent" title="Recent" subtitle="Recently-completed and failed projects."><Recent /></StudioPanelFrame>;
     case 'autopilot': return <AutopilotScreen />;
