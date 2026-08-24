@@ -30,6 +30,7 @@ import {
 import { isPostedToYoutube } from '@/lib/vater/youtube-posted';
 import { CustomerStageChip } from './CustomerStageChip';
 import { CustomerStageRail } from './CustomerStageRail';
+import { AnimateLayerShelf } from './AnimateLayerShelf';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyProject = any;
@@ -164,7 +165,7 @@ export function Library(): React.ReactElement {
               in_progress: buckets.in_progress.length,
               done: buckets.done.length,
             }}
-            caption="Every video moves queued → in progress → done. Finished ones play below."
+            caption="Every video moves queued → in progress → done. Finished ones play below — add an opening motion layer anytime."
           />
         </div>
         <button
@@ -270,9 +271,14 @@ export function Library(): React.ReactElement {
               projects={ready}
               onDelete={handleDelete}
               onRecomposeStart={handleRecomposeStart}
+              onAnimateLayerStart={handleRecomposeStart}
               onPostedChange={handlePostedChange}
             />
           </div>
+          <AnimateLayerShelf
+            projects={ready}
+            onStarted={handleRecomposeStart}
+          />
           <ThumbnailShelf projects={ready} />
           <SendToScheduler projects={ready} />
         </>
