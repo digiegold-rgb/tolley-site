@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.6.1';
+export const APP_VERSION = '1.8';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -40,12 +40,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '1.6.1',
+    version: '1.8',
     date: '2026-08-24',
     title: 'Your own script is now the obvious first click',
     items: [
       'Starting a video from a script you already have is a big, unmistakable choice next to Jelly writing it — stacked on a phone, with a real Paste my script button.',
       'Your words are still read verbatim. After you paste, you pick a Style for the voice, same as before.',
+    ],
+  },
+  {
+    version: '1.7',
+    date: '2026-08-24',
+    title: 'Mark videos as posted to YouTube',
+    items: [
+      'Finished Library videos show a Posted to YouTube badge after you publish in-app, or after you mark them yourself.',
+      'Mark or unmark any finished video — useful when you uploaded with VidIQ or YouTube Studio instead of Jelly.',
     ],
   },
   {

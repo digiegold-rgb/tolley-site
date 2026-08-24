@@ -32,6 +32,7 @@ import { ON_GRADIENT_PLATE } from '../tint';
 import { VBtn } from '../../primitives';
 import { EnginePicker, type ConciergeEngine } from '../../engine/EnginePicker';
 import { RenderConfirmModal, type RenderManifest } from '../../engine/RenderConfirmModal';
+import { hintVoicesElevenLabsTab } from '../studio/voices-tab-hint';
 import { quickEstimateUsd, quoteMinutes, ESTIMATE_WORDS_PER_MINUTE } from '@/lib/vater/billing/estimate';
 import {
   BillingBlockModal,
@@ -683,8 +684,8 @@ export function StylePickerModal({
                     rows={multi ? 7 : 10}
                     placeholder={
                       multi
-                        ? `Paste script ${i + 1} here.`
-                        : 'Paste your script here. Picking a Style below starts the project with these words.'
+                        ? `Paste script ${i + 1} here. Multilingual / ElevenLabs voices need your key in Voices → ElevenLabs.`
+                        : 'Paste your script here. Multilingual / ElevenLabs voices need your key in Voices → ElevenLabs. Picking a style below starts the project — paste still works either way.'
                     }
                     style={{
                       width: '100%',
@@ -715,6 +716,42 @@ export function StylePickerModal({
                   </div>
                 </div>
               ))}
+
+              <div
+                data-testid="own-script-elevenlabs-hint"
+                style={{
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  color: t.textSecondary,
+                  marginBottom: 12,
+                }}
+              >
+                Multilingual or ElevenLabs voices need your own key connected.{' '}
+                <button
+                  type="button"
+                  data-testid="own-script-open-voices"
+                  onClick={() => {
+                    hintVoicesElevenLabsTab();
+                    onClose();
+                    setRoute('voices');
+                  }}
+                  disabled={submittingOwn}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    color: t.link,
+                    cursor: submittingOwn ? 'not-allowed' : 'pointer',
+                    fontSize: 12,
+                    fontFamily: JELLY_TOKENS.font,
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Voices → ElevenLabs
+                </button>
+                {' '}
+                — this doesn&apos;t block pasting.
+              </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 {scripts.length < MAX_BATCH_SCRIPTS && (
