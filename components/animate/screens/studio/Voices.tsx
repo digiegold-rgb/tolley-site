@@ -25,6 +25,7 @@ import { YouTubePopularVoices } from '@/components/vater/youtube-popular-voices'
 import { VoiceTuner } from './VoiceTuner';
 import { RetryError } from '../../primitives';
 import { ElevenLabsConnect } from './ElevenLabsConnect';
+import { consumeVoicesTabHint } from './voices-tab-hint';
 import { TINT_BG, TINT_BORDER } from '../tint';
 
 interface ElevenVoice {
@@ -44,6 +45,12 @@ export function Voices(): React.ReactElement {
   /* "You have no key" is not an error — the Connect card directly above is the
    * answer, so repeating the DGX's instructions in red under it just shouts. */
   const [notConnected, setNotConnected] = React.useState(false);
+
+  // StylePicker / StyleWizard "Voices → ElevenLabs" CTAs set a one-shot hint
+  // so this screen opens on the connect card, not the clone list.
+  React.useEffect(() => {
+    if (consumeVoicesTabHint() === 'elevenlabs') setTab('elevenlabs');
+  }, []);
 
   // Loaded once, lazily — nobody pays for opening a tab.
   React.useEffect(() => {
