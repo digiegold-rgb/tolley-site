@@ -20,6 +20,7 @@ import { RetryError, VCard } from '../../primitives';
 import { GlassCard, MicroLabel } from '../../cinema';
 import { LatestUpdateStrip } from '../../LatestUpdate';
 import { YouTubeLibrary } from '@/components/vater/youtube-library';
+import { isPostedToYoutube } from '@/lib/vater/youtube-posted';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyProject = any;
@@ -89,6 +90,10 @@ export function Library(): React.ReactElement {
     setProjects((prev) =>
       prev.map((p) => (p.id === id ? { ...p, status: 'editing' } : p)),
     );
+  }, []);
+
+  const handlePostedChange = React.useCallback((id: string, project: AnyProject) => {
+    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...project } : p)));
   }, []);
 
   return (
@@ -219,6 +224,7 @@ export function Library(): React.ReactElement {
               projects={ready}
               onDelete={handleDelete}
               onRecomposeStart={handleRecomposeStart}
+              onPostedChange={handlePostedChange}
             />
           </div>
           <ThumbnailShelf projects={ready} />
@@ -416,6 +422,23 @@ function SendToScheduler({
             >
               {p.publishTitle || p.sourceTitle || p.topic || p.id}
             </div>
+            {isPostedToYoutube(p) && (
+              <span
+                title="Posted to YouTube"
+                style={{
+                  flexShrink: 0,
+                  background: JELLY_TOKENS.success,
+                  color: JELLY_TOKENS.onGradient,
+                  borderRadius: JELLY_TOKENS.radius.xs,
+                  padding: '3px 8px',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  fontFamily: JELLY_TOKENS.font,
+                }}
+              >
+                Posted to YouTube
+              </span>
+            )}
             <button
               type="button"
               onClick={() => void copyLink(p.id)}
