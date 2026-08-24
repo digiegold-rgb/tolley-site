@@ -58,7 +58,9 @@ export function CustomerStageChip({
   const restatesStage =
     !detail ||
     !stageWord ||
-    detail.toLowerCase().replace(/\.+$/, '') === stageWord.toLowerCase();
+    detail.toLowerCase().replace(/\.+$/, '') === stageWord.toLowerCase() ||
+    // Done = ready. STATUS_LABELS.ready is "Ready" — don't print both.
+    (stage === 'done' && status === 'ready');
   const showDetail = !compact && !!detail && !restatesStage;
 
   const label = stageWord ?? detail ?? STATUS_LABELS[status as YouTubeProjectStatus] ?? status ?? '—';
