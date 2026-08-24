@@ -18,7 +18,47 @@ const emailHost = process.env.EMAIL_SERVER_HOST || "localhost";
 const emailUser = process.env.EMAIL_SERVER_USER || "";
 const emailPass = process.env.EMAIL_SERVER_PASSWORD || "";
 const emailFrom = process.env.EMAIL_FROM || "T-Agent <support@tolley.io>";
-const authUrl = process.env.AUTH_URL || process.env.NEXTAUTH_URL || "";
+
+/**
+ * try-preview SSO: Vercel preview hosts fail Auth.js host checks when
+ * AUTH_URL/NEXTAUTH_URL is pinned to production (tolley.io) and trustHost
+ * is unset. trustHost accepts the preview Host header; this AUTH_URL
+ * override makes magic-link emails and CSRF match the preview host.
+ * Production (VERCEL_ENV === "production") keeps the pinned URL.
+ */
+function resolveAuthUrl(): string {
+  const pinned = (process.env.AUTH_URL || process.env.NEXTAUTH_URL || "").trim();
+  if (process.env.VERCEL_ENV === "production") {
+    return pinned;
+  }
+
+  const vercelUrl = (process.env.VERCEL_URL || "").trim().replace(/\/+$/, "");
+  const usePreviewHost =
+    Boolean(vercelUrl) &&
+    (process.env.VERCEL_ENV === "preview" || process.env.VERCEL === "1");
+
+  if (usePreviewHost) {
+    return `https://${vercelUrl}`;
+  }
+
+  return pinned;
+}
+
+const authUrl = resolveAuthUrl();
+
+// Auth.js v5 reads AUTH_URL / NEXTAUTH_URL when minting callback + magic-link
+// origins. On preview, overwrite a production-pinned value so CSRF and emailed
+// links stay on this deployment.
+if (
+  process.env.VERCEL_ENV !== "production" &&
+  authUrl &&
+  (process.env.VERCEL_ENV === "preview" ||
+    (process.env.VERCEL === "1" && process.env.VERCEL_URL))
+) {
+  process.env.AUTH_URL = authUrl;
+  process.env.NEXTAUTH_URL = authUrl;
+}
+
 const authSecret =
   process.env.AUTH_SECRET ||
   (process.env.NODE_ENV !== "production"
@@ -159,6 +199,8 @@ If you did not request this email, you can safely ignore it.`;
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // try-preview SSO — see resolveAuthUrl() above.
+  trustHost: true,
   secret: authSecret,
   adapter: PrismaAdapter(prisma),
   pages: {
