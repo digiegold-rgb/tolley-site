@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   IN_FLIGHT_STATUSES,
   STATUS_LABELS,
+  customerStage,
   type YouTubeProjectStatus,
 } from "@/lib/vater/youtube-status";
 import { useToast } from "@/components/ui/Toast";
@@ -296,32 +297,39 @@ function ActiveRow({
   onRetry: () => void;
 }) {
   const status = project.status as YouTubeProjectStatus;
+  const stage = customerStage(status);
   const isFailed = status === "failed";
-  const isInFlight = IN_FLIGHT_STATUSES.has(status);
-  const emoji = isFailed ? "❌" : isInFlight ? "⏳" : "✅";
+  const isQueued = stage === "queued";
+  const isWorking = stage === "in_progress" || status === "concierge_needs_info";
+  const isDone = stage === "done";
+  const emoji = isFailed ? "❌" : isQueued ? "⏸" : isWorking ? "⏳" : "✅";
   const label = STATUS_LABELS[status] ?? status;
   const display =
     project.sourceTitle?.trim() || project.sourceUrl?.trim() || "(no URL)";
 
   const rowClass = isFailed
     ? "border-red-500/40 bg-red-500/10"
-    : isInFlight
-      ? "border-sky-500/40 bg-sky-500/5 animate-pulse"
+    : isQueued
+      ? "border-violet-500/40 bg-violet-500/5"
+      : isWorking
+        ? "border-sky-500/40 bg-sky-500/5 animate-pulse"
       : "border-emerald-500/40 bg-emerald-500/5";
   const textClass = isFailed
     ? "text-red-200"
-    : isInFlight
-      ? "text-sky-200"
+    : isQueued
+      ? "text-violet-200"
+      : isWorking
+        ? "text-sky-200"
       : "text-emerald-200";
 
   const retryHoverClass = isFailed
     ? "text-red-300 hover:bg-red-500/20 hover:text-amber-300"
-    : isInFlight
+    : isQueued || isWorking
       ? "text-sky-300/70 hover:bg-sky-500/20 hover:text-sky-200"
       : "text-emerald-300/70 hover:bg-emerald-500/20 hover:text-emerald-200";
   const retryTitle = isFailed
     ? "Retry this failed import"
-    : isInFlight
+    : isQueued || isWorking
       ? "Re-queue this URL (creates a fresh project)"
       : "Redo with a fresh generation";
 
@@ -333,6 +341,21 @@ function ActiveRow({
       <span className="text-sm leading-none">{emoji}</span>
       <span className={`flex-1 truncate text-xs font-medium ${textClass}`}>
         {display}
+      </span>
+      <span
+        data-testid="import-tracker-stage"
+        data-stage={stage ?? status}
+        className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${
+          isFailed
+            ? "border-red-400/40 text-red-200"
+            : isQueued
+              ? "border-violet-400/40 text-violet-200"
+              : isWorking
+                ? "border-sky-400/40 text-sky-200"
+                : "border-emerald-400/40 text-emerald-200"
+        }`}
+      >
+        {isFailed ? "Failed" : isQueued ? "Queued" : isWorking ? "In progress" : isDone ? "Done" : label}
       </span>
       <button
         onClick={onRetry}

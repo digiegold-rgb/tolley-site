@@ -1,12 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import { fetchVaterCapabilities } from "@/components/animate/tier-context";
 import { YouTubeFinalPlayer } from "./youtube-final-player";
 import { YouTubeShareModal } from "./youtube-share-modal";
 import { getStylePreset } from "@/lib/vater/style-presets";
-import { isFinalMp4Stale, finalVideoPlaybackUrl } from "@/lib/vater/youtube-status";
+import {
+  isFinalMp4Stale,
+  finalVideoPlaybackUrl,
+  customerStage,
+  CUSTOMER_STAGE_LABELS,
+  customerStageDetail,
+} from "@/lib/vater/youtube-status";
 import {
   parseVideoCost,
   formatUsd,
@@ -51,6 +57,31 @@ function formatDuration(seconds: number): string {
   const m = Math.floor(safe / 60);
   const s = safe % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+const STAGE_CHIP_CLASS: Record<string, string> = {
+  queued: "text-violet-200 bg-violet-500/20 border-violet-400/50",
+  in_progress: "text-sky-200 bg-sky-500/20 border-sky-400/50",
+  done: "text-emerald-200 bg-emerald-500/20 border-emerald-400/50",
+};
+
+function LibraryStageChip({ status }: { status: string }): ReactElement {
+  const stage = customerStage(status);
+  const label = stage
+    ? CUSTOMER_STAGE_LABELS[stage]
+    : customerStageDetail(status) ?? status;
+  const cls = (stage && STAGE_CHIP_CLASS[stage]) ||
+    "text-zinc-200 bg-zinc-500/20 border-zinc-500/40";
+  return (
+    <span
+      data-testid="library-card-stage"
+      data-stage={stage ?? status}
+      title={customerStageDetail(status) ?? label}
+      className={`absolute left-2 top-2 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider backdrop-blur-sm ${cls}`}
+    >
+      {label}
+    </span>
+  );
 }
 
 /** Ops rate comes from server config (VATER_OPS_RATE_PER_MIN), never a
@@ -352,6 +383,8 @@ function LibraryCard({
             {preset?.name ?? "Cinematic"}
           </span>
         </div>
+
+        <LibraryStageChip status={project.status} />
 
         {/* Stale-final badge — scenes edited after last compose */}
         {stale && (
