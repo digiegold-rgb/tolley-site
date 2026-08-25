@@ -2307,6 +2307,7 @@ model WorkerHeartbeat {
 model BulkIngestJob {
   id               String    @id @default(cuid())
   batchId          String
+  idx              Int       @default(0)
   status           String    @default("queued")
   photoUrls        String[]
   productId        String?
@@ -2323,6 +2324,7 @@ model BulkIngestJob {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
+  @@unique([batchId, idx])
   @@index([status, nextAttemptAt])
   @@index([batchId])
 }

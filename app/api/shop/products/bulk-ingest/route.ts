@@ -7,6 +7,13 @@ import { validateShopAdmin } from "@/lib/shop-auth";
 export const runtime = "nodejs";
 
 const BodySchema = z.object({
+  // Client-generated batch id makes resubmits idempotent: if the response to a
+  // successful POST is lost (flaky wifi), the retry reuses the same id and the
+  // server returns the existing batch instead of creating a duplicate.
+  batchId: z
+    .string()
+    .regex(/^batch_[A-Za-z0-9_-]{16,64}$/)
+    .optional(),
   groups: z
     .array(
       z.object({
@@ -41,14 +48,33 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const batchId = genId("batch");
-  const rows = parsed.groups.map((g) => ({
+  const batchId = parsed.batchId ?? genId("batch");
+
+  if (parsed.batchId) {
+    const existing = await prisma.bulkIngestJob.findMany({
+      where: { batchId },
+      select: { id: true },
+    });
+    if (existing.length > 0) {
+      return NextResponse.json({
+        batchId,
+        jobIds: existing.map((r) => r.id),
+        count: existing.length,
+        deduped: true,
+      });
+    }
+  }
+
+  const rows = parsed.groups.map((g, i) => ({
     id: genId("bij"),
     batchId,
+    idx: i,
     photoUrls: g.photoUrls,
   }));
 
-  await prisma.bulkIngestJob.createMany({ data: rows });
+  // skipDuplicates + @@unique([batchId, idx]) makes even a concurrent
+  // double-POST race safe — the second insert no-ops per row.
+  await prisma.bulkIngestJob.createMany({ data: rows, skipDuplicates: true });
 
   return NextResponse.json({
     batchId,

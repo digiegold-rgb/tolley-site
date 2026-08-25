@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Image from "next/image";
 import { PhotoSourcePicker } from "./PhotoSourcePicker";
+import { makeThumbnail } from "@/lib/shop/image-thumb";
 
 export interface CapturedPhoto {
   id: string;
   file: File;
+  /** Small JPEG dataURL thumbnail — NOT a blob: URL. Full-res stays in `file`. */
   previewUrl: string;
 }
 
@@ -31,17 +33,19 @@ export function MultiPhotoCapture({
     if (!fileList || fileList.length === 0) return;
     const remaining = maxPhotos - photos.length;
     const incoming = Array.from(fileList).slice(0, remaining);
-    const next: CapturedPhoto[] = incoming.map((file) => ({
-      id: makeId(),
-      file,
-      previewUrl: URL.createObjectURL(file),
-    }));
-    onChange([...photos, ...next]);
+    void (async () => {
+      const next: CapturedPhoto[] = await Promise.all(
+        incoming.map(async (file) => ({
+          id: makeId(),
+          file,
+          previewUrl: await makeThumbnail(file),
+        }))
+      );
+      onChange([...photos, ...next]);
+    })();
   }
 
   function removePhoto(id: string) {
-    const photo = photos.find((p) => p.id === id);
-    if (photo) URL.revokeObjectURL(photo.previewUrl);
     onChange(photos.filter((p) => p.id !== id));
   }
 

@@ -4,8 +4,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { MultiPhotoCapture, type CapturedPhoto } from "@/components/shop/MultiPhotoCapture";
 import { uploadShopPhoto } from "@/lib/shop/upload-client";
+import {
+  CURRENT_DRAFT_ID,
+  clearAllDrafts,
+  clearPendingBatch,
+  deleteDraft,
+  loadDrafts,
+  loadPendingBatch,
+  requestPersistentStorage,
+  saveDraft,
+  savePendingBatch,
+  type DraftGroup,
+} from "@/lib/shop/draft-store";
 
 type Stage = "auth" | "compose" | "uploading" | "polling" | "done";
+type PollProblem = "session" | "unreachable" | "notfound" | null;
 
 interface QueuedGroup {
   id: string;
@@ -43,6 +56,44 @@ function shortId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
+function newBatchId(): string {
+  return `batch_${crypto.randomUUID().replace(/-/g, "")}`;
+}
+
+function groupToDraft(id: string, photos: CapturedPhoto[]): DraftGroup {
+  return {
+    id,
+    createdAt: Date.now(),
+    photos: photos.map((p) => ({
+      id: p.id,
+      blob: p.file,
+      name: p.file.name || "photo.jpg",
+      type: p.file.type || "image/jpeg",
+      thumbDataUrl: p.previewUrl,
+    })),
+  };
+}
+
+function draftToPhotos(g: DraftGroup): CapturedPhoto[] {
+  return g.photos.map((p) => ({
+    id: p.id,
+    file: new File([p.blob], p.name, { type: p.type }),
+    previewUrl: p.thumbDataUrl,
+  }));
+}
+
+async function uploadWithRetry(file: File): Promise<string> {
+  const delays = [1000, 3000];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await uploadShopPhoto(file);
+    } catch (err) {
+      if (attempt >= delays.length) throw err;
+      await new Promise((r) => setTimeout(r, delays[attempt]));
+    }
+  }
+}
+
 function statusPill(job: BatchJob): { label: string; color: string } {
   switch (job.status) {
     case "queued":
@@ -69,6 +120,13 @@ export default function BulkAddPage() {
   const [currentPhotos, setCurrentPhotos] = useState<CapturedPhoto[]>([]);
   const [queue, setQueue] = useState<QueuedGroup[]>([]);
 
+  // Drafts safety net
+  const [restoredNotice, setRestoredNotice] = useState("");
+  const [persistWarning, setPersistWarning] = useState("");
+  const bootDoneRef = useRef(false);
+  const persistRequestedRef = useRef(false);
+  const currentSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number }>({
     done: 0,
     total: 0,
@@ -78,9 +136,121 @@ export default function BulkAddPage() {
   const [worker, setWorker] = useState<WorkerStatus | null>(null);
   const [pollingSince, setPollingSince] = useState<number | null>(null);
   const [jobs, setJobs] = useState<BatchJob[]>([]);
+  const [pollProblem, setPollProblem] = useState<PollProblem>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollFailuresRef = useRef(0);
+  const draftsClearedRef = useRef(false);
 
-  // Check auth on mount
+  const startPolling = useCallback((id: string) => {
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    pollFailuresRef.current = 0;
+    const tick = async () => {
+      let failed = false;
+      try {
+        const res = await fetch(`/api/shop/products/bulk-ingest/${id}`, {
+          cache: "no-store",
+        });
+        if (res.status === 401) {
+          // Session expired mid-poll. The batch is fine server-side.
+          setPollProblem("session");
+          return;
+        }
+        if (res.status === 404) {
+          // Batch never landed — stop polling; drafts are still in IndexedDB.
+          setPollProblem("notfound");
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          pollTimerRef.current = null;
+          return;
+        }
+        if (!res.ok) {
+          failed = true;
+        } else {
+          const data = (await res.json()) as { jobs: BatchJob[]; worker?: WorkerStatus };
+          pollFailuresRef.current = 0;
+          setPollProblem(null);
+          // Server has the batch — NOW it's safe to drop the local safety copies.
+          if (!draftsClearedRef.current) {
+            draftsClearedRef.current = true;
+            void clearAllDrafts().catch(() => {});
+            void clearPendingBatch().catch(() => {});
+          }
+          setJobs(data.jobs);
+          if (data.worker) setWorker(data.worker);
+          const allDone = data.jobs.every(
+            (j) => j.status === "drafted" || j.status === "failed"
+          );
+          if (allDone) {
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null;
+            setStage("done");
+          }
+          return;
+        }
+      } catch {
+        failed = true;
+      }
+      if (failed) {
+        pollFailuresRef.current += 1;
+        if (pollFailuresRef.current >= 3) setPollProblem("unreachable");
+      }
+    };
+    void tick();
+    pollTimerRef.current = setInterval(tick, 4000);
+  }, []);
+
+  // Restore drafts / pending batch from IndexedDB. Runs after auth succeeds.
+  const restoreFromStore = useCallback(async () => {
+    try {
+      const pending = await loadPendingBatch();
+      if (pending) {
+        try {
+          const res = await fetch(`/api/shop/products/bulk-ingest/${pending.batchId}`, {
+            cache: "no-store",
+          });
+          if (res.ok) {
+            // The submit DID land last time — resume watching it.
+            await clearAllDrafts().catch(() => {});
+            await clearPendingBatch().catch(() => {});
+            draftsClearedRef.current = true;
+            setBatchId(pending.batchId);
+            setStage("polling");
+            setPollingSince(Date.now());
+            startPolling(pending.batchId);
+            bootDoneRef.current = true;
+            return;
+          }
+          if (res.status === 404) {
+            // Submit never landed — forget the pending marker, keep the drafts.
+            await clearPendingBatch().catch(() => {});
+          }
+          // Other statuses: keep pending; a resubmit reuses its batchId (idempotent).
+        } catch {
+          // Offline: keep everything, fall through to compose.
+        }
+      }
+      const drafts = await loadDrafts();
+      const current = drafts.find((d) => d.id === CURRENT_DRAFT_ID);
+      const groups = drafts.filter((d) => d.id !== CURRENT_DRAFT_ID);
+      if (current) setCurrentPhotos(draftToPhotos(current));
+      if (groups.length > 0) {
+        setQueue(groups.map((g) => ({ id: g.id, photos: draftToPhotos(g) })));
+      }
+      const restoredCount = groups.length + (current ? 1 : 0);
+      if (restoredCount > 0) {
+        setRestoredNotice(
+          `Restored ${restoredCount} saved product${restoredCount === 1 ? "" : "s"} from your last session.`
+        );
+      }
+    } catch {
+      setPersistWarning(
+        "This browser can't save drafts locally — don't close this tab until you submit."
+      );
+    }
+    bootDoneRef.current = true;
+    setStage("compose");
+  }, [startPolling]);
+
+  // Boot: auth check → pending-batch reconciliation → draft rehydration
   useEffect(() => {
     void (async () => {
       try {
@@ -88,7 +258,7 @@ export default function BulkAddPage() {
         if (res.ok) {
           const data = await res.json();
           if (data.authenticated) {
-            setStage("compose");
+            await restoreFromStore();
             return;
           }
         }
@@ -97,18 +267,84 @@ export default function BulkAddPage() {
       }
       setStage("auth");
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cleanup blob URLs on unmount
+  // Autosave the in-progress (unqueued) group — survives camera round-trips.
+  useEffect(() => {
+    if (!bootDoneRef.current) return;
+    if (currentSaveTimerRef.current) clearTimeout(currentSaveTimerRef.current);
+    currentSaveTimerRef.current = setTimeout(() => {
+      if (currentPhotos.length === 0) {
+        void deleteDraft(CURRENT_DRAFT_ID).catch(() => {});
+      } else {
+        void saveDraft(groupToDraft(CURRENT_DRAFT_ID, currentPhotos)).catch(() => {
+          setPersistWarning(
+            "Couldn't save this draft to your device — don't close this tab until you submit."
+          );
+        });
+      }
+    }, 500);
+    return () => {
+      if (currentSaveTimerRef.current) clearTimeout(currentSaveTimerRef.current);
+    };
+  }, [currentPhotos]);
+
+  // Two tabs / camera-return reconciliation: re-read the store when we come back.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!bootDoneRef.current || stage !== "compose") return;
+      void (async () => {
+        try {
+          const pending = await loadPendingBatch();
+          if (pending) {
+            const res = await fetch(`/api/shop/products/bulk-ingest/${pending.batchId}`, {
+              cache: "no-store",
+            });
+            if (res.ok) {
+              await clearAllDrafts().catch(() => {});
+              await clearPendingBatch().catch(() => {});
+              draftsClearedRef.current = true;
+              setQueue([]);
+              setCurrentPhotos([]);
+              setBatchId(pending.batchId);
+              setStage("polling");
+              setPollingSince(Date.now());
+              startPolling(pending.batchId);
+              return;
+            }
+          }
+          const drafts = await loadDrafts();
+          const groups = drafts.filter((d) => d.id !== CURRENT_DRAFT_ID);
+          setQueue(groups.map((g) => ({ id: g.id, photos: draftToPhotos(g) })));
+        } catch {
+          // best-effort
+        }
+      })();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [stage, startPolling]);
+
+  // Warn before leaving ONLY while state is genuinely unpersisted. Once drafts
+  // are in IndexedDB a reload is harmless — that's the real protection.
+  useEffect(() => {
+    const dirty = stage === "uploading" || persistWarning !== "";
+    if (!dirty) return;
+    const h = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [stage, persistWarning]);
+
+  // Cleanup poll timer on unmount
   useEffect(() => {
     return () => {
-      for (const g of queue) {
-        for (const p of g.photos) URL.revokeObjectURL(p.previewUrl);
-      }
-      for (const p of currentPhotos) URL.revokeObjectURL(p.previewUrl);
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handlePinSubmit(e: React.FormEvent) {
@@ -124,70 +360,81 @@ export default function BulkAddPage() {
         setPinError("Wrong PIN");
         return;
       }
-      setStage("compose");
+      if (pollProblem === "session" && batchId) {
+        // Re-auth from the polling screen — just resume.
+        setPollProblem(null);
+        return;
+      }
+      await restoreFromStore();
     } catch {
       setPinError("Network error");
     }
   }
 
-  function queueCurrentGroup() {
+  async function queueCurrentGroup() {
     if (currentPhotos.length === 0) return;
-    setQueue((prev) => [...prev, { id: shortId(), photos: currentPhotos }]);
+    const id = shortId();
+    try {
+      await saveDraft(groupToDraft(id, currentPhotos));
+      await deleteDraft(CURRENT_DRAFT_ID).catch(() => {});
+      if (!persistRequestedRef.current) {
+        persistRequestedRef.current = true;
+        void requestPersistentStorage();
+      }
+    } catch {
+      setPersistWarning(
+        "Couldn't save this draft to your device — don't close this tab until you submit."
+      );
+    }
+    setQueue((prev) => [...prev, { id, photos: currentPhotos }]);
     setCurrentPhotos([]);
   }
 
   function removeGroup(id: string) {
-    setQueue((prev) => {
-      const target = prev.find((g) => g.id === id);
-      if (target) {
-        for (const p of target.photos) URL.revokeObjectURL(p.previewUrl);
-      }
-      return prev.filter((g) => g.id !== id);
-    });
+    void deleteDraft(id).catch(() => {});
+    setQueue((prev) => prev.filter((g) => g.id !== id));
   }
 
   const totalGroups = queue.length + (currentPhotos.length > 0 ? 1 : 0);
-
-  const startPolling = useCallback((id: string) => {
-    if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-    const tick = async () => {
-      try {
-        const res = await fetch(`/api/shop/products/bulk-ingest/${id}`, {
-          cache: "no-store",
-        });
-        if (!res.ok) return;
-        const data = (await res.json()) as { jobs: BatchJob[]; worker?: WorkerStatus };
-        setJobs(data.jobs);
-        if (data.worker) setWorker(data.worker);
-        const allDone = data.jobs.every(
-          (j) => j.status === "drafted" || j.status === "failed"
-        );
-        if (allDone) {
-          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-          pollTimerRef.current = null;
-          setStage("done");
-        }
-      } catch {
-        // swallow — next tick retries
-      }
-    };
-    void tick();
-    pollTimerRef.current = setInterval(tick, 4000);
-  }, []);
 
   async function handleSubmit() {
     setError("");
     // Auto-flush in-progress group on submit
     let groupsToSubmit = [...queue];
     if (currentPhotos.length > 0) {
-      groupsToSubmit = [...groupsToSubmit, { id: shortId(), photos: currentPhotos }];
+      const id = shortId();
+      try {
+        await saveDraft(groupToDraft(id, currentPhotos));
+        await deleteDraft(CURRENT_DRAFT_ID).catch(() => {});
+      } catch {
+        // keep going — in-memory copy still submits
+      }
+      groupsToSubmit = [...groupsToSubmit, { id, photos: currentPhotos }];
+      setQueue(groupsToSubmit);
+      setCurrentPhotos([]);
     }
     if (groupsToSubmit.length === 0) {
       setError("Add photos for at least one product first.");
       return;
     }
 
+    // Idempotent submit: reuse a pending batchId if one exists (a previous
+    // submit whose response was lost), otherwise mint one client-side.
+    let clientBatchId = newBatchId();
+    try {
+      const pending = await loadPendingBatch();
+      if (pending) clientBatchId = pending.batchId;
+      await savePendingBatch({
+        batchId: clientBatchId,
+        submittedAt: Date.now(),
+        groupIds: groupsToSubmit.map((g) => g.id),
+      });
+    } catch {
+      // IDB unavailable — proceed; the POST itself is still deduped server-side
+    }
+
     setStage("uploading");
+    draftsClearedRef.current = false;
     const totalPhotos = groupsToSubmit.reduce((sum, g) => sum + g.photos.length, 0);
     setUploadProgress({ done: 0, total: totalPhotos });
 
@@ -196,7 +443,7 @@ export default function BulkAddPage() {
       for (const g of groupsToSubmit) {
         const urls: string[] = [];
         for (const p of g.photos) {
-          const url = await uploadShopPhoto(p.file);
+          const url = await uploadWithRetry(p.file);
           urls.push(url);
           setUploadProgress((prev) => ({ done: prev.done + 1, total: prev.total }));
         }
@@ -206,28 +453,28 @@ export default function BulkAddPage() {
       const res = await fetch("/api/shop/products/bulk-ingest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groups: groupsWithUrls }),
+        body: JSON.stringify({ batchId: clientBatchId, groups: groupsWithUrls }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.detail || body.error || `Submit failed: ${res.status}`);
       }
-      const { batchId: newBatchId } = (await res.json()) as { batchId: string };
-      setBatchId(newBatchId);
+      const { batchId: newId } = (await res.json()) as { batchId: string };
+      setBatchId(newId);
 
-      // Clean up local previews — they're on the server now
-      for (const g of groupsToSubmit) {
-        for (const p of g.photos) URL.revokeObjectURL(p.previewUrl);
-      }
+      // Do NOT clear local drafts yet — they're dropped on the first successful
+      // poll, i.e. once the server has confirmably stored the batch.
       setQueue([]);
       setCurrentPhotos([]);
+      setRestoredNotice("");
 
       setStage("polling");
       setPollingSince(Date.now());
-      startPolling(newBatchId);
+      startPolling(newId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Submit failed");
       setStage("compose");
+      // queue + IndexedDB drafts are untouched — nothing lost, safe to retry
     }
   }
 
@@ -235,7 +482,27 @@ export default function BulkAddPage() {
     setBatchId(null);
     setJobs([]);
     setError("");
+    setPollProblem(null);
+    draftsClearedRef.current = false;
     setStage("compose");
+  }
+
+  function backToBatch() {
+    setPollProblem(null);
+    setBatchId(null);
+    setJobs([]);
+    void (async () => {
+      try {
+        const drafts = await loadDrafts();
+        const groups = drafts.filter((d) => d.id !== CURRENT_DRAFT_ID);
+        setQueue(groups.map((g) => ({ id: g.id, photos: draftToPhotos(g) })));
+        const current = drafts.find((d) => d.id === CURRENT_DRAFT_ID);
+        if (current) setCurrentPhotos(draftToPhotos(current));
+      } catch {
+        // best-effort
+      }
+      setStage("compose");
+    })();
   }
 
   return (
@@ -277,7 +544,18 @@ export default function BulkAddPage() {
         )}
 
         {stage === "compose" && (
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-4">
+            {restoredNotice && (
+              <div className="rounded-xl border border-green-400/40 bg-green-500/10 px-3 py-2 text-xs text-green-200">
+                ✓ {restoredNotice}
+              </div>
+            )}
+            {persistWarning && (
+              <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                ⚠️ {persistWarning}
+              </div>
+            )}
+            <div className="grid gap-6 md:grid-cols-2">
             {/* Left: current-group dropper */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
               <h2 className="mb-2 text-sm font-semibold text-white/80">
@@ -290,7 +568,7 @@ export default function BulkAddPage() {
               <MultiPhotoCapture photos={currentPhotos} onChange={setCurrentPhotos} />
               <button
                 type="button"
-                onClick={queueCurrentGroup}
+                onClick={() => void queueCurrentGroup()}
                 disabled={currentPhotos.length === 0}
                 className="mt-3 w-full rounded-xl border border-purple-400/40 bg-purple-500/10 py-3 text-sm font-semibold text-purple-200 disabled:opacity-30"
               >
@@ -306,7 +584,8 @@ export default function BulkAddPage() {
                 Batch ({totalGroups} item{totalGroups === 1 ? "" : "s"})
               </h2>
               <p className="mb-3 text-xs text-white/40">
-                AI will identify each one, look up an Amazon price, and push to FB drafts.
+                AI will identify each one, look up an Amazon price, and push to FB drafts. Queued
+                products are saved on this device until they reach the server.
               </p>
 
               <div className="space-y-2">
@@ -377,6 +656,7 @@ export default function BulkAddPage() {
                 You can close this page after submit — the worker keeps going.
               </p>
             </div>
+            </div>
           </div>
         )}
 
@@ -391,6 +671,53 @@ export default function BulkAddPage() {
 
         {(stage === "polling" || stage === "done") && (
           <div className="space-y-4">
+            {pollProblem === "session" && (
+              <div className="rounded-xl border border-red-400/40 bg-red-500/10 p-3 text-sm text-red-200">
+                <p className="font-semibold">Session expired — enter your PIN again.</p>
+                <p className="mt-1 text-xs text-red-200/80">
+                  Your batch is safe on the server and still processing. This is only a login
+                  hiccup — nothing was lost.
+                </p>
+                <form onSubmit={handlePinSubmit} className="mt-2 flex gap-2">
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                    className="shop-input flex-1 rounded-lg px-3 py-2 text-sm"
+                    placeholder="PIN"
+                  />
+                  <button
+                    type="submit"
+                    className="shop-btn-primary rounded-lg px-4 py-2 text-sm font-semibold"
+                  >
+                    Unlock
+                  </button>
+                </form>
+                {pinError && <p className="mt-1 text-xs text-red-300">{pinError}</p>}
+              </div>
+            )}
+            {pollProblem === "notfound" && (
+              <div className="rounded-xl border border-red-400/40 bg-red-500/10 p-3 text-sm text-red-200">
+                <p className="font-semibold">This batch wasn&apos;t found on the server.</p>
+                <p className="mt-1 text-xs text-red-200/80">
+                  It may not have submitted. Your products are still saved on this device — go back
+                  and submit again.
+                </p>
+                <button
+                  type="button"
+                  onClick={backToBatch}
+                  className="mt-2 rounded-lg border border-white/20 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10"
+                >
+                  ← Back to my batch
+                </button>
+              </div>
+            )}
+            {pollProblem === "unreachable" && (
+              <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+                Can&apos;t reach the server (wifi?). Retrying automatically — your batch is safe.
+              </div>
+            )}
             {stage === "polling" && worker && !worker.alive && (
               <div className="rounded-xl border border-red-400/40 bg-red-500/10 p-3 text-sm text-red-200">
                 <p className="font-semibold">⚠️ The listing worker is offline — nothing is being processed right now.</p>
@@ -416,7 +743,7 @@ export default function BulkAddPage() {
             <div className="flex items-center justify-between">
               <p className="text-sm text-white/60">
                 Batch {batchId?.slice(-8)} · {jobs.length} item{jobs.length === 1 ? "" : "s"}
-                {stage === "polling" && (
+                {stage === "polling" && !pollProblem && (
                   <span className="ml-3 inline-flex items-center gap-2 text-amber-300">
                     <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-400" />
                     Working…
