@@ -44,7 +44,7 @@ function bucketProjects(projects: AnyProject[]): Record<CustomerStage, AnyProjec
   const in_progress: AnyProject[] = [];
   const done: AnyProject[] = [];
   for (const p of projects) {
-    const stage = customerStage(p?.status);
+    const stage = customerStage(p ?? null);
     if (stage === 'queued') queued.push(p);
     else if (stage === 'in_progress') in_progress.push(p);
     else if (stage === 'done') done.push(p);
@@ -86,16 +86,11 @@ export function Library(): React.ReactElement {
     () => [...buckets.queued, ...buckets.in_progress, ...needsInfo],
     [buckets, needsInfo],
   );
-  // Playable grid stays finished videos. A re-compose (`editing`) is also
-  // in the in-progress bucket so the rail moves, but the card stays here
-  // because the scenes + audio are still intact.
-  const ready = React.useMemo(
-    () =>
-      projects.filter(
-        (p) => p?.status === 'ready' || p?.status === 'editing',
-      ),
-    [projects],
-  );
+  // Playable grid = the done bucket. A LIVE re-compose (`editing` with a
+  // job and a recent write) sits in the Moving-now strip only; a stale
+  // `editing` row with a final is Done and shows here — never both (#3/#6
+  // used to render twice, 2026-08-25).
+  const ready = buckets.done;
   const livePipeline = pipeline.length > 0;
 
   React.useEffect(() => {
@@ -336,7 +331,7 @@ function LibraryPipeline({
               borderRadius: JELLY_TOKENS.radius.md,
             }}
           >
-            <CustomerStageChip status={p.status} />
+            <CustomerStageChip status={p.status} project={p} />
             <span
               style={{
                 flex: '1 1 180px',

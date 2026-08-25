@@ -27,7 +27,7 @@
 import { prisma } from "@/lib/prisma";
 import { hasVaterPaymentUserId } from "@/lib/vater/schema-probe";
 
-import { billableComputeUsd, isBillableStage } from "./billable";
+import { billableComputeUsdForProject, billableStagesForProject, isBillableStage } from "./billable";
 import { getOpsRate } from "./ops-fee";
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -242,6 +242,7 @@ export async function getVaterBillingSummary(scope: VaterBillingScope): Promise<
         finalVideoUrl: true,
         audioDuration: true,
         costJson: true,
+        settingsJson: true,
         updatedAt: true,
         completedAt: true,
       },
@@ -271,8 +272,9 @@ export async function getVaterBillingSummary(scope: VaterBillingScope): Promise<
   //
   // 🔴 ElevenLabs is stripped from every card (billable.ts): narration is
   // billed by the customer's OWN ElevenLabs subscription, never by us.
-  const cardUsd = (p: { costJson: unknown }) =>
-    billableComputeUsd(p.costJson as Parameters<typeof billableComputeUsd>[0]);
+  // 🔴 Fable 5 repair passes (`regen-<jobId>`) are house-paid — billable.ts.
+  const cardUsd = (p: { costJson: unknown; settingsJson: unknown }) =>
+    billableComputeUsdForProject(p);
   const computeUsd = r2(finished.reduce((sum, p) => sum + cardUsd(p), 0));
   const opsUsd = r2(minutes * opsRatePerMinute);
   const paidUsd = r2(payments.paidUsd);
@@ -323,12 +325,7 @@ export async function getVaterBillingSummary(scope: VaterBillingScope): Promise<
     const totals: StageMap = new Map();
     for (const proj of rows) {
       if (since && proj.updatedAt <= since) continue;
-      const cj = proj.costJson as
-        | { byStage?: Record<string, { usd?: number }> }
-        | null;
-      for (const [key, v] of Object.entries(cj?.byStage ?? {})) {
-        if (!isBillableStage(key)) continue;
-        const usd = Number(v?.usd ?? 0);
+      for (const [key, usd] of billableStagesForProject(proj)) {
         if (!usd) continue;
         totals.set(key, (totals.get(key) ?? 0) + usd);
       }

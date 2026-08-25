@@ -87,6 +87,8 @@ export function ScriptStep({ projectId, project, refresh, goToStep }: EditorStep
   // scriptOverride; the route handles draft/scripted projects in this case.
   const [useOwnScript, setUseOwnScript] = React.useState(false);
   const [pastedScript, setPastedScript] = React.useState('');
+  // Director notes → ticket customerNote (Fable 5 only). See StylePickerModal.
+  const [directorNotes, setDirectorNotes] = React.useState('');
   const [submittingOwn, setSubmittingOwn] = React.useState(false);
   const [ownError, setOwnError] = React.useState<string | null>(null);
   // Engine for the own-script lane (2026-08-19): Jelly Auto → /context as
@@ -446,7 +448,10 @@ export function ScriptStep({ projectId, project, refresh, goToStep }: EditorStep
       const res = await fetch(`/api/vater/youtube/${projectId}/concierge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script: trimmed }),
+        body: JSON.stringify({
+          script: trimmed,
+          ...(directorNotes.trim() ? { note: directorNotes.trim().slice(0, 2000) } : {}),
+        }),
       });
       await assertOk(res);
       setF5Confirm(false);
@@ -464,7 +469,7 @@ export function ScriptStep({ projectId, project, refresh, goToStep }: EditorStep
     } finally {
       setSubmittingOwn(false);
     }
-  }, [projectId, pastedScript, refresh]);
+  }, [projectId, pastedScript, directorNotes, refresh]);
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
@@ -595,6 +600,47 @@ export function ScriptStep({ projectId, project, refresh, goToStep }: EditorStep
               {pastedWordCount} words ≈ {(pastedWordCount / ESTIMATE_WORDS_PER_MINUTE).toFixed(1)} min
               narration at 150 wpm
             </div>
+            {engine === 'fable5' && (
+              <div style={{ marginTop: 10 }} data-testid="director-notes">
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: t.textSecondary,
+                    marginBottom: 6,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.4,
+                  }}
+                >
+                  Director notes <span style={{ fontWeight: 400, textTransform: 'none' }}>(optional)</span>
+                </div>
+                <textarea
+                  value={directorNotes}
+                  onChange={(e) => setDirectorNotes(e.target.value.slice(0, 2000))}
+                  disabled={submittingOwn}
+                  rows={3}
+                  maxLength={2000}
+                  data-testid="director-notes-input"
+                  placeholder="e.g. Jeff narrates in most scenes · all vehicles outdoors, truck = pickup · no one inside a car · keep the host in one outfit"
+                  style={{
+                    width: '100%',
+                    resize: 'vertical',
+                    padding: 10,
+                    borderRadius: JELLY_TOKENS.radius.md,
+                    border: `1px solid ${t.border}`,
+                    background: t.card,
+                    color: t.text,
+                    fontFamily: JELLY_TOKENS.font,
+                    fontSize: 12.5,
+                    lineHeight: 1.5,
+                    outline: 'none',
+                  }}
+                />
+                <div style={{ fontSize: 11, color: t.textFaint, marginTop: 4 }}>
+                  Fable 5 directs every scene from these — staging, who appears, what must never be shown.
+                </div>
+              </div>
+            )}
 
             {/* Engine — who renders this script. Fable 5 is a ticket, not a
                 kickoff: the button above turns into "Send to Fable 5". */}

@@ -297,7 +297,7 @@ function ActiveRow({
   onRetry: () => void;
 }) {
   const status = project.status as YouTubeProjectStatus;
-  const stage = customerStage(status);
+  const stage = customerStage(project);
   const isFailed = status === "failed";
   const isQueued = stage === "queued";
   const isWorking = stage === "in_progress" || status === "concierge_needs_info";

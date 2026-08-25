@@ -75,6 +75,9 @@ export function EngineBar({ projectId, words, script, refresh, goToStep }: Engin
     }
   };
 
+  // Director notes → ticket customerNote (Fable 5 only). See StylePickerModal.
+  const [directorNotes, setDirectorNotes] = React.useState('');
+
   const send = async () => {
     if (sending) return;
     setSending(true);
@@ -83,7 +86,9 @@ export function EngineBar({ projectId, words, script, refresh, goToStep }: Engin
       const res = await fetch(`/api/vater/youtube/${projectId}/concierge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify(
+          directorNotes.trim() ? { note: directorNotes.trim().slice(0, 2000) } : {},
+        ),
       });
       await assertOk(res);
       setConfirmEngine(null);
@@ -166,6 +171,32 @@ export function EngineBar({ projectId, words, script, refresh, goToStep }: Engin
         disabled={sending}
         compact
       />
+      {engine === 'fable5' && (
+        <div style={{ marginTop: 10 }} data-testid="director-notes">
+          <textarea
+            value={directorNotes}
+            onChange={(e) => setDirectorNotes(e.target.value.slice(0, 2000))}
+            disabled={sending}
+            rows={2}
+            maxLength={2000}
+            data-testid="director-notes-input"
+            placeholder="Director notes (optional) — e.g. Jeff narrates in most scenes · all vehicles outdoors, truck = pickup · keep the host in one outfit"
+            style={{
+              width: '100%',
+              resize: 'vertical',
+              padding: 10,
+              borderRadius: JELLY_TOKENS.radius.md,
+              border: `1px solid ${t.border}`,
+              background: t.card,
+              color: t.text,
+              fontFamily: JELLY_TOKENS.font,
+              fontSize: 12.5,
+              lineHeight: 1.5,
+              outline: 'none',
+            }}
+          />
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 12, color: t.textSecondary, flex: '1 1 240px' }}>
           {engine === 'fable5'

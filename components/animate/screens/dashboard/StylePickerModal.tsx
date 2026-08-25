@@ -109,6 +109,10 @@ export function StylePickerModal({
   // One textarea per script. Jelly Auto takes exactly one; Fable 5 takes a
   // batch (≤10) → POST /api/vater/concierge/submit, one ticket per script.
   const [scripts, setScripts] = React.useState<string[]>(['']);
+  // Director notes (2026-08-25) — what Trey used to text Jared alongside a
+  // script ("Jeff narrates in most scenes, all vehicles outdoors"). Travels
+  // as the ticket's customerNote so the concierge agent directs from it.
+  const [directorNotes, setDirectorNotes] = React.useState('');
   const [engine, setEngine] = React.useState<ConciergeEngine>('auto');
   const [submittingOwn, setSubmittingOwn] = React.useState(false);
   const [ownScriptError, setOwnScriptError] = React.useState<string | null>(null);
@@ -434,6 +438,7 @@ export function StylePickerModal({
         body: JSON.stringify({
           styleId,
           scripts: trimmedAll.map((script) => ({ script })),
+          ...(directorNotes.trim() ? { note: directorNotes.trim().slice(0, 2000) } : {}),
         }),
       });
       await assertOk(res);
@@ -787,6 +792,52 @@ export function StylePickerModal({
                   </span>
                 )}
               </div>
+
+              {/* Director notes — Fable 5 only. The other half of "paste beats
+                  site": the operator used to get Trey's staging notes by text;
+                  the ticket never carried them. */}
+              {engine === 'fable5' && (
+                <div style={{ marginTop: 12 }} data-testid="director-notes">
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: t.textSecondary,
+                      marginBottom: 6,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.4,
+                    }}
+                  >
+                    Director notes <span style={{ fontWeight: 400, textTransform: 'none' }}>(optional)</span>
+                  </div>
+                  <textarea
+                    value={directorNotes}
+                    onChange={(e) => setDirectorNotes(e.target.value.slice(0, 2000))}
+                    disabled={submittingOwn}
+                    rows={3}
+                    maxLength={2000}
+                    data-testid="director-notes-input"
+                    placeholder="e.g. Jeff narrates in most scenes · all vehicles outdoors, truck = pickup · no one inside a car · keep the host in one outfit"
+                    style={{
+                      width: '100%',
+                      resize: 'vertical',
+                      padding: 10,
+                      borderRadius: JELLY_TOKENS.radius.md,
+                      border: `1px solid ${t.border}`,
+                      background: t.card,
+                      color: t.text,
+                      fontFamily: JELLY_TOKENS.font,
+                      fontSize: 12.5,
+                      lineHeight: 1.5,
+                      outline: 'none',
+                    }}
+                  />
+                  <div style={{ fontSize: 11, color: t.textFaint, marginTop: 4 }}>
+                    Fable 5 directs every scene from these — staging, who appears, what must never be shown.
+                    {scripts.length > 1 ? ' Applies to every script in this batch.' : ''}
+                  </div>
+                </div>
+              )}
 
               {/* Engine — under the textareas, above the styles. */}
               <div style={{ marginTop: 14 }}>

@@ -76,20 +76,20 @@ export function Queue(): React.ReactElement {
   }, [refresh]);
 
   const queued = React.useMemo(
-    () => projects.filter((p) => customerStage(p.status) === 'queued'),
+    () => projects.filter((p) => customerStage(p) === 'queued'),
     [projects],
   );
   const inProgress = React.useMemo(
     () =>
       projects.filter(
         (p) =>
-          customerStage(p.status) === 'in_progress' ||
+          customerStage(p) === 'in_progress' ||
           p.status === 'concierge_needs_info',
       ),
     [projects],
   );
   const done = React.useMemo(() => {
-    const ready = projects.filter((p) => customerStage(p.status) === 'done');
+    const ready = projects.filter((p) => customerStage(p) === 'done');
     ready.sort(
       (a: AnyProject, b: AnyProject) =>
         new Date(b.completedAt ?? b.updatedAt ?? b.createdAt ?? 0).getTime() -
@@ -98,7 +98,7 @@ export function Queue(): React.ReactElement {
     return ready.slice(0, RECENT_DONE_MAX);
   }, [projects]);
   const doneCount = React.useMemo(
-    () => projects.filter((p) => customerStage(p.status) === 'done').length,
+    () => projects.filter((p) => customerStage(p) === 'done').length,
     [projects],
   );
   const trackerProjects = React.useMemo(
@@ -230,7 +230,7 @@ function QueueSection({
                 borderRadius: JELLY_TOKENS.radius.md,
               }}
             >
-              <CustomerStageChip status={p.status} />
+              <CustomerStageChip status={p.status} project={p} />
               <span
                 style={{
                   flex: '1 1 180px',
@@ -245,7 +245,7 @@ function QueueSection({
                 {titleOf(p)}
               </span>
               {typeof p.progress === 'number' &&
-                customerStage(p.status) === 'in_progress' && (
+                customerStage(p) === 'in_progress' && (
                   <span
                     style={{
                       fontSize: 12,

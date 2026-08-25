@@ -60,6 +60,183 @@ function SectionHeader({ section }: { section: NavRouteDef['section'] }): React.
   );
 }
 
+/** Where a dragged row would land. Insertion index is counted with the
+ *  dragged row still in place (commitDrop corrects for that). */
+interface DropTarget { section: NavRouteDef['section']; index: number }
+
+interface NavItemProps {
+  item: NavRouteDef;
+  section: NavRouteDef['section'];
+  index: number;
+  active: boolean;
+  railCollapsed: boolean;
+  dragId: string | null;
+  drop: DropTarget | null;
+  onGo: (id: string) => void;
+  onDropAt: (target: DropTarget) => void;
+  onCommitDrop: () => void;
+  onDragStart: (id: string) => void;
+  onDragEnd: () => void;
+  onMoveByKey: (id: string, dir: -1 | 1) => void;
+}
+
+/* Module-scope on purpose (2026-08-25): this used to be declared INSIDE
+ * Sidebar, so React saw a brand-new component type on every render and
+ * unmounted/remounted every row each time drag state changed — which
+ * destroys the HTML5 drag source mid-gesture (Chrome tolerated it, Firefox
+ * and Safari aborted the drag). Stable type = rows survive the drag. */
+function NavItem({
+  item,
+  section,
+  index,
+  active,
+  railCollapsed,
+  dragId,
+  drop,
+  onGo,
+  onDropAt,
+  onCommitDrop,
+  onDragStart,
+  onDragEnd,
+  onMoveByKey,
+}: NavItemProps): React.ReactElement {
+  const { t } = useTheme();
+  const [hovered, setHovered] = React.useState(false);
+  const go = (): void => onGo(item.id);
+  const showIndicator = drop?.section === section && drop.index === index && dragId !== null;
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={item.label}
+      aria-current={active ? 'page' : undefined}
+      data-testid={`nav-${item.id}`}
+      data-nav-row={item.id}
+      onClick={go}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          go();
+        }
+      }}
+      onDragOver={(e) => {
+        if (!dragId) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const box = e.currentTarget.getBoundingClientRect();
+        const after = e.clientY > box.top + box.height / 2;
+        onDropAt({ section, index: index + (after ? 1 : 0) });
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        onCommitDrop();
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: railCollapsed ? '9px 11px' : '9px 15px',
+        borderRadius: JELLY_TOKENS.radius.md,
+        margin: '2px 8px',
+        cursor: 'pointer',
+        opacity: dragId === item.id ? 0.35 : 1,
+        // Insertion line: a 2px brand rule ABOVE the row the drop lands before.
+        boxShadow: showIndicator ? `0 -2px 0 0 ${JELLY_TOKENS.brand}` : undefined,
+        background: active
+          ? JELLY_TOKENS.gradChipOn
+          : hovered
+            ? t.hover
+            : 'transparent',
+        // 1px border always, transparent when idle — otherwise the row jumps
+        // 2px wide the moment it goes active.
+        border: `1px solid ${active ? ACTIVE_BORDER : 'transparent'}`,
+        color: active ? t.text : t.textSecondary,
+        fontWeight: active ? 600 : 500,
+        fontSize: 13.5,
+        letterSpacing: '-0.005em',
+        transition: 'all .15s ease',
+        justifyContent: railCollapsed ? 'center' : 'flex-start',
+      }}
+    >
+      <Icon
+        name={item.icon as IconName}
+        size={18}
+        color={active ? JELLY_TOKENS.brandLight : t.textFaint}
+      />
+      {!railCollapsed && <span style={{ flex: 1, minWidth: 0 }}>{item.label}</span>}
+      {/* ≡ grip — drag to reorder (works across STUDIO/ACCOUNT too);
+          focused, ArrowUp/ArrowDown move the row. Hidden on the collapsed
+          icon rail where there is nowhere to show it. */}
+      {!railCollapsed && (
+        <span
+          role="button"
+          tabIndex={0}
+          aria-label={`Reorder ${item.label} (drag, or arrow keys)`}
+          title="Drag to reorder"
+          draggable
+          data-testid={`nav-grip-${item.id}`}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+              e.preventDefault();
+              e.stopPropagation();
+              onMoveByKey(item.id, e.key === 'ArrowUp' ? -1 : 1);
+            }
+          }}
+          onDragStart={(e) => {
+            e.stopPropagation();
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', item.id);
+            onDragStart(item.id);
+          }}
+          onDragEnd={onDragEnd}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2.5,
+            padding: '6px 4px',
+            marginRight: -6,
+            cursor: 'grab',
+            opacity: hovered || dragId === item.id ? 0.75 : 0.22,
+            transition: 'opacity .15s ease',
+            flexShrink: 0,
+            touchAction: 'none',
+          }}
+        >
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              style={{
+                display: 'block',
+                width: 12,
+                height: 1.5,
+                borderRadius: 1,
+                background: t.textFaint,
+              }}
+            />
+          ))}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Insertion index for a drag hovering somewhere in a section wrapper that is
+ *  NOT over a row — the STUDIO/ACCOUNT header, the side gutters, the 2px gaps
+ *  between rows, or the empty space below. Picks the row boundary nearest the
+ *  pointer instead of "the end" (which is what sent Library to the BOTTOM
+ *  when you tried to drag it to the top). */
+function indexFromPointer(wrapper: HTMLElement, clientY: number): number {
+  const rows = Array.from(wrapper.querySelectorAll<HTMLElement>('[data-nav-row]'));
+  for (let i = 0; i < rows.length; i += 1) {
+    const box = rows[i].getBoundingClientRect();
+    if (clientY < box.top + box.height / 2) return i;
+  }
+  return rows.length;
+}
+
 export interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
@@ -104,7 +281,7 @@ export function Sidebar({
   // Drag state. `drop` = where the dragged row would land (insertion index
   // within that section, counted with the dragged row still in place).
   const [dragId, setDragId] = React.useState<string | null>(null);
-  const [drop, setDrop] = React.useState<{ section: NavRouteDef['section']; index: number } | null>(null);
+  const [drop, setDrop] = React.useState<DropTarget | null>(null);
 
   const persist = (p: NavRouteDef[], sList: NavRouteDef[]): void => {
     const next = prefsFromLists(p, sList);
@@ -141,6 +318,34 @@ export function Sidebar({
     if (moved) persist(moved.primary, moved.secondary);
   };
 
+  const goTo = (id: string): void => {
+    setRoute(id);
+    if (mobile) onCloseDrawer?.();
+  };
+  const finishDrop = (): void => {
+    commitDrop();
+    setDragId(null);
+    setDrop(null);
+  };
+  const endDrag = (): void => {
+    setDragId(null);
+    setDrop(null);
+  };
+  /** Section-wrapper dragover: rows handle themselves (data-nav-row); anything
+   *  else in the wrapper — header, gutters, gaps, tail — resolves by pointer. */
+  const wrapperDragOver = (section: NavRouteDef['section']) => (e: React.DragEvent<HTMLDivElement>): void => {
+    if (!dragId) return;
+    if ((e.target as HTMLElement).closest?.('[data-nav-row]')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDrop({ section, index: indexFromPointer(e.currentTarget, e.clientY) });
+  };
+  const wrapperDrop = (e: React.DragEvent<HTMLDivElement>): void => {
+    if ((e.target as HTMLElement).closest?.('[data-nav-row]')) return;
+    e.preventDefault();
+    finishDrop();
+  };
+
   // Escape closes the mobile drawer.
   React.useEffect(() => {
     if (!mobile || !drawerOpen) return;
@@ -154,145 +359,6 @@ export function Sidebar({
   // On mobile the rail is always full-width inside the drawer — never the
   // 68px icon rail, which is unusable with a thumb.
   const railCollapsed = mobile ? false : collapsed;
-
-  const NavItem = ({
-    item,
-    section,
-    index,
-  }: {
-    item: NavRouteDef;
-    section: NavRouteDef['section'];
-    index: number;
-  }) => {
-    const active = route === item.id;
-    const [hovered, setHovered] = React.useState(false);
-    const go = (): void => {
-      setRoute(item.id);
-      if (mobile) onCloseDrawer?.();
-    };
-    const showIndicator = drop?.section === section && drop.index === index && dragId !== null;
-    return (
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label={item.label}
-        aria-current={active ? 'page' : undefined}
-        data-testid={`nav-${item.id}`}
-        onClick={go}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            go();
-          }
-        }}
-        onDragOver={(e) => {
-          if (!dragId) return;
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'move';
-          const box = e.currentTarget.getBoundingClientRect();
-          const after = e.clientY > box.top + box.height / 2;
-          setDrop({ section, index: index + (after ? 1 : 0) });
-        }}
-        onDrop={(e) => {
-          e.preventDefault();
-          commitDrop();
-          setDragId(null);
-          setDrop(null);
-        }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: railCollapsed ? '9px 11px' : '9px 15px',
-          borderRadius: JELLY_TOKENS.radius.md,
-          margin: '2px 8px',
-          cursor: 'pointer',
-          opacity: dragId === item.id ? 0.35 : 1,
-          // Insertion line: a 2px brand rule ABOVE the row the drop lands before.
-          boxShadow: showIndicator ? `0 -2px 0 0 ${JELLY_TOKENS.brand}` : undefined,
-          background: active
-            ? JELLY_TOKENS.gradChipOn
-            : hovered
-              ? t.hover
-              : 'transparent',
-          // 1px border always, transparent when idle — otherwise the row jumps
-          // 2px wide the moment it goes active.
-          border: `1px solid ${active ? ACTIVE_BORDER : 'transparent'}`,
-          color: active ? t.text : t.textSecondary,
-          fontWeight: active ? 600 : 500,
-          fontSize: 13.5,
-          letterSpacing: '-0.005em',
-          transition: 'all .15s ease',
-          justifyContent: railCollapsed ? 'center' : 'flex-start',
-        }}
-      >
-        <Icon
-          name={item.icon as IconName}
-          size={18}
-          color={active ? JELLY_TOKENS.brandLight : t.textFaint}
-        />
-        {!railCollapsed && <span style={{ flex: 1, minWidth: 0 }}>{item.label}</span>}
-        {/* ≡ grip — drag to reorder (works across STUDIO/ACCOUNT too);
-            focused, ArrowUp/ArrowDown move the row. Hidden on the collapsed
-            icon rail where there is nowhere to show it. */}
-        {!railCollapsed && (
-          <span
-            role="button"
-            tabIndex={0}
-            aria-label={`Reorder ${item.label} (drag, or arrow keys)`}
-            title="Drag to reorder"
-            draggable
-            data-testid={`nav-grip-${item.id}`}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                e.preventDefault();
-                e.stopPropagation();
-                moveByKey(item.id, e.key === 'ArrowUp' ? -1 : 1);
-              }
-            }}
-            onDragStart={(e) => {
-              e.stopPropagation();
-              e.dataTransfer.effectAllowed = 'move';
-              e.dataTransfer.setData('text/plain', item.id);
-              setDragId(item.id);
-            }}
-            onDragEnd={() => {
-              setDragId(null);
-              setDrop(null);
-            }}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 2.5,
-              padding: '6px 4px',
-              marginRight: -6,
-              cursor: 'grab',
-              opacity: hovered || dragId === item.id ? 0.75 : 0.22,
-              transition: 'opacity .15s ease',
-              flexShrink: 0,
-              touchAction: 'none',
-            }}
-          >
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                style={{
-                  display: 'block',
-                  width: 12,
-                  height: 1.5,
-                  borderRadius: 1,
-                  background: t.textFaint,
-                }}
-              />
-            ))}
-          </span>
-        )}
-      </div>
-    );
-  };
 
   // Off-canvas on phones: nothing in the layout flow, so the main column
   // gets the full 390px instead of 130px.
@@ -452,22 +518,37 @@ export function Sidebar({
         }}
       >
         <div
-          onDragOver={(e) => {
-            // Empty space below the last STUDIO row → append at the end.
-            if (!dragId || e.target !== e.currentTarget) return;
-            e.preventDefault();
-            setDrop({ section: 'primary', index: primary.length });
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            commitDrop();
-            setDragId(null);
-            setDrop(null);
-          }}
+          data-testid="nav-section-primary"
+          onDragOver={wrapperDragOver('primary')}
+          onDrop={wrapperDrop}
         >
-          {!railCollapsed && primary.length > 0 && <SectionHeader section="primary" />}
+          {/* The STUDIO label is a drop target too: dragging a row onto it (or
+              anywhere above row 0) lands at the top. It used to be a dead zone. */}
+          {!railCollapsed && primary.length > 0 && (
+            <div data-testid="nav-header-primary">
+              <SectionHeader section="primary" />
+            </div>
+          )}
+          {dragId !== null && drop?.section === 'primary' && drop.index === 0 && (
+            <div style={{ height: 2, margin: '0 8px', borderRadius: 1, background: JELLY_TOKENS.brand }} />
+          )}
           {primary.map((item, i) => (
-            <NavItem key={item.id} item={item} section="primary" index={i} />
+            <NavItem
+              key={item.id}
+              item={item}
+              section="primary"
+              index={i}
+              active={route === item.id}
+              railCollapsed={railCollapsed}
+              dragId={dragId}
+              drop={drop}
+              onGo={goTo}
+              onDropAt={setDrop}
+              onCommitDrop={finishDrop}
+              onDragStart={setDragId}
+              onDragEnd={endDrag}
+              onMoveByKey={moveByKey}
+            />
           ))}
           {dragId !== null && drop?.section === 'primary' && drop.index === primary.length && (
             <div style={{ height: 2, margin: '0 8px', borderRadius: 1, background: JELLY_TOKENS.brand }} />
@@ -483,28 +564,40 @@ export function Sidebar({
           }}
           onDrop={(e) => {
             e.preventDefault();
-            commitDrop();
-            setDragId(null);
-            setDrop(null);
+            finishDrop();
           }}
         />
         <div
           style={{ marginBottom: 16 }}
-          onDragOver={(e) => {
-            if (!dragId || e.target !== e.currentTarget) return;
-            e.preventDefault();
-            setDrop({ section: 'secondary', index: secondary.length });
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            commitDrop();
-            setDragId(null);
-            setDrop(null);
-          }}
+          data-testid="nav-section-secondary"
+          onDragOver={wrapperDragOver('secondary')}
+          onDrop={wrapperDrop}
         >
-          {!railCollapsed && secondary.length > 0 && <SectionHeader section="secondary" />}
+          {!railCollapsed && secondary.length > 0 && (
+            <div data-testid="nav-header-secondary">
+              <SectionHeader section="secondary" />
+            </div>
+          )}
+          {dragId !== null && drop?.section === 'secondary' && drop.index === 0 && (
+            <div style={{ height: 2, margin: '0 8px', borderRadius: 1, background: JELLY_TOKENS.brand }} />
+          )}
           {secondary.map((item, i) => (
-            <NavItem key={item.id} item={item} section="secondary" index={i} />
+            <NavItem
+              key={item.id}
+              item={item}
+              section="secondary"
+              index={i}
+              active={route === item.id}
+              railCollapsed={railCollapsed}
+              dragId={dragId}
+              drop={drop}
+              onGo={goTo}
+              onDropAt={setDrop}
+              onCommitDrop={finishDrop}
+              onDragStart={setDragId}
+              onDragEnd={endDrag}
+              onMoveByKey={moveByKey}
+            />
           ))}
           {dragId !== null && drop?.section === 'secondary' && drop.index === secondary.length && (
             <div style={{ height: 2, margin: '0 8px', borderRadius: 1, background: JELLY_TOKENS.brand }} />

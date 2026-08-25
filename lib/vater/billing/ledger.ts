@@ -43,7 +43,7 @@ import {
   MEDIAN_COMPUTE_USD_PER_MIN,
   MIN_ESTIMATE_USD,
 } from "./estimate";
-import { billableComputeUsd } from "./billable";
+import { billableComputeUsdForProject } from "./billable";
 import { buildVideoBillingLine, getOpsRate } from "./ops-fee";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -572,6 +572,8 @@ interface DebitProjectShape {
   audioDuration: number | null;
   targetDuration: number | null;
   costJson: unknown;
+  /** Optional — when present, Fable 5 repair passes are stripped (billable.ts). */
+  settingsJson?: unknown;
   publishTitle: string | null;
   sourceTitle: string | null;
 }
@@ -581,10 +583,9 @@ export function buildDebitLine(project: DebitProjectShape): {
   line: VideoBillingLineJson;
   chargeUsd: number;
 } {
-  // ElevenLabs never bills (customer's own subscription) — see billable.ts.
-  const computeUsd = billableComputeUsd(
-    project.costJson as Parameters<typeof billableComputeUsd>[0],
-  );
+  // ElevenLabs never bills (customer's own subscription); Fable 5 repair
+  // passes are house-paid — see billable.ts.
+  const computeUsd = billableComputeUsdForProject(project);
   const bill = buildVideoBillingLine({
     projectId: project.id,
     title: project.publishTitle ?? project.sourceTitle ?? project.id,

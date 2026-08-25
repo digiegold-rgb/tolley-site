@@ -79,9 +79,13 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     throw err;
   }
 
+  // composeJobId is what lets /sync re-point autopilotJobId back to the
+  // render job (ticket.jobId) once this compose is done — a compose job has
+  // no workdir, so leaving autopilotJobId on it 404s every /scene/[idx]
+  // (Library card artwork). #50 + #51 both shipped blank cards this way.
   await writeConcierge(
     project.id,
-    {},
+    { composeJobId: nextJobId },
     {
       status: "concierge_in_progress",
       by,

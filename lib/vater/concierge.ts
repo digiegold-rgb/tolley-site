@@ -64,8 +64,12 @@ export interface ConciergeTicket {
   claimedBy?: string | null;
   deliveredAt?: string | null;
   cancelledAt?: string | null;
-  /** DGX autopilot job id once kicked. */
+  /** DGX autopilot job id once kicked — the RENDER job (scene assets live here). */
   jobId?: string | null;
+  /** Latest compose job (repair re-render). autopilotJobId is swapped to it
+   *  while it runs; /sync re-points back to `jobId` once it is done so the
+   *  /scene/[idx] proxy (Library artwork) keeps resolving. */
+  composeJobId?: string | null;
   /** Customer-visible operator note (needs_info reason, delivery note). */
   operatorNote?: string | null;
   /** Operator-only scratch. Stripped by publicTicketView. */
@@ -226,6 +230,8 @@ export async function writeConcierge(
       deliveredAt: patch.deliveredAt !== undefined ? patch.deliveredAt : (existing?.deliveredAt ?? null),
       cancelledAt: patch.cancelledAt !== undefined ? patch.cancelledAt : (existing?.cancelledAt ?? null),
       jobId: patch.jobId !== undefined ? patch.jobId : (existing?.jobId ?? null),
+      composeJobId:
+        patch.composeJobId !== undefined ? patch.composeJobId : (existing?.composeJobId ?? null),
       operatorNote:
         patch.operatorNote !== undefined ? patch.operatorNote : (existing?.operatorNote ?? null),
       internalNote:

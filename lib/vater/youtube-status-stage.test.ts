@@ -8,6 +8,8 @@ import {
   STATUS_LABELS,
   customerStage,
   customerStageDetail,
+  editingIsLive,
+  EDITING_LABEL,
   type YouTubeProjectStatus,
 } from "./youtube-status";
 
@@ -93,6 +95,41 @@ describe("customerStage — queued → in progress → done", () => {
       } else {
         assert.equal(stage, null);
       }
+    }
+  });
+});
+
+describe("customerStage — `editing` judged on the row, not the status word", () => {
+  const twoDaysAgo = new Date(Date.now() - 48 * 3600_000).toISOString();
+  const justNow = new Date().toISOString();
+  const final = "https://x.public.blob.vercel-storage.com/vater-finals/p.mp4?v=1";
+
+  it("bare status keeps the legacy optimistic in_progress", () => {
+    assert.equal(customerStage("editing"), "in_progress");
+    assert.equal(customerStageDetail("editing"), EDITING_LABEL);
+  });
+  it("stale edit with a final is DONE (#3/#6, 2026-08-25)", () => {
+    const row = { status: "editing", finalVideoUrl: final, updatedAt: twoDaysAgo, stepDetails: { jobId: "abc" } };
+    assert.equal(editingIsLive(row), false);
+    assert.equal(customerStage(row), "done");
+    assert.equal(customerStageDetail(row), "Ready");
+  });
+  it("live re-compose (job + recent write) is in_progress", () => {
+    const row = { status: "editing", finalVideoUrl: final, updatedAt: justNow, stepDetails: { jobId: "abc" } };
+    assert.equal(customerStage(row), "in_progress");
+    assert.equal(customerStageDetail(row), EDITING_LABEL);
+  });
+  it("edit with a job but no final yet is in_progress regardless of age", () => {
+    const row = { status: "editing", finalVideoUrl: null, updatedAt: twoDaysAgo, stepDetails: { jobId: "abc" } };
+    assert.equal(customerStage(row), "in_progress");
+  });
+  it("edit with no job named is never in_progress", () => {
+    assert.equal(customerStage({ status: "editing", finalVideoUrl: final, updatedAt: justNow, stepDetails: null }), "done");
+    assert.equal(customerStage({ status: "editing", finalVideoUrl: null, updatedAt: justNow, stepDetails: null }), null);
+  });
+  it("row input for every other status matches the bare call", () => {
+    for (const status of ["queued", "ready", "generating_scenes", "concierge_in_progress", "draft", "failed"]) {
+      assert.equal(customerStage({ status, finalVideoUrl: null, updatedAt: justNow }), customerStage(status), status);
     }
   });
 });

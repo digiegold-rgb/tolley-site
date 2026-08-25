@@ -14,7 +14,7 @@ import { mkdirSync } from 'node:fs';
 const BASE = process.env.WALKTHROUGH_BASE_URL || 'http://localhost:3057';
 const EMAIL = 'qa.walkthrough.0820@tolley.io';
 const PASS = process.env.WALKTHROUGH_QA_PASSWORD;
-const SHOTS = process.env.WALKTHROUGH_SHOTS || '/tmp/claude-1000/-home-jelly/b718344e-9fe3-4598-a44a-a204ad7fce2a/scratchpad/nav-reorder-shots';
+const SHOTS = process.env.WALKTHROUGH_SHOTS || '/tmp/claude-1000/-home-jelly/1444699e-c9f6-4aa2-9964-329c999ce70c/scratchpad/nav-reorder-shots';
 if (!PASS) throw new Error('Set WALKTHROUGH_QA_PASSWORD');
 mkdirSync(SHOTS, { recursive: true });
 
@@ -50,7 +50,7 @@ const navOrder = async () => {
   const ids = await page.$$eval('[data-testid^="nav-"]', (els) =>
     els
       .map((e) => e.getAttribute('data-testid'))
-      .filter((id) => id && !id.startsWith('nav-grip-') && id !== 'nav-reset-order')
+      .filter((id) => id && !id.startsWith('nav-grip-') && !id.startsWith('nav-section-') && !id.startsWith('nav-header-') && id !== 'nav-reset-order')
       .map((id) => id.replace('nav-', '')),
   );
   return ids;
@@ -102,6 +102,49 @@ await page.waitForTimeout(500);
 const afterKey = await navOrder();
 if (afterKey.indexOf('queue') === beforeKey.indexOf('queue') - 1) pass('keyboard: ArrowUp moved Queue up one');
 else fail(`keyboard move failed (${beforeKey.indexOf('queue')} → ${afterKey.indexOf('queue')})`);
+
+// ── drag Library onto the STUDIO header → index 0 (2026-08-25) ───────────
+{
+  const dt = await page.evaluateHandle(() => new DataTransfer());
+  const grip = page.getByTestId('nav-grip-library');
+  const header = page.getByTestId('nav-header-primary');
+  const hb = await header.boundingBox();
+  if (!hb) throw new Error('no box for nav-header-primary');
+  const x = hb.x + hb.width / 2;
+  const y = hb.y + hb.height / 2;
+  await grip.dispatchEvent('dragstart', { dataTransfer: dt });
+  await header.dispatchEvent('dragover', { dataTransfer: dt, clientX: x, clientY: y });
+  await page.waitForTimeout(150);
+  await header.dispatchEvent('drop', { dataTransfer: dt, clientX: x, clientY: y });
+  await grip.dispatchEvent('dragend', { dataTransfer: dt });
+  await page.waitForTimeout(500);
+  const o = await navOrder();
+  if (o[0] === 'library') pass('header drop: Library is now the first row');
+  else fail(`header drop did not land at index 0 — ${o.join(',')}`);
+  await page.screenshot({ path: `${SHOTS}/03b-library-top.png` });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(2500);
+  const o2 = await navOrder();
+  if (o2[0] === 'library') pass('header drop: Library still first after reload');
+  else fail(`library-top lost on reload — ${o2.join(',')}`);
+  // gutter drop: dragover on the section wrapper itself near the top must
+  // resolve to index 0/1, not the end of the list.
+  const dt2 = await page.evaluateHandle(() => new DataTransfer()); // fresh context after reload
+  const wrap = page.getByTestId('nav-section-primary');
+  const wb = await wrap.boundingBox();
+  const hb2 = await page.getByTestId('nav-header-primary').boundingBox();
+  const grip2 = page.getByTestId('nav-grip-queue');
+  await grip2.dispatchEvent('dragstart', { dataTransfer: dt2 });
+  await wrap.dispatchEvent('dragover', { dataTransfer: dt2, clientX: wb.x + 2, clientY: hb2.y + hb2.height + 4 });
+  await page.waitForTimeout(150);
+  await wrap.dispatchEvent('drop', { dataTransfer: dt2, clientX: wb.x + 2, clientY: hb2.y + hb2.height + 4 });
+  await grip2.dispatchEvent('dragend', { dataTransfer: dt2 });
+  await page.waitForTimeout(500);
+  const o3 = await navOrder();
+  const qi = o3.indexOf('queue');
+  if (qi >= 0 && qi <= 1) pass(`gutter drop near the top lands at index ${qi}, not the end`);
+  else fail(`gutter drop sent Queue to index ${qi} — ${o3.join(',')}`);
+}
 
 // ── cross-section: drag Learning Center into ACCOUNT (onto Billing) ──────
 await dragRow('nav-grip-learning-center', 'nav-pricing', 'below');

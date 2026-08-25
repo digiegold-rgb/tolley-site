@@ -62,6 +62,8 @@ export interface ConciergeTicketView {
   deliveredAt?: string | null;
   cancelledAt?: string | null;
   jobId?: string | null;
+  /** Latest compose (repair) job — see server ConciergeTicket. */
+  composeJobId?: string | null;
   /** Customer-visible note from the operator (needs_info reason, delivery note). */
   operatorNote?: string | null;
   /** What the customer told us at submit. */
@@ -120,6 +122,7 @@ export function readConciergeClient(settingsJson: unknown): ConciergeTicketView 
     deliveredAt: str(t.deliveredAt),
     cancelledAt: str(t.cancelledAt),
     jobId: str(t.jobId),
+    composeJobId: str(t.composeJobId),
     operatorNote: str(t.operatorNote),
     customerNote: str(t.customerNote),
     words: num(t.words),

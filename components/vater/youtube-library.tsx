@@ -19,7 +19,8 @@ import {
   buildVideoBilling,
   DEFAULT_OPS_RATE_PER_MIN,
 } from "@/lib/vater/video-cost";
-import { billableComputeUsd } from "@/lib/vater/billing/billable";
+import { billableComputeUsdForProject } from "@/lib/vater/billing/billable";
+import { readConciergeClient } from "@/lib/vater/concierge-client";
 import { isPostedToYoutube } from "@/lib/vater/youtube-posted";
 import { JELLY_TOKENS } from "@/components/animate/tokens";
 import { useTheme } from "@/components/animate/theme-context";
@@ -75,18 +76,19 @@ const STAGE_CHIP_CLASS: Record<string, string> = {
   done: "text-emerald-200 bg-emerald-500/20 border-emerald-400/50",
 };
 
-function LibraryStageChip({ status }: { status: string }): ReactElement {
-  const stage = customerStage(status);
+function LibraryStageChip({ project }: { project: LibraryProject }): ReactElement {
+  const status = project.status;
+  const stage = customerStage(project);
   const label = stage
     ? CUSTOMER_STAGE_LABELS[stage]
-    : customerStageDetail(status) ?? status;
+    : customerStageDetail(project) ?? status;
   const cls = (stage && STAGE_CHIP_CLASS[stage]) ||
     "text-zinc-200 bg-zinc-500/20 border-zinc-500/40";
   return (
     <span
       data-testid="library-card-stage"
       data-stage={stage ?? status}
-      title={customerStageDetail(status) ?? label}
+      title={customerStageDetail(project) ?? label}
       className={`absolute left-2 top-2 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider backdrop-blur-sm ${cls}`}
     >
       {label}
@@ -474,7 +476,7 @@ function LibraryCard({
           </span>
         </div>
 
-        <LibraryStageChip status={project.status} />
+        <LibraryStageChip project={project} />
 
         {/* Stale-final badge — scenes edited after last compose */}
         {stale && (
@@ -533,22 +535,37 @@ function LibraryCard({
           {cost && (() => {
             // Billed price = compute (at cost) + render operations.
             // ElevenLabs never bills (customer's own account) — billable.ts.
+            // Fable 5 repair passes (regen-*) are house-paid — billable.ts.
             const bill = buildVideoBilling(
-              billableComputeUsd(cost),
+              billableComputeUsdForProject({
+                costJson: project.costJson,
+                settingsJson: project.settingsJson,
+              }),
               project.audioDuration,
               opsRatePerMinute ?? DEFAULT_OPS_RATE_PER_MIN,
             );
+            // Concierge videos carry the quote they were submitted at —
+            // show quote → actual so a delta is visible, never a surprise.
+            const quoteUsd = readConciergeClient(project.settingsJson)?.estimateUsd ?? 0;
+            const showQuote = quoteUsd > 0 && project.status === "ready";
             return (
               <>
                 <span className="text-zinc-700">·</span>
                 <span
                   className="font-medium text-emerald-500/90"
+                  data-testid="library-card-bill"
                   title={
                     `Compute  ${formatUsd(bill.computeUsd)}\n` +
                     `Render operations  ${formatUsd(bill.opsUsd)}\n` +
-                    `Total  ${formatUsd(bill.totalUsd)}`
+                    `Total  ${formatUsd(bill.totalUsd)}` +
+                    (showQuote ? `\nQuoted at submit  ${formatUsd(quoteUsd)}` : "")
                   }
                 >
+                  {showQuote && (
+                    <span className="text-zinc-500" data-testid="library-card-quote">
+                      quote {formatUsd(quoteUsd)} →{" "}
+                    </span>
+                  )}
                   {formatUsd(bill.totalUsd)}
                   {cost.estimated ? " est" : ""}
                 </span>

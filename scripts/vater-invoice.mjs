@@ -72,7 +72,7 @@ const projects = await prisma.youTubeProject.findMany({
   where,
   select: {
     id: true, publishTitle: true, sourceTitle: true,
-    audioDuration: true, costJson: true, completedAt: true,
+    audioDuration: true, costJson: true, settingsJson: true, completedAt: true,
   },
   orderBy: { completedAt: 'asc' },
 });
@@ -84,7 +84,13 @@ const lines = projects.map((p) => {
   // ElevenLabs is a separate charge on the customer's own subscription —
   // never on the invoice (mirrors lib/vater/billing/billable.ts).
   const elUsd = Number(p.costJson?.byStage?.elevenlabs?.usd ?? 0) || 0;
-  const computeUsd = r2(Math.max(0, Number(p.costJson?.totalUsd ?? 0) - elUsd));
+  // Fable 5 repair passes (`regen-<jobId>`) are house-paid (billable.ts).
+  const regenUsd = p.settingsJson?.engine === 'fable5'
+    ? Object.entries(p.costJson?.byJob ?? {})
+        .filter(([k]) => k.startsWith('regen-'))
+        .reduce((sum, [, usd]) => sum + (Number(usd ?? 0) || 0), 0)
+    : 0;
+  const computeUsd = r2(Math.max(0, Number(p.costJson?.totalUsd ?? 0) - elUsd - regenUsd));
   const opsUsd = r2(minutes * RATE);
   const totalUsd = r2(computeUsd + opsUsd);
   return {

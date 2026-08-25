@@ -25,7 +25,7 @@
 
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
-import { useTheme } from '../../theme-context';
+import { useTheme, useRoute } from '../../theme-context';
 import { useTier } from '../../tier-context';
 import { VBtn, VCard, VInput, RetryError, SectionHeader } from '../../primitives';
 import {
@@ -40,7 +40,6 @@ import {
 } from '@/lib/vater/youtube-status';
 import { TINT_BG } from '../tint';
 import { ProjectLiveDetail } from '../live/ProjectLiveDetail';
-import { ConciergeStatusCard } from '../editor/ConciergeStatusCard';
 import {
   readConciergeClient,
   readEngineClient,
@@ -202,6 +201,10 @@ export function stageOf(p: ReviewProject): ReviewStage {
  * archive — they still live in Library. */
 function inPipeline(p: ReviewProject): boolean {
   return (
+    // Fable 5 Concierge rows belong here from submit onward (commit 4f69345
+    // claimed this and never shipped it — they only appeared once kickoff
+    // happened to stamp scriptApprovedAt).
+    readEngineClient(p.settingsJson) === 'fable5' ||
     p.animUntilS !== null ||
     p.scriptApprovedAt !== null ||
     p.status === 'awaiting_script_approval' ||
@@ -790,25 +793,71 @@ function DetailPanel({
   project: ReviewProject;
   onChanged: () => void;
 }): React.ReactElement {
+  const { t } = useTheme();
+  const { setRoute } = useRoute();
   const stage = stageOf(project);
-  const ticket = stage === 'fable5' ? readConciergeClient(project.settingsJson) : null;
+  const engine = readEngineClient(project.settingsJson);
+  const ticket = engine === 'fable5' ? readConciergeClient(project.settingsJson) : null;
+
+  /* Fable 5 Concierge (2026-08-25): Script Review is intake + the money gate.
+   * The stage chips, the phase ladder and the scene-gen log all moved to
+   * Project History (ConciergeStatusCard + ConciergeHistory) — nothing about
+   * scene generation belongs in a screen called Script Review. What stays
+   * here is the script itself and one line saying where the ticket is. */
+  if (ticket) {
+    const pill = stagePill(project);
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }} data-testid="fable5-script-detail">
+        {project.errorMessage && (
+          <RetryError message={project.errorMessage} variant="banner" />
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span
+            data-testid="fable5-stage-pill"
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: '0.04em',
+              color: pill.color,
+              border: `1px solid ${pill.color}`,
+              borderRadius: JELLY_TOKENS.radius.pill,
+              padding: '3px 10px',
+            }}
+          >
+            {pill.label}
+          </span>
+          <button
+            type="button"
+            data-testid="fable5-open-history"
+            onClick={() => setRoute('project-history')}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              fontSize: 12.5,
+              color: JELLY_TOKENS.brand,
+            }}
+          >
+            Progress &amp; director&apos;s feedback live in Project History →
+          </button>
+        </div>
+        <VCard style={{ padding: 16 }}>
+          <div style={{ fontSize: 11, color: t.textSecondary, marginBottom: 8, letterSpacing: '0.04em' }}>
+            SCRIPT · {project.script ? `${wordsIn(project.script).toLocaleString()} words` : 'no script'}
+          </div>
+          <div style={{ whiteSpace: 'pre-wrap', fontSize: 13.5, lineHeight: 1.6, color: t.text }}>
+            {project.script ?? '—'}
+          </div>
+        </VCard>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {project.errorMessage && (
         <RetryError message={project.errorMessage} variant="banner" />
-      )}
-
-      {/* Fable 5 Concierge — the same live ticket card the editor shows:
-          stage chips (queued → picked up → directing → rendering → quality
-          check → delivered), the operator note, cancel-while-queued. */}
-      {ticket && (
-        <ConciergeStatusCard
-          projectId={project.id}
-          status={project.status}
-          ticket={ticket}
-          refresh={async () => onChanged()}
-        />
       )}
 
       {stage === 'awaiting_approval' ? (

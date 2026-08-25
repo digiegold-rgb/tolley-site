@@ -99,7 +99,37 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     const outcome = await syncProjectFromJob(project, { policy: "concierge" });
     // Re-read so the response carries the post-sync row + ticket (sync writes
     // settingsJson-adjacent columns only, but be exact).
-    const fresh = (await prisma.youTubeProject.findUnique({ where: { id: project.id } })) ?? outcome.project;
+    let fresh = (await prisma.youTubeProject.findUnique({ where: { id: project.id } })) ?? outcome.project;
+
+    /* Auto-repoint (2026-08-25). When the job just synced is the ticket's
+     * COMPOSE job and it is done, the fresh finalVideoUrl is on the row but
+     * autopilotJobId now names a job with no workdir — every /scene/[idx]
+     * hit (Library artwork) 404s. The CLI only repointed when the operator
+     * passed `--job`, which the headless runner never does (#51). Do it here
+     * so no caller has to remember. */
+    let repointedTo: string | null = null;
+    if (outcome.kind === "synced" && outcome.job.status === "done") {
+      const t = readConcierge(fresh.settingsJson);
+      if (
+        t?.composeJobId &&
+        t.jobId &&
+        t.jobId !== t.composeJobId &&
+        fresh.autopilotJobId === t.composeJobId
+      ) {
+        const res = await writeConcierge(
+          project.id,
+          {},
+          {
+            by: actorLabel(auth.by, body.by),
+            historyNote: `compose ${t.composeJobId} done — re-pointed back to render job ${t.jobId} (scene assets)`,
+            extraData: { autopilotJobId: t.jobId },
+          },
+        );
+        fresh = res.project;
+        repointedTo = t.jobId;
+        revalidateTag("vater-youtube-project", "max");
+      }
+    }
     const job =
       outcome.kind === "synced"
         ? {
@@ -112,6 +142,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({
       outcome: outcome.kind,
       ...(outcome.kind === "synced" ? { from: outcome.from, to: outcome.to } : {}),
+      ...(repointedTo ? { repointedTo } : {}),
       project: projectBrief(fresh),
       job,
       ticket: readConcierge(fresh.settingsJson),

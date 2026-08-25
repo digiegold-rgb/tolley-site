@@ -151,28 +151,87 @@ export const QUEUED_STATUSES: ReadonlySet<YouTubeProjectStatus> = new Set([
   "concierge_queued",
 ]);
 
+/**
+ * What `customerStage` needs beyond `status` to place an `editing` row.
+ * `editing` is not a pipeline status — every editor write (scene regen,
+ * overlay, animate, compose) sets it and only a sync flips it back to
+ * `ready`. An abandoned/cancelled edit therefore strands the row on
+ * `editing` forever, and on status alone it read as "In progress —
+ * Refreshing final…" (#3 and #6 sat there for 10+ days, 2026-08-25).
+ * Pass the row so liveness can be judged; a bare status string keeps the
+ * legacy optimistic reading.
+ */
+export interface CustomerStageInput {
+  status: string | null | undefined;
+  finalVideoUrl?: string | null;
+  updatedAt?: string | Date | null;
+  stepDetails?: unknown;
+}
+
+/** An edit is "live" for this long after its last write, then it is stale. */
+export const EDITING_LIVE_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+/** Chip phrase for a live `editing` row (not a YouTubeProjectStatus, so it
+ *  lives here rather than in STATUS_LABELS). */
+export const EDITING_LABEL = "Finishing edit…";
+
+function stepJobId(stepDetails: unknown): string | null {
+  if (!stepDetails || typeof stepDetails !== "object" || Array.isArray(stepDetails)) return null;
+  const v = (stepDetails as { jobId?: unknown }).jobId;
+  return typeof v === "string" && v ? v : null;
+}
+
+/** `editing` counts as moving only while a compose/regen job is named AND
+ *  either no final exists yet or the row was written in the last 2h. */
+export function editingIsLive(p: CustomerStageInput, now: number = Date.now()): boolean {
+  if (p.status !== "editing") return false;
+  if (!stepJobId(p.stepDetails)) return false;
+  if (!p.finalVideoUrl) return true;
+  const ts = p.updatedAt ? new Date(p.updatedAt).getTime() : Number.NaN;
+  return Number.isFinite(ts) && now - ts < EDITING_LIVE_WINDOW_MS;
+}
+
+function asInput(
+  input: string | null | undefined | CustomerStageInput,
+): { p: CustomerStageInput; bare: boolean } {
+  if (input && typeof input === "object") return { p: input, bare: false };
+  return { p: { status: input }, bare: true };
+}
+
 export function customerStage(
-  status: string | null | undefined,
+  input: string | null | undefined | CustomerStageInput,
 ): CustomerStage | null {
+  const { p, bare } = asInput(input);
+  const status = p.status;
   if (!status) return null;
   if (status === "ready") return "done";
   if (QUEUED_STATUSES.has(status as YouTubeProjectStatus)) return "queued";
   if (status === "concierge_in_progress") return "in_progress";
-  // Optimistic Library flip while a re-compose is running — the finished
-  // video stays visible, but the customer should see it is moving again.
-  if (status === "editing") return "in_progress";
+  if (status === "editing") {
+    // Bare status: the legacy optimistic flip (a re-compose was just kicked
+    // from this browser). With the row in hand, judge liveness instead.
+    if (bare) return "in_progress";
+    if (editingIsLive(p)) return "in_progress";
+    return p.finalVideoUrl ? "done" : null;
+  }
   if (IN_FLIGHT_STATUSES.has(status as YouTubeProjectStatus)) return "in_progress";
   return null;
 }
 
 /** Specific phrase on the chip — STATUS_LABELS, never a parallel dictionary. */
 export function customerStageDetail(
-  status: string | null | undefined,
+  input: string | null | undefined | CustomerStageInput,
 ): string | null {
+  const { p, bare } = asInput(input);
+  const status = p.status;
   if (!status) return null;
   const known = STATUS_LABELS[status as YouTubeProjectStatus];
   if (known) return known;
-  if (status === "editing") return "Refreshing final…";
+  if (status === "editing") {
+    if (bare || editingIsLive(p)) return EDITING_LABEL;
+    // Stale edit with a final = Done; the chip prints the stage word alone.
+    return p.finalVideoUrl ? STATUS_LABELS.ready : null;
+  }
   return null;
 }
 

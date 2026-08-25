@@ -17,11 +17,15 @@ import {
   customerStage,
   customerStageDetail,
   type CustomerStage,
+  type CustomerStageInput,
   type YouTubeProjectStatus,
 } from '@/lib/vater/youtube-status';
 
 export interface CustomerStageChipProps {
   status: string | null | undefined;
+  /** The row itself when in hand — lets an `editing` row be judged live vs
+   *  stale (youtube-status.ts customerStage). */
+  project?: CustomerStageInput | null;
   /** Hide the STATUS_LABELS phrase when the stage word is enough. */
   compact?: boolean;
   style?: React.CSSProperties;
@@ -42,14 +46,18 @@ function chipTint(status: string | null | undefined, stage: CustomerStage | null
 
 export function CustomerStageChip({
   status,
+  project,
   compact = false,
   style,
 }: CustomerStageChipProps): React.ReactElement {
   const { t } = useTheme();
-  const stage = customerStage(status);
+  const input: CustomerStageInput | string | null | undefined = project
+    ? { ...project, status: project.status ?? status }
+    : status;
+  const stage = customerStage(input);
   const tint = chipTint(status, stage);
   const stageWord = stage ? CUSTOMER_STAGE_LABELS[stage] : null;
-  const detail = customerStageDetail(status);
+  const detail = customerStageDetail(input);
   const pulsing = stage === 'queued' || stage === 'in_progress';
 
   // Prefer the stage word so the three steps stay unmistakable. When

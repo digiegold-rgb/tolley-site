@@ -1,5 +1,5 @@
 /**
- * POST /api/vater/concierge/[ticket]/stage   body {stage, note?, internalNote?, by?}
+ * POST /api/vater/concierge/[ticket]/stage   body {stage, note?, internalNote?, historyNote?, by?}
  *
  * Moves the ticket between the operator stages
  *   picked_up | directing | rendering | qa | needs_info
@@ -11,6 +11,11 @@
  *
  * Same-stage calls are allowed: they just save the notes (history line only
  * when a note is given).
+ *
+ * `historyNote` (2026-08-25): a pure feedback line appended to `history[]`
+ * WITHOUT touching operatorNote (the customer-facing note) — used by the DGX
+ * CLI `fable5 log` so the concierge agent's audit/repair lines land in
+ * Project History. Ignored when `note` is also given (note wins).
  *
  * → 200 {ticket, status, emailed}  · 400 bad stage / missing note
  * · 409 {code:"terminal"|"not_operator_stage"}
@@ -49,6 +54,7 @@ interface StageBody {
   stage?: unknown;
   note?: unknown;
   internalNote?: unknown;
+  historyNote?: unknown;
   by?: unknown;
 }
 
@@ -83,6 +89,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   const note = clip(body.note, 2000);
   const internalNote = clip(body.internalNote, 4000);
+  const historyNote = clip(body.historyNote, 2000);
   if (stage === "needs_info" && !note) {
     return jsonError(400, "needs_info requires a customer-visible note", { code: "note_required" });
   }
@@ -99,7 +106,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const { project: updated, ticket: next } = await writeConcierge(project.id, patch, {
     status: stageToStatus(stage),
     by,
-    historyNote: note ?? (internalNote ? "(internal note updated)" : null),
+    historyNote: note ?? historyNote ?? (internalNote ? "(internal note updated)" : null),
     // Clear a stale DGX error when the operator moves the ticket on.
     extraData: stage !== ticket.stage && project.errorMessage ? { errorMessage: null } : undefined,
   });
@@ -124,7 +131,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       userId: project.userId,
       kind: "concierge.stage",
       level: stage === "needs_info" ? "warn" : "info",
-      message: `Fable 5 ${next.code}: ${ticket.stage} → ${stage}${note ? ` — ${note.slice(0, 120)}` : ""}`,
+      message: `Fable 5 ${next.code}: ${ticket.stage} → ${stage}${(note ?? historyNote) ? ` — ${(note ?? historyNote)!.slice(0, 120)}` : ""}`,
       projectId: project.id,
       jobId: next.jobId ?? null,
       data: { code: next.code, from: ticket.stage, stage, by, emailed },

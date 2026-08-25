@@ -209,6 +209,7 @@ export async function submitConcierge(input: SubmitConciergeInput): Promise<Subm
       deliveredAt: null,
       cancelledAt: null,
       jobId: null,
+      composeJobId: null,
       operatorNote: null,
       customerNote,
       words,

@@ -35,6 +35,9 @@ import {
 } from '@/lib/vater/youtube-status';
 import { ProjectLiveDetail } from '../live/ProjectLiveDetail';
 import type { ReviewProject } from '../review/ScriptReviewScreen';
+import { ConciergeStatusCard } from '../editor/ConciergeStatusCard';
+import { ConciergeHistory } from './ConciergeHistory';
+import { readConciergeClient, readEngineClient } from '@/lib/vater/concierge-client';
 import { formatCount, type YouTubeVideoStats } from '@/lib/vater/youtube-status';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -171,6 +174,14 @@ export function ProjectDetail({
     }
   }, [projectId]);
 
+  /* Fable 5 Concierge: the ticket card (stage chips) + every feedback line the
+     director wrote. This is where they live now — Script Review shows only
+     the script. */
+  const conciergeTicket =
+    readEngineClient(project?.settingsJson) === 'fable5'
+      ? readConciergeClient(project?.settingsJson)
+      : null;
+
   const verification = project?.verificationReport as VerificationReport | null;
   const fabs = Array.isArray(verification?.fabrications)
     ? (verification?.fabrications as string[])
@@ -179,6 +190,16 @@ export function ProjectDetail({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {conciergeTicket && projectId && (
+        <ConciergeStatusCard
+          projectId={projectId}
+          status={status}
+          ticket={conciergeTicket}
+          refresh={async () => onUpdate(project)}
+        />
+      )}
+      {conciergeTicket && <ConciergeHistory ticket={conciergeTicket} />}
+
       {showFabPanel && (
         <VCard
           style={{
