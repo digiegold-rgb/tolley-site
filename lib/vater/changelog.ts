@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.9';
+export const APP_VERSION = '1.9.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.9.1',
+    date: '2026-08-26',
+    title: 'Request a seat pages Jared immediately',
+    items: [
+      'The Request a seat form can take an optional phone number, and Jared is alerted the moment you submit so he can let you in right away.',
+    ],
+  },
   {
     version: '1.9',
     date: '2026-08-26',

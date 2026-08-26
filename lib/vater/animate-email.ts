@@ -5,7 +5,7 @@
  * because tolley.io has NO MX record — `support@tolley.io` does not exist and
  * must never be the reply address here.
  *
- *  - sendInviteRequestAck   → fires from POST /api/vater/invite-request
+ *  - sendInviteRequestAck   → fires from POST /api/animate/seat-request
  *  - sendInviteLinkEmail    → fires from /hq Studio users "Mint + email" and
  *                             from scripts/mint-invite.ts --send
  */
