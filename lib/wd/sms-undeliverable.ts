@@ -38,8 +38,10 @@ export class SmsUndeliverableError extends Error {
 async function wdClientsForPhone(phone?: string | null) {
   const key = last10Digits(phone);
   if (!key) return [];
+  // WdClient.phone is often stored formatted ("+1 (816) 952-6445"), so a
+  // 7-digit contains miss. Last-4 is always consecutive; last-10 confirms.
   const rows = await prisma.wdClient.findMany({
-    where: { phone: { contains: key.slice(-7) } },
+    where: { phone: { contains: key.slice(-4) } },
     select: {
       id: true,
       phone: true,
