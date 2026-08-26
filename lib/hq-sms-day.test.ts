@@ -28,6 +28,9 @@ describe("chicagoDayKey", () => {
     assert.equal(chicagoDayKey("2026-08-26T04:30:00.000Z"), "2026-08-25");
     // 2026-08-26 05:05 UTC is Aug 26 in Chicago.
     assert.equal(chicagoDayKey("2026-08-26T05:05:00.000Z"), "2026-08-26");
+    // January is CST (UTC-6).
+    assert.equal(chicagoDayKey("2026-01-15T05:30:00.000Z"), "2026-01-14");
+    assert.equal(chicagoDayKey("2026-01-15T06:05:00.000Z"), "2026-01-15");
   });
 
   it("returns empty for invalid timestamps", () => {
