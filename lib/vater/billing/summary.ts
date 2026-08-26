@@ -252,8 +252,16 @@ export async function getVaterBillingSummary(scope: VaterBillingScope): Promise<
   const { lastPayment } = payments;
 
   const opsRatePerMinute = getOpsRate();
+  // DELIVERED STAYS DELIVERED (Jared, 2026-08-26). A video with a final MP4
+  // that was completed is billable even while someone has it open in the
+  // editor: every animate/regen route flips a ready project to "editing",
+  // and that silently pulled #40 + #51 (≈$17) off Trey's due the moment
+  // Jared touched them. Only a real un-delivery (cancel → "scripted",
+  // failed, etc.) removes a video from the bill.
   const finished = projects.filter(
-    (p) => p.status === "ready" && p.finalVideoUrl !== null,
+    (p) =>
+      p.finalVideoUrl !== null &&
+      (p.status === "ready" || (p.status === "editing" && p.completedAt !== null)),
   );
   let minutes = 0;
   for (const p of finished) {
