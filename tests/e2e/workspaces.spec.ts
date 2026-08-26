@@ -67,6 +67,16 @@ async function counts(page: Page) {
 test('tabs: create → isolated → rename → switch back → archive', async ({ page }) => {
   test.setTimeout(240_000);
   await loginViaUI(page);
+
+  // The one-time click-wrap would otherwise sit over the strip. Accept it the
+  // way the BetaGate modal does (PATCH /api/vater/me) — a no-op once accepted.
+  const me0 = (await (await page.request.get('/api/vater/me')).json()) as {
+    beta?: { termsAccepted?: boolean; accessAllowed?: boolean };
+  };
+  test.skip(me0.beta?.accessAllowed === false, 'test account is not past the beta invite gate');
+  if (me0.beta?.termsAccepted === false) {
+    await page.request.patch('/api/vater/me', { data: { acceptTerms: true } });
+  }
   await page.goto('/animate', { waitUntil: 'domcontentloaded' });
 
   const initial = await listWorkspaces(page);
@@ -74,8 +84,14 @@ test('tabs: create → isolated → rename → switch back → archive', async (
   const primary = initial!.workspaces.find((w) => w.isPrimary)!;
   expect(primary, 'a primary tab always exists').toBeTruthy();
 
-  // Make sure we start on the primary (a previous run may have left a cookie).
+  // Make sure we start on the primary (a previous run may have left a cookie)
+  // and archive any live tab a previous run left behind.
   await page.request.post('/api/vater/workspaces/switch', { data: { id: primary.id } });
+  for (const w of initial!.workspaces) {
+    if (!w.isPrimary && !w.archivedAt && /^E2E Studio /.test(w.name)) {
+      await page.request.delete(`/api/vater/workspaces/${w.id}`);
+    }
+  }
   await page.goto('/animate', { waitUntil: 'domcontentloaded' });
   const before = await counts(page);
 
@@ -86,15 +102,20 @@ test('tabs: create → isolated → rename → switch back → archive', async (
 
   // 2. "+" → prompt → new tab → lands inside it
   page.once('dialog', (d) => d.accept(TAB_NAME));
+  const switched = page.waitForResponse(
+    (r) => r.url().includes('/api/vater/workspaces/switch') && r.request().method() === 'POST',
+    { timeout: 60_000 },
+  );
   await page.getByTestId('workspace-new').click();
-  await page.waitForLoadState('domcontentloaded');
+  await switched; // create → switch → the component reloads the page
+  await page.waitForLoadState('load');
   await expect(page.getByTestId('workspace-tabs')).toBeVisible({ timeout: 30_000 });
 
   const afterCreate = (await listWorkspaces(page))!;
   const created = afterCreate.workspaces.find((w) => w.name === TAB_NAME);
   expect(created, 'the new tab exists').toBeTruthy();
   expect(afterCreate.activeId, 'we are inside the new tab').toBe(created!.id);
-  await expect(page.getByTestId(`workspace-tab-${created!.id}`)).toHaveAttribute('data-active', '1');
+  await expect(page.getByTestId(`workspace-tab-${created!.id}`)).toHaveAttribute('data-active', '1', { timeout: 30_000 });
 
   // 3. isolation: fresh library, fresh cast, fresh balance
   const inside = await counts(page);
