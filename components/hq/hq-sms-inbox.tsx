@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { withSmsDayDividers } from "@/lib/hq-sms-day";
 import { readApiError } from "./types";
 
 type InboxSource = "wd" | "tagent" | "unmatched";
@@ -318,10 +319,14 @@ export function HqSmsInbox({ onCounts }: { onCounts?: (needsSend: number) => voi
             <div className="sms-msgs">
               {threadLoading && <div className="sms-empty">Loading…</div>}
               {!threadLoading &&
-                messages
-                  .filter((m) => !m.sendable)
-                  .map((m) => (
-                    <div key={m.id} className={`sms-bubble ${m.direction}`}>
+                withSmsDayDividers(messages.filter((m) => !m.sendable)).map(({ message: m, dayLabel }) => (
+                  <Fragment key={m.id}>
+                    {dayLabel && (
+                      <div className="sms-day" role="separator" aria-label={dayLabel}>
+                        <span className="sms-day-label">{dayLabel}</span>
+                      </div>
+                    )}
+                    <div className={`sms-bubble ${m.direction}`}>
                       <div className="sms-bubble-body">{m.body}</div>
                       <div className="sms-bubble-meta">
                         {stamp(m.createdAt)}
@@ -329,7 +334,8 @@ export function HqSmsInbox({ onCounts }: { onCounts?: (needsSend: number) => voi
                         {m.aiGenerated && m.direction === "outbound" && <span> · AI</span>}
                       </div>
                     </div>
-                  ))}
+                  </Fragment>
+                ))}
               <div ref={endRef} />
             </div>
             <div className="sms-compose">
