@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { HqTwilioBalanceCard } from "./hq-twilio-balance";
 import type { HqMoney } from "./types";
 
 interface Props {
@@ -174,9 +175,12 @@ function SpendLog({ money, onRefresh }: { money: HqMoney; onRefresh: () => void 
 export function HqMoney({ money, loading, onRefresh }: Props) {
   if (!money) {
     return (
-      <div className="panel">
-        <div style={{ fontSize: 13, color: "#999", padding: "8px 0" }}>
-          {loading ? "Loading money data…" : "No money data loaded."}
+      <div>
+        <HqTwilioBalanceCard />
+        <div className="panel">
+          <div style={{ fontSize: 13, color: "#999", padding: "8px 0" }}>
+            {loading ? "Loading money data…" : "No money data loaded."}
+          </div>
         </div>
       </div>
     );
@@ -232,6 +236,9 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
           </button>
         </div>
       </div>
+
+      {/* ─── Twilio prepaid SMS balance (live; top-up is Console only) ─── */}
+      <HqTwilioBalanceCard />
 
       {/* ─── Manual spend log ─── */}
       <SpendLog money={money} onRefresh={onRefresh} />

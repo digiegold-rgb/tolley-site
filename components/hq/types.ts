@@ -55,6 +55,14 @@ export interface HqQueueTouch extends HqTouch {
   };
 }
 
+// ─── Twilio prepaid balance (GET /api/hq/twilio-balance) ───
+
+export interface HqTwilioBalance {
+  balance: number;
+  currency: string;
+  asOf: string;
+}
+
 // ─── Money tab (GET /api/hq/money) ───
 
 export interface HqMoneyPastDue {

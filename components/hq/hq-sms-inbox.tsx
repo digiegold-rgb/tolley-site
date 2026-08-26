@@ -4,6 +4,8 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { withSmsDayDividers } from "@/lib/hq-sms-day";
+
+import { HqTwilioBalancePill } from "./hq-twilio-balance";
 import { readApiError } from "./types";
 
 type InboxSource = "wd" | "tagent" | "unmatched";
@@ -234,13 +236,16 @@ export function HqSmsInbox({ onCounts }: { onCounts?: (needsSend: number) => voi
     <div className="sms-inbox">
       <div className={`sms-list${mobileView === "thread" ? " sms-hide-mobile" : ""}`}>
         <div className="sms-list-head">
-          <div>
-            <div className="sms-title">SMS — 913-600-7508</div>
-            <div className="sms-sub">Every text. Draft, then one tap to send. Nothing goes out on its own.</div>
+          <div className="sms-list-head-row">
+            <div>
+              <div className="sms-title">SMS — 913-600-7508</div>
+              <div className="sms-sub">Every text. Draft, then one tap to send. Nothing goes out on its own.</div>
+            </div>
+            <button className="btn btn-sm" onClick={() => { setLoading(true); void loadThreads(); }}>
+              {loading ? "…" : "↻"}
+            </button>
           </div>
-          <button className="btn btn-sm" onClick={() => { setLoading(true); void loadThreads(); }}>
-            {loading ? "…" : "↻"}
-          </button>
+          <HqTwilioBalancePill />
         </div>
         <div className="sms-filters">
           {(
