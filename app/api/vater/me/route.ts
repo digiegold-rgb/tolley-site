@@ -1,6 +1,7 @@
 /**
  * GET  /api/vater/me   — who the /animate client is and what it may render
- * PATCH /api/vater/me  — per-user preferences the studio owns (showcaseOptOut)
+ * PATCH /api/vater/me  — per-user preferences the studio owns
+ * (showcaseOptOut, smsOptIn)
  *
  * Single source of truth the /animate client uses to decide what to render.
  * Without this the Sidebar advertised owner-only screens (RSS Feeds,
@@ -27,6 +28,12 @@ import { isMissingRelationError } from "@/lib/vater/beta-schema";
 import { TOS_VERSION } from "@/lib/legal-animate";
 import { scriptCapFor } from "@/lib/vater/billing/script-cap";
 import { workspaceForUser, MAX_WORKSPACES } from "@/lib/vater/workspaces";
+import {
+  animateSmsDisplayNumber,
+  animateSmsPhoneRequiredError,
+  parseAnimateSmsLeadFields,
+} from "@/lib/animate-sms";
+import { toE164 } from "@/lib/phone";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,6 +70,28 @@ async function readUserFlags(
   }
 }
 
+async function readSmsFlags(
+  userId: string,
+): Promise<{ optIn: boolean; phone: string | null }> {
+  try {
+    const rows = await prisma.$queryRaw<
+      Array<{ animateSmsOptIn: boolean; animateSmsPhone: string | null }>
+    >`
+      SELECT "animateSmsOptIn", "animateSmsPhone" FROM "User" WHERE "id" = ${userId} LIMIT 1
+    `;
+    const row = rows[0];
+    return {
+      optIn: Boolean(row?.animateSmsOptIn),
+      phone: row?.animateSmsPhone ?? null,
+    };
+  } catch (err) {
+    if (!isMissingRelationError(err)) {
+      console.error("[vater/me] sms flag read failed", err);
+    }
+    return { optIn: false, phone: null };
+  }
+}
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -89,6 +118,7 @@ export async function GET() {
   const ws = await workspaceForUser(session.user.id);
   const rootUserId = ws?.ownerUserId ?? session.user.id;
   const flags = await readUserFlags(rootUserId);
+  const sms = await readSmsFlags(rootUserId);
 
   /* How long a script this account may render. The editor needs the same
    * number the from-script / context guards enforce — otherwise the Script
@@ -152,6 +182,12 @@ export async function GET() {
         termsAccepted: flags.termsVersion === TOS_VERSION,
         tosVersion: TOS_VERSION,
       },
+      /** Optional Jelly Studio account texts. Never inferred as opted-in. */
+      sms: {
+        optIn: sms.optIn,
+        phone: sms.phone,
+        displayNumber: animateSmsDisplayNumber(),
+      },
       /** Set only during an admin support session. readOnly is enforced in
        *  proxy.ts, not here — this is just what the banner reads. */
       impersonation: actor?.isImpersonating
@@ -179,7 +215,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "LOGIN_REQUIRED" }, { status: 401, headers: NO_STORE });
   }
 
-  let body: { showcaseOptOut?: unknown; acceptTerms?: unknown };
+  let body: { showcaseOptOut?: unknown; acceptTerms?: unknown; smsOptIn?: unknown; phone?: unknown };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -201,6 +237,41 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Could not record acceptance." }, { status: 500, headers: NO_STORE });
     }
     return NextResponse.json({ ok: true, termsAccepted: true, tosVersion: TOS_VERSION }, { headers: NO_STORE });
+  }
+
+  if (typeof body.smsOptIn === "boolean") {
+    const sms = parseAnimateSmsLeadFields({ smsOptIn: body.smsOptIn, phone: body.phone });
+    const smsError = animateSmsPhoneRequiredError(sms);
+    if (smsError) {
+      return NextResponse.json({ error: smsError }, { status: 400, headers: NO_STORE });
+    }
+    const phone = sms.phone ? toE164(sms.phone) ?? sms.phone : null;
+    const rootId = session.workspace?.rootUserId ?? session.user.id;
+    try {
+      await prisma.$executeRaw`
+        UPDATE "User"
+        SET "animateSmsOptIn" = ${sms.smsOptIn},
+            "animateSmsPhone" = ${phone},
+            "animateSmsOptedInAt" = ${sms.smsOptIn ? new Date() : null}
+        WHERE "id" = ${rootId}
+      `;
+    } catch (err) {
+      if (isMissingRelationError(err)) {
+        return NextResponse.json(
+          { error: "FEATURE_NOT_READY", message: "The Animate SMS columns have not been migrated yet." },
+          { status: 503, headers: NO_STORE },
+        );
+      }
+      console.error("[vater/me] smsOptIn update failed", err);
+      return NextResponse.json(
+        { error: "Could not save that setting." },
+        { status: 500, headers: NO_STORE },
+      );
+    }
+    return NextResponse.json(
+      { ok: true, sms: { optIn: sms.smsOptIn, phone, displayNumber: animateSmsDisplayNumber() } },
+      { headers: NO_STORE },
+    );
   }
 
   if (typeof body.showcaseOptOut !== "boolean") {

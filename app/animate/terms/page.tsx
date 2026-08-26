@@ -327,6 +327,14 @@ const SECTIONS: LegalSectionContent[] = [
       `${ANIMATE_LEGAL_ENTITY}, ${ANIMATE_LEGAL_ADDRESS}. Email ${ANIMATE_LEGAL_EMAIL} — for support, billing questions, privacy requests, DMCA notices, arbitration opt-outs, and abuse reports. It is a small company; you will reach a person.`,
     ],
   },
+  {
+    heading: "24. SMS (optional account texts)",
+    paragraphs: [
+      "Jelly Studio (Your KC Homes LLC) may send recurring informational texts to a mobile number you provide if you opt in — when a film is ready, and about your studio account. Up to 8 messages per month. Message and data rates may apply.",
+      "Consent is not required to request a seat or use the Studio. Reply STOP to cancel. Reply HELP for help, or contact jared@yourkchomes.com / 913-283-3826. You may also opt in by texting START or YES to the Jelly Studio number shown on the Request a seat form (or \"number posting shortly\" until that number is live).",
+      "Mobile numbers are not sold, rented, or shared for marketing. Full privacy terms are at https://www.tolley.io/animate/privacy. This SMS program is not Wash & Dry rental texting.",
+    ],
+  },
 ];
 
 export default function AnimateTermsPage() {

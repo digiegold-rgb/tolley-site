@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.9';
+export const APP_VERSION = '1.10';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.10',
+    date: '2026-08-26',
+    title: 'Optional text when your film is ready',
+    items: [
+      'On Request a seat — and later in Account settings — you can opt in to a text when a film is done, plus studio-account notices. The box is never pre-checked, and you can still request a seat without it.',
+      'Reply STOP to cancel, HELP for help. The studio number posts on that form when it is live.',
+    ],
+  },
   {
     version: '1.9',
     date: '2026-08-26',

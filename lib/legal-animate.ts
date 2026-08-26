@@ -2,11 +2,10 @@
  * Jelly Studio — legal constants for /animate/terms, /animate/privacy and
  * /animate/beta.
  *
- * Deliberately separate from lib/legal.ts (T-Agent | Real Estate Unlocked, an
- * SMS/A2P posture) and lib/legal-estate.ts (Tolley Estate Sales, an in-home
- * services posture). Jelly Studio is a third posture entirely: a prepaid,
- * usage-billed generative-AI beta with voice cloning, YouTube API access and a
- * promotional license. A studio customer must never land on an A2P SMS policy.
+ * Deliberately separate from lib/legal.ts (T-Agent | Real Estate Unlocked) and
+ * lib/legal-estate.ts (Tolley Estate Sales). Jelly Studio SMS (optional
+ * "film is ready" account texts) is documented on /animate/privacy and
+ * /animate/terms — never on the Wash & Dry or T-Agent A2P pages.
  *
  * TOS_VERSION is the click-wrap stamp. It is written to User.termsVersion at
  * signup alongside User.termsAcceptedAt, so we can tell later exactly which
@@ -24,7 +23,7 @@ export const ANIMATE_LEGAL_EMAIL = "jared@yourkchomes.com"; // tolley.io has no 
 /** Click-wrap version stamp — stored on User.termsVersion. */
 export const TOS_VERSION = "2026-08-15";
 export const ANIMATE_LEGAL_EFFECTIVE_DATE = "August 15, 2026";
-export const ANIMATE_LEGAL_LAST_UPDATED = "August 15, 2026";
+export const ANIMATE_LEGAL_LAST_UPDATED = "August 26, 2026";
 
 /** Operations fee per finished minute of delivered video, on top of compute at
  *  cost. Mirrors DEFAULT_OPS_RATE_PER_MIN in lib/vater/video-cost.ts — if that
@@ -110,6 +109,11 @@ export const ANIMATE_SUBPROCESSORS: Subprocessor[] = [
     purpose: "Whisper speech-to-text for transcription, captioning, and alignment.",
   },
   {
+    name: "Twilio Inc.",
+    purpose:
+      "Optional informational SMS (when you opt in): a text when a film is ready, and studio-account notices. We do not send marketing texts.",
+  },
+  {
     name: "Sentry (Functional Software, Inc.)",
     purpose: "Application error monitoring and crash diagnostics.",
     planned: true,
@@ -148,5 +152,10 @@ export const ANIMATE_RETENTION: RetentionRow[] = [
   {
     data: "Billing and payment records",
     period: "7 years, as required for tax and business recordkeeping.",
+  },
+  {
+    data: "Mobile number and SMS opt-in / opt-out records",
+    period:
+      "Kept while you are opted in, then deleted or anonymized within 30 days of opt-out or account closure, except as needed to honor STOP and prove consent.",
   },
 ];
