@@ -42,6 +42,7 @@ import {
 } from "@/lib/vater/pricing";
 import { mergeVideoCost } from "@/lib/vater/video-cost";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
+import { castForProject } from "@/lib/vater/cast-for-project";
 import { recordUsage } from "@/lib/vater/billing/record-usage";
 import {
   consumeRateLimit,
@@ -153,6 +154,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       autopilotJobId: true,
       scenesJson: true,
       status: true,
+      styleId: true,
     },
   });
   if (
@@ -247,6 +249,8 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         // disk" (an orphan regen got animated on 2026-08-26).
         imageVersion:
           typeof existing.version === "number" ? existing.version : 0,
+        motionSheet: existing.motionSheet,
+        characters: await castForProject(project.styleId),
         motionIntensity,
         holdStartPose,
       });
@@ -343,6 +347,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       animBackend: result.backend,
       animModel: result.model,
       animDurationSeconds: result.durationSeconds,
+      motionSheet: result.motionSheet ?? freshExisting.motionSheet,
       motionIntensity:
         result.motionIntensity ?? motionIntensity ?? freshExisting.motionIntensity ?? "normal",
       holdStartPose:

@@ -37,6 +37,7 @@ import {
   engineSupportsMotionControls,
   type RenderScope,
   type RunStatus,
+  type MotionSheetView,
 } from "./RenderPanel";
 
 const RENDER_PRICE = FLAT_ACTION_PRICES.render.priceCents;
@@ -86,7 +87,8 @@ export function EditorShell({ project: initialProject }: Props) {
   const [holdStartPose, setHoldStartPose] = useState(true);
   const [lockCamera, setLockCamera] = useState(false);
   const [scenePrompt, setScenePrompt] = useState("");
-  const [isSuggesting, startSuggest] = useTransition();
+  const [isPlanning, startPlan] = useTransition();
+  const [sheet, setSheet] = useState<MotionSheetView | null>(null);
   const [isAnimatingScenes, startAnimateScenes] = useTransition();
   const [perSceneProgress, setPerSceneProgress] = useState<string | null>(null);
   // Live run strip (timer + step). Set synchronously at kickoff — a state
@@ -185,8 +187,9 @@ export function EditorShell({ project: initialProject }: Props) {
     setMotion((activeScene.motionIntensity as MotionIntensity | undefined) ?? "subtle");
     setHoldStartPose(activeScene.holdStartPose ?? true);
     setLockCamera(activeScene.fixedCamera ?? false);
+    setSheet((activeScene.motionSheet as MotionSheetView | undefined) ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeScene?.idx]);
+  }, [activeScene?.idx, activeScene?.motionSheet]);
 
   const handleSceneUpdated = useCallback(
     (scene: SceneSpec) => {
@@ -382,11 +385,10 @@ export function EditorShell({ project: initialProject }: Props) {
       engineSupportsMotionControls(engine)
         ? `Motion: ${motion}${holdStartPose ? " + end on start pose" : ""}${lockCamera ? ", camera locked" : ""}.`
         : `${price.label} decides its own amount of movement${lockCamera ? "; camera locked" : ""}.`,
-      scope === "scene"
-        ? scenePrompt.trim()
-          ? "Uses the \"what moves\" text you wrote."
-          : "The AI writes the motion, following your rules."
-        : "Each scene uses its own \"what moves\" text; blank scenes get AI-written motion that follows your rules.",
+      scope === "scene" && sheet?.verified?.pass && sheet.moves?.[0]
+        ? `Verified motion plan: ${sheet.moves[0].element} ${sheet.moves[0].action}${(sheet.moves.length ?? 0) > 1 ? ` (+${sheet.moves.length - 1} more)` : ""}. The render follows exactly this.`
+        : "Before anything renders, the director reads the whole script, this picture and your rules, writes the motion plan and has it verified (~20 s, a few cents). A plan that can't be verified is refused and costs nothing." +
+          (scope === "scene" && scenePrompt.trim() ? " Your note is treated as the director's instruction." : ""),
       batch
         ? `Runs as one cloud batch, about ${price.etaLabel} per clip. Progress shows in the panel.`
         : n > 1
@@ -460,25 +462,29 @@ export function EditorShell({ project: initialProject }: Props) {
     });
   };
 
-  const handleSuggest = () => {
+  const handlePlan = () => {
     if (activeIdx === null) return;
-    startSuggest(async () => {
+    const idx = activeIdx;
+    startPlan(async () => {
       try {
         const res = await fetch(`/api/vater/youtube/${initialProject.id}/scene/animation-plan`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sceneIdx: activeIdx }),
+          body: JSON.stringify({ sceneIdx: idx, quality: engine, instruction: scenePrompt.trim() || undefined }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-        if (!data.plan) throw new Error("plan response missing plan");
-        setScenePrompt(data.plan.animationPrompt);
+        if (!data.plan?.motionSheet) throw new Error("no motion sheet returned");
+        const ms = data.plan.motionSheet as MotionSheetView;
+        setSheet(ms);
         setLockCamera(!!data.plan.fixedCamera);
         if (data.plan.motionIntensity) setMotion(data.plan.motionIntensity);
         if (typeof data.plan.holdStartPose === "boolean") setHoldStartPose(data.plan.holdStartPose);
-        toast({ title: `Scene ${activeIdx + 1}: suggestion ready`, description: "Edit it or click Animate.", variant: "success" });
+        const sc = scenesJson.find((s) => s.idx === idx);
+        if (sc) handleSceneUpdated({ ...sc, motionSheet: ms } as SceneSpec);
+        toast({ title: `Scene ${idx + 1}: motion plan verified`, description: "Review it, then Animate — the render uses exactly this plan.", variant: "success" });
       } catch (err) {
-        toast({ title: "Suggest failed", description: err instanceof Error ? err.message : String(err), variant: "error" });
+        toast({ title: "Motion plan refused", description: err instanceof Error ? err.message : String(err), variant: "error" });
       }
     });
   };
@@ -720,8 +726,9 @@ export function EditorShell({ project: initialProject }: Props) {
         onLockCameraChange={setLockCamera}
         scenePrompt={scenePrompt}
         onScenePromptChange={setScenePrompt}
-        onSuggest={handleSuggest}
-        suggesting={isSuggesting}
+        onPlan={handlePlan}
+        planning={isPlanning}
+        sheet={sheet}
         onAnimate={handleAnimate}
         onRedraw={handleRedraw}
         onRender={handleRecompose}

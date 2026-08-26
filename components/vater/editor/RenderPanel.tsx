@@ -51,6 +51,81 @@ function fmtClock(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+export function MotionPlanCard({
+  sheet,
+  planning,
+  onPlan,
+  disabled,
+}: {
+  sheet: MotionSheetView | null;
+  planning: boolean;
+  onPlan: () => void;
+  disabled: boolean;
+}) {
+  const verified = !!sheet?.verified?.pass;
+  return (
+    <div className="mt-2 rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+          Motion plan{" "}
+          {planning ? (
+            <span className="normal-case text-violet-300">— directing… reading the script, the picture and the rules (~20 s)</span>
+          ) : verified ? (
+            <span className="normal-case text-emerald-300">
+              — verified ✓{sheet?.verified?.rounds && sheet.verified.rounds > 1 ? ` (${sheet.verified.rounds} rounds)` : ""}
+              {sheet?.rulesVersion ? ` · rules ${String(sheet.rulesVersion).slice(0, 8)}` : ""}
+              {sheet?.engine ? ` · for ${sheet.engine}` : ""}
+            </span>
+          ) : (
+            <span className="normal-case text-zinc-500">— none yet. Animate plans + verifies automatically first; or preview it here.</span>
+          )}
+        </span>
+        <button
+          type="button"
+          onClick={onPlan}
+          disabled={disabled || planning}
+          className="rounded px-2 py-0.5 text-[10px] font-semibold text-violet-300 hover:bg-violet-500/10 disabled:opacity-50"
+          title="Have the director read the whole script + this picture + the rulebook and write a verified motion plan (a few cents, ~20 s). Nothing renders."
+        >
+          {planning ? "…" : verified ? "Plan again" : "Plan motion"}
+        </button>
+      </div>
+      {sheet && verified ? (
+        <div className="mt-1.5 space-y-1 text-[11px] text-zinc-300">
+          {sheet.beat ? <p className="text-zinc-400">{sheet.beat}</p> : null}
+          <ul className="space-y-0.5">
+            {(sheet.moves ?? []).map((m, i) => (
+              <li key={i}>
+                <span className="text-violet-300">{i === 0 ? "▶" : "•"}</span>{" "}
+                <span className="font-semibold text-zinc-200">{m.element}</span> {m.action}
+                <span className="text-zinc-500">
+                  {m.magnitude ? ` · ${m.magnitude}` : ""}
+                  {m.timing ? ` · ${m.timing}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {sheet.mustNotMove?.length ? (
+            <p className="text-[10px] text-zinc-500">
+              Stays still: {sheet.mustNotMove.join(", ")}
+            </p>
+          ) : null}
+          <p className="text-[10px] text-zinc-500">
+            Camera: {sheet.camera?.mode ?? "fixed"}
+            {sheet.camera?.why ? ` — ${sheet.camera.why}` : ""}
+            {sheet.rulesApplied?.length ? ` · rules: ${sheet.rulesApplied.slice(0, 6).join(", ")}` : ""}
+          </p>
+          {sheet.compiled?.prompt ? (
+            <p className="truncate font-mono text-[10px] text-zinc-600" title={sheet.compiled.prompt}>
+              → {sheet.compiled.prompt}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function RunStrip({ run }: { run: RunStatus }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -103,6 +178,22 @@ export function engineLabel(q: AnimationQuality): string {
   return ANIMATION_PRICES[q]?.label ?? q;
 }
 
+/** Shape of the DGX Motion Sheet we render (opaque elsewhere). */
+export type MotionSheetView = {
+  beat?: string;
+  narrationImplies?: string;
+  moves?: Array<{ element?: string; action?: string; magnitude?: string; timing?: string; why?: string }>;
+  mustNotMove?: string[];
+  camera?: { mode?: string; why?: string };
+  rulesApplied?: string[];
+  verified?: { pass?: boolean; rounds?: number };
+  compiled?: { prompt?: string; engine?: string; family?: string };
+  rulesVersion?: string | null;
+  stillVersion?: number;
+  engine?: string;
+  userInstruction?: string | null;
+};
+
 export type RenderPanelProps = {
   scope: RenderScope;
   onScopeChange: (s: RenderScope) => void;
@@ -118,8 +209,10 @@ export type RenderPanelProps = {
   onLockCameraChange: (v: boolean) => void;
   scenePrompt: string;
   onScenePromptChange: (v: string) => void;
-  onSuggest: () => void;
-  suggesting: boolean;
+  onPlan: () => void;
+  planning: boolean;
+  /** Verified sheet for the active scene (null = none yet). */
+  sheet?: MotionSheetView | null;
   /** Buttons */
   onAnimate: () => void;
   onRedraw: () => void;
@@ -299,18 +392,9 @@ export function RenderPanel(p: RenderPanelProps) {
         <div>
           <div className="mb-1 flex items-center justify-between">
             <label className={lab} htmlFor="rp-prompt">
-              What moves in scene {p.activeSceneNumber ?? "—"}{" "}
-              <span className="normal-case text-zinc-600">(optional — blank = the AI writes it, following your rules)</span>
+              Director&rsquo;s note for scene {p.activeSceneNumber ?? "—"}{" "}
+              <span className="normal-case text-zinc-600">(optional — the director reads the whole script and the picture either way)</span>
             </label>
-            <button
-              type="button"
-              onClick={p.onSuggest}
-              disabled={p.suggesting || anyBusy || p.activeSceneNumber === null}
-              className="rounded px-2 py-0.5 text-[10px] font-semibold text-violet-300 hover:bg-violet-500/10 disabled:opacity-50"
-              title="Ask the rulebook-aware planner to write the motion so you can edit it first"
-            >
-              {p.suggesting ? "…thinking" : "✨ Suggest"}
-            </button>
           </div>
           <textarea
             id="rp-prompt"
@@ -319,8 +403,9 @@ export function RenderPanel(p: RenderPanelProps) {
             onChange={(e) => p.onScenePromptChange(e.target.value)}
             disabled={anyBusy}
             className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-[11px] text-zinc-200 placeholder-zinc-600 focus:border-violet-500/60 focus:outline-none disabled:opacity-50"
-            placeholder='e.g. "the man gestures back toward the store, slight head nod, camera holds steady"'
+            placeholder='e.g. "he should point back at the store, not wave"'
           />
+          <MotionPlanCard sheet={p.sheet ?? null} planning={p.planning} onPlan={p.onPlan} disabled={anyBusy || p.activeSceneNumber === null} />
         </div>
       ) : (
         <p className="text-[10px] text-zinc-500">

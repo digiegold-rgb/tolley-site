@@ -17,6 +17,7 @@ export type AnimateAllTarget = {
   sceneIdx: number;
   /** Exact still version to animate (0 = base). */
   imageVersion?: number;
+  motionSheet?: unknown;
   animationPrompt?: string;
   beatText?: string;
   fixedCamera: boolean;

@@ -519,6 +519,11 @@ export type AnimateSceneInput = OwnerRouting & {
   /** Exact still version to animate (0 = base NNN.png). The DGX otherwise
    *  picks the newest file on disk, which can be an orphan regen. */
   imageVersion?: number;
+  /** Previously verified Motion Sheet for this scene (reused when it matches
+   *  the still + engine family + instruction; otherwise re-directed). */
+  motionSheet?: unknown;
+  /** Cast sheet so the director keeps identities straight. */
+  characters?: Array<{ name: string; description: string; gender?: string }>;
 };
 
 export type AnimateSceneResult = {
@@ -541,6 +546,8 @@ export type AnimateSceneResult = {
   /** Echo of the motion preset that ran — matches what the sampler used. */
   motionIntensity?: MotionIntensity;
   holdStartPose?: boolean;
+  /** Verified Motion Sheet the clip was rendered from. */
+  motionSheet?: unknown;
 };
 
 /** Re-compose an existing project with an edited VideoSpec. */
@@ -939,6 +946,7 @@ export const autopilot = {
     scenes: Array<{
       sceneIdx: number;
       imageVersion?: number;
+      motionSheet?: unknown;
       animationPrompt?: string;
       beatText?: string;
       fixedCamera?: boolean;
@@ -971,13 +979,24 @@ export const autopilot = {
   planSceneAnimation: (input: {
     jobId: string;
     sceneIdx: number;
-    imagePrompt?: string;
-    beatText?: string;
+    imageVersion?: number;
+    quality?: AnimationQuality;
+    /** Director's note from the user (optional). */
+    instruction?: string;
+    durationS?: number;
+    motionSheet?: unknown;
+    characters?: Array<{ name: string; description: string; gender?: string }>;
+    ownerId?: string;
+    ownerTier?: string;
+    ownerLane?: string;
   }) =>
     call<{
       sceneIdx: number;
       animationPrompt: string;
       fixedCamera: boolean;
+      motionIntensity?: MotionIntensity;
+      holdStartPose?: boolean;
+      motionSheet?: unknown;
     }>("POST", "/vater/plan-scene-animation", input),
 
   /** Async — re-compose the final MP4 from an edited VideoSpec. Returns a jobId. */

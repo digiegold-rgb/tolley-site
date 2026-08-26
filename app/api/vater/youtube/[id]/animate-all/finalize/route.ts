@@ -110,6 +110,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         animBackend: r.backend as SceneSpec["animBackend"],
         animModel: r.model,
         animDurationSeconds: r.durationSeconds,
+        motionSheet: (r as { motionSheet?: unknown }).motionSheet ?? existing.motionSheet,
         overlays: existing.overlays ?? [],
         beatText: existing.beatText ?? "",
         startS: existing.startS ?? 0,

@@ -144,6 +144,11 @@ export const sceneSpecSchema = z.object({
   // ── Animation (i2v) — TubeGen-parity fields ─────────────────────────────
   animate: z.boolean().optional().default(false),
   animationPrompt: z.string().optional().default(""),
+  // Verified Motion Sheet from the DGX motion director (2026-08-26): what
+  // moves / must not move / camera, built from the whole script + the still
+  // + the rulebook, and independently verified. Opaque here; the UI renders
+  // it, the DGX validates it.
+  motionSheet: z.any().optional(),
   fixedCamera: z.boolean().optional().default(false),
   animQuality: animationQualitySchema.optional(),
   videoVersion: z.number().int().min(0).optional().default(0),

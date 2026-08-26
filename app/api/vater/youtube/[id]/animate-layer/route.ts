@@ -51,6 +51,7 @@ function sceneTargets(
       {
         sceneIdx: idx,
         imageVersion: typeof s.version === "number" ? s.version : 0,
+        motionSheet: s.motionSheet,
         animationPrompt:
           typeof s.animationPrompt === "string" ? s.animationPrompt : undefined,
         beatText: typeof s.beatText === "string" ? s.beatText : undefined,
