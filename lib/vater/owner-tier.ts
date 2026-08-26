@@ -245,6 +245,7 @@ async function withCap(
     // happen to serialise the same but only one of them says so.
     return {
       ownerId: fields.ownerId,
+      ...(fields.rootOwnerId ? { rootOwnerId: fields.rootOwnerId } : {}),
       ownerTier: fields.ownerTier,
       ownerLane: fields.ownerLane,
     };
