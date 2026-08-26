@@ -57,7 +57,7 @@ export function WdFooter() {
             </a>
           </nav>
         </div>
-        <p className="mt-4 text-center text-sm text-slate-400">
+        <p className="mt-4 mb-28 text-center text-sm text-slate-400">
           Thank you for supporting local.
         </p>
       </div>

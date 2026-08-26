@@ -240,9 +240,82 @@ export default function TermsPage() {
         />
       ))}
 
+      <section className="space-y-3 rounded-2xl border border-violet-200/25 bg-violet-300/[0.06] p-4 sm:p-5">
+        <h2 className="text-lg font-semibold text-white/95 sm:text-xl">
+          18. Wash &amp; Dry SMS Program Terms (A2P / 10DLC)
+        </h2>
+        <p className="text-sm leading-6 text-white/84 sm:text-[0.95rem]">
+          This section applies only to the Wash &amp; Dry washer-dryer rental messaging
+          program. It is in addition to the T-Agent SMS terms above and does not
+          replace them.
+        </p>
+        <ul className="space-y-2 text-sm leading-6 text-white/84 sm:text-[0.95rem]">
+          <li>
+            <span className="font-semibold text-white/94">Program Name: </span>
+            Wash &amp; Dry (Your KC Homes LLC)
+          </li>
+          <li>
+            <span className="font-semibold text-white/94">Message Purpose: </span>
+            Account and service texts for washer-dryer rentals, including rental,
+            delivery, billing, and repairs.
+          </li>
+          <li>
+            <span className="font-semibold text-white/94">Message Frequency: </span>
+            Up to 8 msgs/month.
+          </li>
+          <li>
+            <span className="font-semibold text-white/94">Message and Data Rates: </span>
+            Msg &amp; data rates may apply.
+          </li>
+          <li>
+            <span className="font-semibold text-white/94">Opt-Out: </span>
+            Reply <strong>STOP</strong> to cancel SMS messages at any time.
+          </li>
+          <li>
+            <span className="font-semibold text-white/94">Help: </span>
+            Reply <strong>HELP</strong> for help or contact{" "}
+            <a
+              className="underline decoration-white/35 underline-offset-4"
+              href="mailto:jared@yourkchomes.com"
+            >
+              jared@yourkchomes.com
+            </a>{" "}
+            /{" "}
+            <a
+              className="underline decoration-white/35 underline-offset-4"
+              href="tel:913-283-3826"
+            >
+              913-283-3826
+            </a>
+            .
+          </li>
+          <li>
+            <span className="font-semibold text-white/94">Consent: </span>
+            SMS consent is not a condition of rental and is not required to rent
+            equipment.
+          </li>
+          <li>
+            <span className="font-semibold text-white/94">Carrier Liability: </span>
+            Carriers are not liable for delayed or undelivered messages.
+          </li>
+          <li>
+            <span className="font-semibold text-white/94">Privacy Policy: </span>
+            <a
+              className="underline decoration-white/35 underline-offset-4"
+              href="https://www.tolley.io/privacy"
+            >
+              https://www.tolley.io/privacy
+            </a>
+          </li>
+        </ul>
+        <p className="text-sm leading-6 text-white/84 sm:text-[0.95rem]">
+          You may also opt in by texting START to 913-283-3826.
+        </p>
+      </section>
+
       <section className="space-y-3 border-t border-white/14 pt-5">
         <h2 className="text-lg font-semibold text-white/94 sm:text-xl">
-          18. Contact Information
+          19. Contact Information
         </h2>
         <p className="text-sm leading-6 text-white/83 sm:text-[0.95rem]">
           {LEGAL_BRAND}
