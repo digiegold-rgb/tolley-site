@@ -1,0 +1,420 @@
+<!doctype html><html><head><meta charset="utf-8">
+<title>Jelly Studio — Capability Map</title><style>/* Lady Video System brief — navy/gold HQ brief kit (matches jelly-beta-launch). */
+:root{
+  --navy:#12244a; --blue:#2a5298; --blue2:#5b8fd4; --gold:#c9a227; --gold-dark:#8f6a00;
+  --ink:#1b2233; --ink2:#4a556b; --muted:#7b849a;
+  --paper:#fcfcfb; --card:#ffffff; --line:#e3e6ee; --wash:#f2f5fa; --goldwash:#faf5e6;
+  --green:#1f7a4d; --greenwash:#eaf6ef; --red:#8c2318; --redwash:#fdf0ee; --redline:#efc3bd;
+  --purple:#5b3a8f; --purplewash:#f3eefb;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#e9ebf0}
+body{font-family:'Segoe UI','Helvetica Neue',Arial,'Liberation Sans',sans-serif;color:var(--ink);font-size:10.2pt;line-height:1.42}
+.page{width:8.5in;min-height:11in;margin:0 auto;background:var(--paper);padding:.5in .55in .58in;page-break-after:always;position:relative;overflow:hidden}
+.page:last-child{page-break-after:auto}
+@media print{ html,body{background:var(--paper)} .page{margin:0;box-shadow:none} }
+@page{size:letter;margin:0}
+a{color:var(--blue);text-decoration:none;border-bottom:1px solid #b9c6de}
+h1,h2,h3{color:var(--navy);letter-spacing:-.01em}
+h2{font-size:15pt;margin-bottom:4pt;padding-bottom:5pt;border-bottom:2.5px solid var(--gold)}
+h2 .n{color:var(--gold-dark);font-size:10pt;font-weight:800;letter-spacing:.1em;margin-right:7pt;vertical-align:2pt}
+h3{font-size:10.6pt;margin:9pt 0 4pt}
+h3.first{margin-top:4pt}
+p{margin:4.4pt 0}
+code,.mono{font-family:'DejaVu Sans Mono','Consolas',monospace;font-size:.85em;background:var(--wash);border-radius:3px;padding:0 3px;color:#33405c}
+.kicker{font-size:7.8pt;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-dark);margin-bottom:2pt}
+.sub{color:var(--ink2);font-size:9pt;margin-bottom:6pt}
+.footer{position:absolute;bottom:.28in;left:.55in;right:.55in;display:flex;justify-content:space-between;font-size:7.3pt;color:var(--muted);border-top:1px solid var(--line);padding-top:4pt}
+
+/* cover */
+.cover-band{background:linear-gradient(135deg,#0d1b38 0%,#1a3a75 70%,#24509b 100%);color:#fff;border-radius:10px;padding:26pt 24pt 22pt;margin-bottom:12pt;position:relative;overflow:hidden}
+.cover-band::after{content:"";position:absolute;left:24pt;right:24pt;bottom:14pt;height:3px;background:linear-gradient(90deg,var(--gold),#e8c96a 55%,transparent)}
+.cover-band .kicker{color:#e8c96a}
+.cover-band h1{color:#fff;font-size:24pt;line-height:1.1;margin:2pt 0 6pt;max-width:6.1in}
+.cover-band .date{color:#aebfdd;font-size:9.2pt}
+.v2tag{position:absolute;top:22pt;right:24pt;background:var(--gold);color:#241c00;font-size:8.2pt;font-weight:800;border-radius:99px;padding:3pt 12pt;letter-spacing:.07em}
+
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8pt;margin:9pt 0}
+.tiles.five{grid-template-columns:repeat(5,1fr)}
+.tile{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--blue);border-radius:8px;padding:8pt 9pt}
+.tile.goldtop{border-top-color:var(--gold)}
+.tile.greentop{border-top-color:var(--green)}
+.tile.redtop{border-top-color:#c0392b}
+.tile.purpletop{border-top-color:var(--purple)}
+.tile .num{font-size:15pt;font-weight:800;color:var(--navy);letter-spacing:-.02em}
+.tile .lbl{font-size:7.4pt;color:var(--ink2);margin-top:2pt;line-height:1.28}
+
+.lede{font-size:11pt;line-height:1.5;color:var(--ink)}
+.lede b{color:var(--navy)}
+
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:11pt}
+.cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9pt}
+
+.box{border:1px solid var(--line);border-radius:8px;background:var(--card);padding:8pt 10pt;margin:5pt 0}
+.box .bt{font-weight:700;color:var(--navy);font-size:9.6pt;margin-bottom:2pt}
+.box.gold{border-left:4px solid var(--gold);background:var(--goldwash)}
+.box.red{border-left:4px solid #c0392b;background:var(--redwash)}
+.box.green{border-left:4px solid var(--green);background:var(--greenwash)}
+.box.blue{border-left:4px solid var(--blue);background:var(--wash)}
+.box.purple{border-left:4px solid var(--purple);background:var(--purplewash)}
+.box p{font-size:8.8pt;color:var(--ink2);margin:3pt 0}
+.box p b{color:var(--navy)}
+
+table{width:100%;border-collapse:collapse;font-size:8.2pt}
+th{background:var(--navy);color:#fff;text-align:left;padding:4.5pt 6pt;font-weight:700;font-size:7.8pt;letter-spacing:.02em}
+td{padding:4pt 6pt;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+td b{color:var(--navy)}
+tr:nth-child(even) td{background:#f8f9fc}
+table.tight td,table.tight th{padding:3.2pt 5pt;font-size:7.7pt}
+.tag{display:inline-block;font-size:6.8pt;font-weight:800;letter-spacing:.05em;border-radius:99px;padding:1pt 6pt;white-space:nowrap}
+.tag.net{background:#fdeceb;color:#8c2318;border:1px solid #efc3bd}
+.tag.loc{background:var(--greenwash);color:var(--green);border:1px solid #b6ddc7}
+.tag.paid{background:var(--goldwash);color:var(--gold-dark);border:1px solid #e5d08a}
+.tag.free{background:var(--wash);color:var(--blue);border:1px solid #c6d4ea}
+
+/* film strip */
+.strip{display:grid;gap:6pt;margin:6pt 0}
+.strip.s8{grid-template-columns:repeat(8,1fr)}
+.strip.s5{grid-template-columns:repeat(5,1fr)}
+.strip.s4{grid-template-columns:repeat(4,1fr)}
+.strip.s3{grid-template-columns:repeat(3,1fr)}
+.frame{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#0d1b38}
+.frame img{width:100%;display:block}
+.fcap{font-size:6.6pt;line-height:1.25;color:var(--ink2);padding:3pt 4pt;background:var(--card);border-top:1px solid var(--line);min-height:34pt}
+.fcap b{display:block;color:var(--navy);font-size:7pt;font-family:'DejaVu Sans Mono',monospace}
+.fcap.tall{min-height:46pt}
+
+/* timeline ruler */
+.ruler{position:relative;height:26pt;margin:2pt 0 8pt;background:linear-gradient(90deg,#0d1b38,#24509b);border-radius:5px;color:#fff}
+.ruler .seg{position:absolute;top:0;bottom:0;border-right:1px solid rgba(255,255,255,.35);font-size:6.6pt;padding:3pt 4pt;line-height:1.15}
+.ruler .seg b{display:block;color:#e8c96a;font-size:7pt}
+
+/* flow diagram */
+.flow{display:grid;grid-template-columns:1fr;gap:0;margin:6pt 0}
+.frow{display:grid;grid-template-columns:44pt 1fr;gap:8pt;align-items:stretch}
+.fnum{background:var(--navy);color:#f0d98a;font-weight:800;font-size:11pt;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-direction:column;line-height:1.05}
+.fnum small{font-size:5.6pt;color:#aebfdd;letter-spacing:.08em;font-weight:700}
+.fbody{border:1px solid var(--line);border-left:3px solid var(--blue);border-radius:7px;background:var(--card);padding:5.5pt 9pt}
+.fbody .ft{font-weight:700;color:var(--navy);font-size:9.4pt}
+.fbody .fd{font-size:8.1pt;color:var(--ink2);margin-top:1.5pt}
+.fbody .fmeta{font-size:7.2pt;color:var(--muted);margin-top:2.5pt;font-family:'DejaVu Sans Mono',monospace}
+.farrow{height:7pt;display:flex;align-items:center;justify-content:flex-start;padding-left:20pt;color:var(--blue2);font-size:8pt}
+
+/* key/value list */
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2pt 8pt;font-size:8.3pt;margin:4pt 0}
+.kv dt{font-weight:700;color:var(--navy);white-space:nowrap}
+.kv dd{color:var(--ink2)}
+
+.shot{border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:5pt 0}
+.shot img{width:100%;display:block}
+.shot .scap{font-size:7.4pt;color:var(--ink2);padding:4pt 8pt;background:var(--wash);border-top:1px solid var(--line)}
+.shot .scap b{color:var(--navy)}
+
+ul{margin:3pt 0 3pt 14pt}
+li{font-size:8.6pt;color:var(--ink2);margin:2.2pt 0}
+li b{color:var(--navy)}
+.small{font-size:7.8pt;color:var(--muted)}
+.url{font-family:'DejaVu Sans Mono',monospace;font-size:7.4pt;color:#33405c;word-break:break-all}
+.url .hl{background:#fff2c4;border-radius:2px;padding:0 1px}
+.url .hl2{background:#ddeafb;border-radius:2px;padding:0 1px}
+.url .hl3{background:#e6f6ec;border-radius:2px;padding:0 1px}
+
+/* compact variants used where a page runs long */
+.flow.tight .fbody{padding:4pt 8pt}
+.flow.tight .ft{font-size:8.9pt}
+.flow.tight .fd{font-size:7.6pt;line-height:1.35}
+.flow.tight .fmeta{font-size:6.5pt;margin-top:1.5pt}
+.flow.tight .farrow{height:5pt;font-size:7pt}
+.flow.tight .fnum{font-size:10pt}
+.shot img{max-height:6.1in;object-fit:cover;object-position:top center}
+.shot.half img{max-height:3.9in}
+
+.legend{display:flex;gap:14pt;flex-wrap:wrap;margin:7pt 0 0;font-size:8.2pt;color:var(--ink2)}
+.legend b{color:var(--navy)}
+.pill{display:inline-block;font-size:6.6pt;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:99px;padding:1pt 5pt;vertical-align:1.5pt;white-space:nowrap;border:1px solid}
+.pill.studio{color:var(--gold-dark);border-color:#d9bd57;background:var(--goldwash)}
+.pill.owner{color:#8c2f2f;border-color:#e0a9a9;background:#fdf2f2}
+.pill.admin{color:#5b3f96;border-color:#c3b2e6;background:#f6f3fd}
+.pill.api{color:#1c5f77;border-color:#a8cfdd;background:#eef7fa}
+.inv{column-count:2;column-gap:16pt}
+.scr{break-inside:avoid-column;margin:0 0 5pt}
+.scr h3{font-size:8.6pt;color:var(--navy);margin:0 0 2.5pt;padding-bottom:1.5pt;border-bottom:1.5px solid var(--gold);
+  letter-spacing:.02em;text-transform:uppercase;break-after:avoid}
+.scr h3 em{font-style:normal;color:var(--muted);font-weight:600;font-size:7pt;float:right}
+.act{margin:0 0 2.6pt;font-size:7.5pt;line-height:1.33;color:var(--ink2);break-inside:avoid}
+.act b{color:var(--ink);font-weight:700}
+.scr h3 .ct{font-weight:600;color:var(--muted);font-size:6.6pt;text-transform:none;letter-spacing:0}
+.gates{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8pt;margin:7pt 0 0}
+.gate{border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:5px;padding:7pt 8pt;background:var(--card)}
+.gate .t{font-weight:800;color:var(--navy);font-size:9pt;margin-bottom:2pt}
+.gate p{margin:0;font-size:7.8pt;color:var(--ink2);line-height:1.35}
+table.tiers{width:100%;border-collapse:collapse;font-size:8pt;margin-top:5pt}
+table.tiers th{background:var(--wash);color:var(--navy);text-align:left;padding:4pt 6pt;font-size:7.6pt;
+  letter-spacing:.05em;text-transform:uppercase;border-bottom:2px solid var(--gold)}
+table.tiers td{padding:3.6pt 6pt;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+table.tiers td b{color:var(--ink)}
+table.tiers td.n{font-weight:800;color:var(--navy);text-align:right;width:34pt}
+</style></head>
+<body><div class="page "><div class="pinner">
+  <div class="cover-band">
+    <div class="v2tag">CAPABILITY MAP</div>
+    <div class="kicker">HQ · Docs · Product reference</div>
+    <h1>Jelly Studio &mdash; what a user can do</h1>
+    <div class="date">Every action in tolley.io/animate, screen by screen, with the tier that unlocks it &middot; as built, August 25, 2026</div>
+  </div>
+
+  <p class="lede">This is the product as it actually ships today &mdash; <b>188 distinct things</b> a signed-in
+  person can do across <b>37 screens</b>, compiled by reading every screen component and all ~180 API
+  routes rather than the roadmap. <b>165 of them are open to every account</b>; the rest sit behind the
+  studio tier, the owner account, an API key, or admin support tooling. Use it to answer &ldquo;can it do X?&rdquo;,
+  to write help copy, or to see what a new customer actually gets on day one.</p>
+
+  <div class="tiles five">
+    <div class="tile goldtop"><div class="num">188</div><div class="lbl">actions documented<br>buttons, toggles, uploads, gates</div></div>
+    <div class="tile"><div class="num">37</div><div class="lbl">screens &amp; surfaces<br>incl. 7 editor steps</div></div>
+    <div class="tile greentop"><div class="num">165</div><div class="lbl">open to everyone<br>no tier, no allowlist</div></div>
+    <div class="tile purpletop"><div class="num">12</div><div class="lbl">studio tier<br>tuner, review, dictate, course</div></div>
+    <div class="tile redtop"><div class="num">11</div><div class="lbl">owner / admin / API<br>ops tooling &amp; the customer API</div></div>
+  </div>
+
+  <h2><span class="n">01</span>How to read it</h2>
+  <p>Each line is one action and one sentence on what it does. A line with no badge is available to
+  <b>every signed-in account</b>. Badges mark the gate:</p>
+  <div class="legend">
+    <span><span class="pill studio">Studio</span> &nbsp;the studio tier &mdash; an email allowlist, today Trey and the team</span>
+    <span><span class="pill owner">Owner</span> &nbsp;the owner account &mdash; ops and pipeline tooling</span>
+    <span><span class="pill admin">Admin</span> &nbsp;site admins &mdash; support sessions and invites</span>
+    <span><span class="pill api">API key</span> &nbsp;machine access via <code>jly_live_</code> keys</span>
+  </div>
+
+  <div class="box gold" style="margin-top:8pt">
+    <p><b>The one rule that shapes the whole product:</b> nothing spends money without a human click. Every render,
+    animation, thumbnail batch and social post sits behind a confirm dialog that shows the estimate first, failed
+    renders are never charged, and every finished video gets an itemised receipt. That is why so many of the
+    188 actions below are gates, previews and estimates rather than fire-and-forget buttons.</p>
+  </div>
+
+  <h2><span class="n">02</span>The three money gates</h2>
+  <div class="gates">
+    <div class="gate"><div class="t">1 &middot; Approve the script</div><p>Nothing renders until a person approves the
+    script. Writing, pasting, importing and editing are all free; the Approve &amp; Animate button is the first
+    dollar.</p></div>
+    <div class="gate"><div class="t">2 &middot; Confirm the render</div><p>A manifest of style, character, voice, art
+    style, soundtrack and motion with the estimate. Missing pieces block it with a &ldquo;Fix it&rdquo; jump instead of
+    failing mid-render.</p></div>
+    <div class="gate"><div class="t">3 &middot; Confirm the post</div><p>Every outbound publish &mdash; YouTube, TikTok,
+    Instagram, Facebook, Pinterest, X, LinkedIn &mdash; is an explicit click. Nothing auto-posts on a customer's
+    behalf.</p></div>
+  </div>
+</div>
+    <div class="footer"><span>Jelly Studio — what a user can do</span><span>tolley.io/hq · Aug 25, 2026 · p1</span></div>
+  </div><div class="page "><div class="pinner">
+  <h2><span class="n">03</span>The golden path &mdash; idea to published video</h2>
+  <p class="sub">Nine steps. A first-time user touches maybe fifteen of the 188 actions; everything else is
+  depth they grow into.</p>
+  <div class="flow tight">
+    <div class="frow"><div class="fnum">01<small>style</small></div>
+      <div class="fbody"><div class="ft">Pick or build a Style</div>
+      <div class="fd">A Style is the reusable identity of a channel: art direction, cast, voice, captions, aspect ratio, brand kit. Start from a system preset, clone one, or upload a single selfie and get a matching art style plus a consistent character in about ten seconds.</div></div></div>
+    <div class="farrow">▼</div>
+    <div class="frow"><div class="fnum">02<small>script</small></div>
+      <div class="fbody"><div class="ft">Bring a script or have one written</div>
+      <div class="fd">Paste your own for free, or generate one from a target word count, a reference URL, an imported article or PDF, live web search, and an optional creator archetype. Every save is a version you can restore.</div></div></div>
+    <div class="farrow">▼</div>
+    <div class="frow"><div class="fnum">03<small>voice</small></div>
+      <div class="fbody"><div class="ft">Choose a voice &mdash; or upload your own narration</div>
+      <div class="fd">Clone a voice from five seconds of audio, use a shared voice, or connect your own ElevenLabs key so narration bills your plan, not ours. Upload a real recording instead and the captions and scenes align to it. A pronunciation dictionary fixes names, and any single line can be re-voiced on its own.</div></div></div>
+    <div class="farrow">▼</div>
+    <div class="frow"><div class="fnum">04<small>engine</small></div>
+      <div class="fbody"><div class="ft">Jelly Auto or Fable&nbsp;5 Concierge</div>
+      <div class="fd">Auto runs the pipeline with a live estimate. Fable 5 hands the script to an AI director that plans every scene, renders, audits each frame against the rulebook, repairs what fails and reports back &mdash; with your director notes as staging instructions.</div></div></div>
+    <div class="farrow">▼</div>
+    <div class="frow"><div class="fnum">05<small>visuals</small></div>
+      <div class="fbody"><div class="ft">Render the stills draft first</div>
+      <div class="fd">The cheap default: every scene as a still with camera motion and no animation spend. Review and re-render individual prompts, then buy motion only where it earns its keep &mdash; per scene, for the long scenes, or all of them.</div></div></div>
+    <div class="farrow">▼</div>
+    <div class="frow"><div class="fnum">06<small>polish</small></div>
+      <div class="fbody"><div class="ft">Edit scene by scene</div>
+      <div class="fd">In the timeline editor each scene has its own beat text, image prompt, renderer, motion prompt, motion intensity and optional chart / map / header overlay. Drafts are snapshots you can revert to.</div></div></div>
+    <div class="farrow">▼</div>
+    <div class="frow"><div class="fnum">07<small>package</small></div>
+      <div class="fbody"><div class="ft">Thumbnail, title, description</div>
+      <div class="fd">Generate thumbnail concepts and variants, SEO title and description with tags, and append chapters and hashtags &mdash; all editable before anything leaves the studio.</div></div></div>
+    <div class="farrow">▼</div>
+    <div class="frow"><div class="fnum">08<small>ship</small></div>
+      <div class="fbody"><div class="ft">Publish, or take the file</div>
+      <div class="fd">Connect your own accounts (billed per connected account, priced before you connect) and post from the Library, or just download the MP4 and use your own scheduler. Cut a 9:16 short or a vertical re-frame from any finished video for free.</div></div></div>
+    <div class="farrow">▼</div>
+    <div class="frow"><div class="fnum">09<small>account</small></div>
+      <div class="fbody"><div class="ft">Know what it cost</div>
+      <div class="fd">Compute at cost plus $0.35 per finished minute, quoted before and itemised after. A monthly cap, a credit ledger, per-video receipts, a system log you can copy for support, team seats, referral credit and API keys with webhooks.</div></div></div>
+  </div>
+</div>
+    <div class="footer"><span>Jelly Studio — what a user can do</span><span>tolley.io/hq · Aug 25, 2026 · p2</span></div>
+  </div><div class="page "><div class="pinner"><h2><span class="n">04</span>The full inventory</h2>
+           <p class="sub">188 actions across 37 screens, in sidebar order. Unbadged&nbsp;=&nbsp;every account.</p>
+     <div class="inv"><div class="scr">
+  <h3>Get in &amp; get around<em>14</em></h3>
+  <p class="act"><b>Request an invite (signed out)</b> &mdash; From the /animate landing page, request beta access; it files a lead, emails an acknowledgement, and auto-approves.</p><p class="act"><b>Accept the beta terms (one-time click-wrap)</b> &mdash; On first entry you tick the Terms / Privacy / Beta Addendum box before anything else opens.</p><p class="act"><b>Read-only demo (/animate/demo)</b> &mdash; Signed-out visitors can look at a real project's editor with every control disabled; only the sign-up CTA is live.</p><p class="act"><b>Navigate the sidebar (STUDIO / ACCOUNT)</b> &mdash; Click or keyboard any nav row; what you see is filtered by your tier (public / studio / owner).</p><p class="act"><b>Drag-reorder the sidebar</b> &mdash; Grab the ≡ grip and drop any item anywhere, including above the first row or across the STUDIO/ACCOUNT seam; the order persists per account.</p><p class="act"><b>Keyboard-reorder the sidebar</b> &mdash; Focus a grip and press ArrowUp/ArrowDown to move the row.</p><p class="act"><b>Reset menu order</b> &mdash; One click restores the default sidebar order (only shown when you have a custom order).</p><p class="act"><b>Collapse the sidebar / mobile drawer</b> &mdash; Chevron collapses to an icon rail; under 768px it becomes an off-canvas drawer.</p><p class="act"><b>Deep-link by URL</b> &mdash; #r=route&amp;s=step&amp;p=projectId&amp;y=styleId opens any screen, editor step, project or style directly; back/forward work.</p><p class="act"><b>+ Create Video (anywhere)</b> &mdash; The sidebar CTA opens the Create-Video flow from any screen.</p><p class="act"><b>Balance / ADMIT ONE pill</b> &mdash; The top-bar ticket shows credits remaining or trial caps (transcripts / scene generations / animations); click for the per-cap breakdown and plan links.</p><p class="act"><b>Billing button</b> &mdash; Jumps straight to Billing.</p><p class="act"><b>Version chip → What's new</b> &mdash; Click v1.x to open the changelog in the Help drawer; clears the unread dot.</p><p class="act"><b>Theme toggle</b> &mdash; Switch light/dark; remembered per browser.</p>
+</div><div class="scr">
+  <h3>Get in &amp; get around <span class="ct">cont.</span><em>6</em></h3>
+  <p class="act"><b>Profile → Settings modal</b> &mdash; Profile (name, email, tier, plan), showcase opt-out, usage → Billing, team → Team, account settings, Logout.</p><p class="act"><b>Showcase opt-out</b> &mdash; Untick 'Allow Jelly Studio to showcase my renders' (Terms §7) and your videos are never used in marketing.</p><p class="act"><b>Help drawer (? button)</b> &mdash; How it works, What's new, common questions, links to Billing and Rules.</p><p class="act"><b>Report a problem / feedback</b> &mdash; Send a message (optionally with page context); it becomes a real ticket on the ops board plus a Telegram ping.</p><p class="act"><b>Notifications bell</b> <span class="pill owner">Owner</span> &mdash; Routes to the Dashboard update banner (owner accounts only).</p><p class="act"><b>Live cost pill</b> <span class="pill owner">Owner</span> &mdash; Header pill with today's live spend.</p>
+</div><div class="scr">
+  <h3>Dashboard<em>8</em></h3>
+  <p class="act"><b>Create Video hero</b> &mdash; Opens the Create-Video flow.</p><p class="act"><b>Open Billing / Open Library heroes</b> &mdash; One-click jumps to your credits or your finished videos.</p><p class="act"><b>In-flight strip</b> &mdash; Watch anything rendering right now; expand Details or Open project without leaving.</p><p class="act"><b>KPI tiles</b> &mdash; Total videos, this month, in progress — each clicks through to History or Queue.</p><p class="act"><b>Getting Started tutorial card</b> &mdash; Opens the Help drawer walkthrough.</p><p class="act"><b>First-video checklist</b> &mdash; A 4-step shot list you can dismiss once you've shipped a video.</p><p class="act"><b>Spend timeline</b> &mdash; 30 daily bars of what you spent, hover for the day, with your last ledger lines.</p><p class="act"><b>Latest-update banner</b> <span class="pill owner">Owner</span> &mdash; What shipped most recently in the studio.</p>
+</div><div class="scr">
+  <h3>Create Video<em>10</em></h3>
+  <p class="act"><b>Choose the path</b> &mdash; 'I already have my script' vs 'Jelly writes the script'.</p><p class="act"><b>Paste your script</b> &mdash; Paste verbatim narration with a live word count and ≈minutes.</p><p class="act"><b>Batch: + Add another script (up to 10)</b> &mdash; Queue up to ten scripts at once; each becomes its own project and Fable 5 ticket.</p><p class="act"><b>Director notes</b> &mdash; Staging notes for the Fable 5 director ('host in most scenes, all vehicles outdoors…') that travel with the ticket.</p><p class="act"><b>Pick an engine: Jelly Auto or Fable 5 Concierge</b> &mdash; Auto = the automated pipeline with a live $ estimate; Fable 5 = an AI director that plans, renders, audits and repairs every scene.</p><p class="act"><b>Pick a Style</b> &mdash; Click any of your styles or a system preset; the canon/locked style is starred first.</p><p class="act"><b>Create Style tile</b> &mdash; Open the Style wizard without leaving the flow.</p><p class="act"><b>Confirm gate (Render Confirm)</b> &mdash; A manifest of script, style, character, voice, art style, soundtrack, motion and estimated cost — nothing spends until you press Generate / Send to Fable 5.</p><p class="act"><b>Fix-it blockers</b> &mdash; Missing pieces (no voice, no character…) each get a 'Fix it' jump; the confirm button stays disabled until they're solved.</p><p class="act"><b>Batch-queued panel</b> &mdash; After a batch submit, one row per ticket with code, words, est. minutes and $, plus Open.</p>
+</div><div class="scr">
+  <h3>Style wizard<em>8</em></h3>
+  <p class="act"><b>Name, default word count, language</b> &mdash; Basic identity of the style (en/es/fr/de/pt).</p><p class="act"><b>Voice backend + voice</b> &mdash; Studio cloud voice or your own ElevenLabs voice, picked from a list or typed.</p><p class="act"><b>Reference videos (1–6 YouTube URLs)</b> &mdash; Channels whose feel you want; they're transcribed as reference material.</p><p class="act"><b>Script controls</b> &mdash; Writing mode (TubeWriter V1/V2/Pro/Story) and additional context for the writer.</p><p class="act"><b>Voice controls</b> &mdash; Speed / similarity / stability / exaggeration sliders.</p><p class="act"><b>Visual defaults</b> &mdash; Visual type, default image style, aspect ratio (16:9, 9:16, 1:1, 4:5), render quality tier.</p><p class="act"><b>Smart-overlay defaults + overlay theme</b> &mdash; Charts / maps / section headers on by default, dark/light/brand theme.</p><p class="act"><b>Brand kit</b> &mdash; Logo (URL or upload), caption font, caption and accent colours.</p>
+</div></div></div>
+    <div class="footer"><span>Jelly Studio — what a user can do</span><span>tolley.io/hq · Aug 25, 2026 · p3</span></div>
+  </div><div class="page "><div class="pinner"><h2><span class="n">04</span>The full inventory <span style="font-size:9pt;color:var(--muted);font-weight:600">&nbsp;cont.</span></h2>
+     <div class="inv"><div class="scr">
+  <h3>Editor · Overview<em>7</em></h3>
+  <p class="act"><b>Step pills (Title → Script → Voiceover → Visuals → Soundtrack → Thumbnail → Description)</b> &mdash; Click any step; each shows done / in progress / pending and auto-advances.</p><p class="act"><b>Engine bar: Generate Video / Send to Fable 5</b> &mdash; Priced buttons that always open the confirm modal first.</p><p class="act"><b>Cancel render</b> &mdash; Stop an in-flight render behind a 'Stop this render?' confirm; the project rolls back so you can re-configure.</p><p class="act"><b>Concierge status card</b> &mdash; Fable 5 stage chips (queued → picked up → directing → rendering → quality check → delivered) and any 'needs info' note.</p><p class="act"><b>Cancel ticket / Resubmit</b> &mdash; Cancel a Fable 5 ticket while it's still queued, or resubmit after answering a needs-info note.</p><p class="act"><b>Billing wall</b> &mdash; If you can't cover the estimate, a ticket shows your balance and the draft-vs-full cost with Add a card / Buy credits.</p><p class="act"><b>Render receipt</b> &mdash; As soon as an MP4 exists, an itemised receipt (compute per stage, ops fee, minutes, charged) appears under the steps.</p>
+</div><div class="scr">
+  <h3>Editor · Title<em>1</em></h3>
+  <p class="act"><b>Generate titles from samples / a URL / your Style</b> &mdash; Three ways to get title options; click one to commit it and move on.</p>
+</div><div class="scr">
+  <h3>Editor · Script<em>9</em></h3>
+  <p class="act"><b>Use my own script</b> &mdash; Paste it and skip generation entirely ($0).</p><p class="act"><b>Generate a script</b> &mdash; Paid generation using your Style, target word count (150–10,000), context URL, additional context and an optional Creator Model.</p><p class="act"><b>Import from a link or PDF</b> &mdash; Articles, PDFs and YouTube transcripts become reference context.</p><p class="act"><b>Web Search toggle</b> &mdash; Let the writer pull real-time facts for accuracy.</p><p class="act"><b>Creator Model picker</b> &mdash; Bias the script toward a proven creator archetype.</p><p class="act"><b>Character &amp; Animation Direction</b> &mdash; An editable direction block that biases every scene prompt; pull from existing scenes or write your own.</p><p class="act"><b>Edit / save / regenerate the narration</b> &mdash; Inline script editor with versioned saves.</p><p class="act"><b>Translate script → language</b> &mdash; Rewrite the narration into the language chosen in Voiceover.</p><p class="act"><b>Copy script</b> &mdash; One-click copy of the narration.</p>
+</div><div class="scr">
+  <h3>Editor · Voiceover<em>7</em></h3>
+  <p class="act"><b>Language select</b> &mdash; Sets the project language and the translate target.</p><p class="act"><b>Upload my own narration</b> &mdash; WAV/MP3/M4A/AAC/OGG/FLAC up to 50 MB; skips TTS and aligns captions and scenes to your recording.</p><p class="act"><b>Pick the voice</b> &mdash; Choose from your clones, shared voices or your ElevenLabs voices.</p><p class="act"><b>Audition popular voices</b> &mdash; Preview curated ElevenLabs voices before committing.</p><p class="act"><b>'Say it as…' pronunciation dictionary</b> &mdash; Word → how it should sound; saved per project.</p><p class="act"><b>Re-voice a single line</b> &mdash; Edit one scene's line and re-run TTS for just that line; captions re-align.</p><p class="act"><b>Cut silences</b> &mdash; Smooth / Natural / Jumpy pacing preference.</p>
+</div><div class="scr">
+  <h3>Editor · Visuals<em>16</em></h3>
+  <p class="act"><b>Voiceover source, visual type, template</b> &mdash; Own vs generated narration; Default / Cutaway B-roll / Character-driven / Documentary scene templates.</p><p class="act"><b>Animation quality + strategy</b> &mdash; Per-clip priced quality tiers and No animation / Animate all / Longer scenes only / Per-scene.</p><p class="act"><b>Art style (16 presets)</b> &mdash; Pick the render look for this video.</p><p class="act"><b>Captions look (6 burned-in styles)</b> &mdash; Choose by eye from live swatches.</p><p class="act"><b>Smart overlays: charts / maps / section headers</b> &mdash; Independent switches for auto overlays.</p><p class="act"><b>Camera default + transitions</b> &mdash; Project-wide camera move and hard cuts / crossfade 0.5 s / 1 s.</p><p class="act"><b>Characters for this video</b> &mdash; Pick from your Style's characters or upload a new reference image.</p><p class="act"><b>Scene consistency (IP-Adapter)</b> &mdash; Lock faces/looks across scenes.</p><p class="act"><b>Background music + volume</b> &mdash; CC-BY Kevin MacLeod catalog.</p><p class="act"><b>Render stills draft</b> &mdash; The cheap default: every scene as a still with camera motion, no animation spend (est. shown).</p><p class="act"><b>Scenes view: select, preview, per-scene camera</b> &mdash; Checkbox select (All/None), inline image/video preview, timing bar, per-scene camera override.</p><p class="act"><b>Re-animate one scene / Animate selected</b> &mdash; Priced per clip; batch runs behind a 'N clips × $ = $' confirm; failed clips are never charged.</p><p class="act"><b>Add motion (est. $)</b> &mdash; The explicit second step that animates the paid-for draft.</p><p class="act"><b>Prompt review modal</b> &mdash; Sweep every scene's image prompt, edit the ones you want, re-render only those.</p><p class="act"><b>Download all images</b> &mdash; Zip of every still.</p><p class="act"><b>Render Video</b> &mdash; Compose the final MP4.</p>
+</div><div class="scr">
+  <h3>Editor · Soundtrack<em>2</em></h3>
+  <p class="act"><b>Audio source → segments → soundtrack</b> &mdash; Three-stage flow: pick the source, split segments, choose music/volume and whether music changes with the story.</p><p class="act"><b>SFX catalog</b> &mdash; CC0 sound effects when the catalog is available.</p>
+</div><div class="scr">
+  <h3>Editor · Thumbnail<em>1</em></h3>
+  <p class="act"><b>Auto-generate thumbnails from Style</b> &mdash; Choose how many (credit cost shown first), then pick 'Use this' on a variant.</p>
+</div><div class="scr">
+  <h3>Editor · Description<em>2</em></h3>
+  <p class="act"><b>Generate SEO title/description/tags</b> &mdash; Priced generation from the script; fully editable before publish.</p><p class="act"><b>Add chapters + hashtags</b> &mdash; Appends a YouTube chapter list and 3–5 hashtags without overwriting your edits.</p>
+</div></div></div>
+    <div class="footer"><span>Jelly Studio — what a user can do</span><span>tolley.io/hq · Aug 25, 2026 · p4</span></div>
+  </div><div class="page "><div class="pinner"><h2><span class="n">04</span>The full inventory <span style="font-size:9pt;color:var(--muted);font-weight:600">&nbsp;cont.</span></h2>
+     <div class="inv"><div class="scr">
+  <h3>Library<em>11</em></h3>
+  <p class="act"><b>Stage rail + Moving now</b> &mdash; Queued → in progress → done counts, with Open project on anything still moving.</p><p class="act"><b>Play (full-screen) / hover preview</b> &mdash; Watch any finished video; thumbnails preview silently on hover.</p><p class="act"><b>Download MP4</b> &mdash; Direct download of the final.</p><p class="act"><b>Share</b> &mdash; Pick a platform, auto-generate platform-tailored title/description/hashtags, post (or connect the platform first).</p><p class="act"><b>Mark as posted / unmark</b> &mdash; Track videos you uploaded manually or via VidIQ.</p><p class="act"><b>Delete video</b> &mdash; Permanently removes the project (there is no undo or trash).</p><p class="act"><b>Quote → actual bill line</b> &mdash; Each card shows what was quoted at submit and what it actually cost.</p><p class="act"><b>Opening motion layer</b> &mdash; Buy a priced animated opening (first ~30 s) on an already-finished video.</p><p class="act"><b>Thumbnail shelf</b> &mdash; Every generated thumbnail with Download / Copy link.</p><p class="act"><b>Send-to-scheduler shelf</b> &mdash; Copy MP4 link, Download, Open in YouTube Studio.</p><p class="act"><b>Stale-final warning</b> &mdash; Tells you when the MP4 is older than your latest scene edits so you re-compose.</p>
+</div><div class="scr">
+  <h3>Shorts Library<em>2</em></h3>
+  <p class="act"><b>Cut a short</b> &mdash; Pick a finished video, a start time and 15/30/45/60 s; a 9:16 short with blurred pillarbox is cut for free (no GPU).</p><p class="act"><b>Shorts shelf</b> &mdash; Every short across projects with inline player, caption, Download and Copy link.</p>
+</div><div class="scr">
+  <h3>Queue<em>2</em></h3>
+  <p class="act"><b>Waiting / Being made / Recently done</b> &mdash; Live sections auto-refreshing every 5 s with per-row Open project and % progress.</p><p class="act"><b>Remove from queue</b> &mdash; Drop a queued import.</p>
+</div><div class="scr">
+  <h3>Recent<em>1</em></h3>
+  <p class="act"><b>Recently completed &amp; failed</b> &mdash; Newest first with publish indicators and view counts; Kill / Re-check status per row.</p>
+</div><div class="scr">
+  <h3>Voices<em>9</em></h3>
+  <p class="act"><b>Audition popular voices</b> &mdash; Preview-only ElevenLabs shared voices.</p><p class="act"><b>Upload a voice clone</b> &mdash; Name + 5 s reference audio + exact sample text + consent; clone slots are capped on public accounts.</p><p class="act"><b>Manage clones</b> &mdash; Preview or delete your own clones; shared voices are read-only.</p><p class="act"><b>Connect your ElevenLabs key (BYOK)</b> &mdash; Paste your sk_ key; validated and stored encrypted, never shown again; your renders bill your own ElevenLabs plan.</p><p class="act"><b>Disconnect ElevenLabs</b> &mdash; Remove the key.</p><p class="act"><b>Browse voices on your ElevenLabs account</b> &mdash; Every voice on your own account, usable by voice_id.</p><p class="act"><b>Voice Tuner</b> <span class="pill studio">Studio</span> &mdash; A/B render ~30 s takes while adjusting tempo, pauses, delivery, emotion, a multi-band EQ, compression, room, loudness and gain.</p><p class="act"><b>Lock in a tuning / revert / factory reset</b> <span class="pill studio">Studio</span> &mdash; The locked tuning is honoured by every future render of that voice.</p><p class="act"><b>Voice samples gallery</b> <span class="pill studio">Studio</span> &mdash; 10 advisor-tuned variants; listen, 'Use this' to lock, or open in the tuner.</p>
+</div><div class="scr">
+  <h3>RSS Feeds<em>5</em></h3>
+  <p class="act"><b>Add a feed</b> &mdash; Paste a feed URL and an optional brief; it's probed and saved.</p><p class="act"><b>Edit / delete a feed</b> &mdash; Change defaults or remove it (items go too).</p><p class="act"><b>Browse recent items</b> &mdash; Expand a feed to see its latest posts.</p><p class="act"><b>Promote an item to a project</b> &mdash; One click turns a feed item into a new video project.</p><p class="act"><b>Auto-pipeline toggle</b> <span class="pill owner">Owner</span> &mdash; Unattended renders on new items (owner only because it spends without a click).</p>
+</div><div class="scr">
+  <h3>Publishing<em>4</em></h3>
+  <p class="act"><b>Connect a platform</b> &mdash; YouTube, TikTok, Instagram, Facebook, Pinterest, X, LinkedIn via your own OAuth ($6/month per connected account, stated before you connect).</p><p class="act"><b>Reconnect / Disconnect</b> &mdash; Fix an expired connection or remove it (vendor billing stops).</p><p class="act"><b>Your posts</b> &mdash; Filter all / pending / posted / failed, refresh, per-platform status and published links.</p><p class="act"><b>Publish queue + per-platform counts</b> <span class="pill owner">Owner</span> &mdash; Cross-platform autopilot rows with Retry.</p>
+</div><div class="scr">
+  <h3>Creator Models<em>2</em></h3>
+  <p class="act"><b>Browse creator archetypes</b> &mdash; Filter by name, content pillar or title formula; read each model's pillars and formulas.</p><p class="act"><b>Start a video with this model</b> &mdash; Opens Create Video biased to that archetype.</p>
+</div><div class="scr">
+  <h3>Styles<em>7</em></h3>
+  <p class="act"><b>Browse My Styles / System Presets</b> &mdash; 16:9 sample cards with voice, reference and character counts.</p><p class="act"><b>Create / clone a style</b> &mdash; Start empty or clone a system preset (or your own) into a new editable style.</p><p class="act"><b>Edit a style (Simple view)</b> &mdash; Rename; 1) upload a selfie → auto art style + matching character in ~10 s; 2) voice backend + voice; 3) reference channels.</p><p class="act"><b>Add a character to a style</b> &mdash; By name and description or from a reference image.</p><p class="act"><b>Advanced view</b> &mdash; Every style field exposed.</p><p class="act"><b>Delete a style</b> &mdash; System presets can't be deleted.</p><p class="act"><b>Custom art styles</b> &mdash; Upload 3–5 reference images; Gemini writes the art-direction descriptor; delete or cancel any time.</p>
+</div></div></div>
+    <div class="footer"><span>Jelly Studio — what a user can do</span><span>tolley.io/hq · Aug 25, 2026 · p5</span></div>
+  </div><div class="page "><div class="pinner"><h2><span class="n">04</span>The full inventory <span style="font-size:9pt;color:var(--muted);font-weight:600">&nbsp;cont.</span></h2>
+     <div class="inv"><div class="scr">
+  <h3>Characters<em>10</em></h3>
+  <p class="act"><b>Global rulebook banner</b> &mdash; Rule count, HARD count, version, last edit, your rule count, Open Rules.</p><p class="act"><b>Character Lab: Generate 3 takes ($0.68)</b> &mdash; Style + name + description (or a preset brief) → three portrait takes; adopt the one you like (free).</p><p class="act"><b>Character Lab: Generate 3 more</b> &mdash; Another priced batch if none fit.</p><p class="act"><b>Character Lab: Import a character ($0.49)</b> &mdash; Upload an image; Gemini Vision writes the identity descriptor and the image anchors every scene.</p><p class="act"><b>Auto-seeded character rules</b> &mdash; Adopting a character creates its own rule set (identity lock, attire, host-in-every-video, no clones, name never printed…).</p><p class="act"><b>Rules (n) drawer per character</b> &mdash; Seed, add, edit or retire that character's rules.</p><p class="act"><b>Use in new project</b> &mdash; Creates a project from the style that owns the character.</p><p class="act"><b>Lightbox / expand descriptor</b> &mdash; View any character full-screen or read its full descriptor.</p><p class="act"><b>House cast panel (read)</b> &mdash; The canon locked cast as read-only reference.</p><p class="act"><b>House cast: edit canon, render portrait, clone &amp; tweak</b> <span class="pill studio">Studio</span> &mdash; Edit a canon member's descriptor, regenerate their portrait (~$0.03), or clone into a new character without touching canon.</p>
+</div><div class="scr">
+  <h3>Project History<em>8</em></h3>
+  <p class="act"><b>Browse every project</b> &mdash; Status pill and % per row; click to open.</p><p class="act"><b>Row actions: Edit / Cut / Duplicate / Download thumbnail / Delete</b> &mdash; Jump into the editor, cut a short, duplicate into a new project, grab the thumbnail, or delete (with confirm).</p><p class="act"><b>Remix this project</b> &mdash; New draft carrying style, voice, soundtrack and settings — no script or media.</p><p class="act"><b>Make a 9:16 cut</b> &mdash; Re-plans framing for vertical while reusing narration and captions.</p><p class="act"><b>Re-compose now / Animate opening</b> &mdash; Rebuild the final after scene edits, or buy the opening motion layer.</p><p class="act"><b>Fable 5 history (feedback lines)</b> &mdash; Every director note, stage, kickoff, compose, sync, audit link and delivery line, newest first.</p><p class="act"><b>Kill a running pipeline</b> &mdash; Stop a render in progress.</p><p class="act"><b>Render receipt ticket</b> &mdash; Itemised compute per stage, ops fee, minutes, charged/refunded.</p>
+</div><div class="scr">
+  <h3>Video Editor<em>6</em></h3>
+  <p class="act"><b>Open a project in the timeline editor</b> &mdash; Remotion preview + scene timeline; click a segment to edit it.</p><p class="act"><b>Scene drawer: beat, image prompt, image backend</b> &mdash; Edit the beat and prompt, pick the still renderer (FireRed / Gemini / Ideogram tiers, each priced), regenerate the image.</p><p class="act"><b>Scene drawer: motion prompt, intensity, hold start pose</b> &mdash; Fixed / Subtle / Normal / Bold motion, animate, re-animate with a new seed, or revert to still.</p><p class="act"><b>Scene drawer: overlays</b> &mdash; Turn a scene into a chart / map / header card with editable JSON data, or clear it.</p><p class="act"><b>Bulk: regenerate N images / re-animate checked / re-animate ALL</b> &mdash; Batch operations with a quality tier and a confirm dialog in front of every spend.</p><p class="act"><b>Save draft / re-compose</b> &mdash; Snapshot your edits (revert points) and rebuild the final MP4.</p>
+</div><div class="scr">
+  <h3>Rules<em>4</em></h3>
+  <p class="act"><b>Global tab</b> &mdash; 88 de-branded production principles every render reads, colour-coded HARD / ADVISORY / PLANNER / INFO, with version, search and gate filters.</p><p class="act"><b>My rules tab</b> &mdash; Your own numbered rules plus your character rules; add, edit, retire — they're injected into every one of your renders.</p><p class="act"><b>House tab</b> <span class="pill studio">Studio</span> &mdash; The studio's private rulebook (editable, revisioned, PDF download).</p><p class="act"><b>Add / edit / retire a rule</b> &mdash; Numbers are permanent and never reused; every edit records who and when.</p>
+</div><div class="scr">
+  <h3>Learning Center<em>1</em></h3>
+  <p class="act"><b>Read ~13 lessons</b> &mdash; Nothing locked; mark lessons read/unread with a progress card and deep-links into the relevant screen.</p>
+</div><div class="scr">
+  <h3>Script Review<em>4</em></h3>
+  <p class="act"><b>Add a script to review</b> <span class="pill studio">Studio</span> &mdash; Paste or upload .txt/.md with title and 'animate first N seconds'; parks at the approval gate with no spend.</p><p class="act"><b>Version history / Save / Restore</b> <span class="pill studio">Studio</span> &mdash; Every save is a version; restore any.</p><p class="act"><b>Approve &amp; Animate (est. $)</b> <span class="pill studio">Studio</span> &mdash; The money gate — nothing renders before this click.</p><p class="act"><b>Publish panel</b> <span class="pill studio">Studio</span> &mdash; Generate metadata, thumbnail concepts, caption, cut a short, post to connected socials, upload to YouTube — every send behind Post now / Schedule confirm.</p>
+</div><div class="scr">
+  <h3>Dictate<em>1</em></h3>
+  <p class="act"><b>Dictate a brief → Start the video</b> <span class="pill studio">Studio</span> &mdash; Talk a brief in (built for iOS dictation); a headless AI director runs it and asks clarifying questions you answer in-thread.</p>
+</div><div class="scr">
+  <h3>Course Studio<em>1</em></h3>
+  <p class="act"><b>Seed curriculum, request scripts, approve &amp; render</b> <span class="pill studio">Studio</span> &mdash; 25-lesson course lane: chaptered scripts, inline edits, an explicit render gate, 6-segment renders + master concat, clip library.</p>
+</div><div class="scr">
+  <h3>Autopilot<em>1</em></h3>
+  <p class="act"><b>Pipeline status, intake sources, live log</b> <span class="pill owner">Owner</span> &mdash; DGX/queue health, RSS intake, posting stagger and an SSE pipeline log.</p>
+</div><div class="scr">
+  <h3>Observer<em>1</em></h3>
+  <p class="act"><b>Pipeline observer proposals</b> <span class="pill owner">Owner</span> &mdash; Apply or dismiss AI proposals (regen scene, restart stage, edit script, tweak voice/prompt, cancel job).</p>
+</div><div class="scr">
+  <h3>Discord Bot<em>1</em></h3>
+  <p class="act"><b>Bot health + Copilot chat</b> <span class="pill owner">Owner</span> &mdash; Chat with the studio copilot against the studio DB.</p>
+</div></div></div>
+    <div class="footer"><span>Jelly Studio — what a user can do</span><span>tolley.io/hq · Aug 25, 2026 · p6</span></div>
+  </div><div class="page "><div class="pinner"><h2><span class="n">04</span>The full inventory <span style="font-size:9pt;color:var(--muted);font-weight:600">&nbsp;cont.</span></h2>
+     <div class="inv"><div class="scr">
+  <h3>Billing<em>8</em></h3>
+  <p class="act"><b>Credit balance ticket</b> &mdash; Balance, welcome-grant expiry, purchased to date, spent on videos.</p><p class="act"><b>Buy credits ($10/$25/$50/$100 packs)</b> &mdash; Stripe checkout; the credit granted is stated net of the Stripe fee before you pay.</p><p class="act"><b>Save a card / Manage in Stripe</b> &mdash; Card on file with no charge, or the Stripe portal for invoices and card changes.</p><p class="act"><b>Monthly spending cap</b> &mdash; Set a cents limit the app enforces before any spend.</p><p class="act"><b>Activity ledger</b> &mdash; Every debit, refund and purchase with date, type and detail.</p><p class="act"><b>Referrals</b> &mdash; Copy your invite links; see used/unused and credit earned.</p><p class="act"><b>Pricing calculator + how pricing works</b> &mdash; Estimate a month; compute at cost + $0.35 per finished minute, failed renders never charged, receipt per video.</p><p class="act"><b>Settlement view</b> <span class="pill studio">Studio</span> &mdash; For invoiced accounts: delivered vs paid vs owed.</p>
+</div><div class="scr">
+  <h3>System Log<em>2</em></h3>
+  <p class="act"><b>Merged timeline</b> &mdash; Every event, credit line and status change for your account, filterable by project and 'problems only'.</p><p class="act"><b>Copy for support</b> &mdash; Puts the visible rows on your clipboard so a bug report ships with evidence.</p>
+</div><div class="scr">
+  <h3>API Keys<em>2</em></h3>
+  <p class="act"><b>Create / revoke a key, set a webhook</b> &mdash; jly_live_ keys shown once; optional https webhook fires when a render finishes or fails.</p><p class="act"><b>Use the customer API</b> <span class="pill api">API key</span> &mdash; POST /api/v1/videos (script → finished video, no approval gate, 10/hour), GET /api/v1/videos, GET /api/v1/videos/{id}, GET /api/v1/status, plus an MCP tool manifest at /api/v1/mcp.</p>
+</div><div class="scr">
+  <h3>Team<em>2</em></h3>
+  <p class="act"><b>Create a team / invite seats</b> &mdash; Seats share visibility of projects, never credits; invites are ordinary beta invite links you copy.</p><p class="act"><b>Set roles / remove members</b> &mdash; editor or viewer (viewer is read-only); only the team owner can change seats.</p>
+</div><div class="scr">
+  <h3>Support &amp; admin<em>2</em></h3>
+  <p class="act"><b>Support session banner (view-as)</b> <span class="pill admin">Admin</span> &mdash; Admins can look at your account read-only for 2 h; you see a red banner and every write is blocked during it.</p><p class="act"><b>Beta invite minting</b> <span class="pill admin">Admin</span> &mdash; Site admins mint invite codes/links with uses and expiry.</p>
+</div></div></div>
+    <div class="footer"><span>Jelly Studio — what a user can do</span><span>tolley.io/hq · Aug 25, 2026 · p7</span></div>
+  </div><div class="page "><div class="pinner">
+  <h2><span class="n">05</span>Who gets what</h2>
+  <table class="tiers">
+    <tr><th>Tier</th><th style="text-align:right">Actions</th><th>What it adds</th></tr>
+    <tr><td><b>Everyone</b></td><td class="n">165</td><td>Any signed-in, invited account. The whole creation pipeline: styles, characters, scripts, voices, renders, the editor, Library, shorts, publishing, billing, teams, API keys, the global rulebook and their own rules.</td></tr><tr><td><b>Studio</b></td><td class="n">12</td><td>An email allowlist. Adds the Voice Tuner and sample gallery, Script Review with its own approval gate and publish panel, Dictate, Course Studio, the house rulebook and canon cast editing, and the settlement view.</td></tr><tr><td><b>Owner</b></td><td class="n">8</td><td>The operator account. Autopilot, the pipeline observer, the Discord copilot, unattended RSS renders, the publish queue and live cost surfacing.</td></tr><tr><td><b>Admin</b></td><td class="n">2</td><td>Site admins only. Read-only support sessions (the customer sees a banner and every write is blocked) and minting beta invites.</td></tr><tr><td><b>API key</b></td><td class="n">1</td><td>Machine access: script in, finished video out, no approval gate, ten per hour, plus list, status and an MCP manifest so an agent can drive it.</td></tr>
+  </table>
+
+  <h2 style="margin-top:12pt"><span class="n">06</span>Honest gaps</h2>
+  <p class="sub">Found in the same sweep. None is a blocker; all three are things a customer can hit.</p>
+  <div class="box red">
+    <p><b>Deleting a video is permanent.</b> There is no trash, archive or undo &mdash; the confirm dialog is the only
+    safety net. A soft-delete with a restore window is the obvious fix.</p>
+  </div>
+  <div class="box blue">
+    <p><b>No customer-facing ticket endpoint.</b> Fable&nbsp;5 status is read off the project row rather than a
+    dedicated status route, so the editor card and Project History are the only places a customer sees it.</p>
+  </div>
+  <div class="box">
+    <p><b>One dead share path.</b> The legacy <code>share</code> lane records the intent but performs no upload; the
+    working paths are the Library share modal and the Publishing screen. It should be removed rather than left to
+    look functional.</p>
+  </div>
+
+  <h2 style="margin-top:12pt"><span class="n">07</span>Keeping this doc true</h2>
+  <p>The list lives in <code>scripts/briefs/data/jelly-studio-actions.json</code> &mdash; one object per action with
+  screen, title, tier and description. Add features there and re-run
+  <code>node scripts/briefs/build-jelly-capabilities-doc.mjs</code> to rebuild this PDF; the page breaks re-flow on
+  their own. The searchable web version of the same data is linked from the Docs menu entry.</p>
+  <p class="small" style="margin-top:10pt;color:var(--muted)">Compiled 2026-08-25 from the shipped code: every screen
+  under <code>components/animate/screens/**</code>, the seven editor steps, the create-video flow, and all routes under
+  <code>app/api/vater/**</code> and <code>app/api/v1/**</code>. Tier gates read from
+  <code>lib/vater/nav-visibility.ts</code>, <code>lib/admin-auth.ts</code> and the capability flags on
+  <code>/api/vater/me</code>.</p>
+</div>
+    <div class="footer"><span>Jelly Studio — what a user can do</span><span>tolley.io/hq · Aug 25, 2026 · p8</span></div>
+  </div></body></html>

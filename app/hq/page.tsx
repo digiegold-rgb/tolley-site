@@ -677,6 +677,15 @@ function HqPageInner() {
               <summary className="tab-btn">📄 Docs ▾</summary>
               <div className="tab-docs-menu">
                 <a
+                  href="/research/jelly-studio-capabilities-2026-08.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeDocs}
+                >
+                  🎬 Jelly Studio — What a User Can Do
+                  <span className="doc-sub">Every action in /animate, screen by screen, with the tier that unlocks it — 188 actions across 37 screens, the golden path, who gets what, and three honest gaps — Aug 25, 2026</span>
+                </a>
+                <a
                   href="/research/zernio-integration-2026-08.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
