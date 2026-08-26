@@ -11,6 +11,7 @@
  * feedback_silent_failures_leads.md, no silent catches on the /leads/vater
  * path.
  */
+import type React from "react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { VideoSpeedChips } from "@/components/ui/VideoSpeedChips";
@@ -39,6 +40,61 @@ type Props = {
   onBeatTextChange: (idx: number, beatText: string) => void;
   billing: BillingMode;
 };
+
+/** One labelled block of the scene panel. Collapsible blocks remember
+ *  nothing — the panel is per-scene and short-lived. */
+function Section({
+  title,
+  hint,
+  tone = "zinc",
+  collapsible = false,
+  defaultOpen = true,
+  right,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  tone?: "zinc" | "emerald" | "fuchsia";
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  right?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const border =
+    tone === "emerald"
+      ? "border-emerald-500/30 bg-emerald-500/5"
+      : tone === "fuchsia"
+        ? "border-fuchsia-500/30 bg-fuchsia-500/5"
+        : "border-zinc-800 bg-zinc-950/60";
+  const label =
+    tone === "emerald"
+      ? "text-emerald-300"
+      : tone === "fuchsia"
+        ? "text-fuchsia-300"
+        : "text-zinc-400";
+  return (
+    <div className={`rounded-lg border p-3 ${border}`}>
+      <div className="flex items-start justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => collapsible && setOpen((o) => !o)}
+          className={`text-left ${collapsible ? "cursor-pointer" : "cursor-default"}`}
+        >
+          <p className={`text-[10px] font-semibold uppercase tracking-wider ${label}`}>
+            {collapsible ? (open ? "▾ " : "▸ ") : ""}
+            {title}
+          </p>
+          {hint ? (
+            <p className="mt-0.5 text-[10px] text-zinc-500">{hint}</p>
+          ) : null}
+        </button>
+        {right}
+      </div>
+      {open ? <div className="mt-2 space-y-2">{children}</div> : null}
+    </div>
+  );
+}
 
 export function SceneEditorDrawer({
   projectId,
@@ -86,9 +142,9 @@ export function SceneEditorDrawer({
     }
 
     setMoneyConfirm({
-      title: `Regenerate the image for scene ${scene.idx + 1}?`,
+      title: `Redraw the picture for scene ${scene.idx + 1}?`,
       lines: [
-        "Draws a new still from the image prompt above. The old version stays on disk until publish.",
+        "Draws a new still from the picture prompt. The old version stays on disk until publish.",
         scene.mediaType === "video" && scene.videoUrl
           ? "This scene's animation clip is discarded — it goes back to a still until you animate it again."
           : "Nothing else changes.",
@@ -127,7 +183,7 @@ export function SceneEditorDrawer({
         }
         onSceneUpdated(data.scene as SceneSpec);
         toast({
-          title: `Scene ${scene.idx + 1} regenerated`,
+          title: `Scene ${scene.idx + 1} redrawn`,
           description: `Now at v${data.scene.version}`,
           variant: "success",
         });
@@ -148,29 +204,44 @@ export function SceneEditorDrawer({
     }
   };
 
+  const hasClip = scene.mediaType === "video" && !!scene.videoUrl;
+  const clipPrice = scene.animQuality
+    ? ANIMATION_PRICES[scene.animQuality as AnimationQuality]?.priceCents
+    : undefined;
+
   return (
-    <div className="space-y-4 rounded-lg border border-zinc-800 bg-zinc-900/30 p-4">
-      <div className="flex items-start justify-between">
+    <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-900/30 p-4">
+      {/* Header: what this scene currently IS */}
+      <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-wider text-zinc-500">
             Scene {scene.idx + 1}
           </p>
           <p className="text-[11px] text-zinc-500">
             {formatRange(scene.startS, scene.endS)}
-            {scene.version && scene.version > 0
-              ? ` • v${scene.version}`
-              : ""}
           </p>
+        </div>
+        <div className="flex flex-wrap justify-end gap-1">
+          <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-300">
+            Picture v{scene.version ?? 0}
+          </span>
+          {hasClip ? (
+            <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-300">
+              Clip v{scene.videoVersion ?? 0} · {scene.animModel || scene.animBackend || "video"}
+            </span>
+          ) : (
+            <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-500">
+              No clip — still + Ken Burns
+            </span>
+          )}
         </div>
       </div>
 
       {/* Preview of the current scene, image or video clip.
           CRITICAL: video scenes MUST pass variant=video + videoVersion
-          (not the image `version` which is for regenerated stills).
-          Cache-bust with a timestamp when a re-animation just bumped the
-          version so browsers don't show the old clip. */}
+          (not the image `version` which is for regenerated stills). */}
       <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-zinc-800 bg-black">
-        {scene.mediaType === "video" && scene.videoUrl ? (
+        {hasClip ? (
           <video
             ref={sceneVideoRef}
             key={`v-${scene.idx}-${scene.videoVersion ?? 0}`}
@@ -196,26 +267,16 @@ export function SceneEditorDrawer({
         )}
         {isRegenerating ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black/70 text-xs text-zinc-200">
-            Regenerating scene… (~15-30s)
+            Redrawing picture… (~15-30s)
           </div>
         ) : null}
       </div>
-
-      {scene.mediaType === "video" && scene.videoUrl ? (
-        <VideoSpeedChips
-          videoRef={sceneVideoRef}
-          className="-mt-2 justify-end"
-        />
+      {hasClip ? (
+        <VideoSpeedChips videoRef={sceneVideoRef} className="-mt-1 justify-end" />
       ) : null}
 
-      {/* Beat text */}
-      <div>
-        <label
-          htmlFor={`beat-${scene.idx}`}
-          className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-500"
-        >
-          Beat text
-        </label>
+      {/* 1 — Narration */}
+      <Section title="Narration" hint="What's said while this scene is on screen. Editing here only changes the caption text.">
         <textarea
           id={`beat-${scene.idx}`}
           value={beatText}
@@ -225,16 +286,14 @@ export function SceneEditorDrawer({
           className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-200 placeholder-zinc-600 focus:border-zinc-600 focus:outline-none"
           placeholder="One-line description of this beat…"
         />
-      </div>
+      </Section>
 
-      {/* Image prompt */}
-      <div>
-        <label
-          htmlFor={`prompt-${scene.idx}`}
-          className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-500"
-        >
-          Image prompt
-        </label>
+      {/* 2 — Picture */}
+      <Section
+        title="Picture"
+        tone="emerald"
+        hint={`The still image. Redrawing costs ${formatPrice(FLAT_ACTION_PRICES.scene.priceCents)} and removes this scene's clip if it has one.`}
+      >
         <textarea
           id={`prompt-${scene.idx}`}
           value={prompt}
@@ -243,75 +302,69 @@ export function SceneEditorDrawer({
           className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-[11px] text-zinc-200 placeholder-zinc-600 focus:border-zinc-600 focus:outline-none"
           placeholder="Describe the image for this scene…"
         />
-      </div>
-
-      {/* Image renderer picker — per-regen override of the project's Style.
-          Empty string keeps the project default; everything else passes a
-          `quality` param to /regen-scene which routes to a different backend.
-          "Cloud" tiers run on Modal serverless and parallelise — fastest
-          option when the DGX is busy. */}
-      <div>
-        <label
-          htmlFor={`img-quality-${scene.idx}`}
-          className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-500"
+        <button
+          type="button"
+          onClick={handleRegen}
+          disabled={isRegenerating}
+          className="w-full rounded-lg bg-emerald-500/20 px-4 py-2 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Image renderer{" "}
-          <span className="text-zinc-600 normal-case">(this regen only)</span>
-        </label>
-        <select
-          id={`img-quality-${scene.idx}`}
-          value={imageQuality}
-          onChange={(e) => setImageQuality(e.target.value)}
-          className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-[11px] text-zinc-200 focus:border-zinc-600 focus:outline-none"
-        >
-          <option value="">Project default (from Style)</option>
-          <optgroup label="Cloud — fastest, parallelisable">
-            <option value="firered-modal">FireRed L40S (~20s)</option>
-            <option value="firered-modal-fast">FireRed H100 (~10s)</option>
-            <option value="gemini-2k">Gemini 2K (~8s)</option>
-            <option value="gemini-1k">Gemini 1K (~6s)</option>
-          </optgroup>
-          <optgroup label="Cloud — Ideogram (sharper text)">
-            <option value="ideogram-turbo">Ideogram Turbo</option>
-            <option value="ideogram-default">Ideogram Default</option>
-            <option value="ideogram-quality">Ideogram Quality</option>
-          </optgroup>
-        </select>
-        {imageQuality ? (
-          <p className="mt-1 text-[10px] text-amber-400/80">
-            ⚠ Switching renderer mid-project may not match the rest of the video.
+          {isRegenerating
+            ? "Redrawing…"
+            : `Redraw picture — ${formatPrice(FLAT_ACTION_PRICES.scene.priceCents)}`}
+        </button>
+        <details className="text-[10px] text-zinc-500">
+          <summary className="cursor-pointer select-none hover:text-zinc-300">
+            Advanced: image engine
+            {imageQuality ? ` (${imageQuality})` : " (project default)"}
+          </summary>
+          <select
+            id={`img-quality-${scene.idx}`}
+            value={imageQuality}
+            onChange={(e) => setImageQuality(e.target.value)}
+            className="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-[11px] text-zinc-200 focus:border-zinc-600 focus:outline-none"
+          >
+            <option value="">Project default (from your Style) — recommended</option>
+            <optgroup label="FireRed — same engine as the rest of the video">
+              <option value="firered-modal">FireRed (~20s)</option>
+              <option value="firered-modal-fast">FireRed fast (~10s)</option>
+            </optgroup>
+            <optgroup label="Other engines — look may not match the rest of the video">
+              <option value="gemini-2k">Gemini 2K</option>
+              <option value="gemini-1k">Gemini 1K</option>
+              <option value="ideogram-turbo">Ideogram Turbo (sharper text)</option>
+              <option value="ideogram-default">Ideogram Default (sharper text)</option>
+              <option value="ideogram-quality">Ideogram Quality (sharper text)</option>
+            </optgroup>
+          </select>
+          <p className="mt-1">
+            Same {formatPrice(FLAT_ACTION_PRICES.scene.priceCents)} whichever engine. Applies to this redraw only.
+            {imageQuality ? " ⚠ A different engine may not match the other scenes." : ""}
           </p>
-        ) : null}
-      </div>
+        </details>
+      </Section>
 
-      <button
-        type="button"
-        onClick={handleRegen}
-        disabled={isRegenerating}
-        className="w-full rounded-lg bg-emerald-500/20 px-4 py-2 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {isRegenerating
-          ? "Regenerating…"
-          : `Regenerate image (${formatPrice(FLAT_ACTION_PRICES.scene.priceCents)})`}
-      </button>
-
-      <p className="text-[10px] text-zinc-600">
-        Flat {formatPrice(FLAT_ACTION_PRICES.scene.priceCents)} per image
-        whichever renderer you pick. Old versions stay on disk until publish.
-      </p>
-
+      {/* 3 — Motion */}
       <AnimationPanel
         projectId={projectId}
         scene={scene}
         onSceneUpdated={onSceneUpdated}
         billing={billing}
+        clipPriceCents={clipPrice}
       />
 
-      <SmartOverlayPanel
-        projectId={projectId}
-        scene={scene}
-        onSceneUpdated={onSceneUpdated}
-      />
+      {/* 4 — Overlay (rarely used) */}
+      <Section
+        title="Overlay"
+        hint="Replace the picture with a chart, map or header card."
+        collapsible
+        defaultOpen={Boolean(scene.isHeader || scene.isChart || scene.isMap)}
+      >
+        <SmartOverlayPanel
+          projectId={projectId}
+          scene={scene}
+          onSceneUpdated={onSceneUpdated}
+        />
+      </Section>
       <MoneyConfirmModal
         request={moneyConfirm}
         billing={billing}
@@ -353,11 +406,14 @@ function AnimationPanel({
   scene,
   onSceneUpdated,
   billing,
+  clipPriceCents,
 }: {
   projectId: string;
   scene: SceneSpec;
   onSceneUpdated: (scene: SceneSpec) => void;
   billing: BillingMode;
+  /** List price of the clip currently on the scene (undefined = none). */
+  clipPriceCents?: number;
 }) {
   const { toast } = useToast();
   const [animationPrompt, setAnimationPrompt] = useState(
@@ -583,30 +639,79 @@ function AnimationPanel({
     });
   };
 
+  // Motion amount + Hold start pose are Wan/Hunyuan sampler presets; the
+  // third-party engines (Kling/Luma/Veo) choose their own motion.
+  const supportsMotionControls =
+    qualityInfo?.group === "calm" || qualityInfo?.group === "action";
+  const priceLabel = qualityInfo ? formatPrice(qualityInfo.priceCents) : "";
+
   return (
-    <div className="space-y-2 rounded-lg border border-fuchsia-500/30 bg-fuchsia-500/5 p-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-fuchsia-300">
-            Animation (i2v)
-          </p>
-          <p className="mt-0.5 text-[10px] text-fuchsia-200/70">
-            Turn this still into a ~{clampedDuration}s video clip
-          </p>
-        </div>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[10px] ${
-            isAnimated
-              ? "bg-emerald-500/20 text-emerald-300"
-              : "bg-fuchsia-500/20 text-fuchsia-300"
-          }`}
-        >
-          {isAnimated
-            ? `${scene.animBackend ?? "video"} • v${scene.videoVersion ?? 0}`
-            : qualityInfo
-              ? `${formatPrice(qualityInfo.priceCents)}/clip`
-              : "—"}
+    <Section
+      title="Motion"
+      tone="fuchsia"
+      hint={
+        isAnimated
+          ? "This scene plays a video clip. Re-doing it makes a new clip; removing it goes back to the still (free)."
+          : `Turn the picture into a ~${clampedDuration}s video clip.`
+      }
+      right={
+        <span className="rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[10px] text-fuchsia-300">
+          {priceLabel ? `${priceLabel}/clip` : "—"}
         </span>
+      }
+    >
+      {isAnimated ? (
+        <div className="flex items-center justify-between gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-200">
+          <span>
+            Clip v{scene.videoVersion ?? 0} · {scene.animModel || scene.animBackend || "video"}
+            {scene.animDurationSeconds ? ` · ${scene.animDurationSeconds}s` : ""}
+            {typeof clipPriceCents === "number"
+              ? billing.unmetered
+                ? ` · studio, no charge`
+                : ` · billed ${formatPrice(clipPriceCents)}`
+              : ""}
+          </span>
+          <button
+            type="button"
+            onClick={handleRevertToStill}
+            disabled={isAnimating || isReverting}
+            className="shrink-0 rounded border border-emerald-500/40 px-2 py-1 text-[10px] text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50"
+            title="Remove the clip from this scene. Free. The file stays on disk."
+          >
+            {isReverting ? "Removing…" : "Remove clip (free)"}
+          </button>
+        </div>
+      ) : null}
+
+      <div>
+        <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-500">
+          Engine
+        </label>
+        <select
+          value={quality}
+          onChange={(e) => setQuality(e.target.value as AnimationQuality)}
+          className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-[11px] text-zinc-200 focus:border-zinc-600 focus:outline-none"
+        >
+          {TIER_GROUP_ORDER.map((g) => (
+            <optgroup key={g} label={ANIMATION_TIER_GROUPS[g].label}>
+              {QUALITY_OPTIONS.filter((q) => q.group === g).map((q) => (
+                <option key={q.id} value={q.id} title={q.desc}>
+                  {q.label} — {formatPrice(q.priceCents)} · {q.eta}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+        <p className="mt-1 text-[10px] text-zinc-500">
+          {qualityInfo
+            ? `${qualityInfo.desc} ${ANIMATION_TIER_GROUPS[qualityInfo.group].hint}`
+            : ""}
+        </p>
+        {qualityInfo?.cartoonUnsafe ? (
+          <p className="mt-1 text-[10px] text-amber-400">
+            ⚠ Veo rejects cartoon faces. Pick a Wan 2.2 or Kling engine for cartoon scenes.
+          </p>
+        ) : null}
       </div>
 
       <div>
@@ -615,17 +720,17 @@ function AnimationPanel({
             htmlFor={`anim-prompt-${scene.idx}`}
             className="text-[10px] uppercase tracking-wider text-zinc-500"
           >
-            Animation prompt{" "}
-            <span className="text-zinc-600 normal-case">(optional — auto-picked if blank)</span>
+            What moves{" "}
+            <span className="normal-case text-zinc-600">(optional — leave blank and the AI decides, following your rules)</span>
           </label>
           <button
             type="button"
             onClick={handleAutoSuggest}
             disabled={isSuggesting || isAnimating}
             className="rounded px-2 py-0.5 text-[10px] font-semibold text-fuchsia-300 hover:bg-fuchsia-500/10 disabled:opacity-50"
-            title="Ask the AI planner to suggest motion based on this scene"
+            title="Ask the AI planner (rulebook-aware) to write the motion for this scene so you can edit it first"
           >
-            {isSuggesting ? "…thinking" : "✨ Auto-suggest"}
+            {isSuggesting ? "…thinking" : "✨ Suggest"}
           </button>
         </div>
         <textarea
@@ -634,114 +739,71 @@ function AnimationPanel({
           onChange={(e) => setAnimationPrompt(e.target.value)}
           rows={2}
           className="w-full rounded-lg border border-fuchsia-500/30 bg-zinc-950 px-3 py-2 text-[11px] text-zinc-200 placeholder-zinc-600 focus:border-fuchsia-500/60 focus:outline-none"
-          placeholder='Leave blank and we pick the motion for you. Or: "Slow zoom on the notebook. Fixed camera."'
+          placeholder='e.g. "the man gestures back toward the store, slight head nod, camera holds steady"'
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-500">
-            Quality
-          </label>
-          <select
-            value={quality}
-            onChange={(e) => setQuality(e.target.value as AnimationQuality)}
-            className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-[11px] text-zinc-200 focus:border-zinc-600 focus:outline-none"
-          >
-            {TIER_GROUP_ORDER.map((g) => (
-              <optgroup key={g} label={ANIMATION_TIER_GROUPS[g].label}>
-                {QUALITY_OPTIONS.filter((q) => q.group === g).map((q) => (
-                  <option key={q.id} value={q.id} title={q.desc}>
-                    {q.label} — {formatPrice(q.priceCents)} · {q.eta}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-          {qualityInfo?.cartoonUnsafe ? (
-            <p className="mt-1 text-[10px] text-amber-400">
-              ⚠ Veo blocks cartoon faces. Pick a Wan 2.2 or Kling tier instead.
-            </p>
-          ) : null}
-        </div>
-        <div className="flex flex-col">
-          <span className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">
-            Camera
+      <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-[11px] text-zinc-300">
+        <input
+          type="checkbox"
+          checked={fixedCamera}
+          onChange={(e) => setFixedCamera(e.target.checked)}
+          className="h-3.5 w-3.5 accent-fuchsia-500"
+        />
+        <span>Lock the camera (no pan / zoom)</span>
+      </label>
+
+      {supportsMotionControls ? (
+        <div className="rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
+          <span className="text-[10px] uppercase tracking-wider text-zinc-500">
+            How much movement
           </span>
-          <label className="flex h-[30px] cursor-pointer items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-3 text-[11px] text-zinc-300">
+          <div className="mt-1.5 grid grid-cols-3 gap-1">
+            {(
+              [
+                { id: "subtle", label: "Subtle", desc: "Slow, calm, mouth closed — the default" },
+                { id: "normal", label: "Normal", desc: "Everyday movement" },
+                { id: "bold", label: "Bold", desc: "Big movement — action beats only" },
+              ] as const
+            ).map((opt) => {
+              const active = motionIntensity === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setMotionIntensity(opt.id)}
+                  title={opt.desc}
+                  className={`rounded px-2 py-1.5 text-[11px] font-semibold transition-colors ${
+                    active
+                      ? "bg-fuchsia-500/30 text-fuchsia-200 ring-1 ring-fuchsia-500/60"
+                      : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <label className="mt-2 flex cursor-pointer items-start gap-2 rounded border border-zinc-800 bg-zinc-900/40 px-2 py-1.5 text-[11px] text-zinc-300">
             <input
               type="checkbox"
-              checked={fixedCamera}
-              onChange={(e) => setFixedCamera(e.target.checked)}
-              className="h-3.5 w-3.5 accent-fuchsia-500"
+              checked={holdStartPose}
+              onChange={(e) => setHoldStartPose(e.target.checked)}
+              className="mt-0.5 h-3.5 w-3.5 accent-fuchsia-500"
             />
-            <span>Fixed (no pan/zoom)</span>
+            <span>
+              <span className="font-semibold text-zinc-200">End on the starting pose</span>
+              <span className="block text-[10px] text-zinc-500">
+                Stops wandering hands, mouth flap and face drift. Best for talking / close-ups.
+              </span>
+            </span>
           </label>
         </div>
-      </div>
-
-      {/* Motion dampening — only meaningful for modal-wan22* tiers. The segmented
-          control picks a Wan2.2 sampler preset (cfg/shift/denoise/lora together);
-          "Hold start pose" turns on FLF2V so the ending frame is clamped to the
-          starting image — the biggest single fix for wandering hands/mouth on
-          narrative scenes. */}
-      <div className="rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
-        <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-[10px] uppercase tracking-wider text-zinc-500">
-            Motion — how much the picture moves
-          </span>
-          <span className="text-[9px] text-zinc-600" title="Kling, Luma and Veo ignore these and pick their own motion.">
-            Wan 2.2 / Hunyuan tiers only
-          </span>
-        </div>
-        <div className="grid grid-cols-3 gap-1">
-          {(
-            [
-              { id: "subtle", label: "Subtle", desc: "Slow, calm, mouth closed — the default" },
-              { id: "normal", label: "Normal", desc: "Everyday movement" },
-              { id: "bold", label: "Bold", desc: "Big movement — action beats only" },
-            ] as const
-          ).map((opt) => {
-            const active = motionIntensity === opt.id;
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => setMotionIntensity(opt.id)}
-                title={opt.desc}
-                className={`rounded px-2 py-1.5 text-[11px] font-semibold transition-colors ${
-                  active
-                    ? "bg-fuchsia-500/30 text-fuchsia-200 ring-1 ring-fuchsia-500/60"
-                    : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
-                }`}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-        <label className="mt-2 flex cursor-pointer items-start gap-2 rounded border border-zinc-800 bg-zinc-900/40 px-2 py-1.5 text-[11px] text-zinc-300">
-          <input
-            type="checkbox"
-            checked={holdStartPose}
-            onChange={(e) => setHoldStartPose(e.target.checked)}
-            className="mt-0.5 h-3.5 w-3.5 accent-fuchsia-500"
-          />
-          <span>
-            <span className="font-semibold text-zinc-200">Hold start pose</span>
-            <span className="block text-[10px] text-zinc-500">
-              Locks ending frame to the starting image (FLF2V). Kills wandering
-              hands, mouth flap, expression morph. Best for narrative / close-ups.
-            </span>
-          </span>
-        </label>
-      </div>
-
-      <p className="text-[10px] text-zinc-600">
-        {qualityInfo
-          ? `${qualityInfo.desc} ${ANIMATION_TIER_GROUPS[qualityInfo.group].hint}`
-          : ""}
-      </p>
+      ) : (
+        <p className="rounded-md border border-zinc-800 bg-zinc-950/60 px-2 py-1.5 text-[10px] text-zinc-500">
+          {qualityInfo?.label.replace(" ⭐", "") ?? "This engine"} decides its own amount of movement — the Subtle / Normal / Bold controls only apply to Wan 2.2 and Hunyuan.
+        </p>
+      )}
 
       <button
         type="button"
@@ -752,20 +814,9 @@ function AnimationPanel({
         {isAnimating
           ? `Animating… (about ${qualityInfo?.eta ?? "a few min"})`
           : isAnimated
-            ? `Re-animate (new seed) — ${qualityInfo ? formatPrice(qualityInfo.priceCents) : ""}`
-            : `Animate this scene — ${qualityInfo ? formatPrice(qualityInfo.priceCents) : ""}`}
+            ? `Re-do motion — ${priceLabel}`
+            : `Animate — ${priceLabel}`}
       </button>
-
-      {isAnimated ? (
-        <button
-          type="button"
-          onClick={handleRevertToStill}
-          disabled={isAnimating || isReverting}
-          className="w-full rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-1.5 text-[11px] text-zinc-400 hover:text-zinc-200 disabled:opacity-50"
-        >
-          Revert to still image (free)
-        </button>
-      ) : null}
 
       {statusMsg ? (
         <div
@@ -783,21 +834,12 @@ function AnimationPanel({
           {statusMsg.text}
         </div>
       ) : null}
-
-      {scene.animQuality ? (
-        <p className="text-[10px] text-zinc-600">
-          Current clip: {scene.animModel || scene.animBackend}
-          {ANIMATION_PRICES[scene.animQuality as AnimationQuality]
-            ? ` • billed ${formatPrice(ANIMATION_PRICES[scene.animQuality as AnimationQuality].priceCents)}`
-            : ""}
-        </p>
-      ) : null}
       <MoneyConfirmModal
         request={moneyConfirm}
         billing={billing}
         onClose={() => setMoneyConfirm(null)}
       />
-    </div>
+    </Section>
   );
 }
 
@@ -925,11 +967,8 @@ function SmartOverlayPanel({
   const meta = palette[currentType];
 
   return (
-    <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] uppercase tracking-wider text-zinc-500">
-          Smart Overlay
-        </p>
+    <div className="space-y-2">
+      <div className="flex items-center justify-end">
         <span className={`rounded ${meta.bg} px-2 py-0.5 text-[10px] font-semibold ${meta.fg}`}>
           {meta.label}
         </span>
