@@ -735,10 +735,68 @@
 }
 .hq-admin .sms-list-head {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px 12px 8px;
+}
+.hq-admin .sms-list-head-row {
+  display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
-  padding: 12px 12px 8px;
+}
+.hq-admin .twilio-pill {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--hq-ink-2);
+}
+.hq-admin .twilio-pill-amt {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+.hq-admin .twilio-pill.low .twilio-pill-amt {
+  color: var(--hq-red);
+}
+.hq-admin .twilio-pill-low {
+  font-size: 10px;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+.hq-admin .twilio-pill.low .twilio-pill-low {
+  color: #991b1b;
+  background: #fee2e2;
+}
+.hq-admin .twilio-pill-err {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--hq-red);
+}
+.hq-admin .twilio-topup {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4472c4;
+  text-decoration: none;
+}
+.hq-admin .twilio-topup:hover { text-decoration: underline; }
+.hq-admin .twilio-topup-sm { font-size: 10px; }
+.hq-admin .twilio-low-warn {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+  border-radius: 6px;
+  padding: 4px 8px;
+  display: inline-block;
 }
 .hq-admin .sms-title {
   font-size: 14px;
