@@ -26,6 +26,7 @@ import {
 } from '../dashboard/StyleWizardModal';
 import { CharacterLab } from './CharacterLab';
 import { HouseCastPanel } from './HouseCastPanel';
+import { RulesBanner } from './RulesBanner';
 import { ImageLightbox } from '../../ImageLightbox';
 
 interface VaterCharacter {
@@ -125,6 +126,11 @@ export function CharactersScreen(): React.ReactElement {
         title="Characters"
         description="Your locked house cast first, then every character you've minted. Reuse one in a new video and it keeps the same face across every scene."
       />
+
+      {/* Online rulebook pointer (2026-08-25) — studio users only; the same
+          JSON every render fetches, so the version shown here is what the
+          next render will obey. */}
+      <RulesBanner />
 
       {/* Canon roster (2026-08-22). Pinned ABOVE the Lab because it is the
           answer to "who is in my videos" — the minted library below is the

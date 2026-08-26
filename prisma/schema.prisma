@@ -5513,3 +5513,46 @@ model HqSpendEntry {
 
   @@index([createdAt])
 }
+
+/// Online Vater rulebook (2026-08-25). Source of truth for the numbered
+/// production rules that used to live only in ~/vater-studio/VATER-RULES.md on
+/// the DGX (edited by Claude, read by nobody at render time). Rule numbers are
+/// PERMANENT (rule 1 doctrine): never renumbered, never reused; retired rules
+/// keep their number with retiredAt set. Every render fetches this table via
+/// GET /api/vater/rules and stamps the content-hash `version` into its job.
+model VaterRule {
+  id           String    @id @default(cuid())
+  /// "79" or "78a" — number + optional letter suffix; the id humans cite.
+  code         String    @unique
+  number       Int
+  suffix       String    @default("")
+  section      Int
+  sectionTitle String
+  title        String
+  body         String    @default("")
+  source       String?
+  /// hard | advisory | planner | info — what the rule DOES at render time:
+  /// hard = the delivery audit blocks on it; advisory = goes in the customer
+  /// note; planner = injected into every scene-planner prompt; info = ops.
+  gate         String    @default("info")
+  retiredAt    DateTime?
+  retiredNote  String?
+  updatedBy    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([section, number])
+}
+
+/// Every write to a VaterRule (edit, add, retire) — who changed what, when.
+model VaterRuleRevision {
+  id        String   @id @default(cuid())
+  code      String
+  before    Json?
+  after     Json
+  by        String
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([code, createdAt])
+}
