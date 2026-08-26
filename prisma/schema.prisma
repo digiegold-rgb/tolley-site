@@ -1499,6 +1499,8 @@ model WdMessage {
   @@index([status])
   @@index([clientId])
   @@index([direction, status])
+  @@index([phone])
+  @@index([channel, createdAt])
 }
 
 model WdRepairItem {

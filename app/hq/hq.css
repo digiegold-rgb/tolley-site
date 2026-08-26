@@ -709,3 +709,214 @@
   background: linear-gradient(135deg, #6d28d9, #4c1d95);
   box-shadow: 0 2px 6px rgba(109, 40, 217, 0.35);
 }
+.hq-admin .tab-btn.tab-sms.active {
+  background: linear-gradient(135deg, #0f766e, #115e59);
+  box-shadow: 0 2px 6px rgba(15, 118, 110, 0.35);
+}
+
+/* ─── SMS inbox ─── */
+.hq-admin .sms-inbox {
+  display: flex;
+  min-height: calc(100vh - 220px);
+  height: calc(100vh - 220px);
+  border: 1px solid var(--hq-border);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+.hq-admin .sms-list {
+  width: 320px;
+  flex: 0 0 320px;
+  border-right: 1px solid var(--hq-line);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: #fafafa;
+}
+.hq-admin .sms-list-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 12px 8px;
+}
+.hq-admin .sms-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+.hq-admin .sms-sub {
+  font-size: 11px;
+  color: var(--hq-ink-2);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+.hq-admin .sms-filters {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 10px;
+}
+.hq-admin .sms-chip {
+  border: 1px solid var(--hq-border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #1a1a1a;
+}
+.hq-admin .sms-chip.active {
+  background: #115e59;
+  color: #fff;
+  border-color: #115e59;
+}
+.hq-admin .sms-thread-list {
+  flex: 1;
+  overflow-y: auto;
+}
+.hq-admin .sms-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-top: 1px solid var(--hq-line);
+  background: transparent;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.hq-admin .sms-row:hover { background: #fff; }
+.hq-admin .sms-row.selected { background: #fff; box-shadow: inset 3px 0 0 #0f766e; }
+.hq-admin .sms-row-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.hq-admin .sms-name { font-weight: 700; font-size: 13px; }
+.hq-admin .sms-ago { font-size: 11px; color: var(--hq-ink-3); flex: 0 0 auto; }
+.hq-admin .sms-phone { font-size: 11px; color: var(--hq-ink-2); margin-top: 1px; }
+.hq-admin .sms-preview {
+  font-size: 12px;
+  color: var(--hq-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 3px;
+}
+.hq-admin .sms-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.hq-admin .sms-badge {
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 7px;
+  background: var(--hq-line);
+  color: #333;
+}
+.hq-admin .sms-badge.src-wd { background: #dbeafe; color: #1d4ed8; }
+.hq-admin .sms-badge.src-tagent { background: #ede9fe; color: #6d28d9; }
+.hq-admin .sms-badge.src-unmatched { background: #f3f4f6; color: #4b5563; }
+.hq-admin .sms-badge.needs { background: #fef3c7; color: #92400e; }
+.hq-admin .sms-badge.unread { background: #ccfbf1; color: #115e59; }
+.hq-admin .sms-badge.stop { background: #fee2e2; color: #991b1b; }
+.hq-admin .sms-thread {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+.hq-admin .sms-thread-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hq-line);
+}
+.hq-admin .sms-thread-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.hq-admin .sms-thread-who span { color: var(--hq-ink-2); font-size: 12px; }
+.hq-admin .sms-back { display: none; }
+.hq-admin .sms-msgs {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: #f5f5f7;
+}
+.hq-admin .sms-bubble {
+  max-width: 78%;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.hq-admin .sms-bubble.inbound {
+  background: #fff;
+  border: 1px solid var(--hq-line);
+  margin-right: auto;
+}
+.hq-admin .sms-bubble.outbound {
+  background: #d1fae5;
+  border: 1px solid #a7f3d0;
+  margin-left: auto;
+}
+.hq-admin .sms-bubble-meta {
+  font-size: 10px;
+  color: var(--hq-ink-3);
+  margin-top: 4px;
+}
+.hq-admin .sms-bubble-meta .fail { color: var(--hq-red); font-weight: 700; }
+.hq-admin .sms-compose {
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--hq-line);
+  background: #fff;
+}
+.hq-admin .sms-compose textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--hq-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 64px;
+}
+.hq-admin .sms-compose-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.hq-admin .sms-compose-hint { font-size: 11px; color: var(--hq-ink-2); }
+.hq-admin .sms-warn {
+  font-size: 12px;
+  color: var(--hq-red);
+  margin-bottom: 6px;
+}
+.hq-admin .sms-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--hq-ink-3);
+  font-size: 13px;
+}
+.hq-admin .sms-empty.tall {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+@media (max-width: 768px) {
+  .hq-admin .sms-inbox { height: calc(100vh - 180px); flex-direction: column; }
+  .hq-admin .sms-list, .hq-admin .sms-thread { width: 100%; flex: 1 1 auto; }
+  .hq-admin .sms-hide-mobile { display: none !important; }
+  .hq-admin .sms-back { display: inline-flex; }
+}
