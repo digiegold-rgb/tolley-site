@@ -20,6 +20,7 @@ import { manifest as dataRetention } from "@/app/data-retention/agent";
 import { manifest as drive } from "@/app/drive/agent";
 import { manifest as eAndT } from "@/app/e-and-t/agent";
 import { manifest as food } from "@/app/food/agent";
+import { manifest as game } from "@/app/game/agent";
 import { manifest as generator } from "@/app/generator/agent";
 import { manifest as go } from "@/app/go/agent";
 import { manifest as gpu } from "@/app/gpu/agent";
@@ -74,6 +75,7 @@ export const SUBSITES: SubsiteManifest[] = [
   drive,
   eAndT,
   food,
+  game,
   generator,
   go,
   gpu,

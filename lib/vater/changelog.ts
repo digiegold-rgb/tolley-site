@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.8';
+export const APP_VERSION = '1.9';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.9',
+    date: '2026-08-26',
+    title: 'Portal Hoppers — a free game at tolley.io/game',
+    items: [
+      'An original co-op pixel platformer: pick Zip, Ember or Moxie, team up with Cubo the cube, hop through ten worlds and free fifteen caged friends — each one adds a power to your Power Wheel.',
+      'Cubo plays himself (pillars, boosts, batting candy back at bosses) or a second player drives him with WASD + Shift. Keyboard or touch, chiptune sound, progress saves in your browser.',
+    ],
+  },
   {
     version: '1.8',
     date: '2026-08-24',
