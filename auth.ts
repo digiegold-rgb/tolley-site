@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { isAdminEmail } from "@/lib/admin-auth";
 import { readSessionVersion } from "@/lib/auth/session-version";
 import { readViewAsUserId } from "@/lib/vater/acting-as";
+import { isLiveWorkspace, readWsUserId } from "@/lib/vater/workspaces";
 
 const emailPort = Number(process.env.EMAIL_SERVER_PORT || 587);
 const emailHost = process.env.EMAIL_SERVER_HOST || "localhost";
@@ -353,6 +354,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.issuedAt = new Date(token.iat * 1000).toISOString();
       }
 
+      /* Workspace TAB (lib/vater/workspaces.ts, 2026-08-27).
+       *
+       * The jelly_ws cookie names one of this login's tabs — a hidden User
+       * row. Its HMAC is bound to token.sub, so a cookie minted for anyone
+       * else verifies to nothing. We swap ONLY the id: email/name stay the
+       * real login, because every admin/studio/unmetered gate is keyed on
+       * email and a tab inherits all of them. A bad, foreign, or archived
+       * cookie silently means "the primary studio". Runs BEFORE view-as so a
+       * support session can still target any user, tab or not. */
+      try {
+        if (session.user && token.sub) {
+          const wsUserId = await readWsUserId(token.sub);
+          if (
+            wsUserId &&
+            wsUserId !== token.sub &&
+            (await isLiveWorkspace(token.sub, wsUserId))
+          ) {
+            session.workspace = { id: wsUserId, rootUserId: token.sub };
+            session.user.id = wsUserId;
+          }
+        }
+      } catch (error) {
+        console.error("[auth] workspace resolution failed", error);
+      }
+
       /* "View as user" — admin support impersonation (lib/vater/acting-as.ts).
        *
        * 🔴 The cookie alone grants NOTHING. This is the only place it is
@@ -374,6 +400,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             });
             if (target) {
               session.impersonatedBy = realEmail;
+              session.workspace = undefined;
               session.user.id = target.id;
               session.user.email = target.email ?? "";
               session.user.name = target.name ?? null;

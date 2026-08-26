@@ -255,7 +255,10 @@ export function Sidebar({
 }: SidebarProps): React.ReactElement | null {
   const { t } = useTheme();
   const { route, setRoute, requestNewVideo } = useRoute();
-  const { tier, loading, email } = useTier();
+  const { tier, loading, email, workspace } = useTier();
+  // Each studio tab keeps its own menu order (nav-order.ts): the key is the
+  // tab's id when there is one, the login email otherwise (pre-migration).
+  const prefsKey = workspace ? `ws:${workspace.id}` : email;
 
   // While /api/vater/me is in flight we render the public list — the
   // floor, never the ceiling, so nothing gated flashes into view.
@@ -271,8 +274,8 @@ export function Sidebar({
   const [prefs, setPrefs] = React.useState<NavOrderPrefs | null>(null);
   React.useEffect(() => {
     if (loading) return;
-    setPrefs(loadNavPrefs(email));
-  }, [email, loading]);
+    setPrefs(loadNavPrefs(prefsKey));
+  }, [prefsKey, loading]);
   const { primary, secondary } = React.useMemo(
     () => applyNavPrefs(items, prefs),
     [items, prefs],
@@ -286,7 +289,7 @@ export function Sidebar({
   const persist = (p: NavRouteDef[], sList: NavRouteDef[]): void => {
     const next = prefsFromLists(p, sList);
     setPrefs(next);
-    saveNavPrefs(email, next);
+    saveNavPrefs(prefsKey, next);
   };
 
   const commitDrop = (): void => {
@@ -608,7 +611,7 @@ export function Sidebar({
               type="button"
               data-testid="nav-reset-order"
               onClick={() => {
-                clearNavPrefs(email);
+                clearNavPrefs(prefsKey);
                 setPrefs(null);
               }}
               style={{

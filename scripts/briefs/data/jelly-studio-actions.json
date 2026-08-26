@@ -186,5 +186,12 @@
 {"s":"Team","a":"Create a team / invite seats","t":"public","d":"Seats share visibility of projects, never credits; invites are ordinary beta invite links you copy."},
 {"s":"Team","a":"Set roles / remove members","t":"public","d":"editor or viewer (viewer is read-only); only the team owner can change seats."},
 {"s":"Support & admin","a":"Support session banner (view-as)","t":"admin","d":"Admins can look at your account read-only for 2 h; you see a red banner and every write is blocked during it."},
-{"s":"Support & admin","a":"Beta invite minting","t":"admin","d":"Site admins mint invite codes/links with uses and expiry."}
+{"s":"Support & admin","a":"Beta invite minting","t":"admin","d":"Site admins mint invite codes/links with uses and expiry."},
+{"s":"Studios (tabs)","a":"Switch studios from the tab strip","t":"public","d":"A row of tabs above the Jelly logo — one login, each tab a completely separate studio (library, characters, voices, connections, rules, balance, system log). Click to switch; the page reloads inside that studio."},
+{"s":"Studios (tabs)","a":"Open a new studio (+)","t":"public","d":"Name it and you land inside it empty — nothing is shared with your other studios. Up to 10 per account."},
+{"s":"Studios (tabs)","a":"Rename a studio","t":"public","d":"Double-click the open tab (or ⋯ → Rename, or Settings → Studios). The main studio starts as your account name."},
+{"s":"Studios (tabs)","a":"Reorder studios by dragging","t":"public","d":"Drag tabs into the order you want; the main studio always stays first."},
+{"s":"Studios (tabs)","a":"Archive / restore a studio","t":"public","d":"⋯ → Archive hides the tab without deleting anything — its videos, cast and balance stay; restore it from Settings → Studios. The main studio can't be archived."},
+{"s":"Studios (tabs)","a":"Deep-link into a studio","t":"public","d":"/animate?w=<studio id> opens that studio directly (Telegram receipts and /hq use it); a stale link just lands on your main studio."},
+{"s":"Studios (tabs)","a":"Per-studio menu order and connections","t":"public","d":"Sidebar order, YouTube/social connections, ElevenLabs key, own rules and credit balance are all per studio; access tier, beta status and terms follow the login."}
 ]

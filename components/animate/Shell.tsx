@@ -51,6 +51,7 @@ import { SystemLog } from './screens/studio/SystemLog';
 import { ApiKeys } from './screens/studio/ApiKeys';
 import { Team } from './screens/studio/Team';
 import { ViewAsBanner } from './ViewAsBanner';
+import { WorkspaceTabs } from './WorkspaceTabs';
 import { BetaGate } from './BetaGate';
 import { AutopilotScreen } from './screens/live/AutopilotScreen';
 import { PublishingScreen } from './screens/live/PublishingScreen';
@@ -468,6 +469,10 @@ function ShellInner(): React.ReactElement {
           <BetaGate />
           <ViewAsBanner />
           <BetaAccessBanner />
+          {/* Studio TABS — above the logo, full width. One login, many fully
+              separate studios (lib/vater/workspaces.ts). Renders nothing until
+              the workspace table exists. */}
+          <WorkspaceTabs />
           <div style={{ display: 'flex', flex: 1, minHeight: 0, minWidth: 0 }}>
             <Sidebar
               collapsed={sidebarCollapsed}

@@ -38,6 +38,7 @@ import {
 } from "@/lib/vater/schema-probe";
 
 import { referrerForUser } from "@/lib/vater/beta-invites";
+import { rootUserIdFor } from "@/lib/vater/workspaces";
 
 import {
   MEDIAN_COMPUTE_USD_PER_MIN,
@@ -369,6 +370,11 @@ export async function grantStarterCredit(
   if (!(await hasVaterCreditLedgerTable())) {
     return { granted: false, reason: "not_ready" };
   }
+  // A workspace TAB is the same human — it never earns a second welcome
+  // credit (lib/vater/workspaces.ts). The root already had its one.
+  if ((await rootUserIdFor(userId)) !== userId) {
+    return { granted: false, reason: "workspace" };
+  }
   const cents = opts?.cents ?? STARTER_GRANT_CENTS;
   const days = opts?.days ?? STARTER_GRANT_DAYS;
   return grantCredit({
@@ -449,6 +455,11 @@ export async function grantCredit(input: {
 export async function creditReferrerOnFirstDebit(
   inviteeUserId: string,
 ): Promise<{ credited: boolean; reason?: string; referrerId?: string }> {
+  // Tabs have no invite of their own and must never mint a referral for the
+  // human who created them.
+  if ((await rootUserIdFor(inviteeUserId)) !== inviteeUserId) {
+    return { credited: false, reason: "workspace" };
+  }
   const referrerId = await referrerForUser(inviteeUserId);
   if (!referrerId) return { credited: false, reason: "no_referrer" };
   if (referrerId === inviteeUserId) {

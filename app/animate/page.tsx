@@ -8,6 +8,7 @@
  */
 import { auth } from "@/auth";
 import type { Metadata, Viewport } from "next";
+import { redirect } from "next/navigation";
 import { AnimateLanding } from "@/components/animate/landing/AnimateLanding";
 
 export const dynamic = "force-dynamic";
@@ -52,10 +53,23 @@ export const metadata: Metadata = {
     "Write the story only you can tell and Jelly develops the film: your cloned voice, a generated cinematic scene for every line, no stock footage and no watermark. You pay per picture, never per month — most films land at $1–7 all in, failed renders are never charged, and a $10 starter credit is waiting on signup. Public beta. Limited seats. Request a seat.",
 };
 
-export default async function AnimateStudioPage() {
+export default async function AnimateStudioPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await auth();
   if (!session?.user?.id) {
     return <AnimateLanding />;
+  }
+  /* ?w=<tabId> — a deep link into one studio TAB (Telegram receipts, /hq).
+   * A page can't set cookies, so bounce through the switch route, which
+   * verifies ownership, sets jelly_ws and lands back here. The hash (#r=…)
+   * survives the redirect because browsers carry it across 3xx. */
+  const sp = await searchParams;
+  const wanted = typeof sp.w === "string" ? sp.w : null;
+  if (wanted && wanted !== session.user.id) {
+    redirect(`/api/vater/workspaces/switch?to=${encodeURIComponent(wanted)}`);
   }
   /* Load Shell only for signed-in visitors so the public landing JS chunk
    * does not ship in-app help-drawer / studio-chrome strings. */

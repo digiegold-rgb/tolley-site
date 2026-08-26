@@ -26,6 +26,7 @@ import { resolveActor } from "@/lib/vater/acting-as";
 import { isMissingRelationError } from "@/lib/vater/beta-schema";
 import { TOS_VERSION } from "@/lib/legal-animate";
 import { scriptCapFor } from "@/lib/vater/billing/script-cap";
+import { workspaceForUser, MAX_WORKSPACES } from "@/lib/vater/workspaces";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,7 +81,14 @@ export async function GET() {
   const siteAdmin = isAdminEmail(email);
 
   const tier: VaterTier = owner ? "owner" : studio ? "studio" : "public";
-  const flags = await readUserFlags(session.user.id);
+
+  /* Workspace TAB (lib/vater/workspaces.ts). The session id is the tab's
+   * hidden User; beta/terms/showcase flags are the HUMAN's, so read them off
+   * the root login. Looked up from the DB rather than session.workspace so a
+   * support "view as" session pointed at a tab still reports it correctly. */
+  const ws = await workspaceForUser(session.user.id);
+  const rootUserId = ws?.ownerUserId ?? session.user.id;
+  const flags = await readUserFlags(rootUserId);
 
   /* How long a script this account may render. The editor needs the same
    * number the from-script / context guards enforce — otherwise the Script
@@ -93,6 +101,18 @@ export async function GET() {
       tier,
       email,
       userId: session.user.id,
+      /** Which studio tab this session is inside. `null` until the workspace
+       *  table exists — the tab strip hides itself. `isPrimary` = the login's
+       *  own studio (today's data). */
+      workspace: ws
+        ? {
+            id: ws.userId,
+            name: ws.name,
+            isPrimary: ws.userId === ws.ownerUserId,
+            rootUserId: ws.ownerUserId,
+            max: MAX_WORKSPACES,
+          }
+        : null,
       capabilities: {
         // Studio-gated surfaces (isVaterStudioEmail).
         // 8/25: the GLOBAL rulebook + a user's own rules are for everyone;
@@ -168,10 +188,12 @@ export async function PATCH(request: NextRequest) {
 
   // One-time click-wrap for accounts that pre-date the Terms (or a new
   // TOS_VERSION). Stamps the CURRENT version + timestamp; never downgrades.
+  // Always on the ROOT login: consent belongs to the human, not the tab.
   if (body.acceptTerms === true) {
     try {
+      const rootId = session.workspace?.rootUserId ?? session.user.id;
       await prisma.user.update({
-        where: { id: session.user.id },
+        where: { id: rootId },
         data: { termsAcceptedAt: new Date(), termsVersion: TOS_VERSION },
       });
     } catch (err) {
@@ -190,7 +212,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: session.workspace?.rootUserId ?? session.user.id },
       data: { showcaseOptOut: body.showcaseOptOut },
     });
   } catch (err) {

@@ -7,7 +7,9 @@
  * module only decides the ORDER of what survived that filter, so a saved
  * pref can never surface a gated route.
  *
- * Storage is localStorage keyed by the account email (v1 — per browser).
+ * Storage is localStorage keyed by the account email (v1 — per browser), or
+ * by `ws:<tabId>` inside a studio workspace tab so each tab keeps its own
+ * order (components/animate/Sidebar.tsx).
  * Promoting it to a column on User is the follow-up if cross-device sync is
  * ever asked for; the shape below is already JSON-ready for that.
  */

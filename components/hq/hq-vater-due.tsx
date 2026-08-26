@@ -45,6 +45,11 @@ function sinceLabel(since: VaterDueSummary["since"]): string {
 export function HqVaterDue() {
   const { toast } = useToast();
   const [summary, setSummary] = useState<VaterDueSummary | null>(null);
+  /** Trey's studio TABS — each its own tenant/bill (lib/vater/workspaces.ts). */
+  const [tabs, setTabs] = useState<
+    Array<{ userId: string; name: string; archived: boolean; summary: VaterDueSummary }>
+  >([]);
+  const [combinedDueUsd, setCombinedDueUsd] = useState<number | null>(null);
   const [amount, setAmount] = useState<string>("");
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -54,8 +59,14 @@ export function HqVaterDue() {
     try {
       const r = await fetch("/api/hq/vater-payment", { cache: "no-store" });
       if (!r.ok) return;
-      const json = (await r.json()) as { summary: VaterDueSummary };
+      const json = (await r.json()) as {
+        summary: VaterDueSummary;
+        workspaces?: Array<{ userId: string; name: string; archived: boolean; summary: VaterDueSummary }>;
+        combinedDueUsd?: number;
+      };
       setSummary(json.summary);
+      setTabs(Array.isArray(json.workspaces) ? json.workspaces : []);
+      setCombinedDueUsd(typeof json.combinedDueUsd === "number" ? json.combinedDueUsd : null);
       setAmount(json.summary.dueUsd.toFixed(2));
     } catch {
       /* strip simply doesn't render */
@@ -130,6 +141,23 @@ export function HqVaterDue() {
       <span style={{ color: summary.dueUsd > 0 ? "#b91c1c" : "#15803d" }}>
         Due <strong>${summary.dueUsd.toFixed(2)}</strong>
       </span>
+      {tabs.length > 0 ? (
+        <span
+          title="Each studio tab is its own tenant with its own bill; this is the main studio + every tab"
+          style={{ color: "#3a3a3c", fontSize: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}
+        >
+          {tabs.map((w) => (
+            <span key={w.userId} style={{ textDecoration: w.archived ? "line-through" : "none" }}>
+              ↳ {w.name}: <strong>${w.summary.dueUsd.toFixed(2)}</strong> due
+            </span>
+          ))}
+          {combinedDueUsd !== null ? (
+            <span style={{ color: combinedDueUsd > 0 ? "#b91c1c" : "#15803d" }}>
+              · all tabs <strong>${combinedDueUsd.toFixed(2)}</strong>
+            </span>
+          ) : null}
+        </span>
+      ) : null}
       <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
         {summary.dueUsd > 0 ? (
           <>

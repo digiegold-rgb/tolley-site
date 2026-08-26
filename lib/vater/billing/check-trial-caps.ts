@@ -15,6 +15,7 @@ import {
   VATER_TRIAL_CAPS,
   type VaterAction,
 } from "@/lib/vater-subscription";
+import { rootUserIdFor } from "@/lib/vater/workspaces";
 
 export interface TrialCapResult {
   allow: boolean;
@@ -41,9 +42,12 @@ export async function checkTrialCaps(
     return { allow: true };
   }
 
+  // Trial caps are per HUMAN, not per tab — a workspace tab counts against
+  // (and reads) its root login's usage (lib/vater/workspaces.ts).
+  const rootId = await rootUserIdFor(userId);
   const trial = await prisma.vaterTrialUsage.upsert({
-    where: { userId },
-    create: { userId },
+    where: { userId: rootId },
+    create: { userId: rootId },
     update: {},
   });
 
@@ -71,9 +75,10 @@ export async function incrementTrialUsage(
   const capName = ACTION_TO_CAP[action];
   if (!capName) return;
 
+  const rootId = await rootUserIdFor(userId);
   await prisma.vaterTrialUsage.upsert({
-    where: { userId },
-    create: { userId, [capName]: 1 },
+    where: { userId: rootId },
+    create: { userId: rootId, [capName]: 1 },
     update: { [capName]: { increment: 1 } },
   });
 }

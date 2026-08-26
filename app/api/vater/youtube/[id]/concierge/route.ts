@@ -22,6 +22,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { tenantEmailFor } from "@/lib/vater/tenant-identity";
 import { canEditProjectAsync } from "@/lib/vater/project-access";
 import { publicTicketView, readConcierge, writeConcierge } from "@/lib/vater/concierge";
 import { submitConcierge } from "@/lib/vater/concierge-submit";
@@ -66,8 +67,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const ownerId = project.userId ?? session.user.id;
   let ownerEmail: string | null = session.user.email ?? null;
   if (ownerId !== session.user.id) {
-    const owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { email: true } });
-    ownerEmail = owner?.email ?? ownerEmail;
+    ownerEmail = (await tenantEmailFor(ownerId)) ?? ownerEmail;
   }
 
   const result = await submitConcierge({

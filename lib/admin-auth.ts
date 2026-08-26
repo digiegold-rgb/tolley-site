@@ -203,6 +203,18 @@ export async function resolveVaterTier(
       where: { userId },
       select: { tier: true, unmetered: true },
     });
+    if (!row) {
+      // Workspace TAB with no cloned row (lib/vater/workspaces.ts) — a tab
+      // inherits its owner's tier, so read the root's row instead.
+      const { rootUserIdFor } = await import("@/lib/vater/workspaces");
+      const root = await rootUserIdFor(userId);
+      if (root && root !== userId) {
+        row = await prisma.vaterAccount.findUnique({
+          where: { userId: root },
+          select: { tier: true, unmetered: true },
+        });
+      }
+    }
   } catch {
     // Table missing (pre-migration) or DB hiccup — fall back to env. Never
     // fail open past what env already grants.

@@ -89,9 +89,12 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const owner = isVaterAdminEmail(session.user.email)
-    ? "all"
-    : ownerKeyForUser(session.user.id);
+  // Inside a workspace tab the library is THAT tab's — even for the admin
+  // account, whose "all" view is a support convenience on the primary tab.
+  const owner =
+    isVaterAdminEmail(session.user.email) && !session.workspace
+      ? "all"
+      : ownerKeyForUser(session.user.id);
 
   const result = await dgxCall<unknown>(
     "GET",

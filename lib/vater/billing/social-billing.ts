@@ -17,6 +17,7 @@
  *   - POST /api/vater/social-billing/run (DGX daily cron) → runSocialBilling()
  */
 import { prisma } from "@/lib/prisma";
+import { tenantEmailFor } from "@/lib/vater/tenant-identity";
 import { Prisma } from "@prisma/client";
 import { getBalance } from "./ledger";
 import { hasUnmeteredStudioAccess } from "./check-budget";
@@ -143,11 +144,7 @@ export async function chargeConnectCycle(
   if (!row) return "already";
   const outcome = await chargeCycle(row, 0);
   if (outcome === "insufficient") {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    await disconnectRow(row, user?.email ?? null);
+    await disconnectRow(row, await tenantEmailFor(userId));
   }
   return outcome;
 }

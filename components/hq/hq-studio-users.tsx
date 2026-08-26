@@ -39,6 +39,15 @@ interface StudioUser {
   lastError: { message: string; at: string } | null;
   invited: boolean;
   createdAt: string | null;
+  /** Studio tabs folded under this human (lib/vater/workspaces.ts). */
+  workspaces?: Array<{
+    userId: string;
+    name: string;
+    balanceUsd: number | null;
+    projectCount: number;
+    lastProjectAt: string | null;
+    archived: boolean;
+  }>;
   usage?: UsageRollup;
 }
 
@@ -490,6 +499,42 @@ export function HqStudioUsers() {
                         {u.invited ? " · invited" : ""}
                         {u.unmetered ? " · unmetered" : ""}
                       </div>
+                      {(u.workspaces ?? []).length > 0 ? (
+                        <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+                          {(u.workspaces ?? []).map((w) => (
+                            <div
+                              key={w.userId}
+                              style={{ fontSize: 11, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}
+                              title={`Studio tab · ${w.userId}`}
+                            >
+                              <span style={{ color: "var(--hq-muted)" }}>↳ tab</span>
+                              <span style={{ fontWeight: 600, textDecoration: w.archived ? "line-through" : "none" }}>
+                                {w.name}
+                              </span>
+                              <span style={{ color: "var(--hq-muted)" }}>
+                                {money(w.balanceUsd)} · {w.projectCount} videos
+                                {w.archived ? " · archived" : ""}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => void viewAs({ ...u, userId: w.userId, email: `${u.email ?? u.userId} / ${w.name}` })}
+                                disabled={busyId === w.userId}
+                                title="Open /animate inside this tab, read-only"
+                                style={{
+                                  padding: "1px 6px",
+                                  border: "1px solid var(--hq-border)",
+                                  borderRadius: 5,
+                                  fontSize: 10.5,
+                                  cursor: "pointer",
+                                  background: "#fff",
+                                }}
+                              >
+                                View as
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                     </td>
                     <td style={CELL}>
                       <select

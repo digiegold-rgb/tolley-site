@@ -10,6 +10,14 @@ declare module "next-auth" {
      * ordinary session. Writes are blocked site-wide while it is set.
      */
     impersonatedBy?: string | null;
+    /**
+     * Set while the login is inside one of its Jelly Studio workspace TABS
+     * (lib/vater/workspaces.ts): `id` is the hidden User the request acts as
+     * (== session.user.id), `rootUserId` the real login. Absent on the
+     * primary tab and for every non-studio session. session.user.email is
+     * always the real login's.
+     */
+    workspace?: { id: string; rootUserId: string };
     user?: DefaultSession["user"] & {
       id: string;
     };

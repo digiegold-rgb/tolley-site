@@ -36,6 +36,16 @@ export interface BetaState {
 
 export type ScriptCapTier = 'owner' | 'paid' | 'beta';
 
+/** Which studio TAB this session is inside (lib/vater/workspaces.ts). null
+ *  until the workspace table exists or while /me is loading. */
+export interface WorkspaceState {
+  id: string;
+  name: string;
+  isPrimary: boolean;
+  rootUserId: string;
+  max: number;
+}
+
 export interface TierContextValue {
   tier: VaterTier;
   /**
@@ -52,6 +62,7 @@ export interface TierContextValue {
   loading: boolean;
   email: string | null;
   beta: BetaState;
+  workspace: WorkspaceState | null;
   /** Optimistic local update after the click-wrap modal succeeds. */
   markTermsAccepted: () => void;
 }
@@ -89,6 +100,7 @@ const defaultValue: TierContextValue = {
   routes: routeIdsForTier('public'),
   loading: true,
   email: null,
+  workspace: null,
   beta: DEFAULT_BETA,
   markTermsAccepted: () => {},
 };
@@ -101,6 +113,7 @@ interface MePayload {
   capabilities?: Partial<VaterCapabilities>;
   routes?: string[];
   beta?: Partial<BetaState>;
+  workspace?: WorkspaceState | null;
 }
 
 export const TierContext = React.createContext<TierContextValue>(defaultValue);
@@ -176,6 +189,7 @@ export function TierProvider({
           loading: false,
           email: data.email ?? null,
           beta: { ...DEFAULT_BETA, ...(data.beta ?? {}) },
+          workspace: data.workspace ?? null,
         }));
       } catch {
         if (!cancelled) setState((prev) => ({ ...prev, loading: false }));

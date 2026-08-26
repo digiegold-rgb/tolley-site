@@ -28,10 +28,10 @@
  * ownerTier — which is wrong for the studio accounts. See `laneFor`.
  */
 import "server-only";
-import { prisma } from "@/lib/prisma";
 import { isVaterAdminEmail, hasVaterUnmeteredAccess } from "@/lib/admin-auth";
 import { scriptCapFor } from "./billing/script-cap";
 import { BETA_MAX_WORDS } from "./script-limits";
+import { resolveTenantIdentity } from "./tenant-identity";
 
 export type OwnerTier = "owner" | "beta";
 
@@ -50,6 +50,12 @@ export const NON_OWNER_MAX_WORDS = BETA_MAX_WORDS;
 
 export interface OwnerFields {
   ownerId: string;
+  /** The real login behind `ownerId` when it is a workspace TAB (hidden User
+   *  row — lib/vater/workspaces.ts). The DGX uses it for the house ElevenLabs
+   *  key, per-human admission, and per-human cost roll-ups; everything
+   *  data-shaped (characters, voices, rules, ledger attribution) stays on
+   *  `ownerId`. Omitted when ownerId IS the login. */
+  rootOwnerId?: string;
   ownerTier: OwnerTier;
   /** Undefined for the owner — the DGX treats a missing cap as no cap. */
   maxWords?: number;
@@ -90,35 +96,48 @@ async function laneFor(
     // would put the customer's render on the house lane, so resolve the
     // tenant's own email rather than guessing. VaterAccount alone would
     // usually answer this, but the env allowlists are still a live bootstrap
-    // path for an account that has no row yet.
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    ownerEmail = user?.email ?? null;
+    // path for an account that has no row yet. Goes through tenant-identity
+    // so a workspace TAB (email NULL) answers with its owner's email.
+    ownerEmail = (await resolveTenantIdentity(userId)).email;
   }
   return (await hasVaterUnmeteredAccess(userId, ownerEmail)) ? "vater" : "jelly";
 }
 
-function build(ownerId: string, email: string | null | undefined): OwnerFields {
+function build(
+  ownerId: string,
+  email: string | null | undefined,
+  rootOwnerId?: string | null,
+): OwnerFields {
   const ownerTier: OwnerTier = isVaterAdminEmail(email) ? "owner" : "beta";
   return {
     ownerId,
+    ...(rootOwnerId && rootOwnerId !== ownerId ? { rootOwnerId } : {}),
     ownerTier,
     ...(ownerTier === "owner" ? {} : { maxWords: NON_OWNER_MAX_WORDS }),
   };
 }
+
+type OwnerSession = {
+  user?: { id?: string | null; email?: string | null } | null;
+  /** Present inside a workspace tab — see types/next-auth.d.ts. */
+  workspace?: { id: string; rootUserId: string } | null;
+};
 
 /**
  * For route handlers. `projectUserId` wins when present (the job belongs to
  * the project's tenant, not whoever clicked), falling back to the session.
  */
 export function ownerFieldsForSession(
-  session: { user?: { id?: string | null; email?: string | null } | null },
+  session: OwnerSession,
   projectUserId?: string | null,
 ): OwnerFields {
   const sessionUserId = session?.user?.id ?? "";
-  return build(projectUserId ?? sessionUserId, session?.user?.email);
+  const ownerId = projectUserId ?? sessionUserId;
+  // The sync form can only know the root for the SESSION's own tab; a
+  // support session acting on someone else's project sends no root and the
+  // DGX falls back to ownerId, which is today's behaviour.
+  const root = ownerId === sessionUserId ? session?.workspace?.rootUserId : undefined;
+  return build(ownerId, session?.user?.email, root);
 }
 
 /**
@@ -131,16 +150,28 @@ export function ownerFieldsForSession(
  * concurrency cap), so nothing that does not care pays for a DB round trip.
  */
 export async function ownerFieldsForSessionWithCap(
-  session: { user?: { id?: string | null; email?: string | null } | null },
+  session: OwnerSession,
   projectUserId?: string | null,
 ): Promise<OwnerFields> {
-  const base = ownerFieldsForSession(session, projectUserId);
+  const base = await withRoot(ownerFieldsForSession(session, projectUserId));
   const sessionUserId = session?.user?.id ?? "";
   return withCap(
     base,
     session?.user?.email,
     base.ownerId === sessionUserId,
   );
+}
+
+/**
+ * Fill in `rootOwnerId` for a tenant the session did not tell us about (a
+ * project owned by a workspace tab, opened by a team seat or support). One
+ * memoised lookup; a no-op when the fields already carry it or the tenant is
+ * a plain login.
+ */
+async function withRoot(fields: OwnerFields): Promise<OwnerFields> {
+  if (!fields.ownerId || fields.rootOwnerId) return fields;
+  const ident = await resolveTenantIdentity(fields.ownerId);
+  return ident.isWorkspace ? { ...fields, rootOwnerId: ident.rootUserId } : fields;
 }
 
 /**
@@ -158,10 +189,10 @@ export async function ownerFieldsForSessionWithCap(
  * script.
  */
 export async function ownerFieldsForSessionWithLane(
-  session: { user?: { id?: string | null; email?: string | null } | null },
+  session: OwnerSession,
   projectUserId?: string | null,
 ): Promise<OwnerFields> {
-  const base = ownerFieldsForSession(session, projectUserId);
+  const base = await withRoot(ownerFieldsForSession(session, projectUserId));
   const sessionUserId = session?.user?.id ?? "";
   return {
     ...base,
@@ -184,11 +215,10 @@ export async function ownerFieldsForProject(
   if (!projectUserId) {
     return { ownerId: "", ownerTier: "owner", ownerLane: "vater" };
   }
-  const user = await prisma.user.findUnique({
-    where: { id: projectUserId },
-    select: { email: true },
-  });
-  return withCap(build(projectUserId, user?.email), user?.email);
+  // tenant-identity, not a bare User lookup: a workspace tab has email NULL
+  // and would otherwise land on the customer lane at beta tier.
+  const ident = await resolveTenantIdentity(projectUserId);
+  return withCap(build(projectUserId, ident.email, ident.rootUserId), ident.email);
 }
 
 /**

@@ -35,6 +35,7 @@ import {
 } from "@/lib/vater/beta-invites";
 import { readLastErrorByUser } from "@/lib/vater/events";
 import { sendInviteLinkEmail } from "@/lib/vater/animate-email";
+import { listAllWorkspaceTabs } from "@/lib/vater/workspaces";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,6 +55,17 @@ interface StudioUserRow {
   lastError: { message: string; at: string } | null;
   invited: boolean;
   createdAt: string | null;
+  /** Studio TABS this login owns (lib/vater/workspaces.ts). Each is a hidden
+   *  User with its own library + balance; folded under the human here so
+   *  the roster stays one row per person. View-as works per tab. */
+  workspaces: Array<{
+    userId: string;
+    name: string;
+    balanceUsd: number | null;
+    projectCount: number;
+    lastProjectAt: string | null;
+    archived: boolean;
+  }>;
   /** What this account actually consumed, split by GPU tier. The abuse
    *  tripwire: Modal's invoice arrives at the end of the month and cannot be
    *  split by user at all, so a tenant burning H100 minutes past their
@@ -174,6 +186,13 @@ export async function GET() {
       if (!isMissingRelationError(err)) throw err;
     }
 
+    /* Workspace tabs are hidden Users — fold them under their owner rather
+     * than listing "(no email)" rows. The owner is added to the candidate
+     * set so a human whose only activity is inside a tab still shows. */
+    const tabRows = await listAllWorkspaceTabs();
+    const tabOwner = new Map(tabRows.map((r) => [r.userId, r]));
+    for (const r of tabRows) if (userIds.has(r.userId)) userIds.add(r.ownerUserId);
+
     const ids = [...userIds];
     if (ids.length === 0) {
       return NextResponse.json(
@@ -238,7 +257,23 @@ export async function GET() {
     const balanceByUser = new Map<string, number | null>(balances);
     const usageByUserId = await usageByUser(ids);
 
+    const tabsByOwner = new Map<string, StudioUserRow["workspaces"]>();
+    for (const r of tabRows) {
+      const stats = projectStats.get(r.userId);
+      const list = tabsByOwner.get(r.ownerUserId) ?? [];
+      list.push({
+        userId: r.userId,
+        name: r.name,
+        balanceUsd: balanceByUser.get(r.userId) ?? null,
+        projectCount: stats?.count ?? 0,
+        lastProjectAt: stats?.lastAt ? stats.lastAt.toISOString() : null,
+        archived: Boolean(r.archivedAt),
+      });
+      tabsByOwner.set(r.ownerUserId, list);
+    }
+
     const rows: StudioUserRow[] = users
+      .filter((u) => !tabOwner.has(u.id))
       .map((u) => {
         const account = accountByUser.get(u.id);
         const stats = projectStats.get(u.id);
@@ -256,6 +291,7 @@ export async function GET() {
           lastError: err ? { message: err.message, at: err.createdAt.toISOString() } : null,
           invited: invitedSet.has(u.id),
           createdAt: u.createdAt ? u.createdAt.toISOString() : null,
+          workspaces: tabsByOwner.get(u.id) ?? [],
           usage: usageByUserId.get(u.id) ?? {
             ready: false,
             d7: { byTier: {}, actions: 0, usd: 0, animations: 0 },

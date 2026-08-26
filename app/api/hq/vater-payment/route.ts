@@ -30,6 +30,7 @@ import {
   resolveVaterBillingTenant,
 } from "@/lib/vater/billing/summary";
 import { validateWdAdmin } from "@/lib/wd-auth";
+import { listWorkspaces } from "@/lib/vater/workspaces";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -67,7 +68,22 @@ export async function GET(request: NextRequest) {
     // deploys before Jared applies the tenancy migration).
     listVaterPayments(userId, 20),
   ]);
-  return NextResponse.json({ userId, summary, payments });
+  /* Studio TABS (lib/vater/workspaces.ts): each tab is its own tenant with
+   * its own bill. Surface them next to the primary so "what each tab is
+   * doing" is one glance, and a combined due so nothing is missed. */
+  const tabs = (await listWorkspaces(userId, { includeArchived: true })).filter(
+    (w) => w.userId !== userId,
+  );
+  const workspaces = await Promise.all(
+    tabs.map(async (w) => {
+      const { summary: s } = await getVaterBillingSummary({ userId: w.userId });
+      return { userId: w.userId, name: w.name, archived: Boolean(w.archivedAt), summary: s };
+    }),
+  );
+  const combinedDueUsd = r2(
+    summary.dueUsd + workspaces.reduce((a, w) => a + (w.summary.dueUsd || 0), 0),
+  );
+  return NextResponse.json({ userId, summary, payments, workspaces, combinedDueUsd });
 }
 
 export async function POST(request: NextRequest) {

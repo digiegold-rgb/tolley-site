@@ -35,6 +35,7 @@
  */
 import { Prisma, type YouTubeProject } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { resolveTenantIdentity } from "@/lib/vater/tenant-identity";
 import {
   autopilot,
   AutopilotError,
@@ -739,11 +740,8 @@ export async function syncProjectFromJob(
     try {
       let who = project.userId ?? "unknown user";
       if (project.userId) {
-        const owner = await prisma.user.findUnique({
-          where: { id: project.userId },
-          select: { email: true },
-        });
-        if (owner?.email) who = owner.email;
+        const owner = await resolveTenantIdentity(project.userId);
+        if (owner.email) who = owner.isWorkspace ? `${owner.email} (tab)` : owner.email;
       }
       await notifyTelegram(
         `⚠️ /animate render failed — ${tgSafe(who)} · project ${tgSafe(id)} · phase ${tgSafe(String(job.phase ?? "unknown"))}: ${tgSafe(failureMessage).slice(0, 500)}`,

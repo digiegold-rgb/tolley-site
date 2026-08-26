@@ -562,10 +562,11 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-type SettingsTab = 'profile' | 'security' | 'usage' | 'team';
+type SettingsTab = 'profile' | 'security' | 'usage' | 'team' | 'studios';
 
 const SETTINGS_TABS: ReadonlyArray<{ key: SettingsTab; label: string }> = [
   { key: 'profile', label: 'Profile' },
+  { key: 'studios', label: 'Studios' },
   { key: 'security', label: 'Security' },
   { key: 'usage', label: 'Usage' },
   { key: 'team', label: 'Team' },
@@ -822,6 +823,7 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
               description="Sign-in method and active sessions are managed on your account page."
             />
           )}
+          {tab === 'studios' && <StudiosSettings />}
           {tab === 'team' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ fontSize: 14, color: t.textSecondary, lineHeight: 1.6 }}>
@@ -845,6 +847,224 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Settings → Studios: the management view behind the tab strip
+ * (components/animate/WorkspaceTabs.tsx). Lists every studio including
+ * archived ones, with rename / archive / restore. The strip is for switching;
+ * this is for housekeeping.
+ */
+interface StudioRow {
+  id: string;
+  name: string;
+  isPrimary: boolean;
+  active: boolean;
+  archivedAt: string | null;
+}
+
+function StudiosSettings(): React.ReactElement {
+  const { t } = useTheme();
+  const [rows, setRows] = React.useState<StudioRow[] | null>(null);
+  const [max, setMax] = React.useState(10);
+  const [notReady, setNotReady] = React.useState(false);
+  const [busy, setBusy] = React.useState<string | null>(null);
+  const [msg, setMsg] = React.useState<string | null>(null);
+
+  const load = React.useCallback(async () => {
+    try {
+      const r = await fetch('/api/vater/workspaces?archived=1', { cache: 'no-store' });
+      if (r.status === 503) {
+        setNotReady(true);
+        setRows([]);
+        return;
+      }
+      const data = (await r.json()) as { workspaces?: StudioRow[]; max?: number };
+      setRows(Array.isArray(data.workspaces) ? data.workspaces : []);
+      if (typeof data.max === 'number') setMax(data.max);
+    } catch {
+      setRows([]);
+    }
+  }, []);
+  React.useEffect(() => {
+    void load();
+  }, [load]);
+
+  const call = async (id: string, init: RequestInit, okMsg: string, reloadOnSwitch = false) => {
+    setBusy(id);
+    setMsg(null);
+    try {
+      const r = await fetch(`/api/vater/workspaces/${encodeURIComponent(id)}`, init);
+      const data = (await r.json().catch(() => ({}))) as { message?: string; switched?: boolean };
+      if (!r.ok) {
+        setMsg(data.message || (r.status === 403 ? 'Read-only support session.' : 'That didn’t save.'));
+      } else {
+        setMsg(okMsg);
+        if (reloadOnSwitch && data.switched) {
+          window.location.assign('/animate');
+          return;
+        }
+      }
+    } catch {
+      setMsg('That didn’t save.');
+    } finally {
+      setBusy(null);
+      void load();
+    }
+  };
+
+  const live = (rows ?? []).filter((r) => !r.archivedAt);
+  const archived = (rows ?? []).filter((r) => r.archivedAt);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }} data-testid="studios-settings">
+      <div style={{ fontSize: 14, color: t.textSecondary, lineHeight: 1.6 }}>
+        Each studio is completely separate — its own library, characters, voices,
+        connections, rules and balance — under this one login. Switch between them
+        with the tabs at the top of the page. Archiving keeps everything; it just
+        hides the tab.
+      </div>
+      {notReady ? (
+        <div style={{ fontSize: 13, color: t.textFaint }}>Studios aren’t switched on for this account yet.</div>
+      ) : null}
+      {rows === null ? (
+        <div style={{ fontSize: 13, color: t.textFaint }}>Loading…</div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {live.map((r) => (
+              <StudioSettingsRow
+                key={r.id}
+                row={r}
+                busy={busy === r.id}
+                onRename={(name) =>
+                  void call(
+                    r.id,
+                    { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) },
+                    'Renamed.',
+                  )
+                }
+                onArchive={() => {
+                  if (window.confirm(`Archive “${r.name}”? Nothing is deleted — you can restore it here.`)) {
+                    void call(r.id, { method: 'DELETE' }, 'Archived.', true);
+                  }
+                }}
+              />
+            ))}
+          </div>
+          <div style={{ fontSize: 11.5, color: t.textFaint, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            {live.length} / {max} studios
+          </div>
+          {archived.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: t.textSecondary }}>Archived</div>
+              {archived.map((r) => (
+                <div
+                  key={r.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '10px 14px',
+                    border: `1px solid ${t.border}`,
+                    borderRadius: JELLY_TOKENS.radius.md,
+                    background: t.cardAlt,
+                    opacity: 0.8,
+                  }}
+                >
+                  <span style={{ flex: 1, fontSize: 14, color: t.textSecondary, textDecoration: 'line-through' }}>{r.name}</span>
+                  <PillButton
+                    variant="outline"
+                    size="sm"
+                    disabled={busy === r.id || live.length >= max}
+                    onClick={() =>
+                      void call(
+                        r.id,
+                        { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ restore: true }) },
+                        'Restored.',
+                      )
+                    }
+                  >
+                    Restore
+                  </PillButton>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </>
+      )}
+      {msg ? <div style={{ fontSize: 12.5, color: t.textSecondary }}>{msg}</div> : null}
+    </div>
+  );
+}
+
+function StudioSettingsRow({
+  row,
+  busy,
+  onRename,
+  onArchive,
+}: {
+  row: StudioRow;
+  busy: boolean;
+  onRename: (name: string) => void;
+  onArchive: () => void;
+}): React.ReactElement {
+  const { t } = useTheme();
+  const [name, setName] = React.useState(row.name);
+  React.useEffect(() => setName(row.name), [row.name]);
+  const dirty = name.trim() !== row.name && name.trim().length > 0;
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '10px 14px',
+        border: `1px solid ${row.active ? t.borderStrong : t.border}`,
+        borderRadius: JELLY_TOKENS.radius.md,
+        background: row.active ? JELLY_TOKENS.gradChipOn : t.cardAlt,
+      }}
+    >
+      <input
+        value={name}
+        maxLength={40}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && dirty) onRename(name.trim());
+        }}
+        aria-label={`Studio name for ${row.name}`}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          background: 'transparent',
+          border: 'none',
+          borderBottom: `1px solid ${dirty ? JELLY_TOKENS.brand : 'transparent'}`,
+          outline: 'none',
+          color: t.text,
+          font: 'inherit',
+          fontSize: 14,
+          fontWeight: 600,
+          padding: '2px 0',
+        }}
+      />
+      {row.isPrimary ? (
+        <span style={{ fontSize: 11, color: t.textFaint, letterSpacing: '0.1em' }}>MAIN</span>
+      ) : null}
+      {row.active ? (
+        <span style={{ fontSize: 11, color: JELLY_TOKENS.cyan, letterSpacing: '0.1em' }}>OPEN</span>
+      ) : null}
+      {dirty ? (
+        <PillButton variant="gradient" size="sm" disabled={busy} onClick={() => onRename(name.trim())}>
+          Save
+        </PillButton>
+      ) : null}
+      {!row.isPrimary ? (
+        <PillButton variant="outline" size="sm" disabled={busy} onClick={onArchive}>
+          Archive
+        </PillButton>
+      ) : null}
     </div>
   );
 }

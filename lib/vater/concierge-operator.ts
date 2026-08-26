@@ -18,6 +18,8 @@ import type { YouTubeProject } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { resolveTenantIdentity } from "@/lib/vater/tenant-identity";
+import { workspaceForUser } from "@/lib/vater/workspaces";
 import { resolveVaterTier } from "@/lib/admin-auth";
 import { getBalance } from "@/lib/vater/billing/ledger";
 import { maxWordsFor } from "@/lib/vater/billing/script-cap";
@@ -128,11 +130,12 @@ export async function resolveOwner(userId: string | null | undefined): Promise<O
       maxWords: null,
     };
   }
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { email: true, name: true },
-  });
-  const email = user?.email ?? null;
+  const ident = await resolveTenantIdentity(userId);
+  const email = ident.email;
+  // A workspace TAB shows as "<human> / <tab>" so the queue never reads as a
+  // stranger with no email.
+  const tab = ident.isWorkspace ? await workspaceForUser(userId) : null;
+  const displayName = tab ? `${ident.name ?? ident.email ?? "?"} / ${tab.name}` : ident.name;
   const access = await resolveVaterTier(userId, email);
   const unmetered = access.unmetered;
   let balanceUsd: number | null = null;
@@ -148,7 +151,7 @@ export async function resolveOwner(userId: string | null | undefined): Promise<O
   return {
     userId,
     email,
-    name: user?.name ?? null,
+    name: displayName,
     tier: access.tier,
     lane: unmetered ? "vater" : "jelly",
     unmetered,

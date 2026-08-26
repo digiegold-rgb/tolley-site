@@ -46,7 +46,10 @@ export type VaterEventKind =
   | "concierge.queued"
   | "concierge.stage"
   | "concierge.delivered"
-  | "concierge.cancelled";
+  | "concierge.cancelled"
+  // Studio tabs / workspaces (2026-08-27)
+  | "workspace.created"
+  | "workspace.archived";
 
 export interface VaterEventInput {
   userId: string;

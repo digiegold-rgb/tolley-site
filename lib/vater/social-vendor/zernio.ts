@@ -18,6 +18,7 @@
  * user click in the publish panel (feedback_no_autonomous_sends.md).
  */
 import { prisma } from "@/lib/prisma";
+import { tenantEmailFor } from "@/lib/vater/tenant-identity";
 import type { SupportedPlatform } from "@/lib/vater-social";
 
 const BASE = "https://zernio.com/api/v1";
@@ -118,11 +119,9 @@ async function profileNameFor(
 ): Promise<string> {
   let email = (label ?? "").includes("@") ? (label as string) : "";
   if (!email) {
-    const u = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    email = u?.email ?? "";
+    // Root email: a workspace tab has none of its own, and Jared looks
+    // profiles up on the Zernio dashboard by the customer's login email.
+    email = (await tenantEmailFor(userId)) ?? "";
   }
   const local = email
     .split("@")[0]

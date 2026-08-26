@@ -40,6 +40,7 @@ import {
   getBalance,
   MIN_ESTIMATE_USD,
 } from "./ledger";
+import { tenantEmailFor } from "@/lib/vater/tenant-identity";
 
 /**
  * Unmetered accounts generate without a balance check — they are billed
@@ -56,11 +57,10 @@ import {
  * Don't reintroduce "studio implies free".
  */
 export async function hasUnmeteredStudioAccess(userId: string): Promise<boolean> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { email: true },
-  });
-  return hasVaterUnmeteredAccess(userId, user?.email);
+  // Root email, not the row's: a workspace tab has email NULL and inherits
+  // its owner's unmetered status (lib/vater/tenant-identity.ts).
+  const email = await tenantEmailFor(userId);
+  return hasVaterUnmeteredAccess(userId, email);
 }
 
 export type BudgetReason =

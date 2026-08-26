@@ -38,6 +38,7 @@
  *                   not have.
  */
 import "server-only";
+import { listAllWorkspaceTabs } from "@/lib/vater/workspaces";
 
 import { prisma } from "@/lib/prisma";
 import { hasVaterUnmeteredAccess } from "@/lib/admin-auth";
@@ -79,7 +80,11 @@ export interface JellyVideoLine {
 
 export interface JellyCustomer {
   userId: string;
+  /** Login email of the HUMAN. For a workspace tab this is the owner's. */
   email: string | null;
+  /** Set when this customer row is a studio TAB (lib/vater/workspaces.ts). */
+  workspaceName?: string | null;
+  rootUserId?: string | null;
   /** Credits purchased, net of Stripe fee. */
   cashInUsd: number;
   /** Promotional credit granted (never revenue). */
@@ -289,14 +294,28 @@ export async function getJellyPnl(opts?: { days?: number }): Promise<JellyPnl> {
     select: { id: true, email: true },
   });
   const emailById = new Map(emails.map((u) => [u.id, u.email]));
+  // Workspace tabs have no email of their own — show the human's, plus the
+  // tab name, so Jared can tell "Trey / Channel 2" from a stranger.
+  const tabs = await listAllWorkspaceTabs();
+  const tabById = new Map(tabs.map((t) => [t.userId, t]));
+  const owners = await prisma.user.findMany({
+    where: { id: { in: [...new Set(tabs.map((t) => t.ownerUserId))] } },
+    select: { id: true, email: true },
+  });
+  const ownerEmail = new Map(owners.map((u) => [u.id, u.email]));
+  for (const [id, tab] of tabById) {
+    if (!emailById.get(id)) emailById.set(id, ownerEmail.get(tab.ownerUserId) ?? null);
+  }
 
   const byUser = new Map<string, JellyCustomer>();
   const customerOf = (userId: string): JellyCustomer => {
     let c = byUser.get(userId);
     if (!c) {
+      const tab = tabById.get(userId);
       c = {
         userId,
         email: emailById.get(userId) ?? null,
+        ...(tab ? { workspaceName: tab.name, rootUserId: tab.ownerUserId } : {}),
         cashInUsd: 0,
         grantedUsd: 0,
         deliveredUsd: 0,

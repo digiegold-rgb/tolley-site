@@ -282,6 +282,9 @@ export type StyleSnapshot = {
  */
 export type OwnerRouting = {
   ownerId?: string;
+  /** Real login behind a workspace-tab ownerId (lib/vater/owner-tier.ts).
+   *  DGX: house ElevenLabs key, per-human admission, cost roll-ups. */
+  rootOwnerId?: string;
   ownerTier?: "owner" | "beta";
   /** Which Modal app family the GPU work dispatches to. Resolved from
    *  unmetered access, NOT from ownerTier — the two disagree for the studio
@@ -330,6 +333,7 @@ export type RunCreationInput = OwnerRouting & {
    *  is capped and over-cap jobs park as status "queued". Build these with
    *  lib/vater/owner-tier.ts — never hand-roll. */
   ownerId?: string;
+  rootOwnerId?: string;
   ownerTier?: "owner" | "beta";
   /** Hard script-length ceiling. Omitted = uncapped (owner only). */
   maxWords?: number;
@@ -951,6 +955,7 @@ export const autopilot = {
     aspectRatio?: string;
     /** Per-tenant fairness — see RunCreationInput.ownerTier. */
     ownerId?: string;
+    rootOwnerId?: string;
     ownerTier?: "owner" | "beta";
     /** Modal invoice lane — see OwnerRouting.ownerLane. */
     ownerLane?: "vater" | "jelly";

@@ -71,6 +71,12 @@ export async function GET() {
     // Not an error — a public tenant simply has no house cast.
     return NextResponse.json({ available: false, roster: [] });
   }
+  if (session.workspace) {
+    // The house cast (Jeff Whitfield & co.) belongs to the PRIMARY studio.
+    // A second channel is a separate family by design — it builds its own
+    // cast in the Character Lab (per-owner on the DGX).
+    return NextResponse.json({ available: false, roster: [], workspace: true });
+  }
 
   const result = await dgxCall<CanonRoster>("GET", "/vater/roster", undefined, 20_000);
 

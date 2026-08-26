@@ -5488,6 +5488,33 @@ model VaterOrg {
   @@index([ownerUserId])
 }
 
+/// One Jelly Studio TAB (2026-08-27) — "workspaces".
+///
+/// A tab is a fully separate studio under ONE login: its own library, styles,
+/// characters, voices, connections, rules, credit ledger and system log.
+/// Rather than threading a workspaceId through 170+ routes, a tab IS a hidden
+/// User row (email NULL, no credentials, can never sign in). auth.ts swaps
+/// session.user.id to that row when the signed `jelly_ws` cookie names it, so
+/// every table that is keyed on userId — which is all of them — becomes
+/// per-tab for free, and every site edit applies to every tab by construction.
+///
+/// The primary tab is the login itself: ownerUserId == userId. Tabs are
+/// archived, never deleted — their ledger rows and renders must survive.
+model VaterWorkspace {
+  id          String    @id @default(cuid())
+  /// The real login (User.id) that owns this tab.
+  ownerUserId String
+  /// The User row this tab acts as. Equals ownerUserId for the primary tab.
+  userId      String    @unique
+  name        String
+  sortOrder   Int       @default(0)
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([ownerUserId, sortOrder])
+}
+
 /// Seat in a VaterOrg.
 ///
 /// role — owner  : the paying account; invites, removes, full write
