@@ -118,8 +118,27 @@ describe("buildInboxThreads", () => {
     assert.equal(threads[0].draftId, "b2");
     assert.equal(threads[0].phoneKey, "9132833826");
     assert.equal(threads[1].source, "unmatched");
+    assert.equal(threads[0].smsUndeliverable, false);
     assert.equal(inboxCounts(threads).needsSend, 1);
     assert.equal(inboxCounts(threads).unread, 2);
+  });
+
+  it("marks a thread dead when its phone is on an undeliverable client", () => {
+    const threads = buildInboxThreads(
+      [
+        row({
+          id: "d1",
+          phone: "+18169526445",
+          clientId: "cmmobyxk3005al4h1tq7uuhxm",
+          clientName: "Hanna Hawkins/Korey",
+          body: "old bounce",
+        }),
+      ],
+      new Set(),
+      new Map([["8169526445", "30003"]]),
+    );
+    assert.equal(threads[0].smsUndeliverable, true);
+    assert.equal(threads[0].smsErrorCode, "30003");
   });
 
   it("labels T-Agent-only history as tagent", () => {

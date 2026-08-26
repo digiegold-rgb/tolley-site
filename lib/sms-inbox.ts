@@ -45,6 +45,8 @@ export type InboxThread = {
   draftBody: string | null;
   messageCount: number;
   optedOut: boolean;
+  smsUndeliverable: boolean;
+  smsErrorCode: string | null;
 };
 
 export type InboxMessage = {
@@ -102,6 +104,7 @@ function threadSource(rows: InboxRow[]): InboxSource {
 export function buildInboxThreads(
   rows: InboxRow[],
   optedOutKeys: Set<string> = new Set(),
+  undeliverableByPhone: Map<string, string | null> = new Map(),
 ): InboxThread[] {
   const byPhone = new Map<string, InboxRow[]>();
   for (const row of rows) {
@@ -140,6 +143,8 @@ export function buildInboxThreads(
       draftBody: newestDraft?.body ?? null,
       messageCount: merged.length,
       optedOut: optedOutKeys.has(phoneKey),
+      smsUndeliverable: undeliverableByPhone.has(phoneKey),
+      smsErrorCode: undeliverableByPhone.get(phoneKey) ?? null,
     });
   }
 

@@ -14,7 +14,7 @@ interface WdMessage {
   body: string;
   aiGenerated: boolean;
   createdAt: string;
-  client: { id: string; name: string; phone: string | null; email: string | null } | null;
+  client: { id: string; name: string; phone: string | null; email: string | null; smsUndeliverable?: boolean; smsErrorCode?: string | null } | null;
 }
 
 interface Props {
@@ -106,7 +106,7 @@ export function WdAutomationPanel({ clients, onChanged }: Props) {
       const r = await fetch(`/api/wd/messages/${id}`, { method: "POST" });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
-        alert(`Send failed: ${d.error || "unknown"}`);
+        alert(d.error === "sms_undeliverable" ? "Dead number — do not text" : `Send failed: ${d.error || "unknown"}`);
       }
       await loadMessages();
     } finally {
@@ -229,9 +229,15 @@ export function WdAutomationPanel({ clients, onChanged }: Props) {
                 {m.subject && <div style={{ fontSize: 12, fontWeight: 600, color: "#444" }}>{m.subject}</div>}
                 <div style={{ fontSize: 13, color: "#333", whiteSpace: "pre-wrap", marginBottom: 6 }}>{m.body}</div>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button className="btn btn-sm btn-primary" onClick={() => sendMsg(m.id)} disabled={busyId === m.id}>
-                    {busyId === m.id ? "…" : "Send"}
-                  </button>
+                  {m.channel === "sms" && m.client?.smsUndeliverable ? (
+                    <span style={{ fontSize: 12, color: "#991b1b", fontWeight: 600 }}>
+                      Dead number — do not text{m.client.smsErrorCode ? ` (${m.client.smsErrorCode})` : ""}
+                    </span>
+                  ) : (
+                    <button className="btn btn-sm btn-primary" onClick={() => sendMsg(m.id)} disabled={busyId === m.id}>
+                      {busyId === m.id ? "…" : "Send"}
+                    </button>
+                  )}
                   <button className="btn btn-sm" onClick={() => { setEditId(m.id); setEditBody(m.body); }}>Edit</button>
                   <button className="btn btn-sm" onClick={() => skipMsg(m.id)} disabled={busyId === m.id} style={{ color: "#c0392b" }}>Skip</button>
                 </div>

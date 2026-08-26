@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
 import { sendWdMessage } from "@/lib/wd/messaging";
+import { SMS_UNDELIVERABLE_ERROR } from "@/lib/wd/sms-undeliverable";
 
 export const runtime = "nodejs";
 
@@ -18,7 +19,8 @@ export async function POST(
   const { id } = await params;
   const result = await sendWdMessage(id);
   if (!result.ok) {
-    return NextResponse.json({ error: result.error || "send failed" }, { status: 400 });
+    const status = result.error === SMS_UNDELIVERABLE_ERROR ? 409 : 400;
+    return NextResponse.json({ error: result.error || "send failed" }, { status });
   }
   return NextResponse.json({ ok: true });
 }
