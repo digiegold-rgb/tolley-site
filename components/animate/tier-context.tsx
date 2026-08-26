@@ -14,6 +14,7 @@ import { routeIdsForTier } from '@/lib/vater/nav-visibility';
 
 export interface VaterCapabilities {
   rules: boolean;
+  houseRules: boolean;
   direct: boolean;
   course: boolean;
   latestCosts: boolean;
@@ -57,6 +58,7 @@ export interface TierContextValue {
 
 const EMPTY_CAPS: VaterCapabilities = {
   rules: false,
+  houseRules: false,
   direct: false,
   course: false,
   latestCosts: false,

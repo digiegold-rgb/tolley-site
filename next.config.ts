@@ -73,6 +73,9 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/vater/rules": ["./data/VATER-RULES.pdf"],
     "/api/vater/rules/route": ["./data/VATER-RULES.pdf"],
+    // 8/25: per-character rule template instantiated when a user builds a character
+    "/api/vater/rules/character-seed": ["./data/CHARACTER-RULE-TEMPLATE.json"],
+    "/api/vater/rules/character-seed/route": ["./data/CHARACTER-RULE-TEMPLATE.json"],
   },
   async headers() {
     return [

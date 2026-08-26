@@ -64,7 +64,7 @@ export const NAV_ROUTES: readonly NavRouteDef[] = [
   { id: 'project-history', label: 'Project History', icon: 'history', minTier: 'public', section: 'primary' },
   { id: 'video-editor', label: 'Video Editor', icon: 'videoEditor', minTier: 'public', section: 'primary' },
   { id: 'course', label: 'Course Studio', icon: 'course', minTier: 'studio', section: 'primary' },
-  { id: 'rules', label: 'Rules', icon: 'description', minTier: 'studio', section: 'primary' },
+  { id: 'rules', label: 'Rules', icon: 'description', minTier: 'public', section: 'primary' }, // 8/25: global rulebook for everyone (house tab stays studio)
   // Un-stubbed 2026-08-20: now a real read-only guide (no fake credit rewards).
   { id: 'learning-center', label: 'Learning Center', icon: 'learning', minTier: 'public', section: 'primary' },
   // Every tier gets the System Log: when a render fails, the first thing a

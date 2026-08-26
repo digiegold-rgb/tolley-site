@@ -18,6 +18,7 @@
  */
 
 import * as React from 'react';
+import { seedCharacterRules } from './CharacterRules';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { VBtn, VCard } from '../../primitives';
@@ -223,10 +224,22 @@ export function CharacterLab({
           imageUrl: take.imageUrl ?? null,
         }),
       });
+      const rForRules = r.clone();
       await assertOk(r);
       setTakes((prev) => prev.map((tk) => (tk.jobId === take.jobId ? { ...tk, saved: true } : tk)));
       setNotice(`Saved — "${name.trim()}" is now the character on that style.`);
       onCharacterSaved?.();
+      // 2026-08-25: a new character gets its OWN rule subset (identity lock,
+      // one outfit per act, never cloned, name never printed…) instantiated
+      // from the template — the user reviews them under Rules → My rules.
+      try {
+        const created = (await rForRules.json().catch(() => null)) as { character?: { id?: string } } | null;
+        const cid = created?.character?.id;
+        if (cid) {
+          const seeded = await seedCharacterRules({ id: cid, name: name.trim(), descriptor: take.description });
+          if (seeded.created) setNotice(`Saved — "${name.trim()}" is now the character on that style. ${seeded.created} rules created for ${name.trim()} — review in Rules → My rules.`);
+        }
+      } catch { /* rules are a convenience; the character is already saved */ }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save the character');
     } finally {

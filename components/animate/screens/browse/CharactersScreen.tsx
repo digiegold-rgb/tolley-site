@@ -27,6 +27,7 @@ import {
 import { CharacterLab } from './CharacterLab';
 import { HouseCastPanel } from './HouseCastPanel';
 import { RulesBanner } from './RulesBanner';
+import { CharacterRulesDrawer, useOwnerRules, type CharacterRef } from './CharacterRules';
 import { ImageLightbox } from '../../ImageLightbox';
 
 interface VaterCharacter {
@@ -55,6 +56,10 @@ export function CharactersScreen(): React.ReactElement {
   const [lightbox, setLightbox] = React.useState<{ src: string; caption?: string } | null>(null);
   /* Cards with no preview image expand their descriptor in place instead. */
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
+  /* Per-character rule subset (2026-08-25 PM): owner-scope rules pinned to
+     the character; the drawer edits them and seeds the template. */
+  const ownerRules = useOwnerRules();
+  const [rulesFor, setRulesFor] = React.useState<CharacterRef | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -127,9 +132,10 @@ export function CharactersScreen(): React.ReactElement {
         description="Your locked house cast first, then every character you've minted. Reuse one in a new video and it keeps the same face across every scene."
       />
 
-      {/* Online rulebook pointer (2026-08-25) — studio users only; the same
-          JSON every render fetches, so the version shown here is what the
-          next render will obey. */}
+      {/* Online rulebook pointer (2026-08-25) — for everyone since the scopes
+          landed: the Global rulebook + your own rules, the same JSON every
+          render fetches, so the version shown here is what the next render
+          will obey. */}
       <RulesBanner />
 
       {/* Canon roster (2026-08-22). Pinned ABOVE the Lab because it is the
@@ -274,6 +280,17 @@ export function CharactersScreen(): React.ReactElement {
               </div>
               <VBtn
                 size="sm"
+                variant="ghost"
+                data-testid={`character-rules-${c.id}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRulesFor({ id: c.id, name: c.name, descriptor: c.descriptor });
+                }}
+              >
+                {`Rules (${(ownerRules.byCharacter.get(c.id) ?? []).filter((r) => !r.retiredAt).length})`}
+              </VBtn>
+              <VBtn
+                size="sm"
                 variant="outlined"
                 icon="sparkle"
                 disabled={creating}
@@ -298,6 +315,14 @@ export function CharactersScreen(): React.ReactElement {
         </div>
       )}
 
+      {rulesFor && (
+        <CharacterRulesDrawer
+          character={rulesFor}
+          rules={ownerRules.byCharacter.get(rulesFor.id) ?? []}
+          onChanged={ownerRules.reload}
+          onClose={() => setRulesFor(null)}
+        />
+      )}
       <ImageLightbox
         src={lightbox?.src ?? null}
         caption={lightbox?.caption}

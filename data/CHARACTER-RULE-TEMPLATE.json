@@ -1,0 +1,99 @@
+{
+ "rules": [
+  {
+   "key": "host-every-video",
+   "title": "{name} is the host of every video.",
+   "body": "{name} appears in about half of all scenes, talking to camera and doing what the narration describes; the other half are people-free key visuals. {name} is index 0 in the roster.",
+   "gate": "planner",
+   "placeholders": [
+    "name"
+   ]
+  },
+  {
+   "key": "identity-lock",
+   "title": "{name}'s identity is locked.",
+   "body": "In every scene of every video {name} keeps the same face, hair, facial hair, eye colour, skin tone, build and marks: {invariants}. Only clothing and setting vary.",
+   "gate": "hard",
+   "placeholders": [
+    "name",
+    "invariants"
+   ]
+  },
+  {
+   "key": "invariants-explicit",
+   "title": "{name}'s locked features are written into every prompt.",
+   "body": "Every prompt that draws {name} carries the locked feature list ({invariants}) verbatim; nothing about {name}'s look is left for the model to decide.",
+   "gate": "planner",
+   "placeholders": [
+    "name",
+    "invariants"
+   ]
+  },
+  {
+   "key": "positive-descriptor",
+   "title": "{name} is described in positive, concrete terms — never negations.",
+   "body": "Say what {name} HAS, never what {name} lacks; a negation summons the thing it names.",
+   "gate": "planner",
+   "placeholders": [
+    "name"
+   ]
+  },
+  {
+   "key": "attire",
+   "title": "{name} dresses as a {role}: {attire}.",
+   "body": "{name}'s wardrobe stays inside '{attire}' — one outfit per act, chosen once per render, never per-scene randomness, never a costume that contradicts the role.",
+   "gate": "hard",
+   "placeholders": [
+    "name",
+    "role",
+    "attire"
+   ]
+  },
+  {
+   "key": "no-clone",
+   "title": "Never two of {name} in one frame.",
+   "body": "One {name} per scene — never a copy in the background, in a crowd, on a poster or on a device screen.",
+   "gate": "hard",
+   "placeholders": [
+    "name"
+   ]
+  },
+  {
+   "key": "name-leak",
+   "title": "{name}'s name is never printed in the video.",
+   "body": "No chart heading, document, sign, badge or screen shows the text '{name}'. Props are people-free or use generic printed content.",
+   "gate": "hard",
+   "placeholders": [
+    "name"
+   ]
+  },
+  {
+   "key": "unique-look",
+   "title": "{name} resembles no other character.",
+   "body": "Extras and other roster characters must not share {name}'s face, hair or silhouette; {name} is unique to this owner's Style and is never reused as a system asset.",
+   "gate": "hard",
+   "placeholders": [
+    "name"
+   ]
+  },
+  {
+   "key": "voice",
+   "title": "{name} speaks with one locked voice.",
+   "body": "Every video narrated by {name} uses the same voice, tuned once in the Voice Tuner; a different voice is a deliberate per-video choice by the owner.",
+   "gate": "info",
+   "placeholders": [
+    "name"
+   ]
+  },
+  {
+   "key": "props-in-hand",
+   "title": "{name} works with the channel's key props.",
+   "body": "When {name} is on screen doing something, it is something a {role} does: reading a statement, pointing at a chart, holding a card — never filler poses (pointing at nothing, peace signs, staring at a calendar).",
+   "gate": "planner",
+   "placeholders": [
+    "name",
+    "role"
+   ]
+  }
+ ]
+}

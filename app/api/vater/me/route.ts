@@ -95,7 +95,10 @@ export async function GET() {
       userId: session.user.id,
       capabilities: {
         // Studio-gated surfaces (isVaterStudioEmail).
-        rules: studio,
+        // 8/25: the GLOBAL rulebook + a user's own rules are for everyone;
+        // the house rulebook (Trey's) stays studio.
+        rules: true,
+        houseRules: studio,
         direct: studio,
         course: studio,
         latestCosts: studio,

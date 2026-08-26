@@ -5535,6 +5535,20 @@ model VaterRule {
   /// hard = the delivery audit blocks on it; advisory = goes in the customer
   /// note; planner = injected into every scene-planner prompt; info = ops.
   gate         String    @default("info")
+  /// global | house | owner (2026-08-25 scopes). global = the de-branded
+  /// principles every render on Jelly Studio reads (codes "G<n>"); house =
+  /// Trey's studio rulebook (codes "1".."158"/"78a", studio-only); owner = a
+  /// user's own rules (codes "<ownerId>:<n>", displayed "#<n>"), optionally
+  /// pinned to one of their characters.
+  scope        String    @default("house")
+  /// owner-scope rules belong to this user (User.id); null for global/house.
+  ownerId      String?
+  /// optional: the character this rule is about (YouTubeCharacter.id or the
+  /// DGX character-library id) — rendered under the character's card.
+  characterId  String?
+  /// set when the rule was instantiated from CHARACTER-RULE-TEMPLATE.json
+  /// (idempotency key per character).
+  templateKey  String?
   retiredAt    DateTime?
   retiredNote  String?
   updatedBy    String?
@@ -5542,6 +5556,8 @@ model VaterRule {
   updatedAt    DateTime  @updatedAt
 
   @@index([section, number])
+  @@index([scope, section, number])
+  @@index([ownerId, characterId])
 }
 
 /// Every write to a VaterRule (edit, add, retire) — who changed what, when.
