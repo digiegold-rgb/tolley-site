@@ -85,7 +85,7 @@ export function MoneyConfirmModal({
   const confirmLabel =
     request.confirmLabel ??
     (billing.unmetered
-      ? `Confirm — studio account, no charge`
+      ? `Confirm — no charge (≈ ${estTotal !== null ? formatPrice(estTotal) : "$0"} compute)`
       : `Confirm — ${formatPrice(total)}`);
 
   return createPortal(
@@ -109,22 +109,33 @@ export function MoneyConfirmModal({
           ))}
         </div>
         <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2">
-          <p className="text-sm font-semibold text-zinc-100">
-            {request.count} {request.unitLabel}
-            {plural} × {formatPrice(request.unitCents)} = {formatPrice(total)}
-          </p>
           {billing.unmetered ? (
-            <p className="mt-1 text-[11px] text-amber-300">
-              Studio account — nothing is charged to a card.
-              {estTotal !== null
-                ? ` Real compute cost ≈ ${formatPrice(estTotal)}.`
-                : ""}
-            </p>
+            <>
+              <p className="text-sm font-semibold text-amber-300">
+                Studio account — nothing charged to a card.
+                {estTotal !== null
+                  ? ` Real compute cost ≈ ${formatPrice(estTotal)}`
+                  : ""}
+                {estTotal !== null && request.count > 1
+                  ? ` (${request.count} × ${formatPrice(request.estCostCents ?? 0)})`
+                  : ""}
+              </p>
+              <p className="mt-1 text-[11px] text-zinc-500">
+                A paying customer would see {request.count} {request.unitLabel}
+                {plural} × {formatPrice(request.unitCents)} = {formatPrice(total)}.
+              </p>
+            </>
           ) : (
-            <p className="mt-1 text-[11px] text-zinc-500">
-              Charged to your card only after each {request.unitLabel} succeeds —
-              failures are never charged.
-            </p>
+            <>
+              <p className="text-sm font-semibold text-zinc-100">
+                {request.count} {request.unitLabel}
+                {plural} × {formatPrice(request.unitCents)} = {formatPrice(total)}
+              </p>
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Charged to your card only after each {request.unitLabel} succeeds —
+                failures are never charged.
+              </p>
+            </>
           )}
         </div>
         <div className="mt-5 flex justify-end gap-2">

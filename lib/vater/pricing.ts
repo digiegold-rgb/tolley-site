@@ -7,6 +7,10 @@
  * not secret — only costs estimates live here too, and those are fine to ship
  * to the client (they already appeared in the old dropdown labels).
  *
+ * estCostCents = DGX-measured (vater_i2v.py TIERS, 5s clip): Wan L40S ~16¢,
+ * H100 ~26¢ (re-synced 2026-08-26 — the old 32¢/40¢ were April guesses, which
+ * quietly put Wan at ~9x). Batch animate loads the model once, so real
+ * per-clip cost there is at or below these numbers.
  * Margin policy: ~4-6x over real backend cost (Modal GPU rental / Veo / Kling
  * metered APIs, calibrated 2026-04-25 in Shared/animation-fix.md). Local DGX
  * tiers cost ~$0 to run but are priced at a floor so free renders don't
@@ -28,12 +32,12 @@ export interface AnimationPrice {
 
 export const ANIMATION_PRICES: Record<AnimationQuality, AnimationPrice> = {
   // ── Modal GPU rental (Wan2.2 / Hunyuan / EasyAnimate) ──
-  "modal-wan22-narrative":      { priceCents: 150, estCostCents: 32, label: "Wan2.2 Narrative L40S",   etaLabel: "~5 min" },
-  "modal-wan22-narrative-fast": { priceCents: 200, estCostCents: 40, label: "Wan2.2 Narrative H100",   etaLabel: "~2 min" },
+  "modal-wan22-narrative":      { priceCents: 150, estCostCents: 16, label: "Wan2.2 Narrative L40S",   etaLabel: "~5 min" },
+  "modal-wan22-narrative-fast": { priceCents: 200, estCostCents: 26, label: "Wan2.2 Narrative H100",   etaLabel: "~2 min" },
   "modal-hunyuan-narrative":      { priceCents: 75,  estCostCents: 14, label: "Hunyuan Narrative L40S", etaLabel: "~3 min" },
   "modal-hunyuan-narrative-fast": { priceCents: 125, estCostCents: 24, label: "Hunyuan Narrative H100", etaLabel: "~1 min" },
-  "modal-wan22":      { priceCents: 150, estCostCents: 32, label: "Wan2.2 Action L40S", etaLabel: "~3 min" },
-  "modal-wan22-fast": { priceCents: 200, estCostCents: 40, label: "Wan2.2 Action H100", etaLabel: "~2 min" },
+  "modal-wan22":      { priceCents: 150, estCostCents: 16, label: "Wan2.2 Action L40S", etaLabel: "~3 min" },
+  "modal-wan22-fast": { priceCents: 200, estCostCents: 26, label: "Wan2.2 Action H100", etaLabel: "~2 min" },
   "modal-easyanimate-anime": { priceCents: 150, estCostCents: 30, label: "EasyAnimate v5 Anime", etaLabel: "~4 min" },
   // ── Metered third-party APIs ──
   "kling-standard": { priceCents: 100, estCostCents: 18, label: "Kling Standard 720p", etaLabel: "~2 min" },
