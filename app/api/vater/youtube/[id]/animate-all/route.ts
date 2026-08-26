@@ -46,7 +46,17 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     forceAll?: unknown;
     sceneIdxs?: unknown;
     untilS?: unknown;
+    /** Panel overrides (2026-08-26): apply to every scene in the batch. */
+    motionIntensity?: unknown;
+    holdStartPose?: unknown;
+    fixedCamera?: unknown;
   };
+  const ovMotion =
+    body.motionIntensity === "subtle" || body.motionIntensity === "normal" || body.motionIntensity === "bold"
+      ? body.motionIntensity
+      : undefined;
+  const ovHold = typeof body.holdStartPose === "boolean" ? body.holdStartPose : undefined;
+  const ovCam = typeof body.fixedCamera === "boolean" ? body.fixedCamera : undefined;
 
   const quality = resolveAnimateLayerQuality(body.quality);
   const explicitIdxs = Array.isArray(body.sceneIdxs)
@@ -112,15 +122,16 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       animationPrompt:
         typeof s.animationPrompt === "string" ? s.animationPrompt : undefined,
       beatText: typeof s.beatText === "string" ? s.beatText : undefined,
-      fixedCamera: typeof s.fixedCamera === "boolean" ? s.fixedCamera : false,
+      fixedCamera: ovCam ?? (typeof s.fixedCamera === "boolean" ? s.fixedCamera : false),
       motionIntensity:
-        s.motionIntensity === "subtle" ||
+        ovMotion ??
+        (s.motionIntensity === "subtle" ||
         s.motionIntensity === "normal" ||
         s.motionIntensity === "bold"
           ? s.motionIntensity
-          : undefined,
+          : undefined),
       holdStartPose:
-        typeof s.holdStartPose === "boolean" ? s.holdStartPose : undefined,
+        ovHold ?? (typeof s.holdStartPose === "boolean" ? s.holdStartPose : undefined),
     }));
 
   if (targetScenes.length === 0) {

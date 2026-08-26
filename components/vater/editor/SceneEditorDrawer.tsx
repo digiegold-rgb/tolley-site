@@ -15,15 +15,12 @@ import type React from "react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { VideoSpeedChips } from "@/components/ui/VideoSpeedChips";
-import type { AnimationQuality, MotionIntensity } from "@/lib/vater/autopilot-client";
+import type { AnimationQuality } from "@/lib/vater/autopilot-client";
 import type { SceneSpec } from "@/lib/vater/video-spec";
 import {
   ANIMATION_PRICES,
-  ANIMATION_TIER_GROUPS,
-  CUSTOMER_ANIMATION_TIERS,
   FLAT_ACTION_PRICES,
   formatPrice,
-  type AnimationTierGroup,
 } from "@/lib/vater/pricing";
 import {
   MoneyConfirmModal,
@@ -31,7 +28,7 @@ import {
   type MoneyConfirmRequest,
 } from "./MoneyConfirmModal";
 
-const TIER_GROUP_ORDER: AnimationTierGroup[] = ["calm", "action", "premium", "photoreal"];
+
 
 type Props = {
   projectId: string;
@@ -343,8 +340,8 @@ export function SceneEditorDrawer({
         </details>
       </Section>
 
-      {/* 3 — Motion */}
-      <AnimationPanel
+      {/* 3 — Clip status (all motion controls live in the top panel) */}
+      <ClipCard
         projectId={projectId}
         scene={scene}
         onSceneUpdated={onSceneUpdated}
@@ -374,34 +371,9 @@ export function SceneEditorDrawer({
   );
 }
 
-/**
- * AnimationPanel — TubeGen-parity per-scene animation.
- *
- * Free-form `animationPrompt` text field (like "Slowly zoom in on the
- * notebook. Do not make him talk.") + fixedCamera toggle + quality tier
- * selector. Mirrors TubeGen's POST /api/ai/animate-image request shape
- * exactly. When the scene already has an animation, the button becomes
- * "Re-animate" (bumps videoVersion) and a "Revert to still" secondary
- * option appears.
- */
-// The tier list is lib/vater/pricing.ts CUSTOMER_ANIMATION_TIERS — one
-// source for the dropdown, the confirm modal and the server charge. Local
-// GB10 tiers and unwired backends are simply not in it.
-const QUALITY_OPTIONS = CUSTOMER_ANIMATION_TIERS.map((t) => {
-  const p = ANIMATION_PRICES[t.id];
-  return {
-    id: t.id,
-    group: t.group,
-    label: `${p.label}${t.recommended ? " ⭐" : ""}`,
-    priceCents: p.priceCents,
-    estCostCents: p.estCostCents,
-    eta: p.etaLabel,
-    desc: t.blurb,
-    cartoonUnsafe: t.cartoonUnsafe === true,
-  };
-});
-
-function AnimationPanel({
+/** What clip (if any) this scene plays, plus the free "remove clip". Every
+ *  paid motion control moved to RenderPanel at the top (2026-08-26). */
+function ClipCard({
   projectId,
   scene,
   onSceneUpdated,
@@ -412,205 +384,11 @@ function AnimationPanel({
   scene: SceneSpec;
   onSceneUpdated: (scene: SceneSpec) => void;
   billing: BillingMode;
-  /** List price of the clip currently on the scene (undefined = none). */
   clipPriceCents?: number;
 }) {
   const { toast } = useToast();
-  const [animationPrompt, setAnimationPrompt] = useState(
-    scene.animationPrompt ?? "",
-  );
-  const [fixedCamera, setFixedCamera] = useState(scene.fixedCamera ?? false);
-  // Default to Kling Standard — works on both cartoon and photoreal. The old
-  // "default" (Veo 3 Fast) rejects cartoon images, which was wrong for the
-  // 2D/whiteboard styles most projects use here.
-  const [quality, setQuality] = useState<AnimationQuality>(
-    scene.animQuality ?? "modal-wan22-narrative",
-  );
-  // Motion preset + FLF2V end-frame lock. Default to subtle + hold for new
-  // scenes because the snowball regression showed Wan2.2 flails on calm
-  // narrative shots when given free motion. User can bump to Normal/Bold
-  // per-scene for explicit action beats.
-  const [motionIntensity, setMotionIntensity] = useState<MotionIntensity>(
-    (scene.motionIntensity as MotionIntensity | undefined) ?? "subtle",
-  );
-  const [holdStartPose, setHoldStartPose] = useState<boolean>(
-    scene.holdStartPose ?? true,
-  );
-  const [isAnimating, startAnim] = useTransition();
-  const [moneyConfirm, setMoneyConfirm] = useState<MoneyConfirmRequest | null>(
-    null,
-  );
-  // Armed after the first click on a Veo tier with a cartoon-unsafe warning;
-  // the second click proceeds. Reset whenever the tier changes.
-  const [veoConfirm, setVeoConfirm] = useState(false);
-  useEffect(() => setVeoConfirm(false), [quality]);
   const [isReverting, startRevert] = useTransition();
-  const [isSuggesting, startSuggest] = useTransition();
-  const [statusMsg, setStatusMsg] = useState<
-    { kind: "pending" | "success" | "error"; text: string } | null
-  >(null);
-
-  useEffect(() => {
-    setAnimationPrompt(scene.animationPrompt ?? "");
-    setFixedCamera(scene.fixedCamera ?? false);
-    setQuality(scene.animQuality ?? "modal-wan22-narrative");
-    setMotionIntensity(
-      (scene.motionIntensity as MotionIntensity | undefined) ?? "subtle",
-    );
-    setHoldStartPose(scene.holdStartPose ?? true);
-  }, [
-    scene.idx,
-    scene.animationPrompt,
-    scene.fixedCamera,
-    scene.animQuality,
-    scene.motionIntensity,
-    scene.holdStartPose,
-  ]);
-
   const isAnimated = scene.mediaType === "video" && !!scene.videoUrl;
-  const sceneDur = Math.max(0, (scene.endS ?? 0) - (scene.startS ?? 0));
-  const clampedDuration = Math.max(4, Math.min(8, Math.ceil(sceneDur || 6)));
-  const qualityInfo = QUALITY_OPTIONS.find((q) => q.id === quality);
-
-  const handleAnimate = () => {
-    if (!qualityInfo) return;
-    if (qualityInfo.cartoonUnsafe && !veoConfirm) {
-      // Inline warning instead of a native confirm() — browser dialogs block
-      // the event loop. The button re-fires once the user acknowledges.
-      setVeoConfirm(true);
-      setStatusMsg({
-        kind: "error",
-        text: `${qualityInfo.label} blocks cartoon-style images via Google Veo's safety filter. If this scene is photoreal, click Animate again to proceed; if it's a cartoon, pick a Wan 2.2 or Kling tier instead.`,
-      });
-      return;
-    }
-    setVeoConfirm(false);
-    const motionLabel =
-      motionIntensity === "subtle"
-        ? "Subtle"
-        : motionIntensity === "bold"
-          ? "Bold"
-          : "Normal";
-    setMoneyConfirm({
-      title: `${isAnimated ? "Re-animate" : "Animate"} scene ${scene.idx + 1} with ${qualityInfo.label.replace(" ⭐", "")}?`,
-      lines: [
-        `Turns this still into a ~${clampedDuration}s video clip. ${qualityInfo.desc}`,
-        `Motion: ${motionLabel}${holdStartPose ? " + Hold start pose" : ""} · Camera: ${fixedCamera ? "fixed" : "free"} · Prompt: ${
-          animationPrompt.trim() ? "yours" : "auto-picked from the scene"
-        }.`,
-        isAnimated
-          ? "Replaces the current clip (new seed). Takes about " + qualityInfo.eta + "."
-          : "Takes about " + qualityInfo.eta + ". You can keep editing other scenes meanwhile.",
-      ],
-      unitCents: qualityInfo.priceCents,
-      unitLabel: "clip",
-      count: 1,
-      estCostCents: qualityInfo.estCostCents,
-      onConfirm: runAnimate,
-    });
-  };
-
-  const runAnimate = () => {
-    if (!qualityInfo) return;
-    // Animation prompt is OPTIONAL — if blank, the DGX worker runs the
-    // auto-planner and picks motion based on imagePrompt + beatText.
-    const prompt = animationPrompt.trim();
-    setStatusMsg({
-      kind: "pending",
-      text: `Sending to ${qualityInfo.label}… about ${qualityInfo.eta}.`,
-    });
-    startAnim(async () => {
-      try {
-        const res = await fetch(
-          `/api/vater/youtube/${projectId}/scene/animate`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sceneIdx: scene.idx,
-              animationPrompt: prompt,
-              fixedCamera,
-              quality,
-              motionIntensity,
-              holdStartPose,
-            }),
-          },
-        );
-        let data: { error?: string; scene?: unknown; animate?: { model?: string; durationSeconds?: number; cost?: number }; billing?: { chargedCents?: number } } = {};
-        try {
-          data = await res.json();
-        } catch {
-          // Non-JSON response — still throw a useful message
-          throw new Error(`HTTP ${res.status} (non-JSON response)`);
-        }
-        if (!res.ok) {
-          throw new Error(data.error || `HTTP ${res.status}`);
-        }
-        if (!data.scene) {
-          throw new Error("animate response missing scene");
-        }
-        onSceneUpdated(data.scene as SceneSpec);
-        const charged =
-          typeof data.billing?.chargedCents === "number"
-            ? data.billing.chargedCents
-            : qualityInfo.priceCents;
-        const okMsg = `✅ Animated — ${data.animate?.model || "i2v"} · ${
-          data.animate?.durationSeconds || clampedDuration
-        }s · ${billing.unmetered ? "studio account, no charge" : `charged ${formatPrice(charged)}`}`;
-        setStatusMsg({ kind: "success", text: okMsg });
-        toast({
-          title: `Scene ${scene.idx + 1} ${
-            isAnimated ? "re-animated" : "animated"
-          }`,
-          description: okMsg,
-          variant: "success",
-        });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        setStatusMsg({ kind: "error", text: `❌ ${msg}` });
-        toast({
-          title: "Animation failed",
-          description: msg,
-          variant: "error",
-        });
-      }
-    });
-  };
-
-  const handleAutoSuggest = () => {
-    startSuggest(async () => {
-      try {
-        const res = await fetch(
-          `/api/vater/youtube/${projectId}/scene/animation-plan`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sceneIdx: scene.idx }),
-          },
-        );
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error((data && data.error) || `HTTP ${res.status}`);
-        }
-        if (!data.plan) {
-          throw new Error("plan response missing plan");
-        }
-        setAnimationPrompt(data.plan.animationPrompt);
-        setFixedCamera(!!data.plan.fixedCamera);
-        toast({
-          title: `Scene ${scene.idx + 1}: AI suggestion ready`,
-          description: `${data.plan.fixedCamera ? "📌 Fixed camera" : "🎥 Moving camera"} — edit or click Animate`,
-          variant: "success",
-        });
-      } catch (err) {
-        toast({
-          title: "Auto-suggest failed",
-          description: err instanceof Error ? err.message : String(err),
-          variant: "error",
-        });
-      }
-    });
-  };
 
   const handleRevertToStill = () => {
     startRevert(async () => {
@@ -623,7 +401,6 @@ function AnimationPanel({
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
         if (data.scene) onSceneUpdated(data.scene as SceneSpec);
-        setStatusMsg(null);
         toast({
           title: `Scene ${scene.idx + 1} back to still`,
           description: "Clip removed from the project (free). The file stays on disk; animate again any time.",
@@ -639,25 +416,14 @@ function AnimationPanel({
     });
   };
 
-  // Motion amount + Hold start pose are Wan/Hunyuan sampler presets; the
-  // third-party engines (Kling/Luma/Veo) choose their own motion.
-  const supportsMotionControls =
-    qualityInfo?.group === "calm" || qualityInfo?.group === "action";
-  const priceLabel = qualityInfo ? formatPrice(qualityInfo.priceCents) : "";
-
   return (
     <Section
       title="Motion"
       tone="fuchsia"
       hint={
         isAnimated
-          ? "This scene plays a video clip. Re-doing it makes a new clip; removing it goes back to the still (free)."
-          : `Turn the picture into a ~${clampedDuration}s video clip.`
-      }
-      right={
-        <span className="rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[10px] text-fuchsia-300">
-          {priceLabel ? `${priceLabel}/clip` : "—"}
-        </span>
+          ? "This scene plays a video clip. To re-do it, use the panel at the top (scope: This scene)."
+          : "No clip yet — the still plays with a slow Ken Burns move. Animate it from the panel at the top."
       }
     >
       {isAnimated ? (
@@ -667,14 +433,17 @@ function AnimationPanel({
             {scene.animDurationSeconds ? ` · ${scene.animDurationSeconds}s` : ""}
             {typeof clipPriceCents === "number"
               ? billing.unmetered
-                ? ` · studio, no charge`
+                ? " · studio, no charge"
                 : ` · billed ${formatPrice(clipPriceCents)}`
               : ""}
+            {scene.animationPrompt ? (
+              <span className="block text-[10px] text-emerald-200/70">“{scene.animationPrompt}”</span>
+            ) : null}
           </span>
           <button
             type="button"
             onClick={handleRevertToStill}
-            disabled={isAnimating || isReverting}
+            disabled={isReverting}
             className="shrink-0 rounded border border-emerald-500/40 px-2 py-1 text-[10px] text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50"
             title="Remove the clip from this scene. Free. The file stays on disk."
           >
@@ -682,163 +451,6 @@ function AnimationPanel({
           </button>
         </div>
       ) : null}
-
-      <div>
-        <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-500">
-          Engine
-        </label>
-        <select
-          value={quality}
-          onChange={(e) => setQuality(e.target.value as AnimationQuality)}
-          className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-[11px] text-zinc-200 focus:border-zinc-600 focus:outline-none"
-        >
-          {TIER_GROUP_ORDER.map((g) => (
-            <optgroup key={g} label={ANIMATION_TIER_GROUPS[g].label}>
-              {QUALITY_OPTIONS.filter((q) => q.group === g).map((q) => (
-                <option key={q.id} value={q.id} title={q.desc}>
-                  {q.label} — {formatPrice(q.priceCents)} · {q.eta}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-        <p className="mt-1 text-[10px] text-zinc-500">
-          {qualityInfo
-            ? `${qualityInfo.desc} ${ANIMATION_TIER_GROUPS[qualityInfo.group].hint}`
-            : ""}
-        </p>
-        {qualityInfo?.cartoonUnsafe ? (
-          <p className="mt-1 text-[10px] text-amber-400">
-            ⚠ Veo rejects cartoon faces. Pick a Wan 2.2 or Kling engine for cartoon scenes.
-          </p>
-        ) : null}
-      </div>
-
-      <div>
-        <div className="mb-1 flex items-center justify-between">
-          <label
-            htmlFor={`anim-prompt-${scene.idx}`}
-            className="text-[10px] uppercase tracking-wider text-zinc-500"
-          >
-            What moves{" "}
-            <span className="normal-case text-zinc-600">(optional — leave blank and the AI decides, following your rules)</span>
-          </label>
-          <button
-            type="button"
-            onClick={handleAutoSuggest}
-            disabled={isSuggesting || isAnimating}
-            className="rounded px-2 py-0.5 text-[10px] font-semibold text-fuchsia-300 hover:bg-fuchsia-500/10 disabled:opacity-50"
-            title="Ask the AI planner (rulebook-aware) to write the motion for this scene so you can edit it first"
-          >
-            {isSuggesting ? "…thinking" : "✨ Suggest"}
-          </button>
-        </div>
-        <textarea
-          id={`anim-prompt-${scene.idx}`}
-          value={animationPrompt}
-          onChange={(e) => setAnimationPrompt(e.target.value)}
-          rows={2}
-          className="w-full rounded-lg border border-fuchsia-500/30 bg-zinc-950 px-3 py-2 text-[11px] text-zinc-200 placeholder-zinc-600 focus:border-fuchsia-500/60 focus:outline-none"
-          placeholder='e.g. "the man gestures back toward the store, slight head nod, camera holds steady"'
-        />
-      </div>
-
-      <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-[11px] text-zinc-300">
-        <input
-          type="checkbox"
-          checked={fixedCamera}
-          onChange={(e) => setFixedCamera(e.target.checked)}
-          className="h-3.5 w-3.5 accent-fuchsia-500"
-        />
-        <span>Lock the camera (no pan / zoom)</span>
-      </label>
-
-      {supportsMotionControls ? (
-        <div className="rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
-          <span className="text-[10px] uppercase tracking-wider text-zinc-500">
-            How much movement
-          </span>
-          <div className="mt-1.5 grid grid-cols-3 gap-1">
-            {(
-              [
-                { id: "subtle", label: "Subtle", desc: "Slow, calm, mouth closed — the default" },
-                { id: "normal", label: "Normal", desc: "Everyday movement" },
-                { id: "bold", label: "Bold", desc: "Big movement — action beats only" },
-              ] as const
-            ).map((opt) => {
-              const active = motionIntensity === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setMotionIntensity(opt.id)}
-                  title={opt.desc}
-                  className={`rounded px-2 py-1.5 text-[11px] font-semibold transition-colors ${
-                    active
-                      ? "bg-fuchsia-500/30 text-fuchsia-200 ring-1 ring-fuchsia-500/60"
-                      : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-          <label className="mt-2 flex cursor-pointer items-start gap-2 rounded border border-zinc-800 bg-zinc-900/40 px-2 py-1.5 text-[11px] text-zinc-300">
-            <input
-              type="checkbox"
-              checked={holdStartPose}
-              onChange={(e) => setHoldStartPose(e.target.checked)}
-              className="mt-0.5 h-3.5 w-3.5 accent-fuchsia-500"
-            />
-            <span>
-              <span className="font-semibold text-zinc-200">End on the starting pose</span>
-              <span className="block text-[10px] text-zinc-500">
-                Stops wandering hands, mouth flap and face drift. Best for talking / close-ups.
-              </span>
-            </span>
-          </label>
-        </div>
-      ) : (
-        <p className="rounded-md border border-zinc-800 bg-zinc-950/60 px-2 py-1.5 text-[10px] text-zinc-500">
-          {qualityInfo?.label.replace(" ⭐", "") ?? "This engine"} decides its own amount of movement — the Subtle / Normal / Bold controls only apply to Wan 2.2 and Hunyuan.
-        </p>
-      )}
-
-      <button
-        type="button"
-        onClick={handleAnimate}
-        disabled={isAnimating || isReverting}
-        className="w-full rounded-lg bg-fuchsia-500/20 px-4 py-2 text-xs font-semibold text-fuchsia-300 transition-colors hover:bg-fuchsia-500/30 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {isAnimating
-          ? `Animating… (about ${qualityInfo?.eta ?? "a few min"})`
-          : isAnimated
-            ? `Re-do motion — ${priceLabel}`
-            : `Animate — ${priceLabel}`}
-      </button>
-
-      {statusMsg ? (
-        <div
-          className={`rounded-md border px-3 py-2 text-[11px] leading-snug ${
-            statusMsg.kind === "success"
-              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-              : statusMsg.kind === "error"
-                ? "border-rose-500/40 bg-rose-500/10 text-rose-300"
-                : "border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-300"
-          }`}
-        >
-          {statusMsg.kind === "pending" ? (
-            <span className="mr-1 inline-block h-2 w-2 animate-pulse rounded-full bg-fuchsia-400 align-middle" />
-          ) : null}
-          {statusMsg.text}
-        </div>
-      ) : null}
-      <MoneyConfirmModal
-        request={moneyConfirm}
-        billing={billing}
-        onClose={() => setMoneyConfirm(null)}
-      />
     </Section>
   );
 }

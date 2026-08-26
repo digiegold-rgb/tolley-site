@@ -27,28 +27,17 @@ import {
 } from "./MoneyConfirmModal";
 import {
   ANIMATION_PRICES,
-  ANIMATION_TIER_GROUPS,
   CUSTOMER_ANIMATION_TIERS,
   FLAT_ACTION_PRICES,
-  formatPrice,
 } from "@/lib/vater/pricing";
+import { isAnimateLayerQuality } from "@/lib/vater/animate-layer";
+import type { AnimationQuality, MotionIntensity } from "@/lib/vater/video-spec";
 import {
-  ANIMATE_LAYER_DEFAULT_QUALITY,
-  ANIMATE_LAYER_QUALITIES,
-  type AnimateLayerQuality,
-} from "@/lib/vater/animate-layer";
+  RenderPanel,
+  engineSupportsMotionControls,
+  type RenderScope,
+} from "./RenderPanel";
 
-// Batch animation runs one Modal container for the whole project, so only
-// the Modal tiers are offered here (Kling/Luma/Veo are per-scene, in the
-// scene panel). Labels + prices come from pricing.ts — the same numbers the
-// server bills.
-const BATCH_TIERS = CUSTOMER_ANIMATION_TIERS.filter((t) =>
-  (ANIMATE_LAYER_QUALITIES as ReadonlyArray<string>).includes(t.id),
-);
-const batchOptionLabel = (id: AnimateLayerQuality) => {
-  const p = ANIMATION_PRICES[id];
-  return `${p.label} — ${formatPrice(p.priceCents)}/clip · ${p.etaLabel}`;
-};
 const RENDER_PRICE = FLAT_ACTION_PRICES.render.priceCents;
 const SCENE_IMAGE_PRICE = FLAT_ACTION_PRICES.scene.priceCents;
 
@@ -89,12 +78,16 @@ export function EditorShell({ project: initialProject }: Props) {
   const [isSaving, startSave] = useTransition();
   const [isComposing, startCompose] = useTransition();
   const [isAnimatingAll, startAnimateAll] = useTransition();
-  // Tier for the bulk animate/re-animate buttons. Per-scene Motion settings
-  // (Subtle/Normal/Bold, Hold start pose) ride along; this only picks the
-  // model + GPU.
-  const [batchQuality, setBatchQuality] = useState<AnimateLayerQuality>(
-    ANIMATE_LAYER_DEFAULT_QUALITY,
-  );
+  // ── Render panel state (one control surface for every paid action) ──
+  const [scope, setScope] = useState<RenderScope>("scene");
+  const [engine, setEngine] = useState<AnimationQuality>("modal-wan22-narrative");
+  const [motion, setMotion] = useState<MotionIntensity>("subtle");
+  const [holdStartPose, setHoldStartPose] = useState(true);
+  const [lockCamera, setLockCamera] = useState(false);
+  const [scenePrompt, setScenePrompt] = useState("");
+  const [isSuggesting, startSuggest] = useTransition();
+  const [isAnimatingScenes, startAnimateScenes] = useTransition();
+  const [perSceneProgress, setPerSceneProgress] = useState<string | null>(null);
   // EVERY paid click goes through MoneyConfirmModal — list price, count,
   // and (for studio accounts) the note that no card is charged.
   const billing = useBillingMode();
@@ -176,6 +169,17 @@ export function EditorShell({ project: initialProject }: Props) {
     activeIdx !== null
       ? scenesJson.find((s) => s.idx === activeIdx) ?? null
       : null;
+
+  // When the user picks a scene, the panel shows THAT scene's motion
+  // settings + prompt (engine stays sticky — it's the user's choice).
+  useEffect(() => {
+    if (!activeScene) return;
+    setScenePrompt(activeScene.animationPrompt ?? "");
+    setMotion((activeScene.motionIntensity as MotionIntensity | undefined) ?? "subtle");
+    setHoldStartPose(activeScene.holdStartPose ?? true);
+    setLockCamera(activeScene.fixedCamera ?? false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeScene?.idx]);
 
   const handleSceneUpdated = useCallback(
     (scene: SceneSpec) => {
@@ -334,57 +338,137 @@ export function EditorShell({ project: initialProject }: Props) {
     });
   };
 
-  const handleAnimateAll = (
-    sceneIdxs?: number[],
-    opts?: { forceAll?: boolean },
-  ) => {
-    // Three call sites:
-    //   - handleAnimateAll()            → animate only scenes WITHOUT a video
-    //   - handleAnimateAll([1,3,5])     → re-animate those specific scenes
-    //   - handleAnimateAll(undefined, { forceAll: true })
-    //                                   → re-animate EVERY scene (bulk rerun)
-    const forceAll = opts?.forceAll === true;
-    const targetIdxs = sceneIdxs && sceneIdxs.length > 0
-      ? sceneIdxs
-      : forceAll
-        ? scenesJson.map((s) => s.idx)
-        : scenesJson.filter((s) => !s.videoUrl).map((s) => s.idx);
-    const targetCount = targetIdxs.length;
-    if (targetCount === 0) {
-      toast({
-        title: sceneIdxs ? "No scenes selected" : "All scenes already animated",
-        description: sceneIdxs
-          ? "Tick the checkbox on a scene to add it to the batch."
-          : "Switch to Re-animate all to force a fresh pass with the current tier.",
-        variant: "info" as never,
-      });
+  const targetsForScope = (): number[] => {
+    if (scope === "scene") return activeIdx === null ? [] : [activeIdx];
+    if (scope === "selected") return selectedIdxs.slice().sort((a, b) => a - b);
+    if (scope === "missing") return scenesJson.filter((s) => !s.videoUrl).map((s) => s.idx);
+    return scenesJson.map((s) => s.idx);
+  };
+  const scopeLabel = (n: number) =>
+    scope === "scene"
+      ? `scene ${(activeIdx ?? 0) + 1}`
+      : scope === "selected"
+        ? `${n} selected scene${n === 1 ? "" : "s"}`
+        : scope === "missing"
+          ? `${n} scene${n === 1 ? "" : "s"} without a clip`
+          : `all ${n} scenes`;
+
+  const handleAnimate = () => {
+    const targets = targetsForScope();
+    const n = targets.length;
+    if (n === 0) {
+      toast({ title: "Nothing to animate", description: "Pick a scene or tick some on the timeline.", variant: "info" as never });
       return;
     }
-    const verb = forceAll || sceneIdxs ? "Re-animate" : "Animate";
-    const price = ANIMATION_PRICES[batchQuality];
-    const already = targetIdxs.filter(
-      (i) => scenesJson.find((s) => s.idx === i)?.videoUrl,
-    ).length;
+    const price = ANIMATION_PRICES[engine];
+    const tier = CUSTOMER_ANIMATION_TIERS.find((t) => t.id === engine);
+    const batch = n > 1 && isAnimateLayerQuality(engine);
+    const replaced = targets.filter((i) => scenesJson.find((s) => s.idx === i)?.videoUrl).length;
+    const lines = [
+      `${scopeLabel(n)} → ${price.label}.` +
+        (replaced > 0 ? ` ${replaced} existing clip${replaced === 1 ? "" : "s"} will be replaced.` : "") +
+        (scope === "missing" ? " Existing clips are kept." : ""),
+      engineSupportsMotionControls(engine)
+        ? `Motion: ${motion}${holdStartPose ? " + end on start pose" : ""}${lockCamera ? ", camera locked" : ""}.`
+        : `${price.label} decides its own amount of movement${lockCamera ? "; camera locked" : ""}.`,
+      scope === "scene"
+        ? scenePrompt.trim()
+          ? "Uses the \"what moves\" text you wrote."
+          : "The AI writes the motion, following your rules."
+        : "Each scene uses its own \"what moves\" text; blank scenes get AI-written motion that follows your rules.",
+      batch
+        ? `Runs as one cloud batch, about ${price.etaLabel} per clip. Progress shows in the panel.`
+        : n > 1
+          ? `${price.label} runs one scene at a time — about ${price.etaLabel} each, ${n} in a row.`
+          : `Takes about ${price.etaLabel}.`,
+    ];
+    if (tier?.cartoonUnsafe) {
+      lines.push("⚠ Veo rejects cartoon faces — if these scenes are cartoons the clip will fail (failures are never charged).");
+    }
     setMoneyConfirm({
-      title: `${verb} ${targetCount} scene${targetCount === 1 ? "" : "s"} with ${price.label}?`,
-      lines: [
-        sceneIdxs
-          ? `Scenes ${targetIdxs.map((i) => i + 1).join(", ")} will each get a new video clip.`
-          : forceAll
-            ? `Every scene gets a fresh clip${already > 0 ? ` — ${already} existing clip${already === 1 ? "" : "s"} will be replaced` : ""}.`
-            : `Only the ${targetCount} scene${targetCount === 1 ? "" : "s"} without a clip yet get animated; existing clips are kept.`,
-        `Motion amount comes from each scene's Motion setting in the scene panel (default: Subtle + Hold start pose). Change it there first if you want more movement.`,
-        `Runs as one cloud batch, ~${price.etaLabel} per clip. Progress shows in the header.`,
-      ],
+      title: `Animate ${scopeLabel(n)}?`,
+      lines,
       unitCents: price.priceCents,
       unitLabel: "clip",
-      count: targetCount,
+      count: n,
       estCostCents: price.estCostCents,
-      onConfirm: () => runAnimateAll(forceAll, sceneIdxs),
+      onConfirm: () =>
+        batch ? runAnimateAll(targets) : runPerSceneAnimate(targets),
     });
   };
 
-  const runAnimateAll = (forceAll: boolean, sceneIdxs?: number[]) => {
+  // Per-scene path: Kling/Luma/Veo (no batch container) or a single scene.
+  // Sequential — the route holds a per-scene lock and a 6/min rate limit.
+  const runPerSceneAnimate = (targets: number[]) => {
+    startAnimateScenes(async () => {
+      let done = 0;
+      let failed = 0;
+      for (const idx of targets) {
+        const sc = scenesJson.find((s) => s.idx === idx);
+        setPerSceneProgress(`Animating scene ${idx + 1} (${done + failed + 1}/${targets.length}) with ${ANIMATION_PRICES[engine].label}…`);
+        try {
+          const res = await fetch(`/api/vater/youtube/${initialProject.id}/scene/animate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sceneIdx: idx,
+              animationPrompt:
+                scope === "scene" ? scenePrompt.trim() : (sc?.animationPrompt ?? "").trim(),
+              fixedCamera: lockCamera,
+              quality: engine,
+              motionIntensity: motion,
+              holdStartPose,
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+          if (data.scene) handleSceneUpdated(data.scene as SceneSpec);
+          done += 1;
+        } catch (err) {
+          failed += 1;
+          toast({
+            title: `Scene ${idx + 1} failed`,
+            description: err instanceof Error ? err.message : String(err),
+            variant: "error",
+          });
+        }
+      }
+      setPerSceneProgress(null);
+      toast({
+        title: failed === 0 ? `Animated ${done}/${targets.length}` : `Finished with ${failed} failure${failed === 1 ? "" : "s"}`,
+        description: `${done} succeeded, ${failed} failed. Failed clips are never charged.`,
+        variant: failed === 0 ? "success" : ("error" as const),
+      });
+      router.refresh();
+    });
+  };
+
+  const handleSuggest = () => {
+    if (activeIdx === null) return;
+    startSuggest(async () => {
+      try {
+        const res = await fetch(`/api/vater/youtube/${initialProject.id}/scene/animation-plan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sceneIdx: activeIdx }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+        if (!data.plan) throw new Error("plan response missing plan");
+        setScenePrompt(data.plan.animationPrompt);
+        setLockCamera(!!data.plan.fixedCamera);
+        if (data.plan.motionIntensity) setMotion(data.plan.motionIntensity);
+        if (typeof data.plan.holdStartPose === "boolean") setHoldStartPose(data.plan.holdStartPose);
+        toast({ title: `Scene ${activeIdx + 1}: suggestion ready`, description: "Edit it or click Animate.", variant: "success" });
+      } catch (err) {
+        toast({ title: "Suggest failed", description: err instanceof Error ? err.message : String(err), variant: "error" });
+      }
+    });
+  };
+
+  const handleRedraw = () => handleRegenSelectedImages(targetsForScope());
+
+  const runAnimateAll = (sceneIdxs: number[]) => {
     startAnimateAll(async () => {
       try {
         // Step 1: kick off the batch (returns immediately)
@@ -394,9 +478,12 @@ export function EditorShell({ project: initialProject }: Props) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              quality: batchQuality,
-              forceAll,
-              sceneIdxs: sceneIdxs && sceneIdxs.length > 0 ? sceneIdxs : undefined,
+              quality: engine,
+              sceneIdxs,
+              // Panel settings apply to every scene in the batch.
+              motionIntensity: motion,
+              holdStartPose,
+              fixedCamera: lockCamera,
             }),
           },
         );
@@ -562,105 +649,65 @@ export function EditorShell({ project: initialProject }: Props) {
             <p className="text-[11px] text-zinc-500">
               Scene editor •{" "}
               <span className="text-zinc-400">{status}</span>
+              {" • "}
+              {scenesJson.filter((s) => s.videoUrl).length}/{scenesJson.length} scenes have a clip
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            disabled={isSaving}
-            className="rounded-lg bg-zinc-800 px-4 py-2 text-xs font-semibold text-zinc-200 transition-colors hover:bg-zinc-700 disabled:opacity-50"
-            title="Free. Saves your beat-text and image-prompt edits to the project. Does not render or animate anything."
+        {initialProject.finalVideoUrl ? (
+          <a
+            href={`/api/vater/youtube/${initialProject.id}/video?download=1`}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500"
           >
-            {isSaving ? "Saving…" : "Save draft (free)"}
-          </button>
-          <select
-            value={batchQuality}
-            onChange={(e) =>
-              setBatchQuality(e.target.value as AnimateLayerQuality)
-            }
-            disabled={isAnimatingAll}
-            className="rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-2 text-[11px] text-zinc-200 focus:border-violet-500/60 focus:outline-none disabled:opacity-50"
-            title={`Model used by the batch buttons. Calm = ${ANIMATION_TIER_GROUPS.calm.hint} Action = ${ANIMATION_TIER_GROUPS.action.hint} "H100" = same output, about twice as fast, slightly more per clip. Prices are what you pay per clip.`}
-          >
-            <optgroup label={ANIMATION_TIER_GROUPS.calm.label}>
-              {BATCH_TIERS.filter((t) => t.group === "calm").map((t) => (
-                <option key={t.id} value={t.id} title={t.blurb}>
-                  {batchOptionLabel(t.id as AnimateLayerQuality)}
-                  {t.recommended ? " ⭐" : ""}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label={ANIMATION_TIER_GROUPS.action.label}>
-              {BATCH_TIERS.filter((t) => t.group === "action").map((t) => (
-                <option key={t.id} value={t.id} title={t.blurb}>
-                  {batchOptionLabel(t.id as AnimateLayerQuality)}
-                </option>
-              ))}
-            </optgroup>
-          </select>
-          <button
-            type="button"
-            onClick={() => handleAnimateAll()}
-            disabled={isAnimatingAll || !spec}
-            className="rounded-lg bg-violet-500/20 px-4 py-2 text-xs font-semibold text-violet-300 transition-colors hover:bg-violet-500/30 disabled:opacity-50"
-            title={`Animate only the scenes that have no video clip yet (${scenesJson.filter((s) => !s.videoUrl).length} right now). Existing clips are kept. ${formatPrice(ANIMATION_PRICES[batchQuality].priceCents)} per clip — you confirm the total first.`}
-          >
-            {isAnimatingAll
-              ? animateAllProgress
-                ? `Animating ${animateAllProgress.done}/${animateAllProgress.sceneCount}${animateAllProgress.failed > 0 ? ` (${animateAllProgress.failed} failed)` : ""}…`
-                : "Animating…"
-              : `Animate missing (${scenesJson.filter((s) => !s.videoUrl).length})`}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAnimateAll(undefined, { forceAll: true })}
-            disabled={isAnimatingAll || !spec || scenesJson.length === 0}
-            className="rounded-lg bg-amber-500/20 px-4 py-2 text-xs font-semibold text-amber-300 transition-colors hover:bg-amber-500/30 disabled:opacity-50"
-            title={`Throw away every existing clip and animate all ${scenesJson.length} scenes again with the selected model. ${formatPrice(ANIMATION_PRICES[batchQuality].priceCents)} per clip — you confirm the total first.`}
-          >
-            {isAnimatingAll ? "Re-animating all…" : `Re-animate ALL (${scenesJson.length})`}
-          </button>
-          {selectedIdxs.length > 0 ? (
-            <>
-              <button
-                type="button"
-                onClick={() => handleRegenSelectedImages(selectedIdxs)}
-                disabled={isRegeneratingBulk || isAnimatingAll || !spec}
-                className="rounded-lg bg-sky-500/20 px-4 py-2 text-xs font-semibold text-sky-300 transition-colors hover:bg-sky-500/30 disabled:opacity-50"
-                title={`Re-draw the still image for each checked scene from its current prompt. ${formatPrice(SCENE_IMAGE_PRICE)} per image. Clips on those scenes are discarded.`}
-              >
-                {isRegeneratingBulk
-                  ? bulkRegenProgress
-                    ? `Regenerating ${bulkRegenProgress.done}/${bulkRegenProgress.total}${bulkRegenProgress.failed > 0 ? ` (${bulkRegenProgress.failed} failed)` : ''}…`
-                    : "Regenerating images…"
-                  : `Regenerate ${selectedIdxs.length} image${selectedIdxs.length > 1 ? 's' : ''} (${formatPrice(SCENE_IMAGE_PRICE * selectedIdxs.length)})`}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAnimateAll(selectedIdxs)}
-                disabled={isAnimatingAll || isRegeneratingBulk || !spec}
-                className="rounded-lg bg-fuchsia-500/20 px-4 py-2 text-xs font-semibold text-fuchsia-300 transition-colors hover:bg-fuchsia-500/30 disabled:opacity-50"
-                title={`Animate only the checked scenes with the selected model, replacing any clip they already have. ${formatPrice(ANIMATION_PRICES[batchQuality].priceCents)} per clip — you confirm the total first.`}
-              >
-                {isAnimatingAll
-                  ? "Re-animating selected…"
-                  : `Re-animate ${selectedIdxs.length} selected (${formatPrice(ANIMATION_PRICES[batchQuality].priceCents * selectedIdxs.length)})`}
-              </button>
-            </>
-          ) : null}
-          <button
-            type="button"
-            onClick={handleRecompose}
-            disabled={isComposing || !spec}
-            className="rounded-lg bg-emerald-500/20 px-4 py-2 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/30 disabled:opacity-50"
-            title={`Render a new final MP4 from the current scenes, clips, voiceover and captions. ${formatPrice(RENDER_PRICE)} per render. Does not publish anything.`}
-          >
-            {isComposing ? "Rendering…" : `Render final video (${formatPrice(RENDER_PRICE)})`}
-          </button>
-        </div>
+            Download last render
+          </a>
+        ) : null}
       </div>
+
+      <RenderPanel
+        scope={scope}
+        onScopeChange={setScope}
+        counts={{
+          scene: activeIdx === null ? null : 1,
+          selected: selectedIdxs.length,
+          missing: scenesJson.filter((s) => !s.videoUrl).length,
+          all: scenesJson.length,
+        }}
+        activeSceneNumber={activeIdx === null ? null : activeIdx + 1}
+        engine={engine}
+        onEngineChange={setEngine}
+        motion={motion}
+        onMotionChange={setMotion}
+        holdStartPose={holdStartPose}
+        onHoldChange={setHoldStartPose}
+        lockCamera={lockCamera}
+        onLockCameraChange={setLockCamera}
+        scenePrompt={scenePrompt}
+        onScenePromptChange={setScenePrompt}
+        onSuggest={handleSuggest}
+        suggesting={isSuggesting}
+        onAnimate={handleAnimate}
+        onRedraw={handleRedraw}
+        onRender={handleRecompose}
+        onSaveDraft={handleSaveDraft}
+        busy={{
+          animating: isAnimatingAll || isAnimatingScenes,
+          redrawing: isRegeneratingBulk,
+          rendering: isComposing,
+          saving: isSaving,
+        }}
+        progressLine={
+          perSceneProgress ??
+          (animateAllProgress
+            ? `Cloud batch: ${animateAllProgress.done}/${animateAllProgress.sceneCount} done${animateAllProgress.failed ? ` · ${animateAllProgress.failed} failed` : ""} · ${animateAllProgress.phase}`
+            : bulkRegenProgress
+              ? `Redrawing pictures: ${bulkRegenProgress.done}/${bulkRegenProgress.total}${bulkRegenProgress.failed ? ` · ${bulkRegenProgress.failed} failed` : ""}`
+              : null)
+        }
+        unmetered={billing.unmetered}
+      />
 
       {/* Timeline — moved to top + sticky 2026-04-21 per user: easier
           navigation than scrolling to the bottom every time. Sits below the
@@ -738,19 +785,6 @@ export function EditorShell({ project: initialProject }: Props) {
               </p>
             </div>
           )}
-          {initialProject.finalVideoUrl ? (
-            <p className="text-[10px] text-zinc-600">
-              Last rendered MP4:{" "}
-              <a
-                href={`/api/vater/youtube/${initialProject.id}/video?download=1`}
-                target="_blank"
-                rel="noreferrer"
-                className="underline-offset-2 hover:underline"
-              >
-                download
-              </a>
-            </p>
-          ) : null}
         </div>
         <SceneEditorDrawer
           projectId={initialProject.id}
