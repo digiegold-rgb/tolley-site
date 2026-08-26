@@ -81,16 +81,6 @@ const SEAT = "#beta";
 const SIGNUP = "/signup?callbackUrl=%2Fanimate";
 const SIGNIN = "/login?callbackUrl=%2Fanimate";
 
-/** Landing FAQ: same facts as HELP_FAQ, with the public-beta seat copy that
- *  signed-out ads traffic must see. Shared help stays on the in-app drawer. */
-const LANDING_FAQ = [
-  ...HELP_FAQ.filter((f) => !/beta/i.test(f.q)),
-  {
-    q: "Why is the beta limited?",
-    a: "Jelly Studio is a public beta with limited seats so everyone in gets the whole machine. Request a seat on this page and say what you want to make.",
-  },
-];
-
 /* ── prepaid credit packs ──────────────────────────────────────────────
  * Price, credit and fee all come from lib/vater/credit-packs.ts — the same
  * module the Checkout session and the ledger read, so the number printed
@@ -821,7 +811,7 @@ export function AnimateLanding(): React.ReactElement {
             The fine print, <GradientText serif>unfined.</GradientText>
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {LANDING_FAQ.map((f) => (
+            {HELP_FAQ.map((f) => (
               <details
                 key={f.q}
                 className="jc-details jsl-faq-row"

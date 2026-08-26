@@ -77,8 +77,8 @@ export const HELP_FAQ: readonly HelpFaq[] = [
     a: "No watermark, on anything. You get the finished MP4 to download and use however you like — publish to YouTube from inside the studio, or hand the file to whatever scheduler you already run.",
   },
   {
-    q: "Why is the beta invite-only?",
-    a: "Because the render fleet is small enough right now that everyone in the beta gets the whole machine, and because feedback from a handful of people who actually ship videos is worth more than a signup graph. Invites go out in small batches — email support@tolley.io and say what you want to make.",
+    q: "Why is the beta limited?",
+    a: "Jelly Studio is a public beta with limited seats so everyone in gets the whole machine. Request a seat on this page and say what you want to make.",
   },
   {
     q: "Whose GPUs is this running on?",
