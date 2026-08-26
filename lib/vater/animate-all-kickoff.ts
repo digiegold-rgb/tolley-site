@@ -23,6 +23,8 @@ export type AnimateAllTarget = {
   fixedCamera: boolean;
   motionIntensity?: "subtle" | "normal" | "bold";
   holdStartPose?: boolean;
+  /** modal-animate2 only: pin one driver clip for this scene. */
+  driverId?: string;
 };
 
 export type AnimateAllKickoffOk = {

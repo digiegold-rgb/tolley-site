@@ -50,7 +50,14 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     motionIntensity?: unknown;
     holdStartPose?: unknown;
     fixedCamera?: unknown;
+    /** modal-animate2 only: pin one driver clip for every scene in the batch;
+     *  omitted = the DGX rotates through the library by scene index. */
+    driverId?: unknown;
   };
+  const ovDriver =
+    typeof body.driverId === "string" && /^[A-Za-z0-9_~-]{3,140}$/.test(body.driverId)
+      ? body.driverId
+      : undefined;
   const ovMotion =
     body.motionIntensity === "subtle" || body.motionIntensity === "normal" || body.motionIntensity === "bold"
       ? body.motionIntensity
@@ -133,6 +140,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
           : undefined),
       holdStartPose:
         ovHold ?? (typeof s.holdStartPose === "boolean" ? s.holdStartPose : undefined),
+      ...(ovDriver ? { driverId: ovDriver } : {}),
     }));
 
   if (targetScenes.length === 0) {

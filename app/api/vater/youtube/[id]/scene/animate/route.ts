@@ -84,7 +84,13 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     aspectRatio?: unknown;
     motionIntensity?: unknown;
     holdStartPose?: unknown;
+    /** modal-animate2 only: "<owner>~<stem>" from GET /api/vater/drivers. */
+    driverId?: unknown;
   };
+  const driverId =
+    typeof body.driverId === "string" && /^[A-Za-z0-9_~-]{3,140}$/.test(body.driverId)
+      ? body.driverId
+      : undefined;
 
   const sceneIdx =
     typeof body.sceneIdx === "number" && Number.isFinite(body.sceneIdx)
@@ -229,6 +235,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   try {
     try {
       const { animateJobId } = await autopilot.animateScene({
+      ...(driverId ? { driverId } : {}),
         // Routes this clip's Modal spend to the right invoice lane.
         ...(await ownerFieldsForSessionWithLane(session, project.userId)),
         jobId: project.autopilotJobId,

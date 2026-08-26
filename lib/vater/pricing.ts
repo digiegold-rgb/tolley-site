@@ -39,6 +39,8 @@ export const ANIMATION_PRICES: Record<AnimationQuality, AnimationPrice> = {
   "modal-wan22":      { priceCents: 150, estCostCents: 16, label: "Wan2.2 Action L40S", etaLabel: "~3 min" },
   "modal-wan22-fast": { priceCents: 200, estCostCents: 26, label: "Wan2.2 Action H100", etaLabel: "~2 min" },
   "modal-easyanimate-anime": { priceCents: 150, estCostCents: 30, label: "EasyAnimate v5 Anime", etaLabel: "~4 min" },
+  // Animate-2 motion transfer: ~5-7 min of L40S per clip (≈ $0.20-0.25 real).
+  "modal-animate2": { priceCents: 175, estCostCents: 25, label: "Wan Animate-2 Motion L40S", etaLabel: "~6 min" },
   // ── Metered third-party APIs ──
   "kling-standard": { priceCents: 100, estCostCents: 18, label: "Kling Standard 720p", etaLabel: "~2 min" },
   "kling-pro":      { priceCents: 150, estCostCents: 30, label: "Kling Pro 1080p",     etaLabel: "~3 min" },
@@ -83,7 +85,7 @@ export type FlatAction = keyof typeof FLAT_ACTION_PRICES;
  * (2026-08-26: the editor showed our Modal cost "~$0.16/clip" while the route
  * billed $1.50).
  */
-export type AnimationTierGroup = "calm" | "action" | "premium" | "photoreal";
+export type AnimationTierGroup = "calm" | "action" | "motion" | "premium" | "photoreal";
 
 export interface CustomerAnimationTier {
   id: AnimationQuality;
@@ -103,6 +105,10 @@ export const ANIMATION_TIER_GROUPS: Record<AnimationTierGroup, { label: string; 
   action: {
     label: "Action — fights, dance, big movement",
     hint: "Energetic motion. Flails on calm shots — use only for action beats.",
+  },
+  motion: {
+    label: "Motion transfer — your character performs a real clip",
+    hint: "Wan Animate-2: pick a 3-6 s driver clip (or let it rotate through your library) and the character in the still copies that motion, full-body, continuously.",
   },
   premium: {
     label: "Premium — third-party engines",
@@ -127,6 +133,8 @@ export const CUSTOMER_ANIMATION_TIERS: ReadonlyArray<CustomerAnimationTier> = [
     blurb: "Wan 2.2 Fun-InP — built for movement. Overshoots on quiet shots." },
   { id: "modal-wan22-fast", group: "action",
     blurb: "Same as Wan 2.2 Action, ~2× faster on a bigger GPU." },
+  { id: "modal-animate2", group: "motion",
+    blurb: "Wan 2.2 Animate-2 — the character copies a driver clip's motion. Constant, full-body movement; needs a driver clip (starter library included)." },
   { id: "kling-standard", group: "premium",
     blurb: "Kling Standard 720p — reliable on cartoons and stylized art." },
   { id: "kling-pro", group: "premium",

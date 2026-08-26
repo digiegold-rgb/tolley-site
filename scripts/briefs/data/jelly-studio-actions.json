@@ -193,5 +193,7 @@
 {"s":"Studios (tabs)","a":"Reorder studios by dragging","t":"public","d":"Drag tabs into the order you want; the main studio always stays first."},
 {"s":"Studios (tabs)","a":"Archive / restore a studio","t":"public","d":"⋯ → Archive hides the tab without deleting anything — its videos, cast and balance stay; restore it from Settings → Studios. The main studio can't be archived."},
 {"s":"Studios (tabs)","a":"Deep-link into a studio","t":"public","d":"/animate?w=<studio id> opens that studio directly (Telegram receipts and /hq use it); a stale link just lands on your main studio."},
-{"s":"Studios (tabs)","a":"Per-studio menu order and connections","t":"public","d":"Sidebar order, YouTube/social connections, ElevenLabs key, own rules and credit balance are all per studio; access tier, beta status and terms follow the login."}
+{"s":"Studios (tabs)","a":"Per-studio menu order and connections","t":"public","d":"Sidebar order, YouTube/social connections, ElevenLabs key, own rules and credit balance are all per studio; access tier, beta status and terms follow the login."},
+{"s":"Editor · Visuals","a":"Animate a scene with Wan Animate-2 motion transfer (L40S)","t":"public","d":"Pick the “Wan Animate-2 Motion L40S” tier ($1.75/clip, ~6 min) and the character in the still copies a real driver clip's movement — continuous full-body motion instead of image-to-video drift. Works per scene and in Animate all / Animate selected."},
+{"s":"Editor · Visuals","a":"Choose or upload a driver clip","t":"public","d":"Under the quality dropdown: Auto rotates through your driver library scene by scene, or pick one clip to use everywhere. Upload your own 3–6 s .mp4/.mov (up to 20, 40 MB each) or use the starter library; hover a tile to preview it."}
 ]

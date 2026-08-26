@@ -34,6 +34,9 @@ export const ANIMATE_LAYER_QUALITIES = [
   "modal-wan22-narrative-fast",
   "modal-hunyuan-narrative",
   "modal-hunyuan-narrative-fast",
+  // Animate-2 motion transfer: batched per scene on the DGX (one L40S
+  // container per clip), driver clips rotate through the owner's library.
+  "modal-animate2",
 ] as const;
 
 export type AnimateLayerQuality = (typeof ANIMATE_LAYER_QUALITIES)[number];

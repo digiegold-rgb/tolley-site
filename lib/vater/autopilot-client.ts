@@ -486,13 +486,24 @@ export type AnimationQuality =
   | "modal-wan22-narrative-fast"
   | "modal-hunyuan-narrative"
   | "modal-hunyuan-narrative-fast"
-  | "modal-easyanimate-anime";
+  | "modal-easyanimate-anime"
+  | "modal-animate2";
 
 /** Wan2.2 sampler preset — picks cfg/shift/denoise/lora. `subtle` damps motion
  * hard for narrative scenes (lady pushing snowball, close-ups, reflective
  * beats). `normal` matches previous behavior. `bold` is reserved for explicit
  * action beats. Honored only by the modal-wan22 / modal-wan22-fast backends. */
 export type MotionIntensity = "subtle" | "normal" | "bold";
+
+/** One Animate-2 driver clip in a library (GET /vater/drivers). */
+export type DriverClip = {
+  id: string;
+  name: string;
+  owner: string;
+  bytes: number;
+  modifiedAt: string;
+  url: string;
+};
 
 export type AnimateSceneInput = OwnerRouting & {
   jobId: string;
@@ -524,6 +535,9 @@ export type AnimateSceneInput = OwnerRouting & {
   motionSheet?: unknown;
   /** Cast sheet so the director keeps identities straight. */
   characters?: Array<{ name: string; description: string; gender?: string }>;
+  /** modal-animate2 only: driver clip id ("<owner>~<stem>", see /vater/drivers).
+   *  Omitted = the DGX rotates through the owner's library by scene index. */
+  driverId?: string;
 };
 
 export type AnimateSceneResult = {
@@ -952,6 +966,8 @@ export const autopilot = {
       fixedCamera?: boolean;
       motionIntensity?: MotionIntensity;
       holdStartPose?: boolean;
+      /** modal-animate2 only — see AnimateSceneInput.driverId. */
+      driverId?: string;
     }>;
     quality:
       | "modal-wan22"
@@ -959,7 +975,8 @@ export const autopilot = {
       | "modal-wan22-narrative"
       | "modal-wan22-narrative-fast"
       | "modal-hunyuan-narrative"
-      | "modal-hunyuan-narrative-fast";
+      | "modal-hunyuan-narrative-fast"
+      | "modal-animate2";
     aspectRatio?: string;
     /** Per-tenant fairness — see RunCreationInput.ownerTier. */
     ownerId?: string;
@@ -1045,6 +1062,21 @@ export const autopilot = {
    * pre-namespace behaviour), `u_<userId>` → shared + that tenant's clones,
    * `"all"` → every namespace (owner account only).
    */
+  /** Animate-2 driver clips visible to this owner (own + shared + house on
+   *  the house lane). Ids are "<owner>~<stem>". */
+  getDrivers: async (owner: string, lane?: string): Promise<DriverClip[]> => {
+    const qs = new URLSearchParams({ owner });
+    if (lane) qs.set("lane", lane);
+    const data = await call<{ drivers?: DriverClip[] }>("GET", `/vater/drivers?${qs}`);
+    return Array.isArray(data?.drivers) ? data.drivers : [];
+  },
+
+  deleteDriver: (owner: string, stem: string) =>
+    call<{ ok: boolean }>(
+      "DELETE",
+      `/vater/drivers/${encodeURIComponent(owner)}/${encodeURIComponent(stem)}`,
+    ),
+
   getVoices: async (owner?: string): Promise<VoiceClone[]> => {
     const qs = owner ? `?owner=${encodeURIComponent(owner)}` : "";
     const data = await call<{ voices?: VoiceClone[] } | VoiceClone[]>(

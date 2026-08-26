@@ -82,6 +82,7 @@ import { TINT_BG } from '../tint';
 import { MicroLabel } from '../../cinema';
 import { reelLabel } from './reel-label';
 import { useRenderEstimate } from './use-render-estimate';
+import { DriverPicker } from './DriverPicker';
 
 /* Mirrors the route's VALID_QUALITIES exactly. Any new tier added to the
  * route (app/api/vater/youtube/[id]/scene/animate/route.ts) MUST be added here
@@ -211,6 +212,14 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
   const cloudRental: CloudOptionKey = 'modal';
   const [consistency, setConsistency] = React.useState(true);
   const [animQuality, setAnimQuality] = React.useState<AnimationQuality>('modal-wan22-narrative');
+  // Animate-2 motion transfer: which driver clip to copy. null = Auto (the
+  // DGX rotates through the library scene by scene). Sent as `driverId` on
+  // every per-scene and batch animate call while the tier is modal-animate2.
+  const [driverId, setDriverId] = React.useState<string | null>(null);
+  const driverField = React.useMemo(
+    () => (animQuality === 'modal-animate2' && driverId ? { driverId } : {}),
+    [animQuality, driverId],
+  );
   const [musicId, setMusicId] = React.useState<string | null>(null);
   const [musicVolume, setMusicVolume] = React.useState(0.18);
   const [generating, setGenerating] = React.useState(false);
@@ -451,8 +460,8 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(
             sceneIdxs
-              ? { quality: batchQuality, sceneIdxs }
-              : { quality: batchQuality },
+              ? { quality: batchQuality, sceneIdxs, ...driverField }
+              : { quality: batchQuality, ...driverField },
           ),
         });
         if (!res.ok) {
@@ -470,7 +479,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
         setAnimating(false);
       }
     },
-    [projectId, batchQuality, refresh, describeGenerationError],
+    [projectId, batchQuality, driverField, refresh, describeGenerationError],
   );
 
   // The batch buttons open the price-confirm modal; runBatchAnimate fires on
@@ -510,6 +519,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
             // Empty prompt → DGX auto-suggests via planSceneAnimation upstream.
             animationPrompt: '',
             quality: animQuality,
+            ...driverField,
           }),
         });
         if (!res.ok) {
@@ -522,7 +532,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
         setActionError(err instanceof Error ? err.message : 'Animate failed');
       }
     },
-    [projectId, animQuality, refresh, describeGenerationError],
+    [projectId, animQuality, driverField, refresh, describeGenerationError],
   );
 
   const handleCompose = React.useCallback(async () => {
@@ -1365,6 +1375,9 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
             </div>
           </div>
         </div>
+        {animQuality === 'modal-animate2' ? (
+          <DriverPicker value={driverId} onChange={setDriverId} />
+        ) : null}
         <div style={{ fontSize: 12, color: t.textSecondary, marginBottom: 6 }}>
           Animation strategy
         </div>

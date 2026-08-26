@@ -114,6 +114,8 @@ export const animationQualitySchema = z.enum([
   "modal-hunyuan-narrative",
   "modal-hunyuan-narrative-fast",
   "modal-easyanimate-anime",
+  // Wan2.2 Animate-2 motion transfer (Modal L40S) — needs a driver clip.
+  "modal-animate2",
 ]);
 export type AnimationQuality = z.infer<typeof animationQualitySchema>;
 
