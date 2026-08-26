@@ -155,8 +155,40 @@ export default function PrivacyPage() {
         <Section key={section.heading} heading={section.heading} items={section.items} />
       ))}
 
+      <section className="space-y-3 rounded-2xl border border-violet-200/25 bg-violet-300/[0.06] p-4 sm:p-5">
+        <h2 className="text-lg font-semibold text-white/95 sm:text-xl">
+          12. Wash &amp; Dry SMS / Mobile Information Privacy
+        </h2>
+        <p className="text-sm leading-6 text-white/84 sm:text-[0.95rem]">
+          This section applies to the Wash &amp; Dry (Your KC Homes LLC) washer-dryer
+          rental messaging program at{" "}
+          <a
+            className="underline decoration-white/35 underline-offset-4"
+            href="https://www.tolley.io/wd"
+          >
+            https://www.tolley.io/wd
+          </a>
+          . It is in addition to the T-Agent SMS practices above and does not replace
+          them.
+        </p>
+        <ul className="space-y-2.5 text-sm leading-6 text-white/83 sm:text-[0.95rem]">
+          {[
+            "If you opt in, your mobile number and consent are used only to send recurring account/service texts about your washer-dryer rental, delivery, billing, and repairs.",
+            "No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.",
+            "Text messaging originator opt-in data and consent will not be shared with any third parties.",
+            "Message frequency is up to 8 messages per month. Msg & data rates may apply.",
+            "Reply STOP to cancel. Reply HELP for help. Support: jared@yourkchomes.com / 913-283-3826.",
+          ].map((item) => (
+            <li key={item} className="flex gap-3">
+              <span className="mt-[0.6rem] h-1.5 w-1.5 shrink-0 rounded-full bg-violet-200/80" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <section className="space-y-3 border-t border-white/14 pt-5">
-        <h2 className="text-lg font-semibold text-white/94 sm:text-xl">12. Contact Us</h2>
+        <h2 className="text-lg font-semibold text-white/94 sm:text-xl">13. Contact Us</h2>
         <p className="text-sm leading-6 text-white/83 sm:text-[0.95rem]">
           {LEGAL_BRAND}
           <br />
