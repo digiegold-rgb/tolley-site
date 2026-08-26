@@ -6,16 +6,19 @@
  * Unchecked by default. Same disclosure completeness as Wash & Dry
  * (`wd-sms-consent`) — frequency, rates, STOP/HELP, consent not required,
  * live Privacy + Terms links — with Animate copy and the Animate START
- * number (never 913-600-7508).
+ * number 913-914-9429 (never 913-600-7508 or 913-283-3826).
  */
 
 import * as React from 'react';
 
 import {
   ANIMATE_SMS_CONSENT_ID,
+  ANIMATE_SMS_DISPLAY_DEFAULT,
+  ANIMATE_SMS_FROM_DEFAULT,
   ANIMATE_SMS_PRIVACY_URL,
   ANIMATE_SMS_TERMS_URL,
   animateSmsDisplayNumber,
+  animateSmsFromE164,
   animateSmsStartLine,
 } from '@/lib/animate-sms';
 import { JELLY_TOKENS } from './tokens';
@@ -36,7 +39,8 @@ export function AnimateSmsConsent(props: {
   const { variant, checked, onCheckedChange, phone, onPhoneChange, disabled, phoneName = 'phone' } = props;
   const { t } = useTheme();
   const landing = variant === 'landing';
-  const displayNumber = animateSmsDisplayNumber();
+  const displayNumber = animateSmsDisplayNumber() || ANIMATE_SMS_DISPLAY_DEFAULT;
+  const startTel = animateSmsFromE164();
   const startLine = animateSmsStartLine();
 
   const labelColor = landing ? JELLY_TOKENS.dark.textSecondary : t.textSecondary;
@@ -150,7 +154,19 @@ export function AnimateSmsConsent(props: {
           color: faintColor ?? labelColor ?? 'inherit',
         }}
       >
-        You can also opt in by texting START or YES to {displayNumber}.
+        You can also opt in by texting START or YES to{' '}
+        <a
+          href={`tel:${startTel || ANIMATE_SMS_FROM_DEFAULT}`}
+          style={{
+            color: linkColor,
+            fontWeight: 600,
+            textDecoration: 'underline',
+            textUnderlineOffset: 2,
+          }}
+        >
+          {displayNumber || ANIMATE_SMS_DISPLAY_DEFAULT}
+        </a>
+        .
         <span className="jsl-sr">{startLine}</span>
       </p>
     </div>

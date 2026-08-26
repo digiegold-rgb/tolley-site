@@ -1,9 +1,11 @@
 /**
  * POST /api/animate/sms/webhook
  *
- * Inbound for the Jelly Studio Animate number (TWILIO_ANIMATE_FROM).
- * Keyword stub only: START / YES / STOP / HELP get the standard Jelly Studio
- * replies. No other customer SMS. Do not send "your film is ready" from here.
+ * Inbound for the Jelly Studio Animate number (+19139149429 /
+ * PN25da93f610855a1412223e622678bb48 on MG446284f555a5d1731f5deae2d8b46c40).
+ * TWILIO_ANIMATE_FROM may override. Keyword stub only: START / YES / STOP /
+ * HELP. No other customer SMS. Do not send "your film is ready" from here.
+ * Do not create or PATCH a Usa2p campaign.
  *
  * Never handles Wash & Dry 913-600-7508 (that stays on /api/sms/webhook).
  * Replies via TwiML so Twilio uses the number that received the inbound —

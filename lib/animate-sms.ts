@@ -2,19 +2,26 @@
  * Jelly Studio A2P SMS — "text me when my film is done".
  *
  * Separate from Wash & Dry (913-600-7508 / campaign CQG8RGM). The Animate
- * sender is not purchased yet; NEXT_PUBLIC_ANIMATE_SMS_NUMBER is the public
- * START number and TWILIO_ANIMATE_FROM is the E.164 From. If either is empty
- * or accidentally set to a W/D / HELP number, we print "number posting shortly"
- * and never invent 7508.
+ * sender is 913-914-9429 (+19139149429, PN25da93f610855a1412223e622678bb48)
+ * on messaging service MG446284f555a5d1731f5deae2d8b46c40. Env can override
+ * the public display / From; empty or a W/D / HELP number falls back to
+ * these defaults — never 7508, never 913-283-3826.
  *
- * Customer "film is ready" sends wait until the campaign is VERIFIED. This
- * module only covers the live-site consent gate and keyword replies.
+ * Do not create or PATCH a Usa2p campaign from this repo. Customer
+ * "film is ready" sends wait until the campaign is VERIFIED.
  */
 
 export const ANIMATE_SMS_PRIVACY_URL = "https://www.tolley.io/animate/privacy";
 export const ANIMATE_SMS_TERMS_URL = "https://www.tolley.io/animate/terms";
-export const ANIMATE_SMS_NUMBER_PENDING = "number posting shortly";
 export const ANIMATE_SMS_CONSENT_ID = "animate-sms-consent";
+
+/** Live Animate START number — hardcoded in the public checkbox for TCR. */
+export const ANIMATE_SMS_DISPLAY_DEFAULT = "913-914-9429";
+export const ANIMATE_SMS_FROM_DEFAULT = "+19139149429";
+export const ANIMATE_SMS_PHONE_SID = "PN25da93f610855a1412223e622678bb48";
+export const ANIMATE_SMS_MESSAGING_SERVICE_SID = "MG446284f555a5d1731f5deae2d8b46c40";
+/** @deprecated Number is live. Kept so old tests/copy can be grepped. */
+export const ANIMATE_SMS_NUMBER_PENDING = "number posting shortly";
 
 /** Wash & Dry rental SMS. Never the Animate START number. */
 export const WD_SMS_DIGITS = "9136007508";
@@ -62,20 +69,20 @@ export function isWashDrySmsNumber(raw?: string | null): boolean {
 }
 
 /**
- * Public START number. Formats 10-digit US numbers as 913-XXX-XXXX.
- * Empty / forbidden values become "number posting shortly".
+ * Public START number. Defaults to 913-914-9429 so the live checkbox
+ * always shows a real, clickable number. Env NEXT_PUBLIC_ANIMATE_SMS_NUMBER
+ * can override. Empty / forbidden (7508, 3826) fall back to the default.
  */
 export function animateSmsDisplayNumber(
   raw: string | null | undefined = process.env.NEXT_PUBLIC_ANIMATE_SMS_NUMBER,
 ): string {
   const value = (raw ?? "").trim();
-  if (!value) return ANIMATE_SMS_NUMBER_PENDING;
   const digits = value.replace(/\D/g, "");
   const last10 = digits.slice(-10);
-  if (last10.length !== 10 || isForbiddenAnimateStartDigits(last10)) {
-    return ANIMATE_SMS_NUMBER_PENDING;
+  if (last10.length === 10 && !isForbiddenAnimateStartDigits(last10)) {
+    return `${last10.slice(0, 3)}-${last10.slice(3, 6)}-${last10.slice(6)}`;
   }
-  return `${last10.slice(0, 3)}-${last10.slice(3, 6)}-${last10.slice(6)}`;
+  return ANIMATE_SMS_DISPLAY_DEFAULT;
 }
 
 export function animateSmsStartLine(
@@ -84,12 +91,12 @@ export function animateSmsStartLine(
   return `You can also opt in by texting START or YES to ${animateSmsDisplayNumber(raw)}.`;
 }
 
-/** Server-only Animate From (E.164). Null when unset or a forbidden W/D number. */
+/** Server-only Animate From (E.164). Defaults to +19139149429. */
 export function animateSmsFromE164(
   raw: string | null | undefined = process.env.TWILIO_ANIMATE_FROM,
-): string | null {
+): string {
   const e164 = toE164((raw ?? "").trim());
-  if (!e164 || isForbiddenAnimateStartDigits(e164)) return null;
+  if (!e164 || isForbiddenAnimateStartDigits(e164)) return ANIMATE_SMS_FROM_DEFAULT;
   return e164;
 }
 

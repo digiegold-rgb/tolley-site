@@ -45,7 +45,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     title: 'Optional text when your film is ready',
     items: [
       'On Request a seat — and later in Account settings — you can opt in to a text when a film is done, plus studio-account notices. The box is never pre-checked, and you can still request a seat without it.',
-      'Reply STOP to cancel, HELP for help. The studio number posts on that form when it is live.',
+      'Reply STOP to cancel, HELP for help. Text START or YES to 913-914-9429, or check the box on Request a seat.',
     ],
   },
   {

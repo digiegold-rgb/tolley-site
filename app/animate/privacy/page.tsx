@@ -290,7 +290,7 @@ const SECTIONS: LegalSectionContent[] = [
   {
     heading: "14. SMS and mobile numbers",
     paragraphs: [
-      "If you provide a mobile number and check the optional box on the Request a seat form or in your studio account, or if you text START or YES to the Jelly Studio number shown on that form, we use that number only to send informational account texts: a notice when a film is ready, and studio-account notices. Message frequency is up to 8 messages per month. Message and data rates may apply.",
+      "If you provide a mobile number and check the optional box on the Request a seat form or in your studio account, or if you text START or YES to 913-914-9429, we use that number only to send informational account texts: a notice when a film is ready, and studio-account notices. Message frequency is up to 8 messages per month. Message and data rates may apply.",
       "We do not sell, rent, or share mobile numbers with third parties or affiliates for marketing or promotional purposes. We may share a number only with the SMS provider that sends messages on our behalf (Twilio) or when required by law.",
       "Reply STOP to cancel. Reply HELP for help, or email jared@yourkchomes.com / call 913-283-3826. Consent is not required to request a seat or use the Studio. This is not Wash & Dry rental texting — that program uses a different number and its own policy.",
     ],
