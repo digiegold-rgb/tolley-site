@@ -27,6 +27,12 @@ model User {
   termsAcceptedAt      DateTime?
   termsVersion         String?
   showcaseOptOut       Boolean              @default(false)
+  // Jelly Studio A2P SMS (migration 20260826_animate_sms). Optional
+  // "text me when my film is done" account texts. Never pre-checked.
+  // Separate from Wash & Dry SMS (913-600-7508 / CQG8RGM).
+  animateSmsOptIn      Boolean              @default(false)
+  animateSmsPhone      String?
+  animateSmsOptedInAt  DateTime?
   // Invite-only beta (migration 20260815_beta_invites). betaInviteId is the
   // BetaInvite row this account was created from — /animate signups require
   // one; every other signup lane (leads, food, Launchpad claim) leaves it

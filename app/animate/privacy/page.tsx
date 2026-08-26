@@ -47,6 +47,7 @@ const SECTIONS: LegalSectionContent[] = [
     heading: "2. What we collect",
     bullets: [
       "Account data: your email address, a hashed password, the date you accepted these terms and which version, and any name or profile details you add.",
+      "Mobile number: only if you opt in to optional studio account texts (when a film is ready, and account notices). Providing a number is not required to request a seat or use the Studio.",
       "Content you provide: scripts, prompts, topics, uploaded images and footage, reference audio, and voice recordings used for cloning.",
       "Content we generate for you: videos, images, audio, transcripts, captions, and the intermediate files a render produces.",
       "Job and cost data: render settings, model choices, durations, timestamps, success and failure states, and the itemized compute cost of every job.",
@@ -64,6 +65,7 @@ const SECTIONS: LegalSectionContent[] = [
       "Promote the Studio: showcases, demo reels, sample galleries, and marketing — unless you have turned on the showcase opt-out, which we honor for all future marketing.",
       "Keep it safe and lawful: prevent abuse, investigate reports (including voice, likeness, and NCII reports), enforce our Terms, and comply with legal obligations.",
       "Support you: answer questions, and when needed open a logged support session that shows your account as you see it. We disclose that in the Terms rather than hiding it here.",
+      "Text you, only if you opted in: a message when a film is ready, and informational studio-account notices. We do not send marketing texts.",
     ],
   },
   {
@@ -188,6 +190,7 @@ const SECTIONS: LegalSectionContent[] = [
       "Account closure: ask us and we close the account and delete your content on the schedule in Section 7.",
       "Disconnect a platform: you can disconnect YouTube or any connected account inside the Studio at any time, which deletes the stored tokens.",
       "Marketing email: every non-transactional email has an unsubscribe link. Service and billing notices are not optional while you have an account.",
+      "SMS: reply STOP to cancel account texts at any time. Reply HELP for help. Consent is not required to request a seat or use the Studio.",
     ],
     children: (
       <p style={LEGAL_BODY_STYLE}>
@@ -285,7 +288,15 @@ const SECTIONS: LegalSectionContent[] = [
     ],
   },
   {
-    heading: "14. Contact",
+    heading: "14. SMS and mobile numbers",
+    paragraphs: [
+      "If you provide a mobile number and check the optional box on the Request a seat form or in your studio account, or if you text START or YES to 913-914-9429, we use that number only to send informational account texts: a notice when a film is ready, and studio-account notices. Message frequency is up to 8 messages per month. Message and data rates may apply.",
+      "We do not sell, rent, or share mobile numbers with third parties or affiliates for marketing or promotional purposes. We may share a number only with the SMS provider that sends messages on our behalf (Twilio) or when required by law.",
+      "Reply STOP to cancel. Reply HELP for help, or email jared@yourkchomes.com / call 913-283-3826. Consent is not required to request a seat or use the Studio. This is not Wash & Dry rental texting — that program uses a different number and its own policy.",
+    ],
+  },
+  {
+    heading: "15. Contact",
     paragraphs: [
       `${ANIMATE_LEGAL_ENTITY}, ${ANIMATE_LEGAL_ADDRESS}. Email ${ANIMATE_LEGAL_EMAIL} for privacy requests, data deletion, or anything in this policy you want explained.`,
     ],

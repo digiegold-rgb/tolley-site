@@ -26,6 +26,7 @@ import {
   LAST_SEEN_VERSION_KEY,
   compareVersions,
 } from '@/lib/vater/changelog';
+import { AnimateSmsOptInPanel } from './AnimateSmsConsent';
 
 /** Modal scrim — the ink base at 66%, not a palette hue. */
 const SCRIM = 'rgba(8,7,15,0.66)';
@@ -788,6 +789,7 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
                 </div>
               </div>
               <ShowcaseOptOutToggle />
+              <AnimateSmsOptInPanel />
               <SettingsExternalLink
                 href="/settings"
                 label="Open account settings →"

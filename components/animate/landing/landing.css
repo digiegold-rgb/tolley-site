@@ -313,7 +313,7 @@
   }
 }
 
-.jc-invite input,
+.jc-invite input:not([type='checkbox']):not([type='hidden']),
 .jc-invite textarea {
   width: 100%;
   box-sizing: border-box;
@@ -354,6 +354,21 @@
   padding: 0;
   border: 0;
   background: none;
+}
+
+.jc-invite-sms input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  margin-top: 3px;
+  accent-color: #8f7dff;
+  background: rgba(240, 238, 248, 0.04);
+  border: 1px solid rgba(240, 238, 248, 0.28);
+}
+
+.jc-invite-sms a:focus-visible {
+  outline: 2px solid #8f7dff;
+  outline-offset: 2px;
 }
 
 /* ── FAQ rows ──────────────────────────────────────────────────────────── */

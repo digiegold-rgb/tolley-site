@@ -20,6 +20,11 @@ import { rateLimitByIp } from "@/lib/rate-limit";
 import { notifyTelegram } from "@/lib/budget/notify";
 import { sendInviteRequestAck, sendInviteLinkEmail } from "@/lib/vater/animate-email";
 import { mintInvites, inviteLink, formatInviteCode } from "@/lib/vater/beta-invites";
+import {
+  animateSmsPhoneRequiredError,
+  parseAnimateSmsLeadFields,
+} from "@/lib/animate-sms";
+import { toE164 } from "@/lib/phone";
 
 export const runtime = "nodejs";
 
@@ -68,15 +73,26 @@ export async function POST(request: NextRequest) {
   if (!email || !EMAIL_RE.test(email)) {
     return NextResponse.json({ error: "A valid email is required." }, { status: 400 });
   }
+  const sms = parseAnimateSmsLeadFields(body);
+  const smsError = animateSmsPhoneRequiredError(sms);
+  if (smsError) {
+    return NextResponse.json({ error: smsError }, { status: 400 });
+  }
+  const phone = sms.phone ? toE164(sms.phone) ?? sms.phone : null;
   const utm = pickUtm(body.utm);
   const autoApprove = autoApproveSource(utm);
 
   try {
-    // Dedup: one open inbox row per address (re-submits just bump nothing).
+    // Dedup: one open inbox row per address. A later submit can add SMS
+    // consent / phone without opening a second lead.
     const existing = await prisma.leadAction.findFirst({
       where: { subsite: "animate", action: "invite-request", email, status: { notIn: ["won", "lost"] } },
-      select: { id: true },
+      select: { id: true, structured: true, phone: true },
     });
+    const smsStructured = {
+      smsOptIn: sms.smsOptIn,
+      ...(phone ? { phone } : {}),
+    };
     if (!existing) {
       await prisma.leadAction.create({
         data: {
@@ -85,8 +101,26 @@ export async function POST(request: NextRequest) {
           action: "invite-request",
           email,
           name,
-          structured: { about: about ?? "", source: "animate-landing", ...(Object.keys(utm).length ? { utm } : {}) },
+          phone,
+          structured: {
+            about: about ?? "",
+            source: "animate-landing",
+            ...smsStructured,
+            ...(Object.keys(utm).length ? { utm } : {}),
+          },
           status: "new",
+        },
+      });
+    } else if (sms.smsOptIn || phone) {
+      const prev =
+        existing.structured && typeof existing.structured === "object" && !Array.isArray(existing.structured)
+          ? (existing.structured as Record<string, unknown>)
+          : {};
+      await prisma.leadAction.update({
+        where: { id: existing.id },
+        data: {
+          phone: phone ?? existing.phone,
+          structured: { ...prev, ...smsStructured },
         },
       });
     }

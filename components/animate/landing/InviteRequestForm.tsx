@@ -4,6 +4,7 @@ import React from 'react';
 
 import { JELLY_TOKENS, glass } from '../tokens';
 import { PillButton } from '../cinema';
+import { AnimateSmsConsent } from '../AnimateSmsConsent';
 
 /** Signed-out "Request a seat" form on the landing → POST /api/vater/invite-request
  *  → /hq Must Complete + Telegram.
@@ -43,6 +44,8 @@ export function InviteRequestForm(): React.ReactElement {
   const [state, setState] = React.useState<'idle' | 'busy' | 'done' | 'error'>('idle');
   const [msg, setMsg] = React.useState<string>('');
   const [autoApproved, setAutoApproved] = React.useState(false);
+  const [smsOptIn, setSmsOptIn] = React.useState(false);
+  const [phone, setPhone] = React.useState('');
   const utmRef = React.useRef<Record<string, string>>({});
   React.useEffect(() => {
     utmRef.current = readUtm();
@@ -62,6 +65,8 @@ export function InviteRequestForm(): React.ReactElement {
           about: fd.get('about'),
           website: fd.get('website'), // honeypot
           utm: utmRef.current,
+          phone,
+          smsOptIn,
         }),
       });
       const j = (await r.json().catch(() => ({}))) as { error?: string; autoApproved?: boolean };
@@ -120,6 +125,14 @@ export function InviteRequestForm(): React.ReactElement {
         maxLength={600}
         aria-label="What do you want to make?"
         placeholder="What do you want to make? (channel, niche, how many videos a month)"
+      />
+      <AnimateSmsConsent
+        variant="landing"
+        checked={smsOptIn}
+        onCheckedChange={setSmsOptIn}
+        phone={phone}
+        onPhoneChange={setPhone}
+        disabled={state === 'busy'}
       />
       <div>
         <PillButton variant="gradient" size="lg" type="submit" disabled={state === 'busy'}>
