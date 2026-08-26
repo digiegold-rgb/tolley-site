@@ -16,6 +16,7 @@ import {
 import { createWdDraft } from "@/lib/wd/messaging";
 import { buildWdAiReply } from "@/lib/wd/ai-reply";
 import { findActiveWdClientByPhone } from "@/lib/sms-inbox-data";
+import { maybeFlagFromTwilioResult, shouldFlagTwilioStatus } from "@/lib/wd/sms-undeliverable";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -59,10 +60,8 @@ export async function POST(request: NextRequest) {
   const body = (params.Body || "").trim();
   const twilioSid = params.MessageSid || "";
   const numMedia = parseInt(params.NumMedia || "0", 10);
-
-  if (!from || !body) {
-    return twimlResponse();
-  }
+  const messageStatus = params.MessageStatus || "";
+  const errorCode = params.ErrorCode || "";
 
   // Validate Twilio signature — FAIL CLOSED. When the auth token is set
   // (always in prod), a present, valid signature is required; missing or
@@ -74,6 +73,23 @@ export async function POST(request: NextRequest) {
       console.warn("[sms] Missing/invalid Twilio signature from", from);
       return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
     }
+  }
+
+  // Status callbacks (undelivered/failed 30003/30005) auto-flag the WdClient.
+  // sendSms points statusCallback at this same webhook — not a new surface.
+  if (shouldFlagTwilioStatus(messageStatus, errorCode)) {
+    await maybeFlagFromTwilioResult({
+      phone: to || from,
+      status: messageStatus,
+      errorCode,
+    });
+  }
+  if (!body && messageStatus) {
+    return twimlResponse();
+  }
+
+  if (!from || !body) {
+    return twimlResponse();
   }
 
   // ── Compliance keywords ──

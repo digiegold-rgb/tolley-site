@@ -1,6 +1,12 @@
 import twilio from "twilio";
 
 import { isOptedOut, SmsOptedOutError } from "@/lib/sms-optout";
+import {
+  isSmsUndeliverablePhone,
+  maybeFlagFromTwilioResult,
+  SmsUndeliverableError,
+  twilioErrorCodeOf,
+} from "@/lib/wd/sms-undeliverable";
 
 let client: ReturnType<typeof twilio> | null = null;
 
@@ -33,6 +39,14 @@ export function getTwilioPhone(): string {
  * one legitimate exception: a reply that is itself required by the opt-out
  * flow (e.g. the opt-in confirmation after START).
  */
+function twilioStatusCallbackUrl(): string {
+  return (
+    process.env.TWILIO_STATUS_CALLBACK_URL ||
+    process.env.TWILIO_WEBHOOK_URL ||
+    "https://www.tolley.io/api/sms/webhook"
+  );
+}
+
 export async function sendSms(
   to: string,
   body: string,
@@ -43,19 +57,37 @@ export async function sendSms(
     throw new SmsOptedOutError(to);
   }
 
+  if (await isSmsUndeliverablePhone(to)) {
+    console.warn("[twilio] suppressed send to undeliverable number", to);
+    throw new SmsUndeliverableError(to);
+  }
+
   const tw = getTwilioClient();
   const from = getTwilioPhone();
 
   // Truncate to ~1600 chars (standard SMS concatenation limit)
   const truncated = body.length > 1580 ? body.slice(0, 1577) + "..." : body;
 
-  const msg = await tw.messages.create({
-    to,
-    from,
-    body: truncated,
-  });
-
-  return msg.sid;
+  try {
+    const msg = await tw.messages.create({
+      to,
+      from,
+      body: truncated,
+      statusCallback: twilioStatusCallbackUrl(),
+    });
+    await maybeFlagFromTwilioResult({
+      phone: to,
+      status: msg.status,
+      errorCode: msg.errorCode,
+    });
+    return msg.sid;
+  } catch (err) {
+    await maybeFlagFromTwilioResult({
+      phone: to,
+      errorCode: twilioErrorCodeOf(err),
+    });
+    throw err;
+  }
 }
 
 /**

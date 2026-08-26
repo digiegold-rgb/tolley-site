@@ -26,6 +26,8 @@ interface SmsThread {
   draftBody: string | null;
   messageCount: number;
   optedOut: boolean;
+  smsUndeliverable: boolean;
+  smsErrorCode: string | null;
 }
 
 interface SmsMsg {
@@ -150,11 +152,15 @@ export function HqSmsInbox({ onCounts }: { onCounts?: (needsSend: number) => voi
 
   async function sendExisting(id: string) {
     const r = await fetch(`/api/wd/messages/${id}`, { method: "POST" });
-    if (!r.ok) throw new Error(await readApiError(r, "Send failed"));
+    if (!r.ok) {
+      const err = await readApiError(r, "Send failed");
+      if (err === "sms_undeliverable") throw new Error("Dead number — do not text");
+      throw new Error(err);
+    }
   }
 
   async function handleSend() {
-    if (!selectedKey || !draftText.trim() || busy) return;
+    if (!selectedKey || !draftText.trim() || busy || thread?.smsUndeliverable || thread?.optedOut) return;
     setBusy(true);
     setActionError("");
     try {
@@ -296,6 +302,7 @@ export function HqSmsInbox({ onCounts }: { onCounts?: (needsSend: number) => voi
                 {t.needsSend && <span className="sms-badge needs">Needs send</span>}
                 {t.unread && <span className="sms-badge unread">Unread</span>}
                 {t.optedOut && <span className="sms-badge stop">STOP</span>}
+                {t.smsUndeliverable && <span className="sms-badge dead">DEAD</span>}
               </div>
             </button>
           ))}
@@ -319,6 +326,7 @@ export function HqSmsInbox({ onCounts }: { onCounts?: (needsSend: number) => voi
                   <span className={`sms-badge src-${thread.source}`}>{SOURCE_LABEL[thread.source]}</span>
                 )}
                 {thread?.optedOut && <span className="sms-badge stop">STOP</span>}
+                {thread?.smsUndeliverable && <span className="sms-badge dead">DEAD</span>}
               </div>
             </div>
             <div className="sms-msgs">
@@ -344,6 +352,12 @@ export function HqSmsInbox({ onCounts }: { onCounts?: (needsSend: number) => voi
               <div ref={endRef} />
             </div>
             <div className="sms-compose">
+              {thread?.smsUndeliverable && (
+                <div className="sms-warn">
+                  Dead number — do not text
+                  {thread.smsErrorCode ? ` (${thread.smsErrorCode})` : ""}
+                </div>
+              )}
               {thread?.optedOut && (
                 <div className="sms-warn">This number opted out. Send is blocked.</div>
               )}
@@ -356,13 +370,15 @@ export function HqSmsInbox({ onCounts }: { onCounts?: (needsSend: number) => voi
                 disabled={busy || thread?.optedOut}
               />
               <div className="sms-compose-actions">
-                <button
-                  className="btn btn-primary"
-                  onClick={() => void handleSend()}
-                  disabled={busy || !draftText.trim() || thread?.optedOut}
-                >
-                  {busy ? "…" : "Send"}
-                </button>
+                {!thread?.smsUndeliverable && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => void handleSend()}
+                    disabled={busy || !draftText.trim() || thread?.optedOut}
+                  >
+                    {busy ? "…" : "Send"}
+                  </button>
+                )}
                 <button className="btn" onClick={() => void handleSaveDraft()} disabled={busy || !draftText.trim()}>
                   Save draft
                 </button>

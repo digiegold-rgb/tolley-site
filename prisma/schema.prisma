@@ -1450,6 +1450,10 @@ model WdClient {
   pendingApproval       Boolean     @default(false) // new self-serve signup awaiting 1-click approve
   dunningStage          Int         @default(0) // 0=ok, 1=day0, 2=day3, 3=day7+ (failed-payment ladder)
   reminderSentForPeriod DateTime? // currentPeriodEnd the renew-soon nudge was last drafted for
+  // Permanent bounce flag — HQ must not text these (Twilio 30003/30005).
+  smsUndeliverable      Boolean     @default(false)
+  smsUndeliverableAt    DateTime?
+  smsErrorCode          String? // e.g. 30003 unreachable, 30005 unknown destination
   payments              WdPayment[]
   messages              WdMessage[]
 

@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     where,
     orderBy: { createdAt: "desc" },
     take: 100,
-    include: { client: { select: { id: true, name: true, phone: true, email: true } } },
+    include: { client: { select: { id: true, name: true, phone: true, email: true, smsUndeliverable: true, smsErrorCode: true } } },
   });
 
   return NextResponse.json({ messages });

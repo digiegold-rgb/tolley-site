@@ -876,6 +876,7 @@
 .hq-admin .sms-badge.needs { background: #fef3c7; color: #92400e; }
 .hq-admin .sms-badge.unread { background: #ccfbf1; color: #115e59; }
 .hq-admin .sms-badge.stop { background: #fee2e2; color: #991b1b; }
+.hq-admin .sms-badge.dead { background: #7f1d1d; color: #fecaca; }
 .hq-admin .sms-thread {
   flex: 1;
   min-width: 0;

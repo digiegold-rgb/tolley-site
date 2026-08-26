@@ -124,9 +124,26 @@ export async function loadOptedOutKeys(): Promise<Set<string>> {
   return keys;
 }
 
+export async function loadSmsUndeliverableByPhone(): Promise<Map<string, string | null>> {
+  const rows = await prisma.wdClient.findMany({
+    where: { smsUndeliverable: true },
+    select: { phone: true, smsErrorCode: true },
+  });
+  const map = new Map<string, string | null>();
+  for (const row of rows) {
+    const key = last10Digits(row.phone);
+    if (key) map.set(key, row.smsErrorCode);
+  }
+  return map;
+}
+
 export async function loadInbox() {
-  const [rows, optedOut] = await Promise.all([loadInboxRows(), loadOptedOutKeys()]);
-  const threads = buildInboxThreads(rows, optedOut);
+  const [rows, optedOut, undeliverable] = await Promise.all([
+    loadInboxRows(),
+    loadOptedOutKeys(),
+    loadSmsUndeliverableByPhone(),
+  ]);
+  const threads = buildInboxThreads(rows, optedOut, undeliverable);
   return { threads, counts: inboxCounts(threads), rows };
 }
 

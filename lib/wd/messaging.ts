@@ -15,6 +15,13 @@ import { prisma } from "@/lib/prisma";
 import { isOptedOut } from "@/lib/sms-optout";
 import { sendSms } from "@/lib/twilio";
 import { sendWdEmail, wdEmailHtml } from "@/lib/wd/email";
+import {
+  findSmsUndeliverable,
+  maybeFlagFromTwilioResult,
+  SMS_UNDELIVERABLE_ERROR,
+  SmsUndeliverableError,
+  twilioErrorCodeOf,
+} from "@/lib/wd/sms-undeliverable";
 import { WD_STRIPE_PORTAL_URL, WD_CONTACT_PHONE } from "@/lib/wd";
 import { jaredGreeting } from "@/lib/wd/voice";
 
@@ -108,6 +115,13 @@ export async function sendWdMessage(messageId: string): Promise<{ ok: boolean; e
     if (msg.channel === "sms") {
       const to = toE164(msg.phone || msg.client?.phone);
       if (!to) throw new Error("no valid phone");
+      // Dead-number flag — refuse before Twilio so a bounced phone never
+      // burns another segment. Leave the draft as-is (still visible in /hq).
+      const dead = await findSmsUndeliverable(to, msg.client);
+      if (dead) {
+        console.warn(`[wd] SKIP sms ${messageId}: ${to} sms_undeliverable ${dead.smsErrorCode || ""}`);
+        return { ok: false, error: SMS_UNDELIVERABLE_ERROR };
+      }
       // Opt-out ledger is authoritative — a suppressed number is never texted.
       if (await isOptedOut(to)) {
         console.warn(`[wd] SKIP sms ${messageId}: ${to} opted out`);
@@ -120,7 +134,16 @@ export async function sendWdMessage(messageId: string): Promise<{ ok: boolean; e
         });
         return { ok: false, error: "recipient opted out of SMS" };
       }
-      await sendSms(to, msg.body);
+      try {
+        await sendSms(to, msg.body);
+      } catch (err) {
+        if (err instanceof SmsUndeliverableError) {
+          return { ok: false, error: SMS_UNDELIVERABLE_ERROR };
+        }
+        const code = twilioErrorCodeOf(err);
+        await maybeFlagFromTwilioResult({ phone: to, errorCode: code });
+        throw err;
+      }
       await mirrorSentSms(to, msg.body);
     } else {
       const to = msg.client?.email;
