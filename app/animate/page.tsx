@@ -8,7 +8,6 @@
  */
 import { auth } from "@/auth";
 import type { Metadata, Viewport } from "next";
-import { Shell } from "@/components/animate/Shell";
 import { AnimateLanding } from "@/components/animate/landing/AnimateLanding";
 
 export const dynamic = "force-dynamic";
@@ -58,5 +57,8 @@ export default async function AnimateStudioPage() {
   if (!session?.user?.id) {
     return <AnimateLanding />;
   }
+  /* Load Shell only for signed-in visitors so the public landing JS chunk
+   * does not ship in-app help-drawer / studio-chrome strings. */
+  const { Shell } = await import("@/components/animate/Shell");
   return <Shell />;
 }
