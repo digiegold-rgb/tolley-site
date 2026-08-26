@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
   const wdClient = await findActiveWdClientByPhone(from);
   await persistWdInbound({
     from,
+    to,
     body,
     clientId: wdClient?.id ?? null,
     twilioSid,
@@ -323,6 +324,7 @@ export async function POST(request: NextRequest) {
 
 async function persistWdInbound(opts: {
   from: string;
+  to: string;
   body: string;
   clientId: string | null;
   twilioSid: string;
@@ -349,7 +351,10 @@ async function persistWdInbound(opts: {
       direction: "inbound",
       status: "received",
       body: opts.body,
-      meta: opts.twilioSid ? { twilioSid: opts.twilioSid } : undefined,
+      meta: {
+        ...(opts.twilioSid ? { twilioSid: opts.twilioSid } : {}),
+        ...(opts.to ? { to: opts.to } : {}),
+      },
     });
   } catch (err) {
     console.error("[sms] persist inbound WdMessage failed", err);
