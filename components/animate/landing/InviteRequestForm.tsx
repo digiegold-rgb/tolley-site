@@ -5,7 +5,7 @@ import React from 'react';
 import { JELLY_TOKENS, glass } from '../tokens';
 import { PillButton } from '../cinema';
 
-/** Signed-out "Request an invite" form on the landing → POST /api/vater/invite-request
+/** Signed-out "Request a seat" form on the landing → POST /api/vater/invite-request
  *  → /hq Must Complete + Telegram.
  *
  *  Cinema pass 2026-08-16: the old `.jsl-*` (pink 1C) classes are gone; the
@@ -92,13 +92,11 @@ export function InviteRequestForm(): React.ReactElement {
           color: t.text,
         }}
       >
-        <strong style={{ fontSize: 16 }}>
-          {autoApproved ? 'You\u2019re in — check your email.' : 'Got it — you\u2019re on the list.'}
-        </strong>
+        <strong style={{ fontSize: 16 }}>You&apos;re in — check your email.</strong>
         <span style={{ fontSize: 14, color: t.textSecondary }}>
           {autoApproved
-            ? 'Your personal invite link is on its way right now (check spam if it\u2019s not there in a minute).'
-            : 'Invites go out in small batches; you\u2019ll get a signup link by email.'}
+            ? 'Your signup link is on its way right now (check spam if it\u2019s not there in a minute).'
+            : 'Your seat is reserved. A signup link will land in your inbox — check spam if it isn\u2019t there in a minute.'}
         </span>
       </div>
     );
@@ -114,7 +112,7 @@ export function InviteRequestForm(): React.ReactElement {
       <input name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" style={{ position: 'absolute', left: -9999 }} />
       <div className="jc-invite-row">
         <input name="name" placeholder="Your name (optional)" maxLength={120} aria-label="Your name (optional)" />
-        <input name="email" type="email" required placeholder="Email for your invite link" maxLength={200} aria-label="Email for your invite link" />
+        <input name="email" type="email" required placeholder="Email for your seat" maxLength={200} aria-label="Email for your seat" />
       </div>
       <textarea
         name="about"
@@ -125,7 +123,7 @@ export function InviteRequestForm(): React.ReactElement {
       />
       <div>
         <PillButton variant="gradient" size="lg" type="submit" disabled={state === 'busy'}>
-          {state === 'busy' ? 'Sending…' : 'Request an invite'}
+          {state === 'busy' ? 'Sending…' : 'Request a seat'}
         </PillButton>
       </div>
       {state === 'error' && (

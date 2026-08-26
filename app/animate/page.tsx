@@ -50,7 +50,7 @@ export const metadata: Metadata = {
   title:
     "Jelly Studio — your life is already a motion picture · pay per film, no subscription · public beta",
   description:
-    "Write the story only you can tell and Jelly develops the film: your cloned voice, a generated cinematic scene for every line, no stock footage and no watermark. You pay per picture, never per month — most films land at $1–7 all in, failed renders are never charged, and a $10 starter credit is waiting on signup. Invite-only public beta.",
+    "Write the story only you can tell and Jelly develops the film: your cloned voice, a generated cinematic scene for every line, no stock footage and no watermark. You pay per picture, never per month — most films land at $1–7 all in, failed renders are never charged, and a $10 starter credit is waiting on signup. Public beta. Limited seats. Request a seat.",
 };
 
 export default async function AnimateStudioPage() {
