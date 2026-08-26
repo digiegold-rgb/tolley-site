@@ -5,8 +5,8 @@ import React from 'react';
 import { JELLY_TOKENS, glass } from '../tokens';
 import { PillButton } from '../cinema';
 
-/** Signed-out "Request a seat" form on the landing → POST /api/vater/invite-request
- *  → /hq Must Complete + Telegram.
+/** Signed-out "Request a seat" form on the landing → POST /api/animate/seat-request
+ *  → LeadAction (HQ inbox) + operator email/SMS to Jared. Never texts the requester.
  *
  *  Cinema pass 2026-08-16: the old `.jsl-*` (pink 1C) classes are gone; the
  *  fields are glass with a violet focus ring, styled inline from JELLY_TOKENS
@@ -53,15 +53,21 @@ export function InviteRequestForm(): React.ReactElement {
     const fd = new FormData(e.currentTarget);
     setState('busy');
     try {
-      const r = await fetch('/api/vater/invite-request', {
+      const r = await fetch('/api/animate/seat-request', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           name: fd.get('name'),
           email: fd.get('email'),
+          phone: fd.get('phone'),
           about: fd.get('about'),
+          want: fd.get('about'),
           website: fd.get('website'), // honeypot
           utm: utmRef.current,
+          source: {
+            ...utmRef.current,
+            referrer: typeof document !== 'undefined' ? document.referrer : '',
+          },
         }),
       });
       const j = (await r.json().catch(() => ({}))) as { error?: string; autoApproved?: boolean };
@@ -114,6 +120,7 @@ export function InviteRequestForm(): React.ReactElement {
         <input name="name" placeholder="Your name (optional)" maxLength={120} aria-label="Your name (optional)" />
         <input name="email" type="email" required placeholder="Email for your seat" maxLength={200} aria-label="Email for your seat" />
       </div>
+      <input name="phone" type="tel" placeholder="Phone (optional)" maxLength={40} aria-label="Phone (optional)" />
       <textarea
         name="about"
         rows={2}

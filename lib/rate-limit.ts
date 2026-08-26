@@ -80,7 +80,16 @@ export async function rateLimitByIp(
     (xff ? xff.split(",")[0].trim() : null) ||
     req.headers.get("x-real-ip") ||
     "unknown";
-  const rl = await consumeRateLimit(`${name}:${ip}`, limit, windowSeconds);
+  return rateLimitByKey(`${name}:${ip}`, limit, windowSeconds);
+}
+
+/** Same 429 shape as rateLimitByIp, keyed on an arbitrary bucket (email, token, …). */
+export async function rateLimitByKey(
+  key: string,
+  limit: number,
+  windowSeconds: number,
+): Promise<NextResponse | null> {
+  const rl = await consumeRateLimit(key, limit, windowSeconds);
   return rl.allowed ? null : rateLimited(rl);
 }
 
