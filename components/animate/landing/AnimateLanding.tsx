@@ -77,9 +77,19 @@ import "./landing.css";
 
 const t = JELLY_TOKENS.dark;
 
-const INVITE = "#beta";
+const SEAT = "#beta";
 const SIGNUP = "/signup?callbackUrl=%2Fanimate";
 const SIGNIN = "/login?callbackUrl=%2Fanimate";
+
+/** Landing FAQ: same facts as HELP_FAQ, with the public-beta seat copy that
+ *  signed-out ads traffic must see. Shared help stays on the in-app drawer. */
+const LANDING_FAQ = [
+  ...HELP_FAQ.filter((f) => !/beta/i.test(f.q)),
+  {
+    q: "Why is the beta limited?",
+    a: "Jelly Studio is a public beta with limited seats so everyone in gets the whole machine. Request a seat on this page and say what you want to make.",
+  },
+];
 
 /* ── prepaid credit packs ──────────────────────────────────────────────
  * Price, credit and fee all come from lib/vater/credit-packs.ts — the same
@@ -344,7 +354,7 @@ export function AnimateLanding(): React.ReactElement {
           <a className="jc-nav-link jsl-navlink" href="#stories">Stories</a>
           <a className="jc-nav-link jsl-navlink" href="#boxoffice">Box office</a>
           <PillButton variant="ghost" size="md" href={SIGNIN} data-testid="nav-sign-in">Sign in</PillButton>
-          <PillButton variant="gradient" size="md" href={INVITE}>Request an invite</PillButton>
+          <PillButton variant="gradient" size="md" href={SEAT}>Request a seat</PillButton>
         </div>
       </nav>
 
@@ -811,7 +821,7 @@ export function AnimateLanding(): React.ReactElement {
             The fine print, <GradientText serif>unfined.</GradientText>
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {HELP_FAQ.map((f) => (
+            {LANDING_FAQ.map((f) => (
               <details
                 key={f.q}
                 className="jc-details jsl-faq-row"
@@ -833,10 +843,11 @@ export function AnimateLanding(): React.ReactElement {
             Small on purpose, <GradientText serif>documented</GradientText> in public.
           </h2>
           <p style={{ ...LEAD, maxWidth: 660, marginBottom: 22 }}>
-            Jelly Studio is invite-only while the render fleet is small enough
-            that everyone gets the whole machine. Every build is dated in the
-            changelog — this is v{APP_VERSION} — and the feedback box inside the
-            studio files a real ticket that a person reads.
+            Jelly Studio is a public beta with limited seats so everyone in
+            gets the whole machine. Request a seat on this page and say what
+            you want to make. Every build is dated in the changelog — this is
+            v{APP_VERSION} — and the feedback box inside the studio files a
+            real ticket that a person reads.
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 20, fontSize: 14 }}>
             <a className="jc-link" href="/animate/beta">Beta program terms</a>
@@ -857,28 +868,26 @@ export function AnimateLanding(): React.ReactElement {
             Directed by you.
           </GradientText>
           <p style={{ ...LEAD, fontSize: 16.5, maxWidth: 520, margin: "0 auto 32px" }}>
-            Invite-only while the render fleet is small enough that everyone gets
-            the whole machine. A $10 starter credit is waiting behind the card
-            form — nothing is charged until you spend it.
+            Public beta. Limited seats. Request a seat. A $10 starter credit is
+            waiting behind the card form — nothing is charged until you spend it.
           </p>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-            <PillButton variant="gradient" size="lg" href={INVITE}>Request an invite</PillButton>
+            <PillButton variant="gradient" size="lg" href={SEAT}>Request a seat</PillButton>
             <PillButton variant="ghost" size="lg" href={SIGNIN}>Have a code? Sign in</PillButton>
           </div>
         </div>
       </section>
 
-      {/* the form the two "Request an invite" pills point at */}
+      {/* the form the two "Request a seat" pills point at */}
       <section className="jsl-band" style={{ maxWidth: 820, paddingTop: 20, paddingBottom: 120 }}>
         <GlassCard id="beta" className="jc-rise" radius={JELLY_TOKENS.radius.xxl} padding="30px 28px" halo>
           <MicroLabel tone="violet" size={11} tracking="0.24em" style={{ marginBottom: 12 }}>
-            REQUEST AN INVITE
+            REQUEST A SEAT
           </MicroLabel>
           <p style={{ ...LEAD, fontSize: 15, marginBottom: 20 }}>
-            Tell us what you want to make. Invites go out in small batches, and
-            a $10 starter credit — enough to take a script all the way to
-            finished still scenes — is waiting on the other side of the card
-            form.
+            Tell us what you want to make. Request a seat. A $10 starter credit
+            — enough to take a script to finished still scenes — is waiting on
+            the other side of the card form.
           </p>
           <InviteRequestForm />
         </GlassCard>
@@ -896,7 +905,7 @@ export function AnimateLanding(): React.ReactElement {
           <a className="jc-nav-link" href="/animate/terms" style={{ color: t.textFaint }}>Terms</a>
           <a className="jc-nav-link" href="/animate/privacy" style={{ color: t.textFaint }}>Privacy</a>
           <a className="jc-nav-link" href="/animate/beta" style={{ color: t.textFaint }}>Beta</a>
-          <span>v{APP_VERSION} · public beta</span>
+          <span>v{APP_VERSION} · Public beta. Limited seats. Request a seat.</span>
         </div>
       </footer>
     </CinemaRoot>
