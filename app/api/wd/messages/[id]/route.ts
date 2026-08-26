@@ -33,6 +33,16 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
+  const existing = await prisma.wdMessage.findUnique({ where: { id } });
+  if (!existing) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+  if (existing.direction === "inbound") {
+    return NextResponse.json({ error: "inbound message" }, { status: 400 });
+  }
+  if (existing.status !== "draft" && existing.status !== "failed") {
+    return NextResponse.json({ error: "only drafts can be edited" }, { status: 400 });
+  }
   const { body, subject } = await request.json();
   const data: { body?: string; subject?: string } = {};
   if (typeof body === "string") data.body = body;

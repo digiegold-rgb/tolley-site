@@ -28,6 +28,8 @@ const KIND_LABEL: Record<string, string> = {
   approval: "Welcome",
   ai_reply: "AI reply",
   inbound: "Customer text",
+  manual: "Manual",
+  compliance: "Compliance",
 };
 const KIND_COLOR: Record<string, string> = {
   reminder: "#0d6efd",
@@ -35,6 +37,8 @@ const KIND_COLOR: Record<string, string> = {
   approval: "#16a34a",
   ai_reply: "#7c3aed",
   inbound: "#555",
+  manual: "#0f766e",
+  compliance: "#555",
 };
 
 export function WdAutomationPanel({ clients, onChanged }: Props) {

@@ -46,6 +46,7 @@ const TABS = [
   'inbound',
   'approvals',
   'money',
+  'sms',
   'estates',
   'stats',
   'site',

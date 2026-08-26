@@ -27,6 +27,7 @@ import { HqEsnKit } from "@/components/hq/hq-esn-kit";
 import { HqEstates } from "@/components/hq/hq-estates";
 import { HqEmpireMap } from "@/components/hq/hq-empire-map";
 import { HqFbChats } from "@/components/hq/hq-fb-chats";
+import { HqSmsInbox } from "@/components/hq/hq-sms-inbox";
 import { HqHaulAppraisals } from "@/components/hq/hq-haul-appraisals";
 import { HqPosts } from "@/components/hq/hq-posts";
 import { HqTiktokShop } from "@/components/hq/hq-tiktok-shop";
@@ -45,9 +46,9 @@ import {
   type HqInboundLead,
 } from "@/components/hq/types";
 
-type Tab = "empire" | "must" | "fable5" | "pipeline" | "inbound" | "approvals" | "money" | "dnc" | "estates" | "stats" | "site" | "chats" | "hauls" | "posts" | "tiktok" | "bk";
+type Tab = "empire" | "must" | "fable5" | "pipeline" | "inbound" | "approvals" | "money" | "sms" | "dnc" | "estates" | "stats" | "site" | "chats" | "hauls" | "posts" | "tiktok" | "bk";
 
-const TABS: readonly Tab[] = ["empire", "must", "fable5", "pipeline", "inbound", "approvals", "money", "dnc", "estates", "stats", "site", "chats", "hauls", "posts", "tiktok", "bk"];
+const TABS: readonly Tab[] = ["empire", "must", "fable5", "pipeline", "inbound", "approvals", "money", "sms", "dnc", "estates", "stats", "site", "chats", "hauls", "posts", "tiktok", "bk"];
 
 function isTab(v: string | null): v is Tab {
   return v != null && (TABS as readonly string[]).includes(v);
@@ -75,9 +76,17 @@ function HqPageInner() {
   const [tab, setTab] = useState<Tab>(isTab(urlTab) ? urlTab : "empire");
 
   // Keep the URL shareable — replaceState avoids a Next navigation/remount.
+  // SMS threads deep-link as /hq?tab=sms&phone=9132833826 — don't strip phone.
   useEffect(() => {
-    window.history.replaceState(null, "", tab === "empire" ? "/hq" : `/hq?tab=${tab}`);
-  }, [tab]);
+    if (tab === "empire") {
+      window.history.replaceState(null, "", "/hq");
+      return;
+    }
+    const phone = tab === "sms" ? searchParams.get("phone") : null;
+    const qs = new URLSearchParams({ tab });
+    if (phone) qs.set("phone", phone);
+    window.history.replaceState(null, "", `/hq?${qs.toString()}`);
+  }, [tab, searchParams]);
   const [mustOpen, setMustOpen] = useState<MustCompleteItem[]>([]);
   const [mustDone, setMustDone] = useState<MustCompleteItem[]>([]);
   const [mustLoading, setMustLoading] = useState(false);
@@ -100,6 +109,7 @@ function HqPageInner() {
   const [licenseBusyId, setLicenseBusyId] = useState<string | null>(null);
   const [fable5, setFable5] = useState<Fable5Queue | null>(null);
   const [fable5Loading, setFable5Loading] = useState(false);
+  const [smsNeedsSend, setSmsNeedsSend] = useState(0);
 
   // ─── Data loaders ───
   const loadLeads = useCallback(async () => {
@@ -280,6 +290,17 @@ function HqPageInner() {
     }
   }, [toast]);
 
+  const loadSmsCounts = useCallback(async () => {
+    try {
+      const r = await fetch("/api/hq/sms");
+      if (!r.ok) return;
+      const d = (await r.json()) as { counts?: { needsSend?: number } };
+      setSmsNeedsSend(d.counts?.needsSend ?? 0);
+    } catch {
+      // badge is best-effort — the tab itself surfaces errors
+    }
+  }, []);
+
   const loadMoney = useCallback(async () => {
     setMoneyLoading(true);
     try {
@@ -328,8 +349,9 @@ function HqPageInner() {
       loadLicenseReviews();
       loadInbound();
       loadFable5();
+      loadSmsCounts();
     }
-  }, [authed, loadMust, loadDrafts, loadMoney, loadLicenseReviews, loadInbound, loadFable5]);
+  }, [authed, loadMust, loadDrafts, loadMoney, loadLicenseReviews, loadInbound, loadFable5, loadSmsCounts]);
 
   // Keep the 📜 Fable 5 pill count honest while another tab is open.
   useEffect(() => {
@@ -581,6 +603,7 @@ function HqPageInner() {
               loadLicenseReviews();
               loadInbound();
               loadFable5();
+              loadSmsCounts();
             }}
           >
             ↻ Refresh
@@ -618,6 +641,7 @@ function HqPageInner() {
               "tab-fable5",
             )}
             {tabPill("money", "Money", moneyCount)}
+            {tabPill("sms", "💬 SMS", smsNeedsSend, "tab-sms")}
             {tabPill("site", "🌐 Site")}
 
             <span className="tab-sep" aria-hidden="true" />
@@ -817,6 +841,8 @@ function HqPageInner() {
             <HqJellyPnl />
             <HqMoney money={money} loading={moneyLoading} onRefresh={loadMoney} />
           </>
+        ) : tab === "sms" ? (
+          <HqSmsInbox onCounts={setSmsNeedsSend} />
         ) : tab === "estates" ? (
           <>
             <HqEsnKit />

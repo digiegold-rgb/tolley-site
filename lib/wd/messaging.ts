@@ -2,13 +2,15 @@
  * lib/wd/messaging.ts
  *
  * Drafting + sending for Washer/Dryer customer messages. Default flow is
- * "draft" — a WdMessage row is created and surfaced in /wd/admin, where Tolley
- * taps Send (1-click approve-send). Nothing here auto-sends except via
- * sendWdMessage(), which the admin Send button and (optionally) crons call.
+ * "draft" — a WdMessage row is created and surfaced in /hq (SMS tab) and
+ * /wd/admin, where Tolley taps Send (1-click approve-send). Nothing here
+ * auto-sends except via sendWdMessage(), which the admin Send button and
+ * (optionally) crons call. The inbox never sends on its own.
  */
 
 import type { WdClient } from "@prisma/client";
 
+import { last10Digits, toE164 } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { isOptedOut } from "@/lib/sms-optout";
 import { sendSms } from "@/lib/twilio";
@@ -16,17 +18,48 @@ import { sendWdEmail, wdEmailHtml } from "@/lib/wd/email";
 import { WD_STRIPE_PORTAL_URL, WD_CONTACT_PHONE } from "@/lib/wd";
 import { jaredGreeting } from "@/lib/wd/voice";
 
-export type WdMessageKind = "reminder" | "dunning" | "approval" | "ai_reply" | "inbound";
+export { last10Digits, toE164 };
+
+export type WdMessageKind =
+  | "reminder"
+  | "dunning"
+  | "approval"
+  | "ai_reply"
+  | "inbound"
+  | "manual"
+  | "compliance";
 export type WdChannel = "sms" | "email";
 
-/** Normalize a US phone string to E.164 (+1XXXXXXXXXX). Returns null if unusable. */
-export function toE164(raw?: string | null): string | null {
-  if (!raw) return null;
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-  if (raw.startsWith("+")) return raw;
-  return null;
+/** Keep /leads/conversations current when Jared sends from the W/D path. Non-critical. */
+async function mirrorSentSms(to: string, body: string): Promise<void> {
+  try {
+    const key = last10Digits(to);
+    let conversation = await prisma.smsConversation.findFirst({
+      where: key
+        ? { OR: [{ phoneNumber: to }, { phoneNumber: { endsWith: key } }] }
+        : { phoneNumber: to },
+      orderBy: { lastMessageAt: "desc" },
+    });
+    if (!conversation) {
+      conversation = await prisma.smsConversation.create({
+        data: { phoneNumber: to, status: "active" },
+      });
+    }
+    await prisma.smsMessage.create({
+      data: {
+        conversationId: conversation.id,
+        direction: "outbound",
+        body,
+        status: "sent",
+      },
+    });
+    await prisma.smsConversation.update({
+      where: { id: conversation.id },
+      data: { messageCount: { increment: 1 }, lastMessageAt: new Date() },
+    });
+  } catch (err) {
+    console.warn("[wd] mirrorSentSms failed", err);
+  }
 }
 
 /** Create a draft message (does NOT send). Returns the created row id. */
@@ -68,6 +101,8 @@ export async function sendWdMessage(messageId: string): Promise<{ ok: boolean; e
   if (!msg) return { ok: false, error: "not found" };
   if (msg.direction === "inbound") return { ok: false, error: "inbound message" };
   if (msg.status === "sent") return { ok: true };
+  if (msg.status === "skipped") return { ok: false, error: "draft was skipped" };
+  if (msg.status === "suppressed") return { ok: false, error: "recipient opted out of SMS" };
 
   try {
     if (msg.channel === "sms") {
@@ -86,6 +121,7 @@ export async function sendWdMessage(messageId: string): Promise<{ ok: boolean; e
         return { ok: false, error: "recipient opted out of SMS" };
       }
       await sendSms(to, msg.body);
+      await mirrorSentSms(to, msg.body);
     } else {
       const to = msg.client?.email;
       if (!to) throw new Error("no email on file");

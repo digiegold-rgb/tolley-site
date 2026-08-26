@@ -13,9 +13,9 @@ import {
   recordOptIn,
   recordOptOut,
 } from "@/lib/sms-optout";
-import { incrementActivity } from "@/lib/activity-log";
 import { createWdDraft } from "@/lib/wd/messaging";
 import { buildWdAiReply } from "@/lib/wd/ai-reply";
+import { findActiveWdClientByPhone } from "@/lib/sms-inbox-data";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -36,17 +36,16 @@ function escapeXml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+const HELP_REPLY =
+  "T-Agent AI assistant. Reply STOP to unsubscribe. For support: support@tolley.io";
+
 /**
  * POST /api/sms/webhook
  *
- * Twilio sends inbound SMS here. We:
- * 1. Validate signature
- * 2. Handle STOP/HELP/START keywords
- * 3. Find or create conversation
- * 4. Load recent messages for context
- * 5. Generate AI response via LLM
- * 6. Send reply via Twilio
- * 7. Store both messages
+ * Twilio inbound for +1 913-600-7508. Every text is stored as WdMessage so
+ * /hq (and /wd/admin) can show the thread. Customer replies are drafted —
+ * never auto-sent. The only auto-sends are carrier-required HELP / START
+ * compliance replies.
  */
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
@@ -83,6 +82,14 @@ export async function POST(request: NextRequest) {
   const upperBody = body.toUpperCase().trim();
   const keyword = classifySmsKeyword(body);
 
+  const wdClient = await findActiveWdClientByPhone(from);
+  await persistWdInbound({
+    from,
+    body,
+    clientId: wdClient?.id ?? null,
+    twilioSid,
+  });
+
   if (keyword === "stop") {
     await recordOptOut(from, { keyword: body.slice(0, 40), source: "sms_keyword", body });
     // Twilio handles STOP automatically, but we track it
@@ -90,9 +97,13 @@ export async function POST(request: NextRequest) {
   }
 
   if (keyword === "help") {
-    return twimlResponse(
-      "T-Agent AI assistant. Reply STOP to unsubscribe. For support: support@tolley.io"
-    );
+    await persistWdOutboundSent({
+      from,
+      clientId: wdClient?.id ?? null,
+      body: HELP_REPLY,
+      kind: "compliance",
+    });
+    return twimlResponse(HELP_REPLY);
   }
 
   // Only an explicit START/UNSTOP/YES re-subscribes. Any other message from an
@@ -107,44 +118,26 @@ export async function POST(request: NextRequest) {
   const isOptIn =
     keyword === "start" || LEGAL_OPT_IN_KEYWORDS.some((kw) => upperBody === kw);
 
-  // ── W/D rental customer? Route to the rental responder. ──
-  // Match the inbound number against a WdClient (last 10 digits). If it's a
-  // rental customer, we store the inbound + draft an AI reply grounded in their
-  // Stripe status for 1-click approve-send in /wd/admin (no auto-reply).
-  const fromDigits = from.replace(/\D/g, "").slice(-10);
-  if (fromDigits.length === 10) {
-    const wdClient = await prisma.wdClient.findFirst({
-      where: { active: true, phone: { contains: fromDigits.slice(-7) } },
-    });
-    // Guard against false matches on the 7-digit contains by confirming full 10.
-    if (wdClient && wdClient.phone && wdClient.phone.replace(/\D/g, "").slice(-10) === fromDigits) {
-      try {
-        await createWdDraft({
-          clientId: wdClient.id,
-          phone: from,
-          channel: "sms",
-          kind: "inbound",
-          direction: "inbound",
-          status: "received",
-          body,
-        });
-        const reply = await buildWdAiReply(wdClient, body);
-        await createWdDraft({
-          clientId: wdClient.id,
-          phone: from,
-          channel: "sms",
-          kind: "ai_reply",
-          direction: "outbound",
-          status: "draft",
-          aiGenerated: reply.aiGenerated,
-          body: reply.text,
-        });
-      } catch (err) {
-        console.error("[wd] inbound SMS handling failed", err);
-      }
-      // approve-send mode: no auto-reply; Tolley sends from /wd/admin.
-      return twimlResponse();
+  // ── W/D rental customer? Draft a grounded reply, do not send. ──
+  // Inbound already stored above. Tolley 1-tap sends from /hq (same
+  // sendWdMessage path as /wd/admin).
+  if (wdClient) {
+    try {
+      const reply = await buildWdAiReply(wdClient, body);
+      await createWdDraft({
+        clientId: wdClient.id,
+        phone: from,
+        channel: "sms",
+        kind: "ai_reply",
+        direction: "outbound",
+        status: "draft",
+        aiGenerated: reply.aiGenerated,
+        body: reply.text,
+      });
+    } catch (err) {
+      console.error("[wd] inbound SMS handling failed", err);
     }
+    return twimlResponse();
   }
 
   // Find or create conversation
@@ -162,7 +155,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // First message from new number — send opt-in confirmation
+    // First message from new number — carrier-required opt-in confirmation
     if (isOptIn) {
       const sid = await sendSms(from, LEGAL_OPT_IN_MESSAGE, { complianceReply: true });
       await prisma.smsMessage.create({
@@ -173,6 +166,12 @@ export async function POST(request: NextRequest) {
           twilioSid: sid,
           status: "sent",
         },
+      });
+      await persistWdOutboundSent({
+        from,
+        clientId: null,
+        body: LEGAL_OPT_IN_MESSAGE,
+        kind: "compliance",
       });
       await prisma.smsConversation.update({
         where: { id: conversation.id },
@@ -297,45 +296,83 @@ export async function POST(request: NextRequest) {
     responseText = "Got your message — someone will follow up shortly!";
   }
 
-  // Send response
-  let outSid: string | undefined;
-  try {
-    outSid = await sendSms(from, responseText);
-  } catch (err) {
-    console.error("[sms] Send failed:", err);
-    // Still store the attempted message
-  }
-
-  // Store outbound message
-  await prisma.smsMessage.create({
-    data: {
-      conversationId: conversation.id,
-      direction: "outbound",
-      body: responseText,
-      twilioSid: outSid,
-      status: outSid ? "sent" : "failed",
-      tokensUsed,
-    },
+  // Draft only. Jared 1-tap sends from /hq. Do not increment subscriber
+  // smsUsed until sendWdMessage actually delivers.
+  await createWdDraft({
+    clientId: null,
+    phone: from,
+    channel: "sms",
+    kind: "ai_reply",
+    direction: "outbound",
+    status: "draft",
+    aiGenerated: Boolean(tokensUsed),
+    body: responseText,
+    meta: { conversationId: conversation.id, leadId: conversation.leadId, tokensUsed },
   });
 
-  // Update conversation stats
   await prisma.smsConversation.update({
     where: { id: conversation.id },
     data: {
-      messageCount: { increment: 2 }, // inbound + outbound
+      messageCount: { increment: 1 },
       lastMessageAt: new Date(),
     },
   });
 
-  // Increment SMS usage for subscriber (if linked)
-  if (conversation.subscriberId) {
-    await prisma.leadSubscriber.update({
-      where: { id: conversation.subscriberId },
-      data: { smsUsed: { increment: 1 } },
-    }).catch(() => {}); // non-critical
-    incrementActivity(conversation.subscriberId, "smsReplies");
-  }
-
-  // Return empty TwiML — we already sent via API
   return twimlResponse();
+}
+
+async function persistWdInbound(opts: {
+  from: string;
+  body: string;
+  clientId: string | null;
+  twilioSid: string;
+}) {
+  try {
+    if (opts.twilioSid) {
+      const dup = await prisma.wdMessage.findFirst({
+        where: {
+          direction: "inbound",
+          channel: "sms",
+          phone: opts.from,
+          createdAt: { gte: new Date(Date.now() - 120_000) },
+          body: opts.body,
+        },
+        select: { id: true },
+      });
+      if (dup) return;
+    }
+    await createWdDraft({
+      clientId: opts.clientId,
+      phone: opts.from,
+      channel: "sms",
+      kind: "inbound",
+      direction: "inbound",
+      status: "received",
+      body: opts.body,
+      meta: opts.twilioSid ? { twilioSid: opts.twilioSid } : undefined,
+    });
+  } catch (err) {
+    console.error("[sms] persist inbound WdMessage failed", err);
+  }
+}
+
+async function persistWdOutboundSent(opts: {
+  from: string;
+  clientId: string | null;
+  body: string;
+  kind: "compliance";
+}) {
+  try {
+    await createWdDraft({
+      clientId: opts.clientId,
+      phone: opts.from,
+      channel: "sms",
+      kind: opts.kind,
+      direction: "outbound",
+      status: "sent",
+      body: opts.body,
+    });
+  } catch (err) {
+    console.error("[sms] persist outbound WdMessage failed", err);
+  }
 }
