@@ -198,7 +198,7 @@ const sections: TermsSection[] = [
         </p>
         <p className="mt-2">
           By providing your mobile number at checkout, on a rental form, or by texting
-          YES or START to our business number, you agree to receive the informational
+          YES or START to 913-600-7508, you agree to receive the informational
           messages described above. Full terms:{" "}
           <Link
             href="/wd/terms"

@@ -5,6 +5,7 @@ export const WD_PRICE_WASHER = 42;
 export const WD_PRICE_BUNDLE = 58;
 export const WD_CONTACT_EMAIL = "Jared@yourkchomes.com";
 export const WD_CONTACT_PHONE = "913-283-3826";
+export const WD_SMS_PHONE = "913-600-7508";
 export const WD_FACEBOOK_URL = "https://www.facebook.com/share/1AafKhE5tq/?mibextid=wwXIfr";
 export const WD_BRAND = "Wash & Dry Rental";
 export const WD_COMPANY = "Your KC Homes LLC";

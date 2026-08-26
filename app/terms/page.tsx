@@ -309,7 +309,7 @@ export default function TermsPage() {
           </li>
         </ul>
         <p className="text-sm leading-6 text-white/84 sm:text-[0.95rem]">
-          You may also opt in by texting START to 913-283-3826.
+          You may also opt in by texting START to 913-600-7508.
         </p>
       </section>
 

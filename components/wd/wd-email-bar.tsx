@@ -4,10 +4,10 @@ import { useState, useEffect } from "react";
 import { trackEvent } from "@/components/analytics/site-tracker";
 import { gtagEvent } from "@/components/analytics/ga4";
 import { fbqEvent } from "@/components/analytics/meta-pixel";
-import { WD_CONTACT_PHONE } from "@/lib/wd";
+import { WD_SMS_PHONE } from "@/lib/wd";
 
-const PRIVACY_URL = "https://www.tolley.io/privacy";
-const TERMS_URL = "https://www.tolley.io/terms";
+const PRIVACY_URL = "https://www.tolley.io/wd/privacy";
+const TERMS_URL = "https://www.tolley.io/wd/terms";
 
 export function WdEmailBar() {
   const [email, setEmail] = useState("");
@@ -131,7 +131,7 @@ export function WdEmailBar() {
               </span>
             </label>
             <p className="text-[11px] leading-4 text-slate-500">
-              You can also opt in by texting START to {WD_CONTACT_PHONE}.
+              You can also opt in by texting START to {WD_SMS_PHONE}.
             </p>
           </form>
         </div>
