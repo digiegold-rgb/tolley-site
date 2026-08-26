@@ -13,7 +13,6 @@
  * immediately without waiting for round-trips.
  */
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
@@ -21,6 +20,37 @@ import { buildVideoSpec, type SceneSpec, type VideoSpec } from "@/lib/vater/vide
 import { RemotionPreview } from "./RemotionPreview";
 import { SceneTimeline } from "./SceneTimeline";
 import { SceneEditorDrawer } from "./SceneEditorDrawer";
+import {
+  MoneyConfirmModal,
+  useBillingMode,
+  type MoneyConfirmRequest,
+} from "./MoneyConfirmModal";
+import {
+  ANIMATION_PRICES,
+  ANIMATION_TIER_GROUPS,
+  CUSTOMER_ANIMATION_TIERS,
+  FLAT_ACTION_PRICES,
+  formatPrice,
+} from "@/lib/vater/pricing";
+import {
+  ANIMATE_LAYER_DEFAULT_QUALITY,
+  ANIMATE_LAYER_QUALITIES,
+  type AnimateLayerQuality,
+} from "@/lib/vater/animate-layer";
+
+// Batch animation runs one Modal container for the whole project, so only
+// the Modal tiers are offered here (Kling/Luma/Veo are per-scene, in the
+// scene panel). Labels + prices come from pricing.ts — the same numbers the
+// server bills.
+const BATCH_TIERS = CUSTOMER_ANIMATION_TIERS.filter((t) =>
+  (ANIMATE_LAYER_QUALITIES as ReadonlyArray<string>).includes(t.id),
+);
+const batchOptionLabel = (id: AnimateLayerQuality) => {
+  const p = ANIMATION_PRICES[id];
+  return `${p.label} — ${formatPrice(p.priceCents)}/clip · ${p.etaLabel}`;
+};
+const RENDER_PRICE = FLAT_ACTION_PRICES.render.priceCents;
+const SCENE_IMAGE_PRICE = FLAT_ACTION_PRICES.scene.priceCents;
 
 // Shape we need from the server-loaded project row. Keep it loose — Prisma
 // Json fields come back as `unknown` and we normalize through buildVideoSpec.
@@ -59,27 +89,18 @@ export function EditorShell({ project: initialProject }: Props) {
   const [isSaving, startSave] = useTransition();
   const [isComposing, startCompose] = useTransition();
   const [isAnimatingAll, startAnimateAll] = useTransition();
-  // Tier for the bulk animate/re-animate button. Picked in a compact dropdown
-  // beside the button. Defaults to the calm narrative L40S — matches the
-  // per-scene default in SceneEditorDrawer. Per-scene motionIntensity +
-  // holdStartPose settings are preserved through the batch, so this just
-  // swaps the *backend model*.
-  const [batchQuality, setBatchQuality] = useState<
-    | "modal-wan22-narrative"
-    | "modal-wan22-narrative-fast"
-    | "modal-hunyuan-narrative"
-    | "modal-hunyuan-narrative-fast"
-    | "modal-wan22"
-    | "modal-wan22-fast"
-  >("modal-wan22-narrative");
-  // Money-click confirmations render as a portalled modal, never a native
-  // confirm() — browser dialogs block the event loop (and our automation).
-  const [pendingConfirm, setPendingConfirm] = useState<{
-    title: string;
-    lines: string[];
-    confirmLabel: string;
-    onConfirm: () => void;
-  } | null>(null);
+  // Tier for the bulk animate/re-animate buttons. Per-scene Motion settings
+  // (Subtle/Normal/Bold, Hold start pose) ride along; this only picks the
+  // model + GPU.
+  const [batchQuality, setBatchQuality] = useState<AnimateLayerQuality>(
+    ANIMATE_LAYER_DEFAULT_QUALITY,
+  );
+  // EVERY paid click goes through MoneyConfirmModal — list price, count,
+  // and (for studio accounts) the note that no card is charged.
+  const billing = useBillingMode();
+  const [moneyConfirm, setMoneyConfirm] = useState<MoneyConfirmRequest | null>(
+    null,
+  );
   const [animateAllProgress, setAnimateAllProgress] = useState<{
     sceneCount: number;
     done: number;
@@ -249,13 +270,16 @@ export function EditorShell({ project: initialProject }: Props) {
       });
       return;
     }
-    setPendingConfirm({
+    setMoneyConfirm({
       title: `Regenerate ${targets.length} image${targets.length > 1 ? 's' : ''}?`,
       lines: [
-        'Each scene reuses its current prompt. To edit prompts first, open a scene and use the drawer.',
-        'Animation clips on those scenes will be invalidated (scene reverts to the still until re-animated).',
+        'Re-draws the still for each checked scene from its current image prompt (edit prompts in the scene panel first if you want changes).',
+        'Any animation clip on those scenes is discarded — the scene goes back to a still until you animate it again.',
       ],
-      confirmLabel: `Regenerate ${targets.length} image${targets.length > 1 ? 's' : ''}`,
+      unitCents: SCENE_IMAGE_PRICE,
+      unitLabel: 'image',
+      count: targets.length,
+      estCostCents: 3,
       onConfirm: () => runBulkRegen(targets),
     });
   };
@@ -337,34 +361,25 @@ export function EditorShell({ project: initialProject }: Props) {
       return;
     }
     const verb = forceAll || sceneIdxs ? "Re-animate" : "Animate";
-    const qualityLabel: Record<typeof batchQuality, string> = {
-      "modal-wan22-narrative": "Wan 2.2 Narrative L40S",
-      "modal-wan22-narrative-fast": "Wan 2.2 Narrative H100",
-      "modal-hunyuan-narrative": "HunyuanVideo 1.5 L40S",
-      "modal-hunyuan-narrative-fast": "HunyuanVideo 1.5 H100",
-      "modal-wan22": "Wan 2.2 Fun-InP L40S (action)",
-      "modal-wan22-fast": "Wan 2.2 Fun-InP H100 (action)",
-    };
-    // Per-clip cost estimate used for the confirm dialog. Matches TIERS in
-    // vater_i2v.py — update both if you touch either.
-    const perClipCost: Record<typeof batchQuality, number> = {
-      "modal-wan22-narrative": 0.16,
-      "modal-wan22-narrative-fast": 0.26,
-      "modal-hunyuan-narrative": 0.14,
-      "modal-hunyuan-narrative-fast": 0.24,
-      "modal-wan22": 0.16,
-      "modal-wan22-fast": 0.26,
-    };
-    const perClip = perClipCost[batchQuality];
-    const estCost = (targetCount * perClip).toFixed(2);
-    setPendingConfirm({
-      title: `${verb} ${targetCount} scenes via ${qualityLabel[batchQuality]}?`,
+    const price = ANIMATION_PRICES[batchQuality];
+    const already = targetIdxs.filter(
+      (i) => scenesJson.find((s) => s.idx === i)?.videoUrl,
+    ).length;
+    setMoneyConfirm({
+      title: `${verb} ${targetCount} scene${targetCount === 1 ? "" : "s"} with ${price.label}?`,
       lines: [
-        `Estimated total cost: ~$${estCost} (≈ $${perClip.toFixed(2)}/scene × ${targetCount}).`,
-        'Each scene keeps its own motion preset (Subtle / Normal / Bold, Hold start pose).',
-        'Progress is shown live.',
+        sceneIdxs
+          ? `Scenes ${targetIdxs.map((i) => i + 1).join(", ")} will each get a new video clip.`
+          : forceAll
+            ? `Every scene gets a fresh clip${already > 0 ? ` — ${already} existing clip${already === 1 ? "" : "s"} will be replaced` : ""}.`
+            : `Only the ${targetCount} scene${targetCount === 1 ? "" : "s"} without a clip yet get animated; existing clips are kept.`,
+        `Motion amount comes from each scene's Motion setting in the scene panel (default: Subtle + Hold start pose). Change it there first if you want more movement.`,
+        `Runs as one cloud batch, ~${price.etaLabel} per clip. Progress shows in the header.`,
       ],
-      confirmLabel: `Confirm — ~$${estCost}`,
+      unitCents: price.priceCents,
+      unitLabel: "clip",
+      count: targetCount,
+      estCostCents: price.estCostCents,
       onConfirm: () => runAnimateAll(forceAll, sceneIdxs),
     });
   };
@@ -483,6 +498,21 @@ export function EditorShell({ project: initialProject }: Props) {
   };
 
   const handleRecompose = () => {
+    setMoneyConfirm({
+      title: "Render the final video?",
+      lines: [
+        "Stitches the current scenes, clips, voiceover and captions into a new final MP4 on our render farm. Nothing is published anywhere — you download or post it afterwards.",
+        "Do this after you're done editing; every render is billed. Save draft is free and only stores your text edits.",
+      ],
+      unitCents: RENDER_PRICE,
+      unitLabel: "render",
+      count: 1,
+      estCostCents: 15,
+      onConfirm: runRecompose,
+    });
+  };
+
+  const runRecompose = () => {
     startCompose(async () => {
       try {
         const res = await fetch(
@@ -541,43 +571,33 @@ export function EditorShell({ project: initialProject }: Props) {
             onClick={handleSaveDraft}
             disabled={isSaving}
             className="rounded-lg bg-zinc-800 px-4 py-2 text-xs font-semibold text-zinc-200 transition-colors hover:bg-zinc-700 disabled:opacity-50"
+            title="Free. Saves your beat-text and image-prompt edits to the project. Does not render or animate anything."
           >
-            {isSaving ? "Saving…" : "Save draft"}
+            {isSaving ? "Saving…" : "Save draft (free)"}
           </button>
-          {/* Bulk animate controls — tier dropdown + two buttons. Tier picks
-              which Modal backend variant the batch uses; per-scene motion
-              settings (Subtle/Normal/Bold, Hold start pose) are preserved
-              through so this swaps only the backend model. */}
           <select
             value={batchQuality}
             onChange={(e) =>
-              setBatchQuality(e.target.value as typeof batchQuality)
+              setBatchQuality(e.target.value as AnimateLayerQuality)
             }
             disabled={isAnimatingAll}
             className="rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-2 text-[11px] text-zinc-200 focus:border-violet-500/60 focus:outline-none disabled:opacity-50"
-            title="Which model the batch animation uses. Per-scene motion settings are preserved."
+            title={`Model used by the batch buttons. Calm = ${ANIMATION_TIER_GROUPS.calm.hint} Action = ${ANIMATION_TIER_GROUPS.action.hint} "H100" = same output, about twice as fast, slightly more per clip. Prices are what you pay per clip.`}
           >
-            <optgroup label="Calm Narrative ⭐">
-              <option value="modal-wan22-narrative">
-                Wan 2.2 Narrative L40S (~$0.16/clip)
-              </option>
-              <option value="modal-wan22-narrative-fast">
-                Wan 2.2 Narrative H100 (~$0.26/clip)
-              </option>
-              <option value="modal-hunyuan-narrative">
-                HunyuanVideo 1.5 L40S (~$0.14/clip)
-              </option>
-              <option value="modal-hunyuan-narrative-fast">
-                HunyuanVideo 1.5 H100 (~$0.24/clip)
-              </option>
+            <optgroup label={ANIMATION_TIER_GROUPS.calm.label}>
+              {BATCH_TIERS.filter((t) => t.group === "calm").map((t) => (
+                <option key={t.id} value={t.id} title={t.blurb}>
+                  {batchOptionLabel(t.id as AnimateLayerQuality)}
+                  {t.recommended ? " ⭐" : ""}
+                </option>
+              ))}
             </optgroup>
-            <optgroup label="Action">
-              <option value="modal-wan22">
-                Wan 2.2 Fun-InP L40S (~$0.16/clip)
-              </option>
-              <option value="modal-wan22-fast">
-                Wan 2.2 Fun-InP H100 (~$0.26/clip)
-              </option>
+            <optgroup label={ANIMATION_TIER_GROUPS.action.label}>
+              {BATCH_TIERS.filter((t) => t.group === "action").map((t) => (
+                <option key={t.id} value={t.id} title={t.blurb}>
+                  {batchOptionLabel(t.id as AnimateLayerQuality)}
+                </option>
+              ))}
             </optgroup>
           </select>
           <button
@@ -585,20 +605,20 @@ export function EditorShell({ project: initialProject }: Props) {
             onClick={() => handleAnimateAll()}
             disabled={isAnimatingAll || !spec}
             className="rounded-lg bg-violet-500/20 px-4 py-2 text-xs font-semibold text-violet-300 transition-colors hover:bg-violet-500/30 disabled:opacity-50"
-            title="Send all un-animated scenes to Modal in one batch (cheaper than per-scene)"
+            title={`Animate only the scenes that have no video clip yet (${scenesJson.filter((s) => !s.videoUrl).length} right now). Existing clips are kept. ${formatPrice(ANIMATION_PRICES[batchQuality].priceCents)} per clip — you confirm the total first.`}
           >
             {isAnimatingAll
               ? animateAllProgress
                 ? `Animating ${animateAllProgress.done}/${animateAllProgress.sceneCount}${animateAllProgress.failed > 0 ? ` (${animateAllProgress.failed} failed)` : ""}…`
-                : "Animating all…"
-              : "Animate missing"}
+                : "Animating…"
+              : `Animate missing (${scenesJson.filter((s) => !s.videoUrl).length})`}
           </button>
           <button
             type="button"
             onClick={() => handleAnimateAll(undefined, { forceAll: true })}
             disabled={isAnimatingAll || !spec || scenesJson.length === 0}
             className="rounded-lg bg-amber-500/20 px-4 py-2 text-xs font-semibold text-amber-300 transition-colors hover:bg-amber-500/30 disabled:opacity-50"
-            title="Re-animate EVERY scene with the selected tier. Preserves per-scene Subtle/Normal/Bold + Hold start pose settings."
+            title={`Throw away every existing clip and animate all ${scenesJson.length} scenes again with the selected model. ${formatPrice(ANIMATION_PRICES[batchQuality].priceCents)} per clip — you confirm the total first.`}
           >
             {isAnimatingAll ? "Re-animating all…" : `Re-animate ALL (${scenesJson.length})`}
           </button>
@@ -609,24 +629,24 @@ export function EditorShell({ project: initialProject }: Props) {
                 onClick={() => handleRegenSelectedImages(selectedIdxs)}
                 disabled={isRegeneratingBulk || isAnimatingAll || !spec}
                 className="rounded-lg bg-sky-500/20 px-4 py-2 text-xs font-semibold text-sky-300 transition-colors hover:bg-sky-500/30 disabled:opacity-50"
-                title="Regenerate the still image for each checked scene using its current prompt. Animations on those scenes will be invalidated."
+                title={`Re-draw the still image for each checked scene from its current prompt. ${formatPrice(SCENE_IMAGE_PRICE)} per image. Clips on those scenes are discarded.`}
               >
                 {isRegeneratingBulk
                   ? bulkRegenProgress
                     ? `Regenerating ${bulkRegenProgress.done}/${bulkRegenProgress.total}${bulkRegenProgress.failed > 0 ? ` (${bulkRegenProgress.failed} failed)` : ''}…`
                     : "Regenerating images…"
-                  : `Regenerate ${selectedIdxs.length} image${selectedIdxs.length > 1 ? 's' : ''}`}
+                  : `Regenerate ${selectedIdxs.length} image${selectedIdxs.length > 1 ? 's' : ''} (${formatPrice(SCENE_IMAGE_PRICE * selectedIdxs.length)})`}
               </button>
               <button
                 type="button"
                 onClick={() => handleAnimateAll(selectedIdxs)}
                 disabled={isAnimatingAll || isRegeneratingBulk || !spec}
                 className="rounded-lg bg-fuchsia-500/20 px-4 py-2 text-xs font-semibold text-fuchsia-300 transition-colors hover:bg-fuchsia-500/30 disabled:opacity-50"
-                title="Re-animate ONLY the checked scenes in one Modal batch (cheaper than per-scene)"
+                title={`Animate only the checked scenes with the selected model, replacing any clip they already have. ${formatPrice(ANIMATION_PRICES[batchQuality].priceCents)} per clip — you confirm the total first.`}
               >
                 {isAnimatingAll
                   ? "Re-animating selected…"
-                  : `Re-animate ${selectedIdxs.length} selected`}
+                  : `Re-animate ${selectedIdxs.length} selected (${formatPrice(ANIMATION_PRICES[batchQuality].priceCents * selectedIdxs.length)})`}
               </button>
             </>
           ) : null}
@@ -635,8 +655,9 @@ export function EditorShell({ project: initialProject }: Props) {
             onClick={handleRecompose}
             disabled={isComposing || !spec}
             className="rounded-lg bg-emerald-500/20 px-4 py-2 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/30 disabled:opacity-50"
+            title={`Render a new final MP4 from the current scenes, clips, voiceover and captions. ${formatPrice(RENDER_PRICE)} per render. Does not publish anything.`}
           >
-            {isComposing ? "Composing…" : "Re-compose & publish-ready"}
+            {isComposing ? "Rendering…" : `Render final video (${formatPrice(RENDER_PRICE)})`}
           </button>
         </div>
       </div>
@@ -736,57 +757,15 @@ export function EditorShell({ project: initialProject }: Props) {
           scene={activeScene}
           onSceneUpdated={handleSceneUpdated}
           onBeatTextChange={handleBeatTextChange}
+          billing={billing}
         />
       </div>
 
-      {pendingConfirm && typeof document !== "undefined"
-        ? createPortal(
-            <div
-              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
-              onClick={() => setPendingConfirm(null)}
-              role="dialog"
-              aria-modal="true"
-              aria-label={pendingConfirm.title}
-            >
-              <div
-                className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <h3 className="text-sm font-semibold text-zinc-100">
-                  {pendingConfirm.title}
-                </h3>
-                <div className="mt-3 space-y-2">
-                  {pendingConfirm.lines.map((line, i) => (
-                    <p key={i} className="text-xs leading-relaxed text-zinc-400">
-                      {line}
-                    </p>
-                  ))}
-                </div>
-                <div className="mt-5 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPendingConfirm(null)}
-                    className="rounded-lg border border-zinc-800 px-4 py-2 text-xs font-semibold text-zinc-300 transition-colors hover:bg-zinc-900"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const action = pendingConfirm.onConfirm;
-                      setPendingConfirm(null);
-                      action();
-                    }}
-                    className="rounded-lg bg-amber-500/20 px-4 py-2 text-xs font-semibold text-amber-300 transition-colors hover:bg-amber-500/30"
-                  >
-                    {pendingConfirm.confirmLabel}
-                  </button>
-                </div>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+      <MoneyConfirmModal
+        request={moneyConfirm}
+        billing={billing}
+        onClose={() => setMoneyConfirm(null)}
+      />
     </div>
   );
 }

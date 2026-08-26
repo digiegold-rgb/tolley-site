@@ -435,10 +435,16 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     //     over identically; just runs on serverless GPU instead of GB10.
     //   - animation    → Modal L40S Wan2.2, unless user pre-picked a Modal
     //     tier (respect explicit choice).
+    // Animation NEVER runs on the DGX GPU for anyone (2026-08-26): any
+    // *-local tier collapses to the calm Modal default. Cloud-rental
+    // (default since the "DGX Local" card was removed) also pins non-Modal
+    // picks to Modal so the bill matches the quote.
     const effectiveAnimQuality =
-      cloudRental && animMode !== "none" && !animQuality.startsWith("modal-")
-        ? "modal-wan22"
-        : animQuality;
+      animMode !== "none" && /-local$/.test(animQuality)
+        ? "modal-wan22-narrative"
+        : cloudRental && animMode !== "none" && !animQuality.startsWith("modal-")
+          ? "modal-wan22"
+          : animQuality;
     // Image renderer: explicit user pick wins over cloud-rental's auto-pick.
     const validImageQualities = new Set([
       "firered-local",

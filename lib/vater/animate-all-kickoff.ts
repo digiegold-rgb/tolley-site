@@ -15,6 +15,8 @@ import type { AnimateLayerQuality } from "@/lib/vater/animate-layer";
 
 export type AnimateAllTarget = {
   sceneIdx: number;
+  /** Exact still version to animate (0 = base). */
+  imageVersion?: number;
   animationPrompt?: string;
   beatText?: string;
   fixedCamera: boolean;

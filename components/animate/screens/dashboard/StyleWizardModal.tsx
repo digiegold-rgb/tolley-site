@@ -118,11 +118,8 @@ const QUALITY_OPTIONS = [
   // Modal is the default for every new style — the local DGX lane is
   // owner-only (vater-modal-only-never-local-gpu).
   { value: 'firered-modal', label: 'FireRed Studio (cloud, default)' },
-  { value: 'firered-local', label: 'FireRed Local (DGX, owner only)' },
   { value: 'gemini-1k', label: 'Gemini 1K (cloud)' },
   { value: 'gemini-2k', label: 'Gemini 2K (cloud)' },
-  { value: 'sdxl-local', label: 'SDXL Local' },
-  { value: 'flux-schnell', label: 'FLUX Schnell' },
 ] as const;
 
 const OVERLAY_THEMES = [

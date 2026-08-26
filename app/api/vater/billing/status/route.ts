@@ -23,7 +23,7 @@ import {
   VATER_INCLUDED_USAGE_CENTS,
   VATER_TRIAL_CAPS,
 } from "@/lib/vater-subscription";
-import { isVaterStudioEmail } from "@/lib/admin-auth";
+import { hasVaterUnmeteredAccess } from "@/lib/admin-auth";
 import { getUnbilledCents } from "@/lib/vater/billing/finalize-invoice";
 import { getCurrentPeriod } from "@/lib/vater/billing/period";
 
@@ -45,7 +45,10 @@ export async function GET() {
 
   // Studio full-access accounts never meter — report them as neither trial
   // nor delinquent so the UI stops prompting for a card it will never charge.
-  const unmetered = isVaterStudioEmail(session.user.email);
+  // Same grant checkBudget uses (env allowlist ∪ VaterAccount.unmetered), so
+  // the editor's confirm modals say "not charged" exactly when the server
+  // won't charge.
+  const unmetered = await hasVaterUnmeteredAccess(userId, session.user.email);
   const isTrial =
     !unmetered && (!sub || sub.status === "trialing" || sub.status === "none");
   const delinquent =
@@ -85,6 +88,7 @@ export async function GET() {
       capHitAt: trial?.capHitAt ?? null,
     },
     isTrial,
+    unmetered,
     defaultLimitCents: VATER_DEFAULT_MONTHLY_LIMIT_CENTS,
   });
 }

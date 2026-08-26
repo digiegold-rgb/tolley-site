@@ -113,8 +113,6 @@ export function YouTubeContextForm({ project, onSubmitted }: Props) {
     | "modal-wan22-narrative-fast"
     | "modal-hunyuan-narrative"
     | "modal-hunyuan-narrative-fast"
-    | "wan22-local"
-    | "ltx-local"
     | "turbo"
     | "default"
     | "default_1080p"
@@ -1001,14 +999,6 @@ export function YouTubeContextForm({ project, onSubmitted }: Props) {
                   Wan2.2 Fun-InP H100 (~$0.40/scene, ~2 min) — fast action
                 </option>
               </optgroup>
-              <optgroup label="Local (free, on DGX — slow)">
-                <option value="wan22-local">
-                  Wan2.2 GB10 Local (free, ~15-20 min/clip) — batch only
-                </option>
-                <option value="ltx-local">
-                  LTX Local (free, ~90s/clip) — fastest, lower quality
-                </option>
-              </optgroup>
             </select>
             <p className="mt-1 text-[10px] text-zinc-300">
               The AI auto-decides the right motion for each scene (looks
@@ -1038,12 +1028,6 @@ export function YouTubeContextForm({ project, onSubmitted }: Props) {
           <option value="">
             Auto — use Style&rsquo;s default (or cloud preset)
           </option>
-          <optgroup label="DGX local — free, ~30s/scene">
-            <option value="firered-local">
-              FireRed local — cartoon (default)
-            </option>
-            <option value="sdxl-local">SDXL local — photoreal</option>
-          </optgroup>
           <optgroup label="Cloud — fastest, parallelisable">
             <option value="firered-modal">
               FireRed Modal L40S (~$0.03/scene, ~20s)

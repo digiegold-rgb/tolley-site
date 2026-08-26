@@ -45,9 +45,15 @@ import { VaterFileUpload } from '@/components/vater/vater-file-upload';
 import { PromptReviewModal } from './PromptReviewModal';
 import {
   animationOptionLabel,
+  CUSTOMER_ANIMATION_TIERS,
+  FLAT_ACTION_PRICES,
   formatPrice,
   getAnimationPriceCents,
 } from '@/lib/vater/pricing';
+import {
+  ANIMATE_LAYER_DEFAULT_QUALITY,
+  isAnimateLayerQuality,
+} from '@/lib/vater/animate-layer';
 import { useRoute } from '../../theme-context';
 import {
   type StylePresetId,
@@ -82,25 +88,8 @@ import { useRenderEstimate } from './use-render-estimate';
  * — risk #2. The route currently fail-louds on drift, which is what we want.
  * Labels/prices come from lib/vater/pricing.ts — the customer price, not our
  * Modal cost. */
-const ANIMATION_QUALITY_ORDER: ReadonlyArray<AnimationQuality> = [
-  'modal-wan22-narrative',
-  'modal-wan22-narrative-fast',
-  'modal-hunyuan-narrative',
-  'modal-hunyuan-narrative-fast',
-  'modal-wan22',
-  'modal-wan22-fast',
-  'modal-easyanimate-anime',
-  'kling-standard',
-  'kling-pro',
-  'kling-master',
-  'luma',
-  'turbo',
-  'default',
-  'default_1080p',
-  'high',
-  'wan22-local',
-  'ltx-local',
-];
+const ANIMATION_QUALITY_ORDER: ReadonlyArray<AnimationQuality> =
+  CUSTOMER_ANIMATION_TIERS.map((t) => t.id);
 
 const ANIMATION_QUALITIES: ReadonlyArray<{ id: AnimationQuality; label: string }> =
   ANIMATION_QUALITY_ORDER.map((id) => ({ id, label: animationOptionLabel(id) }));
@@ -115,15 +104,9 @@ const VISUAL_TYPES: VisualType[] = [
   { emoji: '🖼️', label: 'Visuals Mix' },
 ];
 
-interface CloudOption {
-  key: 'dgx' | 'modal';
-  label: string;
-  desc: string;
-}
-const CLOUD_OPTIONS: CloudOption[] = [
-  { key: 'dgx', label: 'DGX Local', desc: 'Free, uses your GPU' },
-  { key: 'modal', label: 'Modal Cloud', desc: '~$0.03/scene L40S' },
-];
+/* "DGX Local — uses your GPU" was removed 2026-08-26: customer renders never
+ * run on the DGX (vater-modal-only doctrine). Every generation is cloud. */
+type CloudOptionKey = 'modal';
 
 /** Local shape — UI reads only this subset; the route owns full scenesJson
  *  schema validation. Per risk #9 in feature-inventory.md: don't overwrite
@@ -225,7 +208,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
   const [visualType, setVisualType] = React.useState<number>(1);
   const [stylePreset, setStylePreset] = React.useState<StylePresetId>(DEFAULT_STYLE_PRESET);
   const [styleDocId, setStyleDocId] = React.useState<string | null>(null);
-  const [cloudRental, setCloudRental] = React.useState<CloudOption['key']>('dgx');
+  const cloudRental: CloudOptionKey = 'modal';
   const [consistency, setConsistency] = React.useState(true);
   const [animQuality, setAnimQuality] = React.useState<AnimationQuality>('modal-wan22-narrative');
   const [musicId, setMusicId] = React.useState<string | null>(null);
@@ -241,8 +224,14 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
   const [billingBlock, setBillingBlock] = React.useState<BillingBlockReason | null>(null);
   // Pending batch-animate confirmation: which sceneIdxs (null = all) + count.
   const [confirmAnimate, setConfirmAnimate] = React.useState<
-    { sceneIdxs: number[] | null; count: number } | null
+    { sceneIdxs: number[] | null; count: number; mode: 'batch' | 'single' | 'render' } | null
   >(null);
+  // Batch animation runs on the Modal Wan/Hunyuan tiers only. If the user
+  // picked Kling/Luma/Veo for per-scene work, the batch buttons say so and
+  // use the calm default instead of silently swapping server-side.
+  const batchQuality = isAnimateLayerQuality(animQuality)
+    ? animQuality
+    : ANIMATE_LAYER_DEFAULT_QUALITY;
   // Per-scene selection for batch operations (Animate Selected, Regen Images
   // Selected). Stored as a Set of sceneIdx so toggles are O(1) and the
   // sceneIdxs we send to /animate-all stay in stable numeric order.
@@ -462,8 +451,8 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(
             sceneIdxs
-              ? { quality: animQuality, sceneIdxs }
-              : { quality: animQuality },
+              ? { quality: batchQuality, sceneIdxs }
+              : { quality: batchQuality },
           ),
         });
         if (!res.ok) {
@@ -481,7 +470,7 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
         setAnimating(false);
       }
     },
-    [projectId, animQuality, refresh, describeGenerationError],
+    [projectId, batchQuality, refresh, describeGenerationError],
   );
 
   // The batch buttons open the price-confirm modal; runBatchAnimate fires on
@@ -491,13 +480,13 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
    *  what the user just bought, then opens the price confirmation. */
   const requestAddMotion = React.useCallback(() => {
     void patchFeatures({ motionMode: 'full' });
-    setConfirmAnimate({ sceneIdxs: null, count: scenes.length });
+    setConfirmAnimate({ sceneIdxs: null, count: scenes.length, mode: 'batch' });
   }, [scenes.length, patchFeatures]);
 
   const requestAnimateSelected = React.useCallback(() => {
     const ids = Array.from(selectedScenes).sort((a, b) => a - b);
     if (ids.length === 0) return;
-    setConfirmAnimate({ sceneIdxs: ids, count: ids.length });
+    setConfirmAnimate({ sceneIdxs: ids, count: ids.length, mode: 'batch' });
   }, [selectedScenes]);
 
   const toggleSceneSelection = React.useCallback((idx: number) => {
@@ -858,7 +847,9 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
                     <VBtn
                       size="sm"
                       variant="outlined"
-                      onClick={() => handleAnimateScene(sc.idx)}
+                      onClick={() =>
+                        setConfirmAnimate({ sceneIdxs: [sc.idx], count: 1, mode: 'single' })
+                      }
                       style={{
                         color: JELLY_TOKENS.warning,
                         borderColor: JELLY_TOKENS.warning,
@@ -1007,11 +998,13 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
             </VBtn>
             <VBtn
               size="sm"
-              onClick={handleCompose}
+              onClick={() => setConfirmAnimate({ sceneIdxs: null, count: 1, mode: 'render' })}
               disabled={composing}
               style={{ background: JELLY_TOKENS.cyan, color: JELLY_TOKENS.onGradient }}
             >
-              {composing ? 'Rendering…' : 'Render Video'}
+              {composing
+                ? 'Rendering…'
+                : `Render Video (${formatPrice(FLAT_ACTION_PRICES.render.priceCents)})`}
             </VBtn>
           </div>
         </div>
@@ -1025,13 +1018,31 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
         />
         <BatchAnimateConfirmModal
           request={confirmAnimate}
-          priceCents={getAnimationPriceCents(animQuality)}
-          qualityLabel={animationOptionLabel(animQuality)}
+          priceCents={
+            confirmAnimate?.mode === 'render'
+              ? FLAT_ACTION_PRICES.render.priceCents
+              : confirmAnimate?.mode === 'single'
+                ? getAnimationPriceCents(animQuality)
+                : getAnimationPriceCents(batchQuality)
+          }
+          qualityLabel={
+            confirmAnimate?.mode === 'render'
+              ? 'Stitches the current stills, clips, voiceover and captions into a new final MP4. Nothing is published — you download or post it afterwards.'
+              : confirmAnimate?.mode === 'single'
+                ? animationOptionLabel(animQuality)
+                : batchQuality === animQuality
+                  ? animationOptionLabel(batchQuality)
+                  : `${animationOptionLabel(batchQuality)} — batch animation uses the cloud Wan/Hunyuan tiers; ${animationOptionLabel(animQuality).split(' — ')[0]} is per-scene only.`
+          }
           onCancel={() => setConfirmAnimate(null)}
           onConfirm={() => {
-            const ids = confirmAnimate?.sceneIdxs ?? null;
+            const req = confirmAnimate;
             setConfirmAnimate(null);
-            void runBatchAnimate(ids);
+            if (!req) return;
+            if (req.mode === 'render') void handleCompose();
+            else if (req.mode === 'single' && req.sceneIdxs?.length === 1)
+              void handleAnimateScene(req.sceneIdxs[0]);
+            else void runBatchAnimate(req.sceneIdxs);
           }}
         />
         <BillingBlockModal reason={billingBlock} onClose={() => setBillingBlock(null)} />
@@ -1647,71 +1658,6 @@ export function VisualsStep({ projectId, project, refresh }: EditorStepProps): R
         . Add motion afterwards from the prompts view.
       </div>
 
-      {/* Cloud Rental */}
-      <VCard style={{ marginTop: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: JELLY_TOKENS.radius.md,
-              ...TINT_BG.warning,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <span style={{ fontSize: 18 }}>⚡</span>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
-              Cloud rental — FireRed + Modal
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: t.textSecondary,
-                marginTop: 2,
-                lineHeight: 1.5,
-              }}
-            >
-              Bursts the paid pipeline to Modal serverless GPUs: FireRed stills
-              on L40S (~$0.03/scene) plus Modal Wan2.2 i2v if animation is on.
-              Frees up the DGX during long runs.
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              {CLOUD_OPTIONS.map((opt) => {
-                const active = cloudRental === opt.key;
-                return (
-                  <div
-                    key={opt.key}
-                    onClick={() => setCloudRental(opt.key)}
-                    style={{
-                      flex: 1,
-                      padding: '10px 12px',
-                      borderRadius: JELLY_TOKENS.radius.md,
-                      cursor: 'pointer',
-                      border: active
-                        ? `2px solid ${JELLY_TOKENS.brand}`
-                        : `1px solid ${t.border}`,
-                      background: active ? JELLY_TOKENS.brandGhost : 'transparent',
-                    }}
-                  >
-                    <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>
-                      {opt.label}
-                    </div>
-                    <div style={{ fontSize: 11, color: t.textSecondary }}>
-                      {opt.desc}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </VCard>
-
       {/* Scene Consistency (IP-Adapter) */}
       <VCard style={{ marginTop: 16 }}>
         <div
@@ -1988,7 +1934,11 @@ function CaptionSwatch({ preset }: { preset: CaptionPreset }): React.ReactElemen
 
 interface BatchAnimateConfirmModalProps {
   /** Pending request (null = closed). sceneIdxs null = animate all. */
-  request: { sceneIdxs: number[] | null; count: number } | null;
+  request: {
+    sceneIdxs: number[] | null;
+    count: number;
+    mode: 'batch' | 'single' | 'render';
+  } | null;
   priceCents: number;
   qualityLabel: string;
   onCancel: () => void;
@@ -2004,15 +1954,22 @@ function BatchAnimateConfirmModal({
 }: BatchAnimateConfirmModalProps): React.ReactElement | null {
   const { t } = useTheme();
   if (!request) return null;
-  const { count } = request;
+  const { count, mode } = request;
   const totalCents = count * priceCents;
+  const unit = mode === 'render' ? 'render' : 'clip';
+  const title =
+    mode === 'render'
+      ? 'Render the final video?'
+      : mode === 'single'
+        ? `Animate scene ${(request.sceneIdxs?.[0] ?? 0) + 1}?`
+        : `Animate ${count} scene${count === 1 ? '' : 's'}?`;
   // Portalled to <body>: fixed overlays rendered inside <main> stack BELOW
   // the studio header/sidebar (2026-08-19 beta finding).
   return createPortal(
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Confirm batch animation"
+      aria-label="Confirm paid action"
       style={{
         position: 'fixed',
         inset: 0,
@@ -2041,7 +1998,7 @@ function BatchAnimateConfirmModal({
         }}
       >
         <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>
-          Animate {count} scene{count === 1 ? '' : 's'}?
+          {title}
         </div>
         <div style={{ fontSize: 13, color: t.textSecondary, marginTop: 8, lineHeight: 1.6 }}>
           {qualityLabel}
@@ -2058,12 +2015,12 @@ function BatchAnimateConfirmModal({
             fontWeight: 600,
           }}
         >
-          {count} clip{count === 1 ? '' : 's'} × {formatPrice(priceCents)} ={' '}
+          {count} {unit}{count === 1 ? '' : 's'} × {formatPrice(priceCents)} ={' '}
           {formatPrice(totalCents)}
         </div>
         <div style={{ fontSize: 12, color: t.textSecondary, marginTop: 8 }}>
-          Charged to your card after each clip succeeds — failed clips are never
-          charged.
+          Charged to your card only after the {unit} succeeds — failures are
+          never charged. Studio accounts are not charged.
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
           <VBtn size="sm" variant="ghost" onClick={onCancel}>

@@ -108,6 +108,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     })
     .map((s) => ({
       sceneIdx: s.idx,
+      imageVersion: typeof s.version === "number" ? s.version : 0,
       animationPrompt:
         typeof s.animationPrompt === "string" ? s.animationPrompt : undefined,
       beatText: typeof s.beatText === "string" ? s.beatText : undefined,

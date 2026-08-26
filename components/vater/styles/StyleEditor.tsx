@@ -82,14 +82,10 @@ const VOICE_BACKENDS = [
 ] as const;
 
 const QUALITY_BACKENDS = [
-  { id: "firered-local", label: "FireRed local (DGX) — unavailable, renders fall back to FireRed Studio", needsKey: false, costPerScene: 0 },
   { id: "firered-modal", label: "FireRed-Image-Edit-1.1 (Modal H100 BF16, ~$0.002/scene + $0.10 warmup)", needsKey: false, costPerScene: 0.002 },
   { id: "firered-modal-fast", label: "FireRed-Image-Edit-1.1 (Modal H100 BF16 — alias of firered-modal)", needsKey: false, costPerScene: 0.002 },
   { id: "gemini-1k", label: "Gemini Nano Banana 2 1K (cloud, ~$0.067/scene)", needsKey: true, envVar: "GEMINI_API_KEY", costPerScene: 0.067 },
   { id: "gemini-2k", label: "Gemini Nano Banana Pro (cloud, ~$0.134/scene)", needsKey: true, envVar: "GEMINI_API_KEY", costPerScene: 0.134 },
-  { id: "sdxl-local", label: "SDXL Lightning (local, legacy — use FireRed instead)", needsKey: false, costPerScene: 0 },
-  { id: "sdxl-ipadapter", label: "SDXL + IP-Adapter (local, legacy — use FireRed instead)", needsKey: false, costPerScene: 0 },
-  { id: "flux-schnell", label: "FLUX.1-schnell — NOT YET IMPLEMENTED (falls back to SDXL)", needsKey: false, costPerScene: 0 },
   { id: "ideogram-turbo", label: "Ideogram Turbo via fal.ai (~$0.02/scene)", needsKey: true, envVar: "FAL_KEY", costPerScene: 0.02 },
   { id: "ideogram-default", label: "Ideogram v2 via fal.ai (~$0.05/scene)", needsKey: true, envVar: "FAL_KEY", costPerScene: 0.05 },
   { id: "ideogram-quality", label: "Ideogram v3 via fal.ai (~$0.08/scene)", needsKey: true, envVar: "FAL_KEY", costPerScene: 0.08 },
@@ -451,7 +447,7 @@ export function StyleEditor({
             </select>
             {(() => {
               const q = QUALITY_BACKENDS.find((b) => b.id === style.defaultQuality);
-              if (!q || q.costPerScene === 0) return null;
+              if (!q || !(q.costPerScene > 0)) return null;
               // Cost estimates for typical short / medium / long videos at this Style's pacing
               const pacing = style.defaultPacingSec ?? 4.0;
               const samples = [

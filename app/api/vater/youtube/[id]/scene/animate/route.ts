@@ -35,7 +35,11 @@ import {
 import type { SceneSpec } from "@/lib/vater/video-spec";
 import { canAccessProject } from "@/lib/vater/project-access";
 import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
-import { getAnimationPriceCents } from "@/lib/vater/pricing";
+import {
+  getAnimationPriceCents,
+  isCustomerAnimationQuality,
+  isLocalAnimationQuality,
+} from "@/lib/vater/pricing";
 import { mergeVideoCost } from "@/lib/vater/video-cost";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
 import { recordUsage } from "@/lib/vater/billing/record-usage";
@@ -55,30 +59,11 @@ export const maxDuration = 800;
 
 type Ctx = { params: Promise<{ id: string }> };
 
-const VALID_QUALITIES = new Set<AnimationQuality>([
-  "turbo",
-  "default",
-  "default_1080p",
-  "high",
-  "kling-standard",
-  "kling-pro",
-  "kling-master",
-  "luma",
-  "ltx-local",
-  // Wan2.2 / Modal / EasyAnimate tiers — added 2026-04-21 after a user
-  // selection of "EasyAnimate v5 Anime" silently fell through to "default"
-  // (Veo) because the whitelist was stale, and Veo's person-generation
-  // safety filter then blocked the cartoon face. Any new tier added to
-  // AnimationQuality MUST also be added here, else it'll get coerced.
-  "wan22-local",
-  "modal-wan22",
-  "modal-wan22-fast",
-  "modal-wan22-narrative",
-  "modal-wan22-narrative-fast",
-  "modal-hunyuan-narrative",
-  "modal-hunyuan-narrative-fast",
-  "modal-easyanimate-anime",
-]);
+// Customer-submittable tiers live in ONE place — lib/vater/pricing.ts
+// CUSTOMER_ANIMATION_TIERS — so the dropdowns, the confirm modal and this
+// gate can't drift. GB10-local tiers ("ltx-local", "wan22-local") are
+// rejected outright: customer work never runs on the DGX GPU
+// (vater-modal-only doctrine, 2026-08-26 editor rework).
 
 const VALID_ASPECTS = new Set(["16:9", "9:16", "1:1"]);
 
@@ -108,17 +93,21 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     typeof body.animationPrompt === "string" ? body.animationPrompt.trim() : "";
   const fixedCamera = body.fixedCamera === true;
   // Fail loud on invalid quality rather than silent-falling-back to "default"
-  // (which is Veo and blocks cartoons). If we ever get here with a tier not
-  // in VALID_QUALITIES, it means the frontend dropdown drifted from this
-  // whitelist — surface it so we can fix it instead of burning a Veo call.
-  if (
-    body.quality !== undefined &&
-    !(typeof body.quality === "string" &&
-      VALID_QUALITIES.has(body.quality as AnimationQuality))
-  ) {
+  // (which is Veo and blocks cartoons). Local tiers get their own message so
+  // a stale client explains itself instead of looking like a typo.
+  if (body.quality !== undefined && isLocalAnimationQuality(body.quality)) {
     return NextResponse.json(
       {
-        error: `Unknown quality "${String(body.quality)}". Valid: ${Array.from(VALID_QUALITIES).join(", ")}`,
+        error:
+          "Local GPU animation is not available — every clip renders on cloud GPUs. Pick a Wan 2.2, Hunyuan or Kling tier.",
+      },
+      { status: 400 },
+    );
+  }
+  if (body.quality !== undefined && !isCustomerAnimationQuality(body.quality)) {
+    return NextResponse.json(
+      {
+        error: `Unknown or unavailable quality "${String(body.quality)}".`,
       },
       { status: 400 },
     );
@@ -126,7 +115,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const quality: AnimationQuality =
     typeof body.quality === "string"
       ? (body.quality as AnimationQuality)
-      : "modal-wan22"; // cartoon-safe default; was "default" which is Veo
+      : "modal-wan22-narrative"; // cartoon-safe default; matches the editor
 
   const duration =
     typeof body.duration === "number" && Number.isFinite(body.duration)
@@ -254,6 +243,10 @@ export async function POST(req: NextRequest, ctx: Ctx) {
           typeof existing.imagePrompt === "string"
             ? existing.imagePrompt
             : undefined,
+        // Animate the still the editor is showing — never "newest file on
+        // disk" (an orphan regen got animated on 2026-08-26).
+        imageVersion:
+          typeof existing.version === "number" ? existing.version : 0,
         motionIntensity,
         holdStartPose,
       });

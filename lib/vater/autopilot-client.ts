@@ -512,6 +512,9 @@ export type AnimateSceneInput = OwnerRouting & {
   /** FLF2V: reuse the start image as the end-frame so Wan2.2 clamps the
    *  character's ending pose. Massive jitter killer on narrative scenes. */
   holdStartPose?: boolean;
+  /** Exact still version to animate (0 = base NNN.png). The DGX otherwise
+   *  picks the newest file on disk, which can be an orphan regen. */
+  imageVersion?: number;
 };
 
 export type AnimateSceneResult = {
@@ -931,6 +934,7 @@ export const autopilot = {
     jobId: string;
     scenes: Array<{
       sceneIdx: number;
+      imageVersion?: number;
       animationPrompt?: string;
       beatText?: string;
       fixedCamera?: boolean;

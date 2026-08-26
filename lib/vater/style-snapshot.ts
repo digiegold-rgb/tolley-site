@@ -99,7 +99,9 @@ function asVoiceBackend(
  *  `unet_name … not in list` — after TTS + planner spend. Coerce at snapshot
  *  time so every render (Auto or Fable 5, any lane) lands on FireRed Studio. */
 export function renderableQuality(q: string | null | undefined): string {
-  return q === "firered-local" || !q ? "firered-modal" : q;
+  // Any GB10-local renderer (firered-local, sdxl-local) → Modal. Customer
+  // work never runs on the DGX GPU (vater-modal-only doctrine).
+  return !q || /-local$/.test(q) ? "firered-modal" : q;
 }
 
 export function buildStyleSnapshot(style: StyleWithRelations): StyleSnapshot {

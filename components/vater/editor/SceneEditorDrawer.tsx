@@ -16,12 +16,28 @@ import { useToast } from "@/components/ui/Toast";
 import { VideoSpeedChips } from "@/components/ui/VideoSpeedChips";
 import type { AnimationQuality, MotionIntensity } from "@/lib/vater/autopilot-client";
 import type { SceneSpec } from "@/lib/vater/video-spec";
+import {
+  ANIMATION_PRICES,
+  ANIMATION_TIER_GROUPS,
+  CUSTOMER_ANIMATION_TIERS,
+  FLAT_ACTION_PRICES,
+  formatPrice,
+  type AnimationTierGroup,
+} from "@/lib/vater/pricing";
+import {
+  MoneyConfirmModal,
+  type BillingMode,
+  type MoneyConfirmRequest,
+} from "./MoneyConfirmModal";
+
+const TIER_GROUP_ORDER: AnimationTierGroup[] = ["calm", "action", "premium", "photoreal"];
 
 type Props = {
   projectId: string;
   scene: SceneSpec | null;
   onSceneUpdated: (scene: SceneSpec) => void;
   onBeatTextChange: (idx: number, beatText: string) => void;
+  billing: BillingMode;
 };
 
 export function SceneEditorDrawer({
@@ -29,6 +45,7 @@ export function SceneEditorDrawer({
   scene,
   onSceneUpdated,
   onBeatTextChange,
+  billing,
 }: Props) {
   const { toast } = useToast();
   const sceneVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -38,6 +55,9 @@ export function SceneEditorDrawer({
   // Style.defaultQuality"; any other value sends `quality` to /regen-scene.
   const [imageQuality, setImageQuality] = useState<string>("");
   const [isRegenerating, startRegen] = useTransition();
+  const [moneyConfirm, setMoneyConfirm] = useState<MoneyConfirmRequest | null>(
+    null,
+  );
 
   // Sync local state when the parent selects a different scene.
   useEffect(() => {
@@ -65,6 +85,23 @@ export function SceneEditorDrawer({
       return;
     }
 
+    setMoneyConfirm({
+      title: `Regenerate the image for scene ${scene.idx + 1}?`,
+      lines: [
+        "Draws a new still from the image prompt above. The old version stays on disk until publish.",
+        scene.mediaType === "video" && scene.videoUrl
+          ? "This scene's animation clip is discarded — it goes back to a still until you animate it again."
+          : "Nothing else changes.",
+      ],
+      unitCents: FLAT_ACTION_PRICES.scene.priceCents,
+      unitLabel: "image",
+      count: 1,
+      estCostCents: 3,
+      onConfirm: () => runRegen(trimmed),
+    });
+  };
+
+  const runRegen = (trimmed: string) => {
     startRegen(async () => {
       try {
         const res = await fetch(
@@ -228,20 +265,16 @@ export function SceneEditorDrawer({
           className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-[11px] text-zinc-200 focus:border-zinc-600 focus:outline-none"
         >
           <option value="">Project default (from Style)</option>
-          <optgroup label="DGX local — free, ~30s">
-            <option value="firered-local">FireRed local (cartoon)</option>
-            <option value="sdxl-local">SDXL local (photoreal)</option>
-          </optgroup>
           <optgroup label="Cloud — fastest, parallelisable">
-            <option value="firered-modal">FireRed Modal L40S (~$0.03, ~20s)</option>
-            <option value="firered-modal-fast">FireRed Modal H100 (~$0.05, ~10s)</option>
-            <option value="gemini-2k">Gemini 2K (~$0.04, ~8s)</option>
-            <option value="gemini-1k">Gemini 1K (~$0.02, ~6s)</option>
+            <option value="firered-modal">FireRed L40S (~20s)</option>
+            <option value="firered-modal-fast">FireRed H100 (~10s)</option>
+            <option value="gemini-2k">Gemini 2K (~8s)</option>
+            <option value="gemini-1k">Gemini 1K (~6s)</option>
           </optgroup>
           <optgroup label="Cloud — Ideogram (sharper text)">
-            <option value="ideogram-turbo">Ideogram Turbo (~$0.05)</option>
-            <option value="ideogram-default">Ideogram Default (~$0.08)</option>
-            <option value="ideogram-quality">Ideogram Quality (~$0.10)</option>
+            <option value="ideogram-turbo">Ideogram Turbo</option>
+            <option value="ideogram-default">Ideogram Default</option>
+            <option value="ideogram-quality">Ideogram Quality</option>
           </optgroup>
         </select>
         {imageQuality ? (
@@ -257,24 +290,32 @@ export function SceneEditorDrawer({
         disabled={isRegenerating}
         className="w-full rounded-lg bg-emerald-500/20 px-4 py-2 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isRegenerating ? "Regenerating…" : "Regenerate image"}
+        {isRegenerating
+          ? "Regenerating…"
+          : `Regenerate image (${formatPrice(FLAT_ACTION_PRICES.scene.priceCents)})`}
       </button>
 
       <p className="text-[10px] text-zinc-600">
-        Each regen writes a versioned file on disk and bumps the scene version
-        in the DB. Old versions stay around until publish.
+        Flat {formatPrice(FLAT_ACTION_PRICES.scene.priceCents)} per image
+        whichever renderer you pick. Old versions stay on disk until publish.
       </p>
 
       <AnimationPanel
         projectId={projectId}
         scene={scene}
         onSceneUpdated={onSceneUpdated}
+        billing={billing}
       />
 
       <SmartOverlayPanel
         projectId={projectId}
         scene={scene}
         onSceneUpdated={onSceneUpdated}
+      />
+      <MoneyConfirmModal
+        request={moneyConfirm}
+        billing={billing}
+        onClose={() => setMoneyConfirm(null)}
       />
     </div>
   );
@@ -290,142 +331,33 @@ export function SceneEditorDrawer({
  * "Re-animate" (bumps videoVersion) and a "Revert to still" secondary
  * option appears.
  */
-// `disabled` flag shows the option in the dropdown for cost/awareness but
-// blocks selection. Used for tiers we KNOW will fail (cartoon → Veo's
-// person-generation filter) or that aren't wired yet (EasyAnimate).
-// `cartoonUnsafe` = will get blocked on FireRed/SDXL cartoon stills.
-const QUALITY_OPTIONS: Array<{
-  id: AnimationQuality;
-  label: string;
-  costHint: string;
-  desc: string;
-  disabled?: boolean;
-  cartoonUnsafe?: boolean;
-}> = [
-  // Kling via fal.ai — cartoon/stylized friendly (no IP filter like Veo).
-  // Put these first since they work on whiteboard_cartoon & animated_explainer.
-  {
-    id: "kling-standard",
-    label: "Kling Standard (recommended for cartoon)",
-    costHint: "~$0.18",
-    desc: "fal.ai Kling v1 — animates cartoons & stylized art reliably",
-  },
-  {
-    id: "kling-pro",
-    label: "Kling Pro (1080p cartoon)",
-    costHint: "~$0.30",
-    desc: "fal.ai Kling v1 Pro, 1080p — best cartoon quality",
-  },
-  {
-    id: "kling-master",
-    label: "Kling v2 Master (flagship)",
-    costHint: "~$0.90",
-    desc: "fal.ai Kling v2 Master — highest quality, any style",
-  },
-  {
-    id: "luma",
-    label: "Luma Dream Machine",
-    costHint: "~$0.14",
-    desc: "fal.ai Luma — fast, good on realistic scenes",
-  },
-  // Veo tiers — Google. Fast + cheap but BLOCKS cartoon images via the
-  // person-generation safety filter (error code 17301594). Marked
-  // cartoonUnsafe so the editor can warn before submission.
-  {
-    id: "default",
-    label: "Veo 3 Fast (photoreal only)",
-    costHint: "~$0.11",
-    desc: "Veo 3 Fast, 720p — fast, cheap, photorealistic only. Will reject cartoon faces.",
-    cartoonUnsafe: true,
-  },
-  {
-    id: "default_1080p",
-    label: "Veo 3 Fast 1080p (photoreal only)",
-    costHint: "~$0.15",
-    desc: "Veo 3 Fast at 1080p — photorealistic only. Will reject cartoon faces.",
-    cartoonUnsafe: true,
-  },
-  {
-    id: "high",
-    label: "Veo 3.1 High Cinematic (photoreal only)",
-    costHint: "~$0.35",
-    desc: "Veo 3.1 Fast, 1080p — highest cinematic quality. Will reject cartoon faces.",
-    cartoonUnsafe: true,
-  },
-  {
-    id: "turbo",
-    label: "Veo Turbo (photoreal only)",
-    costHint: "~$0.11",
-    desc: "Veo 3 Fast 720p — same as Default, legacy name. Will reject cartoon faces.",
-    cartoonUnsafe: true,
-  },
-  // ─── CALM NARRATIVE (Path A + B) — recommended for story/narrative content ───
-  {
-    id: "modal-wan22-narrative",
-    label: "Wan2.2 Narrative — Calm (L40S)  ⭐",
-    costHint: "~$0.16",
-    desc: "Path A. Wan2.2-I2V-A14B BASE (NOT Fun-InP) + Civitai 2222779 v2.0 narrative LoRA (both high + low variants). Trained explicitly for 'traditional Japanese animation character movement.' Different training distribution than Fun-InP → less mouth-flap/flailing. DEFAULT RECOMMENDATION for narrative/calm/storytelling scenes. ~5 min/scene.",
-  },
-  {
-    id: "modal-wan22-narrative-fast",
-    label: "Wan2.2 Narrative — Calm Fast (H100)",
-    costHint: "~$0.26",
-    desc: "Same as Wan2.2 Narrative but on H100 (~2 min/scene). Use when you need one scene NOW.",
-  },
-  {
-    id: "modal-hunyuan-narrative",
-    label: "HunyuanVideo 1.5 — Narrative (L40S)  ⭐",
-    costHint: "~$0.14",
-    desc: "Path B. Tencent HunyuanVideo 1.5 720p I2V distilled fp8. Completely different model family from Wan (Tencent, not Alibaba). Distilled = ~6 sampling steps instead of 30 so clip wall-time is comparable to Wan. Community benchmarks show calmer default motion on narrative content. Alternative to Wan Narrative — try both and pick what looks best on your scene.",
-  },
-  {
-    id: "modal-hunyuan-narrative-fast",
-    label: "HunyuanVideo 1.5 — Narrative Fast (H100)",
-    costHint: "~$0.24",
-    desc: "Same HunyuanVideo 1.5 but on H100 (~1 min/scene). Fastest cartoon option.",
-  },
-  // ─── ACTION (Wan Fun-InP) — the original default, now opt-in ───
-  {
-    id: "modal-wan22",
-    label: "Wan2.2 Fun-InP — Action (L40S)",
-    costHint: "~$0.16",
-    desc: "Wan2.2-Fun-InP-A14B + Shinkai LoRA on L40S. Has documented mouth-flap/flailing bug on calm shots (issue #77) — its training distribution prefers action/dance content. BEST FOR action beats (fight, dance, energetic motion) where the bias is a feature, not a bug.",
-  },
-  {
-    id: "modal-wan22-fast",
-    label: "Wan2.2 Fun-InP — Action Fast (H100)",
-    costHint: "~$0.26",
-    desc: "Same Fun-InP on H100. Fast action scenes only.",
-  },
-  {
-    id: "modal-easyanimate-anime",
-    label: "EasyAnimate v5 Anime 🚧 (coming soon — backend not wired)",
-    costHint: "~$0.15",
-    desc: "Alibaba EasyAnimate v5 anime checkpoint — purpose-built on 2D/anime data, strongest cartoon style fidelity. ~5 min/scene on L40S. WIRING IN PROGRESS — visible for cost planning; backend port from Wan2.2 pipeline still pending.",
-    disabled: true,
-  },
-  {
-    id: "wan22-local",
-    label: "Wan2.2 GB10 Local (free, batch only)",
-    costHint: "$0",
-    desc: "DGX Wan2.2-Fun-InP A14B — ~15-20 min/clip without sm_100 kernels. Batch overnight only.",
-  },
-  {
-    id: "ltx-local",
-    label: "LTX Local (free, fast)",
-    costHint: "$0",
-    desc: "DGX LTX-Video 2B — fast (~90s/clip), lower quality than Wan2.2",
-  },
-];
+// The tier list is lib/vater/pricing.ts CUSTOMER_ANIMATION_TIERS — one
+// source for the dropdown, the confirm modal and the server charge. Local
+// GB10 tiers and unwired backends are simply not in it.
+const QUALITY_OPTIONS = CUSTOMER_ANIMATION_TIERS.map((t) => {
+  const p = ANIMATION_PRICES[t.id];
+  return {
+    id: t.id,
+    group: t.group,
+    label: `${p.label}${t.recommended ? " ⭐" : ""}`,
+    priceCents: p.priceCents,
+    estCostCents: p.estCostCents,
+    eta: p.etaLabel,
+    desc: t.blurb,
+    cartoonUnsafe: t.cartoonUnsafe === true,
+  };
+});
 
 function AnimationPanel({
   projectId,
   scene,
   onSceneUpdated,
+  billing,
 }: {
   projectId: string;
   scene: SceneSpec;
   onSceneUpdated: (scene: SceneSpec) => void;
+  billing: BillingMode;
 }) {
   const { toast } = useToast();
   const [animationPrompt, setAnimationPrompt] = useState(
@@ -449,6 +381,9 @@ function AnimationPanel({
     scene.holdStartPose ?? true,
   );
   const [isAnimating, startAnim] = useTransition();
+  const [moneyConfirm, setMoneyConfirm] = useState<MoneyConfirmRequest | null>(
+    null,
+  );
   // Armed after the first click on a Veo tier with a cartoon-unsafe warning;
   // the second click proceeds. Reset whenever the tier changes.
   const [veoConfirm, setVeoConfirm] = useState(false);
@@ -482,37 +417,51 @@ function AnimationPanel({
   const qualityInfo = QUALITY_OPTIONS.find((q) => q.id === quality);
 
   const handleAnimate = () => {
-    // Pre-flight: refuse anything we know will fail before paying for a
-    // network round-trip + DGX cold start.
-    if (qualityInfo?.disabled) {
-      setStatusMsg({
-        kind: "error",
-        text: `${qualityInfo.label} is not yet wired. Pick Wan2.2 Modal or Kling.`,
-      });
-      toast({
-        title: "Backend not wired",
-        description: `${qualityInfo.label} — pick Wan2.2 Modal L40S for cartoon style.`,
-        variant: "warning",
-      });
-      return;
-    }
-    if (qualityInfo?.cartoonUnsafe && !veoConfirm) {
+    if (!qualityInfo) return;
+    if (qualityInfo.cartoonUnsafe && !veoConfirm) {
       // Inline warning instead of a native confirm() — browser dialogs block
       // the event loop. The button re-fires once the user acknowledges.
       setVeoConfirm(true);
       setStatusMsg({
         kind: "error",
-        text: `${qualityInfo.label} blocks cartoon-style images via Google Veo's safety filter. If this scene is photoreal, click Animate again to proceed; if it's a cartoon (FireRed/SDXL), pick Wan2.2 or Kling instead.`,
+        text: `${qualityInfo.label} blocks cartoon-style images via Google Veo's safety filter. If this scene is photoreal, click Animate again to proceed; if it's a cartoon, pick a Wan 2.2 or Kling tier instead.`,
       });
       return;
     }
     setVeoConfirm(false);
+    const motionLabel =
+      motionIntensity === "subtle"
+        ? "Subtle"
+        : motionIntensity === "bold"
+          ? "Bold"
+          : "Normal";
+    setMoneyConfirm({
+      title: `${isAnimated ? "Re-animate" : "Animate"} scene ${scene.idx + 1} with ${qualityInfo.label.replace(" ⭐", "")}?`,
+      lines: [
+        `Turns this still into a ~${clampedDuration}s video clip. ${qualityInfo.desc}`,
+        `Motion: ${motionLabel}${holdStartPose ? " + Hold start pose" : ""} · Camera: ${fixedCamera ? "fixed" : "free"} · Prompt: ${
+          animationPrompt.trim() ? "yours" : "auto-picked from the scene"
+        }.`,
+        isAnimated
+          ? "Replaces the current clip (new seed). Takes about " + qualityInfo.eta + "."
+          : "Takes about " + qualityInfo.eta + ". You can keep editing other scenes meanwhile.",
+      ],
+      unitCents: qualityInfo.priceCents,
+      unitLabel: "clip",
+      count: 1,
+      estCostCents: qualityInfo.estCostCents,
+      onConfirm: runAnimate,
+    });
+  };
+
+  const runAnimate = () => {
+    if (!qualityInfo) return;
     // Animation prompt is OPTIONAL — if blank, the DGX worker runs the
     // auto-planner and picks motion based on imagePrompt + beatText.
     const prompt = animationPrompt.trim();
     setStatusMsg({
       kind: "pending",
-      text: `Sending to ${qualityInfo?.label ?? quality}… this takes 30–120s.`,
+      text: `Sending to ${qualityInfo.label}… about ${qualityInfo.eta}.`,
     });
     startAnim(async () => {
       try {
@@ -531,7 +480,7 @@ function AnimationPanel({
             }),
           },
         );
-        let data: { error?: string; scene?: unknown; animate?: { model?: string; durationSeconds?: number; cost?: number } } = {};
+        let data: { error?: string; scene?: unknown; animate?: { model?: string; durationSeconds?: number; cost?: number }; billing?: { chargedCents?: number } } = {};
         try {
           data = await res.json();
         } catch {
@@ -545,9 +494,13 @@ function AnimationPanel({
           throw new Error("animate response missing scene");
         }
         onSceneUpdated(data.scene as SceneSpec);
+        const charged =
+          typeof data.billing?.chargedCents === "number"
+            ? data.billing.chargedCents
+            : qualityInfo.priceCents;
         const okMsg = `✅ Animated — ${data.animate?.model || "i2v"} · ${
           data.animate?.durationSeconds || clampedDuration
-        }s · $${(data.animate?.cost ?? 0).toFixed(3)}`;
+        }s · ${billing.unmetered ? "studio account, no charge" : `charged ${formatPrice(charged)}`}`;
         setStatusMsg({ kind: "success", text: okMsg });
         toast({
           title: `Scene ${scene.idx + 1} ${
@@ -606,19 +559,19 @@ function AnimationPanel({
   const handleRevertToStill = () => {
     startRevert(async () => {
       try {
-        // Revert by clearing the video fields; the backend treats any
-        // scene with mediaType="image" (or missing videoUrl) as still.
-        // We do this via a direct scene update — piggyback on the existing
-        // overlay route isn't right; there's no revert endpoint yet, so
-        // we'll post the shape directly to the scene/animate route with
-        // a clear flag. For now, use a minimal Prisma update proxy via
-        // /api/vater/youtube/[id]/scene/overlay with action=clear is not
-        // correct either. Simplest: just client-side patch the scenesJson
-        // by calling a future endpoint. TODO: add /scene/revert route.
+        const res = await fetch(`/api/vater/youtube/${projectId}/scene/revert`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sceneIdx: scene.idx }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+        if (data.scene) onSceneUpdated(data.scene as SceneSpec);
+        setStatusMsg(null);
         toast({
-          title: "Revert to still — coming soon",
-          description:
-            "Soon: revert button will clear videoUrl and flip back to Ken Burns. For now, re-animate to roll a new clip.",
+          title: `Scene ${scene.idx + 1} back to still`,
+          description: "Clip removed from the project (free). The file stays on disk; animate again any time.",
+          variant: "success",
         });
       } catch (err) {
         toast({
@@ -650,7 +603,9 @@ function AnimationPanel({
         >
           {isAnimated
             ? `${scene.animBackend ?? "video"} • v${scene.videoVersion ?? 0}`
-            : qualityInfo?.costHint ?? "—"}
+            : qualityInfo
+              ? `${formatPrice(qualityInfo.priceCents)}/clip`
+              : "—"}
         </span>
       </div>
 
@@ -693,20 +648,19 @@ function AnimationPanel({
             onChange={(e) => setQuality(e.target.value as AnimationQuality)}
             className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-[11px] text-zinc-200 focus:border-zinc-600 focus:outline-none"
           >
-            {QUALITY_OPTIONS.map((q) => (
-              <option
-                key={q.id}
-                value={q.id}
-                disabled={q.disabled}
-                className={q.disabled ? "text-zinc-600" : ""}
-              >
-                {q.label} — {q.costHint}
-              </option>
+            {TIER_GROUP_ORDER.map((g) => (
+              <optgroup key={g} label={ANIMATION_TIER_GROUPS[g].label}>
+                {QUALITY_OPTIONS.filter((q) => q.group === g).map((q) => (
+                  <option key={q.id} value={q.id} title={q.desc}>
+                    {q.label} — {formatPrice(q.priceCents)} · {q.eta}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
           {qualityInfo?.cartoonUnsafe ? (
             <p className="mt-1 text-[10px] text-amber-400">
-              ⚠ Veo blocks cartoon faces. Pick Wan2.2 or Kling instead.
+              ⚠ Veo blocks cartoon faces. Pick a Wan 2.2 or Kling tier instead.
             </p>
           ) : null}
         </div>
@@ -734,18 +688,18 @@ function AnimationPanel({
       <div className="rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
         <div className="mb-1.5 flex items-center justify-between">
           <span className="text-[10px] uppercase tracking-wider text-zinc-500">
-            Motion
+            Motion — how much the picture moves
           </span>
-          <span className="text-[9px] text-zinc-600">
-            Wan2.2 only
+          <span className="text-[9px] text-zinc-600" title="Kling, Luma and Veo ignore these and pick their own motion.">
+            Wan 2.2 / Hunyuan tiers only
           </span>
         </div>
         <div className="grid grid-cols-3 gap-1">
           {(
             [
-              { id: "subtle", label: "Subtle", desc: "Slow, calm, mouth closed" },
-              { id: "normal", label: "Normal", desc: "Default motion" },
-              { id: "bold", label: "Bold", desc: "Action beats only" },
+              { id: "subtle", label: "Subtle", desc: "Slow, calm, mouth closed — the default" },
+              { id: "normal", label: "Normal", desc: "Everyday movement" },
+              { id: "bold", label: "Bold", desc: "Big movement — action beats only" },
             ] as const
           ).map((opt) => {
             const active = motionIntensity === opt.id;
@@ -784,7 +738,9 @@ function AnimationPanel({
       </div>
 
       <p className="text-[10px] text-zinc-600">
-        {qualityInfo?.desc || ""}
+        {qualityInfo
+          ? `${qualityInfo.desc} ${ANIMATION_TIER_GROUPS[qualityInfo.group].hint}`
+          : ""}
       </p>
 
       <button
@@ -794,19 +750,10 @@ function AnimationPanel({
         className="w-full rounded-lg bg-fuchsia-500/20 px-4 py-2 text-xs font-semibold text-fuchsia-300 transition-colors hover:bg-fuchsia-500/30 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isAnimating
-          ? `Animating… (~${
-              quality === "wan22-local" ? "15-20 min" :
-              quality === "ltx-local" ? "90-300s" :
-              quality === "modal-wan22-narrative-fast" ? "~2 min" :
-              quality === "modal-wan22-narrative" ? "~5 min" :
-              quality === "modal-hunyuan-narrative-fast" ? "~1 min" :
-              quality === "modal-hunyuan-narrative" ? "~3 min" :
-              quality === "modal-wan22-fast" ? "~2 min" :
-              quality === "modal-wan22" ? "~3 min" : "30-120s"
-            })`
+          ? `Animating… (about ${qualityInfo?.eta ?? "a few min"})`
           : isAnimated
-            ? "Re-animate (new seed)"
-            : "Animate this scene"}
+            ? `Re-animate (new seed) — ${qualityInfo ? formatPrice(qualityInfo.priceCents) : ""}`
+            : `Animate this scene — ${qualityInfo ? formatPrice(qualityInfo.priceCents) : ""}`}
       </button>
 
       {isAnimated ? (
@@ -816,7 +763,7 @@ function AnimationPanel({
           disabled={isAnimating || isReverting}
           className="w-full rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-1.5 text-[11px] text-zinc-400 hover:text-zinc-200 disabled:opacity-50"
         >
-          Revert to still image
+          Revert to still image (free)
         </button>
       ) : null}
 
@@ -837,12 +784,19 @@ function AnimationPanel({
         </div>
       ) : null}
 
-      {scene.animCost !== undefined ? (
+      {scene.animQuality ? (
         <p className="text-[10px] text-zinc-600">
-          Last cost: ${scene.animCost.toFixed(3)} •{" "}
-          {scene.animModel || scene.animBackend}
+          Current clip: {scene.animModel || scene.animBackend}
+          {ANIMATION_PRICES[scene.animQuality as AnimationQuality]
+            ? ` • billed ${formatPrice(ANIMATION_PRICES[scene.animQuality as AnimationQuality].priceCents)}`
+            : ""}
         </p>
       ) : null}
+      <MoneyConfirmModal
+        request={moneyConfirm}
+        billing={billing}
+        onClose={() => setMoneyConfirm(null)}
+      />
     </div>
   );
 }

@@ -70,6 +70,92 @@ export const FLAT_ACTION_PRICES = {
 
 export type FlatAction = keyof typeof FLAT_ACTION_PRICES;
 
+/**
+ * Tiers a customer may pick in the /animate editor + wizard, in display
+ * order, with plain-English copy. This is THE list every dropdown renders —
+ * a tier absent here is not offered anywhere (local GB10 tiers, EasyAnimate
+ * until its backend is wired). Prices come from ANIMATION_PRICES so the
+ * label, the confirm modal and the server charge can never disagree again
+ * (2026-08-26: the editor showed our Modal cost "~$0.16/clip" while the route
+ * billed $1.50).
+ */
+export type AnimationTierGroup = "calm" | "action" | "premium" | "photoreal";
+
+export interface CustomerAnimationTier {
+  id: AnimationQuality;
+  group: AnimationTierGroup;
+  /** One line a first-time user understands. */
+  blurb: string;
+  /** Cartoon/stylized stills get rejected by Google Veo's safety filter. */
+  cartoonUnsafe?: boolean;
+  recommended?: boolean;
+}
+
+export const ANIMATION_TIER_GROUPS: Record<AnimationTierGroup, { label: string; hint: string }> = {
+  calm: {
+    label: "Calm — talking, narrative, close-ups",
+    hint: "Gentle motion, mouth stays closed. Best for story and explainer scenes.",
+  },
+  action: {
+    label: "Action — fights, dance, big movement",
+    hint: "Energetic motion. Flails on calm shots — use only for action beats.",
+  },
+  premium: {
+    label: "Premium — third-party engines",
+    hint: "Kling / Luma via fal.ai. Any art style. Higher price per clip.",
+  },
+  photoreal: {
+    label: "Photoreal only — Google Veo",
+    hint: "Rejects cartoon faces. Only for photorealistic stills.",
+  },
+};
+
+export const CUSTOMER_ANIMATION_TIERS: ReadonlyArray<CustomerAnimationTier> = [
+  { id: "modal-wan22-narrative", group: "calm", recommended: true,
+    blurb: "Wan 2.2 with the calm-narrative training. Our default." },
+  { id: "modal-wan22-narrative-fast", group: "calm",
+    blurb: "Same result as Wan 2.2 Narrative, ~2× faster on a bigger GPU." },
+  { id: "modal-hunyuan-narrative", group: "calm",
+    blurb: "HunyuanVideo 1.5 — a different model family; try it if Wan looks off." },
+  { id: "modal-hunyuan-narrative-fast", group: "calm",
+    blurb: "Same result as Hunyuan, ~2× faster on a bigger GPU." },
+  { id: "modal-wan22", group: "action",
+    blurb: "Wan 2.2 Fun-InP — built for movement. Overshoots on quiet shots." },
+  { id: "modal-wan22-fast", group: "action",
+    blurb: "Same as Wan 2.2 Action, ~2× faster on a bigger GPU." },
+  { id: "kling-standard", group: "premium",
+    blurb: "Kling Standard 720p — reliable on cartoons and stylized art." },
+  { id: "kling-pro", group: "premium",
+    blurb: "Kling Pro 1080p — sharper output." },
+  { id: "kling-master", group: "premium",
+    blurb: "Kling v2 Master — flagship quality, most expensive clip we offer." },
+  { id: "luma", group: "premium",
+    blurb: "Luma Dream Machine — fast, good on realistic scenes." },
+  { id: "default", group: "photoreal", cartoonUnsafe: true,
+    blurb: "Veo 3 Fast 720p." },
+  { id: "default_1080p", group: "photoreal", cartoonUnsafe: true,
+    blurb: "Veo 3 Fast 1080p." },
+  { id: "high", group: "photoreal", cartoonUnsafe: true,
+    blurb: "Veo 3.1 — highest cinematic quality." },
+];
+
+const CUSTOMER_TIER_IDS = new Set<string>(CUSTOMER_ANIMATION_TIERS.map((t) => t.id));
+
+/** True for tiers a customer is allowed to submit. Server routes gate on this. */
+export function isCustomerAnimationQuality(quality: unknown): quality is AnimationQuality {
+  return typeof quality === "string" && CUSTOMER_TIER_IDS.has(quality);
+}
+
+/** GB10-local tiers — never offered, never accepted from the browser
+ *  (vater-modal-only doctrine: customer work never touches the DGX GPU). */
+export function isLocalAnimationQuality(quality: unknown): boolean {
+  return typeof quality === "string" && /-local$/.test(quality);
+}
+
+export function customerAnimationTier(quality: string): CustomerAnimationTier | null {
+  return CUSTOMER_ANIMATION_TIERS.find((t) => t.id === quality) ?? null;
+}
+
 export function getAnimationPriceCents(quality: string): number {
   const spec = ANIMATION_PRICES[quality as AnimationQuality];
   if (!spec) {
