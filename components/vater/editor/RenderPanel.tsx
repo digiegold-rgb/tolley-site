@@ -23,6 +23,72 @@ import {
   type AnimationTierGroup,
 } from "@/lib/vater/pricing";
 import type { AnimationQuality, MotionIntensity } from "@/lib/vater/video-spec";
+import { useEffect, useState } from "react";
+
+/** Live "something is running" state. `startedAt` = Date.now() at kickoff. */
+export type RunStatus = {
+  label: string;        // "Animating scene 1 with Kling Standard 720p"
+  startedAt: number;
+  etaLabel: string;     // "~2 min" per unit
+  step: number;         // 1-based unit in progress
+  total: number;
+  detail?: string | null; // last log line, if any
+};
+
+/** "~2 min" → 120, "~90 s" → 90, "~15-20 min" → 1050 (midpoint). */
+export function etaSeconds(label: string): number {
+  const m = label.match(/(\d+)(?:\s*-\s*(\d+))?\s*(min|s)\b/i);
+  if (!m) return 120;
+  const a = Number(m[1]);
+  const b = m[2] ? Number(m[2]) : a;
+  const v = (a + b) / 2;
+  return m[3].toLowerCase() === "min" ? v * 60 : v;
+}
+
+function fmtClock(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+export function RunStrip({ run }: { run: RunStatus }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const elapsed = Math.max(0, (now - run.startedAt) / 1000);
+  const perUnit = etaSeconds(run.etaLabel);
+  const expectedTotal = perUnit * run.total;
+  const pct = Math.min(96, Math.round((elapsed / expectedTotal) * 100));
+  const over = elapsed > expectedTotal;
+  return (
+    <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-semibold">
+          <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-amber-400 align-middle" />
+          Running — {run.label}
+          {run.total > 1 ? ` · ${run.step} of ${run.total}` : ""}
+        </span>
+        <span className="tabular-nums">
+          {fmtClock(elapsed)} elapsed · usually {run.etaLabel}
+          {run.total > 1 ? ` each (≈ ${fmtClock(expectedTotal)} total)` : ""}
+          {over ? " · taking longer than usual, still working" : ""}
+        </span>
+      </div>
+      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-amber-900/40">
+        <div className="h-full bg-amber-400 transition-all" style={{ width: `${pct}%` }} />
+      </div>
+      {run.detail ? (
+        <p className="mt-1 truncate font-mono text-[10px] text-amber-200/70">{run.detail}</p>
+      ) : (
+        <p className="mt-1 text-[10px] text-amber-200/70">
+          You can keep editing other scenes. Leaving the page does not cancel the job; the scene updates when it lands.
+        </p>
+      )}
+    </div>
+  );
+}
 
 export type RenderScope = "scene" | "selected" | "missing" | "all";
 
@@ -61,6 +127,7 @@ export type RenderPanelProps = {
   onSaveDraft: () => void;
   busy: { animating: boolean; redrawing: boolean; rendering: boolean; saving: boolean };
   progressLine?: string | null;
+  run?: RunStatus | null;
   unmetered: boolean;
 };
 
@@ -264,6 +331,7 @@ export function RenderPanel(p: RenderPanelProps) {
       <p className="rounded-md border border-violet-500/30 bg-zinc-950/60 px-3 py-2 text-[11px] text-violet-200">
         {p.progressLine ?? sentence}
       </p>
+      {p.run ? <RunStrip run={p.run} /> : null}
 
       <div className="flex flex-wrap items-center gap-2">
         <button

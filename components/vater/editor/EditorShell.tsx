@@ -36,6 +36,7 @@ import {
   RenderPanel,
   engineSupportsMotionControls,
   type RenderScope,
+  type RunStatus,
 } from "./RenderPanel";
 
 const RENDER_PRICE = FLAT_ACTION_PRICES.render.priceCents;
@@ -88,6 +89,10 @@ export function EditorShell({ project: initialProject }: Props) {
   const [isSuggesting, startSuggest] = useTransition();
   const [isAnimatingScenes, startAnimateScenes] = useTransition();
   const [perSceneProgress, setPerSceneProgress] = useState<string | null>(null);
+  // Live run strip (timer + step). Set synchronously at kickoff — a state
+  // update made INSIDE startTransition never painted (2026-08-26: the panel
+  // showed the static sentence while a Kling clip rendered).
+  const [run, setRun] = useState<RunStatus | null>(null);
   // EVERY paid click goes through MoneyConfirmModal — list price, count,
   // and (for studio accounts) the note that no card is charged.
   const billing = useBillingMode();
@@ -163,6 +168,8 @@ export function EditorShell({ project: initialProject }: Props) {
   // Keep status in sync if the parent route reloads us with fresh data.
   useEffect(() => {
     setStatus(initialProject.status);
+    // A finished render arrives as status "ready" via router.refresh().
+    if (initialProject.status === "ready") setRun((r) => (r?.label.startsWith("Rendering") ? null : r));
   }, [initialProject.status]);
 
   const activeScene =
@@ -289,6 +296,8 @@ export function EditorShell({ project: initialProject }: Props) {
   };
 
   const runBulkRegen = (targets: SceneSpec[]) => {
+    const startedAt = Date.now();
+    setRun({ label: `Redrawing picture for scene ${targets[0].idx + 1}`, startedAt, etaLabel: "~30 s", step: 1, total: targets.length });
     startBulkRegen(async () => {
       setBulkRegenProgress({ total: targets.length, done: 0, failed: 0 });
       let done = 0;
@@ -323,8 +332,10 @@ export function EditorShell({ project: initialProject }: Props) {
           });
         }
         setBulkRegenProgress({ total: targets.length, done, failed });
+        setRun({ label: `Redrawing pictures`, startedAt, etaLabel: "~30 s", step: Math.min(targets.length, done + failed + 1), total: targets.length });
       }
       setBulkRegenProgress(null);
+      setRun(null);
       toast({
         title:
           failed === 0
@@ -400,12 +411,17 @@ export function EditorShell({ project: initialProject }: Props) {
   // Per-scene path: Kling/Luma/Veo (no batch container) or a single scene.
   // Sequential — the route holds a per-scene lock and a 6/min rate limit.
   const runPerSceneAnimate = (targets: number[]) => {
+    const label = ANIMATION_PRICES[engine].label;
+    const eta = ANIMATION_PRICES[engine].etaLabel;
+    const startedAt = Date.now();
+    setRun({ label: `Animating scene ${targets[0] + 1} with ${label}`, startedAt, etaLabel: eta, step: 1, total: targets.length });
     startAnimateScenes(async () => {
       let done = 0;
       let failed = 0;
       for (const idx of targets) {
         const sc = scenesJson.find((s) => s.idx === idx);
-        setPerSceneProgress(`Animating scene ${idx + 1} (${done + failed + 1}/${targets.length}) with ${ANIMATION_PRICES[engine].label}…`);
+        setRun({ label: `Animating scene ${idx + 1} with ${label}`, startedAt, etaLabel: eta, step: done + failed + 1, total: targets.length });
+        setPerSceneProgress(`Animating scene ${idx + 1} (${done + failed + 1}/${targets.length}) with ${label}…`);
         try {
           const res = await fetch(`/api/vater/youtube/${initialProject.id}/scene/animate`, {
             method: "POST",
@@ -434,6 +450,7 @@ export function EditorShell({ project: initialProject }: Props) {
         }
       }
       setPerSceneProgress(null);
+      setRun(null);
       toast({
         title: failed === 0 ? `Animated ${done}/${targets.length}` : `Finished with ${failed} failure${failed === 1 ? "" : "s"}`,
         description: `${done} succeeded, ${failed} failed. Failed clips are never charged.`,
@@ -469,6 +486,10 @@ export function EditorShell({ project: initialProject }: Props) {
   const handleRedraw = () => handleRegenSelectedImages(targetsForScope());
 
   const runAnimateAll = (sceneIdxs: number[]) => {
+    const label = ANIMATION_PRICES[engine].label;
+    const eta = ANIMATION_PRICES[engine].etaLabel;
+    const startedAt = Date.now();
+    setRun({ label: `Cloud batch — ${sceneIdxs.length} scenes with ${label}`, startedAt, etaLabel: eta, step: 1, total: sceneIdxs.length, detail: "starting the cloud container…" });
     startAnimateAll(async () => {
       try {
         // Step 1: kick off the batch (returns immediately)
@@ -535,6 +556,14 @@ export function EditorShell({ project: initialProject }: Props) {
             phase: job.phase ?? "running",
             recentLogs,
           });
+          setRun({
+            label: `Cloud batch — ${sceneCount} scenes with ${label}`,
+            startedAt,
+            etaLabel: eta,
+            step: Math.min(sceneCount, done + failed + 1),
+            total: sceneCount,
+            detail: recentLogs[recentLogs.length - 1] ?? job.phase ?? null,
+          });
           if (job.status === "done") {
             reachedDone = true;
             break;
@@ -571,6 +600,7 @@ export function EditorShell({ project: initialProject }: Props) {
               : ("success" as const),
         });
         setAnimateAllProgress(null);
+        setRun(null);
         setSelectedIdxs([]);
         router.refresh();
       } catch (err) {
@@ -580,6 +610,7 @@ export function EditorShell({ project: initialProject }: Props) {
           variant: "error",
         });
         setAnimateAllProgress(null);
+        setRun(null);
       }
     });
   };
@@ -600,6 +631,7 @@ export function EditorShell({ project: initialProject }: Props) {
   };
 
   const runRecompose = () => {
+    setRun({ label: "Rendering the final video on the render farm", startedAt: Date.now(), etaLabel: "~5 min", step: 1, total: 1, detail: "kicking off…" });
     startCompose(async () => {
       try {
         const res = await fetch(
@@ -614,10 +646,12 @@ export function EditorShell({ project: initialProject }: Props) {
           variant: "success",
         });
         setStatus("editing");
+        setRun((r) => (r ? { ...r, detail: "render started — this page shows it once status flips to ready (refresh in a few minutes)" } : r));
         // Trigger a soft reload so the project row refetches from the poll
         // route once compose finishes. Router refresh is cheap.
         router.refresh();
       } catch (err) {
+        setRun(null);
         toast({
           title: "Compose failed",
           description: err instanceof Error ? err.message : String(err),
@@ -706,6 +740,7 @@ export function EditorShell({ project: initialProject }: Props) {
               ? `Redrawing pictures: ${bulkRegenProgress.done}/${bulkRegenProgress.total}${bulkRegenProgress.failed ? ` · ${bulkRegenProgress.failed} failed` : ""}`
               : null)
         }
+        run={run}
         unmetered={billing.unmetered}
       />
 
