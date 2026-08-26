@@ -77,7 +77,12 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   if (variant === "video") {
     kind = `scene/${sceneIdx}/video/${version}`;
   } else {
-    kind = version === 0 ? `scene/${sceneIdx}` : `scene/${sceneIdx}/${version}`;
+    // ALWAYS the versioned PNG route, even for v0. The bare
+    // /vater/file/<job>/scene/<idx> route answers with the v0 CLIP when one
+    // exists, so an "image" request came back as video/mp4 the moment a
+    // scene was animated — which blanked the Library card thumbnail for #40
+    // and #47 (2026-08-26). /scene/<idx>/0 is the still, unconditionally.
+    kind = `scene/${sceneIdx}/${version}`;
   }
   const defaultContentType = variant === "video" ? "video/mp4" : "image/png";
   // Forward the browser's Range header upstream so <video> elements get

@@ -307,9 +307,16 @@ function LibraryCard({
   const cost = parseVideoCost(project.costJson);
   // Prefer the first scene's image as the card thumbnail so the preview
   // actually represents the video, not a random cinematic preset sample.
-  const firstSceneImage =
-    scenes.find((s) => typeof s?.imageUrl === "string" && s.imageUrl)?.imageUrl ??
-    null;
+  // Pin the still VERSION and the image variant: the bare scene URL is
+  // ambiguous once a scene has been animated (v0 clip vs v0 still) and used
+  // to come back as video/mp4, blanking the card the moment scene 0 got a
+  // clip (2026-08-26, #40/#47).
+  const firstScene = scenes.find((s) => typeof s?.imageUrl === "string" && s.imageUrl);
+  const firstSceneImage = firstScene
+    ? `${firstScene.imageUrl}${firstScene.imageUrl.includes("?") ? "&" : "?"}variant=image&v=${
+        typeof firstScene.version === "number" && firstScene.version >= 0 ? firstScene.version : 0
+      }`
+    : null;
   const stale = isFinalMp4Stale(project);
 
   const videoSrc = finalVideoPlaybackUrl(project);
