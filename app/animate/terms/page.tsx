@@ -331,9 +331,26 @@ const SECTIONS: LegalSectionContent[] = [
     heading: "24. SMS (optional account texts)",
     paragraphs: [
       "Jelly Studio (Your KC Homes LLC) may send recurring informational texts to a mobile number you provide if you opt in — when a film is ready, and about your studio account. Up to 8 messages per month. Message and data rates may apply.",
-      "Consent is not required to request a seat or use the Studio. Reply STOP to cancel. Reply HELP for help, or contact jared@yourkchomes.com / 913-283-3826. You may also opt in by texting START or YES to 913-914-9429.",
-      "Mobile numbers are not sold, rented, or shared for marketing. Full privacy terms are at https://www.tolley.io/animate/privacy. This SMS program is not Wash & Dry rental texting.",
     ],
+    children: (
+      <>
+        <p style={LEGAL_BODY_STYLE}>
+          Consent is not required to request a seat or use the Studio. Reply{" "}
+          <span style={LEGAL_STRONG_STYLE}>STOP</span> to cancel. Reply{" "}
+          <span style={LEGAL_STRONG_STYLE}>HELP</span> for help, or contact
+          jared@yourkchomes.com / 913-283-3826. You may also opt in by texting
+          START or YES to 913-914-9429.
+        </p>
+        <p style={LEGAL_BODY_STYLE}>
+          Mobile numbers are not sold, rented, or shared for marketing. Full
+          privacy terms are at https://www.tolley.io/animate/privacy. This SMS
+          program is not Wash & Dry rental texting.
+        </p>
+        <p style={LEGAL_BODY_STYLE}>
+          Carriers are not liable for any delayed or undelivered messages.
+        </p>
+      </>
+    ),
   },
 ];
 
