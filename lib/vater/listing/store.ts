@@ -13,6 +13,7 @@ import type { Prisma, VaterListingJob } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { getBalance } from "@/lib/vater/billing/ledger";
+import { hasUnmeteredStudioAccess } from "@/lib/vater/billing/check-budget";
 import { hasVaterListingJobTable } from "@/lib/vater/schema-probe";
 import { isMissingRelationError } from "@/lib/vater/beta-schema";
 import { resolveTenantIdentity } from "@/lib/vater/tenant-identity";
@@ -370,6 +371,17 @@ export async function computePreflight(input: PreflightInput): Promise<ListingPr
   // Budget
   const priceCents = jobPriceCents(job);
   const estCostCents = jobEstCostCents(job);
+  // Unmetered accounts (env allowlist ∪ VaterAccount.unmetered — the same
+  // grant /stage's checkBudget uses) never see the credit blocker: they are
+  // billed out-of-band and gate at 0¢. Without this the wizard showed
+  // "Add credit" to an owner with an empty ledger while /stage would have
+  // let the job through for free.
+  let unmetered = false;
+  try {
+    unmetered = await hasUnmeteredStudioAccess(job.userId);
+  } catch {
+    unmetered = false;
+  }
   let balanceCents = input.balanceCents;
   if (balanceCents === undefined) {
     try {
@@ -379,7 +391,8 @@ export async function computePreflight(input: PreflightInput): Promise<ListingPr
       balanceCents = 0;
     }
   }
-  if (sku && priceCents > 0 && balanceCents < priceCents) {
+  if (!Number.isFinite(balanceCents)) balanceCents = 0; // JSON-safe (callers pass Infinity to skip)
+  if (!unmetered && sku && priceCents > 0 && (input.balanceCents ?? balanceCents) < priceCents) {
     blockers.push({
       code: "insufficient_credits",
       message: `This costs $${(priceCents / 100).toFixed(2)} and your balance is $${(balanceCents / 100).toFixed(2)}.`,
@@ -403,6 +416,7 @@ export async function computePreflight(input: PreflightInput): Promise<ListingPr
     priceCents,
     estCostCents,
     balanceCents,
+    unmetered,
     agentProfileComplete: profile.complete,
     licenseVerified: profile.licenseStatus === "verified",
     lines,

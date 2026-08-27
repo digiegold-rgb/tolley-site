@@ -90,7 +90,8 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
     { label: 'Label on frame', value: spec?.materialChange ? 'AI-generated · virtually staged' : 'virtually staged', tone: 'faint' },
     { label: 'Failed render', value: 'never charged', tone: 'cyan' },
   ];
-  if (preflight && typeof preflight.balanceCents === 'number') notes.push({ label: 'your balance', value: `$${(preflight.balanceCents / 100).toFixed(2)}` });
+  if (preflight?.unmetered) notes.push({ label: 'billing', value: 'unmetered account — no credit needed', tone: 'cyan' });
+  else if (preflight && typeof preflight.balanceCents === 'number') notes.push({ label: 'your balance', value: `$${(preflight.balanceCents / 100).toFixed(2)}` });
 
   const stageNow = async () => {
     if (!sku) return;

@@ -116,6 +116,8 @@ export interface ListingPreflight {
   priceCents: number;
   estCostCents: number;
   balanceCents: number;
+  /** Owner / studio / VaterAccount.unmetered — no credit gate, billed out-of-band. */
+  unmetered: boolean;
   agentProfileComplete: boolean;
   licenseVerified: boolean;
   /** Human lines for the MoneyConfirm modal. */

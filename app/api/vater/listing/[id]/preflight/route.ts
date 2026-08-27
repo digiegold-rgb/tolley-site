@@ -32,6 +32,7 @@ export async function GET(_request: NextRequest, ctx: Ctx) {
     priceCents: pre.priceCents,
     estCostCents: pre.estCostCents,
     balanceCents: pre.balanceCents,
+    unmetered: pre.unmetered,
     agentProfileComplete: pre.agentProfileComplete,
     licenseVerified: pre.licenseVerified,
     lines: pre.lines,
