@@ -21,7 +21,7 @@ export const ANIMATE_LEGAL_ADDRESS = "Independence, Missouri, United States";
 export const ANIMATE_LEGAL_EMAIL = "jared@yourkchomes.com"; // tolley.io has no MX — support@ does not exist
 
 /** Click-wrap version stamp — stored on User.termsVersion. */
-export const TOS_VERSION = "2026-08-15";
+export const TOS_VERSION = "2026-08-26";
 export const ANIMATE_LEGAL_EFFECTIVE_DATE = "August 15, 2026";
 export const ANIMATE_LEGAL_LAST_UPDATED = "August 26, 2026";
 
