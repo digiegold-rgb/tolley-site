@@ -97,6 +97,44 @@ export function hasVaterCreditLedgerTable(): Promise<boolean> {
 }
 
 /**
+ * True once the VaterListingJob table exists (Listing Studio by Jelly!,
+ * migration prisma/migrations/20260827_vater_listing_jobs).
+ *
+ * ⚠️ NOT "ListingJob" — that name is the shop cross-listing queue.
+ * Behaviour when missing: every /api/vater/listing/* route answers
+ * FEATURE_NOT_READY and the proof page 404s.
+ */
+export function hasVaterListingJobTable(): Promise<boolean> {
+  return probe("VaterListingJob", async () => {
+    const rows = await prisma.$queryRaw<{ n: bigint }[]>`
+      SELECT COUNT(*)::bigint AS n
+      FROM information_schema.tables
+      WHERE table_schema = current_schema() AND table_name = 'VaterListingJob'
+    `;
+    return Number(rows[0]?.n ?? 0) > 0;
+  });
+}
+
+/**
+ * True once VaterAccount carries the origin + license/agent-profile columns
+ * (migration prisma/migrations/20260827_vater_account_origin_license).
+ * Probes the first and last column of that migration so a half-applied
+ * script reads as "not ready".
+ */
+export function hasVaterAccountOriginColumns(): Promise<boolean> {
+  return probe("VaterAccount.origin+narMember", async () => {
+    const rows = await prisma.$queryRaw<{ n: bigint }[]>`
+      SELECT COUNT(*)::bigint AS n
+      FROM information_schema.columns
+      WHERE table_schema = current_schema()
+        AND table_name = 'VaterAccount'
+        AND column_name IN ('origin', 'narMember')
+    `;
+    return Number(rows[0]?.n ?? 0) === 2;
+  });
+}
+
+/**
  * Prisma "table does not exist" (P2021) / "column does not exist" (P2022).
  * Used as a belt-and-braces catch alongside the probes above, for the race
  * where the probe succeeds and the migration is rolled back under us.

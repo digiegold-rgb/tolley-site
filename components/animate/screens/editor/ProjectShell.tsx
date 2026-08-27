@@ -878,8 +878,8 @@ function RenderInFlightBar({
         margin: '0 auto 20px',
         padding: '12px 16px',
         borderRadius: JELLY_TOKENS.radius.xl,
-        border: `1px solid ${JELLY_TOKENS.brand}55`,
-        background: `${JELLY_TOKENS.brand}0d`,
+        border: `1px solid ${JELLY_TOKENS.brandOutline}`,
+        background: JELLY_TOKENS.brandGhost,
         fontFamily: JELLY_TOKENS.font,
       }}
     >
@@ -925,7 +925,7 @@ function RenderInFlightBar({
             marginTop: 10,
             height: 5,
             borderRadius: 999,
-            background: `${JELLY_TOKENS.brand}22`,
+            background: JELLY_TOKENS.brandOutline,
             overflow: 'hidden',
           }}
         >

@@ -9,17 +9,20 @@
 import * as React from 'react';
 import { JELLY_TOKENS } from './tokens';
 import { Icon } from './Icon';
+import { useProduct } from './product-context';
 
 export interface HelpFABProps {
   onClick: () => void;
 }
 
 export function HelpFAB({ onClick }: HelpFABProps): React.ReactElement {
+  const brand = useProduct();
   return (
     <div
       role="button"
       tabIndex={0}
       aria-label="Help"
+      title={`${brand.name} — help`}
       data-testid="help-fab"
       className="jc-pill-gradient"
       onClick={onClick}

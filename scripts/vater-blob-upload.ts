@@ -10,6 +10,12 @@
  * Backfill all ready projects still pointing at the DGX proxy path:
  *   npx tsx scripts/vater-blob-upload.ts --backfill [--limit N] [--dry-run]
  *
+ * Arbitrary asset at an explicit Blob pathname (Listing Studio stills, MLS
+ * .txt, thumbnails — content-autopilot/vater_listing.py):
+ *   npx tsx scripts/vater-blob-upload.ts --file /path/x.png --key listing/<id>/staged.png [--content-type image/png]
+ *   --content-type defaults from the extension (png/jpg/jpeg/webp/txt/mp4);
+ *   mp4s still get the faststart remux, everything else uploads verbatim.
+ *
  * Every upload is remuxed with `-movflags +faststart` first (idempotent,
  * stream-copy) — pre-Aug-7 renders have moov at the end of the file.
  */
@@ -73,6 +79,48 @@ async function uploadOne(filePath: string, projectId: string): Promise<string> {
   }
 }
 
+const CONTENT_TYPES: Record<string, string> = {
+  mp4: "video/mp4",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  txt: "text/plain; charset=utf-8",
+  json: "application/json",
+};
+
+/** Upload any file to an explicit Blob pathname. mp4 → faststart remux first. */
+async function uploadKey(filePath: string, key: string, contentType?: string | null): Promise<string> {
+  if (!existsSync(filePath)) throw new Error(`missing file: ${filePath}`);
+  const ext = (filePath.split(".").pop() ?? "").toLowerCase();
+  const ct = contentType || CONTENT_TYPES[ext] || "application/octet-stream";
+  let body = readFileSync(filePath);
+  let tmp: string | null = null;
+  if (ext === "mp4") {
+    tmp = join(tmpdir(), `vater-faststart-${process.pid}-${Date.now()}.mp4`);
+    const ff = spawnSync(
+      "ffmpeg",
+      ["-y", "-i", filePath, "-c", "copy", "-movflags", "+faststart", tmp],
+      { stdio: ["ignore", "ignore", "pipe"], timeout: 300_000 },
+    );
+    if (ff.status !== 0 || !existsSync(tmp)) {
+      throw new Error(`faststart remux failed (${ff.status}): ${String(ff.stderr).slice(-300)}`);
+    }
+    body = readFileSync(tmp);
+  }
+  try {
+    const blob = await put(key.replace(/^\/+/, ""), body, {
+      access: "public",
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      contentType: ct,
+    });
+    return `${blob.url}?v=${Date.now()}`;
+  } finally {
+    if (tmp) { try { unlinkSync(tmp); } catch { /* tmp cleanup best-effort */ } }
+  }
+}
+
 async function backfill() {
   const prisma = new PrismaClient();
   const limit = Number(arg("--limit")) || undefined;
@@ -123,9 +171,17 @@ async function backfill() {
 async function main() {
   if (has("--backfill")) return backfill();
   const file = arg("--file");
+  const key = arg("--key");
+  if (file && key) {
+    const url = await uploadKey(file, key, arg("--content-type"));
+    console.log(JSON.stringify({ url }));
+    return;
+  }
   const project = arg("--project");
   if (!file || !project) {
-    console.error("usage: --file <final.mp4> --project <projectId> | --backfill [--limit N] [--dry-run]");
+    console.error(
+      "usage: --file <final.mp4> --project <projectId> | --file <path> --key <blob/pathname> [--content-type <mime>] | --backfill [--limit N] [--dry-run]",
+    );
     process.exit(2);
   }
   const url = await uploadOne(file, project);

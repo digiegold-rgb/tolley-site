@@ -77,10 +77,15 @@ function LeadCard({
   const [approveState, setApproveState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [approveMsg, setApproveMsg] = useState("");
   const fields = lead.structured ?? {};
-  // Jelly Studio invite requests (from /animate) get a one-click approve:
-  // mints an email-locked code, emails the signup link, marks the row won.
+  // Jelly Studio invite requests (from /animate) and Listing Studio ones
+  // (from /realestateanimated, subsite "realestate") get a one-click approve:
+  // mints an email-locked code, emails the signup link for THAT front door,
+  // marks the row won.
   const isInviteRequest =
-    lead.subsite === "animate" && lead.action === "invite-request" && !!lead.email;
+    (lead.subsite === "animate" || lead.subsite === "realestate") &&
+    lead.action === "invite-request" &&
+    !!lead.email;
+  const inviteProduct = lead.subsite === "realestate" ? "realestate" : "jelly";
   const canApprove = isInviteRequest && lead.status !== "won" && lead.status !== "lost";
   const approveInvite = async () => {
     if (!lead.email) return;
@@ -89,7 +94,7 @@ function LeadCard({
       const r = await fetch("/api/hq/vater-users", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "mint-invite", count: 1, email: lead.email, send: true }),
+        body: JSON.stringify({ action: "mint-invite", count: 1, email: lead.email, send: true, product: inviteProduct }),
       });
       const data = (await r.json().catch(() => ({}))) as {
         sent?: boolean;

@@ -15,6 +15,8 @@
 import * as React from 'react';
 import { JELLY_TOKENS, glass } from './tokens';
 import { useTheme, useRoute } from './theme-context';
+import { useProduct } from './product-context';
+import type { Brand } from './brands';
 import { MicroLabel } from './cinema';
 import { APP_VERSION } from '@/lib/vater/changelog';
 
@@ -28,15 +30,25 @@ type FooterLink = {
   path?: string;
 };
 
-const COMPANY_LINKS: FooterLink[] = [
-  { label: 'Affiliate', route: 'affiliate' },
-  { label: 'Contact', href: 'mailto:digiegold@gmail.com' },
-  { label: 'Pricing', route: 'pricing' },
-  /* The signed-out demo. Also the page's only inbound static href, which is
-   * what keeps scripts/audit-links.mjs from calling it an orphan. */
-  { label: 'Live demo', path: '/animate/demo' },
-];
+/* Company / Business columns are derived from the brand (components/animate/
+ * brands.ts) so Listing Studio gets its own support address and legal set.
+ * The Jelly column is byte-for-byte what it was. */
+function companyLinks(brand: Brand): FooterLink[] {
+  const links: FooterLink[] = [
+    { label: 'Affiliate', route: 'affiliate' },
+    { label: 'Contact', href: brand.product === 'jelly' ? 'mailto:digiegold@gmail.com' : `mailto:${brand.support.email}` },
+    { label: 'Pricing', route: 'pricing' },
+  ];
+  if (brand.product === 'jelly') {
+    /* The signed-out demo. Also the page's only inbound static href, which is
+     * what keeps scripts/audit-links.mjs from calling it an orphan. */
+    links.push({ label: 'Live demo', path: '/animate/demo' });
+  }
+  return links;
+}
 
+/* Jelly's channels. Listing Studio has none yet — the column is omitted rather
+ * than pointing agents at a faceless-YouTube Discord. */
 const SOCIAL_LINKS: FooterLink[] = [
   { label: 'Discord', route: 'discord' },
   { label: 'YouTube', href: 'https://www.youtube.com/@vaterbytolley' },
@@ -46,24 +58,26 @@ const SOCIAL_LINKS: FooterLink[] = [
 /* Studio-specific legal, not the T-Agent SMS/A2P pages the footer used to
  * point at. A Jelly Studio customer needs the credits/voice-cloning/beta
  * terms they actually clicked through, not a real-estate SaaS policy. */
-const BUSINESS_LINKS: FooterLink[] = [
-  { label: 'Terms of Use', path: '/animate/terms' },
-  { label: 'Privacy', path: '/animate/privacy' },
-  { label: 'Beta program', path: '/animate/beta' },
-];
+function businessLinks(brand: Brand): FooterLink[] {
+  return [
+    { label: 'Terms of Use', path: brand.legal.terms },
+    { label: 'Privacy', path: brand.legal.privacy },
+    { label: 'Beta program', path: brand.legal.beta },
+  ];
+}
 
-/** Violet halo on the brand mark, same recipe as the sidebar. */
-const LOGO_GLOW = 'drop-shadow(0 0 12px rgba(143,125,255,0.5))';
-
-const LINK_GROUPS: { heading: string; links: FooterLink[] }[] = [
-  { heading: 'Company', links: COMPANY_LINKS },
-  { heading: 'Socials', links: SOCIAL_LINKS },
-  { heading: 'Business', links: BUSINESS_LINKS },
-];
+/** Brand halo on the mark, same recipe as the sidebar. */
+const LOGO_GLOW = 'drop-shadow(0 0 12px var(--jb-brand-glow, rgba(143,125,255,0.5)))';
 
 export function Footer(): React.ReactElement {
   const { t } = useTheme();
   const { setRoute } = useRoute();
+  const brand = useProduct();
+  const linkGroups: { heading: string; links: FooterLink[] }[] = [
+    { heading: 'Company', links: companyLinks(brand) },
+    ...(brand.product === 'jelly' ? [{ heading: 'Socials', links: SOCIAL_LINKS }] : []),
+    { heading: 'Business', links: businessLinks(brand) },
+  ];
 
   const renderLink = (link: FooterLink): React.ReactElement => {
     const baseStyle: React.CSSProperties = {
@@ -124,7 +138,7 @@ export function Footer(): React.ReactElement {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 26 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/animate/brand/logo.svg"
+          src={brand.logoSrc}
           alt=""
           aria-hidden="true"
           width={24}
@@ -139,12 +153,12 @@ export function Footer(): React.ReactElement {
             color: t.text,
           }}
         >
-          JELLY STUDIO
+          {brand.wordmark}
         </span>
       </div>
 
       <div style={{ display: 'flex', gap: 64, flexWrap: 'wrap' }}>
-        {LINK_GROUPS.map((group) => (
+        {linkGroups.map((group) => (
           <div key={group.heading}>
             <MicroLabel
               tone="faint"
@@ -175,7 +189,7 @@ export function Footer(): React.ReactElement {
           color: t.textFaint,
         }}
       >
-        <span style={{ fontWeight: 600, color: t.textSecondary }}>Jelly Studio</span>
+        <span style={{ fontWeight: 600, color: t.textSecondary }}>{brand.name}</span>
         <span aria-hidden="true">·</span>
         <span>Kansas City, MO</span>
         <span aria-hidden="true">·</span>

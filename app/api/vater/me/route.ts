@@ -1,7 +1,7 @@
 /**
  * GET  /api/vater/me   — who the /animate client is and what it may render
  * PATCH /api/vater/me  — per-user preferences the studio owns
- * (showcaseOptOut, smsOptIn)
+ * (showcaseOptOut, smsOptIn, agentProfile)
  *
  * Single source of truth the /animate client uses to decide what to render.
  * Without this the Sidebar advertised owner-only screens (RSS Feeds,
@@ -34,6 +34,12 @@ import {
   parseAnimateSmsLeadFields,
 } from "@/lib/animate-sms";
 import { toE164 } from "@/lib/phone";
+import {
+  AgentProfileNotReadyError,
+  readAgentProfile,
+  sanitizeAgentProfilePatch,
+  writeAgentProfile,
+} from "@/lib/vater/listing/agent-profile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -126,11 +132,25 @@ export async function GET() {
    * have taken 3,700 from. `undefined` = uncapped (owner). */
   const cap = await scriptCapFor(session.user.id, email);
 
+  /* Listing Studio (2026-08-27). `product` is which front door the HUMAN
+   * came through (VaterAccount.origin on the root login, 'jelly' until the
+   * origin migration lands). The agent profile drives end cards + license
+   * gates; `capabilities.license` / `.mls` are what the wizard reads. */
+  const agentProfile = await readAgentProfile(rootUserId);
+  const product = agentProfile.origin;
+  const licenseOk = agentProfile.licenseStatus === "verified";
+  const mlsOk =
+    licenseOk &&
+    (agentProfile.licenseState === "MO" || agentProfile.licenseState === "KS") &&
+    Boolean(process.env.MLS_GRID_TOKEN);
+
   return NextResponse.json(
     {
       tier,
       email,
       userId: session.user.id,
+      product,
+      agentProfile,
       /** Which studio tab this session is inside. `null` until the workspace
        *  table exists — the tab strip hides itself. `isPrimary` = the login's
        *  own studio (today's data). */
@@ -163,8 +183,13 @@ export async function GET() {
         observer: owner,
         // Site-admin content calendar (/api/content/posts).
         publishingPosts: siteAdmin,
+        // Listing Studio: verified real-estate license (MLS-safe export,
+        // REALTOR® mark) and MLS pull (license + MO/KS + MLS Grid token).
+        license: licenseOk,
+        mls: mlsOk,
       },
-      routes: routeIdsForTier(tier),
+      // Nav subset per product (lib/vater/nav-visibility.ts `products`).
+      routes: routeIdsForTier(tier, true, product),
       /** Script length ceiling. null = uncapped. See script-cap.ts for the
        *  rule; `capTier` is why, so the UI can say "buy credit for longer". */
       maxWords: cap.maxWords ?? null,
@@ -215,11 +240,34 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "LOGIN_REQUIRED" }, { status: 401, headers: NO_STORE });
   }
 
-  let body: { showcaseOptOut?: unknown; acceptTerms?: unknown; smsOptIn?: unknown; phone?: unknown };
+  let body: { showcaseOptOut?: unknown; acceptTerms?: unknown; smsOptIn?: unknown; phone?: unknown; agentProfile?: unknown };
   try {
     body = (await request.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: NO_STORE });
+  }
+
+  // Listing Studio agent profile (end card + license). Written on the ROOT
+  // login: the broker and license belong to the human, not the tab. Writes
+  // under view-as are already blocked in proxy.ts (403 on non-GET).
+  if (body.agentProfile !== undefined) {
+    if (!body.agentProfile || typeof body.agentProfile !== "object") {
+      return NextResponse.json({ error: "agentProfile must be an object" }, { status: 400, headers: NO_STORE });
+    }
+    const patch = sanitizeAgentProfilePatch(body.agentProfile);
+    try {
+      const agentProfile = await writeAgentProfile(session.user.id, patch);
+      return NextResponse.json({ ok: true, agentProfile }, { headers: NO_STORE });
+    } catch (err) {
+      if (err instanceof AgentProfileNotReadyError) {
+        return NextResponse.json(
+          { error: "FEATURE_NOT_READY", message: "The VaterAccount origin/license columns have not been migrated yet." },
+          { status: 503, headers: NO_STORE },
+        );
+      }
+      console.error("[vater/me] agentProfile update failed", err);
+      return NextResponse.json({ error: "Could not save your profile." }, { status: 500, headers: NO_STORE });
+    }
   }
 
   // One-time click-wrap for accounts that pre-date the Terms (or a new

@@ -16,6 +16,7 @@ import * as React from 'react';
 import { JELLY_TOKENS } from './tokens';
 import { useTheme, useRoute } from './theme-context';
 import { useTier } from './tier-context';
+import { useProduct } from './product-context';
 import { Icon, type IconName } from './Icon';
 import { VBtn } from './primitives';
 import { MicroLabel } from './cinema';
@@ -33,9 +34,9 @@ import {
 const SHOW_STUBS = process.env.NEXT_PUBLIC_VATER_BETA_STUBS === '1';
 
 /** Violet halo on the brand mark — the one place the logo gets a glow. */
-const LOGO_GLOW = 'drop-shadow(0 0 14px rgba(143,125,255,0.55))';
+const LOGO_GLOW = 'drop-shadow(0 0 14px var(--jb-brand-glow, rgba(143,125,255,0.55)))';
 /** Active-row outline. Brighter than brandOutline so "you are here" reads at a glance. */
-const ACTIVE_BORDER = 'rgba(143,125,255,0.7)';
+const ACTIVE_BORDER = 'var(--jb-brand-outline, rgba(143,125,255,0.7))';
 /** Modal scrim — the ink base at 66%, not a palette hue. Shared with the Header/Help drawers. */
 const SCRIM = 'rgba(8,7,15,0.66)';
 /** Section headers, keyed to NavRouteDef['section']. */
@@ -254,8 +255,10 @@ export function Sidebar({
   onCloseDrawer,
 }: SidebarProps): React.ReactElement | null {
   const { t } = useTheme();
-  const { route, setRoute, requestNewVideo } = useRoute();
+  const { route, setRoute, requestNewVideo, setSelectedProjectId } = useRoute();
   const { tier, loading, email, workspace } = useTier();
+  const brand = useProduct();
+  const isRealEstate = brand.product === 'realestate';
   // Each studio tab keeps its own menu order (nav-order.ts): the key is the
   // tab's id when there is one, the login email otherwise (pre-migration).
   const prefsKey = workspace ? `ws:${workspace.id}` : email;
@@ -263,8 +266,8 @@ export function Sidebar({
   // While /api/vater/me is in flight we render the public list — the
   // floor, never the ceiling, so nothing gated flashes into view.
   const items = React.useMemo(
-    () => visibleRoutes(loading ? 'public' : tier, SHOW_STUBS),
-    [tier, loading],
+    () => visibleRoutes(loading ? 'public' : tier, SHOW_STUBS, brand.product),
+    [tier, loading, brand.product],
   );
 
   // ── Per-user order (2026-08-23) ─────────────────────────────────────────
@@ -421,31 +424,50 @@ export function Sidebar({
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/animate/brand/logo.svg"
+              src={brand.logoSrc}
               alt=""
               aria-hidden="true"
               width={28}
               height={28}
               style={{ width: 28, height: 28, flexShrink: 0, filter: LOGO_GLOW }}
             />
-            <span
-              style={{
-                fontSize: 12.5,
-                fontWeight: 700,
-                letterSpacing: '0.12em',
-                color: t.text,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              JELLY STUDIO
+            <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              {brand.eyebrow && (
+                <span
+                  data-testid="sidebar-brand-eyebrow"
+                  style={{
+                    fontSize: 9.5,
+                    fontWeight: 600,
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                    color: t.textFaint,
+                    whiteSpace: 'nowrap',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {brand.eyebrow}
+                </span>
+              )}
+              <span
+                data-testid="sidebar-wordmark"
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  letterSpacing: '0.12em',
+                  color: t.text,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {brand.wordmark}
+              </span>
             </span>
           </div>
         )}
         {railCollapsed && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src="/animate/brand/logo.svg"
-            alt="Jelly Studio"
+            src={brand.logoSrc}
+            alt={brand.name}
             width={28}
             height={28}
             style={{ width: 28, height: 28, filter: LOGO_GLOW }}
@@ -481,13 +503,20 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Create Video CTA */}
+      {/* Create Video CTA — on Listing Studio the same slot starts a NEW
+          listing (route `listing` with no job selected) instead of the Jelly
+          style picker. */}
       <div style={{ padding: railCollapsed ? '12px 8px' : '12px 16px' }}>
         <VBtn
-          aria-label="Create Video"
-          data-testid="create-video"
+          aria-label={isRealEstate ? 'New listing' : 'Create Video'}
+          data-testid={isRealEstate ? 'new-listing' : 'create-video'}
           onClick={() => {
-            requestNewVideo();
+            if (isRealEstate) {
+              setSelectedProjectId(null);
+              setRoute('listing');
+            } else {
+              requestNewVideo();
+            }
             if (mobile) onCloseDrawer?.();
           }}
           style={{
@@ -499,7 +528,7 @@ export function Sidebar({
           }}
           icon={railCollapsed ? 'plus' : undefined}
         >
-          {railCollapsed ? '' : '+ Create Video'}
+          {railCollapsed ? '' : isRealEstate ? '+ New listing' : '+ Create Video'}
         </VBtn>
       </div>
 

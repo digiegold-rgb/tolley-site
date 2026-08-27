@@ -1,0 +1,123 @@
+Design the visual identity and page components for "Listing Studio by Jelly!" — a pay-per-listing video tool for real estate agents at tolley.io/realestateanimated. Everything you need is in this message; there are no files to open.
+
+WHO IT IS FOR
+Real estate agents in the Midwest, many aged 45–70, using it on a phone in a driveway. They want "upload photo → click → pay → done". Nothing to learn. Big type, one action per screen, plain words, no jargon.
+
+WHAT IT DOES
+One photo of an empty room becomes: a virtually staged photo ($4.99), a before→after reveal video ($19 Economy / $29 Photoreal), or a room beauty shot ($14). Later: walkthrough tour ($79), exterior reveal ($29), agent character tour ($49 per scene). Credit packs $10 / $25 / $50 / $100; one bundle "Listing Launch" $99 (3 staging photos + 1 reveal + 1 tour). No subscription. A failed render is never charged. The agent approves the staged photo before any video is filmed.
+
+THE HOOK — "Fair-Housing safe by default"
+Equal Housing Opportunity slogan + logo on every export. "AI-generated · virtually staged" label burned on the frame. The agent's broker line sized and placed per their state's advertising law. An MLS-safe export (bare still, no name/logo/label) that unlocks when the license is verified. A public "proof page" (original photo next to the generated one) for every video.
+
+THE PERSON
+Jared Tolley — licensed Missouri Salesperson (Lic #2024002937), Your KC Homes team, broker of record United Real Estate Kansas City, (816) 629-4494, Independence, MO. Render his line as "Jared Tolley · Your KC Homes team · United Real Estate Kansas City · (816) 629-4494" — never "Your KC Homes" alone as the brokerage (Missouri 20 CSR 2250-8.070). Line: "I'm not selling something I don't use." Support is his phone: call or text (913) 914-9429, 8a–8p Central, 7 days. The landing shows his real 30-day view count when available and HIDES the number otherwise — never a made-up figure.
+
+NAMING RULES (trademark)
+Never put "Realtor" in the product name, wordmark, logo or URL. Copy may say "for real estate agents and, for NAR members, REALTORS®". "REALTOR®" appears after an agent's name only if they are an NAR member with a verified license.
+
+DIRECTION
+Sister brand of "Jelly! Studio" (a dark, cinematic, violet/cyan tool). Keep the structure — glass panels with hairlines and blur(10px), micro-labels (11–12px, uppercase, 0.22–0.26em tracking), film-strip media frames with sprocket rails, and an "ADMIT ONE" box-office ticket for every price — but swap the palette and tone to professional real estate: navy / gold / ivory, trustworthy, warm, legible at arm's length. A serif italic accent phrase in headlines is welcome for reassurance ("done for you"), not drama. Prefer rooms and architecture as imagery. No people, no faces anywhere.
+
+TOKENS — return these exact CSS variable names with your final values (they are the whole colour hand-off; the code reads them). Current placeholders shown; replace freely but keep the roles.
+
+Dark theme (default):
+--jb-brand: #1F5FA8              primary (buttons, active borders)
+--jb-brand-light: #4F86CC        eyebrow text, micro-labels, links on dark
+--jb-brand-dark: #0B1F3A         deep brand, ticket gradient end
+--jb-brand-ghost: rgba(31,95,168,0.14)     tinted fills
+--jb-brand-outline: rgba(31,95,168,0.42)   hairline on brand-tinted panels
+--jb-brand-glow: rgba(31,95,168,0.35)      button shadow colour (0 12px 44px)
+--jb-cyan: #C9A24A               the ACCENT (prices, state text, checkmarks) — gold here
+--jb-cyan-ghost: rgba(201,162,74,0.16)
+--jb-accent: #C9A24A             alias of the accent
+--jb-accent-dark: #9C7A2E        pressed accent
+--jb-grad-primary: linear-gradient(135deg, #1F5FA8 0%, #C9A24A 100%)   primary pill CTA, step-number discs
+--jb-grad-text: linear-gradient(90deg, #4F86CC 0%, #C9A24A 100%)        gradient-clipped headline phrase
+--jb-grad-ticket: linear-gradient(135deg, #0B1F3A 0%, #1F5FA8 100%)     ADMIT ONE ticket background
+--jb-grad-chip-on: linear-gradient(135deg, #1F5FA8 0%, #4F86CC 100%)    selected chip / active stepper pill
+--jb-grad-create: linear-gradient(135deg, #1F5FA8 0%, #C9A24A 100%)     "Make a listing video" sidebar button
+--jb-grad-credits: linear-gradient(135deg, #C9A24A 0%, #9C7A2E 100%)    credit balance chip
+--jb-grad-upgrade: linear-gradient(135deg, #0B1F3A 0%, #C9A24A 100%)    upsell panels
+--jb-grad-tutorial: linear-gradient(135deg, #1F5FA8 0%, #0B1F3A 100%)   tutorial card
+--jb-on-gradient: #FFFFFF        text on any gradient (must pass AA on both ends)
+--jb-body: #0B1424               page background
+--jb-card-alt: #111D33           deep panel / media backdrop
+--jb-panel: #0E182B              opaque panels (modals, dropdowns)
+--jb-nebula: radial-gradient(60% 50% at 20% 0%, rgba(31,95,168,0.35), transparent 70%)
+--jb-hover: rgba(255,255,255,0.06)
+--jb-link: #8FB4E8
+--jb-sidebar-bg: #0B1424
+--jb-header-bg: rgba(11,20,36,0.85)
+--jb-halo: rgba(201,162,74,0.25)         card halo (0 0 60px)
+--jb-hero-wash: radial-gradient(80% 60% at 50% 0%, rgba(31,95,168,0.30), transparent 70%)
+
+Light theme (agents use it in daylight — only these change):
+--jb-body: #F7F4EC
+--jb-card-alt: #FFFFFF
+--jb-panel: #FBF9F3
+--jb-nebula: radial-gradient(60% 50% at 20% 0%, rgba(31,95,168,0.12), transparent 70%)
+--jb-hover: rgba(11,31,58,0.05)
+--jb-link: #1F5FA8
+--jb-sidebar-bg: #F1EDE2
+--jb-header-bg: rgba(247,244,236,0.9)
+--jb-halo: rgba(201,162,74,0.20)
+--jb-hero-wash: radial-gradient(80% 60% at 50% 0%, rgba(31,95,168,0.10), transparent 70%)
+
+The brand-family variables (--jb-brand*, --jb-cyan*, --jb-accent*, --jb-grad-*, --jb-on-gradient) are shared by both themes, so pick values that hold up on #0B1424 AND on #F7F4EC.
+
+Fixed (do not change): text on dark #F0EEF8 / #9A94B0 / #6B6584; text on light #14122A / #5C5878 / #7A7694; hairlines rgba(240,238,248,0.10–0.16) dark and rgba(20,18,42,0.10–0.16) light; status colours success #34C98A, warning #F5B34B, error #F0607A. Mobile browser chrome colour (themeColor) currently #0B1F3A — propose yours.
+
+TYPE
+Google Fonts only. Current pair: Space Grotesk (400/500/600/700) for UI and headings, Instrument Serif italic for accent phrases. You may propose a different pair (exactly two families, both on Google Fonts, both with a real fallback stack). Sizes: body at least 16px on the landing and 18px inside the wizard; wizard titles clamp(26px, 3.4vw, 34px); landing H2 clamp(32px, 4vw, 48px); hero clamp(40px, 5.2vw, 70px); micro-labels 11–12px uppercase; tap targets at least 44px; primary buttons 56px tall. Radii: pills 999px, cards 18–20px, small plates 10–12px.
+
+WHAT TO RETURN — 13 components, each as ONE self-contained HTML snippet (inline <style> using the --jb-* variables above; no external CSS, no JS frameworks, no CDN). Put the name below on the root element as data-slot="…" so the code can match them.
+
+1. data-slot="hero" — Landing hero: two columns above 920px, stacked below. Headline "One photo of an empty room. One listing video. Pay when you click." with one gradient-clipped serif phrase; 18px lede; primary pill "Get an invite" + ghost pill "See the 5 steps". Media: a 16:9 film-strip frame holding a muted before→after video with the on-frame label "AI-generated · virtually staged" bottom-left; under it a before/after slider (two stills, draggable divider, BEFORE / AFTER tags).
+
+2. data-slot="living-proof" — Jared's card: avatar (photo, or initials "JT" if no photo), name, "Jared Tolley · Your KC Homes team · United Real Estate Kansas City · (816) 629-4494" + "Licensed Missouri Salesperson, Lic #2024002937", the quote. Next to it a ticket-style stat card: a big number {views30d}, "views across my real-estate socials in the last 30 days", "as of {date}". Design BOTH states: with the number, and WITHOUT it (show a 4-line "what you get" list instead — never a placeholder number).
+
+3. data-slot="five-steps" — Five numbered tiles: 1 Add one photo · 2 Type the address · 3 Say the details · 4 Pick the video · 5 Pay and post. Number disc on the primary gradient, 20px title, 16px body. Wraps to 2–3 columns on phones.
+
+4. data-slot="sku-card" — One product card: title, price (accent colour, tabular figures), one-line blurb, meta line ("12-second video · ready in about 6 minutes"), and ONE of two badges: green "MLS-safe copy included" or amber "For social & marketing — not for MLS photo slots". Show selected / unselected / disabled ("Coming soon") states — the same card is a radio button inside the wizard.
+
+5. data-slot="pricing-ticket" — The ADMIT ONE ticket, real-estate flavour: header "ADMIT ONE — LISTING STUDIO", blinking state text top-right ("ABOUT 6 MINUTES"), big tabular fare "$29.00", dashed dividers, itemised rows ("Before → After Reveal · Photoreal  $29.00"), notes ("Fair-Housing check · on every export", "Label on frame · AI-generated · virtually staged", "Failed render · never charged"), fine-print footer, and a full-width primary button "Pay $29 and start" INSIDE the ticket.
+
+6. data-slot="fair-housing-badge" — One checklist card (✓ + 18px title + 16px body) for the six points: Equal Housing on every export; "Virtually staged" label on frame; broker line per your state; MLS-safe export; wording check before you spend; proof page for every video. ALSO draw the compact badge (pill or shield, about 28px tall) reading "Fair-Housing safe" for use next to the logo and in the sidebar.
+
+7. data-slot="invite-form" — Request-an-invite form: name (optional) + email in one row, textarea placeholder "Your brokerage, your state, and how many listings a month", an SMS-consent checkbox with a phone field, primary button "Send me an invite". Done state: "You're on the list — check your email."
+
+8. data-slot="end-card-1280x720" — The 16:9 end card burned onto the end of every video. Line 1: "{agentName}[, REALTOR®] · Lic # {licenseNumber}". Line 2, directly beneath (adjacent): "{brokerName} · {brokerPhone}". Equal Housing Opportunity slogan AND logo bottom-right. Small Listing Studio mark bottom-left. FONT-RATIO RULE (this is state advertising law, not style): with H = frame height, agent line = 0.06·H; broker line = max(agent/2, 0.04·H). Missouri: broker name always shown, and if the agent's name or phone appears the broker's name AND phone appear. Kansas: broker name adjacent to the agent's, and agent size ≤ 2 × broker size. Pennsylvania: broker line the SAME size as the agent line. Unknown states use the Pennsylvania rule. Show MO, KS and PA variants so they read as one family.
+
+9. data-slot="end-card-1080x1920" — The 9:16 version of the same end card for Reels/Shorts. Keep the top 220px and bottom 320px clear (platform UI covers them).
+
+10. data-slot="frame-label" — The on-frame label "AI-generated · virtually staged" (and the variant "AI-generated · rendering" for street-view exteriors): bottom-left, black plate at 55% opacity, white text. Must stay readable when the video is a 320px-wide thumbnail. Give sizes as a % of frame height (currently 4.5% of H).
+
+11. data-slot="wizard-step-shell" — The frame every wizard step lives in: a 5-pill stepper "Photo · Address · Details · Video type · Look & price" (active pill on --jb-grad-chip-on), a line "Step 2 of 5 · autosaved", the support strip (see 12), one glass card holding the step body (18px text), Back (ghost) on the left and the single forward action (primary, 56px tall) on the right. Draw it at 390px phone width and at 1040px.
+
+12. data-slot="support-strip" — Call/text row: "Need a hand? Call or text." · "Jared Tolley — licensed Missouri agent — answers himself · 8a–8p Central, 7 days" · two pill buttons "📞 Call (913) 914-9429" and "💬 Text". Also the expanded failure state: bigger, headline "Stuck? A real person answers."
+
+13. data-slot="sidebar-lockup" — The studio sidebar identity: logo mark + "LISTING STUDIO" wordmark (700 weight, 0.12em tracking) + eyebrow "by Jelly!" + the compact Fair-Housing badge. 240px wide sidebar; show dark and light.
+
+ASSETS TO RETURN
+- logo.svg — mark, colour, square, works at 24px and 512px; should feel like a sibling of the Jelly! Studio mark (a soft rounded jelly/film shape in violet/cyan), not a child of it
+- logo-mono-white.svg and logo-mono-black.svg
+- logo-lockup.svg — mark + "LISTING STUDIO" + "by Jelly!" horizontal
+- og-1200x630.png — headline "One photo of an empty room. One listing video." + a before/after split + the Fair-Housing badge
+- favicon-512.png — mark on --jb-brand-dark
+- demo-poster.jpg — 1280×720 poster treatment for the hero video: a before/after split with the on-frame label (we will supply the two real stills; design the split and label treatment)
+- eho.svg — vector Equal Housing Opportunity logo (house with the equals sign) in white and in #14122A
+- fair-housing-badge.svg — the compact badge from item 6
+- tokens.json — {"dark": {every --jb-* above}, "light": {the light ones}, "themeColor": "#…", "fonts": {"display": "…", "serif": "…"}} — nothing else in it
+
+HARD CONSTRAINTS
+- AA contrast for all text at its rendered size on both --jb-body values; --jb-on-gradient must pass on both ends of --jb-grad-primary.
+- Body text at least 16px (18px in the wizard); tap targets at least 44px; nothing below 13px except the on-frame label at thumbnail scale.
+- The end-card font-ratio rule in item 8 is law, not taste.
+- No people and no faces in any frame or illustration — rooms only.
+- Never a hardcoded number on the proof card; design its empty state.
+- No "Realtor" in the product name, logo, URL or wordmark.
+- Respect prefers-reduced-motion: static hero poster, no bobbing, no marquee.
+- Self-contained: no CDN scripts, no external stylesheets, Google Fonts only.
+
+RETURN FORMAT
+One zip: slots/<data-slot>.html (13 files, each opens on its own), assets/ (the list above), tokens.json, and a short README.md saying what you changed versus this brief and why.

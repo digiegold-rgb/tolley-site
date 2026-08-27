@@ -10,15 +10,25 @@
  *                             from scripts/mint-invite.ts --send
  */
 import { getLeadsTransporter } from "@/lib/leads/email-transport";
+import { PRODUCT_NAME, STUDIO_HOME, type Product } from "@/lib/vater/product";
 
 export const ANIMATE_REPLY_TO =
   process.env.EMAIL_ANIMATE_REPLY_TO || "jared@yourkchomes.com";
 export const ANIMATE_FROM =
   process.env.EMAIL_ANIMATE_FROM || `Jelly Studio at Tolley.io <${ANIMATE_REPLY_TO}>`;
 
-async function send(to: string, subject: string, text: string): Promise<void> {
+/** Display name + home URL per front door — subject lines and sign-offs. */
+function productBits(product: Product): { name: string; home: string; from: string } {
+  const name = PRODUCT_NAME[product] ?? PRODUCT_NAME.jelly;
+  const home = `https://www.tolley.io${STUDIO_HOME[product] ?? STUDIO_HOME.jelly}`;
+  // Listing Studio mail carries its own display name; env override applies to Jelly only.
+  const from = product === "realestate" ? `Listing Studio by Jelly! <${ANIMATE_REPLY_TO}>` : ANIMATE_FROM;
+  return { name, home, from };
+}
+
+async function send(to: string, subject: string, text: string, product: Product = "jelly"): Promise<void> {
   await getLeadsTransporter().sendMail({
-    from: ANIMATE_FROM,
+    from: productBits(product).from,
     replyTo: ANIMATE_REPLY_TO,
     to,
     subject,
@@ -27,35 +37,48 @@ async function send(to: string, subject: string, text: string): Promise<void> {
 }
 
 /** Instant "we got it" so a requester never lands in silence. */
-export async function sendInviteRequestAck(to: string, name?: string | null): Promise<void> {
+export async function sendInviteRequestAck(
+  to: string,
+  name?: string | null,
+  product: Product = "jelly",
+): Promise<void> {
   const hi = name ? `Hi ${name.split(/\s+/)[0]},` : "Hi,";
+  const b = productBits(product);
+  const who = product === "realestate" ? "agents" : "creators";
   await send(
     to,
-    "Got your Jelly Studio invite request",
+    `Got your ${b.name} invite request`,
     [
       hi,
       "",
-      "Thanks for asking for a Jelly Studio invite. We're onboarding creators in small waves right now,",
+      `Thanks for asking for a ${b.name} invite. We're onboarding ${who} in small waves right now,`,
       "and every request is reviewed by a person — you'll get your personal invite link at this",
       "address, usually within 24 hours.",
       "",
       "Nothing to do until then. If you have a question, just reply to this email.",
       "",
       "— Jared",
-      "Jelly Studio · https://www.tolley.io/animate",
+      `${b.name} · ${b.home}`,
     ].join("\n"),
+    product,
   );
 }
 
 /** The actual invite: email-locked signup link. */
-export async function sendInviteLinkEmail(to: string, link: string, display: string): Promise<void> {
+export async function sendInviteLinkEmail(
+  to: string,
+  link: string,
+  display: string,
+  product: Product = "jelly",
+): Promise<void> {
+  const b = productBits(product);
   await send(
     to,
-    "Your Jelly Studio invite is ready",
+    `Your ${b.name} invite is ready`,
     [
       "Hi,",
       "",
-      "You're in. Your personal Jelly Studio invite (locked to this email address):",
+      `You're in. Your personal ${b.name} invite (locked to this email address):`,
       "",
       link,
       "",
@@ -65,8 +88,9 @@ export async function sendInviteLinkEmail(to: string, link: string, display: str
       "with a $10 promo credit already applied. Reply to this email if anything gets in the way.",
       "",
       "— Jared",
-      "Jelly Studio · https://www.tolley.io/animate",
+      `${b.name} · ${b.home}`,
     ].join("\n"),
+    product,
   );
 }
 

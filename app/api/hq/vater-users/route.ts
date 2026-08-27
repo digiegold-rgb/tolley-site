@@ -3,7 +3,7 @@
  *
  *   GET  → every Jelly Studio account: tier, unmetered, credit balance, last
  *          project, last error, invite provenance — plus the invite list.
- *   POST → { action: "mint-invite" | "set-tier" | "set-unmetered" }
+ *   POST → { action: "mint-invite" | "set-tier" | "set-unmetered" | "set-license" }
  *
  * Auth: validateWdAdmin() (the /hq PIN cookie), matching every other /api/hq
  * route. Note this is a DIFFERENT credential from the NextAuth admin session
@@ -18,11 +18,14 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { Prisma } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
 import { getBalance } from "@/lib/vater/billing/ledger";
 import { gpuForQuality } from "@/lib/vater/pricing";
-import { hasVaterAccountTable } from "@/lib/vater/schema-probe";
+import { hasVaterAccountOriginColumns, hasVaterAccountTable } from "@/lib/vater/schema-probe";
+import { coerceLicenseStatus, setLicenseStatus, AgentProfileNotReadyError } from "@/lib/vater/listing/agent-profile";
 import {
   hasBetaInviteTable,
   isMissingRelationError,
@@ -35,6 +38,7 @@ import {
 } from "@/lib/vater/beta-invites";
 import { readLastErrorByUser } from "@/lib/vater/events";
 import { sendInviteLinkEmail } from "@/lib/vater/animate-email";
+import { coerceProduct, PRODUCT_SUBSITE } from "@/lib/vater/product";
 import { listAllWorkspaceTabs } from "@/lib/vater/workspaces";
 
 export const runtime = "nodejs";
@@ -55,6 +59,12 @@ interface StudioUserRow {
   lastError: { message: string; at: string } | null;
   invited: boolean;
   createdAt: string | null;
+  /** Listing Studio (2026-08-27): which front door + license state. `origin`
+   *  is null until migration 20260827_vater_account_origin_license lands. */
+  origin: "jelly" | "realestate" | null;
+  licenseStatus: "unverified" | "verified" | "manual_review" | "invalid" | null;
+  licenseState: string | null;
+  licenseNumber: string | null;
   /** Studio TABS this login owns (lib/vater/workspaces.ts). Each is a hidden
    *  User with its own library + balance; folded under the human here so
    *  the roster stays one row per person. View-as works per tab. */
@@ -220,6 +230,24 @@ export async function GET() {
     ]);
 
     const accountByUser = new Map(accounts.map((a) => [a.userId, a]));
+
+    /* Origin + license, probe-guarded raw SQL (columns arrive with
+     * 20260827_vater_account_origin_license). Missing → nulls, never a
+     * confident "jelly / unverified" that isn't real. */
+    const originByUser = new Map<string, { origin: string; licenseStatus: string; licenseState: string | null; licenseNumber: string | null }>();
+    if (await hasVaterAccountOriginColumns()) {
+      try {
+        const rows = await prisma.$queryRaw<
+          Array<{ userId: string; origin: string; licenseStatus: string; licenseState: string | null; licenseNumber: string | null }>
+        >`
+          SELECT "userId", "origin", "licenseStatus", "licenseState", "licenseNumber"
+          FROM "VaterAccount" WHERE "userId" IN (${Prisma.join(ids)})
+        `;
+        for (const r of rows) originByUser.set(r.userId, r);
+      } catch (err) {
+        if (!isMissingRelationError(err)) throw err;
+      }
+    }
     const projectStats = new Map(
       projectOwners
         .filter((p): p is typeof p & { userId: string } => Boolean(p.userId))
@@ -291,6 +319,12 @@ export async function GET() {
           lastError: err ? { message: err.message, at: err.createdAt.toISOString() } : null,
           invited: invitedSet.has(u.id),
           createdAt: u.createdAt ? u.createdAt.toISOString() : null,
+          origin: originByUser.has(u.id)
+            ? ((originByUser.get(u.id)!.origin === "realestate" ? "realestate" : "jelly") as "jelly" | "realestate")
+            : null,
+          licenseStatus: originByUser.has(u.id) ? coerceLicenseStatus(originByUser.get(u.id)!.licenseStatus) : null,
+          licenseState: originByUser.get(u.id)?.licenseState ?? null,
+          licenseNumber: originByUser.get(u.id)?.licenseNumber ?? null,
           workspaces: tabsByOwner.get(u.id) ?? [],
           usage: usageByUserId.get(u.id) ?? {
             ready: false,
@@ -362,12 +396,17 @@ export async function POST(request: NextRequest) {
       }
       const email =
         typeof body.email === "string" && body.email.includes("@") ? body.email : null;
+      // Which front door the invite lands on (hq-inbound passes the
+      // LeadAction row's subsite through as `product`). Default = Jelly.
+      const product = coerceProduct(
+        body.product ?? (body.subsite === "realestate" ? "realestate" : undefined),
+      );
       const count = Number(body.count ?? 1);
       const created = await mintInvites({
         count: Number.isFinite(count) ? count : 1,
         maxUses: email ? 1 : Number(body.maxUses ?? 1) || 1,
         email,
-        note: typeof body.note === "string" ? body.note : "minted from /hq",
+        note: typeof body.note === "string" ? body.note : `minted from /hq${product === "realestate" ? " (listing studio)" : ""}`,
         createdBy: "hq",
       });
       // { send: true } + a locked email → email the link too and close any
@@ -376,11 +415,11 @@ export async function POST(request: NextRequest) {
       let sendError: string | null = null;
       if (body.send === true && email && created[0]) {
         try {
-          await sendInviteLinkEmail(email, inviteLink(created[0].code), formatInviteCode(created[0].code));
+          await sendInviteLinkEmail(email, inviteLink(created[0].code, undefined, product), formatInviteCode(created[0].code), product);
           sent = true;
           const lower = email.toLowerCase();
           await prisma.leadAction.updateMany({
-            where: { subsite: "animate", action: "invite-request", email: lower, status: { notIn: ["won", "lost"] } },
+            where: { subsite: PRODUCT_SUBSITE[product], action: "invite-request", email: lower, status: { notIn: ["won", "lost"] } },
             data: { status: "won", statusNote: `Invite ${formatInviteCode(created[0].code)} emailed`, statusUpdatedAt: new Date() },
           }).catch(() => undefined);
           await prisma.mustCompleteItem.updateMany({
@@ -397,15 +436,50 @@ export async function POST(request: NextRequest) {
           ok: true,
           sent,
           sendError,
+          product,
           invites: created.map((i) => ({
             code: i.code,
             display: formatInviteCode(i.code),
-            link: inviteLink(i.code),
+            link: inviteLink(i.code, undefined, product),
             email: i.email,
           })),
         },
         { headers: NO_STORE },
       );
+    }
+
+    /* Listing Studio license review (2026-08-27): resolve a manual_review
+     * (or override a registry answer) by hand. Closes the matching
+     * "License review — <email>" Must Complete item. */
+    if (action === "set-license") {
+      const userId = typeof body.userId === "string" ? body.userId : "";
+      const status = typeof body.status === "string" ? body.status : "";
+      if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400, headers: NO_STORE });
+      if (!["verified", "invalid", "manual_review", "unverified"].includes(status)) {
+        return NextResponse.json({ error: "status must be verified | invalid | manual_review | unverified" }, { status: 400, headers: NO_STORE });
+      }
+      try {
+        const profile = await setLicenseStatus(userId, coerceLicenseStatus(status));
+        if (status === "verified" || status === "invalid") {
+          const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+          const email = user?.email ?? userId;
+          await prisma.mustCompleteItem
+            .updateMany({
+              where: { source: "listing-studio", status: "open", title: { startsWith: `License review — ${email}` } },
+              data: { status: "done", completedAt: new Date() },
+            })
+            .catch(() => undefined);
+        }
+        return NextResponse.json({ ok: true, licenseStatus: profile.licenseStatus }, { headers: NO_STORE });
+      } catch (err) {
+        if (err instanceof AgentProfileNotReadyError) {
+          return NextResponse.json(
+            { error: "FEATURE_NOT_READY", message: "Apply prisma/migrations/20260827_vater_account_origin_license/migration.sql first." },
+            { status: 503, headers: NO_STORE },
+          );
+        }
+        throw err;
+      }
     }
 
     if (action === "set-tier" || action === "set-unmetered") {

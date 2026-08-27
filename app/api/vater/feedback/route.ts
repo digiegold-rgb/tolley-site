@@ -64,14 +64,20 @@ export async function POST(request: NextRequest) {
   const projectId = str(body.projectId, 100);
   const userAgent = str(request.headers.get("user-agent"), 300);
 
+  // Listing Studio (2026-08-27): the wizard sends product:"realestate" so
+  // the queue item and the Telegram ping say which front door it came from.
+  const product = body.product === "realestate" ? "realestate" : "jelly";
+  const prefix = product === "realestate" ? "[Listing Studio] " : "";
+
   const headline = message.replace(/\s+/g, " ").slice(0, 60);
-  const title = `Beta feedback — ${email}: ${headline}`;
+  const title = `${prefix}Beta feedback — ${email}: ${headline}`;
 
   const detail = [
     message,
     "",
     "— context —",
     `user: ${email} (${userId})`,
+    `product: ${product}`,
     `screen: ${routeHash ?? "(not shared)"}`,
     `project: ${projectId ?? "(not shared)"}`,
     `version: v${APP_VERSION}`,
@@ -114,14 +120,14 @@ export async function POST(request: NextRequest) {
     kind: "feedback.sent",
     message: `Feedback sent: ${headline}`,
     projectId,
-    data: { ticketId, screen: routeHash },
+    data: { ticketId, screen: routeHash, product },
   });
 
   // Best-effort: the ticket is already filed, so a Telegram outage must not
   // turn a successful report into an error the user sees.
   try {
     await notifyTelegram(
-      `💬 Jelly beta feedback from ${tgSafe(email)}: ${tgSafe(message).slice(0, 500)}\n\nhttps://www.tolley.io/hq`,
+      `💬 ${product === "realestate" ? "Listing Studio" : "Jelly beta"} feedback from ${tgSafe(email)}: ${tgSafe(message).slice(0, 500)}\n\nhttps://www.tolley.io/hq`,
     );
   } catch (err) {
     console.error("[vater/feedback] telegram notify failed", err);

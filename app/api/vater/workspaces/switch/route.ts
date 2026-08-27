@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { STUDIO_HOME } from "@/lib/vater/product";
 import { FEATURE_NOT_READY } from "@/lib/vater/beta-schema";
 import {
   buildWsCookie,
@@ -36,7 +37,11 @@ const NO_STORE = { "Cache-Control": "private, no-store" } as const;
  */
 export async function GET(request: NextRequest) {
   const session = await auth();
-  const home = new URL("/animate", request.url);
+  // `back` = which front door to land on; allowlisted to the studio homes so
+  // the redirect can never be pointed off-site. Default stays /animate.
+  const backParam = request.nextUrl.searchParams.get("back") ?? "";
+  const backPath = Object.values(STUDIO_HOME).includes(backParam) ? backParam : STUDIO_HOME.jelly;
+  const home = new URL(backPath, request.url);
   if (!session?.user?.id) return NextResponse.redirect(home, 303);
   const to = request.nextUrl.searchParams.get("to") ?? "";
   const rootUserId = session.workspace?.rootUserId ?? session.user.id;

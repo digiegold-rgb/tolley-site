@@ -19,6 +19,8 @@
  * carries the gate.
  */
 
+import type { Product } from './product';
+
 export type VaterTier = 'public' | 'studio' | 'owner';
 
 const TIER_RANK: Record<VaterTier, number> = {
@@ -36,9 +38,22 @@ export interface NavRouteDef {
   section: 'primary' | 'secondary';
   /** Hidden unless NEXT_PUBLIC_VATER_BETA_STUBS === '1'. */
   stub?: boolean;
+  /**
+   * Which front doors list this entry. `undefined` = Jelly Studio only (the
+   * default, so nothing existing changes). Listing Studio
+   * (/realestateanimated) shows only entries tagged 'realestate'.
+   */
+  products?: Product[];
 }
 
+const BOTH: Product[] = ['jelly', 'realestate'];
+const RE_ONLY: Product[] = ['realestate'];
+
 export const NAV_ROUTES: readonly NavRouteDef[] = [
+  // ── Listing Studio (2026-08-26) — realestate front door only ─────────────
+  // First so they head the RE rail; /animate never lists them (products gate).
+  { id: 'listing', label: 'Make a listing video', icon: 'image', minTier: 'public', section: 'primary', products: RE_ONLY },
+  { id: 'listing-library', label: 'My listings', icon: 'videoEditor', minTier: 'public', section: 'primary', products: RE_ONLY },
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', minTier: 'public', section: 'primary' },
   { id: 'direct', label: 'Dictate', icon: 'sparkle', minTier: 'studio', section: 'primary' },
   { id: 'script-review', label: 'Script Review', icon: 'scriptReview', minTier: 'studio', section: 'primary' },
@@ -51,7 +66,7 @@ export const NAV_ROUTES: readonly NavRouteDef[] = [
   { id: 'voices', label: 'Voices', icon: 'mic', minTier: 'public', section: 'primary' },
   { id: 'feeds', label: 'RSS Feeds', icon: 'web', minTier: 'public', section: 'primary' },
   { id: 'autopilot', label: 'Autopilot', icon: 'sparkle', minTier: 'owner', section: 'primary' },
-  { id: 'publishing', label: 'Publishing', icon: 'upload', minTier: 'public', section: 'primary' },
+  { id: 'publishing', label: 'Publishing', icon: 'upload', minTier: 'public', section: 'primary', products: BOTH },
   { id: 'animation', label: 'AI Animation', icon: 'image', minTier: 'studio', section: 'primary', stub: true },
   { id: 'analytics', label: 'Analytics', icon: 'niche', minTier: 'public', section: 'primary', stub: true },
   // Creator Models went public 2026-08-20 — a read-only archetype browser is
@@ -60,17 +75,17 @@ export const NAV_ROUTES: readonly NavRouteDef[] = [
   { id: 'styles', label: 'Styles', icon: 'styles', minTier: 'public', section: 'primary' },
   // Read-only view of the caller's own DGX character library — public tier:
   // reusing your own cast is part of the golden path, not a studio perk.
-  { id: 'characters', label: 'Characters', icon: 'styles', minTier: 'public', section: 'primary' },
+  { id: 'characters', label: 'Characters', icon: 'styles', minTier: 'public', section: 'primary', products: BOTH },
   { id: 'project-history', label: 'Project History', icon: 'history', minTier: 'public', section: 'primary' },
   { id: 'video-editor', label: 'Video Editor', icon: 'videoEditor', minTier: 'public', section: 'primary' },
   { id: 'course', label: 'Course Studio', icon: 'course', minTier: 'studio', section: 'primary' },
   { id: 'rules', label: 'Rules', icon: 'description', minTier: 'public', section: 'primary' }, // 8/25: global rulebook for everyone (house tab stays studio)
   // Un-stubbed 2026-08-20: now a real read-only guide (no fake credit rewards).
-  { id: 'learning-center', label: 'Learning Center', icon: 'learning', minTier: 'public', section: 'primary' },
+  { id: 'learning-center', label: 'Learning Center', icon: 'learning', minTier: 'public', section: 'primary', products: BOTH },
   // Every tier gets the System Log: when a render fails, the first thing a
   // customer needs is to see what happened without opening a support ticket.
-  { id: 'system-log', label: 'System Log', icon: 'description', minTier: 'public', section: 'secondary' },
-  { id: 'pricing', label: 'Billing', icon: 'affiliate', minTier: 'public', section: 'secondary' },
+  { id: 'system-log', label: 'System Log', icon: 'description', minTier: 'public', section: 'secondary', products: BOTH },
+  { id: 'pricing', label: 'Billing', icon: 'affiliate', minTier: 'public', section: 'secondary', products: BOTH },
   { id: 'discord', label: 'Discord Bot', icon: 'help', minTier: 'owner', section: 'secondary' },
   { id: 'affiliate', label: 'Affiliate', icon: 'affiliate', minTier: 'public', section: 'secondary', stub: true },
   // ── Public API + team seats (2026-08-16) ────────────────────────────────
@@ -83,7 +98,7 @@ export const NAV_ROUTES: readonly NavRouteDef[] = [
   // the ones who cannot see it. The routes themselves are session-scoped, so
   // visibility here grants nothing beyond a screen that lists your own rows.
   { id: 'api-keys', label: 'API Keys', icon: 'lock', minTier: 'public', section: 'secondary' },
-  { id: 'team', label: 'Team', icon: 'affiliate', minTier: 'public', section: 'secondary' },
+  { id: 'team', label: 'Team', icon: 'affiliate', minTier: 'public', section: 'secondary', products: BOTH },
 ];
 
 /** True when `tier` is at least `minTier`. */
@@ -91,10 +106,19 @@ export function tierAtLeast(tier: VaterTier, minTier: VaterTier): boolean {
   return TIER_RANK[tier] >= TIER_RANK[minTier];
 }
 
-/** Nav entries this tier should see, in declaration order. */
-export function visibleRoutes(tier: VaterTier, showStubs: boolean): NavRouteDef[] {
+/** True when `def` is listed on `product`'s front door. */
+export function routeInProduct(def: NavRouteDef, product: Product = 'jelly'): boolean {
+  return def.products ? def.products.includes(product) : product === 'jelly';
+}
+
+/** Nav entries this tier should see on `product`'s front door, in declaration order. */
+export function visibleRoutes(
+  tier: VaterTier,
+  showStubs: boolean,
+  product: Product = 'jelly',
+): NavRouteDef[] {
   return NAV_ROUTES.filter(
-    (r) => tierAtLeast(tier, r.minTier) && (showStubs || !r.stub),
+    (r) => tierAtLeast(tier, r.minTier) && (showStubs || !r.stub) && routeInProduct(r, product),
   );
 }
 
@@ -106,13 +130,17 @@ export function visibleRoutes(tier: VaterTier, showStubs: boolean): NavRouteDef[
  * alias are not nav entries but must stay reachable. Adding a gate for them
  * means adding them to NAV_ROUTES.
  */
-export function canSeeRoute(tier: VaterTier, id: string): boolean {
+export function canSeeRoute(tier: VaterTier, id: string, product: Product = 'jelly'): boolean {
   const def = NAV_ROUTES.find((r) => r.id === id);
   if (!def) return true;
-  return tierAtLeast(tier, def.minTier);
+  return tierAtLeast(tier, def.minTier) && routeInProduct(def, product);
 }
 
 /** Flat list of route ids for the /api/vater/me payload. */
-export function routeIdsForTier(tier: VaterTier, showStubs = true): string[] {
-  return visibleRoutes(tier, showStubs).map((r) => r.id);
+export function routeIdsForTier(
+  tier: VaterTier,
+  showStubs = true,
+  product: Product = 'jelly',
+): string[] {
+  return visibleRoutes(tier, showStubs, product).map((r) => r.id);
 }

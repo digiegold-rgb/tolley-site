@@ -148,6 +148,7 @@ export function MoneyConfirmModal({
           </button>
           <button
             type="button"
+            data-testid="money-confirm-submit"
             onClick={() => {
               const action = request.onConfirm;
               onClose();

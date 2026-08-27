@@ -22,9 +22,12 @@ import { useTier } from './tier-context';
 import { useTheme } from './theme-context';
 import { MicroLabel } from './cinema';
 import { JELLY_TOKENS } from './tokens';
+import { useProduct } from './product-context';
 
-const SUPPORT_MAILTO =
-  'mailto:jared@yourkchomes.com?subject=Jelly%20Studio%20beta%20invite';
+/** Invite requests go to Jared's real mailbox (tolley.io has no MX). */
+function supportMailto(productName: string): string {
+  return `mailto:jared@yourkchomes.com?subject=${encodeURIComponent(`${productName} beta invite`)}`;
+}
 
 /** Full-bleed scrim — the ink base, opaque enough to stop the studio bleeding
  *  through a gate the user has to act on. Not a palette hue. */
@@ -33,6 +36,7 @@ const SCRIM = 'rgba(8,7,15,0.92)';
 export function BetaGate(): React.ReactElement | null {
   const { t } = useTheme();
   const { loading, beta, tier, markTermsAccepted } = useTier();
+  const brand = useProduct();
 
   const overlay: React.CSSProperties = {
     position: 'fixed',
@@ -89,7 +93,7 @@ export function BetaGate(): React.ReactElement | null {
       <div style={overlay} role="dialog" aria-modal="true" aria-labelledby="gate-title">
         <div style={card}>
           <MicroLabel tone="violet" style={{ marginBottom: 10 }}>
-            Jelly Studio · public beta
+            {brand.name} · public beta
           </MicroLabel>
           <h2
             id="gate-title"
@@ -102,14 +106,14 @@ export function BetaGate(): React.ReactElement | null {
             Ask us for one and we&apos;ll send a link — new invitees get a $10
             starter credit once a card is on file.
           </p>
-          <a href={SUPPORT_MAILTO} style={{ ...primaryBtn, display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+          <a href={supportMailto(brand.name)} style={{ ...primaryBtn, display: 'block', textAlign: 'center', textDecoration: 'none' }}>
             Request an invite
           </a>
           <p style={{ margin: '16px 0 0', fontSize: 13, lineHeight: 1.6, color: t.textFaint }}>
             Already have a code? Sign out and open your invite link
             (tolley.io/signup?…&amp;invite=CODE) with a new email, or reply to
             your invite email and we&apos;ll attach the code to this account.{' '}
-            <button type="button" onClick={() => signOut({ callbackUrl: '/animate' })} style={{ ...linkStyle, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}>Sign out</button>
+            <button type="button" onClick={() => signOut({ callbackUrl: brand.homePath })} style={{ ...linkStyle, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}>Sign out</button>
           </p>
         </div>
       </div>
@@ -147,14 +151,14 @@ export function BetaGate(): React.ReactElement | null {
             Updated Terms for the public beta
           </h2>
           <p style={{ margin: '0 0 14px', lineHeight: 1.6, fontSize: 14.5, color: t.textSecondary }}>
-            Jelly Studio now has its own Terms, Privacy Policy and Beta Addendum
+            {brand.name} now has its own Terms, Privacy Policy and Beta Addendum
             (version {beta.tosVersion ?? '2026-08-15'}). Please read and accept
             once to keep using the studio.
           </p>
           <ul style={{ margin: '0 0 16px 18px', lineHeight: 1.7, fontSize: 14, color: t.textSecondary }}>
-            <li><a href="/animate/terms" target="_blank" rel="noreferrer" style={linkStyle}>Terms of Service</a></li>
-            <li><a href="/animate/privacy" target="_blank" rel="noreferrer" style={linkStyle}>Privacy Policy</a></li>
-            <li><a href="/animate/beta" target="_blank" rel="noreferrer" style={linkStyle}>Beta Addendum</a> — plain-English summary</li>
+            <li><a href={brand.legal.terms} target="_blank" rel="noreferrer" style={linkStyle}>Terms of Service</a></li>
+            <li><a href={brand.legal.privacy} target="_blank" rel="noreferrer" style={linkStyle}>Privacy Policy</a></li>
+            <li><a href={brand.legal.beta} target="_blank" rel="noreferrer" style={linkStyle}>Beta Addendum</a> — plain-English summary</li>
           </ul>
           <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13.5, lineHeight: 1.6, marginBottom: 18, cursor: 'pointer', color: t.textSecondary }}>
             <input
@@ -165,7 +169,7 @@ export function BetaGate(): React.ReactElement | null {
               data-testid="terms-accept-checkbox"
             />
             <span>
-              I have read and agree to the Jelly Studio Terms, Privacy Policy and
+              I have read and agree to the {brand.name} Terms, Privacy Policy and
               Beta Addendum, including the beta showcase license (which I can opt
               out of in Settings).
             </span>

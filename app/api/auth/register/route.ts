@@ -18,6 +18,8 @@ import {
 } from "@/lib/vater/beta-invites";
 import { queueVaterEvent } from "@/lib/vater/events";
 import { grantStarterCredit } from "@/lib/vater/billing/ledger";
+import { isStudioPath, productForPath, PRODUCT_NAME, type Product } from "@/lib/vater/product";
+import { setAccountOrigin } from "@/lib/vater/listing/agent-profile";
 
 export const runtime = "nodejs";
 
@@ -26,7 +28,7 @@ type RegisterPayload = {
   password?: string;
   /** Click-wrap stamp from the Jelly Studio signup (lib/legal-animate TOS_VERSION). */
   termsVersion?: string;
-  /** Where signup will land. `/animate…` means this is a Jelly Studio signup. */
+  /** Where signup will land. `/animate…` = Jelly! Studio, `/realestateanimated…` = Listing Studio. */
   callbackUrl?: string;
   /** Beta invite code — required for Jelly Studio signups. */
   invite?: string;
@@ -57,8 +59,15 @@ function isValidEmail(email: string) {
  */
 function isStudioSignup(payload: RegisterPayload): boolean {
   const callbackUrl = typeof payload.callbackUrl === "string" ? payload.callbackUrl : "";
-  if (callbackUrl.startsWith("/animate")) return true;
+  // Either front door: /animate (Jelly! Studio) or /realestateanimated
+  // (Listing Studio by Jelly!) — lib/vater/product.ts.
+  if (isStudioPath(callbackUrl)) return true;
   return typeof payload.termsVersion === "string" && payload.termsVersion.trim().length > 0;
+}
+
+/** Which front door this signup came through; Jelly unless the callback says otherwise. */
+function signupProduct(payload: RegisterPayload): Product {
+  return productForPath(typeof payload.callbackUrl === "string" ? payload.callbackUrl : "") ?? "jelly";
 }
 
 // Rate limited to 5/hr per IP: signup is a public write that also runs a
@@ -77,6 +86,7 @@ export async function POST(request: Request) {
         : null;
     const inviteCode = normalizeInviteCode(payload.invite);
     const studioSignup = isStudioSignup(payload);
+    const origin = signupProduct(payload);
 
     if (!email || !password) {
       return NextResponse.json(
@@ -227,16 +237,16 @@ export async function POST(request: Request) {
     /* Everything below is post-signup provisioning. None of it may fail the
      * request: the account exists and the user is about to be signed in. */
     if (studioSignup) {
-      await provisionStudioAccount(outcome.userId, outcome.inviteId);
+      await provisionStudioAccount(outcome.userId, outcome.inviteId, origin);
     }
 
     queueVaterEvent({
       userId: outcome.userId,
       kind: "account.created",
       message: studioSignup
-        ? "Jelly Studio account created."
+        ? `${PRODUCT_NAME[origin]} account created.`
         : "Account created.",
-      data: { email, studio: studioSignup },
+      data: { email, studio: studioSignup, origin },
     });
     if (outcome.inviteId) {
       queueVaterEvent({
@@ -276,6 +286,7 @@ export async function POST(request: Request) {
 async function provisionStudioAccount(
   userId: string,
   inviteId: string | null,
+  origin: Product = "jelly",
 ): Promise<void> {
   try {
     if (await hasVaterAccountTable()) {
@@ -286,10 +297,14 @@ async function provisionStudioAccount(
           tier: "public",
           unmetered: false,
           invitedBy: inviteId,
-          notes: "beta invite signup",
+          notes: origin === "realestate" ? "listing studio invite signup" : "beta invite signup",
         },
         update: {},
       });
+      // Origin stamp is a separate, probe-guarded raw UPDATE: the column
+      // arrives with 20260827_vater_account_origin_license and the upsert
+      // above must keep working on a database that predates it.
+      await setAccountOrigin(userId, origin);
     }
   } catch (err) {
     if (!isMissingRelationError(err)) {

@@ -18,26 +18,100 @@ import type * as React from 'react';
  * Every key that existed before the cinema pass is still here (57 consumers).
  */
 
+/* ── Brand family = CSS variables with Jelly fallbacks (2026-08-26) ──────
+ *
+ * Listing Studio (tolley.io/realestateanimated) wears the SAME shell in a
+ * navy/gold palette. Rather than thread a provider through the ~115 files
+ * that import JELLY_TOKENS directly, every brand-family value below is
+ * `var(--jb-<kebab>, <jelly hex>)`: on /animate nothing sets the variable,
+ * so the fallback IS the Jelly palette and the studio is pixel-identical;
+ * app/realestateanimated/layout.tsx sets the variables (LISTING_CSS_VARS in
+ * components/animate/brands.ts) and the whole shell re-colours.
+ *
+ * RULES:
+ *   • Variable names match LISTING_CSS_VARS keys exactly — see JELLY_CSS_VARS.
+ *   • Never string-concatenate a brand token (`${brand}55`) — it is a var()
+ *     expression now, not a hex. Use brandGhost / brandOutline instead.
+ *   • Anything that needs a literal hex (canvas, three.js) reads the variable
+ *     off `getComputedStyle(document.documentElement)` with a hex fallback
+ *     (see cinema/SpaceField.tsx) or uses JELLY_HEX below.
+ */
+
 const VIOLET = '#8F7DFF';
 const VIOLET_LIGHT = '#B3A6FF';
 const CYAN = '#6FD6FF';
 const INK = '#0A0A14';
-const GRAD_PRIMARY = 'linear-gradient(120deg, #8F7DFF, #6FD6FF)';
+const GRAD_PRIMARY_HEX = 'linear-gradient(120deg, #8F7DFF, #6FD6FF)';
+
+/** `var(--jb-<name>, <fallback>)` — fallbacks may contain commas (gradients). */
+function v(name: string, fallback: string): string {
+  return `var(--jb-${name}, ${fallback})`;
+}
+
+/** Literal Jelly hex values for the few non-CSS consumers (three.js, canvas). */
+export const JELLY_HEX = {
+  brand: VIOLET,
+  brandLight: VIOLET_LIGHT,
+  cyan: CYAN,
+  ink: INK,
+} as const;
+
+/**
+ * Every `--jb-*` variable the shell reads, with its Jelly value. Exported so
+ * a brand file (components/animate/brands.ts) can be diffed against it and so
+ * tests can assert the two key sets never drift.
+ */
+export const JELLY_CSS_VARS: Record<string, string> = {
+  '--jb-brand': VIOLET,
+  '--jb-brand-light': VIOLET_LIGHT,
+  '--jb-brand-dark': '#6C5CE7',
+  '--jb-brand-ghost': 'rgba(143,125,255,0.08)',
+  '--jb-brand-outline': 'rgba(143,125,255,0.35)',
+  /* colour only — tokens compose it into `0 12px 44px <glow>` */
+  '--jb-brand-glow': 'rgba(143,125,255,0.35)',
+  '--jb-cyan': CYAN,
+  '--jb-cyan-ghost': 'rgba(111,214,255,0.08)',
+  '--jb-accent': CYAN,
+  '--jb-accent-dark': '#3FB8EE',
+  '--jb-grad-primary': GRAD_PRIMARY_HEX,
+  '--jb-grad-text': 'linear-gradient(110deg, #B3A6FF, #6FD6FF)',
+  '--jb-grad-ticket': 'linear-gradient(160deg, rgba(143,125,255,0.12), rgba(111,214,255,0.06))',
+  '--jb-grad-chip-on': 'linear-gradient(120deg, rgba(143,125,255,0.25), rgba(111,214,255,0.18))',
+  '--jb-grad-create': GRAD_PRIMARY_HEX,
+  '--jb-grad-credits': 'linear-gradient(135deg, #6C5CE7, #8F7DFF)',
+  '--jb-grad-upgrade': 'linear-gradient(135deg, #1B1533, #2A2350)',
+  '--jb-grad-tutorial': GRAD_PRIMARY_HEX,
+  '--jb-on-gradient': INK,
+  /* dark theme surfaces (light theme has its own fallbacks in `light`) */
+  '--jb-body': INK,
+  '--jb-card-alt': '#08070F',
+  '--jb-panel': '#0E0D19',
+  '--jb-nebula': '#1B1533',
+  '--jb-hover': 'rgba(143,125,255,0.07)',
+  '--jb-link': VIOLET_LIGHT,
+  '--jb-sidebar-bg': 'rgba(8,7,15,0.72)',
+  '--jb-header-bg': 'rgba(10,10,20,0.6)',
+  /* colour only — tokens compose it into `0 0 60px <halo>` */
+  '--jb-halo': 'rgba(143,125,255,0.25)',
+  '--jb-hero-wash': 'radial-gradient(90% 70% at 75% -10%, #1B1533 0%, #0A0A14 55%)',
+};
+
+const GRAD_PRIMARY = v('grad-primary', GRAD_PRIMARY_HEX);
 
 export const JELLY_TOKENS = {
   /* ── brand pair ── */
-  brand: VIOLET,
-  brandLight: VIOLET_LIGHT,
-  brandDark: '#6C5CE7',
-  brandGhost: 'rgba(143,125,255,0.08)',
-  brandOutline: 'rgba(143,125,255,0.35)',
-  brandGlow: '0 12px 44px rgba(143,125,255,0.35)',
-  cyan: CYAN,
-  cyanGhost: 'rgba(111,214,255,0.08)',
+  brand: v('brand', VIOLET),
+  brandLight: v('brand-light', VIOLET_LIGHT),
+  brandDark: v('brand-dark', '#6C5CE7'),
+  brandGhost: v('brand-ghost', 'rgba(143,125,255,0.08)'),
+  brandOutline: v('brand-outline', 'rgba(143,125,255,0.35)'),
+  brandGlow: `0 12px 44px ${v('brand-glow', 'rgba(143,125,255,0.35)')}`,
+  cyan: v('cyan', CYAN),
+  cyanGhost: v('cyan-ghost', 'rgba(111,214,255,0.08)'),
   /* `accent` was amber; it is used site-wide as the "in progress / live" colour,
    * which in the cinema language is cyan ("● NOW FILMING"). */
-  accent: CYAN,
-  accentDark: '#3FB8EE',
+  accent: v('accent', CYAN),
+  accentDark: v('accent-dark', '#3FB8EE'),
   /* CANON — the locked house cast / canon style marker (2026-08-22).
    * Deliberately OUTSIDE the violet/cyan brand pair so "this is the show"
    * never reads as ordinary UI chrome or as a status colour. */
@@ -48,55 +122,55 @@ export const JELLY_TOKENS = {
   warning: '#F5B34B',
   /* ── gradients ── */
   gradPrimary: GRAD_PRIMARY,
-  gradText: 'linear-gradient(110deg, #B3A6FF, #6FD6FF)',
-  gradTicket: 'linear-gradient(160deg, rgba(143,125,255,0.12), rgba(111,214,255,0.06))',
-  gradChipOn: 'linear-gradient(120deg, rgba(143,125,255,0.25), rgba(111,214,255,0.18))',
-  onGradient: INK,
-  gradCreate: GRAD_PRIMARY,
-  gradCredits: 'linear-gradient(135deg, #6C5CE7, #8F7DFF)',
-  gradUpgrade: 'linear-gradient(135deg, #1B1533, #2A2350)',
-  gradTutorial: GRAD_PRIMARY,
+  gradText: v('grad-text', 'linear-gradient(110deg, #B3A6FF, #6FD6FF)'),
+  gradTicket: v('grad-ticket', 'linear-gradient(160deg, rgba(143,125,255,0.12), rgba(111,214,255,0.06))'),
+  gradChipOn: v('grad-chip-on', 'linear-gradient(120deg, rgba(143,125,255,0.25), rgba(111,214,255,0.18))'),
+  onGradient: v('on-gradient', INK),
+  gradCreate: v('grad-create', GRAD_PRIMARY_HEX),
+  gradCredits: v('grad-credits', 'linear-gradient(135deg, #6C5CE7, #8F7DFF)'),
+  gradUpgrade: v('grad-upgrade', 'linear-gradient(135deg, #1B1533, #2A2350)'),
+  gradTutorial: v('grad-tutorial', GRAD_PRIMARY_HEX),
   light: {
-    body: '#F6F4FF',
+    body: v('body', '#F6F4FF'),
     card: 'rgba(255,255,255,0.72)',
-    cardAlt: '#EFEDF9',
-    panel: '#FFFFFF',
-    nebula: '#E9E4FF',
+    cardAlt: v('card-alt', '#EFEDF9'),
+    panel: v('panel', '#FFFFFF'),
+    nebula: v('nebula', '#E9E4FF'),
     text: '#14122A',
     textSecondary: '#5C5878',
     textFaint: '#7A7694',
     textDisabled: 'rgba(20,18,42,0.38)',
     border: 'rgba(20,18,42,0.10)',
     borderStrong: 'rgba(20,18,42,0.16)',
-    hover: 'rgba(143,125,255,0.08)',
-    link: '#5B4BD6',
-    sidebarBg: 'rgba(255,255,255,0.7)',
-    headerBg: 'rgba(246,244,255,0.75)',
+    hover: v('hover', 'rgba(143,125,255,0.08)'),
+    link: v('link', '#5B4BD6'),
+    sidebarBg: v('sidebar-bg', 'rgba(255,255,255,0.7)'),
+    headerBg: v('header-bg', 'rgba(246,244,255,0.75)'),
     glassBlur: 'blur(10px)',
     cardShadow: '0 30px 60px rgba(60,50,120,0.12)',
-    halo: '0 0 60px rgba(143,125,255,0.18)',
-    heroWash: 'radial-gradient(90% 70% at 75% -10%, #E9E4FF 0%, #F6F4FF 55%)',
+    halo: `0 0 60px ${v('halo', 'rgba(143,125,255,0.18)')}`,
+    heroWash: v('hero-wash', 'radial-gradient(90% 70% at 75% -10%, #E9E4FF 0%, #F6F4FF 55%)'),
   },
   dark: {
-    body: INK,
+    body: v('body', INK),
     card: 'rgba(240,238,248,0.04)',
-    cardAlt: '#08070F',
-    panel: '#0E0D19',
-    nebula: '#1B1533',
+    cardAlt: v('card-alt', '#08070F'),
+    panel: v('panel', '#0E0D19'),
+    nebula: v('nebula', '#1B1533'),
     text: '#F0EEF8',
     textSecondary: '#9A94B0',
     textFaint: '#6B6584',
     textDisabled: '#4A4560',
     border: 'rgba(240,238,248,0.10)',
     borderStrong: 'rgba(240,238,248,0.16)',
-    hover: 'rgba(143,125,255,0.07)',
-    link: VIOLET_LIGHT,
-    sidebarBg: 'rgba(8,7,15,0.72)',
-    headerBg: 'rgba(10,10,20,0.6)',
+    hover: v('hover', 'rgba(143,125,255,0.07)'),
+    link: v('link', VIOLET_LIGHT),
+    sidebarBg: v('sidebar-bg', 'rgba(8,7,15,0.72)'),
+    headerBg: v('header-bg', 'rgba(10,10,20,0.6)'),
     glassBlur: 'blur(10px)',
     cardShadow: '0 40px 80px rgba(0,0,0,0.5)',
-    halo: '0 0 60px rgba(143,125,255,0.25)',
-    heroWash: 'radial-gradient(90% 70% at 75% -10%, #1B1533 0%, #0A0A14 55%)',
+    halo: `0 0 60px ${v('halo', 'rgba(143,125,255,0.25)')}`,
+    heroWash: v('hero-wash', 'radial-gradient(90% 70% at 75% -10%, #1B1533 0%, #0A0A14 55%)'),
   },
   /* Fonts are loaded once in app/animate/layout.tsx (components/animate/fonts.ts).
    * The Sora fallback keeps the two animate banners that /vater/youtube imports

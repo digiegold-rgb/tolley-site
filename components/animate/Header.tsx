@@ -17,6 +17,7 @@ import { signOut, useSession } from 'next-auth/react';
 import { JELLY_TOKENS } from './tokens';
 import { useTheme, useRoute } from './theme-context';
 import { useTier } from './tier-context';
+import { useProduct } from './product-context';
 import { Icon } from './Icon';
 import { VBtn } from './primitives';
 import { MicroLabel, PillButton } from './cinema';
@@ -132,6 +133,7 @@ export function Header({
   onOpenWhatsNew,
 }: HeaderProps = {}): React.ReactElement {
   const { t, dark, toggle } = useTheme();
+  const brand = useProduct();
   const { setRoute } = useRoute();
   const { capabilities } = useTier();
   const [showSettings, setShowSettings] = React.useState(false);
@@ -424,7 +426,7 @@ export function Header({
               ? `What's new in version ${APP_VERSION} — unread`
               : `What's new in version ${APP_VERSION}`
           }
-          title={`Jelly Studio v${APP_VERSION} — click for release notes`}
+          title={`${brand.name} v${APP_VERSION} — click for release notes`}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -869,6 +871,7 @@ interface StudioRow {
 
 function StudiosSettings(): React.ReactElement {
   const { t } = useTheme();
+  const brand = useProduct();
   const [rows, setRows] = React.useState<StudioRow[] | null>(null);
   const [max, setMax] = React.useState(10);
   const [notReady, setNotReady] = React.useState(false);
@@ -905,7 +908,7 @@ function StudiosSettings(): React.ReactElement {
       } else {
         setMsg(okMsg);
         if (reloadOnSwitch && data.switched) {
-          window.location.assign('/animate');
+          window.location.assign(brand.homePath);
           return;
         }
       }
@@ -1088,6 +1091,7 @@ function StudioSettingsRow({
  */
 function ShowcaseOptOutToggle(): React.ReactElement {
   const { t } = useTheme();
+  const brand = useProduct();
   const [optOut, setOptOut] = React.useState<boolean | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -1169,7 +1173,7 @@ function ShowcaseOptOutToggle(): React.ReactElement {
         />
         <span>
           <span style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
-            Allow Jelly Studio to showcase my renders
+            Allow {brand.name} to showcase my renders
           </span>
           <span
             style={{

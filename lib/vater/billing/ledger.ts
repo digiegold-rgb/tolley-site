@@ -735,6 +735,14 @@ export async function debitForAction(
   cents: number,
   dedupeKey: string,
   note: string,
+  opts?: {
+    /**
+     * Row the debit belongs to. Listing Studio passes its VaterListingJob id
+     * (2026-08-27) so `refundOnFailure(listingJobId)` finds the debit by
+     * projectId exactly as it does for a YouTubeProject — one refund path.
+     */
+    projectId?: string;
+  },
 ): Promise<DebitResult> {
   if (cents <= 0) return { ok: true, outcome: "skipped", reason: "zero_charge" };
   if (!(await hasVaterCreditLedgerTable())) {
@@ -748,6 +756,7 @@ export async function debitForAction(
         kind: "debit",
         dedupeKey,
         note,
+        ...(opts?.projectId ? { projectId: opts.projectId } : {}),
       },
     });
     return { ok: true, outcome: "created", chargedCents: cents };

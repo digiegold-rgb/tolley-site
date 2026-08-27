@@ -23,6 +23,18 @@ export interface SpaceFieldProps {
   style?: React.CSSProperties;
 }
 
+/** `--jb-*` custom property → 0xRRGGBB, or `fallback` when unset / not a hex. */
+function readCssHex(name: string, fallback: number): number {
+  if (typeof document === 'undefined') return fallback;
+  try {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const m = /^#?([0-9a-f]{6})$/i.exec(raw);
+    return m ? Number.parseInt(m[1], 16) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 const COUNTS: Record<SpaceFieldDensity, [number, number, number]> = {
   full: [900, 500, 180],
   sparse: [420, 220, 80],
@@ -83,8 +95,13 @@ function SpaceFieldCanvas({ density = 'full', strength = 1, style }: SpaceFieldP
         scene.add(p);
         return p;
       };
-      const far = mkPoints(nFar, 30, 0.05, 0x8f7dff, 0.55);
-      const mid = mkPoints(nMid, 22, 0.09, 0x6fd6ff, 0.5);
+      /* three.js wants numeric hex, not a CSS var(). Read the brand pair off
+       * the document at mount (set by app/realestateanimated/layout.tsx via
+       * the --jb-* variables) and fall back to the Jelly violet / cyan. */
+      const brandHex = readCssHex('--jb-brand', 0x8f7dff);
+      const cyanHex = readCssHex('--jb-cyan', 0x6fd6ff);
+      const far = mkPoints(nFar, 30, 0.05, brandHex, 0.55);
+      const mid = mkPoints(nMid, 22, 0.09, cyanHex, 0.5);
       const near = mkPoints(nNear, 16, 0.16, 0xcfc4ff, 0.65);
 
       let mx = 0;

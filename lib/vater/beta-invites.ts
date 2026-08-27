@@ -20,6 +20,7 @@
  */
 
 import type { Prisma } from "@prisma/client";
+import { STUDIO_HOME, type Product } from "@/lib/vater/product";
 
 import { prisma } from "@/lib/prisma";
 import { hasBetaInviteTable, isMissingRelationError } from "@/lib/vater/beta-schema";
@@ -91,9 +92,18 @@ export function formatInviteCode(code: string): string {
   return ["JELLY", ...groups].join("-");
 }
 
-/** The exact link to send a beta user. */
-export function inviteLink(code: string, baseUrl = "https://www.tolley.io"): string {
-  return `${baseUrl}/signup?callbackUrl=%2Fanimate&invite=${encodeURIComponent(code)}`;
+/**
+ * The exact link to send a beta user. `product` picks the front door the
+ * signup lands on (and therefore VaterAccount.origin): /animate for Jelly,
+ * /realestateanimated for Listing Studio.
+ */
+export function inviteLink(
+  code: string,
+  baseUrl = "https://www.tolley.io",
+  product: Product = "jelly",
+): string {
+  const cb = encodeURIComponent(STUDIO_HOME[product] ?? STUDIO_HOME.jelly);
+  return `${baseUrl}/signup?callbackUrl=${cb}&invite=${encodeURIComponent(code)}`;
 }
 
 /**

@@ -4,6 +4,7 @@ import { CinemaRoot } from "@/components/animate/cinema/CinemaRoot";
 import { MicroLabel } from "@/components/animate/cinema/MicroLabel";
 import { jellyDisplay, jellySerif } from "@/components/animate/fonts";
 import { JELLY_TOKENS } from "@/components/animate/tokens";
+import { JELLY_BRAND, LISTING_BRAND, type Brand } from "@/components/animate/brands";
 import "@/app/animate/animate.css";
 
 type AuthShellProps = {
@@ -20,17 +21,27 @@ type AuthShellProps = {
 /* Jelly Studio auth screens (brand === "jelly studio") render on the cinema
  * stage — same tokens, backdrop, glass card and gradient pill as the studio
  * itself — so a beta user who clicks "Sign in" never leaves the film. The
- * T-Agent screens are unchanged. */
-function JellyAuthShell({ title, subtitle, children, alternatePrompt, alternateLabel, alternateHref }: AuthShellProps) {
+ * T-Agent screens are unchanged.
+ *
+ * Listing Studio (brand === "listing studio") is the SAME chrome wearing the
+ * LISTING_BRAND `--jb-*` variables (navy/gold) and its own lockup/legal. */
+function JellyAuthShell({ title, subtitle, children, alternatePrompt, alternateLabel, alternateHref, studio }: AuthShellProps & { studio: Brand }) {
   const t = JELLY_TOKENS.dark;
   return (
-    <div className={`${jellyDisplay.variable} ${jellySerif.variable}`} style={{ display: "contents" }}>
+    <div
+      className={`${jellyDisplay.variable} ${jellySerif.variable}`}
+      data-product={studio.product}
+      style={{ display: "contents", ...(studio.cssVars as React.CSSProperties) }}
+    >
       <CinemaRoot className="jc-auth" beam density="sparse">
         <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
-          <Link href="/animate" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28, color: t.text, textDecoration: "none" }}>
+          <Link href={studio.homePath} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28, color: t.text, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/animate/brand/logo.svg" alt="Jelly Studio" width={38} height={38} style={{ filter: "drop-shadow(0 0 14px rgba(143,125,255,0.6))" }} />
-            <span style={{ fontWeight: 700, letterSpacing: "0.12em", fontSize: 14 }}>JELLY STUDIO</span>
+            <img src={studio.logoSrc} alt={studio.name} width={38} height={38} style={{ filter: "drop-shadow(0 0 14px var(--jb-brand-glow, rgba(143,125,255,0.6)))" }} />
+            <span style={{ display: "flex", flexDirection: "column" }}>
+              {studio.eyebrow && <span style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: t.textFaint }}>{studio.eyebrow}</span>}
+              <span style={{ fontWeight: 700, letterSpacing: "0.12em", fontSize: 14 }}>{studio.wordmark}</span>
+            </span>
           </Link>
           <section style={{ width: "100%", maxWidth: 440 }}>
             <div style={{ textAlign: "center", marginBottom: 18 }}>
@@ -57,11 +68,11 @@ function JellyAuthShell({ title, subtitle, children, alternatePrompt, alternateL
               </Link>
             </p>
             <p style={{ marginTop: 26, textAlign: "center", fontSize: 11.5, color: t.textFaint }}>
-              <Link href="/animate/terms" className="jc-link" style={{ color: t.textFaint }}>Terms</Link>
+              <Link href={studio.legal.terms} className="jc-link" style={{ color: t.textFaint }}>Terms</Link>
               {" · "}
-              <Link href="/animate/privacy" className="jc-link" style={{ color: t.textFaint }}>Privacy</Link>
+              <Link href={studio.legal.privacy} className="jc-link" style={{ color: t.textFaint }}>Privacy</Link>
               {" · "}
-              <Link href="/animate/beta" className="jc-link" style={{ color: t.textFaint }}>Beta</Link>
+              <Link href={studio.legal.beta} className="jc-link" style={{ color: t.textFaint }}>Beta</Link>
             </p>
           </section>
         </main>
@@ -72,7 +83,8 @@ function JellyAuthShell({ title, subtitle, children, alternatePrompt, alternateL
 
 export function AuthShell(props: AuthShellProps) {
   const { title, subtitle, brand = "t-agent", children, alternatePrompt, alternateLabel, alternateHref } = props;
-  if (brand === "jelly studio") return <JellyAuthShell {...props} />;
+  if (brand === "jelly studio") return <JellyAuthShell {...props} studio={JELLY_BRAND} />;
+  if (brand === "listing studio") return <JellyAuthShell {...props} studio={LISTING_BRAND} />;
   return (
     <main className="portal-shell ambient-noise relative flex min-h-screen w-full items-center justify-center overflow-hidden px-5 py-10 sm:px-8">
       <div aria-hidden="true" className="hp-dot-grid pointer-events-none fixed inset-0 z-0" />

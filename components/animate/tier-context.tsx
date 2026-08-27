@@ -11,6 +11,8 @@
 import * as React from 'react';
 import type { VaterTier } from '@/lib/vater/nav-visibility';
 import { routeIdsForTier } from '@/lib/vater/nav-visibility';
+import type { Product } from '@/lib/vater/product';
+import type { AgentProfile } from '@/lib/vater/listing/contract';
 
 export interface VaterCapabilities {
   rules: boolean;
@@ -25,6 +27,10 @@ export interface VaterCapabilities {
   chat: boolean;
   observer: boolean;
   publishingPosts: boolean;
+  /** Listing Studio: verified real-estate license (MLS export, REALTOR® mark). */
+  license: boolean;
+  /** Listing Studio: MLS pull (license + MO/KS + MLS Grid token). */
+  mls: boolean;
 }
 
 export interface BetaState {
@@ -63,8 +69,14 @@ export interface TierContextValue {
   email: string | null;
   beta: BetaState;
   workspace: WorkspaceState | null;
+  /** Which front door the human came through (VaterAccount.origin). */
+  product: Product;
+  /** Listing Studio agent profile (end card + license); null until /me loads. */
+  agentProfile: AgentProfile | null;
   /** Optimistic local update after the click-wrap modal succeeds. */
   markTermsAccepted: () => void;
+  /** Optimistic local update after PATCH /me { agentProfile } succeeds. */
+  setAgentProfile: (p: AgentProfile) => void;
 }
 
 const EMPTY_CAPS: VaterCapabilities = {
@@ -80,6 +92,8 @@ const EMPTY_CAPS: VaterCapabilities = {
   chat: false,
   observer: false,
   publishingPosts: false,
+  license: false,
+  mls: false,
 };
 
 const DEFAULT_BETA: BetaState = {
@@ -102,7 +116,10 @@ const defaultValue: TierContextValue = {
   email: null,
   workspace: null,
   beta: DEFAULT_BETA,
+  product: 'jelly',
+  agentProfile: null,
   markTermsAccepted: () => {},
+  setAgentProfile: () => {},
 };
 
 interface MePayload {
@@ -114,6 +131,8 @@ interface MePayload {
   routes?: string[];
   beta?: Partial<BetaState>;
   workspace?: WorkspaceState | null;
+  product?: Product;
+  agentProfile?: AgentProfile | null;
 }
 
 export const TierContext = React.createContext<TierContextValue>(defaultValue);
@@ -157,6 +176,13 @@ export function TierProvider({
   const markTermsAccepted = React.useCallback(() => {
     setState((prev) => ({ ...prev, beta: { ...prev.beta, termsAccepted: true } }));
   }, []);
+  const setAgentProfile = React.useCallback((agentProfile: AgentProfile) => {
+    setState((prev) => ({
+      ...prev,
+      agentProfile,
+      capabilities: { ...prev.capabilities, license: agentProfile.licenseStatus === 'verified' },
+    }));
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -190,6 +216,8 @@ export function TierProvider({
           email: data.email ?? null,
           beta: { ...DEFAULT_BETA, ...(data.beta ?? {}) },
           workspace: data.workspace ?? null,
+          product: data.product === 'realestate' ? 'realestate' : 'jelly',
+          agentProfile: data.agentProfile ?? null,
         }));
       } catch {
         if (!cancelled) setState((prev) => ({ ...prev, loading: false }));
@@ -200,6 +228,9 @@ export function TierProvider({
     };
   }, []);
 
-  const value = React.useMemo(() => ({ ...state, markTermsAccepted }), [state, markTermsAccepted]);
+  const value = React.useMemo(
+    () => ({ ...state, markTermsAccepted, setAgentProfile }),
+    [state, markTermsAccepted, setAgentProfile],
+  );
   return <TierContext.Provider value={value}>{children}</TierContext.Provider>;
 }

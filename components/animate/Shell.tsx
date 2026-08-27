@@ -70,32 +70,69 @@ import { LearningCenterScreen } from './screens/browse/LearningCenterScreen';
 import { RulesScreen } from './screens/browse/RulesScreen';
 import { PricingScreen } from './screens/browse/PricingScreen';
 import { canSeeRoute, NAV_ROUTES } from '@/lib/vater/nav-visibility';
+import { useProduct } from './product-context';
+import type { Brand } from './brands';
+import type { Product } from '@/lib/vater/product';
+import ListingWizard from './screens/listing/ListingWizard';
+import ListingLibrary from './screens/listing/ListingLibrary';
 
 /** Where the light/dark choice lives between visits. */
 const THEME_KEY = 'jelly.theme';
 
-/** Section id → the first half of a screen eyebrow ("STUDIO — LIBRARY"). */
-const SECTION_EYEBROW: Record<'primary' | 'secondary', string> = {
-  primary: 'STUDIO',
-  secondary: 'ACCOUNT',
+/** Section id → the first half of a screen eyebrow ("STUDIO — LIBRARY"),
+ *  per front door (Listing Studio says so on every screen). */
+const SECTION_EYEBROW: Record<Product, Record<'primary' | 'secondary', string>> = {
+  jelly: { primary: 'STUDIO', secondary: 'ACCOUNT' },
+  realestate: { primary: 'LISTING STUDIO', secondary: 'ACCOUNT' },
 };
 
 /** "STUDIO — LIBRARY" from the route's own NAV_ROUTES entry. */
-function eyebrowFor(routeId: string, fallbackLabel: string): string {
+function eyebrowFor(routeId: string, fallbackLabel: string, product: Product = 'jelly'): string {
   const def = NAV_ROUTES.find((r) => r.id === routeId);
-  const section = SECTION_EYEBROW[def?.section ?? 'primary'];
+  const section = SECTION_EYEBROW[product][def?.section ?? 'primary'];
   return `${section} — ${(def?.label ?? fallbackLabel).toUpperCase()}`;
 }
 
-export function Shell(): React.ReactElement {
+export interface ShellProps {
+  /** Route the shell opens on when the URL carries no `#r=`. Defaults to the
+   *  brand's `defaultRoute` (dashboard on /animate, listing on
+   *  /realestateanimated). */
+  initialRoute?: string;
+}
+
+export function Shell({ initialRoute }: ShellProps = {}): React.ReactElement {
   return (
     <TierProvider>
-      <ShellInner />
+      <ShellInner initialRoute={initialRoute} />
     </TierProvider>
   );
 }
 
-function ShellInner(): React.ReactElement {
+/**
+ * Mirror the brand's `--jb-*` variables onto <html> while a non-Jelly shell
+ * is mounted. The product layout sets them on its wrapper, which covers the
+ * shell tree — but ten modals portal to document.body (RenderConfirmModal,
+ * StylePickerModal, ImageLightbox…) and would fall back to violet. Cleared
+ * on unmount so a client-side hop to /animate is never tinted.
+ */
+function useBrandVarsOnRoot(brand: Brand, dark: boolean): void {
+  React.useEffect(() => {
+    if (brand.product === 'jelly' || typeof document === 'undefined') return;
+    const root = document.documentElement;
+    const vars: Record<string, string> = { ...brand.cssVars, ...(dark ? {} : brand.cssVarsLight ?? {}) };
+    for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+    root.setAttribute('data-theme', dark ? 'dark' : 'light');
+    return () => {
+      for (const k of Object.keys(vars)) root.style.removeProperty(k);
+      root.removeAttribute('data-theme');
+    };
+  }, [brand, dark]);
+}
+
+function ShellInner({ initialRoute }: ShellProps): React.ReactElement {
+  const brand = useProduct();
+  /** Route an empty hash means — the brand's home screen. */
+  const home = initialRoute ?? brand.defaultRoute;
   // Dark is the default and the SSR value — reading localStorage during render
   // would desync hydration, so the stored preference is applied on mount.
   const [dark, setDark] = React.useState(true);
@@ -109,7 +146,7 @@ function ShellInner(): React.ReactElement {
       /* private mode — dark stays the default */
     }
   }, []);
-  const [route, setRouteState] = React.useState('dashboard');
+  const [route, setRouteState] = React.useState(home);
   const [editorStep, setEditorStep] = React.useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
   // AN-02: the 260px sidebar forced every screen into horizontal scroll on a
@@ -281,14 +318,14 @@ function ShellInner(): React.ReactElement {
 
       const hash = window.location.hash.replace(/^#/, '');
       if (!hash) {
-        setRouteState('dashboard');
+        setRouteState(home);
         setEditorStep(0);
         setSelectedProjectId(null);
         setSelectedStyleId(null);
         return;
       }
       const params = new URLSearchParams(hash);
-      setRouteState(params.get('r') || 'dashboard');
+      setRouteState(params.get('r') || home);
       setEditorStep(Number.parseInt(params.get('s') || '0', 10) || 0);
       setSelectedProjectId(params.get('p') || null);
       setSelectedStyleId(params.get('y') || null);
@@ -303,6 +340,8 @@ function ShellInner(): React.ReactElement {
       window.removeEventListener('popstate', apply);
       window.removeEventListener('hashchange', apply);
     };
+    // `home` is fixed for the life of the shell (brand + initialRoute prop).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   React.useEffect(() => {
@@ -312,7 +351,7 @@ function ShellInner(): React.ReactElement {
       return;
     }
     const params = new URLSearchParams();
-    if (route !== 'dashboard') params.set('r', route);
+    if (route !== home) params.set('r', route);
     if ((route === 'editor' || route === 'video-editor') && editorStep > 0) {
       params.set('s', String(editorStep));
     }
@@ -322,7 +361,7 @@ function ShellInner(): React.ReactElement {
     if (window.location.hash === target) return;
     const url = `${window.location.pathname}${window.location.search}${target}`;
     window.history.pushState({ v2: true }, '', url);
-  }, [route, editorStep, selectedProjectId, selectedStyleId]);
+  }, [route, editorStep, selectedProjectId, selectedStyleId, home]);
 
   // Capture-phase click interceptor: anchors that target legacy
   // /vater/youtube/* routes get rerouted to in-v2 screens so users never
@@ -418,11 +457,12 @@ function ShellInner(): React.ReactElement {
   );
 
   const t = dark ? JELLY_TOKENS.dark : JELLY_TOKENS.light;
+  useBrandVarsOnRoot(brand, dark);
 
   const effectiveTier = tierLoading ? 'public' : tier;
-  const screen = canSeeRoute(effectiveTier, route)
+  const screen = canSeeRoute(effectiveTier, route, brand.product)
     ? renderScreen(route, selectedProjectId, selectedStyleId)
-    : <NotAvailableScreen onHome={() => setRoute('dashboard')} />;
+    : <NotAvailableScreen onHome={() => setRoute(home)} />;
 
   return (
     <ThemeProvider dark={dark} toggle={toggleDark}>
@@ -432,8 +472,16 @@ function ShellInner(): React.ReactElement {
       <RouteContext.Provider value={routeValue}>
         <div
           className="animate-shell jelly-cinema"
+          data-theme={dark ? 'dark' : 'light'}
+          data-product={brand.product}
           style={
             {
+              /* Brand palette: the product layout sets the dark `--jb-*` set;
+               * the shell re-asserts it here and layers the light overrides
+               * on top when the customer flips the theme. Jelly sets nothing
+               * (tokens.ts fallbacks are the Jelly palette). */
+              ...brand.cssVars,
+              ...(dark ? {} : brand.cssVarsLight ?? {}),
               display: 'flex',
               flexDirection: 'column',
               minHeight: '100vh',
@@ -459,8 +507,6 @@ function ShellInner(): React.ReactElement {
               '--jelly-link': t.link,
               '--jelly-card': t.card,
               '--jelly-border': t.border,
-              '--jelly-brand': JELLY_TOKENS.brand,
-              '--jelly-cyan': JELLY_TOKENS.cyan,
             } as React.CSSProperties
           }
         >
@@ -545,6 +591,9 @@ function renderScreen(
 ): React.ReactElement {
   switch (route) {
     case 'dashboard': return <DashboardScreen />;
+    // Listing Studio (/realestateanimated) — components/animate/screens/listing/*
+    case 'listing': return <ListingWizard jobId={selectedProjectId} />;
+    case 'listing-library': return <ListingLibrary />;
     case 'editor':
       // ProjectShell requires a projectId. If we're missing one (e.g. user
       // landed via a stale URL hash) bail back to the dashboard rather than
@@ -627,10 +676,11 @@ function StudioPanelFrame({
   children: React.ReactNode;
 }): React.ReactElement {
   const { t } = useTheme();
+  const brand = useProduct();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1100, width: '100%' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <MicroLabel tone="cyan">{eyebrowFor(routeId, title)}</MicroLabel>
+        <MicroLabel tone="cyan">{eyebrowFor(routeId, title, brand.product)}</MicroLabel>
         <h2
           style={{
             margin: 0,

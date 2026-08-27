@@ -659,6 +659,133 @@ export class AutopilotConfigError extends Error {
 }
 
 // ---------------------------------------------------------------------------
+// Listing Studio (tolley.io/realestateanimated) — DGX `listing:*` job family.
+// Contract shared with content-autopilot/vater_listing.py. Keep in sync.
+// ---------------------------------------------------------------------------
+
+export type ListingDgxSku =
+  | "staging"
+  | "reveal"
+  | "beauty"
+  | "tour"
+  | "exterior"
+  | "vertical"
+  | "character";
+
+export type ListingEndCard = {
+  agentName: string;
+  licenseNumber?: string;
+  licenseState?: string;
+  brokerName: string;
+  brokerPhone: string;
+  agentPhone?: string;
+  narMember?: boolean;
+  /** Always true in product — Equal Housing Opportunity slogan + logo. */
+  eho?: boolean;
+};
+
+export type ListingPhoto = { url: string; room?: string; label?: string };
+
+export type ListingJobInput = OwnerRouting & {
+  sku: ListingDgxSku;
+  /** `re:<sku>:<listingJobId>:<sha12(inputs)>` — DGX returns the existing job on a hit. */
+  idempotencyKey: string;
+  /** Site ListingJob.id — stamped on ledger rows + work dir. */
+  listingId: string;
+  photos: ListingPhoto[];
+  style?: string;
+  roomType?: string;
+  look?: "photoreal" | "render3d" | "blueprint" | "bw";
+  aspect?: "16:9" | "9:16" | "4:3";
+  resolution?: "480p" | "720p";
+  durationS?: number;
+  engine?: "seedance" | "modal-wan";
+  upscale?: boolean;
+  /** Produce the MLS-safe (unlabeled, no end card) still alongside. */
+  mlsSafe?: boolean;
+  /** Reuse an approved staged still instead of re-staging (no re-spend). */
+  stagedStillUrl?: string;
+  endCard: ListingEndCard;
+  listingFacts?: { address?: string; price?: string; beds?: number; baths?: number; sqft?: string | number };
+  narration?: { mode: "none" | "elevenlabs" | "indextts"; voiceId?: string; script?: string };
+  /** For `vertical`: the finished job to re-render at 9:16. */
+  sourceJobId?: string;
+};
+
+export type ListingErrorCode = "moderation" | "qa_geometry" | "compliance" | "timeout" | "upstream";
+
+export type ListingJobAssets = {
+  originalUrl?: string;
+  stagedStillUrl?: string;
+  stagedStillLabeledUrl?: string;
+  mlsTxtUrl?: string;
+  videoUrl?: string;
+  videoVerticalUrl?: string;
+  thumbnailUrl?: string;
+  proof?: { originalUrl: string; stagedUrl: string };
+};
+
+export type ListingJobStatus = JobStatus & {
+  sku: ListingDgxSku;
+  errorCode?: ListingErrorCode;
+  cancelToken?: string;
+  result?: {
+    assets?: ListingJobAssets;
+    qa?: { geometry?: { score: number; pass: boolean; notes?: string }; frames?: Record<string, unknown> };
+    durationS?: number;
+    resolution?: string;
+    seed?: number;
+    /** VideoCostJson (lib/vater/video-cost.ts) — merge with mergeVideoCost(existing, costs, jobId). */
+    costs?: unknown;
+  };
+};
+
+export type ListingJobCreated = { jobId: string; cancelToken?: string; sku: ListingDgxSku; reused: boolean };
+
+/**
+ * `LISTING_RENDER_STUB=1` — Playwright/e2e: no DGX, no spend. Jobs resolve
+ * on the 2nd poll with canned Blob-less URLs; `LISTING_RENDER_STUB=fail`
+ * resolves as a moderation failure (refund path).
+ */
+const LISTING_STUB = process.env.LISTING_RENDER_STUB;
+const stubPolls = new Map<string, number>();
+
+function listingStubCreate(input: ListingJobInput): ListingJobCreated {
+  const jobId = `stub_${input.sku}_${input.listingId}`;
+  stubPolls.set(jobId, 0);
+  return { jobId, cancelToken: "stub", sku: input.sku, reused: false };
+}
+
+function listingStubStatus(jobId: string): ListingJobStatus {
+  const n = (stubPolls.get(jobId) ?? 0) + 1;
+  stubPolls.set(jobId, n);
+  const sku = (jobId.split("_")[1] ?? "staging") as ListingDgxSku;
+  if (n < 2) return { status: "running", phase: "scenes" as JobPhase, progress: 0.5, sku };
+  if (LISTING_STUB === "fail") {
+    return { status: "failed", phase: "scenes" as JobPhase, progress: 1, sku, errorCode: "moderation", error: "stub moderation" };
+  }
+  const base = "/realestateanimated/brand/stub";
+  return {
+    status: "done",
+    phase: "done" as JobPhase,
+    progress: 1,
+    sku,
+    result: {
+      assets: {
+        originalUrl: `${base}/original.jpg`,
+        stagedStillUrl: `${base}/staged.png`,
+        stagedStillLabeledUrl: `${base}/staged-labeled.png`,
+        mlsTxtUrl: `${base}/staged.txt`,
+        videoUrl: sku === "staging" ? undefined : `${base}/final.mp4`,
+        proof: { originalUrl: `${base}/original.jpg`, stagedUrl: `${base}/staged.png` },
+      },
+      qa: { geometry: { score: 1, pass: true, notes: "stub" } },
+      costs: { totalUsd: 0, byStage: {}, byJob: {} },
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Core fetch wrapper
 // ---------------------------------------------------------------------------
 
@@ -1270,6 +1397,18 @@ export const autopilot = {
 
   suggestTitles: (input: SuggestTitlesInput) =>
     call<{ titles: string[] }>("POST", "/vater/suggest-titles", input),
+
+  // ── Listing Studio ────────────────────────────────────────────────────
+  /** Kick a DGX `listing:<sku>` job. Idempotent on `idempotencyKey`. */
+  createListingJob: (input: ListingJobInput) =>
+    LISTING_STUB
+      ? Promise.resolve(listingStubCreate(input))
+      : call<ListingJobCreated>("POST", `/vater/listing/${input.sku}`, input),
+  /** Normalised status for a listing job (assets/qa/costs on done). */
+  getListingJob: (jobId: string) =>
+    LISTING_STUB
+      ? Promise.resolve(listingStubStatus(jobId))
+      : call<ListingJobStatus>("GET", `/vater/listing/job/${encodeURIComponent(jobId)}`),
 };
 
 export type AutopilotClient = typeof autopilot;

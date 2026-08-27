@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
 import { secretEquals } from "@/lib/secret-compare";
 import { VIEW_CHANNELS, CHANNEL_KEYS } from "@/lib/view-counter";
+import { channelWindows, VIEW_WINDOWS } from "@/lib/view-counter-windows";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -103,13 +104,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ ok: true, upserted, videos, skipped });
 }
 
-interface WindowStat {
-  views: number | null;
-  partial: boolean; // true when history doesn't reach the window start
-  since: string | null; // where coverage actually begins, when partial
-}
-
-const WINDOWS = [30, 90, 365] as const;
+const WINDOWS = VIEW_WINDOWS;
 
 // YouTube's public API rounds subscriberCount to 3 significant figures above
 // 1,000 — an 18,800→18,700 "drop" can be a single real unsubscribe crossing a
@@ -161,33 +156,10 @@ export async function GET() {
 
     const now = Date.now();
     const channels = VIEW_CHANNELS.map((cfg) => {
-      // rowsSince: hard clamp for repointed cards — rows before it belong to a
-      // different account entirely (see lib/view-counter.ts). Without this the
-      // 30/90d windows baseline against the old account's lifetime snapshot
-      // and report an enormous fake collapse (yt-ykh: 239 - 4,416,902).
-      const rowsSinceMs = cfg.rowsSince ? Date.parse(cfg.rowsSince) : null;
-      const hist = (byChannel.get(cfg.key) ?? []).filter(
-        (r) => !rowsSinceMs || r.day.getTime() >= rowsSinceMs,
-      );
-      const snaps = hist.filter((r) => r.totalViews !== null);
-      const dailies = hist.filter((r) => r.dayViews !== null);
-      const subs = hist.filter((r) => r.subscribers !== null);
-
-      const latestSnap = snaps[snaps.length - 1] ?? null;
-      const lifetimeViews =
-        latestSnap?.totalViews !== null && latestSnap?.totalViews !== undefined
-          ? Number(latestSnap.totalViews)
-          : dailies.length
-            ? dailies.reduce((s, r) => s + (r.dayViews ?? 0), 0)
-            : null;
-
-      const contentSinceMs = cfg.contentSince ? Date.parse(cfg.contentSince) : null;
-
-      // Repoint clamp, same as `hist` above: pre-repoint uploads under this key
-      // belong to the account the card used to point at.
-      const allVids = (vidsByChannel.get(cfg.key) ?? []).filter(
-        (v) => !rowsSinceMs || v.publishedAt.getTime() >= rowsSinceMs,
-      );
+      // Window math lives in lib/view-counter-windows.ts (shared with the
+      // Listing Studio landing's proof card). Behaviour unchanged.
+      const w = channelWindows(byChannel.get(cfg.key) ?? [], vidsByChannel.get(cfg.key) ?? [], cfg, now);
+      const { hist, snaps, dailies, subs, latestSnap, lifetimeViews, contentSinceMs, allVids, windows } = w;
       // The live strip is deliberately narrow — "did this morning's post land".
       const vids = allVids.filter(
         (v) => v.publishedAt.getTime() >= now - 8 * 86400_000,
@@ -215,86 +187,6 @@ export async function GET() {
       };
       const sub1d = subAt(1);
       const sub7d = subAt(7);
-
-      const windows: Record<string, WindowStat> = {};
-      for (const days of WINDOWS) {
-        const startMs = now - days * 86400_000;
-
-        // Exact when a lifetime snapshot exists from before the window opened.
-        const baseline = snaps.filter((r) => r.day.getTime() <= startMs).pop();
-        // max(0): a lifetime counter can shrink (deleted videos, a slightly
-        // short scrape passing the 98% guard) — tt-jared's did, and its
-        // -52K window dragged the empire d30 TOTAL negative, which the
-        // odometer clamps to a flat 0. Views received can never be < 0.
-        if (baseline && latestSnap) {
-          windows[`d${days}`] = {
-            views: Math.max(0, Number(latestSnap.totalViews) - Number(baseline.totalViews)),
-            partial: false,
-            since: null,
-          };
-          continue;
-        }
-        // All content newer than the window start → lifetime IS the window.
-        if (contentSinceMs && contentSinceMs >= startMs && lifetimeViews !== null) {
-          windows[`d${days}`] = { views: lifetimeViews, partial: false, since: null };
-          continue;
-        }
-        // 🔴 Facebook must NEVER fall through to its daily series. Meta's
-        // `page_video_views` does not count Reels-feed distribution, and every
-        // one of these Pages is reels-first, so that metric reads 4-6x low:
-        // measured 2026-08-17, page_video_views vs summed per-reel views on the
-        // same 30 days — Treasure Haul 1,314 vs 5,377, Your KC Homes 537 vs
-        // 2,112, Wash & Dry 150 vs 937. The undercount was visible on the cards
-        // themselves: W&D showed "150 views · 30 days" above a live strip
-        // reporting 257 views on a single reel from the last 24 hours.
-        //
-        // The per-reel counts are the real number, so window = the views on
-        // reels PUBLISHED inside the window. Same caveat as the live strip:
-        // that is not "views received in the window" — a play today on a reel
-        // from two months ago lands outside it. For these Pages the two are
-        // close because reel traffic is almost entirely front-loaded, and it
-        // beats a metric that structurally omits the main distribution surface.
-        // Once 30d of lifetime snapshots exist (collectFbVideos started
-        // 2026-08-17) the exact snapshot-delta branch above takes over on its
-        // own and this stops being used for the 30d window.
-        if (cfg.platform === "facebook" && allVids.length > 0) {
-          const inWin = allVids.filter((v) => v.publishedAt.getTime() >= startMs);
-          // The collector keeps FB_VIDEO_DAYS = 180 of reels, so a 365d window
-          // genuinely cannot see the whole year — say so rather than implying
-          // the coverage is complete.
-          const oldest = allVids[allVids.length - 1].publishedAt;
-          const covered = oldest.getTime() <= startMs + 2 * 86400_000;
-          windows[`d${days}`] = {
-            views: inWin.reduce((sum, v) => sum + Number(v.views), 0),
-            partial: !covered,
-            since: covered ? null : oldest.toISOString().slice(0, 10),
-          };
-          continue;
-        }
-        // Daily series (YT Analytics backfill; see above for why not FB).
-        const inWindow = dailies.filter((r) => r.day.getTime() >= startMs);
-        if (inWindow.length > 0) {
-          const first = inWindow[0].day.getTime();
-          const partial = dailies.length === inWindow.length && first > startMs + 2 * 86400_000;
-          windows[`d${days}`] = {
-            views: inWindow.reduce((s, r) => s + (r.dayViews ?? 0), 0),
-            partial,
-            since: partial ? inWindow[0].day.toISOString().slice(0, 10) : null,
-          };
-          continue;
-        }
-        // Only snapshots inside the window: views since tracking began.
-        const firstSnap = snaps[0];
-        if (firstSnap && latestSnap && firstSnap.id !== latestSnap.id) {
-          windows[`d${days}`] = {
-            views: Math.max(0, Number(latestSnap.totalViews) - Number(firstSnap.totalViews)),
-            partial: true,
-            since: firstSnap.day.toISOString().slice(0, 10),
-          };
-          continue;
-        }
-        windows[`d${days}`] = { views: null, partial: true, since: null };
-      }
 
       // How current the *view* numbers are, which is not how recently we polled:
       // YouTube Analytics publishes a day roughly 3 days late, so a 30d window

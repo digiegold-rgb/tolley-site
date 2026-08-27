@@ -26,6 +26,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { VATER_PRODUCT_METADATA } from "@/lib/vater-subscription";
+import { STUDIO_HOME } from "@/lib/vater/product";
 import {
   CREDIT_PACKS,
   isCreditPack,
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
   const userId = session.user.id;
   const email = session.user.email;
 
-  const body = (await request.json().catch(() => ({}))) as { pack?: unknown };
+  const body = (await request.json().catch(() => ({}))) as { pack?: unknown; returnTo?: unknown };
   if (!isCreditPack(body.pack)) {
     return NextResponse.json(
       { error: `pack must be one of ${CREDIT_PACKS.join(", ")}` },
@@ -64,6 +65,13 @@ export async function POST(request: Request) {
   }
   const pack = Number(body.pack);
   const creditsCents = packCreditsCents(pack);
+  // Which front door Stripe sends the customer back to. Allowlisted to the
+  // studio homes (lib/vater/product.ts) — Listing Studio passes
+  // "/realestateanimated"; anything else lands on /animate as before.
+  const returnTo =
+    typeof body.returnTo === "string" && Object.values(STUDIO_HOME).includes(body.returnTo)
+      ? body.returnTo
+      : STUDIO_HOME.jelly;
 
   const stripe = getStripeClient();
 
@@ -123,8 +131,8 @@ export async function POST(request: Request) {
     },
     // The /animate shell is a hash router — without #r=pricing Stripe drops
     // the customer on the Dashboard with no sign the credit landed.
-    success_url: `${origin}/animate?credits=ok&session_id={CHECKOUT_SESSION_ID}#r=pricing`,
-    cancel_url: `${origin}/animate?credits=cancelled#r=pricing`,
+    success_url: `${origin}${returnTo}?credits=ok&session_id={CHECKOUT_SESSION_ID}#r=pricing`,
+    cancel_url: `${origin}${returnTo}?credits=cancelled#r=pricing`,
     metadata: {
       product: JELLY_CREDITS_PRODUCT,
       userId,

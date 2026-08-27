@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Listing Studio by Jelly!">
+  <title>Listing Studio by Jelly!</title>
+  <!-- navy tile -->
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#0B1F3A"/>
+  <!-- gold house outline: roof + walls, door notch -->
+  <path d="M64 24 L20 62 H32 V100 H96 V62 H108 Z" fill="none" stroke="#C9A24A" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- chimney -->
+  <path d="M84 30 V44" stroke="#C9A24A" stroke-width="6" stroke-linecap="round"/>
+  <!-- LS monogram -->
+  <text x="64" y="88" text-anchor="middle" font-family="Space Grotesk, Inter, Helvetica, Arial, sans-serif" font-weight="700" font-size="30" letter-spacing="1" fill="#F7F4EC">LS</text>
+</svg>

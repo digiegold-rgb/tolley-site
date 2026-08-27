@@ -25,6 +25,7 @@ import {
   parseAnimateSmsLeadFields,
 } from "@/lib/animate-sms";
 import { toE164 } from "@/lib/phone";
+import { PRODUCT_NAME, PRODUCT_SUBSITE, type Product } from "@/lib/vater/product";
 
 export const runtime = "nodejs";
 
@@ -81,12 +82,21 @@ export async function POST(request: NextRequest) {
   const phone = sms.phone ? toE164(sms.phone) ?? sms.phone : null;
   const utm = pickUtm(body.utm);
   const autoApprove = autoApproveSource(utm);
+  // Which front door the form sat on. "realestate" = Listing Studio landing
+  // (tolley.io/realestateanimated): its own LeadAction.subsite, its own
+  // invite link (callbackUrl=/realestateanimated → VaterAccount.origin), its
+  // own email sign-off and a "[Listing Studio]" Telegram prefix.
+  const product: Product = body.subsite === "realestate" ? "realestate" : "jelly";
+  const subsite = PRODUCT_SUBSITE[product];
+  const source = product === "realestate" ? "realestate-landing" : "animate-landing";
+  const productName = PRODUCT_NAME[product];
+  const tgPrefix = product === "realestate" ? "[Listing Studio] " : "";
 
   try {
     // Dedup: one open inbox row per address. A later submit can add SMS
     // consent / phone without opening a second lead.
     const existing = await prisma.leadAction.findFirst({
-      where: { subsite: "animate", action: "invite-request", email, status: { notIn: ["won", "lost"] } },
+      where: { subsite, action: "invite-request", email, status: { notIn: ["won", "lost"] } },
       select: { id: true, structured: true, phone: true },
     });
     const smsStructured = {
@@ -97,14 +107,15 @@ export async function POST(request: NextRequest) {
       await prisma.leadAction.create({
         data: {
           receiptToken: crypto.randomBytes(8).toString("base64url"),
-          subsite: "animate",
+          subsite,
           action: "invite-request",
           email,
           name,
           phone,
           structured: {
             about: about ?? "",
-            source: "animate-landing",
+            source,
+            product,
             ...smsStructured,
             ...(Object.keys(utm).length ? { utm } : {}),
           },
@@ -144,11 +155,11 @@ export async function POST(request: NextRequest) {
         createdBy: "invite-request:auto",
       });
       if (inv) {
-        await sendInviteLinkEmail(email, inviteLink(inv.code), formatInviteCode(inv.code));
+        await sendInviteLinkEmail(email, inviteLink(inv.code, undefined, product), formatInviteCode(inv.code), product);
         autoApproved = true;
         autoCode = formatInviteCode(inv.code);
         await prisma.leadAction.updateMany({
-          where: { subsite: "animate", action: "invite-request", email, status: { notIn: ["won", "lost"] } },
+          where: { subsite, action: "invite-request", email, status: { notIn: ["won", "lost"] } },
           data: { status: "won", statusNote: `AUTO-approved (${utm.utm_source}) — invite ${autoCode} emailed`, statusUpdatedAt: new Date() },
         }).catch(() => undefined);
       }
@@ -162,7 +173,7 @@ export async function POST(request: NextRequest) {
   let acked = false;
   if (!autoApproved) {
     try {
-      await sendInviteRequestAck(email, name);
+      await sendInviteRequestAck(email, name, product);
       acked = true;
     } catch (err) {
       console.error("[vater/invite-request] ack email failed", err);
@@ -174,11 +185,11 @@ export async function POST(request: NextRequest) {
     const src = utm.utm_source ? ` [${utm.utm_source}${utm.utm_campaign ? `/${utm.utm_campaign}` : ""}]` : "";
     await notifyTelegram(
       autoApproved
-        ? `🎟 Jelly invite AUTO-APPROVED${src}: ${who} → invite ${autoCode} emailed`
-        : `📨 Jelly invite request${src}: ${who} → /hq Inbox (Approve → mint + email) https://www.tolley.io/hq${acked ? "" : " ⚠️ ack email FAILED"}${autoApprove ? " ⚠️ auto-approve FAILED, fell back to ack" : ""}`,
+        ? `${tgPrefix}🎟 ${productName} invite AUTO-APPROVED${src}: ${who} → invite ${autoCode} emailed`
+        : `${tgPrefix}📨 ${productName} invite request${src}: ${who} → /hq Inbox (Approve → mint + email) https://www.tolley.io/hq${acked ? "" : " ⚠️ ack email FAILED"}${autoApprove ? " ⚠️ auto-approve FAILED, fell back to ack" : ""}`,
     );
   } catch {
     /* never fail the user on a Telegram hiccup */
   }
-  return NextResponse.json({ ok: true, autoApproved });
+  return NextResponse.json({ ok: true, autoApproved, product });
 }

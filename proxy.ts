@@ -13,6 +13,8 @@ const API_GUARDS = ["/api/agents", "/api/admin", "/api/results"];
  */
 const STUDIO_ONLY_ALLOWED = [
   "/animate",
+  // Listing Studio front door (lib/vater/product.ts STUDIO_HOME.realestate).
+  "/realestateanimated",
   // Whole /api/vater tree: the studio Shell calls youtube, billing, voices,
   // topic, pipeline-status, social-accounts, chat and autopilot. The
   // owner-only subtrees under it (budget/*, observer/*, rss) keep their own

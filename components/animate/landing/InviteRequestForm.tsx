@@ -40,7 +40,20 @@ function readUtm(): Record<string, string> {
   }
 }
 
-export function InviteRequestForm(): React.ReactElement {
+export interface InviteRequestFormProps {
+  /** LeadAction.subsite discriminator — 'animate' (default) or 'realestate'. */
+  subsite?: 'animate' | 'realestate';
+  /** Copy overrides for a second front door (Listing Studio). */
+  copy?: {
+    aboutPlaceholder?: string;
+    submit?: string;
+    doneTitle?: string;
+    doneBody?: string;
+    fallbackEmail?: string;
+  };
+}
+
+export function InviteRequestForm({ subsite = 'animate', copy }: InviteRequestFormProps = {}): React.ReactElement {
   const [state, setState] = React.useState<'idle' | 'busy' | 'done' | 'error'>('idle');
   const [msg, setMsg] = React.useState<string>('');
   const [autoApproved, setAutoApproved] = React.useState(false);
@@ -67,6 +80,7 @@ export function InviteRequestForm(): React.ReactElement {
           utm: utmRef.current,
           phone,
           smsOptIn,
+          subsite,
         }),
       });
       const j = (await r.json().catch(() => ({}))) as { error?: string; autoApproved?: boolean };
@@ -97,11 +111,11 @@ export function InviteRequestForm(): React.ReactElement {
           color: t.text,
         }}
       >
-        <strong style={{ fontSize: 16 }}>You&apos;re in — check your email.</strong>
+        <strong style={{ fontSize: 16 }}>{copy?.doneTitle ?? 'You\u2019re in — check your email.'}</strong>
         <span style={{ fontSize: 14, color: t.textSecondary }}>
-          {autoApproved
+          {copy?.doneBody ?? (autoApproved
             ? 'Your signup link is on its way right now (check spam if it\u2019s not there in a minute).'
-            : 'Your seat is reserved. A signup link will land in your inbox — check spam if it isn\u2019t there in a minute.'}
+            : 'Your seat is reserved. A signup link will land in your inbox — check spam if it isn\u2019t there in a minute.')}
         </span>
       </div>
     );
@@ -124,7 +138,7 @@ export function InviteRequestForm(): React.ReactElement {
         rows={2}
         maxLength={600}
         aria-label="What do you want to make?"
-        placeholder="What do you want to make? (channel, niche, how many videos a month)"
+        placeholder={copy?.aboutPlaceholder ?? 'What do you want to make? (channel, niche, how many videos a month)'}
       />
       <AnimateSmsConsent
         variant="landing"
@@ -136,11 +150,11 @@ export function InviteRequestForm(): React.ReactElement {
       />
       <div>
         <PillButton variant="gradient" size="lg" type="submit" disabled={state === 'busy'}>
-          {state === 'busy' ? 'Sending…' : 'Request a seat'}
+          {state === 'busy' ? 'Sending…' : (copy?.submit ?? 'Request a seat')}
         </PillButton>
       </div>
       {state === 'error' && (
-        <div style={{ fontSize: 13, color: JELLY_TOKENS.error }}>{msg} — or email jared@yourkchomes.com</div>
+        <div style={{ fontSize: 13, color: JELLY_TOKENS.error }}>{msg} — or email {copy?.fallbackEmail ?? 'jared@yourkchomes.com'}</div>
       )}
     </form>
   );

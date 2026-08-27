@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { productForPath } from "@/lib/vater/product";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
@@ -39,7 +40,7 @@ export function SignupForm({ claimSlug }: SignupFormProps = {}) {
     : callbackUrl;
   /* Jelly Studio signups click through the studio legal set (Terms + Privacy +
    * Beta Addendum) and we stamp the version they accepted onto the User row. */
-  const isStudio = !claimSlug && callbackUrl.startsWith("/animate");
+  const isStudio = !claimSlug && productForPath(callbackUrl) !== null;
   const requiresAgreement = Boolean(claimSlug) || isStudio;
 
   /* Invite-only beta: the link Jared sends is

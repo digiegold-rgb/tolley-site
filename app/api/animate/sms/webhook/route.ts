@@ -3,9 +3,14 @@
  *
  * Inbound for the Jelly Studio Animate number (+19139149429 /
  * PN25da93f610855a1412223e622678bb48 on MG446284f555a5d1731f5deae2d8b46c40).
- * TWILIO_ANIMATE_FROM may override. Keyword stub only: START / YES / STOP /
- * HELP. No other customer SMS. Do not send "your film is ready" from here.
- * Do not create or PATCH a Usa2p campaign.
+ * TWILIO_ANIMATE_FROM may override. Keywords START / YES / STOP / HELP get
+ * the TwiML keyword reply. Any OTHER inbound (2026-08-26, Listing Studio
+ * support line) is forwarded to Jared: a MustCompleteItem on /hq
+ * (category "support") + a Telegram ping, with the sender matched to a studio
+ * account by last-10 digits when VaterAccount.agentPhone exists. The only
+ * reply is the TwiML "got it" — INBOUND ONLY. Never call sendSms() here (that
+ * From is the W/D number) and never send anything unprompted (A2P scope +
+ * no-autonomous-sends doctrine). Do not create or PATCH a Usa2p campaign.
  *
  * Never handles Wash & Dry 913-600-7508 (that stays on /api/sms/webhook).
  * Replies via TwiML so Twilio uses the number that received the inbound —
@@ -18,6 +23,7 @@ import { classifySmsKeyword } from "@/lib/sms-optout";
 import { isMissingRelationError } from "@/lib/vater/beta-schema";
 import { prisma } from "@/lib/prisma";
 import { last10Digits, toE164 } from "@/lib/phone";
+import { notifyTelegram } from "@/lib/budget/notify";
 import {
   animateSmsKeywordReply,
   isWashDrySmsNumber,
@@ -73,7 +79,9 @@ export async function POST(request: NextRequest) {
   const keyword = classifySmsKeyword(body);
   const reply = animateSmsKeywordReply(keyword);
   if (!reply || !keyword) {
-    return twimlResponse();
+    // Not a keyword: a human wrote to the support line. Forward it.
+    await forwardSupportSms(from, body);
+    return twimlResponse(SUPPORT_ACK);
   }
 
   if (keyword === "start" || keyword === "stop") {
@@ -81,6 +89,91 @@ export async function POST(request: NextRequest) {
   }
 
   return twimlResponse(reply);
+}
+
+/** TwiML reply to a free-text inbound. No promise of an automated follow-up. */
+const SUPPORT_ACK = "Got it — Jared will call/text you back shortly. Reply STOP to opt out.";
+
+/** Telegram parse_mode is Markdown — unbalanced _ * ` [ ] 400s the send. */
+function tgSafe(v: string): string {
+  return v.replace(/[_*`[\]]/g, "");
+}
+
+/**
+ * Sender → studio account email, by last-10 digits against
+ * VaterAccount.agentPhone (Listing Studio agent profile). The column ships
+ * behind a migration applied by hand, so a missing column is "no match",
+ * never an error. Falls back to User.animateSmsPhone (the START opt-in).
+ */
+async function matchSenderEmail(from: string): Promise<string | null> {
+  const last10 = last10Digits(from);
+  if (!last10) return null;
+  const like = `%${last10}`;
+  try {
+    const rows = await prisma.$queryRaw<Array<{ email: string | null }>>`
+      SELECT u."email"
+      FROM "VaterAccount" va
+      JOIN "User" u ON u."id" = va."userId"
+      WHERE va."agentPhone" IS NOT NULL AND va."agentPhone" LIKE ${like}
+      LIMIT 1
+    `;
+    if (rows[0]?.email) return rows[0].email;
+  } catch (err) {
+    if (!isMissingRelationError(err)) console.error("[animate-sms] agentPhone lookup failed", err);
+  }
+  try {
+    const rows = await prisma.$queryRaw<Array<{ email: string | null }>>`
+      SELECT "email" FROM "User"
+      WHERE "animateSmsPhone" IS NOT NULL AND "animateSmsPhone" LIKE ${like}
+      LIMIT 1
+    `;
+    return rows[0]?.email ?? null;
+  } catch (err) {
+    if (!isMissingRelationError(err)) console.error("[animate-sms] animateSmsPhone lookup failed", err);
+    return null;
+  }
+}
+
+/** Non-keyword inbound → /hq Must Complete (support) + Telegram. Best-effort. */
+async function forwardSupportSms(from: string, body: string): Promise<void> {
+  const last4 = (last10Digits(from) ?? from).slice(-4);
+  const headline = body.replace(/\s+/g, " ").slice(0, 60);
+  const email = await matchSenderEmail(from);
+  const title = `[Listing Studio] SMS from ${last4} — ${headline}`;
+  const detail = [
+    body,
+    "",
+    "— context —",
+    `from: ${from}`,
+    `account: ${email ?? "(no studio account matched)"}`,
+    `received: ${new Date().toISOString()}`,
+    "Reply from your phone / Twilio console — nothing is sent automatically.",
+  ].join("\n");
+  try {
+    const max = await prisma.mustCompleteItem.aggregate({ _max: { sortOrder: true } });
+    await prisma.mustCompleteItem.create({
+      data: {
+        sortOrder: (max._max.sortOrder ?? 0) + 10,
+        priority: "yellow",
+        category: "support",
+        title,
+        detail,
+        links: [{ label: "Text back", url: `sms:${from}` }, { label: "Call back", url: `tel:${from}` }],
+        command: null,
+        afterNote: null,
+        source: "animate-sms-inbound",
+      },
+    });
+  } catch (err) {
+    console.error("[animate-sms] must-complete write failed", err);
+  }
+  try {
+    await notifyTelegram(
+      `📱 [Listing Studio] SMS from …${last4}${email ? ` (${tgSafe(email)})` : ""}: ${tgSafe(body).slice(0, 500)}\n\nhttps://www.tolley.io/hq`,
+    );
+  } catch (err) {
+    console.error("[animate-sms] telegram notify failed", err);
+  }
 }
 
 async function persistAnimateKeyword(from: string, keyword: "start" | "stop") {

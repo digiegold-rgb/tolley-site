@@ -39,6 +39,11 @@ interface StudioUser {
   lastError: { message: string; at: string } | null;
   invited: boolean;
   createdAt: string | null;
+  /** Listing Studio: front door + license (null until the origin migration lands). */
+  origin?: "jelly" | "realestate" | null;
+  licenseStatus?: "unverified" | "verified" | "manual_review" | "invalid" | null;
+  licenseState?: string | null;
+  licenseNumber?: string | null;
   /** Studio tabs folded under this human (lib/vater/workspaces.ts). */
   workspaces?: Array<{
     userId: string;
@@ -148,6 +153,73 @@ const CELL: React.CSSProperties = {
   borderTop: "1px solid var(--hq-border)",
 };
 
+const LICENSE_COLOR: Record<string, string> = {
+  verified: "#0f766e",
+  manual_review: "#b45309",
+  invalid: "var(--hq-red, #b42318)",
+  unverified: "var(--hq-muted)",
+};
+
+function renderOriginLicense(
+  u: StudioUser,
+  busy: boolean,
+  setLicense: (user: StudioUser, status: "verified" | "invalid") => Promise<void>,
+): React.ReactNode {
+  if (u.origin === null || u.origin === undefined) {
+    return <span style={{ color: "var(--hq-muted)" }} title="Run migration 20260827_vater_account_origin_license">—</span>;
+  }
+  const status = u.licenseStatus ?? "unverified";
+  const lic = [u.licenseState, u.licenseNumber].filter(Boolean).join(" ");
+  const btn = (label: string, next: "verified" | "invalid") => (
+    <button
+      type="button"
+      onClick={() => void setLicense(u, next)}
+      disabled={busy}
+      style={{
+        padding: "1px 6px",
+        border: "1px solid var(--hq-border)",
+        borderRadius: 5,
+        fontSize: 10.5,
+        cursor: "pointer",
+        background: "#fff",
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <span
+        style={{
+          alignSelf: "flex-start",
+          padding: "1px 7px",
+          borderRadius: 999,
+          fontSize: 10.5,
+          fontWeight: 700,
+          background: u.origin === "realestate" ? "#0B1F3A" : "var(--hq-accent-soft, #f4f0ff)",
+          color: u.origin === "realestate" ? "#F7F4EC" : "inherit",
+        }}
+      >
+        {u.origin === "realestate" ? "Listing Studio" : "Jelly"}
+      </span>
+      {u.origin === "realestate" || status !== "unverified" || lic ? (
+        <span style={{ fontSize: 11, color: LICENSE_COLOR[status] ?? "inherit" }} title={lic || "no license on file"}>
+          {status.replace("_", " ")}
+          {lic ? ` · ${lic}` : ""}
+        </span>
+      ) : null}
+      {status === "manual_review" || (u.origin === "realestate" && lic && status !== "verified") ? (
+        <div style={{ display: "flex", gap: 4 }}>
+          {btn("Verify", "verified")}
+          {btn("Reject", "invalid")}
+        </div>
+      ) : status === "verified" ? (
+        <div>{btn("Revoke", "invalid")}</div>
+      ) : null}
+    </div>
+  );
+}
+
 export function HqStudioUsers() {
   const { toast } = useToast();
   const [users, setUsers] = useState<StudioUser[]>([]);
@@ -157,6 +229,8 @@ export function HqStudioUsers() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
+  /** Origin chip filter: all | jelly | realestate (Listing Studio). */
+  const [originFilter, setOriginFilter] = useState<"all" | "jelly" | "realestate">("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -353,7 +427,40 @@ export function HqStudioUsers() {
     [load, toast],
   );
 
+  const setLicense = useCallback(
+    async (user: StudioUser, status: "verified" | "invalid") => {
+      const label = user.email ?? user.userId;
+      const lic = [user.licenseState, user.licenseNumber].filter(Boolean).join(" ");
+      if (!window.confirm(`${status === "verified" ? "VERIFY" : "REJECT"} the real-estate license for ${label}${lic ? ` (${lic})` : ""}?`)) return;
+      setBusyId(user.userId);
+      try {
+        const r = await fetch("/api/hq/vater-users", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: "set-license", userId: user.userId, status }),
+        });
+        if (!r.ok) {
+          toast({ title: await readApiError(r, "License NOT changed"), variant: "error" });
+          return;
+        }
+        toast({ title: `${label} license → ${status}`, variant: "success" });
+        void load();
+      } catch {
+        toast({ title: "Network error — license NOT changed", variant: "error" });
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [load, toast],
+  );
+
   const liveInvites = invites.filter((i) => i.spendable);
+  const originCounts = {
+    all: users.length,
+    jelly: users.filter((u) => (u.origin ?? "jelly") === "jelly").length,
+    realestate: users.filter((u) => u.origin === "realestate").length,
+  };
+  const visibleUsers = users.filter((u) => originFilter === "all" || (u.origin ?? "jelly") === originFilter);
 
   return (
     <div
@@ -457,6 +564,37 @@ export function HqStudioUsers() {
         </button>
       </div>
 
+      {open && (
+        <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }} role="tablist" aria-label="Filter by product">
+          {(
+            [
+              ["all", "All"],
+              ["jelly", "Jelly"],
+              ["realestate", "Listing Studio"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={originFilter === key}
+              onClick={() => setOriginFilter(key)}
+              style={{
+                padding: "3px 10px",
+                border: "1px solid var(--hq-border)",
+                borderRadius: 999,
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: "pointer",
+                background: originFilter === key ? "var(--hq-accent-soft, #f4f0ff)" : "#fff",
+              }}
+            >
+              {label} · {originCounts[key]}
+            </button>
+          ))}
+        </div>
+      )}
+
       {!inviteReady && (
         <div style={{ marginTop: 8, color: "var(--hq-red, #b42318)", fontSize: 12 }}>
           Invite table not migrated yet — run{" "}
@@ -472,6 +610,9 @@ export function HqStudioUsers() {
               <tr style={{ textAlign: "left", color: "var(--hq-muted)" }}>
                 <th style={{ padding: "6px 9px" }}>Email</th>
                 <th style={{ padding: "6px 9px" }}>Tier</th>
+                <th style={{ padding: "6px 9px" }} title="Which front door (VaterAccount.origin) and real-estate license state. Verify/Reject resolves a manual review.">
+                  Origin / License
+                </th>
                 <th style={{ padding: "6px 9px" }}>Balance</th>
                 <th style={{ padding: "6px 9px" }}>Videos</th>
                 <th style={{ padding: "6px 9px" }} title="Charged usage from VaterUsage, split by GPU tier. Modal's invoice cannot be split by user — this is where per-tenant consumption is visible.">
@@ -485,12 +626,12 @@ export function HqStudioUsers() {
             <tbody>
               {users.length === 0 && !loading ? (
                 <tr>
-                  <td style={{ ...CELL, color: "var(--hq-muted)" }} colSpan={8}>
+                  <td style={{ ...CELL, color: "var(--hq-muted)" }} colSpan={9}>
                     No studio accounts yet. Mint an invite to get the first tester in.
                   </td>
                 </tr>
               ) : (
-                users.map((u) => (
+                visibleUsers.map((u) => (
                   <tr key={u.userId}>
                     <td style={CELL}>
                       <div style={{ fontWeight: 600 }}>{u.email ?? "(no email)"}</div>
@@ -555,6 +696,7 @@ export function HqStudioUsers() {
                         <option value="owner">owner</option>
                       </select>
                     </td>
+                    <td style={CELL}>{renderOriginLicense(u, busyId === u.userId, setLicense)}</td>
                     <td style={CELL}>{money(u.balanceUsd)}</td>
                     <td style={CELL}>{u.projectCount}</td>
                     <td style={CELL}>{renderUsage(u)}</td>

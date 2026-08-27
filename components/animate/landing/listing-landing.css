@@ -1,0 +1,110 @@
+/* Listing Studio landing (/realestateanimated) — only what inline styles
+ * cannot express. Colour comes from JELLY_TOKENS → --jb-* variables set by
+ * app/realestateanimated/layout.tsx. Body copy is ≥16 px everywhere (the
+ * buyer is 45–70 and reading on a phone in a driveway). */
+
+.jrl-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 44px;
+  align-items: center;
+  padding-top: 56px;
+  padding-bottom: 80px;
+}
+
+@media (max-width: 920px) {
+  .jrl-hero {
+    grid-template-columns: 1fr;
+    padding-top: 28px;
+    padding-bottom: 56px;
+  }
+}
+
+.jrl-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 1000px) {
+  .jrl-steps {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+.jrl-skus {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.jrl-proof {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+@media (max-width: 860px) {
+  .jrl-proof {
+    grid-template-columns: 1fr;
+  }
+}
+
+.jrl-fh {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.jrl-ba-before {
+  /* The "before" image sits inside a clipped wrapper; it must be the same
+   * width as the container so both photos line up pixel for pixel. */
+  width: 100% !important;
+}
+
+.jrl-ba {
+  container-type: inline-size;
+}
+
+.jrl-ba-before {
+  width: 100cqw !important;
+}
+
+.jrl-faq summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 18px;
+}
+
+.jrl-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.jrl-faq summary::before {
+  content: '+';
+  display: inline-block;
+  width: 22px;
+  color: var(--jb-cyan, #6fd6ff);
+  font-weight: 700;
+}
+
+.jrl-faq[open] summary::before {
+  content: '–';
+}
+
+.jrl-footer-links a {
+  color: inherit;
+  text-decoration: none;
+  font-size: 15px;
+}
+
+.jrl-footer-links a:hover {
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jrl-hero video {
+    animation: none;
+  }
+}

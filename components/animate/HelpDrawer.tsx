@@ -11,6 +11,11 @@
  * recently (lib/vater/changelog.ts), common questions, and a feedback form
  * that files a real ticket on the /hq queue rather than opening a mail client
  * and hoping.
+ *
+ * Listing Studio (useIsRealEstate): a call/text strip comes FIRST — the
+ * customer is a working agent who would rather talk to Jared than read —
+ * then the five RE steps and the RE FAQ (lib/vater/listing/help-content.ts),
+ * then the same feedback form. Mailto uses the brand's support address.
  */
 
 import * as React from 'react';
@@ -21,6 +26,8 @@ import { Icon } from './Icon';
 import { VBtn } from './primitives';
 import { MicroLabel, PillButton } from './cinema';
 import { devError } from './log';
+import { useIsRealEstate, useProduct } from './product-context';
+import { LISTING_STEPS, LISTING_FAQ } from '@/lib/vater/listing/help-content';
 
 /** Modal scrim — the ink base at 66%, not a palette hue. */
 const SCRIM = 'rgba(8,7,15,0.66)';
@@ -56,6 +63,11 @@ export function HelpDrawer({
 }: HelpDrawerProps): React.ReactElement | null {
   const { t } = useTheme();
   const { capabilities } = useTier();
+  const brand = useProduct();
+  const isRealEstate = useIsRealEstate();
+  const steps = isRealEstate ? LISTING_STEPS : PIPELINE_STEPS;
+  const faq = isRealEstate ? LISTING_FAQ : HELP_FAQ;
+  const supportEmail = isRealEstate ? brand.support.email : HELP_SUPPORT_EMAIL;
   const panelRef = React.useRef<HTMLDivElement | null>(null);
   const whatsNewRef = React.useRef<HTMLDivElement | null>(null);
   const feedbackRef = React.useRef<HTMLDivElement | null>(null);
@@ -162,7 +174,7 @@ export function HelpDrawer({
         >
           <div>
             <MicroLabel tone="cyan" style={{ marginBottom: 6 }}>
-              Studio — help
+              {isRealEstate ? 'Listing Studio — help' : 'Studio — help'}
             </MicroLabel>
             <div
               style={{
@@ -172,7 +184,7 @@ export function HelpDrawer({
                 color: t.text,
               }}
             >
-              How Jelly works
+              {isRealEstate ? 'How Listing Studio works' : 'How Jelly works'}
             </div>
           </div>
           <button
@@ -202,8 +214,10 @@ export function HelpDrawer({
             gap: 28,
           }}
         >
+          {isRealEstate && <CallTextStrip />}
+
           <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {PIPELINE_STEPS.map((s) => (
+            {steps.map((s) => (
               <div
                 key={s.n}
                 style={{
@@ -251,7 +265,7 @@ export function HelpDrawer({
           <section>
             <SectionLabel>Common questions</SectionLabel>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {HELP_FAQ.map((f) => (
+              {faq.map((f) => (
                 <div
                   key={f.q}
                   style={{ ...glass(t), borderRadius: JELLY_TOKENS.radius.md, padding: 12 }}
@@ -274,7 +288,7 @@ export function HelpDrawer({
             </div>
           </section>
 
-          <FeedbackSection ref={feedbackRef} route={route} projectId={projectId} />
+          <FeedbackSection ref={feedbackRef} route={route} projectId={projectId} supportEmail={supportEmail} />
         </div>
 
         <div
@@ -293,9 +307,9 @@ export function HelpDrawer({
           <PillButton
             variant="ghost"
             size="sm"
-            href={`mailto:${HELP_SUPPORT_EMAIL}?subject=Jelly%20Studio%20support`}
+            href={`mailto:${supportEmail}?subject=${encodeURIComponent(`${brand.name} support`)}`}
           >
-            {HELP_SUPPORT_EMAIL}
+            {supportEmail}
           </PillButton>
           {capabilities.rules && (
             <PillButton
@@ -312,6 +326,62 @@ export function HelpDrawer({
       </div>
     </div>
   );
+}
+
+/* ─── Call / text strip (Listing Studio only) ─────────────────────────────
+ * The agent is on their phone between showings. Two taps: call or text the
+ * Jelly Animate Twilio number (LISTING_BRAND.support). Inbound only — the SMS
+ * webhook files the text on /hq and pings Telegram; Jared answers himself.
+ */
+
+function CallTextStrip(): React.ReactElement | null {
+  const { t } = useTheme();
+  const { support } = useProduct();
+  if (!support.phone && !support.sms) return null;
+  const smsHref = support.sms ? `sms:${support.sms}?&body=Listing%20Studio%20help` : null;
+  return (
+    <section
+      data-testid="help-call-text"
+      style={{
+        ...glass(t, { strong: true }),
+        borderRadius: JELLY_TOKENS.radius.lg,
+        padding: 16,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      <MicroLabel tone="cyan">Talk to a person</MicroLabel>
+      <div style={{ fontSize: 15, fontWeight: 600, color: t.text, lineHeight: 1.4 }}>
+        Stuck? Call or text — no ticket, no bot.
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {support.phone && (
+          <PillButton size="sm" href={`tel:${support.phone}`} data-testid="help-call">
+            Call {formatPhone(support.phone)}
+          </PillButton>
+        )}
+        {smsHref && (
+          <PillButton variant="outline" size="sm" href={smsHref} data-testid="help-text">
+            Text us
+          </PillButton>
+        )}
+      </div>
+      {(support.who || support.hours) && (
+        <div style={{ fontSize: 12.5, color: t.textSecondary, lineHeight: 1.6 }}>
+          {support.who}
+          {support.who && support.hours ? ' · ' : ''}
+          {support.hours}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** +19139149429 → (913) 914-9429; anything else is shown as given. */
+function formatPhone(e164: string): string {
+  const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(e164);
+  return m ? `(${m[1]}) ${m[2]}-${m[3]}` : e164;
 }
 
 /* ─── Section label ─── */
@@ -417,10 +487,12 @@ const WhatsNewSection = React.forwardRef<HTMLDivElement>(
 interface FeedbackSectionProps {
   route?: string;
   projectId?: string | null;
+  /** Brand support address shown under the form. */
+  supportEmail?: string;
 }
 
 const FeedbackSection = React.forwardRef<HTMLDivElement, FeedbackSectionProps>(
-  function FeedbackSection({ route, projectId }, ref): React.ReactElement {
+  function FeedbackSection({ route, projectId, supportEmail = HELP_SUPPORT_EMAIL }, ref): React.ReactElement {
     const { t } = useTheme();
     const [message, setMessage] = React.useState('');
     const [includeContext, setIncludeContext] = React.useState(true);
@@ -557,7 +629,7 @@ const FeedbackSection = React.forwardRef<HTMLDivElement, FeedbackSectionProps>(
             </VBtn>
             <div style={{ fontSize: 12, color: t.textSecondary, lineHeight: 1.6 }}>
               This files a ticket we work from directly. Prefer email? Write{' '}
-              {HELP_SUPPORT_EMAIL}.
+              {supportEmail}.
             </div>
           </div>
         )}

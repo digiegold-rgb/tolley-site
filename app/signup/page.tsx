@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { productForPath } from "@/lib/vater/product";
 
 import { auth } from "@/auth";
 import { AuthShell } from "@/components/auth/auth-shell";
@@ -32,8 +33,11 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
   const callbackUrl = resolveCallbackUrl(params.callbackUrl);
   const isFoodPlan =
     params.plan === "food" || callbackUrl.startsWith("/food");
-  // /animate signups are Jelly Studio customers (audit AN-03, 2026-08-15).
-  const isStudio = callbackUrl.startsWith("/animate");
+  // /animate signups are Jelly Studio customers (audit AN-03, 2026-08-15);
+  // /realestateanimated signups are Listing Studio agents (2026-08-26).
+  const product = productForPath(callbackUrl);
+  const isStudio = product !== null;
+  const isListing = product === "realestate";
 
   const session = await auth();
   if (session?.user?.id) {
@@ -45,16 +49,20 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
     ? "Claim your storefront"
     : isFoodPlan
       ? "Create your Ruthann's Kitchen account"
-      : isStudio
-        ? "Create your Jelly Studio account"
-        : "Create Account";
+      : isListing
+        ? "Create your Listing Studio account"
+        : isStudio
+          ? "Create your Jelly Studio account"
+          : "Create Account";
   const subtitle = claimSlug
     ? "Set up your login to take ownership of your Launchpad site and track your sales."
     : isFoodPlan
       ? "30-day free trial, then $39/year. Cancel anytime."
-      : isStudio
-        ? "Invite-only beta. No subscription — start with your promo credit, add a card only when you're ready to render. You pay per video."
-        : "Set up your credentials to unlock paid T-Agent search.";
+      : isListing
+        ? "Invite-only beta for licensed agents. No subscription — your first staging is covered by a starter credit. You pay per listing."
+        : isStudio
+          ? "Invite-only beta. No subscription — start with your promo credit, add a card only when you're ready to render. You pay per video."
+          : "Set up your credentials to unlock paid T-Agent search.";
 
   const loginHref = claimSlug
     ? `/login?callbackUrl=${encodeURIComponent(`/sales/portal?claim=${claimSlug}`)}`
@@ -62,7 +70,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
 
   return (
     <AuthShell
-      brand={isStudio ? "jelly studio" : "t-agent"}
+      brand={isListing ? "listing studio" : isStudio ? "jelly studio" : "t-agent"}
       title={title}
       subtitle={subtitle}
       alternatePrompt="Already have an account?"

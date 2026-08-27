@@ -28,6 +28,7 @@ import * as React from 'react';
 import { JELLY_TOKENS } from './tokens';
 import { useTheme } from './theme-context';
 import { useTier } from './tier-context';
+import { useProduct } from './product-context';
 
 export interface WorkspaceTab {
   id: string;
@@ -50,6 +51,7 @@ export const WORKSPACE_STRIP_HEIGHT = 40;
 export function WorkspaceTabs(): React.ReactElement | null {
   const { t, dark } = useTheme();
   const { loading: tierLoading, beta } = useTier();
+  const brand = useProduct();
   const [tabs, setTabs] = React.useState<WorkspaceTab[] | null>(null);
   const [max, setMax] = React.useState(10);
   const [busy, setBusy] = React.useState<string | null>(null);
@@ -113,7 +115,7 @@ export function WorkspaceTabs(): React.ReactElement | null {
         return;
       }
       // Identity changed: hard reload, land on the dashboard of the new tab.
-      window.location.assign('/animate');
+      window.location.assign(brand.homePath);
     } catch {
       flash("Couldn't switch studios.");
       setBusy(null);
@@ -147,7 +149,7 @@ export function WorkspaceTabs(): React.ReactElement | null {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: data.workspace.id }),
       });
-      window.location.assign('/animate');
+      window.location.assign(brand.homePath);
     } catch {
       flash("Couldn't create that studio.");
       setBusy(null);
@@ -197,7 +199,7 @@ export function WorkspaceTabs(): React.ReactElement | null {
         return;
       }
       if (data.switched) {
-        window.location.assign('/animate');
+        window.location.assign(brand.homePath);
         return;
       }
       setBusy(null);
@@ -335,7 +337,7 @@ export function WorkspaceTabs(): React.ReactElement | null {
                 whiteSpace: 'nowrap',
                 cursor: isActive ? 'default' : busy ? 'progress' : 'pointer',
                 opacity: isDragging ? 0.4 : busy && busy !== w.id ? 0.7 : 1,
-                boxShadow: isActive ? `0 -6px 22px rgba(143,125,255,0.18)` : 'none',
+                boxShadow: isActive ? `0 -6px 22px ${JELLY_TOKENS.brandGhost}` : 'none',
                 userSelect: 'none',
                 transition: 'background 120ms, color 120ms',
                 flexShrink: 0,

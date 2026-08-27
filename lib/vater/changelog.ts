@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.10';
+export const APP_VERSION = '1.11';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,17 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.11',
+    date: '2026-08-27',
+    title: 'Listing Studio — a real-estate front door',
+    items: [
+      'New at tolley.io/realestateanimated: "Listing Studio by Jelly!" — the same studio, same credits, same login, re-skinned for real-estate agents. Upload one listing photo, pick Virtual Staging ($4.99) or a Before → After Reveal ($29 photoreal / $19 economy), approve the staged still, and get a 1080p video back — usually in 10–15 minutes.',
+      'Fair-Housing safe by default: Equal Housing Opportunity on every export, an on-frame "AI-generated - virtually staged" label, your broker name + phone sized to your state\'s rule (MO/KS/PA), a Fair-Housing check on anything you type, an MLS-safe (unlabeled) still for the photo slot, and a public proof page showing the original next to the generated image.',
+      'Listing Studio accounts show up in /hq with an origin chip and a license status (Missouri licenses verify live; others go to manual review).',
+      'Jelly! Studio itself is unchanged — same colours, same screens, same prices.',
+    ],
+  },
   {
     version: '1.10',
     date: '2026-08-26',

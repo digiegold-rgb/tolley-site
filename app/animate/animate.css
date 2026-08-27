@@ -1,8 +1,9 @@
 /* Jelly Studio — cinema keyframes, reveal utility, legacy re-skin.
  * Imported once by app/animate/layout.tsx. Everything here is scoped to
  * classes that only /animate surfaces use (.jelly-cinema, .jc-*, .jelly-legacy)
- * so nothing leaks into the rest of tolley.io. Colours here are the SAME
- * values as components/animate/tokens.ts — keep them in step. */
+ * so nothing leaks into the rest of tolley.io. Brand colours are read from the
+ * same `--jb-*` variables as components/animate/tokens.ts (Jelly fallbacks
+ * inline) so Listing Studio re-colours these rules by setting the variables. */
 
 @keyframes jc-rise { from { opacity: 0; transform: translateY(56px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes jc-fadein { from { opacity: 0; } to { opacity: 1; } }
@@ -20,10 +21,10 @@
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
-.jelly-cinema ::selection { background: #8F7DFF; color: #0A0A14; }
+.jelly-cinema ::selection { background: var(--jb-brand, #8F7DFF); color: var(--jb-on-gradient, #0A0A14); }
 .jelly-cinema a { text-decoration: none; }
 .jelly-cinema a:hover { text-decoration: none; }
-.jelly-cinema .jc-link { color: var(--jelly-link, #B3A6FF); }
+.jelly-cinema .jc-link { color: var(--jelly-link, var(--jb-link, #B3A6FF)); }
 .jelly-cinema .jc-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .jelly-cinema button { font-family: inherit; }
 .jelly-cinema h1, .jelly-cinema h2, .jelly-cinema h3 { text-wrap: balance; }
@@ -53,18 +54,18 @@
 
 /* hover states that inline styles cannot express */
 .jc-glass-hover { transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease; }
-.jc-glass-hover:hover { border-color: rgba(143,125,255,0.5) !important; background: rgba(143,125,255,0.07) !important; }
+.jc-glass-hover:hover { border-color: var(--jb-brand-outline, rgba(143,125,255,0.5)) !important; background: var(--jb-brand-ghost, rgba(143,125,255,0.07)) !important; }
 .jc-nav-link { color: var(--jelly-text-2, #9A94B0); transition: color 0.15s ease; }
 .jc-nav-link:hover { color: var(--jelly-text, #F0EEF8); }
 .jc-pill-gradient { transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease; }
-.jc-pill-gradient:hover { transform: translateY(-1px); box-shadow: 0 16px 50px rgba(143,125,255,0.45); filter: saturate(1.05); }
+.jc-pill-gradient:hover { transform: translateY(-1px); box-shadow: 0 16px 50px var(--jb-brand-glow, rgba(143,125,255,0.45)); filter: saturate(1.05); }
 .jc-pill-ghost { transition: border-color 0.2s ease, background 0.2s ease; }
-.jc-pill-ghost:hover { border-color: rgba(143,125,255,0.6) !important; background: rgba(143,125,255,0.08); }
+.jc-pill-ghost:hover { border-color: var(--jb-brand-outline, rgba(143,125,255,0.6)) !important; background: var(--jb-brand-ghost, rgba(143,125,255,0.08)); }
 .jc-chip { transition: all 0.2s ease; }
-.jc-chip:hover { border-color: rgba(143,125,255,0.5) !important; }
+.jc-chip:hover { border-color: var(--jb-brand-outline, rgba(143,125,255,0.5)) !important; }
 .jc-details > summary { list-style: none; cursor: pointer; }
 .jc-details > summary::-webkit-details-marker { display: none; }
-.jc-details > summary::after { content: '+'; float: right; color: #6FD6FF; font-weight: 500; }
+.jc-details > summary::after { content: '+'; float: right; color: var(--jb-cyan, #6FD6FF); font-weight: 500; }
 .jc-details[open] > summary::after { content: '–'; }
 
 /* ── legacy re-skin ───────────────────────────────────────────────────── */
@@ -83,18 +84,18 @@
 .jelly-legacy .text-zinc-100, .jelly-legacy .text-zinc-200, .jelly-legacy .text-white { color: #F0EEF8; }
 .jelly-legacy .text-zinc-300, .jelly-legacy .text-zinc-400 { color: #9A94B0; }
 .jelly-legacy .text-zinc-500, .jelly-legacy .text-zinc-600, .jelly-legacy .text-zinc-700 { color: #6B6584; }
-.jelly-legacy .text-sky-300, .jelly-legacy .text-sky-400, .jelly-legacy .text-sky-500, .jelly-legacy .text-cyan-300, .jelly-legacy .text-cyan-400 { color: #6FD6FF; }
+.jelly-legacy .text-sky-300, .jelly-legacy .text-sky-400, .jelly-legacy .text-sky-500, .jelly-legacy .text-cyan-300, .jelly-legacy .text-cyan-400 { color: var(--jb-cyan, #6FD6FF); }
 .jelly-legacy .border-sky-400\/40, .jelly-legacy .border-sky-500\/40, .jelly-legacy .border-sky-500 { border-color: rgba(111,214,255,0.4); }
-.jelly-legacy .bg-sky-500, .jelly-legacy .bg-sky-600, .jelly-legacy .bg-sky-500\/10, .jelly-legacy .bg-sky-500\/20 { background: linear-gradient(120deg, #8F7DFF, #6FD6FF); color: #0A0A14; }
+.jelly-legacy .bg-sky-500, .jelly-legacy .bg-sky-600, .jelly-legacy .bg-sky-500\/10, .jelly-legacy .bg-sky-500\/20 { background: var(--jb-grad-primary, linear-gradient(120deg, #8F7DFF, #6FD6FF)); color: var(--jb-on-gradient, #0A0A14); }
 .jelly-legacy .bg-sky-500\/10, .jelly-legacy .bg-sky-500\/20 { background: rgba(111,214,255,0.10); color: inherit; }
-.jelly-legacy .text-amber-300, .jelly-legacy .text-amber-400, .jelly-legacy .text-yellow-300 { color: #B3A6FF; }
-.jelly-legacy .border-amber-500\/30, .jelly-legacy .border-amber-500\/40 { border-color: rgba(143,125,255,0.35); }
-.jelly-legacy .bg-amber-500\/10, .jelly-legacy .bg-amber-500\/20 { background: rgba(143,125,255,0.10); }
+.jelly-legacy .text-amber-300, .jelly-legacy .text-amber-400, .jelly-legacy .text-yellow-300 { color: var(--jb-brand-light, #B3A6FF); }
+.jelly-legacy .border-amber-500\/30, .jelly-legacy .border-amber-500\/40 { border-color: var(--jb-brand-outline, rgba(143,125,255,0.35)); }
+.jelly-legacy .bg-amber-500\/10, .jelly-legacy .bg-amber-500\/20 { background: var(--jb-brand-ghost, rgba(143,125,255,0.10)); }
 .jelly-legacy .text-emerald-300, .jelly-legacy .text-emerald-400, .jelly-legacy .text-green-400 { color: #34C98A; }
 .jelly-legacy .border-emerald-500\/40 { border-color: rgba(52,201,138,0.4); }
 .jelly-legacy .bg-emerald-500\/10 { background: rgba(52,201,138,0.10); }
-.jelly-legacy .text-violet-300, .jelly-legacy .text-violet-400, .jelly-legacy .text-purple-300, .jelly-legacy .text-fuchsia-300 { color: #B3A6FF; }
-.jelly-legacy .bg-violet-600, .jelly-legacy .bg-violet-500, .jelly-legacy .bg-purple-600, .jelly-legacy .bg-fuchsia-600 { background: linear-gradient(120deg, #8F7DFF, #6FD6FF); color: #0A0A14; }
+.jelly-legacy .text-violet-300, .jelly-legacy .text-violet-400, .jelly-legacy .text-purple-300, .jelly-legacy .text-fuchsia-300 { color: var(--jb-brand-light, #B3A6FF); }
+.jelly-legacy .bg-violet-600, .jelly-legacy .bg-violet-500, .jelly-legacy .bg-purple-600, .jelly-legacy .bg-fuchsia-600 { background: var(--jb-grad-primary, linear-gradient(120deg, #8F7DFF, #6FD6FF)); color: var(--jb-on-gradient, #0A0A14); }
 .jelly-legacy .bg-gradient-to-br.from-sky-500\/5, .jelly-legacy .bg-gradient-to-br.from-sky-500\/20, .jelly-legacy .bg-gradient-to-br.from-fuchsia-500\/20 { background-image: linear-gradient(160deg, rgba(143,125,255,0.12), rgba(111,214,255,0.06)); color: inherit; }
 .jelly-legacy .bg-gradient-to-br.from-fuchsia-500\/20, .jelly-legacy .bg-gradient-to-br.from-sky-500\/20, .jelly-legacy .bg-gradient-to-br.from-emerald-500\/20 { border-color: rgba(143,125,255,0.5); }
 .jelly-legacy .text-fuchsia-200, .jelly-legacy .text-sky-200, .jelly-legacy .text-emerald-200 { color: #F0EEF8; }
@@ -105,7 +106,7 @@
 .jelly-legacy input, .jelly-legacy textarea, .jelly-legacy select {
   background: rgba(240,238,248,0.04); border-color: rgba(240,238,248,0.14); color: #F0EEF8; border-radius: 10px;
 }
-.jelly-legacy input:focus, .jelly-legacy textarea:focus, .jelly-legacy select:focus { border-color: #8F7DFF; outline: none; box-shadow: 0 0 0 3px rgba(143,125,255,0.2); }
+.jelly-legacy input:focus, .jelly-legacy textarea:focus, .jelly-legacy select:focus { border-color: var(--jb-brand, #8F7DFF); outline: none; box-shadow: 0 0 0 3px var(--jb-brand-ghost, rgba(143,125,255,0.2)); }
 .jelly-legacy ::placeholder { color: #6B6584; }
 
 /* ── reduced motion ───────────────────────────────────────────────────── */
@@ -127,16 +128,16 @@
   background: rgba(240,238,248,0.04) !important; border: 1px solid rgba(240,238,248,0.16) !important; color: #F0EEF8 !important;
   border-radius: 12px !important; padding: 12px 14px !important; font-size: 15px !important; font-family: inherit;
 }
-.jc-auth input:focus, .jc-auth textarea:focus { border-color: #8F7DFF !important; box-shadow: 0 0 0 3px rgba(143,125,255,0.2); outline: none; }
+.jc-auth input:focus, .jc-auth textarea:focus { border-color: var(--jb-brand, #8F7DFF) !important; box-shadow: 0 0 0 3px var(--jb-brand-ghost, rgba(143,125,255,0.2)); outline: none; }
 .jc-auth input::placeholder { color: #6B6584; }
 .jc-auth button[type=submit] {
-  background: linear-gradient(120deg, #8F7DFF, #6FD6FF) !important; color: #0A0A14 !important; border: 1px solid transparent !important;
+  background: var(--jb-grad-primary, linear-gradient(120deg, #8F7DFF, #6FD6FF)) !important; color: var(--jb-on-gradient, #0A0A14) !important; border: 1px solid transparent !important;
   border-radius: 999px !important; font-weight: 700 !important; letter-spacing: 0.02em !important; text-transform: none !important;
-  font-size: 15px !important; padding: 13px 22px !important; box-shadow: 0 12px 44px rgba(143,125,255,0.35); transition: transform .2s ease, box-shadow .2s ease;
+  font-size: 15px !important; padding: 13px 22px !important; box-shadow: 0 12px 44px var(--jb-brand-glow, rgba(143,125,255,0.35)); transition: transform .2s ease, box-shadow .2s ease;
 }
-.jc-auth button[type=submit]:hover { transform: translateY(-1px); box-shadow: 0 16px 50px rgba(143,125,255,0.45); }
-.jc-auth a { color: #B3A6FF; }
+.jc-auth button[type=submit]:hover { transform: translateY(-1px); box-shadow: 0 16px 50px var(--jb-brand-glow, rgba(143,125,255,0.45)); }
+.jc-auth a { color: var(--jb-brand-light, #B3A6FF); }
 .jc-auth a:hover { color: #F0EEF8; }
 .jc-auth p, .jc-auth span { color: #9A94B0; }
 .jc-auth .text-rose-200\/90, .jc-auth [class*="text-rose"], .jc-auth [class*="text-red"] { color: #F0607A !important; }
-.jc-auth input[type=checkbox] { width: 16px !important; height: 16px !important; padding: 0 !important; accent-color: #8F7DFF; border-radius: 4px !important; }
+.jc-auth input[type=checkbox] { width: 16px !important; height: 16px !important; padding: 0 !important; accent-color: var(--jb-brand, #8F7DFF); border-radius: 4px !important; }

@@ -5241,7 +5241,102 @@ model VaterAccount {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // ── Listing Studio (2026-08-27, migration 20260827_vater_account_origin_license) ──
+  /// Which front door the account came through: jelly | realestate.
+  origin            String    @default("jelly")
+  /// Real-estate license (lib/leads/license-verify.ts). Status:
+  /// unverified | verified | manual_review | invalid.
+  licenseState      String?
+  licenseNumber     String?
+  licenseStatus     String    @default("unverified")
+  licenseeName      String?
+  licenseProfession String?
+  licenseExpiresAt  DateTime?
+  licenseVerifiedAt DateTime?
+  /// Agent profile → end card (MO 20 CSR 2250-8.070 / KS K.A.R. 86-3-7 / PA §35.305).
+  agentDisplayName  String?
+  agentPhone        String?
+  brokerName        String?
+  brokerPhone       String?
+  /// "Name, REALTOR®" on the end card only when the user attests NAR membership.
+  narMember         Boolean   @default(false)
+
   @@index([tier])
+  @@index([origin])
+}
+
+/// Listing Studio by Jelly! (tolley.io/realestateanimated) — one row per
+/// wizard job (2026-08-27, migration 20260827_vater_listing_jobs).
+///
+/// ⚠️ Named VaterListingJob because `ListingJob` is the SHOP cross-listing
+/// queue (schema line ~2283, fb_marketplace drainers) — a different product.
+///
+/// The DGX `listing:*` job family (content-autopilot/vater_listing.py) is the
+/// render truth; this row is the site-side ledger of what the agent asked for,
+/// what they paid (VaterCreditLedger `re:<sku>:<id>`), and where the finished
+/// assets landed. Two DGX jobs per video SKU: `staging` (agent approves the
+/// still) then the video job with `stagedStillUrl` (no re-spend).
+model VaterListingJob {
+  id                    String    @id @default(cuid())
+  userId                String
+  /// lib/vater/listing-pricing.ts ListingSku. Null until Step 4.
+  sku                   String?
+  /// draft | staging | awaiting_approval | rendering | finishing | ready | failed | cancelled
+  status                String    @default("draft")
+  /// Wizard step reached (1..5).
+  step                  Int       @default(1)
+  /// upload | streetview
+  sourceKind            String    @default("upload")
+  sourceImageUrls       String[]  @default([])
+  address               String?
+  city                  String?
+  state                 String?
+  zip                   String?
+  lat                   Float?
+  lng                   Float?
+  beds                  Int?
+  baths                 Float?
+  sqft                  Int?
+  features              Json      @default("[]")
+  dictationRaw          String?   @db.Text
+  roomType              String?
+  style                 String?
+  /// photoreal | render3d | blueprint | bw
+  look                  String?
+  /// seedance | modal-wan
+  engine                String    @default("seedance")
+  /// social | mls
+  lane                  String    @default("social")
+  /// 9:16 Listing Reel add-on (a second render, never a crop).
+  reel                  Boolean   @default(false)
+  /// Site-side prompt preview (DGX builds the authoritative prompt).
+  promptJson            Json?
+  /// Compliance snapshot at /stage: lint result, end-card spec, label spec.
+  complianceJson        Json?
+  stagedStillUrl        String?
+  stagedStillLabeledUrl String?
+  restageCount          Int       @default(0)
+  dgxStagingJobId       String?
+  dgxRenderJobId        String?
+  dgxVerticalJobId      String?
+  videoUrl              String?
+  finalUrl              String?
+  videoVerticalUrl      String?
+  mlsSafeStillUrl       String?
+  endCardUrl            String?
+  /// Public proof page token (/realestateanimated/proof/[token]).
+  proofToken            String?   @unique
+  priceCents            Int       @default(0)
+  /// VideoCostJson (lib/vater/video-cost.ts) merged from DGX result.costs.
+  costJson              Json?
+  errorCode             String?
+  errorMessage          String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  completedAt           DateTime?
+
+  @@index([userId, createdAt])
+  @@index([status])
 }
 
 /// Prepaid credit ledger — Jelly Studio "Model B" billing (2026-08-15).
