@@ -35,6 +35,23 @@ export type RuleGate = (typeof RULE_GATES)[number];
 export const RULE_SCOPES = ["global", "house", "owner"] as const;
 export type RuleScope = (typeof RULE_SCOPES)[number];
 
+/**
+ * WHICH STAGE reads a rule (2026-08-27, Trey brief ship item 6) — orthogonal
+ * to `gate`, which says what the rule DOES.
+ *   video  — scene planner, delivery audit, Fable runner. Every pre-existing
+ *            rule; the default, so nothing that predates this changed meaning.
+ *   script — the Script Rules 2.0 rewriting pack, injected verbatim into the
+ *            script writer BEFORE it rewrites a transcript.
+ * Two buckets Trey edits himself: "if a rewrite comes out weird, he adds a
+ * script rule and reruns" — without Jared being a load-bearing step.
+ */
+export const RULE_KINDS = ["video", "script"] as const;
+export type RuleKind = (typeof RULE_KINDS)[number];
+
+export function isKind(x: unknown): x is RuleKind {
+  return typeof x === "string" && (RULE_KINDS as readonly string[]).includes(x);
+}
+
 export type RuleReader =
   | { ok: true; by: "dgx"; email: null; userId: null; studio: true }
   | { ok: true; by: "studio" | "user"; email: string | null; userId: string; studio: boolean }
@@ -106,16 +123,20 @@ export function sortRules<T extends { scope?: string; section: number; number: n
 }
 
 /** First 12 hex of sha256 over the given ACTIVE rules sorted (scope, section, number, suffix). */
-export function rulesVersion(active: Pick<VaterRule, "code" | "title" | "body" | "gate" | "section" | "number" | "suffix" | "scope">[]): string {
+export function rulesVersion(
+  active: (Pick<VaterRule, "code" | "title" | "body" | "gate" | "section" | "number" | "suffix" | "scope"> & { kind?: string })[],
+): string {
   const h = createHash("sha256");
   for (const r of sortRules(active)) {
-    h.update(`${r.code}|${r.title}|${r.body}|${r.gate}|${r.section}\n`);
+    h.update(`${r.code}|${r.title}|${r.body}|${r.gate}|${r.section}|${r.kind ?? "video"}\n`);
   }
   return h.digest("hex").slice(0, 12);
 }
 
-/** "G7" / "42" / "#12" — what humans see for a code. */
-export function displayCode(r: Pick<VaterRule, "code" | "scope" | "number" | "suffix">): string {
+/** "G7" / "42" / "#12" / "S4" — what humans see for a code. */
+export function displayCode(
+  r: Pick<VaterRule, "code" | "scope" | "number" | "suffix"> & { kind?: string },
+): string {
   if (r.scope === "owner") return `#${r.number}${r.suffix}`;
   return r.code;
 }
@@ -125,6 +146,7 @@ export function serializeRule(r: VaterRule) {
     code: r.code,
     display: displayCode(r),
     scope: r.scope,
+    kind: r.kind,
     ownerId: r.ownerId,
     characterId: r.characterId,
     templateKey: r.templateKey,
@@ -153,8 +175,8 @@ export function clip(x: unknown, max: number): string | undefined {
   return typeof x === "string" ? x.slice(0, max) : undefined;
 }
 
-/** house "79"/"78a", global "G12", owner "<cuid>:7" */
-export const CODE_RE = /^(\d{1,4}[a-z]?|G\d{1,4}|[A-Za-z0-9_-]{6,40}:\d{1,5})$/;
+/** house "79"/"78a", house-script "S4", global "G12", owner "<cuid>:7" */
+export const CODE_RE = /^(\d{1,4}[a-z]?|G\d{1,4}|S\d{1,4}|[A-Za-z0-9_-]{6,40}:\d{1,5})$/;
 
 /** Default section for a new owner rule: 1 = "My rules", 2 = character rules. */
 export const OWNER_SECTIONS: Record<number, string> = {

@@ -9,6 +9,7 @@ import {
   canWriteScope,
   clip,
   isGate,
+  isKind,
   isScope,
   readableScopes,
   rulesVersion,
@@ -89,13 +90,28 @@ export async function GET(req: NextRequest) {
   });
   const all = sortRules(scoped);
   const active = all.filter((r) => !r.retiredAt);
-  const version = rulesVersion(active);
   const includeRetired = q.get("includeRetired") === "1";
+  // kind= (video|script). Default: video only, so every existing caller —
+  // scene planner, delivery audit, Fable runner, the rules PDF — keeps seeing
+  // exactly the rulebook it saw before Script Rules 2.0 existed. Only a caller
+  // that ASKS for script rules gets them.
+  const kindParam = q.get("kind");
+  const kinds = new Set<string>(
+    kindParam
+      ? kindParam.split(",").map((k) => k.trim()).filter(isKind)
+      : ["video"],
+  );
+  if (kinds.size === 0) kinds.add("video");
   const gateParam = q.get("gate");
   const gates = gateParam ? new Set(gateParam.split(",").map((g) => g.trim()).filter(isGate)) : null;
-  const rows = (includeRetired ? all : active).filter((r) => !gates || gates.has(r.gate as never));
+  const rows = (includeRetired ? all : active)
+    .filter((r) => kinds.has(r.kind))
+    .filter((r) => !gates || gates.has(r.gate as never));
+  // Hash only the kinds this request actually returned: a script-rule edit must
+  // NOT move the version a video render stamps, and vice versa.
+  const version = rulesVersion(active.filter((r) => kinds.has(r.kind)));
   const sections = new Map<string, { scope: string; number: number; title: string }>();
-  for (const r of all) {
+  for (const r of all.filter((r) => kinds.has(r.kind))) {
     const k = `${r.scope}:${r.section}`;
     if (!sections.has(k)) sections.set(k, { scope: r.scope, number: r.section, title: r.sectionTitle });
   }
@@ -122,6 +138,9 @@ export async function POST(req: NextRequest) {
   if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
 
   const scope: RuleScope = isScope(body.scope) ? body.scope : writer.studio ? "house" : "owner";
+  // Which bucket. Trey adds a script rule and re-runs the rewrite himself
+  // (brief item 6) — no code change, no Jared.
+  const kind = isKind(body.kind) ? body.kind : "video";
   const ownerId = scope === "owner" ? writer.userId : null;
   if (!canWriteScope(writer, scope, ownerId)) {
     return NextResponse.json({ error: `only studio accounts can add ${scope} rules` }, { status: 403 });
@@ -141,7 +160,7 @@ export async function POST(req: NextRequest) {
     const code = `${ownerId}:${number}`;
     const created = await prisma.vaterRule.create({
       data: {
-        code, number, suffix: "", scope, ownerId, characterId, section, sectionTitle, title,
+        code, number, suffix: "", scope, kind, ownerId, characterId, section, sectionTitle, title,
         body: clip(body.body, 8000) ?? "",
         source: clip(body.source, 500) || null,
         gate, updatedBy: writer.email,
@@ -154,17 +173,19 @@ export async function POST(req: NextRequest) {
   if (!Number.isInteger(section) || section < 1) {
     return NextResponse.json({ error: "section (int) is required" }, { status: 400 });
   }
-  const sectionRow = await prisma.vaterRule.findFirst({ where: { scope, section }, select: { sectionTitle: true } });
+  const sectionRow = await prisma.vaterRule.findFirst({ where: { scope, kind, section }, select: { sectionTitle: true } });
   sectionTitle = sectionTitle || sectionRow?.sectionTitle;
   if (!sectionTitle) return NextResponse.json({ error: "new section needs a sectionTitle" }, { status: 400 });
 
-  // Permanent numbering: next free number over the WHOLE scope (rule 1 doctrine).
-  const max = await prisma.vaterRule.aggregate({ where: { scope }, _max: { number: true } });
+  // Permanent numbering: next free number over the whole scope (rule 1
+  // doctrine) — but per KIND, because the two buckets are numbered
+  // independently. A new script rule is S29; a new video rule is 160.
+  const max = await prisma.vaterRule.aggregate({ where: { scope, kind }, _max: { number: true } });
   const number = (max._max.number ?? 0) + 1;
-  const code = scope === "global" ? `G${number}` : String(number);
+  const code = kind === "script" ? `S${number}` : scope === "global" ? `G${number}` : String(number);
   const created = await prisma.vaterRule.create({
     data: {
-      code, number, suffix: "", scope, section, sectionTitle, title,
+      code, number, suffix: "", scope, kind, section, sectionTitle, title,
       body: clip(body.body, 8000) ?? "",
       source: clip(body.source, 500) || `${writer.email} ${new Date().toISOString().slice(0, 10)}`,
       gate, updatedBy: writer.email,

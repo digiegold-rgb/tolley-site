@@ -23,6 +23,28 @@ import type { AnimationQuality } from "@/lib/vater/video-spec";
 /** Opening window the Library action quotes. Whole scenes, not a slice. */
 export const ANIMATE_LAYER_WINDOW_S = 30;
 
+/**
+ * Opening-motion choices offered at CREATE time (Trey brief 2026-08-27, ship
+ * item 5: "Animate selector at create: none / first 30 seconds / first 1
+ * minute / first 2 minutes. Default first 30 seconds").
+ *
+ * Default is 30, not 120: the signal that started this was a competitor
+ * ("The Dollar Paradigm") popping to 400+ subs on animation in the FIRST TEN
+ * SECONDS, and animating a whole 12-minute piece on the first pass is how a
+ * customer lights money on fire before they have even read the script back.
+ * `0` means stills only — POST /from-script maps a non-positive value to a
+ * null column, which the render manifest renders as "Stills only".
+ */
+export const ANIMATE_WINDOW_OPTIONS = [
+  { value: 0, label: "None — stills only", hint: "Ken Burns on every scene. Animate individual scenes later, per scene." },
+  { value: 30, label: "First 30 seconds", hint: "The opening hook. Recommended — this is the part that decides whether anyone keeps watching." },
+  { value: 60, label: "First 1 minute", hint: "Roughly twice the clips, twice the opening cost." },
+  { value: 120, label: "First 2 minutes", hint: "Only worth it on a long piece you have already read back." },
+] as const;
+
+/** What a new project gets when nobody picks. */
+export const ANIMATE_WINDOW_DEFAULT_S = 30;
+
 /** Same default as POST /animate-all and VisualsStep. */
 export const ANIMATE_LAYER_DEFAULT_QUALITY = "modal-wan22-narrative" as const;
 

@@ -5669,6 +5669,11 @@ model VaterRule {
   /// hard = the delivery audit blocks on it; advisory = goes in the customer
   /// note; planner = injected into every scene-planner prompt; info = ops.
   gate         String    @default("info")
+  /// video | script (2026-08-27). WHICH STAGE reads the rule — orthogonal to
+  /// `gate`, which says what it DOES. video = scene planner / delivery audit /
+  /// Fable runner (every pre-existing row). script = the Script Rules 2.0
+  /// rewriting pack the script writer injects verbatim before it writes.
+  kind         String    @default("video")
   /// global | house | owner (2026-08-25 scopes). global = the de-branded
   /// principles every render on Jelly Studio reads (codes "G<n>"); house =
   /// Trey's studio rulebook (codes "1".."158"/"78a", studio-only); owner = a
@@ -5692,6 +5697,7 @@ model VaterRule {
   @@index([section, number])
   @@index([scope, section, number])
   @@index([ownerId, characterId])
+  @@index([kind, scope])
 }
 
 /// Every write to a VaterRule (edit, add, retire) — who changed what, when.

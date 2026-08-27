@@ -25,11 +25,13 @@ import { relativeTimeLabel } from '@/lib/vater/concierge-client';
 
 export type RuleGate = 'hard' | 'advisory' | 'planner' | 'info';
 export type RuleScope = 'global' | 'house' | 'owner';
+export type RuleKind = 'video' | 'script';
 
 export interface RuleRow {
   code: string;
   display: string;
   scope: RuleScope;
+  kind: RuleKind;
   ownerId: string | null;
   characterId: string | null;
   templateKey: string | null;
@@ -118,7 +120,10 @@ export function Inline({ text, color }: { text: string; color: string }): React.
 
 export async function fetchRules(scope: RuleScope | RuleScope[] = ['global', 'house', 'owner']): Promise<RulesPayload> {
   const s = Array.isArray(scope) ? scope.join(',') : scope;
-  const res = await fetch(`/api/vater/rules?includeRetired=1&scope=${encodeURIComponent(s)}`, { cache: 'no-store' });
+  // kind=video,script — this screen is the ONE place that shows both buckets.
+  // Every other caller (planner, audit, Fable runner) omits `kind` and keeps
+  // getting video only.
+  const res = await fetch(`/api/vater/rules?includeRetired=1&kind=video,script&scope=${encodeURIComponent(s)}`, { cache: 'no-store' });
   const data = (await res.json().catch(() => ({}))) as RulesPayload & { error?: string };
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
@@ -238,9 +243,12 @@ export function RuleRowView({
 
 /** Add-rule form (scope-aware). */
 export function AddRuleForm({
-  scope, sections, characterId, characterName, onAdded, onClose,
+  scope, kind = 'video', sections, characterId, characterName, onAdded, onClose,
 }: {
   scope: RuleScope;
+  /** Which bucket the new rule joins. Numbering is per (scope, kind), so a new
+   *  script rule is S29 and a new house video rule is 160. */
+  kind?: RuleKind;
   sections: { number: number; title: string }[];
   characterId?: string | null;
   characterName?: string;
@@ -260,7 +268,7 @@ export function AddRuleForm({
     try {
       const res = await fetch('/api/vater/rules', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...draft, scope, ...(characterId ? { characterId } : {}) }),
+        body: JSON.stringify({ ...draft, scope, kind, ...(characterId ? { characterId } : {}) }),
       });
       const out = (await res.json().catch(() => ({}))) as { rule?: RuleRow; error?: string };
       if (!res.ok || !out.rule) throw new Error(out.error || `HTTP ${res.status}`);
@@ -300,12 +308,20 @@ export function AddRuleForm({
   );
 }
 
-type Tab = 'global' | 'owner' | 'house';
+/* Four tabs, two axes. 'global' | 'owner' | 'house' select a SCOPE within the
+ * video rulebook; 'script' is the other KIND — the Script Rules 2.0 rewriting
+ * pack the script writer injects before it rewrites a transcript (Trey brief
+ * 2026-08-27, ship item 6: two buckets he edits himself). */
+type Tab = 'global' | 'owner' | 'house' | 'script';
+
+const TAB_SCOPE: Record<Tab, RuleScope> = { global: 'global', owner: 'owner', house: 'house', script: 'house' };
+const TAB_KIND: Record<Tab, RuleKind> = { global: 'video', owner: 'video', house: 'video', script: 'script' };
 
 const TAB_COPY: Record<Tab, { label: string; blurb: string }> = {
   global: { label: 'Global', blurb: 'Global production rules — every render on Jelly Studio reads these. Your own rules (My rules) and your character rules are layered on top.' },
   owner: { label: 'My rules', blurb: 'Your rules, layered on top of the Global rulebook for every video you render — including the rules created for each character you build. Only you (and your renders) see them.' },
   house: { label: 'House', blurb: 'The studio rulebook — the numbered house rules (locked host, keys, billing, infra). Studio accounts only.' },
+  script: { label: 'Script rules', blurb: 'How a source transcript gets rewritten — length, host and cast names, the standing greeting, number handling, punctuation, what to cut, and the originality bar. The writer reads these verbatim before it writes a word. Edit one and re-run the rewrite; nothing else in the pipeline changes.' },
 };
 
 export function RulesScreen(): React.ReactElement {
@@ -332,7 +348,10 @@ export function RulesScreen(): React.ReactElement {
   React.useEffect(() => { if (!tierLoading) void load(); }, [load, tierLoading]);
 
   const canEdit = tab === 'owner' ? true : studio;
-  const tabRules = React.useMemo(() => (data?.rules ?? []).filter((r) => r.scope === tab), [data, tab]);
+  const tabRules = React.useMemo(
+    () => (data?.rules ?? []).filter((r) => r.scope === TAB_SCOPE[tab] && (r.kind ?? 'video') === TAB_KIND[tab]),
+    [data, tab],
+  );
   const lastEdit = React.useMemo(() => tabRules.reduce<RuleRow | null>((m, r) => (!m || r.updatedAt > m.updatedAt ? r : m), null), [tabRules]);
 
   const visible = React.useMemo(() => {
@@ -371,14 +390,18 @@ export function RulesScreen(): React.ReactElement {
   }, [tabRules]);
 
   const tabCounts = React.useMemo(() => {
-    const c: Record<Tab, number> = { global: 0, owner: 0, house: 0 };
-    for (const r of data?.rules ?? []) if (!r.retiredAt) c[r.scope as Tab] = (c[r.scope as Tab] ?? 0) + 1;
+    const c: Record<Tab, number> = { global: 0, owner: 0, house: 0, script: 0 };
+    for (const r of data?.rules ?? []) {
+      if (r.retiredAt) continue;
+      const k = (r.kind ?? 'video') === 'script' ? 'script' : (r.scope as Tab);
+      c[k] = (c[k] ?? 0) + 1;
+    }
     return c;
   }, [data]);
 
-  const sectionsForTab = (data?.sections ?? []).filter((s) => s.scope === tab);
+  const sectionsForTab = (data?.sections ?? []).filter((s) => s.scope === TAB_SCOPE[tab]);
   const inputStyle = useInputStyle();
-  const tabs: Tab[] = studio ? ['global', 'owner', 'house'] : ['global', 'owner'];
+  const tabs: Tab[] = studio ? ['global', 'owner', 'house', 'script'] : ['global', 'owner'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -474,7 +497,7 @@ export function RulesScreen(): React.ReactElement {
           </div>
 
           {adding && canEdit && (
-            <AddRuleForm scope={tab} sections={sectionsForTab} onAdded={load} onClose={() => setAdding(false)} />
+            <AddRuleForm scope={TAB_SCOPE[tab]} kind={TAB_KIND[tab]} sections={sectionsForTab} onAdded={load} onClose={() => setAdding(false)} />
           )}
         </VCard>
       )}

@@ -12,7 +12,14 @@
  * quietly put Wan at ~9x). Batch animate loads the model once, so real
  * per-clip cost there is at or below these numbers.
  * Margin policy: ~4-6x over real backend cost (Modal GPU rental / Veo / Kling
- * metered APIs, calibrated 2026-04-25 in Shared/animation-fix.md). Local DGX
+ * metered APIs, calibrated 2026-04-25 in Shared/animation-fix.md).
+ * 2026-08-27 (Jared, Trey brief "the $12 is weighted, not the real path"): the
+ * 8/26 cost re-sync corrected estCostCents but NOT priceCents, which left the
+ * DEFAULT tier at 9.4x while the policy says 4-6x — so the opening-motion quote
+ * read $12.00 for 8 clips and every customer read that as our real price.
+ * Wan narrative 150->80 (5.0x), narrative-fast 200->130 (5.0x), animate2
+ * 175->125 (5.0x). Hunyuan was already in policy and did not move.
+ * Local DGX
  * tiers cost ~$0 to run but are priced at a floor so free renders don't
  * cannibalize the paid tiers.
  */
@@ -32,15 +39,15 @@ export interface AnimationPrice {
 
 export const ANIMATION_PRICES: Record<AnimationQuality, AnimationPrice> = {
   // ── Modal GPU rental (Wan2.2 / Hunyuan / EasyAnimate) ──
-  "modal-wan22-narrative":      { priceCents: 150, estCostCents: 16, label: "Wan2.2 Narrative L40S",   etaLabel: "~5 min" },
-  "modal-wan22-narrative-fast": { priceCents: 200, estCostCents: 26, label: "Wan2.2 Narrative H100",   etaLabel: "~2 min" },
+  "modal-wan22-narrative":      { priceCents: 80,  estCostCents: 16, label: "Wan2.2 Narrative L40S",   etaLabel: "~5 min" },
+  "modal-wan22-narrative-fast": { priceCents: 130, estCostCents: 26, label: "Wan2.2 Narrative H100",   etaLabel: "~2 min" },
   "modal-hunyuan-narrative":      { priceCents: 75,  estCostCents: 14, label: "Hunyuan Narrative L40S", etaLabel: "~3 min" },
   "modal-hunyuan-narrative-fast": { priceCents: 125, estCostCents: 24, label: "Hunyuan Narrative H100", etaLabel: "~1 min" },
   "modal-wan22":      { priceCents: 150, estCostCents: 16, label: "Wan2.2 Action L40S", etaLabel: "~3 min" },
   "modal-wan22-fast": { priceCents: 200, estCostCents: 26, label: "Wan2.2 Action H100", etaLabel: "~2 min" },
   "modal-easyanimate-anime": { priceCents: 150, estCostCents: 30, label: "EasyAnimate v5 Anime", etaLabel: "~4 min" },
   // Animate-2 motion transfer: ~5-7 min of L40S per clip (≈ $0.20-0.25 real).
-  "modal-animate2": { priceCents: 175, estCostCents: 25, label: "Wan Animate-2 Motion L40S", etaLabel: "~6 min" },
+  "modal-animate2": { priceCents: 125, estCostCents: 25, label: "Wan Animate-2 Motion L40S", etaLabel: "~6 min" },
   // ── Metered third-party APIs ──
   "kling-standard": { priceCents: 100, estCostCents: 18, label: "Kling Standard 720p", etaLabel: "~2 min" },
   "kling-pro":      { priceCents: 150, estCostCents: 30, label: "Kling Pro 1080p",     etaLabel: "~3 min" },

@@ -46,6 +46,20 @@ import {
   type ConciergeStage,
 } from '@/lib/vater/concierge-client';
 import { useRenderEstimate } from '../editor/use-render-estimate';
+import {
+  ANIMATE_WINDOW_OPTIONS,
+  ANIMATE_WINDOW_DEFAULT_S,
+} from '@/lib/vater/animate-layer';
+import type { DedupMatch } from '@/lib/vater/script-dedup';
+
+/** Shape of POST /api/vater/youtube/script-precheck (rules 27 + 28). */
+type DedupResponse = {
+  mode: 'prose' | 'title';
+  checked: number;
+  inconclusive: boolean;
+  verbatim: DedupMatch[];
+  similar: DedupMatch[];
+};
 
 /* ─── Types ─── */
 
@@ -495,12 +509,22 @@ function ScriptIntake({
   const { tier, maxWords } = useTier();
   const [title, setTitle] = React.useState('');
   const [script, setScript] = React.useState('');
-  const [animUntil, setAnimUntil] = React.useState('120');
+  const [animUntil, setAnimUntil] = React.useState(String(ANIMATE_WINDOW_DEFAULT_S));
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const fileRef = React.useRef<HTMLInputElement | null>(null);
+  // Script rules 27 + 28 — checked before anything is spent (free, no LLM).
+  const [dupes, setDupes] = React.useState<DedupResponse | null>(null);
+  const [dupeAck, setDupeAck] = React.useState(false);
 
   const words = React.useMemo(() => wordsIn(script), [script]);
+  // An acknowledgement belongs to the text it was given for. Edit the script
+  // and the flags have to be re-earned, or "proceed anyway" silently covers a
+  // different script than the one it was clicked on.
+  React.useEffect(() => {
+    setDupeAck(false);
+    setDupes(null);
+  }, [script]);
   /* The ceiling comes from GET /api/vater/me (TierContext), which is the SAME
    * number lib/vater/billing/script-cap.ts hands the from-script route: the
    * owner is uncapped, an account with purchased credit gets ~20:00, and
@@ -527,7 +551,7 @@ function ScriptIntake({
     }
   };
 
-  const submit = async (): Promise<void> => {
+  const submit = async (acknowledged = dupeAck): Promise<void> => {
     setError(null);
     const animUntilS = Number.parseInt(animUntil, 10);
     if (words < 20) {
@@ -548,6 +572,34 @@ function ScriptIntake({
       return;
     }
 
+    // Rules 27 + 28 run BEFORE the project is created, because creating it is
+    // what starts costing money. A verbatim hit stops here once and asks; a
+    // similar hit is named and explicitly left as the user's call (rule 28
+    // says "let the user decide"), so it never blocks.
+    if (!acknowledged) {
+      setSubmitting(true);
+      try {
+        const pre = await fetch('/api/vater/youtube/script-precheck', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: script.trim(), title: title.trim() || undefined }),
+        });
+        if (pre.ok) {
+          const found = (await pre.json()) as DedupResponse;
+          setDupes(found);
+          if (found.verbatim.length > 0) {
+            setSubmitting(false);
+            return;
+          }
+        }
+      } catch {
+        // A precheck that cannot run must never block a paying user from
+        // working. Fall through and create the project.
+      } finally {
+        setSubmitting(false);
+      }
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch('/api/vater/youtube/from-script', {
@@ -556,9 +608,10 @@ function ScriptIntake({
         body: JSON.stringify({
           script: script.trim(),
           title: title.trim() || undefined,
-          // A zero here means "no animation at all"; the column stays the
-          // pipeline marker either way, so store at least 1s of intent.
-          animUntilS: Math.max(1, animUntilS),
+          // 0 = "None — stills only". POST /from-script maps a non-positive
+          // value to a null column, which the manifest renders as "Stills
+          // only" — do NOT floor this at 1, that silently animates scene 1.
+          animUntilS,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -671,17 +724,120 @@ function ScriptIntake({
       </div>
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-        <VInput
-          label="Animate first (seconds)"
-          value={animUntil}
-          onChange={setAnimUntil}
-          style={{ flex: '1 1 180px' }}
-          helper="Rest of the video runs as Ken Burns stills"
-        />
+        <div style={{ flex: '1 1 220px' }}>
+          <label
+            style={{
+              display: 'block',
+              fontSize: 12,
+              fontWeight: 600,
+              color: t.textSecondary,
+              marginBottom: 6,
+            }}
+            htmlFor="anim-window"
+          >
+            Animate the opening
+          </label>
+          <select
+            id="anim-window"
+            value={animUntil}
+            onChange={(e) => setAnimUntil(e.target.value)}
+            data-testid="anim-window"
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              borderRadius: JELLY_TOKENS.radius.md,
+              border: `1px solid ${t.border}`,
+              background: t.card,
+              color: t.text,
+              fontSize: 13,
+              fontFamily: JELLY_TOKENS.font,
+            }}
+          >
+            {ANIMATE_WINDOW_OPTIONS.map((o) => (
+              <option key={o.value} value={String(o.value)}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <div
+            style={{
+              fontSize: 11,
+              color: t.textSecondary,
+              marginTop: 6,
+              lineHeight: 1.5,
+            }}
+          >
+            {ANIMATE_WINDOW_OPTIONS.find((o) => String(o.value) === animUntil)?.hint}
+            {' '}The rest runs as Ken Burns stills, and you can animate any single
+            scene afterwards for the price of one clip.
+          </div>
+        </div>
         <div style={{ flex: '2 1 300px' }}>
           <LockedStyleCard />
         </div>
       </div>
+
+      {dupes && (dupes.verbatim.length > 0 || dupes.similar.length > 0) && (
+        <div
+          data-testid="script-dupe-flags"
+          style={{
+            padding: '12px 14px',
+            borderRadius: JELLY_TOKENS.radius.md,
+            ...(dupes.verbatim.length ? TINT_BG.error : TINT_BG.warning),
+            border: `1px solid ${dupes.verbatim.length ? JELLY_TOKENS.error : JELLY_TOKENS.warning}`,
+            fontSize: 12,
+            color: t.text,
+            lineHeight: 1.6,
+            display: 'grid',
+            gap: 8,
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>
+            {dupes.verbatim.length
+              ? `You have made this before (rule 27)`
+              : `Similar to ${dupes.similar.length === 1 ? 'a video' : 'videos'} you already made (rule 28)`}
+          </div>
+          {[...dupes.verbatim, ...dupes.similar].map((m) => (
+            <div key={m.id}>
+              <div>{m.reason}</div>
+              {m.phrase && (
+                <div
+                  style={{
+                    marginTop: 4,
+                    padding: '6px 8px',
+                    borderRadius: JELLY_TOKENS.radius.sm,
+                    background: t.cardAlt,
+                    color: t.textSecondary,
+                    fontStyle: 'italic',
+                  }}
+                >
+                  Shared wording: “{m.phrase}”
+                </div>
+              )}
+            </div>
+          ))}
+          <div style={{ color: t.textSecondary }}>
+            {dupes.verbatim.length
+              ? 'Nothing has been created and nothing has been charged. Rewrite the script, or continue if this is deliberate.'
+              : 'This is your call — carry on, angle it differently, or hold off.'}
+          </div>
+          {dupes.verbatim.length > 0 && (
+            <div>
+              <VBtn
+                size="sm"
+                variant="outlined"
+                data-testid="script-dupe-proceed"
+                onClick={() => {
+                  setDupeAck(true);
+                  void submit(true);
+                }}
+              >
+                Make it anyway
+              </VBtn>
+            </div>
+          )}
+        </div>
+      )}
 
       {overLimit && (
         <div
