@@ -4,6 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AuthSessionProvider } from "@/components/providers/auth-session-provider";
 import { GA4 } from "@/components/analytics/ga4";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
+import { XPixel } from "@/components/analytics/x-pixel";
 import { MainSiteTracker } from "@/components/analytics/main-site-tracker";
 import { AgentDiscovery } from "@/components/agent/AgentDiscovery";
 import { VideoSpeedKeybinds } from "@/components/ui/VideoSpeedKeybinds";
@@ -50,6 +51,7 @@ export default function RootLayout({
           <VideoSpeedKeybinds />
           <GA4 />
           <MetaPixel />
+          <XPixel />
           <SpeedInsights />
         </AuthSessionProvider>
       </body>

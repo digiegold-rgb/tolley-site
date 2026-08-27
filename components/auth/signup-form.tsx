@@ -6,6 +6,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 
 import { TOS_VERSION } from "@/lib/legal-animate";
+import { twqSignup } from "@/components/analytics/x-pixel";
 
 function resolveCallbackUrl(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
@@ -122,6 +123,10 @@ export function SignupForm({ claimSlug }: SignupFormProps = {}) {
       setErrorMessage("Unable to create account.");
       return;
     }
+
+    // Account exists at this point — count the Jelly Studio signup for X Ads
+    // conversion tracking even if the auto-login below happens to fail.
+    if (isStudio) twqSignup();
 
     const loginResult = await signIn("credentials", {
       email: email.trim().toLowerCase(),
