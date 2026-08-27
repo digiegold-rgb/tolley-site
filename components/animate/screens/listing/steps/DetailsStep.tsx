@@ -15,6 +15,7 @@ import type { AgentProfile, AgentProfilePatch, ListingJobDraft, ListingJobDto, V
 import { lintFairHousing, applyRewrites, type LintResult, type LintViolation } from '@/lib/vater/listing/compliance';
 import { JELLY_TOKENS, glass } from '../../../tokens';
 import { useTheme } from '../../../theme-context';
+import { useTier } from '../../../tier-context';
 import { listingApi, listingErrorMessage } from '../listing-api';
 import { useDictation, parseListingFacts } from '../useDictation';
 import { Badge, BigButton, Chip, Field, Notice, Select, StepHeader, StepNav, TextArea, TextInput, US_STATES, stateAdRule } from '../listing-ui';
@@ -54,6 +55,9 @@ function numOrNull(v: string): number | null {
 
 export default function DetailsStep({ job, onSave, onNext, onBack, agentProfile: profileProp, onAgentProfileSaved }: DetailsStepProps): React.ReactElement {
   const { t } = useTheme();
+  /* Push profile/license changes into the shared /me context so the Look step
+   * and ListingProgress see `capabilities.license` flip without a reload. */
+  const { setAgentProfile: setTierProfile } = useTier();
   const [beds, setBeds] = React.useState(job.beds != null ? String(job.beds) : '');
   const [baths, setBaths] = React.useState(job.baths != null ? String(job.baths) : '');
   const [sqft, setSqft] = React.useState(job.sqft != null ? String(job.sqft) : '');
@@ -167,6 +171,7 @@ export default function DetailsStep({ job, onSave, onNext, onBack, agentProfile:
       });
       if (saved) {
         setProfile(saved);
+        setTierProfile(saved);
         onAgentProfileSaved?.(saved);
       }
       setPfMsg('Saved.');
@@ -194,6 +199,7 @@ export default function DetailsStep({ job, onSave, onNext, onBack, agentProfile:
       setLicResult(r);
       if (r.licenseeName || r.status) {
         setProfile((p) => (p ? { ...p, licenseStatus: r.status, licenseeName: r.licenseeName ?? p.licenseeName } : p));
+        if (profile) setTierProfile({ ...profile, licenseStatus: r.status, licenseeName: r.licenseeName ?? profile.licenseeName });
       }
     } catch (e) {
       setPfMsg(listingErrorMessage(e, 'Could not check the license right now. You can keep going — MLS-safe export unlocks once it is verified.'));

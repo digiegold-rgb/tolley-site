@@ -117,7 +117,7 @@ export default async function ProofPage({ params }: Props) {
           }}
         >
           <p style={{ margin: 0 }}>
-            <strong>Disclosure.</strong> The right-hand image{video ? " and the video" : ""} were generated with AI from the original photo on the left.
+            <strong>Disclosure.</strong> The right-hand image{video ? " and the video were" : " was"} generated with AI from the original photo on the left.
             {label.materialChange
               ? " They depict changes to walls, floors or finishes that are NOT as listed — see the original for the property as it is."
               : " Furniture and décor shown are virtual staging (personal property) and are not included with the property."}{" "}
