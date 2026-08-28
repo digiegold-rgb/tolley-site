@@ -123,7 +123,7 @@ describe("WARN rewrites", () => {
     const out = applyRewrites(src);
     assert.equal(
       out,
-      "primary bath, {{DISTANCE_MI}} miles from shops, {{DISTANCE_MI}} miles away, needs renovation, dual sinks",
+      "primary bath, minutes from shops, minutes away, needs renovation, dual sinks",
     );
     assert.equal(WARN_RULES.length, 5);
   });

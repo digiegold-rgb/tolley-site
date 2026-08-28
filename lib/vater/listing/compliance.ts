@@ -168,10 +168,10 @@ export const WARN_RULES: readonly WarnRule[] = [
   [/\bmaster\s+(bedroom|bath(?:room)?|suite|closet)\b/gi, "primary $1", "Industry standard is 'primary'."],
   [
     /\bwalking\s+distance\s+(?:to|from)\b/gi,
-    "{{DISTANCE_MI}} miles from",
+    "minutes from",
     "Replace with measured distance -- 'walking distance' is both vague and an accessibility-coded phrase.",
   ],
-  [/\bwithin\s+walking\s+distance\b/gi, "{{DISTANCE_MI}} miles away", "Same as above."],
+  [/\bwithin\s+walking\s+distance\b/gi, "minutes away", "Same as above."],
   [/\bhandy\s*man\s+special\b/gi, "needs renovation", "Gendered and euphemistic."],
   [/\bhis\s+and\s+hers\b/gi, "dual", "Gendered."],
 ];

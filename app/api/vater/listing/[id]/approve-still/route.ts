@@ -94,7 +94,7 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
       style: job.style ?? undefined,
       roomType: job.roomType ?? undefined,
       look: lookOf(job),
-      aspect: job.reel ? "9:16" : "16:9",
+      aspect: "16:9", // the reel add-on is a second 9:16 render (see /poll)
       mlsSafe: job.lane === "mls",
       endCard: endCardFromProfile(pre.profile),
       listingFacts: listingFactsFor(job),

@@ -93,6 +93,7 @@ export type ListingBlockerCode =
   | "no_broker_phone"
   | "no_license"
   | "insufficient_credits"
+  | "streetview_interior"
   | "feature_not_ready";
 
 export interface ListingBlocker {

@@ -126,7 +126,8 @@ export default function ListingProgress({ job: initial, onJob, onMakeAnother, li
     }
   };
 
-  const mediaUrl = job.finalUrl ?? job.videoUrl ?? null;
+  // A still SKU's finalUrl is the labeled PNG — never feed it to <video>.
+  const mediaUrl = isStill ? null : (job.finalUrl ?? job.videoUrl ?? null);
   const stillUrl = job.stagedStillLabeledUrl ?? job.stagedStillUrl ?? null;
   const original = job.sourceImageUrls?.[0] ?? null;
   const downloadUrl = mediaUrl ?? stillUrl;
@@ -249,7 +250,7 @@ export default function ListingProgress({ job: initial, onJob, onMakeAnother, li
             <BigButton variant="ghost" onClick={onMakeAnother} data-testid="listing-make-another">＋ Make another</BigButton>
           </div>
           <div style={{ marginTop: 16, display: 'grid', gap: 6, fontSize: 15, color: t.textFaint }}>
-            <div>✓ Equal Housing Opportunity on the end card · ✓ “Virtually staged” label on frame · ✓ your broker line per {job.state ? `${job.state} rules` : 'your state rules'}</div>
+            <div>{isStill ? '✓ “AI-generated - virtually staged” label on frame · ✓ unlabeled MLS-safe copy kept for the photo slot' : <>✓ Equal Housing Opportunity on the end card · ✓ “Virtually staged” label on frame · ✓ your broker line per {job.state ? `${job.state} rules` : 'your state rules'}</>}</div>
             {spec?.materialChange && <div>Social & marketing use — not for MLS photo slots. The proof page pairs it with your original photo.</div>}
             {proofUrl && <div style={{ wordBreak: 'break-all' }}>Proof page: {proofUrl}</div>}
           </div>

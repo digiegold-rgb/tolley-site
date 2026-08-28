@@ -74,6 +74,14 @@ export default function ListingWizard({ jobId }: ListingWizardProps): React.Reac
         setStep(Math.min(5, Math.max(1, j.step || 1)));
         return;
       }
+      // Deep link (#p=<id> / #r=listing&p=<id>): the Shell parses the hash in
+      // an effect that runs AFTER this child effect, so on a full page load
+      // the first pass sees jobId=null. Creating here would mint a fresh draft
+      // and overwrite the user's `p=` — wait for the Shell to hand it over.
+      if (typeof window !== 'undefined') {
+        const wanted = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('p');
+        if (wanted && wanted.trim()) return;
+      }
       if (creating.current) return;
       creating.current = true;
       const j = await listingApi.create({ step: 1 });

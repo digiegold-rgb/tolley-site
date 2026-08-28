@@ -107,7 +107,18 @@ export default function DetailsStep({ job, onSave, onNext, onBack, agentProfile:
     setFeatures((fs) => fs.map((f) => applyRewrites(f)).filter(Boolean));
   };
   const removeOne = (v: Violation) => {
-    const strip = (s: string) => s.split(v.match).join('').replace(/\s{2,}/g, ' ').trim();
+    // Drop the phrase, then tidy what it leaves behind: a dangling ", " or
+    // " ," at a sentence start, doubled punctuation, doubled spaces.
+    const strip = (s: string) =>
+      s
+        .split(v.match)
+        .join('')
+        .replace(/([.!?])\s*[,;:]\s*/g, '$1 ')
+        .replace(/\s+([,.;:!?])/g, '$1')
+        .replace(/([,;:])\s*(?=[,.;:])/g, '')
+        .replace(/^[\s,;:]+/, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
     setNotes((n) => strip(n));
     setFeatures((fs) => fs.map(strip).filter(Boolean));
   };

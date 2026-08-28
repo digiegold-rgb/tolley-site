@@ -359,6 +359,16 @@ export async function computePreflight(input: PreflightInput): Promise<ListingPr
 
   // Step 4 — SKU
   if (!sku) blockers.push({ code: "no_sku", message: "Pick what to make.", step: 4 });
+  // A Street View copy is an exterior: the P0 SKUs stage a ROOM, and the DGX
+  // geometry QA rejects an exterior→interior "staging" every time (verified
+  // 2026-08-28: 3 rerolls, ~7 min, refund). Say so before money moves.
+  if (sku && job.sourceKind === "streetview" && (sku === "virtual_staging" || sku === "before_after" || sku === "beauty_shot")) {
+    blockers.push({
+      code: "streetview_interior",
+      message: "Street photos show the outside of the home — this one needs a photo of a room. Upload a room photo on step 1 (Exterior Reveal for street photos is coming soon).",
+      step: 1,
+    });
+  }
 
   // Step 5 — end card (state advertising rules) + license for the MLS lane
   const card = endCardSpec(profile, job.state, sku ?? "virtual_staging", { lane });

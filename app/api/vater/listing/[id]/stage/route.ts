@@ -109,7 +109,10 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
       style: job.style ?? undefined,
       roomType: job.roomType ?? undefined,
       look: lookOf(job),
-      aspect: job.reel ? "9:16" : "16:9",
+      // Always the landscape canvas: the Vertical Reel add-on is a SECOND
+      // 9:16 render kicked from /poll after the main video, never a crop of
+      // the whole job (that shipped a vertical-only video for +$9).
+      aspect: "16:9",
       // Every staging job also yields the unlabeled MLS-safe still; the export
       // itself stays license-gated on the site.
       mlsSafe: true,

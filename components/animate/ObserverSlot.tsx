@@ -13,6 +13,7 @@
  */
 
 import * as React from 'react';
+import { useProduct } from './product-context';
 import { useTier } from './tier-context';
 import { useActiveJob } from './observer/active-job-context';
 import { ObserverPanel } from './observer/ObserverPanel';
@@ -20,6 +21,10 @@ import { ObserverPanel } from './observer/ObserverPanel';
 export function ObserverSlot(): React.ReactElement | null {
   const { capabilities } = useTier();
   const { activeJobId } = useActiveJob();
+  const brand = useProduct();
+  // The Observer streams Jelly render notes (owner-only). On Listing Studio it
+  // floated over the price ticket with unrelated Jelly job chatter.
+  if (brand.product !== 'jelly') return null;
   if (!capabilities.observer) return null;
   return <ObserverPanel activeJobId={activeJobId} />;
 }
