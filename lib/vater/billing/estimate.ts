@@ -223,21 +223,33 @@ export interface DgxEstimatePayload {
 export function fromDgxEstimate(
   payload: DgxEstimatePayload,
   opsRatePerMinute: number,
+  motionFraction: number = 1,
 ): RenderEstimate | null {
   const minutes = Number(payload.minutes ?? 0);
   if (!Number.isFinite(minutes) || minutes <= 0) return null;
 
   const stills = r2(Number(payload.stillsUsd ?? 0));
-  const motion = r2(Number(payload.motionUsd ?? 0));
+  /* The DGX quotes motion for the WHOLE video — it is not told about the
+   * opening window. A hybrid render animates only `animUntilS` and runs Ken
+   * Burns after it, so the motion line is scaled here by the same fraction
+   * `localEstimate` applies. Without this the parameter was computed and
+   * discarded on the only branch that runs in production, and every hybrid
+   * was quoted a whole-video motion bill. */
+  const fraction = Math.min(1, Math.max(0, Number.isFinite(motionFraction) ? motionFraction : 1));
+  const motion = r2(Number(payload.motionUsd ?? 0) * fraction);
   const tts = r2(Number(payload.ttsUsd ?? 0));
   const ops = r2(minutes * Math.max(0, opsRatePerMinute));
 
   const draftCompute = Number.isFinite(Number(payload.totalDraftUsd))
     ? Number(payload.totalDraftUsd)
     : stills + tts;
-  const fullCompute = Number.isFinite(Number(payload.totalFullUsd))
-    ? Number(payload.totalFullUsd)
-    : stills + tts + motion;
+  /* `totalFullUsd` is the DGX's own whole-video total, so it cannot be used
+   * once motion has been scaled — it would contradict the breakdown beside
+   * it. Trust the payload's total only when nothing was scaled. */
+  const fullCompute =
+    fraction === 1 && Number.isFinite(Number(payload.totalFullUsd))
+      ? Number(payload.totalFullUsd)
+      : stills + tts + motion;
 
   return {
     draftUsd: r2(Math.max(MIN_ESTIMATE_USD, draftCompute + ops)),

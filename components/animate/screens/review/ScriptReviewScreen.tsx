@@ -1086,7 +1086,73 @@ function ReviewPanel({
   // number the Visuals step shows. Degrades to a plain label if the estimate
   // route is absent.
   const estimate = useRenderEstimate(project.id);
-  const approveUsd = estimate.fullUsd ?? estimate.draftUsd;
+
+  /* Opening window, owned by THIS panel and seeded from the row. Scene units,
+     so a half-scene position is unreachable. */
+  const [panelScenes, setPanelScenes] = React.useState(() =>
+    Math.round((project.animUntilS ?? 0) / DEFAULT_SCENE_SECONDS),
+  );
+  const [savingWindow, setSavingWindow] = React.useState(false);
+  const panelSnap = React.useMemo(
+    () => snapWindowToScenes(panelScenes * DEFAULT_SCENE_SECONDS),
+    [panelScenes],
+  );
+
+  /* Quote the render that is actually configured.
+   *
+   * `draftUsd` is stills-only and `fullUsd` includes the motion pass, scaled
+   * server-side to the opening window. Showing `fullUsd ?? draftUsd`
+   * unconditionally meant a project with no window — which every project born
+   * in Create Video has, since nothing sets animUntilS there — was quoted a
+   * whole-video motion bill for a render that will produce stills and no
+   * motion at all. At $3.60/min against $0.90/min that is a 4x overstatement,
+   * and it is where "$21" came from.
+   *
+   * Read off the slider rather than the row so the number moves the instant it
+   * is dragged, instead of waiting for the PATCH and the re-quote to land. */
+  const approveUsd =
+    panelSnap.sceneCount === 0
+      ? estimate.draftUsd
+      : (estimate.fullUsd ?? estimate.draftUsd);
+  /* Re-seed when a different project is selected — DetailPanel is keyed by id
+     so this is belt-and-braces, but a slider showing the previous project's
+     window while quoting this one's price is exactly the class of bug being
+     fixed here. */
+  React.useEffect(() => {
+    setPanelScenes(Math.round((project.animUntilS ?? 0) / DEFAULT_SCENE_SECONDS));
+  }, [project.id, project.animUntilS]);
+
+  /* Persist + re-quote, debounced: a drag emits a tick per scene and each one
+     would otherwise be a PATCH and a fresh estimate. Skips the write when the
+     value already matches the row (mount, and the echo of our own save). */
+  const reloadEstimate = estimate.reload;
+  React.useEffect(() => {
+    const desired = Math.round(panelScenes * DEFAULT_SCENE_SECONDS);
+    const current = project.animUntilS ?? 0;
+    if (desired === current) return;
+    const id = setTimeout(() => {
+      let cancelled = false;
+      setSavingWindow(true);
+      void (async () => {
+        try {
+          const res = await fetch(`/api/vater/youtube/${project.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ animUntilS: desired }),
+          });
+          if (!cancelled && res.ok) reloadEstimate();
+        } catch {
+          /* leave the slider where the user put it; the next drag retries */
+        } finally {
+          if (!cancelled) setSavingWindow(false);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, 400);
+    return () => clearTimeout(id);
+  }, [panelScenes, project.id, project.animUntilS, reloadEstimate]);
 
   const words = React.useMemo(() => wordsIn(draft), [draft]);
   const dirty = draft !== saved;
@@ -1157,10 +1223,53 @@ function ReviewPanel({
           label="Estimated runtime"
           value={`${runtimeClock(words)} at ${WORDS_PER_MINUTE} wpm`}
         />
-        <Stat
-          label="Animated window"
-          value={project.animUntilS ? `first ${project.animUntilS}s` : 'stills only'}
+      </div>
+
+      {/* The opening window, ON the panel that shows the price it changes.
+          It used to be a read-only stat here, while the only slider lived in
+          ScriptIntake at the top of the screen — a control belonging to the
+          NEXT project. Dragging it could not move this quote, and did not.
+          Now it PATCHes this project and re-quotes, so the number under the
+          Approve button responds. Still steps by whole scenes. */}
+      <div style={{ marginTop: 12 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            gap: 12,
+            marginBottom: 6,
+          }}
+        >
+          <label
+            htmlFor={`anim-window-${project.id}`}
+            style={{ fontSize: 12, fontWeight: 600, color: t.textSecondary }}
+          >
+            Animated window
+          </label>
+          <span style={{ fontSize: 12, fontWeight: 700, color: t.text }}>
+            {panelSnap.sceneCount === 0
+              ? 'Stills only'
+              : `${panelSnap.sceneCount} scene${panelSnap.sceneCount === 1 ? '' : 's'} · first ${clockOf(panelSnap.coverageEndS)}`}
+            {savingWindow ? ' · saving…' : ''}
+          </span>
+        </div>
+        <input
+          id={`anim-window-${project.id}`}
+          type="range"
+          min={0}
+          max={Math.max(1, Math.ceil((words / WORDS_PER_MINUTE) * 60 / DEFAULT_SCENE_SECONDS))}
+          step={1}
+          value={panelScenes}
+          onChange={(e) => setPanelScenes(Number(e.target.value))}
+          disabled={savingWindow}
+          data-testid="review-anim-window"
+          aria-label="How many opening scenes to animate"
+          style={{ width: '100%', accentColor: JELLY_TOKENS.brand }}
         />
+        <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 4, lineHeight: 1.5 }}>
+          Moves a whole scene at a time. The estimate below follows it.
+        </div>
       </div>
 
       {overLimit && (

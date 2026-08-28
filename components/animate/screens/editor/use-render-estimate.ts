@@ -26,12 +26,24 @@ export interface RenderEstimate {
   loading: boolean;
 }
 
-export function useRenderEstimate(projectId: string | null): RenderEstimate {
+export interface RenderEstimateResult extends RenderEstimate {
+  /** Re-quote. Call after anything that changes the price server-side. */
+  reload: () => void;
+}
+
+export function useRenderEstimate(projectId: string | null): RenderEstimateResult {
   const [state, setState] = React.useState<RenderEstimate>({
     draftUsd: null,
     fullUsd: null,
     loading: !!projectId,
   });
+  /* Without this the hook fetched once on mount and never again — deps were
+   * `[projectId]` alone — so any control that changes the price (the opening
+   * window, the target length) left a stale number on screen no matter what
+   * the server would now say. Same nonce pattern as the sibling hook in
+   * lib/vater/use-estimate.ts, which had it and this one did not. */
+  const [nonce, setNonce] = React.useState(0);
+  const reload = React.useCallback(() => setNonce((n) => n + 1), []);
 
   React.useEffect(() => {
     if (!projectId) {
@@ -70,7 +82,7 @@ export function useRenderEstimate(projectId: string | null): RenderEstimate {
     return () => {
       cancelled = true;
     };
-  }, [projectId]);
+  }, [projectId, nonce]);
 
-  return state;
+  return React.useMemo(() => ({ ...state, reload }), [state, reload]);
 }

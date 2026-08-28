@@ -143,7 +143,7 @@ export async function GET(
 
   const dgx = await fetchDgxEstimate(id);
   const estimate: RenderEstimate =
-    (dgx ? fromDgxEstimate(dgx, opsRate) : null) ??
+    (dgx ? fromDgxEstimate(dgx, opsRate, motionFraction) : null) ??
     localEstimate({
       minutes,
       sceneCount: scenes.length,
