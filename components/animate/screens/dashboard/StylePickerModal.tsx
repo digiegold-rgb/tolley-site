@@ -33,7 +33,7 @@ import { VBtn } from '../../primitives';
 import { EnginePicker, type ConciergeEngine } from '../../engine/EnginePicker';
 import { RenderConfirmModal, type RenderManifest } from '../../engine/RenderConfirmModal';
 import { hintVoicesElevenLabsTab } from '../studio/voices-tab-hint';
-import { quickEstimateUsd, quoteMinutes, ESTIMATE_WORDS_PER_MINUTE } from '@/lib/vater/billing/estimate';
+import { quickEstimateUsd, quoteMinutes } from '@/lib/vater/billing/estimate';
 import { FLAT_ACTION_PRICES, formatPrice } from '@/lib/vater/pricing';
 import { WORDS_PER_MINUTE, wordCountForDuration } from '@/lib/vater/youtube-types';
 import {
@@ -275,6 +275,15 @@ export function StylePickerModal({
   const sourceWords = React.useMemo(
     () => (scripts[0] || '').split(/\s+/).filter(Boolean).length,
     [scripts],
+  );
+
+  /* The ceiling has to clear the source itself. A 3,398-word import is 22.6
+   * minutes, and a slider that stopped at 20 could not express "as long as
+   * what I just imported" — the one length the customer is most likely to
+   * want, and the default the readout was already promising. */
+  const sliderMaxMinutes = Math.max(
+    20,
+    Math.ceil(sourceWords / WORDS_PER_MINUTE) + 2,
   );
 
   if (!open) return null;
@@ -742,7 +751,13 @@ export function StylePickerModal({
         >
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: t.text }}>
-              {queued ? 'Sent to Fable 5' : useOwnScript ? 'Pick a Style for Voice' : 'Start a video'}
+              {queued
+                ? 'Sent to Fable 5'
+                : startPath === 'video'
+                  ? 'Start from a video'
+                  : startPath === 'own'
+                    ? 'Pick a Style for Voice'
+                    : 'Start a video'}
             </div>
             <div
               style={{
@@ -751,13 +766,20 @@ export function StylePickerModal({
                 marginTop: 2,
               }}
             >
+              {/* Branching on `useOwnScript` lumped the own-script and video
+                  lanes together, so "Start from a video" was told to pick a
+                  style for a script it does not have yet. And since startPath
+                  now defaults to 'own', the old third branch was unreachable
+                  copy that still described a two-lane chooser. */}
               {queued
                 ? `${queued.length} scripts queued — one ticket each. You'll get an email per video as it lands.`
-                : useOwnScript
-                  ? engine === 'fable5'
-                    ? 'Picking a style sends your script(s) to Fable 5 in that style and voice.'
-                    : 'Picking a style uses its voice clone for narration and starts the project with your script.'
-                  : 'First, choose how you want to begin — your script, or Jelly writes it.'}
+                : startPath === 'video'
+                  ? 'Paste a link. Keep its words as they are, or have them rewritten as your own script — then pick a Style for the voice.'
+                  : startPath === 'own'
+                    ? engine === 'fable5'
+                      ? 'Picking a style sends your script(s) to Fable 5 in that style and voice.'
+                      : 'Picking a style uses its voice clone for narration and starts the project with your script.'
+                    : 'Pick a Style below — Jelly writes the script on the Script step, and nothing is charged until you press Generate there.'}
             </div>
           </div>
           <button
@@ -843,7 +865,11 @@ export function StylePickerModal({
                 >
                   Start from a video or article
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                {/* wrap + a real minimum on the input: at 390px the two
+                    buttons are ~240px of non-shrinking content, and with
+                    nowrap they left the field 26px wide — about two
+                    characters of a YouTube URL. */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                   <input
                     value={importUrl}
                     onChange={(e) => {
@@ -860,8 +886,8 @@ export function StylePickerModal({
                     data-testid="own-script-import-url"
                     placeholder="Paste a YouTube link, an article URL, or a PDF"
                     style={{
-                      flex: 1,
-                      minWidth: 0,
+                      flex: '1 1 220px',
+                      minWidth: 180,
                       padding: '10px 12px',
                       borderRadius: JELLY_TOKENS.radius.md,
                       border: `1px solid ${t.border}`,
@@ -872,9 +898,13 @@ export function StylePickerModal({
                       outline: 'none',
                     }}
                   />
+                  {/* The free action is the primary button and the paid one is
+                      outlined. It was the other way round: "Transcribe &
+                      rewrite" wore the gradient in the rightmost position,
+                      making the click that spends money the one the eye
+                      lands on. Cost decides emphasis here, not sequence. */}
                   <VBtn
                     size="sm"
-                    variant="outlined"
                     icon="download"
                     onClick={() => void importFromUrl()}
                     disabled={importing || submittingOwn || !importUrl.trim()}
@@ -885,6 +915,7 @@ export function StylePickerModal({
                   </VBtn>
                   <VBtn
                     size="sm"
+                    variant="outlined"
                     onClick={() => void transcribeAndRewrite()}
                     disabled={importing || submittingOwn || (!importUrl.trim() && sourceWords < 40)}
                     data-testid="own-script-rewrite-btn"
@@ -977,7 +1008,7 @@ export function StylePickerModal({
                 <input
                   type="range"
                   min={0}
-                  max={20}
+                  max={sliderMaxMinutes}
                   step={1}
                   value={targetMinutes}
                   onChange={(e) => setTargetMinutes(Number(e.target.value))}
@@ -1043,7 +1074,12 @@ export function StylePickerModal({
                       if (ownScriptError) setOwnScriptError(null);
                     }}
                     disabled={submittingOwn}
-                    autoFocus={i === 0}
+                    /* No autoFocus. It fired the moment a lane was selected,
+                       pulling focus out of the PathChooser radiogroup — whose
+                       keydown handler is on the group div — so ArrowRight
+                       moved the caret instead of the selection, and a mouse
+                       click silently scrolled focus ~400px down the plate.
+                       The chooser is step one; it keeps the focus. */
                     data-testid={i === 0 ? 'own-script-textarea' : undefined}
                     rows={multi ? 7 : 10}
                     placeholder={
@@ -1075,8 +1111,14 @@ export function StylePickerModal({
                     }}
                   >
                     {scriptWordCounts[i]} words ≈{' '}
-                    {(scriptWordCounts[i] / ESTIMATE_WORDS_PER_MINUTE).toFixed(1)} min narration
-                    at {ESTIMATE_WORDS_PER_MINUTE} wpm
+                    {/* WORDS_PER_MINUTE (150), the same constant the length
+                        slider converts with. This read 145 —
+                        ESTIMATE_WORDS_PER_MINUTE, the deliberately-slow money
+                        quote pace — so the slider promised "20 min · ~3,000
+                        words" and the counter beside it called those exact
+                        words "≈20.7 min". */}
+                    {(scriptWordCounts[i] / WORDS_PER_MINUTE).toFixed(1)} min narration
+                    at {WORDS_PER_MINUTE} wpm
                   </div>
                 </div>
               ))}

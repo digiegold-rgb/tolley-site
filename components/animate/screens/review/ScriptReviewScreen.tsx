@@ -527,15 +527,29 @@ function ScriptIntake({
   const [dupeAck, setDupeAck] = React.useState(false);
 
   const words = React.useMemo(() => wordsIn(script), [script]);
-  const animSnap = React.useMemo(
-    () => snapWindowToScenes(animScenes * DEFAULT_SCENE_SECONDS),
-    [animScenes],
-  );
   /* Cap the slider at the video's own length — offering to animate three
      minutes of a ninety second script quotes clips that will never exist. */
   const maxAnimScenes = React.useMemo(
     () => Math.max(1, Math.ceil((words / WORDS_PER_MINUTE) * 60 / DEFAULT_SCENE_SECONDS)),
     [words],
+  );
+  /* CLAMPED ON READ, not reconciled in an effect.
+   *
+   * `animScenes` is what the user last dragged to; `maxAnimScenes` shrinks
+   * when the script does. An <input type="range"> clamps its own thumb
+   * silently, so the DOM showed 1 while React state still held 22 — the label
+   * read "22 scenes · first 1:28", and submit() sent that stale state: 88
+   * seconds of motion ordered for a five-second script.
+   *
+   * Deriving instead of syncing means there is no window in which the two can
+   * disagree, and no effect that has to fire first. The raw intent is kept, so
+   * pasting a longer script restores the window the user originally chose
+   * rather than silently keeping the shrunken one.
+   */
+  const effectiveScenes = Math.min(animScenes, maxAnimScenes);
+  const animSnap = React.useMemo(
+    () => snapWindowToScenes(effectiveScenes * DEFAULT_SCENE_SECONDS),
+    [effectiveScenes],
   );
   // An acknowledgement belongs to the text it was given for. Edit the script
   // and the flags have to be re-earned, or "proceed anyway" silently covers a
@@ -574,7 +588,7 @@ function ScriptIntake({
     setError(null);
     // Whole scenes in, seconds out: the column is a second count, but it can
     // only ever hold a value that lands on a scene boundary.
-    const animUntilS = Math.round(animScenes * DEFAULT_SCENE_SECONDS);
+    const animUntilS = Math.round(effectiveScenes * DEFAULT_SCENE_SECONDS);
     if (words < 20) {
       setError(`Paste a script first — this is only ${words} words.`);
       return;
@@ -781,7 +795,7 @@ function ScriptIntake({
             min={0}
             max={maxAnimScenes}
             step={1}
-            value={animScenes}
+            value={effectiveScenes}
             onChange={(e) => setAnimScenes(Number(e.target.value))}
             data-testid="anim-window"
             aria-label="How many opening scenes to animate"

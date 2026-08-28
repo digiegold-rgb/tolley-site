@@ -5,8 +5,9 @@
  *
  * Testers kept missing the own-script lane (it used to be a 12px checkbox,
  * then a pair of equal cards under a gradient wash). Own-script is the one
- * customers come looking for and still walk past, because Jelly-writes is
- * pre-selected and the style grid underneath looks like the next click.
+ * customers come looking for and still walk past, because the style grid
+ * underneath looks like the next click. (Jelly-writes was pre-selected when
+ * that was written; own-script is the default now.)
  *
  * So the unselected own-script card is the loud cinema CTA (gradient fill +
  * full-width pill). The selected card is the ink "SELECTED" state. Cards
