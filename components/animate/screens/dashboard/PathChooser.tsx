@@ -44,16 +44,18 @@ const OPTIONS: PathOption[] = [
   {
     own: true,
     icon: 'edit',
-    title: 'I already have my script',
-    body: 'Paste it next. Your words are read verbatim — then pick a Style for the voice.',
-    cta: 'Paste my script',
-    next: '▼ Paste your script below',
+    title: 'I have a script, or a video to start from',
+    body:
+      'Paste your script, or drop in a YouTube link and either keep its words or have them rewritten under your script rules.',
+    cta: 'Paste a script or a link',
+    next: '▼ Paste a script or a link below',
   },
   {
     own: false,
     icon: 'sparkle',
     title: 'Jelly writes the script',
-    body: 'Pick a Style below. Jelly drafts from its references and your topic.',
+    body:
+      'Pick a Style below to open a new project. Jelly writes the script on the Script step, from your title and notes — nothing is written or charged until you press Generate there.',
     cta: 'Start from a Style',
     next: '▼ Pick a Style below',
   },

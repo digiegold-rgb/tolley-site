@@ -34,6 +34,8 @@ import { EnginePicker, type ConciergeEngine } from '../../engine/EnginePicker';
 import { RenderConfirmModal, type RenderManifest } from '../../engine/RenderConfirmModal';
 import { hintVoicesElevenLabsTab } from '../studio/voices-tab-hint';
 import { quickEstimateUsd, quoteMinutes, ESTIMATE_WORDS_PER_MINUTE } from '@/lib/vater/billing/estimate';
+import { FLAT_ACTION_PRICES, formatPrice } from '@/lib/vater/pricing';
+import { WORDS_PER_MINUTE, wordCountForDuration } from '@/lib/vater/youtube-types';
 import {
   BillingBlockModal,
   BillingBlockedError,
@@ -116,6 +118,18 @@ export function StylePickerModal({
   const [engine, setEngine] = React.useState<ConciergeEngine>('auto');
   const [submittingOwn, setSubmittingOwn] = React.useState(false);
   const [ownScriptError, setOwnScriptError] = React.useState<string | null>(null);
+  // "I already have my script" must also accept a source to transcribe —
+  // Trey 2026-08-27: "I still need a box that says paste from YouTube or
+  // something that can be transcribed". The link box lives on THIS path, not
+  // only inside the editor, because pasting a link and pasting a script are
+  // the same intent: "here is my source, use it".
+  const [importUrl, setImportUrl] = React.useState('');
+  const [importing, setImporting] = React.useState(false);
+  const [importNote, setImportNote] = React.useState<string | null>(null);
+  // Target runtime in minutes. 0 = "match the source", the honest default
+  // when a transcript was just imported (rule 1: use the original's word
+  // count unless told otherwise).
+  const [targetMinutes, setTargetMinutes] = React.useState(0);
   const [billingBlock, setBillingBlock] = React.useState<BillingBlockReason | null>(null);
   const [billingCtx, setBillingCtx] = React.useState<BillingBlockContext | undefined>(undefined);
   // After a Fable 5 batch lands: the tickets, shown in place of the picker.
@@ -239,7 +253,107 @@ export function StylePickerModal({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, creatingFromId, wizardOpen, submittingOwn, onClose]);
 
+  const sourceWords = React.useMemo(
+    () => (scripts[0] || '').split(/\s+/).filter(Boolean).length,
+    [scripts],
+  );
+
   if (!open) return null;
+
+  /** Pull a YouTube transcript / article / PDF into the script box.
+   *  Reads the caption track — no download, no GPU, no charge (the DGX route
+   *  refuses to spend a GPU-second on a read endpoint). What lands here is the
+   *  SOURCE, not a finished script: the length slider and the house script
+   *  rules are what turn it into one. */
+  /** "Transcribe and rewrite it for me" — the whole reason the link box exists.
+   *
+   *  POST /api/vater/youtube already builds exactly this: a transcribe-mode
+   *  project that yt-dlp + whispers the source, after which the Script Review
+   *  screen fires /script-from-reference and the writer rewrites it under the
+   *  house script rules (S1-S28) and STOPS for approval. Nothing renders and
+   *  no voice is bought until a human clicks Approve.
+   *
+   *  It was already built; it simply was not reachable from Create Video —
+   *  the only door to it was the Queue screen's paste box.
+   *
+   *  Unlike `importFromUrl` this one costs money (it downloads the audio and
+   *  runs whisper), so the button says so. A capped account gets a 402, which
+   *  the existing BillingBlockModal renders.
+   */
+  const transcribeAndRewrite = async () => {
+    const url = importUrl.trim();
+    if (!url) {
+      setOwnScriptError('Paste a link first.');
+      return;
+    }
+    setSubmittingOwn(true);
+    setOwnScriptError(null);
+    try {
+      const res = await fetch('/api/vater/youtube', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url,
+          // 0 = "match the source"; the route falls back to its own default
+          // and rule 1 keeps the original length.
+          ...(targetMinutes > 0 ? { targetDuration: targetMinutes } : {}),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        project?: { id?: string };
+        error?: string;
+        detail?: string;
+      };
+      if (!res.ok || !data.project?.id) {
+        throw new Error(data.detail || data.error || `HTTP ${res.status}`);
+      }
+      onProjectCreated(data.project.id);
+    } catch (err) {
+      devError('[StylePickerModal] transcribe-and-rewrite failed:', err);
+      setOwnScriptError(err instanceof Error ? err.message : 'Could not start from that link');
+    } finally {
+      setSubmittingOwn(false);
+    }
+  };
+
+  const importFromUrl = async () => {
+    const url = importUrl.trim();
+    if (!url) {
+      setOwnScriptError('Paste a link first.');
+      return;
+    }
+    setImporting(true);
+    setOwnScriptError(null);
+    setImportNote(null);
+    try {
+      const res = await fetch('/api/vater/script/from-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        title?: string;
+        text?: string;
+        source?: string;
+        words?: number;
+        error?: string;
+      };
+      if (!res.ok || !data.text) {
+        throw new Error(data.error || `Could not read that link (HTTP ${res.status})`);
+      }
+      const words = data.words ?? data.text.split(/\s+/).filter(Boolean).length;
+      setScripts((prev) => prev.map((x, j) => (j === 0 ? data.text as string : x)));
+      setImportNote(
+        `Pulled ${words.toLocaleString()} words from ${data.source ?? 'that link'}` +
+          (data.title ? ` — “${data.title.slice(0, 60)}”` : '') +
+          '. This is the SOURCE, not a script. Set a length below and Jelly rewrites it under your script rules, or send it as-is to be read verbatim.',
+      );
+    } catch (err) {
+      setOwnScriptError(err instanceof Error ? err.message : 'Import failed');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const createProjectFromStyle = async (styleId: string) => {
     if (creatingFromId || submittingOwn) return;
@@ -378,6 +492,13 @@ export function StylePickerModal({
           body: JSON.stringify({
             script: trimmed,
             sourceTitle: trimmed.slice(0, 80),
+            // 0 on the slider means "match the source" — leave the column
+            // alone so nothing overrides the pasted script's own length.
+            // targetDuration only — the PATCH route's allowlist does not
+            // include targetWordCount and derives it itself
+            // (app/api/vater/youtube/[id]/route.ts:148). Sending both would
+            // silently drop one and invite them to disagree later.
+            ...(targetMinutes > 0 ? { targetDuration: targetMinutes } : {}),
           }),
         });
         if (!patch.ok) {
@@ -635,6 +756,156 @@ export function StylePickerModal({
               >
                 Your script · read verbatim
               </div>
+
+              {/* Source importer. A YouTube link, an article or a PDF becomes
+                  the text in the box below. Free — it reads the caption track
+                  rather than downloading and transcribing (vater.py
+                  _youtube_transcript_text: "Never whisper — that is a GPU
+                  stage and this is a cheap read endpoint"). */}
+              <div style={{ marginBottom: 14 }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: t.textSecondary,
+                    marginBottom: 6,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.4,
+                  }}
+                >
+                  Start from a video or article
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <input
+                    value={importUrl}
+                    onChange={(e) => {
+                      setImportUrl(e.target.value);
+                      if (ownScriptError) setOwnScriptError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !importing) {
+                        e.preventDefault();
+                        void importFromUrl();
+                      }
+                    }}
+                    disabled={importing || submittingOwn}
+                    data-testid="own-script-import-url"
+                    placeholder="Paste a YouTube link, an article URL, or a PDF"
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: '10px 12px',
+                      borderRadius: JELLY_TOKENS.radius.md,
+                      border: `1px solid ${t.border}`,
+                      background: t.card,
+                      color: t.text,
+                      fontSize: 13,
+                      fontFamily: JELLY_TOKENS.font,
+                      outline: 'none',
+                    }}
+                  />
+                  <VBtn
+                    size="sm"
+                    variant="outlined"
+                    icon="download"
+                    onClick={() => void importFromUrl()}
+                    disabled={importing || submittingOwn || !importUrl.trim()}
+                    data-testid="own-script-import-btn"
+                  >
+                    {importing ? 'Reading…' : 'Get the text'}
+                  </VBtn>
+                  <VBtn
+                    size="sm"
+                    onClick={() => void transcribeAndRewrite()}
+                    disabled={importing || submittingOwn || !importUrl.trim()}
+                    data-testid="own-script-rewrite-btn"
+                  >
+                    {submittingOwn ? 'Starting…' : 'Transcribe & rewrite'}
+                  </VBtn>
+                </div>
+                <div style={{ fontSize: 11, color: t.textFaint, marginTop: 6, lineHeight: 1.6 }}>
+                  <strong style={{ color: t.textSecondary }}>Get the text</strong> is free — it reads the
+                  video&rsquo;s caption track, nothing is downloaded and nothing is charged. The words land in
+                  the box below to keep or edit, and are read verbatim.
+                  <br />
+                  <strong style={{ color: t.textSecondary }}>Transcribe &amp; rewrite</strong> downloads the
+                  audio, transcribes it, and rewrites it as a new script under your script rules — host,
+                  greeting, numbers, punctuation, originality. It stops at the script for you to read before
+                  anything is voiced or rendered. Transcription is{' '}
+                  {formatPrice(FLAT_ACTION_PRICES.transcription.priceCents)}{' '}
+                  {FLAT_ACTION_PRICES.transcription.unit}.
+                </div>
+                {importNote && (
+                  <div
+                    data-testid="own-script-import-note"
+                    style={{
+                      marginTop: 8,
+                      padding: '8px 10px',
+                      borderRadius: JELLY_TOKENS.radius.md,
+                      ...TINT_BG.cyan,
+                      fontSize: 12,
+                      color: t.text,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {importNote}
+                  </div>
+                )}
+              </div>
+              {/* Target runtime. Script rule 4 asks for the length on every
+                  upload and converts at 130-150 wpm; this is that ask, made a
+                  control instead of a question. 0 = match the source, which is
+                  rule 1's default. Minutes, not words — nobody thinks in words.
+                  The word figure is shown because that is what the writer is
+                  actually held to. */}
+              <div style={{ marginBottom: 14 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    marginBottom: 6,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: t.textSecondary,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.4,
+                    }}
+                  >
+                    How long should the video be
+                  </span>
+                  <span style={{ fontSize: 12, color: t.text, fontWeight: 600 }}>
+                    {targetMinutes === 0
+                      ? sourceWords > 0
+                        ? `Match the source · ~${sourceWords.toLocaleString()} words`
+                        : 'Match the source'
+                      : `${targetMinutes} min · ~${wordCountForDuration(targetMinutes).toLocaleString()} words`}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={20}
+                  step={1}
+                  value={targetMinutes}
+                  onChange={(e) => setTargetMinutes(Number(e.target.value))}
+                  disabled={submittingOwn}
+                  data-testid="target-minutes"
+                  aria-label="Target video length in minutes"
+                  style={{ width: '100%', accentColor: JELLY_TOKENS.brand }}
+                />
+                <div style={{ fontSize: 11, color: t.textFaint, marginTop: 4, lineHeight: 1.5 }}>
+                  {targetMinutes === 0
+                    ? 'Leave it here and the rewrite keeps the source\u2019s own length. Drag to set a target instead.'
+                    : `Converted at ${WORDS_PER_MINUTE} words per minute — the same figure the writer is held to.`}
+                </div>
+              </div>
+
               {scripts.map((text, i) => (
                 <div key={i} style={{ marginBottom: 12 }}>
                   <div
