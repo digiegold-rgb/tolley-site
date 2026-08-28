@@ -290,23 +290,40 @@ export function StylePickerModal({
    */
   const transcribeAndRewrite = async () => {
     const url = importUrl.trim();
-    if (!url) {
+    const haveText = sourceWords >= 40;
+    if (!url && !haveText) {
       setOwnScriptError('Paste a link first.');
       return;
     }
     setSubmittingOwn(true);
     setOwnScriptError(null);
     try {
-      const res = await fetch('/api/vater/youtube', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url,
-          // 0 = "match the source"; the route falls back to its own default
-          // and rule 1 keeps the original length.
-          ...(targetMinutes > 0 ? { targetDuration: targetMinutes } : {}),
-        }),
-      });
+      // If the words are already in the box — "Get the text" pulled them from
+      // the caption track in two seconds, for free — rewriting must NOT
+      // re-download the same video and run whisper over it to reproduce them.
+      // Jared: "why does it need to transcribe when there is already the
+      // verbatim words from the video???" It doesn't. Whisper is the fallback
+      // for sources with no caption track, not the default.
+      const res = haveText
+        ? await fetch('/api/vater/youtube/from-transcript', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              transcript: scripts[0],
+              sourceUrl: url || undefined,
+              ...(targetMinutes > 0 ? { targetDuration: targetMinutes } : {}),
+            }),
+          })
+        : await fetch('/api/vater/youtube', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url,
+              // 0 = "match the source"; the route falls back to its own
+              // default and rule 1 keeps the original length.
+              ...(targetMinutes > 0 ? { targetDuration: targetMinutes } : {}),
+            }),
+          });
       const data = (await res.json().catch(() => ({}))) as {
         project?: { id?: string };
         error?: string;
@@ -323,6 +340,14 @@ export function StylePickerModal({
       setSubmittingOwn(false);
     }
   };
+
+  /* A pasted link should make the next click obvious. Only pulses for
+     something that actually looks like a URL — pulsing at the first keystroke
+     trains people to ignore it. Respects prefers-reduced-motion via the CSS
+     class, which is defined once in globals rather than inline (an inline
+     animation cannot carry a media query). */
+  const urlLooksReal = /^https?:\/\/\S+\.\S+/.test(importUrl.trim());
+  const armImport = urlLooksReal && !importing && sourceWords < 40;
 
   const importFromUrl = async () => {
     const url = importUrl.trim();
@@ -347,7 +372,24 @@ export function StylePickerModal({
         error?: string;
       };
       if (!res.ok || !data.text) {
-        throw new Error(data.error || `Could not read that link (HTTP ${res.status})`);
+        // Not every YouTube video has a caption track. Auto-captions cover
+        // most public uploads in supported languages, but not all: some are
+        // too new to have been processed, some languages have none, music is
+        // often skipped, and a creator can disable them outright. The DGX
+        // tries its cache, then youtube_transcript_api, then yt-dlp's
+        // auto-subs before giving up (vater.py _youtube_transcript_text), so a
+        // failure here means there is genuinely nothing to read.
+        //
+        // That is not a dead end — it is precisely what the whisper path is
+        // for. Say so, and point at the button that works, instead of showing
+        // a raw 422 that reads like the link was bad.
+        const noCaptions =
+          res.status === 422 || /transcript|caption|subtitle/i.test(data.error ?? '');
+        throw new Error(
+          noCaptions
+            ? 'This video has no captions to read. Use “Transcribe & rewrite” — it listens to the audio instead.'
+            : data.error || `Could not read that link (HTTP ${res.status})`,
+        );
       }
       const words = data.words ?? data.text.split(/\s+/).filter(Boolean).length;
       setScripts((prev) => prev.map((x, j) => (j === 0 ? data.text as string : x)));
@@ -826,29 +868,48 @@ export function StylePickerModal({
                     onClick={() => void importFromUrl()}
                     disabled={importing || submittingOwn || !importUrl.trim()}
                     data-testid="own-script-import-btn"
+                    className={armImport ? 'jelly-pulse' : undefined}
                   >
                     {importing ? 'Reading…' : 'Get the text'}
                   </VBtn>
                   <VBtn
                     size="sm"
                     onClick={() => void transcribeAndRewrite()}
-                    disabled={importing || submittingOwn || !importUrl.trim()}
+                    disabled={importing || submittingOwn || (!importUrl.trim() && sourceWords < 40)}
                     data-testid="own-script-rewrite-btn"
                   >
-                    {submittingOwn ? 'Starting…' : 'Transcribe & rewrite'}
+                    {submittingOwn
+                      ? 'Starting…'
+                      : sourceWords >= 40
+                        ? 'Rewrite it'
+                        : 'Transcribe & rewrite'}
                   </VBtn>
                 </div>
-                <div style={{ fontSize: 11, color: t.textFaint, marginTop: 6, lineHeight: 1.6 }}>
-                  <strong style={{ color: t.textSecondary }}>Get the text</strong> is free — it reads the
-                  video&rsquo;s caption track, nothing is downloaded and nothing is charged. The words land in
-                  the box below to keep or edit, and are read verbatim.
-                  <br />
-                  <strong style={{ color: t.textSecondary }}>Transcribe &amp; rewrite</strong> downloads the
-                  audio, transcribes it, and rewrites it as a new script under your script rules — host,
-                  greeting, numbers, punctuation, originality. It stops at the script for you to read before
-                  anything is voiced or rendered. Transcription is{' '}
-                  {formatPrice(FLAT_ACTION_PRICES.transcription.priceCents)}{' '}
-                  {FLAT_ACTION_PRICES.transcription.unit}.
+                {/* Two short lines, not two paragraphs. Each says what the
+                    button does, what it costs, and nothing else — and the
+                    second one changes once the words are already in hand,
+                    because at that point no transcription happens. */}
+                <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+                  <div style={{ fontSize: 11, color: t.textFaint, lineHeight: 1.5 }}>
+                    <strong style={{ color: t.textSecondary }}>Get the text</strong> — the video&rsquo;s own
+                    captions, kept word for word. Free, instant.
+                  </div>
+                  <div style={{ fontSize: 11, color: t.textFaint, lineHeight: 1.5 }}>
+                    {sourceWords >= 40 ? (
+                      <>
+                        <strong style={{ color: t.textSecondary }}>Rewrite it</strong> — a new script from
+                        these words, in your voice and rules. Stops for you to read.{' '}
+                        <span style={{ color: JELLY_TOKENS.cyan }}>No transcription needed.</span>
+                      </>
+                    ) : (
+                      <>
+                        <strong style={{ color: t.textSecondary }}>Transcribe &amp; rewrite</strong> — for
+                        videos with no captions. Listens to the audio first, then rewrites.{' '}
+                        {formatPrice(FLAT_ACTION_PRICES.transcription.priceCents)}{' '}
+                        {FLAT_ACTION_PRICES.transcription.unit}.
+                      </>
+                    )}
+                  </div>
                 </div>
                 {importNote && (
                   <div

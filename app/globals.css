@@ -682,3 +682,34 @@ body:has(.water-page) .site-legal-footer {
     animation: none;
   }
 }
+
+/* "Get the text" arms itself the moment a real link is pasted (Jared
+   2026-08-27: "the moment it sees a link Get the text should light up and
+   pulse"). Applied by class rather than inline style because an inline
+   animation cannot carry the reduced-motion media query, and a pulsing
+   control is exactly the kind of thing that hurts people who ask for less
+   motion. */
+@keyframes jelly-pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(143, 125, 255, 0.55);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(143, 125, 255, 0);
+    transform: scale(1.035);
+  }
+}
+
+.jelly-pulse {
+  animation: jelly-pulse-glow 1.6s ease-in-out infinite;
+  border-color: rgba(143, 125, 255, 0.85) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jelly-pulse {
+    animation: none;
+    /* Still call attention, just without movement. */
+    box-shadow: 0 0 0 2px rgba(143, 125, 255, 0.75);
+  }
+}

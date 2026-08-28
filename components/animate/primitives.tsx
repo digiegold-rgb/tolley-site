@@ -40,6 +40,11 @@ export interface VBtnProps {
   /** Passthrough hooks for accessibility + the audit harness. */
   'aria-label'?: string;
   'data-testid'?: string;
+  /** Escape hatch for behaviour inline styles cannot express — an animation
+   *  that has to honour prefers-reduced-motion needs a media query, and a
+   *  media query needs a stylesheet rule. Kept narrow on purpose: styling
+   *  still belongs in `style`. */
+  className?: string;
 }
 
 export function VBtn({
@@ -52,6 +57,7 @@ export function VBtn({
   style,
   disabled,
   icon,
+  className,
 }: VBtnProps): React.ReactElement {
   const { t } = useTheme();
   const sizes: Record<VBtnSize, { padding: string; fontSize: number }> = {
@@ -82,6 +88,7 @@ export function VBtn({
       type="button"
       aria-label={ariaLabel}
       data-testid={testId}
+      className={className}
       onClick={onClick}
       disabled={disabled}
       onMouseEnter={() => setHovered(true)}
