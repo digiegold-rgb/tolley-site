@@ -179,8 +179,13 @@ export async function POST(req: NextRequest) {
     );
     return NextResponse.json({ project: withJob }, { status: 201 });
   } catch (err) {
+    // ScriptGateError is the customer's to fix — most often "this style has no
+    // voice". That is a 409 with something actionable in it, not a 502 that
+    // reads like our box fell over. AutopilotError (and anything else) IS our
+    // problem, and stays a 502.
+    const gate = err instanceof ScriptGateError;
     const detail =
-      err instanceof ScriptGateError || err instanceof AutopilotError
+      gate || err instanceof AutopilotError
         ? err.message
         : err instanceof Error
           ? err.message
@@ -192,8 +197,12 @@ export async function POST(req: NextRequest) {
       data: { status: "transcribed", progress: 20, errorMessage: detail },
     });
     return NextResponse.json(
-      { error: "Could not start the rewrite", detail, project },
-      { status: 502 },
+      {
+        error: gate ? detail : "Could not start the rewrite",
+        detail,
+        project,
+      },
+      { status: gate ? 409 : 502 },
     );
   }
 }
