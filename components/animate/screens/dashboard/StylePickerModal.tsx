@@ -982,6 +982,9 @@ export function StylePickerModal({
                     display: 'flex',
                     alignItems: 'baseline',
                     justifyContent: 'space-between',
+                    // Wrap, or a 390px plate squeezes the label into a ragged
+                    // two-line column beside its value.
+                    flexWrap: 'wrap',
                     gap: 12,
                     marginBottom: 6,
                   }}

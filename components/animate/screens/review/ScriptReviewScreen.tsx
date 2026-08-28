@@ -688,6 +688,7 @@ function ScriptIntake({
             display: 'flex',
             alignItems: 'baseline',
             justifyContent: 'space-between',
+            flexWrap: 'wrap',
             gap: 12,
             marginBottom: 6,
           }}
@@ -1251,6 +1252,7 @@ function ReviewPanel({
             display: 'flex',
             alignItems: 'baseline',
             justifyContent: 'space-between',
+            flexWrap: 'wrap',
             gap: 12,
             marginBottom: 6,
           }}
