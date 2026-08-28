@@ -47,10 +47,17 @@ import {
 } from '@/lib/vater/concierge-client';
 import { useRenderEstimate } from '../editor/use-render-estimate';
 import {
-  ANIMATE_WINDOW_OPTIONS,
   ANIMATE_WINDOW_DEFAULT_S,
+  DEFAULT_SCENE_SECONDS,
+  snapWindowToScenes,
 } from '@/lib/vater/animate-layer';
 import type { DedupMatch } from '@/lib/vater/script-dedup';
+
+/** Seconds → "0:32". runtimeClock() takes a word count, not seconds. */
+function clockOf(seconds: number): string {
+  const safe = Math.max(0, Math.round(seconds));
+  return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, '0')}`;
+}
 
 /** Shape of POST /api/vater/youtube/script-precheck (rules 27 + 28). */
 type DedupResponse = {
@@ -509,7 +516,9 @@ function ScriptIntake({
   const { tier, maxWords } = useTier();
   const [title, setTitle] = React.useState('');
   const [script, setScript] = React.useState('');
-  const [animUntil, setAnimUntil] = React.useState(String(ANIMATE_WINDOW_DEFAULT_S));
+  const [animScenes, setAnimScenes] = React.useState(
+    () => snapWindowToScenes(ANIMATE_WINDOW_DEFAULT_S).sceneCount,
+  );
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const fileRef = React.useRef<HTMLInputElement | null>(null);
@@ -518,6 +527,16 @@ function ScriptIntake({
   const [dupeAck, setDupeAck] = React.useState(false);
 
   const words = React.useMemo(() => wordsIn(script), [script]);
+  const animSnap = React.useMemo(
+    () => snapWindowToScenes(animScenes * DEFAULT_SCENE_SECONDS),
+    [animScenes],
+  );
+  /* Cap the slider at the video's own length — offering to animate three
+     minutes of a ninety second script quotes clips that will never exist. */
+  const maxAnimScenes = React.useMemo(
+    () => Math.max(1, Math.ceil((words / WORDS_PER_MINUTE) * 60 / DEFAULT_SCENE_SECONDS)),
+    [words],
+  );
   // An acknowledgement belongs to the text it was given for. Edit the script
   // and the flags have to be re-earned, or "proceed anyway" silently covers a
   // different script than the one it was clicked on.
@@ -553,7 +572,9 @@ function ScriptIntake({
 
   const submit = async (acknowledged = dupeAck): Promise<void> => {
     setError(null);
-    const animUntilS = Number.parseInt(animUntil, 10);
+    // Whole scenes in, seconds out: the column is a second count, but it can
+    // only ever hold a value that lands on a scene boundary.
+    const animUntilS = Math.round(animScenes * DEFAULT_SCENE_SECONDS);
     if (words < 20) {
       setError(`Paste a script first — this is only ${words} words.`);
       return;
@@ -724,41 +745,53 @@ function ScriptIntake({
       </div>
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-        <div style={{ flex: '1 1 220px' }}>
-          <label
+        <div style={{ flex: '1 1 260px' }}>
+          <div
             style={{
-              display: 'block',
-              fontSize: 12,
-              fontWeight: 600,
-              color: t.textSecondary,
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              gap: 12,
               marginBottom: 6,
             }}
-            htmlFor="anim-window"
           >
-            Animate the opening
-          </label>
-          <select
+            <label
+              style={{ fontSize: 12, fontWeight: 600, color: t.textSecondary }}
+              htmlFor="anim-window"
+            >
+              Animate the opening
+            </label>
+            <span style={{ fontSize: 12, fontWeight: 700, color: t.text }}>
+              {animSnap.sceneCount === 0
+                ? 'Stills only'
+                : `${animSnap.sceneCount} scene${animSnap.sceneCount === 1 ? '' : 's'} · first ${clockOf(animSnap.coverageEndS)}`}
+            </span>
+          </div>
+          {/* The slider counts SCENES, not seconds — one notch is one scene.
+              A clip is generated from a single still, so a scene is the unit
+              of both work and billing and half of one cannot be rendered.
+              Stepping in scenes makes a half-scene position unreachable
+              instead of something to detect and correct afterwards, and it
+              means dragging never changes the price by a fraction of a clip.
+              Seconds are what gets shown, because that is what a person
+              means when they say "animate the first thirty seconds". */}
+          <input
             id="anim-window"
-            value={animUntil}
-            onChange={(e) => setAnimUntil(e.target.value)}
+            type="range"
+            min={0}
+            max={maxAnimScenes}
+            step={1}
+            value={animScenes}
+            onChange={(e) => setAnimScenes(Number(e.target.value))}
             data-testid="anim-window"
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              borderRadius: JELLY_TOKENS.radius.md,
-              border: `1px solid ${t.border}`,
-              background: t.card,
-              color: t.text,
-              fontSize: 13,
-              fontFamily: JELLY_TOKENS.font,
-            }}
-          >
-            {ANIMATE_WINDOW_OPTIONS.map((o) => (
-              <option key={o.value} value={String(o.value)}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+            aria-label="How many opening scenes to animate"
+            aria-valuetext={
+              animSnap.sceneCount === 0
+                ? 'Stills only'
+                : `${animSnap.sceneCount} scenes, first ${clockOf(animSnap.coverageEndS)}`
+            }
+            style={{ width: '100%', accentColor: JELLY_TOKENS.brand }}
+          />
           <div
             style={{
               fontSize: 11,
@@ -767,9 +800,9 @@ function ScriptIntake({
               lineHeight: 1.5,
             }}
           >
-            {ANIMATE_WINDOW_OPTIONS.find((o) => String(o.value) === animUntil)?.hint}
-            {' '}The rest runs as Ken Burns stills, and you can animate any single
-            scene afterwards for the price of one clip.
+            {animSnap.sceneCount === 0
+              ? 'No motion. Every scene runs as a Ken Burns still, and you can animate any single scene later for the price of one clip.'
+              : `Scenes are about ${DEFAULT_SCENE_SECONDS} seconds each, so the slider moves a whole scene at a time — you can never buy half a clip. The rest of the video runs as stills.`}
           </div>
         </div>
         <div style={{ flex: '2 1 300px' }}>

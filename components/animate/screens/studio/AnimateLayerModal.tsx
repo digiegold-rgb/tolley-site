@@ -22,6 +22,7 @@ import {
   ANIMATE_LAYER_DEFAULT_QUALITY,
   ANIMATE_LAYER_QUALITIES,
   ANIMATE_LAYER_WINDOW_S,
+  DEFAULT_SCENE_SECONDS,
   type AnimateLayerQuality,
 } from '@/lib/vater/animate-layer';
 import { animationOptionLabel, formatPrice } from '@/lib/vater/pricing';
@@ -82,6 +83,12 @@ export function AnimateLayerModal({
     ANIMATE_LAYER_DEFAULT_QUALITY,
   );
   const [force, setForce] = React.useState(false);
+  // The opening window, in seconds. The SERVER decides which scenes that
+  // covers (planAnimateLayer) — the client never sends a scene list, so a
+  // hostile client cannot animate scenes it was not quoted for. The slider
+  // steps by whole scenes anyway (see sceneStepS), so every position it can
+  // reach lands on a boundary.
+  const [windowS, setWindowS] = React.useState<number>(ANIMATE_LAYER_WINDOW_S);
   const [quote, setQuote] = React.useState<AnimateLayerQuote | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [kicking, setKicking] = React.useState(false);
@@ -97,6 +104,14 @@ export function AnimateLayerModal({
     context: BillingBlockContext;
   } | null>(null);
 
+  // Dragging emits a tick per notch; quoting each one would hammer the route
+  // for numbers nobody read. Quote the value the slider settles on.
+  const [quotedWindowS, setQuotedWindowS] = React.useState(windowS);
+  React.useEffect(() => {
+    const id = setTimeout(() => setQuotedWindowS(windowS), 250);
+    return () => clearTimeout(id);
+  }, [windowS]);
+
   const pollingRef = React.useRef(pollingUrls);
   pollingRef.current = pollingUrls;
 
@@ -104,7 +119,7 @@ export function AnimateLayerModal({
     setLoading(true);
     setError(null);
     try {
-      const q = new URLSearchParams({ quality });
+      const q = new URLSearchParams({ quality, windowS: String(quotedWindowS) });
       if (force) q.set('force', '1');
       const res = await fetch(
         `/api/vater/youtube/${projectId}/animate-layer?${q}`,
@@ -153,7 +168,7 @@ export function AnimateLayerModal({
     } finally {
       setLoading(false);
     }
-  }, [projectId, quality, force]);
+  }, [projectId, quality, force, quotedWindowS]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -228,7 +243,10 @@ export function AnimateLayerModal({
       const res = await fetch(`/api/vater/youtube/${projectId}/animate-layer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quality, force }),
+        // windowS goes with the kickoff so the window that was QUOTED is the
+        // window that renders — a default on one side and a slider on the
+        // other is how a quote and a charge drift apart.
+        body: JSON.stringify({ quality, force, windowS }),
       });
       if (res.status === 402) {
         const { reason, context, data } = await readBillingBlock(res);
@@ -277,11 +295,24 @@ export function AnimateLayerModal({
     } finally {
       setKicking(false);
     }
-  }, [projectId, quality, force, onStarted]);
+  }, [projectId, quality, force, windowS, onStarted]);
 
   if (!open) return null;
 
   const sceneCount = quote?.sceneCount ?? 0;
+  /* Seconds per scene on THIS video, read back off the last quote rather than
+     assumed: coverage / clips is the real average, and it is what makes one
+     notch equal one clip. Falls back to the pipeline default before the first
+     quote lands. */
+  // Plain arithmetic, deliberately NOT a hook: this sits after the modal's
+  // early return, and a conditionally-called hook is a rules-of-hooks bug.
+  // Two divisions do not need memoising.
+  const sceneStepS = (() => {
+    const covered = quote?.coverageEndS ?? 0;
+    const clips = quote?.sceneCount ?? 0;
+    if (covered > 0 && clips > 0) return Math.max(1, Math.round(covered / clips));
+    return DEFAULT_SCENE_SECONDS;
+  })();
   const estimateCents = quote?.estimateCents ?? 0;
   const inFlight = Boolean(pollingUrls);
   const canKick =
@@ -335,7 +366,7 @@ export function AnimateLayerModal({
             fontStyle: 'italic',
           }}
         >
-          Animate the first {ANIMATE_LAYER_WINDOW_S}s
+          Animate the opening
         </div>
         <div
           style={{
@@ -346,6 +377,53 @@ export function AnimateLayerModal({
           }}
         >
           {projectTitle}
+        </div>
+
+        {/* How much of the opening. The slider steps by ONE SCENE, derived
+            from what the last quote actually covered — a clip is rendered
+            from a single still, so a scene is the unit of work and of
+            billing, and half of one cannot exist. Stepping in scenes means
+            every position the slider can reach is a whole number of clips
+            and the price moves in exact clip increments.
+
+            The QUOTE below, not this slider, is the authority on what you
+            get: the server snaps to the project's real scene boundaries
+            (planAnimateLayer — "a scene is in the layer when it BEGINS
+            before windowS"), which are fitted to sentences and therefore
+            not evenly spaced. So the slider proposes, the quote confirms,
+            and the confirmed number is what renders and what is charged. */}
+        <div style={{ marginTop: 16 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              gap: 12,
+              marginBottom: 6,
+            }}
+          >
+            <span style={{ fontSize: 12, color: t.textSecondary }}>How much of the opening</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: t.text }}>
+              first {Math.round(windowS)}s
+            </span>
+          </div>
+          <input
+            type="range"
+            min={sceneStepS}
+            max={sceneStepS * 30}
+            step={sceneStepS}
+            value={windowS}
+            onChange={(e) => setWindowS(Number(e.target.value))}
+            disabled={inFlight || kicking}
+            data-testid="animate-layer-window"
+            aria-label="How much of the opening to animate, in seconds"
+            style={{ width: '100%', accentColor: JELLY_TOKENS.brand }}
+          />
+          <div style={{ fontSize: 11, color: t.textSecondary, marginTop: 6, lineHeight: 1.5 }}>
+            Moves one scene at a time — about {sceneStepS}s per scene on this video, so you can
+            never buy part of a clip. A scene that straddles the mark is animated whole, which is
+            why the coverage below can run a little past it.
+          </div>
         </div>
 
         <label

@@ -81,12 +81,13 @@ function quotePayload(
   },
   quality: ReturnType<typeof resolveAnimateLayerQuality>,
   includeAnimated: boolean,
+  windowS: number = ANIMATE_LAYER_WINDOW_S,
 ) {
   const allScenes = Array.isArray(project.scenesJson)
     ? (project.scenesJson as unknown as SceneSpec[])
     : [];
   const plan = planAnimateLayer(allScenes, {
-    windowS: ANIMATE_LAYER_WINDOW_S,
+    windowS,
     audioDuration: project.audioDuration,
     includeAnimated,
   });
@@ -145,6 +146,18 @@ async function loadProject(id: string) {
   });
 }
 
+/** `windowS` off the wire: a positive number of seconds, clamped to a sane
+ *  ceiling. Anything unparseable falls back to the 30s default rather than
+ *  quoting a window nobody asked for. The customer never sends a scene COUNT —
+ *  scene selection is the server's job (planAnimateLayer), so a hostile client
+ *  cannot talk us into animating scenes it did not pay to quote. */
+const MAX_WINDOW_S = 30 * 60;
+function parseWindowS(raw: unknown): number {
+  const n = typeof raw === "string" ? Number(raw) : typeof raw === "number" ? raw : NaN;
+  if (!Number.isFinite(n) || n <= 0) return ANIMATE_LAYER_WINDOW_S;
+  return Math.min(MAX_WINDOW_S, Math.round(n));
+}
+
 export async function GET(req: NextRequest, ctx: Ctx) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -156,6 +169,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     req.nextUrl.searchParams.get("quality"),
   );
   const includeAnimated = req.nextUrl.searchParams.get("force") === "1";
+  const windowS = parseWindowS(req.nextUrl.searchParams.get("windowS"));
 
   const project = await loadProject(id);
   if (
@@ -165,7 +179,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  return NextResponse.json(quotePayload(project, quality, includeAnimated), {
+  return NextResponse.json(quotePayload(project, quality, includeAnimated, windowS), {
     headers: { "Cache-Control": "private, no-store" },
   });
 }
@@ -180,9 +194,13 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const body = (await req.json().catch(() => ({}))) as {
     quality?: unknown;
     force?: unknown;
+    windowS?: unknown;
   };
   const quality = resolveAnimateLayerQuality(body.quality);
   const force = body.force === true;
+  // Same parser as GET, so the window the customer was quoted is the window
+  // that renders. A separate default here is how a quote and a charge drift.
+  const windowS = parseWindowS(body.windowS);
 
   const project = await loadProject(id);
   if (
@@ -211,7 +229,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     ? (project.scenesJson as unknown as SceneSpec[])
     : [];
   const plan = planAnimateLayer(allScenes, {
-    windowS: ANIMATE_LAYER_WINDOW_S,
+    windowS,
     audioDuration: project.audioDuration,
     includeAnimated: force,
   });
@@ -222,9 +240,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       {
         error: already
           ? "Opening scenes already have motion. Pass force=true to re-run the layer."
-          : "No scenes fall inside the opening 30s window.",
+          : `No scenes fall inside the opening ${windowS}s window.`,
         skippedAnimatedCount: already,
-        windowS: ANIMATE_LAYER_WINDOW_S,
+        windowS,
       },
       { status: 400 },
     );

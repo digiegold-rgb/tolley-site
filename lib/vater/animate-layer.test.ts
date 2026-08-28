@@ -1,122 +1,112 @@
+import test from "node:test";
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
-
 import {
-  ANIMATE_LAYER_DEFAULT_QUALITY,
-  ANIMATE_LAYER_WINDOW_S,
-  animateLayerLimitCopy,
-  formatAnimateLayerCoverage,
-  planAnimateLayer,
-  quoteAnimateLayer,
-  resolveAnimateLayerQuality,
+  DEFAULT_SCENE_SECONDS,
+  formatSnap,
+  snapWindowToRealScenes,
+  snapWindowToScenes,
 } from "./animate-layer";
 
-describe("planAnimateLayer", () => {
-  it("selects scenes that begin inside the opening window", () => {
-    const plan = planAnimateLayer([
-      { idx: 0, startS: 0, endS: 8 },
-      { idx: 1, startS: 8, endS: 16 },
-      { idx: 2, startS: 16, endS: 28 },
-      { idx: 3, startS: 28, endS: 40 },
-      { idx: 4, startS: 40, endS: 52 },
-    ]);
-    assert.deepEqual(plan.sceneIdxs, [0, 1, 2, 3]);
-    assert.equal(plan.windowS, ANIMATE_LAYER_WINDOW_S);
-    assert.equal(plan.fallback, "timings");
-    assert.equal(plan.coverageStartS, 0);
-    assert.equal(plan.coverageEndS, 40);
-    assert.equal(plan.timed, true);
-  });
-
-  it("excludes scenes that start at or after the window", () => {
-    const plan = planAnimateLayer(
-      [
-        { idx: 0, startS: 0, endS: 30 },
-        { idx: 1, startS: 30, endS: 45 },
-      ],
-      { windowS: 30 },
-    );
-    assert.deepEqual(plan.sceneIdxs, [0]);
-  });
-
-  it("skips scenes that already have a clip unless forced", () => {
-    const scenes = [
-      { idx: 0, startS: 0, endS: 10, videoUrl: "https://cdn/a.mp4" },
-      { idx: 1, startS: 10, endS: 20 },
-      { idx: 2, startS: 20, endS: 35 },
-    ];
-    const fresh = planAnimateLayer(scenes);
-    assert.deepEqual(fresh.sceneIdxs, [1, 2]);
-    assert.deepEqual(fresh.skippedAnimatedIdxs, [0]);
-
-    const forced = planAnimateLayer(scenes, { includeAnimated: true });
-    assert.deepEqual(forced.sceneIdxs, [0, 1, 2]);
-    assert.deepEqual(forced.skippedAnimatedIdxs, []);
-  });
-
-  it("falls back to equal-share when timings are missing", () => {
-    const plan = planAnimateLayer(
-      [{ idx: 0 }, { idx: 1 }, { idx: 2 }, { idx: 3 }],
-      { audioDuration: 80 },
-    );
-    assert.equal(plan.fallback, "equal-share");
-    // 80s / 4 = 20s each → scenes 0 and 1 begin before 30s.
-    assert.deepEqual(plan.sceneIdxs, [0, 1]);
-    assert.equal(plan.coverageEndS, 40);
-  });
-
-  it("falls back to the first scene when there is no clock", () => {
-    const plan = planAnimateLayer([{ idx: 7 }, { idx: 8 }]);
-    assert.equal(plan.fallback, "first-scene");
-    assert.deepEqual(plan.sceneIdxs, [7]);
-    assert.equal(plan.timed, false);
-  });
-
-  it("uses array index when idx is missing", () => {
-    const plan = planAnimateLayer([
-      { startS: 0, endS: 12 },
-      { startS: 12, endS: 24 },
-    ]);
-    assert.deepEqual(plan.sceneIdxs, [0, 1]);
-  });
-
-  it("returns an empty plan when every opening scene is already animated", () => {
-    const plan = planAnimateLayer([
-      { idx: 0, startS: 0, endS: 20, videoUrl: "/a.mp4" },
-      { idx: 1, startS: 40, endS: 50 },
-    ]);
-    assert.deepEqual(plan.sceneIdxs, []);
-    assert.deepEqual(plan.skippedAnimatedIdxs, [0]);
-  });
+test("Jared's worked example: 30s at 5s scenes = 6 scenes, exact", () => {
+  const s = snapWindowToScenes(30, 5);
+  assert.equal(s.sceneCount, 6);
+  assert.equal(s.coverageEndS, 30);
+  assert.equal(s.overshootS, 0);
+  assert.equal(s.exact, true);
 });
 
-describe("quoteAnimateLayer", () => {
-  it("prices per clip at the published Wan narrative rate", () => {
-    const plan = planAnimateLayer([
-      { idx: 0, startS: 0, endS: 10 },
-      { idx: 1, startS: 10, endS: 20 },
-    ]);
-    const quote = quoteAnimateLayer(plan, ANIMATE_LAYER_DEFAULT_QUALITY);
-    assert.equal(quote.priceCentsPerClip, 150);
-    assert.equal(quote.estimateCents, 300);
-    assert.match(quote.qualityLabel, /Wan2\.2 Narrative/);
-  });
+test("a request that would split a scene rounds UP to a whole one", () => {
+  const s = snapWindowToScenes(32, 5);
+  assert.equal(s.sceneCount, 7, "must not truncate to 6");
+  assert.equal(s.coverageEndS, 35);
+  assert.equal(s.overshootS, 3);
+  assert.equal(s.exact, false);
 });
 
-describe("copy helpers", () => {
-  it("never claims a sliced 30s file", () => {
-    const plan = planAnimateLayer([
-      { idx: 0, startS: 0, endS: 12 },
-      { idx: 1, startS: 12, endS: 36 },
-    ]);
-    const copy = animateLayerLimitCopy(plan);
-    assert.match(copy, /whole scenes/i);
-    assert.doesNotMatch(copy, /sliced 30s file is what you get/i);
-    assert.match(formatAnimateLayerCoverage(plan), /0:00–0:36 · 2 clips/);
-  });
+test("never rounds down — one second past a boundary buys a whole scene", () => {
+  const s = snapWindowToScenes(30.5, 5);
+  assert.equal(s.sceneCount, 7);
+  assert.ok(s.coverageEndS >= 30.5);
+});
 
-  it("falls unknown qualities back to the narrative default", () => {
-    assert.equal(resolveAnimateLayerQuality("nope"), ANIMATE_LAYER_DEFAULT_QUALITY);
-    assert.equal(resolveAnimateLayerQuality("modal-wan22-fast"), "modal-wan22-fast");
-  });
+test("errs heavy at the default 4s pacing", () => {
+  const s = snapWindowToScenes(30);
+  assert.equal(DEFAULT_SCENE_SECONDS, 4);
+  assert.equal(s.sceneCount, 8, "30/4 = 7.5 → 8");
+  assert.equal(s.coverageEndS, 32);
+});
+
+test("coverage always reaches or passes what was asked for", () => {
+  for (const pacing of [2.5, 4, 5, 6]) {
+    for (let r = 1; r <= 180; r += 1) {
+      const s = snapWindowToScenes(r, pacing);
+      assert.ok(s.coverageEndS >= r, `${r}s @ ${pacing}s covered only ${s.coverageEndS}`);
+      assert.ok(s.overshootS >= 0);
+      assert.ok(s.overshootS < pacing, "never overshoots by a whole extra scene");
+      assert.equal(s.sceneCount, Math.ceil(r / pacing));
+    }
+  }
+});
+
+test("zero and nonsense mean no motion, not one scene", () => {
+  for (const bad of [0, -5, NaN, Infinity]) {
+    const s = snapWindowToScenes(bad as number, 5);
+    assert.equal(s.sceneCount, 0);
+    assert.equal(s.coverageEndS, 0);
+    assert.equal(s.exact, true);
+  }
+});
+
+test("a broken pacing value falls back to the default rather than dividing by zero", () => {
+  for (const bad of [0, -1, NaN]) {
+    const s = snapWindowToScenes(30, bad as number);
+    assert.equal(s.sceneCount, snapWindowToScenes(30, DEFAULT_SCENE_SECONDS).sceneCount);
+  }
+});
+
+/* Real scenes are NOT evenly spaced — the planner fits cuts to sentences. */
+const REAL = [
+  { idx: 0, startS: 0, endS: 3.2 },
+  { idx: 1, startS: 3.2, endS: 9.4 },
+  { idx: 2, startS: 9.4, endS: 12.0 },
+  { idx: 3, startS: 12.0, endS: 19.8 },
+  { idx: 4, startS: 19.8, endS: 26.1 },
+  { idx: 5, startS: 26.1, endS: 33.5 },
+  { idx: 6, startS: 33.5, endS: 38.0 },
+];
+
+test("real boundaries: 30s pulls in the scene straddling the mark", () => {
+  const s = snapWindowToRealScenes(30, REAL);
+  assert.equal(s.sceneCount, 6, "scenes 0-5 all begin before 0:30");
+  assert.equal(s.coverageEndS, 33.5, "the last one runs past the mark, whole");
+  assert.equal(s.overshootS, 3.5);
+  assert.equal(s.exact, false);
+});
+
+test("real boundaries: a request on an exact boundary does not over-buy", () => {
+  const s = snapWindowToRealScenes(26.1, REAL);
+  assert.equal(s.sceneCount, 5, "scene 5 starts AT 26.1, so it is not included");
+  assert.equal(s.coverageEndS, 26.1);
+  assert.equal(s.exact, true);
+});
+
+test("real boundaries: asking for less than one scene still buys that scene", () => {
+  const s = snapWindowToRealScenes(1, REAL);
+  assert.equal(s.sceneCount, 1);
+  assert.equal(s.coverageEndS, 3.2);
+});
+
+test("real boundaries: untimed scenes fall back to uniform math, not to zero", () => {
+  const s = snapWindowToRealScenes(30, [{ idx: 0 }, { idx: 1 }]);
+  assert.equal(s.sceneCount, snapWindowToScenes(30).sceneCount);
+});
+
+test("real boundaries: zero means no motion", () => {
+  assert.equal(snapWindowToRealScenes(0, REAL).sceneCount, 0);
+});
+
+test("formatSnap says what you get", () => {
+  assert.match(formatSnap(snapWindowToScenes(30, 5)), /0:30 · 6 scenes/);
+  assert.equal(formatSnap(snapWindowToScenes(0, 5)), "No motion — stills only");
+  assert.match(formatSnap(snapWindowToScenes(4, 4)), /1 scene$/);
 });

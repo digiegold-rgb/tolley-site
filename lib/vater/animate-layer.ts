@@ -45,6 +45,122 @@ export const ANIMATE_WINDOW_OPTIONS = [
 /** What a new project gets when nobody picks. */
 export const ANIMATE_WINDOW_DEFAULT_S = 30;
 
+/**
+ * Seconds of narration per scene when nothing else says otherwise.
+ *
+ * Mirrors SCENE_SECONDS in vater.py (4.0, re-pinned 2026-08-15). The DGX
+ * precedence chain is: the Style row's defaultPacingSec → the
+ * animated_explainer preset's 2.5 → this floor. Scene count is
+ * `ceil(audioSeconds / pacing)`, which is why an 11-minute #51 came out at
+ * exactly 164 scenes.
+ *
+ * ⚠️ If SCENE_SECONDS moves on the box, move it here: this is what the
+ * customer is shown BEFORE any scene exists, and a stale number quotes the
+ * wrong clip count and therefore the wrong price.
+ */
+export const DEFAULT_SCENE_SECONDS = 4;
+
+export interface WindowSnap {
+  /** What the slider asked for. */
+  requestedS: number;
+  /** Whole scenes that get animated. */
+  sceneCount: number;
+  /** Where the animation actually ends — always >= requestedS. */
+  coverageEndS: number;
+  /** coverageEndS - requestedS. 0 when the request fell on a boundary. */
+  overshootS: number;
+  /** True when the request landed exactly on a scene boundary. */
+  exact: boolean;
+}
+
+/**
+ * Snap a requested number of seconds UP to whole scenes.
+ *
+ * You cannot animate half a scene — a clip is generated from one still, so
+ * the unit of work (and of billing) is the scene. Asking for 30 seconds of a
+ * video cut every 4 seconds cannot mean "7.5 scenes"; it has to resolve to 7
+ * or 8. Jared 2026-08-27: "if it would cause a half of a slide to render,
+ * which would cause a problem, it will error to the heavy end and edit one
+ * extra full slide." So: always round UP, never truncate.
+ *
+ * Rounding down would be the worse failure in both directions — the customer
+ * pays for less than the window they asked for, and the video cuts from
+ * motion to a still mid-sentence.
+ *
+ * With uniform scenes this is exactly the rule the backend already applies in
+ * `planAnimateLayer` ("a scene is in the layer when it BEGINS before
+ * windowS"): scenes start at 0, P, 2P…, so the ones starting before R are
+ * indices 0..ceil(R/P)-1 — i.e. `ceil(R / P)` of them. Same answer, computed
+ * without needing the scene list, which is what makes it usable at create
+ * time before a single scene exists.
+ *
+ * Jared's worked example: R=30, P=5 → 6 scenes ending at 0:30, exact.
+ */
+export function snapWindowToScenes(
+  requestedS: number,
+  sceneSeconds: number = DEFAULT_SCENE_SECONDS,
+): WindowSnap {
+  const p = Number.isFinite(sceneSeconds) && sceneSeconds > 0 ? sceneSeconds : DEFAULT_SCENE_SECONDS;
+  const r = Number.isFinite(requestedS) && requestedS > 0 ? requestedS : 0;
+  if (r === 0) {
+    return { requestedS: 0, sceneCount: 0, coverageEndS: 0, overshootS: 0, exact: true };
+  }
+  const sceneCount = Math.ceil(r / p);
+  const coverageEndS = Math.round(sceneCount * p * 100) / 100;
+  const overshootS = Math.round((coverageEndS - r) * 100) / 100;
+  return { requestedS: r, sceneCount, coverageEndS, overshootS, exact: overshootS === 0 };
+}
+
+/**
+ * Same snap against REAL scene boundaries, once they exist.
+ *
+ * Uniform-pacing math is an estimate; a rendered project has actual startS /
+ * endS per scene and they are not evenly spaced (the planner fits cuts to
+ * sentence boundaries). Prefer this wherever `scenesJson` is loaded.
+ */
+export function snapWindowToRealScenes(
+  requestedS: number,
+  scenes: AnimateLayerSceneLike[],
+): WindowSnap {
+  const timed = scenes
+    .map((s) => ({ startS: asSec(s.startS) ?? 0, endS: asSec(s.endS) ?? 0 }))
+    .filter((s) => s.endS > s.startS)
+    .sort((a, b) => a.startS - b.startS);
+  if (timed.length === 0) return snapWindowToScenes(requestedS);
+  const r = Number.isFinite(requestedS) && requestedS > 0 ? requestedS : 0;
+  if (r === 0) {
+    return { requestedS: 0, sceneCount: 0, coverageEndS: 0, overshootS: 0, exact: true };
+  }
+  const included = timed.filter((s) => s.startS < r);
+  if (included.length === 0) {
+    // Asked for less than the first scene — you still get that whole scene.
+    const first = timed[0];
+    const end = Math.round(first.endS * 100) / 100;
+    return {
+      requestedS: r,
+      sceneCount: 1,
+      coverageEndS: end,
+      overshootS: Math.round((end - r) * 100) / 100,
+      exact: false,
+    };
+  }
+  const coverageEndS = Math.round(Math.max(...included.map((s) => s.endS)) * 100) / 100;
+  const overshootS = Math.round(Math.max(0, coverageEndS - r) * 100) / 100;
+  return {
+    requestedS: r,
+    sceneCount: included.length,
+    coverageEndS,
+    overshootS,
+    exact: overshootS === 0,
+  };
+}
+
+/** "0:00–0:35 · 7 scenes" — one line, safe when nothing is selected. */
+export function formatSnap(snap: WindowSnap): string {
+  if (snap.sceneCount === 0) return "No motion — stills only";
+  return `0:00\u2013${fmtClock(snap.coverageEndS)} · ${snap.sceneCount} scene${snap.sceneCount === 1 ? "" : "s"}`;
+}
+
 /** Same default as POST /animate-all and VisualsStep. */
 export const ANIMATE_LAYER_DEFAULT_QUALITY = "modal-wan22-narrative" as const;
 
