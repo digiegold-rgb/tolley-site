@@ -54,6 +54,16 @@ export interface RecordUsageResult {
   /** True when this record forced a mid-period invoice finalize (charge batching) */
   invoiceFinalized: boolean;
   isTrial: boolean;
+  /**
+   * True when the idempotency key already existed, so NOTHING new was billed
+   * and `costCents` is the pre-existing row's amount.
+   *
+   * Callers that report money must distinguish these: a nightly sweeper that
+   * re-checks the same finished batch would otherwise log "$3.75 booked" every
+   * single night for a charge made once (2026-08-27 — it did exactly that on
+   * its first run).
+   */
+  deduped: boolean;
 }
 
 export async function recordUsage(input: RecordUsageInput): Promise<RecordUsageResult> {
@@ -74,6 +84,7 @@ export async function recordUsage(input: RecordUsageInput): Promise<RecordUsageR
         stripeInvoiceItemId: existing.stripeInvoiceItemId,
         invoiceFinalized: false,
         isTrial: !existing.stripeInvoiceItemId,
+        deduped: true,
       };
     }
   }
@@ -157,5 +168,6 @@ export async function recordUsage(input: RecordUsageInput): Promise<RecordUsageR
     stripeInvoiceItemId,
     invoiceFinalized,
     isTrial,
+    deduped: false,
   };
 }

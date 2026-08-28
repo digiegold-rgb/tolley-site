@@ -44,10 +44,20 @@ function bucketProjects(projects: AnyProject[]): Record<CustomerStage, AnyProjec
   const in_progress: AnyProject[] = [];
   const done: AnyProject[] = [];
   for (const p of projects) {
-    const stage = customerStage(p ?? null);
+    if (!p) continue;
+    const stage = customerStage(p);
     if (stage === 'queued') queued.push(p);
     else if (stage === 'in_progress') in_progress.push(p);
     else if (stage === 'done') done.push(p);
+    // customerStage() returns null for a project it cannot place — most often
+    // `editing` that is neither live nor has a final video, which is exactly
+    // what a batch-animate leaves behind when the browser never finalized it.
+    // A null used to be dropped on the floor here, so the project appeared in
+    // NO bucket and vanished from the studio entirely (video #51, 2026-08-27:
+    // "#51 vanished and nobody got a ping"). Nothing a customer owns may be
+    // invisible: an unplaceable project is shown as in-progress, which is the
+    // honest reading — something was started and did not finish.
+    else in_progress.push(p);
   }
   return { queued, in_progress, done };
 }
@@ -91,6 +101,10 @@ export function Library(): React.ReactElement {
   // `editing` row with a final is Done and shows here — never both (#3/#6
   // used to render twice, 2026-08-25).
   const ready = buckets.done;
+  /* Everything the customer owns, in-flight first. The shelves below stay on
+     `ready` — you cannot add a thumbnail to, or schedule, a video that does
+     not exist yet. */
+  const gridProjects = React.useMemo(() => [...pipeline, ...ready], [pipeline, ready]);
   const livePipeline = pipeline.length > 0;
 
   React.useEffect(() => {
@@ -259,11 +273,19 @@ export function Library(): React.ReactElement {
             Create your first video
           </button>
         </VCard>
-      ) : ready.length === 0 ? null : (
+      ) : ready.length === 0 && pipeline.length === 0 ? null : (
         <>
+          {/* The grid shows work IN FLIGHT as well as finished work. It used
+              to render `ready` only, so a video being animated dropped out of
+              the grid the moment it left `ready` and lived only in the
+              Moving-now strip — which reads as "my video disappeared", because
+              the place you look for your videos stopped listing it. Jared
+              2026-08-27: "Library grid must show in-progress / queued jobs
+              (Moving Now is not enough)." In-flight first: it is the thing
+              you came back to check on. */}
           <div className="jelly-legacy">
             <YouTubeLibrary
-              projects={ready}
+              projects={gridProjects}
               onDelete={handleDelete}
               onRecomposeStart={handleRecomposeStart}
               onAnimateLayerStart={handleRecomposeStart}
