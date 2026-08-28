@@ -261,6 +261,17 @@ export function StylePickerModal({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, creatingFromId, wizardOpen, submittingOwn, onClose]);
 
+  /* What the writer is being asked to produce, in words.
+   *
+   * The slider sets the LENGTH of the rewrite, so the quote has to follow it —
+   * quoting the SOURCE's word count while the customer drags a target is how
+   * a price sits still while the thing it prices changes, which is exactly the
+   * complaint. Falls back to the source's own length, which is script rule 1's
+   * default ("use the original's word count unless told otherwise").
+   */
+  const quotedWords = (sourceWordsRaw: number) =>
+    targetMinutes > 0 ? wordCountForDuration(targetMinutes) : sourceWordsRaw;
+
   const sourceWords = React.useMemo(
     () => (scripts[0] || '').split(/\s+/).filter(Boolean).length,
     [scripts],
@@ -1187,7 +1198,22 @@ export function StylePickerModal({
                 </div>
               )}
 
-              {/* Engine — under the textareas, above the styles. */}
+              {/* ENGINE IS THE LAST STEP, and it does not appear until the
+                  steps before it are satisfied (Jared 2026-08-27: "I don't
+                  like that the button below that is the engine… we need step
+                  by step with checks, then when all parts are lined up we can
+                  produce a video").
+
+                  It used to sit mid-plate under the textareas, so it read as
+                  one more field competing with the script and the link box
+                  rather than the decision you make once everything else is
+                  settled. Gating the reveal on "there is something to render"
+                  turns the plate into a sequence: source → length → engine.
+
+                  The editor's EngineBar is the same choice for a project that
+                  already exists, in the same position — after the script,
+                  before anything renders. */}
+              {sourceWords >= 40 && (
               <div style={{ marginTop: 14 }}>
                 <div
                   style={{
@@ -1199,7 +1225,7 @@ export function StylePickerModal({
                     letterSpacing: 0.4,
                   }}
                 >
-                  Engine
+                  Last step · who directs this
                 </div>
                 <EnginePicker
                   value={engine}
@@ -1211,7 +1237,7 @@ export function StylePickerModal({
                     totalWords > 0
                       ? multi
                         ? scriptWordCounts.reduce((a, w) => a + (w > 0 ? quickEstimateUsd(w) : 0), 0)
-                        : quickEstimateUsd(scriptWordCount)
+                        : quickEstimateUsd(quotedWords(scriptWordCount))
                       : null
                   }
                   disabled={submittingOwn}
@@ -1219,6 +1245,7 @@ export function StylePickerModal({
                   compact
                 />
               </div>
+              )}
 
               {ownScriptError && (
                 <div
@@ -1693,7 +1720,7 @@ export function StylePickerModal({
         engine={f5Pending ? 'fable5' : null}
         manifest={f5Pending?.manifest ?? null}
         estimateUsd={scriptWordCounts.reduce(
-          (sum, w) => sum + (w > 0 ? quickEstimateUsd(w) : 0),
+          (sum, w) => sum + (w > 0 ? quickEstimateUsd(quotedWords(w)) : 0),
           0,
         )}
         confirming={submittingOwn}

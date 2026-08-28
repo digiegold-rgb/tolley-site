@@ -868,6 +868,13 @@ export function ScriptStep({ projectId, project, refresh, goToStep }: EditorStep
                 onChange={setStyle}
                 placeholder="Style"
               />
+              {/* Hidden once a script exists. Jared 2026-08-27 chose NOT to have
+                  this re-run the writer, and `plannedMinutes()` ignores
+                  targetDuration whenever a script is present — so with a script
+                  on the row this control changes nothing at all, in the script
+                  or in the price. A dial that does nothing is worse than no
+                  dial. Regenerating from scratch still offers it. */}
+              {!project?.script && (
               <VInput
                 label="Target Word Count"
                 value={String(wordCount)}
@@ -878,6 +885,7 @@ export function ScriptStep({ projectId, project, refresh, goToStep }: EditorStep
                 placeholder="1800"
                 helper={`~${Math.round(wordCount / ESTIMATE_WORDS_PER_MINUTE)} min narration`}
               />
+              )}
             </div>
             <VInput
               label="Video Context URL"
