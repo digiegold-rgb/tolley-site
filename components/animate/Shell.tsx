@@ -246,9 +246,15 @@ function ShellInner({ initialRoute }: ShellProps): React.ReactElement {
     setRouteState('video-editor');
   }, []);
 
-  const openProjectInEditor = React.useCallback((projectId: string) => {
+  /** `step` lands the editor somewhere other than Title (0). Used when the
+   *  caller already knows what the user came to do — e.g. "Jelly writes the
+   *  script" should open ON the Script step, not on a blank title field that
+   *  reads as "nothing happened" (Trey 2026-08-27). ProjectShell's
+   *  auto-advance only fires when a step flips to done, so seeding the step
+   *  here is not fought by it. */
+  const openProjectInEditor = React.useCallback((projectId: string, step = 0) => {
     setSelectedProjectId(projectId);
-    setEditorStep(0);
+    setEditorStep(step);
     setRouteState('editor');
   }, []);
 

@@ -24,7 +24,7 @@ import { JELLY_TOKENS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { Icon } from '../../Icon';
 import { StyleWizardModal, type CreatedStyle } from './StyleWizardModal';
-import { PathChooser } from './PathChooser';
+import { PathChooser, pathSuppliesSource, type StartPath } from './PathChooser';
 import { devError } from '../../log';
 import { TINT_BG } from '../tint';
 import { getStylePreset } from '@/lib/vater/style-presets';
@@ -60,7 +60,9 @@ interface StyleSummary {
 interface Props {
   open: boolean;
   onClose: () => void;
-  onProjectCreated: (projectId: string) => void;
+  /** `step` is where the editor should open: 1 = Script, for the lane whose
+   *  whole purpose is writing one. Omitted elsewhere so nothing else moves. */
+  onProjectCreated: (projectId: string, step?: number) => void;
 }
 
 function refCount(s: StyleSummary): number {
@@ -107,7 +109,13 @@ export function StylePickerModal({
   // Own-script mode — paste a script and skip principle-extraction +
   // script-generation. Mirrors V1's youtube-topic-form scriptOverride flow,
   // routed through /api/vater/topic with mode="topic" + scriptOverride.
-  const [useOwnScript, setUseOwnScript] = React.useState(false);
+  // Three doors now (own script / start from a video / Jelly writes). The
+  // pipeline only cares whether the customer supplies the source, which is
+  // what `useOwnScript` still means — but the UI has to keep the two
+  // bring-your-own lanes apart or the video lane stays invisible, which is
+  // exactly how it went unfound for a month.
+  const [startPath, setStartPath] = React.useState<StartPath>('own');
+  const useOwnScript = pathSuppliesSource(startPath);
   // One textarea per script. Jelly Auto takes exactly one; Fable 5 takes a
   // batch (≤10) → POST /api/vater/concierge/submit, one ticket per script.
   const [scripts, setScripts] = React.useState<string[]>(['']);
@@ -534,7 +542,10 @@ export function StylePickerModal({
       if (!projectId || typeof projectId !== 'string') {
         throw new Error('No project id returned');
       }
-      onProjectCreated(projectId);
+      // "Jelly writes the script" → open ON the Script step. Landing on Title
+      // is why this lane read as "the button does nothing": a style click
+      // creates an empty project and the writing happens one step over.
+      onProjectCreated(projectId, 1);
     } catch (err) {
       devError('[StylePickerModal] new-from-style failed:', err);
       const msg = err instanceof Error ? err.message : 'Failed to create project';
@@ -723,11 +734,12 @@ export function StylePickerModal({
         >
           {!queued && (
             <PathChooser
-              useOwnScript={useOwnScript}
+              path={startPath}
               disabled={submittingOwn}
-              onChange={(own) => {
-                setUseOwnScript(own);
+              onChange={(next) => {
+                setStartPath(next);
                 setOwnScriptError(null);
+                setImportNote(null);
               }}
             />
           )}
@@ -754,9 +766,12 @@ export function StylePickerModal({
                   marginBottom: 10,
                 }}
               >
-                Your script · read verbatim
+                {startPath === 'video'
+                  ? 'Your source · keep it or rewrite it'
+                  : 'Your script · read verbatim'}
               </div>
 
+              {startPath === 'video' && (<>
               {/* Source importer. A YouTube link, an article or a PDF becomes
                   the text in the box below. Free — it reads the caption track
                   rather than downloading and transcribing (vater.py
@@ -905,6 +920,7 @@ export function StylePickerModal({
                     : `Converted at ${WORDS_PER_MINUTE} words per minute — the same figure the writer is held to.`}
                 </div>
               </div>
+              </>)}
 
               {scripts.map((text, i) => (
                 <div key={i} style={{ marginBottom: 12 }}>

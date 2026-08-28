@@ -14,6 +14,12 @@
  *
  * Radiogroup + data-testid path-own-script / path-jelly-writes are load-bearing
  * for the Fable 5 walkthrough. Do not rename them. "✓ SELECTED" is asserted.
+ *
+ * 2026-08-27: a third lane, `video`. "Start from a video" used to be folded
+ * into own-script, which is why Trey never found it — the two are the same
+ * shape to the pipeline but nothing like the same intent to a person. The
+ * boolean prop is kept as a derived convenience for callers that only care
+ * whether a script is being supplied (`own` and `video` both do).
  */
 
 import * as React from 'react';
@@ -25,14 +31,23 @@ import { GradientText } from '../../cinema';
 const INK = '#0A0A14';
 const PAPER = '#F0EEF8';
 
+/** Which door the customer came in through. */
+export type StartPath = 'own' | 'video' | 'jelly';
+
+/** True when the customer supplies the source material (script or video). */
+export function pathSuppliesSource(p: StartPath): boolean {
+  return p !== 'jelly';
+}
+
 export interface PathChooserProps {
-  useOwnScript: boolean;
+  path: StartPath;
   disabled?: boolean;
-  onChange: (own: boolean) => void;
+  onChange: (p: StartPath) => void;
 }
 
 interface PathOption {
-  own: boolean;
+  path: StartPath;
+  testId: string;
   icon: IconName;
   title: string;
   body: string;
@@ -42,32 +57,45 @@ interface PathOption {
 
 const OPTIONS: PathOption[] = [
   {
-    own: true,
+    path: 'own',
+    testId: 'path-own-script',
     icon: 'edit',
-    title: 'I have a script, or a video to start from',
-    body:
-      'Paste your script, or drop in a YouTube link and either keep its words or have them rewritten under your script rules.',
-    cta: 'Paste a script or a link',
-    next: '▼ Paste a script or a link below',
+    title: 'I already have my script',
+    body: 'Paste it below. Your words are read verbatim — then pick a Style for the voice.',
+    cta: 'Paste my script',
+    next: '▼ Paste your script below',
   },
   {
-    own: false,
+    path: 'video',
+    testId: 'path-from-video',
+    icon: 'web',
+    title: 'Start from a video',
+    body:
+      'Drop in a YouTube link. Keep its words as they are, or have them transcribed and rewritten as your own script — your host, your rules, your length.',
+    cta: 'Paste a link',
+    next: '▼ Paste the link below',
+  },
+  {
+    path: 'jelly',
+    testId: 'path-jelly-writes',
     icon: 'sparkle',
     title: 'Jelly writes the script',
     body:
-      'Pick a Style below to open a new project. Jelly writes the script on the Script step, from your title and notes — nothing is written or charged until you press Generate there.',
+      'Pick a Style below to open a new project. Jelly writes on the Script step, from your title and notes — nothing is written or charged until you press Generate there.',
     cta: 'Start from a Style',
     next: '▼ Pick a Style below',
   },
 ];
 
+const PATH_ORDER: StartPath[] = ['own', 'video', 'jelly'];
+
 export function PathChooser({
-  useOwnScript,
+  path,
   disabled = false,
   onChange,
 }: PathChooserProps): React.ReactElement {
   const { t } = useTheme();
-  const [hoverOwn, setHoverOwn] = React.useState<boolean | null>(null);
+  const [hover, setHover] = React.useState<StartPath | null>(null);
 
   return (
     <div
@@ -83,7 +111,9 @@ export function PathChooser({
           e.key === 'ArrowUp'
         ) {
           e.preventDefault();
-          onChange(!useOwnScript);
+          const dir = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1;
+          const i = PATH_ORDER.indexOf(path);
+          onChange(PATH_ORDER[(i + dir + PATH_ORDER.length) % PATH_ORDER.length]);
         }
       }}
       style={{
@@ -118,7 +148,7 @@ export function PathChooser({
           marginBottom: 6,
         }}
       >
-        <span id="path-chooser-question">Already have a script?</span>
+        <span id="path-chooser-question">Where does this video start?</span>
       </GradientText>
       <div
         style={{
@@ -129,7 +159,7 @@ export function PathChooser({
           maxWidth: 640,
         }}
       >
-        Click one. We read your words verbatim, or Jelly writes from your Style.
+        Click one. Bring a script, bring a video to work from, or let Jelly write it.
       </div>
 
       <div
@@ -140,12 +170,12 @@ export function PathChooser({
         }}
       >
         {OPTIONS.map((opt) => {
-          const selected = useOwnScript === opt.own;
-          const hovered = hoverOwn === opt.own;
-          /* Own-script is the missable lane. While it is NOT selected it
-             wears the gradient so it reads as the primary click, not a
-             leftover next to the pre-selected Jelly card. */
-          const magnet = opt.own && !selected;
+          const selected = path === opt.path;
+          const hovered = hover === opt.path;
+          /* The two bring-your-own lanes are the missable ones. While NOT
+             selected they wear the gradient so they read as primary clicks,
+             not leftovers beside the pre-selected Jelly card. */
+          const magnet = opt.path !== 'jelly' && !selected;
           const plate = magnet
             ? {
                 background: JELLY_TOKENS.gradPrimary,
@@ -176,10 +206,10 @@ export function PathChooser({
               role="radio"
               aria-checked={selected}
               disabled={disabled}
-              data-testid={opt.own ? 'path-own-script' : 'path-jelly-writes'}
-              onClick={() => onChange(opt.own)}
-              onMouseEnter={() => setHoverOwn(opt.own)}
-              onMouseLeave={() => setHoverOwn(null)}
+              data-testid={opt.testId}
+              onClick={() => onChange(opt.path)}
+              onMouseEnter={() => setHover(opt.path)}
+              onMouseLeave={() => setHover(null)}
               style={{
                 textAlign: 'left',
                 padding: '18px 18px 16px',

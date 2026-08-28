@@ -629,9 +629,9 @@ export function DashboardScreen(): React.ReactElement {
       <StylePickerModal
         open={stylePickerOpen}
         onClose={() => setStylePickerOpen(false)}
-        onProjectCreated={(projectId) => {
+        onProjectCreated={(projectId, step) => {
           setStylePickerOpen(false);
-          openProjectInEditor(projectId);
+          openProjectInEditor(projectId, step);
         }}
       />
     </div>

@@ -189,7 +189,21 @@ export function YouTubeImportTracker({ projects, onCreated }: Props) {
 
   return (
     <div className="vater-card p-4">
-      {/* Paste field (top, full width) */}
+      {/* Paste field (top, full width).
+          There are two YouTube boxes in this product and they do different
+          things (Jared 2026-08-27: "keep both, label them honestly"):
+            - THIS one downloads the audio and transcribes it with whisper,
+              then writes a script. It costs money and takes minutes.
+            - The Script step's "From a link or PDF" reads the caption track
+              into Additional Context as reference. Free, instant, and it does
+              NOT become your script.
+          Unlabelled, they look identical and pick themselves. */}
+      <div className="mb-1 text-[11px] leading-relaxed text-zinc-400">
+        <span className="font-semibold text-zinc-300">Rebuild a video from a YouTube link.</span>{" "}
+        Downloads the audio, transcribes it, and writes a new script from it — a few minutes,
+        and transcription is billed. For free reference text that does not become your script,
+        use <span className="text-zinc-300">From a link or PDF</span> on the Script step.
+      </div>
       <div className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2">
         <span className="text-lg">📺</span>
         <input
@@ -197,7 +211,7 @@ export function YouTubeImportTracker({ projects, onCreated }: Props) {
           value={pasteValue}
           onChange={(e) => setPasteValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handlePasteSubmit()}
-          placeholder="Paste YouTube URL..."
+          placeholder="Paste a YouTube URL to transcribe and rebuild..."
           className="flex-1 bg-transparent text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none"
         />
         <button

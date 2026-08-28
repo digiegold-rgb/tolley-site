@@ -721,7 +721,7 @@ export function ScriptStep({ projectId, project, refresh, goToStep }: EditorStep
               >
                 <Icon name="web" size={16} color={t.textSecondary} />
                 <span style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
-                  From a link or PDF
+                  From a link or PDF · free reference
                 </span>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
@@ -761,7 +761,7 @@ export function ScriptStep({ projectId, project, refresh, goToStep }: EditorStep
               >
                 {importOff
                   ? COMING_ONLINE
-                  : 'Articles, PDFs and YouTube transcripts land in Additional Context as reference — they don’t replace your script.'}
+                  : 'Reads the page, the PDF, or a YouTube caption track and drops the text into Additional Context as reference. Free and instant, and it does NOT become your script. To rebuild a video FROM a YouTube link, start a new video and pick “Start from a video”.'}
               </div>
               {importError && (
                 <div

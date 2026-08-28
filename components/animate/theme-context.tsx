@@ -57,7 +57,7 @@ export interface RouteContextValue {
   /** Convenience: jump to the timeline editor for a specific project. */
   openProjectInVideoEditor: (projectId: string) => void;
   /** Convenience: jump to the 7-step pipeline editor for a specific project. */
-  openProjectInEditor: (projectId: string) => void;
+  openProjectInEditor: (projectId: string, step?: number) => void;
   /** Convenience: open the in-v2 style editor for a specific style. */
   openStyleEditor: (styleId: string) => void;
   /** True when the user clicked "+ Create Video" outside the dashboard.
