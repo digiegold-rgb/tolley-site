@@ -14,7 +14,7 @@
  *   { needsApproval, active, projects: [{ id, title, status, flowStep,
  *     scriptApprovedAt, approvalExpiresAt, updatedAt, thumbnailUrl,
  *     finalVideoUrl, hasTranscript, hasScript, failedPhase, conciergeStage,
- *     step, kind, needsUser, active, variationCount }] }
+ *     step, kind, needsUser, active, variationCount, driveFileUrl, driveError }] }
  * step/kind/needsUser/active come from deriveCreateStep (create-steps.ts).
  */
 import { NextResponse } from "next/server";
@@ -47,6 +47,8 @@ interface Row {
   conciergeStage: string | null;
   variationCount: number | null;
   errorMessage: string | null;
+  driveFileUrl: string | null;
+  driveError: string | null;
 }
 
 export async function GET() {
@@ -76,7 +78,9 @@ export async function GET() {
            CASE WHEN "status" = 'failed' THEN "stepDetails"->>'phase' ELSE NULL END AS "failedPhase",
            "settingsJson"->'concierge'->>'stage' AS "conciergeStage",
            NULLIF("variationJson"->>'count', '')::int AS "variationCount",
-           CASE WHEN "status" = 'failed' THEN LEFT("errorMessage", 300) ELSE NULL END AS "errorMessage"
+           CASE WHEN "status" = 'failed' THEN LEFT("errorMessage", 300) ELSE NULL END AS "errorMessage",
+           "driveFileUrl",
+           "driveError"
       FROM "YouTubeProject"
      WHERE "userId" = ${userId}
        AND "projectType" = 'youtube'
@@ -121,6 +125,8 @@ export async function GET() {
       errorMessage: r.errorMessage,
       conciergeStage: r.conciergeStage,
       variationCount: r.variationCount ?? 0,
+      driveFileUrl: r.driveFileUrl,
+      driveError: r.driveError,
       step: d.step,
       kind: d.kind,
       needsUser: d.needsUser,

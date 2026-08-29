@@ -16,7 +16,7 @@ import { JELLY_TOKENS } from '../../../tokens';
 import { useTheme } from '../../../theme-context';
 import { useTier } from '../../../tier-context';
 import { VBtn } from '../../../primitives';
-import { Icon } from '../../../Icon';
+import { DriveLinkCard } from '../../../DriveLinkCard';
 import { ScriptReviewCard } from '../../review/ScriptReviewCard';
 import { ConciergeStatusCard } from '../../editor/ConciergeStatusCard';
 import { MoneyConfirmModal, useBillingMode, type MoneyConfirmRequest } from '@/components/vater/editor/MoneyConfirmModal';
@@ -280,25 +280,7 @@ export function ReviewStep(): React.ReactElement {
         </div>
       </StepCard>
 
-      <div
-        data-testid="review-drive-card"
-        aria-disabled="true"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: '12px 16px',
-          borderRadius: JELLY_TOKENS.radius.lg,
-          border: `1px dashed ${t.border}`,
-          color: t.textFaint,
-          fontSize: 13,
-          opacity: 0.7,
-        }}
-      >
-        <Icon name="folder" size={18} color={t.textFaint} />
-        <span style={{ flex: 1 }}>Link Google Drive — pull scripts from a Doc or Sheet</span>
-        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Coming soon</span>
-      </div>
+      <DriveLinkCard />
 
       {rewriteCount === 0 && !dirty && (
         <InfoNote tone="brand" testId="review-hint">

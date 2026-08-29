@@ -17,6 +17,7 @@ import { useRenderEstimate } from '../../editor/use-render-estimate';
 import { BillingBlockModal, BillingBlockedError, type BillingBlockReason, type BillingBlockContext } from '../../editor/BillingBlock';
 import { quickEstimateUsd } from '@/lib/vater/billing/estimate';
 import { readEngineClient, CONCIERGE_ENGINE_COPY } from '@/lib/vater/concierge-client';
+import { DriveSyncChip } from '../../../DriveSyncChip';
 import { useCreateFlow } from '../create-context';
 import { createApi, errorMessage, isExpiredError } from '../create-api';
 import { StepCard, Lede, ErrorNote, StepActions, DoneSummary, wordsIn } from './step-ui';
@@ -133,6 +134,7 @@ export function EngineStep(): React.ReactElement {
   return (
     <>
       <StepCard testId="engine-step">
+        <DriveSyncChip project={project} onSynced={flow.adopt} style={{ alignSelf: 'flex-start' }} />
         <Lede>Who directs this? Same price either way. This is the one click that spends credit — you confirm the full manifest first.</Lede>
         <EnginePicker
           value={engine}

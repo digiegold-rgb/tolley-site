@@ -74,6 +74,7 @@ model User {
   socialProfile        VaterSocialProfile?
   socialPosts          VaterSocialPost[]
   pushSubscriptions    VaterPushSubscription[]
+  driveConnection      VaterDriveConnection?
 }
 
 /// Per-user credentials for posting to external social platforms from the
@@ -3904,6 +3905,15 @@ model YouTubeProject {
   notifiedScriptReadyAt DateTime?
   notifiedReadyAt       DateTime?
   notifiedQaAt          DateTime?
+  // Google Drive script sync (migration 20260828_drive_link). When the ROOT
+  // login has a VaterDriveConnection, /approve-script mirrors the approved
+  // script as a Google Doc in their "Jelly Scripts" folder
+  // (lib/vater/drive-sync.ts). driveError = "<code>: <message>" of the last
+  // failed attempt; cleared on success. Never blocks the flow.
+  driveFileId           String?
+  driveFileUrl          String?
+  driveSyncedAt         DateTime?
+  driveError            String?
   // Hybrid render window — first N seconds animated (wan22), remainder Ken
   // Burns stills. Merged into the style snapshot as `defaultAnimUntilS`.
   animUntilS       Int?
@@ -3973,6 +3983,29 @@ model VaterPushSubscription {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// Per-user Google Drive link (2026-08-28, migration 20260828_drive_link).
+// Scope is the NON-sensitive `drive.file` (no Google review) — we only ever
+// see files this app created. One row per ROOT login (resolveTenantIdentity):
+// workspace tabs share the owner's Drive. folderId = the "Jelly Scripts"
+// folder created at link time (re-created lazily if the user trashes it).
+// status: active | revoked (invalid_grant on refresh — user must re-link) |
+// error (e.g. Drive API not enabled on the GCP project; lastError explains).
+model VaterDriveConnection {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  googleEmail          String?
+  refreshToken         String
+  accessToken          String?
+  accessTokenExpiresAt DateTime?
+  folderId             String?
+  folderUrl            String?
+  status               String    @default("active")
+  lastError            String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // ── Vater Financial Literacy Course (2026-08-09) ─────────────────────

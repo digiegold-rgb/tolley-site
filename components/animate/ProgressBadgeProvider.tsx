@@ -44,6 +44,9 @@ export interface ProgressRow {
   needsUser: boolean;
   active: boolean;
   variationCount: number;
+  /** Google Drive mirror of the approved script (2026-08-28). */
+  driveFileUrl?: string | null;
+  driveError?: string | null;
 }
 
 export interface ProgressSummary {

@@ -16,11 +16,13 @@
  * → 200 {project} · 400 no script · 409 {error,status,reason?}
  */
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { canAccessProject } from "@/lib/vater/project-access";
 import { appendScriptVersion } from "@/lib/vater/script-versions";
 import { nextApprovalExpiry } from "@/lib/vater/approval-expiry";
+import { syncApprovedScriptToDrive } from "@/lib/vater/drive-sync";
 
 export const runtime = "nodejs";
 
@@ -123,6 +125,13 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const approved = await prisma.youTubeProject.findUniqueOrThrow({ where: { id } });
   console.log(
     `[vater/approve-script] project=${id} — ${wordCount} words approved (free), parked at awaiting_engine`,
+  );
+  // Mirror to the user's Google Drive (if linked) AFTER the response — never
+  // blocks approval; failures land in project.driveError for the retry button.
+  after(() =>
+    syncApprovedScriptToDrive(id).catch((err) =>
+      console.error(`[vater/approve-script] drive sync threw for project=${id}`, err),
+    ),
   );
   return NextResponse.json({ project: approved });
 }

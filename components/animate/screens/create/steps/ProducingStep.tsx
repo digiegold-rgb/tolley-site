@@ -17,6 +17,7 @@ import { NotifyOptInCard } from '../../../NotifyOptInCard';
 import { BillingBlockModal, BillingBlockedError, type BillingBlockReason, type BillingBlockContext } from '../../editor/BillingBlock';
 import { customerStage, isConciergeStatus, STATUS_LABELS, type YouTubeProjectStatus } from '@/lib/vater/youtube-status';
 import { readConciergeClient, readEngineClient } from '@/lib/vater/concierge-client';
+import { DriveSyncChip } from '../../../DriveSyncChip';
 import { useCreateFlow } from '../create-context';
 import { createApi, errorMessage } from '../create-api';
 import { StepCard, ErrorNote, StepActions, DoneSummary, PulseCard } from './step-ui';
@@ -92,6 +93,7 @@ export function ProducingStep(): React.ReactElement {
         line={concierge ? undefined : phase}
         testId="producing-pulse"
       >
+        <DriveSyncChip project={project} onSynced={flow.adopt} style={{ alignSelf: 'flex-start' }} />
         <div style={{ fontSize: 13.5, color: t.text, lineHeight: 1.6, fontWeight: 500 }}>
           You can leave — the Progress tab will light up and we&rsquo;ll email you when it lands in your Library.
         </div>

@@ -21,6 +21,7 @@ import { useTheme, useRoute } from '../../theme-context';
 import { VBtn, VCard } from '../../primitives';
 import { GlassCard, MicroLabel } from '../../cinema';
 import { NotifyOptInCard } from '../../NotifyOptInCard';
+import { DriveSyncChip } from '../../DriveSyncChip';
 import { useProgressSummary, refreshProgress, type ProgressRow } from '../../ProgressBadgeProvider';
 import { CreateStepper } from '../create/CreateStepper';
 import { stepHash, stepDef, type DerivedCreateStep } from '@/lib/vater/create-steps';
@@ -231,6 +232,7 @@ function Row({ row }: { row: ProgressRow }): React.ReactElement {
         >
           {row.title || 'Untitled'}
         </a>
+        <DriveSyncChip project={row} compact onSynced={refreshProgress} />
         <span style={{ fontSize: 11.5, color: t.textFaint, whiteSpace: 'nowrap' }}>{relativeTimeLabel(row.updatedAt)}</span>
         {row.variationCount > 0 && (
           <span style={{ fontSize: 11, color: t.textSecondary, whiteSpace: 'nowrap' }}>rewrite #{row.variationCount}</span>

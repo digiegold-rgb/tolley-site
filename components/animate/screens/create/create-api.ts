@@ -27,6 +27,26 @@ export interface CreateProject extends ReviewProject {
   updatedAt?: string;
   completedAt?: string | null;
   editedAt?: string | null;
+  /** Google Drive mirror of the approved script (2026-08-28). */
+  driveFileUrl?: string | null;
+  driveError?: string | null;
+  driveSyncedAt?: string | null;
+}
+
+/** GET /api/vater/drive/status. */
+export interface DriveStatus {
+  connected: boolean;
+  email: string | null;
+  folderUrl: string | null;
+  status: 'active' | 'revoked' | 'error' | null;
+  lastError: string | null;
+}
+
+/** Where "Link Google Drive" sends the browser. `returnHash` is the studio
+ *  hash WITHOUT the leading '#'; Google bounces back to
+ *  `/animate?drive=connected#<returnHash>` (or `?drive=error&reason=…`). */
+export function driveStartUrl(returnHash: string): string {
+  return `/api/vater/drive/oauth/start?return=${encodeURIComponent(returnHash.replace(/^#/, ''))}`;
 }
 
 export class ApiError extends Error {
@@ -178,6 +198,18 @@ export const createApi = {
 
   preflight: async (id: string): Promise<RenderManifest> =>
     request<RenderManifest>(`/api/vater/youtube/${id}/preflight`),
+
+  // ── Google Drive ──────────────────────────────────────────────────────
+  driveStatus: async (): Promise<DriveStatus> => request<DriveStatus>('/api/vater/drive/status'),
+
+  driveDisconnect: async (): Promise<void> => {
+    await request<{ ok: boolean }>('/api/vater/drive/disconnect', post({}));
+  },
+
+  /** Re-run the Drive save for an approved row. 200 even when the save
+   *  failed (`project.driveError` says why); 409 not approved; 412 not linked. */
+  driveSync: async (id: string): Promise<CreateProject> =>
+    (await request<{ project: CreateProject }>(`/api/vater/youtube/${id}/drive-sync`, post({}))).project,
 };
 
 export function errorMessage(err: unknown, fallback: string): string {

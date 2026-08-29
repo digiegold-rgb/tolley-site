@@ -8,13 +8,14 @@ import { useTheme, useRoute } from '../../../theme-context';
 import { VBtn } from '../../../primitives';
 import { FilmFrame, FILM_MEDIA_STYLE } from '../../../cinema';
 import { finalVideoPlaybackUrl } from '@/lib/vater/youtube-status';
+import { DriveSyncChip } from '../../../DriveSyncChip';
 import { useCreateFlow } from '../create-context';
 import { StepCard, Lede, StepActions } from './step-ui';
 
 export function DoneStep(): React.ReactElement {
   const { t } = useTheme();
   const { requestNewVideo } = useRoute();
-  const { project } = useCreateFlow();
+  const { project, adopt } = useCreateFlow();
 
   if (!project) {
     return (
@@ -32,6 +33,7 @@ export function DoneStep(): React.ReactElement {
       <div style={{ fontSize: 20, fontWeight: 600, color: t.text, letterSpacing: '-0.01em' }}>
         {ready ? 'Your video is ready' : 'Almost there'}
       </div>
+      <DriveSyncChip project={project} onSynced={adopt} style={{ alignSelf: 'flex-start' }} />
       <Lede>
         {ready
           ? 'It is in your Library — play it, cut shorts from it, publish it anywhere.'

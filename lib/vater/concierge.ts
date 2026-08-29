@@ -198,6 +198,11 @@ export interface WriteConciergeOptions {
  * `patch` may be a partial ticket (existing ticket required) or a full ticket
  * (creates it). Setting a field to `null` clears it.
  */
+/** Statuses whose autopilotJobId (if any) is the script-writing job, never a render. */
+const SCRIPT_GATE_STATUSES: ReadonlySet<string> = new Set([
+  "draft", "transcribed", "scripted", "awaiting_script_approval", "awaiting_engine", "expired",
+]);
+
 export async function writeConcierge(
   projectId: string,
   patch: Partial<ConciergeTicket>,
@@ -282,6 +287,14 @@ export async function writeConcierge(
         ...(opts.extraData ?? {}),
         settingsJson: nextBag as Prisma.InputJsonObject,
         ...(opts.status ? { status: opts.status } : {}),
+        // Stepped flow (2026-08-28): a project arriving from the Review/Engine
+        // steps still carries autopilotJobId = its FINISHED script job. The
+        // fable5 CLI inherited that id and refused kickoff ("already has job"
+        // — F5-90R097 parked for a human). A brand-new ticket on a row that
+        // has not left the script gate owns no render job yet: clear it.
+        ...(!existing && SCRIPT_GATE_STATUSES.has(row.status)
+          ? { autopilotJobId: null }
+          : {}),
       },
     });
     return { project, ticket: merged };

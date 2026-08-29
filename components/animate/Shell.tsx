@@ -296,6 +296,37 @@ function ShellInner({ initialRoute }: ShellProps): React.ReactElement {
        * confirmation that their card was saved. Consume the params, flash a
        * toast, route to Billing, then strip them from the URL. */
       const search = new URLSearchParams(window.location.search);
+
+      /* Google Drive OAuth return (2026-08-28): the callback lands on
+       * `/animate?drive=connected#<hash>` or `?drive=error&reason=…#<hash>`.
+       * Toast, strip the query, and fall through so the hash (usually
+       * `#r=create&p=…&s=5`) still applies and the DriveLinkCard refetches. */
+      const drive = search.get('drive');
+      if (drive) {
+        if (drive === 'connected') {
+          pushToast('Google Drive linked', { kind: 'success' });
+        } else {
+          const reason = search.get('reason') || 'unknown';
+          const why =
+            reason === 'denied'
+              ? 'access was declined'
+              : reason === 'api_not_enabled'
+                ? 'Drive API not enabled — the owner has been notified'
+                : reason === 'revoked'
+                  ? 'Google revoked the link'
+                  : reason;
+          pushToast(`Google Drive link failed: ${why}`, { kind: 'error', duration: 9000 });
+        }
+        search.delete('drive');
+        search.delete('reason');
+        const rest = search.toString();
+        window.history.replaceState(
+          { v2: true },
+          '',
+          `${window.location.pathname}${rest ? `?${rest}` : ''}${window.location.hash}`,
+        );
+      }
+
       const added = search.get('card_added');
       const cancelled = search.get('card_cancelled');
       const legacyScreen = search.get('screen');

@@ -199,6 +199,9 @@ export interface MockProject {
   autopilotJobId: string | null;
   styleId: string | null;
   topic: string | null;
+  driveFileUrl?: string | null;
+  driveError?: string | null;
+  driveSyncedAt?: string | null;
 }
 
 export function mockProject(overrides: Partial<MockProject> = {}): MockProject {
@@ -238,6 +241,9 @@ export function mockProject(overrides: Partial<MockProject> = {}): MockProject {
     autopilotJobId: null,
     styleId: MOCK_STYLE.id,
     topic: null,
+    driveFileUrl: null,
+    driveError: null,
+    driveSyncedAt: null,
     ...overrides,
   };
 }
@@ -267,6 +273,8 @@ export function summaryRow(p: MockProject) {
     needsUser: d.needsUser,
     active: d.active,
     variationCount: p.variationJson?.count ?? 0,
+    driveFileUrl: p.driveFileUrl ?? null,
+    driveError: p.driveError ?? null,
   };
 }
 
