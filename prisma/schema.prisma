@@ -5304,6 +5304,10 @@ model VaterAccount {
   userId    String   @id
   tier      String   @default("public")
   unmetered Boolean  @default(false)
+  /// High-water mark for `#N —` video numbers (2026-08-28): numbers are
+  /// never reused even after a row is deleted (deleting #52 made the next
+  /// project #52 again). ensureVideoNumbers reads max(existing, this).
+  videoNumberMax Int @default(0)
   invitedBy String?
   notes     String?
   createdAt DateTime @default(now())

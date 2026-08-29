@@ -68,6 +68,7 @@ export async function ensureVideoNumbers<T extends NumberableProject>(
   }
 
   const updates: { id: string; sourceTitle: string }[] = [];
+  const highWater: { owner: string; max: number }[] = [];
   for (const [owner, group] of byOwner.entries()) {
     const legacy = owner === "__legacy__";
     const prefix = legacy ? "#L" : "#";
@@ -76,6 +77,17 @@ export async function ensureVideoNumbers<T extends NumberableProject>(
       const n = parseVideoNumber(p.sourceTitle, legacy);
       if (n !== null && n > max) max = n;
     }
+    // Never reuse a number: a deleted #52 must not make the next row #52
+    // again (Trey's review notes reference numbers). The per-owner
+    // high-water mark lives on VaterAccount.videoNumberMax.
+    if (!legacy) {
+      const acct = await prisma.vaterAccount.findUnique({
+        where: { userId: owner },
+        select: { videoNumberMax: true },
+      });
+      if (acct && acct.videoNumberMax > max) max = acct.videoNumberMax;
+    }
+    const startMax = max;
     const unnumbered = group
       .filter((p) => parseVideoNumber(p.sourceTitle, legacy) === null)
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
@@ -85,17 +97,27 @@ export async function ensureVideoNumbers<T extends NumberableProject>(
       p.sourceTitle = titled;
       updates.push({ id: p.id, sourceTitle: titled });
     }
+    if (!legacy && max > startMax) highWater.push({ owner, max });
   }
 
   if (updates.length > 0) {
-    await prisma.$transaction(
-      updates.map((u) =>
+    await prisma.$transaction([
+      ...updates.map((u) =>
         prisma.youTubeProject.update({
           where: { id: u.id },
           data: { sourceTitle: u.sourceTitle },
         }),
       ),
-    );
+      // Advance each owner's high-water mark so a later delete can never
+      // hand the number out again.
+      ...highWater.map((h) =>
+        prisma.vaterAccount.upsert({
+          where: { userId: h.owner },
+          create: { userId: h.owner, videoNumberMax: h.max },
+          update: { videoNumberMax: h.max },
+        }),
+      ),
+    ]);
   }
   return projects;
 }
