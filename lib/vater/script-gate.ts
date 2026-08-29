@@ -32,6 +32,7 @@ import {
  * render feature. The DGX must never see these keys:
  *   engine / concierge — Fable 5 Concierge ticket (lib/vater/concierge.ts)
  *   postedToYoutube / postedToYoutubeAt — Library "posted" mark
+ *   scriptWriter — on-site Claude writer billing (lib/vater/script-writer.ts)
  */
 function stripServerOwnedFeatures(bag: object): Record<string, unknown> {
   const {
@@ -39,12 +40,14 @@ function stripServerOwnedFeatures(bag: object): Record<string, unknown> {
     concierge: _concierge,
     postedToYoutube: _posted,
     postedToYoutubeAt: _postedAt,
+    scriptWriter: _scriptWriter,
     ...features
   } = bag as Record<string, unknown>;
   void _engine;
   void _concierge;
   void _posted;
   void _postedAt;
+  void _scriptWriter;
   return features;
 }
 

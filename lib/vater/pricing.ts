@@ -64,9 +64,10 @@ export const ANIMATION_PRICES: Record<AnimationQuality, AnimationPrice> = {
 
 /** Flat per-action prices, in cents. */
 export const FLAT_ACTION_PRICES = {
-  // Script writer moved to Claude Sonnet 5 on 2026-08-29 (was a Moonshot v1
-  // alias). Measured $0.04–0.05 per 450-word generation, more on long scripts
-  // plus up to two fact-check rewrites — 25¢ holds the standing 4–6x margin.
+  // On-site Claude writer (2026-08-29): billed as actual tokens + 30% via
+  // recordUsage({ overrideCostCents }). This list price is ONLY the leftover
+  // fallback for a DGX script job that still lands through project-sync —
+  // the Create Video Writing step no longer uses it.
   script: { priceCents: 25, unit: "/generation" },
   voiceover: { priceCents: 20, unit: "/minute" },
   scene: { priceCents: 25, unit: "/scene image" },

@@ -103,9 +103,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     // only by the concierge lib/routes. A customer PATCH must never flip the
     // engine or rewrite a ticket — including `null`, which would delete it.
     const settingsPatch = body.settings as Record<string, unknown>;
-    if ("engine" in settingsPatch || "concierge" in settingsPatch) {
+    if ("engine" in settingsPatch || "concierge" in settingsPatch || "scriptWriter" in settingsPatch) {
       return NextResponse.json(
-        { error: "settings.engine and settings.concierge are server-owned" },
+        { error: "settings.engine, settings.concierge and settings.scriptWriter are server-owned" },
         { status: 400 },
       );
     }

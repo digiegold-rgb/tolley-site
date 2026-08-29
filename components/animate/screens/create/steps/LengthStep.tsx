@@ -1,9 +1,9 @@
 'use client';
 
 /* Step 3 — Length. The slider from StylePickerModal (`target-minutes`),
- * 0 = match the source. Confirm POSTs from-transcript WITH projectId so the
- * row created on step 2 is the one that gets scripted — no second row. The
- * script write is metered at the script price; the button says so.
+ * 0 = match the source. Confirm SAVES length on the row and lands on the
+ * Writing editor — it does not kick the DGX or charge. Generate is the
+ * paid click on step 4.
  */
 
 import * as React from 'react';
@@ -11,7 +11,6 @@ import { JELLY_TOKENS } from '../../../tokens';
 import { useTheme } from '../../../theme-context';
 import { VBtn } from '../../../primitives';
 import { WORDS_PER_MINUTE, wordCountForDuration } from '@/lib/vater/youtube-types';
-import { FLAT_ACTION_PRICES, formatPrice } from '@/lib/vater/pricing';
 import { BillingBlockModal, BillingBlockedError, type BillingBlockReason, type BillingBlockContext } from '../../editor/BillingBlock';
 import { useCreateFlow } from '../create-context';
 import { createApi, errorMessage } from '../create-api';
@@ -20,7 +19,7 @@ import { StepCard, Lede, FieldLabel, ErrorNote, StepActions, DoneSummary, wordsI
 export function LengthStep(): React.ReactElement {
   const { t } = useTheme();
   const flow = useCreateFlow();
-  const { project, derived, readOnly, styleId } = flow;
+  const { project, derived, readOnly } = flow;
 
   const sourceWords = wordsIn(project?.transcript);
   const [minutes, setMinutes] = React.useState(0);
@@ -41,7 +40,7 @@ export function LengthStep(): React.ReactElement {
     const td = project.targetDuration;
     return (
       <DoneSummary onContinue={() => flow.goTo(derived.step)} continueLabel={`Continue to step ${derived.step} →`} testId="length-done">
-        Length set to {td ? `${td} min · ~${wordCountForDuration(td).toLocaleString()} words` : 'match the source'}. To change it, rewrite the script on step 5.
+        Length set to {td ? `${td} min · ~${wordCountForDuration(td).toLocaleString()} words` : 'match the source'}. To change it, rewrite the script on the Writing step.
       </DoneSummary>
     );
   }
@@ -55,12 +54,11 @@ export function LengthStep(): React.ReactElement {
     setBusy(true);
     setError(null);
     try {
-      const row = await createApi.fromTranscript({
-        transcript: project.transcript ?? '',
-        sourceUrl: project.sourceUrl,
-        targetDuration: minutes,
-        projectId: project.id,
-        styleId: project.styleId ?? styleId,
+      const targetDuration =
+        minutes > 0 ? minutes : Math.max(1, Math.ceil(sourceWords / WORDS_PER_MINUTE));
+      const row = await createApi.patchProject(project.id, {
+        targetDuration,
+        flowStep: 4,
       });
       flow.adopt(row);
       flow.goTo(4);
@@ -69,7 +67,7 @@ export function LengthStep(): React.ReactElement {
         setBlock(err.reason);
         setBlockCtx(err.context);
       } else {
-        setError(errorMessage(err, 'Could not start writing'));
+        setError(errorMessage(err, 'Could not save the length'));
       }
     } finally {
       setBusy(false);
@@ -79,7 +77,7 @@ export function LengthStep(): React.ReactElement {
   return (
     <>
       <StepCard testId="length-step">
-        <Lede>How long should the video be? Jelly holds the writer to this at {WORDS_PER_MINUTE} words per minute.</Lede>
+        <Lede>How long should the video be? The writer holds to this at {WORDS_PER_MINUTE} words per minute. You pick the model and see the quote on the next step — nothing is charged here.</Lede>
         <div>
           <FieldLabel right={<span data-testid="target-minutes-label">{label}</span>}>How long should the video be</FieldLabel>
           <input
@@ -104,12 +102,12 @@ export function LengthStep(): React.ReactElement {
         <StepActions
           left={
             <span style={{ fontSize: 12, color: t.textFaint }}>
-              Writing the script is {formatPrice(FLAT_ACTION_PRICES.script.priceCents)}{FLAT_ACTION_PRICES.script.unit}. You read and approve it before anything renders.
+              Next step quotes the writer from published token rates. You approve before anything renders.
             </span>
           }
         >
           <VBtn onClick={() => void confirm()} disabled={busy || !project} data-testid="length-confirm" icon="sparkle">
-            {busy ? 'Starting…' : `Write my script — ${formatPrice(FLAT_ACTION_PRICES.script.priceCents)}`}
+            {busy ? 'Saving…' : 'Continue to script →'}
           </VBtn>
         </StepActions>
       </StepCard>

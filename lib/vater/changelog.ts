@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.12';
+export const APP_VERSION = '1.13';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.13',
+    date: '2026-08-29',
+    title: 'Pick Fable, Opus or Sonnet — pay what the writer actually used',
+    items: [
+      'On the Writing step you pick Fable, Opus or Sonnet. Sonnet stays the product default; your last pick is remembered. The script is always editable, with Undo and Redo, and you can generate a new draft from the text in the box — not only from the original video.',
+      'Before you generate you see a quoted estimate from published token rates. After it lands you are billed the actual input plus output tokens plus 30% — no 5× markup and no 25¢ cap. Quoted vs billed stays on the job. Switching models is a new charge.',
+      'A small Stay close / Restructure / Rewrite control sets how far the draft may move from the transcript. Start from your own script or from a video and you land on the same editor — paste, generate, edit, iterate.',
+    ],
+  },
   {
     version: '1.12',
     date: '2026-08-29',

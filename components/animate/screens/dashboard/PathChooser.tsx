@@ -72,7 +72,7 @@ const OPTIONS: PathOption[] = [
     icon: 'web',
     title: 'Start from a video',
     body:
-      'Drop in a YouTube link. Keep its words as they are, or have them transcribed and rewritten as your own script — your host, your rules, your length.',
+      'Drop in a YouTube link. After the transcript you land on the same script editor as “I already have my script” — generate, paste your own copy, edit, iterate.',
     cta: 'Paste a link',
     next: '▼ Paste the link below',
   },

@@ -4,7 +4,7 @@
  * 2026-08-28). Replaces the 1,800-line StylePickerModal as the way a video
  * starts; the modal survives only for batch mode (Fable 5, ≤10 scripts).
  *
- *   1 Source · 2 Transcript · 3 Length · 4 Writing… · 5 Review script
+ *   1 Source · 2 Transcript · 3 Length · 4 Writing · 5 Review script
  *   6 Choose engine · 7 Producing… · 8 Done
  *
  * State model (lib/vater/create-steps.ts): the project row is the truth.
