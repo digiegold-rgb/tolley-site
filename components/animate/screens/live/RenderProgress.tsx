@@ -65,8 +65,12 @@ function useNowMs(active: boolean): number {
 
 export function RenderProgress({
   project,
+  hideLog = false,
 }: {
   project: ReviewProject;
+  /** The host renders `RenderTerminal` in place of the rolling tail
+   *  (2026-08-28) — keep the ladder + timings, drop the second log box. */
+  hideLog?: boolean;
 }): React.ReactElement {
   const { t } = useTheme();
   const details = project.stepDetails ?? null;
@@ -227,7 +231,7 @@ export function RenderProgress({
       </div>
 
       {/* Rolling log */}
-      <div>
+      {!hideLog && <div>
         <div
           style={{
             fontSize: 11,
@@ -283,7 +287,7 @@ export function RenderProgress({
             })
           )}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

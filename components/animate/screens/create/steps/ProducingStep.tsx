@@ -10,6 +10,7 @@ import * as React from 'react';
 import { useTheme } from '../../../theme-context';
 import { VBtn } from '../../../primitives';
 import { RenderProgress } from '../../live/RenderProgress';
+import { RenderTerminal } from '../../../RenderTerminal';
 import { CustomerStageRail } from '../../studio/CustomerStageRail';
 import { CustomerStageChip } from '../../studio/CustomerStageChip';
 import { ConciergeStatusCard } from '../../editor/ConciergeStatusCard';
@@ -106,9 +107,12 @@ export function ProducingStep(): React.ReactElement {
       ) : (
         <>
           <CustomerStageRail current={customerStage(project) ?? 'in_progress'} caption="Queued, being made, then ready to play in Library." />
-          <RenderProgress project={project} />
+          <RenderProgress project={project} hideLog />
         </>
       )}
+      {/* The terminal box — every lane, including Fable 5 (the site never
+          polls concierge rows, so this is the only place its lines show). */}
+      <RenderTerminal projectId={project.id} active={derived.kind === 'async'} compact={false} initialLines={project.stepDetails?.logs} />
       <NotifyOptInCard compact />
     </>
   );

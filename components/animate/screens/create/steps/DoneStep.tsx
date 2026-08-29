@@ -9,6 +9,7 @@ import { VBtn } from '../../../primitives';
 import { FilmFrame, FILM_MEDIA_STYLE } from '../../../cinema';
 import { finalVideoPlaybackUrl } from '@/lib/vater/youtube-status';
 import { DriveSyncChip } from '../../../DriveSyncChip';
+import { RenderTerminalToggle } from '../../../RenderTerminal';
 import { useCreateFlow } from '../create-context';
 import { StepCard, Lede, StepActions } from './step-ui';
 
@@ -52,6 +53,7 @@ export function DoneStep(): React.ReactElement {
           />
         </FilmFrame>
       )}
+      <RenderTerminalToggle projectId={project.id} active={!ready} compact={false} initialLines={project.stepDetails?.logs} />
       <StepActions
         left={
           <a

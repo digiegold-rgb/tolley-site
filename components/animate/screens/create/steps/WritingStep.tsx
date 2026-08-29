@@ -10,6 +10,7 @@ import { useTheme } from '../../../theme-context';
 import { VBtn } from '../../../primitives';
 import { STATUS_LABELS, type YouTubeProjectStatus } from '@/lib/vater/youtube-status';
 import { RenderProgress } from '../../live/RenderProgress';
+import { RenderTerminal } from '../../../RenderTerminal';
 import { NotifyOptInCard } from '../../../NotifyOptInCard';
 import { BillingBlockModal, BillingBlockedError, type BillingBlockReason, type BillingBlockContext } from '../../editor/BillingBlock';
 import { useCreateFlow } from '../create-context';
@@ -97,7 +98,8 @@ export function WritingStep(): React.ReactElement {
         </div>
         {error && <ErrorNote>{error}</ErrorNote>}
       </PulseCard>
-      {hasLogs && <RenderProgress project={project} />}
+      {hasLogs && <RenderProgress project={project} hideLog />}
+      <RenderTerminal projectId={project.id} active={derived.kind === 'async'} compact={false} initialLines={project.stepDetails?.logs} />
       <NotifyOptInCard />
     </>
   );

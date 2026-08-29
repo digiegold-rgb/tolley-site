@@ -22,6 +22,7 @@ import { VBtn, VCard } from '../../primitives';
 import { GlassCard, MicroLabel } from '../../cinema';
 import { NotifyOptInCard } from '../../NotifyOptInCard';
 import { DriveSyncChip } from '../../DriveSyncChip';
+import { RenderTerminal, RenderTerminalToggle } from '../../RenderTerminal';
 import { useProgressSummary, refreshProgress, type ProgressRow } from '../../ProgressBadgeProvider';
 import { CreateStepper } from '../create/CreateStepper';
 import { stepHash, stepDef, type DerivedCreateStep } from '@/lib/vater/create-steps';
@@ -128,7 +129,7 @@ export function Progress(): React.ReactElement {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {rows.map((r) => (
-                    <Row key={r.id} row={r} />
+                    <Row key={r.id} row={r} group={g.id} />
                   ))}
                 </div>
               )}
@@ -141,8 +142,12 @@ export function Progress(): React.ReactElement {
   );
 }
 
-function Row({ row }: { row: ProgressRow }): React.ReactElement {
+function Row({ row, group }: { row: ProgressRow; group: Group }): React.ReactElement {
   const { t } = useTheme();
+  // The worker-log box (Jared 2026-08-28): always open for anything in
+  // flight — auto AND concierge — collapsed behind "Log" once it needs you
+  // or is done. Polls only while the row is actually working.
+  const polling = row.active || row.kind === 'async';
   const [open, setOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
@@ -254,6 +259,8 @@ function Row({ row }: { row: ProgressRow }): React.ReactElement {
         )}
       </div>
       {err && <div style={{ fontSize: 12, color: JELLY_TOKENS.error }}>{err}</div>}
+      {group === 'active' && <RenderTerminal projectId={row.id} active={polling} compact />}
+      {(group === 'approval' || group === 'done') && <RenderTerminalToggle projectId={row.id} active={false} compact />}
       {open && (
         <CreateStepper
           current={row.step}
