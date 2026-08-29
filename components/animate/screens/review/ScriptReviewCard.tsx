@@ -44,13 +44,102 @@ export function ScriptReviewCard({
   const words = React.useMemo(() => wordsIn(draft), [draft]);
   const dirty = saved !== undefined && draft !== saved;
   const versions = project.scriptVersions ?? [];
+  const undoRef = React.useRef<string[]>([]);
+  const redoRef = React.useRef<string[]>([]);
+  const [stackTick, setStackTick] = React.useState(0);
+  const lastDraft = React.useRef(draft);
+
+  React.useEffect(() => {
+    if (draft === lastDraft.current) return;
+    undoRef.current.push(lastDraft.current);
+    if (undoRef.current.length > 40) undoRef.current.splice(0, undoRef.current.length - 40);
+    redoRef.current = [];
+    lastDraft.current = draft;
+    setStackTick((n) => n + 1);
+  }, [draft]);
+
+  const canUndo = stackTick >= 0 && (undoRef.current.length > 0 || versions.length > 1);
+  const canRedo = redoRef.current.length > 0;
+
+  const undo = (): void => {
+    if (disabled) return;
+    const prev = undoRef.current.pop();
+    if (prev !== undefined) {
+      redoRef.current.push(draft);
+      lastDraft.current = prev;
+      onDraftChange(prev);
+      setStackTick((n) => n + 1);
+      return;
+    }
+    const older = versions.length >= 2 ? versions[versions.length - 2] : versions[0];
+    if (older && older.script !== draft) {
+      redoRef.current.push(draft);
+      lastDraft.current = older.script;
+      onDraftChange(older.script);
+      setStackTick((n) => n + 1);
+    }
+  };
+
+  const redo = (): void => {
+    if (disabled) return;
+    const next = redoRef.current.pop();
+    if (next === undefined) return;
+    undoRef.current.push(draft);
+    lastDraft.current = next;
+    onDraftChange(next);
+    setStackTick((n) => n + 1);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {showStats && (
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 13 }}>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 13, alignItems: 'flex-end' }}>
           <Stat label="Words" value={words.toLocaleString()} />
           <Stat label="Estimated runtime" value={`${runtimeClock(words)} at ${WORDS_PER_MINUTE} wpm`} />
+          <span style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+            <button
+              type="button"
+              data-testid="script-undo"
+              disabled={disabled || !canUndo}
+              onClick={undo}
+              aria-label="Undo script edit"
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                padding: '4px 10px',
+                borderRadius: 6,
+                border: `1px solid ${t.border}`,
+                background: t.cardAlt,
+                color: t.text,
+                cursor: disabled || !canUndo ? 'not-allowed' : 'pointer',
+                opacity: canUndo ? 1 : 0.45,
+                fontFamily: JELLY_TOKENS.font,
+              }}
+            >
+              Undo
+            </button>
+            <button
+              type="button"
+              data-testid="script-redo"
+              disabled={disabled || !canRedo}
+              onClick={redo}
+              aria-label="Redo script edit"
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                padding: '4px 10px',
+                borderRadius: 6,
+                border: `1px solid ${t.border}`,
+                background: t.cardAlt,
+                color: t.text,
+                cursor: disabled || !canRedo ? 'not-allowed' : 'pointer',
+                opacity: canRedo ? 1 : 0.45,
+                fontFamily: JELLY_TOKENS.font,
+              }}
+            >
+              Redo
+            </button>
+          </span>
         </div>
       )}
 

@@ -2,13 +2,11 @@
 
 /* Step 5 — Review script (approval gate, FREE).
  *
- *   Approve script                 → POST approve-script → status awaiting_engine → step 6
- *   Rewrite — make it more different → MoneyConfirmModal at the LIST script
- *                                    price → POST rewrite {directive?} → scripting → step 4
- *   Reopen (expired gate)          → POST reopen → awaiting_script_approval
+ *   Approve script  → POST approve-script → awaiting_engine → step 6
+ *   Generate again  → POST write-script (actual tokens + 30%)
+ *   Reopen          → POST reopen
  *
- * The editor + version history is ScriptReviewCard (shared with the studio
- * Script Review screen). Approve sends the draft in the box.
+ * Same editor as step 4. Approve sends the draft in the box.
  */
 
 import * as React from 'react';
@@ -19,36 +17,24 @@ import { VBtn } from '../../../primitives';
 import { DriveLinkCard } from '../../../DriveLinkCard';
 import { ScriptReviewCard } from '../../review/ScriptReviewCard';
 import { ConciergeStatusCard } from '../../editor/ConciergeStatusCard';
-import { MoneyConfirmModal, useBillingMode, type MoneyConfirmRequest } from '@/components/vater/editor/MoneyConfirmModal';
 import { BillingBlockModal, BillingBlockedError, type BillingBlockReason, type BillingBlockContext } from '../../editor/BillingBlock';
-import { FLAT_ACTION_PRICES, formatPrice } from '@/lib/vater/pricing';
 import { isOverLength, lengthMessageFor } from '@/lib/vater/script-limits';
 import { readConciergeClient } from '@/lib/vater/concierge-client';
-import {
-  VARIATION_DIRECTIVES,
-  VARIATION_DIRECTIVE_LABELS,
-  type VariationDirective,
-} from '@/lib/vater/create-steps';
 import { useCreateFlow } from '../create-context';
 import { createApi, errorMessage, isExpiredError } from '../create-api';
-import { StepCard, Lede, FieldLabel, ErrorNote, InfoNote, StepActions, DoneSummary, inputStyle, wordsIn } from './step-ui';
-
-/** Our rough real cost of one Kimi script pass, cents — shown to unmetered accounts only. */
-const SCRIPT_EST_COST_CENTS = 14;
+import { ScriptWriterControls } from './ScriptWriterControls';
+import { StepCard, Lede, ErrorNote, InfoNote, StepActions, DoneSummary, wordsIn } from './step-ui';
 
 export function ReviewStep(): React.ReactElement {
   const { t } = useTheme();
   const { maxWords } = useTier();
-  const billing = useBillingMode();
   const flow = useCreateFlow();
   const { project, derived, readOnly } = flow;
 
   const [draft, setDraft] = React.useState(project?.script ?? '');
   const [saved, setSaved] = React.useState(project?.script ?? '');
-  const [busy, setBusy] = React.useState<'approve' | 'save' | 'rewrite' | 'reopen' | null>(null);
+  const [busy, setBusy] = React.useState<'approve' | 'save' | 'reopen' | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [money, setMoney] = React.useState<MoneyConfirmRequest | null>(null);
-  const [directive, setDirective] = React.useState<VariationDirective | ''>('');
   const [block, setBlock] = React.useState<BillingBlockReason | null>(null);
   const [blockCtx, setBlockCtx] = React.useState<BillingBlockContext | undefined>(undefined);
 
@@ -118,40 +104,6 @@ export function ReviewStep(): React.ReactElement {
     }
   };
 
-  const rewrite = async (): Promise<void> => {
-    setBusy('rewrite');
-    setError(null);
-    try {
-      const row = await createApi.rewrite(project.id, directive || undefined);
-      flow.adopt(row);
-      flow.goTo(4);
-    } catch (err) {
-      handleErr(err, 'Could not start the rewrite');
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const askRewrite = (): void => {
-    const emphasis = directive ? VARIATION_DIRECTIVE_LABELS[directive].toLowerCase() : 'a surprise angle';
-    setMoney({
-      title: 'Rewrite — make it more different',
-      lines: [
-        `Jelly writes a NEW script from the same transcript with ${emphasis}: a different hook, different examples and a different order. Facts, claims and your rules stay the same.`,
-        'The current draft is kept in History. You review the new one before anything renders.',
-        rewriteCount > 0 ? `This will be rewrite #${rewriteCount + 1}.` : 'This is rewrite #1.',
-      ],
-      unitCents: FLAT_ACTION_PRICES.script.priceCents,
-      unitLabel: 'script',
-      count: 1,
-      estCostCents: SCRIPT_EST_COST_CENTS,
-      onConfirm: () => {
-        setMoney(null);
-        void rewrite();
-      },
-    });
-  };
-
   const reopen = async (): Promise<void> => {
     setBusy('reopen');
     setError(null);
@@ -205,7 +157,7 @@ export function ReviewStep(): React.ReactElement {
       )}
       <StepCard testId="review-step">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <Lede>Read it, edit it, then approve — free. Or ask for a rewrite that is genuinely different.</Lede>
+          <Lede>Read it, edit it, then approve — free. Generate again from the video or from the text in the box — each run is a new charge.</Lede>
           {rewriteCount > 0 && (
             <span
               data-testid="rewrite-chip"
@@ -225,6 +177,16 @@ export function ReviewStep(): React.ReactElement {
             </span>
           )}
         </div>
+
+        <ScriptWriterControls
+          project={project}
+          draft={draft}
+          disabled={busy !== null}
+          onGenerated={(row) => {
+            setDraft(row.script ?? '');
+            setSaved(row.script ?? '');
+          }}
+        />
 
         <ScriptReviewCard project={project} draft={draft} saved={saved} onDraftChange={setDraft} disabled={busy !== null} />
 
@@ -253,33 +215,6 @@ export function ReviewStep(): React.ReactElement {
         </StepActions>
       </StepCard>
 
-      <StepCard testId="review-rewrite-card">
-        <FieldLabel right={`${formatPrice(FLAT_ACTION_PRICES.script.priceCents)} per rewrite`}>Not it? Rewrite</FieldLabel>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select
-            value={directive}
-            onChange={(e) => setDirective(e.target.value as VariationDirective | '')}
-            disabled={busy !== null}
-            data-testid="rewrite-directive"
-            aria-label="What should be different"
-            style={{ ...inputStyle(t), width: 'auto', minWidth: 220 }}
-          >
-            <option value="">Surprise me</option>
-            {VARIATION_DIRECTIVES.map((d) => (
-              <option key={d} value={d}>
-                {VARIATION_DIRECTIVE_LABELS[d]}
-              </option>
-            ))}
-          </select>
-          <VBtn variant="outlined" onClick={askRewrite} disabled={busy !== null} data-testid="review-rewrite" icon="sparkle">
-            {busy === 'rewrite' ? 'Starting…' : 'Rewrite — make it more different'}
-          </VBtn>
-        </div>
-        <div style={{ fontSize: 12, color: t.textFaint, lineHeight: 1.5 }}>
-          A new script from the same source — different hook, examples and order, same facts and rules. Never a copy. The current draft stays in History.
-        </div>
-      </StepCard>
-
       <DriveLinkCard />
 
       {rewriteCount === 0 && !dirty && (
@@ -288,7 +223,6 @@ export function ReviewStep(): React.ReactElement {
         </InfoNote>
       )}
 
-      <MoneyConfirmModal request={money} billing={billing} onClose={() => setMoney(null)} />
       <BillingBlockModal reason={block} context={blockCtx} projectId={project.id} onClose={() => setBlock(null)} />
     </>
   );

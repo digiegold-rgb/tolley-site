@@ -3,9 +3,9 @@
  * mocked by page.route so it runs without the DGX and spends nothing.
  *
  *   1 Source → 2 Transcript (auto-scroll) → 3 Length (slider) → Confirm →
- *   4 Writing (pulse) → mocked poll → 5 Review (toast) → Approve → 6 Engine →
- *   confirm modal → 7 Producing (RenderProgress) → mocked poll → 8 Done
- *   (Library link) → Back clamps to a read-only step 7.
+ *   4 Writing (model picker + quote) → generate → 5 Review → Approve →
+ *   6 Engine → confirm modal → 7 Producing → mocked poll → 8 Done
+ *   (Library link) → Back clamps to a read-only earlier step.
  *
  * ── HOW TO RUN (isolated copy, per memory doctrine) ────────────────────────
  *   rsync -a --exclude node_modules --exclude .next ~/tolley-site/ /tmp/e2e-create/
@@ -77,6 +77,54 @@ function installMockApi(page: Page, state: { project: MockProject | null; finish
         updatedAt: new Date().toISOString(),
       };
       return route.fulfill(json({ project: state.project }, 201));
+    }
+
+    const writeScript = path.match(/^\/api\/vater\/youtube\/([^/]+)\/write-script$/);
+    if (writeScript && writeScript[1] === PROJECT_ID && method === "POST" && state.project) {
+      const b = body();
+      if (b.dryRun === true) {
+        return route.fulfill(json({
+          dryRun: true,
+          quote: { model: b.model ?? "sonnet", billedCents: 12, providerCostCents: 9, inputTokens: 800, outputTokens: 400, markup: 1.3, apiId: "claude-sonnet-5" },
+        }));
+      }
+      const chargeN = Array.isArray((state.project.scriptMeta as { charges?: unknown[] } | null)?.charges)
+        ? ((state.project.scriptMeta as { charges: unknown[] }).charges.length + 1)
+        : 1;
+      const script = String(b.source === "edited" && b.editedScript ? b.editedScript : MOCK_SCRIPT);
+      const charge = {
+        at: new Date().toISOString(),
+        model: b.model ?? "sonnet",
+        apiId: "claude-sonnet-5",
+        source: b.source ?? "transcript",
+        fidelity: b.fidelity ?? "balanced",
+        quotedCents: 12,
+        billedCents: 14,
+        providerCostCents: 11,
+        inputTokens: 900,
+        outputTokens: 420,
+        markup: 1.3,
+        usageId: `usage_${chargeN}`,
+      };
+      state.project = {
+        ...state.project,
+        status: "awaiting_script_approval",
+        script,
+        scriptVersions: [
+          ...(state.project.scriptVersions ?? []),
+          { ts: new Date().toISOString(), source: "generated", script },
+        ],
+        scriptMeta: { source: "claude", writer: charge, charges: [charge] },
+        approvalExpiresAt: plus7d(),
+        flowStep: 5,
+        updatedAt: new Date().toISOString(),
+      };
+      return route.fulfill(json({
+        project: state.project,
+        quote: { model: charge.model, billedCents: charge.quotedCents, providerCostCents: 9, inputTokens: 800, outputTokens: 400, markup: 1.3, apiId: charge.apiId },
+        billed: { model: charge.model, billedCents: charge.billedCents, providerCostCents: charge.providerCostCents, inputTokens: charge.inputTokens, outputTokens: charge.outputTokens, markup: 1.3, apiId: charge.apiId },
+        charge,
+      }, 201));
     }
 
     const m = path.match(/^\/api\/vater\/youtube\/([^/]+)(?:\/([^/]+))?$/);
@@ -219,19 +267,25 @@ test.describe("create flow (mocked API)", () => {
     await expect(page.getByTestId("target-minutes-label")).toContainText(/12 min · ~1,800 words/);
     await page.getByTestId("length-confirm").click();
 
-    // 4: pulse.
+    // 4: on-site writer — picker, quote, generate. Not a DGX spinner.
     await expect(screen).toHaveAttribute("data-step", "4");
-    await expect(page.getByTestId("writing-pulse")).toBeVisible();
-    await expect(page.getByTestId("create-step-4")).toHaveAttribute("data-state", "pulsing");
-    await expect(page.getByTestId("writing-leave-note")).toContainText("Progress tab");
+    await expect(page.getByTestId("writing-step")).toBeVisible();
+    await expect(page.getByTestId("script-writer")).toBeVisible();
+    await expect(page.getByTestId("script-model-sonnet")).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByTestId("script-quote-transcript")).toContainText(/From transcript/);
     expect(state.project?.targetDuration).toBe(12);
+    expect(state.project?.flowStep).toBe(4);
 
-    // Mocked poll flips it → 5, hash replaced, toast from the summary diff.
-    await expect(screen).toHaveAttribute("data-step", "5", { timeout: 40_000 });
+    await page.getByTestId("script-model-opus").click();
+    await expect(page.getByTestId("script-model-opus")).toHaveAttribute("aria-checked", "true");
+    await page.getByTestId("script-generate-transcript").click();
+
+    // Generate parks at Review with quoted vs billed on the job.
+    await expect(screen).toHaveAttribute("data-step", "5", { timeout: 20_000 });
     await expect(page.getByTestId("review-step")).toBeVisible();
+    await expect(page.getByTestId("script-billed")).toContainText(/quoted \$0\.12 → billed \$0\.14/);
     await expect(page.getByTestId("create-step-5")).toHaveAttribute("data-state", "needs-you");
     await expect(page).toHaveURL(/#r=create&s=5&p=proj_flow_e2e$/);
-    await expect(page.getByTestId("toast").filter({ hasText: "ready to review" })).toBeVisible({ timeout: 40_000 });
     await expect(page.getByTestId("nav-progress")).toHaveAttribute("data-badge", "1");
 
     // 5 → 6: Approve is free (no confirm modal), lands on the engine step.
@@ -281,45 +335,33 @@ test.describe("create flow (mocked API)", () => {
     await expect(screen).toHaveAttribute("data-step", "8");
   });
 
-  test("own script skips to Review; Rewrite confirms at the script price", async ({ page }) => {
+  test("own script lands on the same Writing editor; generate-from-edited is a second charge", async ({ page }) => {
     await page.context().addCookies(user!.cookies);
     const state: { project: MockProject | null } = { project: null };
     await installMockApi(page, state);
-    await page.route(/\/api\/vater\/youtube\/[^/]+\/rewrite$/, async (route) => {
-      state.project = {
-        ...state.project!,
-        status: "scripting",
-        scriptApprovedAt: null,
-        approvalExpiresAt: null,
-        flowStep: 4,
-        autopilotJobId: "job_script_2",
-        variationJson: { count: 1, seed: 7, directive: "hook_style", requestedAt: new Date().toISOString() },
-        updatedAt: new Date().toISOString(),
-      };
-      await route.fulfill(json({ project: state.project }, 201));
-    });
 
     await landOnStudio(page, "#r=create");
     await page.getByTestId("path-own-script").click();
     await page.getByTestId("own-script-textarea").fill(MOCK_SCRIPT);
     await page.getByTestId("source-use-script").click();
     const screen = page.getByTestId("create-screen");
-    await expect(screen).toHaveAttribute("data-step", "5");
-    expect(state.project?.script).toBe(MOCK_SCRIPT);
-    expect(state.project?.flowStep).toBe(5);
-
-    // Rewrite → MoneyConfirmModal at the LIST script price, then step 4.
-    await page.getByTestId("rewrite-directive").selectOption("hook_style");
-    await page.getByTestId("review-rewrite").click();
-    const dialog = page.getByRole("dialog", { name: /Rewrite — make it more different/ });
-    await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText("$0.05");
-    await dialog.getByRole("button", { name: /Confirm/ }).click();
     await expect(screen).toHaveAttribute("data-step", "4");
-    await expect(page.getByTestId("writing-pulse")).toBeVisible();
+    expect(state.project?.script).toBe(MOCK_SCRIPT);
+    expect(state.project?.flowStep).toBe(4);
+    await expect(page.getByTestId("script-writer")).toBeVisible();
+    await expect(page.getByTestId("writing-script")).toHaveValue(MOCK_SCRIPT);
 
-    // Poll brings the rewrite back; the chip counts it.
-    await expect(screen).toHaveAttribute("data-step", "5", { timeout: 40_000 });
-    await expect(page.getByTestId("rewrite-chip")).toContainText("Rewrite #1");
+    await page.getByTestId("writing-script").fill(`${MOCK_SCRIPT} An injected line Trey typed.`);
+    await page.getByTestId("script-undo").click();
+    await expect(page.getByTestId("writing-script")).toHaveValue(MOCK_SCRIPT);
+    await page.getByTestId("script-redo").click();
+    await expect(page.getByTestId("writing-script")).toHaveValue(/An injected line Trey typed/);
+
+    await page.getByTestId("script-fidelity").selectOption("faithful");
+    await page.getByTestId("script-model-fable").click();
+    await page.getByTestId("script-generate-edited").click();
+    await expect(screen).toHaveAttribute("data-step", "5", { timeout: 20_000 });
+    await expect(page.getByTestId("script-billed")).toContainText(/billed \$0\.14/);
+    expect(state.project?.scriptMeta && (state.project.scriptMeta as { writer?: { billedCents?: number } }).writer?.billedCents).toBe(14);
   });
 });

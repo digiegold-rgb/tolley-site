@@ -57,8 +57,8 @@ export const CREATE_STEPS: readonly CreateStepDef[] = [
   { n: 1, id: "source", label: "Source", hint: "YouTube link, your script, or a topic" },
   { n: 2, id: "transcript", label: "Transcript", hint: "Pulled from the video" },
   { n: 3, id: "length", label: "Length", hint: "Minutes and word count" },
-  { n: 4, id: "writing", label: "Writing", hint: "Your personalized script" },
-  { n: 5, id: "review", label: "Review script", hint: "Approve or rewrite" },
+  { n: 4, id: "writing", label: "Writing", hint: "Pick a model, then write or edit" },
+  { n: 5, id: "review", label: "Review script", hint: "Approve, edit, or generate again" },
   { n: 6, id: "engine", label: "Choose engine", hint: "Jelly or Fable — the paid step" },
   { n: 7, id: "producing", label: "Producing", hint: "Voice, scenes, video" },
   { n: 8, id: "done", label: "Done", hint: "In your Library" },
@@ -185,13 +185,21 @@ export function deriveCreateStep(
   if (STEP4_STATUSES.has(status)) return make(4, "async");
   if (STEP2_STATUSES.has(status)) {
     if (status === "transcribed" || p.transcript) {
+      // Length confirmed → the on-site writer (step 4), not a DGX spinner.
+      if (flow >= 4) return make(4, "input");
       return flow >= 3 ? make(3, "input") : make(2, "input");
     }
     return make(2, "async");
   }
   // draft (or unknown): the user's last input step, clamped by data present.
-  if (p.script && flow >= 5) return make(5, "approval");
+  // Own-script and generate-from-video both land on the Writing editor (4)
+  // with the same controls; Review (5) is approve + iterate.
+  if (p.script && !p.scriptApprovedAt) {
+    if (flow >= 5) return make(5, "approval");
+    if (flow >= 4) return make(4, "input");
+  }
   if (!p.transcript) return make(1, "input");
+  if (flow >= 4) return make(4, "input");
   return flow >= 3 ? make(3, "input") : make(2, "input");
 }
 

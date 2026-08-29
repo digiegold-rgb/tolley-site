@@ -223,6 +223,7 @@ export interface MockProject {
   driveFileUrl?: string | null;
   driveError?: string | null;
   driveSyncedAt?: string | null;
+  scriptMeta?: Record<string, unknown> | null;
 }
 
 export function mockProject(overrides: Partial<MockProject> = {}): MockProject {
@@ -265,6 +266,7 @@ export function mockProject(overrides: Partial<MockProject> = {}): MockProject {
     driveFileUrl: null,
     driveError: null,
     driveSyncedAt: null,
+    scriptMeta: null,
     ...overrides,
   };
 }

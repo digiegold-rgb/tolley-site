@@ -13,6 +13,13 @@ import type { ReviewProject } from '../review/ScriptReviewScreen';
 import type { RenderManifest } from '../../engine/RenderConfirmModal';
 import { readBillingBlock, BillingBlockedError } from '../editor/BillingBlock';
 import type { VariationDirective, VariationJson } from '@/lib/vater/create-steps';
+import type {
+  ScriptFidelity,
+  ScriptQuote,
+  ScriptWriterCharge,
+  ScriptWriterModelId,
+  ScriptWriterSource,
+} from '@/lib/vater/script-writer-models';
 
 /** GET /api/vater/youtube/[id] returns the whole row; this is what the steps read. */
 export interface CreateProject extends ReviewProject {
@@ -31,6 +38,8 @@ export interface CreateProject extends ReviewProject {
   driveFileUrl?: string | null;
   driveError?: string | null;
   driveSyncedAt?: string | null;
+  /** On-site writer usage + billed amount (scriptMeta.writer). */
+  scriptMeta?: unknown;
 }
 
 /** GET /api/vater/drive/status. */
@@ -156,7 +165,7 @@ export const createApi = {
       post({ url, ...(targetDuration && targetDuration > 0 ? { targetDuration } : {}) }),
     )).project,
 
-  /** Step 3 confirm — kicks the (metered) script write on the SAME project. */
+  /** Step 3 confirm — leftover DGX path. The Writing step uses writeScript. */
   fromTranscript: async (body: {
     transcript: string;
     sourceUrl?: string | null;
@@ -174,6 +183,19 @@ export const createApi = {
         ...(body.styleId ? { styleId: body.styleId } : {}),
       }),
     )).project,
+
+  writeScript: async (
+    id: string,
+    body: {
+      model: ScriptWriterModelId;
+      fidelity: ScriptFidelity;
+      source: ScriptWriterSource;
+      editedScript?: string;
+      dryRun?: boolean;
+      requestId?: string;
+    },
+  ): Promise<{ project?: CreateProject; quote: ScriptQuote; billed?: ScriptQuote; charge?: ScriptWriterCharge }> =>
+    request(`/api/vater/youtube/${id}/write-script`, post(body)),
 
   /** FREE. status → awaiting_engine. */
   approveScript: async (id: string, script?: string): Promise<CreateProject> =>

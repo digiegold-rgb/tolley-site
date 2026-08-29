@@ -85,10 +85,10 @@ export function SourceStep(): React.ReactElement {
       const saved = await createApi.patchProject(created.id, {
         script: trimmed,
         sourceTitle: trimmed.slice(0, 80),
-        flowStep: 5,
+        flowStep: 4,
       });
       flow.adopt(saved);
-      flow.goTo(5);
+      flow.goTo(4);
     } catch (err) {
       setError(errorMessage(err, 'Could not start the project'));
     } finally {
@@ -202,7 +202,7 @@ export function SourceStep(): React.ReactElement {
               disabled={busy}
               data-testid="own-script-textarea"
               rows={10}
-              placeholder="Paste your script here. Your words are read verbatim — you still review and approve before anything renders."
+              placeholder="Paste your script here. You land on the same editor as generate-from-video — edit, generate a new draft, or approve as-is."
               style={{
                 ...inputStyle(t, { minHeight: 200, resize: 'vertical', lineHeight: 1.55, fontSize: 15, padding: 16 }),
                 border: `2px solid ${JELLY_TOKENS.brandOutline}`,
