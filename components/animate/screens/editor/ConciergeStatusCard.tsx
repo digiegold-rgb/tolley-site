@@ -168,9 +168,21 @@ export function ConciergeStatusCard({
         <MicroLabel tone="violet" as="span" style={{ fontFamily: JELLY_TOKENS.fontMono, letterSpacing: '0.14em' }}>
           {ticket.code}
         </MicroLabel>
-        <span style={{ marginLeft: 'auto', fontSize: 11.5, color: t.textFaint, fontFamily: JELLY_TOKENS.fontMono }}>
+        <span
+          style={{ marginLeft: 'auto', fontSize: 11.5, color: t.textFaint, fontFamily: JELLY_TOKENS.fontMono }}
+          /* NOT "est." — this is `quickEstimateUsd`, which rounds UP to whole minutes and uses
+             the worst observed stills rate, so it is the credit HOLD, not the expected cost.
+             The engine card you picked from shows the expected cost and reads "typically $X".
+             Labelling both "est." made a 342-word script look like it had two prices
+             (Jared 2026-08-29). The receipt bills actual, which lands at or below this. */
+          title={
+            ticket.estimateUsd > 0
+              ? `$${ticket.estimateUsd.toFixed(2)} is held against your balance while this renders — ${Math.max(1, ticket.estMinutes)} whole minutes at the top of our measured rate. The receipt bills what it actually cost, which is usually less.`
+              : undefined
+          }
+        >
           {ticket.words.toLocaleString()} words · ~{Math.max(1, ticket.estMinutes)} min
-          {ticket.estimateUsd > 0 ? ` · est. $${ticket.estimateUsd.toFixed(2)}` : ''}
+          {ticket.estimateUsd > 0 ? ` · reserves $${ticket.estimateUsd.toFixed(2)}` : ''}
         </span>
       </div>
 

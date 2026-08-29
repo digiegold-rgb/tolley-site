@@ -22,9 +22,14 @@ export type { ConciergeEngine };
 export interface EnginePickerProps {
   value: ConciergeEngine;
   onChange: (engine: ConciergeEngine) => void;
-  /** Quote for the Auto card — "est. $X.XX". null → "est. —", undefined → hidden. */
+  /** Quote for the Auto card — "typically $X.XX". null → "typically —", undefined → hidden.
+   *  This is the EXPECTED cost (planner numbers when the DGX answers, fractional minutes
+   *  otherwise). The concierge ticket shows a different, higher number — the whole-minute
+   *  credit RESERVE (`quickEstimateUsd`). Both used to read "est. $X" with nothing telling
+   *  them apart, which read as a pricing bug (Jared 2026-08-29: three tickets all quoted
+   *  $2.70 while the engine card said $1.xx). Keep the two words distinct. */
   estimateUsd?: number | null;
-  /** True while the quote is loading → "est. …". */
+  /** True while the quote is loading → "typically …". */
   estimateLoading?: boolean;
   disabled?: boolean;
   /** Disable one card with a reason (e.g. Auto with >1 script). */
@@ -57,10 +62,10 @@ export function EnginePicker({
     estimateUsd === undefined
       ? null
       : estimateLoading
-        ? 'est. …'
+        ? 'typically …'
         : estimateUsd === null
-          ? 'est. —'
-          : `est. $${estimateUsd.toFixed(2)}`;
+          ? 'typically —'
+          : `typically $${estimateUsd.toFixed(2)}`;
 
   const cards: Array<{
     key: ConciergeEngine;

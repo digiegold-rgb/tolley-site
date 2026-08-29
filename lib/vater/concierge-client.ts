@@ -323,7 +323,9 @@ export function conciergeHeadline(stage: ConciergeStage): string {
 
 export const CONCIERGE_SUBCOPY =
   "Typical turnaround is a few hours, up to ~24h while we're in beta. " +
-  "No fake progress bars — the chips move when a real stage does.";
+  "No fake progress bars — the chips move when a real stage does. " +
+  "The amount above is reserved, not charged: your final price lands between the " +
+  "estimate you saw when you picked the engine and this reserve — you're billed the actual cost.";
 
 /** "What happens next" — four lines under the chips. */
 export const CONCIERGE_NEXT_STEPS: readonly string[] = [

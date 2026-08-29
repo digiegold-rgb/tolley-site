@@ -196,14 +196,23 @@ export function RenderTerminal({ projectId, active, compact = true, initialLines
 
   const gateLabel = conciergeGateLabel(data?.gate ?? null, data?.status ?? null);
   const phase = gateLabel ?? phaseLabel(data?.phase ?? null, data?.status ?? null);
-  const pct = typeof data?.progress === 'number' ? Math.max(0, Math.min(100, Math.round(data.progress))) : null;
-  const terminal = data?.status === 'done' || data?.status === 'failed';
-  const live = active && !terminal;
+  const rawPct = typeof data?.progress === 'number' ? Math.max(0, Math.min(100, Math.round(data.progress))) : null;
+  const terminalStatus = data?.status === 'done' || data?.status === 'failed';
   // Concierge: "done" only reads green once the ticket is delivered; a passed
   // audit is green too (delivering), a pending/failed audit stays amber.
   const gateAudit = data?.gate?.lane === 'concierge' ? data.gate.audit : null;
   const gateDelivered = data?.gate?.lane === 'concierge' && data.gate.stage === 'delivered';
   const gateHeld = !!gateLabel && !gateDelivered && !(gateAudit?.passed ?? false);
+  /* The RENDER job being 100 % done is not the same as the video being done: a
+   * concierge ticket still has to pass the delivery audit and, on a failure,
+   * repair + recompose. Reading `status: done` straight through showed
+   * "audit FAILED r1 24/30 — repairing · 100%" with a finished, quiet bar
+   * (Jared 2026-08-29). While the gate holds, this row is still working — hide
+   * the completed percentage and keep it live. `gateDelivered` (or a passed
+   * audit on its way to deliver) reads terminal again. */
+  const pct = gateHeld ? null : rawPct;
+  const terminal = terminalStatus && !gateHeld;
+  const live = active && !terminal;
   const rightLabel = gateLabel
     ? gateDelivered
       ? 'delivered'
