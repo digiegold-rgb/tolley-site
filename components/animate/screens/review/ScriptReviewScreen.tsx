@@ -102,6 +102,8 @@ export interface ReviewProject {
   /** Optional feature bag (jelly-feature-contract 2026-08-16). Read it with
    *  readFeatures() from lib/vater/project-features — never raw. */
   settingsJson?: unknown;
+  /** On-site writer usage: `writer` is the last charge, `charges` the history. */
+  scriptMeta?: unknown;
 }
 
 /** One entry of `stepDetails.phaseTimings` — when a DGX phase ran. */

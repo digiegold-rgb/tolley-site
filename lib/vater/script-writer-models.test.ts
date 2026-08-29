@@ -67,6 +67,13 @@ test("token estimate is 1.3 × words; empty source is 0", () => {
   assert.equal(expectedOutputTokens(450), Math.ceil(450 * 1.3));
 });
 
+test("switching models is a new quote — never reuse the last billed amount", () => {
+  const first = quoteScriptUsage("sonnet", 50_000, 10_000);
+  const second = quoteScriptUsage("fable", 50_000, 10_000);
+  assert.ok(second.billedCents > first.billedCents);
+  assert.notEqual(first.billedCents, second.billedCents);
+});
+
 test("persisted charge round-trips quoted vs billed", () => {
   const charge = parseScriptWriterCharge({
     at: "2026-08-29T00:00:00.000Z",
