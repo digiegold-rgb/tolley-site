@@ -35,7 +35,17 @@ export type YouTubeProjectStatus =
   // the editor polls GET /api/vater/youtube/[id], never /poll.
   | "concierge_queued"
   | "concierge_in_progress"
-  | "concierge_needs_info";
+  | "concierge_needs_info"
+  // Stepped create flow (2026-08-28). `awaiting_engine` = script approved
+  // (free) and the project is parked on step 6 until the customer picks
+  // Jelly/Fable — the ONLY money click. `expired` = an approval gate
+  // (step 5/6) sat untouched for 7 days; lazily flipped on read by
+  // lib/vater/approval-expiry.ts, reopened via POST [id]/reopen.
+  | "awaiting_engine"
+  | "expired"
+  // Editor write in progress (scene regen / overlay / compose). Was used at
+  // runtime for months without being in the union — see customerStage().
+  | "editing";
 
 export const STATUS_LABELS: Record<YouTubeProjectStatus, string> = {
   draft: "Draft",
@@ -58,6 +68,9 @@ export const STATUS_LABELS: Record<YouTubeProjectStatus, string> = {
   concierge_queued: "Fable 5 — in queue",
   concierge_in_progress: "Fable 5 — in the studio",
   concierge_needs_info: "Fable 5 — needs your input",
+  awaiting_engine: "Choose engine",
+  expired: "Expired — reopen to continue",
+  editing: "Finishing edit…",
 };
 
 export const STATUS_COLORS: Record<YouTubeProjectStatus, string> = {
@@ -81,6 +94,9 @@ export const STATUS_COLORS: Record<YouTubeProjectStatus, string> = {
   concierge_queued: "text-violet-400 bg-violet-400/10",
   concierge_in_progress: "text-violet-400 bg-violet-400/10 animate-pulse",
   concierge_needs_info: "text-amber-400 bg-amber-400/10",
+  awaiting_engine: "text-violet-400 bg-violet-400/10",
+  expired: "text-zinc-500 bg-zinc-500/10",
+  editing: "text-yellow-400 bg-yellow-400/10 animate-pulse",
 };
 
 /**

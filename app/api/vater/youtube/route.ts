@@ -10,12 +10,18 @@ import { scopedProjectWhere } from "@/lib/vater/project-access";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
 import { extractYouTubeVideoId } from "@/lib/vater/video-id";
 import { ensureVideoNumbers } from "@/lib/vater/video-number";
+import { expireStaleApprovals } from "@/lib/vater/approval-expiry";
 
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Stepped flow (2026-08-28): flip 7-day-old approval gates before listing.
+  await expireStaleApprovals(session.user.id).catch((err) =>
+    console.error("[vater/youtube] expiry sweep failed", err),
+  );
 
   // Course segments (projectType "course-segment") are chapter renders owned
   // by a CourseLesson — they never appear in the YouTube lane. The cost pill

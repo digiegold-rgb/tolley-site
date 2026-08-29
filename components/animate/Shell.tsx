@@ -28,7 +28,9 @@ import {
   type RouteContextValue,
 } from './theme-context';
 import { TierProvider, useTier } from './tier-context';
-import { Toast, VBtn } from './primitives';
+import { VBtn } from './primitives';
+import { ToastHost, ToastViewport, useToast } from './ToastHost';
+import { ProgressBadgeProvider } from './ProgressBadgeProvider';
 import { CinemaBackdrop, GlassCard, MicroLabel } from './cinema';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
@@ -45,7 +47,8 @@ import { ShortsLibrary } from './screens/studio/ShortsLibrary';
 import { DirectScreen } from './screens/studio/DirectScreen';
 import { Voices } from './screens/studio/Voices';
 import { Feeds } from './screens/studio/Feeds';
-import { Queue } from './screens/studio/Queue';
+import { Progress } from './screens/studio/Progress';
+import { CreateScreen } from './screens/create/CreateScreen';
 import { Recent } from './screens/studio/Recent';
 import { SystemLog } from './screens/studio/SystemLog';
 import { ApiKeys } from './screens/studio/ApiKeys';
@@ -103,7 +106,14 @@ export interface ShellProps {
 export function Shell({ initialRoute }: ShellProps = {}): React.ReactElement {
   return (
     <TierProvider>
-      <ShellInner initialRoute={initialRoute} />
+      {/* Toasts + the progress poll sit ABOVE the shell so any screen (and the
+          poller itself) can raise a toast; the viewport renders inside the
+          theme below. */}
+      <ToastHost>
+        <ProgressBadgeProvider>
+          <ShellInner initialRoute={initialRoute} />
+        </ProgressBadgeProvider>
+      </ToastHost>
     </TierProvider>
   );
 }
@@ -173,12 +183,11 @@ function ShellInner({ initialRoute }: ShellProps): React.ReactElement {
   }, []);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
   const [selectedStyleId, setSelectedStyleId] = React.useState<string | null>(null);
-  // Bumps each time something outside the dashboard asks for a new video.
-  // Dashboard watches this and pops the StylePickerModal.
+  // Legacy counter — the stepped Create flow (2026-08-28) routes to `create`
+  // instead of popping a modal, so nothing bumps this any more. Kept on the
+  // context so older consumers keep compiling.
   const [newVideoRequest, setNewVideoRequest] = React.useState(0);
-  const [toast, setToast] = React.useState<
-    { message: string; kind: 'success' | 'error' | 'info' } | null
-  >(null);
+  const { toast: pushToast } = useToast();
   const [helpOpen, setHelpOpen] = React.useState(false);
   // Which Help section the drawer should scroll to on open. The FAB and the
   // dashboard tutorial card want the top; the header version pill wants the
@@ -186,9 +195,11 @@ function ShellInner({ initialRoute }: ShellProps): React.ReactElement {
   const [helpFocus, setHelpFocus] = React.useState<HelpFocus>(null);
   const { tier, loading: tierLoading } = useTier();
 
+  /** "+ Create Video" from anywhere: the stepped flow, fresh (no project). */
   const requestNewVideo = React.useCallback(() => {
-    setRouteState('dashboard');
-    setNewVideoRequest((n) => n + 1);
+    setSelectedProjectId(null);
+    setEditorStep(0);
+    setRouteState('create');
   }, []);
 
   const consumeNewVideoRequest = React.useCallback(() => {
@@ -229,8 +240,8 @@ function ShellInner({ initialRoute }: ShellProps): React.ReactElement {
   const setRoute = React.useCallback((next: string) => {
     setRouteState((prev) => {
       if (prev === next) return prev;
-      const wasEditor = prev === 'editor' || prev === 'video-editor';
-      const goingEditor = next === 'editor' || next === 'video-editor';
+      const wasEditor = prev === 'editor' || prev === 'video-editor' || prev === 'create';
+      const goingEditor = next === 'editor' || next === 'video-editor' || next === 'create';
       if (wasEditor && !goingEditor) setSelectedProjectId(null);
 
       const wasStyles = prev === 'styles-edit';
@@ -290,10 +301,7 @@ function ShellInner({ initialRoute }: ShellProps): React.ReactElement {
       const legacyScreen = search.get('screen');
       if (added || cancelled || legacyScreen) {
         if (added) {
-          setToast({
-            message: 'Card saved. You can render without trial caps now.',
-            kind: 'success',
-          });
+          pushToast('Card saved. You can render without trial caps now.', { kind: 'success' });
           // PricingScreen mounts after the query string is stripped, so hand
           // the confirmation over via sessionStorage — it reads and clears it.
           try {
@@ -302,7 +310,7 @@ function ShellInner({ initialRoute }: ShellProps): React.ReactElement {
             /* private mode — the toast still fires */
           }
         } else if (cancelled) {
-          setToast({ message: 'Card setup cancelled — nothing was charged.', kind: 'info' });
+          pushToast('Card setup cancelled — nothing was charged.', { kind: 'info' });
         }
         search.delete('card_added');
         search.delete('card_cancelled');
@@ -331,7 +339,11 @@ function ShellInner({ initialRoute }: ShellProps): React.ReactElement {
         return;
       }
       const params = new URLSearchParams(hash);
-      setRouteState(params.get('r') || home);
+      // 'queue' was renamed to 'progress' (2026-08-28); old links, saved
+      // sidebar orders and bookmarks still say queue — normalise here so the
+      // nav item highlights and the hash writer emits the new id.
+      const rawRoute = params.get('r') || home;
+      setRouteState(rawRoute === 'queue' ? 'progress' : rawRoute);
       setEditorStep(Number.parseInt(params.get('s') || '0', 10) || 0);
       setSelectedProjectId(params.get('p') || null);
       setSelectedStyleId(params.get('y') || null);
@@ -358,7 +370,8 @@ function ShellInner({ initialRoute }: ShellProps): React.ReactElement {
     }
     const params = new URLSearchParams();
     if (route !== home) params.set('r', route);
-    if ((route === 'editor' || route === 'video-editor') && editorStep > 0) {
+    // `s` = editor step, or the Create flow's step (1–8) so Back walks steps.
+    if ((route === 'editor' || route === 'video-editor' || route === 'create') && editorStep > 0) {
       params.set('s', String(editorStep));
     }
     if (selectedProjectId) params.set('p', selectedProjectId);
@@ -577,13 +590,7 @@ function ShellInner({ initialRoute }: ShellProps): React.ReactElement {
             setRoute('pricing');
           }}
         />
-        {toast && (
-          <Toast
-            message={toast.message}
-            kind={toast.kind}
-            onDismiss={() => setToast(null)}
-          />
-        )}
+        <ToastViewport />
         <ObserverSlot />
       </RouteContext.Provider>
     </ThemeProvider>
@@ -597,6 +604,8 @@ function renderScreen(
 ): React.ReactElement {
   switch (route) {
     case 'dashboard': return <DashboardScreen />;
+    // Stepped Create flow (2026-08-28) — components/animate/screens/create/*
+    case 'create': return <CreateScreen />;
     // Listing Studio (/realestateanimated) — components/animate/screens/listing/*
     case 'listing': return <ListingWizard jobId={selectedProjectId} />;
     case 'listing-library': return <ListingLibrary />;
@@ -621,8 +630,10 @@ function renderScreen(
       return <StudioPanelFrame routeId="voices" title="Voices" subtitle="F5-TTS clone management and ElevenLabs audition rail."><Voices /></StudioPanelFrame>;
     case 'feeds':
       return <StudioPanelFrame routeId="feeds" title="Feeds" subtitle="RSS feeds — auto-pipeline new items into projects."><Feeds /></StudioPanelFrame>;
+    // `queue` is the pre-2026-08-28 name — old links and saved nav layouts.
     case 'queue':
-      return <StudioPanelFrame routeId="queue" title="Queue" subtitle="Queued → in progress → done. Watch each job move."><Queue /></StudioPanelFrame>;
+    case 'progress':
+      return <StudioPanelFrame routeId="progress" title="Progress" subtitle="Every video, step by step — what needs you, what is being made, what landed."><Progress /></StudioPanelFrame>;
     case 'recent':
       return <StudioPanelFrame routeId="recent" title="Recent" subtitle="Recently-completed and failed projects."><Recent /></StudioPanelFrame>;
     case 'autopilot': return <AutopilotScreen />;

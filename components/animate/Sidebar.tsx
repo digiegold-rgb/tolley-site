@@ -21,6 +21,7 @@ import { Icon, type IconName } from './Icon';
 import { VBtn } from './primitives';
 import { MicroLabel } from './cinema';
 import { visibleRoutes, type NavRouteDef } from '@/lib/vater/nav-visibility';
+import { useProgressBadge } from './ProgressBadgeProvider';
 import {
   applyNavPrefs,
   clearNavPrefs,
@@ -79,6 +80,10 @@ interface NavItemProps {
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
   onMoveByKey: (id: string, dir: -1 | 1) => void;
+  /** Count pill right of the label (dot on the icon when collapsed). */
+  badge?: number;
+  /** Soft glow on the icon + label — "something is being made". */
+  pulse?: boolean;
 }
 
 /* Module-scope on purpose (2026-08-25): this used to be declared INSIDE
@@ -100,11 +105,14 @@ function NavItem({
   onDragStart,
   onDragEnd,
   onMoveByKey,
+  badge = 0,
+  pulse = false,
 }: NavItemProps): React.ReactElement {
   const { t } = useTheme();
   const [hovered, setHovered] = React.useState(false);
   const go = (): void => onGo(item.id);
   const showIndicator = drop?.section === section && drop.index === index && dragId !== null;
+  const showBadge = badge > 0;
   return (
     <div
       role="button"
@@ -113,6 +121,8 @@ function NavItem({
       aria-current={active ? 'page' : undefined}
       data-testid={`nav-${item.id}`}
       data-nav-row={item.id}
+      data-badge={showBadge ? badge : undefined}
+      data-pulse={pulse ? '1' : undefined}
       onClick={go}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -161,12 +171,79 @@ function NavItem({
         justifyContent: railCollapsed ? 'center' : 'flex-start',
       }}
     >
-      <Icon
-        name={item.icon as IconName}
-        size={18}
-        color={active ? JELLY_TOKENS.brandLight : t.textFaint}
-      />
-      {!railCollapsed && <span style={{ flex: 1, minWidth: 0 }}>{item.label}</span>}
+      <span
+        className={pulse ? 'jelly-pulse' : undefined}
+        style={{
+          position: 'relative',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: '50%',
+          padding: 2,
+          margin: -2,
+          flexShrink: 0,
+          // jelly-pulse sets border-color !important; give it a border to tint.
+          border: '1px solid transparent',
+        }}
+      >
+        <Icon
+          name={item.icon as IconName}
+          size={18}
+          color={active || pulse ? JELLY_TOKENS.brandLight : t.textFaint}
+        />
+        {/* Collapsed rail: the count becomes a dot on the icon. */}
+        {railCollapsed && showBadge && (
+          <span
+            aria-label={`${badge} waiting`}
+            data-testid={`nav-dot-${item.id}`}
+            style={{
+              position: 'absolute',
+              top: -2,
+              right: -2,
+              width: 9,
+              height: 9,
+              borderRadius: '50%',
+              background: JELLY_TOKENS.brandLight,
+              boxShadow: `0 0 0 2px ${t.sidebarBg}`,
+            }}
+          />
+        )}
+      </span>
+      {!railCollapsed && (
+        <span
+          style={{
+            flex: 1,
+            minWidth: 0,
+            color: pulse && !active ? t.text : undefined,
+            textShadow: pulse ? '0 0 12px var(--jb-brand-glow, rgba(143,125,255,0.55))' : undefined,
+          }}
+        >
+          {item.label}
+        </span>
+      )}
+      {!railCollapsed && showBadge && (
+        <span
+          data-testid={`nav-badge-${item.id}`}
+          aria-label={`${badge} waiting for you`}
+          style={{
+            minWidth: 18,
+            height: 18,
+            padding: '0 6px',
+            borderRadius: JELLY_TOKENS.radius.pill,
+            background: JELLY_TOKENS.gradCreate,
+            color: JELLY_TOKENS.onGradient,
+            fontSize: 11,
+            fontWeight: 700,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: JELLY_TOKENS.fontMono,
+            flexShrink: 0,
+          }}
+        >
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
       {/* ≡ grip — drag to reorder (works across STUDIO/ACCOUNT too);
           focused, ArrowUp/ArrowDown move the row. Hidden on the collapsed
           icon rail where there is nowhere to show it. */}
@@ -259,6 +336,9 @@ export function Sidebar({
   const { tier, loading, email, workspace } = useTier();
   const brand = useProduct();
   const isRealEstate = brand.product === 'realestate';
+  // One app-wide poll (ProgressBadgeProvider) — the count of steps waiting on
+  // the customer and whether anything is being made right now.
+  const progressBadge = useProgressBadge();
   // Each studio tab keeps its own menu order (nav-order.ts): the key is the
   // tab's id when there is one, the login email otherwise (pre-migration).
   const prefsKey = workspace ? `ws:${workspace.id}` : email;
@@ -277,8 +357,14 @@ export function Sidebar({
   const [prefs, setPrefs] = React.useState<NavOrderPrefs | null>(null);
   React.useEffect(() => {
     if (loading) return;
-    setPrefs(loadNavPrefs(prefsKey));
-  }, [prefsKey, loading]);
+    // Every login has a primary "My Studio" tab since the 2026-08-27
+    // workspaces migration, which moved the prefs key from the email to
+    // `ws:<id>`. A layout saved before that (email key) is still this
+    // person's own — honour it for the primary tab until they drag again.
+    const own = loadNavPrefs(prefsKey);
+    const legacy = !own && workspace?.isPrimary ? loadNavPrefs(email) : null;
+    setPrefs(own ?? legacy);
+  }, [prefsKey, loading, workspace?.isPrimary, email]);
   const { primary, secondary } = React.useMemo(
     () => applyNavPrefs(items, prefs),
     [items, prefs],
@@ -580,6 +666,8 @@ export function Sidebar({
               onDragStart={setDragId}
               onDragEnd={endDrag}
               onMoveByKey={moveByKey}
+              badge={item.id === 'progress' ? progressBadge.badge : 0}
+              pulse={item.id === 'progress' ? progressBadge.pulse : false}
             />
           ))}
           {dragId !== null && drop?.section === 'primary' && drop.index === primary.length && (
@@ -629,6 +717,8 @@ export function Sidebar({
               onDragStart={setDragId}
               onDragEnd={endDrag}
               onMoveByKey={moveByKey}
+              badge={item.id === 'progress' ? progressBadge.badge : 0}
+              pulse={item.id === 'progress' ? progressBadge.pulse : false}
             />
           ))}
           {dragId !== null && drop?.section === 'secondary' && drop.index === secondary.length && (

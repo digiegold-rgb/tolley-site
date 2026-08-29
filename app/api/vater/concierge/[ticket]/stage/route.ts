@@ -34,6 +34,7 @@ import {
 } from "@/lib/vater/concierge-operator";
 import { sendConciergeNeedsInfoEmail } from "@/lib/vater/animate-email";
 import { queueVaterEvent } from "@/lib/vater/events";
+import { notifyFlowTransition } from "@/lib/vater/flow-notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -110,6 +111,16 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     // Clear a stale DGX error when the operator moves the ticket on.
     extraData: stage !== ticket.stage && project.errorMessage ? { errorMessage: null } : undefined,
   });
+
+  // Stepped flow (2026-08-28): QA = "a person is watching it" — the one
+  // mid-render moment the customer hears about. Once per ticket (CAS).
+  if (stage === "qa" && ticket.stage !== "qa") {
+    try {
+      await notifyFlowTransition(project.id, "qa");
+    } catch (err) {
+      console.error("[concierge/stage] qa notify failed", { code: next.code, err });
+    }
+  }
 
   let emailed = false;
   if (stage === "needs_info" && note && next.email) {

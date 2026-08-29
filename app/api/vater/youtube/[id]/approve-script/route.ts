@@ -1,34 +1,36 @@
 /**
- * POST /api/vater/youtube/[id]/approve-script
+ * POST /api/vater/youtube/[id]/approve-script — step 5 → 6. FREE.
  *
- * The human gate. Nothing in the pipeline spends money on voice, images, or
- * animation until this route runs — the reference-video intake stops the DGX
- * worker at `script_ready`, the project rests in `awaiting_script_approval`,
- * and only an explicit Approve click in the Script Review screen starts the
- * render (per feedback_no_autonomous_sends.md: Jared pulls every trigger).
+ * The human gate of the stepped create flow (2026-08-28). Approving a script
+ * costs nothing and renders nothing: it persists the (possibly edited) text,
+ * stamps `scriptApprovedAt`, and parks the project at `awaiting_engine` —
+ * step 6, where the customer picks Jelly (auto) or Fable 5. That pick, POST
+ * [id]/produce, is the ONLY money click; the render kick + budget check that
+ * used to live here moved there.
  *
- * Persists the approved text + `scriptApprovedAt`, then re-runs the creation
- * worker with the text as `scriptOverride` so it skips principle extraction
- * and script generation and goes straight to audio → captions → scenes →
- * compose.
+ * The engine gate has the same 7-day clock as the script gate
+ * (approvalExpiresAt); an `expired` row must be reopened first (409).
  *
  * Body: { script?: string } — the edited script. Falls back to the script
  * already on the row when omitted (approve-as-is).
+ * → 200 {project} · 400 no script · 409 {error,status,reason?}
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { AutopilotError } from "@/lib/vater/autopilot-client";
-import { startRunCreation, ScriptGateError } from "@/lib/vater/script-gate";
 import { auth } from "@/auth";
 import { canAccessProject } from "@/lib/vater/project-access";
-import { checkBudget } from "@/lib/vater/billing/check-budget";
 import { appendScriptVersion } from "@/lib/vater/script-versions";
+import { nextApprovalExpiry } from "@/lib/vater/approval-expiry";
+
+export const runtime = "nodejs";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 interface ApproveBody {
   script?: string;
 }
+
+const APPROVABLE = new Set(["awaiting_script_approval", "scripted"]);
 
 export async function POST(req: NextRequest, ctx: Ctx) {
   const session = await auth();
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   try {
     body = (await req.json()) as ApproveBody;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    body = {};
   }
 
   const project = await prisma.youTubeProject.findUnique({ where: { id } });
@@ -53,13 +55,23 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  // Same gate as /context: the render generates scene images, so check the
-  // budget at one scene. Actual charges land in the poll route on completion.
-  const budget = await checkBudget(session.user.id, "scene");
-  if (!budget.allow) {
+  if (project.status === "expired") {
     return NextResponse.json(
-      { error: "Billing check failed", budget },
-      { status: 402 },
+      {
+        error: "This approval expired — reopen the project to continue",
+        status: project.status,
+        reason: "expired",
+      },
+      { status: 409 },
+    );
+  }
+  if (!APPROVABLE.has(project.status)) {
+    return NextResponse.json(
+      {
+        error: `Project must be awaiting script approval, currently '${project.status}'`,
+        status: project.status,
+      },
+      { status: 409 },
     );
   }
 
@@ -74,77 +86,43 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     );
   }
 
-  if (
-    project.status !== "awaiting_script_approval" &&
-    project.status !== "scripted"
-  ) {
-    return NextResponse.json(
-      {
-        error: `Project must be awaiting script approval, currently '${project.status}'`,
-        status: project.status,
-      },
-      { status: 409 },
-    );
-  }
-
   const wordCount = script.split(/\s+/).filter(Boolean).length;
+  const now = new Date();
 
-  // Stamp the approval + claim the row before calling out. `scriptApprovedAt`
-  // also tells the poll route the script is human-owned, so a late re-poll of
-  // the finished script job can never overwrite the approved text.
-  const approved = await prisma.youTubeProject.update({
-    where: { id },
+  // CAS on status so two Approve clicks (or Approve racing a rewrite) can't
+  // both stamp; `scriptApprovedAt` also tells the poll route the script is
+  // human-owned so a late re-poll of the script job never overwrites it.
+  const claimed = await prisma.youTubeProject.updateMany({
+    where: { id, status: { in: [...APPROVABLE] } },
     data: {
       script,
-      scriptVersions: appendScriptVersion(
-        project.scriptVersions,
-        "approved",
-        script,
-      ),
-      scriptApprovedAt: new Date(),
+      scriptVersions: appendScriptVersion(project.scriptVersions, "approved", script),
+      scriptApprovedAt: now,
       targetWordCount: wordCount,
       scriptMeta: {
         wordCount,
         targetWordCount: wordCount,
         source: "user-supplied",
       },
-      status: "scripted",
+      status: "awaiting_engine",
+      flowStep: 6,
+      flowStepAt: now,
+      approvalExpiresAt: nextApprovalExpiry(now),
       progress: 30,
       errorMessage: null,
     },
   });
-
-  try {
-    const jobId = await startRunCreation(approved, { scriptOverride: script });
-    const withJob = await prisma.youTubeProject.update({
-      where: { id },
-      data: { autopilotJobId: jobId },
-    });
-    console.log(
-      `[vater/approve-script] project=${id} job=${jobId} — ${wordCount} words approved, render started`,
-    );
-    return NextResponse.json({ project: withJob });
-  } catch (err) {
-    const detail =
-      err instanceof AutopilotError
-        ? `[${err.status}] ${err.body || err.message}`
-        : err instanceof Error
-          ? err.message
-          : "unknown error";
-    // The approval itself stands (the edited script is saved); only the
-    // render kickoff failed. A fixable project problem goes back to the gate
-    // so the user can correct it and click Approve again.
-    const recoverable = err instanceof ScriptGateError;
-    const failed = await prisma.youTubeProject.update({
-      where: { id },
-      data: {
-        status: recoverable ? "awaiting_script_approval" : "failed",
-        errorMessage: `render kickoff failed: ${detail}`.slice(0, 1000),
-      },
-    });
+  if (claimed.count !== 1) {
+    const fresh = await prisma.youTubeProject.findUnique({ where: { id }, select: { status: true } });
     return NextResponse.json(
-      { error: "render kickoff failed", detail, project: failed },
-      { status: recoverable ? 400 : 502 },
+      { error: "Project changed while approving — refresh and try again", status: fresh?.status ?? null },
+      { status: 409 },
     );
   }
+
+  const approved = await prisma.youTubeProject.findUniqueOrThrow({ where: { id } });
+  console.log(
+    `[vater/approve-script] project=${id} — ${wordCount} words approved (free), parked at awaiting_engine`,
+  );
+  return NextResponse.json({ project: approved });
 }

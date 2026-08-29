@@ -257,3 +257,91 @@ export async function sendConciergeDeliveredEmail(
     ].join("\n"),
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stepped create flow (2026-08-28) — the three transition emails fired by
+// lib/vater/flow-notify.ts, exactly once per transition (CAS on the
+// notified*At stamps). Each carries the deep link to the step that needs the
+// customer. Same best-effort contract as the concierge mails above.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function rewriteLine(rewriteNo: number | null | undefined): string[] {
+  return rewriteNo && rewriteNo > 0
+    ? [`This is rewrite #${rewriteNo} — written to be materially different from the draft you rejected.`, ""]
+    : [];
+}
+
+/** Step 5: the draft script is parked at the approval gate. */
+export async function sendScriptReadyEmail(
+  to: string,
+  opts: { title?: string | null; url: string; rewriteNo?: number | null; expiresAt?: Date | null },
+): Promise<void> {
+  const days = opts.expiresAt
+    ? Math.max(1, Math.round((opts.expiresAt.getTime() - Date.now()) / 86_400_000))
+    : 7;
+  await send(
+    to,
+    `Your script is ready to review — ${conciergeTitleLine(opts.title)}`,
+    [
+      "Hi,",
+      "",
+      `The script for ${conciergeTitleLine(opts.title)} is written and waiting for you.`,
+      "",
+      ...rewriteLine(opts.rewriteNo),
+      "Nothing has been voiced or rendered yet — nothing is charged until you pick an engine.",
+      "Read it, edit anything you like, then either Approve (free) or ask for a rewrite that's",
+      "more different.",
+      "",
+      `Review it here: ${opts.url}`,
+      "",
+      `This approval gate stays open for ${days} day${days === 1 ? "" : "s"}; after that the project pauses and you can`,
+      "reopen it from the Progress tab.",
+      "",
+      ...CONCIERGE_SIGNOFF,
+    ].join("\n"),
+  );
+}
+
+/** Step 8: the finished video is in the Library. */
+export async function sendVideoReadyEmail(
+  to: string,
+  opts: { title?: string | null; url: string },
+): Promise<void> {
+  await send(
+    to,
+    `Your video is ready — ${conciergeTitleLine(opts.title)}`,
+    [
+      "Hi,",
+      "",
+      `${conciergeTitleLine(opts.title)} finished rendering and is in your Library.`,
+      "",
+      `Watch it: ${opts.url}`,
+      "",
+      "From there you can publish it to YouTube, cut a Short, or re-open the editor.",
+      "",
+      ...CONCIERGE_SIGNOFF,
+    ].join("\n"),
+  );
+}
+
+/** Step 7 (Fable 5 lane): the render is in QA — a person is watching it. */
+export async function sendConciergeQaEmail(
+  to: string,
+  opts: { code?: string | null; title?: string | null; url: string },
+): Promise<void> {
+  const code = opts.code ? ` (${opts.code})` : "";
+  await send(
+    to,
+    `Fable 5 is reviewing your video${code}`,
+    [
+      "Hi,",
+      "",
+      `${conciergeTitleLine(opts.title)} is rendered and in QA — a person is watching every scene`,
+      "before it lands in your Library. You'll get one more email when it's delivered.",
+      "",
+      `Follow along: ${opts.url}`,
+      "",
+      ...CONCIERGE_SIGNOFF,
+    ].join("\n"),
+  );
+}

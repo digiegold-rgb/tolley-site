@@ -26,6 +26,16 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL,
+    // Vercel preview deployments sit behind Deployment Protection; a
+    // Protection-Bypass-for-Automation secret lets the specs through.
+    ...(process.env.PLAYWRIGHT_BYPASS_SECRET
+      ? {
+          extraHTTPHeaders: {
+            'x-vercel-protection-bypass': process.env.PLAYWRIGHT_BYPASS_SECRET,
+            'x-vercel-set-bypass-cookie': 'true',
+          },
+        }
+      : {}),
     storageState,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

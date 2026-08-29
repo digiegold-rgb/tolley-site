@@ -293,6 +293,14 @@ export type OwnerRouting = {
   ownerLane?: "vater" | "jelly";
 };
 
+/** Re-roll request carried from POST [id]/rewrite to the DGX writer. */
+export type RunCreationVariation = {
+  seed: number;
+  directive: "hook_style" | "opening_scene" | "pov" | "pacing_template" | "section_order";
+  /** The rejected draft; the writer must not reproduce it. */
+  avoidScript?: string;
+};
+
 export type RunCreationInput = OwnerRouting & {
   projectId: string;
   mode: CreationMode;
@@ -328,6 +336,14 @@ export type RunCreationInput = OwnerRouting & {
    *  spending nothing on audio/images. The render is kicked separately by
    *  /approve-script re-calling this endpoint with `scriptOverride`. */
   stopAfterScript?: boolean;
+  /** ── "Rewrite — make it more different" (2026-08-28) ─────────────────
+   *  Set by POST [id]/rewrite via startRunCreation({variation}). The DGX
+   *  seeds the writer, applies the directive and is told to differ
+   *  materially from `avoidScript` (≤60k chars). All optional; a worker that
+   *  predates the field ignores them and writes a plain draft. */
+  variationSeed?: number;
+  variationDirective?: RunCreationVariation["directive"];
+  avoidScript?: string;
   /** ── Per-tenant fairness (content-autopilot 9cbe9a6) ─────────────────
    *  `ownerTier: "owner"` is exempt from the concurrency cap; anything else
    *  is capped and over-cap jobs park as status "queued". Build these with

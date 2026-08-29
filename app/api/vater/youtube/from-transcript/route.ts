@@ -26,7 +26,11 @@
  * `_youtube_transcript_text` in vater.py, which tries the cache, then
  * youtube_transcript_api, then yt-dlp's auto-subs, and only then gives up.
  *
- * Body: { transcript, title?, sourceUrl?, targetDuration?, animUntilS?, styleId? }
+ * Body: { transcript, title?, sourceUrl?, targetDuration?, animUntilS?, styleId?, projectId? }
+ *
+ * `projectId` (stepped flow, 2026-08-28): step 3 confirms on the row steps
+ * 1–2 already created (PATCH transcript/sourceTitle/flowStep). When given and
+ * owned, that row is UPDATED instead of a second project being created.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -37,12 +41,15 @@ import { AutopilotError } from "@/lib/vater/autopilot-client";
 import { WORDS_PER_MINUTE, wordCountForDuration } from "@/lib/vater/youtube-types";
 import { resolveLockedStyle, LOCKED_STYLE_NAME } from "@/lib/vater/locked-style";
 import { isVaterStudioEmail } from "@/lib/admin-auth";
+import { canAccessProject } from "@/lib/vater/project-access";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /** Below this a "transcript" is a stray paste, not something to rewrite. */
 const MIN_WORDS = 40;
+/** Statuses a stepped-flow row may be in when step 3 confirms on it. */
+const REUSABLE_STATUSES: ReadonlySet<string> = new Set(["draft", "transcribed", "failed"]);
 const MAX_CHARS = 400_000;
 
 export async function POST(req: NextRequest) {
@@ -58,8 +65,29 @@ export async function POST(req: NextRequest) {
     targetDuration?: unknown;
     animUntilS?: unknown;
     styleId?: unknown;
+    projectId?: unknown;
   } | null;
   if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+
+  // Stepped flow: reuse the row the wizard already created (steps 1–2).
+  const reuseId = typeof body.projectId === "string" && body.projectId.trim() ? body.projectId.trim() : null;
+  let reuse: { id: string; status: string; styleId: string | null } | null = null;
+  if (reuseId) {
+    const row = await prisma.youTubeProject.findUnique({
+      where: { id: reuseId },
+      select: { id: true, userId: true, status: true, styleId: true },
+    });
+    if (!row || !canAccessProject(row.userId, session.user.id, session.user.email)) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    if (!REUSABLE_STATUSES.has(row.status)) {
+      return NextResponse.json(
+        { error: `Project is '${row.status}' — it already left the input steps`, status: row.status },
+        { status: 409 },
+      );
+    }
+    reuse = row;
+  }
 
   const transcript =
     typeof body.transcript === "string" ? body.transcript.slice(0, MAX_CHARS).trim() : "";
@@ -98,9 +126,11 @@ export async function POST(req: NextRequest) {
   // returns Trey's row for any caller, so a public customer must never end up
   // silently rendering in someone else's locked look.
   let styleId: string;
-  if (typeof body.styleId === "string" && body.styleId) {
+  const requestedStyleId =
+    typeof body.styleId === "string" && body.styleId ? body.styleId : (reuse?.styleId ?? null);
+  if (requestedStyleId) {
     const style = await prisma.youTubeStyle.findUnique({
-      where: { id: body.styleId },
+      where: { id: requestedStyleId },
       select: { id: true, userId: true, isSystem: true },
     });
     if (!style) return NextResponse.json({ error: "Style not found" }, { status: 404 });
@@ -139,30 +169,37 @@ export async function POST(req: NextRequest) {
       ? body.title.trim().slice(0, 200)
       : transcript.slice(0, 80);
 
-  const project = await prisma.youTubeProject.create({
-    data: {
-      userId: session.user.id,
-      // transcribe mode with the transcript already in hand: the pipeline's
-      // fetch + whisper stages have nothing left to do, so the writer is the
-      // first thing that runs.
-      mode: "transcribe",
-      sourceType: "manual",
-      sourceUrl: typeof body.sourceUrl === "string" ? body.sourceUrl.slice(0, 2000) : null,
-      sourceTitle: title,
-      transcript,
-      transcriptMeta: {
-        words: sourceWords,
-        via: "caption-track",
-        note: "imported free via /api/vater/script/from-url — no whisper, no transcription charge",
-      },
-      targetDuration,
-      targetWordCount,
-      styleId,
-      animUntilS,
-      status: "transcribed",
-      progress: 20,
+  const rowData = {
+    // transcribe mode with the transcript already in hand: the pipeline's
+    // fetch + whisper stages have nothing left to do, so the writer is the
+    // first thing that runs.
+    mode: "transcribe",
+    sourceType: "manual",
+    sourceUrl: typeof body.sourceUrl === "string" ? body.sourceUrl.slice(0, 2000) : null,
+    sourceTitle: title,
+    transcript,
+    transcriptMeta: {
+      words: sourceWords,
+      via: "caption-track",
+      note: "imported free via /api/vater/script/from-url — no whisper, no transcription charge",
     },
-  });
+    targetDuration,
+    targetWordCount,
+    styleId,
+    animUntilS,
+    status: "transcribed",
+    progress: 20,
+    // Stepped flow: the writer is step 4; the gate clock starts when it parks.
+    flowStep: 4,
+    flowStepAt: new Date(),
+    approvalExpiresAt: null,
+    scriptApprovedAt: null,
+    notifiedScriptReadyAt: null,
+    errorMessage: null,
+  };
+  const project = reuse
+    ? await prisma.youTubeProject.update({ where: { id: reuse.id }, data: rowData })
+    : await prisma.youTubeProject.create({ data: { userId: session.user.id, ...rowData } });
 
   // Kick the writer immediately and STOP at the script. This is the step that
   // /script-from-reference was written for and that nothing in the UI ever
@@ -194,7 +231,7 @@ export async function POST(req: NextRequest) {
     // retry from the review screen. Surface WHY rather than a bare 500.
     await prisma.youTubeProject.update({
       where: { id: project.id },
-      data: { status: "transcribed", progress: 20, errorMessage: detail },
+      data: { status: "transcribed", progress: 20, flowStep: 3, flowStepAt: new Date(), errorMessage: detail },
     });
     return NextResponse.json(
       {

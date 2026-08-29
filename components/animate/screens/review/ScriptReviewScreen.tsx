@@ -39,6 +39,7 @@ import {
   type YouTubeProjectStatus,
 } from '@/lib/vater/youtube-status';
 import { TINT_BG } from '../tint';
+import { ScriptReviewCard } from './ScriptReviewCard';
 import { ProjectLiveDetail } from '../live/ProjectLiveDetail';
 import {
   readConciergeClient,
@@ -1305,72 +1306,16 @@ function ReviewPanel({
         </div>
       )}
 
-      {(project.scriptVersions?.length ?? 0) > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, flexWrap: 'wrap' }}>
-          <span style={{ color: t.textSecondary }}>History</span>
-          <select
-            value=""
-            onChange={(e) => {
-              const idx = Number(e.target.value);
-              const entry = project.scriptVersions?.[idx];
-              if (entry) setDraft(entry.script);
-            }}
-            style={{
-              fontSize: 12,
-              padding: '4px 8px',
-              borderRadius: 6,
-              border: `1px solid ${t.border}`,
-              background: t.cardAlt,
-              color: t.text,
-              maxWidth: 320,
-            }}
-          >
-            <option value="" disabled>
-              Restore a previous version…
-            </option>
-            {project.scriptVersions!
-              .map((v, i) => ({ v, i }))
-              .reverse()
-              .map(({ v, i }) => (
-                <option key={`${v.ts}-${i}`} value={i}>
-                  v{i + 1} · {v.source} ·{' '}
-                  {new Date(v.ts).toLocaleString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}{' '}
-                  · {wordsIn(v.script)}w
-                </option>
-              ))}
-          </select>
-          <span style={{ color: t.textSecondary }}>
-            Loads into the editor — Save to keep it.
-          </span>
-        </div>
-      )}
-
-      <textarea
-        value={draft}
-        onChange={(e) => {
-          setDraft(e.target.value);
+      {/* Editor + version history — shared with the stepped Create flow's
+          Review step (ScriptReviewCard, 2026-08-28). Stats stay above. */}
+      <ScriptReviewCard
+        project={project}
+        draft={draft}
+        saved={saved}
+        showStats={false}
+        onDraftChange={(next) => {
+          setDraft(next);
           setJustSaved(false);
-        }}
-        spellCheck
-        style={{
-          width: '100%',
-          minHeight: 380,
-          resize: 'vertical',
-          fontSize: 14,
-          lineHeight: 1.75,
-          fontFamily: JELLY_TOKENS.font,
-          border: `1px solid ${dirty ? JELLY_TOKENS.brandOutline : t.border}`,
-          borderRadius: JELLY_TOKENS.radius.md,
-          background: t.card,
-          color: t.text,
-          outline: 'none',
-          boxSizing: 'border-box',
-          padding: 16,
         }}
       />
 

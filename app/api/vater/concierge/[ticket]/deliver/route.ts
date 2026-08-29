@@ -35,6 +35,7 @@ import { syncProjectFromJob } from "@/lib/vater/project-sync";
 import { getProjectDebit } from "@/lib/vater/billing/ledger";
 import { sendConciergeDeliveredEmail } from "@/lib/vater/animate-email";
 import { queueVaterEvent } from "@/lib/vater/events";
+import { notifyFlowTransition } from "@/lib/vater/flow-notify";
 import { AutopilotConfigError, AutopilotError } from "@/lib/vater/autopilot-client";
 
 export const runtime = "nodejs";
@@ -122,8 +123,21 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const { project: updated, ticket: next } = await writeConcierge(
     project.id,
     { stage: "delivered", deliveredAt: nowIso, operatorNote: note },
-    { status: "ready", by, historyNote: note ?? `delivered (${chargeLine})` },
+    {
+      status: "ready",
+      by,
+      historyNote: note ?? `delivered (${chargeLine})`,
+      // Stepped flow (2026-08-28): Done.
+      extraData: { flowStep: 8, flowStepAt: new Date(), approvalExpiresAt: null },
+    },
   );
+
+  // Push only — the delivered email below is the customer's email for this step.
+  try {
+    await notifyFlowTransition(project.id, "ready", { email: false });
+  } catch (err) {
+    console.error("[concierge/deliver] ready push failed", { code: next.code, err });
+  }
 
   // ── Customer email ──────────────────────────────────────────────────────
   let emailed = false;

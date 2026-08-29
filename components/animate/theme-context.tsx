@@ -60,11 +60,11 @@ export interface RouteContextValue {
   openProjectInEditor: (projectId: string, step?: number) => void;
   /** Convenience: open the in-v2 style editor for a specific style. */
   openStyleEditor: (styleId: string) => void;
-  /** True when the user clicked "+ Create Video" outside the dashboard.
-   *  The dashboard reads this on mount, opens the StylePickerModal, then
-   *  clears it via consumeNewVideoRequest. */
+  /** Legacy (pre 2026-08-28): bumped when "+ Create Video" was a dashboard
+   *  modal. The stepped flow routes to `create` instead; nothing bumps this. */
   newVideoRequest: number;
-  /** Sidebar / external trigger: route to dashboard and auto-open picker. */
+  /** "+ Create Video" from anywhere: opens the stepped Create flow fresh
+   *  (route `create`, no project selected). */
   requestNewVideo: () => void;
   /** Dashboard calls this once it has handled the request. */
   consumeNewVideoRequest: () => void;

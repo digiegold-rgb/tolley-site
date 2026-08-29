@@ -7,6 +7,8 @@ import {
   canAccessProject,
   checkProjectAccess,
 } from "@/lib/vater/project-access";
+import { expireProjectIfDue } from "@/lib/vater/approval-expiry";
+import { CREATE_STEP_COUNT } from "@/lib/vater/create-steps";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -25,7 +27,9 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ project });
+  // Stepped flow (2026-08-28): a 7-day-old approval gate flips to `expired`
+  // the moment it is read — no cron.
+  return NextResponse.json({ project: await expireProjectIfDue(project) });
 }
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
@@ -50,6 +54,11 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     "script",
     "sourceTitle",
     "sourceChannel",
+    // Stepped create flow (2026-08-28): steps 1–3 save their inputs here
+    // before anything is kicked. `flowStep` = last step the user reached.
+    "transcript",
+    "sourceUrl",
+    "flowStep",
     "customStylePrompt",
     // Publish stage (2026-08-08) — metadata staged in the Script Review
     // screen and sent verbatim to videos.insert on upload.
@@ -147,6 +156,31 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   if (data.targetDuration) {
     data.targetWordCount = wordCountForDuration(data.targetDuration as number);
+  }
+
+  if (data.flowStep !== undefined) {
+    const n = Number(data.flowStep);
+    if (!Number.isInteger(n) || n < 1 || n > CREATE_STEP_COUNT) {
+      return NextResponse.json(
+        { error: `flowStep must be an integer 1..${CREATE_STEP_COUNT}` },
+        { status: 400 },
+      );
+    }
+    data.flowStep = n;
+    data.flowStepAt = new Date();
+  }
+
+  if (data.transcript !== undefined) {
+    if (typeof data.transcript !== "string") {
+      return NextResponse.json({ error: "transcript must be a string" }, { status: 400 });
+    }
+    data.transcript = (data.transcript as string).slice(0, 400_000);
+  }
+  if (data.sourceUrl !== undefined) {
+    if (data.sourceUrl !== null && typeof data.sourceUrl !== "string") {
+      return NextResponse.json({ error: "sourceUrl must be a string" }, { status: 400 });
+    }
+    if (typeof data.sourceUrl === "string") data.sourceUrl = data.sourceUrl.slice(0, 2000);
   }
 
   // Version history (standing spec rule 7): every inline script save appends;

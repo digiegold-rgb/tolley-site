@@ -13,9 +13,7 @@ import { Icon, type IconName } from '../Icon';
 import { VBtn, VCard, RetryError } from '../primitives';
 import { GlassCard, MicroLabel } from '../cinema';
 import { Footer } from '../Footer';
-import { StylePickerModal } from './dashboard/StylePickerModal';
 import { LatestUpdateBanner } from '../LatestUpdate';
-import { InFlightStrip } from './live/InFlightStrip';
 
 interface KpiTile {
   /** Route to open when the tile is clicked — beta testers saw "2 total
@@ -76,18 +74,11 @@ const FIRST_VIDEO_STEPS: ReadonlyArray<{ label: string; sub: string }> = [
 
 export function DashboardScreen(): React.ReactElement {
   const { t } = useTheme();
-  const {
-    setRoute,
-    openProjectInEditor,
-    newVideoRequest,
-    consumeNewVideoRequest,
-    openHelp,
-  } = useRoute();
+  const { setRoute, openHelp } = useRoute();
   const [projects, setProjects] = React.useState<AnyProject[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [loadTick, setLoadTick] = React.useState(0);
-  const [stylePickerOpen, setStylePickerOpen] = React.useState(false);
 
   const [usageItems, setUsageItems] = React.useState<UsageItem[]>([]);
   const [usageLoading, setUsageLoading] = React.useState(true);
@@ -95,16 +86,6 @@ export function DashboardScreen(): React.ReactElement {
   const [usageTick, setUsageTick] = React.useState(0);
 
   const [checklistVisible, setChecklistVisible] = React.useState(false);
-
-  // Sidebar (or any other surface) calling requestNewVideo() bumps the
-  // counter — open the picker, then clear the flag so subsequent route
-  // changes back to dashboard don't re-pop it.
-  React.useEffect(() => {
-    if (newVideoRequest > 0) {
-      setStylePickerOpen(true);
-      consumeNewVideoRequest();
-    }
-  }, [newVideoRequest, consumeNewVideoRequest]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -195,9 +176,9 @@ export function DashboardScreen(): React.ReactElement {
       {
         label: 'In Progress',
         value: fmt(inProgress),
-        sub: inProgress === 0 ? 'No active jobs' : 'Rendering now — click for the Queue',
+        sub: inProgress === 0 ? 'No active jobs' : 'Rendering now — click for Progress',
         icon: 'history',
-        route: 'queue',
+        route: 'progress',
       },
     ];
   }, [projects, loading]);
@@ -256,9 +237,8 @@ export function DashboardScreen(): React.ReactElement {
         <LatestUpdateBanner />
       </div>
 
-      {/* Anything rendering right now, watchable without leaving the dashboard
-          (2026-08-23). Renders nothing when nothing is in flight. */}
-      <InFlightStrip />
+      {/* The in-flight strip moved to the Progress tab (2026-08-28) — the
+          sidebar badge/pulse is the dashboard's "something is happening". */}
 
       {/* Hero cards. Glass with a gradient icon tile, not three slabs of solid
           gradient — the gradient is the CTA's job now. Billing is the ticket
@@ -277,7 +257,7 @@ export function DashboardScreen(): React.ReactElement {
           title="Create Video"
           body="Start a new video project"
           cta="Create Video"
-          onCta={() => setStylePickerOpen(true)}
+          onCta={() => setRoute('create')}
         />
         <HeroCard
           variant="ticket"
@@ -325,7 +305,7 @@ export function DashboardScreen(): React.ReactElement {
             transcripts, scene generation and animation are free.
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-            <VBtn size="sm" onClick={() => setStylePickerOpen(true)}>
+            <VBtn size="sm" onClick={() => setRoute('create')}>
               Create your first video
             </VBtn>
             <VBtn variant="outlined" size="sm" onClick={openHelp}>
@@ -397,7 +377,7 @@ export function DashboardScreen(): React.ReactElement {
               </div>
             ))}
           </div>
-          <VBtn size="sm" onClick={() => setStylePickerOpen(true)} style={{ marginTop: 18 }}>
+          <VBtn size="sm" onClick={() => setRoute('create')} style={{ marginTop: 18 }}>
             Create your first video
           </VBtn>
         </VCard>
@@ -555,7 +535,7 @@ export function DashboardScreen(): React.ReactElement {
                 <div style={{ fontSize: 12 }}>
                   Pay only for what you render — every charge lands here, line by line.
                 </div>
-                <VBtn size="sm" onClick={() => setStylePickerOpen(true)} style={{ marginTop: 8 }}>
+                <VBtn size="sm" onClick={() => setRoute('create')} style={{ marginTop: 8 }}>
                   Create Video
                 </VBtn>
               </>
@@ -625,15 +605,6 @@ export function DashboardScreen(): React.ReactElement {
       </VCard>
 
       <Footer />
-
-      <StylePickerModal
-        open={stylePickerOpen}
-        onClose={() => setStylePickerOpen(false)}
-        onProjectCreated={(projectId, step) => {
-          setStylePickerOpen(false);
-          openProjectInEditor(projectId, step);
-        }}
-      />
     </div>
   );
 }

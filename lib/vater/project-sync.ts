@@ -57,6 +57,38 @@ import { FLAT_ACTION_PRICES } from "@/lib/vater/pricing";
 import type { VaterAction } from "@/lib/vater-subscription";
 import { notifyTelegram } from "@/lib/budget/notify";
 import { queueVaterEvent } from "@/lib/vater/events";
+import { expireProjectIfDue, nextApprovalExpiry } from "@/lib/vater/approval-expiry";
+import { notifyFlowTransition } from "@/lib/vater/flow-notify";
+import { readEngine } from "@/lib/vater/concierge";
+
+/**
+ * Stepped create flow (2026-08-28): the step a DGX-driven status lands on.
+ * Stamped only on a status CHANGE; input statuses (draft/transcribed) keep
+ * the user's own flowStep. `status` beats flowStep in deriveCreateStep, so
+ * this is informational — it keeps the column honest for the Progress tab.
+ */
+function flowStepForStatus(status: YouTubeProjectStatus): number | null {
+  switch (status) {
+    case "fetching":
+    case "transcribing":
+      return 2;
+    case "extracting_principles":
+    case "scripting":
+    case "verifying":
+      return 4;
+    case "awaiting_script_approval":
+      return 5;
+    case "generating_audio":
+    case "aligning_captions":
+    case "generating_scenes":
+    case "composing_video":
+      return 7;
+    case "ready":
+      return 8;
+    default:
+      return null;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // stepDetails carry-over
@@ -262,8 +294,19 @@ export async function syncProjectFromJob(
 
   // Already terminal — don't bother re-fetching. (Under the concierge policy
   // `concierge_in_progress` is NOT terminal — it still syncs every tick.)
-  if (project.status === "ready" || project.status === "failed") {
+  if (project.status === "ready" || project.status === "failed" || project.status === "expired") {
     return { kind: "already_terminal", project };
+  }
+  // Stepped flow (2026-08-28): a parked gate is owned by the human, not the
+  // job. `awaiting_engine` still names the finished SCRIPT job — re-syncing it
+  // would map `script_ready` back to awaiting_script_approval and undo the
+  // approval. And a 7-day-old gate flips to `expired` on this read.
+  if (project.status === "awaiting_engine") {
+    return { kind: "already_terminal", project };
+  }
+  if (project.status === "awaiting_script_approval") {
+    const gated = await expireProjectIfDue(project);
+    if (gated.status === "expired") return { kind: "already_terminal", project: gated };
   }
 
   let job: JobStatus;
@@ -357,6 +400,22 @@ export async function syncProjectFromJob(
       alertedJobId,
     } satisfies Prisma.InputJsonValue,
   };
+
+  // Stepped flow (2026-08-28): stamp the step + start the 7-day gate clock on
+  // the transition only — re-polls of a parked gate must not reset either.
+  const statusChanges = typeof data.status === "string" && data.status !== currentStatus;
+  if (statusChanges) {
+    const step = flowStepForStatus(data.status as YouTubeProjectStatus);
+    if (step) {
+      data.flowStep = step;
+      data.flowStepAt = new Date();
+    }
+    if (data.status === "awaiting_script_approval") {
+      data.approvalExpiresAt = nextApprovalExpiry();
+    } else if (data.status === "ready" || data.status === "failed") {
+      data.approvalExpiresAt = null;
+    }
+  }
 
   let failureMessage: string | null = null;
   if (job.status === "failed") {
@@ -728,6 +787,22 @@ export async function syncProjectFromJob(
     where: { id },
     data,
   });
+
+  // ── Stepped-flow notifications (once per transition, CAS inside) ────────
+  // script_ready → step 5 email + push; ready → step 8 (Auto lane only — the
+  // Fable 5 lane notifies from /deliver, which already emails). Delivery runs
+  // in after(); a notify hiccup must never fail the poll.
+  if (updated.status !== currentStatus) {
+    try {
+      if (updated.status === "awaiting_script_approval") {
+        await notifyFlowTransition(id, "script_ready");
+      } else if (updated.status === "ready" && readEngine(updated.settingsJson) !== "fable5") {
+        await notifyFlowTransition(id, "ready");
+      }
+    } catch (err) {
+      console.error(`[vater/poll] flow notify failed project=${id}`, err);
+    }
+  }
 
   // ── Failure alert (once per job) ─────────────────────────────────────────
   // A render that dies at 03:00 used to sit failed until someone opened the

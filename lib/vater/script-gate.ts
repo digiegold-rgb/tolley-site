@@ -19,7 +19,7 @@
 import "server-only";
 import type { YouTubeProject } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { autopilot, type StyleSnapshot } from "./autopilot-client";
+import { autopilot, type RunCreationVariation, type StyleSnapshot } from "./autopilot-client";
 import { buildStyleSnapshot } from "./style-snapshot";
 import { ownerFieldsForProject } from "./owner-tier";
 import {
@@ -62,6 +62,13 @@ export interface StartRunCreationOptions {
   stopAfterScript?: boolean;
   /** Approved script text. Makes the worker skip principles + scripting. */
   scriptOverride?: string;
+  /**
+   * "Rewrite — make it more different" (2026-08-28, POST [id]/rewrite).
+   * Forwarded to the DGX as `variationSeed` / `variationDirective` /
+   * `avoidScript`; the writer is told to differ materially from `avoidScript`.
+   * All optional on the DGX side — an older worker just ignores them.
+   */
+  variation?: RunCreationVariation;
 }
 
 /**
@@ -172,6 +179,15 @@ export async function startRunCreation(
     ...ownerFields,
     ...(scriptOverride ? { scriptOverride } : {}),
     ...(opts.stopAfterScript ? { stopAfterScript: true } : {}),
+    ...(opts.variation
+      ? {
+          variationSeed: opts.variation.seed,
+          variationDirective: opts.variation.directive,
+          ...(opts.variation.avoidScript
+            ? { avoidScript: opts.variation.avoidScript.slice(0, 60_000) }
+            : {}),
+        }
+      : {}),
     // Optional feature bag (jelly-feature-contract 2026-08-16), sent verbatim
     // so the approval path renders with the same captions / overlays / camera
     // / brand kit the editor showed. Unknown keys are ignored by the worker;

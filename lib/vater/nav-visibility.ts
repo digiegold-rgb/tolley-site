@@ -61,7 +61,10 @@ export const NAV_ROUTES: readonly NavRouteDef[] = [
   // Shorts Library (2026-08-20): every short cut from a long-form, in one
   // place — sits right under Library on purpose.
   { id: 'shorts-library', label: 'Shorts Library', icon: 'videoEditor', minTier: 'public', section: 'primary' },
-  { id: 'queue', label: 'Queue', icon: 'history', minTier: 'public', section: 'primary' },
+  // Progress (2026-08-28) replaced Queue: the stepped create flow's approval
+  // gates + in-flight renders, with the sidebar badge/pulse. Shell keeps
+  // `queue` as a route alias; nav-order.ts maps saved layouts over.
+  { id: 'progress', label: 'Progress', icon: 'history', minTier: 'public', section: 'primary' },
   { id: 'recent', label: 'Recent', icon: 'sparkle', minTier: 'public', section: 'primary' },
   { id: 'voices', label: 'Voices', icon: 'mic', minTier: 'public', section: 'primary' },
   { id: 'feeds', label: 'RSS Feeds', icon: 'web', minTier: 'public', section: 'primary' },

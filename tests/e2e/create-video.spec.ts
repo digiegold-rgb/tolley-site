@@ -1,7 +1,8 @@
 /**
  * Create Video — start-lane / import / slider e2e (tolley.io/animate).
  *
- * Investigation spec: walks the Create Video modal the way a customer does and
+ * Investigation spec: walks the stepped Create screen (#r=create, 2026-08-28 —
+ * the StylePickerModal survives only behind "Batch") the way a customer does and
  * asserts the things a customer would notice. Nothing here spends money —
  * "Transcribe & rewrite", "Generate" and "Animate" are never clicked; only the
  * free reads ("Get the text" → POST /api/vater/script/from-url) are exercised.
@@ -138,6 +139,27 @@ test.describe("create video", () => {
       })
       .catch(() => {});
 
+    // API sign-in first (302 path) — the login form's redirect:false branch
+    // returns no Response under a local `next start` on Node 22 (prod is
+    // fine). Same recipe as tests/e2e/_studio-auth.ts.
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        const csrfRes = await page.request.get("/api/auth/csrf");
+        const { csrfToken } = (await csrfRes.json()) as { csrfToken: string };
+        await page.request.post("/api/auth/callback/credentials", {
+          form: { csrfToken, email: TEST_EMAIL, password: TEST_PASSWORD, callbackUrl: HOME },
+          maxRedirects: 0,
+        });
+        const session = (await (await page.request.get("/api/auth/session")).json().catch(() => null)) as
+          | { user?: { id?: string } }
+          | null;
+        if (session?.user?.id) return;
+        console.log(`[e2e] api sign-in attempt ${attempt} had no session`);
+      } catch (err) {
+        console.log(`[e2e] api sign-in threw: ${(err as Error).message.slice(0, 80)} — using the login form`);
+        break;
+      }
+    }
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       await page.goto(`/login?callbackUrl=${encodeURIComponent(HOME)}`);
       await page.waitForLoadState("networkidle").catch(() => {});
@@ -155,7 +177,7 @@ test.describe("create video", () => {
     throw new Error("could not sign in");
   }
 
-  /** /animate → Create Video → modal open, PathChooser visible. */
+  /** /animate → "+ Create Video" → the Create screen (step 1, PathChooser). */
   async function openModal(page: Page) {
     await page.goto(HOME);
     await page.waitForLoadState("networkidle").catch(() => {});
@@ -172,7 +194,7 @@ test.describe("create video", () => {
         .then(() => true)
         .catch(() => false);
       if (open) return;
-      console.log(`[e2e] modal did not open on attempt ${attempt} — reloading`);
+      console.log(`[e2e] create screen did not open on attempt ${attempt} — reloading`);
       await page.reload().catch(() => {});
       await page.waitForLoadState("networkidle").catch(() => {});
     }
@@ -228,7 +250,7 @@ test.describe("create video", () => {
     console.log(`[lanes] activeElement after arrow keys = ${focused}`);
   });
 
-  test("2 — Start from a video: Get the text lands a transcript", async ({ page }) => {
+  test("2 — Start from a video: Read the video lands a transcript on step 2", async ({ page }) => {
     await page.context().addCookies(cookies);
     watch(page);
     await openModal(page);
@@ -237,52 +259,53 @@ test.describe("create video", () => {
     const url = page.getByTestId("own-script-import-url");
     await expect(url).toBeVisible();
     await url.fill(SOURCE_URL);
-
-    // Snapshot what the free/paid buttons look like before the click.
-    await page.getByTestId("own-script-plate").screenshot({ path: shot("plate-before-import") });
+    await page.getByTestId("create-screen").screenshot({ path: shot("source-before-import") });
 
     const resp = page.waitForResponse((r) => r.url().includes("/api/vater/script/from-url"), {
       timeout: 180_000,
     });
-    await page.getByTestId("own-script-import-btn").click();
+    // Step 1 → 2: the read happens ON step 2 (auto-runs with the queued URL).
+    await page.getByTestId("source-continue").click();
+    await expect(page.getByTestId("create-screen")).toHaveAttribute("data-step", "2");
     const r = await resp;
     const body = await r.text().catch(() => "");
     console.log(`[import] POST from-url → ${r.status()} ${body.slice(0, 400)}`);
 
-    const ta = page.getByTestId("own-script-textarea");
+    const box = page.getByTestId("transcript-box");
     const note = page.getByTestId("own-script-import-note");
     const noteVisible = await note.isVisible({ timeout: 120_000 }).catch(() => false);
-    const text = await ta.inputValue();
-    console.log(`[import] note visible=${noteVisible} textarea words=${text.split(/\s+/).filter(Boolean).length}`);
+    const text = await box.inputValue().catch(() => "");
+    console.log(`[import] note visible=${noteVisible} transcript words=${text.split(/\s+/).filter(Boolean).length}`);
     if (noteVisible) console.log(`[import] note = ${(await note.textContent())?.slice(0, 300)}`);
-    await page.getByTestId("own-script-plate").screenshot({ path: shot("plate-after-import") });
-    expect.soft(text.length, "transcript should land in the textarea").toBeGreaterThan(50);
+    await page.getByTestId("create-screen").screenshot({ path: shot("transcript-after-import") });
+    expect.soft(text.length, "transcript should land in the box").toBeGreaterThan(50);
+    await expect.soft(page.getByTestId("transcript-next")).toContainText("How long should your personalized video be?");
+    // The row exists now; the hash carries it so a reload resumes here.
+    await expect.soft(page).toHaveURL(/#r=create&s=2&p=/);
   });
 
-  test("3 — length slider updates the word figure", async ({ page }) => {
+  test("3 — length slider (step 3) updates the word figure", async ({ page }) => {
     await page.context().addCookies(cookies);
     watch(page);
     await openModal(page);
     await page.getByTestId("path-from-video").click();
+    await page.getByTestId("own-script-import-url").fill(SOURCE_URL);
+    await page.getByTestId("source-continue").click();
+    await expect(page.getByTestId("transcript-box")).toBeVisible({ timeout: 180_000 });
+    await page.getByTestId("transcript-continue").click();
+    await expect(page.getByTestId("create-screen")).toHaveAttribute("data-step", "3");
 
     const slider = page.getByTestId("target-minutes");
     await expect(slider).toBeVisible();
-    const readout = () =>
-      page.evaluate(() => {
-        const el = document.querySelector('[data-testid="target-minutes"]');
-        const row = el?.previousElementSibling as HTMLElement | null;
-        const help = el?.nextElementSibling as HTMLElement | null;
-        return { row: row?.innerText ?? "", help: help?.innerText ?? "" };
-      });
+    const readout = () => page.getByTestId("target-minutes-label").innerText();
 
-    console.log(`[slider] at 0 → ${JSON.stringify(await readout())}`);
-    // Keyboard drag (a real drag: focus + arrow, which is what the range input
-    // does on pointer drag too).
-    await slider.click();
+    console.log(`[slider] at 0 → ${await readout()}`);
+    await slider.focus();
     for (let i = 0; i < 5; i += 1) await page.keyboard.press("ArrowRight");
     const v5 = await slider.inputValue();
-    console.log(`[slider] value=${v5} → ${JSON.stringify(await readout())}`);
+    console.log(`[slider] value=${v5} → ${await readout()}`);
     expect.soft(v5).not.toBe("0");
+    await expect.soft(page.getByTestId("target-minutes-label")).toContainText(/5 min · ~750 words/);
 
     // Real pointer drag to the far end.
     const box = (await slider.boundingBox())!;
@@ -291,14 +314,11 @@ test.describe("create video", () => {
     await page.mouse.move(box.x + box.width, box.y + box.height / 2, { steps: 10 });
     await page.mouse.up();
     const vmax = await slider.inputValue();
-    console.log(`[slider] after pointer drag value=${vmax} → ${JSON.stringify(await readout())}`);
+    console.log(`[slider] after pointer drag value=${vmax} → ${await readout()}`);
 
-    // Does anything ELSE on the plate react to the length? (word count under
-    // the textarea, price estimate, quote row)
-    const plateText = await page.getByTestId("own-script-plate").innerText();
-    console.log(`[slider] plate text after drag:\n${plateText.slice(0, 1200)}`);
-    const modalText = await page.locator('[role="dialog"]').innerText();
-    console.log(`[slider] modal estimate lines: ${modalText.split("\n").filter((l) => /\$|min|word/i.test(l)).join(" | ").slice(0, 600)}`);
+    const panelText = await page.getByTestId("length-step").innerText();
+    console.log(`[slider] panel text after drag:\n${panelText.slice(0, 1200)}`);
+    // Nothing is spent here: Confirm is the metered script write and is not clicked.
   });
 
   test("4 — layout at 1280 and 390", async ({ page }) => {
@@ -307,67 +327,31 @@ test.describe("create video", () => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await openModal(page);
     await page.getByTestId("path-from-video").click();
-    await page.getByTestId("own-script-plate").screenshot({ path: shot("plate-1280") });
-    await page.screenshot({ path: shot("modal-1280"), fullPage: false });
+    await page.getByTestId("create-screen").screenshot({ path: shot("create-1280") });
+    await page.screenshot({ path: shot("page-1280"), fullPage: false });
 
-    // Geometry of the helper copy block under the import buttons.
-    const geo = await page.evaluate(() => {
-      const btn = document.querySelector('[data-testid="own-script-import-btn"]');
-      const row = btn?.closest("div")?.parentElement;
-      const help = row?.nextElementSibling as HTMLElement | null;
-      if (!help) return null;
-      const cs = getComputedStyle(help);
-      const rect = help.getBoundingClientRect();
-      return {
-        text: help.innerText,
-        fontSize: cs.fontSize,
-        lineHeight: cs.lineHeight,
-        color: cs.color,
-        marginTop: cs.marginTop,
-        width: Math.round(rect.width),
-        height: Math.round(rect.height),
-        childTags: Array.from(help.childNodes).map((n) =>
-          n.nodeType === 3 ? "#text" : (n as HTMLElement).tagName,
-        ),
-      };
+    // The rail sits beside the panel on desktop…
+    const wide = await page.evaluate(() => {
+      const rail = document.querySelector('[data-testid="create-stepper"]')?.getBoundingClientRect();
+      const step = document.querySelector('[data-testid="source-step"]')?.getBoundingClientRect();
+      return rail && step ? { railRight: Math.round(rail.right), stepLeft: Math.round(step.left) } : null;
     });
-    console.log(`[layout-1280] helper copy = ${JSON.stringify(geo, null, 2)}`);
+    console.log(`[layout] 1280 → ${JSON.stringify(wide)}`);
+    expect.soft(wide && wide.railRight <= wide.stepLeft, "rail left of the panel at 1280").toBeTruthy();
 
+    // …and stacks above it on a phone, with no horizontal scroll.
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.waitForTimeout(500);
-    await page.getByTestId("own-script-plate").screenshot({ path: shot("plate-390") });
-    await page.screenshot({ path: shot("modal-390") });
-
-    // Does the button row overflow / wrap at 390?
-    const row390 = await page.evaluate(() => {
-      const btn = document.querySelector('[data-testid="own-script-import-btn"]') as HTMLElement;
-      const rewrite = document.querySelector('[data-testid="own-script-rewrite-btn"]') as HTMLElement;
-      const input = document.querySelector('[data-testid="own-script-import-url"]') as HTMLElement;
-      const plate = document.querySelector('[data-testid="own-script-plate"]') as HTMLElement;
-      const r = (e: HTMLElement) => {
-        const b = e.getBoundingClientRect();
-        return { x: Math.round(b.x), w: Math.round(b.width), h: Math.round(b.height), right: Math.round(b.right) };
-      };
-      return {
-        plate: r(plate),
-        input: r(input),
-        getText: { ...r(btn), label: btn.innerText, scrollW: btn.scrollWidth, clientW: btn.clientWidth },
-        rewrite: { ...r(rewrite), label: rewrite.innerText, scrollW: rewrite.scrollWidth, clientW: rewrite.clientWidth },
-        docScrollW: document.documentElement.scrollWidth,
-        docClientW: document.documentElement.clientWidth,
-      };
-    });
-    console.log(`[layout-390] ${JSON.stringify(row390, null, 2)}`);
-
-    // Lane cards at 390.
-    const lanes390 = await page.evaluate(() =>
-      ["path-own-script", "path-from-video", "path-jelly-writes"].map((id) => {
-        const e = document.querySelector(`[data-testid="${id}"]`) as HTMLElement;
-        const b = e.getBoundingClientRect();
-        return { id, x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) };
-      }),
-    );
-    console.log(`[layout-390] lanes = ${JSON.stringify(lanes390)}`);
+    await page.waitForTimeout(400);
+    await page.getByTestId("create-screen").screenshot({ path: shot("create-390") });
+    const narrow = await page.evaluate(() => ({
+      scrollW: document.documentElement.scrollWidth,
+      innerW: window.innerWidth,
+      railTop: Math.round(document.querySelector('[data-testid="create-stepper"]')?.getBoundingClientRect().top ?? -1),
+      stepTop: Math.round(document.querySelector('[data-testid="source-step"]')?.getBoundingClientRect().top ?? -1),
+    }));
+    console.log(`[layout] 390 → ${JSON.stringify(narrow)}`);
+    expect.soft(narrow.scrollW, "no horizontal scroll at 390").toBeLessThanOrEqual(narrow.innerW + 1);
+    expect.soft(narrow.railTop <= narrow.stepTop, "rail above the panel at 390").toBeTruthy();
   });
 
   test("5 — Script step: scene-stepped animation slider", async ({ page }) => {

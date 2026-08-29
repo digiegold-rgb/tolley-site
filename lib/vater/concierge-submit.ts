@@ -56,6 +56,9 @@ export const CONCIERGE_SUBMIT_FROM_STATUSES: ReadonlySet<string> = new Set([
   "draft",
   "scripted",
   "awaiting_script_approval",
+  // Stepped flow (2026-08-28): the free Approve parks here; Fable is one of
+  // the two engine picks on step 6.
+  "awaiting_engine",
   "failed",
   "concierge_needs_info",
 ]);
@@ -230,6 +233,13 @@ export async function submitConcierge(input: SubmitConciergeInput): Promise<Subm
         targetDuration,
         progress: 30,
         errorMessage: null,
+        // Stepped flow: step 7 (Producing), gate clock off, next "ready"
+        // notification re-armed (a resubmit after a cancel must notify again).
+        flowStep: 7,
+        flowStepAt: new Date(),
+        approvalExpiresAt: null,
+        notifiedReadyAt: null,
+        notifiedQaAt: null,
       },
     },
   );

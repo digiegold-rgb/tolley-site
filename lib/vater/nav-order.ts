@@ -26,6 +26,16 @@ export interface NavOrderPrefs {
 
 const KEY_PREFIX = 'jelly.nav-order.';
 
+/**
+ * Renamed routes: saved layouts keep working without a `v` bump. A pref that
+ * still says `queue` renders `progress` in that exact slot (2026-08-28).
+ */
+const ALIASES: Record<string, string> = { queue: 'progress' };
+
+function aliasId(id: string): string {
+  return ALIASES[id] ?? id;
+}
+
 export function navPrefsKey(email: string | null | undefined): string {
   return `${KEY_PREFIX}${(email || 'anon').toLowerCase()}`;
 }
@@ -36,11 +46,20 @@ export function loadNavPrefs(email: string | null | undefined): NavOrderPrefs | 
     if (!raw) return null;
     const parsed = JSON.parse(raw) as NavOrderPrefs;
     if (parsed?.v !== 1 || !Array.isArray(parsed.order)) return null;
-    return {
-      v: 1,
-      order: parsed.order.filter((id): id is string => typeof id === 'string'),
-      sections: parsed.sections && typeof parsed.sections === 'object' ? parsed.sections : {},
-    };
+    const order: string[] = [];
+    for (const raw of parsed.order) {
+      if (typeof raw !== 'string') continue;
+      const id = aliasId(raw);
+      // A layout saved while both names existed would list the slot twice.
+      if (!order.includes(id)) order.push(id);
+    }
+    const sections: NavOrderPrefs['sections'] = {};
+    if (parsed.sections && typeof parsed.sections === 'object') {
+      for (const [raw, section] of Object.entries(parsed.sections)) {
+        if (section === 'primary' || section === 'secondary') sections[aliasId(raw)] = section;
+      }
+    }
+    return { v: 1, order, sections };
   } catch {
     return null;
   }

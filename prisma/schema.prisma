@@ -73,6 +73,7 @@ model User {
   rssFeeds             VaterRssFeed[]       @relation("UserRssFeeds")
   socialProfile        VaterSocialProfile?
   socialPosts          VaterSocialPost[]
+  pushSubscriptions    VaterPushSubscription[]
 }
 
 /// Per-user credentials for posting to external social platforms from the
@@ -3889,6 +3890,20 @@ model YouTubeProject {
   // `awaiting_script_approval`, and /approve-script stamps scriptApprovedAt
   // before re-kicking run-creation with the edited text as scriptOverride.
   scriptApprovedAt DateTime?
+  // ── Stepped create flow (2026-08-28, lib/vater/create-steps.ts) ─────
+  // flowStep = last step the USER reached (1..8); once the machine moves,
+  // `status` wins (deriveCreateStep). approvalExpiresAt = the 7-day gate on
+  // awaiting_script_approval / awaiting_engine (lazy flip → `expired` in
+  // lib/vater/approval-expiry.ts). variationJson = the last "Rewrite — make
+  // it more different" request {count, seed, directive, requestedAt}.
+  // notified*At = CAS stamps so email/push fire exactly once per transition.
+  flowStep              Int       @default(1)
+  flowStepAt            DateTime?
+  approvalExpiresAt     DateTime?
+  variationJson         Json?
+  notifiedScriptReadyAt DateTime?
+  notifiedReadyAt       DateTime?
+  notifiedQaAt          DateTime?
   // Hybrid render window — first N seconds animated (wan22), remainder Ken
   // Burns stills. Merged into the style snapshot as `defaultAnimUntilS`.
   animUntilS       Int?
@@ -3938,6 +3953,26 @@ model YouTubeProject {
   @@index([userId])
   @@index([animateAllStartedAt])
   @@index([projectType])
+  @@index([userId, status])
+  @@index([userId, updatedAt])
+  @@index([status, approvalExpiresAt])
+}
+
+// Browser push subscriptions for the /animate stepped flow (2026-08-28).
+// Keyed on the ROOT user (resolveTenantIdentity) so every workspace tab of one
+// login notifies the same browser. Rows are deleted on a 404/410 from the
+// push service (lib/vater/push.ts).
+model VaterPushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ── Vater Financial Literacy Course (2026-08-09) ─────────────────────

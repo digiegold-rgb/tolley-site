@@ -225,6 +225,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       // A stopAfterScript run parks here with the draft persisted — the
       // Generate Video button IS the approval, same as /approve-script.
       project.status === "awaiting_script_approval" ||
+      // Stepped flow (2026-08-28): the free Approve parks at awaiting_engine;
+      // the old editor's Generate Video button is still a valid engine pick.
+      project.status === "awaiting_engine" ||
       project.status === "failed");
   if (project.status !== "transcribed" && !allowKickoffFromDraft) {
     // A pipeline status here means a render is ALREADY running — say that in
@@ -364,6 +367,11 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       status: scriptOverride ? "scripted" : "extracting_principles",
       progress: scriptOverride ? 30 : 35,
       errorMessage: null,
+      // Stepped flow (2026-08-28): a render kick is step 7, a script run is
+      // step 4; either way the approval clock stops.
+      flowStep: scriptOverride ? 7 : 4,
+      flowStepAt: new Date(),
+      approvalExpiresAt: null,
       ...(scriptOverride
         ? {
             script: scriptOverride,

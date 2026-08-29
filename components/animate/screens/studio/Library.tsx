@@ -216,7 +216,7 @@ export function Library(): React.ReactElement {
       {!loading && pipeline.length > 0 && (
         <LibraryPipeline
           items={pipeline}
-          onOpenQueue={() => setRoute('queue')}
+          onOpenQueue={() => setRoute('progress')}
         />
       )}
 

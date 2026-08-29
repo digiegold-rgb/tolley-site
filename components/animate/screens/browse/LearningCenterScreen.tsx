@@ -149,9 +149,9 @@ const LESSONS: LessonSpec[] = [
     desc: 'The itemized receipt, visible while it runs.',
     paras: [
       'When you render, the receipt itemizes everything — GPU time at our cost plus the $0.35 per finished minute — and you can see it while the render is still running, so there is never a number you find out about later. Our 8:44 benchmark render cost $5.56.',
-      'Failed renders are never charged, partially or otherwise — retry from the Queue screen at no cost.',
+      'Failed renders are never charged, partially or otherwise — retry from the Progress tab at no cost.',
     ],
-    link: { label: 'Open the Queue', route: 'queue' },
+    link: { label: 'Open Progress', route: 'progress' },
   },
   {
     id: 'publishing',
