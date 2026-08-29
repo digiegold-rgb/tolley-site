@@ -19,7 +19,13 @@
  * finished and swept) is a 200 with `status: "unknown"` and whatever tail the
  * project row still holds — a swept job must never 500 the Progress tab.
  *
- * → 200 { jobId, status, phase, progress, updatedAt, lines }
+ * `gate` (2026-08-28, after F5-B0A50J was delivered before its audit ran):
+ * for a concierge row the terminal must never say a bare "done" — the
+ * render is finished but the ticket is not delivered until the delivery
+ * audit passes. `gate.lane` is "concierge" | "auto"; for concierge rows it
+ * carries the ticket stage and the latest audit summary (or null).
+ *
+ * → 200 { jobId, status, phase, progress, updatedAt, lines, gate }
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -38,6 +44,13 @@ const TAIL = 40;
 
 const NO_STORE = { "Cache-Control": "private, no-store" } as const;
 
+export interface RenderLogGate {
+  lane: "concierge" | "auto";
+  /** Concierge ticket stage (null on the auto lane). */
+  stage: string | null;
+  audit: { round: number; passed: boolean; hardFails: number; sceneCount: number } | null;
+}
+
 export interface RenderLogResponse {
   jobId: string | null;
   status: string | null;
@@ -45,6 +58,17 @@ export interface RenderLogResponse {
   progress: number | null;
   updatedAt: string | null;
   lines: string[];
+  gate: RenderLogGate;
+}
+
+function gateFor(ticket: ReturnType<typeof readConcierge>): RenderLogGate {
+  if (!ticket) return { lane: "auto", stage: null, audit: null };
+  const a = ticket.audit ?? null;
+  return {
+    lane: "concierge",
+    stage: ticket.stage,
+    audit: a ? { round: a.round, passed: a.passed, hardFails: a.hardFails, sceneCount: a.sceneCount } : null,
+  };
 }
 
 function stepDetailLogs(stepDetails: unknown): string[] {
@@ -84,6 +108,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   }
 
   const ticket = readConcierge(project.settingsJson);
+  const gate = gateFor(ticket);
   const jobId =
     ticket?.composeJobId || ticket?.jobId || project.animateAllJobId || project.autopilotJobId || null;
 
@@ -99,6 +124,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       progress: null,
       updatedAt: rowUpdatedAt,
       lines: rowLines.slice(-TAIL),
+      gate,
     };
     return NextResponse.json(body, { headers: NO_STORE });
   }
@@ -119,6 +145,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       progress: Number.isFinite(job.progress) ? job.progress : (project.progress ?? null),
       updatedAt: job.updatedAt ?? rowUpdatedAt,
       lines,
+      gate,
     };
     return NextResponse.json(body, { headers: NO_STORE });
   } catch (err) {
@@ -135,6 +162,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       progress: project.progress ?? null,
       updatedAt: rowUpdatedAt,
       lines: rowLines.slice(-TAIL),
+      gate,
     };
     return NextResponse.json(body, { headers: NO_STORE });
   }

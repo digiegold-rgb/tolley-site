@@ -19,7 +19,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import {
   CONCIERGE_STAGES,
+  auditChipLabel,
+  auditMatchesFinal,
   relativeTimeLabel,
+  type ConciergeAudit,
   type ConciergeStage,
 } from "@/lib/vater/concierge-client";
 import { readApiError } from "./types";
@@ -42,9 +45,13 @@ export interface Fable5Ticket {
   claimedBy: string | null;
   deliveredAt: string | null;
   jobId: string | null;
+  composeJobId: string | null;
   operatorNote: string | null;
   internalNote: string | null;
   customerNote: string | null;
+  /** Latest delivery audit (fable5-audit.py → /audit). null = none yet. */
+  audit: ConciergeAudit | null;
+  finalVideoUrl: string | null;
   ageMin: number;
   errorMessage: string | null;
   dgxPhase: string | null;
@@ -100,14 +107,82 @@ function StagePill({ stage }: { stage: ConciergeStage }) {
   );
 }
 
+/** A 409 from /deliver the card renders inline instead of a toast. */
+export class DeliverGateError extends Error {
+  code: string;
+  reportUrl: string | null;
+  constructor(code: string, message: string, reportUrl: string | null = null) {
+    super(message);
+    this.code = code;
+    this.reportUrl = reportUrl;
+  }
+}
+
 async function postTicket(code: string, action: string, body: Record<string, unknown> = {}) {
   const r = await fetch(`/api/vater/concierge/${encodeURIComponent(code)}/${action}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ by: "hq", ...body }),
   });
+  if (r.status === 409 && action === "deliver") {
+    const d = (await r.clone().json().catch(() => null)) as
+      | { code?: string; message?: string; error?: string; hardFails?: number; sceneCount?: number; round?: number; reportUrl?: string | null }
+      | null;
+    if (d?.code === "audit_missing") {
+      throw new DeliverGateError("audit_missing", d.message || d.error || "no delivery audit for this final yet");
+    }
+    if (d?.code === "audit_failed") {
+      throw new DeliverGateError(
+        "audit_failed",
+        `audit r${d.round ?? "?"} FAILED — ${d.hardFails ?? "?"}/${d.sceneCount ?? "?"} scenes with hard failures. Repair + re-audit, or deliver anyway with a reason.`,
+        typeof d.reportUrl === "string" ? d.reportUrl : null,
+      );
+    }
+  }
   if (!r.ok) throw new Error(await readApiError(r, `${action} failed`));
   return r.json();
+}
+
+/** Why the Deliver button is disabled (null = deliverable). Mirrors /deliver. */
+export function deliverBlockReason(t: Pick<Fable5Ticket, "audit" | "finalVideoUrl" | "jobId" | "composeJobId">): string | null {
+  if (!t.finalVideoUrl) return "No final video on the row yet — render + sync first.";
+  const a = t.audit;
+  const matches = auditMatchesFinal(a, { finalVideoUrl: t.finalVideoUrl, jobId: t.jobId, composeJobId: t.composeJobId });
+  if (!a) return "No delivery audit yet — the runner audits after sync. Wait for it, or \u201cDeliver anyway\u201d with a reason.";
+  if (!matches) return `Last audit (r${a.round}, ${a.source}) is not for this final — a fresh audit is needed.`;
+  if (!a.passed) return `Audit r${a.round} FAILED ${a.hardFails}/${a.sceneCount} hard — repair + re-audit, or \u201cDeliver anyway\u201d with a reason.`;
+  return null;
+}
+
+function AuditChip({ audit }: { audit: ConciergeAudit | null }) {
+  const label = auditChipLabel(audit);
+  const style = !audit
+    ? { background: "#f0f0f5", color: "#6b7280" }
+    : audit.passed
+      ? { background: "#dcfce7", color: "#15803d" }
+      : { background: "#fee2e2", color: "#b91c1c" };
+  const title = audit
+    ? `${audit.source} · ${audit.judged}/${audit.sceneCount} judged · $${audit.costUsd.toFixed(2)} · ${audit.at}` +
+      (audit.hardScenes.length ? ` · hard scenes ${audit.hardScenes.slice(0, 20).join(", ")}${audit.hardScenes.length > 20 ? "…" : ""}` : "") +
+      (Object.keys(audit.byCheck).length
+        ? ` · ${Object.entries(audit.byCheck)
+            .sort((x, y) => y[1] - x[1])
+            .map(([k, v]) => `${k} ${v}`)
+            .join(", ")}`
+        : "")
+    : "fable5-audit.py has not posted an audit for this ticket";
+  if (audit?.reportUrl) {
+    return (
+      <a className="pill" href={audit.reportUrl} target="_blank" rel="noreferrer" style={{ ...style, textDecoration: "none" }} title={title} data-testid="f5-audit-chip">
+        {label} ↗
+      </a>
+    );
+  }
+  return (
+    <span className="pill" style={style} title={title} data-testid="f5-audit-chip">
+      {label}
+    </span>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -353,8 +428,10 @@ function TicketCard({
   const [note, setNote] = useState("");
   const [internalNote, setInternalNote] = useState("");
   const [showNotes, setShowNotes] = useState(false);
+  const [gateMsg, setGateMsg] = useState<{ text: string; reportUrl: string | null } | null>(null);
 
   const terminal = TERMINAL.has(t.stage);
+  const blockReason = terminal ? null : deliverBlockReason(t);
   const claimable = t.stage === "queued" || t.stage === "needs_info";
   const kickable = !terminal && !(t.jobId && (t.stage === "rendering" || t.stage === "qa"));
   const accent = STAGE_STYLE[t.stage]?.fg ?? "#9ca3af";
@@ -395,10 +472,49 @@ function TicketCard({
     );
   }
 
+  async function runDeliver(body: Record<string, unknown>, label: string) {
+    setGateMsg(null);
+    let gate: DeliverGateError | null = null;
+    await onRun(
+      label,
+      async () => {
+        try {
+          return await postTicket(t.code, "deliver", body);
+        } catch (err) {
+          if (err instanceof DeliverGateError) {
+            gate = err;
+            return null; // swallowed here → rendered inline below, no toast
+          }
+          throw err;
+        }
+      },
+      "Delivered ✓",
+    );
+    if (gate) {
+      const g = gate as DeliverGateError;
+      setGateMsg({ text: g.message, reportUrl: g.reportUrl });
+    }
+  }
+
   function deliver() {
     const n = window.prompt(`Deliver ${t.code} — note to the customer (optional):`, "");
     if (n === null) return;
-    void onRun("Deliver", () => postTicket(t.code, "deliver", n.trim() ? { note: n.trim() } : {}), "Delivered ✓");
+    void runDeliver(n.trim() ? { note: n.trim() } : {}, "Deliver");
+  }
+
+  function deliverAnyway() {
+    const why = window.prompt(
+      `Deliver ${t.code} WITHOUT a passing audit?\n\n${blockReason ?? ""}\n\nReason (≥ 8 chars — stamped on the ticket + Telegram):`,
+      "",
+    );
+    if (why === null) return;
+    if (why.trim().length < 8) {
+      setGateMsg({ text: "Waiver needs a reason of at least 8 characters.", reportUrl: null });
+      return;
+    }
+    const n = window.prompt("Note to the customer (optional):", "");
+    if (n === null) return;
+    void runDeliver({ waive: true, waiveReason: why.trim(), ...(n.trim() ? { note: n.trim() } : {}) }, "Deliver (waiver)");
   }
 
   function cancel() {
@@ -423,6 +539,7 @@ function TicketCard({
                 {t.dgxPhase}
               </span>
             )}
+            <AuditChip audit={t.audit} />
             <span style={{ fontWeight: 700, fontSize: 13 }}>{t.title}</span>
           </div>
           <div style={{ fontSize: 11, color: "var(--hq-ink-2)", marginTop: 4, display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -488,7 +605,18 @@ function TicketCard({
               <button className="btn btn-sm" disabled={busy} onClick={sync} title="Pull DGX job state onto the project (idempotent)">
                 🔄 Sync
               </button>
-              <button className="btn btn-sm" disabled={busy} onClick={deliver} style={{ color: "#15803d", borderColor: "#bbf7d0", background: "#f0fdf4" }}>
+              <button
+                className="btn btn-sm"
+                disabled={busy || !!blockReason}
+                onClick={deliver}
+                title={blockReason ?? `Audit r${t.audit?.round} passed for this final — deliver (email + Telegram + status ready)`}
+                data-testid="f5-deliver"
+                style={
+                  blockReason
+                    ? { color: "#9ca3af", borderColor: "#e5e7eb", background: "#f9fafb", cursor: "not-allowed" }
+                    : { color: "#15803d", borderColor: "#bbf7d0", background: "#f0fdf4" }
+                }
+              >
                 ✅ Deliver
               </button>
               <button className="btn btn-sm btn-danger" disabled={busy} onClick={cancel}>
@@ -499,8 +627,38 @@ function TicketCard({
               </button>
             </div>
           )}
+          {!terminal && blockReason && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={deliverAnyway}
+              data-testid="f5-deliver-anyway"
+              title={`${blockReason} Override with a written reason — stamped on history, the internal note and Telegram.`}
+              style={{ background: "none", border: "none", padding: 0, fontSize: 11, color: "#b91c1c", textDecoration: "underline", cursor: "pointer" }}
+            >
+              Deliver anyway…
+            </button>
+          )}
         </div>
       </div>
+
+      {gateMsg && (
+        <div
+          data-testid="f5-deliver-gate"
+          role="alert"
+          style={{ marginTop: 8, fontSize: 11, color: "#b91c1c", background: "#fee2e2", border: "1px solid #fecaca", borderRadius: 6, padding: "6px 8px", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}
+        >
+          <span>⛔ Not delivered — {gateMsg.text}</span>
+          {gateMsg.reportUrl && (
+            <a href={gateMsg.reportUrl} target="_blank" rel="noreferrer" style={{ color: "#b91c1c", fontWeight: 700 }}>
+              open audit sheet ↗
+            </a>
+          )}
+          <button type="button" onClick={() => setGateMsg(null)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#b91c1c", cursor: "pointer", fontSize: 11 }}>
+            dismiss
+          </button>
+        </div>
+      )}
 
       {!terminal && showNotes && (
         <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "auto 1fr", gap: 8, alignItems: "start" }}>

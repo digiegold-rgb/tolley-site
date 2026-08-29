@@ -28,6 +28,7 @@ import { parseVideoCost } from "@/lib/vater/video-cost";
 import {
   findTicketProject,
   readConcierge,
+  type ConciergeAudit,
   type ConciergeTicket,
 } from "@/lib/vater/concierge";
 
@@ -178,9 +179,15 @@ export interface TicketSummary {
   claimedBy: string | null;
   deliveredAt: string | null;
   jobId: string | null;
+  /** ticket.composeJobId — a repair compose has run (audit match needs it). */
+  composeJobId: string | null;
   operatorNote: string | null;
   internalNote: string | null;
   customerNote: string | null;
+  /** Latest delivery audit (POST /audit), null until fable5-audit.py posts one. */
+  audit: ConciergeAudit | null;
+  /** The row's final — the board compares the audit against it like /deliver does. */
+  finalVideoUrl: string | null;
   /** Minutes since submittedAt. */
   ageMin: number;
   errorMessage: string | null;
@@ -219,9 +226,12 @@ export function ticketSummary(
     claimedBy: ticket.claimedBy ?? null,
     deliveredAt: ticket.deliveredAt ?? null,
     jobId: ticket.jobId ?? project.autopilotJobId ?? null,
+    composeJobId: ticket.composeJobId ?? null,
     operatorNote: ticket.operatorNote ?? null,
     internalNote: ticket.internalNote ?? null,
     customerNote: ticket.customerNote ?? null,
+    audit: ticket.audit ?? null,
+    finalVideoUrl: project.finalVideoUrl ?? null,
     ageMin: Number.isFinite(submitted) ? Math.max(0, Math.round((now - submitted) / 60000)) : 0,
     errorMessage: project.errorMessage ?? null,
     dgxPhase: dgxPhaseOf(project.stepDetails),

@@ -47,6 +47,8 @@ export type VaterEventKind =
   | "concierge.stage"
   | "concierge.delivered"
   | "concierge.cancelled"
+  // Delivery audit posted by fable5-audit.py (2026-08-28)
+  | "concierge.audit"
   // Studio tabs / workspaces (2026-08-27)
   | "workspace.created"
   | "workspace.archived";

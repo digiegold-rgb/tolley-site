@@ -1,5 +1,5 @@
 /**
- * POST /api/vater/concierge/[ticket]/deliver   body {note?, by?}
+ * POST /api/vater/concierge/[ticket]/deliver   body {note?, by?, waive?, waiveReason?}
  *
  * The hand-back. Syncs first when the row has no finalVideoUrl yet (so an
  * operator who forgot /sync still gets the debit + cost merge through the
@@ -12,14 +12,26 @@
  * Double-send guard: a ticket with `deliveredAt` already set returns
  * 200 {already:true} and sends NOTHING.
  *
- * → 200 {ticket, status, emailed, chargeLine, finalVideoUrl, already?}
+ * AUDIT GATE (2026-08-28, after F5-B0A50J shipped 24 s before its audit ran
+ * and then failed 29/34): the ticket must carry a PASSING audit that speaks
+ * for the CURRENT final (`auditMatchesFinal` — same `?v=` / same URL, or an
+ * r1 audit of the same render job with no repair compose since). Otherwise
+ * 409 `audit_missing` / `audit_failed`. Override: body
+ * `{waive:true, waiveReason:"≥8 chars"}` delivers anyway and stamps the
+ * waiver on history + internalNote + Telegram. The CLI's local pre-check
+ * stays; this is the server truth.
+ *
+ * → 200 {ticket, status, emailed, chargeLine, finalVideoUrl, already?, waived?}
  * · 409 {code:"not_rendered", outcome} | {code:"terminal"}
+ * · 409 {code:"audit_missing", message} | {code:"audit_failed", hardFails, sceneCount, round, reportUrl}
+ * · 400 {code:"waive_reason_required"}
  */
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { actorLabel, authorizeConcierge } from "@/lib/vater/concierge-auth";
-import { writeConcierge } from "@/lib/vater/concierge";
+import { readConcierge, writeConcierge } from "@/lib/vater/concierge";
+import { auditMatchesFinal } from "@/lib/vater/concierge-client";
 import {
   CONCIERGE_LIBRARY_URL,
   conciergeTelegram,
@@ -48,8 +60,19 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const auth = await authorizeConcierge(req);
   if (!auth.ok) return auth.response;
 
-  const body = await readBody<{ note?: unknown; by?: unknown }>(req);
+  const body = await readBody<{ note?: unknown; by?: unknown; waive?: unknown; waiveReason?: unknown }>(req);
   if (!body) return jsonError(400, "Invalid JSON body");
+
+  const waive = body.waive === true;
+  const waiveReason =
+    typeof body.waiveReason === "string" && body.waiveReason.trim().length >= 8
+      ? body.waiveReason.trim().slice(0, 500)
+      : null;
+  if (waive && !waiveReason) {
+    return jsonError(400, "waive:true needs waiveReason (≥ 8 chars) — say why this ships without a passing audit", {
+      code: "waive_reason_required",
+    });
+  }
 
   const { ticket: param } = await ctx.params;
   const loaded = await loadTicketProject(param);
@@ -97,6 +120,42 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     });
   }
 
+  // ── Delivery audit gate ─────────────────────────────────────────────────
+  // Re-read the ticket: the sync above may have re-pointed jobs.
+  const fresh = readConcierge(project.settingsJson) ?? ticket;
+  const audit = fresh.audit ?? null;
+  const auditMatches = auditMatchesFinal(audit, {
+    finalVideoUrl: project.finalVideoUrl,
+    jobId: fresh.jobId ?? null,
+    composeJobId: fresh.composeJobId ?? null,
+  });
+  if (!waive) {
+    if (!auditMatches) {
+      return jsonError(409, "no delivery audit for this final yet", {
+        code: "audit_missing",
+        message:
+          "no delivery audit for this final yet — the runner audits after sync; wait for it (or deliver anyway with a reason)",
+        finalVideoUrl: project.finalVideoUrl,
+        lastAudit: audit
+          ? { round: audit.round, source: audit.source, at: audit.at, finalV: audit.finalV, passed: audit.passed }
+          : null,
+      });
+    }
+    if (!audit!.passed) {
+      return jsonError(
+        409,
+        `delivery audit r${audit!.round} FAILED — ${audit!.hardFails}/${audit!.sceneCount} scenes with hard failures`,
+        {
+          code: "audit_failed",
+          hardFails: audit!.hardFails,
+          sceneCount: audit!.sceneCount,
+          round: audit!.round,
+          reportUrl: audit!.reportUrl,
+        },
+      );
+    }
+  }
+
   // ── Charge line (best-effort; never blocks delivery) ────────────────────
   const owner = await resolveOwner(project.userId);
   let chargeLine = "unmetered";
@@ -120,13 +179,32 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const note = typeof body.note === "string" && body.note.trim() ? body.note.trim().slice(0, 2000) : null;
   const by = actorLabel(auth.by, body.by);
   const nowIso = new Date().toISOString();
+  // Waiver stamp — only when the gate would have refused (a waive:true on a
+  // ticket whose audit already passes is a no-op, not a waiver).
+  const waived = waive && !(auditMatches && audit?.passed);
+  const waiverLine = waived
+    ? `DELIVERED WITH AUDIT WAIVER by ${by}: ${waiveReason}` +
+      (audit
+        ? ` (last audit r${audit.round} ${audit.passed ? "PASS" : `FAIL ${audit.hardFails}/${audit.sceneCount}`}${auditMatches ? "" : ", not for this final"})`
+        : " (no audit on file)")
+    : null;
+  const internalNote = waiverLine
+    ? `${waiverLine}${fresh.internalNote ? `\n${fresh.internalNote}` : ""}`.slice(0, 4000)
+    : undefined;
   const { project: updated, ticket: next } = await writeConcierge(
     project.id,
-    { stage: "delivered", deliveredAt: nowIso, operatorNote: note },
+    {
+      stage: "delivered",
+      deliveredAt: nowIso,
+      operatorNote: note,
+      ...(internalNote !== undefined ? { internalNote } : {}),
+    },
     {
       status: "ready",
       by,
-      historyNote: note ?? `delivered (${chargeLine})`,
+      historyNote: waiverLine
+        ? `${waiverLine} · ${note ?? `delivered (${chargeLine})`}`
+        : (note ?? `delivered (${chargeLine})`),
       // Stepped flow (2026-08-28): Done.
       extraData: { flowStep: 8, flowStepAt: new Date(), approvalExpiresAt: null },
     },
@@ -161,8 +239,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   // ── Telegram + event ────────────────────────────────────────────────────
   await conciergeTelegram(
-    `✅ delivered ${next.code} · ${tgSafe(next.email || owner.email || "—")} · ${tgSafe(chargeLine)}` +
-      `${emailed ? "" : " · ⚠️ email NOT sent"}`,
+    `${waived ? "⚠️ delivered WITH AUDIT WAIVER" : "✅ delivered"} ${next.code} · ${tgSafe(next.email || owner.email || "—")} · ${tgSafe(chargeLine)}` +
+      `${emailed ? "" : " · ⚠️ email NOT sent"}` +
+      `${waived ? `\nwaiver by ${tgSafe(by)}: ${tgSafe(waiveReason)}` : ""}`,
   );
   if (project.userId) {
     queueVaterEvent({
@@ -171,7 +250,17 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       message: `Fable 5 ${next.code}: delivered (${chargeLine})`,
       projectId: project.id,
       jobId: project.autopilotJobId,
-      data: { code: next.code, by, chargeLine, chargedUsd, emailed, finalVideoUrl: project.finalVideoUrl },
+      data: {
+        code: next.code,
+        by,
+        chargeLine,
+        chargedUsd,
+        emailed,
+        finalVideoUrl: project.finalVideoUrl,
+        waived,
+        waiveReason: waived ? waiveReason : null,
+        auditRound: audit?.round ?? null,
+      },
     });
   }
 
@@ -181,5 +270,6 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     emailed,
     chargeLine,
     finalVideoUrl: project.finalVideoUrl,
+    waived,
   });
 }

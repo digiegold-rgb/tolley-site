@@ -47,6 +47,151 @@ export interface ConciergeHistoryEntry {
 }
 
 /**
+ * The latest delivery audit (fable5-audit.py → POST /api/vater/concierge/
+ * [ticket]/audit). 2026-08-28: F5-B0A50J was delivered 24 s BEFORE its audit
+ * ran (29/34 hard fails) because the audit only lived on the DGX. This is
+ * the site-side copy the deliver route gates on and the /hq board shows.
+ */
+export interface ConciergeAudit {
+  round: number;
+  /** "r1" (render stills) | "final" (frames pulled from the final video). */
+  source: string;
+  at: string;
+  /** `?v=` of the final the audit judged (source=final), else null. */
+  finalV: string | null;
+  finalVideoUrl: string | null;
+  jobId: string | null;
+  hardFails: number;
+  sceneCount: number;
+  judged: number;
+  byCheck: Record<string, number>;
+  /** 1-based scene numbers with a hard failure. */
+  hardScenes: number[];
+  costUsd: number;
+  rulesVersion: string | null;
+  reportUrl: string | null;
+  /** hardFails === 0 && judged >= sceneCount — computed on the server. */
+  passed: boolean;
+}
+
+export const AUDIT_MAX_LIST = 500;
+export const AUDIT_MAX_CHECKS = 40;
+export const AUDIT_MAX_URL = 500;
+
+const finiteNum = (v: unknown, d = 0): number => {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : d;
+};
+
+/**
+ * Permissive/clipping reader for an audit dict — used both for the stored
+ * ticket (readConciergeClient) and for the raw POST body of the /audit route.
+ * `passed` is ALWAYS recomputed from the numbers, never trusted from input.
+ * null when the input is not an object or has no usable `round`.
+ */
+export function parseConciergeAudit(raw: unknown): ConciergeAudit | null {
+  const a = bag(raw);
+  if (!a) return null;
+  const round = Math.trunc(finiteNum(a.round, NaN));
+  if (!Number.isFinite(round) || round < 1) return null;
+  const hardFails = Math.max(0, Math.trunc(finiteNum(a.hardFails)));
+  const sceneCount = Math.max(0, Math.trunc(finiteNum(a.sceneCount)));
+  const judged = Math.max(0, Math.trunc(finiteNum(a.judged)));
+  const byCheck: Record<string, number> = {};
+  const rawChecks = bag(a.byCheck);
+  if (rawChecks) {
+    for (const [k, v] of Object.entries(rawChecks).slice(0, AUDIT_MAX_CHECKS)) {
+      const n = finiteNum(v, NaN);
+      if (k && Number.isFinite(n)) byCheck[k.slice(0, 40)] = Math.trunc(n);
+    }
+  }
+  const hardScenes = Array.isArray(a.hardScenes)
+    ? (a.hardScenes as unknown[])
+        .map((v) => Math.trunc(finiteNum(v, NaN)))
+        .filter((n) => Number.isFinite(n))
+        .slice(0, AUDIT_MAX_LIST)
+    : [];
+  // fable5-audit.py writes rulesVersion as {version,count,source,…}; store the version string.
+  const rv = a.rulesVersion;
+  const rulesVersion =
+    typeof rv === "string" && rv
+      ? rv.slice(0, 40)
+      : typeof rv === "number"
+        ? String(rv)
+        : bag(rv)?.version != null && String(bag(rv)!.version)
+          ? String(bag(rv)!.version).slice(0, 40)
+          : null;
+  const finalV = a.finalV == null ? null : String(a.finalV).slice(0, 40) || null;
+  const reportUrl =
+    typeof a.reportUrl === "string" && /^https?:\/\//.test(a.reportUrl)
+      ? a.reportUrl.slice(0, AUDIT_MAX_URL)
+      : null;
+  return {
+    round,
+    source: (str(a.source) ?? "r1").slice(0, 16),
+    at: str(a.at) ?? new Date().toISOString(),
+    finalV,
+    finalVideoUrl: str(a.finalVideoUrl)?.slice(0, AUDIT_MAX_URL) ?? null,
+    jobId: str(a.jobId)?.slice(0, 64) ?? null,
+    hardFails,
+    sceneCount,
+    judged,
+    byCheck,
+    hardScenes,
+    costUsd: Math.round(finiteNum(a.costUsd) * 10000) / 10000,
+    rulesVersion,
+    reportUrl,
+    passed: hardFails === 0 && judged >= sceneCount,
+  };
+}
+
+/** `?v=` of a finalVideoUrl (the cache-buster the sync writes), or null. */
+export function finalVersionOf(finalVideoUrl: string | null | undefined): string | null {
+  const m = /[?&]v=([^&#]+)/.exec(finalVideoUrl ?? "");
+  return m ? m[1] : null;
+}
+
+export interface AuditMatchTarget {
+  finalVideoUrl: string | null | undefined;
+  /** ticket.jobId — the RENDER job. */
+  jobId?: string | null;
+  /** ticket.composeJobId — set once a repair compose has ever run. */
+  composeJobId?: string | null;
+}
+
+/**
+ * Does this audit speak for the final the project currently holds?
+ *   - source=final: its `finalV` equals the final's `?v=`, or its
+ *     `finalVideoUrl` equals the row's finalVideoUrl verbatim;
+ *   - source=r1 (stills of the render job, no final refs): only while the
+ *     final IS the plain compose of those stills — same render job and no
+ *     repair compose has ever run. Any compose after an r1 audit needs a
+ *     fresh `--source final` round.
+ */
+export function auditMatchesFinal(audit: ConciergeAudit | null | undefined, target: AuditMatchTarget): boolean {
+  if (!audit || !target.finalVideoUrl) return false;
+  const v = finalVersionOf(target.finalVideoUrl);
+  if (audit.finalV && v && audit.finalV === v) return true;
+  if (audit.finalVideoUrl && audit.finalVideoUrl === target.finalVideoUrl) return true;
+  if (audit.finalV || audit.finalVideoUrl) return false;
+  return (
+    audit.source === "r1" &&
+    !!audit.jobId &&
+    !!target.jobId &&
+    audit.jobId === target.jobId &&
+    !target.composeJobId
+  );
+}
+
+/** Short chip text: "no audit yet" · "audit r2 PASS" · "audit r1 FAIL 29/34". */
+export function auditChipLabel(audit: ConciergeAudit | null | undefined): string {
+  if (!audit) return "no audit yet";
+  return audit.passed
+    ? `audit r${audit.round} PASS`
+    : `audit r${audit.round} FAIL ${audit.hardFails}/${audit.sceneCount}`;
+}
+
+/**
  * What the browser sees. Same fields as the server `ConciergeTicket` MINUS
  * `internalNote`, which `publicTicketView` strips before it leaves the server.
  */
@@ -72,6 +217,8 @@ export interface ConciergeTicketView {
   estMinutes: number;
   estimateUsd: number;
   history: ConciergeHistoryEntry[];
+  /** Latest delivery audit posted by fable5-audit.py (null until it runs). */
+  audit?: ConciergeAudit | null;
 }
 
 function bag(settingsJson: unknown): Record<string, unknown> | null {
@@ -129,6 +276,7 @@ export function readConciergeClient(settingsJson: unknown): ConciergeTicketView 
     estMinutes: num(t.estMinutes),
     estimateUsd: num(t.estimateUsd),
     history,
+    audit: parseConciergeAudit(t.audit),
   };
 }
 

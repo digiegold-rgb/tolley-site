@@ -33,6 +33,12 @@ export interface RenderTerminalProps {
   style?: React.CSSProperties;
 }
 
+export interface LogGate {
+  lane: 'concierge' | 'auto';
+  stage: string | null;
+  audit: { round: number; passed: boolean; hardFails: number; sceneCount: number } | null;
+}
+
 interface LogPayload {
   jobId: string | null;
   status: string | null;
@@ -40,6 +46,28 @@ interface LogPayload {
   progress: number | null;
   updatedAt: string | null;
   lines: string[];
+  gate: LogGate | null;
+}
+
+function parseGate(raw: unknown): LogGate | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const g = raw as { lane?: unknown; stage?: unknown; audit?: unknown };
+  if (g.lane !== 'concierge' && g.lane !== 'auto') return null;
+  const a = g.audit && typeof g.audit === 'object' ? (g.audit as Record<string, unknown>) : null;
+  const round = a ? Number(a.round) : NaN;
+  return {
+    lane: g.lane,
+    stage: typeof g.stage === 'string' ? g.stage : null,
+    audit:
+      a && Number.isFinite(round)
+        ? {
+            round,
+            passed: a.passed === true,
+            hardFails: Number.isFinite(Number(a.hardFails)) ? Number(a.hardFails) : 0,
+            sceneCount: Number.isFinite(Number(a.sceneCount)) ? Number(a.sceneCount) : 0,
+          }
+        : null,
+  };
 }
 
 const POLL_MS = 5000;
@@ -65,6 +93,7 @@ function useRenderLog(projectId: string, active: boolean, initialLines?: string[
         progress: typeof body.progress === 'number' ? body.progress : null,
         updatedAt: body.updatedAt ?? null,
         lines: Array.isArray(body.lines) ? body.lines.filter((l): l is string => typeof l === 'string' && !!l) : [],
+        gate: parseGate(body.gate),
       });
     } catch {
       /* transient — the next tick retries */
@@ -128,6 +157,20 @@ function phaseLabel(phase: string | null, status: string | null): string {
   return 'working';
 }
 
+/* Fable 5 / concierge rows (2026-08-28): a finished render is NOT a delivered
+ * video — the delivery audit still has to pass. Never show a bare "done" for
+ * a concierge row that has not been delivered; say where the gate stands. */
+export function conciergeGateLabel(gate: LogGate | null, status: string | null): string | null {
+  if (!gate || gate.lane !== 'concierge') return null;
+  if (gate.stage === 'delivered') return 'delivered';
+  if (gate.stage === 'cancelled') return 'cancelled';
+  if (status !== 'done') return null;
+  const a = gate.audit;
+  if (!a) return 'rendered · audit pending';
+  if (!a.passed) return `rendered · audit FAILED r${a.round} ${a.hardFails}/${a.sceneCount} — repairing`;
+  return 'rendered · audit passed — delivering';
+}
+
 /* ─── the box ──────────────────────────────────────────────────────────── */
 
 // A terminal is dark in both themes — that is the point of the box.
@@ -151,10 +194,31 @@ export function RenderTerminal({ projectId, active, compact = true, initialLines
     if (el) el.scrollTop = el.scrollHeight;
   }, [newest, tail.length]);
 
-  const phase = phaseLabel(data?.phase ?? null, data?.status ?? null);
+  const gateLabel = conciergeGateLabel(data?.gate ?? null, data?.status ?? null);
+  const phase = gateLabel ?? phaseLabel(data?.phase ?? null, data?.status ?? null);
   const pct = typeof data?.progress === 'number' ? Math.max(0, Math.min(100, Math.round(data.progress))) : null;
   const terminal = data?.status === 'done' || data?.status === 'failed';
   const live = active && !terminal;
+  // Concierge: "done" only reads green once the ticket is delivered; a passed
+  // audit is green too (delivering), a pending/failed audit stays amber.
+  const gateAudit = data?.gate?.lane === 'concierge' ? data.gate.audit : null;
+  const gateDelivered = data?.gate?.lane === 'concierge' && data.gate.stage === 'delivered';
+  const gateHeld = !!gateLabel && !gateDelivered && !(gateAudit?.passed ?? false);
+  const rightLabel = gateLabel
+    ? gateDelivered
+      ? 'delivered'
+      : gateAudit
+        ? gateAudit.passed
+          ? 'audit ok'
+          : 'audit failed'
+        : 'audit pending'
+    : live
+      ? 'live'
+      : terminal
+        ? data?.status
+        : loaded
+          ? 'idle'
+          : '…';
 
   return (
     <div
@@ -163,6 +227,7 @@ export function RenderTerminal({ projectId, active, compact = true, initialLines
       data-phase={data?.phase ?? ''}
       data-count={tail.length}
       data-job={data?.jobId ?? ''}
+      data-gate={gateLabel ?? ''}
       style={{
         background: TERM_BG,
         border: `1px solid ${TERM_BORDER}`,
@@ -197,14 +262,22 @@ export function RenderTerminal({ projectId, active, compact = true, initialLines
             height: 7,
             borderRadius: '50%',
             flexShrink: 0,
-            background: live ? JELLY_TOKENS.cyan : data?.status === 'failed' ? JELLY_TOKENS.error : terminal ? JELLY_TOKENS.success : TERM_DIM,
+            background: live
+              ? JELLY_TOKENS.cyan
+              : data?.status === 'failed' || (gateAudit && !gateAudit.passed && !gateDelivered)
+                ? JELLY_TOKENS.error
+                : gateHeld
+                  ? JELLY_TOKENS.warning
+                  : terminal
+                    ? JELLY_TOKENS.success
+                    : TERM_DIM,
           }}
         />
         <span data-testid="render-terminal-phase" style={{ color: TERM_TEXT, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {phase}
           {pct !== null ? ` · ${pct}%` : ''}
         </span>
-        <span style={{ marginLeft: 'auto', flexShrink: 0 }}>{live ? 'live' : terminal ? data?.status : loaded ? 'idle' : '…'}</span>
+        <span style={{ marginLeft: 'auto', flexShrink: 0 }}>{rightLabel}</span>
       </div>
       <div
         ref={bodyRef}

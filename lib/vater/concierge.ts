@@ -36,6 +36,7 @@ import {
   isConciergeStage,
   readConciergeClient,
   readEngineClient,
+  type ConciergeAudit,
   type ConciergeEngine,
   type ConciergeHistoryEntry,
   type ConciergeStage,
@@ -43,7 +44,7 @@ import {
 } from "@/lib/vater/concierge-client";
 
 export { CONCIERGE_STATUSES, isConciergeStatus };
-export type { ConciergeEngine, ConciergeStage, ConciergeHistoryEntry, ConciergeTicketView };
+export type { ConciergeAudit, ConciergeEngine, ConciergeStage, ConciergeHistoryEntry, ConciergeTicketView };
 
 /** Minimum script length for a ticket — same floor as /api/v1/videos. */
 export const CONCIERGE_MIN_WORDS = 20;
@@ -80,6 +81,8 @@ export interface ConciergeTicket {
   estMinutes: number;
   estimateUsd: number;
   history: ConciergeHistoryEntry[];
+  /** Latest delivery audit (POST /audit). undefined in a patch = keep, null = clear. */
+  audit?: ConciergeAudit | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -247,6 +250,7 @@ export async function writeConcierge(
       estMinutes: patch.estMinutes ?? existing?.estMinutes ?? 0,
       estimateUsd: patch.estimateUsd ?? existing?.estimateUsd ?? 0,
       history: [...(patch.history ?? existing?.history ?? [])],
+      audit: patch.audit !== undefined ? patch.audit : (existing?.audit ?? null),
     };
     if (!isConciergeStage(merged.stage)) {
       throw new Error(`concierge: invalid stage ${String(merged.stage)}`);
