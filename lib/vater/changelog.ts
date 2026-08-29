@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.11';
+export const APP_VERSION = '1.12';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.12',
+    date: '2026-08-29',
+    title: 'Scripts written by Claude',
+    items: [
+      'The Writing step now runs on Claude Sonnet 5 and reads your whole transcript, not a summary of it. The script says what your video said, restructured in your voice, with your Script Rules applied — the same workflow you would run by hand in Claude.',
+      'Script generation and rewrites are now $0.25 each (was $0.05), shown next to the button before you click.',
+    ],
+  },
   {
     version: '1.11',
     date: '2026-08-27',
