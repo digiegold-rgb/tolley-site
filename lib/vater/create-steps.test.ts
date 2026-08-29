@@ -53,6 +53,17 @@ test("Review stays the approval gate once flowStep is 5 or the writer parked", (
   assert.equal(parked.kind, "approval");
 });
 
+test("video path + pasted script + Continue lands on Review", () => {
+  const d = deriveCreateStep({
+    status: "transcribed",
+    flowStep: 5,
+    transcript: "caption track ".repeat(40),
+    script: "Trey injected his own copy after the transcript.",
+  });
+  assert.equal(d.step, 5);
+  assert.equal(d.kind, "approval");
+});
+
 test("a leftover DGX scripting job still pulses on Writing", () => {
   const d = deriveCreateStep({ status: "scripting", flowStep: 4, transcript: "x" });
   assert.equal(d.step, 4);

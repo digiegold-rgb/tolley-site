@@ -185,6 +185,8 @@ export function deriveCreateStep(
   if (STEP4_STATUSES.has(status)) return make(4, "async");
   if (STEP2_STATUSES.has(status)) {
     if (status === "transcribed" || p.transcript) {
+      // Pasted/edited a script and continued — same Review gate as a generate.
+      if (flow >= 5 && p.script) return make(5, "approval");
       // Length confirmed → the on-site writer (step 4), not a DGX spinner.
       if (flow >= 4) return make(4, "input");
       return flow >= 3 ? make(3, "input") : make(2, "input");
