@@ -17,7 +17,7 @@
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
-import { RetryError, VBtn, VCard } from '../../primitives';
+import { RetryError, VCard } from '../../primitives';
 import { GlassCard, MicroLabel } from '../../cinema';
 import { LatestUpdateStrip } from '../../LatestUpdate';
 import { YouTubeLibrary } from '@/components/vater/youtube-library';
@@ -28,16 +28,12 @@ import {
   type YouTubeProjectStatus,
 } from '@/lib/vater/youtube-status';
 import { isPostedToYoutube } from '@/lib/vater/youtube-posted';
-import { CustomerStageChip } from './CustomerStageChip';
 import { CustomerStageRail } from './CustomerStageRail';
 import { AnimateLayerShelf } from './AnimateLayerShelf';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyProject = any;
 
-function titleOf(p: AnyProject): string {
-  return p?.publishTitle || p?.sourceTitle || p?.topic || p?.sourceUrl || p?.id || 'Untitled';
-}
 
 function bucketProjects(projects: AnyProject[]): Record<CustomerStage, AnyProject[]> {
   const queued: AnyProject[] = [];
@@ -64,7 +60,7 @@ function bucketProjects(projects: AnyProject[]): Record<CustomerStage, AnyProjec
 
 export function Library(): React.ReactElement {
   const { t } = useTheme();
-  const { requestNewVideo, setRoute } = useRoute();
+  const { requestNewVideo } = useRoute();
   const [projects, setProjects] = React.useState<AnyProject[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -100,11 +96,15 @@ export function Library(): React.ReactElement {
   // job and a recent write) sits in the Moving-now strip only; a stale
   // `editing` row with a final is Done and shows here — never both (#3/#6
   // used to render twice, 2026-08-25).
-  const ready = buckets.done;
+  // 2026-08-28 (Jared): the Library is FINISHED FINALS ONLY. Anything still
+  // moving — drafts, script-ready, rendering, needs-info — lives on the
+  // Progress tab now, which is where the 8/27 "nothing may be invisible"
+  // guarantee moved to.
+  const ready = React.useMemo(() => buckets.done.filter((p) => !!p.finalVideoUrl), [buckets]);
   /* Everything the customer owns, in-flight first. The shelves below stay on
      `ready` — you cannot add a thumbnail to, or schedule, a video that does
      not exist yet. */
-  const gridProjects = React.useMemo(() => [...pipeline, ...ready], [pipeline, ready]);
+  const gridProjects = ready;
   const livePipeline = pipeline.length > 0;
 
   React.useEffect(() => {
@@ -213,12 +213,6 @@ export function Library(): React.ReactElement {
         </div>
       )}
 
-      {!loading && pipeline.length > 0 && (
-        <LibraryPipeline
-          items={pipeline}
-          onOpenQueue={() => setRoute('progress')}
-        />
-      )}
 
       {loading ? (
         <div
@@ -231,7 +225,7 @@ export function Library(): React.ReactElement {
         >
           Loading library…
         </div>
-      ) : ready.length === 0 && pipeline.length === 0 && !error ? (
+      ) : ready.length === 0 && !error ? (
         <VCard
           variant="flat"
           style={{
@@ -273,7 +267,7 @@ export function Library(): React.ReactElement {
             Create your first video
           </button>
         </VCard>
-      ) : ready.length === 0 && pipeline.length === 0 ? null : (
+      ) : ready.length === 0 ? null : (
         <>
           {/* The grid shows work IN FLIGHT as well as finished work. It used
               to render `ready` only, so a video being animated dropped out of
@@ -301,83 +295,6 @@ export function Library(): React.ReactElement {
         </>
       )}
     </div>
-  );
-}
-
-function LibraryPipeline({
-  items,
-  onOpenQueue,
-}: {
-  items: AnyProject[];
-  onOpenQueue: () => void;
-}): React.ReactElement {
-  const { t } = useTheme();
-  const { openProjectInEditor } = useRoute();
-
-  return (
-    <GlassCard
-      data-testid="library-pipeline"
-      style={{ marginBottom: 20 }}
-      padding={16}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-          flexWrap: 'wrap',
-          marginBottom: 10,
-        }}
-      >
-        <MicroLabel tone="cyan" size={10.5} tracking="0.22em">
-          Moving now
-        </MicroLabel>
-        <VBtn size="sm" variant="text" onClick={onOpenQueue}>
-          Open Queue →
-        </VBtn>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {items.map((p) => (
-          <div
-            key={p.id}
-            data-testid={`library-pipeline-${p.id}`}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              flexWrap: 'wrap',
-              padding: 10,
-              background: t.cardAlt,
-              border: `1px solid ${t.border}`,
-              borderRadius: JELLY_TOKENS.radius.md,
-            }}
-          >
-            <CustomerStageChip status={p.status} project={p} />
-            <span
-              style={{
-                flex: '1 1 180px',
-                minWidth: 0,
-                fontSize: 13,
-                color: t.text,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {titleOf(p)}
-            </span>
-            <VBtn
-              size="sm"
-              variant="text"
-              onClick={() => openProjectInEditor(p.id)}
-            >
-              Open project →
-            </VBtn>
-          </div>
-        ))}
-      </div>
-    </GlassCard>
   );
 }
 
