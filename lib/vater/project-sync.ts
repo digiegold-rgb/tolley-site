@@ -379,15 +379,22 @@ export async function syncProjectFromJob(
   if (shouldAlertFailure) alertedJobId = project.autopilotJobId;
 
   const data: Prisma.YouTubeProjectUpdateInput = {
-    // Concierge policy: the customer's `concierge_*` status is owned by the
-    // concierge ticket, not the DGX — only the transition into `ready` is
-    // persisted; phases / "failed" live in stepDetails (+ errorMessage) for HQ.
-    status:
-      policy === "concierge"
-        ? nextStatus === "ready"
-          ? "ready"
-          : project.status
-        : nextStatus,
+    // Concierge policy: the customer's status is owned ENTIRELY by the concierge
+    // ticket, never by the DGX job. Phases / "failed" live in stepDetails (+
+    // errorMessage) for HQ.
+    //
+    // `ready` is what puts a video in the customer's Library, and a finished
+    // RENDER is not a finished VIDEO — a Fable 5 ticket still has to pass the
+    // rule-155 delivery audit, and a failing audit sends it back for repair and
+    // a re-compose. This used to promote the row to `ready` the moment the job
+    // went done, so #55 appeared in Trey's Library at first sync, was watched in
+    // its unrepaired r1 state, and then VANISHED when the repair round flipped
+    // it back to `concierge_in_progress` (Jared 2026-08-29: "dont send it to
+    // library unless its actually repaired"). Only the deliver route
+    // (`writeConcierge(stage:"delivered", status:"ready")`) may set it now — and
+    // that route does its own idempotent `debitForProject`, so nothing is
+    // un-billed by deferring it.
+    status: policy === "concierge" ? project.status : nextStatus,
     progress: typeof job.progress === "number" ? job.progress : project.progress,
     stepDetails: {
       phase: job.phase,
