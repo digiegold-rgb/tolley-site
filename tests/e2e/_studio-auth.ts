@@ -24,22 +24,38 @@ export interface StudioUser {
   cookies: Awaited<ReturnType<BrowserContext["cookies"]>>;
 }
 
+/**
+ * One STABLE address per spec tag — `e2e-<tag>@tolley.io`, never a timestamp.
+ *
+ * The old recipe minted `e2e-<tag>+<Date.now()>@tolley.io` per run and deleted
+ * it in afterAll. Any interrupted run (Ctrl-C, a killed worker, `--max-failures`)
+ * skips afterAll, so every abandoned attempt left a permanent row on the /hq
+ * roster — 14 of them from one debugging session on 2026-08-28, and the specs
+ * run against a Vercel preview that shares the PROD database, so they land in
+ * front of Jared. A stable address makes the next run ADOPT the orphan instead
+ * of adding to it: the blast radius of a killed run is one row per tag, ever.
+ */
+export function e2eEmail(tag: string): string {
+  return `e2e-${tag}@tolley.io`.toLowerCase();
+}
+
 export async function seedAndSignIn(browser: Browser, prisma: PrismaClient, tag: string): Promise<StudioUser> {
-  const stamp = Date.now();
-  const email = `e2e-${tag}+${stamp}@tolley.io`.toLowerCase();
+  const email = e2eEmail(tag);
   const passwordHash = await hashPassword(TEST_PASSWORD);
-  const user = await prisma.user.create({ data: { email } });
-  const userId = user.id;
-  await prisma.credentialAuth.create({ data: { userId, passwordHash } });
-  const invite = await prisma.betaInvite.create({
-    data: {
-      code: `${tag.slice(0, 2).toUpperCase()}${String(stamp).slice(-9)}`,
-      email,
-      maxUses: 1,
-      usedCount: 1,
-      createdBy: "e2e",
-      note: `${tag} e2e`,
-    },
+  // Adopt a leftover from an interrupted run rather than stacking a new row.
+  const existing = await prisma.user.findFirst({ where: { email }, select: { id: true } });
+  const userId = existing?.id ?? (await prisma.user.create({ data: { email } })).id;
+  if (existing) await resetUserState(prisma, userId);
+  await prisma.credentialAuth.upsert({
+    where: { userId },
+    create: { userId, passwordHash },
+    update: { passwordHash },
+  });
+  const code = `E2E${tag.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8)}`;
+  const invite = await prisma.betaInvite.upsert({
+    where: { code },
+    create: { code, email, maxUses: 1, usedCount: 1, createdBy: "e2e", note: `${tag} e2e` },
+    update: { email, usedCount: 1 },
   });
   await prisma.$executeRaw`UPDATE "User" SET "betaInviteId" = ${invite.id} WHERE "id" = ${userId}`;
   await prisma.$executeRaw`
@@ -99,6 +115,12 @@ export async function seedAndSignIn(browser: Browser, prisma: PrismaClient, tag:
   return { email, userId, inviteId: invite.id, cookies };
 }
 
+/** Money + entitlement rows an adopted account must not carry into a new run. */
+async function resetUserState(prisma: PrismaClient, userId: string): Promise<void> {
+  await prisma.vaterCreditLedger.deleteMany({ where: { userId } }).catch(() => {});
+  await prisma.vaterSubscription.deleteMany({ where: { userId } }).catch(() => {});
+}
+
 export async function cleanupUser(prisma: PrismaClient, u: StudioUser | null): Promise<void> {
   if (!u) return;
   const { userId, inviteId } = u;
@@ -107,8 +129,7 @@ export async function cleanupUser(prisma: PrismaClient, u: StudioUser | null): P
   await (prisma as unknown as { vaterAccount: { deleteMany: (a: unknown) => Promise<unknown> } }).vaterAccount
     .deleteMany({ where: { userId } })
     .catch(() => {});
-  await prisma.vaterCreditLedger.deleteMany({ where: { userId } }).catch(() => {});
-  await prisma.vaterSubscription.deleteMany({ where: { userId } }).catch(() => {});
+  await resetUserState(prisma, userId);
   await prisma.credentialAuth.deleteMany({ where: { userId } }).catch(() => {});
   await prisma.user.deleteMany({ where: { id: userId } }).catch(() => {});
 }

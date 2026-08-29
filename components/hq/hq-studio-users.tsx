@@ -91,6 +91,30 @@ interface Payload {
   message?: string;
 }
 
+/**
+ * Our own test tenants, not customers.
+ *
+ * Specs and QA scripts seed a real User so the studio shell renders with a real
+ * session, and they run against a Vercel PREVIEW that shares the PRODUCTION
+ * database — so they land on this roster looking like beta testers. They are
+ * folded into a "Tests" chip instead: out of the headline count, one click away
+ * when a spec needs inspecting.
+ *
+ * Two shapes, both `@tolley.io`:
+ *   throwaway  `e2e-<spec>@tolley.io`, `e2e-listing+<stamp>@tolley.io` — seeded
+ *              and deleted per run (tests/e2e/_studio-auth.ts keeps exactly one
+ *              per spec tag; prune leftovers with scripts/prune-e2e-users.mjs).
+ *   fixture    `qa.*`, `audit-*`, `*.e2e.*` — long-lived personas that scripts
+ *              hardcode (qa.walkthrough.0820 drives ~18 scripts/tmp-walkthrough-*,
+ *              audit-public is AUDIT_ANIMATE_EMAIL). ⛔ Never prune these.
+ */
+function isTestAccount(u: StudioUser): boolean {
+  const email = (u.email ?? "").toLowerCase();
+  if (!email.endsWith("@tolley.io")) return false;
+  const local = email.slice(0, -"@tolley.io".length);
+  return /^(e2e-|qa[.-]|audit-)/.test(local) || local.includes(".e2e.");
+}
+
 function shortDate(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -231,6 +255,8 @@ export function HqStudioUsers() {
   const [inviteEmail, setInviteEmail] = useState("");
   /** Origin chip filter: all | jelly | realestate (Listing Studio). */
   const [originFilter, setOriginFilter] = useState<"all" | "jelly" | "realestate">("all");
+  /** Our own seeded tenants stay collapsed — the roster is for customers. */
+  const [showTests, setShowTests] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -455,12 +481,144 @@ export function HqStudioUsers() {
   );
 
   const liveInvites = invites.filter((i) => i.spendable);
+  const humans = users.filter((u) => !isTestAccount(u));
+  const testAccounts = users.filter(isTestAccount);
   const originCounts = {
-    all: users.length,
-    jelly: users.filter((u) => (u.origin ?? "jelly") === "jelly").length,
-    realestate: users.filter((u) => u.origin === "realestate").length,
+    all: humans.length,
+    jelly: humans.filter((u) => (u.origin ?? "jelly") === "jelly").length,
+    realestate: humans.filter((u) => u.origin === "realestate").length,
   };
-  const visibleUsers = users.filter((u) => originFilter === "all" || (u.origin ?? "jelly") === originFilter);
+  const visibleUsers = humans.filter((u) => originFilter === "all" || (u.origin ?? "jelly") === originFilter);
+
+  /** One roster row. Shared so the collapsed test block renders identically. */
+  const renderRow = (u: StudioUser) => (
+    <tr key={u.userId}>
+      <td style={CELL}>
+        <div style={{ fontWeight: 600 }}>{u.email ?? "(no email)"}</div>
+        <div style={{ color: "var(--hq-muted)", fontSize: 11 }}>
+          joined {shortDate(u.createdAt)}
+          {u.invited ? " · invited" : ""}
+          {u.unmetered ? " · unmetered" : ""}
+        </div>
+        {(u.workspaces ?? []).length > 0 ? (
+          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+            {(u.workspaces ?? []).map((w) => (
+              <div
+                key={w.userId}
+                style={{ fontSize: 11, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}
+                title={`Studio tab · ${w.userId}`}
+              >
+                <span style={{ color: "var(--hq-muted)" }}>↳ tab</span>
+                <span style={{ fontWeight: 600, textDecoration: w.archived ? "line-through" : "none" }}>
+                  {w.name}
+                </span>
+                <span style={{ color: "var(--hq-muted)" }}>
+                  {money(w.balanceUsd)} · {w.projectCount} videos
+                  {w.archived ? " · archived" : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void viewAs({ ...u, userId: w.userId, email: `${u.email ?? u.userId} / ${w.name}` })}
+                  disabled={busyId === w.userId}
+                  title="Open /animate inside this tab, read-only"
+                  style={{
+                    padding: "1px 6px",
+                    border: "1px solid var(--hq-border)",
+                    borderRadius: 5,
+                    fontSize: 10.5,
+                    cursor: "pointer",
+                    background: "#fff",
+                  }}
+                >
+                  View as
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </td>
+      <td style={CELL}>
+        <select
+          value={u.tier}
+          onChange={(e) => void setTier(u, e.target.value)}
+          disabled={busyId === u.userId}
+          aria-label={`Tier for ${u.email ?? u.userId}`}
+          style={{
+            padding: "3px 6px",
+            border: "1px solid var(--hq-border)",
+            borderRadius: 6,
+            fontSize: 11,
+            background: "#fff",
+          }}
+        >
+          <option value="public">public</option>
+          <option value="studio">studio</option>
+          <option value="owner">owner</option>
+        </select>
+      </td>
+      <td style={CELL}>{renderOriginLicense(u, busyId === u.userId, setLicense)}</td>
+      <td style={CELL}>{money(u.balanceUsd)}</td>
+      <td style={CELL}>{u.projectCount}</td>
+      <td style={CELL}>{renderUsage(u)}</td>
+      <td style={CELL}>
+        <div>{u.lastProjectTitle ?? "—"}</div>
+        <div style={{ color: "var(--hq-muted)", fontSize: 11 }}>
+          {shortDate(u.lastProjectAt)}
+        </div>
+      </td>
+      <td style={{ ...CELL, maxWidth: 220 }}>
+        {u.lastError ? (
+          <span style={{ color: "var(--hq-red, #b42318)" }}>
+            {u.lastError.message.slice(0, 120)}
+            <span style={{ color: "var(--hq-muted)" }}>
+              {" "}
+              ({shortDate(u.lastError.at)})
+            </span>
+          </span>
+        ) : (
+          <span style={{ color: "var(--hq-muted)" }}>none</span>
+        )}
+      </td>
+      <td style={CELL}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          <button
+            type="button"
+            onClick={() => void viewAs(u)}
+            disabled={busyId === u.userId}
+            title="Open /animate as this customer, read-only, for 2 hours"
+            style={{
+              padding: "3px 8px",
+              border: "1px solid var(--hq-border)",
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: "pointer",
+              background: "#fff",
+            }}
+          >
+            View as
+          </button>
+          <button
+            type="button"
+            onClick={() => void setUnmetered(u)}
+            disabled={busyId === u.userId}
+            title="Skip trial caps / card requirement for this account"
+            style={{
+              padding: "3px 8px",
+              border: "1px solid var(--hq-border)",
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: "pointer",
+              background: u.unmetered ? "var(--hq-accent-soft, #f4f0ff)" : "#fff",
+            }}
+          >
+            {u.unmetered ? "Metered" : "Unmetered"}
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
 
   return (
     <div
@@ -483,7 +641,7 @@ export function HqStudioUsers() {
       >
         <strong style={{ fontSize: 14 }}>🎬 Studio users</strong>
         <span style={{ color: "var(--hq-muted)" }}>
-          {loading ? "loading…" : `${users.length} account${users.length === 1 ? "" : "s"}`}
+          {loading ? "loading…" : `${humans.length} account${humans.length === 1 ? "" : "s"}`}
           {" · "}
           {liveInvites.length} unused invite{liveInvites.length === 1 ? "" : "s"}
         </span>
@@ -624,141 +782,42 @@ export function HqStudioUsers() {
               </tr>
             </thead>
             <tbody>
-              {users.length === 0 && !loading ? (
+              {visibleUsers.length === 0 && !loading ? (
                 <tr>
                   <td style={{ ...CELL, color: "var(--hq-muted)" }} colSpan={9}>
                     No studio accounts yet. Mint an invite to get the first tester in.
                   </td>
                 </tr>
               ) : (
-                visibleUsers.map((u) => (
-                  <tr key={u.userId}>
-                    <td style={CELL}>
-                      <div style={{ fontWeight: 600 }}>{u.email ?? "(no email)"}</div>
-                      <div style={{ color: "var(--hq-muted)", fontSize: 11 }}>
-                        joined {shortDate(u.createdAt)}
-                        {u.invited ? " · invited" : ""}
-                        {u.unmetered ? " · unmetered" : ""}
-                      </div>
-                      {(u.workspaces ?? []).length > 0 ? (
-                        <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
-                          {(u.workspaces ?? []).map((w) => (
-                            <div
-                              key={w.userId}
-                              style={{ fontSize: 11, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}
-                              title={`Studio tab · ${w.userId}`}
-                            >
-                              <span style={{ color: "var(--hq-muted)" }}>↳ tab</span>
-                              <span style={{ fontWeight: 600, textDecoration: w.archived ? "line-through" : "none" }}>
-                                {w.name}
-                              </span>
-                              <span style={{ color: "var(--hq-muted)" }}>
-                                {money(w.balanceUsd)} · {w.projectCount} videos
-                                {w.archived ? " · archived" : ""}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => void viewAs({ ...u, userId: w.userId, email: `${u.email ?? u.userId} / ${w.name}` })}
-                                disabled={busyId === w.userId}
-                                title="Open /animate inside this tab, read-only"
-                                style={{
-                                  padding: "1px 6px",
-                                  border: "1px solid var(--hq-border)",
-                                  borderRadius: 5,
-                                  fontSize: 10.5,
-                                  cursor: "pointer",
-                                  background: "#fff",
-                                }}
-                              >
-                                View as
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td style={CELL}>
-                      <select
-                        value={u.tier}
-                        onChange={(e) => void setTier(u, e.target.value)}
-                        disabled={busyId === u.userId}
-                        aria-label={`Tier for ${u.email ?? u.userId}`}
+                visibleUsers.map(renderRow)
+              )}
+              {testAccounts.length > 0 && (
+                <>
+                  <tr>
+                    <td colSpan={9} style={{ ...CELL, background: "var(--hq-soft, #fafafa)" }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowTests((v) => !v)}
+                        aria-expanded={showTests}
                         style={{
-                          padding: "3px 6px",
-                          border: "1px solid var(--hq-border)",
-                          borderRadius: 6,
-                          fontSize: 11,
-                          background: "#fff",
+                          padding: 0,
+                          border: "none",
+                          background: "none",
+                          color: "var(--hq-muted)",
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          cursor: "pointer",
                         }}
                       >
-                        <option value="public">public</option>
-                        <option value="studio">studio</option>
-                        <option value="owner">owner</option>
-                      </select>
-                    </td>
-                    <td style={CELL}>{renderOriginLicense(u, busyId === u.userId, setLicense)}</td>
-                    <td style={CELL}>{money(u.balanceUsd)}</td>
-                    <td style={CELL}>{u.projectCount}</td>
-                    <td style={CELL}>{renderUsage(u)}</td>
-                    <td style={CELL}>
-                      <div>{u.lastProjectTitle ?? "—"}</div>
-                      <div style={{ color: "var(--hq-muted)", fontSize: 11 }}>
-                        {shortDate(u.lastProjectAt)}
-                      </div>
-                    </td>
-                    <td style={{ ...CELL, maxWidth: 220 }}>
-                      {u.lastError ? (
-                        <span style={{ color: "var(--hq-red, #b42318)" }}>
-                          {u.lastError.message.slice(0, 120)}
-                          <span style={{ color: "var(--hq-muted)" }}>
-                            {" "}
-                            ({shortDate(u.lastError.at)})
-                          </span>
-                        </span>
-                      ) : (
-                        <span style={{ color: "var(--hq-muted)" }}>none</span>
-                      )}
-                    </td>
-                    <td style={CELL}>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        <button
-                          type="button"
-                          onClick={() => void viewAs(u)}
-                          disabled={busyId === u.userId}
-                          title="Open /animate as this customer, read-only, for 2 hours"
-                          style={{
-                            padding: "3px 8px",
-                            border: "1px solid var(--hq-border)",
-                            borderRadius: 6,
-                            fontSize: 11,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            background: "#fff",
-                          }}
-                        >
-                          View as
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void setUnmetered(u)}
-                          disabled={busyId === u.userId}
-                          title="Skip trial caps / card requirement for this account"
-                          style={{
-                            padding: "3px 8px",
-                            border: "1px solid var(--hq-border)",
-                            borderRadius: 6,
-                            fontSize: 11,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            background: u.unmetered ? "var(--hq-accent-soft, #f4f0ff)" : "#fff",
-                          }}
-                        >
-                          {u.unmetered ? "Metered" : "Unmetered"}
-                        </button>
-                      </div>
+                        {showTests ? "▾" : "▸"} Test accounts · {testAccounts.length}
+                      </button>
+                      <span style={{ marginLeft: 8, color: "var(--hq-muted)", fontSize: 11 }}>
+                        Playwright seeds + QA fixtures — not customers
+                      </span>
                     </td>
                   </tr>
-                ))
+                  {showTests ? testAccounts.map(renderRow) : null}
+                </>
               )}
             </tbody>
           </table>
