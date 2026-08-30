@@ -40,6 +40,22 @@ export type HqAdAccountSpec = (typeof HQ_AD_ACCOUNTS)[number];
 export type AdsWindow = "today" | "yesterday";
 export type AdsLane = "keep" | "fade" | "watch" | "dark";
 export type AdsSource = "live" | "placeholder";
+export type AdsSignal = "good" | "soft" | "watch" | "muted" | "neutral";
+
+export const ADS_SIGNAL_COLOR: Record<AdsSignal, string> = {
+  good: "var(--hq-green)",
+  soft: "var(--hq-amber)",
+  watch: "#c2410c",
+  muted: "var(--hq-ink-3)",
+  neutral: "#1a1a1a",
+};
+
+export const ADS_LANE_COLOR: Record<AdsLane, string> = {
+  keep: "var(--hq-green)",
+  fade: "var(--hq-amber)",
+  watch: "#c2410c",
+  dark: "var(--hq-ink-3)",
+};
 
 export interface AdsCampaignRow {
   id: string;
@@ -48,6 +64,7 @@ export interface AdsCampaignRow {
   status: string;
   platformStatus: string;
   spend: number;
+  lifetimeSpend: number;
   impressions: number;
   clicks: number;
   lpv: number;
@@ -65,6 +82,7 @@ export interface AdsAccountBlock {
   source: AdsSource;
   preferLpv: boolean;
   spend: number;
+  lifetimeSpend: number;
   lpv: number;
   clicks: number;
   leads: number;
@@ -118,6 +136,11 @@ export function yesterdayKey(now: Date = new Date()): string {
     if (key !== today) return key;
   }
   return indyDateKey(now, -1);
+}
+
+/** Zernio caps a metrics range at 730 days — that is our all-time window. */
+export function lifetimeFromKey(now: Date = new Date()): string {
+  return indyDateKey(new Date(now.getTime() - 730 * 86_400_000));
 }
 
 export function shortCampaignName(name: string): string {
@@ -203,6 +226,7 @@ export function mapZernioCampaign(raw: ZernioCampaign): AdsCampaignRow {
     status,
     platformStatus,
     spend,
+    lifetimeSpend: 0,
     impressions,
     clicks,
     lpv,
@@ -211,6 +235,33 @@ export function mapZernioCampaign(raw: ZernioCampaign): AdsCampaignRow {
     costPerResult: costPerResult(spend, lpv, leads, clicks),
     lane: classifyCampaign(status, platformStatus, spend),
   };
+}
+
+/** Copy lifetime spend onto the daily roster. Daily Imp/Clk/LPV/leads stay the day window. */
+export function mergeLifetime(daily: AdsCampaignRow[], life: AdsCampaignRow[]): AdsCampaignRow[] {
+  const lifeById = new Map(life.map((c) => [c.id, c]));
+  const seen = new Set<string>();
+  const out = daily.map((c) => {
+    seen.add(c.id);
+    const lifeRow = lifeById.get(c.id);
+    return { ...c, lifetimeSpend: lifeRow?.spend ?? c.lifetimeSpend };
+  });
+  for (const c of life) {
+    if (seen.has(c.id)) continue;
+    out.push({
+      ...c,
+      spend: 0,
+      impressions: 0,
+      clicks: 0,
+      lpv: 0,
+      leads: 0,
+      ctr: 0,
+      costPerResult: null,
+      lifetimeSpend: c.spend,
+      lane: classifyCampaign(c.status, c.platformStatus, 0),
+    });
+  }
+  return out;
 }
 
 export function rollupAccount(
@@ -228,6 +279,7 @@ export function rollupAccount(
     source,
     preferLpv: spec.preferLpv,
     spend: campaigns.reduce((s, c) => s + c.spend, 0),
+    lifetimeSpend: campaigns.reduce((s, c) => s + c.lifetimeSpend, 0),
     lpv: campaigns.reduce((s, c) => s + c.lpv, 0),
     clicks: campaigns.reduce((s, c) => s + c.clicks, 0),
     leads: campaigns.reduce((s, c) => s + c.leads, 0),
@@ -328,6 +380,146 @@ export function formatInt(n: number): string {
   return Math.round(n).toLocaleString("en-US");
 }
 
+export function mutedRow(lane: AdsLane): boolean {
+  return lane === "fade" || lane === "dark";
+}
+
+export function ctrSignal(ctr: number, lane: AdsLane): AdsSignal {
+  if (mutedRow(lane)) return "muted";
+  if (!ctr) return lane === "keep" ? "watch" : "muted";
+  if (ctr >= 3) return "good";
+  if (ctr >= 1) return "soft";
+  return "watch";
+}
+
+export function costSignal(cost: number | null, preferLpv: boolean, lane: AdsLane): AdsSignal {
+  if (mutedRow(lane) || cost == null) return "muted";
+  if (preferLpv) {
+    if (cost <= 0.2) return "good";
+    if (cost <= 0.5) return "soft";
+    return "watch";
+  }
+  if (cost <= 0.1) return "good";
+  if (cost <= 0.3) return "soft";
+  return "watch";
+}
+
+export function leadsSignal(leads: number, lane: AdsLane): AdsSignal {
+  if (mutedRow(lane)) return "muted";
+  if (leads === 0 && (lane === "keep" || lane === "watch")) return "watch";
+  if (leads === 0) return "muted";
+  return "good";
+}
+
+export function daySpendSignal(spend: number, lane: AdsLane): AdsSignal {
+  if (mutedRow(lane)) return "muted";
+  if (lane === "keep" && spend > 0) return "good";
+  if (lane === "watch") return "watch";
+  return "neutral";
+}
+
+function judgment(signal: AdsSignal): string {
+  if (signal === "good") return "good";
+  if (signal === "soft") return "soft";
+  if (signal === "watch") return "watch";
+  if (signal === "muted") return "muted — fade / off";
+  return "neutral";
+}
+
+export function laneTooltip(lane: AdsLane): string {
+  switch (lane) {
+    case "keep":
+      return "Keep: live spender worth leaving on. Green.";
+    case "fade":
+      return "Fade: paused on purpose, winding down. $0 today is expected — muted amber.";
+    case "watch":
+      return "Watch: live but not spending, or a metric that needs a look. 0 leads on a traffic ad is watch, not a bug. Orange.";
+    case "dark":
+      return "Dark: off — archived, cancelled, or dead. Muted gray.";
+  }
+}
+
+export function windowTooltip(window: AdsWindow): string {
+  if (window === "yesterday") {
+    return "Yesterday: last full day in America/Indiana/Indianapolis. Shown because today was empty. X Ads Manager is source of truth if Zernio lags.";
+  }
+  return "Today: spend so far in America/Indiana/Indianapolis.";
+}
+
+export function allTimeTooltip(): string {
+  return "All-time: campaign lifetime spend (every day Zernio can read, up to 730). Not today's window.";
+}
+
+export function headerMetricTooltip(
+  kind: "LPV" | "clk",
+  value: number,
+  leads: number,
+  laneHint: AdsLane,
+): string {
+  if (kind === "LPV") {
+    const signal = value > 0 ? "good" : mutedRow(laneHint) ? "muted" : "watch";
+    return `LPV: landing page views in the daily window. ${formatInt(value)} LPV — ${judgment(signal)}. Cheap LPV is the goal on Jelly Studio traffic ads.`;
+  }
+  const signal = value > 0 ? (value >= 20 ? "good" : "soft") : mutedRow(laneHint) ? "muted" : "watch";
+  return `Clk: link clicks in the daily window. ${formatInt(value)} clicks — ${judgment(signal)}.`;
+}
+
+export function leadsTooltip(leads: number, lane: AdsLane): string {
+  const signal = leadsSignal(leads, lane);
+  return `Leads in the daily window. ${formatInt(leads)} leads — ${judgment(signal)}. 0 leads is a real number, not a formatting bug; on a live traffic spender it is watch, not green.`;
+}
+
+export function colTooltip(
+  col: "day$" | "life$" | "imp" | "clk" | "lpv" | "cpr" | "ctr",
+  row: AdsCampaignRow,
+  preferLpv: boolean,
+): string {
+  const muted = mutedRow(row.lane);
+  if (col === "day$") {
+    const signal = daySpendSignal(row.spend, row.lane);
+    return `Day $: spend in the daily window (today, or yesterday if today was empty). ${formatUsd(row.spend)} — ${judgment(signal)}.${muted ? " Paused $0 is fade." : ""}`;
+  }
+  if (col === "life$") {
+    return `Life $: all-time / campaign lifetime spend. ${formatUsd(row.lifetimeSpend)}. Not the daily window.`;
+  }
+  if (col === "imp") {
+    return `Imp: impressions — times the ad was shown in the daily window. ${formatInt(row.impressions)}${muted ? " — muted, paused $0 is fade." : "."}`;
+  }
+  if (col === "clk") {
+    return `Clk: link clicks in the daily window. ${formatInt(row.clicks)}${muted ? " — muted, paused $0 is fade." : "."}`;
+  }
+  if (col === "lpv") {
+    const signal = row.lpv > 0 && !muted ? "good" : muted ? "muted" : row.lane === "keep" ? "watch" : "muted";
+    return `LPV: landing page views in the daily window. ${formatInt(row.lpv)} — ${judgment(signal)}. Cheap LPV is good on Jelly Studio traffic ads.`;
+  }
+  if (col === "cpr") {
+    const signal = costSignal(row.costPerResult, preferLpv, row.lane);
+    const unit = preferLpv ? "LPV" : "click";
+    return `$/result: cost per ${unit} in the daily window. ${formatCost(row.costPerResult)} — ${judgment(signal)}. Cheap $/LPV is good.`;
+  }
+  const signal = ctrSignal(row.ctr, row.lane);
+  return `CTR: click-through rate in the daily window. ${formatCtr(row.ctr)} — ${judgment(signal)}. High CTR is good on these traffic ads.`;
+}
+
+export function headerColTitle(col: "day$" | "life$" | "imp" | "clk" | "lpv" | "cpr" | "ctr"): string {
+  switch (col) {
+    case "day$":
+      return "Day $: spend today, or yesterday if today was empty. Green when a live ad is spending.";
+    case "life$":
+      return "Life $: all-time / campaign lifetime spend. Not the daily window.";
+    case "imp":
+      return "Imp: impressions — times the ad was shown in the daily window.";
+    case "clk":
+      return "Clk: link clicks in the daily window.";
+    case "lpv":
+      return "LPV: landing page views in the daily window. Cheap LPV is good on Jelly Studio traffic ads.";
+    case "cpr":
+      return "$/result: cost per LPV (or click if no LPV) in the daily window. Cheap is good.";
+    case "ctr":
+      return "CTR: click-through rate in the daily window. High is good on these traffic ads.";
+  }
+}
+
 /** Narrow a persisted JSON blob; never throws. */
 export function snapshotFromJson(value: unknown): AdsSnapshot | null {
   if (!isAdsSnapshot(value)) return null;
@@ -340,12 +532,14 @@ export function snapshotFromJson(value: unknown): AdsSnapshot | null {
       ...a,
       preferLpv: a.preferLpv === true || a.key === JELLY_META.key,
       spend: num(a.spend),
+      lifetimeSpend: num(a.lifetimeSpend),
       lpv: num(a.lpv),
       clicks: num(a.clicks),
       leads: num(a.leads),
       campaigns: (a.campaigns ?? []).map((c) => ({
         ...c,
         spend: num(c.spend),
+        lifetimeSpend: num(c.lifetimeSpend),
         impressions: num(c.impressions),
         clicks: num(c.clicks),
         lpv: num(c.lpv),
