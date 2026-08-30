@@ -18,6 +18,17 @@ test("changelog 1.21 is the current shipped version", () => {
   assert.equal(CHANGELOG[0]?.version, "1.21");
 });
 
+test("script writer uses AI Gateway client, not a bare Anthropic constructor", () => {
+  const src = readApp("lib/vater/script-writer-run.ts");
+  assert.match(src, /anthropicClient\(/);
+  assert.match(src, /anthropicModelId\(/);
+  assert.equal(/new Anthropic\s*\(/.test(src), false);
+  const write = readApp("app/api/vater/youtube/[id]/write-script/route.ts");
+  const talk = readApp("app/api/vater/youtube/[id]/talk-script/route.ts");
+  assert.match(write, /viaGateway=\$\{generated\.viaGateway\}/);
+  assert.match(talk, /viaGateway=\$\{talked\.viaGateway\}/);
+});
+
 test("write-script and talk-script are 300s in the route export and vercel.json", () => {
   const vercel = JSON.parse(readApp("vercel.json")) as {
     functions: Record<string, { maxDuration?: number }>;

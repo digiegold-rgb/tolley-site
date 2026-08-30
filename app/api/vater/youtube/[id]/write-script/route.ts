@@ -279,8 +279,8 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   });
 
   console.log(
-    `[vater/write-script] project=${id} model=${model} ${sourceKind}/${fidelity} ` +
-      `quoted=${quote.billedCents}¢ billed=${billed.billedCents}¢ ` +
+    `[vater/write-script] project=${id} model=${model} viaGateway=${generated.viaGateway} ` +
+      `${sourceKind}/${fidelity} quoted=${quote.billedCents}¢ billed=${billed.billedCents}¢ ` +
       `tokens=${billed.inputTokens}+${billed.outputTokens}`,
   );
 

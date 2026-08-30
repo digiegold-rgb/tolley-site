@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   ScriptWriterError,
   generateScriptWithClaude,
@@ -12,6 +15,13 @@ import {
   writerBlockTypes,
 } from "./script-writer-run";
 import { SCRIPT_CHAT_REPLY_MARK, SCRIPT_CHAT_SCRIPT_MARK } from "./script-chat";
+
+test("live Anthropic path uses the gateway client, not a bare ANTHROPIC_API_KEY constructor", () => {
+  const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "script-writer-run.ts"), "utf8");
+  assert.match(src, /anthropicClient\(\)/);
+  assert.match(src, /anthropicModelId\(/);
+  assert.equal(/new Anthropic\(\s*\{\s*apiKey:\s*(apiKey|process\.env\.ANTHROPIC_API_KEY)/.test(src), false);
+});
 
 test("max_tokens is script-out plus a thinking cushion, not the old 16k cap", () => {
   // 10-minute script (~1500 words): old formula was ~3300 and thinking ate it.
@@ -95,6 +105,7 @@ test("thinking-only max_tokens response retries once with more room, then return
   assert.ok(calls[1]!.max_tokens > calls[0]!.max_tokens);
   assert.equal(script.script, "Here is the spoken narration script.");
   assert.equal(script.outputTokens, 4200);
+  assert.equal(script.viaGateway, false);
   assert.ok(script.actual.billedCents >= 5);
 });
 
@@ -162,6 +173,7 @@ test("talk turn uses effort:low, retries thinking-only max_tokens, and parses Ap
   assert.equal(calls.length, 2);
   assert.equal(calls[0]!.effort, "low");
   assert.equal(talked.reply, "Tightened.");
+  assert.equal(talked.viaGateway, false);
   assert.ok(talked.revisedScript);
   assert.match(talked.revisedScript!, /sharper open/);
   assert.ok(talked.actual.billedCents >= 5);

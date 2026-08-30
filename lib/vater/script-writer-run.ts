@@ -15,7 +15,8 @@
  * Nothing is billed until a real text script lands (the route calls
  * recordUsage after this function returns).
  */
-import Anthropic from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
+import { anthropicClient, anthropicModelId } from "../ai-gateway";
 import {
   SCRIPT_WRITER_MODELS,
   estimateTokensFromText,
@@ -214,6 +215,7 @@ export interface GeneratedScript {
   script: string;
   model: ScriptWriterModelId;
   apiId: string;
+  viaGateway: boolean;
   inputTokens: number;
   outputTokens: number;
   actual: ScriptQuote;
@@ -231,19 +233,17 @@ export async function generateScriptWithClaude(
   },
   deps?: { createMessage?: ScriptWriterCreate; now?: () => number; budgetMs?: number },
 ): Promise<GeneratedScript> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey && !deps?.createMessage) {
-    throw new Error("Script writer is not configured (missing ANTHROPIC_API_KEY).");
-  }
-  const apiId = apiIdForModel(opts.model);
   const prompt = buildScriptWriterPrompt(opts);
   const now = deps?.now ?? Date.now;
-  const create: ScriptWriterCreate =
-    deps?.createMessage ??
-    (async (body) => {
-      const client = new Anthropic({ apiKey: apiKey! });
-      return client.messages.create(body);
-    });
+  let viaGateway = false;
+  let apiId = apiIdForModel(opts.model);
+  let create = deps?.createMessage;
+  if (!create) {
+    const wired = anthropicClient();
+    viaGateway = wired.viaGateway;
+    apiId = anthropicModelId(apiId, viaGateway);
+    create = (body) => wired.client.messages.create(body);
+  }
 
   const started = now();
   let lastEmpty: {
@@ -281,6 +281,7 @@ export async function generateScriptWithClaude(
         script,
         model: opts.model,
         apiId,
+        viaGateway,
         inputTokens,
         outputTokens,
         actual: quoteScriptUsage(opts.model, inputTokens, outputTokens),
@@ -291,6 +292,7 @@ export async function generateScriptWithClaude(
     console.error("[script-writer] empty response", {
       apiId,
       model: opts.model,
+      viaGateway,
       stop_reason: stopReason,
       blockTypes,
       inputTokens,
@@ -316,6 +318,7 @@ export interface TalkedScript {
   revisedScript: string | null;
   model: ScriptWriterModelId;
   apiId: string;
+  viaGateway: boolean;
   inputTokens: number;
   outputTokens: number;
   actual: ScriptQuote;
@@ -338,19 +341,17 @@ export async function talkScriptWithClaude(
   },
   deps?: { createMessage?: ScriptWriterCreate; now?: () => number; budgetMs?: number },
 ): Promise<TalkedScript> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey && !deps?.createMessage) {
-    throw new Error("Script writer is not configured (missing ANTHROPIC_API_KEY).");
-  }
-  const apiId = apiIdForModel(opts.model);
   const prompt = buildScriptChatPrompt(opts);
   const now = deps?.now ?? Date.now;
-  const create: ScriptWriterCreate =
-    deps?.createMessage ??
-    (async (body) => {
-      const client = new Anthropic({ apiKey: apiKey! });
-      return client.messages.create(body);
-    });
+  let viaGateway = false;
+  let apiId = apiIdForModel(opts.model);
+  let create = deps?.createMessage;
+  if (!create) {
+    const wired = anthropicClient();
+    viaGateway = wired.viaGateway;
+    apiId = anthropicModelId(apiId, viaGateway);
+    create = (body) => wired.client.messages.create(body);
+  }
 
   const targetWords = Math.max(80, opts.script.trim().split(/\s+/).filter(Boolean).length);
   const started = now();
@@ -389,6 +390,7 @@ export async function talkScriptWithClaude(
         revisedScript: parsed.revisedScript,
         model: opts.model,
         apiId,
+        viaGateway,
         inputTokens,
         outputTokens,
         actual: quoteScriptUsage(opts.model, inputTokens, outputTokens),
@@ -399,6 +401,7 @@ export async function talkScriptWithClaude(
     console.error("[script-chat] empty response", {
       apiId,
       model: opts.model,
+      viaGateway,
       stop_reason: stopReason,
       blockTypes,
       inputTokens,

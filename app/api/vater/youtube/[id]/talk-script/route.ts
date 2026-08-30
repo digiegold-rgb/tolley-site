@@ -262,7 +262,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   });
 
   console.log(
-    `[vater/talk-script] project=${id} model=${model} ` +
+    `[vater/talk-script] project=${id} model=${model} viaGateway=${talked.viaGateway} ` +
       `quoted=${quote.billedCents}¢ billed=${billed.billedCents}¢ ` +
       `tokens=${billed.inputTokens}+${billed.outputTokens} revised=${charge.revised}`,
   );
