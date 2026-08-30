@@ -49,7 +49,9 @@ import {
 } from "@/lib/vater/script-writer-models";
 
 export const runtime = "nodejs";
-/** Pro serverless max. Must match vercel.json functions entry. */
+// Pro serverless max. Honored from this export — do not add a vercel.json
+// functions key. That map is capped at 50 and 1.21's two extra keys failed
+// production schema validation instantly.
 export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
