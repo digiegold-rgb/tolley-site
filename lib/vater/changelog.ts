@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.20';
+export const APP_VERSION = '1.21';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.21',
+    date: '2026-08-30',
+    title: 'Fable generate gets a five-minute window, not a raw 504',
+    items: [
+      'Generate from the video and Talk to Claude can run up to five minutes, so a long Fable write is not cut off at 60 seconds.',
+      'If the writer still runs too long, you see that nothing was billed and you can click generate again — not a raw HTTP 504.',
+    ],
+  },
   {
     version: '1.20',
     date: '2026-08-30',

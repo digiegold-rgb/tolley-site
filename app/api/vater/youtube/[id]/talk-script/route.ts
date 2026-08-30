@@ -49,7 +49,8 @@ import {
 } from "@/lib/vater/script-writer-models";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+/** Pro serverless max. Must match vercel.json functions entry. */
+export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
 

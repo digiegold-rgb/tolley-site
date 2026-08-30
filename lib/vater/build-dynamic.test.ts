@@ -13,9 +13,22 @@ function readApp(rel: string): string {
 
 const FORCE_DYNAMIC = /export const dynamic\s*=\s*["']force-dynamic["']/;
 
-test("changelog 1.20 is the current shipped version", () => {
-  assert.equal(APP_VERSION, "1.20");
-  assert.equal(CHANGELOG[0]?.version, "1.20");
+test("changelog 1.21 is the current shipped version", () => {
+  assert.equal(APP_VERSION, "1.21");
+  assert.equal(CHANGELOG[0]?.version, "1.21");
+});
+
+test("write-script and talk-script are 300s in the route export and vercel.json", () => {
+  const vercel = JSON.parse(readApp("vercel.json")) as {
+    functions: Record<string, { maxDuration?: number }>;
+  };
+  for (const file of [
+    "app/api/vater/youtube/[id]/write-script/route.ts",
+    "app/api/vater/youtube/[id]/talk-script/route.ts",
+  ]) {
+    assert.match(readApp(file), /export const maxDuration = 300/, file);
+    assert.equal(vercel.functions[file]?.maxDuration, 300, file);
+  }
 });
 
 test("root layout is not force-dynamic — that hung 1.17 collect-page-data", () => {

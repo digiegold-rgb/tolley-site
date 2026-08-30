@@ -48,6 +48,10 @@ test("refusal is a classifier stop, not an empty script", () => {
   assert.equal(shouldRetryEmptyScript("max_tokens", "", 2), false);
   assert.equal(shouldRetryEmptyScript("end_turn", "", 1), false);
   assert.equal(shouldRetryEmptyScript("max_tokens", "a script", 1), false);
+  // First attempt ate the old 60s window — do not start a second call.
+  assert.equal(shouldRetryEmptyScript("max_tokens", "", 1, 55_000, 60_000), false);
+  // Plenty of the 300s Pro window left after a ~70s first attempt.
+  assert.equal(shouldRetryEmptyScript("max_tokens", "", 1, 70_000, 300_000), true);
 });
 
 const JOB = {
@@ -189,6 +193,33 @@ test("talk refusal is not billed — throws before a charge", async () => {
       return true;
     },
   );
+});
+
+test("empty max_tokens does not start a second Anthropic call when the window is gone", async () => {
+  const calls: number[] = [];
+  let t = 0;
+  await assert.rejects(
+    () =>
+      generateScriptWithClaude(JOB, {
+        now: () => t,
+        budgetMs: 60_000,
+        createMessage: async () => {
+          calls.push(t);
+          t += 55_000;
+          return {
+            content: [{ type: "thinking" }],
+            stop_reason: "max_tokens",
+            usage: { input_tokens: 800, output_tokens: 3300 },
+          };
+        },
+      }),
+    (err: unknown) => {
+      assert.ok(err instanceof ScriptWriterError);
+      assert.equal(err.message, "The writer returned an empty script. Try again or switch model.");
+      return true;
+    },
+  );
+  assert.equal(calls.length, 1, "must not start a retry that would 504");
 });
 
 test("classifier refusal is a 502-shaped ScriptWriterError, not empty script", async () => {

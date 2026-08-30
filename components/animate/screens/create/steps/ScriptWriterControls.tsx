@@ -31,7 +31,8 @@ import { WORDS_PER_MINUTE } from '@/lib/vater/youtube-types';
 import { BillingBlockModal, BillingBlockedError, type BillingBlockReason, type BillingBlockContext } from '../../editor/BillingBlock';
 import { useCreateFlow } from '../create-context';
 import { notifyVaterBillingChanged } from '@/lib/vater/billing/client-refresh';
-import { createApi, errorMessage, type CreateProject } from '../create-api';
+import { createApi, type CreateProject } from '../create-api';
+import { messageForScriptWriterFailure } from '@/lib/vater/script-writer-timeout';
 import { TalkToClaude } from './TalkToClaude';
 import { FieldLabel, ErrorNote, InfoNote, inputStyle, wordsIn } from './step-ui';
 
@@ -130,7 +131,7 @@ export function ScriptWriterControls({
         setBlock(err.reason);
         setBlockCtx(err.context);
       } else {
-        setError(errorMessage(err, 'Could not generate the script'));
+        setError(messageForScriptWriterFailure(err, 'Could not generate the script'));
       }
     } finally {
       setBusy(null);

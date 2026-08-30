@@ -43,7 +43,8 @@ import {
 import { settingsBag } from "@/lib/vater/youtube-posted";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+/** Pro serverless max. Must match vercel.json functions entry. */
+export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
 
