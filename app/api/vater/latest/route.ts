@@ -52,7 +52,10 @@ export async function GET() {
   // getVaterBillingSummary so the pill and /hq can never disagree.
   const billing = summary;
 
-  return NextResponse.json({ updates, costs, billing });
+  return NextResponse.json(
+    { updates, costs, billing },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 export async function POST(req: Request) {

@@ -25,6 +25,8 @@ import {
   type ScriptWriterModelId,
   type ScriptWriterSource,
 } from "./script-writer-models";
+import { FIDELITY_INSTRUCTIONS, SCRIPT_WRITER_FALLBACK_RULES } from "./script-writer-copy";
+import { buildScriptChatPrompt, parseScriptChatReply, type ScriptChatTurn } from "./script-chat";
 
 const MAX_SOURCE_CHARS = 120_000;
 
@@ -36,20 +38,12 @@ const RETRY_THINKING_CUSHION = 28_000;
 
 const EMPTY_SCRIPT_MESSAGE =
   "The writer returned an empty script. Try again or switch model.";
+const EMPTY_CHAT_MESSAGE =
+  "Claude returned an empty reply. Nothing was billed.";
 const REFUSAL_MESSAGE =
   "The writer declined this request. Try a different source or switch model.";
 
-const FIDELITY_INSTRUCTIONS: Record<ScriptFidelity, string> = {
-  faithful:
-    "Stay close to the source. Keep the same claims, order, examples and names. Tighten and structure for spoken narration. Do not invent new stories, facts, or examples.",
-  balanced:
-    "Restructure in the speaker's voice. Keep every material fact and claim. You may reorder, tighten, and cut repetition. Do not invent new facts.",
-  rewrite:
-    "Write a genuinely new script from the same facts. Different hook, different examples and a different order. Facts, claims and numbers stay true to the source. Never a copy.",
-};
-
-export const SCRIPT_WRITER_FALLBACK_RULES = `Genuine rewrite, not a rephrase. Before finalizing, change the opening, any named comparison structure, illustrative examples, numbered lists, and the closing line. Self-check for any three-to-eight-word phrase that could drop into the source unchanged, and fully rewrite those sentences.
-The script says what the source said, in the speaker's voice, ready to read aloud.`;
+export { FIDELITY_INSTRUCTIONS, SCRIPT_WRITER_FALLBACK_RULES } from "./script-writer-copy";
 
 export type ScriptWriterEffort = "low" | "medium";
 
@@ -305,4 +299,110 @@ export async function generateScriptWithClaude(
   }
 
   throw new ScriptWriterError(EMPTY_SCRIPT_MESSAGE, lastEmpty ?? {});
+}
+
+export interface TalkedScript {
+  reply: string;
+  revisedScript: string | null;
+  model: ScriptWriterModelId;
+  apiId: string;
+  inputTokens: number;
+  outputTokens: number;
+  actual: ScriptQuote;
+}
+
+/**
+ * Talk turn — same effort:low + adaptive thinking + empty-text retry as
+ * generate, so Fable does not spend max_tokens on thinking. Bills only
+ * after a real text reply lands (the route calls recordUsage after this).
+ */
+export async function talkScriptWithClaude(
+  opts: {
+    model: ScriptWriterModelId;
+    script: string;
+    message: string;
+    history: ScriptChatTurn[];
+    fidelity: ScriptFidelity;
+    title?: string | null;
+    rules: string;
+  },
+  deps?: { createMessage?: ScriptWriterCreate },
+): Promise<TalkedScript> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey && !deps?.createMessage) {
+    throw new Error("Script writer is not configured (missing ANTHROPIC_API_KEY).");
+  }
+  const apiId = apiIdForModel(opts.model);
+  const prompt = buildScriptChatPrompt(opts);
+  const create: ScriptWriterCreate =
+    deps?.createMessage ??
+    (async (body) => {
+      const client = new Anthropic({ apiKey: apiKey! });
+      return client.messages.create(body);
+    });
+
+  const targetWords = Math.max(80, opts.script.trim().split(/\s+/).filter(Boolean).length);
+  let lastEmpty: {
+    stopReason: string | null;
+    blockTypes: string[];
+    inputTokens: number;
+    outputTokens: number;
+    attempt: 1 | 2;
+  } | null = null;
+
+  for (const attempt of [1, 2] as const) {
+    const maxTokens = scriptWriterMaxTokens(targetWords, attempt);
+    const effort = scriptWriterEffort(attempt);
+    const response = await create({
+      model: apiId,
+      max_tokens: maxTokens,
+      system: prompt.system,
+      messages: prompt.messages.map((m) => ({ role: m.role, content: m.content })),
+      thinking: { type: "adaptive" },
+      output_config: { effort },
+    });
+    const raw = scriptTextFromBlocks(response.content);
+    const stopReason = response.stop_reason ?? null;
+    const blockTypes = writerBlockTypes(response.content);
+    const inputTokens = response.usage?.input_tokens ?? 0;
+    const outputTokens = response.usage?.output_tokens ?? 0;
+    const parsed = parseScriptChatReply(raw, opts.script);
+
+    if (parsed.reply) {
+      if (inputTokens + outputTokens <= 0) {
+        throw new Error("The writer did not report token usage — nothing was billed.");
+      }
+      return {
+        reply: parsed.reply,
+        revisedScript: parsed.revisedScript,
+        model: opts.model,
+        apiId,
+        inputTokens,
+        outputTokens,
+        actual: quoteScriptUsage(opts.model, inputTokens, outputTokens),
+      };
+    }
+
+    lastEmpty = { stopReason, blockTypes, inputTokens, outputTokens, attempt };
+    console.error("[script-chat] empty response", {
+      apiId,
+      model: opts.model,
+      stop_reason: stopReason,
+      blockTypes,
+      inputTokens,
+      outputTokens,
+      attempt,
+      maxTokens,
+      effort,
+    });
+
+    if (isWriterRefusal(stopReason, response.content)) {
+      throw new ScriptWriterError(REFUSAL_MESSAGE, lastEmpty);
+    }
+    if (!shouldRetryEmptyScript(stopReason, raw, attempt)) {
+      throw new ScriptWriterError(EMPTY_CHAT_MESSAGE, lastEmpty);
+    }
+  }
+
+  throw new ScriptWriterError(EMPTY_CHAT_MESSAGE, lastEmpty ?? {});
 }

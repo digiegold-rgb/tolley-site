@@ -20,6 +20,7 @@ import type {
   ScriptWriterModelId,
   ScriptWriterSource,
 } from '@/lib/vater/script-writer-models';
+import type { ScriptChatCharge } from '@/lib/vater/script-chat';
 
 /** GET /api/vater/youtube/[id] returns the whole row; this is what the steps read. */
 export interface CreateProject extends ReviewProject {
@@ -196,6 +197,25 @@ export const createApi = {
     },
   ): Promise<{ project?: CreateProject; quote: ScriptQuote; billed?: ScriptQuote; charge?: ScriptWriterCharge }> =>
     request(`/api/vater/youtube/${id}/write-script`, post(body)),
+
+  talkScript: async (
+    id: string,
+    body: {
+      message: string;
+      script?: string;
+      model: ScriptWriterModelId;
+      fidelity: ScriptFidelity;
+      dryRun?: boolean;
+      requestId?: string;
+    },
+  ): Promise<{
+    project?: CreateProject;
+    quote: ScriptQuote;
+    billed?: ScriptQuote;
+    charge?: ScriptChatCharge;
+    reply: string;
+    revisedScript: string | null;
+  }> => request(`/api/vater/youtube/${id}/talk-script`, post(body)),
 
   /** FREE. status → awaiting_engine. */
   approveScript: async (id: string, script?: string): Promise<CreateProject> =>

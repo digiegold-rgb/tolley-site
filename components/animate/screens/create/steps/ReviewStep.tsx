@@ -182,6 +182,8 @@ export function ReviewStep(): React.ReactElement {
           project={project}
           draft={draft}
           disabled={busy !== null}
+          enableTalk
+          onApplyTalkScript={(script) => setDraft(script)}
           onGenerated={(row) => {
             setDraft(row.script ?? '');
             setSaved(row.script ?? '');

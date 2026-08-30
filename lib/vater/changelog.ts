@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.18';
+export const APP_VERSION = '1.19';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.19',
+    date: '2026-08-30',
+    title: 'Talk to Claude on Review, and script charges on Current due',
+    items: [
+      'On Review script you can Talk to Claude about the draft in the box. Each send is quoted first and billed after, on the same Fable / Opus / Sonnet picker. Editing the box stays free. If Claude returns a full revised narration, Apply to editor is free and goes through Undo / History.',
+      'Current due now includes unpaid script-writer charges the moment they land — generate and Talk — with a Script line on the since-last-payment card. The header pill updates without a reload.',
+    ],
+  },
   {
     version: '1.18',
     date: '2026-08-30',
