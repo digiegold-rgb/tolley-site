@@ -89,3 +89,18 @@ test("a leftover DGX scripting job still pulses on Writing", () => {
   assert.equal(d.kind, "async");
   assert.equal(d.active, true);
 });
+
+test("#66 finished stitch on concierge_in_progress is Done, not Producing", () => {
+  const d = deriveCreateStep({
+    status: "concierge_in_progress",
+    flowStep: 7,
+    finalVideoUrl: "https://example.blob.vercel-storage.com/vater-finals/x.mp4",
+    progress: 100,
+    completedAt: "2026-08-30T14:48:11.804Z",
+    stepDetails: { phase: "done", jobStatus: "done", progress: 100, jobId: "abc" },
+    autopilotJobId: "abc",
+  });
+  assert.equal(d.step, 8);
+  assert.equal(d.kind, "terminal");
+  assert.equal(d.active, false);
+});

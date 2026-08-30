@@ -8,6 +8,7 @@ import {
   checkProjectAccess,
 } from "@/lib/vater/project-access";
 import { expireProjectIfDue } from "@/lib/vater/approval-expiry";
+import { reconcileStuckDeliveries } from "@/lib/vater/delivery-verify";
 import { CREATE_STEP_COUNT } from "@/lib/vater/create-steps";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -29,7 +30,16 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
 
   // Stepped flow (2026-08-28): a 7-day-old approval gate flips to `expired`
   // the moment it is read — no cron.
-  return NextResponse.json({ project: await expireProjectIfDue(project) });
+  let next = await expireProjectIfDue(project);
+  try {
+    const flipped = await reconcileStuckDeliveries({ projectId: next.id, userId: session.user.id, limit: 1 });
+    if (flipped.promoted > 0) {
+      next = (await prisma.youTubeProject.findUnique({ where: { id: next.id } })) ?? next;
+    }
+  } catch (err) {
+    console.error("[vater/youtube/:id] delivery reconcile failed", err);
+  }
+  return NextResponse.json({ project: next });
 }
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {

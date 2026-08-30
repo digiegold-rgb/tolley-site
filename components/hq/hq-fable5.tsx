@@ -143,14 +143,20 @@ async function postTicket(code: string, action: string, body: Record<string, unk
   return r.json();
 }
 
-/** Why the Deliver button is disabled (null = deliverable). Mirrors /deliver. */
+/** Why the Deliver button is disabled (null = deliverable). Audit is a warning, not a gate. */
 export function deliverBlockReason(t: Pick<Fable5Ticket, "audit" | "finalVideoUrl" | "jobId" | "composeJobId">): string | null {
   if (!t.finalVideoUrl) return "No final video on the row yet — render + sync first.";
+  return null;
+}
+
+/** Operator-facing audit warning. Never blocks delivery of a live final. */
+export function deliverAuditWarning(t: Pick<Fable5Ticket, "audit" | "finalVideoUrl" | "jobId" | "composeJobId">): string | null {
+  if (!t.finalVideoUrl) return null;
   const a = t.audit;
   const matches = auditMatchesFinal(a, { finalVideoUrl: t.finalVideoUrl, jobId: t.jobId, composeJobId: t.composeJobId });
-  if (!a) return "No delivery audit yet — the runner audits after sync. Wait for it, or \u201cDeliver anyway\u201d with a reason.";
-  if (!matches) return `Last audit (r${a.round}, ${a.source}) is not for this final — a fresh audit is needed.`;
-  if (!a.passed) return `Audit r${a.round} FAILED ${a.hardFails}/${a.sceneCount} hard — repair + re-audit, or \u201cDeliver anyway\u201d with a reason.`;
+  if (!a) return "No delivery audit yet — delivering the file anyway. Repair later if you want.";
+  if (!matches) return `Last audit (r${a.round}, ${a.source}) is not for this final — delivering anyway.`;
+  if (!a.passed) return `Audit r${a.round} FAILED ${a.hardFails}/${a.sceneCount} hard — delivering the file anyway.`;
   return null;
 }
 
@@ -432,6 +438,7 @@ function TicketCard({
 
   const terminal = TERMINAL.has(t.stage);
   const blockReason = terminal ? null : deliverBlockReason(t);
+  const auditWarn = terminal ? null : deliverAuditWarning(t);
   const claimable = t.stage === "queued" || t.stage === "needs_info";
   const kickable = !terminal && !(t.jobId && (t.stage === "rendering" || t.stage === "qa"));
   const accent = STAGE_STYLE[t.stage]?.fg ?? "#9ca3af";
@@ -609,7 +616,7 @@ function TicketCard({
                 className="btn btn-sm"
                 disabled={busy || !!blockReason}
                 onClick={deliver}
-                title={blockReason ?? `Audit r${t.audit?.round} passed for this final — deliver (email + Telegram + status ready)`}
+                title={blockReason ?? auditWarn ?? `Audit r${t.audit?.round} passed for this final — deliver (email + Telegram + status ready)`}
                 data-testid="f5-deliver"
                 style={
                   blockReason
@@ -625,6 +632,11 @@ function TicketCard({
               <button className="btn btn-sm" onClick={() => setShowNotes((v) => !v)}>
                 {showNotes ? "Hide" : "Stage / notes"}
               </button>
+            </div>
+          )}
+          {!terminal && auditWarn && !blockReason && (
+            <div data-testid="f5-audit-warning" style={{ fontSize: 11, color: "#a16207", maxWidth: 280, textAlign: "right" }}>
+              ⚠️ {auditWarn}
             </div>
           )}
           {!terminal && blockReason && (

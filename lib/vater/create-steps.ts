@@ -16,6 +16,7 @@
  */
 
 import { CONCIERGE_STATUSES, IN_FLIGHT_STATUSES } from "./youtube-status";
+import { isStuckBeforeReadyStatus, rowLooksFileReady, type DeliveryRow } from "./delivery-ready";
 
 export type CreateStepId =
   | "source"
@@ -71,7 +72,7 @@ export function stepDef(n: number): CreateStepDef {
 }
 
 /** The subset of a YouTubeProject row the derivation needs. */
-export interface CreateStepInput {
+export interface CreateStepInput extends DeliveryRow {
   status?: string | null;
   flowStep?: number | null;
   transcript?: string | null;
@@ -157,6 +158,11 @@ export function deriveCreateStep(
   const flow = Math.min(Math.max(1, p.flowStep ?? 1), CREATE_STEP_COUNT);
 
   if (status === "ready") return make(8, "terminal");
+  // Finished stitch + final mp4 is Done even if status was left on
+  // concierge_in_progress / producing (#66). Audit-missing is not a gate.
+  if (isStuckBeforeReadyStatus(status) && rowLooksFileReady(p)) {
+    return make(8, "terminal");
+  }
   if (status === "expired") {
     // An expired gate is shown on the step it was waiting on.
     return make(p.scriptApprovedAt ? 6 : 5, "expired");

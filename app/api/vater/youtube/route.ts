@@ -11,6 +11,7 @@ import { checkBudget } from "@/lib/vater/billing/check-budget";
 import { extractYouTubeVideoId } from "@/lib/vater/video-id";
 import { ensureVideoNumbers } from "@/lib/vater/video-number";
 import { expireStaleApprovals } from "@/lib/vater/approval-expiry";
+import { reconcileStuckDeliveries } from "@/lib/vater/delivery-verify";
 
 export async function GET() {
   const session = await auth();
@@ -21,6 +22,11 @@ export async function GET() {
   // Stepped flow (2026-08-28): flip 7-day-old approval gates before listing.
   await expireStaleApprovals(session.user.id).catch((err) =>
     console.error("[vater/youtube] expiry sweep failed", err),
+  );
+  // Post-render delivery check (#66): a finished mp4 left on
+  // concierge_in_progress becomes library-ready without Spark or /deliver.
+  await reconcileStuckDeliveries({ userId: session.user.id }).catch((err) =>
+    console.error("[vater/youtube] delivery reconcile failed", err),
   );
 
   // Course segments (projectType "course-segment") are chapter renders owned

@@ -27,11 +27,11 @@
  *
  * Policy:
  *   - "auto" (default) — byte-for-byte the legacy /poll behaviour.
- *   - "concierge" — the customer's `concierge_*` status is never overwritten
- *     with DGX phase names or "failed" (only the transition into `ready` is
- *     persisted); `stepDetails` still records the truth for HQ; a DGX 404
- *     writes `errorMessage` and returns `job_missing` instead of flipping the
- *     row to `failed`. Everything else is identical.
+ *   - "concierge" — mid-flight `concierge_*` is never overwritten with DGX
+ *     phase names or "failed". A finished stitch WITH a final mp4 persists
+ *     `ready` (library-visible) — audit/QA are warnings, not a gate. A DGX
+ *     404 writes `errorMessage` and returns `job_missing` instead of flipping
+ *     the row to `failed`. Everything else is identical.
  */
 import { Prisma, type YouTubeProject } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -59,7 +59,8 @@ import { notifyTelegram } from "@/lib/budget/notify";
 import { queueVaterEvent } from "@/lib/vater/events";
 import { expireProjectIfDue, nextApprovalExpiry } from "@/lib/vater/approval-expiry";
 import { notifyFlowTransition } from "@/lib/vater/flow-notify";
-import { readEngine } from "@/lib/vater/concierge";
+import { isStuckBeforeReadyStatus, persistStatusForSync } from "@/lib/vater/delivery-ready";
+import { promoteReadyIfDelivered } from "@/lib/vater/delivery-verify";
 
 /**
  * Stepped create flow (2026-08-28): the step a DGX-driven status lands on.
@@ -340,14 +341,9 @@ export async function syncProjectFromJob(
 
   const currentStatus = project.status as YouTubeProjectStatus;
   const nextStatus = mapPhaseToStatus(job, currentStatus);
-  logTransition(
-    id,
-    project.autopilotJobId,
-    currentStatus,
-    nextStatus,
-    job,
-    project.userId,
-  );
+  // Persist what we will actually write. Logging `→ ready` while leaving
+  // concierge_in_progress is how #66 vanished from the library.
+  const persistStatus = persistStatusForSync(policy, currentStatus, nextStatus) as YouTubeProjectStatus;
 
   // -------------------------------------------------------------------------
   // Build the Prisma update payload (typed via Prisma.YouTubeProjectUpdateInput
@@ -379,22 +375,11 @@ export async function syncProjectFromJob(
   if (shouldAlertFailure) alertedJobId = project.autopilotJobId;
 
   const data: Prisma.YouTubeProjectUpdateInput = {
-    // Concierge policy: the customer's status is owned ENTIRELY by the concierge
-    // ticket, never by the DGX job. Phases / "failed" live in stepDetails (+
-    // errorMessage) for HQ.
-    //
-    // `ready` is what puts a video in the customer's Library, and a finished
-    // RENDER is not a finished VIDEO — a Fable 5 ticket still has to pass the
-    // rule-155 delivery audit, and a failing audit sends it back for repair and
-    // a re-compose. This used to promote the row to `ready` the moment the job
-    // went done, so #55 appeared in Trey's Library at first sync, was watched in
-    // its unrepaired r1 state, and then VANISHED when the repair round flipped
-    // it back to `concierge_in_progress` (Jared 2026-08-29: "dont send it to
-    // library unless its actually repaired"). Only the deliver route
-    // (`writeConcierge(stage:"delivered", status:"ready")`) may set it now — and
-    // that route does its own idempotent `debitForProject`, so nothing is
-    // un-billed by deferring it.
-    status: policy === "concierge" ? project.status : nextStatus,
+    // Concierge mid-flight stays on concierge_*. A finished stitch (next
+    // status `ready`) is library-visible immediately — audit/QA/scene-fail
+    // reports are warnings. writeConcierge will not clobber this back to
+    // concierge_in_progress unless a new compose job is pointed.
+    status: persistStatus,
     progress: typeof job.progress === "number" ? job.progress : project.progress,
     stepDetails: {
       phase: job.phase,
@@ -795,19 +780,39 @@ export async function syncProjectFromJob(
     data,
   });
 
+  logTransition(
+    id,
+    project.autopilotJobId,
+    currentStatus,
+    updated.status as YouTubeProjectStatus,
+    job,
+    project.userId,
+  );
+
   // ── Stepped-flow notifications (once per transition, CAS inside) ────────
-  // script_ready → step 5 email + push; ready → step 8 (Auto lane only — the
-  // Fable 5 lane notifies from /deliver, which already emails). Delivery runs
-  // in after(); a notify hiccup must never fail the poll.
+  // script_ready → step 5 email + push; ready → step 8 (every lane — a
+  // finished file is library-visible without waiting on /deliver).
   if (updated.status !== currentStatus) {
     try {
       if (updated.status === "awaiting_script_approval") {
         await notifyFlowTransition(id, "script_ready");
-      } else if (updated.status === "ready" && readEngine(updated.settingsJson) !== "fable5") {
-        await notifyFlowTransition(id, "ready");
       }
     } catch (err) {
       console.error(`[vater/poll] flow notify failed project=${id}`, err);
+    }
+  }
+
+  // Post-render delivery check: HEAD the final when we have one, persist
+  // ready if a race left status on concierge_*, notify the existing ready
+  // path. No-ops when already ready + notified. Never requires Spark.
+  if (
+    updated.finalVideoUrl &&
+    (persistStatus === "ready" || isStuckBeforeReadyStatus(updated.status))
+  ) {
+    try {
+      await promoteReadyIfDelivered(updated, { source: "sync" });
+    } catch (err) {
+      console.error(`[vater/poll] delivery verify failed project=${id}`, err);
     }
   }
 

@@ -12,18 +12,14 @@
  * Double-send guard: a ticket with `deliveredAt` already set returns
  * 200 {already:true} and sends NOTHING.
  *
- * AUDIT GATE (2026-08-28, after F5-B0A50J shipped 24 s before its audit ran
- * and then failed 29/34): the ticket must carry a PASSING audit that speaks
- * for the CURRENT final (`auditMatchesFinal` — same `?v=` / same URL, or an
- * r1 audit of the same render job with no repair compose since). Otherwise
- * 409 `audit_missing` / `audit_failed`. Override: body
- * `{waive:true, waiveReason:"≥8 chars"}` delivers anyway and stamps the
- * waiver on history + internalNote + Telegram. The CLI's local pre-check
- * stays; this is the server truth.
+ * AUDIT is a WARNING (2026-08-30, after #66 sat invisible because
+ * /deliver 409'd `audit_missing` on a live 83MB mp4). A finished file
+ * delivers. Missing or failed audit is stamped on history + Telegram + the
+ * response (`auditWarning`) — it is not a 409. `{waive:true, waiveReason}`
+ * still records an explicit operator waiver when they want one on file.
  *
- * → 200 {ticket, status, emailed, chargeLine, finalVideoUrl, already?, waived?}
+ * → 200 {ticket, status, emailed, chargeLine, finalVideoUrl, already?, waived?, auditWarning?}
  * · 409 {code:"not_rendered", outcome} | {code:"terminal"}
- * · 409 {code:"audit_missing", message} | {code:"audit_failed", hardFails, sceneCount, round, reportUrl}
  * · 400 {code:"waive_reason_required"}
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -48,6 +44,7 @@ import { getProjectDebit } from "@/lib/vater/billing/ledger";
 import { sendConciergeDeliveredEmail } from "@/lib/vater/animate-email";
 import { queueVaterEvent } from "@/lib/vater/events";
 import { notifyFlowTransition } from "@/lib/vater/flow-notify";
+import { auditDeliveryWarning } from "@/lib/vater/delivery-ready";
 import { AutopilotConfigError, AutopilotError } from "@/lib/vater/autopilot-client";
 
 export const runtime = "nodejs";
@@ -120,7 +117,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     });
   }
 
-  // ── Delivery audit gate ─────────────────────────────────────────────────
+  // ── Delivery audit (warning only) ───────────────────────────────────────
   // Re-read the ticket: the sync above may have re-pointed jobs.
   const fresh = readConcierge(project.settingsJson) ?? ticket;
   const audit = fresh.audit ?? null;
@@ -129,32 +126,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     jobId: fresh.jobId ?? null,
     composeJobId: fresh.composeJobId ?? null,
   });
-  if (!waive) {
-    if (!auditMatches) {
-      return jsonError(409, "no delivery audit for this final yet", {
-        code: "audit_missing",
-        message:
-          "no delivery audit for this final yet — the runner audits after sync; wait for it (or deliver anyway with a reason)",
-        finalVideoUrl: project.finalVideoUrl,
-        lastAudit: audit
-          ? { round: audit.round, source: audit.source, at: audit.at, finalV: audit.finalV, passed: audit.passed }
-          : null,
-      });
-    }
-    if (!audit!.passed) {
-      return jsonError(
-        409,
-        `delivery audit r${audit!.round} FAILED — ${audit!.hardFails}/${audit!.sceneCount} scenes with hard failures`,
-        {
-          code: "audit_failed",
-          hardFails: audit!.hardFails,
-          sceneCount: audit!.sceneCount,
-          round: audit!.round,
-          reportUrl: audit!.reportUrl,
-        },
-      );
-    }
-  }
+  const auditWarning = auditDeliveryWarning(audit, auditMatches);
 
   // ── Charge line (best-effort; never blocks delivery) ────────────────────
   const owner = await resolveOwner(project.userId);
@@ -182,15 +154,23 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   // Waiver stamp — only when the gate would have refused (a waive:true on a
   // ticket whose audit already passes is a no-op, not a waiver).
   const waived = waive && !(auditMatches && audit?.passed);
+  const warningLine =
+    !waived && auditWarning
+      ? `delivered with ${auditWarning.code} warning` +
+        (audit
+          ? ` (last audit r${audit.round} ${audit.passed ? "PASS" : `FAIL ${audit.hardFails}/${audit.sceneCount}`}${auditMatches ? "" : ", not for this final"})`
+          : " (no audit on file)")
+      : null;
   const waiverLine = waived
     ? `DELIVERED WITH AUDIT WAIVER by ${by}: ${waiveReason}` +
       (audit
         ? ` (last audit r${audit.round} ${audit.passed ? "PASS" : `FAIL ${audit.hardFails}/${audit.sceneCount}`}${auditMatches ? "" : ", not for this final"})`
         : " (no audit on file)")
-    : null;
+    : warningLine;
   const internalNote = waiverLine
     ? `${waiverLine}${fresh.internalNote ? `\n${fresh.internalNote}` : ""}`.slice(0, 4000)
     : undefined;
+  const alreadyNotified = !!project.notifiedReadyAt;
   const { project: updated, ticket: next } = await writeConcierge(
     project.id,
     {
@@ -218,8 +198,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   }
 
   // ── Customer email ──────────────────────────────────────────────────────
+  // Skip when auto-ready already sent the stepped-flow ready email.
   let emailed = false;
-  if (next.email) {
+  if (next.email && !alreadyNotified) {
     try {
       await sendConciergeDeliveredEmail(next.email, {
         code: next.code,
@@ -240,8 +221,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   // ── Telegram + event ────────────────────────────────────────────────────
   await conciergeTelegram(
     `${waived ? "⚠️ delivered WITH AUDIT WAIVER" : "✅ delivered"} ${next.code} · ${tgSafe(next.email || owner.email || "—")} · ${tgSafe(chargeLine)}` +
-      `${emailed ? "" : " · ⚠️ email NOT sent"}` +
-      `${waived ? `\nwaiver by ${tgSafe(by)}: ${tgSafe(waiveReason)}` : ""}`,
+      `${emailed ? "" : alreadyNotified ? " · email already sent" : " · ⚠️ email NOT sent"}` +
+      `${waived ? `\nwaiver by ${tgSafe(by)}: ${tgSafe(waiveReason)}` : ""}` +
+      `${!waived && auditWarning ? `\n⚠️ ${tgSafe(auditWarning.message)}` : ""}`,
   );
   if (project.userId) {
     queueVaterEvent({
@@ -260,6 +242,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         waived,
         waiveReason: waived ? waiveReason : null,
         auditRound: audit?.round ?? null,
+        auditWarning: auditWarning?.code ?? null,
       },
     });
   }
@@ -271,5 +254,6 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     chargeLine,
     finalVideoUrl: project.finalVideoUrl,
     waived,
+    auditWarning,
   });
 }

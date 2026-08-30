@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.22';
+export const APP_VERSION = '1.22.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.22.1',
+    date: '2026-08-30',
+    title: 'Finished videos show in Library without a human deliver click',
+    items: [
+      'When the stitch finishes and the final mp4 is live, the video is Ready in your Library — even if Fable 5 is still in QA or the audit file is missing.',
+      'A finished file can no longer sit in Moving Now after the studio has already sewn it. Opening Library or the project flips any row that got stuck.',
+    ],
+  },
   {
     version: '1.22',
     date: '2026-08-30',
