@@ -66,6 +66,21 @@ const nextConfig: NextConfig = {
   // 1.15. Session/DB trees that hang are marked at the route. If a leftover
   // prerender still hangs, fail in 60s instead of occupying the slot.
   staticPageGenerationTimeout: 60,
+  // 1.19 compiled on Standard (4 cores / 8 GB) then SIGKILL'd at
+  // "Collecting page data using 3 workers". Next 16.1.6 defaults
+  // experimental.cpus to max(1, os.cpus().length - 1) — 3 on that box —
+  // and getNumberOfWorkers() is what prints that line (packages/next
+  // src/build/index.ts). Each collect worker loads a full copy of the
+  // page-data graph; Talk to Claude + Review tipped three copies over
+  // 8 GB. cpus: 1 is the collect-worker count. staticGenerationMaxConcurrency
+  // is pages-per-worker in the later export phase (Next 16 experimental
+  // API — not a top-level next.config key). Stay on Standard. Do not
+  // force-dynamic the root layout (1.17 hang). Do not re-enable
+  // typescript checking inside next build (2026-08-19 OOM).
+  experimental: {
+    cpus: 1,
+    staticGenerationMaxConcurrency: 1,
+  },
   images: {
     remotePatterns: [
       {

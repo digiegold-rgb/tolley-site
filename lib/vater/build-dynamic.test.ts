@@ -13,9 +13,9 @@ function readApp(rel: string): string {
 
 const FORCE_DYNAMIC = /export const dynamic\s*=\s*["']force-dynamic["']/;
 
-test("changelog 1.19 is the current shipped version", () => {
-  assert.equal(APP_VERSION, "1.19");
-  assert.equal(CHANGELOG[0]?.version, "1.19");
+test("changelog 1.20 is the current shipped version", () => {
+  assert.equal(APP_VERSION, "1.20");
+  assert.equal(CHANGELOG[0]?.version, "1.20");
 });
 
 test("root layout is not force-dynamic — that hung 1.17 collect-page-data", () => {
@@ -55,4 +55,12 @@ test("Force Kill confirm copy is unchanged", () => {
 test("staticPageGenerationTimeout stays 60 so leftover SSG cannot occupy the slot", () => {
   const src = readApp("next.config.ts");
   assert.match(src, /staticPageGenerationTimeout:\s*60/);
+});
+
+test("collect workers stay at 1 so Standard 8GB can finish page-data", () => {
+  const src = readApp("next.config.ts");
+  assert.match(src, /experimental:\s*\{[\s\S]*cpus:\s*1/);
+  assert.match(src, /staticGenerationMaxConcurrency:\s*1/);
+  assert.match(src, /typescript:\s*\{\s*ignoreBuildErrors:\s*true\s*\}/);
+  assert.equal(/NODE_OPTIONS/.test(src), false);
 });
