@@ -22,7 +22,14 @@ export function LengthStep(): React.ReactElement {
   const { project, derived, readOnly } = flow;
 
   const sourceWords = wordsIn(project?.transcript);
-  const [minutes, setMinutes] = React.useState(0);
+  const [minutes, setMinutes] = React.useState(() => {
+    const td = project?.targetDuration;
+    return typeof td === 'number' && td > 0 ? td : 0;
+  });
+  React.useEffect(() => {
+    const td = project?.targetDuration;
+    if (typeof td === 'number' && td > 0) setMinutes(td);
+  }, [project?.id, project?.targetDuration]);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [block, setBlock] = React.useState<BillingBlockReason | null>(null);
@@ -36,7 +43,9 @@ export function LengthStep(): React.ReactElement {
         : 'Match the source'
       : `${minutes} min · ~${wordCountForDuration(minutes).toLocaleString()} words`;
 
-  if (readOnly && project && derived) {
+  // Lock only after generate/approve (Review+). Looking at step 3 from
+  // Writing — or after we patched flowStep back to 3 — must show the slider.
+  if (readOnly && project && derived && derived.step > 4) {
     const td = project.targetDuration;
     return (
       <DoneSummary onContinue={() => flow.goTo(derived.step)} continueLabel={`Continue to step ${derived.step} →`} testId="length-done">

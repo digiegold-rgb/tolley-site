@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  SCRIPT_WRITER_FLOOR_CENTS,
   SCRIPT_WRITER_MARKUP,
   SCRIPT_WRITER_MODELS,
   SCRIPT_WRITER_PRODUCT_DEFAULT,
@@ -33,6 +34,7 @@ test("published token rates match the Aug 2026 Anthropic card", () => {
   assert.equal(SCRIPT_WRITER_MODELS.sonnet.inputUsdPerMTok, 2);
   assert.equal(SCRIPT_WRITER_MODELS.sonnet.outputUsdPerMTok, 10);
   assert.equal(SCRIPT_WRITER_MARKUP, 1.3);
+  assert.equal(SCRIPT_WRITER_FLOOR_CENTS, 5);
 });
 
 test("quote = published rate × tokens; billed = ceil(provider × 1.30)", () => {
@@ -52,12 +54,22 @@ test("quote = published rate × tokens; billed = ceil(provider × 1.30)", () => 
   assert.ok(q.billedCents !== 25);
 });
 
-test("tiny jobs still bill a cent when there is real usage — never silently $0", () => {
-  // 200 in + 80 out on Sonnet ≈ $0.0012 provider → 1¢ billed after markup.
+test("tiny Sonnet job quotes and bills the 5¢ floor, not 1–3¢", () => {
+  // 200 in + 80 out on Sonnet ≈ $0.0012 provider → 1¢ after +30% without a floor.
   const q = quoteScriptUsage("sonnet", 200, 80);
   assert.ok(q.providerCostCents >= 1);
-  assert.ok(q.billedCents >= q.providerCostCents);
+  assert.ok(q.providerCostCents < SCRIPT_WRITER_FLOOR_CENTS);
+  assert.equal(q.billedCents, SCRIPT_WRITER_FLOOR_CENTS);
+  assert.equal(formatScriptCents(q.billedCents), "$0.05");
   assert.equal(quoteScriptUsage("sonnet", 0, 0).billedCents, 0);
+});
+
+test("large Fable job tracks actual + 30% when that is above 5¢", () => {
+  // 100k in + 20k out on Fable: $1 + $1 = $2 provider → $2.60 billed.
+  const f = quoteScriptUsage("fable", 100_000, 20_000);
+  assert.equal(f.providerCostCents, 200);
+  assert.equal(f.billedCents, 260);
+  assert.ok(f.billedCents > SCRIPT_WRITER_FLOOR_CENTS);
 });
 
 test("token estimate is 1.3 × words; empty source is 0", () => {

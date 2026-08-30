@@ -9,12 +9,15 @@
  *   Opus 5    claude-opus-5      $5 / $25 per MTok
  *   Sonnet 5  claude-sonnet-5    $2 / $10 per MTok
  *
- * Customer price = provider cost × 1.30, rounded up to the cent. No 25¢
- * cap and no 5× markup on this charge — quote before generate, bill the
- * actual input+output tokens the API returns.
+ * Customer price = provider cost × 1.30, rounded up to the cent, then
+ * floored at 5¢. No 25¢ cap and no 5× markup on this charge — quote
+ * before generate, bill the actual input+output tokens the API returns.
  */
 
 export const SCRIPT_WRITER_MARKUP = 1.3;
+
+/** Hard product floor. Quote and bill never show or charge below this. */
+export const SCRIPT_WRITER_FLOOR_CENTS = 5;
 
 /** Product default. Trey (tvater326) is the only per-user override. */
 export const SCRIPT_WRITER_PRODUCT_DEFAULT = "sonnet" as const;
@@ -158,7 +161,7 @@ export interface ScriptQuote {
   outputTokens: number;
   /** Provider $ × 100, before markup. */
   providerCostCents: number;
-  /** ceil(provider × 1.30). What we show / charge. */
+  /** max(5, ceil(provider × 1.30)). What we show / charge. Zero usage stays $0. */
   billedCents: number;
   markup: typeof SCRIPT_WRITER_MARKUP;
 }
@@ -168,7 +171,7 @@ function usdToCents(usd: number): number {
   return Math.ceil(usd * 100 - 1e-9);
 }
 
-/** Provider USD for a token pair, then +30% billed cents. */
+/** Provider USD for a token pair, then +30% billed cents, floored at 5¢. */
 export function quoteScriptUsage(
   model: ScriptWriterModelId,
   inputTokens: number,
@@ -180,7 +183,11 @@ export function quoteScriptUsage(
   const providerUsd =
     (inTok / 1_000_000) * spec.inputUsdPerMTok + (outTok / 1_000_000) * spec.outputUsdPerMTok;
   const providerCostCents = usdToCents(providerUsd);
-  const billedCents = usdToCents(providerUsd * SCRIPT_WRITER_MARKUP);
+  const markedUp = usdToCents(providerUsd * SCRIPT_WRITER_MARKUP);
+  // Real usage never quotes or bills below 5¢. Empty (0+0) stays $0 so a
+  // missing source does not invent a charge.
+  const billedCents =
+    markedUp <= 0 ? 0 : Math.max(SCRIPT_WRITER_FLOOR_CENTS, markedUp);
   return {
     model,
     apiId: spec.apiId,

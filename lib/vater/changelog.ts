@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.13';
+export const APP_VERSION = '1.14';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.14',
+    date: '2026-08-30',
+    title: 'Script writes never cost less than 5¢, and you can change the length',
+    items: [
+      'Script generation quotes and charges never go below 5¢. A short Sonnet job is 5¢; a longer Fable job still bills the tokens that were actually used plus 30%.',
+      'On the Writing step, Change length takes you back to the minutes slider so you can pick a different length before you generate. Nothing is charged for going back.',
+    ],
+  },
   {
     version: '1.13',
     date: '2026-08-29',
