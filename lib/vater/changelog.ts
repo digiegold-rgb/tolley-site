@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.15';
+export const APP_VERSION = '1.16';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.16',
+    date: '2026-08-30',
+    title: 'Force Kill on Create actually starts you over from step 1',
+    items: [
+      'A red Force Kill sits at the top of Create, and on Progress when a project is open. It stays visible once a project is loaded — including while the writer is pulsing, when a step failed, or when something needs you.',
+      'Confirm and the project is gone. You land on a fresh Source step, not a transcribed lock. You will need to regenerate from step one.',
+    ],
+  },
   {
     version: '1.15',
     date: '2026-08-30',

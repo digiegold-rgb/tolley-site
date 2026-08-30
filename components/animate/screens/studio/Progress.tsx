@@ -25,6 +25,7 @@ import { DriveSyncChip } from '../../DriveSyncChip';
 import { RenderTerminal, RenderTerminalToggle } from '../../RenderTerminal';
 import { useProgressSummary, refreshProgress, type ProgressRow } from '../../ProgressBadgeProvider';
 import { CreateStepper } from '../create/CreateStepper';
+import { ForceKillControl } from '../create/ForceKillControl';
 import { stepHash, stepDef, type DerivedCreateStep } from '@/lib/vater/create-steps';
 import { relativeTimeLabel } from '@/lib/vater/concierge-client';
 
@@ -144,6 +145,7 @@ export function Progress(): React.ReactElement {
 
 function Row({ row, group }: { row: ProgressRow; group: Group }): React.ReactElement {
   const { t } = useTheme();
+  const { setRoute, setSelectedProjectId, setEditorStep } = useRoute();
   // The worker-log box (Jared 2026-08-28): always open for anything in
   // flight — auto AND concierge — collapsed behind "Log" once it needs you
   // or is done. Polls only while the row is actually working.
@@ -241,6 +243,18 @@ function Row({ row, group }: { row: ProgressRow; group: Group }): React.ReactEle
         <span style={{ fontSize: 11.5, color: t.textFaint, whiteSpace: 'nowrap' }}>{relativeTimeLabel(row.updatedAt)}</span>
         {row.variationCount > 0 && (
           <span style={{ fontSize: 11, color: t.textSecondary, whiteSpace: 'nowrap' }}>rewrite #{row.variationCount}</span>
+        )}
+        {row.kind !== 'terminal' && row.status !== 'ready' && (
+          <ForceKillControl
+            projectId={row.id}
+            compact
+            onKilled={() => {
+              refreshProgress();
+              setSelectedProjectId(null);
+              setEditorStep(1);
+              setRoute('create');
+            }}
+          />
         )}
         {row.kind === 'expired' ? (
           <VBtn size="sm" variant="outlined" onClick={(e) => void reopen(e)} disabled={busy} data-testid={`progress-reopen-${row.id}`}>

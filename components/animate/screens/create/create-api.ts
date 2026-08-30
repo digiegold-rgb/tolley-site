@@ -232,6 +232,22 @@ export const createApi = {
    *  failed (`project.driveError` says why); 409 not approved; 412 not linked. */
   driveSync: async (id: string): Promise<CreateProject> =>
     (await request<{ project: CreateProject }>(`/api/vater/youtube/${id}/drive-sync`, post({}))).project,
+
+  /** Stop the DGX autopilot job. A leftover `scripting`/`queued` row with no
+   *  live worker still returns 200 (404 = already stopped). Leaves the row
+   *  on `transcribed`/`failed` — Force Kill then calls `deleteProject`. */
+  cancel: async (
+    id: string,
+  ): Promise<{
+    ok: boolean;
+    dgx?: { ok: boolean; wasRunning?: boolean; upstream?: number; error?: string };
+    project?: { id: string; status: string; progress?: number; errorMessage?: string | null };
+  }> => request(`/api/vater/youtube/${id}/cancel`, { method: 'POST' }),
+
+  /** Hard-delete the row. Force Kill's customer-facing result is a dead row. */
+  deleteProject: async (id: string): Promise<void> => {
+    await request<{ ok: boolean }>(`/api/vater/youtube/${id}`, { method: 'DELETE' });
+  },
 };
 
 export function errorMessage(err: unknown, fallback: string): string {
