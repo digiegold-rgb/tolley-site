@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.21';
+export const APP_VERSION = '1.22';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,17 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.22',
+    date: '2026-08-30',
+    title: 'Fable generate gets five minutes, and production can actually deploy',
+    items: [
+      'Generate from the video and Talk to Claude can run up to five minutes, so a long Fable write is not cut off at 60 seconds.',
+      'If the writer still runs too long, you see that nothing was billed and you can click generate again — not a raw HTTP 504.',
+      'Script writes now go through the studio AI Gateway. What you pay is still the published Claude rates plus 30%, never under 5¢.',
+      'Production can deploy again. The five-minute window lives on the routes themselves so we stay under Vercel’s 50-function config cap.',
+    ],
+  },
   {
     version: '1.21',
     date: '2026-08-30',

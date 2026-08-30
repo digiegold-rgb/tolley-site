@@ -13,9 +13,9 @@ function readApp(rel: string): string {
 
 const FORCE_DYNAMIC = /export const dynamic\s*=\s*["']force-dynamic["']/;
 
-test("changelog 1.21 is the current shipped version", () => {
-  assert.equal(APP_VERSION, "1.21");
-  assert.equal(CHANGELOG[0]?.version, "1.21");
+test("changelog 1.22 is the current shipped version", () => {
+  assert.equal(APP_VERSION, "1.22");
+  assert.equal(CHANGELOG[0]?.version, "1.22");
 });
 
 test("script writer uses AI Gateway client, not a bare Anthropic constructor", () => {
@@ -29,17 +29,22 @@ test("script writer uses AI Gateway client, not a bare Anthropic constructor", (
   assert.match(talk, /viaGateway=\$\{talked\.viaGateway\}/);
 });
 
-test("write-script and talk-script are 300s in the route export and vercel.json", () => {
+test("write-script and talk-script are 300s on the route, not in vercel.json", () => {
   const vercel = JSON.parse(readApp("vercel.json")) as {
     functions: Record<string, { maxDuration?: number }>;
   };
-  for (const file of [
+  const capped = [
     "app/api/vater/youtube/[id]/write-script/route.ts",
     "app/api/vater/youtube/[id]/talk-script/route.ts",
-  ]) {
+  ];
+  for (const file of capped) {
     assert.match(readApp(file), /export const maxDuration = 300/, file);
-    assert.equal(vercel.functions[file]?.maxDuration, 300, file);
+    assert.equal(vercel.functions[file], undefined, file);
   }
+  assert.ok(
+    Object.keys(vercel.functions).length <= 50,
+    `vercel.json functions has ${Object.keys(vercel.functions).length} keys (cap 50)`,
+  );
 });
 
 test("root layout is not force-dynamic — that hung 1.17 collect-page-data", () => {
