@@ -64,6 +64,25 @@ test("video path + pasted script + Continue lands on Review", () => {
   assert.equal(d.kind, "approval");
 });
 
+test("patching flowStep back to 3 reopens Length on a transcribed row", () => {
+  const writing = deriveCreateStep({
+    status: "transcribed",
+    flowStep: 4,
+    transcript: "caption track ".repeat(40),
+  });
+  assert.equal(writing.step, 4);
+  assert.equal(writing.kind, "input");
+
+  const length = deriveCreateStep({
+    status: "transcribed",
+    flowStep: 3,
+    transcript: "caption track ".repeat(40),
+  });
+  assert.equal(length.step, 3);
+  assert.equal(length.kind, "input");
+  assert.equal(length.active, false);
+});
+
 test("a leftover DGX scripting job still pulses on Writing", () => {
   const d = deriveCreateStep({ status: "scripting", flowStep: 4, transcript: "x" });
   assert.equal(d.step, 4);

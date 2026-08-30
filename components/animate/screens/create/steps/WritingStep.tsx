@@ -38,6 +38,32 @@ export function WritingStep(): React.ReactElement {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, serverScript]);
 
+  /** Reopen the length slider. Derived step is 4 whenever flowStep >= 4 on
+   *  a transcribed row, so goTo(3) alone lands on a locked DoneSummary.
+   *  Patch flowStep back to 3 first — no charge, no jump ahead. */
+  const reopenLength = async (): Promise<void> => {
+    if (!project) return;
+    setBusy(true);
+    setError(null);
+    try {
+      // On a transcribed row, derived step is 4 whenever flowStep >= 4.
+      // Patch back to 3 so Length is the live step, not a locked summary.
+      // Own-script (no transcript) must not PATCH — derive would drop to Source.
+      if (wordsIn(project.transcript) > 0) {
+        const row = await createApi.patchProject(project.id, { flowStep: 3 });
+        flow.adopt(row);
+      }
+      flow.goTo(3);
+    } catch (err) {
+      if (err instanceof BillingBlockedError) {
+        setBlock(err.reason);
+        setBlockCtx(err.context);
+      } else setError(errorMessage(err, 'Could not reopen the length'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!project || !derived) {
     return (
       <StepCard testId="writing-empty">
@@ -62,7 +88,9 @@ export function WritingStep(): React.ReactElement {
             Writing failed{project.errorMessage ? `: ${project.errorMessage}` : ''}. Nothing was charged for a script that did not land.
           </ErrorNote>
           <StepActions>
-            <VBtn variant="ghost" onClick={() => flow.goTo(3)} disabled={busy}>← Change the length</VBtn>
+            <VBtn variant="ghost" onClick={() => void reopenLength()} disabled={busy} data-testid="writing-change-length">
+              ← Change length
+            </VBtn>
           </StepActions>
         </StepCard>
         <BillingBlockModal reason={block} context={blockCtx} projectId={project.id} onClose={() => setBlock(null)} />
@@ -154,6 +182,14 @@ export function WritingStep(): React.ReactElement {
             </span>
           }
         >
+          <VBtn
+            variant="ghost"
+            onClick={() => void reopenLength()}
+            disabled={busy}
+            data-testid="writing-change-length"
+          >
+            ← Change length
+          </VBtn>
           <VBtn
             onClick={() => void continueToReview()}
             disabled={busy || wordsIn(draft) === 0}
