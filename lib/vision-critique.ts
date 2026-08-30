@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { anthropicClient, anthropicModelId } from "@/lib/ai-gateway";
 import { assertPublicUrl } from "@/lib/net/assert-public-url";
 
 export interface CritiqueIssue {
@@ -49,12 +50,9 @@ export async function critiqueGeneration(
   originalPrompt: string,
   type: "image" | "video" = "image",
 ): Promise<CritiqueResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not configured");
-  }
-
-  const client = new Anthropic({ apiKey });
+  // Vercel AI Gateway when a token is present (spend + budget on the Vercel
+  // dashboard), direct Anthropic otherwise. See lib/ai-gateway.ts.
+  const { client, viaGateway } = anthropicClient();
 
   // Fetch the image and convert to base64 for Claude (SSRF-guard the URL first).
   await assertPublicUrl(imageUrl);
@@ -71,7 +69,7 @@ export async function critiqueGeneration(
   else if (contentType.includes("gif") || imageUrl.match(/\.gif/i)) mediaType = "image/gif";
 
   const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
+    model: anthropicModelId("claude-haiku-4-5", viaGateway),
     max_tokens: 1500,
     system: CRITIQUE_SYSTEM,
     messages: [

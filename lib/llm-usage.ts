@@ -202,9 +202,10 @@ export const LLM_PROVIDERS = {
   },
   anthropic: {
     provider: "anthropic",
-    model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
+    model: process.env.ANTHROPIC_MODEL || "anthropic/claude-sonnet-5",
     location: "cloud-us",
-    endpoint: "https://api.anthropic.com",
+    // Routed through Vercel AI Gateway since 2026-08-29 (lib/ai-gateway.ts).
+    endpoint: "https://ai-gateway.vercel.sh",
   },
   openai: {
     provider: "openai",
