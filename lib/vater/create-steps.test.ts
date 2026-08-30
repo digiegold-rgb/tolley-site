@@ -90,6 +90,17 @@ test("a leftover DGX scripting job still pulses on Writing", () => {
   assert.equal(d.active, true);
 });
 
+test("produce queued after approve is Producing (step 7), not Writing", () => {
+  const d = deriveCreateStep({
+    status: "queued",
+    scriptApprovedAt: new Date(),
+    script: "approved copy",
+    flowStep: 7,
+  });
+  assert.equal(d.step, 7);
+  assert.equal(d.kind, "async");
+});
+
 test("#66 finished stitch on concierge_in_progress is Done, not Producing", () => {
   const d = deriveCreateStep({
     status: "concierge_in_progress",

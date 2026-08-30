@@ -15,7 +15,7 @@
  */
 import * as React from 'react';
 import { deriveCreateStep } from '@/lib/vater/create-steps';
-import { IN_FLIGHT_STATUSES, type YouTubeProjectStatus } from '@/lib/vater/youtube-status';
+import { shouldPollJob } from '@/lib/vater/youtube-status';
 import { ApiError, createApi, errorMessage, type CreateProject } from './create-api';
 
 export interface CreatePollState {
@@ -28,7 +28,7 @@ export interface CreatePollState {
 }
 
 function onDgx(p: CreateProject | null): boolean {
-  return !!p?.autopilotJobId && IN_FLIGHT_STATUSES.has(p.status as YouTubeProjectStatus);
+  return !!p && shouldPollJob(p);
 }
 
 export function useCreatePoll(projectId: string | null | undefined, intervalMs = 5000): CreatePollState {

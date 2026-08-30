@@ -39,9 +39,9 @@ import { Icon } from '../../Icon';
 import { PillStepper, EDITOR_STEP_HINTS, ConfirmDialog } from '../../primitives';
 import { Footer } from '../../Footer';
 import {
-  IN_FLIGHT_STATUSES,
   STATUS_LABELS,
   isConciergeStatus,
+  shouldPollJob,
   type YouTubeProjectStatus,
 } from '@/lib/vater/youtube-status';
 import {
@@ -274,8 +274,7 @@ export function ProjectShell({
    * shape via refresh(). 2s tick matches the legacy EditorShell cadence. */
   React.useEffect(() => {
     if (isDemo || !projectId || !project) return;
-    const status = asStatus(project.status);
-    if (!status || !IN_FLIGHT_STATUSES.has(status)) return;
+    if (!shouldPollJob(project)) return;
     let cancelled = false;
     const tick = async (): Promise<void> => {
       if (cancelled) return;
@@ -404,8 +403,8 @@ export function ProjectShell({
   const scriptWords = (project?.script ?? '').split(/\s+/).filter(Boolean).length;
   const inFlight =
     !isDemo &&
-    !!projStatus &&
-    IN_FLIGHT_STATUSES.has(projStatus as YouTubeProjectStatus);
+    !!project &&
+    shouldPollJob(project);
   const showEngineBar =
     !isDemo &&
     !!project &&

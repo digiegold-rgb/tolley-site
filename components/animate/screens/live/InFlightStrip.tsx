@@ -22,10 +22,7 @@ import { JELLY_TOKENS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { VCard, VBtn } from '../../primitives';
 import { MicroLabel } from '../../cinema';
-import {
-  IN_FLIGHT_STATUSES,
-  type YouTubeProjectStatus,
-} from '@/lib/vater/youtube-status';
+import { shouldPollJob } from '@/lib/vater/youtube-status';
 import { RenderProgress } from './RenderProgress';
 import { stageOf, type ReviewProject } from '../review/ScriptReviewScreen';
 
@@ -77,9 +74,7 @@ export function InFlightStrip(): React.ReactElement | null {
 
   const live = React.useMemo(
     () =>
-      (projects ?? []).filter((p) =>
-        IN_FLIGHT_STATUSES.has(p.status as YouTubeProjectStatus),
-      ),
+      (projects ?? []).filter((p) => shouldPollJob(p)),
     [projects],
   );
 

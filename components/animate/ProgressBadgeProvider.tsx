@@ -19,7 +19,7 @@
  */
 
 import * as React from 'react';
-import { IN_FLIGHT_STATUSES, type YouTubeProjectStatus } from '@/lib/vater/youtube-status';
+import { shouldPollJob } from '@/lib/vater/youtube-status';
 import { stepHash, type CreateStepKind } from '@/lib/vater/create-steps';
 import { useToast } from './ToastHost';
 import { useProduct } from './product-context';
@@ -44,6 +44,7 @@ export interface ProgressRow {
   needsUser: boolean;
   active: boolean;
   variationCount: number;
+  autopilotJobId?: string | null;
   /** Google Drive mirror of the approved script (2026-08-28). */
   driveFileUrl?: string | null;
   driveError?: string | null;
@@ -157,7 +158,7 @@ export function ProgressBadgeProvider({ children }: { children: React.ReactNode 
 
       // Keep the DGX state flowing for in-flight rows (Queue.tsx did this).
       next.projects
-        .filter((r) => IN_FLIGHT_STATUSES.has(r.status as YouTubeProjectStatus))
+        .filter((r) => shouldPollJob(r))
         .slice(0, MAX_KICKS)
         .forEach((r) => {
           void fetch(`/api/vater/youtube/${r.id}/poll`).catch(() => undefined);

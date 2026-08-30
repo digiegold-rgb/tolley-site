@@ -235,11 +235,18 @@ export const createApi = {
     revisedScript: string | null;
   }> => request(`/api/vater/youtube/${id}/talk-script`, post(body)),
 
-  /** FREE. status → awaiting_engine. */
-  approveScript: async (id: string, script?: string): Promise<CreateProject> =>
+  /** FREE when no engine (Create step 5). Script Review sends engine → produce. */
+  approveScript: async (
+    id: string,
+    script?: string,
+    engine?: 'auto' | 'fable5',
+  ): Promise<CreateProject> =>
     (await request<{ project: CreateProject }>(
       `/api/vater/youtube/${id}/approve-script`,
-      post(script !== undefined ? { script } : {}),
+      post({
+        ...(script !== undefined ? { script } : {}),
+        ...(engine ? { engine } : {}),
+      }),
     )).project,
 
   /** Metered re-roll at the script price. status → scripting. */

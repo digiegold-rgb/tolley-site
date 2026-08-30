@@ -27,6 +27,7 @@ import {
   runtimeClock,
 } from "@/lib/vater/script-limits";
 import { maxWordsFor } from "@/lib/vater/billing/script-cap";
+import { styleSeedFromStyle } from "@/lib/vater/animate-render";
 
 /** Guard rails on the pasted text: enough to be a script, small enough that a
  *  paste accident can't push a novel through the renderer. */
@@ -105,12 +106,21 @@ export async function POST(req: NextRequest) {
   // Style: the locked bundle unless a caller explicitly overrides. An
   // override still has to be a row we're allowed to use — same rule as the
   // reference lane, so a bad id is an error, never a styleless project that
-  // silently renders in some other look.
+  // silently renders in some other look. Seed stylePreset + voice onto the
+  // row (F5-7HR425) — styleId alone left schema default cinematic / no voice.
   let styleId: string;
+  let styleSeed: ReturnType<typeof styleSeedFromStyle>;
   if (body.styleId) {
     const style = await prisma.youTubeStyle.findUnique({
       where: { id: body.styleId },
-      select: { id: true, userId: true, isSystem: true },
+      select: {
+        id: true,
+        userId: true,
+        isSystem: true,
+        artStylePresetId: true,
+        voice: true,
+        voiceCloneId: true,
+      },
     });
     if (!style) {
       return NextResponse.json({ error: "Style not found" }, { status: 404 });
@@ -119,6 +129,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     styleId = style.id;
+    styleSeed = styleSeedFromStyle(style);
   } else {
     const locked = await resolveLockedStyle(session.user.id);
     if (!locked) {
@@ -151,6 +162,15 @@ export async function POST(req: NextRequest) {
       }
     }
     styleId = locked.id;
+    const lockedRow = await prisma.youTubeStyle.findUnique({
+      where: { id: locked.id },
+      select: { artStylePresetId: true, voice: true, voiceCloneId: true },
+    });
+    styleSeed = styleSeedFromStyle({
+      artStylePresetId: lockedRow?.artStylePresetId ?? locked.artStylePresetId,
+      voice: lockedRow?.voice ?? locked.voice,
+      voiceCloneId: lockedRow?.voiceCloneId ?? null,
+    });
   }
 
   const animUntilS =
@@ -184,6 +204,7 @@ export async function POST(req: NextRequest) {
       targetDuration,
       targetWordCount: wordCount,
       styleId,
+      ...styleSeed,
       animUntilS,
       // Straight to the human gate. Nothing has been spent and nothing will
       // be until Approve & Animate.

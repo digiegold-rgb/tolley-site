@@ -1,19 +1,19 @@
 /**
- * POST /api/vater/youtube/[id]/approve-script — step 5 → 6. FREE.
+ * POST /api/vater/youtube/[id]/approve-script — step 5 → 6. FREE unless
+ * Script Review sends `engine`.
  *
- * The human gate of the stepped create flow (2026-08-28). Approving a script
- * costs nothing and renders nothing: it persists the (possibly edited) text,
- * stamps `scriptApprovedAt`, and parks the project at `awaiting_engine` —
- * step 6, where the customer picks Jelly (auto) or Fable 5. That pick, POST
- * [id]/produce, is the ONLY money click; the render kick + budget check that
- * used to live here moved there.
+ * Stepped Create omits engine: persist the (possibly edited) text, stamp
+ * `scriptApprovedAt`, park at `awaiting_engine` — step 6, where EngineStep
+ * POSTs [id]/produce.
  *
- * The engine gate has the same 7-day clock as the script gate
- * (approvalExpiresAt); an `expired` row must be reopened first (409).
+ * Script Review Approve & Animate sends `{ script, engine }`. After the
+ * free CAS it kicks produce (auto → queued + run-creation; fable5 →
+ * submitConcierge + existing HQ Telegram). Parking alone left Trey's
+ * own-script path with nothing queued.
  *
- * Body: { script?: string } — the edited script. Falls back to the script
- * already on the row when omitted (approve-as-is).
- * → 200 {project} · 400 no script · 409 {error,status,reason?}
+ * Body: { script?: string, engine?: "auto" | "fable5" }
+ * → 200 {project, engine?, jobId?} · 400 no script · 402 budget ·
+ *   409 {error,status,reason?}
  */
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
@@ -23,6 +23,8 @@ import { canAccessProject } from "@/lib/vater/project-access";
 import { appendScriptVersion } from "@/lib/vater/script-versions";
 import { nextApprovalExpiry } from "@/lib/vater/approval-expiry";
 import { syncApprovedScriptToDrive } from "@/lib/vater/drive-sync";
+import { approveScriptFollowThrough } from "@/lib/vater/animate-render";
+import { produceApprovedProject } from "@/lib/vater/produce-project";
 
 export const runtime = "nodejs";
 
@@ -30,6 +32,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 interface ApproveBody {
   script?: string;
+  engine?: unknown;
 }
 
 const APPROVABLE = new Set(["awaiting_script_approval", "scripted"]);
@@ -55,6 +58,42 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     !canAccessProject(project.userId, session.user.id, session.user.email)
   ) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  // Retry after a 402 / kick fail: script is already approved and parked
+  // at the engine gate. Skip the free CAS and go straight to produce.
+  const followEarly = approveScriptFollowThrough(body);
+  if (project.status === "awaiting_engine" && followEarly.kick === "produce") {
+    const script =
+      typeof body.script === "string" && body.script.trim()
+        ? body.script.trim()
+        : (project.script ?? "").trim();
+    if (!script) {
+      return NextResponse.json(
+        { error: "No script to approve — write or generate one first" },
+        { status: 400 },
+      );
+    }
+    const produced = await produceApprovedProject({
+      project,
+      userId: session.user.id,
+      email: session.user.email,
+      engine: followEarly.engine,
+      script,
+    });
+    if (!produced.ok) {
+      return NextResponse.json(
+        { ...produced.body, project: produced.body.project ?? project },
+        { status: produced.status },
+      );
+    }
+    return NextResponse.json({
+      project: produced.project,
+      engine: produced.engine,
+      ...(produced.jobId ? { jobId: produced.jobId } : {}),
+      ...(produced.ticket ? { ticket: produced.ticket } : {}),
+      ...(produced.estimateUsd != null ? { estimateUsd: produced.estimateUsd } : {}),
+    });
   }
 
   if (project.status === "expired") {
@@ -133,5 +172,30 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       console.error(`[vater/approve-script] drive sync threw for project=${id}`, err),
     ),
   );
+
+  const follow = approveScriptFollowThrough(body);
+  if (follow.kick === "produce") {
+    const produced = await produceApprovedProject({
+      project: approved,
+      userId: session.user.id,
+      email: session.user.email,
+      engine: follow.engine,
+      script,
+    });
+    if (!produced.ok) {
+      return NextResponse.json(
+        { ...produced.body, project: produced.body.project ?? approved },
+        { status: produced.status },
+      );
+    }
+    return NextResponse.json({
+      project: produced.project,
+      engine: produced.engine,
+      ...(produced.jobId ? { jobId: produced.jobId } : {}),
+      ...(produced.ticket ? { ticket: produced.ticket } : {}),
+      ...(produced.estimateUsd != null ? { estimateUsd: produced.estimateUsd } : {}),
+    });
+  }
+
   return NextResponse.json({ project: approved });
 }

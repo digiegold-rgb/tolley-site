@@ -23,9 +23,8 @@ import { LatestUpdateStrip } from '../../LatestUpdate';
 import { YouTubeLibrary } from '@/components/vater/youtube-library';
 import {
   customerStage,
-  IN_FLIGHT_STATUSES,
+  shouldPollJob,
   type CustomerStage,
-  type YouTubeProjectStatus,
 } from '@/lib/vater/youtube-status';
 import { isPostedToYoutube } from '@/lib/vater/youtube-posted';
 import { CustomerStageRail } from './CustomerStageRail';
@@ -112,11 +111,7 @@ export function Library(): React.ReactElement {
     const i = setInterval(() => {
       void fetchProjects();
       buckets.in_progress
-        .filter(
-          (p) =>
-            IN_FLIGHT_STATUSES.has(p.status as YouTubeProjectStatus) &&
-            p.autopilotJobId,
-        )
+        .filter((p) => shouldPollJob(p))
         .slice(0, 4)
         .forEach((p) => {
           void fetch(`/api/vater/youtube/${p.id}/poll`).catch(() => undefined);

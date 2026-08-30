@@ -52,6 +52,7 @@ import {
   lengthMessageFor,
   runtimeClock,
 } from "@/lib/vater/script-limits";
+import { animationQualitySchema } from "@/lib/vater/video-spec";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -72,8 +73,8 @@ interface ContextBody {
    *  "none" skips animation (default), "all"/"longer-only"/"per-scene"
    *  convert selected stills into MP4 clips before compose. */
   animMode?: "none" | "all" | "longer-only" | "per-scene";
-  /** Quality tier for i2v: turbo/default/default_1080p/high/ltx-local. */
-  animQuality?: "turbo" | "default" | "default_1080p" | "high" | "ltx-local";
+  /** Quality tier for i2v — includes modal-* Narrative/Action. */
+  animQuality?: string;
   /** Phase 1+: opt-in YouTubeStyle id. When present, style snapshot
    *  takes precedence over stylePreset for fields it sets. */
   styleId?: string | null;
@@ -411,17 +412,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       "longer-only",
       "per-scene",
     ]);
-    const validAnimQualities = new Set([
-      "turbo",
-      "default",
-      "default_1080p",
-      "high",
-      "kling-standard",
-      "kling-pro",
-      "kling-master",
-      "luma",
-      "ltx-local",
-    ]);
+    // Full schema — omitting modal-* remapped Narrative to Action
+    // (`default` → cloudRental pin `modal-wan22`).
+    const validAnimQualities = new Set<string>(animationQualitySchema.options);
     const animMode =
       typeof body.animMode === "string" && validAnimModes.has(body.animMode)
         ? body.animMode

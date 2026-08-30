@@ -42,6 +42,7 @@ import { WORDS_PER_MINUTE, wordCountForDuration } from "@/lib/vater/youtube-type
 import { resolveLockedStyle, LOCKED_STYLE_NAME } from "@/lib/vater/locked-style";
 import { isVaterStudioEmail } from "@/lib/admin-auth";
 import { canAccessProject } from "@/lib/vater/project-access";
+import { styleSeedFromStyle } from "@/lib/vater/animate-render";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -126,18 +127,27 @@ export async function POST(req: NextRequest) {
   // returns Trey's row for any caller, so a public customer must never end up
   // silently rendering in someone else's locked look.
   let styleId: string;
+  let styleSeed: ReturnType<typeof styleSeedFromStyle>;
   const requestedStyleId =
     typeof body.styleId === "string" && body.styleId ? body.styleId : (reuse?.styleId ?? null);
   if (requestedStyleId) {
     const style = await prisma.youTubeStyle.findUnique({
       where: { id: requestedStyleId },
-      select: { id: true, userId: true, isSystem: true },
+      select: {
+        id: true,
+        userId: true,
+        isSystem: true,
+        artStylePresetId: true,
+        voice: true,
+        voiceCloneId: true,
+      },
     });
     if (!style) return NextResponse.json({ error: "Style not found" }, { status: 404 });
     if (!style.isSystem && style.userId && style.userId !== session.user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     styleId = style.id;
+    styleSeed = styleSeedFromStyle(style);
   } else {
     const locked = await resolveLockedStyle(session.user.id);
     if (!locked) {
@@ -162,6 +172,15 @@ export async function POST(req: NextRequest) {
       }
     }
     styleId = locked.id;
+    const lockedRow = await prisma.youTubeStyle.findUnique({
+      where: { id: locked.id },
+      select: { artStylePresetId: true, voice: true, voiceCloneId: true },
+    });
+    styleSeed = styleSeedFromStyle({
+      artStylePresetId: lockedRow?.artStylePresetId ?? locked.artStylePresetId,
+      voice: lockedRow?.voice ?? locked.voice,
+      voiceCloneId: lockedRow?.voiceCloneId ?? null,
+    });
   }
 
   const title =
@@ -186,6 +205,7 @@ export async function POST(req: NextRequest) {
     targetDuration,
     targetWordCount,
     styleId,
+    ...styleSeed,
     animUntilS,
     status: "transcribed",
     progress: 20,
