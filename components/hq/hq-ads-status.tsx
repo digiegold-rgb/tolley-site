@@ -128,6 +128,7 @@ export function HqAdsStatus() {
           <table
             style={{
               width: "100%",
+              minWidth: 520,
               borderCollapse: "collapse",
               fontVariantNumeric: "tabular-nums",
               fontSize: 12,
