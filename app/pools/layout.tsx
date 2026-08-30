@@ -12,6 +12,10 @@ const nunito = Nunito({
   subsets: ["latin"],
 });
 
+/* /pools and /pools/[sku] query Prisma in the page and in PoolsProducts. */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: "Pool Supplies, Delivered | Your KC Homes LLC",
   description:

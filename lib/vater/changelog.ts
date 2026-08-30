@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.17';
+export const APP_VERSION = '1.18';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.18',
+    date: '2026-08-30',
+    title: 'Fable generate and header Force Kill, actually live',
+    items: [
+      'Fable, Opus, and Sonnet write the script instead of thinking the token budget away. An empty or refused write is still not billed.',
+      'A red Force Kill sits in the studio header on every video, script, and generation screen once a project is selected. Confirm kills the project and lands you on a fresh Source step.',
+    ],
+  },
   {
     version: '1.17',
     date: '2026-08-30',

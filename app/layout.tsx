@@ -32,13 +32,6 @@ export const metadata: Metadata = {
     "T-Agent is a premium search portal for real estate agents to unlock trusted vendors, guidance, and deal-closing momentum.",
 };
 
-/* 1.16 hung Vercel at "Generating static pages using 3 workers (0/655)" for
- * 35+ minutes after compile succeeded. Most of this tree is session/DB-backed
- * (and /animate is already force-dynamic). Do not statically generate hundreds
- * of pages — and do not add more. `next build` must finish like 1.15 (~7 min). */
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
 export default function RootLayout({
   children,
 }: Readonly<{

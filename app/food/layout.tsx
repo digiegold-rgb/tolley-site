@@ -11,6 +11,10 @@ const fredoka = Fredoka({
   subsets: ["latin"],
 });
 
+/* Every /food page is session + Prisma. Do not SSG this tree. */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: "Ruthann's Kitchen | Smart Meal Planning & Grocery Lists",
   description:

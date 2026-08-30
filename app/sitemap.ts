@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
+import { withPrismaTimeout } from "@/lib/prisma-url";
 import { publicSubsites, SUBSITES } from "@/lib/subsites";
 import { blogPosts } from "@/lib/blog-posts";
 
@@ -100,12 +101,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // Estate sale pages (public teasers; addresses stay gated by publish time).
-  const estateSales = await prisma.estateSale
-    .findMany({
-      where: { status: { in: ["upcoming", "live", "done"] } },
-      select: { slug: true, updatedAt: true },
-    })
-    .catch(() => []);
+  const estateSales = await withPrismaTimeout(
+    prisma.estateSale
+      .findMany({
+        where: { status: { in: ["upcoming", "live", "done"] } },
+        select: { slug: true, updatedAt: true },
+      })
+      .catch(() => []),
+    [],
+  );
 
   const estateRoutes: MetadataRoute.Sitemap = estateSales.map((s) => ({
     url: `${BASE}/estate/sales/${s.slug}`,
@@ -116,16 +120,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Shop product pages — listed items only (sold pages stay live for old FB
   // deep-links but don't need crawl budget).
-  const products = await prisma.product
-    .findMany({
-      where: {
-        status: "listed",
-        listings: { some: { platform: "shop", status: "active" } },
-        imageUrls: { isEmpty: false },
-      },
-      select: { id: true, updatedAt: true },
-    })
-    .catch(() => []);
+  const products = await withPrismaTimeout(
+    prisma.product
+      .findMany({
+        where: {
+          status: "listed",
+          listings: { some: { platform: "shop", status: "active" } },
+          imageUrls: { isEmpty: false },
+        },
+        select: { id: true, updatedAt: true },
+      })
+      .catch(() => []),
+    [],
+  );
 
   const productRoutes: MetadataRoute.Sitemap = products.map((p) => ({
     url: `${BASE}/shop/${p.id}`,
@@ -134,12 +141,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  const neighborhoods = await prisma.neighborhoodPage
-    .findMany({
-      where: { published: true },
-      select: { slug: true, generatedAt: true, updatedAt: true },
-    })
-    .catch(() => []);
+  const neighborhoods = await withPrismaTimeout(
+    prisma.neighborhoodPage
+      .findMany({
+        where: { published: true },
+        select: { slug: true, generatedAt: true, updatedAt: true },
+      })
+      .catch(() => []),
+    [],
+  );
 
   const neighborhoodRoutes: MetadataRoute.Sitemap = neighborhoods.map((n) => ({
     url: `${BASE}/real-estate-agent/${n.slug}`,

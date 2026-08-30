@@ -10,6 +10,9 @@ import { VideoHistory } from "@/components/video/video-history";
 import { VideoUseCases } from "@/components/video/video-use-cases";
 import { VideoFaq } from "@/components/video/video-faq";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function VideoPage() {
   const session = await auth();
   if (!session?.user?.id) {

@@ -60,10 +60,11 @@ const nextConfig: NextConfig = {
   // a type error still fails the build — it just no longer shares memory
   // with the bundler. Do not remove the tsc step from "build".
   typescript: { ignoreBuildErrors: true },
-  // 1.16 (PR 90) occupied the single Vercel build slot for 35+ minutes at
-  // "Generating static pages using 3 workers (0/655)" with zero progress.
-  // Root layout is force-dynamic so that pass is skipped. If a leftover
-  // prerender still hangs, fail the build in 60s instead of blocking prod.
+  // 1.16 hung 35+ min at "Generating static pages (0/655)". 1.17 put
+  // force-dynamic on the ROOT layout; collect-page-data then hung instead
+  // (this timeout does not apply to collect). Root is static again, like
+  // 1.15. Session/DB trees that hang are marked at the route. If a leftover
+  // prerender still hangs, fail in 60s instead of occupying the slot.
   staticPageGenerationTimeout: 60,
   images: {
     remotePatterns: [

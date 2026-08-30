@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { withPrismaTimeout } from "@/lib/prisma-url";
 import { TREASURE_HAUL_FB_URL, TREASURE_HAUL_MESSENGER_URL } from "@/lib/shop";
 import { SiteTracker } from "@/components/analytics/site-tracker";
 import ShopTabs from "@/components/shop/ShopTabs";
@@ -11,6 +12,11 @@ import Script from "next/script";
 import "./shop.css";
 
 const ONELINK_INSTANCE_ID = process.env.AMAZON_ONELINK_INSTANCE_ID;
+
+/* 4 prisma counts + cookies() on every /shop/* child. ISR pages under this
+ * layout sat SSG workers on Neon. Mark the tree; do not prerender. */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Shop | tolley.io",
@@ -83,23 +89,27 @@ async function getActiveCount(): Promise<number> {
 async function getTabCounts(): Promise<TabCounts> {
   // Run all four counts in parallel. Each is wrapped so a single missing
   // table (e.g. on a brand-new env without Review) doesn't blow up the layout.
-  const [all, sold, videos, reviews] = await Promise.all([
-    getActiveCount(),
-    prisma.product
-      .count({ where: { status: "sold", imageUrls: { isEmpty: false } } })
-      .catch(() => 0),
-    prisma.product
-      .count({
-        where: {
-          videoUrl: { not: null },
-          status: { in: ["listed", "sold"] },
-        },
-      })
-      .catch(() => 0),
-    prisma.review
-      .count({ where: { hidden: false } })
-      .catch(() => 0),
-  ]);
+  const counts = await withPrismaTimeout(
+    Promise.all([
+      getActiveCount(),
+      prisma.product
+        .count({ where: { status: "sold", imageUrls: { isEmpty: false } } })
+        .catch(() => 0),
+      prisma.product
+        .count({
+          where: {
+            videoUrl: { not: null },
+            status: { in: ["listed", "sold"] },
+          },
+        })
+        .catch(() => 0),
+      prisma.review
+        .count({ where: { hidden: false } })
+        .catch(() => 0),
+    ]),
+    [0, 0, 0, 0] as const,
+  );
+  const [all, sold, videos, reviews] = counts;
   return { all, sold, videos, reviews };
 }
 

@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
+import { withPrismaTimeout } from "@/lib/prisma-url";
 import { CinematicPortal } from "@/components/client/v2/CinematicPortal";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function ClientPage() {
   interface SnapData {
@@ -28,81 +30,84 @@ export default async function ClientPage() {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
 
     const [snap, snapHistory, rawSignals, rawDP, rawListings, rawDigest, listingCount, dpCount, poiCount, cityGroups] =
-      await Promise.all([
-        prisma.marketSnapshot.findFirst({
-          orderBy: { date: "desc" },
-        }),
-        prisma.marketSnapshot.findMany({
-          where: { date: { gte: thirtyDaysAgo } },
-          orderBy: { date: "desc" },
-          take: 30,
-        }),
-        prisma.marketSignal.findMany({
-          where: {
-            active: true,
-            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-          },
-          orderBy: [{ confidence: "desc" }, { createdAt: "desc" }],
-          take: 20,
-        }),
-        prisma.marketDataPoint.findMany({
-          where: {
-            type: { in: ["youtube", "article", "note", "rss_article"] },
-          },
-          select: {
-            id: true,
-            type: true,
-            title: true,
-            url: true,
-            summary: true,
-            sentiment: true,
-            signal: true,
-            tags: true,
-            publishedAt: true,
-            createdAt: true,
-          },
-          orderBy: { createdAt: "desc" },
-          take: 50,
-        }),
-        prisma.listing.findMany({
-          where: {
-            status: "Active",
-            state: "MO",
-          },
-          select: {
-            id: true,
-            mlsId: true,
-            address: true,
-            city: true,
-            state: true,
-            zip: true,
-            listPrice: true,
-            beds: true,
-            baths: true,
-            sqft: true,
-            daysOnMarket: true,
-            photoUrls: true,
-            propertyType: true,
-            listingUrl: true,
-            enrichment: { select: { buyScore: true } },
-          },
-          orderBy: [{ daysOnMarket: "asc" }],
-          take: 24,
-        }),
-        prisma.marketDailyDigest.findFirst({
-          orderBy: { date: "desc" },
-        }),
-        prisma.listing.count({ where: { status: "Active" } }),
-        prisma.marketDataPoint.count(),
-        prisma.pointOfInterest.count(),
-        prisma.listing.groupBy({
-          by: ["city"],
-          where: { status: "Active", city: { not: null } },
-          _count: { id: true },
-          orderBy: { _count: { id: "desc" } },
-          take: 30,
-        }),
-      ]);
+      await withPrismaTimeout(
+        Promise.all([
+          prisma.marketSnapshot.findFirst({
+            orderBy: { date: "desc" },
+          }),
+          prisma.marketSnapshot.findMany({
+            where: { date: { gte: thirtyDaysAgo } },
+            orderBy: { date: "desc" },
+            take: 30,
+          }),
+          prisma.marketSignal.findMany({
+            where: {
+              active: true,
+              OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+            },
+            orderBy: [{ confidence: "desc" }, { createdAt: "desc" }],
+            take: 20,
+          }),
+          prisma.marketDataPoint.findMany({
+            where: {
+              type: { in: ["youtube", "article", "note", "rss_article"] },
+            },
+            select: {
+              id: true,
+              type: true,
+              title: true,
+              url: true,
+              summary: true,
+              sentiment: true,
+              signal: true,
+              tags: true,
+              publishedAt: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: "desc" },
+            take: 50,
+          }),
+          prisma.listing.findMany({
+            where: {
+              status: "Active",
+              state: "MO",
+            },
+            select: {
+              id: true,
+              mlsId: true,
+              address: true,
+              city: true,
+              state: true,
+              zip: true,
+              listPrice: true,
+              beds: true,
+              baths: true,
+              sqft: true,
+              daysOnMarket: true,
+              photoUrls: true,
+              propertyType: true,
+              listingUrl: true,
+              enrichment: { select: { buyScore: true } },
+            },
+            orderBy: [{ daysOnMarket: "asc" }],
+            take: 24,
+          }),
+          prisma.marketDailyDigest.findFirst({
+            orderBy: { date: "desc" },
+          }),
+          prisma.listing.count({ where: { status: "Active" } }),
+          prisma.marketDataPoint.count(),
+          prisma.pointOfInterest.count(),
+          prisma.listing.groupBy({
+            by: ["city"],
+            where: { status: "Active", city: { not: null } },
+            _count: { id: true },
+            orderBy: { _count: { id: "desc" } },
+            take: 30,
+          }),
+        ]),
+        [null, [], [], [], [], null, 0, 0, 0, []],
+      );
 
     if (snap) {
       latestSnapshot = {
