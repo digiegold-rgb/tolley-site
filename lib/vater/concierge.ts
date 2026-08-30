@@ -32,6 +32,7 @@ import {
   isConciergeStatus,
   type YouTubeProjectStatus,
 } from "@/lib/vater/youtube-status";
+import { incomingAutopilotJobId, shouldPreserveReadyStatus } from "@/lib/vater/delivery-ready";
 import {
   isConciergeStage,
   readConciergeClient,
@@ -285,12 +286,23 @@ export async function writeConcierge(
     if (engine === null) delete nextBag.engine;
     else nextBag.engine = engine;
 
+    const keepReady = shouldPreserveReadyStatus({
+      currentStatus: row.status,
+      incomingStatus: opts.status,
+      incomingAutopilotJobId: incomingAutopilotJobId(opts.extraData),
+    });
+    if (keepReady) {
+      console.warn(
+        `[concierge] preserving status=ready on ${projectId} — refused ${opts.status} without a new job (QA must not clobber delivery)`,
+      );
+    }
+
     const project = await tx.youTubeProject.update({
       where: { id: projectId },
       data: {
         ...(opts.extraData ?? {}),
         settingsJson: nextBag as Prisma.InputJsonObject,
-        ...(opts.status ? { status: opts.status } : {}),
+        ...(opts.status && !keepReady ? { status: opts.status } : {}),
         // Stepped flow (2026-08-28): a project arriving from the Review/Engine
         // steps still carries autopilotJobId = its FINISHED script job. The
         // fable5 CLI inherited that id and refused kickoff ("already has job"

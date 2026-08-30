@@ -17,12 +17,13 @@
  *     step, kind, needsUser, active, variationCount, driveFileUrl, driveError }] }
  * step/kind/needsUser/active come from deriveCreateStep (create-steps.ts).
  */
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { expireStaleApprovals } from "@/lib/vater/approval-expiry";
 import { deriveCreateStep } from "@/lib/vater/create-steps";
+import { reconcileStuckDeliveries } from "@/lib/vater/delivery-verify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +42,11 @@ interface Row {
   updatedAt: Date;
   thumbnailUrl: string | null;
   finalVideoUrl: string | null;
+  progress: number;
+  completedAt: Date | null;
+  autopilotJobId: string | null;
+  stepDetails: unknown;
+  composeJobId: string | null;
   hasTranscript: boolean;
   hasScript: boolean;
   failedPhase: string | null;
@@ -61,6 +67,12 @@ export async function GET() {
   await expireStaleApprovals(userId).catch((err) =>
     console.error("[vater/progress-summary] expiry sweep failed", err),
   );
+  // Don't block the 15s badge poll on HEAD checks — next tick sees ready.
+  after(() =>
+    reconcileStuckDeliveries({ userId }).catch((err) =>
+      console.error("[vater/progress-summary] delivery reconcile failed", err),
+    ),
+  );
 
   const since = new Date(Date.now() - RECENT_MS);
   const rows = await prisma.$queryRaw<Row[]>`
@@ -73,6 +85,11 @@ export async function GET() {
            "updatedAt",
            "thumbnailUrl",
            "finalVideoUrl",
+           "progress",
+           "completedAt",
+           "autopilotJobId",
+           "stepDetails",
+           "settingsJson"->'concierge'->>'composeJobId' AS "composeJobId",
            ("transcript" IS NOT NULL AND "transcript" <> '') AS "hasTranscript",
            ("script" IS NOT NULL AND "script" <> '') AS "hasScript",
            CASE WHEN "status" = 'failed' THEN "stepDetails"->>'phase' ELSE NULL END AS "failedPhase",
@@ -102,6 +119,11 @@ export async function GET() {
         scriptApprovedAt: r.scriptApprovedAt,
         approvalExpiresAt: r.approvalExpiresAt,
         finalVideoUrl: r.finalVideoUrl,
+        progress: r.progress,
+        completedAt: r.completedAt,
+        autopilotJobId: r.autopilotJobId,
+        stepDetails: r.stepDetails,
+        composeJobId: r.composeJobId,
         failedPhase: r.failedPhase,
         conciergeStage: r.conciergeStage,
       },

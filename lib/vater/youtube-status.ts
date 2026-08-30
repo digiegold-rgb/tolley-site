@@ -1,3 +1,5 @@
+import { isStuckBeforeReadyStatus, rowLooksFileReady, type DeliveryRow } from "./delivery-ready";
+
 /**
  * The 15 lifecycle statuses for a VATER YouTubeProject after the
  * tubegen rebuild. These mirror the values written by the autopilot
@@ -177,11 +179,9 @@ export const QUEUED_STATUSES: ReadonlySet<YouTubeProjectStatus> = new Set([
  * Pass the row so liveness can be judged; a bare status string keeps the
  * legacy optimistic reading.
  */
-export interface CustomerStageInput {
+export interface CustomerStageInput extends DeliveryRow {
   status: string | null | undefined;
-  finalVideoUrl?: string | null;
   updatedAt?: string | Date | null;
-  stepDetails?: unknown;
 }
 
 /** An edit is "live" for this long after its last write, then it is stale. */
@@ -222,7 +222,6 @@ export function customerStage(
   if (!status) return null;
   if (status === "ready") return "done";
   if (QUEUED_STATUSES.has(status as YouTubeProjectStatus)) return "queued";
-  if (status === "concierge_in_progress") return "in_progress";
   if (status === "editing") {
     // Bare status: the legacy optimistic flip (a re-compose was just kicked
     // from this browser). With the row in hand, judge liveness instead.
@@ -230,6 +229,13 @@ export function customerStage(
     if (editingIsLive(p)) return "in_progress";
     return p.finalVideoUrl ? "done" : null;
   }
+  // A finished stitch with a live final is Done even if a concierge QA
+  // write left status as concierge_in_progress (#66, 2026-08-30). Bare
+  // status strings stay in_progress — only a row can prove the file exists.
+  if (!bare && isStuckBeforeReadyStatus(status) && rowLooksFileReady(p)) {
+    return "done";
+  }
+  if (status === "concierge_in_progress") return "in_progress";
   if (IN_FLIGHT_STATUSES.has(status as YouTubeProjectStatus)) return "in_progress";
   return null;
 }
@@ -241,13 +247,16 @@ export function customerStageDetail(
   const { p, bare } = asInput(input);
   const status = p.status;
   if (!status) return null;
-  const known = STATUS_LABELS[status as YouTubeProjectStatus];
-  if (known) return known;
   if (status === "editing") {
     if (bare || editingIsLive(p)) return EDITING_LABEL;
     // Stale edit with a final = Done; the chip prints the stage word alone.
     return p.finalVideoUrl ? STATUS_LABELS.ready : null;
   }
+  if (!bare && isStuckBeforeReadyStatus(status) && rowLooksFileReady(p)) {
+    return STATUS_LABELS.ready;
+  }
+  const known = STATUS_LABELS[status as YouTubeProjectStatus];
+  if (known) return known;
   return null;
 }
 

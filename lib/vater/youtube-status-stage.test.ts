@@ -90,7 +90,11 @@ describe("customerStage — queued → in progress → done", () => {
       assert.equal(detail, STATUS_LABELS[status]);
       if (status === "ready") assert.equal(stage, "done");
       else if (QUEUED_STATUSES.has(status)) assert.equal(stage, "queued");
-      else if (status === "concierge_in_progress" || IN_FLIGHT_STATUSES.has(status)) {
+      else if (
+        status === "concierge_in_progress" ||
+        status === "editing" ||
+        IN_FLIGHT_STATUSES.has(status)
+      ) {
         assert.equal(stage, "in_progress");
       } else {
         assert.equal(stage, null);
@@ -131,5 +135,17 @@ describe("customerStage — `editing` judged on the row, not the status word", (
     for (const status of ["queued", "ready", "generating_scenes", "concierge_in_progress", "draft", "failed"]) {
       assert.equal(customerStage({ status, finalVideoUrl: null, updatedAt: justNow }), customerStage(status), status);
     }
+  });
+  it("#66 concierge row with a live final and stitch done is Done, not Moving Now", () => {
+    const row = {
+      status: "concierge_in_progress",
+      finalVideoUrl: final,
+      progress: 100,
+      completedAt: justNow,
+      stepDetails: { phase: "done", jobStatus: "done", progress: 100, jobId: "abc" },
+      autopilotJobId: "abc",
+    };
+    assert.equal(customerStage(row), "done");
+    assert.equal(customerStageDetail(row), STATUS_LABELS.ready);
   });
 });
