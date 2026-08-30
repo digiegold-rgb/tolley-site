@@ -3,7 +3,7 @@
 /* Step 5 — Review script (approval gate, FREE).
  *
  *   Approve script  → POST approve-script → awaiting_engine → step 6
- *   Generate again  → POST write-script (actual tokens + 30%)
+ *   Generate again  → POST write-script (quoted vs charged)
  *   Reopen          → POST reopen
  *
  * Same editor as step 4. Approve sends the draft in the box.

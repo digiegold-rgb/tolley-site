@@ -14,7 +14,6 @@ import {
   SCRIPT_FIDELITIES,
   SCRIPT_FIDELITY_HINTS,
   SCRIPT_FIDELITY_LABELS,
-  SCRIPT_WRITER_MARKUP,
   SCRIPT_WRITER_MODELS,
   SCRIPT_WRITER_MODEL_IDS,
   estimateTokensFromText,
@@ -201,8 +200,7 @@ export function ScriptWriterControls({
           }}
         >
           <div>
-            Quoted estimate ({SCRIPT_WRITER_MODELS[model].label}, ~{targetWords.toLocaleString()} words) · actual tokens +{' '}
-            {Math.round((SCRIPT_WRITER_MARKUP - 1) * 100)}% after it lands.
+            Estimate ({SCRIPT_WRITER_MODELS[model].label}, ~{targetWords.toLocaleString()} words)
           </div>
           <div style={{ marginTop: 4, fontWeight: 600 }}>
             {transcriptQuote && (
@@ -245,11 +243,10 @@ export function ScriptWriterControls({
 
         {lastCharge && (
           <InfoNote tone="brand" testId="script-billed">
-            Last run · {SCRIPT_WRITER_MODELS[lastCharge.model].label} · quoted{' '}
-            {formatScriptCents(lastCharge.quotedCents)} → billed {formatScriptCents(lastCharge.billedCents)} ·{' '}
-            {lastCharge.inputTokens.toLocaleString()} in + {lastCharge.outputTokens.toLocaleString()} out
+            Last run · {SCRIPT_WRITER_MODELS[lastCharge.model].label} · estimate{' '}
+            {formatScriptCents(lastCharge.quotedCents)} · charged {formatScriptCents(lastCharge.billedCents)}
             {lastQuote && lastQuote.model === lastCharge.model
-              ? ` · this pick quotes ${formatScriptCents(lastQuote.billedCents)} next`
+              ? ` · this pick estimates ${formatScriptCents(lastQuote.billedCents)} next`
               : ''}
             .
           </InfoNote>
