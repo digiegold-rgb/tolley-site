@@ -27,11 +27,18 @@ test("root layout is not force-dynamic — that hung 1.17 collect-page-data", ()
 test("session/DB trees that hang SSG are marked at the route, not root", () => {
   for (const file of [
     "app/leads/layout.tsx",
+    "app/shop/layout.tsx",
+    "app/account/layout.tsx",
+    "app/estate/layout.tsx",
+    "app/pools/layout.tsx",
+    "app/client/page.tsx",
     "app/page.tsx",
     "app/food/layout.tsx",
     "app/video/page.tsx",
     "app/video/studio/page.tsx",
     "app/animate/layout.tsx",
+    "app/real-estate-agent/page.tsx",
+    "app/real-estate-agent/[slug]/page.tsx",
   ]) {
     assert.match(readApp(file), FORCE_DYNAMIC, file);
   }

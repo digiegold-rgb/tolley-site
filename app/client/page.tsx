@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { withPrismaTimeout } from "@/lib/prisma-url";
 import { CinematicPortal } from "@/components/client/v2/CinematicPortal";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function ClientPage() {
   interface SnapData {

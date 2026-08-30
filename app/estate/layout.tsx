@@ -10,6 +10,10 @@ const fraunces = Fraunces({
   subsets: ["latin"],
 });
 
+/* Children are prisma ISR (page, our-work, sales/[slug]). Do not SSG this tree. */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: "Tolley Estate Sales — Boutique Estate Sale Company in Independence, MO",
   description:
