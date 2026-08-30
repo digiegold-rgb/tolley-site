@@ -28,6 +28,9 @@ import {
   compareVersions,
 } from '@/lib/vater/changelog';
 import { AnimateSmsOptInPanel } from './AnimateSmsConsent';
+import { ForceKillControl } from './screens/create/ForceKillControl';
+import { refreshProgress } from './ProgressBadgeProvider';
+import { isAnimateGenerationRoute } from '@/lib/vater/generation-routes';
 
 /** Modal scrim — the ink base at 66%, not a palette hue. */
 const SCRIM = 'rgba(8,7,15,0.66)';
@@ -134,8 +137,15 @@ export function Header({
 }: HeaderProps = {}): React.ReactElement {
   const { t, dark, toggle } = useTheme();
   const brand = useProduct();
-  const { setRoute } = useRoute();
+  const { route, setRoute, selectedProjectId, setSelectedProjectId, setEditorStep } = useRoute();
   const { capabilities } = useTier();
+  const showForceKill = Boolean(selectedProjectId) && isAnimateGenerationRoute(route);
+  const onForceKilled = React.useCallback(() => {
+    setSelectedProjectId(null);
+    setEditorStep(1);
+    setRoute('create');
+    refreshProgress();
+  }, [setSelectedProjectId, setEditorStep, setRoute]);
   const [showSettings, setShowSettings] = React.useState(false);
   const { billing, loading: billingLoading } = useVaterBilling();
 
@@ -274,6 +284,15 @@ export function Header({
               <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
             </svg>
           </button>
+        )}
+        {showForceKill && selectedProjectId && (
+          <div data-testid="header-force-kill">
+            <ForceKillControl
+              projectId={selectedProjectId}
+              onKilled={onForceKilled}
+              compact={mobile}
+            />
+          </div>
         )}
         {!mobile && <VaterCostPill />}
         {!mobile && (

@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.16';
+export const APP_VERSION = '1.17';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.17',
+    date: '2026-08-30',
+    title: 'Fable generate actually returns a script, and Force Kill sits in the header',
+    items: [
+      'Fable (and Opus / Sonnet 5) now write the script instead of thinking until the token budget is gone and coming back empty. A failed or empty write is still not billed.',
+      'A red Force Kill sits in the studio header on every video, script, and generation screen once a project is selected — Create, Progress, Library, the editors, Script Review, and the rest of the generation chrome. Confirm kills the project and lands you on a fresh Source step.',
+    ],
+  },
   {
     version: '1.16',
     date: '2026-08-30',

@@ -27,6 +27,7 @@ import { nextApprovalExpiry } from "@/lib/vater/approval-expiry";
 import { WORDS_PER_MINUTE, wordCountForDuration } from "@/lib/vater/youtube-types";
 import { logLlmUsage } from "@/lib/llm-usage";
 import {
+  ScriptWriterError,
   generateScriptWithClaude,
   loadScriptRulesForUser,
   quoteScriptJob,
@@ -167,6 +168,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Script writer failed";
+    const detail = err instanceof ScriptWriterError ? err.detail : undefined;
     await logLlmUsage({
       userId: session.user.id,
       type: "script_writer",
@@ -174,10 +176,13 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       model: quote.apiId,
       route: `/api/vater/youtube/${id}/write-script`,
       statusCode: 502,
-      errorMessage: message,
+      errorMessage: detail ? `${message} (${detail})` : message,
       latencyMs: Date.now() - started,
     });
-    return NextResponse.json({ error: message, quote }, { status: 502 });
+    return NextResponse.json(
+      { error: message, quote, ...(detail ? { detail } : {}) },
+      { status: 502 },
+    );
   }
 
   const billed = generated.actual;
