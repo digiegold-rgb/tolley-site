@@ -1,24 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { useToast } from "@/components/ui/Toast";
 import {
+  ADS_LANE_COLOR,
+  ADS_SIGNAL_COLOR,
+  allTimeTooltip,
+  colTooltip,
+  costSignal,
+  ctrSignal,
+  daySpendSignal,
   formatCost,
   formatCtr,
   formatInt,
   formatUsd,
+  headerColTitle,
   headerMetric,
+  headerMetricTooltip,
+  laneTooltip,
+  leadsSignal,
+  leadsTooltip,
+  mutedRow,
+  windowTooltip,
   type AdsAccountBlock,
+  type AdsCampaignRow,
   type AdsLane,
+  type AdsSignal,
   type AdsSnapshot,
 } from "@/lib/hq-ads";
 
-const LANE_META: Record<AdsLane, { label: string; fg: string }> = {
-  keep: { label: "Keep", fg: "var(--hq-green)" },
-  fade: { label: "Fade", fg: "var(--hq-amber)" },
-  watch: { label: "Watch", fg: "var(--hq-blue)" },
-  dark: { label: "Dark", fg: "var(--hq-red)" },
+const LANE_META: Record<AdsLane, { label: string }> = {
+  keep: { label: "Keep" },
+  fade: { label: "Fade" },
+  watch: { label: "Watch" },
+  dark: { label: "Dark" },
 };
 
 function ago(iso: string): string {
@@ -32,17 +48,123 @@ function windowLabel(window: AdsAccountBlock["window"]): string {
   return window === "yesterday" ? "yesterday" : "today";
 }
 
-function headerLine(account: AdsAccountBlock): string {
-  if (account.source === "placeholder") {
-    return `${account.label} · placeholder`;
-  }
-  const metric = headerMetric(account, account.preferLpv);
-  const metricBit = metric.kind === "LPV" ? `${formatInt(metric.value)} LPV` : `${formatInt(metric.value)} clk`;
-  return `${account.label} · ${formatUsd(account.spend)} · ${metricBit} · ${formatInt(account.leads)} leads`;
-}
-
 function laneLine(names: string[]): string {
   return names.length ? names.join(" · ") : "—";
+}
+
+function ink(signal: AdsSignal): string {
+  return ADS_SIGNAL_COLOR[signal];
+}
+
+function Tip({
+  title,
+  children,
+  color,
+  weight,
+}: {
+  title: string;
+  children: ReactNode;
+  color?: string;
+  weight?: number;
+}) {
+  return (
+    <span title={title} style={{ color, fontWeight: weight, cursor: "help" }}>
+      {children}
+    </span>
+  );
+}
+
+function accountLaneHint(account: AdsAccountBlock): AdsLane {
+  if (account.campaigns.some((c) => c.lane === "keep")) return "keep";
+  if (account.campaigns.some((c) => c.lane === "watch")) return "watch";
+  if (account.campaigns.some((c) => c.lane === "fade")) return "fade";
+  return "dark";
+}
+
+function AccountHeader({ account }: { account: AdsAccountBlock }) {
+  if (account.source === "placeholder") {
+    return (
+      <div style={{ fontSize: 13, fontWeight: 600 }}>
+        {account.label} · placeholder
+        <span style={{ fontSize: 11, fontWeight: 500, color: "var(--hq-ink-2)", marginLeft: 8 }}>
+          awaiting ads API
+        </span>
+      </div>
+    );
+  }
+  const hint = accountLaneHint(account);
+  const metric = headerMetric(account, account.preferLpv);
+  const leadsSig = leadsSignal(account.leads, hint);
+  const daySig = daySpendSignal(account.spend, hint);
+  return (
+    <div style={{ fontSize: 13, fontWeight: 600 }}>
+      {account.label}
+      {" · "}
+      <Tip title={windowTooltip(account.window)} color={ink(daySig)}>
+        {formatUsd(account.spend)} {windowLabel(account.window)}
+      </Tip>
+      {" · "}
+      <Tip title={allTimeTooltip()}>
+        {formatUsd(account.lifetimeSpend)} all-time
+      </Tip>
+      {" · "}
+      <Tip title={headerMetricTooltip(metric.kind, metric.value, account.leads, hint)}>
+        {formatInt(metric.value)} {metric.kind === "LPV" ? "LPV" : "clk"}
+      </Tip>
+      {" · "}
+      <Tip title={leadsTooltip(account.leads, hint)} color={ink(leadsSig)}>
+        {formatInt(account.leads)} leads
+      </Tip>
+    </div>
+  );
+}
+
+function Row({
+  campaign,
+  preferLpv,
+}: {
+  campaign: AdsCampaignRow;
+  preferLpv: boolean;
+}) {
+  const mute = mutedRow(campaign.lane);
+  const base = mute ? ink("muted") : ink("neutral");
+  return (
+    <tr style={{ color: base }}>
+      <td
+        style={{
+          textAlign: "left",
+          fontWeight: 600,
+          padding: "3px 8px 3px 0",
+          whiteSpace: "nowrap",
+          color: mute ? ink("muted") : ADS_LANE_COLOR[campaign.lane],
+        }}
+        title={laneTooltip(campaign.lane)}
+      >
+        {campaign.displayName}
+      </td>
+      <td style={{ textAlign: "right", padding: "3px 6px", color: ink(daySpendSignal(campaign.spend, campaign.lane)) }} title={colTooltip("day$", campaign, preferLpv)}>
+        {formatUsd(campaign.spend)}
+      </td>
+      <td style={{ textAlign: "right", padding: "3px 6px" }} title={colTooltip("life$", campaign, preferLpv)}>
+        {formatUsd(campaign.lifetimeSpend)}
+      </td>
+      <td style={{ textAlign: "right", padding: "3px 6px" }} title={colTooltip("imp", campaign, preferLpv)}>
+        {formatInt(campaign.impressions)}
+      </td>
+      <td style={{ textAlign: "right", padding: "3px 6px" }} title={colTooltip("clk", campaign, preferLpv)}>
+        {formatInt(campaign.clicks)}
+      </td>
+      <td style={{ textAlign: "right", padding: "3px 6px" }} title={colTooltip("lpv", campaign, preferLpv)}>
+        {formatInt(campaign.lpv)}
+      </td>
+      <td style={{ textAlign: "right", padding: "3px 6px", color: ink(costSignal(campaign.costPerResult, preferLpv, campaign.lane)) }} title={colTooltip("cpr", campaign, preferLpv)}>
+        {formatCost(campaign.costPerResult)}
+      </td>
+      <td style={{ textAlign: "right", padding: "3px 0 3px 6px", color: ink(ctrSignal(campaign.ctr, campaign.lane)) }} title={colTooltip("ctr", campaign, preferLpv)}>
+        {formatCtr(campaign.ctr)}
+      </td>
+    </tr>
+  );
 }
 
 export function HqAdsStatus() {
@@ -100,12 +222,7 @@ export function HqAdsStatus() {
       >
         <div style={{ flex: 1, minWidth: 220, display: "flex", flexDirection: "column", gap: 2 }}>
           {data.accounts.map((account) => (
-            <div key={account.key} style={{ fontSize: 13, fontWeight: 600 }}>
-              {headerLine(account)}
-              <span style={{ fontSize: 11, fontWeight: 500, color: "var(--hq-ink-2)", marginLeft: 8 }}>
-                {account.source === "placeholder" ? "awaiting ads API" : windowLabel(account.window)}
-              </span>
-            </div>
+            <AccountHeader key={account.key} account={account} />
           ))}
         </div>
         <span
@@ -128,7 +245,7 @@ export function HqAdsStatus() {
           <table
             style={{
               width: "100%",
-              minWidth: 520,
+              minWidth: 580,
               borderCollapse: "collapse",
               fontVariantNumeric: "tabular-nums",
               fontSize: 12,
@@ -137,34 +254,18 @@ export function HqAdsStatus() {
             <thead>
               <tr style={{ color: "var(--hq-ink-2)", textAlign: "right" }}>
                 <th style={{ textAlign: "left", fontWeight: 600, padding: "3px 8px 3px 0" }}>Campaign</th>
-                <th style={{ fontWeight: 600, padding: "3px 6px" }}>$</th>
-                <th style={{ fontWeight: 600, padding: "3px 6px" }}>Imp</th>
-                <th style={{ fontWeight: 600, padding: "3px 6px" }}>Clk</th>
-                <th style={{ fontWeight: 600, padding: "3px 6px" }}>LPV</th>
-                <th style={{ fontWeight: 600, padding: "3px 6px" }}>$/result</th>
-                <th style={{ fontWeight: 600, padding: "3px 0 3px 6px" }}>CTR</th>
+                <th style={{ fontWeight: 600, padding: "3px 6px" }} title={headerColTitle("day$")}>Day $</th>
+                <th style={{ fontWeight: 600, padding: "3px 6px" }} title={headerColTitle("life$")}>Life $</th>
+                <th style={{ fontWeight: 600, padding: "3px 6px" }} title={headerColTitle("imp")}>Imp</th>
+                <th style={{ fontWeight: 600, padding: "3px 6px" }} title={headerColTitle("clk")}>Clk</th>
+                <th style={{ fontWeight: 600, padding: "3px 6px" }} title={headerColTitle("lpv")}>LPV</th>
+                <th style={{ fontWeight: 600, padding: "3px 6px" }} title={headerColTitle("cpr")}>$/result</th>
+                <th style={{ fontWeight: 600, padding: "3px 0 3px 6px" }} title={headerColTitle("ctr")}>CTR</th>
               </tr>
             </thead>
             <tbody>
               {rows.map(({ account, campaign }) => (
-                <tr key={`${account.key}-${campaign.id}`}>
-                  <td
-                    style={{
-                      textAlign: "left",
-                      fontWeight: 600,
-                      padding: "3px 8px 3px 0",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {campaign.displayName}
-                  </td>
-                  <td style={{ textAlign: "right", padding: "3px 6px" }}>{formatUsd(campaign.spend)}</td>
-                  <td style={{ textAlign: "right", padding: "3px 6px" }}>{formatInt(campaign.impressions)}</td>
-                  <td style={{ textAlign: "right", padding: "3px 6px" }}>{formatInt(campaign.clicks)}</td>
-                  <td style={{ textAlign: "right", padding: "3px 6px" }}>{formatInt(campaign.lpv)}</td>
-                  <td style={{ textAlign: "right", padding: "3px 6px" }}>{formatCost(campaign.costPerResult)}</td>
-                  <td style={{ textAlign: "right", padding: "3px 0 3px 6px" }}>{formatCtr(campaign.ctr)}</td>
-                </tr>
+                <Row key={`${account.key}-${campaign.id}`} campaign={campaign} preferLpv={account.preferLpv} />
               ))}
             </tbody>
           </table>
@@ -173,11 +274,11 @@ export function HqAdsStatus() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 1, fontSize: 12 }}>
         {(["keep", "fade", "watch", "dark"] as AdsLane[]).map((lane) => (
-          <div key={lane} style={{ display: "flex", gap: 10 }}>
-            <span style={{ fontWeight: 700, width: 44, color: LANE_META[lane].fg }}>
+          <div key={lane} style={{ display: "flex", gap: 10 }} title={laneTooltip(lane)}>
+            <span style={{ fontWeight: 700, width: 44, color: ADS_LANE_COLOR[lane], cursor: "help" }}>
               {LANE_META[lane].label}
             </span>
-            <span style={{ color: data.lanes[lane].length ? "#1a1a1a" : "var(--hq-ink-3)" }}>
+            <span style={{ color: data.lanes[lane].length ? ADS_LANE_COLOR[lane] : "var(--hq-ink-3)" }}>
               {laneLine(data.lanes[lane])}
             </span>
           </div>

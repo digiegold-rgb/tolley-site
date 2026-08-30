@@ -10,8 +10,20 @@ import {
   extractLeads,
   extractLpv,
   formatUsd,
+  allTimeTooltip,
+  colTooltip,
+  costSignal,
+  ctrSignal,
+  daySpendSignal,
+  headerColTitle,
   headerMetric,
   indyDateKey,
+  laneTooltip,
+  leadsSignal,
+  leadsTooltip,
+  lifetimeFromKey,
+  mergeLifetime,
+  windowTooltip,
   isAdsSnapshot,
   mapZernioCampaign,
   parseZernioCampaigns,
@@ -83,6 +95,7 @@ function row(partial: Partial<AdsCampaignRow> & Pick<AdsCampaignRow, "displayNam
     status: partial.status ?? "",
     platformStatus: partial.platformStatus ?? "",
     spend: partial.spend ?? 0,
+    lifetimeSpend: partial.lifetimeSpend ?? 0,
     impressions: partial.impressions ?? 0,
     clicks: partial.clicks ?? 0,
     lpv: partial.lpv ?? 0,
@@ -177,6 +190,7 @@ describe("mapZernioCampaign + snapshot", () => {
 
     const account = rollupAccount(JELLY_META, campaigns, "today", "live");
     assert.equal(account.spend, 2.66);
+    assert.equal(account.lifetimeSpend, 0);
     assert.equal(account.leads, 0);
     const metric = headerMetric(account, true);
     assert.equal(metric.kind, "LPV");
@@ -256,6 +270,23 @@ describe("parse + persist helpers", () => {
     assert.equal(formatUsd(again.accounts[0].spend), "$2.66");
   });
 
+  it("merges lifetime spend onto the daily roster without clobbering today", () => {
+    const daily = JELLY_TODAY.map(mapZernioCampaign);
+    const life = [
+      { ...JELLY_TODAY[0], metrics: { ...JELLY_TODAY[0].metrics, spend: 20.92 } },
+      { ...JELLY_TODAY[1], metrics: { ...JELLY_TODAY[1].metrics, spend: 36.81 } },
+      { ...JELLY_TODAY[2], metrics: { ...JELLY_TODAY[2].metrics, spend: 35.55 } },
+    ].map(mapZernioCampaign);
+    const merged = mergeLifetime(daily, life);
+    const account = rollupAccount(JELLY_META, merged, "today", "live");
+    assert.equal(merged[0].spend, 2.66);
+    assert.equal(merged[0].lifetimeSpend, 20.92);
+    assert.equal(merged[0].lpv, 37);
+    assert.equal(account.spend, 2.66);
+    assert.equal(account.lifetimeSpend, 20.92 + 36.81 + 35.55);
+    assert.equal(account.leads, 0);
+  });
+
   it("does not treat a campaign with only zeros as delivery", () => {
     assert.equal(
       accountHasDelivery([row({ displayName: "jelly1", lane: "watch", spend: 0, impressions: 0 })]),
@@ -265,5 +296,59 @@ describe("parse + persist helpers", () => {
       accountHasDelivery([row({ displayName: "jelly1", lane: "keep", spend: 4.95, impressions: 10 })]),
       true,
     );
+  });
+});
+
+describe("signals", () => {
+  it("reads cheap LPV and high CTR as good on a live spender", () => {
+    assert.equal(ctrSignal(14.68, "keep"), "good");
+    assert.equal(costSignal(2.66 / 37, true, "keep"), "good");
+    assert.equal(daySpendSignal(2.66, "keep"), "good");
+  });
+
+  it("reads 0 leads on a live spender as watch, not good", () => {
+    assert.equal(leadsSignal(0, "keep"), "watch");
+    assert.equal(leadsSignal(0, "fade"), "muted");
+  });
+
+  it("mutes paused $0 rows", () => {
+    assert.equal(ctrSignal(0, "fade"), "muted");
+    assert.equal(costSignal(null, true, "fade"), "muted");
+    assert.equal(daySpendSignal(0, "fade"), "muted");
+  });
+});
+
+describe("tooltips", () => {
+  it("names each abbreviation and says if the value is good, soft, or watch", () => {
+    const keep = mapZernioCampaign(JELLY_TODAY[0]);
+    const fade = mapZernioCampaign(JELLY_TODAY[1]);
+    assert.match(colTooltip("lpv", keep, true), /LPV: landing page views/);
+    assert.match(colTooltip("lpv", keep, true), /good/);
+    assert.match(colTooltip("clk", keep, true), /Clk: link clicks/);
+    assert.match(colTooltip("imp", keep, true), /Imp: impressions/);
+    assert.match(colTooltip("ctr", keep, true), /CTR: click-through rate/);
+    assert.match(colTooltip("ctr", keep, true), /good/);
+    assert.match(colTooltip("cpr", keep, true), /\$\/result/);
+    assert.match(colTooltip("cpr", keep, true), /good/);
+    assert.match(colTooltip("day$", fade, true), /Day \$/);
+    assert.match(colTooltip("day$", fade, true), /fade/i);
+    assert.match(colTooltip("life$", keep, true), /all-time|lifetime/i);
+    assert.match(leadsTooltip(0, "keep"), /0 leads/);
+    assert.match(leadsTooltip(0, "keep"), /watch/);
+    assert.match(laneTooltip("keep"), /Keep/);
+    assert.match(laneTooltip("fade"), /Fade/);
+    assert.match(laneTooltip("watch"), /Watch/);
+    assert.match(laneTooltip("dark"), /Dark/);
+    assert.match(windowTooltip("today"), /Today/);
+    assert.match(windowTooltip("yesterday"), /Yesterday/);
+    assert.match(allTimeTooltip(), /All-time/);
+    assert.match(headerColTitle("day$"), /Day \$/);
+    assert.match(headerColTitle("life$"), /Life \$/);
+  });
+
+  it("computes a 730-day lifetime floor", () => {
+    const from = lifetimeFromKey(new Date("2026-08-30T16:00:00.000Z"));
+    assert.match(from, /^\d{4}-\d{2}-\d{2}$/);
+    assert.ok(from < "2026-08-30");
   });
 });

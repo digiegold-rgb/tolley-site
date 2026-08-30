@@ -7,13 +7,16 @@ import {
   accountHasDelivery,
   buildSnapshot,
   indyDateKey,
+  lifetimeFromKey,
   mapZernioCampaign,
+  mergeLifetime,
   parseZernioCampaigns,
   placeholderAccount,
   placeholderSnapshot,
   rollupAccount,
   yesterdayKey,
   type AdsAccountBlock,
+  type AdsCampaignRow,
   type AdsSnapshot,
   type HqAdAccountSpec,
 } from "@/lib/hq-ads";
@@ -56,20 +59,30 @@ export async function collectAccount(
   const today = indyDateKey(now);
   const yesterday = yesterdayKey(now);
   try {
-    const todayRows = (await zernioGetCampaigns(spec, today, today)).map(mapZernioCampaign);
+    const [todayRaw, lifeRaw] = await Promise.all([
+      zernioGetCampaigns(spec, today, today),
+      zernioGetCampaigns(spec, lifetimeFromKey(now), today).catch(() => []),
+    ]);
+    const todayRows = todayRaw.map(mapZernioCampaign);
+    const lifeRows = lifeRaw.map(mapZernioCampaign);
+    const withLife = (daily: AdsCampaignRow[]) => mergeLifetime(daily, lifeRows);
+
     if (accountHasDelivery(todayRows)) {
-      return rollupAccount(spec, todayRows, "today", "live");
+      return rollupAccount(spec, withLife(todayRows), "today", "live");
     }
     if (todayRows.length > 0) {
       try {
         const yRows = (await zernioGetCampaigns(spec, yesterday, yesterday)).map(mapZernioCampaign);
         if (accountHasDelivery(yRows)) {
-          return rollupAccount(spec, yRows, "yesterday", "live");
+          return rollupAccount(spec, withLife(yRows), "yesterday", "live");
         }
       } catch {
         /* keep today's empty-but-live roster */
       }
-      return rollupAccount(spec, todayRows, "today", "live");
+      return rollupAccount(spec, withLife(todayRows), "today", "live");
+    }
+    if (lifeRows.length > 0) {
+      return rollupAccount(spec, withLife([]), "today", "live");
     }
     return placeholderAccount(spec, "no campaigns");
   } catch (err) {
