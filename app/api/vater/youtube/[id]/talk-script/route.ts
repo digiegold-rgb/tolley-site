@@ -49,7 +49,8 @@ import {
 } from "@/lib/vater/script-writer-models";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+/** Pro serverless max. Must match vercel.json functions entry. */
+export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -261,7 +262,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   });
 
   console.log(
-    `[vater/talk-script] project=${id} model=${model} ` +
+    `[vater/talk-script] project=${id} model=${model} viaGateway=${talked.viaGateway} ` +
       `quoted=${quote.billedCents}¢ billed=${billed.billedCents}¢ ` +
       `tokens=${billed.inputTokens}+${billed.outputTokens} revised=${charge.revised}`,
   );

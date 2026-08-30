@@ -43,7 +43,8 @@ import {
 import { settingsBag } from "@/lib/vater/youtube-posted";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+/** Pro serverless max. Must match vercel.json functions entry. */
+export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -278,8 +279,8 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   });
 
   console.log(
-    `[vater/write-script] project=${id} model=${model} ${sourceKind}/${fidelity} ` +
-      `quoted=${quote.billedCents}¢ billed=${billed.billedCents}¢ ` +
+    `[vater/write-script] project=${id} model=${model} viaGateway=${generated.viaGateway} ` +
+      `${sourceKind}/${fidelity} quoted=${quote.billedCents}¢ billed=${billed.billedCents}¢ ` +
       `tokens=${billed.inputTokens}+${billed.outputTokens}`,
   );
 

@@ -25,7 +25,8 @@ import { SCRIPT_WRITER_FALLBACK_RULES } from '@/lib/vater/script-writer-copy';
 import { notifyVaterBillingChanged } from '@/lib/vater/billing/client-refresh';
 import { BillingBlockModal, BillingBlockedError, type BillingBlockReason, type BillingBlockContext } from '../../editor/BillingBlock';
 import { useCreateFlow } from '../create-context';
-import { createApi, errorMessage, type CreateProject } from '../create-api';
+import { createApi, type CreateProject } from '../create-api';
+import { messageForScriptWriterFailure } from '@/lib/vater/script-writer-timeout';
 import { ErrorNote, InfoNote, inputStyle } from './step-ui';
 
 export interface TalkToClaudeProps {
@@ -124,7 +125,7 @@ export function TalkToClaude({
         setBlock(err.reason);
         setBlockCtx(err.context);
       } else {
-        setError(errorMessage(err, 'Could not talk to Claude'));
+        setError(messageForScriptWriterFailure(err, 'Could not talk to Claude'));
       }
     } finally {
       setBusy(false);

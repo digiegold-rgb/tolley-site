@@ -109,6 +109,12 @@
     "app/api/vater/youtube/[id]/video/route.ts": {
       "maxDuration": 60
     },
+    "app/api/vater/youtube/[id]/write-script/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/vater/youtube/[id]/talk-script/route.ts": {
+      "maxDuration": 300
+    },
     "app/api/vater/topic/route.ts": {
       "maxDuration": 30
     },

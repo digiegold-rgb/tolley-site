@@ -8,8 +8,10 @@
  *   3. none                — callers fall back to the direct provider key
  *
  * Model ids through the gateway are provider-prefixed ("anthropic/claude-haiku-4-5").
- * Cloud lanes that go through here: Anthropic (vision-critique). Local DGX
- * lanes (LLM_API_URL / LITELLM_API_URL) and Gemini image models stay direct.
+ * Cloud lanes that go through here: Anthropic (vision-critique, script writer).
+ * Local DGX lanes (LLM_API_URL / LITELLM_API_URL) and Gemini image models stay
+ * direct. Gateway adds zero markup — customer script price stays published
+ * Anthropic rates × 1.30 / 5¢ floor.
  */
 import Anthropic from "@anthropic-ai/sdk";
 

@@ -21,6 +21,7 @@ import type {
   ScriptWriterSource,
 } from '@/lib/vater/script-writer-models';
 import type { ScriptChatCharge } from '@/lib/vater/script-chat';
+import { SCRIPT_WRITER_TIMEOUT_MESSAGE, isAbortError } from '@/lib/vater/script-writer-timeout';
 
 /** GET /api/vater/youtube/[id] returns the whole row; this is what the steps read. */
 export interface CreateProject extends ReviewProject {
@@ -74,18 +75,35 @@ export function isExpiredError(err: unknown): boolean {
   return err instanceof ApiError && err.status === 409 && err.data.reason === 'expired';
 }
 
+function isScriptWriterUrl(url: string): boolean {
+  return /\/write-script(?:\?|$)/.test(url) || /\/talk-script(?:\?|$)/.test(url);
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    cache: 'no-store',
-    ...init,
-    headers: {
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(init?.headers ?? {}),
-    },
-  });
+  let res: Response;
+  try {
+    // No AbortSignal under 300s — leave the browser waiting for the Pro
+    // function. A 504 or a later abort still maps to the unpaid line.
+    res = await fetch(url, {
+      cache: 'no-store',
+      ...init,
+      headers: {
+        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(init?.headers ?? {}),
+      },
+    });
+  } catch (err) {
+    if (isScriptWriterUrl(url) && isAbortError(err)) {
+      throw new ApiError(504, { error: SCRIPT_WRITER_TIMEOUT_MESSAGE });
+    }
+    throw err;
+  }
   if (!res.ok) {
     const { reason, context, data } = await readBillingBlock(res);
     if (reason) throw new BillingBlockedError(reason, context);
+    if (isScriptWriterUrl(url) && res.status === 504) {
+      throw new ApiError(504, { error: SCRIPT_WRITER_TIMEOUT_MESSAGE });
+    }
     throw new ApiError(res.status, data as ApiError['data']);
   }
   return (await res.json()) as T;

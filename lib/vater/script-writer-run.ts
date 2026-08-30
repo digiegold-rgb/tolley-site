@@ -15,7 +15,8 @@
  * Nothing is billed until a real text script lands (the route calls
  * recordUsage after this function returns).
  */
-import Anthropic from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
+import { anthropicClient, anthropicModelId } from "../ai-gateway";
 import {
   SCRIPT_WRITER_MODELS,
   estimateTokensFromText,
@@ -27,10 +28,14 @@ import {
 } from "./script-writer-models";
 import { FIDELITY_INSTRUCTIONS, SCRIPT_WRITER_FALLBACK_RULES } from "./script-writer-copy";
 import { buildScriptChatPrompt, parseScriptChatReply, type ScriptChatTurn } from "./script-chat";
+import {
+  SCRIPT_WRITER_MAX_DURATION_MS,
+  canAffordEmptyScriptRetry,
+} from "./script-writer-timeout";
 
 const MAX_SOURCE_CHARS = 120_000;
 
-/** Fable max output is 128k; stay well under that and the Vercel 60s cap. */
+/** Fable max output is 128k; stay well under that and the Vercel 300s Pro cap. */
 const FIRST_ATTEMPT_CAP = 32_000;
 const RETRY_ATTEMPT_CAP = 48_000;
 const FIRST_THINKING_CUSHION = 12_000;
@@ -198,14 +203,19 @@ export function shouldRetryEmptyScript(
   stopReason: string | null | undefined,
   script: string,
   attempt: number,
+  elapsedMs?: number,
+  budgetMs: number = SCRIPT_WRITER_MAX_DURATION_MS,
 ): boolean {
-  return attempt === 1 && !script && stopReason === "max_tokens";
+  if (!(attempt === 1 && !script && stopReason === "max_tokens")) return false;
+  if (elapsedMs === undefined) return true;
+  return canAffordEmptyScriptRetry(elapsedMs, budgetMs);
 }
 
 export interface GeneratedScript {
   script: string;
   model: ScriptWriterModelId;
   apiId: string;
+  viaGateway: boolean;
   inputTokens: number;
   outputTokens: number;
   actual: ScriptQuote;
@@ -221,21 +231,21 @@ export async function generateScriptWithClaude(
     title?: string | null;
     rules: string;
   },
-  deps?: { createMessage?: ScriptWriterCreate },
+  deps?: { createMessage?: ScriptWriterCreate; now?: () => number; budgetMs?: number },
 ): Promise<GeneratedScript> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey && !deps?.createMessage) {
-    throw new Error("Script writer is not configured (missing ANTHROPIC_API_KEY).");
-  }
-  const apiId = apiIdForModel(opts.model);
   const prompt = buildScriptWriterPrompt(opts);
-  const create: ScriptWriterCreate =
-    deps?.createMessage ??
-    (async (body) => {
-      const client = new Anthropic({ apiKey: apiKey! });
-      return client.messages.create(body);
-    });
+  const now = deps?.now ?? Date.now;
+  let viaGateway = false;
+  let apiId = apiIdForModel(opts.model);
+  let create = deps?.createMessage;
+  if (!create) {
+    const wired = anthropicClient();
+    viaGateway = wired.viaGateway;
+    apiId = anthropicModelId(apiId, viaGateway);
+    create = (body) => wired.client.messages.create(body);
+  }
 
+  const started = now();
   let lastEmpty: {
     stopReason: string | null;
     blockTypes: string[];
@@ -271,6 +281,7 @@ export async function generateScriptWithClaude(
         script,
         model: opts.model,
         apiId,
+        viaGateway,
         inputTokens,
         outputTokens,
         actual: quoteScriptUsage(opts.model, inputTokens, outputTokens),
@@ -281,6 +292,7 @@ export async function generateScriptWithClaude(
     console.error("[script-writer] empty response", {
       apiId,
       model: opts.model,
+      viaGateway,
       stop_reason: stopReason,
       blockTypes,
       inputTokens,
@@ -293,7 +305,7 @@ export async function generateScriptWithClaude(
     if (isWriterRefusal(stopReason, response.content)) {
       throw new ScriptWriterError(REFUSAL_MESSAGE, lastEmpty);
     }
-    if (!shouldRetryEmptyScript(stopReason, script, attempt)) {
+    if (!shouldRetryEmptyScript(stopReason, script, attempt, now() - started, deps?.budgetMs)) {
       throw new ScriptWriterError(EMPTY_SCRIPT_MESSAGE, lastEmpty);
     }
   }
@@ -306,6 +318,7 @@ export interface TalkedScript {
   revisedScript: string | null;
   model: ScriptWriterModelId;
   apiId: string;
+  viaGateway: boolean;
   inputTokens: number;
   outputTokens: number;
   actual: ScriptQuote;
@@ -326,22 +339,22 @@ export async function talkScriptWithClaude(
     title?: string | null;
     rules: string;
   },
-  deps?: { createMessage?: ScriptWriterCreate },
+  deps?: { createMessage?: ScriptWriterCreate; now?: () => number; budgetMs?: number },
 ): Promise<TalkedScript> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey && !deps?.createMessage) {
-    throw new Error("Script writer is not configured (missing ANTHROPIC_API_KEY).");
-  }
-  const apiId = apiIdForModel(opts.model);
   const prompt = buildScriptChatPrompt(opts);
-  const create: ScriptWriterCreate =
-    deps?.createMessage ??
-    (async (body) => {
-      const client = new Anthropic({ apiKey: apiKey! });
-      return client.messages.create(body);
-    });
+  const now = deps?.now ?? Date.now;
+  let viaGateway = false;
+  let apiId = apiIdForModel(opts.model);
+  let create = deps?.createMessage;
+  if (!create) {
+    const wired = anthropicClient();
+    viaGateway = wired.viaGateway;
+    apiId = anthropicModelId(apiId, viaGateway);
+    create = (body) => wired.client.messages.create(body);
+  }
 
   const targetWords = Math.max(80, opts.script.trim().split(/\s+/).filter(Boolean).length);
+  const started = now();
   let lastEmpty: {
     stopReason: string | null;
     blockTypes: string[];
@@ -377,6 +390,7 @@ export async function talkScriptWithClaude(
         revisedScript: parsed.revisedScript,
         model: opts.model,
         apiId,
+        viaGateway,
         inputTokens,
         outputTokens,
         actual: quoteScriptUsage(opts.model, inputTokens, outputTokens),
@@ -387,6 +401,7 @@ export async function talkScriptWithClaude(
     console.error("[script-chat] empty response", {
       apiId,
       model: opts.model,
+      viaGateway,
       stop_reason: stopReason,
       blockTypes,
       inputTokens,
@@ -399,7 +414,7 @@ export async function talkScriptWithClaude(
     if (isWriterRefusal(stopReason, response.content)) {
       throw new ScriptWriterError(REFUSAL_MESSAGE, lastEmpty);
     }
-    if (!shouldRetryEmptyScript(stopReason, raw, attempt)) {
+    if (!shouldRetryEmptyScript(stopReason, raw, attempt, now() - started, deps?.budgetMs)) {
       throw new ScriptWriterError(EMPTY_CHAT_MESSAGE, lastEmpty);
     }
   }
