@@ -283,7 +283,7 @@ test.describe("create flow (mocked API)", () => {
     // Generate parks at Review with quoted vs billed on the job.
     await expect(screen).toHaveAttribute("data-step", "5", { timeout: 20_000 });
     await expect(page.getByTestId("review-step")).toBeVisible();
-    await expect(page.getByTestId("script-billed")).toContainText(/quoted \$0\.12 → billed \$0\.14/);
+    await expect(page.getByTestId("script-billed")).toContainText(/estimate \$0\.12 · charged \$0\.14/);
     await expect(page.getByTestId("create-step-5")).toHaveAttribute("data-state", "needs-you");
     await expect(page).toHaveURL(/#r=create&s=5&p=proj_flow_e2e$/);
     await expect(page.getByTestId("nav-progress")).toHaveAttribute("data-badge", "1");
@@ -361,7 +361,7 @@ test.describe("create flow (mocked API)", () => {
     await page.getByTestId("script-model-fable").click();
     await page.getByTestId("script-generate-edited").click();
     await expect(screen).toHaveAttribute("data-step", "5", { timeout: 20_000 });
-    await expect(page.getByTestId("script-billed")).toContainText(/billed \$0\.14/);
+    await expect(page.getByTestId("script-billed")).toContainText(/charged \$0\.14/);
     expect(state.project?.scriptMeta && (state.project.scriptMeta as { writer?: { billedCents?: number } }).writer?.billedCents).toBe(14);
   });
 });

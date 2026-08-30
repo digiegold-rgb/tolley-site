@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.14';
+export const APP_VERSION = '1.15';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -40,11 +40,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.15',
+    date: '2026-08-30',
+    title: 'Script quotes show the final price',
+    items: [
+      'Script quotes show the final price, no +30% note.',
+    ],
+  },
+  {
     version: '1.14',
     date: '2026-08-30',
     title: 'Script writes never cost less than 5¢, and you can change the length',
     items: [
-      'Script generation quotes and charges never go below 5¢. A short Sonnet job is 5¢; a longer Fable job still bills the tokens that were actually used plus 30%.',
+      'Script generation quotes and charges never go below 5¢. A short Sonnet job is 5¢; a longer Fable job still bills the tokens that were actually used.',
       'On the Writing step, Change length takes you back to the minutes slider so you can pick a different length before you generate. Nothing is charged for going back.',
     ],
   },
@@ -54,7 +62,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     title: 'Pick Fable, Opus or Sonnet — pay what the writer actually used',
     items: [
       'On the Writing step you pick Fable, Opus or Sonnet. Sonnet stays the product default; your last pick is remembered. The script is always editable, with Undo and Redo, and you can generate a new draft from the text in the box — not only from the original video.',
-      'Before you generate you see a quoted estimate from published token rates. After it lands you are billed the actual input plus output tokens plus 30% — no 5× markup and no 25¢ cap. Quoted vs billed stays on the job. Switching models is a new charge.',
+      'Before you generate you see a quoted estimate. After it lands you are billed the actual usage. Quoted vs billed stays on the job. Switching models is a new charge.',
       'A small Stay close / Restructure / Rewrite control sets how far the draft may move from the transcript. Start from your own script or from a video and you land on the same editor — paste, generate, edit, iterate.',
     ],
   },
