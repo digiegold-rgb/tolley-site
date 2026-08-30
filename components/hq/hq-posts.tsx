@@ -9,6 +9,7 @@ import { HqVideoCosts } from "./hq-video-costs";
 import { HqVideoFootprint } from "./hq-video-footprint";
 import { HqViewCounter } from "./hq-view-counter";
 import { HqVideoViews } from "./hq-video-views";
+import { HqAdsStatus } from "./hq-ads-status";
 import HqCityRanks from "./hq-city-ranks";
 
 // Posts tab — did every automated channel actually fire?
@@ -194,6 +195,9 @@ export function HqPosts() {
       {/* ── What the DGX is actively working on (hourly scan) — sits above
            the view-counter bar on purpose: first thing Jared sees. ── */}
       <DgxActivityLine />
+
+      {/* ── Paid ads (read-only). Jared: after the DGX strip, before every-video. ── */}
+      <HqAdsStatus />
 
       {/* ── Live view counter across every channel ── */}
       <HqViewCounter />

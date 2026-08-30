@@ -5516,6 +5516,15 @@ model DgxHealth {
   updatedAt DateTime @default(now())
 }
 
+// Cached paid-ads snapshot for the /hq Posts-tab ads card (read-only).
+// Written by /api/cron/hq-ads-sync and an on-read refresh of GET /api/hq/ads-status.
+// The card still renders a live or placeholder payload if this table is missing.
+model HqAdsSnapshot {
+  id        Int      @id @default(1)
+  payload   Json
+  updatedAt DateTime @default(now())
+}
+
 // ═════════════════════════════════════════════════════════════════════════
 // Jelly Studio beta — invites, impersonation audit, system log
 // (2026-08-15, migration prisma/migrations/20260815_beta_invites)

@@ -126,4 +126,17 @@ export const CRONS: CronEntry[] = [
   { path: "/api/cron/treasure-haul-daily", schedule: "0 13 * * *", cadenceMin: day, description: "Treasure Haul FB post" },
   { path: "/api/cron/treasure-haul-spotlight", schedule: "0 1 * * 2-6", cadenceMin: 2 * day, description: "Treasure Haul evening spotlight (Mon–Fri CT) — closes the 30/wk gap" },
   { path: "/api/cron/fb-token-health", schedule: "0 14 * * 1", cadenceMin: 7 * day, description: "Weekly FB token expiry check" },
+  {
+    path: "/api/cron/hq-ads-sync",
+    schedule: "25 7,13,19,1 * * *",
+    cadenceMin: 360,
+    description: "HQ paid-ads snapshot (Jelly Studio Meta + X Digie Gold)",
+    heartbeat: async () => {
+      try {
+        return (await prisma.hqAdsSnapshot.findUnique({ where: { id: 1 }, select: { updatedAt: true } }))?.updatedAt ?? null;
+      } catch {
+        return null;
+      }
+    },
+  },
 ];

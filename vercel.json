@@ -381,6 +381,10 @@
     {
       "path": "/api/cron/city-rank-track",
       "schedule": "0 9 9 * *"
+    },
+    {
+      "path": "/api/cron/hq-ads-sync",
+      "schedule": "25 7,13,19,1 * * *"
     }
   ]
 }
