@@ -38,16 +38,18 @@ export function SignupForm({ claimSlug }: SignupFormProps = {}) {
   const destination = claimSlug
     ? `/sales/portal?claim=${encodeURIComponent(claimSlug)}`
     : callbackUrl;
-  /* Jelly Studio signups click through the studio legal set (Terms + Privacy +
-   * Beta Addendum) and we stamp the version they accepted onto the User row. */
-  const isStudio = !claimSlug && productForPath(callbackUrl) !== null;
-  const studioName = PRODUCT_NAME[productForPath(callbackUrl) ?? "jelly"];
+  /* Jelly / Listing signups click through the studio legal set (Terms +
+   * Privacy + Beta Addendum) and we stamp the version they accepted onto
+   * the User row. */
+  const product = productForPath(callbackUrl);
+  const isStudio = !claimSlug && product !== null;
+  const isListing = product === "realestate";
+  const studioName = PRODUCT_NAME[product ?? "jelly"];
   const requiresAgreement = Boolean(claimSlug) || isStudio;
 
-  /* Invite-only beta: the link Jared sends is
-   * /signup?callbackUrl=%2Fanimate&invite=CODE, so the field arrives
-   * prefilled and the tester never types it. The field is still shown (and
-   * editable) because people forward the code without the link. */
+  /* Jelly is a public beta — no code required. Listing Studio still is
+   * invite-only. A `?invite=` on the URL is accepted on either door
+   * (team / leftover links) and sent through if present. */
   const inviteFromLink = searchParams.get("invite") ?? "";
 
   const [email, setEmail] = useState("");
@@ -67,10 +69,10 @@ export function SignupForm({ claimSlug }: SignupFormProps = {}) {
       return;
     }
 
-    if (isStudio && !invite.trim()) {
+    if (isListing && !invite.trim()) {
       setStatus("error");
       setErrorMessage(
-        "Jelly Studio is invite-only right now. Paste your invite code, or use the link from your invite email.",
+        "Listing Studio is invite-only right now. Paste your invite code, or use the link from your invite email.",
       );
       return;
     }
@@ -182,7 +184,7 @@ export function SignupForm({ claimSlug }: SignupFormProps = {}) {
         className="w-full rounded-xl border border-white/18 bg-black/25 px-3 py-2 text-sm text-white/90 outline-none transition focus:border-violet-300/75"
       />
 
-      {isStudio ? (
+      {isListing ? (
         <>
           <label
             htmlFor="signup-invite"
@@ -205,7 +207,7 @@ export function SignupForm({ claimSlug }: SignupFormProps = {}) {
           <p id="signup-invite-note" className="text-[0.7rem] text-white/50">
             {inviteFromLink
               ? "Filled in from your invite link — you shouldn't need to change it."
-              : "Jelly Studio is invite-only during the beta. Your code is in your invite email."}
+              : "Listing Studio is invite-only during the beta. Your code is in your invite email."}
           </p>
         </>
       ) : null}

@@ -200,7 +200,7 @@ const SECTIONS: LegalSectionContent[] = [
     heading: "9. Things may change",
     paragraphs: [
       "Prices, models, and features can change during the beta. Material changes to pricing or to how credits work will be posted here and emailed to you before they take effect.",
-      "Your invitation is personal and not transferable. Do not pass it around.",
+      "This is a public beta. Anyone can create an account. Do not share your login.",
     ],
   },
   {

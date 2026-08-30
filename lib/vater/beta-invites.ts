@@ -53,7 +53,7 @@ export type InviteRejection =
  *  code is the secret, and you already have to guess it to get here). */
 export const INVITE_REJECTION_MESSAGE: Record<InviteRejection, string> = {
   INVITE_REQUIRED:
-    "Jelly Studio is invite-only right now. Use the link from your invite email, or paste your invite code above.",
+    "This studio is invite-only right now. Use the link from your invite email, or paste your invite code above.",
   INVITE_NOT_FOUND:
     "That invite code isn't recognised. Check it for typos, or use the link from your invite email.",
   INVITE_EXPIRED: "That invite code has expired. Reply to your invite email and we'll send a fresh one.",

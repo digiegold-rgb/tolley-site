@@ -36,7 +36,7 @@ type FooterLink = {
 function companyLinks(brand: Brand): FooterLink[] {
   const links: FooterLink[] = [
     { label: 'Affiliate', route: 'affiliate' },
-    { label: 'Contact', href: brand.product === 'jelly' ? 'mailto:digiegold@gmail.com' : `mailto:${brand.support.email}` },
+    { label: 'Contact', href: `mailto:${brand.support.email}` },
     { label: 'Pricing', route: 'pricing' },
   ];
   if (brand.product === 'jelly') {
@@ -69,13 +69,21 @@ function businessLinks(brand: Brand): FooterLink[] {
 /** Brand halo on the mark, same recipe as the sidebar. */
 const LOGO_GLOW = 'drop-shadow(0 0 12px var(--jb-brand-glow, rgba(143,125,255,0.5)))';
 
-export function Footer(): React.ReactElement {
+export function Footer({ publicDemo = false }: { publicDemo?: boolean } = {}): React.ReactElement {
   const { t } = useTheme();
   const { setRoute } = useRoute();
   const brand = useProduct();
+  /* The signed-out /animate/demo page remaps setRoute → signup. A Discord
+   * item that dumps there is a fake Discord. Hide the owner bot link on
+   * the public demo; Contact already goes to support@tolley.io. */
+  const socials = publicDemo
+    ? SOCIAL_LINKS.filter((link) => link.label !== 'Discord')
+    : SOCIAL_LINKS;
   const linkGroups: { heading: string; links: FooterLink[] }[] = [
     { heading: 'Company', links: companyLinks(brand) },
-    ...(brand.product === 'jelly' ? [{ heading: 'Socials', links: SOCIAL_LINKS }] : []),
+    ...(brand.product === 'jelly' && socials.length > 0
+      ? [{ heading: 'Socials', links: socials }]
+      : []),
     { heading: 'Business', links: businessLinks(brand) },
   ];
 

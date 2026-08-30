@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { productForPath } from "@/lib/vater/product";
 
 import { auth } from "@/auth";
+import { authPageMetadata } from "@/lib/auth-page-metadata";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { LoginForm } from "@/components/auth/login-form";
 
@@ -16,6 +18,11 @@ function resolveCallbackUrl(value: string | undefined) {
     return "/leads/dashboard";
   }
   return value;
+}
+
+export async function generateMetadata({ searchParams }: LoginPageProps): Promise<Metadata> {
+  const params = (await searchParams) || {};
+  return authPageMetadata(resolveCallbackUrl(params.callbackUrl), "login");
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {

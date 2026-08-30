@@ -1000,4 +1000,4 @@ export const DEMO_RECEIPT = {
 /** Every action in demo mode is disabled and says this. */
 export const DEMO_CTA_LABEL = 'Sign up to render';
 /** Where that CTA points. */
-export const DEMO_CTA_HREF = '/animate#beta';
+export const DEMO_CTA_HREF = '/signup?callbackUrl=%2Fanimate';

@@ -3,10 +3,10 @@
 /**
  * BetaGate — two full-screen interrupts that sit ABOVE the studio Shell.
  *
- * 1. Access gate: the studio is invite-only. Owner + studio accounts are
- *    grandfathered (Trey); everyone else must have redeemed a BetaInvite
- *    (User.betaInviteId). Accounts that registered without an invite (the
- *    /signup path without callbackUrl) land here instead of an empty studio.
+ * 1. Access gate: Listing Studio is still invite-only. Owner + studio
+ *    accounts are grandfathered; Jelly public-beta accounts get in without
+ *    a redeemed BetaInvite (see studioAccessAllowed). Listing accounts
+ *    that registered without an invite land here instead of an empty studio.
  * 2. Click-wrap: any signed-in account whose User.termsVersion !== TOS_VERSION
  *    must accept the current Terms / Privacy / Beta Addendum once. This is how
  *    accounts that pre-date 2026-08-15 (Trey) get their acceptance recorded.

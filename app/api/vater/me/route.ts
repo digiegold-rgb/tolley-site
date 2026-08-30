@@ -34,6 +34,7 @@ import {
   parseAnimateSmsLeadFields,
 } from "@/lib/animate-sms";
 import { toE164 } from "@/lib/phone";
+import { studioAccessAllowed } from "@/lib/vater/beta-access";
 import {
   AgentProfileNotReadyError,
   readAgentProfile,
@@ -195,13 +196,20 @@ export async function GET() {
       maxWords: cap.maxWords ?? null,
       capTier: cap.tier,
       /** Beta / legal state. `invited` is true once the account redeemed a
-       *  BetaInvite — the durable signal for gating the studio itself. */
+       *  BetaInvite (Listing Studio still gates on it; Jelly public beta
+       *  does not). */
       beta: {
         invited: flags.invited,
         showcaseOptOut: flags.showcaseOptOut,
-        /** Owner + studio accounts (Trey) are grandfathered; everyone else
-         *  must have redeemed an invite to use the studio at all. */
-        accessAllowed: owner || studio || flags.invited,
+        /** Owner + studio accounts are grandfathered. Jelly is a public
+         *  beta — a signed-in /animate account is enough. Listing Studio
+         *  still requires a redeemed invite. */
+        accessAllowed: studioAccessAllowed({
+          owner,
+          studio,
+          invited: flags.invited,
+          product,
+        }),
         /** Current click-wrap version accepted? Existing accounts (pre-8/15)
          *  get a one-time accept modal in the Shell (BetaGate). */
         termsAccepted: flags.termsVersion === TOS_VERSION,
