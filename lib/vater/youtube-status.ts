@@ -136,6 +136,34 @@ export const IN_FLIGHT_STATUSES: ReadonlySet<YouTubeProjectStatus> = new Set([
   "composing_video",
 ]);
 
+/** Polling stops — a leftover autopilotJobId on these must not keep /poll alive. */
+export const TERMINAL_POLL_STATUSES: ReadonlySet<YouTubeProjectStatus> = new Set([
+  "ready",
+  "failed",
+  "expired",
+]);
+
+/**
+ * Whether a kicker should POST/GET `[id]/poll` (syncProjectFromJob).
+ *
+ * Produce used to write `scripted` and compose writes `editing` — neither
+ * word is in IN_FLIGHT_STATUSES, so Spark could finish and the row never
+ * synced. Treat a live job on those parked words as in-flight. Concierge
+ * rows never hit /poll (the ticket route owns them).
+ */
+export function shouldPollJob(p: {
+  status?: string | null;
+  autopilotJobId?: string | null;
+}): boolean {
+  const status = p.status;
+  if (!status) return false;
+  if (CONCIERGE_STATUSES.has(status as YouTubeProjectStatus)) return false;
+  if (TERMINAL_POLL_STATUSES.has(status as YouTubeProjectStatus)) return false;
+  if (IN_FLIGHT_STATUSES.has(status as YouTubeProjectStatus)) return true;
+  if (!p.autopilotJobId) return false;
+  return status === "scripted" || status === "editing";
+}
+
 /**
  * The three stages a customer should be able to read at a glance on
  * Library and Queue. This is a grouping of the existing statuses — not a

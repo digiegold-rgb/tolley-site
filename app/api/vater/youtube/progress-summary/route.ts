@@ -147,6 +147,7 @@ export async function GET() {
       errorMessage: r.errorMessage,
       conciergeStage: r.conciergeStage,
       variationCount: r.variationCount ?? 0,
+      autopilotJobId: r.autopilotJobId,
       driveFileUrl: r.driveFileUrl,
       driveError: r.driveError,
       step: d.step,

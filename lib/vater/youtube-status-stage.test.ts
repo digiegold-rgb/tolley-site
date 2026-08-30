@@ -10,6 +10,7 @@ import {
   customerStageDetail,
   editingIsLive,
   EDITING_LABEL,
+  shouldPollJob,
   type YouTubeProjectStatus,
 } from "./youtube-status";
 
@@ -136,6 +137,13 @@ describe("customerStage — `editing` judged on the row, not the status word", (
       assert.equal(customerStage({ status, finalVideoUrl: null, updatedAt: justNow }), customerStage(status), status);
     }
   });
+  it("scripted/editing with autopilotJobId is polled; parked scripted is not", () => {
+    assert.equal(shouldPollJob({ status: "scripted", autopilotJobId: "j" }), true);
+    assert.equal(shouldPollJob({ status: "editing", autopilotJobId: "j" }), true);
+    assert.equal(shouldPollJob({ status: "scripted" }), false);
+    assert.equal(shouldPollJob({ status: "ready", autopilotJobId: "j" }), false);
+  });
+
   it("#66 concierge row with a live final and stitch done is Done, not Moving Now", () => {
     const row = {
       status: "concierge_in_progress",

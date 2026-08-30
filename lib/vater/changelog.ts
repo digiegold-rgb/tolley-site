@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.22.1';
+export const APP_VERSION = '1.22.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.22.2',
+    date: '2026-08-30',
+    title: 'Approve & Animate actually starts the render',
+    items: [
+      'Approving a script in Script Review starts the priced render (Jelly or Fable 5) instead of parking with nothing queued.',
+      'A render that has a job is no longer stuck on “script ready” after Spark finishes — the studio keeps polling until the file is ready.',
+      'Own-script videos keep the Jeff/Linda look and voice, and opening motion uses Narrative pricing, not Action.',
+    ],
+  },
   {
     version: '1.22.1',
     date: '2026-08-30',

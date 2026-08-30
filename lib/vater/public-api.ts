@@ -271,7 +271,9 @@ export async function createVideoFromScript(
       voiceCloneId: resolved.seed.voiceCloneId,
       // The API call IS the approval — there is no human to click the gate.
       scriptApprovedAt: new Date(),
-      status: "scripted",
+      // `queued` is in IN_FLIGHT_STATUSES so poll kickers sync the job.
+      // `scripted` is not — a finished Spark job would never land.
+      status: "queued",
       progress: 30,
     },
   });
@@ -316,7 +318,7 @@ export async function createVideoFromScript(
     console.log(
       `[v1/create] user=${userId} project=${project.id} job=${jobId} — ${wordCount} words, style=${styleId}`,
     );
-    return { ok: true, projectId: project.id, status: "scripted", jobId };
+    return { ok: true, projectId: project.id, status: "queued", jobId };
   } catch (err) {
     const detail =
       err instanceof AutopilotError

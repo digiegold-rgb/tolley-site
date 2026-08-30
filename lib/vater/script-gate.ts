@@ -26,6 +26,7 @@ import {
   elevenLabsKeyMissing,
   ELEVENLABS_KEY_REQUIRED,
 } from "./elevenlabs-key-gate";
+import { scriptGateAnimFields } from "./animate-render";
 
 /**
  * `settingsJson` doubles as the home of site-side bookkeeping that is not a
@@ -128,16 +129,14 @@ export async function startRunCreation(
   }
 
   // Hybrid render window: animate the first N seconds, Ken Burns the rest.
-  // `defaultAnimUntilS` isn't on StyleSnapshot — the DGX reads it out of the
-  // style dict by key, so widen through `unknown` the way /context does.
-  const animUntilS =
-    typeof project.animUntilS === "number" && project.animUntilS > 0
-      ? project.animUntilS
-      : null;
-  const style: StyleSnapshot | undefined = animUntilS
+  // `defaultAnimUntilS` / `animQuality` aren't on StyleSnapshot — the DGX
+  // reads them out of the style dict by key. Without animQuality the worker
+  // falls back to Action (modal-wan22, $1.50/clip) instead of Narrative.
+  const animFields = scriptGateAnimFields(project.animUntilS);
+  const style: StyleSnapshot | undefined = animFields.defaultAnimUntilS
     ? ({
         ...(styleSnapshot ?? {}),
-        defaultAnimUntilS: animUntilS,
+        ...animFields,
       } as unknown as StyleSnapshot)
     : styleSnapshot;
 

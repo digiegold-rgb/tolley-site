@@ -179,6 +179,11 @@ export function deriveCreateStep(
   if (status === "awaiting_engine") {
     return isPast(p.approvalExpiresAt, now) ? make(6, "expired") : make(6, "money");
   }
+  // Produce writes `queued` (in-flight). Without this, STEP4_STATUSES.queued
+  // would send an approved render back to Writing.
+  if (status === "queued" && p.scriptApprovedAt) {
+    return make(7, "async");
+  }
   if (status === "awaiting_script_approval" || status === "concierge_needs_info") {
     return isPast(p.approvalExpiresAt, now) ? make(5, "expired") : make(5, "approval");
   }

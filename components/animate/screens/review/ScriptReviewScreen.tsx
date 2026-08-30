@@ -36,17 +36,26 @@ import {
 } from '@/lib/vater/script-limits';
 import {
   IN_FLIGHT_STATUSES,
+  shouldPollJob,
   type YouTubeProjectStatus,
 } from '@/lib/vater/youtube-status';
 import { TINT_BG } from '../tint';
 import { ScriptReviewCard } from './ScriptReviewCard';
 import { ProjectLiveDetail } from '../live/ProjectLiveDetail';
+import { EnginePicker, type ConciergeEngine } from '../../engine/EnginePicker';
 import {
   readConciergeClient,
   readEngineClient,
   type ConciergeStage,
 } from '@/lib/vater/concierge-client';
 import { useRenderEstimate } from '../editor/use-render-estimate';
+import {
+  BillingBlockModal,
+  BillingBlockedError,
+  type BillingBlockReason,
+  type BillingBlockContext,
+} from '../editor/BillingBlock';
+import { createApi } from '../create/create-api';
 import {
   ANIMATE_WINDOW_DEFAULT_S,
   DEFAULT_SCENE_SECONDS,
@@ -104,6 +113,7 @@ export interface ReviewProject {
   settingsJson?: unknown;
   /** On-site writer usage: `writer` is the last charge, `charges` the history. */
   scriptMeta?: unknown;
+  autopilotJobId?: string | null;
 }
 
 /** One entry of `stepDetails.phaseTimings` — when a DGX phase ran. */
@@ -152,6 +162,7 @@ const wordsIn = (s: string): number => s.split(/\s+/).filter(Boolean).length;
 export type ReviewStage =
   | 'preparing'
   | 'awaiting_approval'
+  | 'choose_engine'
   | 'rendering'
   | 'fable5'
   | 'ready_to_publish'
@@ -161,6 +172,7 @@ export type ReviewStage =
 const STAGE_LABELS: Record<ReviewStage, string> = {
   preparing: 'Preparing',
   awaiting_approval: 'Awaiting script approval',
+  choose_engine: 'Choose engine',
   rendering: 'Rendering',
   fable5: 'Fable 5',
   ready_to_publish: 'Ready to publish',
@@ -171,6 +183,7 @@ const STAGE_LABELS: Record<ReviewStage, string> = {
 const STAGE_COLORS: Record<ReviewStage, string> = {
   preparing: JELLY_TOKENS.accent,
   awaiting_approval: JELLY_TOKENS.brand,
+  choose_engine: JELLY_TOKENS.brand,
   rendering: JELLY_TOKENS.accent,
   fable5: JELLY_TOKENS.brand,
   ready_to_publish: JELLY_TOKENS.success,
@@ -208,6 +221,7 @@ export function stageOf(p: ReviewProject): ReviewStage {
   if (p.youtubeVideoId) return 'published';
   if (p.status === 'failed') return 'failed';
   if (p.status === 'awaiting_script_approval') return 'awaiting_approval';
+  if (p.status === 'awaiting_engine') return 'choose_engine';
   // Fable 5 Concierge: the ticket owns the project until it delivers
   // (status flips to `ready`, handled below) or is cancelled.
   if (p.status.startsWith('concierge_')) return 'fable5';
@@ -232,6 +246,7 @@ function inPipeline(p: ReviewProject): boolean {
     p.animUntilS !== null ||
     p.scriptApprovedAt !== null ||
     p.status === 'awaiting_script_approval' ||
+    p.status === 'awaiting_engine' ||
     p.youtubeVideoId !== null
   );
 }
@@ -283,6 +298,7 @@ export function ScriptReviewScreen(): React.ReactElement {
     if (selectedId || visible.length === 0) return;
     const waiting =
       visible.find((p) => stageOf(p) === 'awaiting_approval') ??
+      visible.find((p) => stageOf(p) === 'choose_engine') ??
       visible.find((p) => stageOf(p) === 'ready_to_publish');
     if (waiting) setSelectedId(waiting.id);
   }, [visible, selectedId]);
@@ -296,7 +312,7 @@ export function ScriptReviewScreen(): React.ReactElement {
         .filter(
           (p) =>
             inPipeline(p) &&
-            IN_FLIGHT_STATUSES.has(p.status as YouTubeProjectStatus),
+            shouldPollJob(p),
         )
         .map((p) => p.id),
     [projects],
@@ -1067,7 +1083,7 @@ function DetailPanel({
         <RetryError message={project.errorMessage} variant="banner" />
       )}
 
-      {stage === 'awaiting_approval' ? (
+      {stage === 'awaiting_approval' || stage === 'choose_engine' ? (
         <ReviewPanel project={project} onChanged={onChanged} />
       ) : (
         /* Everything past the gate — live progress, the publish panel, the
@@ -1100,6 +1116,10 @@ function ReviewPanel({
   const [approving, setApproving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [justSaved, setJustSaved] = React.useState(false);
+  const [engine, setEngine] = React.useState<ConciergeEngine>('auto');
+  const [block, setBlock] = React.useState<BillingBlockReason | null>(null);
+  const [blockCtx, setBlockCtx] = React.useState<BillingBlockContext | undefined>(undefined);
+  const alreadyApproved = project.status === 'awaiting_engine';
   // Approve is a money click — quote the price on the button itself, same
   // number the Visuals step shows. Degrades to a plain label if the estimate
   // route is absent.
@@ -1207,21 +1227,23 @@ function ReviewPanel({
     setError(null);
     setApproving(true);
     try {
-      const res = await fetch(`/api/vater/youtube/${project.id}/approve-script`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script: draft }),
-      });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as {
-          error?: string;
-          detail?: string;
-        };
-        throw new Error(data.detail || data.error || `HTTP ${res.status}`);
+      // Already parked at awaiting_engine (402 / kick fail after a prior
+      // approve) — retry produce only. First click sends engine so
+      // approve-script kicks produce and HQ gets the Fable notify.
+      if (alreadyApproved) {
+        await createApi.produce(project.id, engine);
+      } else {
+        await createApi.approveScript(project.id, draft, engine);
       }
       onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start the render');
+      if (err instanceof BillingBlockedError) {
+        setBlock(err.reason);
+        setBlockCtx(err.context);
+        onChanged();
+      } else {
+        setError(err instanceof Error ? err.message : 'Could not start the render');
+      }
     } finally {
       setApproving(false);
     }
@@ -1323,6 +1345,20 @@ function ReviewPanel({
 
       {error && <RetryError message={error} />}
 
+      <div data-testid="review-engine-picker">
+        <EnginePicker
+          value={engine}
+          onChange={(e) => {
+            setEngine(e);
+            setError(null);
+          }}
+          estimateUsd={approveUsd}
+          estimateLoading={estimate.loading}
+          disabled={approving || saving}
+          compact
+        />
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <VBtn
           variant="ghost"
@@ -1339,8 +1375,10 @@ function ReviewPanel({
           {approving
             ? 'Starting render…'
             : approveUsd !== null
-              ? `Approve & Animate — est. $${approveUsd.toFixed(2)}`
-              : 'Approve & Animate'}
+              ? `${alreadyApproved ? 'Start render' : 'Approve & Animate'} — est. $${approveUsd.toFixed(2)}`
+              : alreadyApproved
+                ? 'Start render'
+                : 'Approve & Animate'}
         </VBtn>
         <span style={{ fontSize: 12, color: t.textSecondary }}>
           {overLimit
@@ -1348,10 +1386,18 @@ function ReviewPanel({
             : dirty
               ? 'Unsaved edits — Approve sends the text in the box above.'
               : justSaved
-                ? 'Saved. Approving sends this exact text to the renderer.'
-                : 'Approving sends the text above to the renderer.'}
+                ? 'Saved. Approving starts the priced render with this exact text.'
+                : alreadyApproved
+                  ? 'Script is approved — this click starts the priced render.'
+                  : 'Approving starts the priced render with the text above.'}
         </span>
       </div>
+      <BillingBlockModal
+        reason={block}
+        context={blockCtx}
+        projectId={project.id}
+        onClose={() => setBlock(null)}
+      />
     </VCard>
   );
 }
