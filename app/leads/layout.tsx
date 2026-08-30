@@ -72,7 +72,7 @@ export default async function LeadsLayout({
   let lastSyncAt: string | null = null;
   let totalListings: number | undefined;
   try {
-    const [latest, count] = await withPrismaTimeout(
+    const listingStats = await withPrismaTimeout(
       Promise.all([
         prisma.listing.findFirst({
           orderBy: { updatedAt: "desc" },
@@ -80,10 +80,13 @@ export default async function LeadsLayout({
         }),
         prisma.listing.count(),
       ]),
-      [null, undefined] as const,
+      null,
     );
-    if (latest?.updatedAt) lastSyncAt = latest.updatedAt.toISOString();
-    if (typeof count === "number") totalListings = count;
+    if (listingStats) {
+      const [latest, count] = listingStats;
+      if (latest?.updatedAt) lastSyncAt = latest.updatedAt.toISOString();
+      totalListings = count;
+    }
   } catch {
     // table may not exist in certain preview branches — ignore
   }
