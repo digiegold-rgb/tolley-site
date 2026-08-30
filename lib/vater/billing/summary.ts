@@ -22,6 +22,10 @@
  * fall back to attributing by project activity after the payment date, and
  * the remainder lands in a labelled carryover row so the rows ALWAYS sum to
  * the current due.
+ *
+ * On-site script writer / Talk charges (VaterUsage action="script") are due
+ * the moment they land — they do not wait for a delivered video. Pipeline
+ * LLM on a video card stays "LLM". Writer/chat is the Script row.
  */
 
 import { prisma } from "@/lib/prisma";
@@ -29,6 +33,12 @@ import { hasVaterPaymentUserId } from "@/lib/vater/schema-probe";
 
 import { billableComputeUsdForProject, billableStagesForProject, isBillableStage } from "./billable";
 import { getOpsRate } from "./ops-fee";
+import {
+  SCRIPT_USAGE_ACTION,
+  dueUsdWithScript,
+  scriptBreakdownRow,
+  scriptDueSlice,
+} from "./script-due";
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -43,6 +53,7 @@ const STAGE_LABELS: Record<string, string> = {
   render: "Render",
   modal_overhead: "Modal cold starts",
   llm: "LLM",
+  script: "Script",
   gemini: "Gemini",
   tts: "Voice",
   compose: "Compose",
@@ -89,7 +100,9 @@ export interface VaterBillingSummary {
   totalUsd: number;
   paidUsd: number;
   dueUsd: number;
-  /** All-time compute breakdown by stage (ops fee is NOT in here). */
+  /** All-time on-site script writer / Talk charges (VaterUsage action=script). */
+  scriptUsd: number;
+  /** All-time compute breakdown by stage (ops fee is NOT in here). Script is appended. */
   breakdown: BreakdownRow[];
   since: VaterSinceLastPayment;
 }
@@ -102,6 +115,8 @@ export interface VaterPaymentSnapshot {
   minutes: number;
   videos: number;
   breakdown: BreakdownRow[];
+  /** All-time script writer / Talk total at payment time. */
+  scriptUsd?: number;
 }
 
 type StageMap = Map<string, number>;
@@ -228,7 +243,7 @@ export async function getVaterBillingSummary(scope: VaterBillingScope): Promise<
   costs: Awaited<ReturnType<typeof prisma.vaterCostSnapshot.findUnique>>;
 }> {
   const { userId } = scope;
-  const [costs, projects, payments] = await Promise.all([
+  const [costs, projects, payments, scriptUsage] = await Promise.all([
     // NOTE: the cost snapshot is the GLOBAL Vater-lane ledger (whole-lane
     // spend incl. Jared's R&D), not a per-tenant figure. It is returned for
     // internal cost-of-goods surfaces only and is never part of `summary`.
@@ -248,8 +263,13 @@ export async function getVaterBillingSummary(scope: VaterBillingScope): Promise<
       },
     }),
     paymentsForTenant(userId),
+    prisma.vaterUsage.findMany({
+      where: { userId, action: SCRIPT_USAGE_ACTION },
+      select: { costCents: true, ts: true },
+    }),
   ]);
   const { lastPayment } = payments;
+  const scriptSlice = scriptDueSlice({ rows: scriptUsage, lastPayment });
 
   const opsRatePerMinute = getOpsRate();
   // DELIVERED STAYS DELIVERED (Jared, 2026-08-26). A video with a final MP4
@@ -319,11 +339,12 @@ export async function getVaterBillingSummary(scope: VaterBillingScope): Promise<
   const carryUsd = r2(
     Number((lastPayment as { carryUsd?: number } | null)?.carryUsd ?? 0),
   );
-  const dueUsd = r2(
+  const dueWithoutScript = r2(
     finishedSince.reduce((sum, p) => sum + cardUsd(p), 0) +
       minutesSince * opsRatePerMinute +
       carryUsd,
   );
+  const dueUsd = dueUsdWithScript(dueWithoutScript, scriptSlice.sinceUsd);
   const totalUsd = r2(paidUsd + dueUsd);
 
   const readStages = (
@@ -351,6 +372,10 @@ export async function getVaterBillingSummary(scope: VaterBillingScope): Promise<
   if (unattributedUsd > 0.01) {
     breakdown.push({ key: "other", label: "Other", usd: unattributedUsd });
   }
+  // Writer / Talk is VaterUsage, not costJson.llm. Append after the
+  // unattributed guard so Script cannot be mistaken for missing stages.
+  const scriptRow = scriptBreakdownRow(scriptSlice.allUsd);
+  if (scriptRow) breakdown.push(scriptRow);
 
   const summary: VaterBillingSummary = {
     opsRatePerMinute,
@@ -361,6 +386,7 @@ export async function getVaterBillingSummary(scope: VaterBillingScope): Promise<
     totalUsd,
     paidUsd,
     dueUsd,
+    scriptUsd: scriptSlice.allUsd,
     breakdown,
     since: buildSince({
       lastPayment,
@@ -369,6 +395,7 @@ export async function getVaterBillingSummary(scope: VaterBillingScope): Promise<
       computeUsd,
       minutes,
       breakdown,
+      scriptUsd: scriptSlice.sinceUsd,
       opsRatePerMinute,
       // The exact population the due is priced on (see dueUsd above), so
       // the "where the $ went" rows are read straight off those cards.
@@ -401,6 +428,8 @@ function buildSince(args: {
   minutes: number;
   breakdown: BreakdownRow[];
   opsRatePerMinute: number;
+  /** New-since-payment (or all-time) script writer / Talk charges. */
+  scriptUsd?: number;
   newStagesFor: (since: Date) => StageMap;
   newMinutesFor: (since: Date) => number;
   /** Stage rows + totals of the videos DELIVERED since the last payment —
@@ -416,6 +445,7 @@ function buildSince(args: {
     lastPayment, dueUsd, computeUsd, opsUsd, breakdown,
     opsRatePerMinute, newStagesFor, newMinutesFor, deliveredSince,
   } = args;
+  const scriptUsd = r2(Math.max(0, args.scriptUsd ?? 0));
 
   // Never paid: the whole all-time bill IS the new amount.
   if (!lastPayment) {
@@ -429,7 +459,7 @@ function buildSince(args: {
       basis: "all-time",
       computeUsd,
       opsUsd,
-      totalUsd: r2(computeUsd + opsUsd),
+      totalUsd: r2(computeUsd + opsUsd + scriptUsd),
       carryoverUsd: 0,
       rows,
     };
@@ -490,7 +520,11 @@ function buildSince(args: {
   if (newOps > 0.005) {
     rows.push({ key: "ops", label: "Render operations", usd: newOps });
   }
-  let newTotal = r2(newCompute + newOps);
+  const scriptRow = scriptBreakdownRow(scriptUsd);
+  if (scriptRow && !rows.some((row) => row.key === "script")) {
+    rows.push(scriptRow);
+  }
+  let newTotal = r2(newCompute + newOps + scriptUsd);
 
   if (dueUsd <= 0.005) {
     // Paid up — nothing to explain.
@@ -581,6 +615,7 @@ export async function recordVaterPayment(input: {
     minutes: summary.minutes,
     videos: summary.videos,
     breakdown: summary.breakdown,
+    scriptUsd: summary.scriptUsd,
   };
   // Pre-migration the userId column doesn't exist yet, so writing it would
   // throw. Omit it and let scripts/apply-jelly-tenancy-2026-08-15.ts backfill

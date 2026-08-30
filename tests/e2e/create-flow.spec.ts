@@ -130,6 +130,57 @@ function installMockApi(
       }, 201));
     }
 
+    const talkScript = path.match(/^\/api\/vater\/youtube\/([^/]+)\/talk-script$/);
+    if (talkScript && talkScript[1] === PROJECT_ID && method === "POST" && state.project) {
+      const b = body();
+      if (b.dryRun === true) {
+        return route.fulfill(json({
+          dryRun: true,
+          quote: { model: b.model ?? "sonnet", billedCents: 8, providerCostCents: 6, inputTokens: 500, outputTokens: 200, markup: 1.3, apiId: "claude-sonnet-5" },
+        }));
+      }
+      const reply = "Tightened the open and kept your facts.";
+      const revisedScript = `${MOCK_SCRIPT} Claude applied a sharper opening.`;
+      const charge = {
+        at: new Date().toISOString(),
+        model: b.model ?? "sonnet",
+        apiId: "claude-sonnet-5",
+        fidelity: b.fidelity ?? "balanced",
+        quotedCents: 8,
+        billedCents: 9,
+        providerCostCents: 7,
+        inputTokens: 520,
+        outputTokens: 210,
+        usageId: "usage_talk_1",
+        revised: true,
+      };
+      const priorChat = (state.project.scriptMeta as { chat?: { turns?: unknown[] } } | null)?.chat;
+      const priorTurns = Array.isArray(priorChat?.turns) ? priorChat.turns : [];
+      state.project = {
+        ...state.project,
+        scriptMeta: {
+          ...((state.project.scriptMeta as object) ?? {}),
+          chat: {
+            lastCharge: charge,
+            turns: [
+              ...priorTurns,
+              { role: "user", text: String(b.message ?? ""), at: charge.at },
+              { role: "assistant", text: reply, at: charge.at, billedCents: 9, revised: true },
+            ],
+          },
+        },
+        updatedAt: new Date().toISOString(),
+      };
+      return route.fulfill(json({
+        project: state.project,
+        quote: { model: charge.model, billedCents: charge.quotedCents, providerCostCents: 6, inputTokens: 500, outputTokens: 200, markup: 1.3, apiId: charge.apiId },
+        billed: { model: charge.model, billedCents: charge.billedCents, providerCostCents: charge.providerCostCents, inputTokens: charge.inputTokens, outputTokens: charge.outputTokens, markup: 1.3, apiId: charge.apiId },
+        charge,
+        reply,
+        revisedScript,
+      }, 201));
+    }
+
     const m = path.match(/^\/api\/vater\/youtube\/([^/]+)(?:\/([^/]+))?$/);
     if (m && m[1] === PROJECT_ID && !state.project) {
       return route.fulfill(json({ error: "Project not found" }, 404));
@@ -384,6 +435,41 @@ test.describe("create flow (mocked API)", () => {
     await expect(screen).toHaveAttribute("data-step", "5", { timeout: 20_000 });
     await expect(page.getByTestId("script-billed")).toContainText(/charged \$0\.14/);
     expect(state.project?.scriptMeta && (state.project.scriptMeta as { writer?: { billedCents?: number } }).writer?.billedCents).toBe(14);
+  });
+
+  test("Review has Talk to Claude; quote before send; Apply is free undo", async ({ page }) => {
+    await page.context().addCookies(user!.cookies);
+    const state: { project: MockProject | null } = {
+      project: mockProject({
+        id: PROJECT_ID,
+        status: "awaiting_script_approval",
+        script: MOCK_SCRIPT,
+        transcript: MOCK_TRANSCRIPT,
+        flowStep: 5,
+        scriptVersions: [{ ts: new Date().toISOString(), source: "generated", script: MOCK_SCRIPT }],
+      }),
+    };
+    await installMockApi(page, state);
+
+    await landOnStudio(page, `#r=create&s=5&p=${PROJECT_ID}`);
+    const screen = page.getByTestId("create-screen");
+    await expect(screen).toHaveAttribute("data-step", "5");
+    await expect(page.getByTestId("talk-to-claude")).toBeVisible();
+    await expect(page.getByTestId("talk-to-claude")).toContainText(/Talk is billed per send/);
+    await expect(page.getByTestId("talk-quote")).toContainText(/≈ \$/);
+    await expect(page.getByTestId("talk-to-claude")).not.toContainText(/\+30%/);
+    await expect(page.getByTestId("talk-to-claude")).not.toContainText(/markup/i);
+
+    await page.getByTestId("talk-message").fill("Tighten the hook.");
+    await page.getByTestId("talk-send").click();
+    await expect(page.getByTestId("talk-billed")).toContainText(/estimate \$0\.08 · charged \$0\.09/);
+    await expect(page.getByTestId("talk-apply")).toBeVisible();
+    await expect(page.getByTestId("review-script")).toHaveValue(MOCK_SCRIPT);
+
+    await page.getByTestId("talk-apply").click();
+    await expect(page.getByTestId("review-script")).toHaveValue(/sharper opening/);
+    await page.getByTestId("script-undo").click();
+    await expect(page.getByTestId("review-script")).toHaveValue(MOCK_SCRIPT);
   });
 
   test("Force Kill on a scripting row lands on empty step 1", async ({ page }) => {

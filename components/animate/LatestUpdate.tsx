@@ -17,6 +17,7 @@ import * as React from 'react';
 import { JELLY_TOKENS } from './tokens';
 import { useTheme, useRoute } from './theme-context';
 import { useTier } from './tier-context';
+import { VATER_BILLING_CHANGED_EVENT } from '@/lib/vater/billing/client-refresh';
 
 const SEEN_KEY = 'vater-latest-seen-id';
 /* "New / live" is CYAN in the cinema language — the same colour as the
@@ -60,6 +61,7 @@ interface VaterBilling {
   totalUsd: number;
   paidUsd?: number;
   dueUsd?: number;
+  scriptUsd?: number;
   breakdown?: BreakdownRow[];
   since?: {
     from: string | null;
@@ -85,6 +87,12 @@ export function useVaterLatest(): LatestPayload | null {
   // the cost pill sat on "—" forever. Skip the fetch entirely.
   const { capabilities } = useTier();
   const allowed = capabilities.latestCosts;
+  const [tick, setTick] = React.useState(0);
+  React.useEffect(() => {
+    const onChange = (): void => setTick((n) => n + 1);
+    window.addEventListener(VATER_BILLING_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(VATER_BILLING_CHANGED_EVENT, onChange);
+  }, []);
   React.useEffect(() => {
     if (!allowed) {
       setData(null);
@@ -104,7 +112,7 @@ export function useVaterLatest(): LatestPayload | null {
     return () => {
       cancelled = true;
     };
-  }, [allowed]);
+  }, [allowed, tick]);
   return data;
 }
 

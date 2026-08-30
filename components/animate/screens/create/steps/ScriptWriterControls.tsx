@@ -30,7 +30,9 @@ import {
 import { WORDS_PER_MINUTE } from '@/lib/vater/youtube-types';
 import { BillingBlockModal, BillingBlockedError, type BillingBlockReason, type BillingBlockContext } from '../../editor/BillingBlock';
 import { useCreateFlow } from '../create-context';
+import { notifyVaterBillingChanged } from '@/lib/vater/billing/client-refresh';
 import { createApi, errorMessage, type CreateProject } from '../create-api';
+import { TalkToClaude } from './TalkToClaude';
 import { FieldLabel, ErrorNote, InfoNote, inputStyle, wordsIn } from './step-ui';
 
 const FALLBACK_RULES_HINT =
@@ -48,6 +50,9 @@ export interface ScriptWriterControlsProps {
   draft: string;
   disabled?: boolean;
   onGenerated: (project: CreateProject) => void;
+  /** Review step only — Talk to Claude about the script in the box. */
+  enableTalk?: boolean;
+  onApplyTalkScript?: (script: string) => void;
 }
 
 export function ScriptWriterControls({
@@ -55,6 +60,8 @@ export function ScriptWriterControls({
   draft,
   disabled = false,
   onGenerated,
+  enableTalk = false,
+  onApplyTalkScript,
 }: ScriptWriterControlsProps): React.ReactElement {
   const { t } = useTheme();
   const { email } = useTier();
@@ -116,6 +123,7 @@ export function ScriptWriterControls({
       if (data.project) {
         onGenerated(data.project);
         flow.adopt(data.project);
+        notifyVaterBillingChanged();
       }
     } catch (err) {
       if (err instanceof BillingBlockedError) {
@@ -252,6 +260,17 @@ export function ScriptWriterControls({
           </InfoNote>
         )}
         {error && <ErrorNote>{error}</ErrorNote>}
+
+        {enableTalk && onApplyTalkScript && (
+          <TalkToClaude
+            project={project}
+            draft={draft}
+            model={model}
+            fidelity={fidelity}
+            disabled={locked}
+            onApplyScript={onApplyTalkScript}
+          />
+        )}
       </div>
       <BillingBlockModal reason={block} context={blockCtx} projectId={project.id} onClose={() => setBlock(null)} />
     </>

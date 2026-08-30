@@ -8,8 +8,10 @@ import {
   scriptWriterEffort,
   scriptWriterMaxTokens,
   shouldRetryEmptyScript,
+  talkScriptWithClaude,
   writerBlockTypes,
 } from "./script-writer-run";
+import { SCRIPT_CHAT_REPLY_MARK, SCRIPT_CHAT_SCRIPT_MARK } from "./script-chat";
 
 test("max_tokens is script-out plus a thinking cushion, not the old 16k cap", () => {
   // 10-minute script (~1500 words): old formula was ~3300 and thinking ate it.
@@ -108,6 +110,82 @@ test("empty after retry throws customer empty-script with stop_reason in detail"
       assert.match(err.detail, /stop_reason=max_tokens/);
       assert.match(err.detail, /blocks=thinking,thinking/);
       assert.match(err.detail, /tokens=10\+16000/);
+      return true;
+    },
+  );
+});
+
+test("talk turn uses effort:low, retries thinking-only max_tokens, and parses Apply script", async () => {
+  const calls: Array<{ max_tokens: number; effort?: string }> = [];
+  const talked = await talkScriptWithClaude(
+    {
+      model: "fable",
+      script: JOB.source,
+      message: "Tighten the hook.",
+      history: [],
+      fidelity: "balanced",
+      title: "Markets",
+      rules: "Speak plainly.",
+    },
+    {
+      createMessage: async (body) => {
+        const effort = body.output_config?.effort ?? undefined;
+        calls.push({ max_tokens: body.max_tokens, effort: effort ?? undefined });
+        assert.equal(body.thinking && "type" in body.thinking ? body.thinking.type : "", "adaptive");
+        if (calls.length === 1) {
+          return {
+            content: [{ type: "thinking" }],
+            stop_reason: "max_tokens",
+            usage: { input_tokens: 400, output_tokens: 2000 },
+          };
+        }
+        return {
+          content: [
+            { type: "thinking" },
+            {
+              type: "text",
+              text:
+                `${SCRIPT_CHAT_REPLY_MARK}\nTightened.\n${SCRIPT_CHAT_SCRIPT_MARK}\n` +
+                `${JOB.source} A sharper open.`,
+            },
+          ],
+          stop_reason: "end_turn",
+          usage: { input_tokens: 900, output_tokens: 600 },
+        };
+      },
+    },
+  );
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0]!.effort, "low");
+  assert.equal(talked.reply, "Tightened.");
+  assert.ok(talked.revisedScript);
+  assert.match(talked.revisedScript!, /sharper open/);
+  assert.ok(talked.actual.billedCents >= 5);
+});
+
+test("talk refusal is not billed — throws before a charge", async () => {
+  await assert.rejects(
+    () =>
+      talkScriptWithClaude(
+        {
+          model: "sonnet",
+          script: JOB.source,
+          message: "hello",
+          history: [],
+          fidelity: "balanced",
+          rules: "Speak plainly.",
+        },
+        {
+          createMessage: async () => ({
+            content: [{ type: "refusal" }],
+            stop_reason: "refusal",
+            usage: { input_tokens: 10, output_tokens: 4 },
+          }),
+        },
+      ),
+    (err: unknown) => {
+      assert.ok(err instanceof ScriptWriterError);
+      assert.match(err.message, /declined/);
       return true;
     },
   );
