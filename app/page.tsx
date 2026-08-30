@@ -14,6 +14,10 @@ import { HpCta } from "@/components/homepage/hp-cta";
 import { HpNewsletter } from "@/components/homepage/hp-newsletter";
 import { HpFooter } from "@/components/homepage/hp-footer";
 
+/* auth() → Prisma session adapter. First SSG worker is usually `/`. */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function Home() {
   const session = await auth();
   const isAuthenticated = Boolean(session?.user?.id);

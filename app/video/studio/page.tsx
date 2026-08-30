@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { StudioClient } from "./studio-client";
 import { StudioLanding } from "./studio-landing";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
   .split(",")
   .map((e) => e.trim().toLowerCase())

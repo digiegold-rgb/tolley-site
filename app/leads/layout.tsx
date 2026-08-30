@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { withPrismaTimeout } from "@/lib/prisma-url";
 import LeadsSidebar from "@/components/leads/LeadsSidebar";
 import LeadsTopbar from "@/components/leads/LeadsTopbar";
 import LeadsCommandProvider from "@/components/leads/LeadsCommandProvider";
@@ -17,6 +18,13 @@ export const metadata: Metadata = {
   title: "T-Agent Leads | Tolley",
   robots: { index: false, follow: false },
 };
+
+/* This layout always calls auth() and prisma.listing.count() — even for
+ * signed-out visitors. Several children are ISR (revalidate 60/300/600), so
+ * 1.16's SSG workers sat on Neon at 0/655. Do not prerender this tree.
+ * Root force-dynamic is what hung 1.17 at collect-page-data; mark here. */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 /**
  * T-Agent shell. Phase 2: sidebar + topbar + content + optional right rail.
@@ -39,15 +47,18 @@ export default async function LeadsLayout({
   let smsLimit: number | undefined;
 
   if (userId) {
-    const sub = await prisma.leadSubscriber.findUnique({
-      where: { userId },
-      select: {
-        tier: true,
-        status: true,
-        smsUsed: true,
-        smsLimit: true,
-      },
-    });
+    const sub = await withPrismaTimeout(
+      prisma.leadSubscriber.findUnique({
+        where: { userId },
+        select: {
+          tier: true,
+          status: true,
+          smsUsed: true,
+          smsLimit: true,
+        },
+      }),
+      null,
+    );
     if (sub?.status === "active") {
       tier = sub.tier;
       smsUsed = sub.smsUsed;
@@ -56,19 +67,23 @@ export default async function LeadsLayout({
   }
 
   // Latest listing sync snapshot for the topbar. Best-effort — if the table
-  // is empty this is just null.
+  // is empty this is just null. listing.count() with no timeout is what sat
+  // SSG workers at 0/655; fail the chrome stats fast, never the deploy.
   let lastSyncAt: string | null = null;
   let totalListings: number | undefined;
   try {
-    const [latest, count] = await Promise.all([
-      prisma.listing.findFirst({
-        orderBy: { updatedAt: "desc" },
-        select: { updatedAt: true },
-      }),
-      prisma.listing.count(),
-    ]);
+    const [latest, count] = await withPrismaTimeout(
+      Promise.all([
+        prisma.listing.findFirst({
+          orderBy: { updatedAt: "desc" },
+          select: { updatedAt: true },
+        }),
+        prisma.listing.count(),
+      ]),
+      [null, undefined] as const,
+    );
     if (latest?.updatedAt) lastSyncAt = latest.updatedAt.toISOString();
-    totalListings = count;
+    if (typeof count === "number") totalListings = count;
   } catch {
     // table may not exist in certain preview branches — ignore
   }

@@ -1,0 +1,51 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { APP_VERSION, CHANGELOG } from "./changelog";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+
+function readApp(rel: string): string {
+  return readFileSync(join(root, rel), "utf8");
+}
+
+const FORCE_DYNAMIC = /export const dynamic\s*=\s*["']force-dynamic["']/;
+
+test("changelog 1.18 is the current shipped version", () => {
+  assert.equal(APP_VERSION, "1.18");
+  assert.equal(CHANGELOG[0]?.version, "1.18");
+});
+
+test("root layout is not force-dynamic — that hung 1.17 collect-page-data", () => {
+  const src = readApp("app/layout.tsx");
+  assert.equal(FORCE_DYNAMIC.test(src), false);
+  assert.equal(/export const revalidate\s*=\s*0/.test(src), false);
+});
+
+test("session/DB trees that hang SSG are marked at the route, not root", () => {
+  for (const file of [
+    "app/leads/layout.tsx",
+    "app/page.tsx",
+    "app/food/layout.tsx",
+    "app/video/page.tsx",
+    "app/video/studio/page.tsx",
+    "app/animate/layout.tsx",
+  ]) {
+    assert.match(readApp(file), FORCE_DYNAMIC, file);
+  }
+});
+
+test("Force Kill confirm copy is unchanged", () => {
+  const src = readApp("components/animate/screens/create/ForceKillControl.tsx");
+  assert.match(
+    src,
+    /This will kill all current and future steps\. You will need to regenerate from step one\./,
+  );
+});
+
+test("staticPageGenerationTimeout stays 60 so leftover SSG cannot occupy the slot", () => {
+  const src = readApp("next.config.ts");
+  assert.match(src, /staticPageGenerationTimeout:\s*60/);
+});
