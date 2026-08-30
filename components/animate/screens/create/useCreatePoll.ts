@@ -16,7 +16,7 @@
 import * as React from 'react';
 import { deriveCreateStep } from '@/lib/vater/create-steps';
 import { IN_FLIGHT_STATUSES, type YouTubeProjectStatus } from '@/lib/vater/youtube-status';
-import { createApi, errorMessage, type CreateProject } from './create-api';
+import { ApiError, createApi, errorMessage, type CreateProject } from './create-api';
 
 export interface CreatePollState {
   project: CreateProject | null;
@@ -38,6 +38,8 @@ export function useCreatePoll(projectId: string | null | undefined, intervalMs =
   const [polling, setPolling] = React.useState(false);
   const alive = React.useRef(true);
   const projectRef = React.useRef<CreateProject | null>(null);
+  const idRef = React.useRef(projectId);
+  idRef.current = projectId;
 
   const setProject = React.useCallback((p: CreateProject | null) => {
     projectRef.current = p;
@@ -52,17 +54,23 @@ export function useCreatePoll(projectId: string | null | undefined, intervalMs =
   }, []);
 
   const refresh = React.useCallback(async (): Promise<void> => {
-    if (!projectId) return;
+    const id = idRef.current;
+    if (!id) return;
     setPolling(true);
     try {
       let next: CreateProject | null = null;
-      if (onDgx(projectRef.current)) next = await createApi.pollProject(projectId);
-      if (!next) next = await createApi.getProject(projectId);
-      if (!alive.current) return;
+      if (onDgx(projectRef.current)) next = await createApi.pollProject(id);
+      if (!next) next = await createApi.getProject(id);
+      if (!alive.current || idRef.current !== id) return;
       setProject(next);
       setError(null);
     } catch (err) {
-      if (!alive.current) return;
+      if (!alive.current || idRef.current !== id) return;
+      if (err instanceof ApiError && err.status === 404) {
+        setProject(null);
+        setError(null);
+        return;
+      }
       setError(errorMessage(err, 'Lost touch with the studio for a moment — still trying.'));
     } finally {
       if (alive.current) {
@@ -70,7 +78,7 @@ export function useCreatePoll(projectId: string | null | undefined, intervalMs =
         setLoading(false);
       }
     }
-  }, [projectId, setProject]);
+  }, [setProject]);
 
   // Load on id change — unless a step already handed us this exact row.
   React.useEffect(() => {

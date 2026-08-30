@@ -38,7 +38,10 @@ const SOURCE_URL = "https://www.youtube.com/watch?v=e2e-mock-video";
 const PROJECT_ID = "proj_flow_e2e";
 
 /** The API the create flow talks to, backed by one mutable row. */
-function installMockApi(page: Page, state: { project: MockProject | null; finishRender?: boolean }) {
+function installMockApi(
+  page: Page,
+  state: { project: MockProject | null; finishRender?: boolean; holdAsync?: boolean; cancelHits?: number; deleteHits?: number },
+) {
   const plus7d = () => new Date(Date.now() + 7 * 864e5).toISOString();
   return page.route(/\/api\/vater\//, async (route: Route) => {
     const req = route.request();
@@ -128,6 +131,9 @@ function installMockApi(page: Page, state: { project: MockProject | null; finish
     }
 
     const m = path.match(/^\/api\/vater\/youtube\/([^/]+)(?:\/([^/]+))?$/);
+    if (m && m[1] === PROJECT_ID && !state.project) {
+      return route.fulfill(json({ error: "Project not found" }, 404));
+    }
     if (m && m[1] === PROJECT_ID && state.project) {
       const sub = m[2];
       if (!sub && method === "GET") return route.fulfill(json({ project: state.project }));
@@ -137,7 +143,7 @@ function installMockApi(page: Page, state: { project: MockProject | null; finish
       }
       if (sub === "poll") {
         // The DGX "finishes" whatever is running on the first poll.
-        if (state.project.status === "scripting") {
+        if (state.project.status === "scripting" && !state.holdAsync) {
           state.project = {
             ...state.project,
             status: "awaiting_script_approval",
@@ -187,6 +193,21 @@ function installMockApi(page: Page, state: { project: MockProject | null; finish
             warnings: [],
           }),
         );
+      }
+      if (sub === "cancel" && method === "POST") {
+        state.cancelHits = (state.cancelHits ?? 0) + 1;
+        state.project = {
+          ...state.project,
+          status: state.project.transcript ? "transcribed" : "failed",
+          autopilotJobId: null,
+          updatedAt: new Date().toISOString(),
+        };
+        return route.fulfill(json({ ok: true, dgx: { ok: true, wasRunning: false }, project: state.project }));
+      }
+      if (!sub && method === "DELETE") {
+        state.deleteHits = (state.deleteHits ?? 0) + 1;
+        state.project = null;
+        return route.fulfill(json({ ok: true }));
       }
       if (sub === "estimate") return route.fulfill(json({ draftUsd: 1.23, fullUsd: 2.34 }));
       if (sub === "produce" && method === "POST") {
@@ -363,5 +384,48 @@ test.describe("create flow (mocked API)", () => {
     await expect(screen).toHaveAttribute("data-step", "5", { timeout: 20_000 });
     await expect(page.getByTestId("script-billed")).toContainText(/charged \$0\.14/);
     expect(state.project?.scriptMeta && (state.project.scriptMeta as { writer?: { billedCents?: number } }).writer?.billedCents).toBe(14);
+  });
+
+  test("Force Kill on a scripting row lands on empty step 1", async ({ page }) => {
+    await page.context().addCookies(user!.cookies);
+    const state: { project: MockProject | null; holdAsync: boolean; cancelHits: number; deleteHits: number } = {
+      holdAsync: true,
+      cancelHits: 0,
+      deleteHits: 0,
+      project: mockProject({
+        id: PROJECT_ID,
+        status: "scripting",
+        sourceTitle: "Stuck writer",
+        transcript: MOCK_TRANSCRIPT,
+        flowStep: 4,
+        autopilotJobId: "job_stale",
+        stepDetails: { phase: "scripting", jobId: "job_stale", logs: ["12:00:00 scripting: writing…"] },
+      }),
+    };
+    await installMockApi(page, state);
+
+    await landOnStudio(page, `#r=create&p=${PROJECT_ID}`);
+    const screen = page.getByTestId("create-screen");
+    await expect(screen).toHaveAttribute("data-step", "4");
+    await expect(screen).toHaveAttribute("data-kind", "async");
+    await expect(page.getByTestId("writing-pulse")).toBeVisible();
+    const kill = page.getByTestId("force-kill");
+    await expect(kill).toBeVisible();
+    await expect(kill).toContainText("Force Kill");
+
+    await kill.click();
+    const tab = page.getByTestId("force-kill-tab");
+    await expect(tab).toBeVisible();
+    await expect(tab).toContainText("This will kill all current and future steps");
+    await expect(tab).toContainText("You will need to regenerate from step one");
+
+    await page.getByTestId("force-kill-confirm").click();
+    await expect(screen).toHaveAttribute("data-step", "1");
+    await expect(page.getByTestId("path-own-script")).toBeVisible();
+    await expect(page.getByTestId("force-kill")).toHaveCount(0);
+    await expect(page).toHaveURL(/#r=create&s=1$/);
+    expect(state.project).toBeNull();
+    expect(state.cancelHits).toBe(1);
+    expect(state.deleteHits).toBe(1);
   });
 });

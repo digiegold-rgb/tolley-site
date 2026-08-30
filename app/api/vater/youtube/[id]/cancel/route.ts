@@ -1,16 +1,20 @@
 /**
  * POST /api/vater/youtube/[id]/cancel
  *
- * Kill-button flow for an in-flight project. Does two things:
+ * Stop the DGX worker for an in-flight project. Does two things:
  *
  *   1. Tells the DGX worker to stop via `autopilot.cancelJob(autopilotJobId)`.
  *      The worker flips its status to 'cancelled' on the next stage boundary.
- *   2. Rolls the Prisma project status back to 'transcribed' so the editor
- *      re-renders the context form — user can tweak goal/duration/style
- *      and re-kick the pipeline without redoing fetch+transcribe.
+ *      A leftover `scripting`/`queued` row with no live job (DGX 404, no
+ *      `autopilotJobId`, unreachable worker) is treated as already stopped
+ *      so Force Kill can still DELETE the row.
+ *   2. Rolls the Prisma project status back to 'transcribed' (or `failed`
+ *      with no transcript). That is NOT the customer-facing Force Kill
+ *      outcome — Create then DELETE `/api/vater/youtube/[id]` and lands
+ *      on a fresh step 1. Soft-reset to transcribed is the old cancel.
  *
  * If the project has no autopilot job (e.g., scripting never actually started),
- * we still flip the local status back so the UI returns to a sensible state.
+ * we still flip the local status so older kill buttons keep a sensible state.
  */
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
@@ -71,16 +75,18 @@ export async function POST(_req: Request, ctx: Ctx) {
       });
       dgxResult = { ok: r.ok, wasRunning: r.wasRunning };
     } catch (err) {
-      if (err instanceof AutopilotError) {
-        // 404 just means the job registry has no record — that's fine, it
-        // may have been cleaned up or crashed. Treat as "already stopped".
-        if (err.status === 404) {
-          dgxResult = { ok: true, wasRunning: false };
-        } else {
-          dgxResult = { ok: false, upstream: err.status, error: err.message };
-        }
+      if (err instanceof AutopilotError && err.status === 404) {
+        // Job registry has no record — cleaned up or crashed. Already stopped.
+        dgxResult = { ok: true, wasRunning: false };
       } else {
-        throw err;
+        // Leftover scripting/queued with a dead or unreachable worker must
+        // still reset so Force Kill can DELETE. Do not 500 the request.
+        dgxResult = {
+          ok: true,
+          wasRunning: false,
+          ...(err instanceof AutopilotError ? { upstream: err.status } : {}),
+          error: err instanceof Error ? err.message : "dgx unreachable",
+        };
       }
     }
   } else {

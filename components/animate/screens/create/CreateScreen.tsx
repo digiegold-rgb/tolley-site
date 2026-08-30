@@ -29,6 +29,7 @@ import { useCreatePoll } from './useCreatePoll';
 import { createApi, type CreateProject, type StyleSummary } from './create-api';
 import { CreateFlowContext, type CreateFlowValue } from './create-context';
 import { CreateStepper } from './CreateStepper';
+import { ForceKillControl } from './ForceKillControl';
 import { SourceStep } from './steps/SourceStep';
 import { TranscriptStep } from './steps/TranscriptStep';
 import { LengthStep } from './steps/LengthStep';
@@ -162,6 +163,17 @@ export function CreateScreen(): React.ReactElement {
     [setEditorStep],
   );
 
+  /** Force Kill: dead row + `#r=create&s=1` with no `p`. No yank-forward. */
+  const startOver = React.useCallback(() => {
+    lastDerived.current = null;
+    lastKind.current = null;
+    setProject(null);
+    setPendingUrl('');
+    setSelectedProjectId(null);
+    setEditorStep(1);
+    refreshProgress();
+  }, [setProject, setSelectedProjectId, setEditorStep]);
+
   const value = React.useMemo<CreateFlowValue>(
     () => ({
       project,
@@ -252,9 +264,14 @@ export function CreateScreen(): React.ReactElement {
         </aside>
         <section style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <MicroLabel tone="cyan">
-              STUDIO — CREATE · STEP {viewStep} OF {CREATE_STEP_COUNT}
-            </MicroLabel>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <MicroLabel tone="cyan">
+                STUDIO — CREATE · STEP {viewStep} OF {CREATE_STEP_COUNT}
+              </MicroLabel>
+              {selectedProjectId && (
+                <ForceKillControl projectId={selectedProjectId} onKilled={startOver} />
+              )}
+            </div>
             <h2
               data-testid="create-step-title"
               style={{
