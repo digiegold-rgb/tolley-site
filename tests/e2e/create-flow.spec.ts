@@ -409,7 +409,7 @@ test.describe("create flow (mocked API)", () => {
     await expect(screen).toHaveAttribute("data-step", "4");
     await expect(screen).toHaveAttribute("data-kind", "async");
     await expect(page.getByTestId("writing-pulse")).toBeVisible();
-    const kill = page.getByTestId("force-kill");
+    const kill = screen.getByTestId("force-kill");
     await expect(kill).toBeVisible();
     await expect(kill).toContainText("Force Kill");
 
@@ -423,6 +423,63 @@ test.describe("create flow (mocked API)", () => {
     await expect(screen).toHaveAttribute("data-step", "1");
     await expect(page.getByTestId("path-own-script")).toBeVisible();
     await expect(page.getByTestId("force-kill")).toHaveCount(0);
+    await expect(page.getByTestId("header-force-kill")).toHaveCount(0);
+    await expect(page).toHaveURL(/#r=create&s=1$/);
+    expect(state.project).toBeNull();
+    expect(state.cancelHits).toBe(1);
+    expect(state.deleteHits).toBe(1);
+  });
+
+  test("generation header shows Force Kill when p= is set; confirm lands on empty step 1", async ({ page }) => {
+    await page.context().addCookies(user!.cookies);
+    const state: { project: MockProject | null; holdAsync: boolean; cancelHits: number; deleteHits: number } = {
+      holdAsync: true,
+      cancelHits: 0,
+      deleteHits: 0,
+      project: mockProject({
+        id: PROJECT_ID,
+        status: "scripting",
+        sourceTitle: "Header kill",
+        transcript: MOCK_TRANSCRIPT,
+        flowStep: 4,
+        autopilotJobId: "job_stale",
+        stepDetails: { phase: "scripting", jobId: "job_stale", logs: ["12:00:00 scripting: writing…"] },
+      }),
+    };
+    await installMockApi(page, state);
+
+    await landOnStudio(page, `#r=create&p=${PROJECT_ID}`);
+    const headerKill = page.getByTestId("header-force-kill");
+    await expect(headerKill).toBeVisible();
+    await expect(headerKill.getByTestId("force-kill")).toContainText("Force Kill");
+
+    await page.getByTestId("nav-progress").click();
+    await expect(page).toHaveURL(new RegExp(`p=${PROJECT_ID}`));
+    await expect(headerKill).toBeVisible();
+
+    await page.evaluate((id) => {
+      window.location.hash = `#r=library&p=${id}`;
+    }, PROJECT_ID);
+    await expect(page).toHaveURL(new RegExp(`r=library.*p=${PROJECT_ID}`));
+    await expect(headerKill).toBeVisible();
+
+    await page.getByTestId("nav-pricing").click();
+    await expect(headerKill).toHaveCount(0);
+
+    await page.evaluate((id) => {
+      window.location.hash = `#r=create&p=${id}`;
+    }, PROJECT_ID);
+    await expect(headerKill).toBeVisible();
+    await headerKill.getByTestId("force-kill").click();
+    const tab = page.getByTestId("force-kill-tab");
+    await expect(tab).toBeVisible();
+    await expect(tab).toContainText("This will kill all current and future steps");
+    await expect(tab).toContainText("You will need to regenerate from step one");
+    await page.getByTestId("force-kill-confirm").click();
+
+    await expect(page.getByTestId("create-screen")).toHaveAttribute("data-step", "1");
+    await expect(page.getByTestId("path-own-script")).toBeVisible();
+    await expect(page.getByTestId("header-force-kill")).toHaveCount(0);
     await expect(page).toHaveURL(/#r=create&s=1$/);
     expect(state.project).toBeNull();
     expect(state.cancelHits).toBe(1);

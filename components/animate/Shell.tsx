@@ -78,6 +78,7 @@ import type { Brand } from './brands';
 import type { Product } from '@/lib/vater/product';
 import ListingWizard from './screens/listing/ListingWizard';
 import ListingLibrary from './screens/listing/ListingLibrary';
+import { isAnimateGenerationRoute } from '@/lib/vater/generation-routes';
 
 /** Where the light/dark choice lives between visits. */
 const THEME_KEY = 'jelly.theme';
@@ -234,15 +235,14 @@ function ShellInner({ initialRoute }: ShellProps): React.ReactElement {
     });
   }, []);
 
-  // Wrapping setRoute so leaving the editor / styles routes clears the
-  // selected ID (otherwise switching to Dashboard while on a style would
-  // leave a stale id floating around when the user comes back).
+  // Wrapping setRoute so leaving generation screens / styles clears the
+  // selected ID. Do NOT clear `selectedProjectId` when moving among
+  // create / progress / library / editor / video-editor / script-review /
+  // animation / autopilot / recent — the header Force Kill still needs it.
   const setRoute = React.useCallback((next: string) => {
     setRouteState((prev) => {
       if (prev === next) return prev;
-      const wasEditor = prev === 'editor' || prev === 'video-editor' || prev === 'create';
-      const goingEditor = next === 'editor' || next === 'video-editor' || next === 'create';
-      if (wasEditor && !goingEditor) setSelectedProjectId(null);
+      if (!isAnimateGenerationRoute(next)) setSelectedProjectId(null);
 
       const wasStyles = prev === 'styles-edit';
       const goingStyles = next === 'styles-edit';
