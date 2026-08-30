@@ -34,7 +34,13 @@ import * as React from 'react';
 
 import { planEstimate } from '@/lib/vater/billing/estimate';
 import { usePricingRates } from '@/lib/vater/use-estimate';
+import { BETA_MAX_SECONDS } from '@/lib/vater/script-limits';
 import { JELLY_TOKENS } from '../tokens';
+
+/** Public beta length: default 5:00, hard cap 9:00. Do not quote a 20-minute
+ *  video the beta cannot render. */
+const BETA_MAX_MINUTES = Math.round(BETA_MAX_SECONDS / 60);
+const BETA_DEFAULT_MINUTES = 5;
 
 /* ── the one competitor line ───────────────────────────────────────────────
  * Published subscription price, read off the vendor's own pricing page on the
@@ -159,7 +165,7 @@ export function PricingCalculator({
   fontFamily = JELLY_TOKENS.font,
 }: PricingCalculatorProps): React.ReactElement {
   const [videosPerMonth, setVideosPerMonth] = React.useState(8);
-  const [minutesPerVideo, setMinutesPerVideo] = React.useState(6);
+  const [minutesPerVideo, setMinutesPerVideo] = React.useState(BETA_DEFAULT_MINUTES);
   /* Motion starts at 0 on purpose. Still scenes are what the published
    * "$1–7 a video" range on this page was measured on, so the calculator's
    * opening number has to agree with the sentence above it. Motion is the
@@ -227,13 +233,16 @@ export function PricingCalculator({
           label="Minutes per video"
           value={minutesPerVideo}
           min={1}
-          max={20}
+          max={BETA_MAX_MINUTES}
           readout={`${minutesPerVideo} min`}
           accent={palette.accent}
           text={palette.text}
           textSecondary={palette.textSecondary}
           onChange={setMinutesPerVideo}
         />
+        <div style={{ fontSize: 12, color: palette.textSecondary, marginTop: -10 }}>
+          Beta videos default to 5:00 and cap at 9:00.
+        </div>
         <Slider
           id="jcalc-motion"
           label="Scenes with motion"

@@ -19,6 +19,7 @@ import {
 import { queueVaterEvent } from "@/lib/vater/events";
 import { grantStarterCredit } from "@/lib/vater/billing/ledger";
 import { isStudioPath, productForPath, PRODUCT_NAME, type Product } from "@/lib/vater/product";
+import { mustRedeemInvite } from "@/lib/vater/beta-access";
 import { setAccountOrigin } from "@/lib/vater/listing/agent-profile";
 
 export const runtime = "nodejs";
@@ -30,7 +31,7 @@ type RegisterPayload = {
   termsVersion?: string;
   /** Where signup will land. `/animate…` = Jelly! Studio, `/realestateanimated…` = Listing Studio. */
   callbackUrl?: string;
-  /** Beta invite code — required for Jelly Studio signups. */
+  /** Beta invite code — optional on the Jelly public-beta path; required for Listing Studio. */
   invite?: string;
 };
 
@@ -43,19 +44,16 @@ function isValidEmail(email: string) {
 }
 
 /**
- * Is this a Jelly Studio signup (invite-only) or one of the other lanes
- * (T-Agent leads, Ruthann's Kitchen, a Launchpad claim) that stay open?
+ * Is this a studio signup (Jelly / Listing) or one of the other lanes
+ * (T-Agent leads, Ruthann's Kitchen, a Launchpad claim)?
  *
  * Two independent signals, either of which is enough, because the client
  * controls both: the callbackUrl it will land on, and the studio click-wrap
  * stamp that only the studio form sends.
  *
- * ⚠️ KNOWN LIMIT: registration is a public endpoint, so a caller who strips
- * both fields still gets a User row without an invite. That account is not a
- * back door into the beta — it gets NO VaterAccount row, NO betaInviteId and
- * NO starter credit, so it lands on /animate with nothing entitled. Gating the
- * studio itself on `beta.invited` (exposed by GET /api/vater/me) is the
- * durable fix and belongs with whoever owns BetaAccessBanner.
+ * Jelly Studio is a public beta: a /animate signup gets a VaterAccount and
+ * the promotional grant with no invite. Listing Studio still requires a code
+ * (mustRedeemInvite). A supplied code is always validated.
  */
 function isStudioSignup(payload: RegisterPayload): boolean {
   const callbackUrl = typeof payload.callbackUrl === "string" ? payload.callbackUrl : "";
@@ -106,15 +104,15 @@ export async function POST(request: Request) {
       );
     }
 
-    /* Invite gate. Enforced when this is a studio signup, and ALSO whenever a
-     * code was supplied at all — a wrong code must never sail through just
-     * because the caller forgot the callbackUrl.
+    /* Invite gate. Jelly public beta does not require a code. Listing Studio
+     * still does, and a supplied code is always validated — a wrong code must
+     * never sail through just because the Jelly door is open.
      *
      * Pre-migration the BetaInvite table doesn't exist. Enforcing then would
      * mean nobody can sign up between the deploy and the migration, so the
      * gate opens and says so in the log. Once the table lands, it is real. */
     const inviteTableReady = await hasBetaInviteTable();
-    const enforceInvite = (studioSignup || Boolean(inviteCode)) && inviteTableReady;
+    const enforceInvite = mustRedeemInvite(origin, inviteCode) && inviteTableReady;
 
     if (!inviteTableReady && studioSignup) {
       console.warn(
@@ -297,7 +295,7 @@ async function provisionStudioAccount(
           tier: "public",
           unmetered: false,
           invitedBy: inviteId,
-          notes: origin === "realestate" ? "listing studio invite signup" : "beta invite signup",
+          notes: origin === "realestate" ? "listing studio invite signup" : "public beta signup",
         },
         update: {},
       });

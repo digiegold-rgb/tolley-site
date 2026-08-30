@@ -106,7 +106,7 @@ interface ComparisonRow {
   ours?: boolean;
 }
 const COMPARISON: readonly ComparisonRow[] = [
-  { name: "Jelly Studio", rate: "$0.55 – $0.95", note: "stills render · no subscription · no length cap", ours: true },
+  { name: "Jelly Studio", rate: "$0.55 – $0.95", note: "stills render · no subscription · 9-minute cap", ours: true },
   { name: "Zebracat", rate: "$0.50 – $1.30", note: "5-minute cap" },
   { name: "StoryShort", rate: "$0.58 – $1.56", note: "" },
   { name: "NoLang", rate: "$0.76 – $1.00", note: "3-minute cap on Standard" },
@@ -672,8 +672,9 @@ export function AnimateLanding(): React.ReactElement {
                   buy does not expire.
                 </>,
                 <>
-                  No maximum length. Renders are proven clean to just under nine
-                  minutes; past that you are ahead of our QA, not behind a limit.
+                  The beta caps a video at 9:00 and defaults to 5:00. Renders are
+                  proven clean up to just under nine minutes; longer videos come
+                  once the fix-up budget scales with length.
                 </>,
               ].map((node, i) => (
                 <li key={i} style={{ display: "flex", gap: 12, ...LEAD, fontSize: 15.5 }}>

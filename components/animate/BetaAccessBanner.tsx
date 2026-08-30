@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * BetaAccessBanner — the invite-only public beta banner (2026-08-15).
+ * BetaAccessBanner — the public beta banner (2026-08-15; invite-only copy
+ * retired 2026-08-30).
  *
  * Announces the one thing every user needs to know on sight: what a video
  * costs and that nothing recurs. The numbers here must match the landing
@@ -22,7 +23,7 @@ import { JELLY_TOKENS } from './tokens';
 import { useTheme } from './theme-context';
 import { MicroLabel } from './cinema';
 
-const DISMISS_KEY = 'vater-beta-banner-dismissed-v1.3';
+const DISMISS_KEY = 'vater-beta-banner-dismissed-v1.4';
 
 export function BetaAccessBanner(): React.ReactElement | null {
   // useTheme() has a dark default, so this stays correct on /vater/youtube
@@ -76,7 +77,7 @@ export function BetaAccessBanner(): React.ReactElement | null {
       }}
     >
       <MicroLabel tone="violet" as="span" size={10.5} tracking="0.26em">
-        Public beta · invite only
+        Public beta
       </MicroLabel>
       <span>
         Pay only for what you render. No subscription, no commitment, no

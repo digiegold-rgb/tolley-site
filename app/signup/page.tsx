@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { productForPath } from "@/lib/vater/product";
 
 import { auth } from "@/auth";
+import { authPageMetadata } from "@/lib/auth-page-metadata";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { SignupForm } from "@/components/auth/signup-form";
 
@@ -10,9 +12,8 @@ type SignupPageProps = {
     callbackUrl?: string;
     plan?: string;
     claim?: string;
-    /** Beta invite code — read client-side by SignupForm, listed here so the
-     *  page's params type stays honest about the invite-only link shape:
-     *  /signup?callbackUrl=%2Fanimate&invite=CODE */
+    /** Optional leftover / team invite code — read client-side by SignupForm.
+     *  Jelly public beta does not require it. */
     invite?: string;
   }>;
 };
@@ -22,6 +23,11 @@ function resolveCallbackUrl(value: string | undefined) {
     return "/leads/dashboard";
   }
   return value;
+}
+
+export async function generateMetadata({ searchParams }: SignupPageProps): Promise<Metadata> {
+  const params = (await searchParams) || {};
+  return authPageMetadata(resolveCallbackUrl(params.callbackUrl), "signup");
 }
 
 export default async function SignupPage({ searchParams }: SignupPageProps) {
@@ -61,7 +67,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
       : isListing
         ? "Invite-only beta for licensed agents. No subscription — your first staging is covered by a starter credit. You pay per listing."
         : isStudio
-          ? "Invite-only beta. No subscription — start with your promo credit, add a card only when you're ready to render. You pay per video."
+          ? "Public beta. No subscription — a $10 starter credit lands when you put a card on file. Nothing is charged until you spend it. You pay per video."
           : "Set up your credentials to unlock paid T-Agent search.";
 
   const loginHref = claimSlug

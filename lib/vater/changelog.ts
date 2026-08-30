@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.22.2';
+export const APP_VERSION = '1.22.3';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.22.3',
+    date: '2026-08-30',
+    title: 'Public beta signup — no invite code on the ad path',
+    items: [
+      'Create an account from Roll camera or a credit pack with no invite code. Public beta, $10 starter credit on a card on file, no subscription.',
+      'Sign-in and sign-up page titles say Jelly Studio · Tolley.io, not t-agent.',
+      'The pricing calculator and landing copy match the real beta length: default 5:00, cap 9:00.',
+    ],
+  },
   {
     version: '1.22.2',
     date: '2026-08-30',

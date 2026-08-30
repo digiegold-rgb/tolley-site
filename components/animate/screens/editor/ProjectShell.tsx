@@ -624,7 +624,7 @@ export function ProjectShell({
         </div>
       ) : null}
 
-      <Footer />
+      <Footer publicDemo={isDemo} />
     </div>
   );
 }
