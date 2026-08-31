@@ -23,6 +23,7 @@ import { useTheme } from './theme-context';
 import { MicroLabel } from './cinema';
 import { JELLY_TOKENS } from './tokens';
 import { useProduct } from './product-context';
+import { studioSignOutHome } from '@/lib/vater/product';
 
 /** Invite requests go to Jared's real mailbox (tolley.io has no MX). */
 function supportMailto(productName: string): string {
@@ -113,7 +114,7 @@ export function BetaGate(): React.ReactElement | null {
             Already have a code? Sign out and open your invite link
             (tolley.io/signup?…&amp;invite=CODE) with a new email, or reply to
             your invite email and we&apos;ll attach the code to this account.{' '}
-            <button type="button" onClick={() => signOut({ callbackUrl: brand.homePath })} style={{ ...linkStyle, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}>Sign out</button>
+            <button type="button" onClick={() => signOut({ callbackUrl: studioSignOutHome(brand.product) ?? brand.homePath })} style={{ ...linkStyle, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}>Sign out</button>
           </p>
         </div>
       </div>

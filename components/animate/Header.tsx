@@ -31,6 +31,7 @@ import { AnimateSmsOptInPanel } from './AnimateSmsConsent';
 import { ForceKillControl } from './screens/create/ForceKillControl';
 import { refreshProgress } from './ProgressBadgeProvider';
 import { isAnimateGenerationRoute } from '@/lib/vater/generation-routes';
+import { studioSignOutHome } from '@/lib/vater/product';
 
 /** Modal scrim — the ink base at 66%, not a palette hue. */
 const SCRIM = 'rgba(8,7,15,0.66)';
@@ -598,12 +599,14 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
   const { t } = useTheme();
   const { setRoute } = useRoute();
   const { tier } = useTier();
+  const brand = useProduct();
   const [tab, setTab] = React.useState<SettingsTab>('profile');
   const { billing, loading: billingLoading } = useVaterBilling();
   const plan = planSummary(billing, billingLoading);
   const { data: session } = useSession();
   const fullName = session?.user?.name ?? '';
   const email = session?.user?.email ?? '';
+  const signOutHome = studioSignOutHome(brand.product) ?? brand.homePath;
 
   const activeLabel = SETTINGS_TABS.find((it) => it.key === tab)?.label ?? 'Profile';
 
@@ -671,7 +674,7 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
           ))}
           <div style={{ flex: 1 }} />
           <div
-            onClick={() => signOut({ callbackUrl: '/' })}
+            onClick={() => signOut({ callbackUrl: signOutHome })}
             style={{
               padding: '10px 24px',
               color: JELLY_TOKENS.error,

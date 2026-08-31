@@ -66,6 +66,24 @@ export function isStudioPath(path: string | null | undefined): boolean {
   return productForPath(path) !== null;
 }
 
+/**
+ * NextAuth `signOut({ callbackUrl })` landing after a studio session.
+ *
+ * Animate → `/animate` (logged-out public beta homepage). Listing Studio →
+ * `/realestateanimated`. Never `/` — that is the T-Agent / real-estate
+ * homepage and a dead end for signing back into the studio.
+ *
+ * Accepts a Product or the current path/URL. Non-studio paths return null
+ * so other products keep their own sign-out defaults.
+ */
+export function studioSignOutHome(
+  productOrPath: Product | string | null | undefined,
+): string | null {
+  if (isProduct(productOrPath)) return STUDIO_HOME[productOrPath];
+  const product = productForPath(productOrPath);
+  return product ? STUDIO_HOME[product] : null;
+}
+
 /** Normalise an unknown origin value (DB column, cookie, query) to a Product. */
 export function coerceProduct(v: unknown, fallback: Product = "jelly"): Product {
   return isProduct(v) ? v : fallback;
