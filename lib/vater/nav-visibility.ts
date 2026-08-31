@@ -70,6 +70,7 @@ export const NAV_ROUTES: readonly NavRouteDef[] = [
   { id: 'feeds', label: 'RSS Feeds', icon: 'web', minTier: 'public', section: 'primary' },
   { id: 'autopilot', label: 'Autopilot', icon: 'sparkle', minTier: 'owner', section: 'primary' },
   { id: 'publishing', label: 'Publishing', icon: 'upload', minTier: 'public', section: 'primary', products: BOTH },
+  { id: 'socials', label: 'Socials', icon: 'niche', minTier: 'public', section: 'primary', products: BOTH },
   { id: 'animation', label: 'AI Animation', icon: 'image', minTier: 'studio', section: 'primary', stub: true },
   { id: 'analytics', label: 'Analytics', icon: 'niche', minTier: 'public', section: 'primary', stub: true },
   // Creator Models went public 2026-08-20 — a read-only archetype browser is

@@ -1,0 +1,13 @@
+# Example systemd timer for DGX. FILE CONTENTS ONLY — do not enable here.
+# Four times a day; the script is idempotent (dgx:<lane>:<stem> dedupe).
+
+[Unit]
+Description=Run jelly-library-sync four times daily
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:20:00
+Persistent=true
+RandomizedDelaySec=90
+
+[Install]
+WantedBy=timers.target

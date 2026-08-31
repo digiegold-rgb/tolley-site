@@ -73,6 +73,7 @@ model User {
   rssFeeds             VaterRssFeed[]       @relation("UserRssFeeds")
   socialProfile        VaterSocialProfile?
   socialPosts          VaterSocialPost[]
+  socialChannelStats   SocialChannelStat[]
   pushSubscriptions    VaterPushSubscription[]
   driveConnection      VaterDriveConnection?
 }
@@ -141,12 +142,62 @@ model VaterSocialPost {
   scheduledFor   DateTime?
   publishedAt    DateTime?
   lastError      String?
+  /// Drip-scheduler batch id (`drip:<batchId>:<i>` requestId). Same batch
+  /// retry must not double-book — look up this column first.
+  batchId        String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stats          SocialPostStat[]
 
   @@index([userId, createdAt])
   @@index([projectId])
+  @@index([userId, batchId])
+}
+
+/// Daily channel snapshot for /animate Socials (Zernio analytics collector).
+/// `day` is UTC midnight. Metrics are optional — vendors omit fields freely.
+/// BigInt so YouTube-scale view counts survive JSON only after Number().
+model SocialChannelStat {
+  id           String   @id @default(cuid())
+  userId       String
+  platform     String
+  day          DateTime // UTC midnight
+  followers    BigInt?
+  views        BigInt?
+  likes        BigInt?
+  comments     BigInt?
+  shares       BigInt?
+  impressions  BigInt?
+  reach        BigInt?
+  watchTimeSec BigInt?
+  pulledAt     DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform, day])
+  @@index([userId, day])
+  @@index([pulledAt])
+  @@index([platform, day])
+}
+
+/// Daily per-post snapshot keyed to our VaterSocialPost.id (not the vendor id).
+model SocialPostStat {
+  id           String          @id @default(cuid())
+  postId       String
+  day          DateTime // UTC midnight
+  views        BigInt?
+  likes        BigInt?
+  comments     BigInt?
+  shares       BigInt?
+  impressions  BigInt?
+  reach        BigInt?
+  watchTimeSec BigInt?
+  pulledAt     DateTime        @default(now())
+  post         VaterSocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, day])
+  @@index([day])
+  @@index([pulledAt])
 }
 
 /// Tracks an outbound upload from a vater/youtube project to a social

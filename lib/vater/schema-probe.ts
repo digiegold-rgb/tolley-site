@@ -135,6 +135,26 @@ export function hasVaterAccountOriginColumns(): Promise<boolean> {
 }
 
 /**
+ * True once both Socials snapshot tables exist (migration
+ * prisma/migrations/20260830_socials_stats). Probes both names so a
+ * half-applied script reads as "not ready".
+ *
+ * Behaviour when missing: collector + /api/vater/socials/stats skip the
+ * tables and return empty cards rather than 500.
+ */
+export function hasSocialsStatsTables(): Promise<boolean> {
+  return probe("SocialChannelStat+SocialPostStat", async () => {
+    const rows = await prisma.$queryRaw<{ n: bigint }[]>`
+      SELECT COUNT(*)::bigint AS n
+      FROM information_schema.tables
+      WHERE table_schema = current_schema()
+        AND table_name IN ('SocialChannelStat', 'SocialPostStat')
+    `;
+    return Number(rows[0]?.n ?? 0) === 2;
+  });
+}
+
+/**
  * Prisma "table does not exist" (P2021) / "column does not exist" (P2022).
  * Used as a belt-and-braces catch alongside the probes above, for the race
  * where the probe succeeds and the migration is rolled back under us.

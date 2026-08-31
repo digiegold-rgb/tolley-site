@@ -20,11 +20,9 @@
  * stream-copy) — pre-Aug-7 renders have moov at the end of the file.
  */
 import { PrismaClient } from "@prisma/client";
-import { put } from "@vercel/blob";
-import { spawnSync } from "child_process";
-import { existsSync, readFileSync, unlinkSync } from "fs";
-import { tmpdir } from "os";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
+import { uploadFileToBlob, uploadVaterFinal } from "./lib/blob-put";
 
 function loadEnvFile(p: string) {
   if (!existsSync(p)) return;
@@ -52,74 +50,13 @@ function arg(name: string): string | null {
 const has = (name: string) => process.argv.includes(name);
 
 async function uploadOne(filePath: string, projectId: string): Promise<string> {
-  if (!existsSync(filePath)) throw new Error(`missing file: ${filePath}`);
-  const tmp = join(tmpdir(), `vater-faststart-${projectId}-${process.pid}.mp4`);
-  const ff = spawnSync(
-    "ffmpeg",
-    ["-y", "-i", filePath, "-c", "copy", "-movflags", "+faststart", tmp],
-    { stdio: ["ignore", "ignore", "pipe"], timeout: 300_000 },
-  );
-  if (ff.status !== 0 || !existsSync(tmp)) {
-    throw new Error(
-      `faststart remux failed (${ff.status}): ${String(ff.stderr).slice(-300)}`,
-    );
-  }
-  try {
-    const blob = await put(`vater-finals/${projectId}.mp4`, readFileSync(tmp), {
-      access: "public",
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: "video/mp4",
-    });
-    // Version query busts browser caches when a re-compose overwrites the
-    // same pathname (Blob's edge cache purges on overwrite; browsers don't).
-    return `${blob.url}?v=${Date.now()}`;
-  } finally {
-    try { unlinkSync(tmp); } catch { /* tmp cleanup best-effort */ }
-  }
+  return uploadVaterFinal(filePath, projectId);
 }
-
-const CONTENT_TYPES: Record<string, string> = {
-  mp4: "video/mp4",
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  webp: "image/webp",
-  txt: "text/plain; charset=utf-8",
-  json: "application/json",
-};
 
 /** Upload any file to an explicit Blob pathname. mp4 → faststart remux first. */
 async function uploadKey(filePath: string, key: string, contentType?: string | null): Promise<string> {
-  if (!existsSync(filePath)) throw new Error(`missing file: ${filePath}`);
-  const ext = (filePath.split(".").pop() ?? "").toLowerCase();
-  const ct = contentType || CONTENT_TYPES[ext] || "application/octet-stream";
-  let body = readFileSync(filePath);
-  let tmp: string | null = null;
-  if (ext === "mp4") {
-    tmp = join(tmpdir(), `vater-faststart-${process.pid}-${Date.now()}.mp4`);
-    const ff = spawnSync(
-      "ffmpeg",
-      ["-y", "-i", filePath, "-c", "copy", "-movflags", "+faststart", tmp],
-      { stdio: ["ignore", "ignore", "pipe"], timeout: 300_000 },
-    );
-    if (ff.status !== 0 || !existsSync(tmp)) {
-      throw new Error(`faststart remux failed (${ff.status}): ${String(ff.stderr).slice(-300)}`);
-    }
-    body = readFileSync(tmp);
-  }
-  try {
-    const blob = await put(key.replace(/^\/+/, ""), body, {
-      access: "public",
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: ct,
-    });
-    return `${blob.url}?v=${Date.now()}`;
-  } finally {
-    if (tmp) { try { unlinkSync(tmp); } catch { /* tmp cleanup best-effort */ } }
-  }
-}
+  return uploadFileToBlob(filePath, key, contentType);
+
 
 async function backfill() {
   const prisma = new PrismaClient();

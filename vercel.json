@@ -385,6 +385,10 @@
     {
       "path": "/api/cron/hq-ads-sync",
       "schedule": "25 7,13,19,1 * * *"
+    },
+    {
+      "path": "/api/cron/socials-collect",
+      "schedule": "15 */6 * * *"
     }
   ]
 }

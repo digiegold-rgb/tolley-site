@@ -390,6 +390,171 @@ export async function getPost(postId: string): Promise<ZernioPost> {
   return data.post;
 }
 
+/**
+ * Delete a draft/scheduled vendor post. Published posts cannot be deleted
+ * (vendor 405); we still try DELETE then POST /delete so a 404/405 is
+ * recoverable. Callers that only need "it's gone" should treat 404 as ok.
+ */
+export async function deletePost(postId: string): Promise<void> {
+  try {
+    await call("DELETE", `/posts/${encodeURIComponent(postId)}`);
+  } catch (err) {
+    if (err instanceof ZernioError && (err.status === 404 || err.status === 405)) {
+      try {
+        await call("POST", `/posts/${encodeURIComponent(postId)}/delete`);
+      } catch (inner) {
+        if (inner instanceof ZernioError && inner.status === 404) return;
+        throw inner;
+      }
+      return;
+    }
+    throw err;
+  }
+}
+
+// ─── Analytics ──────────────────────────────────────────────────────────────
+
+export interface ZernioAnalyticsRow {
+  postId?: string;
+  _id?: string;
+  id?: string;
+  platform?: string;
+  views?: number;
+  likes?: number;
+  comments?: number;
+  shares?: number;
+  impressions?: number;
+  reach?: number;
+  [key: string]: unknown;
+}
+
+export interface ZernioAnalyticsPage {
+  analytics?: ZernioAnalyticsRow[];
+  posts?: ZernioAnalyticsRow[];
+  data?: ZernioAnalyticsRow[];
+  pagination?: { page?: number; limit?: number; hasMore?: boolean; pages?: number };
+  hasMore?: boolean;
+  page?: number;
+}
+
+/** GET /v1/analytics — paginated. All metric fields optional. */
+export async function getPostAnalytics(opts?: {
+  postId?: string;
+  accountId?: string;
+  profileId?: string;
+  platform?: string;
+  fromDate?: string;
+  toDate?: string;
+  pageSize?: number;
+  maxPages?: number;
+}): Promise<ZernioAnalyticsRow[]> {
+  const out: ZernioAnalyticsRow[] = [];
+  const pageSize = Math.min(100, Math.max(1, opts?.pageSize ?? 50));
+  const maxPages = Math.min(40, Math.max(1, opts?.maxPages ?? 20));
+  for (let page = 1; page <= maxPages; page++) {
+    const qs = new URLSearchParams();
+    qs.set("limit", String(pageSize));
+    qs.set("page", String(page));
+    if (opts?.postId) qs.set("postId", opts.postId);
+    if (opts?.accountId) qs.set("accountId", opts.accountId);
+    if (opts?.profileId) qs.set("profileId", opts.profileId);
+    if (opts?.platform) qs.set("platform", opts.platform);
+    if (opts?.fromDate) qs.set("fromDate", opts.fromDate);
+    if (opts?.toDate) qs.set("toDate", opts.toDate);
+    const data = await call<ZernioAnalyticsPage>("GET", `/analytics?${qs.toString()}`);
+    const rows = data.analytics ?? data.posts ?? data.data ?? [];
+    if (Array.isArray(rows)) out.push(...rows);
+    const hasMore =
+      data.hasMore === true ||
+      data.pagination?.hasMore === true ||
+      (typeof data.pagination?.pages === "number" && page < data.pagination.pages);
+    if (!hasMore || rows.length < pageSize) break;
+  }
+  return out;
+}
+
+export interface ZernioFollowerStats {
+  accountId?: string;
+  followers?: number;
+  followerCount?: number;
+  [key: string]: unknown;
+}
+
+/** GET /v1/analytics/follower-stats, fallback GET /v1/accounts/follower-stats. */
+export async function getFollowerStats(
+  accountId: string,
+): Promise<ZernioFollowerStats | null> {
+  const qs = `accountId=${encodeURIComponent(accountId)}`;
+  try {
+    return await call<ZernioFollowerStats>("GET", `/analytics/follower-stats?${qs}`);
+  } catch (err) {
+    if (err instanceof ZernioError && (err.status === 404 || err.status === 501)) {
+      try {
+        return await call<ZernioFollowerStats>("GET", `/accounts/follower-stats?${qs}`);
+      } catch (inner) {
+        if (inner instanceof ZernioError && (inner.status === 404 || inner.status === 501)) {
+          return null;
+        }
+        throw inner;
+      }
+    }
+    throw err;
+  }
+}
+
+async function insightOrNull(path: string): Promise<unknown | null> {
+  try {
+    return await call<unknown>("GET", path);
+  } catch (err) {
+    if (err instanceof ZernioError && (err.status === 404 || err.status === 501)) {
+      return null;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Platform-specific channel insights. 404/501 → null, never throw.
+ * youtube: channel-insights + daily-views
+ * tiktok: account-insights
+ * instagram: follower-history + account-insights
+ * facebook: page-insights
+ */
+export async function getChannelInsights(
+  platform: string,
+  accountId: string,
+): Promise<unknown | null> {
+  const id = encodeURIComponent(accountId);
+  const acc = `accountId=${id}`;
+  try {
+    switch (platform) {
+      case "youtube": {
+        const channel = await insightOrNull(`/analytics/youtube/channel-insights?${acc}`);
+        const daily = await insightOrNull(`/analytics/youtube/daily-views?${acc}`);
+        if (channel == null && daily == null) return null;
+        return { channel, daily };
+      }
+      case "tiktok":
+        return await insightOrNull(`/analytics/tiktok/account-insights?${acc}`);
+      case "instagram": {
+        const history = await insightOrNull(`/analytics/instagram/follower-history?${acc}`);
+        const account = await insightOrNull(`/analytics/instagram/account-insights?${acc}`);
+        if (history == null && account == null) return null;
+        return { history, account };
+      }
+      case "facebook":
+        return await insightOrNull(`/analytics/facebook/page-insights?${acc}`);
+      default:
+        return null;
+    }
+  } catch (err) {
+    if (err instanceof ZernioError && (err.status === 404 || err.status === 501)) {
+      return null;
+    }
+    throw err;
+  }
+}
+
 /** Normalize a vendor post into our VaterSocialPost row shape. */
 export function summarizePost(p: ZernioPost): {
   status: string;
