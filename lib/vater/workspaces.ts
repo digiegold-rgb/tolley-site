@@ -187,6 +187,20 @@ function remember<T>(map: Map<string, { at: number } & T>, key: string, value: T
 }
 
 /**
+ * Root login for a session. Prefer the workspace stamp auth.ts already
+ * attached; otherwise follow the tab row back to its owner. Never looks up
+ * email by the tab's hidden User id.
+ */
+export async function sessionRootUserId(session: {
+  user?: { id?: string | null } | null;
+  workspace?: { rootUserId: string } | null;
+}): Promise<string> {
+  if (session.workspace?.rootUserId) return session.workspace.rootUserId;
+  const id = session.user?.id ?? "";
+  return id ? rootUserIdFor(id) : "";
+}
+
+/**
  * The real login behind `userId`. Returns `userId` itself for a plain login,
  * the primary tab, an unknown id, or while the table is missing — so callers
  * can use it unconditionally.

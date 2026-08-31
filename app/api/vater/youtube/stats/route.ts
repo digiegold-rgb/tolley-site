@@ -18,7 +18,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
-import { isVaterAdminEmail } from "@/lib/admin-auth";
 import { getAccessToken } from "@/lib/vater/youtube-upload";
 import {
   fetchYouTubeStats,
@@ -35,12 +34,12 @@ export async function GET(req: NextRequest) {
   }
   const userId = session.user.id;
 
-  // Which published videos does this caller own? Admins see every project,
-  // matching lib/vater/project-access.
+  // Published videos on THIS tenant (tab = session.user.id). Owner email
+  // does not widen the list — workspace libraries stay isolated.
   const mine = await prisma.youTubeProject.findMany({
     where: {
       youtubeVideoId: { not: null },
-      ...(isVaterAdminEmail(session.user.email) ? {} : { userId }),
+      userId,
     },
     select: { id: true, youtubeVideoId: true },
     orderBy: { publishedAt: "desc" },

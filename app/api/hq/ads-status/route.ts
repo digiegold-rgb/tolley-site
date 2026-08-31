@@ -4,27 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { isMissingSchemaError } from "@/lib/vater/schema-probe";
 import { validateWdAdmin } from "@/lib/wd-auth";
 import { collectAdsSnapshot } from "@/lib/hq-ads-collect";
-import {
-  isAdsSnapshot,
-  snapshotFromJson,
-  snapshotIsFresh,
-  type AdsSnapshot,
-} from "@/lib/hq-ads";
+import { isAdsSnapshot, snapshotIsFresh, type AdsSnapshot } from "@/lib/hq-ads";
+import { readCachedAdsSnapshot } from "@/lib/hq-posts-read";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-async function readCached(): Promise<{ snapshot: AdsSnapshot | null; updatedAt: Date | null }> {
-  try {
-    const row = await prisma.hqAdsSnapshot.findUnique({ where: { id: 1 } });
-    if (!row) return { snapshot: null, updatedAt: null };
-    return { snapshot: snapshotFromJson(row.payload), updatedAt: row.updatedAt };
-  } catch (err) {
-    if (isMissingSchemaError(err)) return { snapshot: null, updatedAt: null };
-    throw err;
-  }
-}
 
 async function writeCached(snapshot: AdsSnapshot): Promise<void> {
   try {
@@ -43,7 +28,7 @@ export async function GET() {
   const { authed } = await validateWdAdmin();
   if (!authed) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const cached = await readCached();
+  const cached = await readCachedAdsSnapshot();
   if (cached.snapshot && isAdsSnapshot(cached.snapshot) && snapshotIsFresh(cached.snapshot)) {
     return NextResponse.json(cached.snapshot);
   }

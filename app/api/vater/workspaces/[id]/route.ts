@@ -18,6 +18,7 @@ import {
   hasWorkspaceTable,
   renameWorkspace,
   restoreWorkspace,
+  sessionRootUserId,
   shapeWorkspace as shapeRow,
 } from "@/lib/vater/workspaces";
 
@@ -37,7 +38,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     return NextResponse.json(FEATURE_NOT_READY, { status: 503, headers: NO_STORE });
   }
   const { id } = await ctx.params;
-  const rootUserId = session.workspace?.rootUserId ?? session.user.id;
+  const rootUserId = await sessionRootUserId(session);
 
   let body: { name?: unknown; restore?: unknown };
   try {
@@ -76,7 +77,7 @@ export async function DELETE(_request: NextRequest, ctx: Ctx) {
     return NextResponse.json(FEATURE_NOT_READY, { status: 503, headers: NO_STORE });
   }
   const { id } = await ctx.params;
-  const rootUserId = session.workspace?.rootUserId ?? session.user.id;
+  const rootUserId = await sessionRootUserId(session);
 
   const outcome = await archiveWorkspace(rootUserId, id);
   if (outcome === "primary") {

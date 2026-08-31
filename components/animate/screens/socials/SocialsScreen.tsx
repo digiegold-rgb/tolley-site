@@ -14,10 +14,14 @@ import { PostPerformance, type PostPerfRow } from './PostPerformance';
 import { UpcomingQueue } from './UpcomingQueue';
 import { RecentPosts } from './RecentPosts';
 import { DripScheduler } from './DripScheduler';
+import { HousePostsDashboard } from './HousePostsDashboard';
 import { EmptyState, ErrorBar } from '../live/AutopilotScreen';
+import { useTier } from '../../tier-context';
 
 export function SocialsScreen(): React.ReactElement {
   const { t } = useTheme();
+  const { tier } = useTier();
+  const isOwner = tier === 'owner';
   const [windowDays, setWindowDays] = React.useState<StatsWindow>(28);
   const [channels, setChannels] = React.useState<ChannelCard[]>([]);
   const [posts, setPosts] = React.useState<PostPerfRow[]>([]);
@@ -79,12 +83,20 @@ export function SocialsScreen(): React.ReactElement {
         </VBtn>
       </div>
 
+      {isOwner ? <HousePostsDashboard /> : null}
+
       <ConnectionsPanel
         onAccounts={(data) => setAccounts(data)}
       />
 
       {noAccounts ? (
-        <EmptyState message="Connect a channel above to start — tap Connect on a platform tile." />
+        <EmptyState
+          message={
+            isOwner
+              ? 'House channels are above. Connect a Zernio account here for per-tab cards and the drip queue.'
+              : 'Connect a channel above to start — tap Connect on a platform tile.'
+          }
+        />
       ) : (
         <>
           {statsErr && <ErrorBar message={statsErr} />}

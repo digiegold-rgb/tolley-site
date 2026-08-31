@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.22.3';
+export const APP_VERSION = '1.23';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.23',
+    date: '2026-08-31',
+    title: 'Owner Socials shows house posts, and each studio tab keeps its own library',
+    items: [
+      'If you are the house login, Socials now shows the same HQ Posts numbers — DGX, ads Day $ / Life $, the view counter, every video, and channel health — without connecting Zernio or opening extra studio tabs.',
+      'Switching studio tabs keeps Socials and Library on that tab. An empty Ruthann, Estate, or Housing library is correct until those videos are imported.',
+      'Studio and beta accounts still see only their own socials. They never see house ads or the view counter.',
+    ],
+  },
   {
     version: '1.22.3',
     date: '2026-08-30',

@@ -50,12 +50,21 @@ export function canAccessProject(
   return isVaterAdminEmail(sessionEmail);
 }
 
-/** Prisma where-clause scoping a project list to what the session may see. */
+/** Prisma where-clause scoping a project list to what the session may see.
+ *
+ * Lists are ALWAYS the current tenant (session.user.id) — including the
+ * owner login. A workspace tab is a hidden User; if the owner list still
+ * returned `{}` then switching to Ruthann / Estate / Housing would dump the
+ * whole house library into that studio. Owner cross-tenant access stays on
+ * canAccessProject (open-by-id / support), not on the Library list.
+ *
+ * `sessionEmail` is kept so existing call sites compile; lists no longer
+ * widen on admin email.
+ */
 export function scopedProjectWhere(
   sessionUserId: string,
-  sessionEmail: string | null | undefined,
+  _sessionEmail?: string | null,
 ): Prisma.YouTubeProjectWhereInput {
-  if (isVaterAdminEmail(sessionEmail)) return {}; // owner sees everything
   return { userId: sessionUserId };
 }
 
@@ -105,7 +114,11 @@ export async function scopedProjectWhereAsync(
   sessionUserId: string,
   sessionEmail: string | null | undefined,
 ): Promise<Prisma.YouTubeProjectWhereInput> {
-  if (await isVaterOwnerUser(sessionUserId, sessionEmail)) return {};
+  // Owner lists stay tenant-scoped (see scopedProjectWhere). Org seats
+  // still see teammates; owner-tier does not widen the list to every row.
+  if (await isVaterOwnerUser(sessionUserId, sessionEmail)) {
+    return { userId: sessionUserId };
+  }
   const userIds = await orgVisibleUserIds(sessionUserId);
   // Single-element list stays an equality filter so the existing
   // YouTubeProject."userId" index is used exactly as before.

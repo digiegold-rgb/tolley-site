@@ -21,6 +21,7 @@ import {
   hasWorkspaceTable,
   listWorkspaces,
   reorderWorkspaces,
+  sessionRootUserId,
   shapeWorkspace as shapeRow,
 } from "@/lib/vater/workspaces";
 
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
   if (!(await hasWorkspaceTable())) {
     return NextResponse.json({ ...FEATURE_NOT_READY, workspaces: [] }, { status: 503, headers: NO_STORE });
   }
-  const rootUserId = session.workspace?.rootUserId ?? session.user.id;
+  const rootUserId = await sessionRootUserId(session);
   const includeArchived = request.nextUrl.searchParams.get("archived") === "1";
   const rows = await listWorkspaces(rootUserId, { includeArchived });
   return NextResponse.json(
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: NO_STORE });
   }
-  const rootUserId = session.workspace?.rootUserId ?? session.user.id;
+  const rootUserId = await sessionRootUserId(session);
 
   // { order: [id, id, …] } — persist a drag-reorder. Same route so the strip
   // has one place to talk to.
