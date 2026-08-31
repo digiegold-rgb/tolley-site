@@ -1,0 +1,29 @@
+# Example systemd user unit for DGX (/home/jelly).
+# FILE CONTENTS ONLY — do not enable on Spark, do not SSH, do not start it.
+#
+# Later, on the DGX:
+#   mkdir -p ~/.config/systemd/user
+#   cp scripts/systemd/jelly-library-sync.service ~/.config/systemd/user/
+#   cp scripts/systemd/jelly-library-sync.timer ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now jelly-library-sync.timer
+#
+# Adjust WorkingDirectory / EnvironmentFile to the clone path on that box.
+# The script hard-errors if the five tabs are missing and never posts.
+
+[Unit]
+Description=Jelly Studio — import DGX review/cinema/housing MP4s into Library
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=jelly
+WorkingDirectory=/home/jelly/tolley-site
+Environment=HOME=/home/jelly
+EnvironmentFile=-/home/jelly/tolley-site/.env.local
+ExecStart=/usr/bin/npx tsx scripts/dgx-library-sync.ts
+Nice=10
+
+[Install]
+WantedBy=default.target

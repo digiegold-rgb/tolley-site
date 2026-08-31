@@ -61,6 +61,8 @@ interface Props {
   onAnimateLayerStart?: (id: string) => void;
   /** After a successful posted mark/unmark, so parent lists stay in sync. */
   onPostedChange?: (id: string, project: LibraryProject) => void;
+  /** Open the Socials drip scheduler with this card preselected. */
+  onSchedule?: (id: string) => void;
 }
 
 function formatDuration(seconds: number): string {
@@ -130,6 +132,7 @@ export function YouTubeLibrary({
   onRecomposeStart,
   onAnimateLayerStart,
   onPostedChange,
+  onSchedule,
 }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const opsRatePerMinute = useOpsRate();
@@ -164,6 +167,7 @@ export function YouTubeLibrary({
               onDelete(p.id);
             }}
             onPostedChange={onPostedChange}
+            onSchedule={onSchedule}
           />
         ))}
       </div>
@@ -285,6 +289,7 @@ function LibraryCard({
   onSelect,
   onDelete,
   onPostedChange,
+  onSchedule,
   opsRatePerMinute,
 }: {
   project: LibraryProject;
@@ -292,6 +297,7 @@ function LibraryCard({
   onSelect: () => void;
   onDelete: () => void;
   onPostedChange?: (id: string, project: LibraryProject) => void;
+  onSchedule?: (id: string) => void;
   opsRatePerMinute: number | null;
 }) {
   const { t } = useTheme();
@@ -602,6 +608,20 @@ function LibraryCard({
           >
             ⇪
           </button>
+          {onSchedule && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSchedule(project.id);
+              }}
+              title="Schedule on Socials"
+              aria-label="Schedule"
+              className="rounded bg-violet-500/15 px-1.5 py-1 text-[10px] font-semibold text-violet-300 transition-colors hover:bg-violet-500/25"
+            >
+              Schedule
+            </button>
+          )}
           <a
             href={downloadHref}
             download={`${project.sourceTitle ?? project.id}.mp4`}

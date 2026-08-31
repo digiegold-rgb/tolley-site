@@ -58,6 +58,7 @@ import { WorkspaceTabs } from './WorkspaceTabs';
 import { BetaGate } from './BetaGate';
 import { AutopilotScreen } from './screens/live/AutopilotScreen';
 import { PublishingScreen } from './screens/live/PublishingScreen';
+import { SocialsScreen } from './screens/socials/SocialsScreen';
 import { AnimationScreen } from './screens/live/AnimationScreen';
 import { AnalyticsScreen } from './screens/live/AnalyticsScreen';
 import { DiscordScreen } from './screens/live/DiscordScreen';
@@ -669,6 +670,7 @@ function renderScreen(
       return <StudioPanelFrame routeId="recent" title="Recent" subtitle="Recently-completed and failed projects."><Recent /></StudioPanelFrame>;
     case 'autopilot': return <AutopilotScreen />;
     case 'publishing': return <PublishingScreen />;
+    case 'socials': return <SocialsScreen />;
     case 'animation': return <AnimationScreen />;
     case 'analytics': return <AnalyticsScreen />;
     case 'discord': return <DiscordScreen />;

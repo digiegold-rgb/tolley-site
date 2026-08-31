@@ -29,6 +29,7 @@ import {
 import { isPostedToYoutube } from '@/lib/vater/youtube-posted';
 import { CustomerStageRail } from './CustomerStageRail';
 import { AnimateLayerShelf } from './AnimateLayerShelf';
+import { DripScheduler } from '../socials/DripScheduler';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyProject = any;
@@ -123,6 +124,7 @@ export function Library(): React.ReactElement {
   /* Delete failures surface as an inline banner (same RetryError pattern as
    * the load error above) — never a native alert(). */
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
+  const [scheduleIds, setScheduleIds] = React.useState<string[] | null>(null);
 
   const handleDelete = React.useCallback(async (id: string) => {
     try {
@@ -279,6 +281,7 @@ export function Library(): React.ReactElement {
               onRecomposeStart={handleRecomposeStart}
               onAnimateLayerStart={handleRecomposeStart}
               onPostedChange={handlePostedChange}
+              onSchedule={(id) => setScheduleIds([id])}
             />
           </div>
           <AnimateLayerShelf
@@ -286,9 +289,18 @@ export function Library(): React.ReactElement {
             onStarted={handleRecomposeStart}
           />
           <ThumbnailShelf projects={ready} />
-          <SendToScheduler projects={ready} />
+          <SendToScheduler
+            projects={ready}
+            onSchedule={(id) => setScheduleIds([id])}
+          />
         </>
       )}
+      <DripScheduler
+        open={!!scheduleIds}
+        preselectedIds={scheduleIds ?? undefined}
+        onClose={() => setScheduleIds(null)}
+        onScheduled={() => setScheduleIds(null)}
+      />
     </div>
   );
 }
@@ -411,8 +423,10 @@ function ThumbnailShelf({ projects }: { projects: AnyProject[] }): React.ReactEl
  */
 function SendToScheduler({
   projects,
+  onSchedule,
 }: {
   projects: AnyProject[];
+  onSchedule?: (id: string) => void;
 }): React.ReactElement {
   const { t } = useTheme();
   const [copied, setCopied] = React.useState<string | null>(null);
@@ -496,6 +510,15 @@ function SendToScheduler({
               >
                 Posted to YouTube
               </span>
+            )}
+            {onSchedule && (
+              <button
+                type="button"
+                onClick={() => onSchedule(p.id)}
+                style={linkBtn(t.border, t.textSecondary)}
+              >
+                Schedule
+              </button>
             )}
             <button
               type="button"

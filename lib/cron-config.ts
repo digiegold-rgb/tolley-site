@@ -139,4 +139,22 @@ export const CRONS: CronEntry[] = [
       }
     },
   },
+  {
+    path: "/api/cron/socials-collect",
+    schedule: "15 */6 * * *",
+    cadenceMin: 360,
+    description: "Jelly Studio Socials — Zernio channel + post snapshots",
+    heartbeat: async () => {
+      try {
+        return (
+          (await prisma.socialChannelStat.findFirst({
+            orderBy: { pulledAt: "desc" },
+            select: { pulledAt: true },
+          }))?.pulledAt ?? null
+        );
+      } catch {
+        return null;
+      }
+    },
+  },
 ];
