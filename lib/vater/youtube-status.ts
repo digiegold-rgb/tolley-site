@@ -208,7 +208,7 @@ export const QUEUED_STATUSES: ReadonlySet<YouTubeProjectStatus> = new Set([
  * legacy optimistic reading.
  */
 export interface CustomerStageInput extends DeliveryRow {
-  status: string | null | undefined;
+  status?: string | null;
   updatedAt?: string | Date | null;
 }
 
