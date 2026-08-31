@@ -50,6 +50,7 @@ export function SocialsScreen(): React.ReactElement {
 
   const connected = (accounts?.accounts ?? []).filter((a) => a.status !== 'failed');
   const noAccounts = accounts !== null && connected.length === 0;
+  const waitingOnStats = !noAccounts && accounts !== null && channels.length === 0;
 
   return (
     <div>
@@ -83,11 +84,11 @@ export function SocialsScreen(): React.ReactElement {
       />
 
       {noAccounts ? (
-        <EmptyState message="Connect a channel above, then come back — stats land after the next collect." />
+        <EmptyState message="Connect a channel above to start — tap Connect on a platform tile." />
       ) : (
         <>
           {statsErr && <ErrorBar message={statsErr} />}
-          {collecting && channels.length === 0 ? (
+          {waitingOnStats || collecting ? (
             <EmptyState message="Collecting stats — check back soon." />
           ) : (
             <ChannelStatCards

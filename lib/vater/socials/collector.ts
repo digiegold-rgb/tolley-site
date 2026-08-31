@@ -163,7 +163,17 @@ export async function collectSocialStats(
     }
 
     try {
-      const rows = await getPostAnalytics({});
+      let profileId: string | undefined;
+      try {
+        const profile = await prisma.vaterSocialProfile.findUnique({
+          where: { userId },
+          select: { externalProfileId: true },
+        });
+        profileId = profile?.externalProfileId ?? undefined;
+      } catch {
+        /* profile table optional — still pull analytics */
+      }
+      const rows = await getPostAnalytics(profileId ? { profileId } : {});
       if (!rows.length) continue;
       const posts = await prisma.vaterSocialPost.findMany({
         where: { userId },

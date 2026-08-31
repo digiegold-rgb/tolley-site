@@ -35,11 +35,14 @@ export async function GET(req: NextRequest) {
   const priorFrom = new Date(from.getTime() - windowDays * 86_400_000);
 
   if (!(await hasSocialsStatsTables())) {
+    const connected = await prisma.socialAccount
+      .count({ where: { userId } })
+      .catch(() => 0);
     return NextResponse.json({
       window: windowDays,
       channels: [],
       posts: [],
-      collecting: false,
+      collecting: connected > 0,
     });
   }
 
@@ -171,11 +174,14 @@ export async function GET(req: NextRequest) {
     );
   } catch (err) {
     if (isMissingSchemaError(err)) {
+      const connected = await prisma.socialAccount
+        .count({ where: { userId } })
+        .catch(() => 0);
       return NextResponse.json({
         window: windowDays,
         channels: [],
         posts: [],
-        collecting: false,
+        collecting: connected > 0,
       });
     }
     return NextResponse.json(
