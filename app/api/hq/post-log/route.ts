@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
 import { secretEquals } from "@/lib/secret-compare";
-import { computeHealth, SCHEDULED_JOBS } from "@/lib/post-schedule";
+import { loadPostLog } from "@/lib/hq-posts-read";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -88,112 +88,14 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET /api/hq/post-log?days=7 — recent runs, per-channel health, cost rollup.
+// GET /api/hq/post-log?days=7 — same payload as lib/hq-posts-read loadPostLog.
 export async function GET(request: NextRequest) {
   if (!(await authorized(request))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
-    const days = Math.min(
-      90,
-      Math.max(1, Number(request.nextUrl.searchParams.get("days")) || 7),
-    );
-    const since = new Date(Date.now() - days * 24 * 3_600_000);
-
-    const entries = await prisma.postLogEntry.findMany({
-      where: { firedAt: { gte: since } },
-      orderBy: { firedAt: "desc" },
-      take: 1000,
-    });
-
-    // Health must look further back than the display window: a channel dark for
-    // 30 days has nothing inside a 7-day window, and "no rows" would otherwise
-    // read as "nothing to report" — the exact blind spot this tab replaces.
-    const healthRows = await prisma.postLogEntry.findMany({
-      where: { firedAt: { gte: new Date(Date.now() - 90 * 24 * 3_600_000) } },
-      orderBy: { firedAt: "desc" },
-      select: { job: true, channel: true, status: true, firedAt: true, url: true, error: true },
-    });
-    const health = computeHealth(healthRows);
-
-    // Group the display window into runs so one short reads as one row with 8
-    // channel chips under it.
-    const runs = new Map<
-      string,
-      {
-        runId: string;
-        job: string;
-        title: string | null;
-        firedAt: string;
-        costCents: number;
-        channels: typeof entries;
-      }
-    >();
-    for (const e of entries) {
-      const r = runs.get(e.runId);
-      if (r) {
-        r.channels.push(e);
-        r.costCents += e.costCents;
-        if (e.firedAt.toISOString() > r.firedAt) r.firedAt = e.firedAt.toISOString();
-      } else {
-        runs.set(e.runId, {
-          runId: e.runId,
-          job: e.job,
-          title: e.title,
-          firedAt: e.firedAt.toISOString(),
-          costCents: e.costCents,
-          channels: [e],
-        });
-      }
-    }
-
-    const costByChannel: Record<string, number> = {};
-    for (const e of entries) {
-      if (e.costCents > 0) costByChannel[e.channel] = (costByChannel[e.channel] ?? 0) + e.costCents;
-    }
-
-    // Render spend: join VideoCost by videoKey so a run card can show what the
-    // video cost to MAKE next to what it cost to POST.
-    const videoKeys = [...new Set(entries.map((e) => e.videoKey).filter((k): k is string => !!k))];
-    const renderByKey = new Map<string, { cents: number; estimated: boolean }>();
-    if (videoKeys.length) {
-      const costs = await prisma.videoCost.findMany({ where: { videoKey: { in: videoKeys } } });
-      for (const c of costs) {
-        renderByKey.set(c.videoKey, {
-          cents: c.clipsCents + c.lipsyncCents + c.imageCents + c.scriptCents + c.ttsCents + c.postCents,
-          estimated: c.estimated,
-        });
-      }
-    }
-    const runsOut = Array.from(runs.values()).map((r) => {
-      const keys = [...new Set(r.channels.map((e) => e.videoKey).filter((k): k is string => !!k))];
-      let renderCents = 0;
-      let renderEstimated = false;
-      for (const k of keys) {
-        const rc = renderByKey.get(k);
-        if (rc) {
-          renderCents += rc.cents;
-          renderEstimated = renderEstimated || rc.estimated;
-        }
-      }
-      return { ...r, renderCents, renderEstimated };
-    });
-
-    return NextResponse.json({
-      days,
-      runs: runsOut.sort((a, b) => b.firedAt.localeCompare(a.firedAt)),
-      health,
-      summary: {
-        posts: entries.length,
-        ok: entries.filter((e) => e.status === "ok").length,
-        failed: entries.filter((e) => e.status === "fail").length,
-        skipped: entries.filter((e) => e.status === "skipped").length,
-        costCents: entries.reduce((s, e) => s + e.costCents, 0),
-        costByChannel,
-        problems: health.filter((h) => h.status !== "ok").length,
-        declaredChannels: SCHEDULED_JOBS.reduce((s, j) => s + j.channels.length, 0),
-      },
-    });
+    const days = Number(request.nextUrl.searchParams.get("days")) || 7;
+    return NextResponse.json(await loadPostLog(days));
   } catch (err) {
     console.error("[hq/post-log GET]", err);
     return NextResponse.json({ error: "Failed to load post log" }, { status: 500 });

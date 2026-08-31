@@ -111,9 +111,8 @@ async function readProjectRows(
   limit: number,
 ): Promise<LogEntry[]> {
   try {
-    /* scopedProjectWhere resolves the owner tier from the env allowlists. An
-     * IMPERSONATED session must never inherit that: the effective email is
-     * the customer's, so this correctly narrows to their rows. */
+    /* Lists are the current tenant (tab = userId). Impersonation already
+     * swapped userId to the customer, so this stays their rows. */
     const where = scopedProjectWhere(userId, email);
     const projects = await prisma.youTubeProject.findMany({
       where: projectId ? { ...where, id: projectId } : where,

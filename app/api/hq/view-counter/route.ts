@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
 import { secretEquals } from "@/lib/secret-compare";
-import { VIEW_CHANNELS, CHANNEL_KEYS } from "@/lib/view-counter";
-import { channelWindows, VIEW_WINDOWS } from "@/lib/view-counter-windows";
+import { CHANNEL_KEYS } from "@/lib/view-counter";
+import { loadViewCounter } from "@/lib/hq-posts-read";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -104,169 +104,14 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ ok: true, upserted, videos, skipped });
 }
 
-const WINDOWS = VIEW_WINDOWS;
-
-// YouTube's public API rounds subscriberCount to 3 significant figures above
-// 1,000 — an 18,800→18,700 "drop" can be a single real unsubscribe crossing a
-// rounding boundary, or nothing at all. Return the granularity so the UI can
-// stop rendering one-granule swings as if they were measured churn.
-function subRoundingFor(platform: string, subs: number | null): number {
-  if (platform !== "youtube" || subs === null || subs < 1000) return 1;
-  return 10 ** (Math.floor(Math.log10(subs)) - 2);
-}
-
-// GET /api/hq/view-counter — everything the counter UI renders. Per channel:
-// lifetime views, subscribers with 1d/7d deltas, and 30/90/365d view windows.
-// Window math prefers the exact method available per platform: cumulative
-// deltas for YouTube (lifetime counter snapshots), summed daily series for
-// Facebook (no lifetime counter exists). See lib/view-counter.ts for the
-// contentSince rule that makes brand-new channels show full numbers on day one.
+// GET /api/hq/view-counter — same payload as lib/hq-posts-read loadViewCounter
+// (shared with owner Animate Socials). Writers stay on POST above.
 export async function GET() {
   const { authed } = await validateWdAdmin();
   if (!authed) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const rows = await prisma.channelViewStat.findMany({
-      orderBy: { day: "asc" },
-    });
-    const byChannel = new Map<string, typeof rows>();
-    for (const r of rows) {
-      const list = byChannel.get(r.channelKey) ?? [];
-      list.push(r);
-      byChannel.set(r.channelKey, list);
-    }
-
-    // Near-realtime side: views on recent uploads, straight from the Data API.
-    // This is deliberately "views ON uploads from the last N days", NOT "views
-    // received in the last N days" — a play on a 2-year-old video is not
-    // counted. It tracks the lagged windows closely only because this channel's
-    // traffic is overwhelmingly on fresh content.
-    // Pulled over the full window horizon, not just the live strip's 8 days:
-    // Facebook's view WINDOWS are built from these rows too (see fbWindow).
-    const vidRows = await prisma.channelVideoStat.findMany({
-      where: { publishedAt: { gte: new Date(Date.now() - 370 * 86400_000) } },
-      orderBy: { publishedAt: "desc" },
-    });
-    const vidsByChannel = new Map<string, typeof vidRows>();
-    for (const v of vidRows) {
-      const list = vidsByChannel.get(v.channelKey) ?? [];
-      list.push(v);
-      vidsByChannel.set(v.channelKey, list);
-    }
-
-    const now = Date.now();
-    const channels = VIEW_CHANNELS.map((cfg) => {
-      // Window math lives in lib/view-counter-windows.ts (shared with the
-      // Listing Studio landing's proof card). Behaviour unchanged.
-      const w = channelWindows(byChannel.get(cfg.key) ?? [], vidsByChannel.get(cfg.key) ?? [], cfg, now);
-      const { hist, snaps, dailies, subs, latestSnap, lifetimeViews, contentSinceMs, allVids, windows } = w;
-      // The live strip is deliberately narrow — "did this morning's post land".
-      const vids = allVids.filter(
-        (v) => v.publishedAt.getTime() >= now - 8 * 86400_000,
-      );
-
-      const latestSubs = subs[subs.length - 1]?.subscribers ?? null;
-      // Subscriber deltas must never reach back past contentSince. When a card
-      // is repointed at a different channel (yt-ykh moved off @digitalgold on
-      // 2026-08-03), the older rows belong to the PREVIOUS channel, and
-      // comparing against them reports a catastrophic fake loss — the card
-      // showed "-18,700 subs in 1d" purely because the account changed.
-      // A repoint can happen mid-day, so contentSince (a content-history date)
-      // is too coarse to fix this — subsSince is the explicit baseline.
-      const subsSinceMs = cfg.subsSince
-        ? Date.parse(cfg.subsSince)
-        : contentSinceMs;
-      const subsForDelta = subsSinceMs
-        ? subs.filter((r) => r.day.getTime() >= subsSinceMs)
-        : subs;
-      const subAt = (daysAgo: number): number | null => {
-        const cutoff = now - daysAgo * 86400_000;
-        // last reading at or before the cutoff — the honest "what was it then"
-        const past = subsForDelta.filter((r) => r.day.getTime() <= cutoff);
-        return past[past.length - 1]?.subscribers ?? null;
-      };
-      const sub1d = subAt(1);
-      const sub7d = subAt(7);
-
-      // How current the *view* numbers are, which is not how recently we polled:
-      // YouTube Analytics publishes a day roughly 3 days late, so a 30d window
-      // built from its daily series really ends 3 days ago. Surface that rather
-      // than letting an hourly "updated 5m ago" imply the views are live.
-      const lastDaily = dailies[dailies.length - 1]?.day ?? null;
-      const lastSnapDay = latestSnap?.day ?? null;
-      const viewsThrough =
-        lastDaily && lastSnapDay
-          ? new Date(Math.max(lastDaily.getTime(), lastSnapDay.getTime()))
-          : (lastDaily ?? lastSnapDay);
-
-      const liveFor = (hours: number) => {
-        const since = now - hours * 3600_000;
-        const inRange = vids.filter((v) => v.publishedAt.getTime() >= since);
-        return {
-          views: inRange.reduce((s, v) => s + Number(v.views), 0),
-          videos: inRange.length,
-        };
-      };
-      const top = vids.reduce<(typeof vids)[number] | null>(
-        (best, v) => (best === null || Number(v.views) > Number(best.views) ? v : best),
-        null,
-      );
-
-      return {
-        key: cfg.key,
-        platform: cfg.platform,
-        label: cfg.label,
-        note: cfg.note ?? null,
-        url: cfg.url,
-        lifetimeViews,
-        subscribers: latestSubs,
-        subDelta1d: latestSubs !== null && sub1d !== null ? latestSubs - sub1d : null,
-        subDelta7d: latestSubs !== null && sub7d !== null ? latestSubs - sub7d : null,
-        subRounding: subRoundingFor(cfg.platform, latestSubs),
-        windows,
-        viewsThrough: viewsThrough ? viewsThrough.toISOString().slice(0, 10) : null,
-        live: vids.length
-          ? {
-              h24: liveFor(24),
-              d7: liveFor(24 * 7),
-              topTitle: top?.title ?? null,
-              topViews: top ? Number(top.views) : null,
-              topVideoId: top?.videoId ?? null,
-              asOf: new Date(
-                vids.reduce((m, v) => Math.max(m, v.pulledAt.getTime()), 0),
-              ).toISOString(),
-            }
-          : null,
-        lastPulledAt: hist.length ? hist[hist.length - 1].pulledAt.toISOString() : null,
-      };
-    });
-
-    // Keep non-view metrics out of the empire-wide "total views" so the
-    // headline stays a true view count: Bluesky's number is LIKES, and
-    // LinkedIn's is IMPRESSIONS (a feed-appearance count, not a watch).
-    const viewChannels = channels.filter(
-      (c) => c.platform !== "bluesky" && c.platform !== "linkedin" && c.platform !== "pinterest");
-    const totals: Record<string, { views: number; partial: boolean }> = {};
-    for (const days of WINDOWS) {
-      const k = `d${days}`;
-      totals[k] = {
-        views: viewChannels.reduce((s, c) => s + (c.windows[k]?.views ?? 0), 0),
-        partial: viewChannels.some((c) => c.windows[k]?.partial && (c.windows[k]?.views ?? 0) > 0),
-      };
-    }
-    totals.lifetime = {
-      views: viewChannels.reduce((s, c) => s + (c.lifetimeViews ?? 0), 0),
-      // FB "lifetime" is only as old as its daily history — always flag it.
-      partial: viewChannels.some((c) => c.platform === "facebook" && (c.lifetimeViews ?? 0) > 0),
-    };
-
-    return NextResponse.json({
-      updatedAt: rows.length
-        ? new Date(Math.max(...rows.map((r) => r.pulledAt.getTime()))).toISOString()
-        : null,
-      totals,
-      channels,
-    });
+    return NextResponse.json(await loadViewCounter());
   } catch (err) {
     console.error("[hq/view-counter GET]", err);
     return NextResponse.json({ error: "Failed to load view counter" }, { status: 500 });

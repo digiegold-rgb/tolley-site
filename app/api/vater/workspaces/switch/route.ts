@@ -21,6 +21,7 @@ import {
   clearWsCookie,
   hasWorkspaceTable,
   listWorkspaces,
+  sessionRootUserId,
 } from "@/lib/vater/workspaces";
 
 export const runtime = "nodejs";
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
   const home = new URL(backPath, request.url);
   if (!session?.user?.id) return NextResponse.redirect(home, 303);
   const to = request.nextUrl.searchParams.get("to") ?? "";
-  const rootUserId = session.workspace?.rootUserId ?? session.user.id;
+  const rootUserId = await sessionRootUserId(session);
   const res = NextResponse.redirect(home, 303);
   if (!(await hasWorkspaceTable())) return res;
   if (!to || to === rootUserId) {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: NO_STORE });
   }
   const id = typeof body.id === "string" ? body.id : "";
-  const rootUserId = session.workspace?.rootUserId ?? session.user.id;
+  const rootUserId = await sessionRootUserId(session);
 
   if (!id || id === rootUserId) {
     const res = NextResponse.json({ ok: true, activeId: rootUserId }, { headers: NO_STORE });
