@@ -22,7 +22,7 @@ import {
 import { billableComputeUsdForProject } from "@/lib/vater/billing/billable";
 import { readConciergeClient } from "@/lib/vater/concierge-client";
 import { isPostedToYoutube } from "@/lib/vater/youtube-posted";
-import { libraryCardPreviewKind } from "@/lib/vater/library-card-preview";
+import { firstScenePreviewUrl, libraryCardPreviewKind } from "@/lib/vater/library-card-preview";
 import { JELLY_TOKENS } from "@/components/animate/tokens";
 import { useTheme } from "@/components/animate/theme-context";
 
@@ -64,6 +64,8 @@ interface Props {
   onPostedChange?: (id: string, project: LibraryProject) => void;
   /** Open the Socials drip scheduler with this card preselected. */
   onSchedule?: (id: string) => void;
+  /** Open the existing player lightbox on a specific card (Socials → Library). */
+  initialActiveId?: string | null;
 }
 
 function formatDuration(seconds: number): string {
@@ -134,9 +136,14 @@ export function YouTubeLibrary({
   onAnimateLayerStart,
   onPostedChange,
   onSchedule,
+  initialActiveId = null,
 }: Props) {
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(initialActiveId);
   const opsRatePerMinute = useOpsRate();
+
+  useEffect(() => {
+    if (initialActiveId) setActiveId(initialActiveId);
+  }, [initialActiveId]);
 
   const activeProject = projects.find((p) => p.id === activeId) ?? null;
 
@@ -318,12 +325,7 @@ function LibraryCard({
   // ambiguous once a scene has been animated (v0 clip vs v0 still) and used
   // to come back as video/mp4, blanking the card the moment scene 0 got a
   // clip (2026-08-26, #40/#47).
-  const firstScene = scenes.find((s) => typeof s?.imageUrl === "string" && s.imageUrl);
-  const firstSceneImage = firstScene
-    ? `${firstScene.imageUrl}${firstScene.imageUrl.includes("?") ? "&" : "?"}variant=image&v=${
-        typeof firstScene.version === "number" && firstScene.version >= 0 ? firstScene.version : 0
-      }`
-    : null;
+  const firstSceneImage = firstScenePreviewUrl(project.scenesJson);
   const stale = isFinalMp4Stale(project);
   const previewKind = libraryCardPreviewKind({
     firstSceneImage,

@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.23.1';
+export const APP_VERSION = '1.24';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.24',
+    date: '2026-09-01',
+    title: 'Socials is per studio; the house dump lives on the dashboard',
+    items: [
+      'The main dashboard is where you see everything that is live — house HQ numbers for the owner login, and every studio’s active videos for everyone else.',
+      'Socials now follows the studio tab you are on. Ruthann shows Ruthann. Estate shows Estate. Empty Zernio no longer blanks the page — you still get this studio’s video thumbs and a push to make another.',
+      'Winning clips pulse. Tiles reuse the Library first-frame preview. Tap a tile to open it in Library.',
+    ],
+  },
   {
     version: '1.23.1',
     date: '2026-09-01',
