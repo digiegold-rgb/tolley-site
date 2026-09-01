@@ -408,7 +408,12 @@ function LibraryCard({
     setHoverPreview(false);
     if (videoRef.current) {
       videoRef.current.pause();
-      paintFirstFrame(videoRef.current);
+      // Always rewind so rest is the opening frame, not wherever hover left off.
+      try {
+        videoRef.current.currentTime = 0.05;
+      } catch {
+        /* not seekable yet */
+      }
     }
   };
   const mountPreviewVideo = previewKind === "final-video" || hoverPreview;

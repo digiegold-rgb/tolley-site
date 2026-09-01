@@ -80,5 +80,6 @@ describe("libraryCardPreviewKind — rest-state Library card", () => {
     assert.match(librarySrc, /previewKind === "final-video" \|\| hoverPreview/);
     assert.match(librarySrc, /preload="metadata"/);
     assert.match(librarySrc, /onLoadedMetadata/);
+    assert.match(librarySrc, /currentTime = 0\.05/);
   });
 });
