@@ -340,11 +340,13 @@ export async function decorateStudioVideos(
   userId: string,
   rows: StudioProjectRow[],
   house: HouseVideoMatchInput[] = [],
+  opts?: { includeZernio?: boolean },
 ): Promise<StudioVideo[]> {
   const ids = rows.map((r) => r.id);
+  const includeZernio = opts?.includeZernio !== false;
   const [drip, zernio] = await Promise.all([
     dripByProject(userId, ids),
-    zernioByProject(userId, ids),
+    includeZernio ? zernioByProject(userId, ids) : Promise.resolve(new Map()),
   ]);
   const videos = rows.map((row) => {
     const zn = zernio.get(row.id);
@@ -364,21 +366,54 @@ export async function decorateStudioVideos(
 export async function loadStudioPayload(
   session: { user?: { id?: string | null; email?: string | null } | null; workspace?: { rootUserId: string } | null },
   windowDays: number,
+  opts?: { lite?: boolean },
 ) {
   const userId = session.user?.id ?? "";
-  const [wsRow, stats, rows] = await Promise.all([
-    userId
-      ? prisma.vaterWorkspace
-          .findUnique({
-            where: { userId },
-            select: { name: true, ownerUserId: true, userId: true },
-          })
-          .catch(() => null)
-      : null,
+  const lite = Boolean(opts?.lite);
+
+  const wsPromise = userId
+    ? prisma.vaterWorkspace
+        .findUnique({
+          where: { userId },
+          select: { name: true, ownerUserId: true, userId: true },
+        })
+        .catch(() => null)
+    : Promise.resolve(null);
+  const rowsPromise = loadStudioProjects(userId);
+
+  // Lite first paint: library rows + drip only. Zernio + house match are
+  // the serial/heavy bits (hunch #2) and hydrate on the full request.
+  if (lite) {
+    const [wsRow, rows] = await Promise.all([wsPromise, rowsPromise]);
+    const videos = await decorateStudioVideos(userId, rows, [], { includeZernio: false });
+    const name = wsRow?.name ?? "My Studio";
+    const queueCount = videos.filter(
+      (v) => v.dripStage === "queued" || v.dripStage === "scheduled" || v.dripStage === "publishing",
+    ).length;
+    return jsonSafe({
+      workspace: {
+        userId,
+        name,
+        isPrimary: !wsRow || wsRow.ownerUserId === wsRow.userId,
+      },
+      videos,
+      channels: [],
+      posts: [],
+      collecting: false,
+      connectedAccounts: 0,
+      queueCount,
+      encouragement: studioEncouragement(name, videos),
+      highlight: studioHighlight(videos),
+      lite: true,
+    });
+  }
+
+  const [wsRow, stats, rows, house] = await Promise.all([
+    wsPromise,
     loadZernioStats(userId, windowDays),
-    loadStudioProjects(userId),
+    rowsPromise,
+    houseVideosForOwner(userId, session.user?.email),
   ]);
-  const house = await houseVideosForOwner(userId, session.user?.email);
   const videos = await decorateStudioVideos(userId, rows, house);
   const name = wsRow?.name ?? "My Studio";
   const queueCount = videos.filter(
@@ -398,6 +433,7 @@ export async function loadStudioPayload(
     queueCount,
     encouragement: studioEncouragement(name, videos),
     highlight: studioHighlight(videos),
+    lite: false,
   });
 }
 

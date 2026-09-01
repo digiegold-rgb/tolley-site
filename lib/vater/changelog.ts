@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.24';
+export const APP_VERSION = '1.24.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.24.1',
+    date: '2026-09-01',
+    title: 'Socials and Library stay snappy with a lot of finished videos',
+    items: [
+      'Socials paints the studio name and tiles right away from a light list — performance numbers fill in after. Opening the tab no longer waits on every clip.',
+      'Small thumbs use a still when we have one. If the only file is the finished video, we load that file only for tiles you can see, a few at a time.',
+      'Tap a Socials tile and Library opens that video immediately. The rest of the grid loads in the background and stays lazy off-screen.',
+    ],
+  },
   {
     version: '1.24',
     date: '2026-09-01',

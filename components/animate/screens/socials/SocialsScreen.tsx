@@ -6,6 +6,10 @@
  * House HQ ads / view-counter totals live on the main dashboard (owner).
  * This screen is Ruthann when Ruthann is selected, Estate when Estate is
  * selected. Library thumbs render even when Zernio is disconnected.
+ *
+ * First paint does not wait on Zernio / house match / 100 blob videos:
+ * header + encouragement + cached or skeleton tiles, then a cheap lite
+ * payload (ids, titles, thumbnailUrl / previewKind), then full stats.
  */
 
 import * as React from 'react';
@@ -22,17 +26,36 @@ import { DripScheduler } from './DripScheduler';
 import { StudioVideoThumb } from './StudioVideoThumb';
 import { EmptyState, ErrorBar } from '../live/AutopilotScreen';
 import type { StudioHighlight, StudioVideo } from '@/lib/vater/socials/studio-library';
+import {
+  openStudioVideoInLibrary,
+  readStudioPayloadCache,
+  studioCacheIsFresh,
+  studioCacheKey,
+  writeStudioPayloadCache,
+  type StudioClientPayload,
+} from '@/lib/vater/socials/studio-client-cache';
 
-interface StudioPayload {
-  workspace?: { userId: string; name: string; isPrimary: boolean };
-  videos?: StudioVideo[];
+interface StudioPayload extends StudioClientPayload {
   channels?: ChannelCard[];
   posts?: PostPerfRow[];
-  collecting?: boolean;
-  connectedAccounts?: number;
-  queueCount?: number;
-  encouragement?: string;
   highlight?: StudioHighlight | null;
+  videos?: StudioVideo[];
+}
+
+function ThumbSkeleton({ i }: { i: number }): React.ReactElement {
+  const { t } = useTheme();
+  return (
+    <div
+      data-testid="studio-video-skeleton"
+      style={{
+        aspectRatio: '1 / 1',
+        borderRadius: JELLY_TOKENS.radius.md,
+        border: `1px solid ${t.border}`,
+        background: `linear-gradient(90deg, ${t.cardAlt} 0%, ${t.card} 50%, ${t.cardAlt} 100%)`,
+        opacity: 0.7 - i * 0.04,
+      }}
+    />
+  );
 }
 
 export function SocialsScreen(): React.ReactElement {
@@ -40,25 +63,64 @@ export function SocialsScreen(): React.ReactElement {
   const { setRoute, setSelectedProjectId } = useRoute();
   const { workspace } = useTier();
   const [windowDays, setWindowDays] = React.useState<StatsWindow>(28);
-  const [payload, setPayload] = React.useState<StudioPayload | null>(null);
+  const cacheKey = studioCacheKey(workspace?.id, windowDays);
+  const [payload, setPayload] = React.useState<StudioPayload | null>(
+    () => readStudioPayloadCache(cacheKey) as StudioPayload | null,
+  );
   const [statsErr, setStatsErr] = React.useState<string | null>(null);
   const [accounts, setAccounts] = React.useState<SocialAccountsResp | null>(null);
   const [schedulerOpen, setSchedulerOpen] = React.useState(false);
+  const [hydrating, setHydrating] = React.useState(!payload);
 
-  const loadStudio = React.useCallback(async () => {
-    try {
-      const res = await fetch(`/api/vater/socials/studio?window=${windowDays}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setPayload((await res.json()) as StudioPayload);
-      setStatsErr(null);
-    } catch (err) {
-      setStatsErr(err instanceof Error ? err.message : 'studio socials failed');
-    }
-  }, [windowDays]);
+  const applyPayload = React.useCallback(
+    (next: StudioPayload) => {
+      setPayload((prev) => {
+        if (prev && !prev.lite && next.lite) return prev;
+        return next;
+      });
+      writeStudioPayloadCache(cacheKey, next);
+    },
+    [cacheKey],
+  );
+
+  const loadStudio = React.useCallback(
+    async (opts?: { fullOnly?: boolean }) => {
+      try {
+        if (!opts?.fullOnly) {
+          const liteRes = await fetch(
+            `/api/vater/socials/studio?window=${windowDays}&lite=1`,
+            { cache: 'no-store' },
+          );
+          if (!liteRes.ok) throw new Error(`HTTP ${liteRes.status}`);
+          applyPayload((await liteRes.json()) as StudioPayload);
+          setHydrating(false);
+          setStatsErr(null);
+        }
+        const res = await fetch(`/api/vater/socials/studio?window=${windowDays}`, {
+          cache: 'no-store',
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        applyPayload((await res.json()) as StudioPayload);
+        setHydrating(false);
+        setStatsErr(null);
+      } catch (err) {
+        setHydrating(false);
+        setStatsErr(err instanceof Error ? err.message : 'studio socials failed');
+      }
+    },
+    [windowDays, applyPayload],
+  );
 
   React.useEffect(() => {
-    void loadStudio();
-  }, [loadStudio]);
+    const cached = readStudioPayloadCache(cacheKey) as StudioPayload | null;
+    if (cached) {
+      setPayload(cached);
+      setHydrating(false);
+    } else {
+      setHydrating(true);
+    }
+    void loadStudio({ fullOnly: studioCacheIsFresh(cacheKey) });
+  }, [cacheKey, loadStudio]);
 
   const studioName = payload?.workspace?.name || workspace?.name || 'This studio';
   const videos = payload?.videos ?? [];
@@ -75,10 +137,12 @@ export function SocialsScreen(): React.ReactElement {
     return videos.find((v) => v.posted)?.id ?? videos[0]?.id ?? null;
   })();
 
-  const openLibrary = (id: string) => {
-    setSelectedProjectId(id);
-    setRoute('library');
+  const openLibrary = (video: StudioVideo) => {
+    openStudioVideoInLibrary(video, { setSelectedProjectId, setRoute });
   };
+
+  const showEmpty = videos.length === 0 && payload != null && !hydrating;
+  const showSkeletons = videos.length === 0 && (payload == null || hydrating);
 
   return (
     <div data-testid="studio-socials">
@@ -158,7 +222,7 @@ export function SocialsScreen(): React.ReactElement {
 
       {statsErr ? <ErrorBar message={statsErr} /> : null}
 
-      {videos.length === 0 ? (
+      {showEmpty ? (
         <div
           data-testid="studio-socials-empty"
           style={{
@@ -199,7 +263,9 @@ export function SocialsScreen(): React.ReactElement {
               {studioName}&apos;s videos
             </div>
             <div style={{ fontSize: 12, color: t.textSecondary }}>
-              {videos.length} in this studio
+              {videos.length > 0
+                ? `${videos.length} in this studio`
+                : 'Loading this studio…'}
               {(payload?.queueCount ?? 0) > 0 ? ` · ${payload?.queueCount} in the drip` : ''}
             </div>
           </div>
@@ -210,15 +276,17 @@ export function SocialsScreen(): React.ReactElement {
               gap: 10,
             }}
           >
-            {videos.map((video) => (
-              <StudioVideoThumb
-                key={video.id}
-                video={video}
-                winning={video.id === winningId && highlight?.kind === 'views'}
-                dense
-                onClick={() => openLibrary(video.id)}
-              />
-            ))}
+            {showSkeletons
+              ? Array.from({ length: 8 }, (_, i) => <ThumbSkeleton key={`sk-${i}`} i={i} />)
+              : videos.map((video) => (
+                  <StudioVideoThumb
+                    key={video.id}
+                    video={video}
+                    winning={video.id === winningId && highlight?.kind === 'views'}
+                    dense
+                    onClick={() => openLibrary(video)}
+                  />
+                ))}
           </div>
           {!hasZernio ? (
             <div

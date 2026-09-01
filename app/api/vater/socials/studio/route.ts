@@ -26,8 +26,9 @@ export async function GET(req: NextRequest) {
   }
   const raw = Number(req.nextUrl.searchParams.get("window") ?? 28);
   const windowDays = WINDOWS.has(raw) ? raw : 28;
+  const lite = req.nextUrl.searchParams.get("lite") === "1";
   try {
-    const payload = await loadStudioPayload(session, windowDays);
+    const payload = await loadStudioPayload(session, windowDays, { lite });
     return NextResponse.json(payload, { headers: NO_STORE });
   } catch (err) {
     return NextResponse.json(

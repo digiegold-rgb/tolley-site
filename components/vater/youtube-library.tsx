@@ -23,6 +23,8 @@ import { billableComputeUsdForProject } from "@/lib/vater/billing/billable";
 import { readConciergeClient } from "@/lib/vater/concierge-client";
 import { isPostedToYoutube } from "@/lib/vater/youtube-posted";
 import { firstScenePreviewUrl, libraryCardPreviewKind } from "@/lib/vater/library-card-preview";
+import { mayMountThumbVideo } from "@/lib/vater/lazy-blob-video";
+import { LazyBlobVideo } from "@/components/animate/media/LazyBlobVideo";
 import { JELLY_TOKENS } from "@/components/animate/tokens";
 import { useTheme } from "@/components/animate/theme-context";
 
@@ -418,7 +420,15 @@ function LibraryCard({
       }
     }
   };
-  const mountPreviewVideo = previewKind === "final-video" || hoverPreview;
+  const hasStill = Boolean(firstSceneImage || project.thumbnailUrl);
+  const mountPreviewVideo =
+    Boolean(videoSrc) &&
+    mayMountThumbVideo({
+      previewKind,
+      hasStill,
+      hover: hoverPreview,
+      selected: isActive,
+    });
 
   const dateStr = new Date(
     project.completedAt ?? project.createdAt,
@@ -458,17 +468,25 @@ function LibraryCard({
         data-hover={hoverPreview ? "1" : "0"}
         className="relative aspect-square w-full cursor-pointer overflow-hidden bg-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
       >
-        {mountPreviewVideo ? (
-          <video
-            ref={videoRef}
+        {mountPreviewVideo && videoSrc ? (
+          <LazyBlobVideo
+            id={project.id}
             src={videoSrc}
-            muted
+            enabled
+            priority={hoverPreview}
             loop
-            playsInline
             preload="metadata"
             className="h-full w-full object-cover"
-            onLoadedMetadata={(e) => paintFirstFrame(e.currentTarget)}
-            onLoadedData={(e) => paintFirstFrame(e.currentTarget)}
+            videoRef={videoRef}
+            onReady={(el) => {
+              if (hoverPreview) {
+                el.play().catch(() => {
+                  /* autoplay policy may block — poster still renders */
+                });
+              } else {
+                paintFirstFrame(el);
+              }
+            }}
           />
         ) : previewKind === "scene" && firstSceneImage ? (
           <Image
