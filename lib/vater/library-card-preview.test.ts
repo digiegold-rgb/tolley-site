@@ -88,12 +88,12 @@ describe("libraryCardPreviewKind — rest-state Library card", () => {
     assert.equal(firstScenePreviewUrl(null), null);
   });
 
-  it("LibraryCard mounts a paused metadata video at rest for final-video", () => {
+  it("LibraryCard lazy-mounts a final-video only when the tile is in view", () => {
     assert.match(librarySrc, /libraryCardPreviewKind/);
     assert.match(librarySrc, /firstScenePreviewUrl/);
-    assert.match(librarySrc, /previewKind === "final-video" \|\| hoverPreview/);
+    assert.match(librarySrc, /mayMountThumbVideo/);
+    assert.match(librarySrc, /LazyBlobVideo/);
     assert.match(librarySrc, /preload="metadata"/);
-    assert.match(librarySrc, /onLoadedMetadata/);
-    assert.match(librarySrc, /currentTime = 0\.05/);
+    assert.match(librarySrc, /hoverPreview/);
   });
 });

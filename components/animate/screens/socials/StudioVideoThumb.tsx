@@ -1,28 +1,23 @@
 'use client';
 
 /**
- * Small Socials / dashboard thumbnail. Reuses libraryCardPreviewKind —
- * paused first-frame for finished mp4s, scene still, or thumbnailUrl.
- * Does not generate blob thumbnails.
+ * Small Socials / dashboard thumbnail.
+ *
+ * Stills (thumbnailUrl / firstSceneImage) render as <img>. A finished mp4
+ * with no still does NOT eager-mount a media element — LazyBlobVideo waits until
+ * the tile is on screen and a concurrent blob slot is free. Offscreen
+ * tiles are a placeholder. Does not generate blob thumbnails.
  */
 
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
+import { LazyBlobVideo } from '../../media/LazyBlobVideo';
 import { finalVideoPlaybackUrl } from '@/lib/vater/youtube-status';
 import { getStylePreset } from '@/lib/vater/style-presets';
 import { libraryCardPreviewKind } from '@/lib/vater/library-card-preview';
+import { mayMountThumbVideo } from '@/lib/vater/lazy-blob-video';
 import type { StudioVideo } from '@/lib/vater/socials/studio-library';
-
-function paintFirstFrame(el: HTMLVideoElement): void {
-  if (el.paused && el.currentTime < 0.05) {
-    try {
-      el.currentTime = 0.05;
-    } catch {
-      /* not seekable yet */
-    }
-  }
-}
 
 function dripLabel(stage: StudioVideo['dripStage']): string | null {
   if (stage === 'scheduled') return 'In drip';
@@ -56,6 +51,15 @@ export function StudioVideoThumb({
     : null;
   const drip = dripLabel(video.dripStage);
   const views = video.views;
+  const hasStill = Boolean(video.firstSceneImage || video.thumbnailUrl);
+  const mountVideo =
+    Boolean(videoSrc) &&
+    mayMountThumbVideo({
+      previewKind,
+      hasStill,
+      selected: false,
+      hover: false,
+    });
 
   return (
     <button
@@ -87,17 +91,7 @@ export function StudioVideoThumb({
           overflow: 'hidden',
         }}
       >
-        {previewKind === 'final-video' && videoSrc ? (
-          <video
-            src={videoSrc}
-            muted
-            playsInline
-            preload="metadata"
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            onLoadedMetadata={(e) => paintFirstFrame(e.currentTarget)}
-            onLoadedData={(e) => paintFirstFrame(e.currentTarget)}
-          />
-        ) : previewKind === 'scene' && video.firstSceneImage ? (
+        {previewKind === 'scene' && video.firstSceneImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={video.firstSceneImage}
@@ -111,6 +105,8 @@ export function StudioVideoThumb({
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
+        ) : mountVideo && videoSrc ? (
+          <LazyBlobVideo id={video.id} src={videoSrc} enabled preload="metadata" />
         ) : previewKind === 'preset' && preset?.sampleImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

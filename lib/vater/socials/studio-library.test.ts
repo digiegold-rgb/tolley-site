@@ -139,6 +139,7 @@ describe("Socials is per-studio; house dump lives on the dashboard", () => {
     );
     const vercel = await readFile("vercel.json", "utf8");
     assert.match(studio, /loadStudioPayload/);
+    assert.match(studio, /lite/);
     assert.match(overview, /loadOverviewPayload/);
     assert.equal(studio.includes("collectAdsSnapshot"), false);
     assert.equal(overview.includes("loadHousePosts"), false);

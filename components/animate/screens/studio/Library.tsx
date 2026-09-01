@@ -30,6 +30,12 @@ import { isPostedToYoutube } from '@/lib/vater/youtube-posted';
 import { CustomerStageRail } from './CustomerStageRail';
 import { AnimateLayerShelf } from './AnimateLayerShelf';
 import { DripScheduler } from '../socials/DripScheduler';
+import {
+  mergeLibraryProjects,
+  peekLibraryJumpSeed,
+  readLibraryProjectsCache,
+  writeLibraryProjectsCache,
+} from '@/lib/vater/socials/studio-client-cache';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyProject = any;
@@ -61,8 +67,13 @@ function bucketProjects(projects: AnyProject[]): Record<CustomerStage, AnyProjec
 export function Library(): React.ReactElement {
   const { t } = useTheme();
   const { requestNewVideo, selectedProjectId } = useRoute();
-  const [projects, setProjects] = React.useState<AnyProject[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const jumpSeed = peekLibraryJumpSeed();
+  const [projects, setProjects] = React.useState<AnyProject[]>(() =>
+    mergeLibraryProjects(readLibraryProjectsCache() ?? [], [], jumpSeed),
+  );
+  const [loading, setLoading] = React.useState(
+    () => mergeLibraryProjects(readLibraryProjectsCache() ?? [], [], jumpSeed).length === 0,
+  );
   const [error, setError] = React.useState<string | null>(null);
 
   const fetchProjects = React.useCallback(async () => {
@@ -71,7 +82,9 @@ export function Library(): React.ReactElement {
       const res = await fetch('/api/vater/youtube');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setProjects(Array.isArray(data.projects) ? data.projects : []);
+      const incoming = Array.isArray(data.projects) ? data.projects : [];
+      writeLibraryProjectsCache(incoming);
+      setProjects((prev) => mergeLibraryProjects(prev, incoming, peekLibraryJumpSeed()));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'network error');
     } finally {
@@ -101,10 +114,19 @@ export function Library(): React.ReactElement {
   // Progress tab now, which is where the 8/27 "nothing may be invisible"
   // guarantee moved to.
   const ready = React.useMemo(() => buckets.done.filter((p) => !!p.finalVideoUrl), [buckets]);
-  /* Everything the customer owns, in-flight first. The shelves below stay on
-     `ready` — you cannot add a thumbnail to, or schedule, a video that does
-     not exist yet. */
-  const gridProjects = ready;
+  /* Socials → Library jump: open the clicked project immediately from the
+     client seed even while GET /api/vater/youtube is still hydrating. */
+  const gridProjects = React.useMemo(() => {
+    if (
+      jumpSeed &&
+      selectedProjectId === jumpSeed.id &&
+      jumpSeed.finalVideoUrl &&
+      !ready.some((p) => p.id === jumpSeed.id)
+    ) {
+      return [jumpSeed, ...ready];
+    }
+    return ready;
+  }, [ready, jumpSeed, selectedProjectId]);
   const livePipeline = pipeline.length > 0;
 
   React.useEffect(() => {
@@ -211,7 +233,7 @@ export function Library(): React.ReactElement {
       )}
 
 
-      {loading ? (
+      {loading && gridProjects.length === 0 ? (
         <div
           style={{
             padding: 32,
@@ -222,7 +244,7 @@ export function Library(): React.ReactElement {
         >
           Loading library…
         </div>
-      ) : ready.length === 0 && !error ? (
+      ) : gridProjects.length === 0 && !error ? (
         <VCard
           variant="flat"
           style={{
@@ -264,7 +286,7 @@ export function Library(): React.ReactElement {
             Create your first video
           </button>
         </VCard>
-      ) : ready.length === 0 ? null : (
+      ) : gridProjects.length === 0 ? null : (
         <>
           {/* The grid shows work IN FLIGHT as well as finished work. It used
               to render `ready` only, so a video being animated dropped out of
