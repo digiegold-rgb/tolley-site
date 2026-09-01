@@ -1106,6 +1106,7 @@ function StudioSettingsRow({
  */
 function CharacterStudioCopyToggle(): React.ReactElement {
   const { t } = useTheme();
+  const { setCharacterStudioCopy } = useTier();
   const [enabled, setEnabled] = React.useState<boolean | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -1146,6 +1147,8 @@ function CharacterStudioCopyToggle(): React.ReactElement {
               ? "Can't change this from a support session."
               : "Couldn't save that — try again.",
           );
+        } else {
+          setCharacterStudioCopy(next);
         }
       } catch {
         setEnabled(previous);
@@ -1154,7 +1157,7 @@ function CharacterStudioCopyToggle(): React.ReactElement {
         setSaving(false);
       }
     },
-    [enabled],
+    [enabled, setCharacterStudioCopy],
   );
 
   const allowed = enabled === null ? true : enabled;

@@ -86,6 +86,8 @@ export interface TierContextValue {
   markTermsAccepted: () => void;
   /** Optimistic local update after PATCH /me { agentProfile } succeeds. */
   setAgentProfile: (p: AgentProfile) => void;
+  /** Optimistic local update after PATCH /me { characterStudioCopy }. */
+  setCharacterStudioCopy: (on: boolean) => void;
 }
 
 const EMPTY_CAPS: VaterCapabilities = {
@@ -134,6 +136,7 @@ const defaultValue: TierContextValue = {
   settings: DEFAULT_SETTINGS,
   markTermsAccepted: () => {},
   setAgentProfile: () => {},
+  setCharacterStudioCopy: () => {},
 };
 
 interface MePayload {
@@ -198,6 +201,12 @@ export function TierProvider({
       capabilities: { ...prev.capabilities, license: agentProfile.licenseStatus === 'verified' },
     }));
   }, []);
+  const setCharacterStudioCopy = React.useCallback((on: boolean) => {
+    setState((prev) => ({
+      ...prev,
+      settings: { ...prev.settings, characterStudioCopy: on },
+    }));
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -245,8 +254,8 @@ export function TierProvider({
   }, []);
 
   const value = React.useMemo(
-    () => ({ ...state, markTermsAccepted, setAgentProfile }),
-    [state, markTermsAccepted, setAgentProfile],
+    () => ({ ...state, markTermsAccepted, setAgentProfile, setCharacterStudioCopy }),
+    [state, markTermsAccepted, setAgentProfile, setCharacterStudioCopy],
   );
   return <TierContext.Provider value={value}>{children}</TierContext.Provider>;
 }
