@@ -27,6 +27,11 @@ model User {
   termsAcceptedAt      DateTime?
   termsVersion         String?
   showcaseOptOut       Boolean              @default(false)
+  // Copy a character onto another owned YouTubeStyle (migration
+  // 20260901_character_studio_copy). Account-global; default ON. The
+  // Characters / studio UI offers the destination picker when this is true.
+  // Adopt stays free — no Qwen generate, no character_import billing.
+  characterStudioCopy  Boolean              @default(true)
   // Jelly Studio A2P SMS (migration 20260826_animate_sms). Optional
   // "text me when my film is done" account texts. Never pre-checked.
   // Separate from Wash & Dry SMS (913-600-7508 / CQG8RGM).

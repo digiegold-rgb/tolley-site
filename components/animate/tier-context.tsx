@@ -13,6 +13,7 @@ import type { VaterTier } from '@/lib/vater/nav-visibility';
 import { routeIdsForTier } from '@/lib/vater/nav-visibility';
 import type { Product } from '@/lib/vater/product';
 import type { AgentProfile } from '@/lib/vater/listing/contract';
+import { CHARACTER_STUDIO_COPY_DEFAULT } from '@/lib/vater/character-studio-copy';
 
 export interface VaterCapabilities {
   rules: boolean;
@@ -52,6 +53,12 @@ export interface WorkspaceState {
   max: number;
 }
 
+/** Account-global Animate flags from GET /api/vater/me → `settings`. */
+export interface AnimateSettings {
+  /** Copy a character onto another owned YouTubeStyle. Default ON. */
+  characterStudioCopy: boolean;
+}
+
 export interface TierContextValue {
   tier: VaterTier;
   /**
@@ -73,10 +80,14 @@ export interface TierContextValue {
   product: Product;
   /** Listing Studio agent profile (end card + license); null until /me loads. */
   agentProfile: AgentProfile | null;
+  /** Account-global Animate flags. Default ON until /me resolves. */
+  settings: AnimateSettings;
   /** Optimistic local update after the click-wrap modal succeeds. */
   markTermsAccepted: () => void;
   /** Optimistic local update after PATCH /me { agentProfile } succeeds. */
   setAgentProfile: (p: AgentProfile) => void;
+  /** Optimistic local update after PATCH /me { characterStudioCopy }. */
+  setCharacterStudioCopy: (on: boolean) => void;
 }
 
 const EMPTY_CAPS: VaterCapabilities = {
@@ -104,6 +115,10 @@ const DEFAULT_BETA: BetaState = {
   tosVersion: null,
 };
 
+const DEFAULT_SETTINGS: AnimateSettings = {
+  characterStudioCopy: CHARACTER_STUDIO_COPY_DEFAULT,
+};
+
 const defaultValue: TierContextValue = {
   tier: 'public',
   // Uncapped by default (2026-08-22). GET /api/vater/me sends null for
@@ -118,8 +133,10 @@ const defaultValue: TierContextValue = {
   beta: DEFAULT_BETA,
   product: 'jelly',
   agentProfile: null,
+  settings: DEFAULT_SETTINGS,
   markTermsAccepted: () => {},
   setAgentProfile: () => {},
+  setCharacterStudioCopy: () => {},
 };
 
 interface MePayload {
@@ -133,6 +150,7 @@ interface MePayload {
   workspace?: WorkspaceState | null;
   product?: Product;
   agentProfile?: AgentProfile | null;
+  settings?: Partial<AnimateSettings>;
 }
 
 export const TierContext = React.createContext<TierContextValue>(defaultValue);
@@ -183,6 +201,12 @@ export function TierProvider({
       capabilities: { ...prev.capabilities, license: agentProfile.licenseStatus === 'verified' },
     }));
   }, []);
+  const setCharacterStudioCopy = React.useCallback((on: boolean) => {
+    setState((prev) => ({
+      ...prev,
+      settings: { ...prev.settings, characterStudioCopy: on },
+    }));
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -218,6 +242,7 @@ export function TierProvider({
           workspace: data.workspace ?? null,
           product: data.product === 'realestate' ? 'realestate' : 'jelly',
           agentProfile: data.agentProfile ?? null,
+          settings: { ...DEFAULT_SETTINGS, ...(data.settings ?? {}) },
         }));
       } catch {
         if (!cancelled) setState((prev) => ({ ...prev, loading: false }));
@@ -229,8 +254,8 @@ export function TierProvider({
   }, []);
 
   const value = React.useMemo(
-    () => ({ ...state, markTermsAccepted, setAgentProfile }),
-    [state, markTermsAccepted, setAgentProfile],
+    () => ({ ...state, markTermsAccepted, setAgentProfile, setCharacterStudioCopy }),
+    [state, markTermsAccepted, setAgentProfile, setCharacterStudioCopy],
   );
   return <TierContext.Provider value={value}>{children}</TierContext.Provider>;
 }

@@ -11,6 +11,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AddReferenceVideo } from "./AddReferenceVideo";
 import { AddCharacter } from "./AddCharacter";
+import { CopyCharacterToStudio } from "@/components/animate/screens/browse/CopyCharacterToStudio";
+import { CHARACTER_STUDIO_COPY_DEFAULT } from "@/lib/vater/character-studio-copy";
 
 type Character = {
   id: string;
@@ -127,6 +129,7 @@ export function StyleEditor({
   const [elVoices, setElVoices] = useState<ElevenLabsVoiceOption[]>([]);
   const [elVoicesError, setElVoicesError] = useState<string | null>(null);
   const [elVoicesLoading, setElVoicesLoading] = useState(false);
+  const [allowStudioCopy, setAllowStudioCopy] = useState(CHARACTER_STUDIO_COPY_DEFAULT);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingPatchRef = useRef<Partial<Style>>({});
@@ -200,6 +203,22 @@ export function StyleEditor({
       cancelled = true;
     };
   }, [style.voiceBackend, elVoices.length, elVoicesLoading]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/vater/me", { cache: "no-store" })
+      .then(async (r) => {
+        if (!r.ok) return;
+        const data = (await r.json()) as { settings?: { characterStudioCopy?: boolean } };
+        if (!cancelled) setAllowStudioCopy(data.settings?.characterStudioCopy !== false);
+      })
+      .catch(() => {
+        /* keep the product default */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function refresh() {
     setRefreshing(true);
@@ -658,6 +677,20 @@ export function StyleEditor({
                   <p className="mt-1 line-clamp-3 text-xs text-zinc-500">
                     {c.description}
                   </p>
+                  {allowStudioCopy && !style.isSystem ? (
+                    <div className="mt-3">
+                      <CopyCharacterToStudio
+                        ownerUserId={style.userId}
+                        character={{
+                          name: c.name,
+                          description: c.description,
+                          imageUrl: c.imageUrl,
+                          sourceStyleId: style.id,
+                        }}
+                        onCopied={() => void refresh()}
+                      />
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))}

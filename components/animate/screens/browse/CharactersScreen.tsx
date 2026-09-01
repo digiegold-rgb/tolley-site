@@ -29,6 +29,8 @@ import { HouseCastPanel } from './HouseCastPanel';
 import { RulesBanner } from './RulesBanner';
 import { CharacterRulesDrawer, useOwnerRules, type CharacterRef } from './CharacterRules';
 import { ImageLightbox } from '../../ImageLightbox';
+import { CopyCharacterToStudio } from './CopyCharacterToStudio';
+import { useTier } from '../../tier-context';
 
 interface VaterCharacter {
   id: string;
@@ -41,6 +43,8 @@ interface VaterCharacter {
 export function CharactersScreen(): React.ReactElement {
   const { t } = useTheme();
   const { setRoute, setEditorStep, setSelectedProjectId } = useRoute();
+  const { settings, workspace } = useTier();
+  const allowStudioCopy = settings.characterStudioCopy !== false;
 
   const [characters, setCharacters] = React.useState<VaterCharacter[] | null>(
     null,
@@ -310,6 +314,17 @@ export function CharactersScreen(): React.ReactElement {
               >
                 {creating ? 'Opening…' : 'Use in new project'}
               </VBtn>
+              {allowStudioCopy ? (
+                <CopyCharacterToStudio
+                  ownerUserId={workspace?.id ?? null}
+                  character={{
+                    name: c.name,
+                    description: c.descriptor,
+                    imageUrl: c.previewUrl,
+                    sourceStyleId: c.styleId,
+                  }}
+                />
+              ) : null}
             </VCard>
           ))}
         </div>
