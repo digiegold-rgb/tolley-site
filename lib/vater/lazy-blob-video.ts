@@ -19,6 +19,17 @@
 
 export const MAX_CONCURRENT_BLOB_VIDEOS = 6;
 
+/**
+ * Rest-state frame for an mp4 tile. DGX renders fade in from black, so the
+ * first frames (and the old 0.05s seek) paint a black tile in a "full"
+ * library. Seek far enough in to clear the fade, but never past the first
+ * fifth of a short clip.
+ */
+export function restFrameTime(duration: number | null | undefined): number {
+  if (typeof duration !== "number" || !Number.isFinite(duration) || duration <= 0) return 0.1;
+  return Math.min(1.2, Math.max(0.1, duration * 0.2));
+}
+
 export type LazyBlobMountInput = {
   previewKind: string;
   /** thumbnailUrl or firstSceneImage — Socials should use <img>, not <video>. */

@@ -44,6 +44,8 @@ export interface StudioProjectInput {
 
 export interface StudioVideo {
   id: string;
+  /** Which library the tile opens: YouTubeProject (default) or VaterListingJob. */
+  source?: "youtube" | "listing";
   title: string;
   status: string;
   stage: CustomerStage | null;
@@ -169,7 +171,10 @@ export function shapeStudioVideo(
       updatedAt: project.updatedAt,
       stepDetails: project.stepDetails,
     }),
-    posted: isPostedToYoutube(project),
+    // A house-matched clip IS live on a channel — the DGX house pipeline
+    // posts outside VaterSocialPost, so without this every posted clip
+    // reads "Ready — post this".
+    posted: isPostedToYoutube(project) || house !== null,
     thumbnailUrl: project.thumbnailUrl ?? null,
     firstSceneImage,
     finalVideoUrl: project.finalVideoUrl ?? null,
@@ -234,6 +239,54 @@ export function studioEncouragement(studioName: string, videos: StudioVideo[]): 
     return `${name} is in production. Nice.`;
   }
   return `${name} is cooking.`;
+}
+
+/** A finished Listing Studio reel (VaterListingJob), shaped like a tile.
+ *  Listing jobs have a staged still — a real image, so the tile never has
+ *  to mount the mp4 at rest. They never drip and are never house-matched. */
+export function shapeListingVideo(job: {
+  id: string;
+  status: string;
+  address?: string | null;
+  city?: string | null;
+  roomType?: string | null;
+  stagedStillUrl?: string | null;
+  stagedStillLabeledUrl?: string | null;
+  finalUrl?: string | null;
+  videoUrl?: string | null;
+  videoVerticalUrl?: string | null;
+  completedAt?: string | Date | null;
+  createdAt?: string | Date;
+}): StudioVideo {
+  const title =
+    (job.address && job.address.trim()) ||
+    (job.roomType ? `${job.roomType} reel` : "Listing reel");
+  const still = job.stagedStillLabeledUrl || job.stagedStillUrl || null;
+  const finalVideoUrl = job.finalUrl || job.videoUrl || job.videoVerticalUrl || null;
+  return {
+    id: job.id,
+    source: "listing",
+    title: job.city ? `${title} — ${job.city}` : title,
+    status: job.status,
+    stage: job.status === "ready" && finalVideoUrl ? "done" : "in_progress",
+    posted: false,
+    thumbnailUrl: still,
+    firstSceneImage: null,
+    finalVideoUrl,
+    previewKind: libraryCardPreviewKind({
+      thumbnailUrl: still,
+      finalVideoUrl,
+    }),
+    completedAt: iso(job.completedAt),
+    createdAt: iso(job.createdAt) ?? new Date(0).toISOString(),
+    publishedAt: null,
+    youtubeVideoId: null,
+    stylePreset: null,
+    dripStage: null,
+    views: null,
+    likes: null,
+    houseMatch: null,
+  };
 }
 
 /** Finished / playable first, then recently updated. */

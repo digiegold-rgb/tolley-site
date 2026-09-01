@@ -17,6 +17,7 @@ import {
   BlobVideoGate,
   MAX_CONCURRENT_BLOB_VIDEOS,
   mayMountThumbVideo,
+  restFrameTime,
   shouldMountThumbVideo,
 } from "./lazy-blob-video.ts";
 
@@ -36,6 +37,26 @@ export function restStateVideoCount(total: number, visible: number): number {
   }
   return n;
 }
+
+describe("restFrameTime — rest frame clears the fade-in, tiles are never black", () => {
+  it("seeks past the fade on a short Wan clip (~5s)", () => {
+    assert.equal(restFrameTime(5), 1);
+  });
+
+  it("caps at 1.2s for long-form so rest is still the opening shot", () => {
+    assert.equal(restFrameTime(400), 1.2);
+  });
+
+  it("never seeks past the first fifth of a tiny clip", () => {
+    assert.equal(restFrameTime(2), 0.4);
+  });
+
+  it("falls back safely when duration is unknown (metadata not loaded)", () => {
+    assert.equal(restFrameTime(NaN), 0.1);
+    assert.equal(restFrameTime(undefined), 0.1);
+    assert.equal(restFrameTime(0), 0.1);
+  });
+});
 
 describe("shouldMountThumbVideo — Socials / Library rest-state", () => {
   it("does not mount a video for offscreen final-video tiles", () => {

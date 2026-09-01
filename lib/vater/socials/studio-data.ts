@@ -20,6 +20,7 @@ import { jsonSafe } from "@/lib/vater/socials/json";
 import {
   dripStageOf,
   matchHouseVideo,
+  shapeListingVideo,
   shapeStudioVideo,
   sortStudioVideos,
   studioEncouragement,
@@ -336,6 +337,48 @@ export async function loadStudioProjects(userId: string): Promise<StudioProjectR
   });
 }
 
+/** Finished Listing Studio reels for this tab. Socials shows every video the
+ *  studio can post — listing renders live in VaterListingJob, not
+ *  YouTubeProject, and without this the /realestateanimated Socials tab is
+ *  empty forever. Renders-in-flight stay on the listing wizard. */
+export async function loadStudioListingVideos(userId: string): Promise<StudioVideo[]> {
+  if (!userId) return [];
+  try {
+    const jobs = await prisma.vaterListingJob.findMany({
+      where: {
+        userId,
+        status: "ready",
+        OR: [
+          { finalUrl: { not: null } },
+          { videoUrl: { not: null } },
+          { videoVerticalUrl: { not: null } },
+        ],
+      },
+      select: {
+        id: true,
+        status: true,
+        address: true,
+        city: true,
+        roomType: true,
+        stagedStillUrl: true,
+        stagedStillLabeledUrl: true,
+        finalUrl: true,
+        videoUrl: true,
+        videoVerticalUrl: true,
+        completedAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+    return jobs.map(shapeListingVideo);
+  } catch (err) {
+    if (isMissingSchemaError(err)) return [];
+    console.error("[socials/studio] listing videos skipped", err);
+    return [];
+  }
+}
+
 export async function decorateStudioVideos(
   userId: string,
   rows: StudioProjectRow[],
@@ -383,9 +426,14 @@ export async function loadStudioPayload(
 
   // Lite first paint: library rows + drip only. Zernio + house match are
   // the serial/heavy bits (hunch #2) and hydrate on the full request.
+  const listingPromise = loadStudioListingVideos(userId);
+
   if (lite) {
-    const [wsRow, rows] = await Promise.all([wsPromise, rowsPromise]);
-    const videos = await decorateStudioVideos(userId, rows, [], { includeZernio: false });
+    const [wsRow, rows, listingVideos] = await Promise.all([wsPromise, rowsPromise, listingPromise]);
+    const videos = sortStudioVideos([
+      ...(await decorateStudioVideos(userId, rows, [], { includeZernio: false })),
+      ...listingVideos,
+    ]);
     const name = wsRow?.name ?? "My Studio";
     const queueCount = videos.filter(
       (v) => v.dripStage === "queued" || v.dripStage === "scheduled" || v.dripStage === "publishing",
@@ -408,13 +456,17 @@ export async function loadStudioPayload(
     });
   }
 
-  const [wsRow, stats, rows, house] = await Promise.all([
+  const [wsRow, stats, rows, house, listingVideos] = await Promise.all([
     wsPromise,
     loadZernioStats(userId, windowDays),
     rowsPromise,
     houseVideosForOwner(userId, session.user?.email),
+    listingPromise,
   ]);
-  const videos = await decorateStudioVideos(userId, rows, house);
+  const videos = sortStudioVideos([
+    ...(await decorateStudioVideos(userId, rows, house)),
+    ...listingVideos,
+  ]);
   const name = wsRow?.name ?? "My Studio";
   const queueCount = videos.filter(
     (v) => v.dripStage === "queued" || v.dripStage === "scheduled" || v.dripStage === "publishing",

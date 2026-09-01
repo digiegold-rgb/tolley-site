@@ -16,6 +16,7 @@ import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { useTier } from '../../tier-context';
+import { useProduct } from '../../product-context';
 import { VBtn } from '../../primitives';
 import { ConnectionsPanel, type SocialAccountsResp } from '../live/ConnectionsPanel';
 import { ChannelStatCards, type ChannelCard, type StatsWindow } from './ChannelStatCards';
@@ -62,6 +63,10 @@ export function SocialsScreen(): React.ReactElement {
   const { t } = useTheme();
   const { setRoute, setSelectedProjectId } = useRoute();
   const { workspace } = useTier();
+  const brand = useProduct();
+  // Listing Studio's make-a-video is the listing wizard, not the Jelly flow.
+  const createRoute = brand.product === 'realestate' ? 'listing' : 'create';
+  const makeLabel = brand.product === 'realestate' ? 'Make a listing video' : 'Make a video';
   const [windowDays, setWindowDays] = React.useState<StatsWindow>(28);
   const cacheKey = studioCacheKey(workspace?.id, windowDays);
   const [payload, setPayload] = React.useState<StudioPayload | null>(
@@ -138,6 +143,12 @@ export function SocialsScreen(): React.ReactElement {
   })();
 
   const openLibrary = (video: StudioVideo) => {
+    if (video.source === 'listing') {
+      // Listing reels live in VaterListingJob — the Library seed below only
+      // understands YouTubeProject rows.
+      setRoute('listing-library');
+      return;
+    }
     openStudioVideoInLibrary(video, { setSelectedProjectId, setRoute });
   };
 
@@ -211,8 +222,8 @@ export function SocialsScreen(): React.ReactElement {
               </span>
             </div>
           ) : null}
-          <VBtn icon="sparkle" onClick={() => setRoute('create')}>
-            Make a video
+          <VBtn icon="sparkle" onClick={() => setRoute(createRoute)}>
+            {makeLabel}
           </VBtn>
           <VBtn icon="upload" variant="ghost" onClick={() => setSchedulerOpen(true)} disabled={!hasZernio}>
             Schedule videos
@@ -243,8 +254,10 @@ export function SocialsScreen(): React.ReactElement {
             performance. House totals live on the dashboard.
           </p>
           <div style={{ marginTop: 18 }}>
-            <VBtn icon="sparkle" onClick={() => setRoute('create')}>
-              Make a video for {studioName}
+            <VBtn icon="sparkle" onClick={() => setRoute(createRoute)}>
+              {brand.product === 'realestate'
+                ? `Make a listing video for ${studioName}`
+                : `Make a video for ${studioName}`}
             </VBtn>
           </div>
         </div>

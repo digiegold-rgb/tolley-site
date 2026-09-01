@@ -205,7 +205,9 @@ export function StudioVideoThumb({
         </div>
         <div style={{ fontSize: 10.5, color: t.textSecondary, marginTop: 3 }}>
           {video.posted
-            ? 'Live on YouTube'
+            ? video.houseMatch
+              ? `Live on ${video.houseMatch.channelLabel}`
+              : 'Live on YouTube'
             : drip
               ? drip
               : video.stage === 'done'
@@ -215,7 +217,7 @@ export function StudioVideoThumb({
                   : video.stage === 'queued'
                     ? 'Queued'
                     : 'In the library'}
-          {video.houseMatch ? ` · ${video.houseMatch.channelLabel}` : null}
+          {video.houseMatch && !video.posted ? ` · ${video.houseMatch.channelLabel}` : null}
         </div>
       </div>
     </button>

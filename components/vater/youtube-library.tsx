@@ -23,7 +23,7 @@ import { billableComputeUsdForProject } from "@/lib/vater/billing/billable";
 import { readConciergeClient } from "@/lib/vater/concierge-client";
 import { isPostedToYoutube } from "@/lib/vater/youtube-posted";
 import { firstScenePreviewUrl, libraryCardPreviewKind } from "@/lib/vater/library-card-preview";
-import { mayMountThumbVideo } from "@/lib/vater/lazy-blob-video";
+import { mayMountThumbVideo, restFrameTime } from "@/lib/vater/lazy-blob-video";
 import { LazyBlobVideo } from "@/components/animate/media/LazyBlobVideo";
 import { JELLY_TOKENS } from "@/components/animate/tokens";
 import { useTheme } from "@/components/animate/theme-context";
@@ -399,10 +399,12 @@ function LibraryCard({
     });
   };
   const paintFirstFrame = (el: HTMLVideoElement) => {
-    // preload=metadata often leaves t=0 blank until a seek paints a frame.
-    if (el.paused && el.currentTime < 0.05) {
+    // preload=metadata often leaves t=0 blank until a seek paints a frame —
+    // and DGX renders fade in from black, so seek past the fade.
+    const rest = restFrameTime(el.duration);
+    if (el.paused && el.currentTime < rest) {
       try {
-        el.currentTime = 0.05;
+        el.currentTime = rest;
       } catch {
         /* not seekable yet */
       }
@@ -414,7 +416,7 @@ function LibraryCard({
       videoRef.current.pause();
       // Always rewind so rest is the opening frame, not wherever hover left off.
       try {
-        videoRef.current.currentTime = 0.05;
+        videoRef.current.currentTime = restFrameTime(videoRef.current.duration);
       } catch {
         /* not seekable yet */
       }

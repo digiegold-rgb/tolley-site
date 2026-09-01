@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.24.1';
+export const APP_VERSION = '1.24.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,17 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.24.2',
+    date: '2026-09-01',
+    title: 'Socials keeps up when you switch studios',
+    items: [
+      'Switching studios keeps you on the screen you were on — compare Socials (or Library) across studios one click per tab, instead of landing back on the Dashboard every time.',
+      'Video tiles no longer paint a black square: the resting frame now sits past the fade-in, so a full library looks full.',
+      'Listing Studio reels now show up on Socials with their staged still, and the make-a-video button there opens the listing wizard.',
+      'A clip our house channels already posted now reads "Live on" that channel instead of "Ready — post this".',
+    ],
+  },
   {
     version: '1.24.1',
     date: '2026-09-01',

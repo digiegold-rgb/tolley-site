@@ -114,8 +114,19 @@ export function WorkspaceTabs(): React.ReactElement | null {
         setBusy(null);
         return;
       }
-      // Identity changed: hard reload, land on the dashboard of the new tab.
-      window.location.assign(brand.homePath);
+      // Identity changed: hard reload. Keep the screen you were on (`#r=…`)
+      // so comparing studios on Socials / Library is one click per tab —
+      // project/step params stay behind, they belong to the old studio.
+      const m = /[#&]r=([a-z0-9-]+)/i.exec(window.location.hash);
+      const keepHash = m ? `#r=${m[1]}` : '';
+      if (window.location.pathname === brand.homePath && !window.location.search) {
+        // Same page: a fragment-only assign() would not navigate, so set the
+        // hash and force the reload ourselves.
+        if (window.location.hash !== keepHash) window.location.hash = keepHash;
+        window.location.reload();
+      } else {
+        window.location.assign(brand.homePath + keepHash);
+      }
     } catch {
       flash("Couldn't switch studios.");
       setBusy(null);

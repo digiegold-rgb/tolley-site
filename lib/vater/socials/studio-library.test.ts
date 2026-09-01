@@ -7,6 +7,7 @@ import {
   matchHouseVideo,
   normalizeTitle,
   projectTitle,
+  shapeListingVideo,
   shapeStudioVideo,
   studioEncouragement,
   studioHighlight,
@@ -107,6 +108,41 @@ describe("studio library helpers", () => {
     assert.equal(dripStageOf("failed"), null);
     assert.equal(projectTitle({ id: "x", publishTitle: " Hello " }), "Hello");
     assert.equal(normalizeTitle("12 — Farm, morning!"), "farm morning");
+  });
+
+  it("a house-matched clip reads as posted — the DGX pipeline posts outside VaterSocialPost", () => {
+    const video = shapeStudioVideo(
+      { id: "p9", publishTitle: "Ruthann walks the farm", status: "completed" },
+      { house: house[0] },
+    );
+    assert.equal(video.posted, true);
+    const unmatched = shapeStudioVideo({ id: "p10", publishTitle: "Nope", status: "completed" });
+    assert.equal(unmatched.posted, false);
+  });
+
+  it("shapes a finished listing reel: still as thumb, listing source, done stage", () => {
+    const reel = shapeListingVideo({
+      id: "L1",
+      status: "ready",
+      address: "123 Main St",
+      city: "Independence",
+      roomType: "kitchen",
+      stagedStillUrl: "https://blob/x-still.jpg",
+      stagedStillLabeledUrl: "https://blob/x-still-labeled.jpg",
+      finalUrl: "https://blob/x-final.mp4",
+      createdAt: "2026-08-30T00:00:00Z",
+      completedAt: "2026-08-30T01:00:00Z",
+    });
+    assert.equal(reel.source, "listing");
+    assert.equal(reel.title, "123 Main St — Independence");
+    assert.equal(reel.stage, "done");
+    // Labeled still wins → the tile is an <img>, never a rest-state mp4.
+    assert.equal(reel.thumbnailUrl, "https://blob/x-still-labeled.jpg");
+    assert.equal(reel.previewKind, "thumb");
+    assert.equal(reel.dripStage, null);
+    const bare = shapeListingVideo({ id: "L2", status: "ready", videoUrl: "https://blob/y.mp4" });
+    assert.equal(bare.title, "Listing reel");
+    assert.equal(bare.previewKind, "final-video");
   });
 });
 

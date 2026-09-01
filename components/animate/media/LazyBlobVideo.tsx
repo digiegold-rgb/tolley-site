@@ -8,12 +8,13 @@
  */
 
 import * as React from 'react';
-import { blobVideoGate } from '@/lib/vater/lazy-blob-video';
+import { blobVideoGate, restFrameTime } from '@/lib/vater/lazy-blob-video';
 
 function paintFirstFrame(el: HTMLVideoElement): void {
-  if (el.paused && el.currentTime < 0.05) {
+  const rest = restFrameTime(el.duration);
+  if (el.paused && el.currentTime < rest) {
     try {
-      el.currentTime = 0.05;
+      el.currentTime = rest;
     } catch {
       /* not seekable yet */
     }
