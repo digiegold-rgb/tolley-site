@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
-import { libraryCardPreviewKind } from "./library-card-preview.ts";
+import { firstScenePreviewUrl, libraryCardPreviewKind } from "./library-card-preview.ts";
 
 const librarySrc = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "..", "..", "components/vater/youtube-library.tsx"),
@@ -75,8 +75,22 @@ describe("libraryCardPreviewKind — rest-state Library card", () => {
     assert.equal(libraryCardPreviewKind({}), "empty");
   });
 
+  it("firstScenePreviewUrl pins variant=image and the scene version", () => {
+    assert.equal(
+      firstScenePreviewUrl([{ imageUrl: "https://example.com/s.jpg", version: 2 }]),
+      "https://example.com/s.jpg?variant=image&v=2",
+    );
+    assert.equal(
+      firstScenePreviewUrl([{ imageUrl: "https://example.com/s.jpg?x=1", version: 0 }]),
+      "https://example.com/s.jpg?x=1&variant=image&v=0",
+    );
+    assert.equal(firstScenePreviewUrl([]), null);
+    assert.equal(firstScenePreviewUrl(null), null);
+  });
+
   it("LibraryCard mounts a paused metadata video at rest for final-video", () => {
     assert.match(librarySrc, /libraryCardPreviewKind/);
+    assert.match(librarySrc, /firstScenePreviewUrl/);
     assert.match(librarySrc, /previewKind === "final-video" \|\| hoverPreview/);
     assert.match(librarySrc, /preload="metadata"/);
     assert.match(librarySrc, /onLoadedMetadata/);

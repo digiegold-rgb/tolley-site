@@ -1,7 +1,7 @@
 /**
  * GET /api/vater/socials/house?days=7
  *
- * House HQ Posts metrics for the owner Animate login (isVaterOwnerUser /
+ * House HQ Posts metrics for the owner Animate dashboard (isVaterOwnerUser /
  * isVaterAdminEmail). Reads the same tables /hq?tab=posts already collects.
  * Never calls /api/hq/* (those 401 without the HQ cookie). Never writes
  * ChannelViewStat, ChannelVideoStat, HqAdsSnapshot, or PostLogEntry.

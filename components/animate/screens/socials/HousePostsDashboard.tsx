@@ -1,12 +1,13 @@
 'use client';
 
 /**
- * Owner-only house dashboard on /animate Socials.
+ * Owner-only house dump on the main /animate dashboard (not Socials).
  *
  * Same HQ Posts metrics (DGX, ads Day$/Life$, view counter, every video,
  * post-health) restyled with Animate tokens + VCard. Fetches
  * GET /api/vater/socials/house — never /api/hq/* (those 401 without the HQ
- * cookie). Studio / public sessions never mount this.
+ * cookie). Studio / public sessions never mount this. Per-studio Socials
+ * must not import this — house totals are not a studio tab.
  */
 
 import * as React from 'react';
@@ -203,8 +204,8 @@ export function HousePostsDashboard(): React.ReactElement {
       <div style={{ marginBottom: 12 }}>
         <SectionTitle
           icon="niche"
-          title="House posts"
-          sub="Same numbers as HQ → Posts. This login is the house — no Zernio connect required."
+          title="House HQ — everything live"
+          sub="Ads, channels, every video. Open a studio tab → Socials to see how THAT studio is doing."
         />
       </div>
       {sectionErr ? <ErrorBar message={sectionErr} /> : null}
@@ -357,13 +358,15 @@ function ViewsCard({ views }: { views: HousePayload['views'] }): React.ReactElem
           {total?.partial ? ' †' : ''}
         </div>
         <div
+          className={(total?.views ?? 0) > 0 ? 'jc-blink' : undefined}
           style={{
             fontSize: 40,
             fontWeight: 800,
             fontVariantNumeric: 'tabular-nums',
-            color: t.text,
+            color: (total?.views ?? 0) > 0 ? JELLY_TOKENS.success : t.text,
             lineHeight: 1.15,
             margin: '8px 0',
+            textShadow: (total?.views ?? 0) > 0 ? '0 0 24px rgba(52,201,138,0.35)' : undefined,
           }}
         >
           {(total?.views ?? 0).toLocaleString()}

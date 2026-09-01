@@ -14,6 +14,9 @@ import { VBtn, VCard, RetryError } from '../primitives';
 import { GlassCard, MicroLabel } from '../cinema';
 import { Footer } from '../Footer';
 import { LatestUpdateBanner } from '../LatestUpdate';
+import { useTier } from '../tier-context';
+import { HousePostsDashboard } from './socials/HousePostsDashboard';
+import { ActiveVideosStrip } from './dashboard/ActiveVideosStrip';
 
 interface KpiTile {
   /** Route to open when the tile is clicked — beta testers saw "2 total
@@ -75,6 +78,8 @@ const FIRST_VIDEO_STEPS: ReadonlyArray<{ label: string; sub: string }> = [
 export function DashboardScreen(): React.ReactElement {
   const { t } = useTheme();
   const { setRoute, openHelp } = useRoute();
+  const { tier } = useTier();
+  const isOwner = tier === 'owner';
   const [projects, setProjects] = React.useState<AnyProject[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
@@ -229,7 +234,7 @@ export function DashboardScreen(): React.ReactElement {
           Dashboard
         </h2>
         <p style={{ fontSize: 14, color: t.textSecondary, margin: '4px 0 0' }}>
-          Create and manage your video styles and voice clones
+          Everything live, across your studios — then jump into Socials to see how each tab is doing.
         </p>
       </div>
 
@@ -277,6 +282,14 @@ export function DashboardScreen(): React.ReactElement {
           onCta={() => setRoute('library')}
         />
       </div>
+
+      <ActiveVideosStrip />
+
+      {isOwner ? (
+        <div style={{ marginTop: 8 }}>
+          <HousePostsDashboard />
+        </div>
+      ) : null}
 
       {loadError && (
         <RetryError

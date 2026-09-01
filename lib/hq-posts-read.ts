@@ -2,7 +2,7 @@
  * Shared READ helpers for HQ Posts metrics.
  *
  * Used by /api/hq/* (PIN cookie) and GET /api/vater/socials/house (owner
- * Animate session). Same ChannelViewStat / ChannelVideoStat / HqAdsSnapshot /
+ * Animate dashboard). Same ChannelViewStat / ChannelVideoStat / HqAdsSnapshot /
  * PostLogEntry / DgxActivity rows the HQ Posts tab already shows.
  *
  * READ ONLY. Ads collect + snapshot writes stay on /api/hq/ads-status.

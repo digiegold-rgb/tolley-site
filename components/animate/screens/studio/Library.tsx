@@ -60,7 +60,7 @@ function bucketProjects(projects: AnyProject[]): Record<CustomerStage, AnyProjec
 
 export function Library(): React.ReactElement {
   const { t } = useTheme();
-  const { requestNewVideo } = useRoute();
+  const { requestNewVideo, selectedProjectId } = useRoute();
   const [projects, setProjects] = React.useState<AnyProject[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -277,6 +277,7 @@ export function Library(): React.ReactElement {
           <div className="jelly-legacy">
             <YouTubeLibrary
               projects={gridProjects}
+              initialActiveId={selectedProjectId}
               onDelete={handleDelete}
               onRecomposeStart={handleRecomposeStart}
               onAnimateLayerStart={handleRecomposeStart}

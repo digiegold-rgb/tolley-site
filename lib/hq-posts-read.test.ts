@@ -20,13 +20,16 @@ describe("HQ routes reuse house readers", () => {
 });
 
 describe("Animate Socials house block", () => {
-  it("owner Socials mounts the house dashboard and does not fetch /api/hq/*", async () => {
+  it("owner dashboard mounts the house dump; Socials stays per-studio", async () => {
     const screen = await readFile("components/animate/screens/socials/SocialsScreen.tsx", "utf8");
+    const home = await readFile("components/animate/screens/DashboardScreen.tsx", "utf8");
     const dash = await readFile("components/animate/screens/socials/HousePostsDashboard.tsx", "utf8");
     const api = await readFile("app/api/vater/socials/house/route.ts", "utf8");
-    assert.match(screen, /HousePostsDashboard/);
-    assert.match(screen, /tier === 'owner'/);
+    assert.equal(screen.includes("HousePostsDashboard"), false);
+    assert.match(home, /HousePostsDashboard/);
+    assert.match(home, /tier === 'owner'/);
     assert.equal(/fetch\(['"`]\/api\/hq\//.test(screen), false);
+    assert.equal(/fetch\(['"`]\/api\/hq\//.test(home), false);
     assert.match(dash, /\/api\/vater\/socials\/house/);
     assert.equal(/fetch\(['"`]\/api\/hq\//.test(dash), false);
     assert.match(api, /isVaterOwnerUser/);
