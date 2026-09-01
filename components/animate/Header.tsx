@@ -813,6 +813,7 @@ export function SettingsModal({ onClose }: SettingsModalProps): React.ReactEleme
                 </div>
               </div>
               <ShowcaseOptOutToggle />
+              <CharacterStudioCopyToggle />
               <AnimateSmsOptInPanel />
               <SettingsExternalLink
                 href="/settings"
@@ -1091,6 +1092,120 @@ function StudioSettingsRow({
         <PillButton variant="outline" size="sm" disabled={busy} onClick={onArchive}>
           Archive
         </PillButton>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Account-global: copy a character onto another owned YouTubeStyle.
+ *
+ * Default ON (product default / CHARACTER_STUDIO_COPY_DEFAULT). Reads and
+ * writes /api/vater/me the same way ShowcaseOptOutToggle does — server state
+ * only, revert on failure. View-as sessions 403 (proxy.ts).
+ */
+function CharacterStudioCopyToggle(): React.ReactElement {
+  const { t } = useTheme();
+  const [enabled, setEnabled] = React.useState<boolean | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/vater/me', { cache: 'no-store' });
+        if (!r.ok) return;
+        const data = (await r.json()) as { settings?: { characterStudioCopy?: boolean } };
+        if (!cancelled) setEnabled(data.settings?.characterStudioCopy !== false);
+      } catch {
+        /* leave indeterminate rather than guessing */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggle = React.useCallback(
+    async (next: boolean) => {
+      const previous = enabled;
+      setEnabled(next);
+      setSaving(true);
+      setError(null);
+      try {
+        const r = await fetch('/api/vater/me', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ characterStudioCopy: next }),
+        });
+        if (!r.ok) {
+          setEnabled(previous);
+          setError(
+            r.status === 403
+              ? "Can't change this from a support session."
+              : "Couldn't save that — try again.",
+          );
+        }
+      } catch {
+        setEnabled(previous);
+        setError("Couldn't save that — try again.");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [enabled],
+  );
+
+  const allowed = enabled === null ? true : enabled;
+
+  return (
+    <div
+      style={{
+        padding: 16,
+        background: t.cardAlt,
+        borderRadius: JELLY_TOKENS.radius.md,
+        border: `1px solid ${t.border}`,
+      }}
+    >
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+          cursor: enabled === null || saving ? 'default' : 'pointer',
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={allowed}
+          disabled={enabled === null || saving}
+          onChange={(e) => void toggle(e.target.checked)}
+          data-testid="character-studio-copy"
+          style={{ marginTop: 3 }}
+        />
+        <span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
+            Copy characters between studios
+          </span>
+          <span
+            style={{
+              display: 'block',
+              marginTop: 4,
+              fontSize: 13,
+              color: t.textSecondary,
+              lineHeight: 1.5,
+            }}
+          >
+            On by default. When it&apos;s on, Characters lets you copy a face you
+            already have onto another studio you own — free, same portrait, no
+            re-generate. A matching name on the destination is updated instead of
+            duplicated.
+          </span>
+        </span>
+      </label>
+      {error ? (
+        <div style={{ marginTop: 8, fontSize: 12, color: JELLY_TOKENS.error }}>{error}</div>
       ) : null}
     </div>
   );

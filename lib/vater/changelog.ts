@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.24.2';
+export const APP_VERSION = '1.25';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.25',
+    date: '2026-09-01',
+    title: 'Copy a character onto another studio you own',
+    items: [
+      'Settings now has a global switch (on by default) to copy a character from one of your studios onto another you own.',
+      'When it is on, Characters and the studio editor let you pick a destination. The portrait is reused as-is — no re-generate, no charge.',
+      'If that studio already has a character with the same name, we update that row instead of making a duplicate. System studios stay off-limits.',
+    ],
+  },
   {
     version: '1.24.2',
     date: '2026-09-01',

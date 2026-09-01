@@ -1,7 +1,7 @@
 /**
  * GET  /api/vater/me   — who the /animate client is and what it may render
  * PATCH /api/vater/me  — per-user preferences the studio owns
- * (showcaseOptOut, smsOptIn, agentProfile)
+ * (showcaseOptOut, smsOptIn, agentProfile, characterStudioCopy)
  *
  * Single source of truth the /animate client uses to decide what to render.
  * Without this the Sidebar advertised owner-only screens (RSS Feeds,
@@ -41,6 +41,10 @@ import {
   sanitizeAgentProfilePatch,
   writeAgentProfile,
 } from "@/lib/vater/listing/agent-profile";
+import {
+  CHARACTER_STUDIO_COPY_DEFAULT,
+  readCharacterStudioCopyFlag,
+} from "@/lib/vater/character-studio-copy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -99,6 +103,25 @@ async function readSmsFlags(
   }
 }
 
+/**
+ * characterStudioCopy is a later column (20260901). Isolated read so a
+ * missing-column environment still boots /animate with the product default
+ * (ON) instead of failing the whole flags query.
+ */
+async function readCharacterStudioCopy(userId: string): Promise<boolean> {
+  try {
+    const rows = await prisma.$queryRaw<Array<{ characterStudioCopy: boolean }>>`
+      SELECT "characterStudioCopy" FROM "User" WHERE "id" = ${userId} LIMIT 1
+    `;
+    return readCharacterStudioCopyFlag(rows[0]?.characterStudioCopy);
+  } catch (err) {
+    if (!isMissingRelationError(err)) {
+      console.error("[vater/me] characterStudioCopy read failed", err);
+    }
+    return CHARACTER_STUDIO_COPY_DEFAULT;
+  }
+}
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -126,6 +149,7 @@ export async function GET() {
   const rootUserId = ws?.ownerUserId ?? session.user.id;
   const flags = await readUserFlags(rootUserId);
   const sms = await readSmsFlags(rootUserId);
+  const characterStudioCopy = await readCharacterStudioCopy(rootUserId);
 
   /* How long a script this account may render. The editor needs the same
    * number the from-script / context guards enforce — otherwise the Script
@@ -221,6 +245,10 @@ export async function GET() {
         phone: sms.phone,
         displayNumber: animateSmsDisplayNumber(),
       },
+      /** Account-global Animate flags (root login). Default ON. */
+      settings: {
+        characterStudioCopy,
+      },
       /** Set only during an admin support session. readOnly is enforced in
        *  proxy.ts, not here — this is just what the banner reads. */
       impersonation: actor?.isImpersonating
@@ -232,7 +260,7 @@ export async function GET() {
 }
 
 /**
- * PATCH { showcaseOptOut: boolean }
+ * PATCH { showcaseOptOut?: boolean, characterStudioCopy?: boolean, … }
  *
  * Backs the Terms § 7 promotional-license opt-out. false (the default) means
  * inputs/outputs may appear in showcases; true means they may not.
@@ -248,7 +276,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "LOGIN_REQUIRED" }, { status: 401, headers: NO_STORE });
   }
 
-  let body: { showcaseOptOut?: unknown; acceptTerms?: unknown; smsOptIn?: unknown; phone?: unknown; agentProfile?: unknown };
+  let body: { showcaseOptOut?: unknown; acceptTerms?: unknown; smsOptIn?: unknown; phone?: unknown; agentProfile?: unknown; characterStudioCopy?: unknown };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -326,6 +354,33 @@ export async function PATCH(request: NextRequest) {
     }
     return NextResponse.json(
       { ok: true, sms: { optIn: sms.smsOptIn, phone, displayNumber: animateSmsDisplayNumber() } },
+      { headers: NO_STORE },
+    );
+  }
+
+  if (typeof body.characterStudioCopy === "boolean") {
+    const rootId = session.workspace?.rootUserId ?? session.user.id;
+    try {
+      await prisma.$executeRaw`
+        UPDATE "User"
+        SET "characterStudioCopy" = ${body.characterStudioCopy}
+        WHERE "id" = ${rootId}
+      `;
+    } catch (err) {
+      if (isMissingRelationError(err)) {
+        return NextResponse.json(
+          { error: "FEATURE_NOT_READY", message: "The character-studio-copy column has not been migrated yet." },
+          { status: 503, headers: NO_STORE },
+        );
+      }
+      console.error("[vater/me] characterStudioCopy update failed", err);
+      return NextResponse.json(
+        { error: "Could not save that setting." },
+        { status: 500, headers: NO_STORE },
+      );
+    }
+    return NextResponse.json(
+      { ok: true, characterStudioCopy: body.characterStudioCopy },
       { headers: NO_STORE },
     );
   }

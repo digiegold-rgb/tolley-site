@@ -1,16 +1,23 @@
 /**
  * POST /api/vater/youtube/styles/[id]/characters/adopt — Character Lab
- * (2026-08-20).
+ * (2026-08-20) and free studio-to-studio copy (2026-09-01).
  *
- * Persists ONE picked take from a variants batch as a real YouTubeCharacter
- * on the style. Session-authed twin of the DGX callback route's write: same
- * descriptor length contract (≥50 chars), same relative→absolute imageUrl
- * resolution, same permanent/placeInEveryImage defaults. Free — the batch
- * was already charged at generation time.
+ * Persists ONE character as a real YouTubeCharacter on the style. Session-
+ * authed twin of the DGX callback route's write: same descriptor length
+ * contract (≥50 chars), same relative→absolute imageUrl resolution, same
+ * permanent/placeInEveryImage defaults. Free — Character Lab already charged
+ * the batch; copy reuses imageUrl as-is (no generate job, no import charge).
+ *
+ * Same-name on the destination updates that row in place instead of
+ * duplicating. System styles stay immutable.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import {
+  findSameNameCharacter,
+  resolveAdoptImageUrl,
+} from "@/lib/vater/character-studio-copy";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -36,7 +43,13 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     );
   }
 
-  let body: { name?: string; description?: string; imageUrl?: string };
+  let body: {
+    name?: string;
+    description?: string;
+    imageUrl?: string;
+    permanent?: boolean;
+    placeInEveryImage?: boolean;
+  };
   try {
     body = await req.json();
   } catch {
@@ -44,7 +57,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   }
   const name = (body.name || "").trim();
   const description = (body.description || "").trim();
-  let imageUrl = (body.imageUrl || "").trim() || null;
+  const imageUrl = resolveAdoptImageUrl(body.imageUrl);
 
   if (!name || name.length > 80) {
     return NextResponse.json({ error: "name (1-80 chars) required" }, { status: 400 });
@@ -55,23 +68,27 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       { status: 400 },
     );
   }
-  // Job results carry a DGX-relative /vater/file/... path. Store the SITE
-  // proxy path — the raw autopilot URL is bearer-authed and renders as a
-  // broken image in customer browsers.
-  if (imageUrl) {
-    const m = imageUrl.match(/\/vater\/file\/style\/([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)$/);
-    imageUrl = m ? `/api/vater/file/style/${m[1]}/${m[2]}` : imageUrl.includes("://") ? imageUrl : null;
-  }
 
-  const character = await prisma.youTubeCharacter.create({
-    data: {
-      styleId: id,
-      name,
-      description,
-      imageUrl,
-      permanent: true,
-      placeInEveryImage: false,
-    },
+  const siblings = await prisma.youTubeCharacter.findMany({
+    where: { styleId: id },
+    select: { id: true, name: true },
   });
-  return NextResponse.json({ character });
+  const existing = findSameNameCharacter(siblings, name);
+
+  const character = existing
+    ? await prisma.youTubeCharacter.update({
+        where: { id: existing.id },
+        data: { name, description, imageUrl },
+      })
+    : await prisma.youTubeCharacter.create({
+        data: {
+          styleId: id,
+          name,
+          description,
+          imageUrl,
+          permanent: true,
+          placeInEveryImage: false,
+        },
+      });
+  return NextResponse.json({ character, updated: Boolean(existing) });
 }
