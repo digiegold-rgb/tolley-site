@@ -22,6 +22,7 @@ import {
 import { billableComputeUsdForProject } from "@/lib/vater/billing/billable";
 import { readConciergeClient } from "@/lib/vater/concierge-client";
 import { isPostedToYoutube } from "@/lib/vater/youtube-posted";
+import { libraryCardPreviewKind } from "@/lib/vater/library-card-preview";
 import { JELLY_TOKENS } from "@/components/animate/tokens";
 import { useTheme } from "@/components/animate/theme-context";
 
@@ -324,6 +325,12 @@ function LibraryCard({
       }`
     : null;
   const stale = isFinalMp4Stale(project);
+  const previewKind = libraryCardPreviewKind({
+    firstSceneImage,
+    thumbnailUrl: project.thumbnailUrl,
+    finalVideoUrl: project.finalVideoUrl,
+    hasPresetSample: Boolean(preset?.sampleImageUrl),
+  });
 
   const videoSrc = finalVideoPlaybackUrl(project);
   const downloadHref = `/api/vater/youtube/${project.id}/video?download=1`;
@@ -387,13 +394,24 @@ function LibraryCard({
       });
     });
   };
+  const paintFirstFrame = (el: HTMLVideoElement) => {
+    // preload=metadata often leaves t=0 blank until a seek paints a frame.
+    if (el.paused && el.currentTime < 0.05) {
+      try {
+        el.currentTime = 0.05;
+      } catch {
+        /* not seekable yet */
+      }
+    }
+  };
   const endHoverPreview = () => {
     setHoverPreview(false);
     if (videoRef.current) {
       videoRef.current.pause();
-      videoRef.current.currentTime = 0;
+      paintFirstFrame(videoRef.current);
     }
   };
+  const mountPreviewVideo = previewKind === "final-video" || hoverPreview;
 
   const dateStr = new Date(
     project.completedAt ?? project.createdAt,
@@ -428,9 +446,12 @@ function LibraryCard({
         role="button"
         tabIndex={0}
         aria-label={isActive ? `Close player for ${title}` : `Play ${title}`}
+        data-testid="library-card-preview"
+        data-preview={previewKind}
+        data-hover={hoverPreview ? "1" : "0"}
         className="relative aspect-square w-full cursor-pointer overflow-hidden bg-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
       >
-        {hoverPreview ? (
+        {mountPreviewVideo ? (
           <video
             ref={videoRef}
             src={videoSrc}
@@ -439,8 +460,10 @@ function LibraryCard({
             playsInline
             preload="metadata"
             className="h-full w-full object-cover"
+            onLoadedMetadata={(e) => paintFirstFrame(e.currentTarget)}
+            onLoadedData={(e) => paintFirstFrame(e.currentTarget)}
           />
-        ) : firstSceneImage ? (
+        ) : previewKind === "scene" && firstSceneImage ? (
           <Image
             src={firstSceneImage}
             alt={title ?? "first scene"}
@@ -449,7 +472,7 @@ function LibraryCard({
             sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
             unoptimized
           />
-        ) : project.thumbnailUrl ? (
+        ) : previewKind === "thumb" && project.thumbnailUrl ? (
           <Image
             src={project.thumbnailUrl}
             alt={title ?? "thumbnail"}
@@ -457,7 +480,7 @@ function LibraryCard({
             className="object-cover transition-transform duration-300 group-hover:scale-105"
             sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
           />
-        ) : preset?.sampleImageUrl ? (
+        ) : previewKind === "preset" && preset?.sampleImageUrl ? (
           <Image
             src={preset.sampleImageUrl}
             alt={preset.name}

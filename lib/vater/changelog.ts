@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.23';
+export const APP_VERSION = '1.23.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.23.1',
+    date: '2026-09-01',
+    title: 'Library cards show a real frame before you hover',
+    items: [
+      'A finished video in Library shows a frame from the mp4 even when it has no thumbnail yet.',
+      'Hover still plays a silent preview. We did not generate a thumbnail file for every imported clip.',
+    ],
+  },
   {
     version: '1.23',
     date: '2026-08-31',
