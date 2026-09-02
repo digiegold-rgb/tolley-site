@@ -27,6 +27,9 @@ Set these in local `.env.local` and in Vercel project settings:
 
 Optional:
 
+- `QWEN_VLLM_BASE_URL` (Spark vLLM base for `/generate` chat, e.g. `http://<spark>:8357/v1` — see `docs/generate-qwen-vllm.md`)
+- `QWEN_VLLM_MODEL` (served id, default `KarlKinda/Qwen3.8-27B-Uncensored-FP8`)
+- `QWEN_VLLM_API_KEY` (optional Bearer; omit or `none` for open LAN vLLM)
 - `EMAIL_SERVER_HOST`
 - `EMAIL_SERVER_PORT`
 - `EMAIL_SERVER_USER`

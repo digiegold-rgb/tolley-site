@@ -94,7 +94,7 @@ export default function PersonaPage() {
           Edit her yourself — no credits, no texting. Every daily render reads this instantly.
         </p>
         <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
-          <a href="/generate" style={{ color: "#5b8cff", fontSize: 13 }}>→ Quick Generate</a>
+          <a href="/generate" style={{ color: "#5b8cff", fontSize: 13 }}>→ Generate</a>
           <span style={{ color: "#5c6273", fontSize: 13 }}>Live at video.tolley.io: watch renders run</span>
         </div>
 
