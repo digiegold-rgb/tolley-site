@@ -3,9 +3,9 @@
 /**
  * Small Socials / dashboard thumbnail.
  *
- * Rest state is always a permanent still <img> at a stable /still URL.
- * Does not mount a <video>, does not grab a frame in the browser, does
- * not use YouTube or blob: URLs.
+ * Rest state is always a permanent still image at a stable /still URL.
+ * Does not mount a media element, does not grab a frame in the browser, does
+ * not use YouTube or blob URLs.
  */
 
 import * as React from 'react';
