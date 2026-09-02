@@ -5,11 +5,9 @@ import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   classifyRequest,
-  plexFromSettings,
   progressPercent,
   requestQuality,
   toPipelineItem,
-  volumesFromArr,
   type RawRequest,
 } from "./tv-analytics.ts";
 
@@ -32,15 +30,15 @@ function req(partial: RawRequest): RawRequest {
   };
 }
 
-describe("requestQuality — this site uses profileId 5 for 4K, not is4k", () => {
-  it("treats profileId 5 as 4K even when is4k is false", () => {
-    assert.equal(requestQuality({ profileId: 5, is4k: false }), "4k");
+describe("requestQuality — profileId 5 vs 4; TV has no 4K path", () => {
+  it("treats movie profileId 5 as 4K", () => {
+    assert.equal(requestQuality({ type: "movie", profileId: 5, is4k: false }), "4k");
   });
-  it("treats Overseerr is4k as 4K", () => {
-    assert.equal(requestQuality({ profileId: 4, is4k: true }), "4k");
+  it("treats movie profileId 4 as HD", () => {
+    assert.equal(requestQuality({ type: "movie", profileId: 4, is4k: false }), "hd");
   });
-  it("defaults HD-1080p profile 4 to hd", () => {
-    assert.equal(requestQuality({ profileId: 4, is4k: false }), "hd");
+  it("never badges TV as 4K", () => {
+    assert.equal(requestQuality({ type: "tv", profileId: 5, is4k: true }), "hd");
   });
 });
 
@@ -67,11 +65,11 @@ describe("classifyRequest", () => {
   it("FAILED requests need a retry", () => {
     assert.equal(classifyRequest(req({ status: 4 })), "needs_retry");
   });
-  it("DECLINED and deleted media are failed / aired-out", () => {
+  it("DECLINED and deleted media are failed", () => {
     assert.equal(classifyRequest(req({ status: 3 })), "failed");
     assert.equal(classifyRequest(req({ status: 2, media: { status: 6 } })), "failed");
   });
-  it("processing or queued items are downloading", () => {
+  it("processing (import pending / blocked) is downloading", () => {
     assert.equal(classifyRequest(req({ status: 2, media: { status: 3 } })), "downloading");
     assert.equal(
       classifyRequest(
@@ -92,11 +90,15 @@ describe("classifyRequest", () => {
 });
 
 describe("toPipelineItem", () => {
-  it("keeps 4K vs HD on the item", () => {
-    const item = toPipelineItem(req({ profileId: 5, media: { tmdbId: 42, status: 4, title: "Dune" } }));
+  it("keeps 4K vs HD and externalServiceId", () => {
+    const item = toPipelineItem(
+      req({ profileId: 5, media: { tmdbId: 42, status: 3, title: "Dune", externalServiceId: 11 } }),
+    );
     assert.equal(item.quality, "4k");
     assert.equal(item.title, "Dune");
     assert.equal(item.bucket, "downloading");
+    assert.equal(item.externalServiceId, 11);
+    assert.match(item.downloadLabel || "", /processing/);
   });
   it("uses a title hint from the movie/tv GET", () => {
     const item = toPipelineItem(req({ media: { tmdbId: 7, status: 4 } }), {
@@ -110,25 +112,7 @@ describe("toPipelineItem", () => {
   });
 });
 
-describe("storage + plex mapping never leaks arr keys", () => {
-  it("maps Radarr/Sonarr volumes from settings GET", () => {
-    const vols = volumesFromArr("radarr", [
-      { name: "Radarr", activeDirectory: "/movies", activeProfileName: "HD-1080p", is4k: false, apiKey: "SECRET" },
-    ]);
-    assert.equal(vols.length, 1);
-    assert.equal(vols[0].path, "/movies");
-    assert.equal(JSON.stringify(vols).includes("SECRET"), false);
-  });
-  it("Plex is connected when machineId is present", () => {
-    assert.deepEqual(plexFromSettings({ name: "Tolley", machineId: "abc" }), {
-      connected: true,
-      name: "Tolley",
-    });
-    assert.deepEqual(plexFromSettings({}), { connected: false, name: null });
-  });
-});
-
-describe("acquire + DVR paths stay untouched", () => {
+describe("acquire + DVR paths stay untouched; analytics stays on Overseerr", () => {
   it("POST /api/tv/request still sends seasons=all and profileId 5 for 4K movies", () => {
     const src = readApp("app/api/tv/request/route.ts");
     assert.match(src, /payload\.seasons = "all"/);
@@ -143,6 +127,23 @@ describe("acquire + DVR paths stay untouched", () => {
     assert.match(search, /\/api\/v1\/search\?query=/);
     assert.match(discover, /\/api\/v1\/discover\//);
     assert.match(dvr, /TV_API_URL \|\| "https:\/\/tv-dvr\.tolley\.io"/);
+  });
+  it("analytics GETs NAS Overseerr only — no DVR host, no Arr/Plex settings", () => {
+    const src = readApp("app/api/tv/analytics/route.ts");
+    assert.match(src, /OVERSEERR_URL \|\| "https:\/\/tv-api\.tolley\.io"/);
+    assert.match(src, /\/api\/v1\/request\/count/);
+    assert.match(src, /filter=processing/);
+    assert.match(src, /filter=failed/);
+    assert.match(src, /filter=available/);
+    assert.match(src, /\/api\/v1\/request\/\$\{/);
+    assert.equal(src.includes("tv-dvr.tolley.io"), false);
+    assert.equal(src.includes("TV_API"), false);
+    assert.equal(src.includes("settings/radarr"), false);
+    assert.equal(src.includes("settings/sonarr"), false);
+    assert.equal(src.includes("settings/plex"), false);
+    assert.equal(src.includes("RADARR"), false);
+    assert.equal(src.includes("SONARR"), false);
+    assert.equal(src.includes("TRANSMISSION"), false);
   });
   it("Analytics is the last tab pill; MediaCard and request() stay in tv-client", () => {
     const src = readApp("app/tv/tv-client.tsx");

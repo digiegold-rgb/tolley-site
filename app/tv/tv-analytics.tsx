@@ -1,13 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { PipelineItem, StorageVolume } from "@/lib/tv-analytics";
+import type { PipelineItem } from "@/lib/tv-analytics";
 
 type Overview = {
   fetchedAt: string;
-  overseerr: { ok: boolean; version: string | null };
-  plex: { connected: boolean; name: string | null };
-  storage: { connected: boolean; volumes: StorageVolume[] };
+  overseerr: { ok: boolean; version: string | null; host?: string };
+  nas: {
+    wired: boolean;
+    moviesMount?: string;
+    tvMount?: string;
+    note?: string;
+  };
   counts: {
     total: number;
     movie: number;
@@ -18,9 +22,9 @@ type Overview = {
     declined: number;
     failed: number;
     downloading: number;
-    waiting: number;
     needsRetry: number;
     failedOrAired: number;
+    processingStuck: number;
     fourKDownloading: number;
     fourKFailed: number;
     hdFailed: number;
@@ -28,7 +32,7 @@ type Overview = {
   downloading: PipelineItem[];
   needsRetry: PipelineItem[];
   failed: PipelineItem[];
-  waiting: PipelineItem[];
+  available: PipelineItem[];
   error?: string;
 };
 
@@ -40,11 +44,26 @@ const box: React.CSSProperties = {
   border: "1px solid rgba(255,255,255,0.07)",
 };
 
-function fmtBytesLabel(): string {
-  return "free / total not reported";
-}
-
-function QualityBadge({ quality }: { quality: "4k" | "hd" }) {
+function QualityBadge({ quality, mediaType }: { quality: "4k" | "hd"; mediaType: "movie" | "tv" }) {
+  if (mediaType === "tv") {
+    return (
+      <span
+        style={{
+          fontSize: 9.5,
+          fontWeight: 800,
+          letterSpacing: 0.5,
+          padding: "2px 6px",
+          borderRadius: 5,
+          flexShrink: 0,
+          border: "1px solid rgba(255,255,255,0.18)",
+          background: "rgba(0,0,0,0.3)",
+          color: "rgba(255,255,255,0.55)",
+        }}
+      >
+        HD
+      </span>
+    );
+  }
   const is4k = quality === "4k";
   return (
     <span
@@ -137,11 +156,12 @@ function ItemRow({ m }: { m: PipelineItem }) {
           >
             {m.title}
           </div>
-          <QualityBadge quality={m.quality} />
+          <QualityBadge quality={m.quality} mediaType={m.mediaType} />
         </div>
         <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
           {m.mediaType === "tv" ? "TV" : "Movie"}
           {m.year ? ` · ${m.year}` : ""}
+          {m.profileId != null ? ` · profile ${m.profileId}` : ""}
           {m.downloadLabel ? ` · ${m.downloadLabel}` : ""}
           {m.timeLeft ? ` · ${m.timeLeft} left` : ""}
           {m.progress != null ? ` · ${m.progress}%` : ""}
@@ -202,7 +222,7 @@ export function TvAnalytics() {
       const j = await r.json();
       if (!r.ok) {
         setError(j.error || `HTTP ${r.status}`);
-        if (j.storage) setData(j);
+        if (j.nas || j.overseerr) setData(j);
         return;
       }
       setError("");
@@ -220,11 +240,6 @@ export function TvAnalytics() {
     return () => clearInterval(t);
   }, [load]);
 
-  const volumes = data?.storage.volumes || [];
-  const volumeBits = volumes
-    .map((v) => `${v.name}${v.path ? ` · ${v.path}` : ""}${v.profileName ? ` · ${v.profileName}` : ""}`)
-    .join("  ·  ");
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <div
@@ -235,31 +250,26 @@ export function TvAnalytics() {
           border: "1px solid rgba(245,158,11,0.25)",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ fontWeight: 800, fontSize: 14 }}>💾 Storage not connected</div>
-          <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.45)" }}>{fmtBytesLabel()}</div>
+        <div style={{ fontWeight: 800, fontSize: 14 }}>
+          💾 Queue / disk live on NAS — not wired to this tab
         </div>
         <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 6 }}>
-          {volumeBits
-            ? `Volume: ${volumeBits}. Overseerr does not expose free/total disk on this host.`
-            : "Overseerr has no disk-space endpoint — cannot read free/total without a new secret or a write."}
+          Movies land in <code style={{ color: "rgba(255,255,255,0.7)" }}>/mnt/plex-movies</code>
+          {" · "}
+          TV in <code style={{ color: "rgba(255,255,255,0.7)" }}>/mnt/plex-tv</code>
+          . Transmission queue, Arr diskspace, and Plex sessions stay on the NAS — no Arr / Transmission / Plex keys on this site.
         </div>
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, fontSize: 12 }}>
-          <span style={{ color: data?.plex.connected ? "#22c55e" : "rgba(255,255,255,0.4)" }}>
-            {data?.plex.connected
-              ? `Plex linked${data.plex.name ? ` · ${data.plex.name}` : ""}`
-              : "Plex not connected"}
-          </span>
-          <span style={{ color: data?.overseerr.ok ? "#38bdf8" : "rgba(255,255,255,0.4)" }}>
-            {data?.overseerr.ok
-              ? `Overseerr${data.overseerr.version ? ` v${data.overseerr.version}` : ""}`
-              : "Overseerr unreachable"}
+          <span style={{ color: data?.overseerr?.ok ? "#38bdf8" : "rgba(255,255,255,0.4)" }}>
+            {data?.overseerr?.ok
+              ? `Overseerr${data.overseerr.version ? ` v${data.overseerr.version}` : ""} · tv-api.tolley.io`
+              : "Overseerr (tv-api.tolley.io)"}
           </span>
         </div>
       </div>
 
       {loading && !data && (
-        <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginTop: 16 }}>Loading pipeline…</p>
+        <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginTop: 16 }}>Loading Overseerr requests…</p>
       )}
       {error && (
         <p style={{ color: "#f87171", fontSize: 14, marginTop: 12 }}>⚠️ {error}</p>
@@ -268,18 +278,17 @@ export function TvAnalytics() {
       {data && !error && (
         <>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
-            <Stat label="Downloading" value={data.counts.downloading} accent="#38bdf8" />
+            <Stat label="Processing" value={data.counts.processing} accent="#38bdf8" />
             <Stat label="Need retry" value={data.counts.needsRetry} accent="#f59e0b" />
-            <Stat label="Failed / aired out" value={data.counts.failedOrAired} accent="#f87171" />
-            <Stat label="Waiting" value={data.counts.waiting} accent="#fbbf24" />
+            <Stat label="Failed / declined" value={data.counts.failedOrAired} accent="#f87171" />
             <Stat label="On Plex" value={data.counts.available} accent="#22c55e" />
             <Stat label="4K failed" value={data.counts.fourKFailed} accent="#c4b5fd" />
             <Stat label="HD failed" value={data.counts.hdFailed} />
           </div>
 
           <Section
-            title="Downloading"
-            empty="Nothing in the acquire queue right now."
+            title="Processing / importing"
+            empty="Nothing processing in Overseerr right now."
             items={data.downloading}
           />
           <Section
@@ -288,19 +297,19 @@ export function TvAnalytics() {
             items={data.needsRetry}
           />
           <Section
-            title="Failed / aired out"
+            title="Failed / declined"
             empty="No declined or deleted requests."
             items={data.failed}
           />
           <Section
-            title="Waiting"
-            empty="No titles sitting in requested / searching."
-            items={data.waiting}
+            title="Recently available"
+            empty="No recently available titles in this window."
+            items={data.available}
           />
 
           <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.35)", textAlign: "center", marginTop: 18 }}>
-            Acquire pipeline: Overseerr → Sonarr/Radarr → Transmission → Plex. Refreshing every 20s.
-            This tab is read-only — request and DVR are unchanged.
+            This tab reads NAS Overseerr only (tv-api.tolley.io). Live &amp; DVR is a different host.
+            Refreshing every 20s. Request and DVR paths are unchanged.
           </p>
         </>
       )}

@@ -1,9 +1,12 @@
 /**
  * Read-only mapping for the Tolley TV Analytics tab.
  *
- * Acquire path (unchanged): Overseerr → Sonarr/Radarr → Transmission → Plex.
- * This site requests 4K movies with Radarr profileId 5 (Ultra-HD); default
- * HD-1080p is profileId 4. It does not set Overseerr's is4k flag.
+ * Live map (DGX-confirmed): Vercel /tv → NAS Overseerr (tv-api.tolley.io)
+ * auto-approve → Radarr :7878 / Sonarr :8989 on 192.168.2.196 → Transmission
+ * :9091 via gluetun → /mnt/plex-movies and /mnt/plex-tv → Plex :32400.
+ *
+ * Movies: profileId 4 = HD-1080p, profileId 5 = Ultra-HD on the same Radarr.
+ * TV: seasons=all, no 4K path. This tab never talks to tv-dvr / Arr / Plex.
  */
 
 export const HD_PROFILE_ID = 4;
@@ -53,6 +56,7 @@ export type RawMedia = {
   mediaType?: string;
   status?: number;
   status4k?: number;
+  externalServiceId?: number | null;
   downloadStatus?: DownloadBit[];
   downloadStatus4k?: DownloadBit[];
   posterPath?: string;
@@ -84,6 +88,7 @@ export type PipelineItem = {
   poster: string | null;
   quality: Quality;
   profileId: number | null;
+  externalServiceId: number | null;
   bucket: PipelineBucket;
   requestStatus: number;
   mediaStatus: number;
@@ -93,26 +98,11 @@ export type PipelineItem = {
   updatedAt: string | null;
 };
 
-export type StorageVolume = {
-  service: "radarr" | "sonarr";
-  name: string;
-  path: string;
-  profileName: string;
-  is4k: boolean;
-};
-
-export type ArrSettings = {
-  name?: string;
-  activeDirectory?: string;
-  activeProfileName?: string;
-  is4k?: boolean;
-  apiKey?: string;
-  hostname?: string;
-};
-
 export function requestQuality(req: RawRequest): Quality {
-  if (req.is4k === true) return "4k";
+  const mediaType = req.type === "tv" || req.media?.mediaType === "tv" ? "tv" : "movie";
+  if (mediaType === "tv") return "hd";
   if (Number(req.profileId) === UHD_PROFILE_ID) return "4k";
+  if (Number(req.profileId) === HD_PROFILE_ID) return "hd";
   return "hd";
 }
 
@@ -136,15 +126,12 @@ export function progressPercent(downloads: DownloadBit[] | undefined): number | 
 
 export function activeDownloads(req: RawRequest): DownloadBit[] {
   const media = req.media || {};
-  const use4k = req.is4k === true;
-  const bits = use4k ? media.downloadStatus4k : media.downloadStatus;
+  const bits = media.downloadStatus;
   return Array.isArray(bits) ? bits : [];
 }
 
 export function activeMediaStatus(req: RawRequest): number {
-  const media = req.media || {};
-  const raw = req.is4k === true ? media.status4k : media.status;
-  return Number(raw) || 0;
+  return Number(req.media?.status) || 0;
 }
 
 export function classifyRequest(req: RawRequest): PipelineBucket {
@@ -188,6 +175,10 @@ export function toPipelineItem(
   const year =
     titleHint?.year ||
     String(media.releaseDate || media.firstAirDate || "").slice(0, 4);
+  const ext = Number(media.externalServiceId);
+  const downloadLabel =
+    first?.status ||
+    (mediaStatusLabel(activeMediaStatus(req), Number(req.status) || 0));
 
   return {
     id: Number(req.id) || 0,
@@ -198,43 +189,24 @@ export function toPipelineItem(
     poster: tmdbPoster(titleHint?.posterPath ?? media.posterPath),
     quality: requestQuality(req),
     profileId: req.profileId == null ? null : Number(req.profileId),
+    externalServiceId: Number.isFinite(ext) && ext > 0 ? ext : null,
     bucket: classifyRequest(req),
     requestStatus: Number(req.status) || 0,
     mediaStatus: activeMediaStatus(req),
     progress: progressPercent(downloads),
-    downloadLabel: first?.status || null,
+    downloadLabel,
     timeLeft: first?.timeLeft || null,
     updatedAt: req.updatedAt || req.createdAt || null,
   };
 }
 
-export function volumesFromArr(
-  service: "radarr" | "sonarr",
-  rows: unknown,
-): StorageVolume[] {
-  if (!Array.isArray(rows)) return [];
-  return rows
-    .map((row): StorageVolume | null => {
-      if (!row || typeof row !== "object") return null;
-      const s = row as ArrSettings;
-      const path = String(s.activeDirectory || "").trim();
-      const name = String(s.name || service).trim() || service;
-      if (!path && !name) return null;
-      return {
-        service,
-        name,
-        path: path || "(no root folder)",
-        profileName: String(s.activeProfileName || "").trim(),
-        is4k: s.is4k === true,
-      };
-    })
-    .filter((v): v is StorageVolume => v !== null);
-}
-
-export function plexFromSettings(data: unknown): { connected: boolean; name: string | null } {
-  if (!data || typeof data !== "object") return { connected: false, name: null };
-  const s = data as { name?: string; machineId?: string; ip?: string };
-  const name = typeof s.name === "string" && s.name.trim() ? s.name.trim() : null;
-  const connected = Boolean(s.machineId || s.ip || name);
-  return { connected, name };
+function mediaStatusLabel(mediaStatus: number, requestStatus: number): string | null {
+  if (requestStatus === RequestStatus.FAILED) return "failed — needs retry";
+  if (requestStatus === RequestStatus.DECLINED) return "declined";
+  if (mediaStatus === MediaStatus.PROCESSING) return "processing (import pending / blocked on NAS)";
+  if (mediaStatus === MediaStatus.PARTIALLY_AVAILABLE) return "partial — more incoming";
+  if (mediaStatus === MediaStatus.PENDING) return "requested";
+  if (mediaStatus === MediaStatus.AVAILABLE) return "on Plex";
+  if (mediaStatus === MediaStatus.DELETED) return "deleted";
+  return null;
 }

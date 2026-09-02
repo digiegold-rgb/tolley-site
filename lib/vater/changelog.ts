@@ -44,8 +44,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-09-02',
     title: 'Tolley TV Analytics shows downloads without touching requests',
     items: [
-      'A last Analytics tab on Tolley TV lists what is downloading, what failed (4K vs HD), and what needs a retry.',
-      'Search, browse, request, and Live & DVR are unchanged. Storage free space is shown only when Overseerr reports it — otherwise the bar says it is not connected.',
+      'A last Analytics tab on Tolley TV lists Overseerr processing, failed, and available titles, with 4K vs HD on movies.',
+      'Search, browse, request, and Live & DVR are unchanged. Queue and disk stay on the NAS — this tab does not take Arr, Transmission, or Plex keys.',
     ],
   },
   {
