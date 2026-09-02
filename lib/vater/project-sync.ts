@@ -61,6 +61,7 @@ import { expireProjectIfDue, nextApprovalExpiry } from "@/lib/vater/approval-exp
 import { notifyFlowTransition } from "@/lib/vater/flow-notify";
 import { isStuckBeforeReadyStatus, persistStatusForSync } from "@/lib/vater/delivery-ready";
 import { promoteReadyIfDelivered } from "@/lib/vater/delivery-verify";
+import { persistStillInBackground } from "@/lib/vater/permanent-still-persist";
 
 /**
  * Stepped create flow (2026-08-28): the step a DGX-driven status lands on.
@@ -933,6 +934,11 @@ export async function syncProjectFromJob(
       id,
       updated.status === "ready" ? "video.ready" : "video.failed",
     );
+  }
+
+  // Permanent card still — copy a scene / thumb / one frame once. Never GPU.
+  if (updated.finalVideoUrl || updated.thumbnailUrl || updated.scenesJson) {
+    persistStillInBackground("youtube", id);
   }
 
   return {

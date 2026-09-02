@@ -9,9 +9,11 @@
  * ads or channel totals — those stay on GET /api/vater/socials/house.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 
 import { auth } from "@/auth";
 import { loadStudioPayload } from "@/lib/vater/socials/studio-data";
+import { backfillPermanentStills } from "@/lib/vater/permanent-still-persist";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +31,7 @@ export async function GET(req: NextRequest) {
   const lite = req.nextUrl.searchParams.get("lite") === "1";
   try {
     const payload = await loadStudioPayload(session, windowDays, { lite });
+    waitUntil(backfillPermanentStills({ limit: lite ? 8 : 16 }));
     return NextResponse.json(payload, { headers: NO_STORE });
   } catch (err) {
     return NextResponse.json(

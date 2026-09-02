@@ -157,4 +157,10 @@ export const CRONS: CronEntry[] = [
       }
     },
   },
+  {
+    path: "/api/cron/animate-stills",
+    schedule: "40 */2 * * *",
+    cadenceMin: 120,
+    description: "Animate — persist permanent card stills for finished videos",
+  },
 ];

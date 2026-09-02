@@ -13,6 +13,8 @@ import { RetryError } from '../../primitives';
 import { listingApi, listingErrorMessage } from './listing-api';
 import { SupportStrip } from './SupportStrip';
 import { Badge, BigButton } from './listing-ui';
+import { PermanentStill } from '../../media/PermanentStill';
+import { permanentStillUrl } from '@/lib/vater/permanent-still';
 
 const STATUS_LABEL: Record<ListingJobStatusValue, { text: string; tone: 'ok' | 'warn' | 'brand' | 'faint' }> = {
   draft: { text: 'Draft — keep going', tone: 'faint' },
@@ -84,7 +86,12 @@ export default function ListingLibrary(): React.ReactElement {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
           {jobs.map((j) => {
             const spec = j.sku ? LISTING_SKUS[j.sku] : null;
-            const thumb = j.stagedStillLabeledUrl ?? j.stagedStillUrl ?? j.sourceImageUrls?.[0] ?? null;
+            const thumb =
+              permanentStillUrl('listing', j.id) ||
+              j.stagedStillLabeledUrl ||
+              j.stagedStillUrl ||
+              j.sourceImageUrls?.[0] ||
+              null;
             const s = STATUS_LABEL[j.status] ?? STATUS_LABEL.draft;
             return (
               <div
@@ -105,8 +112,7 @@ export default function ListingLibrary(): React.ReactElement {
               >
                 <div style={{ background: t.cardAlt, position: 'relative' }}>
                   {thumb ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={thumb} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <PermanentStill src={thumb} alt="" style={{ position: 'absolute', inset: 0 }} />
                   ) : (
                     <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: t.textFaint, fontSize: 15 }}>No photo yet</div>
                   )}

@@ -1,12 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import {
   STATUS_LABELS,
   STATUS_COLORS,
   type YouTubeProjectStatus,
 } from "@/lib/vater/youtube-types";
 import { getStylePreset } from "@/lib/vater/style-presets";
+import { PermanentStill } from "@/components/animate/media/PermanentStill";
+import { permanentStillUrl } from "@/lib/vater/permanent-still";
 
 interface Props {
   project: {
@@ -44,15 +45,7 @@ export function YouTubeProjectCard({
 
   // Prefer the first generated scene as the card preview so users see actual
   // video content rather than the random cinematic preset sample.
-  const scenes = Array.isArray(project.scenesJson) ? project.scenesJson : [];
-  const firstSceneImage =
-    scenes.find(
-      (s: { imageUrl?: unknown }) =>
-        typeof s?.imageUrl === "string" && s.imageUrl,
-    )?.imageUrl ?? null;
-  const previewSrc =
-    firstSceneImage ?? project.thumbnailUrl ?? preset?.sampleImageUrl ?? null;
-  const previewIsScene = Boolean(firstSceneImage);
+  const previewSrc = permanentStillUrl("youtube", project.id);
 
   return (
     <div
@@ -75,13 +68,10 @@ export function YouTubeProjectCard({
       {/* Style preview banner */}
       <div className="relative h-20 w-full overflow-hidden bg-zinc-900">
         {previewSrc && (
-          <Image
+          <PermanentStill
             src={previewSrc}
-            alt={previewIsScene ? title || "first scene" : preset?.name || "preview"}
-            fill
-            className={`object-cover ${previewIsScene ? "" : "opacity-70"}`}
-            sizes="320px"
-            unoptimized={previewIsScene}
+            alt={title || "preview"}
+            style={{ position: "absolute", inset: 0 }}
           />
         )}
         {/* gradient fade to card body */}

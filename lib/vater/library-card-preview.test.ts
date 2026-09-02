@@ -11,6 +11,19 @@ const librarySrc = readFileSync(
 );
 
 describe("libraryCardPreviewKind — rest-state Library card", () => {
+  it("prefers the permanent still URL when present", () => {
+    assert.equal(
+      libraryCardPreviewKind({
+        stillUrl: "/api/vater/youtube/p1/still",
+        firstSceneImage: "https://example.com/scene.jpg",
+        thumbnailUrl: "https://example.com/thumb.jpg",
+        finalVideoUrl: "https://x.blob.vercel-storage.com/final.mp4",
+        hasPresetSample: true,
+      }),
+      "still",
+    );
+  });
+
   it("prefers the first scene still", () => {
     assert.equal(
       libraryCardPreviewKind({
@@ -88,12 +101,11 @@ describe("libraryCardPreviewKind — rest-state Library card", () => {
     assert.equal(firstScenePreviewUrl(null), null);
   });
 
-  it("LibraryCard lazy-mounts a final-video only when the tile is in view", () => {
+  it("LibraryCard rest-state is the permanent still; hover may mount a video", () => {
     assert.match(librarySrc, /libraryCardPreviewKind/);
-    assert.match(librarySrc, /firstScenePreviewUrl/);
+    assert.match(librarySrc, /permanentStillUrl/);
+    assert.match(librarySrc, /PermanentStill/);
     assert.match(librarySrc, /mayMountThumbVideo/);
-    assert.match(librarySrc, /LazyBlobVideo/);
-    assert.match(librarySrc, /preload="metadata"/);
     assert.match(librarySrc, /hoverPreview/);
   });
 });

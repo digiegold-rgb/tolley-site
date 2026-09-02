@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isVaterAdminEmail, isVaterStudioEmail } from "@/lib/admin-auth";
+import { PERMANENT_STILL_CACHE_CONTROL } from "@/lib/vater/permanent-still";
 
 type Ctx = { params: Promise<{ slug: string; file: string }> };
 
@@ -48,7 +49,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   return new NextResponse(upstream.body, {
     headers: {
       "Content-Type": upstream.headers.get("content-type") ?? "image/png",
-      "Cache-Control": "private, max-age=3600",
+      "Cache-Control": PERMANENT_STILL_CACHE_CONTROL,
     },
   });
 }

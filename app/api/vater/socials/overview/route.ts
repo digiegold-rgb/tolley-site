@@ -6,9 +6,11 @@
  * totals (those are GET /api/vater/socials/house, owner dashboard only).
  */
 import { NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 
 import { auth } from "@/auth";
 import { loadOverviewPayload } from "@/lib/vater/socials/studio-data";
+import { backfillPermanentStills } from "@/lib/vater/permanent-still-persist";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +24,7 @@ export async function GET() {
   }
   try {
     const payload = await loadOverviewPayload(session);
+    waitUntil(backfillPermanentStills({ limit: 12 }));
     return NextResponse.json(payload, { headers: NO_STORE });
   } catch (err) {
     return NextResponse.json(

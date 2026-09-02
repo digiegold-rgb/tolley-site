@@ -19,6 +19,7 @@ import { JELLY_TOKENS } from '../../tokens';
 import { useTheme, useRoute } from '../../theme-context';
 import { VBtn, VCard, RetryError, SectionHeader } from '../../primitives';
 import { Icon } from '../../Icon';
+import { PermanentStill } from '../../media/PermanentStill';
 import {
   StyleWizardModal,
   type CreatedStyle,
@@ -244,16 +245,27 @@ export function CharactersScreen(): React.ReactElement {
                 }}
               >
                 {c.previewUrl ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={c.previewUrl}
-                    alt={`${c.name} — click to view full screen`}
+                  <button
+                    type="button"
                     title="Click to view full screen"
                     onClick={() =>
                       setLightbox({ src: c.previewUrl!, caption: `${c.name} — ${c.descriptor}` })
                     }
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'zoom-in' }}
-                  />
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      height: '100%',
+                      padding: 0,
+                      border: 0,
+                      cursor: 'zoom-in',
+                      background: 'transparent',
+                    }}
+                  >
+                    <PermanentStill
+                      src={c.previewUrl}
+                      alt={`${c.name} — click to view full screen`}
+                    />
+                  </button>
                 ) : (
                   <Icon name="image" size={28} color={t.textSecondary} />
                 )}

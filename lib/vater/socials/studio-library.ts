@@ -9,6 +9,7 @@
 import { isPostedToYoutube } from "@/lib/vater/youtube-posted";
 import { customerStage, type CustomerStage } from "@/lib/vater/youtube-status";
 import { firstScenePreviewUrl, libraryCardPreviewKind } from "@/lib/vater/library-card-preview";
+import { permanentStillUrl } from "@/lib/vater/permanent-still";
 
 export type StudioDripStage = "queued" | "scheduled" | "publishing" | "published" | null;
 
@@ -51,6 +52,8 @@ export interface StudioVideo {
   stage: CustomerStage | null;
   posted: boolean;
   thumbnailUrl: string | null;
+  /** Stable /still path — the only <img> src cards should use. */
+  stillUrl: string;
   firstSceneImage: string | null;
   finalVideoUrl: string | null;
   previewKind: ReturnType<typeof libraryCardPreviewKind>;
@@ -161,6 +164,7 @@ export function shapeStudioVideo(
   const firstSceneImage = firstScenePreviewUrl(project.scenesJson);
   const house = extras?.house ?? null;
   const views = extras?.views ?? house?.views ?? null;
+  const stillUrl = permanentStillUrl("youtube", project.id);
   return {
     id: project.id,
     title: projectTitle(project),
@@ -176,9 +180,11 @@ export function shapeStudioVideo(
     // reads "Ready — post this".
     posted: isPostedToYoutube(project) || house !== null,
     thumbnailUrl: project.thumbnailUrl ?? null,
+    stillUrl,
     firstSceneImage,
     finalVideoUrl: project.finalVideoUrl ?? null,
     previewKind: libraryCardPreviewKind({
+      stillUrl,
       firstSceneImage,
       thumbnailUrl: project.thumbnailUrl,
       finalVideoUrl: project.finalVideoUrl,
@@ -263,6 +269,7 @@ export function shapeListingVideo(job: {
     (job.roomType ? `${job.roomType} reel` : "Listing reel");
   const still = job.stagedStillLabeledUrl || job.stagedStillUrl || null;
   const finalVideoUrl = job.finalUrl || job.videoUrl || job.videoVerticalUrl || null;
+  const stillUrl = permanentStillUrl("listing", job.id);
   return {
     id: job.id,
     source: "listing",
@@ -271,9 +278,11 @@ export function shapeListingVideo(job: {
     stage: job.status === "ready" && finalVideoUrl ? "done" : "in_progress",
     posted: false,
     thumbnailUrl: still,
+    stillUrl,
     firstSceneImage: null,
     finalVideoUrl,
     previewKind: libraryCardPreviewKind({
+      stillUrl,
       thumbnailUrl: still,
       finalVideoUrl,
     }),

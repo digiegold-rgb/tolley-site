@@ -109,14 +109,15 @@ function SceneCard({
   const duration = Math.max(0, scene.endS - scene.startS);
   // Video scenes pass variant=video + videoVersion so animated scenes
   // surface the MP4 in the timeline. Image scenes keep the PNG path.
-  const thumbUrl =
+  const stillUrl = `/api/vater/youtube/${projectId}/scene/${scene.idx}?variant=image&v=${
+    scene.version ?? 0
+  }`;
+  const clipUrl =
     scene.mediaType === "video" && scene.videoUrl
       ? `/api/vater/youtube/${projectId}/scene/${scene.idx}?variant=video&v=${
           scene.videoVersion ?? 0
         }`
-      : `/api/vater/youtube/${projectId}/scene/${scene.idx}?v=${
-          scene.version ?? 0
-        }`;
+      : null;
 
   return (
     <button
@@ -150,14 +151,25 @@ function SceneCard({
         />
       </label>
       <div className="relative aspect-video w-full bg-zinc-900">
-        {scene.mediaType === "video" && scene.videoUrl ? (
+        {/* Rest state is always the still. Hover plays the clip if one exists. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          key={`i-${scene.idx}-${scene.version ?? 0}`}
+          src={stillUrl}
+          alt={scene.beatText || `Scene ${scene.idx + 1}`}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+        />
+        {clipUrl ? (
           <video
             key={`v-${scene.idx}-${scene.videoVersion ?? 0}`}
-            src={thumbUrl}
-            className="h-full w-full object-cover"
+            src={clipUrl}
+            className="absolute inset-0 h-full w-full object-cover opacity-0 hover:opacity-100"
             muted
             playsInline
-            preload="metadata"
+            preload="none"
+            poster={stillUrl}
             onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
             onMouseLeave={(e) => {
               const v = e.target as HTMLVideoElement;
@@ -165,17 +177,7 @@ function SceneCard({
               v.currentTime = 0;
             }}
           />
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={`i-${scene.idx}-${scene.version ?? 0}`}
-            src={thumbUrl}
-            alt={scene.beatText || `Scene ${scene.idx + 1}`}
-            className="h-full w-full object-cover"
-            loading="lazy"
-            decoding="async"
-          />
-        )}
+        ) : null}
         <div className="absolute bottom-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
           {formatDuration(duration)}
         </div>

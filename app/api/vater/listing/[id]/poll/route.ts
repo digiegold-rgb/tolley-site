@@ -23,6 +23,7 @@ import { mergeVideoCost } from "@/lib/vater/video-cost";
 import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
 import { readAgentProfile } from "@/lib/vater/listing/agent-profile";
 import { isListingSku, LISTING_SKUS } from "@/lib/vater/listing-pricing";
+import { persistStillInBackground } from "@/lib/vater/permanent-still-persist";
 import {
   DGX_SKU_FOR,
   endCardFromProfile,
@@ -211,5 +212,13 @@ export async function GET(_request: NextRequest, ctx: Ctx) {
   }
 
   const fresh = await prisma.vaterListingJob.findUnique({ where: { id } });
+  if (
+    fresh?.stagedStillUrl ||
+    fresh?.stagedStillLabeledUrl ||
+    fresh?.finalUrl ||
+    fresh?.videoUrl
+  ) {
+    persistStillInBackground("listing", id);
+  }
   return NextResponse.json({ job: toDto(fresh ?? job), dgx }, { headers: NO_STORE });
 }

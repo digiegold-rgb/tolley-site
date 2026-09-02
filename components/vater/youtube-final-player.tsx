@@ -24,6 +24,7 @@ import { useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { VideoSpeedChips } from "@/components/ui/VideoSpeedChips";
 import { isFinalMp4Stale, finalVideoPlaybackUrl } from "@/lib/vater/youtube-status";
+import { permanentStillUrl } from "@/lib/vater/permanent-still";
 import { YouTubeShareModal } from "./youtube-share-modal";
 import { AnimateLayerModal } from "@/components/animate/screens/studio/AnimateLayerModal";
 
@@ -210,7 +211,7 @@ export function YouTubeFinalPlayer({
             controls
             controlsList="nodownload"
             preload="metadata"
-            poster={thumbnailUrl ?? undefined}
+            poster={permanentStillUrl("youtube", project.id) || thumbnailUrl || undefined}
             src={videoSrc}
             className="h-full w-full bg-black"
           >

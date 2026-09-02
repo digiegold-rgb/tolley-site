@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import { fetchVaterCapabilities } from "@/components/animate/tier-context";
 import { YouTubeFinalPlayer } from "./youtube-final-player";
@@ -25,6 +24,8 @@ import { isPostedToYoutube } from "@/lib/vater/youtube-posted";
 import { firstScenePreviewUrl, libraryCardPreviewKind } from "@/lib/vater/library-card-preview";
 import { mayMountThumbVideo, restFrameTime } from "@/lib/vater/lazy-blob-video";
 import { LazyBlobVideo } from "@/components/animate/media/LazyBlobVideo";
+import { PermanentStill } from "@/components/animate/media/PermanentStill";
+import { permanentStillUrl } from "@/lib/vater/permanent-still";
 import { JELLY_TOKENS } from "@/components/animate/tokens";
 import { useTheme } from "@/components/animate/theme-context";
 
@@ -328,8 +329,10 @@ function LibraryCard({
   // to come back as video/mp4, blanking the card the moment scene 0 got a
   // clip (2026-08-26, #40/#47).
   const firstSceneImage = firstScenePreviewUrl(project.scenesJson);
+  const stillUrl = permanentStillUrl("youtube", project.id);
   const stale = isFinalMp4Stale(project);
   const previewKind = libraryCardPreviewKind({
+    stillUrl,
     firstSceneImage,
     thumbnailUrl: project.thumbnailUrl,
     finalVideoUrl: project.finalVideoUrl,
@@ -422,7 +425,7 @@ function LibraryCard({
       }
     }
   };
-  const hasStill = Boolean(firstSceneImage || project.thumbnailUrl);
+  const hasStill = true;
   const mountPreviewVideo =
     Boolean(videoSrc) &&
     mayMountThumbVideo({
@@ -490,35 +493,13 @@ function LibraryCard({
               }
             }}
           />
-        ) : previewKind === "scene" && firstSceneImage ? (
-          <Image
-            src={firstSceneImage}
-            alt={title ?? "first scene"}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
-            unoptimized
-          />
-        ) : previewKind === "thumb" && project.thumbnailUrl ? (
-          <Image
-            src={project.thumbnailUrl}
-            alt={title ?? "thumbnail"}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
-          />
-        ) : previewKind === "preset" && preset?.sampleImageUrl ? (
-          <Image
-            src={preset.sampleImageUrl}
-            alt={preset.name}
-            fill
-            className="object-cover opacity-60 transition-transform duration-300 group-hover:scale-105"
-            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
-          />
         ) : (
-          <div className="flex h-full items-center justify-center text-4xl opacity-40">
-            🎬
-          </div>
+          <PermanentStill
+            src={stillUrl}
+            alt={title ?? "thumbnail"}
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            style={{ position: "absolute", inset: 0 }}
+          />
         )}
 
         {/* Gradient overlay */}

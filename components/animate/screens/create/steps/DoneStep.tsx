@@ -8,6 +8,7 @@ import { useTheme, useRoute } from '../../../theme-context';
 import { VBtn } from '../../../primitives';
 import { FilmFrame, FILM_MEDIA_STYLE } from '../../../cinema';
 import { finalVideoPlaybackUrl } from '@/lib/vater/youtube-status';
+import { permanentStillUrl } from '@/lib/vater/permanent-still';
 import { DriveSyncChip } from '../../../DriveSyncChip';
 import { RenderTerminalToggle } from '../../../RenderTerminal';
 import { useCreateFlow } from '../create-context';
@@ -47,7 +48,7 @@ export function DoneStep(): React.ReactElement {
             playsInline
             preload="metadata"
             src={src}
-            poster={project.thumbnailUrl ?? undefined}
+            poster={permanentStillUrl('youtube', project.id) || project.thumbnailUrl || undefined}
             data-testid="done-video"
             style={{ ...FILM_MEDIA_STYLE, background: '#000' }}
           />

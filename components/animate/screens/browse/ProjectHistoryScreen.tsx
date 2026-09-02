@@ -30,6 +30,7 @@ import { Icon } from '../../Icon';
 import { VBtn, VCard, ConfirmDialog, RetryError } from '../../primitives';
 import { Footer } from '../../Footer';
 import { YouTubeProjectCard } from '@/components/vater/youtube-project-card';
+import { permanentStillUrl } from '@/lib/vater/permanent-still';
 import { ProjectDetail } from './ProjectDetail';
 import {
   IN_FLIGHT_STATUSES,
@@ -357,7 +358,11 @@ export function ProjectHistoryScreen(): React.ReactElement {
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0,
-                      backgroundImage: p.thumbnailUrl ? `url(${p.thumbnailUrl})` : undefined,
+                      backgroundImage: p.id
+                        ? `url(${permanentStillUrl('youtube', p.id)})`
+                        : p.thumbnailUrl
+                          ? `url(${p.thumbnailUrl})`
+                          : undefined,
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
                     }}

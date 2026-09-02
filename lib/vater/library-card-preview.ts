@@ -9,6 +9,7 @@
  * This helper is rest-only. Hover-play is a separate UI concern.
  */
 export type LibraryCardPreviewKind =
+  | "still"
   | "scene"
   | "thumb"
   | "final-video"
@@ -39,11 +40,13 @@ export function firstScenePreviewUrl(scenesJson: unknown): string | null {
 }
 
 export function libraryCardPreviewKind(input: {
+  stillUrl?: string | null;
   firstSceneImage?: string | null;
   thumbnailUrl?: string | null;
   finalVideoUrl?: string | null;
   hasPresetSample?: boolean;
 }): LibraryCardPreviewKind {
+  if (nonEmpty(input.stillUrl)) return "still";
   if (nonEmpty(input.firstSceneImage)) return "scene";
   if (nonEmpty(input.thumbnailUrl)) return "thumb";
   if (nonEmpty(input.finalVideoUrl)) return "final-video";

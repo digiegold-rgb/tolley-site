@@ -95,9 +95,11 @@ export async function GET(req: NextRequest, ctx: Ctx) {
       "content-type":
         upstream.headers.get("content-type") || defaultContentType,
       "cache-control":
-        version > 0
+        variant === "image"
           ? "private, max-age=31536000, immutable"
-          : "private, max-age=60",
+          : version > 0
+            ? "private, max-age=31536000, immutable"
+            : "private, max-age=60",
       "accept-ranges": "bytes",
     };
     const passthrough = [

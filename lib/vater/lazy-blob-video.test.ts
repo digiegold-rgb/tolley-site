@@ -176,16 +176,17 @@ describe("Socials thumbs do not render N videos at rest for N > visible", () => 
     assert.equal(gate.has("a"), false);
   });
 
-  it("StudioVideoThumb never eager-mounts a raw <video>; LibraryCard uses the gate", async () => {
+  it("StudioVideoThumb is a permanent <img>; Library hover still uses the gate", async () => {
     const thumb = await readFile(
       "components/animate/screens/socials/StudioVideoThumb.tsx",
       "utf8",
     );
     const library = await readFile("components/vater/youtube-library.tsx", "utf8");
     const lazy = await readFile("components/animate/media/LazyBlobVideo.tsx", "utf8");
-    assert.match(thumb, /LazyBlobVideo/);
-    assert.match(thumb, /mayMountThumbVideo/);
+    assert.match(thumb, /PermanentStill/);
+    assert.equal(/LazyBlobVideo/.test(thumb), false);
     assert.equal(/<video[\s\n>]/.test(thumb), false);
+    assert.match(library, /PermanentStill/);
     assert.match(library, /LazyBlobVideo/);
     assert.match(library, /mayMountThumbVideo/);
     assert.match(lazy, /IntersectionObserver/);

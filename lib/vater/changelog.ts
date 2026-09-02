@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.24.3';
+export const APP_VERSION = '1.24.4';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.24.4',
+    date: '2026-09-02',
+    title: 'Video thumbnails stay put and load instantly',
+    items: [
+      'Every Socials, Library, Recent, Shorts, Publishing, and dashboard card uses a real still file at a stable address — the same path every visit, cached in the browser.',
+      'If a finished video was missing a still, we copy one from a scene or grab a single frame once. We do not regenerate it, and we do not spin on the video file.',
+      'Existing ready videos get a still written in the background so the grid fills without a re-render.',
+    ],
+  },
   {
     version: '1.24.3',
     date: '2026-09-02',

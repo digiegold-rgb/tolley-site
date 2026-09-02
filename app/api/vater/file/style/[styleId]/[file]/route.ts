@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { PERMANENT_STILL_CACHE_CONTROL } from "@/lib/vater/permanent-still";
 
 type Ctx = { params: Promise<{ styleId: string; file: string }> };
 
@@ -61,7 +62,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   return new NextResponse(upstream.body, {
     headers: {
       "Content-Type": upstream.headers.get("content-type") ?? "image/png",
-      "Cache-Control": "private, max-age=3600",
+      "Cache-Control": PERMANENT_STILL_CACHE_CONTROL,
     },
   });
 }

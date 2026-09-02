@@ -75,7 +75,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       "Content-Type":
         upstream.headers.get("content-type") || "image/jpeg",
       "Content-Disposition": "inline",
-      "Cache-Control": "private, max-age=600",
+      "Cache-Control": "private, max-age=31536000, immutable",
     });
     const len = upstream.headers.get("content-length");
     if (len) headers.set("Content-Length", len);

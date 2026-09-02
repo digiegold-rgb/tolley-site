@@ -3,20 +3,16 @@
 /**
  * Small Socials / dashboard thumbnail.
  *
- * Stills (thumbnailUrl / firstSceneImage) render as <img>. A finished mp4
- * with no still does NOT eager-mount a media element — LazyBlobVideo waits until
- * the tile is on screen and a concurrent blob slot is free. Offscreen
- * tiles are a placeholder. Does not generate blob thumbnails.
+ * Rest state is always a permanent still <img> at a stable /still URL.
+ * Does not mount a <video>, does not grab a frame in the browser, does
+ * not use YouTube or blob: URLs.
  */
 
 import * as React from 'react';
 import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
-import { LazyBlobVideo } from '../../media/LazyBlobVideo';
-import { finalVideoPlaybackUrl } from '@/lib/vater/youtube-status';
-import { getStylePreset } from '@/lib/vater/style-presets';
-import { libraryCardPreviewKind } from '@/lib/vater/library-card-preview';
-import { mayMountThumbVideo } from '@/lib/vater/lazy-blob-video';
+import { PermanentStill } from '../../media/PermanentStill';
+import { permanentStillUrl } from '@/lib/vater/permanent-still';
 import type { StudioVideo } from '@/lib/vater/socials/studio-library';
 
 function dripLabel(stage: StudioVideo['dripStage']): string | null {
@@ -39,33 +35,17 @@ export function StudioVideoThumb({
   onClick?: () => void;
 }): React.ReactElement {
   const { t } = useTheme();
-  const preset = getStylePreset(video.stylePreset ?? 'cinematic');
-  const previewKind = libraryCardPreviewKind({
-    firstSceneImage: video.firstSceneImage,
-    thumbnailUrl: video.thumbnailUrl,
-    finalVideoUrl: video.finalVideoUrl,
-    hasPresetSample: Boolean(preset?.sampleImageUrl),
-  });
-  const videoSrc = video.finalVideoUrl
-    ? finalVideoPlaybackUrl({ id: video.id, finalVideoUrl: video.finalVideoUrl })
-    : null;
   const drip = dripLabel(video.dripStage);
   const views = video.views;
-  const hasStill = Boolean(video.firstSceneImage || video.thumbnailUrl);
-  const mountVideo =
-    Boolean(videoSrc) &&
-    mayMountThumbVideo({
-      previewKind,
-      hasStill,
-      selected: false,
-      hover: false,
-    });
+  const stillSrc =
+    video.stillUrl ||
+    permanentStillUrl(video.source === 'listing' ? 'listing' : 'youtube', video.id);
 
   return (
     <button
       type="button"
       data-testid="studio-video-tile"
-      data-preview={previewKind}
+      data-preview="still"
       data-winning={winning ? '1' : '0'}
       onClick={onClick}
       style={{
@@ -91,48 +71,13 @@ export function StudioVideoThumb({
           overflow: 'hidden',
         }}
       >
-        {previewKind === 'scene' && video.firstSceneImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={video.firstSceneImage}
-            alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        ) : previewKind === 'thumb' && video.thumbnailUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={video.thumbnailUrl}
-            alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        ) : mountVideo && videoSrc ? (
-          <LazyBlobVideo id={video.id} src={videoSrc} enabled preload="metadata" />
-        ) : previewKind === 'preset' && preset?.sampleImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={preset.sampleImageUrl}
-            alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.55 }}
-          />
-        ) : (
-          <div
-            style={{
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 22,
-              opacity: 0.45,
-            }}
-          >
-            🎬
-          </div>
-        )}
+        <PermanentStill src={stillSrc} alt="" />
         <div
           style={{
             position: 'absolute',
             inset: 0,
             background: 'linear-gradient(to top, rgba(10,10,20,0.72), transparent 55%)',
+            pointerEvents: 'none',
           }}
         />
         {video.posted ? (

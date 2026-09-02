@@ -98,7 +98,8 @@ describe("studio library helpers", () => {
     assert.equal(video.houseMatch, null);
     assert.equal(video.views, null);
     assert.equal(video.dripStage, "scheduled");
-    assert.equal(video.previewKind, "final-video");
+    assert.equal(video.stillUrl, "/api/vater/youtube/p9/still");
+    assert.equal(video.previewKind, "still");
     assert.match(studioEncouragement("Estate", [video]), /ready to post/);
   });
 
@@ -138,11 +139,13 @@ describe("studio library helpers", () => {
     assert.equal(reel.stage, "done");
     // Labeled still wins → the tile is an <img>, never a rest-state mp4.
     assert.equal(reel.thumbnailUrl, "https://blob/x-still-labeled.jpg");
-    assert.equal(reel.previewKind, "thumb");
+    assert.equal(reel.stillUrl, "/api/vater/listing/L1/still");
+    assert.equal(reel.previewKind, "still");
     assert.equal(reel.dripStage, null);
     const bare = shapeListingVideo({ id: "L2", status: "ready", videoUrl: "https://blob/y.mp4" });
     assert.equal(bare.title, "Listing reel");
-    assert.equal(bare.previewKind, "final-video");
+    assert.equal(bare.stillUrl, "/api/vater/listing/L2/still");
+    assert.equal(bare.previewKind, "still");
   });
 });
 

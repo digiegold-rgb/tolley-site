@@ -18,6 +18,8 @@ import { JELLY_TOKENS } from '../../tokens';
 import { useTheme } from '../../theme-context';
 import { VBtn, VCard, RetryError, SectionHeader } from '../../primitives';
 import { GlassCard, MicroLabel } from '../../cinema';
+import { PermanentStill } from '../../media/PermanentStill';
+import { permanentStillUrl } from '@/lib/vater/permanent-still';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyProject = any;
@@ -303,13 +305,29 @@ export function ShortsLibrary(): React.ReactElement {
                   flexDirection: 'column',
                 }}
               >
-                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                <video
-                  src={s.url}
-                  controls
-                  preload="metadata"
-                  style={{ width: '100%', aspectRatio: '9 / 16', objectFit: 'cover', background: '#000', display: 'block' }}
-                />
+                <div style={{ position: 'relative', width: '100%', aspectRatio: '9 / 16', background: '#000' }}>
+                  <PermanentStill
+                    src={permanentStillUrl('youtube', p.id)}
+                    alt=""
+                    style={{ position: 'absolute', inset: 0 }}
+                  />
+                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  <video
+                    src={s.url}
+                    controls
+                    preload="none"
+                    poster={permanentStillUrl('youtube', p.id)}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      background: 'transparent',
+                      display: 'block',
+                    }}
+                  />
+                </div>
                 <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div style={{ fontSize: 11.5, color: t.textSecondary, fontFamily: JELLY_TOKENS.fontMono }}>
                     {typeof s.startSeconds === 'number' && s.startSeconds > 0
