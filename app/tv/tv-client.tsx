@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { TvAnalytics } from "./tv-analytics";
 import { TvDvr } from "./tv-dvr";
 
 type Result = {
@@ -211,7 +212,7 @@ function pill(active: boolean): React.CSSProperties {
 }
 
 export function TvClient() {
-  const [tab, setTab] = useState<"search" | "browse" | "dvr">("search");
+  const [tab, setTab] = useState<"search" | "browse" | "dvr" | "analytics">("search");
   const [pending, setPending] = useState<Record<number, boolean>>({});
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
@@ -361,7 +362,7 @@ export function TvClient() {
           </div>
 
           {/* Tab bar */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
             <div onClick={() => setTab("search")} style={pill(tab === "search")}>
               🔎 Search
             </div>
@@ -370,6 +371,9 @@ export function TvClient() {
             </div>
             <div onClick={() => setTab("dvr")} style={pill(tab === "dvr")}>
               📡 Live &amp; DVR
+            </div>
+            <div onClick={() => setTab("analytics")} style={pill(tab === "analytics")}>
+              📊 Analytics
             </div>
           </div>
 
@@ -390,7 +394,7 @@ export function TvClient() {
                 outline: "none",
               }}
             />
-          ) : tab === "dvr" ? null : (
+          ) : tab === "dvr" || tab === "analytics" ? null : (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
               <select
                 value={year}
@@ -433,6 +437,10 @@ export function TvClient() {
         {tab === "dvr" ? (
           <div style={{ maxWidth: 640, margin: "0 auto" }}>
             <TvDvr />
+          </div>
+        ) : tab === "analytics" ? (
+          <div style={{ maxWidth: 720, margin: "0 auto" }}>
+            <TvAnalytics />
           </div>
         ) : tab === "search" ? (
           <>
