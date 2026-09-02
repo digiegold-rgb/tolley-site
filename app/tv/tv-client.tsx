@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TvAnalytics } from "./tv-analytics";
 import { TvDvr } from "./tv-dvr";
+import { TvPipeline } from "./tv-pipeline";
 
 type Result = {
   id: number;
@@ -434,6 +435,7 @@ export function TvClient() {
       </header>
 
       <main style={{ maxWidth: 1140, margin: "0 auto", padding: "22px 20px 0" }}>
+        <TvPipeline />
         {tab === "dvr" ? (
           <div style={{ maxWidth: 640, margin: "0 auto" }}>
             <TvDvr />
