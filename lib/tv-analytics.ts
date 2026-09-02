@@ -6,7 +6,9 @@
  * :9091 via gluetun → /mnt/plex-movies and /mnt/plex-tv → Plex :32400.
  *
  * Movies: profileId 4 = HD-1080p, profileId 5 = Ultra-HD on the same Radarr.
- * TV: seasons=all, no 4K path. This tab never talks to tv-dvr / Arr / Plex.
+ * TV: seasons=all, no 4K path. Overseerr stays on tv-api.tolley.io. The optional
+ * read-only snapshot is tv-stats.tolley.io (TV_API_KEY). This tab never talks
+ * to tv-dvr / Arr / Transmission / Plex directly.
  */
 
 export const HD_PROFILE_ID = 4;

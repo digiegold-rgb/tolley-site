@@ -2,6 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { PipelineItem } from "@/lib/tv-analytics";
+import {
+  formatBytes,
+  matchLiveRow,
+  type LiveMatch,
+  type StorageSummary,
+  type TvStatsSnapshot,
+} from "@/lib/tv-stats";
 
 type Overview = {
   fetchedAt: string;
@@ -35,6 +42,16 @@ type Overview = {
   failed: PipelineItem[];
   available: PipelineItem[];
   error?: string;
+};
+
+type StatsPayload = {
+  connected?: boolean;
+  ok?: boolean;
+  host?: string;
+  ts?: string | null;
+  error?: string;
+  snapshot?: TvStatsSnapshot | null;
+  storage?: StorageSummary | null;
 };
 
 const REFRESH_MS = 20_000;
@@ -130,8 +147,9 @@ function MotionBadge({ motion }: { motion: PipelineItem["motion"] }) {
   );
 }
 
-function ItemRow({ m }: { m: PipelineItem }) {
+function ItemRow({ m, live }: { m: PipelineItem; live: LiveMatch | null }) {
   const stuck = m.motion === "stuck";
+  const pct = live?.percentDone ?? m.progress;
   return (
     <div
       style={{
@@ -192,11 +210,15 @@ function ItemRow({ m }: { m: PipelineItem }) {
           {m.downloadLabel ? ` · ${m.downloadLabel}` : ""}
           {m.timeLeft ? ` · ${m.timeLeft} left` : ""}
           {m.progress != null ? ` · ${m.progress}%` : ""}
+          {live?.trackedDownloadState ? ` · ${live.trackedDownloadState}` : ""}
+          {live?.percentDone != null ? ` · snap ${live.percentDone}%` : ""}
+          {live?.eta ? ` · ${live.eta} eta` : ""}
+          {live?.peersConnected != null ? ` · ${live.peersConnected} peers` : ""}
           {m.ageLabel ? ` · ${m.ageLabel}` : ""}
           {m.retriedLabel ? ` · ${m.retriedLabel}` : ""}
         </div>
-        {m.progress != null && (
-          <ProgressBar pct={m.progress} color={m.quality === "4k" ? "#a78bfa" : "#38bdf8"} />
+        {pct != null && (
+          <ProgressBar pct={pct} color={m.quality === "4k" ? "#a78bfa" : "#38bdf8"} />
         )}
       </div>
     </div>
@@ -207,10 +229,12 @@ function Section({
   title,
   empty,
   items,
+  snap,
 }: {
   title: string;
   empty: string;
   items: PipelineItem[];
+  snap: TvStatsSnapshot | null;
 }) {
   return (
     <section>
@@ -223,7 +247,7 @@ function Section({
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {items.map((m) => (
-            <ItemRow key={`${m.mediaType}-${m.id}`} m={m} />
+            <ItemRow key={`${m.mediaType}-${m.id}`} m={m} live={snap ? matchLiveRow(m.title, snap) : null} />
           ))}
         </div>
       )}
@@ -240,37 +264,9 @@ function Stat({ label, value, accent }: { label: string; value: number; accent?:
   );
 }
 
-export function TvAnalytics() {
-  const [data, setData] = useState<Overview | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    try {
-      const r = await fetch("/api/tv/analytics", { cache: "no-store" });
-      const j = await r.json();
-      if (!r.ok) {
-        setError(j.error || `HTTP ${r.status}`);
-        if (j.nas || j.overseerr) setData(j);
-        return;
-      }
-      setError("");
-      setData(j);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-    const t = setInterval(load, REFRESH_MS);
-    return () => clearInterval(t);
-  }, [load]);
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+function StorageBar({ stats }: { stats: StatsPayload | null }) {
+  if (!stats || !stats.connected || !stats.storage) {
+    return (
       <div
         style={{
           ...box,
@@ -279,22 +275,121 @@ export function TvAnalytics() {
           border: "1px solid rgba(245,158,11,0.25)",
         }}
       >
-        <div style={{ fontWeight: 800, fontSize: 14 }}>
-          💾 Queue / disk live on NAS — not wired to this tab
-        </div>
+        <div style={{ fontWeight: 800, fontSize: 14 }}>💾 NAS snapshot not connected</div>
         <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 6 }}>
-          Movies land in <code style={{ color: "rgba(255,255,255,0.7)" }}>/mnt/plex-movies</code>
-          {" · "}
-          TV in <code style={{ color: "rgba(255,255,255,0.7)" }}>/mnt/plex-tv</code>
-          . Transmission queue, Arr diskspace, and Plex sessions stay on the NAS — no Arr / Transmission / Plex keys on this site.
+          tv-stats.tolley.io did not answer. Overseerr lists still load. No Arr / Transmission / Plex keys on this site.
+          {stats?.error ? ` (${stats.error})` : ""}
         </div>
-        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, fontSize: 12 }}>
-          <span style={{ color: data?.overseerr?.ok ? "#38bdf8" : "rgba(255,255,255,0.4)" }}>
-            {data?.overseerr?.ok
-              ? `Overseerr${data.overseerr.version ? ` v${data.overseerr.version}` : ""} · tv-api.tolley.io`
-              : "Overseerr (tv-api.tolley.io)"}
-          </span>
-        </div>
+      </div>
+    );
+  }
+  const s = stats.storage;
+  return (
+    <div
+      style={{
+        ...box,
+        padding: "14px 16px",
+        background: "rgba(0,0,0,0.35)",
+        border: s.staleNfs ? "1px solid rgba(245,158,11,0.55)" : "1px solid rgba(56,189,248,0.25)",
+      }}
+    >
+      <div style={{ fontWeight: 800, fontSize: 14 }}>💾 NAS storage (read-only snapshot)</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+        {s.volumes.map((v) => {
+          const used =
+            v.total != null && v.free != null && v.total > 0
+              ? Math.max(0, Math.min(100, Math.round(((v.total - v.free) / v.total) * 100)))
+              : null;
+          return (
+            <div key={v.key}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, gap: 8 }}>
+                <span style={{ color: "rgba(255,255,255,0.75)" }}>
+                  {v.label}
+                  {v.path ? <code style={{ marginLeft: 8, color: "rgba(255,255,255,0.45)" }}>{v.path}</code> : null}
+                </span>
+                <span style={{ color: "rgba(255,255,255,0.55)" }}>
+                  {formatBytes(v.free)} free{v.total != null ? ` / ${formatBytes(v.total)}` : ""}
+                </span>
+              </div>
+              {used != null && <ProgressBar pct={used} color={v.kind.startsWith("plex") ? "#f59e0b" : "#38bdf8"} />}
+            </div>
+          );
+        })}
+      </div>
+      {s.staleNote && (
+        <div style={{ fontSize: 12, color: "#fbbf24", marginTop: 10 }}>{s.staleNote}</div>
+      )}
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+        <span style={{ color: "#38bdf8" }}>tv-stats.tolley.io</span>
+        <span>{s.torrentCount} torrents</span>
+        <span>radarr {s.radarrCount}</span>
+        <span>sonarr {s.sonarrCount}</span>
+      </div>
+    </div>
+  );
+}
+
+export function TvAnalytics() {
+  const [data, setData] = useState<Overview | null>(null);
+  const [stats, setStats] = useState<StatsPayload | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    const analyticsP = fetch("/api/tv/analytics", { cache: "no-store" })
+      .then(async (r) => {
+        const j = await r.json();
+        if (!r.ok) {
+          setError(j.error || `HTTP ${r.status}`);
+          if (j.nas || j.overseerr) setData(j);
+          return;
+        }
+        setError("");
+        setData(j);
+      })
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : String(e));
+      });
+
+    const statsP = fetch("/api/tv/stats", { cache: "no-store" })
+      .then(async (r) => {
+        const j = (await r.json()) as StatsPayload;
+        if (!r.ok || j.connected === false) {
+          setStats({ connected: false, error: j.error || `HTTP ${r.status}` });
+          return;
+        }
+        setStats(j);
+      })
+      .catch(() => {
+        setStats({ connected: false, error: "tv-stats unreachable" });
+      });
+
+    await Promise.all([analyticsP, statsP]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    load();
+    const t = setInterval(load, REFRESH_MS);
+    return () => clearInterval(t);
+  }, [load]);
+
+  const snap = stats?.connected && stats.snapshot ? stats.snapshot : null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <StorageBar stats={stats} />
+      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", margin: "8px 2px 0" }}>
+        <span style={{ color: data?.overseerr?.ok ? "#38bdf8" : "rgba(255,255,255,0.4)" }}>
+          {data?.overseerr?.ok
+            ? `Overseerr${data.overseerr.version ? ` v${data.overseerr.version}` : ""} · tv-api.tolley.io`
+            : "Overseerr (tv-api.tolley.io)"}
+        </span>
+        {" · "}
+        Movies <code style={{ color: "rgba(255,255,255,0.65)" }}>/mnt/plex-movies</code>
+        {" · "}
+        TV <code style={{ color: "rgba(255,255,255,0.65)" }}>/mnt/plex-tv</code>
+        . No Arr / Transmission / Plex keys on this site.
       </div>
 
       {loading && !data && (
@@ -321,30 +416,35 @@ export function TvAnalytics() {
             title="Stuck"
             empty="Nothing sitting in processing/waiting without a signal."
             items={data.downloading.filter((i) => i.motion === "stuck")}
+            snap={snap}
           />
           <Section
             title="Moving"
             empty="Nothing actively transferring right now."
             items={data.downloading.filter((i) => i.motion === "moving")}
+            snap={snap}
           />
           <Section
             title="Needs retry"
             empty="No failed grabs waiting on a retry."
             items={data.needsRetry}
+            snap={snap}
           />
           <Section
             title="Failed / declined"
             empty="No declined or deleted requests."
             items={data.failed}
+            snap={snap}
           />
           <Section
             title="Recently available"
             empty="No recently available titles in this window."
             items={data.available}
+            snap={snap}
           />
 
           <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.35)", textAlign: "center", marginTop: 18 }}>
-            This tab reads NAS Overseerr only (tv-api.tolley.io). Live &amp; DVR is a different host.
+            Overseerr is tv-api.tolley.io. The storage snapshot is tv-stats.tolley.io. Live &amp; DVR is a third host.
             Refreshing every 20s. Request and DVR paths are unchanged.
           </p>
         </>

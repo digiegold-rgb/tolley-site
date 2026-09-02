@@ -368,6 +368,10 @@ describe("acquire + DVR paths stay untouched; analytics stays on Overseerr", () 
     assert.match(src, /processingStuck/);
     assert.match(src, /m\.timeLeft/);
     assert.match(src, /m\.progress/);
+    assert.match(src, /\/api\/tv\/stats/);
+    assert.match(src, /peersConnected/);
+    assert.match(src, /NAS snapshot not connected/);
+    assert.match(src, /staleNote/);
   });
   it("does not add a vercel.json functions key for the stuck-retry cron", () => {
     const vercel = JSON.parse(readApp("vercel.json")) as {

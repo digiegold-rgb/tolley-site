@@ -47,7 +47,8 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Processing and waiting titles now show how long they have been in that state, like “in queue 3h 12m”.',
       'The old single processing number is split into moving (bytes or time left) and stuck (idle for two hours, or import pending / blocked).',
       'A built-in watcher retries a stuck title once through Overseerr after two hours. Import-blocked titles are left alone — those need a remount, not another grab.',
-      'Search, request, and Live & DVR are still untouched. Queue and disk stay on the NAS.',
+      'A read-only NAS snapshot (tv-stats) fills the storage bar and live peers / percent when it is up. If it is down, Overseerr lists still load.',
+      'Search, request, and Live & DVR are still untouched. No Arr / Transmission / Plex keys on this site.',
     ],
   },
   {
