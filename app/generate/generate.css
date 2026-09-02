@@ -103,6 +103,17 @@
   .gen-grid {
     grid-template-columns: 1fr;
   }
+  .gen-chat {
+    min-height: 0;
+    order: 2;
+  }
+  .gen-chat-log {
+    min-height: 140px;
+    max-height: 36vh;
+  }
+  .gen-right {
+    order: 1;
+  }
 }
 
 .gen-panel {
