@@ -4,12 +4,17 @@ import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
+  RETRY_COOLDOWN_MS,
   STUCK_MS,
   classifyMotion,
   classifyRequest,
   formatQueueAge,
+  formatRetriedAgo,
+  overseerrRetryPath,
   progressPercent,
   requestQuality,
+  runStuckRetries,
+  shouldAutoRetry,
   stateEnteredAt,
   toPipelineItem,
   type RawRequest,
@@ -358,9 +363,133 @@ describe("acquire + DVR paths stay untouched; analytics stays on Overseerr", () 
     assert.match(src, /STUCK/);
     assert.match(src, /MOVING/);
     assert.match(src, /m\.ageLabel/);
+    assert.match(src, /m\.retriedLabel/);
     assert.match(src, /processingMoving/);
     assert.match(src, /processingStuck/);
     assert.match(src, /m\.timeLeft/);
     assert.match(src, /m\.progress/);
+  });
+  it("does not add a vercel.json functions key for the stuck-retry cron", () => {
+    const vercel = JSON.parse(readApp("vercel.json")) as {
+      functions: Record<string, unknown>;
+      crons: Array<{ path: string }>;
+    };
+    assert.equal(vercel.functions["app/api/cron/tv-stuck-retry/route.ts"], undefined);
+    assert.ok(vercel.crons.some((c) => c.path === "/api/cron/tv-stuck-retry"));
+  });
+  it("stuck-retry cron hits Overseerr retry only — CRON_SECRET, no delete, no profile change", () => {
+    const src = readApp("app/api/cron/tv-stuck-retry/route.ts");
+    assert.match(src, /CRON_SECRET/);
+    assert.match(src, /overseerrRetryPath/);
+    assert.match(src, /overseerr\("POST", overseerrRetryPath/);
+    assert.equal(src.includes("DELETE"), false);
+    assert.equal(/profileId\s*=/.test(src), false);
+    assert.equal(src.includes("tv-dvr.tolley.io"), false);
+    assert.equal(src.includes("RADARR"), false);
+    assert.equal(src.includes("TRANSMISSION"), false);
+    assert.match(src, /wired:\s*false/);
+  });
+});
+
+describe("built-in watcher retries stuck rows once", () => {
+  const now = Date.parse("2026-09-02T12:00:00.000Z");
+  const ago = (ms: number) => new Date(now - ms).toISOString();
+
+  it("stuck+2h → retry called (Overseerr /request/{id}/retry, same profile)", async () => {
+    const item = toPipelineItem(
+      req({
+        id: 42,
+        profileId: 5,
+        updatedAt: ago(STUCK_MS),
+        media: { status: 2, downloadStatus: [] },
+      }),
+      undefined,
+      { now },
+    );
+    assert.equal(item.bucket, "waiting");
+    assert.equal(item.motion, "stuck");
+    assert.equal(item.importBlocked, false);
+    assert.equal(shouldAutoRetry(item, { now }).retry, true);
+    assert.equal(overseerrRetryPath(42), "/api/v1/request/42/retry");
+
+    const called: number[] = [];
+    const result = await runStuckRetries([item], {
+      now,
+      retry: async (id) => {
+        called.push(id);
+        return { ok: true, status: 200 };
+      },
+    });
+    assert.deepEqual(called, [42]);
+    assert.equal(result.retried[0]?.id, 42);
+    assert.equal(item.profileId, 5);
+  });
+
+  it("importBlocked → not retried (NAS remount, not another grab)", async () => {
+    const item = toPipelineItem(
+      req({
+        id: 7,
+        updatedAt: ago(STUCK_MS * 2),
+        media: { status: 3, downloadStatus: [{ status: "importBlocked" }] },
+      }),
+      undefined,
+      { now },
+    );
+    assert.equal(item.importBlocked, true);
+    assert.equal(shouldAutoRetry(item, { now }).reason, "import_blocked");
+
+    const fallback = toPipelineItem(
+      req({
+        id: 8,
+        updatedAt: ago(STUCK_MS * 2),
+        media: { status: 3, downloadStatus: [] },
+      }),
+      undefined,
+      { now },
+    );
+    assert.match(fallback.downloadLabel || "", /import pending|blocked/i);
+    assert.equal(shouldAutoRetry(fallback, { now }).retry, false);
+
+    const called: number[] = [];
+    await runStuckRetries([item, fallback], {
+      now,
+      retry: async (id) => {
+        called.push(id);
+        return { ok: true };
+      },
+    });
+    assert.deepEqual(called, []);
+  });
+
+  it("second hit inside 24h → not retried", async () => {
+    const item = toPipelineItem(
+      req({
+        id: 99,
+        updatedAt: ago(STUCK_MS),
+        media: { status: 2, downloadStatus: [] },
+      }),
+      undefined,
+      { now, lastRetryAt: ago(60 * 60_000) },
+    );
+    assert.equal(item.motion, "stuck");
+    assert.equal(item.retriedLabel, "retried 1h ago");
+    assert.ok((item.lastRetryAt && Date.parse(item.lastRetryAt) > now - RETRY_COOLDOWN_MS) ?? false);
+    assert.equal(shouldAutoRetry(item, { now }).reason, "cooldown");
+
+    const called: number[] = [];
+    const result = await runStuckRetries([item], {
+      now,
+      lastRetryAtById: new Map([[99, ago(60 * 60_000)]]),
+      retry: async (id) => {
+        called.push(id);
+        return { ok: true };
+      },
+    });
+    assert.deepEqual(called, []);
+    assert.equal(result.skipped[0]?.reason, "cooldown");
+  });
+
+  it("formatRetriedAgo is 'retried 18m ago'", () => {
+    assert.equal(formatRetriedAgo(18 * 60_000), "retried 18m ago");
   });
 });

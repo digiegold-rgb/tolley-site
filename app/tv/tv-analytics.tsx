@@ -193,6 +193,7 @@ function ItemRow({ m }: { m: PipelineItem }) {
           {m.timeLeft ? ` · ${m.timeLeft} left` : ""}
           {m.progress != null ? ` · ${m.progress}%` : ""}
           {m.ageLabel ? ` · ${m.ageLabel}` : ""}
+          {m.retriedLabel ? ` · ${m.retriedLabel}` : ""}
         </div>
         {m.progress != null && (
           <ProgressBar pct={m.progress} color={m.quality === "4k" ? "#a78bfa" : "#38bdf8"} />

@@ -5,6 +5,7 @@ import {
   type PipelineItem,
   type RawRequest,
 } from "@/lib/tv-analytics";
+import { loadRecentTvRetries } from "@/lib/tv-stuck-retry";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -168,10 +169,14 @@ export async function GET() {
   const merged = await hydrateRequests(key, listed);
   const hints = await fetchTitles(key, merged);
 
+  const lastRetryAtById = await loadRecentTvRetries(7 * 24 * 60 * 60 * 1000);
   const items: PipelineItem[] = merged.map((r) => {
     const mediaType: "movie" | "tv" = r.type === "tv" || r.media?.mediaType === "tv" ? "tv" : "movie";
     const tmdbId = Number(r.media?.tmdbId) || 0;
-    return toPipelineItem(r, hints.get(`${mediaType}:${tmdbId}`));
+    const id = Number(r.id);
+    return toPipelineItem(r, hints.get(`${mediaType}:${tmdbId}`), {
+      lastRetryAt: id ? lastRetryAtById.get(id) ?? null : null,
+    });
   });
 
   const downloading = items
