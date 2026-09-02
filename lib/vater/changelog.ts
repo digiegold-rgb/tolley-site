@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.24.2';
+export const APP_VERSION = '1.24.3';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.24.3',
+    date: '2026-09-02',
+    title: 'Tolley TV Analytics shows downloads without touching requests',
+    items: [
+      'A last Analytics tab on Tolley TV lists what is downloading, what failed (4K vs HD), and what needs a retry.',
+      'Search, browse, request, and Live & DVR are unchanged. Storage free space is shown only when Overseerr reports it — otherwise the bar says it is not connected.',
+    ],
+  },
   {
     version: '1.24.2',
     date: '2026-09-01',
