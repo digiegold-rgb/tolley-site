@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.24.3';
+export const APP_VERSION = '1.24.4';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,18 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.24.4',
+    date: '2026-09-02',
+    title: 'Tolley TV Analytics splits stuck vs moving processing',
+    items: [
+      'Processing and waiting titles now show how long they have been in that state, like “in queue 3h 12m”.',
+      'The old single processing number is split into moving (bytes or time left) and stuck (idle for two hours, or import pending / blocked).',
+      'A built-in watcher retries FAILED Overseerr requests only — that button re-approves and re-sends to Arr; it does not restart Transmission. Stalled downloads retry through tv-stats. Import-blocked titles are left alone.',
+      'A read-only NAS snapshot (tv-stats) fills the storage bar and live peers / percent when it is up. If it is down, Overseerr lists still load.',
+      'Search, request, and Live & DVR are still untouched. No Arr / Transmission / Plex keys on this site.',
+    ],
+  },
   {
     version: '1.24.3',
     date: '2026-09-02',
