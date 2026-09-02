@@ -5,9 +5,13 @@ import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   formatBytes,
+  isImportBlockedCandidate,
   matchLiveRow,
   normalizeTitle,
+  parseRetryCandidates,
   parseTvStats,
+  planTvStatsRetry,
+  runTvStatsRetries,
   summarizeStorage,
   titlesMatch,
 } from "./tv-stats.ts";
@@ -23,6 +27,8 @@ const sample = parseTvStats({
   ts: "2026-09-02T02:00:00.000Z",
   transmission: [
     {
+      id: 11,
+      downloadId: "abc123",
       name: "Dune.2021.2160p.WEB-DL.x265",
       percentDone: 0.42,
       eta: 5400,
@@ -42,6 +48,8 @@ const sample = parseTvStats({
   ],
   radarrQueue: [
     {
+      id: 101,
+      downloadId: "abc123",
       title: "Dune (2021)",
       trackedDownloadState: "downloading",
       sizeleft: 4_000_000_000,
@@ -88,6 +96,10 @@ describe("matchLiveRow — snapshot fields on a processing row", () => {
     assert.equal(hit.percentDone, 42);
     assert.equal(hit.eta, "1h 30m");
     assert.equal(hit.trackedDownloadState, "downloading");
+    assert.equal(sample.transmission[0]?.id, 11);
+    assert.equal(sample.transmission[0]?.downloadId, "abc123");
+    assert.equal(sample.radarrQueue[0]?.id, 101);
+    assert.equal(sample.radarrQueue[0]?.downloadId, "abc123");
   });
   it("does not invent peers when only Arr queue matches", () => {
     const hit = matchLiveRow("Andor", sample);
@@ -159,13 +171,92 @@ describe("tv-stats proxy stays on its own host", () => {
     assert.equal(search.includes("tv-stats"), false);
     assert.equal(dvr.includes("tv-stats"), false);
   });
-  it("stuck-retry cron stays Overseerr-only and still skips import blocked", () => {
+  it("stuck-retry cron uses tv-stats stalled retry and still skips import blocked", () => {
     const src = readApp("app/api/cron/tv-stuck-retry/route.ts");
-    assert.equal(src.includes("tv-stats"), false);
-    assert.equal(src.includes("TV_STATS"), false);
+    assert.match(src, /TV_STATS_URL \|\| DEFAULT_TV_STATS_URL/);
+    assert.match(src, /tvStatsRetryCandidatesPath/);
+    assert.match(src, /tvStatsRetryPath/);
+    assert.match(src, /filter=failed/);
+    assert.equal(src.includes("process.env.TV_API_URL"), false);
+    assert.equal(src.includes("tv-dvr.tolley.io"), false);
     assert.match(src, /overseerrRetryPath/);
     const lib = readApp("lib/tv-analytics.ts");
     assert.match(lib, /import_blocked/);
     assert.match(lib, /isImportBlockedForRetry/);
+    assert.match(lib, /not_failed/);
+    const statsLib = readApp("lib/tv-stats.ts");
+    assert.match(statsLib, /isImportBlockedCandidate/);
+  });
+  it("shop-admin/cron retry proxy stays on tv-stats — no functions key, no DVR host", () => {
+    const src = readApp("app/api/tv/stats/retry/route.ts");
+    assert.match(src, /validateShopAdmin/);
+    assert.match(src, /CRON_SECRET/);
+    assert.match(src, /TV_STATS_URL \|\| DEFAULT_TV_STATS_URL/);
+    assert.match(src, /tvStatsRetryCandidatesPath/);
+    assert.match(src, /tvStatsRetryPath/);
+    assert.match(src, /TV_API_KEY/);
+    assert.equal(src.includes("process.env.OVERSEERR"), false);
+    assert.equal(src.includes("process.env.TV_API_URL"), false);
+    assert.equal(src.includes("tv-dvr.tolley.io"), false);
+    assert.equal(src.includes("RADARR_"), false);
+    assert.equal(src.includes("TRANSMISSION_"), false);
+    assert.match(src, /wired:\s*false/);
+    const vercel = JSON.parse(readApp("vercel.json")) as { functions: Record<string, unknown> };
+    assert.equal(vercel.functions["app/api/tv/stats/retry/route.ts"], undefined);
+    assert.equal(vercel.functions["app/api/cron/tv-stuck-retry/route.ts"], undefined);
+  });
+});
+
+describe("tv-stats stalled retry — candidates, never importBlocked", () => {
+  it("parses candidate ids and skips importPending/importBlocked/imported", () => {
+    const rows = parseRetryCandidates({
+      candidates: [
+        { id: 7, name: "Dune", trackedDownloadState: "downloading" },
+        { id: 8, name: "Andor", trackedDownloadState: "importBlocked" },
+        { id: 9, name: "Bear", trackedDownloadState: "importPending" },
+        { id: 10, name: "Done", status: "imported" },
+        { transmissionId: 11, title: "Stalled", status: "stopped" },
+      ],
+    });
+    assert.equal(rows.length, 5);
+    assert.equal(isImportBlockedCandidate(rows[1]!), true);
+    assert.equal(isImportBlockedCandidate(rows[2]!), true);
+    assert.equal(isImportBlockedCandidate(rows[3]!), true);
+    const plan = planTvStatsRetry(rows);
+    assert.deepEqual(plan.ids, [7, 11]);
+    assert.deepEqual(plan.body, { ids: [7, 11] });
+    assert.ok(plan.skipped.some((s) => s.id === 8 && s.reason === "import_blocked"));
+    assert.equal(planTvStatsRetry([]).body, null);
+  });
+
+  it("POST { ids } for stalled candidates; empty eligible does not POST", async () => {
+    const posted: Array<{ ids: number[] }> = [];
+    const stalled = await runTvStatsRetries({
+      getCandidates: async () => ({
+        candidates: [
+          { id: 21, name: "Stalled", trackedDownloadState: "downloading" },
+          { id: 22, name: "Blocked", trackedDownloadState: "importBlocked" },
+        ],
+      }),
+      postRetry: async (body) => {
+        posted.push(body);
+        return { ok: true, status: 200 };
+      },
+    });
+    assert.deepEqual(posted, [{ ids: [21] }]);
+    assert.deepEqual(stalled.retried, [21]);
+    assert.equal(stalled.skipped[0]?.reason, "import_blocked");
+
+    const none = await runTvStatsRetries({
+      getCandidates: async () => ({
+        candidates: [{ id: 22, trackedDownloadState: "importBlocked" }],
+      }),
+      postRetry: async (body) => {
+        posted.push(body);
+        return { ok: true };
+      },
+    });
+    assert.equal(none.posted, null);
+    assert.deepEqual(posted, [{ ids: [21] }]);
   });
 });

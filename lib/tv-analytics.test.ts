@@ -381,28 +381,34 @@ describe("acquire + DVR paths stay untouched; analytics stays on Overseerr", () 
     assert.equal(vercel.functions["app/api/cron/tv-stuck-retry/route.ts"], undefined);
     assert.ok(vercel.crons.some((c) => c.path === "/api/cron/tv-stuck-retry"));
   });
-  it("stuck-retry cron hits Overseerr retry only — CRON_SECRET, no delete, no profile change", () => {
+  it("stuck-retry cron Overseerr-retries FAILED only, stalled via tv-stats — no delete, no profile change", () => {
     const src = readApp("app/api/cron/tv-stuck-retry/route.ts");
     assert.match(src, /CRON_SECRET/);
     assert.match(src, /overseerrRetryPath/);
     assert.match(src, /overseerr\("POST", overseerrRetryPath/);
+    assert.match(src, /filter=failed/);
+    assert.match(src, /tvStatsRetryCandidatesPath/);
+    assert.match(src, /tvStatsRetryPath/);
+    assert.equal(src.includes("filter=processing"), false);
     assert.equal(src.includes("DELETE"), false);
     assert.equal(/profileId\s*=/.test(src), false);
     assert.equal(src.includes("tv-dvr.tolley.io"), false);
+    assert.equal(src.includes("process.env.TV_API_URL"), false);
     assert.equal(src.includes("RADARR"), false);
     assert.equal(src.includes("TRANSMISSION"), false);
     assert.match(src, /wired:\s*false/);
   });
 });
 
-describe("built-in watcher retries stuck rows once", () => {
+describe("built-in watcher retries FAILED Overseerr requests only", () => {
   const now = Date.parse("2026-09-02T12:00:00.000Z");
   const ago = (ms: number) => new Date(now - ms).toISOString();
 
-  it("stuck+2h → retry called (Overseerr /request/{id}/retry, same profile)", async () => {
+  it("FAILED → Overseerr /request/{id}/retry called (same profile)", async () => {
     const item = toPipelineItem(
       req({
         id: 42,
+        status: 4,
         profileId: 5,
         updatedAt: ago(STUCK_MS),
         media: { status: 2, downloadStatus: [] },
@@ -410,8 +416,8 @@ describe("built-in watcher retries stuck rows once", () => {
       undefined,
       { now },
     );
-    assert.equal(item.bucket, "waiting");
-    assert.equal(item.motion, "stuck");
+    assert.equal(item.bucket, "needs_retry");
+    assert.equal(item.requestStatus, 4);
     assert.equal(item.importBlocked, false);
     assert.equal(shouldAutoRetry(item, { now }).retry, true);
     assert.equal(overseerrRetryPath(42), "/api/v1/request/42/retry");
@@ -427,6 +433,34 @@ describe("built-in watcher retries stuck rows once", () => {
     assert.deepEqual(called, [42]);
     assert.equal(result.retried[0]?.id, 42);
     assert.equal(item.profileId, 5);
+  });
+
+  it("processing stuck 2h → Overseerr retry is not called", async () => {
+    const item = toPipelineItem(
+      req({
+        id: 42,
+        status: 2,
+        updatedAt: ago(STUCK_MS),
+        media: { status: 3, downloadStatus: [{ size: 1000, sizeLeft: 1000, status: "downloading" }] },
+      }),
+      undefined,
+      { now },
+    );
+    assert.equal(item.bucket, "downloading");
+    assert.equal(item.motion, "stuck");
+    assert.equal(item.importBlocked, false);
+    assert.equal(shouldAutoRetry(item, { now }).retry, false);
+    assert.equal(shouldAutoRetry(item, { now }).reason, "not_failed");
+
+    const called: number[] = [];
+    await runStuckRetries([item], {
+      now,
+      retry: async (id) => {
+        called.push(id);
+        return { ok: true, status: 200 };
+      },
+    });
+    assert.deepEqual(called, []);
   });
 
   it("importBlocked → not retried (NAS remount, not another grab)", async () => {
@@ -469,13 +503,14 @@ describe("built-in watcher retries stuck rows once", () => {
     const item = toPipelineItem(
       req({
         id: 99,
+        status: 4,
         updatedAt: ago(STUCK_MS),
         media: { status: 2, downloadStatus: [] },
       }),
       undefined,
       { now, lastRetryAt: ago(60 * 60_000) },
     );
-    assert.equal(item.motion, "stuck");
+    assert.equal(item.bucket, "needs_retry");
     assert.equal(item.retriedLabel, "retried 1h ago");
     assert.ok((item.lastRetryAt && Date.parse(item.lastRetryAt) > now - RETRY_COOLDOWN_MS) ?? false);
     assert.equal(shouldAutoRetry(item, { now }).reason, "cooldown");

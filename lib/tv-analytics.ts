@@ -277,27 +277,28 @@ export function classifyMotion(item: MotionInput, stuckMs = STUCK_MS): Motion | 
 export type AutoRetryDecision = { retry: boolean; reason: string };
 
 /**
- * Built-in watcher: retry a stuck row once via Overseerr POST /request/{id}/retry.
- * Never retries import pending/blocked (NAS). At most one retry per id per 24h
- * when lastRetryAt is known (SyncLog). Does not use updatedAt as the cooldown
- * clock — that stamp is the stuck age, and at 2h it is still inside 24h.
+ * Overseerr POST /request/{id}/retry only re-approves and re-sends to Arr.
+ * It does not restart Transmission. Use it only when request status is FAILED
+ * (`needs_retry`). Processing/waiting — even if stuck 2h — must not hit this
+ * path. Never retries import pending/blocked. At most one retry per id per 24h
+ * when lastRetryAt is known (SyncLog).
  */
 export function shouldAutoRetry(
-  item: Pick<PipelineItem, "motion" | "ageMs" | "downloadLabel"> & {
+  item: Pick<PipelineItem, "downloadLabel" | "bucket" | "requestStatus"> & {
     importBlocked?: boolean;
     lastRetryAt?: string | null;
+    motion?: Motion | null;
+    ageMs?: number | null;
   },
   opts?: { now?: number; lastRetryAt?: string | null; stuckMs?: number; cooldownMs?: number },
 ): AutoRetryDecision {
   if (isImportBlockedForRetry(item)) {
     return { retry: false, reason: "import_blocked" };
   }
-  if (item.motion !== "stuck") {
-    return { retry: false, reason: "not_stuck" };
-  }
-  const age = item.ageMs ?? 0;
-  if (age < (opts?.stuckMs ?? STUCK_MS)) {
-    return { retry: false, reason: "under_stuck_ms" };
+  const failed =
+    item.bucket === "needs_retry" || item.requestStatus === RequestStatus.FAILED;
+  if (!failed) {
+    return { retry: false, reason: "not_failed" };
   }
   const lastRetry = opts?.lastRetryAt ?? item.lastRetryAt ?? null;
   if (lastRetry) {
@@ -308,7 +309,7 @@ export function shouldAutoRetry(
       return { retry: false, reason: "cooldown" };
     }
   }
-  return { retry: true, reason: "stuck" };
+  return { retry: true, reason: "failed" };
 }
 
 /** Human retry stamp: "retried 18m ago". */
@@ -367,7 +368,11 @@ export async function runStuckRetries(
       lastRetryAt: lastById.get(item.id) ?? item.lastRetryAt,
     });
     if (!decision.retry) {
-      if (decision.reason !== "not_stuck" && decision.reason !== "under_stuck_ms") {
+      if (
+        decision.reason !== "not_stuck" &&
+        decision.reason !== "under_stuck_ms" &&
+        decision.reason !== "not_failed"
+      ) {
         skipped.push({ id: item.id, title: item.title, reason: decision.reason });
       }
       continue;

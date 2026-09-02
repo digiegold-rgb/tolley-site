@@ -9,6 +9,8 @@
 export const DEFAULT_TV_STATS_URL = "https://tv-stats.tolley.io";
 
 export type TransmissionBit = {
+  id: number | null;
+  downloadId: string | null;
   name: string;
   percentDone: number | null;
   eta: number | string | null;
@@ -19,6 +21,8 @@ export type TransmissionBit = {
 };
 
 export type ArrQueueBit = {
+  id: number | null;
+  downloadId: string | null;
   title: string;
   trackedDownloadState: string | null;
   sizeleft: number | null;
@@ -26,6 +30,27 @@ export type ArrQueueBit = {
   protocol: string | null;
   status: string | null;
   source: "radarr" | "sonarr";
+};
+
+/** Spark GET /api/retry-candidates row (stalled Transmission, already filtered). */
+export type TvStatsRetryCandidate = {
+  id: number | null;
+  downloadId: string | null;
+  name: string | null;
+  trackedDownloadState: string | null;
+  status: string | null;
+};
+
+export type TvStatsRetryPlan = {
+  ids: number[];
+  skipped: Array<{ id: number | null; name: string | null; reason: string }>;
+  body: { ids: number[] } | null;
+};
+
+export type TvStatsRetryResult = {
+  retried: number[];
+  skipped: Array<{ id: number | null; name: string | null; reason: string }>;
+  posted: { ids: number[] } | null;
 };
 
 export type DiskSpaceBit = {
@@ -178,6 +203,8 @@ function parseTransmission(row: unknown): TransmissionBit | null {
   const name = str(r.name ?? r.title);
   if (!name) return null;
   return {
+    id: num(r.id ?? r.transmissionId ?? r.torrentId),
+    downloadId: str(r.downloadId ?? r.download_id),
     name,
     percentDone: percentDone(r.percentDone ?? r.percent_done ?? r.progress),
     eta: (r.eta as number | string | null) ?? null,
@@ -194,6 +221,8 @@ function parseArr(row: unknown, source: "radarr" | "sonarr"): ArrQueueBit | null
   const title = str(r.title ?? r.name);
   if (!title) return null;
   return {
+    id: num(r.id),
+    downloadId: str(r.downloadId ?? r.download_id),
     title,
     trackedDownloadState: str(r.trackedDownloadState ?? r.tracked_download_state),
     sizeleft: num(r.sizeleft ?? r.sizeLeft ?? r.size_left),
@@ -369,4 +398,167 @@ export function summarizeStorage(snap: TvStatsSnapshot): StorageSummary {
     radarrCount: snap.radarrQueue.length,
     sonarrCount: snap.sonarrQueue.length,
   };
+}
+
+export function tvStatsRetryCandidatesPath(): string {
+  return "/api/retry-candidates";
+}
+
+export function tvStatsRetryPath(): string {
+  return "/api/retry";
+}
+
+/** Arr import pending / blocked / already imported — do not POST these ids. */
+export function isImportBlockedCandidate(c: {
+  trackedDownloadState?: string | null;
+  status?: string | null;
+}): boolean {
+  return [c.trackedDownloadState, c.status].some((label) => {
+    if (!label) return false;
+    const compact = label.toLowerCase().replace(/[_\s-]+/g, "");
+    return (
+      compact.includes("importpending") ||
+      compact.includes("importblocked") ||
+      compact === "imported"
+    );
+  });
+}
+
+function candidateId(r: Record<string, unknown>): number | null {
+  return num(r.id ?? r.transmissionId ?? r.torrentId);
+}
+
+function parseCandidateRow(row: unknown): TvStatsRetryCandidate | null {
+  if (typeof row === "number" && Number.isFinite(row) && row > 0) {
+    return { id: row, downloadId: null, name: null, trackedDownloadState: null, status: null };
+  }
+  if (typeof row === "string" && /^\d+$/.test(row.trim())) {
+    return { id: Number(row), downloadId: null, name: null, trackedDownloadState: null, status: null };
+  }
+  if (!row || typeof row !== "object") return null;
+  const r = row as Record<string, unknown>;
+  const id = candidateId(r);
+  const downloadId = str(r.downloadId ?? r.download_id);
+  const name = str(r.name ?? r.title);
+  const trackedDownloadState = str(r.trackedDownloadState ?? r.tracked_download_state);
+  const status = str(r.status ?? r.state);
+  if (id == null && !downloadId && !name) return null;
+  return { id, downloadId, name, trackedDownloadState, status };
+}
+
+export function parseRetryCandidates(data: unknown): TvStatsRetryCandidate[] {
+  if (data == null) return [];
+  if (Array.isArray(data)) {
+    return data.map(parseCandidateRow).filter((x): x is TvStatsRetryCandidate => !!x);
+  }
+  if (typeof data !== "object") return [];
+  const d = data as Record<string, unknown>;
+  const list = [d.candidates, d.torrents, d.items, d.queue, d.eligible, d.ids, d.retry].find(
+    Array.isArray,
+  );
+  if (!list) return [];
+  return list.map(parseCandidateRow).filter((x): x is TvStatsRetryCandidate => !!x);
+}
+
+export function planTvStatsRetry(
+  candidates: TvStatsRetryCandidate[],
+  requestedIds?: number[],
+): TvStatsRetryPlan {
+  const want = requestedIds?.length ? new Set(requestedIds.filter((n) => n > 0)) : null;
+  const ids: number[] = [];
+  const skipped: TvStatsRetryPlan["skipped"] = [];
+  const seen = new Set<number>();
+
+  for (const c of candidates) {
+    if (want && (c.id == null || !want.has(c.id))) continue;
+    if (isImportBlockedCandidate(c)) {
+      skipped.push({ id: c.id, name: c.name, reason: "import_blocked" });
+      continue;
+    }
+    if (c.id == null || c.id <= 0) {
+      skipped.push({ id: c.id, name: c.name, reason: "missing_id" });
+      continue;
+    }
+    if (seen.has(c.id)) continue;
+    seen.add(c.id);
+    ids.push(c.id);
+  }
+
+  return {
+    ids,
+    skipped,
+    body: ids.length > 0 ? { ids } : null,
+  };
+}
+
+/**
+ * GET Spark retry-candidates, drop importPending/importBlocked/imported, POST
+ * { ids }. Never POST {} when the eligible list is empty — that would be a
+ * no-op at best and must not touch the importBlocked pile.
+ */
+export async function runTvStatsRetries(deps: {
+  getCandidates: () => Promise<unknown>;
+  postRetry: (body: { ids: number[] }) => Promise<{ ok: boolean; status?: number; error?: string }>;
+  requestedIds?: number[];
+}): Promise<TvStatsRetryResult> {
+  const candidates = parseRetryCandidates(await deps.getCandidates());
+  const plan = planTvStatsRetry(candidates, deps.requestedIds);
+  if (!plan.body) {
+    return { retried: [], skipped: plan.skipped, posted: null };
+  }
+  const res = await deps.postRetry(plan.body);
+  if (!res.ok) {
+    return {
+      retried: [],
+      skipped: [
+        ...plan.skipped,
+        ...plan.ids.map((id) => ({
+          id,
+          name: null,
+          reason: res.error || `retry_http_${res.status ?? 0}`,
+        })),
+      ],
+      posted: plan.body,
+    };
+  }
+  return { retried: plan.ids, skipped: plan.skipped, posted: plan.body };
+}
+
+export async function tvStatsRequest(
+  path: string,
+  opts: {
+    key: string;
+    baseUrl?: string;
+    method?: "GET" | "POST";
+    body?: unknown;
+    timeoutMs?: number;
+  },
+): Promise<{ ok: boolean; status: number; data: unknown }> {
+  const base = (opts.baseUrl || process.env.TV_STATS_URL || DEFAULT_TV_STATS_URL).replace(/\/$/, "");
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 8000);
+  try {
+    const r = await fetch(`${base}${path}`, {
+      method: opts.method || "GET",
+      headers: {
+        "x-api-key": opts.key,
+        ...(opts.body !== undefined ? { "Content-Type": "application/json" } : {}),
+      },
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      cache: "no-store",
+      signal: ctrl.signal,
+    });
+    const text = await r.text();
+    let data: unknown = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = { raw: text.slice(0, 200) };
+    }
+    return { ok: r.ok, status: r.status, data };
+  } catch (e: unknown) {
+    return { ok: false, status: 0, data: { error: e instanceof Error ? e.message : String(e) } };
+  } finally {
+    clearTimeout(t);
+  }
 }

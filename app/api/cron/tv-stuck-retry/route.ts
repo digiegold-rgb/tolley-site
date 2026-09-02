@@ -11,6 +11,13 @@ import {
   recordTvRetry,
   runStuckRetries,
 } from "@/lib/tv-stuck-retry";
+import {
+  DEFAULT_TV_STATS_URL,
+  runTvStatsRetries,
+  tvStatsRequest,
+  tvStatsRetryCandidatesPath,
+  tvStatsRetryPath,
+} from "@/lib/tv-stats";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,14 +26,19 @@ export const maxDuration = 30;
 /**
  * GET /api/cron/tv-stuck-retry
  *
- * After the 2h stuck clock, retry once via NAS Overseerr
- * POST /api/v1/request/{id}/retry. No Arr / Transmission keys.
- * No vercel.json functions key — same pattern as /api/cron/socials-collect.
+ * 1) Overseerr POST /api/v1/request/{id}/retry for FAILED requests only.
+ *    That endpoint re-approves and re-sends to Arr — it does not restart
+ *    Transmission. Do not call it for processing/waiting.
+ * 2) Stalled downloads: GET tv-stats /api/retry-candidates, then POST
+ *    /api/retry { ids } after dropping importPending/importBlocked.
+ *    Spark already enforces incomplete+stalled, skip imported, 24h cooldown.
  *
+ * No Arr / Transmission keys. No vercel.json functions key.
  * Auth: Authorization: Bearer ${CRON_SECRET}
  */
 
 const OVERSEERR_URL = process.env.OVERSEERR_URL || "https://tv-api.tolley.io";
+const TV_STATS_URL = process.env.TV_STATS_URL || DEFAULT_TV_STATS_URL;
 
 function authorized(req: NextRequest): boolean {
   return secretEquals(req.headers.get("authorization"), `Bearer ${process.env.CRON_SECRET}`);
@@ -68,14 +80,14 @@ function requestRows(data: unknown): RawRequest[] {
   return Array.isArray(results) ? (results as RawRequest[]) : [];
 }
 
-async function loadPipeline(key: string): Promise<PipelineItem[]> {
-  const processingRes = await overseerr(
+async function loadFailedRequests(key: string): Promise<PipelineItem[]> {
+  const failedRes = await overseerr(
     "GET",
-    "/api/v1/request?take=50&skip=0&sort=modified&filter=processing",
+    "/api/v1/request?take=50&skip=0&sort=modified&filter=failed",
     key,
     8000,
   );
-  const listed = requestRows(processingRes.data);
+  const listed = requestRows(failedRes.data);
   const byId = new Map<number, RawRequest>();
   for (const r of listed) {
     const id = Number(r.id);
@@ -98,21 +110,53 @@ async function loadPipeline(key: string): Promise<PipelineItem[]> {
   });
 }
 
+async function retryStalled(key: string) {
+  return runTvStatsRetries({
+    getCandidates: async () => {
+      const res = await tvStatsRequest(tvStatsRetryCandidatesPath(), {
+        key,
+        baseUrl: TV_STATS_URL,
+        timeoutMs: 8000,
+      });
+      if (!res.ok) {
+        throw new Error(
+          String((res.data as { error?: string })?.error || `tv-stats candidates HTTP ${res.status}`),
+        );
+      }
+      return res.data;
+    },
+    postRetry: async (body) => {
+      const res = await tvStatsRequest(tvStatsRetryPath(), {
+        key,
+        baseUrl: TV_STATS_URL,
+        method: "POST",
+        body,
+        timeoutMs: 8000,
+      });
+      return {
+        ok: res.ok,
+        status: res.status,
+        error: res.ok ? undefined : String((res.data as { error?: string })?.error || res.status),
+      };
+    },
+  });
+}
+
 async function handle(req: NextRequest) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const key = process.env.OVERSEERR_API_KEY;
-  if (!key) {
+  const overseerrKey = process.env.OVERSEERR_API_KEY;
+  if (!overseerrKey) {
     return NextResponse.json({ error: "OVERSEERR_API_KEY not configured" }, { status: 500 });
   }
 
-  const items = await loadPipeline(key);
+  const items = await loadFailedRequests(overseerrKey);
   const lastRetryAtById = await loadRecentTvRetries();
   const result = await runStuckRetries(items, {
     lastRetryAtById,
     retry: async (id) => {
-      const res = await overseerr("POST", overseerrRetryPath(id), key, 8000);
+      const res = await overseerr("POST", overseerrRetryPath(id), overseerrKey, 8000);
       return {
         ok: res.ok,
         status: res.status,
@@ -123,11 +167,31 @@ async function handle(req: NextRequest) {
     log: (msg, extra) => console.log(`[tv-stuck-retry] ${msg}`, extra || ""),
   });
 
+  const tvKey = process.env.TV_API_KEY;
+  let stalled: {
+    retried: number[];
+    skipped: Array<{ id: number | null; name: string | null; reason: string }>;
+    posted: { ids: number[] } | null;
+    error?: string;
+  };
+  if (!tvKey) {
+    stalled = { retried: [], skipped: [], posted: null, error: "TV_API_KEY not configured" };
+  } else {
+    try {
+      stalled = await retryStalled(tvKey);
+    } catch (e: unknown) {
+      const error = e instanceof Error ? e.message : String(e);
+      console.log("[tv-stuck-retry] tv-stats retry skipped", { error });
+      stalled = { retried: [], skipped: [], posted: null, error };
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     nas: { wired: false },
     retried: result.retried,
     skipped: result.skipped,
+    stalled,
   });
 }
 
