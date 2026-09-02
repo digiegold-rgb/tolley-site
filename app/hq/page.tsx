@@ -676,7 +676,7 @@ function HqPageInner() {
                 <a
                   href="/generate"
                   onClick={closeIdeas}
-                  title="Quick Generate — prompt → image / video (Gemini + Wan2.2)"
+                  title="Generate — Qwen 3.8 director + prompt → image / video"
                 >
                   ✨ Generate
                 </a>
