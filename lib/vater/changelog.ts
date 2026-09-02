@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.24.3';
+export const APP_VERSION = '1.24.4';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.24.4',
+    date: '2026-09-02',
+    title: 'Tolley TV Analytics splits stuck vs moving processing',
+    items: [
+      'Processing and waiting titles now show how long they have been in that state, like “in queue 3h 12m”.',
+      'The old single processing number is split into moving (bytes or time left) and stuck (idle for two hours, or import pending / blocked).',
+      'Search, request, and Live & DVR are still untouched. Queue and disk stay on the NAS.',
+    ],
+  },
   {
     version: '1.24.3',
     date: '2026-09-02',

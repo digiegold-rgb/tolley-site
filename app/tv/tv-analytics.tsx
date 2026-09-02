@@ -25,6 +25,7 @@ type Overview = {
     needsRetry: number;
     failedOrAired: number;
     processingStuck: number;
+    processingMoving: number;
     fourKDownloading: number;
     fourKFailed: number;
     hdFailed: number;
@@ -107,7 +108,30 @@ function ProgressBar({ pct, color }: { pct: number; color: string }) {
   );
 }
 
+function MotionBadge({ motion }: { motion: PipelineItem["motion"] }) {
+  if (!motion) return null;
+  const stuck = motion === "stuck";
+  return (
+    <span
+      style={{
+        fontSize: 9.5,
+        fontWeight: 800,
+        letterSpacing: 0.6,
+        padding: "2px 6px",
+        borderRadius: 5,
+        flexShrink: 0,
+        border: stuck ? "1px solid #f59e0b" : "1px solid rgba(56,189,248,0.45)",
+        background: stuck ? "rgba(239,68,68,0.22)" : "rgba(56,189,248,0.16)",
+        color: stuck ? "#fca5a5" : "#7dd3fc",
+      }}
+    >
+      {stuck ? "STUCK" : "MOVING"}
+    </span>
+  );
+}
+
 function ItemRow({ m }: { m: PipelineItem }) {
+  const stuck = m.motion === "stuck";
   return (
     <div
       style={{
@@ -116,6 +140,8 @@ function ItemRow({ m }: { m: PipelineItem }) {
         padding: 12,
         ...box,
         alignItems: "center",
+        border: stuck ? "1px solid rgba(245,158,11,0.45)" : box.border,
+        background: stuck ? "rgba(239,68,68,0.08)" : box.background,
       }}
     >
       {m.poster ? (
@@ -157,6 +183,7 @@ function ItemRow({ m }: { m: PipelineItem }) {
             {m.title}
           </div>
           <QualityBadge quality={m.quality} mediaType={m.mediaType} />
+          <MotionBadge motion={m.motion} />
         </div>
         <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
           {m.mediaType === "tv" ? "TV" : "Movie"}
@@ -165,6 +192,7 @@ function ItemRow({ m }: { m: PipelineItem }) {
           {m.downloadLabel ? ` · ${m.downloadLabel}` : ""}
           {m.timeLeft ? ` · ${m.timeLeft} left` : ""}
           {m.progress != null ? ` · ${m.progress}%` : ""}
+          {m.ageLabel ? ` · ${m.ageLabel}` : ""}
         </div>
         {m.progress != null && (
           <ProgressBar pct={m.progress} color={m.quality === "4k" ? "#a78bfa" : "#38bdf8"} />
@@ -279,6 +307,8 @@ export function TvAnalytics() {
         <>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
             <Stat label="Processing" value={data.counts.processing} accent="#38bdf8" />
+            <Stat label="Moving" value={data.counts.processingMoving} accent="#38bdf8" />
+            <Stat label="Stuck" value={data.counts.processingStuck} accent="#f59e0b" />
             <Stat label="Need retry" value={data.counts.needsRetry} accent="#f59e0b" />
             <Stat label="Failed / declined" value={data.counts.failedOrAired} accent="#f87171" />
             <Stat label="On Plex" value={data.counts.available} accent="#22c55e" />
@@ -287,9 +317,14 @@ export function TvAnalytics() {
           </div>
 
           <Section
-            title="Processing / importing"
-            empty="Nothing processing in Overseerr right now."
-            items={data.downloading}
+            title="Stuck"
+            empty="Nothing sitting in processing/waiting without a signal."
+            items={data.downloading.filter((i) => i.motion === "stuck")}
+          />
+          <Section
+            title="Moving"
+            empty="Nothing actively transferring right now."
+            items={data.downloading.filter((i) => i.motion === "moving")}
           />
           <Section
             title="Needs retry"

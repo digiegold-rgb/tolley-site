@@ -4,9 +4,13 @@ import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
+  STUCK_MS,
+  classifyMotion,
   classifyRequest,
+  formatQueueAge,
   progressPercent,
   requestQuality,
+  stateEnteredAt,
   toPipelineItem,
   type RawRequest,
 } from "./tv-analytics.ts";
@@ -112,6 +116,187 @@ describe("toPipelineItem", () => {
   });
 });
 
+describe("queue age uses updatedAt (time in this state), not createdAt", () => {
+  const now = Date.parse("2026-09-02T12:00:00.000Z");
+
+  it("stateEnteredAt prefers updatedAt so pending→processing does not look 2 days old", () => {
+    // createdAt is the original request. updatedAt is when Overseerr last
+    // changed this row (approve / media.status). Using createdAt here would
+    // report 36h in-queue and flip a just-started grab to stuck.
+    const createdAt = "2026-09-01T00:00:00.000Z";
+    const updatedAt = "2026-09-02T11:30:00.000Z";
+    assert.equal(stateEnteredAt({ createdAt, updatedAt }), updatedAt);
+    assert.equal(stateEnteredAt({ createdAt }), createdAt);
+
+    const item = toPipelineItem(
+      req({
+        createdAt,
+        updatedAt,
+        media: { status: 2, downloadStatus: [] },
+      }),
+      undefined,
+      { now },
+    );
+    assert.equal(item.bucket, "waiting");
+    assert.equal(item.ageLabel, "in queue 30m");
+    assert.equal(item.motion, "moving");
+    assert.equal(item.ageMs, 30 * 60 * 1000);
+
+    const ifCreatedAt = toPipelineItem(
+      req({
+        createdAt,
+        // no updatedAt — fallback, documented here
+        media: { status: 2, downloadStatus: [] },
+      }),
+      undefined,
+      { now },
+    );
+    assert.equal(ifCreatedAt.ageLabel, "in queue 36h");
+    assert.equal(ifCreatedAt.motion, "stuck");
+  });
+
+  it("formatQueueAge is 'in queue 3h 12m'", () => {
+    assert.equal(formatQueueAge(3 * 3600_000 + 12 * 60_000), "in queue 3h 12m");
+    assert.equal(formatQueueAge(45 * 60_000), "in queue 45m");
+    assert.equal(formatQueueAge(2 * 3600_000), "in queue 2h");
+  });
+});
+
+describe("classifyMotion — moving vs stuck", () => {
+  const now = Date.parse("2026-09-02T12:00:00.000Z");
+  const ago = (ms: number) => new Date(now - ms).toISOString();
+
+  it("moving: progress>0 or timeLeft, age under STUCK_MS", () => {
+    const item = toPipelineItem(
+      req({
+        updatedAt: ago(20 * 60_000),
+        media: {
+          status: 3,
+          downloadStatus: [{ size: 1000, sizeLeft: 400, timeLeft: "40m", status: "downloading" }],
+        },
+      }),
+      undefined,
+      { now },
+    );
+    assert.equal(item.progress, 60);
+    assert.equal(item.timeLeft, "40m");
+    assert.equal(item.motion, "moving");
+    assert.equal(item.ageLabel, "in queue 20m");
+  });
+
+  it("a healthy transfer stays moving after STUCK_MS — the clock is for idle rows", () => {
+    const item = toPipelineItem(
+      req({
+        updatedAt: ago(STUCK_MS + 60_000),
+        media: {
+          status: 3,
+          downloadStatus: [{ size: 1000, sizeLeft: 200, timeLeft: "3h", status: "downloading" }],
+        },
+      }),
+      undefined,
+      { now },
+    );
+    assert.equal(item.progress, 80);
+    assert.equal(item.timeLeft, "3h");
+    assert.equal(item.motion, "moving");
+  });
+
+  it("stuck: processing/waiting with no progress and no timeLeft for >= 2h", () => {
+    const item = toPipelineItem(
+      req({
+        updatedAt: ago(STUCK_MS),
+        media: { status: 2, downloadStatus: [] },
+      }),
+      undefined,
+      { now },
+    );
+    assert.equal(item.bucket, "waiting");
+    assert.equal(item.progress, null);
+    assert.equal(item.timeLeft, null);
+    assert.equal(item.motion, "stuck");
+    assert.equal(item.ageLabel, "in queue 2h");
+  });
+
+  it("waiting under 2h with no signal is still moving (grace)", () => {
+    const item = toPipelineItem(
+      req({
+        updatedAt: ago(30 * 60_000),
+        media: { status: 2, downloadStatus: [] },
+      }),
+      undefined,
+      { now },
+    );
+    assert.equal(item.bucket, "waiting");
+    assert.equal(item.motion, "moving");
+  });
+
+  it("stuck: downloadLabel mentions import pending/blocked", () => {
+    const item = toPipelineItem(
+      req({
+        updatedAt: ago(5 * 60_000),
+        media: { status: 3, downloadStatus: [] },
+      }),
+      undefined,
+      { now },
+    );
+    assert.match(item.downloadLabel || "", /import pending|blocked/i);
+    assert.equal(item.motion, "stuck");
+    assert.equal(item.ageLabel, "in queue 5m");
+  });
+
+  it("stuck: mediaStatus PROCESSING with 0 progress for >= 2h", () => {
+    const item = toPipelineItem(
+      req({
+        updatedAt: ago(STUCK_MS),
+        media: {
+          status: 3,
+          downloadStatus: [{ size: 1000, sizeLeft: 1000, status: "queued" }],
+        },
+      }),
+      undefined,
+      { now },
+    );
+    assert.equal(item.mediaStatus, 3);
+    assert.equal(item.progress, 0);
+    assert.equal(item.downloadLabel, "queued");
+    assert.equal(item.motion, "stuck");
+  });
+
+  it("PROCESSING with 0 progress under 2h is moving when the label is not import-blocked", () => {
+    const item = toPipelineItem(
+      req({
+        updatedAt: ago(30 * 60_000),
+        media: {
+          status: 3,
+          downloadStatus: [{ size: 1000, sizeLeft: 1000, status: "queued" }],
+        },
+      }),
+      undefined,
+      { now },
+    );
+    assert.equal(item.progress, 0);
+    assert.equal(item.motion, "moving");
+  });
+
+  it("available / failed rows have no motion", () => {
+    assert.equal(
+      classifyMotion({
+        bucket: "available",
+        progress: null,
+        timeLeft: null,
+        downloadLabel: "on Plex",
+        mediaStatus: 5,
+        ageMs: STUCK_MS,
+      }),
+      null,
+    );
+    assert.equal(
+      toPipelineItem(req({ status: 3, media: { status: 6 } }), undefined, { now }).motion,
+      null,
+    );
+  });
+});
+
 describe("acquire + DVR paths stay untouched; analytics stays on Overseerr", () => {
   it("POST /api/tv/request still sends seasons=all and profileId 5 for 4K movies", () => {
     const src = readApp("app/api/tv/request/route.ts");
@@ -157,5 +342,25 @@ describe("acquire + DVR paths stay untouched; analytics stays on Overseerr", () 
   it("does not add a vercel.json functions key for the analytics route", () => {
     const vercel = JSON.parse(readApp("vercel.json")) as { functions: Record<string, unknown> };
     assert.equal(vercel.functions["app/api/tv/analytics/route.ts"], undefined);
+  });
+  it("analytics splits processingMoving / processingStuck from motion; nas stays unwired", () => {
+    const src = readApp("app/api/tv/analytics/route.ts");
+    assert.match(src, /processingMoving/);
+    assert.match(src, /processingStuck/);
+    assert.match(src, /i\.motion === "stuck"/);
+    assert.match(src, /i\.motion === "moving"/);
+    assert.match(src, /wired:\s*false/);
+    assert.equal(src.includes("peer"), false);
+    assert.equal(src.includes("seeders"), false);
+  });
+  it("Analytics UI shows STUCK / MOVING badges, queue age, and both counts", () => {
+    const src = readApp("app/tv/tv-analytics.tsx");
+    assert.match(src, /STUCK/);
+    assert.match(src, /MOVING/);
+    assert.match(src, /m\.ageLabel/);
+    assert.match(src, /processingMoving/);
+    assert.match(src, /processingStuck/);
+    assert.match(src, /m\.timeLeft/);
+    assert.match(src, /m\.progress/);
   });
 });

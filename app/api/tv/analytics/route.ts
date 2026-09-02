@@ -174,7 +174,13 @@ export async function GET() {
     return toPipelineItem(r, hints.get(`${mediaType}:${tmdbId}`));
   });
 
-  const downloading = items.filter((i) => i.bucket === "downloading" || i.bucket === "waiting");
+  const downloading = items
+    .filter((i) => i.bucket === "downloading" || i.bucket === "waiting")
+    .sort((a, b) => {
+      if (a.motion === "stuck" && b.motion !== "stuck") return -1;
+      if (b.motion === "stuck" && a.motion !== "stuck") return 1;
+      return (b.ageMs ?? 0) - (a.ageMs ?? 0);
+    });
   const needsRetry = items.filter((i) => i.bucket === "needs_retry");
   const failed = items.filter((i) => i.bucket === "failed");
   const available = items.filter((i) => i.bucket === "available");
@@ -189,9 +195,8 @@ export async function GET() {
       ? (statusRes.data as { version?: string })
       : {};
 
-  const processingStuck = downloading.filter(
-    (i) => i.mediaStatus === 3 || i.downloadLabel?.includes("import"),
-  ).length;
+  const processingStuck = downloading.filter((i) => i.motion === "stuck").length;
+  const processingMoving = downloading.filter((i) => i.motion === "moving").length;
 
   return NextResponse.json({
     fetchedAt: new Date().toISOString(),
@@ -221,6 +226,7 @@ export async function GET() {
       needsRetry: needsRetry.length,
       failedOrAired: failed.length,
       processingStuck,
+      processingMoving,
       fourKDownloading: downloading.filter((i) => i.quality === "4k").length,
       fourKFailed: [...needsRetry, ...failed].filter((i) => i.quality === "4k").length,
       hdFailed: [...needsRetry, ...failed].filter((i) => i.quality === "hd").length,

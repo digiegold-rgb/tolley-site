@@ -40,6 +40,12 @@ export type PipelineBucket =
   | "waiting"
   | "available";
 
+/** Actively transferring vs sitting in processing/waiting with no signal. */
+export type Motion = "moving" | "stuck";
+
+/** Idle processing/waiting this long with no progress and no timeLeft is stuck. */
+export const STUCK_MS = 2 * 60 * 60 * 1000;
+
 export type DownloadBit = {
   size?: number;
   sizeLeft?: number;
@@ -95,7 +101,14 @@ export type PipelineItem = {
   progress: number | null;
   downloadLabel: string | null;
   timeLeft: string | null;
+  createdAt: string | null;
   updatedAt: string | null;
+  /** Milliseconds since stateEnteredAt (updatedAt, else createdAt). */
+  ageMs: number | null;
+  /** e.g. "in queue 3h 12m" — shown on processing/waiting rows. */
+  ageLabel: string | null;
+  /** Only set for downloading/waiting buckets. */
+  motion: Motion | null;
 };
 
 export function requestQuality(req: RawRequest): Quality {
@@ -152,6 +165,80 @@ export function classifyRequest(req: RawRequest): PipelineBucket {
   return "waiting";
 }
 
+/**
+ * Overseerr timestamp that best reflects time in the current pipeline state.
+ *
+ * Prefer `updatedAt`: Overseerr bumps it when request/media status changes
+ * (pending → approved → processing). `createdAt` is the original request and
+ * would overstate time-in-state after those transitions. Fall back to
+ * `createdAt` when `updatedAt` is missing.
+ */
+export function stateEnteredAt(req: Pick<RawRequest, "createdAt" | "updatedAt">): string | null {
+  return req.updatedAt || req.createdAt || null;
+}
+
+export function queueAgeMs(iso: string | null | undefined, now = Date.now()): number | null {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return null;
+  return Math.max(0, now - t);
+}
+
+/** Human queue clock: "in queue 3h 12m". Minute granularity; hours may exceed 24. */
+export function formatQueueAge(ms: number | null): string | null {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return null;
+  const totalMin = Math.floor(ms / 60_000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h <= 0) return `in queue ${m}m`;
+  if (m <= 0) return `in queue ${h}h`;
+  return `in queue ${h}h ${m}m`;
+}
+
+export function mentionsImportPendingOrBlocked(label: string | null | undefined): boolean {
+  if (!label) return false;
+  const t = label.toLowerCase();
+  return t.includes("import pending") || t.includes("blocked");
+}
+
+function hasTimeLeft(timeLeft: string | null | undefined): boolean {
+  return Boolean(timeLeft && String(timeLeft).trim());
+}
+
+export type MotionInput = Pick<
+  PipelineItem,
+  "bucket" | "progress" | "timeLeft" | "downloadLabel" | "mediaStatus" | "ageMs"
+>;
+
+/**
+ * Split processing/waiting into moving vs stuck.
+ *
+ * moving: progress>0 or timeLeft, and (for the idle clock) not stuck.
+ *   A row that is actually transferring stays moving even after STUCK_MS —
+ *   the clock is for idle/import-blocked rows, not healthy 4K grabs.
+ * stuck:
+ *   - processing/waiting with no progress AND no timeLeft for >= STUCK_MS, OR
+ *   - downloadLabel mentions import pending/blocked, OR
+ *   - mediaStatus PROCESSING with 0/null progress for >= STUCK_MS.
+ */
+export function classifyMotion(item: MotionInput, stuckMs = STUCK_MS): Motion | null {
+  if (item.bucket !== "downloading" && item.bucket !== "waiting") return null;
+
+  const age = item.ageMs ?? 0;
+  const progress = item.progress;
+  const hasProgress = progress != null && progress > 0;
+  const noProgress = progress == null || progress === 0;
+  const timeLeft = hasTimeLeft(item.timeLeft);
+
+  if (mentionsImportPendingOrBlocked(item.downloadLabel)) return "stuck";
+  if (item.mediaStatus === MediaStatus.PROCESSING && noProgress && age >= stuckMs) return "stuck";
+  if (noProgress && !timeLeft && age >= stuckMs) return "stuck";
+
+  if (hasProgress || timeLeft) return "moving";
+  if (age < stuckMs) return "moving";
+  return "stuck";
+}
+
 export function tmdbPoster(path: string | null | undefined): string | null {
   if (!path || typeof path !== "string") return null;
   if (path.startsWith("http")) return path;
@@ -161,6 +248,7 @@ export function tmdbPoster(path: string | null | undefined): string | null {
 export function toPipelineItem(
   req: RawRequest,
   titleHint?: { title?: string; year?: string; posterPath?: string | null },
+  opts?: { now?: number; stuckMs?: number },
 ): PipelineItem {
   const media = req.media || {};
   const mediaType: "movie" | "tv" = req.type === "tv" || media.mediaType === "tv" ? "tv" : "movie";
@@ -179,6 +267,13 @@ export function toPipelineItem(
   const downloadLabel =
     first?.status ||
     (mediaStatusLabel(activeMediaStatus(req), Number(req.status) || 0));
+  const enteredAt = stateEnteredAt(req);
+  const now = opts?.now ?? Date.now();
+  const ageMs = queueAgeMs(enteredAt, now);
+  const bucket = classifyRequest(req);
+  const progress = progressPercent(downloads);
+  const timeLeft = first?.timeLeft || null;
+  const mediaStatus = activeMediaStatus(req);
 
   return {
     id: Number(req.id) || 0,
@@ -190,13 +285,20 @@ export function toPipelineItem(
     quality: requestQuality(req),
     profileId: req.profileId == null ? null : Number(req.profileId),
     externalServiceId: Number.isFinite(ext) && ext > 0 ? ext : null,
-    bucket: classifyRequest(req),
+    bucket,
     requestStatus: Number(req.status) || 0,
-    mediaStatus: activeMediaStatus(req),
-    progress: progressPercent(downloads),
+    mediaStatus,
+    progress,
     downloadLabel,
-    timeLeft: first?.timeLeft || null,
-    updatedAt: req.updatedAt || req.createdAt || null,
+    timeLeft,
+    createdAt: req.createdAt || null,
+    updatedAt: enteredAt,
+    ageMs,
+    ageLabel: formatQueueAge(ageMs),
+    motion: classifyMotion(
+      { bucket, progress, timeLeft, downloadLabel, mediaStatus, ageMs },
+      opts?.stuckMs ?? STUCK_MS,
+    ),
   };
 }
 
