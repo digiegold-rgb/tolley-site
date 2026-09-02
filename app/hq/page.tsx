@@ -701,6 +701,15 @@ function HqPageInner() {
               <summary className="tab-btn">📄 Docs ▾</summary>
               <div className="tab-docs-menu">
                 <a
+                  href="/research/jelly-ad-plan-2026-09.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeDocs}
+                >
+                  🎥 Jelly Ad — Lady V2, 28 segments
+                  <span className="doc-sub">The feature-film ad plan: why "cartoony" wasn't Lady, native 1080p vs 4K pricing, the 15 features, the fit and the loft, all 28 segment lines, the cut table, and the cost — Sep 1, 2026</span>
+                </a>
+                <a
                   href="/research/jelly-studio-capabilities-2026-08.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
