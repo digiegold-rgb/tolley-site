@@ -94,6 +94,8 @@ export interface ReviewProject {
   scriptApprovedAt: string | null;
   finalVideoUrl: string | null;
   thumbnailUrl: string | null;
+  /** Permanent JPEG from the final mp4 (DGX poster sweep). */
+  posterUrl?: string | null;
   publishTitle: string | null;
   description: string | null;
   tags: string[];
