@@ -11,6 +11,31 @@ const librarySrc = readFileSync(
 );
 
 describe("libraryCardPreviewKind — rest-state Library card", () => {
+  it("prefers the permanent poster over every other still", () => {
+    assert.equal(
+      libraryCardPreviewKind({
+        posterUrl: "https://x.public.blob.vercel-storage.com/vater-posters/p.jpg?v=1",
+        firstSceneImage: "https://example.com/scene.jpg",
+        thumbnailUrl: "https://example.com/thumb.jpg",
+        finalVideoUrl: "https://x.blob.vercel-storage.com/final.mp4",
+        hasPresetSample: true,
+      }),
+      "poster",
+    );
+  });
+
+  it("gives a DGX import with a poster an <img>, never a lazy <video>", () => {
+    assert.equal(
+      libraryCardPreviewKind({
+        posterUrl: "https://x.public.blob.vercel-storage.com/vater-posters/p.jpg?v=1",
+        firstSceneImage: null,
+        thumbnailUrl: null,
+        finalVideoUrl: "https://x.blob.vercel-storage.com/ruthann-112.mp4",
+      }),
+      "poster",
+    );
+  });
+
   it("prefers the first scene still", () => {
     assert.equal(
       libraryCardPreviewKind({
@@ -50,6 +75,7 @@ describe("libraryCardPreviewKind — rest-state Library card", () => {
   it("treats empty strings as missing", () => {
     assert.equal(
       libraryCardPreviewKind({
+        posterUrl: "",
         firstSceneImage: "",
         thumbnailUrl: "",
         finalVideoUrl: "https://x.blob.vercel-storage.com/final.mp4",

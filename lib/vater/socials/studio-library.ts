@@ -30,6 +30,7 @@ export interface StudioProjectInput {
   sourceUrl?: string | null;
   status?: string | null;
   thumbnailUrl?: string | null;
+  posterUrl?: string | null;
   finalVideoUrl?: string | null;
   scenesJson?: unknown;
   completedAt?: string | Date | null;
@@ -51,6 +52,8 @@ export interface StudioVideo {
   stage: CustomerStage | null;
   posted: boolean;
   thumbnailUrl: string | null;
+  /** Permanent JPEG from the final mp4 — the rest-state tile image. */
+  posterUrl: string | null;
   firstSceneImage: string | null;
   finalVideoUrl: string | null;
   previewKind: ReturnType<typeof libraryCardPreviewKind>;
@@ -176,9 +179,11 @@ export function shapeStudioVideo(
     // reads "Ready — post this".
     posted: isPostedToYoutube(project) || house !== null,
     thumbnailUrl: project.thumbnailUrl ?? null,
+    posterUrl: project.posterUrl ?? null,
     firstSceneImage,
     finalVideoUrl: project.finalVideoUrl ?? null,
     previewKind: libraryCardPreviewKind({
+      posterUrl: project.posterUrl,
       firstSceneImage,
       thumbnailUrl: project.thumbnailUrl,
       finalVideoUrl: project.finalVideoUrl,
@@ -271,6 +276,7 @@ export function shapeListingVideo(job: {
     stage: job.status === "ready" && finalVideoUrl ? "done" : "in_progress",
     posted: false,
     thumbnailUrl: still,
+    posterUrl: null,
     firstSceneImage: null,
     finalVideoUrl,
     previewKind: libraryCardPreviewKind({

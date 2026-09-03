@@ -3933,6 +3933,12 @@ model YouTubeProject {
   // backgroundMusicId, thumbnailUrl, note}]. Used for one-click revert.
   draftSnapshots Json?
   thumbnailUrl   String?
+  // Permanent rest-state tile image for Library / Socials: a JPEG frame
+  // pulled from the final mp4 by the DGX poster sweep
+  // (scripts/vater-poster-sweep.ts) and stored on public Vercel Blob under
+  // vater-posters/<id>.jpg?v=<final version tag>. Tiles render this as a
+  // plain <img> — no lazy blob <video>, no concurrency gate, no black frames.
+  posterUrl      String?
   publishedTo    String[]  @default([])
   editedAt       DateTime?
 

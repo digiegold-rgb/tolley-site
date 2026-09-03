@@ -44,6 +44,7 @@ const PROJECT_SELECT = {
   sourceUrl: true,
   status: true,
   thumbnailUrl: true,
+  posterUrl: true,
   finalVideoUrl: true,
   scenesJson: true,
   completedAt: true,
@@ -65,6 +66,7 @@ export type StudioProjectRow = {
   sourceUrl: string | null;
   status: string;
   thumbnailUrl: string | null;
+  posterUrl: string | null;
   finalVideoUrl: string | null;
   scenesJson: unknown;
   completedAt: Date | null;

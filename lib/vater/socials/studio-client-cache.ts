@@ -38,6 +38,7 @@ export interface LibraryProjectSeed {
   completedAt: string | null;
   createdAt: string;
   thumbnailUrl: string | null;
+  posterUrl?: string | null;
   stylePreset: string | null;
   autopilotJobId: string | null;
   targetDuration: number;
@@ -125,6 +126,7 @@ export function studioVideoToLibrarySeed(video: StudioVideo): LibraryProjectSeed
     completedAt: video.completedAt,
     createdAt: video.createdAt,
     thumbnailUrl: video.thumbnailUrl,
+    posterUrl: video.posterUrl ?? null,
     stylePreset: video.stylePreset,
     autopilotJobId: null,
     targetDuration: 0,

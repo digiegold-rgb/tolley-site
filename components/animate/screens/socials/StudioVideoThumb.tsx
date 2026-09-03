@@ -3,7 +3,7 @@
 /**
  * Small Socials / dashboard thumbnail.
  *
- * Stills (thumbnailUrl / firstSceneImage) render as <img>. A finished mp4
+ * Stills (posterUrl / thumbnailUrl / firstSceneImage) render as <img>. A finished mp4
  * with no still does NOT eager-mount a media element — LazyBlobVideo waits until
  * the tile is on screen and a concurrent blob slot is free. Offscreen
  * tiles are a placeholder. Does not generate blob thumbnails.
@@ -41,6 +41,7 @@ export function StudioVideoThumb({
   const { t } = useTheme();
   const preset = getStylePreset(video.stylePreset ?? 'cinematic');
   const previewKind = libraryCardPreviewKind({
+    posterUrl: video.posterUrl,
     firstSceneImage: video.firstSceneImage,
     thumbnailUrl: video.thumbnailUrl,
     finalVideoUrl: video.finalVideoUrl,
@@ -51,7 +52,7 @@ export function StudioVideoThumb({
     : null;
   const drip = dripLabel(video.dripStage);
   const views = video.views;
-  const hasStill = Boolean(video.firstSceneImage || video.thumbnailUrl);
+  const hasStill = Boolean(video.posterUrl || video.firstSceneImage || video.thumbnailUrl);
   const mountVideo =
     Boolean(videoSrc) &&
     mayMountThumbVideo({
@@ -91,7 +92,16 @@ export function StudioVideoThumb({
           overflow: 'hidden',
         }}
       >
-        {previewKind === 'scene' && video.firstSceneImage ? (
+        {previewKind === 'poster' && video.posterUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={video.posterUrl}
+            alt=""
+            loading="eager"
+            decoding="async"
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : previewKind === 'scene' && video.firstSceneImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={video.firstSceneImage}

@@ -47,7 +47,7 @@ export function DoneStep(): React.ReactElement {
             playsInline
             preload="metadata"
             src={src}
-            poster={project.thumbnailUrl ?? undefined}
+            poster={project.posterUrl ?? project.thumbnailUrl ?? undefined}
             data-testid="done-video"
             style={{ ...FILM_MEDIA_STYLE, background: '#000' }}
           />

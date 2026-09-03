@@ -4,11 +4,13 @@
  * Finished DGX imports often have `finalVideoUrl` on blob but `thumbnailUrl`
  * NULL and empty `scenesJson`. Those must still show a real frame — never the
  * dim STYLE_PRESET sample that only looks like a thumbnail after hover mounts
- * the mp4.
+ * the mp4. Since 2026-09-02 the DGX poster sweep gives every finished mp4 a
+ * permanent `posterUrl` JPEG, which is the preferred rest-state image.
  *
  * This helper is rest-only. Hover-play is a separate UI concern.
  */
 export type LibraryCardPreviewKind =
+  | "poster"
   | "scene"
   | "thumb"
   | "final-video"
@@ -39,11 +41,18 @@ export function firstScenePreviewUrl(scenesJson: unknown): string | null {
 }
 
 export function libraryCardPreviewKind(input: {
+  /**
+   * Permanent JPEG cut from the final mp4 (lib/vater/poster.ts). Wins over
+   * everything: it is the actual video, it is a plain <img>, and it exists
+   * for finished DGX imports that have no scenes and no thumbnail.
+   */
+  posterUrl?: string | null;
   firstSceneImage?: string | null;
   thumbnailUrl?: string | null;
   finalVideoUrl?: string | null;
   hasPresetSample?: boolean;
 }): LibraryCardPreviewKind {
+  if (nonEmpty(input.posterUrl)) return "poster";
   if (nonEmpty(input.firstSceneImage)) return "scene";
   if (nonEmpty(input.thumbnailUrl)) return "thumb";
   if (nonEmpty(input.finalVideoUrl)) return "final-video";

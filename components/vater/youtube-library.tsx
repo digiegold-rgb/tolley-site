@@ -43,6 +43,9 @@ interface LibraryProject {
   completedAt: string | null;
   createdAt: string;
   thumbnailUrl: string | null;
+  /** Permanent JPEG from the final mp4 (DGX poster sweep). Optional so
+   *  cached seeds from before 2026-09-02 still type-check. */
+  posterUrl?: string | null;
   stylePreset: string | null;
   autopilotJobId: string | null;
   targetDuration: number;
@@ -330,6 +333,7 @@ function LibraryCard({
   const firstSceneImage = firstScenePreviewUrl(project.scenesJson);
   const stale = isFinalMp4Stale(project);
   const previewKind = libraryCardPreviewKind({
+    posterUrl: project.posterUrl,
     firstSceneImage,
     thumbnailUrl: project.thumbnailUrl,
     finalVideoUrl: project.finalVideoUrl,
@@ -422,7 +426,7 @@ function LibraryCard({
       }
     }
   };
-  const hasStill = Boolean(firstSceneImage || project.thumbnailUrl);
+  const hasStill = Boolean(project.posterUrl || firstSceneImage || project.thumbnailUrl);
   const mountPreviewVideo =
     Boolean(videoSrc) &&
     mayMountThumbVideo({
@@ -489,6 +493,18 @@ function LibraryCard({
                 paintFirstFrame(el);
               }
             }}
+          />
+        ) : previewKind === "poster" && project.posterUrl ? (
+          // Permanent poster: a plain, eager <img> straight off the Blob CDN.
+          // No next/image round-trip, no observer, no gate — paints on tab
+          // click and stays in the browser cache.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={project.posterUrl}
+            alt={title ?? "video"}
+            loading="eager"
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : previewKind === "scene" && firstSceneImage ? (
           <Image
