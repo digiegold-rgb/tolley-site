@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { databaseUrlWithTimeouts, withPrismaTimeout } from "./prisma-url";
+import {
+  databaseUrlWithTimeouts,
+  isReadOnlyDatabaseUrl,
+  NO_WRITE_URL_ERROR,
+  resolveWritableDatabaseUrl,
+  withPrismaTimeout,
+} from "./prisma-url.ts";
 
 test("databaseUrlWithTimeouts adds connect and pool timeouts", () => {
   const out = databaseUrlWithTimeouts(
@@ -48,4 +54,73 @@ test("withPrismaTimeout uses the fallback when the query rejects", async () => {
     200,
   );
   assert.deepEqual(result, []);
+});
+
+const PRIMARY =
+  "postgresql://app:secret@ep-example.us-east-2.aws.neon.tech/appdb?sslmode=require";
+
+test("isReadOnlyDatabaseUrl is false for a primary Neon host", () => {
+  assert.equal(isReadOnlyDatabaseUrl(PRIMARY), false);
+  assert.equal(
+    isReadOnlyDatabaseUrl(
+      "postgresql://app:secret@ep-example-pooler.us-east-2.aws.neon.tech/appdb?sslmode=require",
+    ),
+    false,
+  );
+});
+
+test("isReadOnlyDatabaseUrl detects replica hosts and read-only session attrs", () => {
+  assert.equal(
+    isReadOnlyDatabaseUrl(
+      "postgresql://app:secret@ep-read-replica-12345.us-east-2.aws.neon.tech/appdb",
+    ),
+    true,
+  );
+  assert.equal(
+    isReadOnlyDatabaseUrl(`${PRIMARY}&target_session_attrs=read-only`),
+    true,
+  );
+  assert.equal(
+    isReadOnlyDatabaseUrl(`${PRIMARY}&target_session_attrs=standby`),
+    true,
+  );
+});
+
+test("isReadOnlyDatabaseUrl detects session and Neon time-travel read-only options", () => {
+  assert.equal(
+    isReadOnlyDatabaseUrl(
+      `${PRIMARY}&options=${encodeURIComponent("-c default_transaction_read_only=on")}`,
+    ),
+    true,
+  );
+  assert.equal(
+    isReadOnlyDatabaseUrl(
+      `${PRIMARY}&options=${encodeURIComponent("project=example&timestamp=2026-01-01T00:00:00Z")}`,
+    ),
+    true,
+  );
+  assert.equal(isReadOnlyDatabaseUrl(`${PRIMARY}&timestamp=2026-01-01T00:00:00Z`), true);
+});
+
+test("resolveWritableDatabaseUrl uses DATABASE_URL and ignores invented write secrets", () => {
+  const env = {
+    DATABASE_URL: PRIMARY,
+    DIRECT_URL: "postgresql://app:secret@invented-direct.example/db",
+    DATABASE_URL_UNPOOLED: "postgresql://app:secret@invented-unpooled.example/db",
+  };
+  assert.equal(resolveWritableDatabaseUrl(env), PRIMARY);
+  assert.equal(resolveWritableDatabaseUrl({}), undefined);
+});
+
+test("resolveWritableDatabaseUrl fails closed on a read-only DATABASE_URL", () => {
+  const env = {
+    DATABASE_URL:
+      "postgresql://app:secret@ep-read-replica-12345.us-east-2.aws.neon.tech/appdb",
+    DIRECT_URL: "postgresql://app:secret@invented-direct.example/db",
+  };
+  assert.throws(() => resolveWritableDatabaseUrl(env), (err: unknown) => {
+    assert.ok(err instanceof Error);
+    assert.equal(err.message, NO_WRITE_URL_ERROR);
+    return true;
+  });
 });
