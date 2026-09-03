@@ -1,11 +1,11 @@
 import { PrismaClient } from "@prisma/client";
-import { databaseUrlWithTimeouts } from "@/lib/prisma-url";
+import { databaseUrlWithTimeouts, resolveWritableDatabaseUrl } from "@/lib/prisma-url";
 
 declare global {
   var prisma: PrismaClient | undefined;
 }
 
-const databaseUrl = databaseUrlWithTimeouts(process.env.DATABASE_URL);
+const databaseUrl = databaseUrlWithTimeouts(resolveWritableDatabaseUrl(process.env));
 
 export const prisma =
   global.prisma ||
