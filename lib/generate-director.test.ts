@@ -108,6 +108,9 @@ describe("generate route branding", () => {
     assert.match(studio, /Inference/);
     assert.match(studio, /Description/);
     assert.match(studio, /\/api\/generate\/chat/);
+    assert.match(studio, /Modal stills/);
+    assert.match(studio, /\/api\/generate\/jobs/);
+    assert.doesNotMatch(studio, /InstantID|ComfyUI|face_lock|UltraSharp/i);
     assert.match(chat, /qwenChatCompletion/);
     assert.match(chat, /QWEN_VLLM/);
     assert.doesNotMatch(chat, /api\.anthropic\.com|qwen-max|dashscope/i);
