@@ -111,11 +111,11 @@ export function defaultJobCard(
   const preset = GENERATE_PRESETS.find((p) => p.id === presetId) ?? GENERATE_PRESETS[0];
   return generateJobCardSchema.parse({
     recipe: GENERATE_RECIPE,
+    ...PROVEN_DEFAULTS,
     preset: preset.id,
     prompt: preset.prompt,
     negative_prompt: preset.negative_prompt,
     identity_ref_urls: defaultIdentityRefUrls(env),
-    ...PROVEN_DEFAULTS,
   });
 }
 
