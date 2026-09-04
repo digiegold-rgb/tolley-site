@@ -54,6 +54,7 @@ describe("defaultJobCard + Lady2 preset", () => {
     assert.match(card.prompt, /lacy pink/i);
     assert.match(card.prompt, /grey-shirt identity/i);
     assert.equal(card.prompt, LADY2_LACY_PINK_PROMPT);
+    assert.match(card.negative_prompt, /identity drift/);
     assert.deepEqual(card.identity_ref_urls, [
       "https://blob.example/front.jpg",
       "https://blob.example/left.jpg",
