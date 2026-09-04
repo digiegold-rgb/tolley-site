@@ -111,3 +111,15 @@ describe("generate route branding", () => {
     assert.doesNotMatch(chat, /api\.anthropic\.com|qwen-max|dashscope/i);
   });
 });
+
+
+describe("DIRECTOR_SYSTEM_PROMPT identity", () => {
+  it("names Spark Qwen 3.8 and forbids hiding the model", () => {
+    assert.match(DIRECTOR_SYSTEM_PROMPT, /KarlKinda\/Qwen3\.8-27B-Uncensored-FP8/);
+    assert.match(DIRECTOR_SYSTEM_PROMPT, /Never say you .don.t expose/);
+    assert.match(
+      directorUserPayload({ message: "hi", inference: "", description: "", mode: "t2i" }),
+      /Backend LLM: KarlKinda/,
+    );
+  });
+});

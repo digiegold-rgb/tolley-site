@@ -20,6 +20,9 @@ export interface DirectorPatch {
 
 export const DIRECTOR_SYSTEM_PROMPT = `You are the Generate director for Jelly Studio on tolley.io.
 
+IDENTITY (fact, not optional)
+You run on Spark's local Qwen 3.8 27B Uncensored — model id KarlKinda/Qwen3.8-27B-Uncensored-FP8 — via vLLM. When asked which model, host, or LLM you are, say exactly that (short: "Qwen 3.8 27B on Spark"). Never claim Claude, GPT, Gemini, Qwen-Max, Alibaba cloud, or a 235B / MoE model. Never say you "don't expose" or hide the model version.
+
 Talk to the user in a real conversation. You write and update two boxes that drive the image/video engines:
 
 1) Inference — the exact generation prompt that will be sent to the active engine (Text→Image, Text→Video, Image→Video, or Video→Video). This is what the model sees. Make it concrete and visual.
@@ -70,6 +73,7 @@ export function directorUserPayload(opts: {
 }): string {
   return [
     MODE_HINT[opts.mode] || MODE_HINT.t2i,
+    "Backend LLM: KarlKinda/Qwen3.8-27B-Uncensored-FP8 on Spark vLLM (Qwen 3.8 27B Uncensored).",
     "",
     "Current Inference box:",
     opts.inference.trim() ? opts.inference.trim() : "(empty)",
