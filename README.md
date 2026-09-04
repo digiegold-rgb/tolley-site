@@ -33,7 +33,7 @@ Optional:
 - `MODAL_TOKEN_ID` / `MODAL_TOKEN_SECRET` (spawn `/generate` Modal stills — never commit; see `docs/generate-modal.md`)
 - `MODAL_APP_NAME` (default `tolley-qwen-image-edit`)
 - `MODAL_FUNCTION_NAME` (default `qwen_image_edit`)
-- `GENERATE_WEBHOOK_SECRET` (Modal → `/api/generate/jobs/webhook`)
+- `GENERATE_WEBHOOK_SECRET` (Modal → `/api/generate/webhook`)
 - `GENERATE_IDENTITY_REF_FRONT_URL` / `_LEFT_URL` / `_RIGHT_URL` (HTTPS grey-shirt identity refs)
 - `LITELLM_API_URL` / `LITELLM_API_KEY` / `LITELLM_MODEL` (chat→job-card JSON)
 - `EMAIL_SERVER_HOST`

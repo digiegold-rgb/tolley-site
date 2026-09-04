@@ -8,10 +8,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/generate/jobs/webhook
+ * POST /api/generate/webhook
  *
  * Called by the Modal worker when a still finishes (or fails).
  * Auth: HMAC `x-generate-signature` or `Authorization: Bearer {GENERATE_WEBHOOK_SECRET}`.
+ * Lives next to /api/generate/jobs (not under /jobs/[id]) so it cannot be
+ * swallowed by the dynamic job-id segment.
  */
 export async function POST(req: NextRequest) {
   const secret = generateWebhookSecret();

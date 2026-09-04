@@ -16,7 +16,7 @@ Jared chats on https://tolley.io/generate the same way he talks to an operator b
 | `MODAL_FUNCTION_NAME` | no | Default `qwen_image_edit` |
 | `MODAL_ENVIRONMENT` | no | Modal workspace environment if not default |
 | `GENERATE_WEBHOOK_SECRET` | **yes** (for webhook) | Shared HMAC/bearer secret. Same value as Modal secret. |
-| `GENERATE_WEBHOOK_URL` | no | Defaults to `{APP_URL}/api/generate/jobs/webhook` |
+| `GENERATE_WEBHOOK_URL` | no | Defaults to `{APP_URL}/api/generate/webhook` |
 | `APP_URL` | recommended | e.g. `https://tolley.io` |
 | `GENERATE_IDENTITY_REF_FRONT_URL` | recommended | HTTPS Blob URL for grey-shirt **front** |
 | `GENERATE_IDENTITY_REF_LEFT_URL` | recommended | HTTPS Blob URL for **profile-left** |
@@ -157,7 +157,7 @@ Terminal statuses: `queued` → `running` → `done` (with `output_urls`) or `fa
 Webhook (Modal → Vercel) is optional if poll works:
 
 ```bash
-curl -sS -X POST https://tolley.io/api/generate/jobs/webhook \
+curl -sS -X POST https://tolley.io/api/generate/webhook \
   -H 'content-type: application/json' \
   -H "Authorization: Bearer $GENERATE_WEBHOOK_SECRET" \
   -d '{"job_id":"JOB_ID","status":"done","output_urls":["https://...png"]}'

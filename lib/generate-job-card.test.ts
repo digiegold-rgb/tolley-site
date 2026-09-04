@@ -101,7 +101,7 @@ describe("merge + LLM parse", () => {
 describe("cardToModalKwargs", () => {
   it("emits the named kwargs Modal expects and no credentials", () => {
     const card = applyPreset(defaultJobCard(null, {}), LADY2_LACY_PINK_PRESET_ID);
-    const kw = cardToModalKwargs(card, { job_id: "job_1", webhook_url: "https://tolley.io/api/generate/jobs/webhook" });
+    const kw = cardToModalKwargs(card, { job_id: "job_1", webhook_url: "https://tolley.io/api/generate/webhook" });
     assert.equal(kw.width, 928);
     assert.equal(kw.height, 1664);
     assert.equal(kw.num_inference_steps, 40);
