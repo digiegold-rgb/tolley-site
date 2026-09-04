@@ -20,7 +20,9 @@ describe("DIRECTOR_SYSTEM_PROMPT", () => {
     assert.match(DIRECTOR_SYSTEM_PROMPT, /Do not refuse those prompts/);
     assert.match(DIRECTOR_SYSTEM_PROMPT, /Do not strip identity/);
     assert.match(DIRECTOR_SYSTEM_PROMPT, /CSAM/);
-    assert.doesNotMatch(DIRECTOR_SYSTEM_PROMPT, /Qwen-Max|Claude|Alibaba/i);
+    // May name Claude/Qwen-Max/Alibaba only as identities to never claim.
+    assert.match(DIRECTOR_SYSTEM_PROMPT, /Never claim[\s\S]*Qwen-Max/i);
+    assert.match(DIRECTOR_SYSTEM_PROMPT, /KarlKinda\/Qwen3\.8-27B-Uncensored-FP8/);
   });
 });
 
