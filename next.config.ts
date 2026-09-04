@@ -60,6 +60,8 @@ const nextConfig: NextConfig = {
   // a type error still fails the build — it just no longer shares memory
   // with the bundler. Do not remove the tsc step from "build".
   typescript: { ignoreBuildErrors: true },
+  // Modal JS SDK is gRPC/protobuf — keep it out of the webpack graph.
+  serverExternalPackages: ["modal"],
   // 1.16 hung 35+ min at "Generating static pages (0/655)". 1.17 put
   // force-dynamic on the ROOT layout; collect-page-data then hung instead
   // (this timeout does not apply to collect). Root is static again, like

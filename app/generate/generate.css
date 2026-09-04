@@ -292,7 +292,7 @@
 
 .gen-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
 }
 
@@ -435,4 +435,65 @@
   border-radius: 999px;
   padding: 4px 10px;
   white-space: nowrap;
+}
+
+.gen-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.gen-card-grid label,
+.gen-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gen-faint);
+}
+
+.gen-card-grid input,
+.gen-field input,
+.gen-field select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--gen-line-strong);
+  background: #08070f;
+  color: var(--gen-text);
+  font: inherit;
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.gen-field-wide {
+  grid-column: 1 / -1;
+}
+
+.gen-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--gen-muted);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.gen-refs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gen-gallery-status {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gen-faint);
+  padding: 6px 8px;
 }
