@@ -46,7 +46,7 @@ export function buildWebhookUrl(env: NodeJS.ProcessEnv = process.env): string | 
   if (explicit) return explicit;
   const app = (env.APP_URL || env.AUTH_URL || env.NEXTAUTH_URL || "").trim().replace(/\/+$/, "");
   if (!app) return undefined;
-  return `${app}/api/generate/jobs/webhook`;
+  return `${app}/api/generate/webhook`;
 }
 
 export function spawnKwargsForCard(

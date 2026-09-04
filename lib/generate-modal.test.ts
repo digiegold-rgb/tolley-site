@@ -37,12 +37,12 @@ describe("spawnKwargsForCard", () => {
 describe("buildWebhookUrl", () => {
   it("uses GENERATE_WEBHOOK_URL or APP_URL", () => {
     assert.equal(
-      buildWebhookUrl({ GENERATE_WEBHOOK_URL: "https://tolley.io/api/generate/jobs/webhook" }),
-      "https://tolley.io/api/generate/jobs/webhook",
+      buildWebhookUrl({ GENERATE_WEBHOOK_URL: "https://tolley.io/api/generate/webhook" }),
+      "https://tolley.io/api/generate/webhook",
     );
     assert.equal(
       buildWebhookUrl({ APP_URL: "https://tolley.io/" }),
-      "https://tolley.io/api/generate/jobs/webhook",
+      "https://tolley.io/api/generate/webhook",
     );
     assert.equal(buildWebhookUrl({}), undefined);
   });
