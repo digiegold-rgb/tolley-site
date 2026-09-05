@@ -127,11 +127,11 @@ export async function persistMotionVideo(
   try {
     const res = await fetch(videoUrl, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status} fetching fal clip`);
-    let buf = Buffer.from(await res.arrayBuffer());
+    let buf: Buffer = Buffer.from(await res.arrayBuffer());
     if (!buf.length) throw new Error("empty fal clip");
     if (opts?.slowMo) {
       try {
-        buf = await remuxSlowMo(buf);
+        buf = Buffer.from(await remuxSlowMo(buf));
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err);
         console.warn(`[generate-motion] 0.5× remux failed for ${jobId}: ${detail}`);
