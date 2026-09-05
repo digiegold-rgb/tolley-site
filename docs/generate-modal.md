@@ -106,7 +106,7 @@ Skips `generate/identity/**`. Run against the **public** store token (before swa
 
 The **Motion** tab (#124) is unchanged in behavior: Wan I2V / FLF2V, HQ gate, dry run, optional last-frame still. Gallery **Use as source** now passes the HQ-gated still route (`/api/generate/jobs/:id/image?i=0`). Vercel resolves that to bytes and uploads to fal storage (1-day) so fal can fetch without a public Blob keep. Finished clips are shown through the same gated job route.
 
-Quickgen tabs (t2v / i2v / v2v) already stream through HQ-gated `/api/admin/quickgen/:id/result`.
+The **Text → Image / Text → Video / Image → Video** tabs no longer use Spark quickgen. They share this job table and the HQ-gated `/api/generate/jobs/:id/image` route — see `docs/generate-engines.md`. **Video → Video** is disabled (no fal V2V path). Motion is unchanged.
 
 ## Deploy the Modal function
 

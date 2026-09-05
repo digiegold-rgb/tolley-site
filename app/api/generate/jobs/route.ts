@@ -14,6 +14,17 @@ import {
 } from "@/lib/generate-motion-card";
 import { fillMotionCardFromChat } from "@/lib/generate-motion-llm";
 import {
+  parseGenerateEngineCard,
+  falEnginePublicStatus,
+  type GenerateEngineCard,
+} from "@/lib/generate-engine-card";
+import {
+  spawnFalT2I,
+  spawnFalT2V,
+  spawnT2IInput,
+  spawnT2VInput,
+} from "@/lib/generate-engine";
+import {
   falPublicStatus,
   isFalConfigured,
   spawnFalMotion,
@@ -38,9 +49,13 @@ function jsonError(error: string, status: number, extra?: Record<string, unknown
 }
 
 function isMotionKind(body: { kind?: unknown; card?: unknown; currentCard?: unknown }): boolean {
-  if (body.kind === "motion") return true;
+  if (body.kind === "motion" || body.kind === "i2v") return true;
   const raw = (body.card || body.currentCard) as { recipe?: unknown } | undefined;
   return raw?.recipe === "fal-wan-i2v" || raw?.recipe === "fal-wan-flf2v";
+}
+
+function isEngineKind(body: { kind?: unknown }): body is { kind: "t2i" | "t2v" } {
+  return body.kind === "t2i" || body.kind === "t2v";
 }
 
 /**
@@ -61,14 +76,17 @@ export async function GET() {
     llm: { configured: isJobCardLlmConfigured() },
     defaults: defaultJobCard(),
     motion_defaults: emptyMotionCard(),
+    engines: falEnginePublicStatus(),
   });
 }
 
 /**
  * POST /api/generate/jobs
  *
- * Body: { kind?: "still"|"motion", card?, message?, currentCard?, start?, dryRun? }
- *   - kind:"motion" → fal Wan I2V / FLF2V (source still URL)
+ * Body: { kind?: "still"|"motion"|"t2i"|"t2v"|"i2v", card?, prompt?, aspect?, seconds?, message?, currentCard?, start?, dryRun? }
+ *   - kind:"motion"|"i2v" → fal Wan I2V / FLF2V (source still URL)
+ *   - kind:"t2i" → fal FLUX.1 [dev] (no Gemini keyframe)
+ *   - kind:"t2v" → fal Wan T2V (no Gemini keyframe)
  *   - default / still → existing Modal Qwen stills path (unchanged)
  */
 export async function POST(req: NextRequest) {
@@ -78,6 +96,9 @@ export async function POST(req: NextRequest) {
   let body: {
     kind?: unknown;
     card?: unknown;
+    prompt?: unknown;
+    aspect?: unknown;
+    seconds?: unknown;
     message?: unknown;
     currentCard?: unknown;
     start?: unknown;
@@ -89,6 +110,17 @@ export async function POST(req: NextRequest) {
     return jsonError("Invalid JSON", 400);
   }
 
+  if (body.kind === "v2v") {
+    return jsonError(
+      "Video → Video is not wired on fal. Use Motion or Image → Video with a still. There is no Wan V2V / Animate path in this repo.",
+      400,
+      { v2v: "not-wired" },
+    );
+  }
+
+  if (isEngineKind(body)) {
+    return postEngine(body, gate.createdBy);
+  }
   if (isMotionKind(body)) {
     return postMotion(body, gate.createdBy);
   }
@@ -260,6 +292,138 @@ async function postMotion(
       },
     });
     return jsonError(messageText, 502, { job: serializeJob(failed), kind: "motion" });
+  }
+}
+
+async function postEngine(
+  body: {
+    kind?: unknown;
+    card?: unknown;
+    prompt?: unknown;
+    aspect?: unknown;
+    seconds?: unknown;
+    start?: unknown;
+    dryRun?: unknown;
+  },
+  createdBy: string,
+) {
+  const kind = body.kind === "t2v" ? "t2v" : "t2i";
+  const dryRun = body.dryRun === true;
+  const explicitStart = body.start === true;
+
+  const rawCard =
+    body.card && typeof body.card === "object"
+      ? (body.card as Record<string, unknown>)
+      : {};
+  const prompt =
+    (typeof body.prompt === "string" && body.prompt.trim()) ||
+    (typeof rawCard.prompt === "string" && rawCard.prompt.trim()) ||
+    "";
+
+  if (!prompt) {
+    return jsonError("Prompt is required", 400, { kind });
+  }
+
+  const safety = isBlockedStudioRequest(prompt);
+  if (safety.blocked) {
+    return NextResponse.json({ reply: safety.reason, refused: true, kind });
+  }
+
+  let parsed: GenerateEngineCard;
+  try {
+    parsed = parseGenerateEngineCard(
+      {
+        ...rawCard,
+        prompt,
+        aspect: body.aspect ?? rawCard.aspect,
+        seconds: body.seconds ?? rawCard.seconds,
+      },
+      kind,
+    );
+  } catch (err) {
+    return jsonError(err instanceof Error ? err.message : "Invalid engine card", 400, { kind });
+  }
+
+  const planned = kind === "t2v" ? spawnT2VInput(parsed) : spawnT2IInput(parsed);
+  const storedCard = { ...parsed, recipe: planned.recipe, fal_model: planned.falModelId };
+  const row = await prisma.generateJob.create({
+    data: {
+      status: "queued",
+      recipe: planned.recipe,
+      cardJson: storedCard,
+      createdBy,
+    },
+  });
+
+  if (dryRun) {
+    return NextResponse.json({
+      job: serializeJob(row),
+      card: storedCard,
+      dryRun: true,
+      fal_input: planned.input,
+      fal: falPublicStatus(),
+      engines: falEnginePublicStatus(),
+      started: false,
+      kind,
+    });
+  }
+
+  const shouldSpawn = explicitStart || !dryRun;
+  if (!shouldSpawn) {
+    return NextResponse.json({
+      job: serializeJob(row),
+      card: storedCard,
+      started: false,
+      kind,
+    });
+  }
+
+  if (!isFalConfigured()) {
+    await prisma.generateJob.update({
+      where: { id: row.id },
+      data: {
+        status: "failed",
+        error: "fal.ai is not configured. Set FAL_KEY.",
+        completedAt: new Date(),
+      },
+    });
+    return jsonError(
+      "fal.ai is not configured. Set FAL_KEY on Vercel.",
+      503,
+      { job: serializeJob({ ...row, status: "failed", error: "fal.ai is not configured." }), kind },
+    );
+  }
+
+  try {
+    const spawned = kind === "t2v" ? await spawnFalT2V(parsed) : await spawnFalT2I(parsed);
+    const running = await prisma.generateJob.update({
+      where: { id: row.id },
+      data: {
+        status: "running",
+        recipe: spawned.recipe,
+        modalCallId: spawned.callId,
+        startedAt: new Date(),
+        cardJson: { ...storedCard, fal_model: spawned.falModelId },
+      },
+    });
+    return NextResponse.json({
+      job: serializeJob(running),
+      card: storedCard,
+      started: true,
+      fal_request_id: spawned.callId,
+      kind,
+    });
+  } catch (err) {
+    const messageText = err instanceof Error ? err.message : String(err);
+    const failed = await prisma.generateJob.update({
+      where: { id: row.id },
+      data: {
+        status: "failed",
+        error: messageText.slice(0, 2000),
+        completedAt: new Date(),
+      },
+    });
+    return jsonError(messageText, 502, { job: serializeJob(failed), kind });
   }
 }
 

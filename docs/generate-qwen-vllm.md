@@ -2,7 +2,7 @@
 
 `/generate` talks to **Qwen 3.8 Unlocked** on the DGX Spark through an OpenAI-compatible vLLM endpoint. It does **not** call Alibaba Qwen-Max or Claude.
 
-Chat is the director: it writes the **Inference** (engine prompt) and **Description** (identity / outfit / camera notes) boxes. Generate still hits the existing `/api/admin/quickgen` engines (HQ-gated). `/animate`, billing, and auth are unchanged.
+Chat is the director: it writes the **Inference** (engine prompt) and **Description** (identity / outfit / camera notes) boxes. Generate on those tabs hits fal via `/api/generate/jobs` (HQ-gated) — see `docs/generate-engines.md`. `/animate`, billing, and auth are unchanged.
 
 Identity stills on the **Modal stills** tab are a separate path (see `docs/generate-modal.md`) — they do not use Spark Comfy or this vLLM endpoint for diffusion.
 

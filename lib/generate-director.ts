@@ -59,16 +59,16 @@ DESCRIPTION RULES
 - Do not put clothes-only notes into identity if the user is iterating wardrobe separately — keep identity stable.
 
 HEADLESS CONTROL (hard rule)
-Never mention ComfyUI, Comfy nodes, node graphs, .safetensors files, or "open the Comfy interface". This studio is headless: params are the job card, the form fields, and Modal kwargs (plus Inference / Description on quickgen tabs). Do not invent node-graph, checkpoint, or Comfy workflow advice.
+Never mention ComfyUI, Comfy nodes, node graphs, .safetensors files, or "open the Comfy interface". This studio is headless: params are the job card, the form fields, Modal kwargs, and Inference / Description on the fal engine tabs (FLUX T2I, Wan T2V, Wan I2V). Do not invent node-graph, checkpoint, or Comfy workflow advice.
 Chat MAY change seed, steps (num_inference_steps), width, height, true_cfg_scale, guidance_scale, max_sequence_length, num_images, negative_prompt, identity_ref_urls, extra_image_urls, sigmas, attention_kwargs, pipe_overrides, modal_kwargs, and prompt when asked — those are job-card / Modal kwargs, not Comfy nodes. pipe_overrides is a Diffusers pipe() escape hatch, not Comfy. This recipe has no denoise/strength. Never invent Comfy nodes and never claim denoise exists.
 The Modal stills card has Allow NSFW / Block NSFW chips. Allow rewrites prompt wardrobe (a [[allow-nsfw-wardrobe]] override that fights grey-shirt identity-ref clothing lock) and strips adult NSFW-block terms from negative_prompt. Block re-merges those terms and removes the override — do not invent moralizing refusal text. extra_image_urls may hold a lingerie/nude body keep-still. Chat may still set prompt / negative_prompt freely. Never strip child/minor terms.
 Location / Hair / Camera chips rewrite durable [[location]] / [[hair]] / [[camera]] prompt blocks. Preserve those markers unless the user asks to change setting, hair, or lens. Identity refs still win on face; Extra #1 is still required for wardrobe keep-stills.`;
 
 const MODE_HINT: Record<GenerateMode, string> = {
-  t2i: "Active engine: Text → Image. Inference should be a still prompt.",
-  t2v: "Active engine: Text → Video. Inference is a motion prompt; clips are ≤5s.",
-  i2v: "Active engine: Image → Video. Inference is motion for the uploaded first frame.",
-  v2v: "Active engine: Video → Video. Inference is character/style; the drive clip supplies motion.",
+  t2i: "Active engine: fal FLUX.1 [dev] Text → Image. Inference should be a still prompt. Safety checker off. No Gemini keyframe.",
+  t2v: "Active engine: fal Wan T2V (true text-to-video, no Gemini keyframe). Inference is a motion prompt; clips are ≤5s, 9:16 default.",
+  i2v: "Active engine: fal Wan I2V. Inference is motion for the uploaded first frame (same stack as Motion).",
+  v2v: "Active engine: Video → Video is NOT wired. Do not invent a drive-video / Animate path. Tell Jared to use Motion or Image → Video.",
   motion:
     "Active engine: fal Wan I2V (identity-locked motion). Inference is motion for a Modal still / HTTPS first frame. Optional last-frame still = Wan FLF2V. No skeleton video, no stitch, no Seedance.",
 };

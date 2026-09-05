@@ -14,6 +14,8 @@ import { prisma } from "./prisma";
 import {
   FAL_MODELS,
   checkVideoStatus,
+  formatFalError,
+  formatFalFailure,
   getVideoResult,
   submitVideoGeneration,
   type FalModelId,
@@ -97,10 +99,14 @@ export async function pollFalMotion(
     return { pending: true, status: status.status };
   }
   if (status.status === "FAILED") {
-    return { failed: true, error: status.logs?.slice(-1)[0] || "fal.ai generation failed" };
+    return { failed: true, error: formatFalFailure(status) };
   }
-  const result = await getVideoResult(falModelId, requestId);
-  return { done: true, videoUrl: result.videoUrl, contentType: result.contentType };
+  try {
+    const result = await getVideoResult(falModelId, requestId);
+    return { done: true, videoUrl: result.videoUrl, contentType: result.contentType };
+  } catch (err) {
+    return { failed: true, error: formatFalError(err, "fal.ai video result failed") };
+  }
 }
 
 export function falModelIdForRecipe(recipe: string): FalModelId {

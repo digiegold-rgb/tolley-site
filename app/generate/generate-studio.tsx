@@ -1,9 +1,9 @@
 "use client";
 
-// /generate — Jelly Studio director + the existing quickgen engines.
-// Chat (Qwen 3.8 on Spark) writes Inference + Description. The user edits
-// both boxes, then hits Generate on the active tab. Engines still POST
-// /api/admin/quickgen (HQ-gated). Do not change /animate, billing, or auth.
+// /generate — Jelly Studio director + Modal stills, Motion, and fal engines.
+// Chat writes Inference + Description on the fal tabs. Confirm/Go POSTs
+// /api/generate/jobs (HQ-gated). T2I/T2V/I2V use fal (FAL_KEY), not Spark
+// quickgen / Gemini keyframes. Do not change /animate, billing, or auth.
 import { useEffect, useRef, useState } from "react";
 import { composeEnginePrompt } from "@/lib/generate-director";
 import {
@@ -33,6 +33,10 @@ import {
   promptChipId,
   type PromptChipOption,
 } from "@/lib/generate-prompt-chips";
+import {
+  ENGINE_RECIPE_T2I,
+  ENGINE_RECIPE_T2V,
+} from "@/lib/generate-engine-card";
 import {
   emptyMotionCard,
   formatMotionCardJson,
@@ -74,16 +78,21 @@ function isMotionJob(job: ModalJob): boolean {
   return job.recipe === "fal-wan-i2v" || job.recipe === "fal-wan-flf2v";
 }
 
+function isEngineJob(job: ModalJob): boolean {
+  return job.recipe === ENGINE_RECIPE_T2I || job.recipe === ENGINE_RECIPE_T2V || isMotionJob(job);
+}
+
+function isEngineVideoJob(job: ModalJob): boolean {
+  return job.recipe === ENGINE_RECIPE_T2V || isMotionJob(job);
+}
+
+function isFalJob(job: ModalJob): boolean {
+  return isEngineJob(job) || isMotionJob(job);
+}
+
 function isVideoUrl(url: string): boolean {
   return /\.(mp4|webm|mov)(\?|$)/i.test(url);
 }
-
-type DgxStatus = {
-  busy: boolean;
-  active: { lane: string; runningMin: number | null; etaMin: number | null }[];
-  freeAtEpoch: number | null;
-  nextSlot: { epoch: number; lane: string } | null;
-};
 
 type ChatMsg = { id: string; role: "user" | "assistant"; content: string };
 
@@ -132,85 +141,38 @@ function stillSrc(jobId: string, index: number): string {
   return `/api/generate/jobs/${encodeURIComponent(jobId)}/image?i=${index}`;
 }
 
-function fmtTime(epoch: number) {
-  return new Date(epoch * 1000).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-}
-
-function DgxLight() {
-  const [st, setSt] = useState<DgxStatus | null>(null);
-  useEffect(() => {
-    let dead = false;
-    const load = async () => {
-      try {
-        const r = await fetch("/api/admin/quickgen/dgx", { cache: "no-store" });
-        if (r.ok && !dead) setSt(await r.json());
-      } catch {
-        /* leave last reading */
-      }
-    };
-    load();
-    const t = setInterval(load, 30000);
-    return () => {
-      dead = true;
-      clearInterval(t);
-    };
-  }, []);
-  if (!st) return null;
-  if (st.busy) {
-    const lanes = st.active
-      .map((a) => `${a.lane}${a.runningMin !== null ? ` (${a.runningMin}m in${a.etaMin !== null ? `, ~${a.etaMin}m left` : ""})` : ""}`)
-      .join(" + ");
-    return (
-      <p className="gen-banner gen-banner-busy">
-        <span className="gen-dot" style={{ background: "#ff5b5b", color: "#ff5b5b" }} />
-        <span>
-          <b>DGX busy</b> — {lanes}.{" "}
-          {st.freeAtEpoch ? `Est. free ~${fmtTime(st.freeAtEpoch)}.` : ""} Generating now may slow or starve a Lady render.
-        </span>
-      </p>
-    );
-  }
-  return (
-    <p className="gen-banner gen-banner-free">
-      <span className="gen-dot" style={{ background: "#3ddc84", color: "#3ddc84" }} />
-      <span>
-        <b>DGX free</b> — all yours{st.nextSlot ? ` until ${fmtTime(st.nextSlot.epoch)} (${st.nextSlot.lane} render slot)` : ""}.
-      </span>
-    </p>
-  );
-}
-
-type RecentJob = { id: string; kind: string; mime: string; prompt: string; created: number };
-
-function RecentGallery({ refreshKey }: { refreshKey: number }) {
-  const [jobs, setJobs] = useState<RecentJob[]>([]);
-  useEffect(() => {
-    fetch("/api/admin/quickgen/recent", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { jobs: [] }))
-      .then((j) => setJobs(j.jobs ?? []))
-      .catch(() => {});
-  }, [refreshKey]);
-  if (!jobs.length) return null;
+function EngineGallery({
+  jobs,
+  onUseStill,
+}: {
+  jobs: ModalJob[];
+  onUseStill?: (url: string) => void;
+}) {
+  const items = jobs.filter((j) => isEngineJob(j) && j.status === "done" && (j.output_urls?.length ?? 0) > 0);
+  if (!items.length) return null;
   return (
     <div className="gen-gallery">
-      <h2>Recent generations</h2>
+      <h2>Generate gallery</h2>
       <div className="gen-gallery-grid">
-        {jobs.map((j) => (
-          <a
-            key={j.id}
-            href={`/api/admin/quickgen/${j.id}/result`}
-            target="_blank"
-            rel="noreferrer"
-            title={j.prompt}
-          >
-            {j.mime?.startsWith("video") ? (
-              <video src={`/api/admin/quickgen/${j.id}/result`} muted preload="metadata" />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={`/api/admin/quickgen/${j.id}/result`} alt={j.prompt} loading="lazy" />
-            )}
-          </a>
-        ))}
+        {items.map((j) =>
+          (j.output_urls ?? []).map((_, i) => (
+            <div key={`${j.id}-${i}`} className="gen-gallery-cell">
+              <a href={stillSrc(j.id, i)} target="_blank" rel="noreferrer">
+                {isEngineVideoJob(j) ? (
+                  <video src={stillSrc(j.id, i)} muted preload="metadata" playsInline />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={stillSrc(j.id, i)} alt="Generate result" loading="lazy" />
+                )}
+              </a>
+              {onUseStill && !isEngineVideoJob(j) && (
+                <button type="button" className="gen-use-still" onClick={() => onUseStill(stillSrc(j.id, i))}>
+                  Use as source
+                </button>
+              )}
+            </div>
+          )),
+        )}
       </div>
     </div>
   );
@@ -273,15 +235,13 @@ export default function GenerateStudio() {
   const [inference, setInference] = useState("");
   const [description, setDescription] = useState("");
   const [aspect, setAspect] = useState("9:16");
-  const [seconds, setSeconds] = useState(4);
+  const [seconds, setSeconds] = useState(5);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [refFiles, setRefFiles] = useState<File[]>([]);
+  const [i2vSourceUrl, setI2vSourceUrl] = useState("");
   const [stage, setStage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [resultIsVideo, setResultIsVideo] = useState(false);
-  const [galleryKey, setGalleryKey] = useState(0);
 
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -364,19 +324,6 @@ export default function GenerateStudio() {
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, chatBusy]);
-
-  async function uploadDirect(file: File): Promise<string> {
-    const t = await fetch("/api/admin/quickgen/ticket", { method: "POST" });
-    if (t.status === 401) throw new Error("Not authorized — log in at /hq first, then come back.");
-    const { ticket } = (await readJson(t)) as { ticket?: string };
-    if (!ticket) throw new Error("could not get an upload ticket");
-    const fd = new FormData();
-    fd.append("file", file);
-    const up = await fetch(`https://quickgen.tolley.io/upload?ticket=${ticket}`, { method: "POST", body: fd });
-    const uj = (await readJson(up)) as { upload_id?: string; detail?: string };
-    if (!up.ok || !uj.upload_id) throw new Error(uj.detail || "upload failed");
-    return uj.upload_id;
-  }
 
   function commitCard(next: GenerateJobCard) {
     setCard(next);
@@ -547,17 +494,16 @@ export default function GenerateStudio() {
       if (job.status === "done") {
         if (poll.current) clearInterval(poll.current);
         setStage(null);
-        setResultIsVideo(isMotionJob(job) || isVideoUrl(job.output_urls?.[0] ?? ""));
+        setResultIsVideo(isEngineVideoJob(job) || isVideoUrl(job.output_urls?.[0] ?? ""));
         setResultUrl(job.output_urls?.length ? stillSrc(job.id, 0) : null);
         setModalJobs((list) => [job, ...list.filter((x) => x.id !== job.id)]);
-        setGalleryKey((k) => k + 1);
       } else if (job.status === "failed") {
         if (poll.current) clearInterval(poll.current);
         setStage(null);
         setError(job.error || "generation failed");
       } else {
         setStage(
-          isMotionJob(job) || mode === "motion"
+          isFalJob(job) || mode === "motion" || mode === "t2i" || mode === "t2v" || mode === "i2v"
             ? job.status === "queued"
               ? "queued on fal…"
               : "fal running…"
@@ -644,70 +590,116 @@ export default function GenerateStudio() {
     await pollModalJob(j.job.id);
   }
 
-  async function go() {
+  async function goEngine() {
+    if (mode === "v2v") {
+      throw new Error(
+        "Video → Video is not wired on fal. Use Motion or Image → Video with a still.",
+      );
+    }
     setError(null);
     setResultUrl(null);
-    if (mode === "modal" || mode === "motion") {
-      try {
-        if (mode === "motion") await goMotion();
-        else await goModal();
-      } catch (e) {
-        setStage(null);
-        setError(e instanceof Error ? e.message : String(e));
+    setStage(dryRun ? "dry run…" : "submitting…");
+    const prompt = composeEnginePrompt(inference, description);
+    if (mode === "i2v") {
+      let source = i2vSourceUrl.trim();
+      if (imageFile) {
+        setStage("uploading…");
+        const fd = new FormData();
+        fd.append("file", imageFile);
+        const up = await fetch("/api/generate/upload", { method: "POST", body: fd });
+        if (up.status === 401 || up.status === 403) {
+          throw new Error("Not authorized — log in at /hq first, then come back.");
+        }
+        const uj = (await readJson(up)) as { url?: string; error?: string };
+        if (!up.ok || !uj.url) throw new Error(uj.error || "upload failed");
+        source = uj.url;
+        setI2vSourceUrl(source);
       }
+      if (!source) throw new Error("Pick an image first, or Use as source from a still.");
+      setStage(dryRun ? "dry run…" : "submitting…");
+      const r = await fetch("/api/generate/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "i2v",
+          card: {
+            prompt,
+            source_image_url: source,
+            aspect,
+            seconds,
+          },
+          start: !dryRun,
+          dryRun,
+        }),
+      });
+      if (r.status === 401 || r.status === 403) {
+        throw new Error("Not authorized — log in at /hq first, then come back.");
+      }
+      const j = (await readJson(r)) as { job?: ModalJob; error?: string; dryRun?: boolean };
+      if (!r.ok && !j.job) throw new Error(j.error || "submit failed");
+      if (j.job) setModalJobs((list) => [j.job as ModalJob, ...list.filter((x) => x.id !== j.job!.id)]);
+      if (dryRun || j.dryRun) {
+        setStage(null);
+        setMessages((m) => [
+          ...m,
+          {
+            id: mid(),
+            role: "assistant",
+            content: `Dry run queued (${j.job?.id || "no id"}). fal Wan I2V kwargs ready — untick Dry run and hit Go.`,
+          },
+        ]);
+        return;
+      }
+      if (!j.job?.id) throw new Error(j.error || "submit failed");
+      setActiveJobId(j.job.id);
+      setStage("queued on fal…");
+      await pollModalJob(j.job.id);
       return;
     }
-    const prompt = composeEnginePrompt(inference, description);
-    try {
-      const body: Record<string, unknown> = {
-        kind: mode === "t2i" ? "image" : "video",
+
+    const r = await fetch("/api/generate/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: mode === "t2v" ? "t2v" : "t2i",
         prompt,
         aspect,
         seconds,
-      };
-      if (mode === "i2v" && !imageFile) throw new Error("pick an image first");
-      if (mode === "v2v" && !videoFile) throw new Error("pick a video first");
-      if (imageFile || videoFile || refFiles.length) setStage("uploading…");
-      if ((mode === "i2v" || mode === "v2v") && imageFile) body.image_ref = await uploadDirect(imageFile);
-      if (mode === "v2v" && videoFile) body.video_ref = await uploadDirect(videoFile);
-      if (mode !== "i2v" && refFiles.length) {
-        const ids: string[] = [];
-        for (const f of refFiles.slice(0, 6)) ids.push(await uploadDirect(f));
-        body.ref_ids = ids;
-      }
-      setStage("submitting…");
-      const r = await fetch("/api/admin/quickgen", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (r.status === 401) throw new Error("Not authorized — log in at /hq first, then come back.");
-      const j = (await readJson(r)) as { job_id?: string; error?: string };
-      if (!r.ok || !j.job_id) throw new Error(j.error || "submit failed");
-      setStage("queued");
-      poll.current = setInterval(async () => {
-        const s = await fetch(`/api/admin/quickgen/${j.job_id}`, { cache: "no-store" });
-        let sj: { status?: string; stage?: string; error?: string };
-        try {
-          sj = (await readJson(s)) as typeof sj;
-        } catch (pe) {
-          if (poll.current) clearInterval(poll.current);
-          setStage(null);
-          setError(pe instanceof Error ? pe.message : String(pe));
-          return;
-        }
-        if (sj.status === "done") {
-          if (poll.current) clearInterval(poll.current);
-          setStage(null);
-          setResultIsVideo(mode !== "t2i");
-          setResultUrl(`/api/admin/quickgen/${j.job_id}/result`);
-          setGalleryKey((k) => k + 1);
-        } else if (sj.status === "error") {
-          if (poll.current) clearInterval(poll.current);
-          setStage(null);
-          setError(sj.error || "generation failed");
-        } else setStage(sj.stage || "working…");
-      }, 3000);
+        start: !dryRun,
+        dryRun,
+      }),
+    });
+    if (r.status === 401 || r.status === 403) {
+      throw new Error("Not authorized — log in at /hq first, then come back.");
+    }
+    const j = (await readJson(r)) as { job?: ModalJob; error?: string; dryRun?: boolean };
+    if (!r.ok && !j.job) throw new Error(j.error || "submit failed");
+    if (j.job) setModalJobs((list) => [j.job as ModalJob, ...list.filter((x) => x.id !== j.job!.id)]);
+    if (dryRun || j.dryRun) {
+      setStage(null);
+      setMessages((m) => [
+        ...m,
+        {
+          id: mid(),
+          role: "assistant",
+          content: `Dry run queued (${j.job?.id || "no id"}). fal kwargs ready — untick Dry run and hit Go.`,
+        },
+      ]);
+      return;
+    }
+    if (!j.job?.id) throw new Error(j.error || "submit failed");
+    setActiveJobId(j.job.id);
+    setStage("queued on fal…");
+    await pollModalJob(j.job.id);
+  }
+
+  async function go() {
+    setError(null);
+    setResultUrl(null);
+    try {
+      if (mode === "motion") await goMotion();
+      else if (mode === "modal") await goModal();
+      else await goEngine();
     } catch (e) {
       setStage(null);
       setError(e instanceof Error ? e.message : String(e));
@@ -716,8 +708,10 @@ export default function GenerateStudio() {
 
   const busy = stage !== null;
   const needImage = mode === "i2v";
-  const wantImage = mode === "v2v";
-  const needVideo = mode === "v2v";
+  const i2vReady =
+    !!imageFile ||
+    /^https:\/\//i.test(i2vSourceUrl.trim()) ||
+    /^\/api\/generate\/jobs\/[^/]+\/image\?i=\d+$/.test(i2vSourceUrl.trim());
   const promptReady =
     mode === "modal"
       ? card.prompt.trim().length > 0
@@ -726,7 +720,11 @@ export default function GenerateStudio() {
           (/^https:\/\//i.test(motionCard.source_image_url.trim()) ||
             /^\/api\/generate\/jobs\/[^/]+\/image\?i=\d+$/.test(motionCard.source_image_url.trim()))
         : composeEnginePrompt(inference, description).length > 0;
-  const canGo = !busy && (promptReady || mode === "v2v") && (!needImage || !!imageFile) && (!needVideo || !!videoFile);
+  const canGo =
+    !busy &&
+    mode !== "v2v" &&
+    promptReady &&
+    (!needImage || i2vReady);
   const nsfwState = nsfwChipState(card);
 
   return (
@@ -738,7 +736,7 @@ export default function GenerateStudio() {
             Generate <em>Directed by you.</em>
           </h1>
           <p className="gen-lede">
-            Talk to the page. Modal stills fill a job card for Qwen-Image-Edit. Motion takes a keep still into a 5s fal Wan I2V clip. Quickgen tabs still write Inference and Description.
+            Talk to the page. Modal stills fill a job card for Qwen-Image-Edit. Motion takes a keep still into a 5s fal Wan I2V clip. Text → Image / Video and I2V run on fal (FLUX / Wan) — not Spark Gemini.
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
@@ -756,9 +754,19 @@ export default function GenerateStudio() {
                 ? falStatus?.configured
                   ? "fal · Wan I2V"
                   : "fal · set FAL_KEY"
-                : qwenStatus?.configured
-                  ? `Qwen 3.8 · ${qwenStatus.model?.split("/").pop() || "Spark"}`
-                  : "Qwen 3.8 · set QWEN_VLLM_BASE_URL"}
+                : mode === "t2i"
+                  ? falStatus?.configured
+                    ? "fal · FLUX.1 [dev]"
+                    : "fal · set FAL_KEY"
+                  : mode === "t2v"
+                    ? falStatus?.configured
+                      ? "fal · Wan T2V"
+                      : "fal · set FAL_KEY"
+                    : mode === "i2v"
+                      ? falStatus?.configured
+                        ? "fal · Wan I2V"
+                        : "fal · set FAL_KEY"
+                      : "V2V · not wired"}
           </span>
         </div>
       </header>
@@ -772,7 +780,9 @@ export default function GenerateStudio() {
                 ? "Chat fills the Modal job card (JSON kwargs). Edit the card, then Confirm/Go."
                 : mode === "motion"
                   ? "Chat fills the motion card. Source still + motion prompt → 5s Wan I2V. Optional last-frame still = FLF2V."
-                  : "Qwen 3.8 Unlocked on Spark. Photoreal adult identity stills stay in Inference."}
+                  : mode === "v2v"
+                    ? "Video → Video is not wired. Use Motion or Image → Video."
+                    : "Chat writes Inference + Description. Generate hits fal (FLUX / Wan), HQ-gated."}
             </p>
           </div>
           <div className="gen-chat-log">
@@ -819,8 +829,7 @@ export default function GenerateStudio() {
         </section>
 
         <section className="gen-panel gen-right" aria-label="Inference, description, and engines">
-          {mode !== "modal" && mode !== "motion" && <DgxLight />}
-          {(mode === "modal" || mode === "motion") && modalAuthed === false && (
+          {mode !== "modal" && mode !== "v2v" && modalAuthed === false && (
             <p className="gen-banner gen-banner-warn">
               Generate jobs are Jared/admin gated. Log in at /hq (or shop dashboard), then come back.
             </p>
@@ -830,12 +839,22 @@ export default function GenerateStudio() {
               Modal tokens are not set. Add MODAL_TOKEN_ID + MODAL_TOKEN_SECRET (see docs/generate-modal.md). Dry run still works.
             </p>
           )}
-          {mode === "motion" && falStatus && !falStatus.configured && modalAuthed && (
+          {(mode === "motion" || mode === "t2i" || mode === "t2v" || mode === "i2v") &&
+            falStatus &&
+            !falStatus.configured &&
+            modalAuthed && (
             <p className="gen-banner gen-banner-warn">
-              FAL_KEY is not set. Add it on Vercel (see docs/generate-motion.md). Dry run still works.
+              FAL_KEY is not set. Add it on Vercel (see docs/generate-engines.md). Dry run still works.
             </p>
           )}
-          {mode !== "modal" && mode !== "motion" && qwenStatus && !qwenStatus.configured && (
+          {mode === "v2v" && (
+            <p className="gen-banner gen-banner-warn">
+              Video → Video is not wired on fal. There is no Wan V2V / Animate path in this repo. Use <b>Motion</b> or <b>Image → Video</b> with a still.
+            </p>
+          )}
+          {(mode === "t2i" || mode === "t2v" || mode === "i2v" || mode === "v2v") &&
+            qwenStatus &&
+            !qwenStatus.configured && (
             <p className="gen-banner gen-banner-warn">
               Chat needs Spark vLLM. Set QWEN_VLLM_BASE_URL + QWEN_VLLM_MODEL (see docs/generate-qwen-vllm.md). You can still edit the boxes and Generate if HQ is signed in.
             </p>
@@ -1396,72 +1415,64 @@ export default function GenerateStudio() {
               </div>
 
               <p className="gen-hint">
-                {mode === "t2i" && "Prompt → image. Optional reference images keep an exact face/style."}
-                {mode === "t2v" && "Prompt → keyframe → ≤5s clip. Optional reference images keep an exact face/style."}
-                {mode === "i2v" && "Your image + a motion prompt → ≤5s clip. The image IS the first frame."}
-                {mode === "v2v" && "Your video drives the motion (Animate-2). Identity comes from the image, the references, or the prompt."}
+                {mode === "t2i" && "Prompt → fal FLUX.1 [dev] still. Safety checker off. Identity-locked Lady2 stills stay on Modal stills."}
+                {mode === "t2v" && "True text → video on fal Wan T2V. No Gemini keyframe. ≤5s, 9:16 default."}
+                {mode === "i2v" && "Your image + a motion prompt → ≤5s fal Wan I2V clip. The image IS the first frame (same as Motion)."}
+                {mode === "v2v" && "Not wired — no fal / Animate V2V path in this repo."}
               </p>
 
-              {mode !== "i2v" && (
+              {mode === "i2v" && (
                 <label className="gen-file">
-                  Reference images (optional, up to 6):{" "}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    disabled={busy}
-                    onChange={(e) => setRefFiles(Array.from(e.target.files ?? []))}
-                  />
-                  {refFiles.length > 0 && <span> {refFiles.length} selected</span>}
-                </label>
-              )}
-              {(needImage || wantImage) && (
-                <label className="gen-file">
-                  {mode === "v2v" ? "Identity image (optional — prompt generates one otherwise): " : "Image to animate: "}
+                  Image to animate:{" "}
                   <input
                     type="file"
                     accept="image/*"
                     disabled={busy}
                     onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
                   />
-                </label>
-              )}
-              {needVideo && (
-                <label className="gen-file">
-                  Drive video (motion source, ≤60MB):{" "}
-                  <input
-                    type="file"
-                    accept="video/*"
-                    disabled={busy}
-                    onChange={(e) => setVideoFile(e.target.files?.[0] ?? null)}
-                  />
+                  {(imageFile || i2vSourceUrl) && (
+                    <span>
+                      {" "}
+                      {imageFile ? imageFile.name : "gallery still selected"}
+                    </span>
+                  )}
                 </label>
               )}
 
-              <div className="gen-row">
-                <select className="gen-select" value={aspect} onChange={(e) => setAspect(e.target.value)} disabled={busy}>
-                  <option value="9:16">9:16 vertical</option>
-                  <option value="16:9">16:9 wide</option>
-                  <option value="1:1">1:1 square</option>
-                </select>
-                {mode !== "t2i" && (
-                  <label style={{ fontSize: 13, color: "var(--gen-muted)", display: "flex", alignItems: "center", gap: 8 }}>
-                    <input
-                      type="range"
-                      min={2}
-                      max={5}
-                      step={0.5}
-                      value={seconds}
-                      disabled={busy}
-                      onChange={(e) => setSeconds(+e.target.value)}
-                    />
-                    {seconds}s
+              {mode === "v2v" ? (
+                <p className="gen-hint">
+                  Switch to <b>Image → Video</b> or <b>Motion</b>. Generate is disabled on this tab.
+                </p>
+              ) : (
+                <div className="gen-row">
+                  <select className="gen-select" value={aspect} onChange={(e) => setAspect(e.target.value)} disabled={busy}>
+                    <option value="9:16">9:16 vertical</option>
+                    <option value="16:9">16:9 wide</option>
+                    <option value="1:1">1:1 square</option>
+                  </select>
+                  {mode !== "t2i" && (
+                    <label style={{ fontSize: 13, color: "var(--gen-muted)", display: "flex", alignItems: "center", gap: 8 }}>
+                      <input
+                        type="range"
+                        min={2}
+                        max={5}
+                        step={0.5}
+                        value={seconds}
+                        disabled={busy}
+                        onChange={(e) => setSeconds(+e.target.value)}
+                      />
+                      {seconds}s
+                    </label>
+                  )}
+                  <label className="gen-check">
+                    <input type="checkbox" checked={dryRun} disabled={busy} onChange={(e) => setDryRun(e.target.checked)} />
+                    Dry run (no GPU)
                   </label>
-                )}
-                <button className="gen-go" type="button" onClick={go} disabled={!canGo} style={{ marginLeft: "auto" }}>
-                  {busy ? "Working…" : "Generate"}
-                </button>
-              </div>
+                  <button className="gen-go" type="button" onClick={go} disabled={!canGo} style={{ marginLeft: "auto" }}>
+                    {busy ? "Working…" : dryRun ? "Dry run" : "Generate"}
+                  </button>
+                </div>
+              )}
             </>
           )}
           {stage && <p className="gen-stage">⏳ {stage}{activeJobId ? ` · ${activeJobId}` : ""}</p>}
@@ -1488,7 +1499,17 @@ export default function GenerateStudio() {
               <MotionGallery jobs={modalJobs} />
             </>
           )}
-          {mode !== "modal" && mode !== "motion" && <RecentGallery refreshKey={galleryKey} />}
+          {(mode === "t2i" || mode === "t2v" || mode === "i2v") && (
+            <>
+              {mode === "i2v" && (
+                <ModalGallery jobs={modalJobs} onUseStill={(url) => setI2vSourceUrl(url)} />
+              )}
+              <EngineGallery
+                jobs={modalJobs}
+                onUseStill={mode === "i2v" ? (url) => setI2vSourceUrl(url) : undefined}
+              />
+            </>
+          )}
         </section>
       </div>
     </main>
