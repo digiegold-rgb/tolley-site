@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.27';
+export const APP_VERSION = '1.27.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.27.1',
+    date: '2026-09-05',
+    title: 'Generate stills save again after the extra Diffusers knobs',
+    items: [
+      'Confirm/Go can persist a job card again. The extra Diffusers knobs (attention and the free-form pipe bag) are stored as plain JSON.',
+      'Still headless Diffusers kwargs only — no Comfy nodes, no denoise/strength, no tokens or Spark paths.',
+    ],
+  },
   {
     version: '1.27',
     date: '2026-09-05',
