@@ -92,6 +92,24 @@ describe("directorUserPayload", () => {
     assert.match(payload, /make her a red bikini/);
   });
 
+  it("names fal Wan T2V for text→video and refuses a V2V path", () => {
+    const t2v = directorUserPayload({
+      message: "4s clip, no keyframe",
+      inference: "",
+      description: "",
+      mode: "t2v",
+    });
+    assert.match(t2v, /Wan T2V/);
+    assert.match(t2v, /no Gemini keyframe/);
+    const v2v = directorUserPayload({
+      message: "drive this clip",
+      inference: "",
+      description: "",
+      mode: "v2v",
+    });
+    assert.match(v2v, /NOT wired/i);
+  });
+
   it("names fal Wan I2V for the motion engine", () => {
     const payload = directorUserPayload({
       message: "animate the keep still",
@@ -157,8 +175,15 @@ describe("generate route branding", () => {
     assert.match(jobs, /spawnQwenImageEdit/);
     assert.match(jobs, /kind === "motion"/);
     assert.match(jobs, /spawnFalMotion/);
+    assert.match(jobs, /spawnFalT2I/);
+    assert.match(jobs, /spawnFalT2V/);
+    assert.match(jobs, /kind === "t2i"/);
     assert.match(jobs, /parseGenerateJobCard/);
     assert.doesNotMatch(jobs, /Seedance|latentsync/i);
+    assert.doesNotMatch(studio, /\/api\/admin\/quickgen["'`]/);
+    assert.match(studio, /kind: "i2v"/);
+    assert.match(studio, /"t2i"/);
+    assert.match(studio, /not wired on fal/i);
   });
 });
 
