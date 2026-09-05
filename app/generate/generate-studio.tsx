@@ -1157,7 +1157,16 @@ export default function GenerateStudio() {
               {motionCard.source_image_url && /^https:\/\//i.test(motionCard.source_image_url) && (
                 <div className="gen-still-preview">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={motionCard.source_image_url} alt="Source still" />
+                  <img
+                    src={motionCard.source_image_url}
+                    alt="Source still"
+                    onError={(e) => {
+                      (e.currentTarget.parentElement as HTMLElement | null)?.setAttribute("hidden", "");
+                    }}
+                    onLoad={(e) => {
+                      (e.currentTarget.parentElement as HTMLElement | null)?.removeAttribute("hidden");
+                    }}
+                  />
                 </div>
               )}
               <div>
