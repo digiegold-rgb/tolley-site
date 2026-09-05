@@ -116,7 +116,9 @@ describe("generate route branding", () => {
     assert.match(studio, /Apply JSON/);
     assert.match(studio, /Block NSFW/);
     assert.match(studio, /Allow NSFW/);
-    assert.match(studio, /mergeNsfwBlockTerms/);
+    assert.match(studio, /applyAllowNsfw/);
+    assert.match(studio, /applyBlockNsfw/);
+    assert.match(studio, /grey-shirt identity refs lock clothes/i);
     const modalPanel = studio.indexOf('{mode === "modal" ? (');
     const elsePanel = studio.indexOf(") : (", modalPanel);
     const blockChip = studio.indexOf("Block NSFW");
@@ -171,5 +173,7 @@ describe("DIRECTOR_SYSTEM_PROMPT headless control", () => {
     assert.match(DIRECTOR_SYSTEM_PROMPT, /no denoise\/strength/);
     assert.match(DIRECTOR_SYSTEM_PROMPT, /Allow NSFW/);
     assert.match(DIRECTOR_SYSTEM_PROMPT, /Block NSFW/);
+    assert.match(DIRECTOR_SYSTEM_PROMPT, /allow-nsfw-wardrobe/);
+    assert.match(DIRECTOR_SYSTEM_PROMPT, /Never strip child\/minor/);
   });
 });

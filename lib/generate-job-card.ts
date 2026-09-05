@@ -160,6 +160,84 @@ export function nsfwBlockState(negativePrompt: string): NsfwBlockState {
   return "mixed";
 }
 
+/**
+ * Durable prompt markers so Allow can inject a wardrobe override and Block
+ * can remove it without touching the rest of the prompt. Idempotent.
+ * Qwen-Image-Edit locks clothing from grey-shirt identity refs harder than
+ * text; this block fights that lock. It does not invent a wardrobe — it
+ * tells the pipe to follow the prompt's wardrobe line.
+ */
+export const NSFW_WARDROBE_OVERRIDE_START = "[[allow-nsfw-wardrobe]]";
+export const NSFW_WARDROBE_OVERRIDE_END = "[[/allow-nsfw-wardrobe]]";
+
+export const NSFW_WARDROBE_OVERRIDE_TEXT = [
+  "Ignore and remove the grey shirt, grey tee, and default clothing from the identity reference photos.",
+  "Those refs lock face, hair, skin, bone structure, and age only — not wardrobe.",
+  "Do not copy, reconstruct, or infer clothes from the identity refs.",
+  "Wardrobe follows this prompt's wardrobe line (or explicit adult wardrobe) exactly.",
+].join(" ");
+
+export const NSFW_WARDROBE_OVERRIDE_BLOCK = [
+  NSFW_WARDROBE_OVERRIDE_START,
+  NSFW_WARDROBE_OVERRIDE_TEXT,
+  NSFW_WARDROBE_OVERRIDE_END,
+].join("\n");
+
+const NSFW_WARDROBE_OVERRIDE_BLOCK_RE =
+  /\[\[allow-nsfw-wardrobe\]\][\s\S]*?\[\[\/allow-nsfw-wardrobe\]\]/gi;
+const NSFW_WARDROBE_OVERRIDE_ORPHAN_START_RE = /\[\[allow-nsfw-wardrobe\]\][\s\S]*/gi;
+const NSFW_WARDROBE_OVERRIDE_ORPHAN_END_RE = /\[\[\/allow-nsfw-wardrobe\]\]/gi;
+
+export function hasNsfwWardrobeOverride(prompt: string): boolean {
+  return /\[\[allow-nsfw-wardrobe\]\]/i.test(prompt);
+}
+
+/** Remove the Allow wardrobe-override block. Leaves the rest of the prompt. */
+export function stripNsfwWardrobeOverride(prompt: string): string {
+  let next = prompt.replace(NSFW_WARDROBE_OVERRIDE_BLOCK_RE, "");
+  next = next.replace(NSFW_WARDROBE_OVERRIDE_ORPHAN_START_RE, "");
+  next = next.replace(NSFW_WARDROBE_OVERRIDE_ORPHAN_END_RE, "");
+  return next.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/** Inject the override once. A second apply replaces the existing block. */
+export function applyNsfwWardrobeOverride(prompt: string): string {
+  const cleaned = stripNsfwWardrobeOverride(prompt);
+  return cleaned ? `${cleaned}\n\n${NSFW_WARDROBE_OVERRIDE_BLOCK}` : NSFW_WARDROBE_OVERRIDE_BLOCK;
+}
+
+/**
+ * Chip highlight for Modal stills.
+ * Allowed = negatives stripped of NSFW_BLOCK_TERMS AND override present.
+ * Blocked = all NSFW_BLOCK_TERMS present AND override absent.
+ * Default Lady2 (clean negatives, no override) is mixed so Allow is a real click.
+ */
+export function nsfwChipState(card: { prompt: string; negative_prompt: string }): NsfwBlockState {
+  const negatives = nsfwBlockState(card.negative_prompt);
+  const override = hasNsfwWardrobeOverride(card.prompt);
+  if (negatives === "allowed" && override) return "allowed";
+  if (negatives === "blocked" && !override) return "blocked";
+  return "mixed";
+}
+
+/** Allow NSFW: strip block terms from negative + wardrobe override into prompt. */
+export function applyAllowNsfw<T extends { prompt: string; negative_prompt: string }>(card: T): T {
+  return {
+    ...card,
+    prompt: applyNsfwWardrobeOverride(card.prompt),
+    negative_prompt: stripNsfwBlockTerms(card.negative_prompt),
+  };
+}
+
+/** Block NSFW: re-merge block terms + remove override. No moralizing text. */
+export function applyBlockNsfw<T extends { prompt: string; negative_prompt: string }>(card: T): T {
+  return {
+    ...card,
+    prompt: stripNsfwWardrobeOverride(card.prompt),
+    negative_prompt: mergeNsfwBlockTerms(card.negative_prompt),
+  };
+}
+
 const urlList = z
   .array(z.string().trim())
   .max(6)
