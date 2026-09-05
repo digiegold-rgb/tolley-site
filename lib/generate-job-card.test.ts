@@ -137,6 +137,11 @@ describe("parseGenerateJobCard", () => {
     });
     assert.deepEqual(card.attention_kwargs, { scale: 1 });
     assert.equal(card.pipe_overrides.output_type, "pil");
+    const strippedAttention = parseGenerateJobCard({
+      prompt: "x",
+      attention_kwargs: { scale: 1, HF_TOKEN: "hf_secret", path: "/home/jelly/x" },
+    });
+    assert.deepEqual(strippedAttention.attention_kwargs, { scale: 1 });
     assert.equal(Object.hasOwn(card.pipe_overrides, "denoise"), false);
     assert.equal(Object.hasOwn(card.pipe_overrides, "strength"), false);
     assert.equal(Object.hasOwn(card.pipe_overrides, "image"), false);

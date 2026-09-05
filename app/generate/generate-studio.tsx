@@ -17,6 +17,7 @@ import {
   parsePipeOverridesJson,
   parseSigmasText,
   randomSeed,
+  sanitizePipeOverrides,
   type GenerateJobCard,
 } from "@/lib/generate-job-card";
 
@@ -848,7 +849,10 @@ export default function GenerateStudio() {
                       try {
                         const parsed = JSON.parse(trimmed) as unknown;
                         if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-                          patchCard({ attention_kwargs: parsed as Record<string, unknown> });
+                          const clean = sanitizePipeOverrides(parsed);
+                          patchCard({
+                            attention_kwargs: Object.keys(clean).length ? clean : null,
+                          });
                         }
                       } catch {
                         /* keep typing until JSON is valid */

@@ -23,6 +23,21 @@ export const GENERATE_RECIPE = "qwen-image-edit-2511" as const;
 export const GENERATE_JOB_STATUSES = ["queued", "running", "done", "failed"] as const;
 export type GenerateJobStatus = (typeof GENERATE_JOB_STATUSES)[number];
 
+/**
+ * JSON-safe values Prisma can persist on `cardJson`.
+ * Type aliases (not interfaces) so the job card keeps an implicit index
+ * signature and assigns to Prisma `InputJsonValue` / `InputJsonObject`.
+ * `Record<string, unknown>` does not — `unknown` is not JSON.
+ */
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+export type JsonObject = { [key: string]: JsonValue };
+
 export const PROVEN_DEFAULTS = {
   width: 928,
   height: 1664,
@@ -35,8 +50,8 @@ export const PROVEN_DEFAULTS = {
   negative_prompt: " ",
   extra_image_urls: [] as string[],
   sigmas: null as number[] | null,
-  attention_kwargs: null as Record<string, unknown> | null,
-  pipe_overrides: {} as Record<string, unknown>,
+  attention_kwargs: null as JsonObject | null,
+  pipe_overrides: {} as JsonObject,
 };
 
 /** Historical Spark paths — documented only. Do not load these on Modal. */
@@ -111,42 +126,43 @@ function isSparkPathString(value: string): boolean {
   return value.includes("/home/") || value.includes("/Users/");
 }
 
-function isPlainJsonValue(value: unknown): boolean {
+function isPlainJsonValue(value: unknown): value is JsonValue {
   if (value === null) return true;
-  const t = typeof value;
-  if (t === "string" || t === "boolean") return true;
-  if (t === "number") return Number.isFinite(value);
+  if (typeof value === "string" || typeof value === "boolean") return true;
+  if (typeof value === "number") return Number.isFinite(value);
   if (Array.isArray(value)) return value.every(isPlainJsonValue);
-  if (t === "object") {
+  if (typeof value === "object") {
     return Object.values(value as Record<string, unknown>).every(isPlainJsonValue);
   }
   return false;
 }
 
-function sanitizeJsonValue(value: unknown): unknown | undefined {
+function sanitizeJsonValue(value: unknown): JsonValue | undefined {
   if (value === null) return null;
-  const t = typeof value;
-  if (t === "string") {
+  if (typeof value === "string") {
     if (isSparkPathString(value)) return undefined;
     return value;
   }
-  if (t === "number") return Number.isFinite(value) ? value : undefined;
-  if (t === "boolean") return value;
+  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+  if (typeof value === "boolean") return value;
   if (Array.isArray(value)) {
-    return value
-      .map((item) => sanitizeJsonValue(item))
-      .filter((item) => item !== undefined);
+    const items: JsonValue[] = [];
+    for (const item of value) {
+      const cleaned = sanitizeJsonValue(item);
+      if (cleaned !== undefined) items.push(cleaned);
+    }
+    return items;
   }
-  if (t === "object") {
+  if (typeof value === "object") {
     return sanitizePipeOverrides(value);
   }
   return undefined;
 }
 
 /** Drop secrets, Spark paths, and non-JSON values from a free-form override bag. */
-export function sanitizePipeOverrides(obj: unknown): Record<string, unknown> {
+export function sanitizePipeOverrides(obj: unknown): JsonObject {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) return {};
-  const out: Record<string, unknown> = {};
+  const out: JsonObject = {};
   for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
     if (!key || PIPE_OVERRIDE_SECRET_KEY.test(key) || PIPE_OVERRIDE_INTERNAL_KEY.test(key)) continue;
     if (typeof value === "string" && isSparkPathString(value)) continue;
@@ -157,14 +173,19 @@ export function sanitizePipeOverrides(obj: unknown): Record<string, unknown> {
   return out;
 }
 
+function sanitizeAttentionKwargs(raw: unknown): JsonObject | null {
+  const clean = sanitizePipeOverrides(raw);
+  return Object.keys(clean).length ? clean : null;
+}
+
 export function formatPipeOverridesJson(
-  overrides: Record<string, unknown> | null | undefined,
+  overrides: JsonObject | Record<string, unknown> | null | undefined,
 ): string {
   const clean = sanitizePipeOverrides(overrides ?? {});
   return Object.keys(clean).length ? JSON.stringify(clean, null, 2) : "";
 }
 
-export function parsePipeOverridesJson(raw: string): Record<string, unknown> {
+export function parsePipeOverridesJson(raw: string): JsonObject {
   const trimmed = raw.trim();
   if (!trimmed) return {};
   let parsed: unknown;
@@ -191,14 +212,19 @@ const pipeOverrides = z.preprocess((raw) => {
     }
   }
   return raw;
-}, z.record(z.string(), z.unknown()).default({}).transform(sanitizePipeOverrides));
+}, z.record(z.string(), z.unknown()).default({}).transform((v): JsonObject => sanitizePipeOverrides(v)));
 
 const attentionKwargs = z.preprocess((raw) => {
   if (raw && typeof raw === "object" && !Array.isArray(raw) && Object.keys(raw as object).length) {
     return raw;
   }
   return null;
-}, z.union([z.null(), z.record(z.string(), z.unknown())]).optional().nullable().default(null));
+}, z
+  .union([z.null(), z.record(z.string(), z.unknown())])
+  .optional()
+  .nullable()
+  .default(null)
+  .transform((v): JsonObject | null => sanitizeAttentionKwargs(v)));
 
 function aliasModalKwargs(raw: unknown): unknown {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
@@ -429,8 +455,8 @@ export type ModalSpawnKwargs = {
   identity_ref_urls: string[];
   extra_image_urls: string[];
   sigmas?: number[];
-  attention_kwargs?: Record<string, unknown>;
-  pipe_overrides?: Record<string, unknown>;
+  attention_kwargs?: JsonObject;
+  pipe_overrides?: JsonObject;
   num_images: number;
   job_id?: string;
   webhook_url?: string;
@@ -480,7 +506,7 @@ export function cardToModalKwargs(
     ...(extras?.webhook_url ? { webhook_url: extras.webhook_url } : {}),
   };
   const overrides = sanitizePipeOverrides(card.pipe_overrides);
-  const bag: Record<string, unknown> = {};
+  const bag: JsonObject = {};
   for (const [key, value] of Object.entries(overrides)) {
     if (IDENTITY_KWARG_KEYS.has(key) || PIPE_OVERRIDE_INTERNAL_KEY.test(key)) continue;
     bag[key] = value;
