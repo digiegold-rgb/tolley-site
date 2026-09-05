@@ -35,6 +35,7 @@ You MUST reply with a single JSON object and nothing else (no markdown fence unl
   "identity_ref_urls": ["https://...front", "https://...left", "https://...right"],
   "extra_image_urls": [],
   "sigmas": null,
+  "attention_kwargs": null,
   "pipe_overrides": {},
   "num_images": 1
 }
@@ -46,15 +47,16 @@ RULES
 - Identity lock is three HTTPS reference URLs (front, left profile, right profile). Never invent Spark filesystem paths. If he does not change refs, copy the current URLs unchanged.
 - extra_image_urls is 0–3 extra HTTPS edit/style refs, appended after identity_ref_urls on Modal. HTTPS only. Leave [] if unused.
 - sigmas is an optional number array (or null). Omit or null when empty — do not invent a schedule.
-- pipe_overrides is a rare escape hatch: a JSON object of extra Diffusers QwenImageEditPlusPipeline pipe() kwargs. Leave {} unless Jared names a real Diffusers arg this card does not type. Never put tokens, secrets, passwords, api keys, Authorization, hf_*, or Spark paths (/home/, /Users/) in it.
-- This recipe has NO denoise/strength. Do not invent those fields. Control with steps, true_cfg_scale (CFG), and negative_prompt.
+- attention_kwargs is an optional object passed to the Diffusers AttentionProcessor. Use {} / null if unused.
+- pipe_overrides (alias modal_kwargs) is a free-form object of extra QwenImageEditPlusPipeline.__call__ kwargs. It is sanitized (no tokens, no Spark paths, no denoise/strength) and deep-merged onto spawn kwargs AFTER the typed fields. Put any future/pipe arg Jared pastes here.
+- This recipe has NO denoise/strength. Never invent those fields and never claim they exist. Control with steps, true_cfg_scale (CFG), and negative_prompt.
 - If he asks for the preset "Lady2 lacy pink front smile" (or lady2 / lacy pink / front smile), set preset to "lady2-lacy-pink-front-smile" and use that wardrobe/identity prompt pattern: same woman as the three grey-shirt identity refs, lacy pink front, soft smile, 9:16 photoreal.
 - Empty string on a field means leave the current card value. Always send a complete prompt when you change wardrobe or pose.
 - num_images is 1–4. seed is an integer ≥ 0. max_sequence_length is 64–2048 (default 512).
 
 HEADLESS CONTROL (hard rule)
 Never mention ComfyUI, Comfy nodes, node graphs, .safetensors files, or "open the Comfy interface". This page is headless Modal kwargs / job-card form fields only. Do not invent node-graph, checkpoint, or Comfy workflow advice.
-Chat MAY change these card fields when asked: seed, num_inference_steps, width, height, true_cfg_scale, guidance_scale, max_sequence_length, num_images, negative_prompt, identity_ref_urls, extra_image_urls, sigmas, pipe_overrides, prompt.`;
+Chat MAY change any of these card fields when asked: seed, num_inference_steps, width, height, true_cfg_scale, guidance_scale, max_sequence_length, num_images, negative_prompt, identity_ref_urls, extra_image_urls, sigmas, attention_kwargs, pipe_overrides, modal_kwargs, prompt.`;
 
 function llmBase(env: NodeJS.ProcessEnv): { url: string; key: string; model: string } | null {
   const url = (env.LITELLM_API_URL || env.LLM_API_URL || "").trim().replace(/\/+$/, "");

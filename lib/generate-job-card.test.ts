@@ -41,6 +41,7 @@ describe("parseGenerateJobCard", () => {
     assert.equal(card.max_sequence_length, 512);
     assert.deepEqual(card.extra_image_urls, []);
     assert.equal(card.sigmas, null);
+    assert.equal(card.attention_kwargs, null);
     assert.deepEqual(card.pipe_overrides, {});
     assert.equal(card.num_images, 1);
     assert.throws(() => parseGenerateJobCard({ prompt: "" }));
@@ -121,6 +122,28 @@ describe("parseGenerateJobCard", () => {
     assert.equal(Object.hasOwn(card.pipe_overrides, "badFn"), false);
     assert.deepEqual(card.pipe_overrides.nested, { steps: 12 });
     assert.equal(card.pipe_overrides.harmless, "ok-looking");
+  });
+
+  it("accepts attention_kwargs and modal_kwargs alias; strips denoise", () => {
+    const card = parseGenerateJobCard({
+      prompt: "x",
+      attention_kwargs: { scale: 1 },
+      modal_kwargs: {
+        output_type: "pil",
+        denoise: 0.55,
+        strength: 0.4,
+        image: "/home/jelly/x.jpg",
+      },
+    });
+    assert.deepEqual(card.attention_kwargs, { scale: 1 });
+    assert.equal(card.pipe_overrides.output_type, "pil");
+    assert.equal(Object.hasOwn(card.pipe_overrides, "denoise"), false);
+    assert.equal(Object.hasOwn(card.pipe_overrides, "strength"), false);
+    assert.equal(Object.hasOwn(card.pipe_overrides, "image"), false);
+    const kw = cardToModalKwargs(card);
+    assert.deepEqual(kw.attention_kwargs, { scale: 1 });
+    assert.equal(kw.output_type, undefined);
+    assert.equal(kw.pipe_overrides?.output_type, "pil");
   });
 
   it("sanitizePipeOverrides and JSON helpers drop secrets and Spark paths", () => {

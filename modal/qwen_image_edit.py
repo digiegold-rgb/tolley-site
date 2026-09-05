@@ -106,10 +106,18 @@ def _put_blob(pathname: str, png_bytes: bytes) -> str | None:
 
 
 _SECRET_KEY_RE = re.compile(r"token|secret|password|api_key|authorization|hf_", re.I)
+_INTERNAL_KEY_RE = re.compile(
+    r"^(image|generator|job_id|webhook_url|callback_on_step_end|denoise|strength|denoising_strength)$",
+    re.I,
+)
 
 
 def _is_secret_like(key: str) -> bool:
     return bool(_SECRET_KEY_RE.search(key or ""))
+
+
+def _is_blocked_override_key(key: str) -> bool:
+    return _is_secret_like(key) or bool(_INTERNAL_KEY_RE.match(key or ""))
 
 
 def _notify_webhook(webhook_url: str | None, payload: dict[str, Any]) -> None:
@@ -157,6 +165,7 @@ def qwen_image_edit(
     identity_ref_urls: list[str] | None = None,
     extra_image_urls: list[str] | None = None,
     sigmas: list[float] | None = None,
+    attention_kwargs: dict[str, Any] | None = None,
     pipe_overrides: dict | None = None,
     num_images: int = 1,
     job_id: str | None = None,
@@ -210,10 +219,12 @@ def qwen_image_edit(
         }
         if sigmas:
             inputs["sigmas"] = [float(s) for s in sigmas]
+        if attention_kwargs:
+            inputs["attention_kwargs"] = dict(attention_kwargs)
         applied_overrides: list[str] = []
         if pipe_overrides:
             for key, value in pipe_overrides.items():
-                if key in ("generator",) or _is_secret_like(str(key)):
+                if _is_blocked_override_key(str(key)):
                     continue
                 inputs[key] = value
                 applied_overrides.append(str(key))
@@ -266,6 +277,7 @@ def qwen_image_edit(
                 "identity_ref_urls": urls,
                 "extra_image_urls": extras,
                 "sigmas": list(sigmas) if sigmas else None,
+                "attention_kwargs": dict(attention_kwargs) if attention_kwargs else None,
                 "pipe_overrides": {k: pipe_overrides[k] for k in applied_overrides} if applied_overrides else {},
                 "num_images": num_images,
             },
