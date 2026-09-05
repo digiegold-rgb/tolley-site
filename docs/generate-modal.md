@@ -27,7 +27,11 @@ Jared chats on https://tolley.io/generate the same way he talks to an operator b
 | `LITELLM_API_URL` / `LITELLM_API_KEY` / `LITELLM_MODEL` | chat→card | Preferred LLM path |
 | `LLM_API_URL` / `LLM_API_KEY` / `LLM_MODEL` | fallback | OpenAI-compatible |
 | `QWEN_VLLM_BASE_URL` | fallback | Existing Spark director chat |
-| `BLOB_READ_WRITE_TOKEN` | recommended | Persist stills if Modal returns PNG bytes |
+| `GENERATE_SPARK_STORE_URL` | **yes** (stills) | HTTPS origin of the Spark still store (e.g. `https://quickgen.tolley.io`). Vercel PUTs PNGs here. Must be reachable from Vercel — not a raw Tailscale `100.x` unless a public hostname terminates on Spark. |
+| `GENERATE_SPARK_STORE_KEY` | **yes** (stills) | Bearer / `x-api-key` for that store. May reuse `QUICKGEN_API_KEY` if you mount the sidecar on the same host. |
+| `GENERATE_BLOB_FALLBACK` | no | Set `1` only if Spark write is blocked. Then stills go to a **private** Blob store. |
+| `GENERATE_BLOB_READ_WRITE_TOKEN` | fallback only | Token for a **private** Blob store (`vercel blob create-store … --access private`). Do not point this at the existing public store. |
+| `BLOB_READ_WRITE_TOKEN` | fallback / identity | Existing public-store token. **Do not** use it for new job outputs. Needed to purge old `generate/**` objects (`BLOB_READ_WRITE_TOKEN_PUBLIC`). |
 | `DATABASE_URL` | yes | Prisma `GenerateJob` |
 | `WD_ADMIN_PIN_TOLLEY` or `SHOP_ADMIN_PIN` or `ADMIN_ALLOWLIST_EMAILS` | yes | Same Jared/admin gates as HQ / shop / allowlist |
 
@@ -38,8 +42,9 @@ Do **not** set `HF_TOKEN` on Vercel unless you have another reason. The Hugging 
 | Variable | Required | Notes |
 |---|---|---|
 | `HF_TOKEN` | **yes** | Download `Qwen/Qwen-Image-Edit-2511` |
-| `BLOB_READ_WRITE_TOKEN` | recommended | Worker uploads PNGs, webhooks URLs |
 | `GENERATE_WEBHOOK_SECRET` | recommended | Must match Vercel |
+| `BLOB_READ_WRITE_TOKEN` | optional | Bearer when fetching private identity refs. Not used for public output uploads. |
+| `GENERATE_BLOB_FALLBACK` | no | `1` = worker may PUT stills to a **private** Blob store. Default is off — return PNG bytes, Vercel persists to Spark. |
 
 Identity refs historically lived at:
 
@@ -60,6 +65,47 @@ npx tsx scripts/upload-generate-identity-refs.ts \
 
 Then paste the printed HTTPS URLs into the Vercel env vars above.
 
+Those identity refs may still live on the **public** Blob store (residual risk). Job *outputs* must not. Re-upload identity privately later if you want; Modal `_load_refs` sends `Authorization: Bearer` for `*.blob.vercel-storage.com` URLs.
+
+## Private stills (Spark first)
+
+Modal cannot write `/home/jelly/...` and should not publish `*.public.blob.vercel-storage.com/generate/…` URLs.
+
+1. Deploy `spark/generate-store/server.py` on Spark (see that README). Disk default: `/home/jelly/growth-engine/shorts/generate-jobs/{job_id}/{n}.png`.
+2. Expose it on an HTTPS origin Vercel can reach (same pattern as `quickgen.tolley.io`).
+3. Set `GENERATE_SPARK_STORE_URL` + `GENERATE_SPARK_STORE_KEY` on Vercel.
+4. Redeploy Modal (`modal deploy modal/qwen_image_edit.py`). The worker returns PNG bytes on the function result and webhooks `{ job_id, status, outputs_ready: true }` — no public URLs, no multi-MB webhook body.
+5. Vercel poll / webhook persists bytes to Spark. `/generate` gallery loads `GET /api/generate/jobs/:id/image?i=0` (same Jared/admin gate as Modal jobs).
+
+### Private Blob fallback (only if Spark write is blocked)
+
+Store access mode cannot be changed after creation. The current store is public.
+
+FortKnox / token swap: create the private store first, put its `BLOB_READ_WRITE_TOKEN` in FortKnox as `GENERATE_BLOB_READ_WRITE_TOKEN`, set `GENERATE_BLOB_FALLBACK=1` on Vercel **and** the Modal secret `tolley-generate`. Keep the old public token as `BLOB_READ_WRITE_TOKEN_PUBLIC` long enough to run the purge script. Do not point `BLOB_READ_WRITE_TOKEN` at the private store if other site features still upload public assets (Vater finals, shop, invoices).
+
+```bash
+vercel blob create-store tolley-generate-private --access private
+```
+
+Point `GENERATE_BLOB_READ_WRITE_TOKEN` (Vercel + optional Modal secret) at that store. Set `GENERATE_BLOB_FALLBACK=1`. Code uses `access: 'private'` / `x-vercel-blob-access: private`. HQ still loads stills through the gated image route — never paste a raw private Blob URL into chat or `<img src>`.
+
+### Purge existing public job outputs
+
+```bash
+BLOB_READ_WRITE_TOKEN_PUBLIC=vercel_blob_rw_… \
+  npx tsx scripts/purge-public-generate-outputs.ts          # dry-run
+BLOB_READ_WRITE_TOKEN_PUBLIC=vercel_blob_rw_… \
+  npx tsx scripts/purge-public-generate-outputs.ts --apply
+```
+
+Skips `generate/identity/**`. Run against the **public** store token (before swapping tokens).
+
+### Motion clips on `/generate`
+
+The **Motion** tab (#124) is unchanged in behavior: Wan I2V / FLF2V, HQ gate, dry run, optional last-frame still. Gallery **Use as source** now passes the HQ-gated still route (`/api/generate/jobs/:id/image?i=0`). Vercel resolves that to bytes and uploads to fal storage (1-day) so fal can fetch without a public Blob keep. Finished clips are shown through the same gated job route.
+
+Quickgen tabs (t2v / i2v / v2v) already stream through HQ-gated `/api/admin/quickgen/:id/result`.
+
 ## Deploy the Modal function
 
 ```bash
@@ -67,8 +113,10 @@ pip install modal
 modal setup          # token for digiegold@gmail.com workspace
 modal secret create tolley-generate \
   HF_TOKEN=hf_... \
-  BLOB_READ_WRITE_TOKEN=vercel_blob_... \
   GENERATE_WEBHOOK_SECRET=long-random
+# Optional, identity-ref fetch / private Blob fallback only:
+#   BLOB_READ_WRITE_TOKEN=vercel_blob_... \
+#   GENERATE_BLOB_FALLBACK=1
 modal deploy modal/qwen_image_edit.py
 ```
 
@@ -160,15 +208,22 @@ curl -sS https://tolley.io/api/generate/jobs/JOB_ID \
   -H "cookie: wd_admin=$WD_ADMIN"
 ```
 
-Terminal statuses: `queued` → `running` → `done` (with `output_urls`) or `failed` (with `error`).
+Terminal statuses: `queued` → `running` → `done` (with `output_urls` rewritten to `/api/generate/jobs/JOB_ID/image?i=0`) or `failed` (with `error`).
 
-Webhook (Modal → Vercel) is optional if poll works:
+Webhook (Modal → Vercel) is a completion ping. Do not put public Blob URLs in the payload:
 
 ```bash
 curl -sS -X POST https://tolley.io/api/generate/webhook \
   -H 'content-type: application/json' \
   -H "Authorization: Bearer $GENERATE_WEBHOOK_SECRET" \
-  -d '{"job_id":"JOB_ID","status":"done","output_urls":["https://...png"]}'
+  -d '{"job_id":"JOB_ID","status":"done","outputs_ready":true}'
+```
+
+Then poll the job (or open the gated image URL with the HQ cookie):
+
+```bash
+curl -sS -D- https://tolley.io/api/generate/jobs/JOB_ID/image?i=0 \
+  -H "cookie: wd_admin=$WD_ADMIN" -o /tmp/still.png
 ```
 
 ## Prisma

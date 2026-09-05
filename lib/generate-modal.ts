@@ -5,13 +5,12 @@
  * this from a client component and never echo tokens in API responses.
  */
 
-import { put } from "@vercel/blob";
-
 import {
   cardToModalKwargs,
   type GenerateJobCard,
   type ModalSpawnKwargs,
 } from "@/lib/generate-job-card";
+import { classifyStoredOutput } from "./generate-output";
 
 export const MODAL_APP_DEFAULT = "tolley-qwen-image-edit";
 export const MODAL_FUNCTION_DEFAULT = "qwen_image_edit";
@@ -20,6 +19,7 @@ export type ModalCallResult = {
   status?: string;
   output_urls?: string[];
   output_png_b64?: string[];
+  outputs_ready?: boolean;
   error?: string | null;
 };
 
@@ -103,26 +103,11 @@ export async function pollModalCall(
   }
 }
 
-export async function persistPngsToBlob(
-  jobId: string,
-  pngB64: string[],
-): Promise<string[]> {
-  const urls: string[] = [];
-  for (let i = 0; i < pngB64.length; i++) {
-    const raw = pngB64[i]?.trim();
-    if (!raw) continue;
-    const buf = Buffer.from(raw, "base64");
-    const blob = await put(`generate/${jobId}/${i}.png`, buf, {
-      access: "public",
-      contentType: "image/png",
-      addRandomSuffix: true,
-    });
-    urls.push(blob.url);
-  }
-  return urls;
-}
-
 export function normalizeOutputUrls(result: ModalCallResult | null | undefined): string[] {
   if (!result?.output_urls) return [];
-  return result.output_urls.filter((u) => typeof u === "string" && /^https?:\/\//i.test(u));
+  return result.output_urls.filter((u) => {
+    if (typeof u !== "string" || !u.trim()) return false;
+    const kind = classifyStoredOutput(u.trim());
+    return kind === "spark" || kind === "private-blob";
+  });
 }

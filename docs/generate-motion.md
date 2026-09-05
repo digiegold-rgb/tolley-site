@@ -52,7 +52,7 @@ Chat→card uses the same Spark / LiteLLM vars as Modal stills (`QWEN_VLLM_*` pr
 1. Log in at `/hq`.
 2. Open https://tolley.io/generate
 3. Open the **Motion** tab (Modal stills is unchanged).
-4. Set a source still: paste a finished Modal still URL, click **Use as source** on a gallery still, or upload.
+4. Set a source still: click **Use as source** on a Modal gallery still (HQ-gated path — not a public Blob link), paste an HTTPS URL, or upload.
 5. Edit the motion prompt (and optional last-frame still).
 6. Optional **Dry run**, then **Go**.
 7. Status polls `GET /api/generate/jobs/:id` until `done`; the MP4 appears in the result well and **Motion clips** gallery.

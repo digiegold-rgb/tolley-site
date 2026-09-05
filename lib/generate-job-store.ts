@@ -1,9 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import {
-  persistPngsToBlob,
-  type ModalCallResult,
-  normalizeOutputUrls,
-} from "@/lib/generate-modal";
+import { classifyModalOutputs, serializeJobOutputUrls } from "@/lib/generate-output";
+import { durableUrlsFromModalResult } from "@/lib/generate-output-persist";
+import { type ModalCallResult } from "@/lib/generate-modal";
 import { isGenerateJobStatus, type GenerateJobStatus } from "@/lib/generate-job-card";
 
 export function serializeJob(row: {
@@ -26,7 +24,8 @@ export function serializeJob(row: {
     recipe: row.recipe,
     card: row.cardJson,
     modal_call_id: row.modalCallId,
-    output_urls: row.outputUrls,
+    // Never hand the browser a public Blob CDN URL (or a raw Spark/private path).
+    output_urls: serializeJobOutputUrls(row.id, row.outputUrls),
     error: row.error,
     createdBy: row.createdBy,
     startedAt: row.startedAt,
@@ -39,19 +38,30 @@ export function serializeJob(row: {
 export async function applyModalResult(
   jobId: string,
   result: ModalCallResult,
-): Promise<{ status: GenerateJobStatus; outputUrls: string[]; error: string | null }> {
-  const urls = normalizeOutputUrls(result);
-  let outputUrls = urls;
-  if (!outputUrls.length && result.output_png_b64?.length) {
+): Promise<{
+  status: GenerateJobStatus;
+  outputUrls: string[];
+  error: string | null;
+  incomplete?: boolean;
+}> {
+  const classified = classifyModalOutputs(result);
+  const failedHint = result.status === "failed" || Boolean(result.error);
+
+  if (!classified.outputsReady && !failedHint) {
+    return { status: "running", outputUrls: [], error: null, incomplete: true };
+  }
+
+  let outputUrls: string[] = [];
+  if (classified.outputsReady) {
     try {
-      outputUrls = await persistPngsToBlob(jobId, result.output_png_b64);
+      outputUrls = await durableUrlsFromModalResult(jobId, result);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await prisma.generateJob.update({
         where: { id: jobId },
         data: {
           status: "failed",
-          error: `Blob persist failed: ${message}`.slice(0, 2000),
+          error: `Still persist failed: ${message}`.slice(0, 2000),
           completedAt: new Date(),
         },
       });
@@ -59,9 +69,13 @@ export async function applyModalResult(
     }
   }
 
-  const failed = result.status === "failed" || Boolean(result.error && !outputUrls.length);
+  const failed = failedHint || Boolean(result.error && !outputUrls.length);
   const status: GenerateJobStatus = failed ? "failed" : "done";
   const error = result.error ? String(result.error).slice(0, 2000) : null;
+
+  if (status === "done" && !outputUrls.length) {
+    return { status: "running", outputUrls: [], error: null, incomplete: true };
+  }
 
   await prisma.generateJob.update({
     where: { id: jobId },
