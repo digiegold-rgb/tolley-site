@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.30';
+export const APP_VERSION = '1.30.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.30.1',
+    date: '2026-09-05',
+    title: 'Generate stills stay off the public web',
+    items: [
+      'Modal stills on Generate are no longer posted as a public web link. Sign in at HQ and they still show in the gallery.',
+      'Identity reference photos may still use the old public link for now.',
+    ],
+  },
   {
     version: '1.30',
     date: '2026-09-05',

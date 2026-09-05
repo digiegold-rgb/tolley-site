@@ -81,6 +81,11 @@ function mid() {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** HQ-gated still. Never use a raw public Blob CDN URL as img/src. */
+function stillSrc(jobId: string, index: number): string {
+  return `/api/generate/jobs/${encodeURIComponent(jobId)}/image?i=${index}`;
+}
+
 function fmtTime(epoch: number) {
   return new Date(epoch * 1000).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
@@ -179,14 +184,14 @@ function ModalGallery({
       <h2>Modal stills</h2>
       <div className="gen-gallery-grid">
         {stills.map((j) =>
-          (j.output_urls ?? []).map((url) => (
-            <div key={`${j.id}-${url}`} className="gen-gallery-cell">
-              <a href={url} target="_blank" rel="noreferrer">
+          (j.output_urls ?? []).map((_, i) => (
+            <div key={`${j.id}-${i}`} className="gen-gallery-cell">
+              <a href={stillSrc(j.id, i)} target="_blank" rel="noreferrer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt="Modal still" loading="lazy" />
+                <img src={stillSrc(j.id, i)} alt="Modal still" loading="lazy" />
               </a>
               {onUseStill && (
-                <button type="button" className="gen-use-still" onClick={() => onUseStill(url)}>
+                <button type="button" className="gen-use-still" onClick={() => onUseStill(stillSrc(j.id, i))}>
                   Use as source
                 </button>
               )}
@@ -206,9 +211,9 @@ function MotionGallery({ jobs }: { jobs: ModalJob[] }) {
       <h2>Motion clips</h2>
       <div className="gen-gallery-grid">
         {clips.map((j) =>
-          (j.output_urls ?? []).map((url) => (
-            <a key={`${j.id}-${url}`} href={url} target="_blank" rel="noreferrer">
-              <video src={url} muted preload="metadata" playsInline />
+          (j.output_urls ?? []).map((_, i) => (
+            <a key={`${j.id}-${i}`} href={stillSrc(j.id, i)} target="_blank" rel="noreferrer">
+              <video src={stillSrc(j.id, i)} muted preload="metadata" playsInline />
             </a>
           )),
         )}
@@ -496,9 +501,8 @@ export default function GenerateStudio() {
       if (job.status === "done") {
         if (poll.current) clearInterval(poll.current);
         setStage(null);
-        const url = job.output_urls?.[0] ?? null;
-        setResultIsVideo(isMotionJob(job) || (!!url && isVideoUrl(url)));
-        setResultUrl(url);
+        setResultIsVideo(isMotionJob(job) || isVideoUrl(job.output_urls?.[0] ?? ""));
+        setResultUrl(job.output_urls?.length ? stillSrc(job.id, 0) : null);
         setModalJobs((list) => [job, ...list.filter((x) => x.id !== job.id)]);
         setGalleryKey((k) => k + 1);
       } else if (job.status === "failed") {
@@ -672,7 +676,9 @@ export default function GenerateStudio() {
     mode === "modal"
       ? card.prompt.trim().length > 0
       : mode === "motion"
-        ? motionCard.prompt.trim().length > 0 && /^https:\/\//i.test(motionCard.source_image_url.trim())
+        ? motionCard.prompt.trim().length > 0 &&
+          (/^https:\/\//i.test(motionCard.source_image_url.trim()) ||
+            /^\/api\/generate\/jobs\/[^/]+\/image\?i=\d+$/.test(motionCard.source_image_url.trim()))
         : composeEnginePrompt(inference, description).length > 0;
   const canGo = !busy && (promptReady || mode === "v2v") && (!needImage || !!imageFile) && (!needVideo || !!videoFile);
   const nsfwState = nsfwChipState(card);
@@ -1133,11 +1139,11 @@ export default function GenerateStudio() {
                 720p. No stitch. No LatentSync face-lock yet. No skeleton video.
               </p>
               <label className="gen-field gen-field-wide">
-                Source still (HTTPS — Modal keep, Blob URL, or upload)
+                Source still (gallery still, HTTPS URL, or upload)
                 <input
                   value={motionCard.source_image_url}
                   disabled={busy}
-                  placeholder="https://….public.blob.vercel-storage.com/….png"
+                  placeholder="Use as source on a Modal still, or paste https://…"
                   onChange={(e) => patchMotion({ source_image_url: e.target.value })}
                 />
                 <span className="gen-file">
@@ -1154,7 +1160,9 @@ export default function GenerateStudio() {
                   {uploadingStill === "source" && <span> uploading…</span>}
                 </span>
               </label>
-              {motionCard.source_image_url && /^https:\/\//i.test(motionCard.source_image_url) && (
+              {motionCard.source_image_url &&
+                (/^https:\/\//i.test(motionCard.source_image_url) ||
+                  motionCard.source_image_url.startsWith("/api/generate/jobs/")) && (
                 <div className="gen-still-preview">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

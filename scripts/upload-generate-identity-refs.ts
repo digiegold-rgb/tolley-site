@@ -6,6 +6,9 @@
  *     --front ./front.jpg --left ./profile-left.jpg --right ./profile-right.jpg
  *
  * Do not pass Spark paths into Modal workers. This script is the durable-asset step.
+ *
+ * Identity refs may stay on the public store for now (Modal fetches HTTPS).
+ * Job *outputs* must not use this public put — see spark/generate-store.
  */
 import { readFileSync } from "node:fs";
 import { put } from "@vercel/blob";

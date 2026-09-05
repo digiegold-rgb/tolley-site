@@ -13,11 +13,16 @@ Deploy (Modal CLI authenticated as the workspace that already ran A100 BF16):
 
 Create a Modal secret named `tolley-generate` with:
     HF_TOKEN                  — Hugging Face token for Qwen/Qwen-Image-Edit-2511
-    BLOB_READ_WRITE_TOKEN     — optional; upload stills to Vercel Blob
     GENERATE_WEBHOOK_SECRET   — optional; HMAC/bearer for the Vercel webhook
+    BLOB_READ_WRITE_TOKEN     — optional; Bearer when fetching private identity refs
+    GENERATE_BLOB_FALLBACK    — optional; "1" to upload stills to a *private* Blob store
+
+Job *outputs* stay off the public Vercel Blob store. Default: return PNG bytes
+on the function result; Vercel persists them to Spark (preferred) or a private
+Blob fallback. The webhook is a completion signal — no public CDN URLs.
 
 Do NOT assume Spark paths such as
-/home/jelly/growth-engine/shorts/persona-refs/identity/*.jpg
+    /home/jelly/growth-engine/shorts/persona-refs/identity/*.jpg
 exist on Modal workers. Pass HTTPS identity_ref_urls.
 """
 
@@ -61,11 +66,31 @@ image = (
 )
 
 
+def _blob_bearer() -> str:
+    return (
+        os.environ.get("GENERATE_BLOB_READ_WRITE_TOKEN")
+        or os.environ.get("BLOB_READ_WRITE_TOKEN")
+        or ""
+    ).strip()
+
+
+def _is_vercel_blob_url(url: str) -> bool:
+    host = ""
+    try:
+        from urllib.parse import urlparse
+
+        host = (urlparse(url).hostname or "").lower()
+    except Exception:  # noqa: BLE001
+        return False
+    return host.endswith(".blob.vercel-storage.com") or host == "blob.vercel-storage.com"
+
+
 def _load_refs(urls: list[str]) -> list[Any]:
     import requests
     from PIL import Image
 
     images = []
+    token = _blob_bearer()
     for url in urls:
         url = (url or "").strip()
         if not url:
@@ -75,7 +100,10 @@ def _load_refs(urls: list[str]) -> list[Any]:
                 "Spark filesystem paths are not valid on Modal. "
                 "Pass HTTPS identity_ref_urls (Vercel Blob)."
             )
-        r = requests.get(url, timeout=90)
+        headers = {}
+        if token and _is_vercel_blob_url(url):
+            headers["Authorization"] = f"Bearer {token}"
+        r = requests.get(url, headers=headers, timeout=90)
         r.raise_for_status()
         images.append(Image.open(io.BytesIO(r.content)).convert("RGB"))
     if not images:
@@ -83,8 +111,16 @@ def _load_refs(urls: list[str]) -> list[Any]:
     return images
 
 
-def _put_blob(pathname: str, png_bytes: bytes) -> str | None:
-    token = (os.environ.get("BLOB_READ_WRITE_TOKEN") or "").strip()
+def _blob_fallback_enabled() -> bool:
+    flag = (os.environ.get("GENERATE_BLOB_FALLBACK") or "").strip().lower()
+    return flag in {"1", "true", "on", "yes"}
+
+
+def _put_private_blob(pathname: str, png_bytes: bytes) -> str | None:
+    """Private-store fallback only. Never the default path for job outputs."""
+    if not _blob_fallback_enabled():
+        return None
+    token = _blob_bearer()
     if not token:
         return None
     import requests
@@ -97,12 +133,35 @@ def _put_blob(pathname: str, png_bytes: bytes) -> str | None:
             "x-api-version": "7",
             "x-content-type": "image/png",
             "x-add-random-suffix": "1",
+            "x-vercel-blob-access": "private",
         },
         timeout=120,
     )
     r.raise_for_status()
     data = r.json()
-    return data.get("url")
+    url = data.get("url") or ""
+    if ".public.blob.vercel-storage.com" in url:
+        raise RuntimeError(
+            "Blob fallback returned a public URL. Point BLOB_READ_WRITE_TOKEN "
+            "at a private store (vercel blob create-store … --access private) "
+            "or unset GENERATE_BLOB_FALLBACK and use Spark persist."
+        )
+    pathname_out = data.get("pathname")
+    if pathname_out:
+        return f"blob:{pathname_out.lstrip('/')}"
+    return url or None
+
+
+def _webhook_payload(result: dict[str, Any]) -> dict[str, Any]:
+    """Completion signal only — no PNG bytes, no public Blob CDN URLs."""
+    return {
+        "status": result.get("status"),
+        "job_id": result.get("job_id"),
+        "error": result.get("error"),
+        "outputs_ready": result.get("status") == "done",
+        "output_urls": [],
+        "output_png_b64": [],
+    }
 
 
 _SECRET_KEY_RE = re.compile(r"token|secret|password|api_key|authorization|hf_", re.I)
@@ -252,7 +311,7 @@ def qwen_image_edit(
             img.save(buf, format="PNG")
             png = buf.getvalue()
             name = f"generate/{job_id or 'anon'}/{i}.png"
-            uploaded = _put_blob(name, png)
+            uploaded = _put_private_blob(name, png)
             if uploaded:
                 output_urls.append(uploaded)
             else:
@@ -262,6 +321,7 @@ def qwen_image_edit(
             "status": "done",
             "output_urls": output_urls,
             "output_png_b64": output_b64,
+            "outputs_ready": True,
             "error": None,
             "job_id": job_id,
             "kwargs": {
@@ -286,7 +346,7 @@ def qwen_image_edit(
         result["error"] = str(exc)[:2000]
         result["status"] = "failed"
 
-    _notify_webhook(webhook_url, result)
+    _notify_webhook(webhook_url, _webhook_payload(result))
     return result
 
 

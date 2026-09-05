@@ -32,6 +32,11 @@ describe("parseGenerateMotionCard", () => {
     assert.throws(() =>
       parseGenerateMotionCard({ prompt: "x", source_image_url: "http://insecure.example/a.png" }),
     );
+    const gated = parseGenerateMotionCard({
+      prompt: "same face from gallery",
+      source_image_url: "/api/generate/jobs/clxyz/image?i=0",
+    });
+    assert.equal(gated.source_image_url, "/api/generate/jobs/clxyz/image?i=0");
   });
 
   it("promotes to FLF2V only when a last-frame still is set", () => {

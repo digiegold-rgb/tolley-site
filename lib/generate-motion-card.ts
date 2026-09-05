@@ -12,6 +12,8 @@
 
 import { z } from "zod";
 
+import { isGatedJobImagePath } from "./generate-output";
+
 export const MOTION_RECIPE_I2V = "fal-wan-i2v" as const;
 export const MOTION_RECIPE_FLF2V = "fal-wan-flf2v" as const;
 export const MOTION_RECIPES = [MOTION_RECIPE_I2V, MOTION_RECIPE_FLF2V] as const;
@@ -35,11 +37,17 @@ export const DEFAULT_MOTION_PROMPT = [
 export const DEFAULT_MOTION_NEGATIVE =
   "different person, identity drift, deformed face, extra limbs, child, minor, blurry, lowres, watermark, text, cartoon, illustration, still image, morph";
 
+/** fal needs HTTPS; HQ-gated job stills are resolved server-side before spawn. */
+export function isAllowedMotionStillUrl(value: string): boolean {
+  const u = (value || "").trim();
+  return /^https:\/\//i.test(u) || isGatedJobImagePath(u);
+}
+
 const httpsUrl = z
   .string()
   .trim()
   .max(2000)
-  .refine((u) => /^https:\/\//i.test(u), "Must be an HTTPS URL");
+  .refine((u) => isAllowedMotionStillUrl(u), "Must be an HTTPS URL or a Generate gallery still");
 
 const optionalHttpsUrl = z
   .string()
@@ -51,7 +59,7 @@ const optionalHttpsUrl = z
     const s = (u || "").trim();
     return s ? s : "";
   })
-  .refine((u) => !u || /^https:\/\//i.test(u), "Must be an HTTPS URL");
+  .refine((u) => !u || isAllowedMotionStillUrl(u), "Must be an HTTPS URL or a Generate gallery still");
 
 export const generateMotionCardSchema = z.object({
   recipe: z.enum(MOTION_RECIPES).default(MOTION_RECIPE_I2V),
