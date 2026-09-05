@@ -7,7 +7,7 @@ import "./generate.css";
 export const metadata: Metadata = {
   title: "Generate | Jelly Studio · Tolley.io",
   description:
-    "Talk to Generate — chat fills a Modal job card for Qwen-Image-Edit stills, or writes Inference and Description for the quickgen engines.",
+    "Talk to Generate — Modal stills, identity-locked fal Wan I2V motion, or Inference and Description for the quickgen engines.",
   robots: { index: false, follow: false },
 };
 

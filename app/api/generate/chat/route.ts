@@ -16,7 +16,7 @@ import {
 const MAX_USER_CHARS = 4000;
 const MAX_BOX_CHARS = 8000;
 const MAX_HISTORY = 16;
-const MODES = new Set<GenerateMode>(["t2i", "t2v", "i2v", "v2v"]);
+const MODES = new Set<GenerateMode>(["t2i", "t2v", "i2v", "v2v", "motion"]);
 
 const RATE = new Map<string, { count: number; reset: number }>();
 const MAX_PER_MIN = 20;
