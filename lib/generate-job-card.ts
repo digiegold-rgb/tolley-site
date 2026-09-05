@@ -76,6 +76,90 @@ export const LADY2_LACY_PINK_PROMPT = [
 export const LADY2_LACY_PINK_NEGATIVE =
   "different person, identity drift, deformed face, extra limbs, child, minor, blurry, lowres, watermark, text, cartoon, illustration";
 
+/**
+ * Adult NSFW-block terms for the Modal stills chips.
+ * Lingerie / fashion / swimwear words are intentionally omitted so Lady2
+ * wardrobe stills stay possible. CSAM policy terms (child, minor, …) are
+ * also omitted — they stay in negatives if already present and Allow NSFW
+ * never strips them.
+ */
+export const NSFW_BLOCK_TERMS = [
+  "nsfw",
+  "nude",
+  "naked",
+  "nudity",
+  "explicit",
+  "porn",
+  "pornography",
+  "sexual",
+  "sex",
+  "erotic",
+  "nipples",
+  "nipple",
+  "areola",
+  "topless",
+  "bottomless",
+  "genitalia",
+  "penis",
+  "vagina",
+  "anus",
+  "pubic hair",
+  "uncensored",
+  "xxx",
+] as const;
+
+function normalizeNegativeTerm(term: string): string {
+  return term.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function splitNegativePromptTerms(prompt: string): string[] {
+  return prompt.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+function joinNegativePromptTerms(terms: string[]): string {
+  return terms.join(", ");
+}
+
+const NSFW_BLOCK_TERM_SET = new Set<string>(NSFW_BLOCK_TERMS.map(normalizeNegativeTerm));
+
+/** Merge NSFW-block terms into a negative prompt. Dedupes; leaves other terms. */
+export function mergeNsfwBlockTerms(negativePrompt: string): string {
+  const existing = splitNegativePromptTerms(negativePrompt);
+  const seen = new Set(existing.map(normalizeNegativeTerm));
+  const next = [...existing];
+  for (const term of NSFW_BLOCK_TERMS) {
+    const key = normalizeNegativeTerm(term);
+    if (!seen.has(key)) {
+      next.push(term);
+      seen.add(key);
+    }
+  }
+  return joinNegativePromptTerms(next);
+}
+
+/** Remove NSFW-block terms only. Identity, quality, and child/minor stay. */
+export function stripNsfwBlockTerms(negativePrompt: string): string {
+  return joinNegativePromptTerms(
+    splitNegativePromptTerms(negativePrompt).filter(
+      (term) => !NSFW_BLOCK_TERM_SET.has(normalizeNegativeTerm(term)),
+    ),
+  );
+}
+
+export type NsfwBlockState = "blocked" | "allowed" | "mixed";
+
+/** Whether the negative already has all / none / some of the NSFW-block terms. */
+export function nsfwBlockState(negativePrompt: string): NsfwBlockState {
+  const existing = new Set(splitNegativePromptTerms(negativePrompt).map(normalizeNegativeTerm));
+  let hits = 0;
+  for (const term of NSFW_BLOCK_TERMS) {
+    if (existing.has(normalizeNegativeTerm(term))) hits += 1;
+  }
+  if (hits === 0) return "allowed";
+  if (hits === NSFW_BLOCK_TERMS.length) return "blocked";
+  return "mixed";
+}
+
 const urlList = z
   .array(z.string().trim())
   .max(6)

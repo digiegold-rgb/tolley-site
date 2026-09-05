@@ -43,6 +43,8 @@ describe("JOB_CARD_SYSTEM_PROMPT", () => {
     }
     assert.match(JOB_CARD_SYSTEM_PROMPT, /NO denoise\/strength/);
     assert.match(JOB_CARD_SYSTEM_PROMPT, /no denoise/i);
+    assert.match(JOB_CARD_SYSTEM_PROMPT, /Allow NSFW/);
+    assert.match(JOB_CARD_SYSTEM_PROMPT, /Block NSFW/);
   });
 });
 

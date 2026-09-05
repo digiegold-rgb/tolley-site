@@ -4,9 +4,11 @@ import {
   GENERATE_JOB_CARD_KEYS,
   GENERATE_RECIPE,
   HISTORICAL_IDENTITY_REF_PATHS,
+  LADY2_LACY_PINK_NEGATIVE,
   LADY2_LACY_PINK_PRESET_ID,
   LADY2_LACY_PINK_PROMPT,
   MODAL_SPAWN_KWARG_KEYS,
+  NSFW_BLOCK_TERMS,
   PROVEN_DEFAULTS,
   SEED_MAX,
   applyPreset,
@@ -18,6 +20,8 @@ import {
   formatPipeOverridesJson,
   formatSigmasText,
   mergeJobCard,
+  mergeNsfwBlockTerms,
+  nsfwBlockState,
   parseGenerateJobCard,
   parseJobCardJson,
   parseLlmJobCard,
@@ -25,6 +29,7 @@ import {
   parseSigmasText,
   randomSeed,
   sanitizePipeOverrides,
+  stripNsfwBlockTerms,
 } from "./generate-job-card.ts";
 
 describe("parseGenerateJobCard", () => {
@@ -412,5 +417,61 @@ describe("Advanced JSON + random seed", () => {
     const n = randomSeed();
     assert.equal(Number.isInteger(n), true);
     assert.ok(n >= 0 && n <= SEED_MAX);
+  });
+});
+
+describe("NSFW block terms merge + strip", () => {
+  it("keeps the list adult-fashion compatible and never includes CSAM policy terms", () => {
+    const listed = new Set(NSFW_BLOCK_TERMS.map((t) => t.toLowerCase()));
+    for (const keep of ["lingerie", "lace", "cleavage", "bikini", "swimsuit", "sexy", "underwear"]) {
+      assert.equal(listed.has(keep), false, `fashion term ${keep} must not be in NSFW_BLOCK_TERMS`);
+    }
+    for (const policy of ["child", "minor", "kid", "loli", "lolita", "shota", "toddler", "underage"]) {
+      assert.equal(listed.has(policy), false, `CSAM term ${policy} must not be strip-able`);
+    }
+    assert.ok(listed.has("nsfw"));
+    assert.ok(listed.has("nude"));
+  });
+
+  it("merges NSFW-block terms onto Lady2 identity/quality negatives without wiping them", () => {
+    const merged = mergeNsfwBlockTerms(LADY2_LACY_PINK_NEGATIVE);
+    assert.match(merged, /identity drift/);
+    assert.match(merged, /different person/);
+    assert.match(merged, /child/);
+    assert.match(merged, /minor/);
+    assert.match(merged, /watermark/);
+    assert.match(merged, /nsfw/);
+    assert.match(merged, /nude/);
+    assert.equal(nsfwBlockState(LADY2_LACY_PINK_NEGATIVE), "allowed");
+    assert.equal(nsfwBlockState(merged), "blocked");
+    assert.equal(mergeNsfwBlockTerms(merged), merged);
+  });
+
+  it("dedupes existing NSFW terms (case-insensitive) and preserves other negatives", () => {
+    const merged = mergeNsfwBlockTerms("identity drift, NSFW, Nude, child");
+    const terms = merged.split(",").map((t) => t.trim().toLowerCase());
+    assert.equal(terms.filter((t) => t === "nsfw").length, 1);
+    assert.equal(terms.filter((t) => t === "nude").length, 1);
+    assert.ok(terms.includes("identity drift"));
+    assert.ok(terms.includes("child"));
+    assert.equal(nsfwBlockState(merged), "blocked");
+  });
+
+  it("strips NSFW-block terms and leaves identity, quality, and child/minor alone", () => {
+    const blocked = mergeNsfwBlockTerms(LADY2_LACY_PINK_NEGATIVE);
+    const stripped = stripNsfwBlockTerms(blocked);
+    assert.equal(stripped, LADY2_LACY_PINK_NEGATIVE);
+    assert.equal(nsfwBlockState(stripped), "allowed");
+    assert.match(stripped, /child/);
+    assert.match(stripped, /minor/);
+    assert.doesNotMatch(stripped, /\bnsfw\b/i);
+    assert.doesNotMatch(stripped, /\bnude\b/i);
+  });
+
+  it("does not strip child/minor even when they sit next to NSFW terms", () => {
+    const kept = stripNsfwBlockTerms("child, nsfw, minor, nude, watermark");
+    assert.equal(kept, "child, minor, watermark");
+    assert.equal(stripNsfwBlockTerms(""), "");
+    assert.equal(nsfwBlockState("nsfw, nude"), "mixed");
   });
 });
