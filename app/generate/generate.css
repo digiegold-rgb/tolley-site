@@ -573,12 +573,17 @@
   text-transform: none;
 }
 
-.gen-box-sigmas {
+.gen-box-sigmas,
+.gen-box-overrides {
   min-height: 64px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
   letter-spacing: 0;
   text-transform: none;
+}
+
+.gen-box-overrides {
+  min-height: 88px;
 }
 
 .gen-json-apply {

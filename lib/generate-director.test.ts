@@ -112,6 +112,7 @@ describe("generate route branding", () => {
     assert.match(studio, /\/api\/generate\/jobs/);
     assert.match(studio, /Random seed/);
     assert.match(studio, /Advanced JSON/);
+    assert.match(studio, /pipe_overrides/);
     assert.match(studio, /Apply JSON/);
     assert.doesNotMatch(studio, /InstantID|ComfyUI|face_lock|UltraSharp/i);
     assert.match(chat, /qwenChatCompletion/);
@@ -153,6 +154,7 @@ describe("DIRECTOR_SYSTEM_PROMPT headless control", () => {
       "identity_ref_urls",
       "extra_image_urls",
       "sigmas",
+      "pipe_overrides",
       "prompt",
     ]) {
       assert.match(DIRECTOR_SYSTEM_PROMPT, new RegExp(field));

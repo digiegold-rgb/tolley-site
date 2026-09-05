@@ -11,8 +11,10 @@ import {
   applyPreset,
   defaultJobCard,
   formatJobCardJson,
+  formatPipeOverridesJson,
   formatSigmasText,
   parseJobCardJson,
+  parsePipeOverridesJson,
   parseSigmasText,
   randomSeed,
   type GenerateJobCard,
@@ -186,6 +188,10 @@ export default function GenerateStudio() {
   const [card, setCard] = useState<GenerateJobCard>(() => defaultJobCard());
   const [jsonDraft, setJsonDraft] = useState(() => formatJobCardJson(defaultJobCard()));
   const [sigmasDraft, setSigmasDraft] = useState(() => formatSigmasText(defaultJobCard().sigmas));
+  const [overridesDraft, setOverridesDraft] = useState(() =>
+    formatPipeOverridesJson(defaultJobCard().pipe_overrides),
+  );
+  const [overridesError, setOverridesError] = useState<string | null>(null);
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [dryRun, setDryRun] = useState(false);
   const [modalStatus, setModalStatus] = useState<{ configured: boolean } | null>(null);
@@ -229,6 +235,8 @@ export default function GenerateStudio() {
           setCard(next);
           setJsonDraft(formatJobCardJson(next));
           setSigmasDraft(formatSigmasText(next.sigmas));
+          setOverridesDraft(formatPipeOverridesJson(next.pipe_overrides));
+          setOverridesError(null);
           setJsonError(null);
         }
         if (Array.isArray(j.jobs)) setModalJobs(j.jobs as ModalJob[]);
@@ -257,6 +265,8 @@ export default function GenerateStudio() {
     setCard(next);
     setJsonDraft(formatJobCardJson(next));
     setSigmasDraft(formatSigmasText(next.sigmas));
+    setOverridesDraft(formatPipeOverridesJson(next.pipe_overrides));
+    setOverridesError(null);
     setJsonError(null);
   }
 
@@ -808,10 +818,33 @@ export default function GenerateStudio() {
                     }}
                   />
                 </label>
+                <label className="gen-field">
+                  pipe_overrides JSON
+                  <span className="gen-field-hint">rare Diffusers pipe() kwargs — empty object if unused</span>
+                  <textarea
+                    className="gen-box gen-box-overrides"
+                    value={overridesDraft}
+                    disabled={busy}
+                    spellCheck={false}
+                    placeholder={'{\n  "guidance_rescale": 0\n}'}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setOverridesDraft(raw);
+                      try {
+                        patchCard({ pipe_overrides: parsePipeOverridesJson(raw) });
+                        setOverridesError(null);
+                      } catch (err) {
+                        setOverridesError(err instanceof Error ? err.message : String(err));
+                      }
+                    }}
+                  />
+                </label>
+                {overridesError && <p className="gen-err">{overridesError}</p>}
                 <p className="gen-hint">
                   Full GenerateJobCard — paste or edit any field (seed, steps, width, height, true_cfg_scale,
                   guidance_scale, max_sequence_length, num_images, negative_prompt, identity_ref_urls,
-                  extra_image_urls, sigmas, prompt), then Apply.
+                  extra_image_urls, sigmas, pipe_overrides, prompt), then Apply. pipe_overrides is the
+                  free-form Diffusers escape hatch (no secrets, no Spark paths).
                 </p>
                 <textarea
                   className="gen-box gen-box-json"

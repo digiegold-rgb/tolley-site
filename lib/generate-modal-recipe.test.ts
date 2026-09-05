@@ -29,6 +29,10 @@ describe("modal/qwen_image_edit.py", () => {
     assert.match(src, /urls \+ extras/);
     assert.match(src, /inputs\["sigmas"\]/);
     assert.match(src, /"max_sequence_length": int\(max_sequence_length\)/);
+    assert.match(src, /pipe_overrides: dict \| None = None/);
+    assert.match(src, /if k not in \("generator",\)|if key in \("generator",\)/);
+    assert.match(src, /Offending keys/);
+    assert.match(src, /token\|secret\|password\|api_key\|authorization\|hf_/);
     assert.doesNotMatch(src, /InstantID|face_lock|UltraSharp|ComfyUI/);
     assert.match(src, /Do NOT assume Spark paths/);
   });

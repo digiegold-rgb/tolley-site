@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.25';
+export const APP_VERSION = '1.26';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.26',
+    date: '2026-09-05',
+    title: 'Generate Modal stills get a pipe_overrides escape hatch',
+    items: [
+      'Advanced JSON and chat can set pipe_overrides — a free-form bag of extra Diffusers pipe() kwargs for rare args the typed card does not cover.',
+      'Secrets, tokens, and Spark filesystem paths are stripped before Modal. Unknown override keys raise a clear worker error. Still no Comfy nodes or denoise/strength.',
+    ],
+  },
   {
     version: '1.25',
     date: '2026-09-05',

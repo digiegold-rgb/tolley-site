@@ -13,9 +13,9 @@ function readApp(rel: string): string {
 
 const FORCE_DYNAMIC = /export const dynamic\s*=\s*["']force-dynamic["']/;
 
-test("changelog 1.25 is the current shipped version", () => {
-  assert.equal(APP_VERSION, "1.25");
-  assert.equal(CHANGELOG[0]?.version, "1.25");
+test("changelog 1.26 is the current shipped version", () => {
+  assert.equal(APP_VERSION, "1.26");
+  assert.equal(CHANGELOG[0]?.version, "1.26");
 });
 
 test("script writer uses AI Gateway client, not a bare Anthropic constructor", () => {

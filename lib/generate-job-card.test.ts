@@ -15,13 +15,16 @@ import {
   defaultJobCard,
   extractJsonObject,
   formatJobCardJson,
+  formatPipeOverridesJson,
   formatSigmasText,
   mergeJobCard,
   parseGenerateJobCard,
   parseJobCardJson,
   parseLlmJobCard,
+  parsePipeOverridesJson,
   parseSigmasText,
   randomSeed,
+  sanitizePipeOverrides,
 } from "./generate-job-card.ts";
 
 describe("parseGenerateJobCard", () => {
@@ -38,6 +41,7 @@ describe("parseGenerateJobCard", () => {
     assert.equal(card.max_sequence_length, 512);
     assert.deepEqual(card.extra_image_urls, []);
     assert.equal(card.sigmas, null);
+    assert.deepEqual(card.pipe_overrides, {});
     assert.equal(card.num_images, 1);
     assert.throws(() => parseGenerateJobCard({ prompt: "" }));
   });
@@ -89,6 +93,51 @@ describe("parseGenerateJobCard", () => {
     assert.equal(formatSigmasText(null), "");
     assert.equal(formatSigmasText([1, 0.5]), "1, 0.5");
     assert.throws(() => parseSigmasText("1, nope"));
+  });
+
+  it("accepts pipe_overrides and sanitizes secrets, Spark paths, and non-JSON", () => {
+    const card = parseGenerateJobCard({
+      prompt: "x",
+      pipe_overrides: {
+        guidance_rescale: 0.7,
+        output_type: "pil",
+        HF_TOKEN: "hf_secret",
+        api_key: "ak-nope",
+        authorization: "Bearer x",
+        harmless: "ok-looking",
+        spark: "/home/jelly/growth-engine/x.jpg",
+        mac: "/Users/jelly/refs/front.jpg",
+        badFn: () => 1,
+        nested: { token: "drop-me", steps: 12, path: "/Users/me/x" },
+      },
+    });
+    assert.equal(card.pipe_overrides.guidance_rescale, 0.7);
+    assert.equal(card.pipe_overrides.output_type, "pil");
+    assert.equal(Object.hasOwn(card.pipe_overrides, "HF_TOKEN"), false);
+    assert.equal(Object.hasOwn(card.pipe_overrides, "api_key"), false);
+    assert.equal(Object.hasOwn(card.pipe_overrides, "authorization"), false);
+    assert.equal(Object.hasOwn(card.pipe_overrides, "spark"), false);
+    assert.equal(Object.hasOwn(card.pipe_overrides, "mac"), false);
+    assert.equal(Object.hasOwn(card.pipe_overrides, "badFn"), false);
+    assert.deepEqual(card.pipe_overrides.nested, { steps: 12 });
+    assert.equal(card.pipe_overrides.harmless, "ok-looking");
+  });
+
+  it("sanitizePipeOverrides and JSON helpers drop secrets and Spark paths", () => {
+    const cleaned = sanitizePipeOverrides({
+      foo: 1,
+      password: "x",
+      hf_hub: "nope",
+      path: "/home/jelly/x",
+      list: [1, "/Users/x", { secret: "s", n: 2 }],
+    });
+    assert.deepEqual(cleaned, { foo: 1, list: [1, { n: 2 }] });
+    assert.equal(formatPipeOverridesJson({}), "");
+    assert.match(formatPipeOverridesJson({ foo: 1 }), /"foo": 1/);
+    assert.deepEqual(parsePipeOverridesJson(""), {});
+    assert.deepEqual(parsePipeOverridesJson('{"foo": 2, "token": "x"}'), { foo: 2 });
+    assert.throws(() => parsePipeOverridesJson("not-json"), /JSON object/);
+    assert.throws(() => parsePipeOverridesJson("[1]"), /JSON object/);
   });
 
   it("accepts identity_ref_urls and strips blanks", () => {
@@ -150,6 +199,12 @@ describe("merge + LLM parse", () => {
     const cleared = mergeJobCard(withExtras, { extra_image_urls: [], sigmas: [] });
     assert.deepEqual(cleared.extra_image_urls, []);
     assert.equal(cleared.sigmas, null);
+    const withOverrides = mergeJobCard(base, {
+      pipe_overrides: { guidance_rescale: 0.2, HF_TOKEN: "drop" },
+    });
+    assert.deepEqual(withOverrides.pipe_overrides, { guidance_rescale: 0.2 });
+    const clearedOverrides = mergeJobCard(withOverrides, { pipe_overrides: {} });
+    assert.deepEqual(clearedOverrides.pipe_overrides, {});
   });
 
   it("parses fenced LLM JSON into a card", () => {
@@ -182,6 +237,7 @@ describe("cardToModalKwargs", () => {
     assert.equal(kw.max_sequence_length, 512);
     assert.deepEqual(kw.extra_image_urls, []);
     assert.equal(Object.hasOwn(kw, "sigmas"), false);
+    assert.equal(Object.hasOwn(kw, "pipe_overrides"), false);
     assert.equal(kw.job_id, "job_1");
     const dumped = JSON.stringify(kw);
     assert.doesNotMatch(dumped, /MODAL_TOKEN|HF_TOKEN|ak-|as-/);
@@ -225,6 +281,35 @@ describe("cardToModalKwargs", () => {
       assert.equal(Object.hasOwn(kw, key), true, `missing Modal kwarg ${key}`);
     }
   });
+
+  it("merges sanitized pipe_overrides last; extras keep job_id and webhook_url", () => {
+    const card = parseGenerateJobCard({
+      prompt: "x",
+      true_cfg_scale: 4,
+      pipe_overrides: {
+        true_cfg_scale: 8.5,
+        guidance_rescale: 0.3,
+        job_id: "hijack",
+        webhook_url: "https://evil.example/hook",
+        generator: "nope",
+        HF_TOKEN: "hf_drop",
+      },
+    });
+    const kw = cardToModalKwargs(card, {
+      job_id: "job_keep",
+      webhook_url: "https://tolley.io/api/generate/webhook",
+    });
+    assert.equal(kw.true_cfg_scale, 8.5);
+    assert.equal(kw.job_id, "job_keep");
+    assert.equal(kw.webhook_url, "https://tolley.io/api/generate/webhook");
+    assert.deepEqual(kw.pipe_overrides, { true_cfg_scale: 8.5, guidance_rescale: 0.3 });
+    assert.equal(Object.hasOwn(kw.pipe_overrides ?? {}, "job_id"), false);
+    assert.equal(Object.hasOwn(kw.pipe_overrides ?? {}, "webhook_url"), false);
+    assert.equal(Object.hasOwn(kw.pipe_overrides ?? {}, "generator"), false);
+    assert.equal(Object.hasOwn(kw.pipe_overrides ?? {}, "HF_TOKEN"), false);
+    const dumped = JSON.stringify(kw);
+    assert.doesNotMatch(dumped, /hf_drop|hijack|evil\.example/);
+  });
 });
 
 describe("chat JSON → card → Modal kwargs", () => {
@@ -250,6 +335,7 @@ describe("chat JSON → card → Modal kwargs", () => {
         ],
         extra_image_urls: ["https://blob.example/pose.jpg"],
         sigmas: [0.9, 0.4],
+        pipe_overrides: { guidance_rescale: 0.1 },
       }),
       base,
     );
@@ -260,6 +346,7 @@ describe("chat JSON → card → Modal kwargs", () => {
     assert.equal(parsed.card.max_sequence_length, 640);
     assert.deepEqual(parsed.card.extra_image_urls, ["https://blob.example/pose.jpg"]);
     assert.deepEqual(parsed.card.sigmas, [0.9, 0.4]);
+    assert.deepEqual(parsed.card.pipe_overrides, { guidance_rescale: 0.1 });
     const kw = cardToModalKwargs(parsed.card);
     assert.equal(kw.guidance_scale, 1.4);
     assert.equal(kw.negative_prompt, "child, watermark");
@@ -268,6 +355,7 @@ describe("chat JSON → card → Modal kwargs", () => {
     assert.equal(kw.max_sequence_length, 640);
     assert.deepEqual(kw.extra_image_urls, ["https://blob.example/pose.jpg"]);
     assert.deepEqual(kw.sigmas, [0.9, 0.4]);
+    assert.deepEqual(kw.pipe_overrides, { guidance_rescale: 0.1 });
   });
 });
 
