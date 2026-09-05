@@ -91,6 +91,17 @@ describe("directorUserPayload", () => {
     assert.match(payload, /photoreal Lady/);
     assert.match(payload, /make her a red bikini/);
   });
+
+  it("names fal Wan I2V for the motion engine", () => {
+    const payload = directorUserPayload({
+      message: "animate the keep still",
+      inference: "",
+      description: "",
+      mode: "motion",
+    });
+    assert.match(payload, /Wan I2V/);
+    assert.match(payload, /FLF2V|last-frame/);
+  });
 });
 
 describe("generate route branding", () => {
@@ -109,7 +120,9 @@ describe("generate route branding", () => {
     assert.match(studio, /Description/);
     assert.match(studio, /\/api\/generate\/chat/);
     assert.match(studio, /Modal stills/);
+    assert.match(studio, /Motion/);
     assert.match(studio, /\/api\/generate\/jobs/);
+    assert.match(studio, /\/api\/generate\/upload/);
     assert.match(studio, /Random seed/);
     assert.match(studio, /Advanced JSON/);
     assert.match(studio, /pipe_overrides/);
@@ -120,13 +133,21 @@ describe("generate route branding", () => {
     assert.match(studio, /applyBlockNsfw/);
     assert.match(studio, /grey-shirt identity refs lock clothes/i);
     const modalPanel = studio.indexOf('{mode === "modal" ? (');
-    const elsePanel = studio.indexOf(") : (", modalPanel);
+    const motionForm = studio.indexOf("mode === \"motion\" ? (");
     const blockChip = studio.indexOf("Block NSFW");
-    assert.ok(modalPanel >= 0 && elsePanel > modalPanel && blockChip > modalPanel && blockChip < elsePanel);
-    assert.doesNotMatch(studio, /InstantID|ComfyUI|face_lock|UltraSharp/i);
+    assert.ok(modalPanel >= 0 && motionForm > modalPanel && blockChip > modalPanel && blockChip < motionForm);
+    assert.match(studio, /Use as source/);
+    assert.match(studio, /fal-ai\/wan-i2v|Wan I2V/);
+    assert.doesNotMatch(studio, /InstantID|ComfyUI|face_lock|UltraSharp|Seedance/i);
     assert.match(chat, /qwenChatCompletion/);
     assert.match(chat, /QWEN_VLLM/);
     assert.doesNotMatch(chat, /api\.anthropic\.com|qwen-max|dashscope/i);
+    const jobs = readFileSync(join(here, "../app/api/generate/jobs/route.ts"), "utf8");
+    assert.match(jobs, /spawnQwenImageEdit/);
+    assert.match(jobs, /kind === "motion"/);
+    assert.match(jobs, /spawnFalMotion/);
+    assert.match(jobs, /parseGenerateJobCard/);
+    assert.doesNotMatch(jobs, /Seedance|latentsync/i);
   });
 });
 

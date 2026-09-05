@@ -641,3 +641,41 @@
   margin: 4px 0 8px;
   max-width: 46rem;
 }
+
+.gen-gallery-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.gen-use-still {
+  border: none;
+  border-top: 1px solid var(--gen-line);
+  background: #12101c;
+  color: var(--gen-violet-soft);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.gen-use-still:hover {
+  color: var(--gen-text);
+}
+
+.gen-still-preview {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--gen-line);
+  background: #08070f;
+  max-width: 180px;
+}
+
+.gen-still-preview img {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+  display: block;
+}

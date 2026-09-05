@@ -2,6 +2,8 @@
 
 Identity stills run on Modal (A100 BF16, Diffusers `QwenImageEditPlusPipeline` / `Qwen/Qwen-Image-Edit-2511`). Spark Comfy / InstantID / face_lock / UltraSharp are not used.
 
+Identity-locked **motion** (still → 5s fal Wan I2V) is a separate tab on the same page — see `docs/generate-motion.md`. Modal stills job-card / NSFW chips are unchanged.
+
 Jared chats on https://tolley.io/generate the same way he talks to an operator bot. An LLM fills an **editable job card** (kwargs, not a frozen GUI). Confirm/Go spawns the named Modal function `qwen_image_edit`. Results land in the gallery.
 
 ## Env var checklist

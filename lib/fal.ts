@@ -32,6 +32,11 @@ export const FAL_MODELS = {
     endpointId: "fal-ai/wan-i2v" as const,
     defaults: { num_frames: 81, resolution: "720p", enable_safety_checker: false },
   },
+  // First + last frame (optional pose / end still). Flat id — same Wan 2.1 family.
+  "wan-flf2v": {
+    endpointId: "fal-ai/wan-flf2v" as const,
+    defaults: { num_frames: 81, resolution: "720p", enable_safety_checker: false },
+  },
 } as const;
 
 export type FalModelId = keyof typeof FAL_MODELS;

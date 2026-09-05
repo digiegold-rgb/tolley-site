@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.29';
+export const APP_VERSION = '1.30';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.30',
+    date: '2026-09-05',
+    title: 'Generate Motion turns a keep still into a short identity-locked clip',
+    items: [
+      'A Motion tab on Generate takes a Modal still URL, a pasted Blob URL, or an upload and runs fal Wan image-to-video — the still is the first frame, about five seconds.',
+      'An optional last-frame still (another photo, not a skeleton video) uses Wan first-to-last-frame. Face-lock follow-up (LatentSync) and beat stitch are not in this release.',
+      'Same Jared/admin gate as Modal stills. Dry run still spends nothing. Adult Lady / Lady2 clips stay allowed; CSAM and minors stay refused.',
+    ],
+  },
   {
     version: '1.29',
     date: '2026-09-05',

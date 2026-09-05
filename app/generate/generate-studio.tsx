@@ -23,6 +23,12 @@ import {
   sanitizePipeOverrides,
   type GenerateJobCard,
 } from "@/lib/generate-job-card";
+import {
+  emptyMotionCard,
+  formatMotionCardJson,
+  parseMotionCardJson,
+  type GenerateMotionCard,
+} from "@/lib/generate-motion-card";
 
 async function readJson(r: Response): Promise<Record<string, unknown>> {
   const text = await r.text();
@@ -35,6 +41,7 @@ async function readJson(r: Response): Promise<Record<string, unknown>> {
 
 const MODES = [
   { id: "modal", label: "Modal stills" },
+  { id: "motion", label: "Motion" },
   { id: "t2i", label: "Text → Image" },
   { id: "t2v", label: "Text → Video" },
   { id: "i2v", label: "Image → Video" },
@@ -45,12 +52,21 @@ type Mode = (typeof MODES)[number]["id"];
 type ModalJob = {
   id: string;
   status: string;
-  card?: GenerateJobCard;
+  recipe?: string;
+  card?: GenerateJobCard | GenerateMotionCard | Record<string, unknown>;
   output_urls?: string[];
   error?: string | null;
   modal_call_id?: string | null;
   createdAt?: string;
 };
+
+function isMotionJob(job: ModalJob): boolean {
+  return job.recipe === "fal-wan-i2v" || job.recipe === "fal-wan-flf2v";
+}
+
+function isVideoUrl(url: string): boolean {
+  return /\.(mp4|webm|mov)(\?|$)/i.test(url);
+}
 
 type DgxStatus = {
   busy: boolean;
@@ -149,18 +165,50 @@ function RecentGallery({ refreshKey }: { refreshKey: number }) {
   );
 }
 
-function ModalGallery({ jobs }: { jobs: ModalJob[] }) {
-  const done = jobs.filter((j) => j.status === "done" && (j.output_urls?.length ?? 0) > 0);
-  if (!done.length) return null;
+function ModalGallery({
+  jobs,
+  onUseStill,
+}: {
+  jobs: ModalJob[];
+  onUseStill?: (url: string) => void;
+}) {
+  const stills = jobs.filter((j) => !isMotionJob(j) && j.status === "done" && (j.output_urls?.length ?? 0) > 0);
+  if (!stills.length) return null;
   return (
     <div className="gen-gallery">
       <h2>Modal stills</h2>
       <div className="gen-gallery-grid">
-        {done.map((j) =>
+        {stills.map((j) =>
+          (j.output_urls ?? []).map((url) => (
+            <div key={`${j.id}-${url}`} className="gen-gallery-cell">
+              <a href={url} target="_blank" rel="noreferrer">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="Modal still" loading="lazy" />
+              </a>
+              {onUseStill && (
+                <button type="button" className="gen-use-still" onClick={() => onUseStill(url)}>
+                  Use as source
+                </button>
+              )}
+            </div>
+          )),
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MotionGallery({ jobs }: { jobs: ModalJob[] }) {
+  const clips = jobs.filter((j) => isMotionJob(j) && j.status === "done" && (j.output_urls?.length ?? 0) > 0);
+  if (!clips.length) return null;
+  return (
+    <div className="gen-gallery">
+      <h2>Motion clips</h2>
+      <div className="gen-gallery-grid">
+        {clips.map((j) =>
           (j.output_urls ?? []).map((url) => (
             <a key={`${j.id}-${url}`} href={url} target="_blank" rel="noreferrer">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="Modal still" loading="lazy" />
+              <video src={url} muted preload="metadata" playsInline />
             </a>
           )),
         )}
@@ -200,9 +248,14 @@ export default function GenerateStudio() {
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [dryRun, setDryRun] = useState(false);
   const [modalStatus, setModalStatus] = useState<{ configured: boolean } | null>(null);
+  const [falStatus, setFalStatus] = useState<{ configured: boolean } | null>(null);
   const [modalJobs, setModalJobs] = useState<ModalJob[]>([]);
   const [modalAuthed, setModalAuthed] = useState<boolean | null>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [motionCard, setMotionCard] = useState(() => emptyMotionCard());
+  const [motionJsonDraft, setMotionJsonDraft] = useState(() => formatMotionCardJson(emptyMotionCard()));
+  const [motionJsonError, setMotionJsonError] = useState<string | null>(null);
+  const [uploadingStill, setUploadingStill] = useState<"source" | "end" | null>(null);
 
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
   const chatEnd = useRef<HTMLDivElement | null>(null);
@@ -234,6 +287,9 @@ export default function GenerateStudio() {
         if (!j) return;
         if (j.modal && typeof j.modal.configured === "boolean") {
           setModalStatus({ configured: j.modal.configured });
+        }
+        if (j.fal && typeof j.fal.configured === "boolean") {
+          setFalStatus({ configured: j.fal.configured });
         }
         if (j.defaults && typeof j.defaults.prompt === "string") {
           const next = j.defaults as GenerateJobCard;
@@ -302,6 +358,47 @@ export default function GenerateStudio() {
     }
   }
 
+  function commitMotion(next: GenerateMotionCard | ReturnType<typeof emptyMotionCard>) {
+    setMotionCard(next);
+    setMotionJsonDraft(formatMotionCardJson(next));
+    setMotionJsonError(null);
+  }
+
+  function patchMotion(partial: Partial<GenerateMotionCard>) {
+    setMotionCard((c) => {
+      const next = { ...c, ...partial };
+      setMotionJsonDraft(formatMotionCardJson(next));
+      setMotionJsonError(null);
+      return next;
+    });
+  }
+
+  function applyMotionJsonDraft() {
+    try {
+      commitMotion(parseMotionCardJson(motionJsonDraft));
+    } catch (e) {
+      setMotionJsonError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function uploadGenerateStill(file: File, field: "source" | "end") {
+    setUploadingStill(field);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await fetch("/api/generate/upload", { method: "POST", body: fd });
+      if (r.status === 401 || r.status === 403) {
+        throw new Error("Not authorized — log in at /hq first, then come back.");
+      }
+      const j = (await readJson(r)) as { url?: string; error?: string };
+      if (!r.ok || !j.url) throw new Error(j.error || "upload failed");
+      if (field === "source") patchMotion({ source_image_url: j.url });
+      else patchMotion({ end_image_url: j.url });
+    } finally {
+      setUploadingStill(null);
+    }
+  }
+
   async function sendChat() {
     const text = chatInput.trim();
     if (!text || chatBusy) return;
@@ -312,25 +409,33 @@ export default function GenerateStudio() {
     setChatError(null);
     setChatBusy(true);
     try {
-      if (mode === "modal") {
+      if (mode === "modal" || mode === "motion") {
         const res = await fetch("/api/generate/jobs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text, currentCard: card }),
+          body: JSON.stringify(
+            mode === "motion"
+              ? { kind: "motion", message: text, currentCard: motionCard }
+              : { message: text, currentCard: card },
+          ),
         });
         if (res.status === 401 || res.status === 403) {
           throw new Error("Not authorized — log in at /hq first, then come back.");
         }
         const data = (await readJson(res)) as {
           reply?: string;
-          card?: GenerateJobCard;
+          card?: GenerateJobCard | GenerateMotionCard;
           error?: string;
         };
         if (!res.ok) throw new Error(data.error || "Chat failed.");
         if (data.reply) {
           setMessages((m) => [...m, { id: mid(), role: "assistant", content: data.reply as string }]);
         }
-        if (data.card) commitCard(data.card);
+        if (data.card && mode === "motion") {
+          commitMotion(data.card as GenerateMotionCard);
+        } else if (data.card) {
+          commitCard(data.card as GenerateJobCard);
+        }
       } else {
         const res = await fetch("/api/generate/chat", {
           method: "POST",
@@ -391,8 +496,9 @@ export default function GenerateStudio() {
       if (job.status === "done") {
         if (poll.current) clearInterval(poll.current);
         setStage(null);
-        setResultIsVideo(false);
-        setResultUrl(job.output_urls?.[0] ?? null);
+        const url = job.output_urls?.[0] ?? null;
+        setResultIsVideo(isMotionJob(job) || (!!url && isVideoUrl(url)));
+        setResultUrl(url);
         setModalJobs((list) => [job, ...list.filter((x) => x.id !== job.id)]);
         setGalleryKey((k) => k + 1);
       } else if (job.status === "failed") {
@@ -400,7 +506,15 @@ export default function GenerateStudio() {
         setStage(null);
         setError(job.error || "generation failed");
       } else {
-        setStage(job.status === "queued" ? "queued on Modal…" : "Modal running…");
+        setStage(
+          isMotionJob(job) || mode === "motion"
+            ? job.status === "queued"
+              ? "queued on fal…"
+              : "fal running…"
+            : job.status === "queued"
+              ? "queued on Modal…"
+              : "Modal running…",
+        );
       }
     }, 4000);
   }
@@ -443,12 +557,50 @@ export default function GenerateStudio() {
     await pollModalJob(j.job.id);
   }
 
+  async function goMotion() {
+    setError(null);
+    setResultUrl(null);
+    setStage(dryRun ? "dry run…" : "submitting…");
+    const r = await fetch("/api/generate/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "motion", card: motionCard, start: !dryRun, dryRun }),
+    });
+    if (r.status === 401 || r.status === 403) {
+      throw new Error("Not authorized — log in at /hq first, then come back.");
+    }
+    const j = (await readJson(r)) as {
+      job?: ModalJob;
+      error?: string;
+      dryRun?: boolean;
+    };
+    if (!r.ok && !j.job) throw new Error(j.error || "submit failed");
+    if (j.job) setModalJobs((list) => [j.job as ModalJob, ...list.filter((x) => x.id !== j.job!.id)]);
+    if (dryRun || j.dryRun) {
+      setStage(null);
+      setMessages((m) => [
+        ...m,
+        {
+          id: mid(),
+          role: "assistant",
+          content: `Dry run queued (${j.job?.id || "no id"}). fal kwargs ready — untick Dry run and hit Go to spend Wan I2V.`,
+        },
+      ]);
+      return;
+    }
+    if (!j.job?.id) throw new Error(j.error || "submit failed");
+    setActiveJobId(j.job.id);
+    setStage("queued on fal…");
+    await pollModalJob(j.job.id);
+  }
+
   async function go() {
     setError(null);
     setResultUrl(null);
-    if (mode === "modal") {
+    if (mode === "modal" || mode === "motion") {
       try {
-        await goModal();
+        if (mode === "motion") await goMotion();
+        else await goModal();
       } catch (e) {
         setStage(null);
         setError(e instanceof Error ? e.message : String(e));
@@ -516,7 +668,12 @@ export default function GenerateStudio() {
   const needImage = mode === "i2v";
   const wantImage = mode === "v2v";
   const needVideo = mode === "v2v";
-  const promptReady = mode === "modal" ? card.prompt.trim().length > 0 : composeEnginePrompt(inference, description).length > 0;
+  const promptReady =
+    mode === "modal"
+      ? card.prompt.trim().length > 0
+      : mode === "motion"
+        ? motionCard.prompt.trim().length > 0 && /^https:\/\//i.test(motionCard.source_image_url.trim())
+        : composeEnginePrompt(inference, description).length > 0;
   const canGo = !busy && (promptReady || mode === "v2v") && (!needImage || !!imageFile) && (!needVideo || !!videoFile);
   const nsfwState = nsfwChipState(card);
 
@@ -529,7 +686,7 @@ export default function GenerateStudio() {
             Generate <em>Directed by you.</em>
           </h1>
           <p className="gen-lede">
-            Talk to the page. On Modal stills, chat fills an editable job card; Confirm/Go sends those kwargs to Modal. Quickgen tabs still write Inference and Description. Clips are ≤5s.
+            Talk to the page. Modal stills fill a job card for Qwen-Image-Edit. Motion takes a keep still into a 5s fal Wan I2V clip. Quickgen tabs still write Inference and Description.
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
@@ -543,9 +700,13 @@ export default function GenerateStudio() {
               ? modalStatus?.configured
                 ? "Modal · Qwen-Image-Edit-2511"
                 : "Modal · set MODAL_TOKEN_ID"
-              : qwenStatus?.configured
-                ? `Qwen 3.8 · ${qwenStatus.model?.split("/").pop() || "Spark"}`
-                : "Qwen 3.8 · set QWEN_VLLM_BASE_URL"}
+              : mode === "motion"
+                ? falStatus?.configured
+                  ? "fal · Wan I2V"
+                  : "fal · set FAL_KEY"
+                : qwenStatus?.configured
+                  ? `Qwen 3.8 · ${qwenStatus.model?.split("/").pop() || "Spark"}`
+                  : "Qwen 3.8 · set QWEN_VLLM_BASE_URL"}
           </span>
         </div>
       </header>
@@ -557,14 +718,16 @@ export default function GenerateStudio() {
             <p className="gen-hint">
               {mode === "modal"
                 ? "Chat fills the Modal job card (JSON kwargs). Edit the card, then Confirm/Go."
-                : "Qwen 3.8 Unlocked on Spark. Photoreal adult identity stills stay in Inference."}
+                : mode === "motion"
+                  ? "Chat fills the motion card. Source still + motion prompt → 5s Wan I2V. Optional last-frame still = FLF2V."
+                  : "Qwen 3.8 Unlocked on Spark. Photoreal adult identity stills stay in Inference."}
             </p>
           </div>
           <div className="gen-chat-log">
             {messages.length === 0 && !chatBusy && (
               <div className="gen-empty">
                 <strong>Talk to Generate</strong>
-                Ask for a still, a wardrobe change, or an identity lock. On Modal stills, chat fills the job card — you hit Go.
+                Ask for a still, a wardrobe change, or an identity-locked clip. Modal stills and Motion fill a job card — you hit Go.
               </div>
             )}
             {messages.map((m) => (
@@ -604,10 +767,10 @@ export default function GenerateStudio() {
         </section>
 
         <section className="gen-panel gen-right" aria-label="Inference, description, and engines">
-          {mode !== "modal" && <DgxLight />}
-          {mode === "modal" && modalAuthed === false && (
+          {mode !== "modal" && mode !== "motion" && <DgxLight />}
+          {(mode === "modal" || mode === "motion") && modalAuthed === false && (
             <p className="gen-banner gen-banner-warn">
-              Modal jobs are Jared/admin gated. Log in at /hq (or shop dashboard), then come back.
+              Generate jobs are Jared/admin gated. Log in at /hq (or shop dashboard), then come back.
             </p>
           )}
           {mode === "modal" && modalStatus && !modalStatus.configured && modalAuthed && (
@@ -615,7 +778,12 @@ export default function GenerateStudio() {
               Modal tokens are not set. Add MODAL_TOKEN_ID + MODAL_TOKEN_SECRET (see docs/generate-modal.md). Dry run still works.
             </p>
           )}
-          {mode !== "modal" && qwenStatus && !qwenStatus.configured && (
+          {mode === "motion" && falStatus && !falStatus.configured && modalAuthed && (
+            <p className="gen-banner gen-banner-warn">
+              FAL_KEY is not set. Add it on Vercel (see docs/generate-motion.md). Dry run still works.
+            </p>
+          )}
+          {mode !== "modal" && mode !== "motion" && qwenStatus && !qwenStatus.configured && (
             <p className="gen-banner gen-banner-warn">
               Chat needs Spark vLLM. Set QWEN_VLLM_BASE_URL + QWEN_VLLM_MODEL (see docs/generate-qwen-vllm.md). You can still edit the boxes and Generate if HQ is signed in.
             </p>
@@ -957,6 +1125,159 @@ export default function GenerateStudio() {
                 </button>
               </div>
             </>
+          ) : mode === "motion" ? (
+            <>
+              <p className="gen-hint">
+                Identity-locked I2V on fal.ai — first frame is the source still. Recipe:{" "}
+                {motionCard.end_image_url?.trim() ? "Wan FLF2V (first + last still)" : "Wan I2V (keyframe)"}. 5s @
+                720p. No stitch. No LatentSync face-lock yet. No skeleton video.
+              </p>
+              <label className="gen-field gen-field-wide">
+                Source still (HTTPS — Modal keep, Blob URL, or upload)
+                <input
+                  value={motionCard.source_image_url}
+                  disabled={busy}
+                  placeholder="https://….public.blob.vercel-storage.com/….png"
+                  onChange={(e) => patchMotion({ source_image_url: e.target.value })}
+                />
+                <span className="gen-file">
+                  Upload still:{" "}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={busy || uploadingStill !== null}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) uploadGenerateStill(f, "source").catch((err) => setError(err instanceof Error ? err.message : String(err)));
+                    }}
+                  />
+                  {uploadingStill === "source" && <span> uploading…</span>}
+                </span>
+              </label>
+              {motionCard.source_image_url && /^https:\/\//i.test(motionCard.source_image_url) && (
+                <div className="gen-still-preview">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={motionCard.source_image_url}
+                    alt="Source still"
+                    onError={(e) => {
+                      (e.currentTarget.parentElement as HTMLElement | null)?.setAttribute("hidden", "");
+                    }}
+                    onLoad={(e) => {
+                      (e.currentTarget.parentElement as HTMLElement | null)?.removeAttribute("hidden");
+                    }}
+                  />
+                </div>
+              )}
+              <div>
+                <p className="gen-label gen-label-live">Motion prompt</p>
+                <textarea
+                  className="gen-box gen-box-inference"
+                  value={motionCard.prompt}
+                  onChange={(e) => patchMotion({ prompt: e.target.value })}
+                  disabled={busy}
+                  placeholder="Same face. Soft smile, hair and fabric move…"
+                />
+              </div>
+              <div>
+                <p className="gen-label">Negative prompt</p>
+                <textarea
+                  className="gen-box gen-box-description"
+                  value={motionCard.negative_prompt}
+                  onChange={(e) => patchMotion({ negative_prompt: e.target.value })}
+                  disabled={busy}
+                />
+              </div>
+              <label className="gen-field gen-field-wide">
+                Last-frame / pose still (optional — HTTPS image only)
+                <input
+                  value={motionCard.end_image_url || ""}
+                  disabled={busy}
+                  placeholder="Optional end pose still. Not a skeleton video."
+                  onChange={(e) => patchMotion({ end_image_url: e.target.value })}
+                />
+                <span className="gen-file">
+                  Upload pose still:{" "}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={busy || uploadingStill !== null}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) uploadGenerateStill(f, "end").catch((err) => setError(err instanceof Error ? err.message : String(err)));
+                    }}
+                  />
+                  {uploadingStill === "end" && <span> uploading…</span>}
+                </span>
+              </label>
+              <div className="gen-card-grid">
+                <label>
+                  Aspect
+                  <select
+                    value={motionCard.aspect}
+                    disabled={busy}
+                    onChange={(e) => patchMotion({ aspect: e.target.value as GenerateMotionCard["aspect"] })}
+                  >
+                    <option value="9:16">9:16 vertical</option>
+                    <option value="16:9">16:9 wide</option>
+                    <option value="1:1">1:1 square</option>
+                    <option value="auto">auto from still</option>
+                  </select>
+                </label>
+                <label className="gen-seed-field">
+                  Seed
+                  <div className="gen-seed-row">
+                    <input
+                      type="number"
+                      value={motionCard.seed}
+                      disabled={busy}
+                      onChange={(e) => patchMotion({ seed: Number(e.target.value) || 0 })}
+                    />
+                    <button
+                      type="button"
+                      className="gen-seed-random"
+                      disabled={busy}
+                      onClick={() => patchMotion({ seed: randomSeed() })}
+                    >
+                      Random seed
+                    </button>
+                  </div>
+                </label>
+                <label>
+                  Duration
+                  <input type="text" value="5s (Wan cap)" disabled />
+                </label>
+              </div>
+              <details className="gen-advanced-json">
+                <summary>Advanced JSON</summary>
+                <p className="gen-hint">
+                  Full motion card — source_image_url, optional end_image_url (last-frame still), prompt, aspect, seed.
+                </p>
+                <textarea
+                  className="gen-box gen-box-json"
+                  value={motionJsonDraft}
+                  disabled={busy}
+                  spellCheck={false}
+                  onChange={(e) => {
+                    setMotionJsonDraft(e.target.value);
+                    setMotionJsonError(null);
+                  }}
+                />
+                {motionJsonError && <p className="gen-err">{motionJsonError}</p>}
+                <button type="button" className="gen-json-apply" disabled={busy} onClick={applyMotionJsonDraft}>
+                  Apply JSON
+                </button>
+              </details>
+              <div className="gen-row">
+                <label className="gen-check">
+                  <input type="checkbox" checked={dryRun} disabled={busy} onChange={(e) => setDryRun(e.target.checked)} />
+                  Dry run (no GPU)
+                </label>
+                <button className="gen-go" type="button" onClick={go} disabled={!canGo} style={{ marginLeft: "auto" }}>
+                  {busy ? "Working…" : dryRun ? "Dry run" : "Go"}
+                </button>
+              </div>
+            </>
           ) : (
             <>
               <div>
@@ -1070,12 +1391,21 @@ export default function GenerateStudio() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={resultUrl} alt="result" />
               )}
-              <a href={resultUrl} download={resultIsVideo ? "quickgen.mp4" : "quickgen.png"}>
+              <a href={resultUrl} download={resultIsVideo ? "generate-motion.mp4" : "generate.png"}>
                 Download
               </a>
             </div>
           )}
-          {mode === "modal" ? <ModalGallery jobs={modalJobs} /> : <RecentGallery refreshKey={galleryKey} />}
+          {(mode === "modal" || mode === "motion") && (
+            <>
+              <ModalGallery
+                jobs={modalJobs}
+                onUseStill={mode === "motion" ? (url) => patchMotion({ source_image_url: url }) : undefined}
+              />
+              <MotionGallery jobs={modalJobs} />
+            </>
+          )}
+          {mode !== "modal" && mode !== "motion" && <RecentGallery refreshKey={galleryKey} />}
         </section>
       </div>
     </main>

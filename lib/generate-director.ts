@@ -9,7 +9,7 @@
  * details. CSAM and real-minor content are refused here and in the LLM prompt.
  */
 
-export type GenerateMode = "t2i" | "t2v" | "i2v" | "v2v";
+export type GenerateMode = "t2i" | "t2v" | "i2v" | "v2v" | "motion";
 
 export interface DirectorPatch {
   reply: string;
@@ -68,6 +68,8 @@ const MODE_HINT: Record<GenerateMode, string> = {
   t2v: "Active engine: Text → Video. Inference is a motion prompt; clips are ≤5s.",
   i2v: "Active engine: Image → Video. Inference is motion for the uploaded first frame.",
   v2v: "Active engine: Video → Video. Inference is character/style; the drive clip supplies motion.",
+  motion:
+    "Active engine: fal Wan I2V (identity-locked motion). Inference is motion for a Modal still / HTTPS first frame. Optional last-frame still = Wan FLF2V. No skeleton video, no stitch, no Seedance.",
 };
 
 export function directorUserPayload(opts: {
