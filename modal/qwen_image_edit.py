@@ -43,6 +43,7 @@ hf_cache = modal.Volume.from_name("tolley-qwen-hf-cache", create_if_missing=True
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
+    .run_commands("echo tolley-image-rev=torchvision-1")
     .pip_install(
         "torch",
         "torchvision",
