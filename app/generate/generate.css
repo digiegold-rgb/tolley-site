@@ -454,6 +454,15 @@
   color: var(--gen-faint);
 }
 
+.gen-field-hint {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--gen-faint);
+  opacity: 0.9;
+}
+
 .gen-card-grid input,
 .gen-field input,
 .gen-field select {
@@ -558,6 +567,14 @@
 
 .gen-box-json {
   min-height: 180px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.gen-box-sigmas {
+  min-height: 64px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
   letter-spacing: 0;

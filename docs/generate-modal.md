@@ -76,7 +76,7 @@ Named lookup from Vercel:
 modal.functions.fromName("tolley-qwen-image-edit", "qwen_image_edit")
 ```
 
-Proven kwargs: `width=928`, `height=1664`, `num_inference_steps=40`, `true_cfg_scale=4.0`, `guidance_scale=1.0`, three identity ref URLs, `num_images`.
+Proven kwargs: `width=928`, `height=1664`, `num_inference_steps=40`, `true_cfg_scale=4.0`, `guidance_scale=1.0`, `max_sequence_length=512`, three identity ref URLs, optional `extra_image_urls` (max 3 HTTPS), optional `sigmas`, `num_images`. This recipe has no denoise/strength.
 
 ## Auth
 
@@ -94,7 +94,7 @@ The `/generate` page itself stays public. Chat→card, Confirm/Go, status, and g
 2. Open https://tolley.io/generate
 3. Stay on **Modal stills**.
 4. Preset defaults to **Lady2 lacy pink front smile**. Confirm the three identity URLs.
-5. Edit any recipe field on the card (seed, steps, width, height, true_cfg_scale, guidance_scale, num_images, negative_prompt, identity URLs, prompt) or paste a full card into **Advanced JSON**. **Random seed** sits next to seed.
+5. Edit any recipe field on the card (seed, steps, width, height, true_cfg_scale / CFG, guidance_scale, max_sequence_length, num_images, negative_prompt, identity URLs, extra image URLs, optional sigmas, prompt) or paste a full card into **Advanced**. **Random seed** sits next to seed.
 6. Chat may change those same kwargs (JSON job card only — no ComfyUI / nodes / `.safetensors` advice).
 7. Optional: tick **Dry run** and hit **Go** — creates a `GenerateJob`, returns the exact kwargs, does **not** spend an A100.
 8. Untick Dry run, hit **Go**. Status polls `GET /api/generate/jobs/:id` until `done`; stills appear in the gallery.
@@ -120,11 +120,14 @@ curl -sS -X POST https://tolley.io/api/generate/jobs \
       "width": 928,
       "true_cfg_scale": 4.0,
       "guidance_scale": 1.0,
+      "max_sequence_length": 512,
       "identity_ref_urls": [
         "https://YOUR.public.blob.vercel-storage.com/generate/identity/front.jpg",
         "https://YOUR.public.blob.vercel-storage.com/generate/identity/profile-left.jpg",
         "https://YOUR.public.blob.vercel-storage.com/generate/identity/profile-right.jpg"
       ],
+      "extra_image_urls": [],
+      "sigmas": null,
       "num_images": 1
     }
   }'

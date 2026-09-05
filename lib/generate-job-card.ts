@@ -7,9 +7,13 @@
  *
  * Proven defaults from Spark/Modal runs that worked:
  *   width=928 height=1664 steps=40 true_cfg_scale=4.0 guidance_scale=1.0
+ *   max_sequence_length=512
  *
  * Identity refs are durable HTTPS URLs (Vercel Blob or similar). Never pass
  * Spark paths like /home/jelly/growth-engine/... onto Modal workers.
+ * extra_image_urls (max 3, HTTPS) are edit/style refs appended after identity
+ * when calling Modal. sigmas is optional — omit when empty. This recipe has
+ * no denoise/strength.
  */
 
 import { z } from "zod";
@@ -24,10 +28,13 @@ export const PROVEN_DEFAULTS = {
   num_inference_steps: 40,
   true_cfg_scale: 4.0,
   guidance_scale: 1.0,
+  max_sequence_length: 512,
   num_images: 1,
   seed: 0,
   negative_prompt: " ",
-} as const;
+  extra_image_urls: [] as string[],
+  sigmas: null as number[] | null,
+};
 
 /** Historical Spark paths — documented only. Do not load these on Modal. */
 export const HISTORICAL_IDENTITY_REF_PATHS = {
@@ -56,6 +63,42 @@ const urlList = z
   .max(6)
   .transform((urls) => urls.map((u) => u.trim()).filter(Boolean));
 
+export function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+const extraImageUrls = z.preprocess((raw) => {
+  if (typeof raw === "string") {
+    return raw.split(",").map((s) => s.trim()).filter(Boolean);
+  }
+  return raw;
+}, z
+  .array(z.string())
+  .max(3)
+  .transform((urls) => urls.map((u) => u.trim()).filter(Boolean))
+  .refine((urls) => urls.every(isHttpsUrl), {
+    message: "extra_image_urls must be HTTPS URLs (max 3)",
+  })
+  .default([]));
+
+const sigmaList = z.preprocess((raw) => {
+  if (typeof raw === "string") {
+    const parts = raw.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
+    return parts.length ? parts : null;
+  }
+  if (Array.isArray(raw) && raw.length === 0) return null;
+  return raw;
+}, z
+  .union([z.null(), z.array(z.coerce.number().finite())])
+  .optional()
+  .nullable()
+  .transform((v) => (v && v.length ? v : null))
+  .default(null));
+
 export const generateJobCardSchema = z.object({
   recipe: z.literal(GENERATE_RECIPE).default(GENERATE_RECIPE),
   preset: z.string().trim().max(80).optional().nullable(),
@@ -67,7 +110,15 @@ export const generateJobCardSchema = z.object({
   width: z.coerce.number().int().min(256).max(2048).default(PROVEN_DEFAULTS.width),
   true_cfg_scale: z.coerce.number().min(0).max(20).default(PROVEN_DEFAULTS.true_cfg_scale),
   guidance_scale: z.coerce.number().min(0).max(20).default(PROVEN_DEFAULTS.guidance_scale),
+  max_sequence_length: z.coerce
+    .number()
+    .int()
+    .min(64)
+    .max(2048)
+    .default(PROVEN_DEFAULTS.max_sequence_length),
   identity_ref_urls: urlList.default([]),
+  extra_image_urls: extraImageUrls,
+  sigmas: sigmaList,
   num_images: z.coerce.number().int().min(1).max(4).default(PROVEN_DEFAULTS.num_images),
 });
 
@@ -144,6 +195,24 @@ export function randomSeed(rng: () => number = Math.random): number {
 
 export function formatJobCardJson(card: GenerateJobCard): string {
   return JSON.stringify(card, null, 2);
+}
+
+/** Comma-separated floats for the Advanced sigmas textarea. Empty → null. */
+export function parseSigmasText(raw: string): number[] | null {
+  const parts = raw
+    .split(/[,\s]+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (!parts.length) return null;
+  const nums = parts.map((p) => Number(p));
+  if (nums.some((n) => !Number.isFinite(n))) {
+    throw new Error("sigmas must be comma-separated numbers");
+  }
+  return nums;
+}
+
+export function formatSigmasText(sigmas: number[] | null | undefined): string {
+  return sigmas?.length ? sigmas.join(", ") : "";
 }
 
 /** Round-trip helper for the Advanced JSON editor. */
@@ -237,7 +306,10 @@ export type ModalSpawnKwargs = {
   width: number;
   true_cfg_scale: number;
   guidance_scale: number;
+  max_sequence_length: number;
   identity_ref_urls: string[];
+  extra_image_urls: string[];
+  sigmas?: number[];
   num_images: number;
   job_id?: string;
   webhook_url?: string;
@@ -252,7 +324,9 @@ export const MODAL_SPAWN_KWARG_KEYS = [
   "width",
   "true_cfg_scale",
   "guidance_scale",
+  "max_sequence_length",
   "identity_ref_urls",
+  "extra_image_urls",
   "num_images",
 ] as const satisfies ReadonlyArray<keyof ModalSpawnKwargs>;
 
@@ -260,6 +334,8 @@ export function cardToModalKwargs(
   card: GenerateJobCard,
   extras?: { job_id?: string; webhook_url?: string },
 ): ModalSpawnKwargs {
+  const extraUrls = card.extra_image_urls ?? [];
+  const sigmas = card.sigmas && card.sigmas.length ? card.sigmas : undefined;
   return {
     prompt: card.prompt,
     negative_prompt: card.negative_prompt || " ",
@@ -269,7 +345,10 @@ export function cardToModalKwargs(
     width: card.width,
     true_cfg_scale: card.true_cfg_scale,
     guidance_scale: card.guidance_scale,
+    max_sequence_length: card.max_sequence_length,
     identity_ref_urls: card.identity_ref_urls,
+    extra_image_urls: extraUrls,
+    ...(sigmas ? { sigmas } : {}),
     num_images: card.num_images,
     ...(extras?.job_id ? { job_id: extras.job_id } : {}),
     ...(extras?.webhook_url ? { webhook_url: extras.webhook_url } : {}),

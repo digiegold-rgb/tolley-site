@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.24.4';
+export const APP_VERSION = '1.25';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.25',
+    date: '2026-09-05',
+    title: 'Generate Modal stills get more Diffusers knobs',
+    items: [
+      'Modal stills now expose max sequence length, up to three extra HTTPS edit/style image URLs, and optional sigmas — still headless kwargs, not Comfy nodes.',
+      'CFG is labeled as true_cfg_scale (the CFG that matters on this recipe). Guidance stays at 1. There is no denoise/strength — use steps, CFG, and the negative prompt.',
+    ],
+  },
   {
     version: '1.24.4',
     date: '2026-09-02',

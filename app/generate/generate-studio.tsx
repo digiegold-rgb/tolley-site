@@ -11,7 +11,9 @@ import {
   applyPreset,
   defaultJobCard,
   formatJobCardJson,
+  formatSigmasText,
   parseJobCardJson,
+  parseSigmasText,
   randomSeed,
   type GenerateJobCard,
 } from "@/lib/generate-job-card";
@@ -183,6 +185,7 @@ export default function GenerateStudio() {
   const [qwenStatus, setQwenStatus] = useState<{ configured: boolean; model: string | null } | null>(null);
   const [card, setCard] = useState<GenerateJobCard>(() => defaultJobCard());
   const [jsonDraft, setJsonDraft] = useState(() => formatJobCardJson(defaultJobCard()));
+  const [sigmasDraft, setSigmasDraft] = useState(() => formatSigmasText(defaultJobCard().sigmas));
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [dryRun, setDryRun] = useState(false);
   const [modalStatus, setModalStatus] = useState<{ configured: boolean } | null>(null);
@@ -225,6 +228,7 @@ export default function GenerateStudio() {
           const next = j.defaults as GenerateJobCard;
           setCard(next);
           setJsonDraft(formatJobCardJson(next));
+          setSigmasDraft(formatSigmasText(next.sigmas));
           setJsonError(null);
         }
         if (Array.isArray(j.jobs)) setModalJobs(j.jobs as ModalJob[]);
@@ -252,6 +256,7 @@ export default function GenerateStudio() {
   function commitCard(next: GenerateJobCard) {
     setCard(next);
     setJsonDraft(formatJobCardJson(next));
+    setSigmasDraft(formatSigmasText(next.sigmas));
     setJsonError(null);
   }
 
@@ -699,7 +704,8 @@ export default function GenerateStudio() {
                   />
                 </label>
                 <label>
-                  true_cfg_scale
+                  CFG (true_cfg_scale)
+                  <span className="gen-field-hint">Comfy CFG for this recipe</span>
                   <input
                     type="number"
                     step="0.1"
@@ -710,12 +716,24 @@ export default function GenerateStudio() {
                 </label>
                 <label>
                   guidance_scale
+                  <span className="gen-field-hint">mostly unused on Qwen-Image-Edit; keep 1</span>
                   <input
                     type="number"
                     step="0.1"
                     value={card.guidance_scale}
                     disabled={busy}
                     onChange={(e) => patchCard({ guidance_scale: Number(e.target.value) || 1 })}
+                  />
+                </label>
+                <label>
+                  max_sequence_length
+                  <input
+                    type="number"
+                    min={64}
+                    max={2048}
+                    value={card.max_sequence_length}
+                    disabled={busy}
+                    onChange={(e) => patchCard({ max_sequence_length: Number(e.target.value) || 512 })}
                   />
                 </label>
                 <label>
@@ -730,6 +748,9 @@ export default function GenerateStudio() {
                   />
                 </label>
               </div>
+              <p className="gen-hint">
+                No denoise/strength on this recipe — use steps + CFG + negative.
+              </p>
               <div className="gen-field gen-field-wide">
                 Identity refs (HTTPS — front / left / right)
                 <div className="gen-refs">
@@ -748,11 +769,49 @@ export default function GenerateStudio() {
                   ))}
                 </div>
               </div>
+              <div className="gen-field gen-field-wide">
+                Extra image URLs (edit/style refs, HTTPS, 1–3)
+                <div className="gen-refs">
+                  {[0, 1, 2].map((i) => (
+                    <input
+                      key={`extra-${i}`}
+                      value={(card.extra_image_urls ?? [])[i] || ""}
+                      disabled={busy}
+                      placeholder={i === 0 ? "https://…/edit-or-style.jpg" : `extra ref ${i + 1} URL`}
+                      onChange={(e) => {
+                        const next = [...(card.extra_image_urls ?? [])];
+                        next[i] = e.target.value;
+                        patchCard({ extra_image_urls: next });
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
               <details className="gen-advanced-json">
                 <summary>Advanced JSON</summary>
+                <label className="gen-field">
+                  sigmas (optional, comma-separated floats)
+                  <textarea
+                    className="gen-box gen-box-sigmas"
+                    value={sigmasDraft}
+                    disabled={busy}
+                    spellCheck={false}
+                    placeholder="omit when empty — e.g. 1.0, 0.8, 0.6"
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setSigmasDraft(raw);
+                      try {
+                        patchCard({ sigmas: parseSigmasText(raw) });
+                      } catch {
+                        /* keep typing until the list is valid numbers */
+                      }
+                    }}
+                  />
+                </label>
                 <p className="gen-hint">
                   Full GenerateJobCard — paste or edit any field (seed, steps, width, height, true_cfg_scale,
-                  guidance_scale, num_images, negative_prompt, identity_ref_urls, prompt), then Apply.
+                  guidance_scale, max_sequence_length, num_images, negative_prompt, identity_ref_urls,
+                  extra_image_urls, sigmas, prompt), then Apply.
                 </p>
                 <textarea
                   className="gen-box gen-box-json"
