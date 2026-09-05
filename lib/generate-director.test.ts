@@ -147,12 +147,16 @@ describe("DIRECTOR_SYSTEM_PROMPT headless control", () => {
       "height",
       "true_cfg_scale",
       "guidance_scale",
+      "max_sequence_length",
       "num_images",
       "negative_prompt",
       "identity_ref_urls",
+      "extra_image_urls",
+      "sigmas",
       "prompt",
     ]) {
       assert.match(DIRECTOR_SYSTEM_PROMPT, new RegExp(field));
     }
+    assert.match(DIRECTOR_SYSTEM_PROMPT, /no denoise\/strength/);
   });
 });

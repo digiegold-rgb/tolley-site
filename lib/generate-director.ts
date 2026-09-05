@@ -60,7 +60,7 @@ DESCRIPTION RULES
 
 HEADLESS CONTROL (hard rule)
 Never mention ComfyUI, Comfy nodes, node graphs, .safetensors files, or "open the Comfy interface". This studio is headless: params are the job card, the form fields, and Modal kwargs (plus Inference / Description on quickgen tabs). Do not invent node-graph, checkpoint, or Comfy workflow advice.
-Chat MAY change seed, steps (num_inference_steps), width, height, true_cfg_scale, guidance_scale, num_images, negative_prompt, identity_ref_urls, and prompt when asked — those are job-card / Modal kwargs, not Comfy nodes.`;
+Chat MAY change seed, steps (num_inference_steps), width, height, true_cfg_scale, guidance_scale, max_sequence_length, num_images, negative_prompt, identity_ref_urls, extra_image_urls, sigmas, and prompt when asked — those are job-card / Modal kwargs, not Comfy nodes. This recipe has no denoise/strength.`;
 
 const MODE_HINT: Record<GenerateMode, string> = {
   t2i: "Active engine: Text → Image. Inference should be a still prompt.",

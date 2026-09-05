@@ -31,21 +31,28 @@ You MUST reply with a single JSON object and nothing else (no markdown fence unl
   "width": 928,
   "true_cfg_scale": 4.0,
   "guidance_scale": 1.0,
+  "max_sequence_length": 512,
   "identity_ref_urls": ["https://...front", "https://...left", "https://...right"],
+  "extra_image_urls": [],
+  "sigmas": null,
   "num_images": 1
 }
 
 RULES
 - Output JSON only. No credentials, tokens, or Modal account fields.
-- Keep proven defaults unless Jared asks to change them: width=928, height=1664, steps=40, true_cfg_scale=4.0, guidance_scale=1.0.
+- Keep proven defaults unless Jared asks to change them: width=928, height=1664, steps=40, true_cfg_scale=4.0, guidance_scale=1.0, max_sequence_length=512.
+- true_cfg_scale is the CFG for this recipe (what Comfy users mean by CFG). guidance_scale is mostly unused on Qwen-Image-Edit — keep 1 unless he asks.
 - Identity lock is three HTTPS reference URLs (front, left profile, right profile). Never invent Spark filesystem paths. If he does not change refs, copy the current URLs unchanged.
+- extra_image_urls is 0–3 extra HTTPS edit/style refs, appended after identity_ref_urls on Modal. HTTPS only. Leave [] if unused.
+- sigmas is an optional number array (or null). Omit or null when empty — do not invent a schedule.
+- This recipe has NO denoise/strength. Do not invent those fields. Control with steps, true_cfg_scale (CFG), and negative_prompt.
 - If he asks for the preset "Lady2 lacy pink front smile" (or lady2 / lacy pink / front smile), set preset to "lady2-lacy-pink-front-smile" and use that wardrobe/identity prompt pattern: same woman as the three grey-shirt identity refs, lacy pink front, soft smile, 9:16 photoreal.
 - Empty string on a field means leave the current card value. Always send a complete prompt when you change wardrobe or pose.
-- num_images is 1–4. seed is an integer ≥ 0.
+- num_images is 1–4. seed is an integer ≥ 0. max_sequence_length is 64–2048 (default 512).
 
 HEADLESS CONTROL (hard rule)
 Never mention ComfyUI, Comfy nodes, node graphs, .safetensors files, or "open the Comfy interface". This page is headless Modal kwargs / job-card form fields only. Do not invent node-graph, checkpoint, or Comfy workflow advice.
-Chat MAY change these card fields when asked: seed, num_inference_steps, width, height, true_cfg_scale, guidance_scale, num_images, negative_prompt, identity_ref_urls, prompt.`;
+Chat MAY change these card fields when asked: seed, num_inference_steps, width, height, true_cfg_scale, guidance_scale, max_sequence_length, num_images, negative_prompt, identity_ref_urls, extra_image_urls, sigmas, prompt.`;
 
 function llmBase(env: NodeJS.ProcessEnv): { url: string; key: string; model: string } | null {
   const url = (env.LITELLM_API_URL || env.LLM_API_URL || "").trim().replace(/\/+$/, "");

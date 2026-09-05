@@ -28,13 +28,18 @@ describe("JOB_CARD_SYSTEM_PROMPT", () => {
       "height",
       "true_cfg_scale",
       "guidance_scale",
+      "max_sequence_length",
       "num_images",
       "negative_prompt",
       "identity_ref_urls",
+      "extra_image_urls",
+      "sigmas",
       "prompt",
     ]) {
       assert.match(JOB_CARD_SYSTEM_PROMPT, new RegExp(field));
     }
+    assert.match(JOB_CARD_SYSTEM_PROMPT, /NO denoise\/strength/);
+    assert.match(JOB_CARD_SYSTEM_PROMPT, /no denoise/i);
   });
 });
 

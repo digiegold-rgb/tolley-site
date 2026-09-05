@@ -48,11 +48,31 @@ describe("spawnKwargsForCard", () => {
     assert.equal(kw.negative_prompt, "identity drift, child, watermark");
     assert.equal(kw.num_images, 4);
     assert.equal(kw.seed, 404);
+    assert.equal(kw.max_sequence_length, 512);
+    assert.deepEqual(kw.extra_image_urls, []);
+    assert.equal(Object.hasOwn(kw, "sigmas"), false);
     assert.deepEqual(kw.identity_ref_urls, [
       "https://cdn.example/f.jpg",
       "https://cdn.example/l.jpg",
       "https://cdn.example/r.jpg",
     ]);
+  });
+
+  it("forwards max_sequence_length, extra_image_urls, and omits empty sigmas", () => {
+    const card = {
+      ...defaultJobCard("lady2-lacy-pink-front-smile", {
+        GENERATE_IDENTITY_REF_URLS: "https://cdn.example/f.jpg",
+      }),
+      max_sequence_length: 768,
+      extra_image_urls: ["https://cdn.example/style.jpg"],
+      sigmas: [1, 0.5],
+    };
+    const kw = spawnKwargsForCard(card);
+    assert.equal(kw.max_sequence_length, 768);
+    assert.deepEqual(kw.extra_image_urls, ["https://cdn.example/style.jpg"]);
+    assert.deepEqual(kw.sigmas, [1, 0.5]);
+    const bare = spawnKwargsForCard({ ...card, sigmas: null });
+    assert.equal(Object.hasOwn(bare, "sigmas"), false);
   });
 });
 

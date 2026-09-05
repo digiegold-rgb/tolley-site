@@ -145,7 +145,10 @@ def qwen_image_edit(
     width: int = 928,
     true_cfg_scale: float = 4.0,
     guidance_scale: float = 1.0,
+    max_sequence_length: int = 512,
     identity_ref_urls: list[str] | None = None,
+    extra_image_urls: list[str] | None = None,
+    sigmas: list[float] | None = None,
     num_images: int = 1,
     job_id: str | None = None,
     webhook_url: str | None = None,
@@ -155,6 +158,8 @@ def qwen_image_edit(
     from diffusers import QwenImageEditPlusPipeline
 
     urls = list(identity_ref_urls or [])
+    extras: list[str] = []
+    image_urls: list[str] = []
     result: dict[str, Any] = {
         "status": "failed",
         "output_urls": [],
@@ -163,7 +168,16 @@ def qwen_image_edit(
         "job_id": job_id,
     }
     try:
-        refs = _load_refs(urls)
+        for raw in extra_image_urls or []:
+            url = (raw or "").strip()
+            if not url:
+                continue
+            if not url.lower().startswith("https://"):
+                raise ValueError("extra_image_urls must be HTTPS URLs (max 3)")
+            extras.append(url)
+        extras = extras[:3]
+        image_urls = urls + extras
+        refs = _load_refs(image_urls)
         pipe = QwenImageEditPlusPipeline.from_pretrained(
             MODEL_ID,
             torch_dtype=torch.bfloat16,
@@ -183,7 +197,10 @@ def qwen_image_edit(
             "generator": generator,
             "height": int(height),
             "width": int(width),
+            "max_sequence_length": int(max_sequence_length),
         }
+        if sigmas:
+            inputs["sigmas"] = [float(s) for s in sigmas]
         try:
             with torch.inference_mode():
                 output = pipe(**inputs)
@@ -221,7 +238,10 @@ def qwen_image_edit(
                 "width": width,
                 "true_cfg_scale": true_cfg_scale,
                 "guidance_scale": guidance_scale,
+                "max_sequence_length": max_sequence_length,
                 "identity_ref_urls": urls,
+                "extra_image_urls": extras,
+                "sigmas": list(sigmas) if sigmas else None,
                 "num_images": num_images,
             },
         }

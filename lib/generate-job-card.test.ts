@@ -15,10 +15,12 @@ import {
   defaultJobCard,
   extractJsonObject,
   formatJobCardJson,
+  formatSigmasText,
   mergeJobCard,
   parseGenerateJobCard,
   parseJobCardJson,
   parseLlmJobCard,
+  parseSigmasText,
   randomSeed,
 } from "./generate-job-card.ts";
 
@@ -33,8 +35,60 @@ describe("parseGenerateJobCard", () => {
     assert.equal(card.num_inference_steps, 40);
     assert.equal(card.true_cfg_scale, 4.0);
     assert.equal(card.guidance_scale, 1.0);
+    assert.equal(card.max_sequence_length, 512);
+    assert.deepEqual(card.extra_image_urls, []);
+    assert.equal(card.sigmas, null);
     assert.equal(card.num_images, 1);
     assert.throws(() => parseGenerateJobCard({ prompt: "" }));
+  });
+
+  it("accepts max_sequence_length, extra HTTPS refs, and sigmas", () => {
+    const card = parseGenerateJobCard({
+      prompt: "x",
+      max_sequence_length: 768,
+      extra_image_urls: [
+        "https://blob.example/style.jpg",
+        "  ",
+        "https://blob.example/edit.jpg",
+      ],
+      sigmas: [1, 0.8, 0.5],
+    });
+    assert.equal(card.max_sequence_length, 768);
+    assert.deepEqual(card.extra_image_urls, [
+      "https://blob.example/style.jpg",
+      "https://blob.example/edit.jpg",
+    ]);
+    assert.deepEqual(card.sigmas, [1, 0.8, 0.5]);
+  });
+
+  it("rejects extra_image_urls that are not HTTPS and clamps sequence length", () => {
+    assert.throws(() =>
+      parseGenerateJobCard({
+        prompt: "x",
+        extra_image_urls: ["http://insecure.example/a.jpg"],
+      }),
+    );
+    assert.throws(() =>
+      parseGenerateJobCard({
+        prompt: "x",
+        extra_image_urls: ["/home/jelly/style.jpg"],
+      }),
+    );
+    assert.throws(() => parseGenerateJobCard({ prompt: "x", extra_image_urls: ["https://a", "https://b", "https://c", "https://d"] }));
+    assert.throws(() => parseGenerateJobCard({ prompt: "x", max_sequence_length: 32 }));
+    assert.throws(() => parseGenerateJobCard({ prompt: "x", max_sequence_length: 4096 }));
+  });
+
+  it("omits empty sigmas as null and parses comma-separated text", () => {
+    const empty = parseGenerateJobCard({ prompt: "x", sigmas: [] });
+    assert.equal(empty.sigmas, null);
+    const fromText = parseGenerateJobCard({ prompt: "x", sigmas: "1.0, 0.75, 0.5" });
+    assert.deepEqual(fromText.sigmas, [1, 0.75, 0.5]);
+    assert.equal(parseSigmasText(""), null);
+    assert.deepEqual(parseSigmasText("1, 0.5"), [1, 0.5]);
+    assert.equal(formatSigmasText(null), "");
+    assert.equal(formatSigmasText([1, 0.5]), "1, 0.5");
+    assert.throws(() => parseSigmasText("1, nope"));
   });
 
   it("accepts identity_ref_urls and strips blanks", () => {
@@ -85,6 +139,17 @@ describe("merge + LLM parse", () => {
     assert.equal(merged.seed, 42);
     assert.equal(merged.prompt, base.prompt);
     assert.equal(merged.num_inference_steps, 32);
+    const withExtras = mergeJobCard(base, {
+      max_sequence_length: 900,
+      extra_image_urls: ["https://blob.example/style.jpg"],
+      sigmas: [1, 0.2],
+    });
+    assert.equal(withExtras.max_sequence_length, 900);
+    assert.deepEqual(withExtras.extra_image_urls, ["https://blob.example/style.jpg"]);
+    assert.deepEqual(withExtras.sigmas, [1, 0.2]);
+    const cleared = mergeJobCard(withExtras, { extra_image_urls: [], sigmas: [] });
+    assert.deepEqual(cleared.extra_image_urls, []);
+    assert.equal(cleared.sigmas, null);
   });
 
   it("parses fenced LLM JSON into a card", () => {
@@ -114,6 +179,9 @@ describe("cardToModalKwargs", () => {
     assert.equal(kw.num_inference_steps, 40);
     assert.equal(kw.true_cfg_scale, 4);
     assert.equal(kw.guidance_scale, 1);
+    assert.equal(kw.max_sequence_length, 512);
+    assert.deepEqual(kw.extra_image_urls, []);
+    assert.equal(Object.hasOwn(kw, "sigmas"), false);
     assert.equal(kw.job_id, "job_1");
     const dumped = JSON.stringify(kw);
     assert.doesNotMatch(dumped, /MODAL_TOKEN|HF_TOKEN|ak-|as-/);
@@ -129,12 +197,15 @@ describe("cardToModalKwargs", () => {
       height: 1344,
       true_cfg_scale: 3.5,
       guidance_scale: 1.2,
+      max_sequence_length: 1024,
       num_images: 3,
       identity_ref_urls: [
         "https://blob.example/front.jpg",
         "https://blob.example/left.jpg",
         "https://blob.example/right.jpg",
       ],
+      extra_image_urls: ["https://blob.example/style.jpg"],
+      sigmas: [1, 0.6],
     });
     const kw = cardToModalKwargs(card);
     assert.equal(kw.prompt, card.prompt);
@@ -145,8 +216,11 @@ describe("cardToModalKwargs", () => {
     assert.equal(kw.height, 1344);
     assert.equal(kw.true_cfg_scale, 3.5);
     assert.equal(kw.guidance_scale, 1.2);
+    assert.equal(kw.max_sequence_length, 1024);
     assert.equal(kw.num_images, 3);
     assert.deepEqual(kw.identity_ref_urls, card.identity_ref_urls);
+    assert.deepEqual(kw.extra_image_urls, ["https://blob.example/style.jpg"]);
+    assert.deepEqual(kw.sigmas, [1, 0.6]);
     for (const key of MODAL_SPAWN_KWARG_KEYS) {
       assert.equal(Object.hasOwn(kw, key), true, `missing Modal kwarg ${key}`);
     }
@@ -167,12 +241,15 @@ describe("chat JSON → card → Modal kwargs", () => {
         height: 1472,
         true_cfg_scale: 4.5,
         guidance_scale: 1.4,
+        max_sequence_length: 640,
         num_images: 2,
         identity_ref_urls: [
           "https://blob.example/front.jpg",
           "https://blob.example/left.jpg",
           "https://blob.example/right.jpg",
         ],
+        extra_image_urls: ["https://blob.example/pose.jpg"],
+        sigmas: [0.9, 0.4],
       }),
       base,
     );
@@ -180,11 +257,17 @@ describe("chat JSON → card → Modal kwargs", () => {
     assert.equal(parsed.card.negative_prompt, "child, watermark");
     assert.equal(parsed.card.num_images, 2);
     assert.equal(parsed.card.seed, 99);
+    assert.equal(parsed.card.max_sequence_length, 640);
+    assert.deepEqual(parsed.card.extra_image_urls, ["https://blob.example/pose.jpg"]);
+    assert.deepEqual(parsed.card.sigmas, [0.9, 0.4]);
     const kw = cardToModalKwargs(parsed.card);
     assert.equal(kw.guidance_scale, 1.4);
     assert.equal(kw.negative_prompt, "child, watermark");
     assert.equal(kw.num_images, 2);
     assert.deepEqual(kw.identity_ref_urls, parsed.card.identity_ref_urls);
+    assert.equal(kw.max_sequence_length, 640);
+    assert.deepEqual(kw.extra_image_urls, ["https://blob.example/pose.jpg"]);
+    assert.deepEqual(kw.sigmas, [0.9, 0.4]);
   });
 });
 

@@ -21,8 +21,14 @@ describe("modal/qwen_image_edit.py", () => {
     assert.match(src, /width: int = 928/);
     assert.match(src, /true_cfg_scale: float = 4\.0/);
     assert.match(src, /guidance_scale: float = 1\.0/);
+    assert.match(src, /max_sequence_length: int = 512/);
     assert.match(src, /identity_ref_urls/);
+    assert.match(src, /extra_image_urls/);
+    assert.match(src, /sigmas/);
     assert.match(src, /num_images: int = 1/);
+    assert.match(src, /urls \+ extras/);
+    assert.match(src, /inputs\["sigmas"\]/);
+    assert.match(src, /"max_sequence_length": int\(max_sequence_length\)/);
     assert.doesNotMatch(src, /InstantID|face_lock|UltraSharp|ComfyUI/);
     assert.match(src, /Do NOT assume Spark paths/);
   });
