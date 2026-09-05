@@ -29,6 +29,7 @@ import hmac
 import io
 import json
 import os
+import re
 from typing import Any
 
 import modal
@@ -104,6 +105,13 @@ def _put_blob(pathname: str, png_bytes: bytes) -> str | None:
     return data.get("url")
 
 
+_SECRET_KEY_RE = re.compile(r"token|secret|password|api_key|authorization|hf_", re.I)
+
+
+def _is_secret_like(key: str) -> bool:
+    return bool(_SECRET_KEY_RE.search(key or ""))
+
+
 def _notify_webhook(webhook_url: str | None, payload: dict[str, Any]) -> None:
     if not webhook_url:
         return
@@ -149,6 +157,7 @@ def qwen_image_edit(
     identity_ref_urls: list[str] | None = None,
     extra_image_urls: list[str] | None = None,
     sigmas: list[float] | None = None,
+    pipe_overrides: dict | None = None,
     num_images: int = 1,
     job_id: str | None = None,
     webhook_url: str | None = None,
@@ -201,14 +210,29 @@ def qwen_image_edit(
         }
         if sigmas:
             inputs["sigmas"] = [float(s) for s in sigmas]
+        applied_overrides: list[str] = []
+        if pipe_overrides:
+            for key, value in pipe_overrides.items():
+                if key in ("generator",) or _is_secret_like(str(key)):
+                    continue
+                inputs[key] = value
+                applied_overrides.append(str(key))
         try:
             with torch.inference_mode():
                 output = pipe(**inputs)
         except TypeError:
             inputs.pop("height", None)
             inputs.pop("width", None)
-            with torch.inference_mode():
-                output = pipe(**inputs)
+            try:
+                with torch.inference_mode():
+                    output = pipe(**inputs)
+            except TypeError as exc:
+                if applied_overrides:
+                    raise TypeError(
+                        "QwenImageEditPlusPipeline rejected pipe_overrides. "
+                        f"Offending keys: {applied_overrides}. {exc}"
+                    ) from exc
+                raise
 
         output_urls: list[str] = []
         output_b64: list[str] = []
@@ -242,6 +266,7 @@ def qwen_image_edit(
                 "identity_ref_urls": urls,
                 "extra_image_urls": extras,
                 "sigmas": list(sigmas) if sigmas else None,
+                "pipe_overrides": {k: pipe_overrides[k] for k in applied_overrides} if applied_overrides else {},
                 "num_images": num_images,
             },
         }

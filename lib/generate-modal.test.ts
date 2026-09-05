@@ -74,6 +74,23 @@ describe("spawnKwargsForCard", () => {
     const bare = spawnKwargsForCard({ ...card, sigmas: null });
     assert.equal(Object.hasOwn(bare, "sigmas"), false);
   });
+
+  it("forwards sanitized pipe_overrides and strips secrets", () => {
+    const card = {
+      ...defaultJobCard("lady2-lacy-pink-front-smile", {
+        GENERATE_IDENTITY_REF_URLS: "https://cdn.example/f.jpg",
+      }),
+      pipe_overrides: {
+        guidance_rescale: 0.4,
+        api_key: "nope",
+        path: "/home/jelly/x",
+      },
+    };
+    const kw = spawnKwargsForCard(card, { job_id: "j2" });
+    assert.deepEqual(kw.pipe_overrides, { guidance_rescale: 0.4 });
+    assert.equal(kw.job_id, "j2");
+    assert.doesNotMatch(JSON.stringify(kw), /api_key|\/home\/jelly/);
+  });
 });
 
 describe("buildWebhookUrl", () => {

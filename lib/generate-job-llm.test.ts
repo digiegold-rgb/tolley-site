@@ -34,6 +34,7 @@ describe("JOB_CARD_SYSTEM_PROMPT", () => {
       "identity_ref_urls",
       "extra_image_urls",
       "sigmas",
+      "pipe_overrides",
       "prompt",
     ]) {
       assert.match(JOB_CARD_SYSTEM_PROMPT, new RegExp(field));

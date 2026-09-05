@@ -12,7 +12,8 @@
  * Identity refs are durable HTTPS URLs (Vercel Blob or similar). Never pass
  * Spark paths like /home/jelly/growth-engine/... onto Modal workers.
  * extra_image_urls (max 3, HTTPS) are edit/style refs appended after identity
- * when calling Modal. sigmas is optional — omit when empty. This recipe has
+ * when calling Modal. sigmas is optional — omit when empty. pipe_overrides is
+ * a free-form Diffusers pipe() escape hatch (sanitized). This recipe has
  * no denoise/strength.
  */
 
@@ -34,6 +35,7 @@ export const PROVEN_DEFAULTS = {
   negative_prompt: " ",
   extra_image_urls: [] as string[],
   sigmas: null as number[] | null,
+  pipe_overrides: {} as Record<string, unknown>,
 };
 
 /** Historical Spark paths — documented only. Do not load these on Modal. */
@@ -99,6 +101,95 @@ const sigmaList = z.preprocess((raw) => {
   .transform((v) => (v && v.length ? v : null))
   .default(null));
 
+/** Keys that must never ride along as Diffusers / Modal overrides. */
+export const PIPE_OVERRIDE_SECRET_KEY = /token|secret|password|api_key|authorization|hf_/i;
+
+function isSparkPathString(value: string): boolean {
+  return value.includes("/home/") || value.includes("/Users/");
+}
+
+function isPlainJsonValue(value: unknown): boolean {
+  if (value === null) return true;
+  const t = typeof value;
+  if (t === "string" || t === "boolean") return true;
+  if (t === "number") return Number.isFinite(value);
+  if (Array.isArray(value)) return value.every(isPlainJsonValue);
+  if (t === "object") {
+    return Object.values(value as Record<string, unknown>).every(isPlainJsonValue);
+  }
+  return false;
+}
+
+function sanitizeJsonValue(value: unknown): unknown | undefined {
+  if (value === null) return null;
+  const t = typeof value;
+  if (t === "string") {
+    if (isSparkPathString(value)) return undefined;
+    return value;
+  }
+  if (t === "number") return Number.isFinite(value) ? value : undefined;
+  if (t === "boolean") return value;
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizeJsonValue(item))
+      .filter((item) => item !== undefined);
+  }
+  if (t === "object") {
+    return sanitizePipeOverrides(value);
+  }
+  return undefined;
+}
+
+/** Drop secrets, Spark paths, and non-JSON values from a free-form override bag. */
+export function sanitizePipeOverrides(obj: unknown): Record<string, unknown> {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return {};
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+    if (!key || PIPE_OVERRIDE_SECRET_KEY.test(key)) continue;
+    if (typeof value === "string" && isSparkPathString(value)) continue;
+    const cleaned = sanitizeJsonValue(value);
+    if (cleaned === undefined || !isPlainJsonValue(cleaned)) continue;
+    out[key] = cleaned;
+  }
+  return out;
+}
+
+export function formatPipeOverridesJson(
+  overrides: Record<string, unknown> | null | undefined,
+): string {
+  const clean = sanitizePipeOverrides(overrides ?? {});
+  return Object.keys(clean).length ? JSON.stringify(clean, null, 2) : "";
+}
+
+export function parsePipeOverridesJson(raw: string): Record<string, unknown> {
+  const trimmed = raw.trim();
+  if (!trimmed) return {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    throw new Error("pipe_overrides must be a JSON object");
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("pipe_overrides must be a JSON object");
+  }
+  return sanitizePipeOverrides(parsed);
+}
+
+const pipeOverrides = z.preprocess((raw) => {
+  if (raw == null) return {};
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return {};
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return raw;
+    }
+  }
+  return raw;
+}, z.record(z.string(), z.unknown()).default({}).transform(sanitizePipeOverrides));
+
 export const generateJobCardSchema = z.object({
   recipe: z.literal(GENERATE_RECIPE).default(GENERATE_RECIPE),
   preset: z.string().trim().max(80).optional().nullable(),
@@ -119,6 +210,7 @@ export const generateJobCardSchema = z.object({
   identity_ref_urls: urlList.default([]),
   extra_image_urls: extraImageUrls,
   sigmas: sigmaList,
+  pipe_overrides: pipeOverrides,
   num_images: z.coerce.number().int().min(1).max(4).default(PROVEN_DEFAULTS.num_images),
 });
 
@@ -310,6 +402,7 @@ export type ModalSpawnKwargs = {
   identity_ref_urls: string[];
   extra_image_urls: string[];
   sigmas?: number[];
+  pipe_overrides?: Record<string, unknown>;
   num_images: number;
   job_id?: string;
   webhook_url?: string;
@@ -330,13 +423,15 @@ export const MODAL_SPAWN_KWARG_KEYS = [
   "num_images",
 ] as const satisfies ReadonlyArray<keyof ModalSpawnKwargs>;
 
+const IDENTITY_KWARG_KEYS = new Set(["job_id", "webhook_url"]);
+
 export function cardToModalKwargs(
   card: GenerateJobCard,
   extras?: { job_id?: string; webhook_url?: string },
 ): ModalSpawnKwargs {
   const extraUrls = card.extra_image_urls ?? [];
   const sigmas = card.sigmas && card.sigmas.length ? card.sigmas : undefined;
-  return {
+  const typed: ModalSpawnKwargs = {
     prompt: card.prompt,
     negative_prompt: card.negative_prompt || " ",
     seed: card.seed,
@@ -350,6 +445,21 @@ export function cardToModalKwargs(
     extra_image_urls: extraUrls,
     ...(sigmas ? { sigmas } : {}),
     num_images: card.num_images,
+    ...(extras?.job_id ? { job_id: extras.job_id } : {}),
+    ...(extras?.webhook_url ? { webhook_url: extras.webhook_url } : {}),
+  };
+  const overrides = sanitizePipeOverrides(card.pipe_overrides);
+  const bag: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(overrides)) {
+    if (IDENTITY_KWARG_KEYS.has(key) || key === "generator") continue;
+    bag[key] = value;
+    if (key in typed && key !== "pipe_overrides") {
+      (typed as Record<string, unknown>)[key] = value;
+    }
+  }
+  return {
+    ...typed,
+    ...(Object.keys(bag).length ? { pipe_overrides: bag } : {}),
     ...(extras?.job_id ? { job_id: extras.job_id } : {}),
     ...(extras?.webhook_url ? { webhook_url: extras.webhook_url } : {}),
   };
