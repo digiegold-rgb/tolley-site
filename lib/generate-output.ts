@@ -17,8 +17,8 @@ export function gatedJobImagePath(jobId: string, index: number): string {
   return `${GENERATE_JOB_IMAGE_PATH}/${encodeURIComponent(jobId)}/image?i=${index}`;
 }
 
-export function sparkOutputRef(jobId: string, index: number): string {
-  return `${SPARK_OUTPUT_PREFIX}generate-jobs/${jobId}/${index}.png`;
+export function sparkOutputRef(jobId: string, index: number, ext: "png" | "mp4" = "png"): string {
+  return `${SPARK_OUTPUT_PREFIX}generate-jobs/${jobId}/${index}.${ext}`;
 }
 
 export function privateBlobOutputRef(pathname: string): string {
@@ -35,12 +35,12 @@ export function isPrivateBlobOutputRef(value: string): boolean {
 
 export function parseSparkOutputRef(
   value: string,
-): { jobId: string; index: number } | null {
+): { jobId: string; index: number; ext: "png" | "mp4" } | null {
   if (!isSparkOutputRef(value)) return null;
   const rest = value.slice(SPARK_OUTPUT_PREFIX.length);
-  const m = /^generate-jobs\/([^/]+)\/(\d+)\.png$/.exec(rest);
+  const m = /^generate-jobs\/([^/]+)\/(\d+)\.(png|mp4)$/.exec(rest);
   if (!m) return null;
-  return { jobId: m[1], index: Number(m[2]) };
+  return { jobId: m[1], index: Number(m[2]), ext: m[3] as "png" | "mp4" };
 }
 
 export function parsePrivateBlobOutputRef(value: string): string | null {
@@ -218,9 +218,16 @@ export function isLikelyVideoUrl(value: string): boolean {
   const raw = (value || "").trim();
   if (!raw) return false;
   if (/\.(mp4|webm|mov)(\?|#|$)/i.test(raw)) return true;
+  if (raw.startsWith(SPARK_OUTPUT_PREFIX) && raw.endsWith(".mp4")) return true;
+  if (raw.startsWith(PRIVATE_BLOB_OUTPUT_PREFIX) && /\.mp4$/i.test(raw)) return true;
   try {
     return new URL(raw).hostname.toLowerCase().includes("fal.media");
   } catch {
     return false;
   }
+}
+
+/** HQ-gated still or clip. Same path the gallery emits. */
+export function gatedJobMediaPath(jobId: string, index: number): string {
+  return gatedJobImagePath(jobId, index);
 }

@@ -37,6 +37,8 @@ import {
   spawnKwargsForCard,
   spawnQwenImageEdit,
 } from "@/lib/generate-modal";
+import { emptyBeatQueue } from "@/lib/generate-beats";
+import { latestBeatQueueJob } from "@/lib/generate-beats-store";
 import { serializeJob } from "@/lib/generate-job-store";
 import { isBlockedStudioRequest } from "@/lib/generate-director";
 import { prisma } from "@/lib/prisma";
@@ -69,6 +71,7 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     take: 40,
   });
+  const beats = await latestBeatQueueJob(gate.createdBy);
   return NextResponse.json({
     jobs: rows.map(serializeJob),
     modal: modalPublicStatus(),
@@ -76,6 +79,9 @@ export async function GET() {
     llm: { configured: isJobCardLlmConfigured() },
     defaults: defaultJobCard(),
     motion_defaults: emptyMotionCard(),
+    beat_defaults: emptyBeatQueue(),
+    beat_queue: beats ? beats.queue : emptyBeatQueue(),
+    beat_queue_job: beats ? serializeJob(beats.row) : null,
     engines: falEnginePublicStatus(),
   });
 }

@@ -21,9 +21,10 @@ describe("parseGenerateEngineCard", () => {
     const t2i = parseGenerateEngineCard({ prompt: "photoreal Lady2, lace, 85mm" }, "t2i");
     assert.equal(t2i.recipe, ENGINE_RECIPE_T2I);
     assert.equal(t2i.aspect, "9:16");
-    const t2v = parseGenerateEngineCard({ prompt: "she turns toward camera", seconds: 4 }, "t2v");
+    const t2v = parseGenerateEngineCard({ prompt: "she turns toward camera", seconds: 4, slow_mo: true }, "t2v");
     assert.equal(t2v.recipe, ENGINE_RECIPE_T2V);
     assert.equal(t2v.seconds, 4);
+    assert.equal(t2v.slow_mo, true);
     assert.throws(() => parseGenerateEngineCard({ prompt: "" }, "t2i"));
   });
 });

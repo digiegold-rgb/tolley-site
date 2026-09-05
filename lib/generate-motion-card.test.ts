@@ -28,6 +28,7 @@ describe("parseGenerateMotionCard", () => {
     assert.equal(card.recipe, MOTION_RECIPE_I2V);
     assert.equal(card.seconds, 5);
     assert.equal(card.aspect, "9:16");
+    assert.equal(card.slow_mo, false);
     assert.throws(() => parseGenerateMotionCard({ prompt: "x" }));
     assert.throws(() =>
       parseGenerateMotionCard({ prompt: "x", source_image_url: "http://insecure.example/a.png" }),

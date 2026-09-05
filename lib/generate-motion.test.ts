@@ -20,7 +20,8 @@ describe("isFalConfigured + public status", () => {
     assert.equal(status.i2v, "fal-ai/wan-i2v");
     assert.equal(status.flf2v, "fal-ai/wan-flf2v");
     assert.equal(status.faceLock, "not-wired");
-    assert.equal(status.stitch, "not-wired");
+    assert.equal(status.stitch, "concat-approved-beats");
+    assert.equal(status.slowMo, "0.5x-remux");
     assert.equal(status.skeletonVideo, "not-supported");
   });
 });

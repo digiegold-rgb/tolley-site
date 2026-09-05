@@ -5,9 +5,10 @@
  *   - fal-ai/wan-i2v        first-frame I2V (~5s @ 16fps / 81 frames)
  *   - fal-ai/wan-flf2v      first+last frame when a pose / end still is set
  *
- * Identity is the source still as frame 1. LatentSync face-lock and beat
- * stitch are not wired. Skeleton *video* drive is not supported — only an
- * optional last-frame / pose *still* (HTTPS image).
+ * Identity is the source still as frame 1. LatentSync face-lock is not wired.
+ * Skeleton *video* drive is not supported — only an optional last-frame / pose
+ * *still* (HTTPS image). Optional 0.5× slow-mo remuxes after fal returns.
+ * Multi-beat stitch is a separate queue (see generate-beats) — not one Wan call.
  */
 
 import { z } from "zod";
@@ -70,6 +71,8 @@ export const generateMotionCardSchema = z.object({
   aspect: z.enum(MOTION_ASPECTS).default("9:16"),
   seconds: z.coerce.number().min(2).max(MOTION_SECONDS_MAX).default(MOTION_SECONDS_DEFAULT),
   seed: z.coerce.number().int().min(0).max(2_147_483_647).default(0),
+  /** After fal returns, remux 0.5× (setpts=2*PTS) when ffmpeg is on the runtime. */
+  slow_mo: z.boolean().default(false),
 });
 
 export type GenerateMotionCard = z.infer<typeof generateMotionCardSchema>;
@@ -88,7 +91,8 @@ export function falPublicStatus(env: NodeJS.ProcessEnv = process.env): {
   i2v: "fal-ai/wan-i2v";
   flf2v: "fal-ai/wan-flf2v";
   faceLock: "not-wired";
-  stitch: "not-wired";
+  stitch: "concat-approved-beats";
+  slowMo: "0.5x-remux";
   skeletonVideo: "not-supported";
 } {
   return {
@@ -97,7 +101,8 @@ export function falPublicStatus(env: NodeJS.ProcessEnv = process.env): {
     i2v: "fal-ai/wan-i2v",
     flf2v: "fal-ai/wan-flf2v",
     faceLock: "not-wired",
-    stitch: "not-wired",
+    stitch: "concat-approved-beats",
+    slowMo: "0.5x-remux",
     skeletonVideo: "not-supported",
   };
 }
@@ -113,6 +118,7 @@ export function defaultMotionCard(partial?: Partial<GenerateMotionCard>): Genera
     aspect: partial?.aspect || "9:16",
     seconds: partial?.seconds ?? MOTION_SECONDS_DEFAULT,
     seed: partial?.seed ?? 0,
+    slow_mo: partial?.slow_mo === true,
   });
 }
 
@@ -129,6 +135,7 @@ export function emptyMotionCard(): Omit<GenerateMotionCard, "source_image_url"> 
     aspect: "9:16",
     seconds: MOTION_SECONDS_DEFAULT,
     seed: 0,
+    slow_mo: false,
   };
 }
 
@@ -183,6 +190,7 @@ export function mergeMotionCard(
         : "9:16",
       seconds: Number(next.seconds) || MOTION_SECONDS_DEFAULT,
       seed: Number(next.seed) || 0,
+      slow_mo: next.slow_mo === true,
       source_image_url: "",
     };
   }
@@ -308,7 +316,8 @@ You MUST reply with a single JSON object and nothing else:
   "end_image_url": "optional last-frame / pose still HTTPS URL, or empty",
   "aspect": "9:16",
   "seconds": 5,
-  "seed": 0
+  "seed": 0,
+  "slow_mo": false
 }
 
 RULES
@@ -316,6 +325,7 @@ RULES
 - Identity lock is the source still as the first frame (Wan I2V). Do not invent ByteDance Seedance access. Do not invent LatentSync / face-swap / stitch.
 - Optional end_image_url is a last-frame / pose STILL (HTTPS image) for Wan FLF2V. Do not accept or invent a skeleton video, drive video, or OpenPose graph — this stack does not take those.
 - Clips are 5 seconds (81 frames @ 16fps). seconds other than 5 is ignored.
+- slow_mo true = 0.5× remux after fal (same frames, ~10s wall clock). Not a longer Wan call.
 - Empty string on a field means leave the current card value. Always send a complete motion prompt when you change motion.
 - Never mention ComfyUI, Comfy nodes, node graphs, .safetensors files, or "open the Comfy interface".
-Chat MAY change: prompt, negative_prompt, source_image_url, end_image_url, aspect, seed.`;
+Chat MAY change: prompt, negative_prompt, source_image_url, end_image_url, aspect, seed, slow_mo.`;

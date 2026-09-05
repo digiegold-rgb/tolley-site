@@ -38,11 +38,19 @@ import {
   ENGINE_RECIPE_T2V,
 } from "@/lib/generate-engine-card";
 import {
+  BEATS_RECIPE,
+  STITCH_RECIPE,
+  emptyBeatQueue,
+  parseBeatQueue,
+  type BeatQueue,
+} from "@/lib/generate-beats";
+import {
   emptyMotionCard,
   formatMotionCardJson,
   parseMotionCardJson,
   type GenerateMotionCard,
 } from "@/lib/generate-motion-card";
+import { BeatQueuePanel, GatedClip, SlowMoChip, cardToNewBeat } from "./beat-queue";
 
 async function readJson(r: Response): Promise<Record<string, unknown>> {
   const text = await r.text();
@@ -78,12 +86,20 @@ function isMotionJob(job: ModalJob): boolean {
   return job.recipe === "fal-wan-i2v" || job.recipe === "fal-wan-flf2v";
 }
 
+function isStitchJob(job: ModalJob): boolean {
+  return job.recipe === STITCH_RECIPE;
+}
+
+function isBeatQueueJob(job: ModalJob): boolean {
+  return job.recipe === BEATS_RECIPE;
+}
+
 function isEngineJob(job: ModalJob): boolean {
-  return job.recipe === ENGINE_RECIPE_T2I || job.recipe === ENGINE_RECIPE_T2V || isMotionJob(job);
+  return job.recipe === ENGINE_RECIPE_T2I || job.recipe === ENGINE_RECIPE_T2V || isMotionJob(job) || isStitchJob(job);
 }
 
 function isEngineVideoJob(job: ModalJob): boolean {
-  return job.recipe === ENGINE_RECIPE_T2V || isMotionJob(job);
+  return job.recipe === ENGINE_RECIPE_T2V || isMotionJob(job) || isStitchJob(job);
 }
 
 function isFalJob(job: ModalJob): boolean {
@@ -157,14 +173,14 @@ function EngineGallery({
         {items.map((j) =>
           (j.output_urls ?? []).map((_, i) => (
             <div key={`${j.id}-${i}`} className="gen-gallery-cell">
-              <a href={stillSrc(j.id, i)} target="_blank" rel="noreferrer">
-                {isEngineVideoJob(j) ? (
-                  <video src={stillSrc(j.id, i)} muted preload="metadata" playsInline />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
+              {isEngineVideoJob(j) ? (
+                <GatedClip src={stillSrc(j.id, i)} />
+              ) : (
+                <a href={stillSrc(j.id, i)} target="_blank" rel="noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={stillSrc(j.id, i)} alt="Generate result" loading="lazy" />
-                )}
-              </a>
+                </a>
+              )}
               {onUseStill && !isEngineVideoJob(j) && (
                 <button type="button" className="gen-use-still" onClick={() => onUseStill(stillSrc(j.id, i))}>
                   Use as source
@@ -185,7 +201,14 @@ function ModalGallery({
   jobs: ModalJob[];
   onUseStill?: (url: string) => void;
 }) {
-  const stills = jobs.filter((j) => !isMotionJob(j) && j.status === "done" && (j.output_urls?.length ?? 0) > 0);
+  const stills = jobs.filter(
+    (j) =>
+      !isMotionJob(j) &&
+      !isStitchJob(j) &&
+      !isBeatQueueJob(j) &&
+      j.status === "done" &&
+      (j.output_urls?.length ?? 0) > 0,
+  );
   if (!stills.length) return null;
   return (
     <div className="gen-gallery">
@@ -212,7 +235,9 @@ function ModalGallery({
 }
 
 function MotionGallery({ jobs }: { jobs: ModalJob[] }) {
-  const clips = jobs.filter((j) => isMotionJob(j) && j.status === "done" && (j.output_urls?.length ?? 0) > 0);
+  const clips = jobs.filter(
+    (j) => (isMotionJob(j) || isStitchJob(j)) && j.status === "done" && (j.output_urls?.length ?? 0) > 0,
+  );
   if (!clips.length) return null;
   return (
     <div className="gen-gallery">
@@ -220,9 +245,12 @@ function MotionGallery({ jobs }: { jobs: ModalJob[] }) {
       <div className="gen-gallery-grid">
         {clips.map((j) =>
           (j.output_urls ?? []).map((_, i) => (
-            <a key={`${j.id}-${i}`} href={stillSrc(j.id, i)} target="_blank" rel="noreferrer">
-              <video src={stillSrc(j.id, i)} muted preload="metadata" playsInline />
-            </a>
+            <div key={`${j.id}-${i}`} className="gen-gallery-cell">
+              <GatedClip
+                src={stillSrc(j.id, i)}
+                label={isStitchJob(j) ? "Stitched" : undefined}
+              />
+            </div>
           )),
         )}
       </div>
@@ -267,6 +295,9 @@ export default function GenerateStudio() {
   const [motionJsonDraft, setMotionJsonDraft] = useState(() => formatMotionCardJson(emptyMotionCard()));
   const [motionJsonError, setMotionJsonError] = useState<string | null>(null);
   const [uploadingStill, setUploadingStill] = useState<"source" | "end" | null>(null);
+  const [beatQueue, setBeatQueue] = useState<BeatQueue>(() => emptyBeatQueue());
+  const [beatQueueJobId, setBeatQueueJobId] = useState<string | null>(null);
+  const [i2vSlowMo, setI2vSlowMo] = useState(false);
 
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
   const chatEnd = useRef<HTMLDivElement | null>(null);
@@ -317,6 +348,16 @@ export default function GenerateStudio() {
           setJsonError(null);
         }
         if (Array.isArray(j.jobs)) setModalJobs(j.jobs as ModalJob[]);
+        if (j.beat_queue) {
+          try {
+            setBeatQueue(parseBeatQueue(j.beat_queue));
+          } catch {
+            /* keep empty */
+          }
+        }
+        if (j.beat_queue_job && typeof j.beat_queue_job === "object" && j.beat_queue_job.id) {
+          setBeatQueueJobId(String(j.beat_queue_job.id));
+        }
       })
       .catch(() => {});
   }, []);
@@ -395,6 +436,42 @@ export default function GenerateStudio() {
     } finally {
       setUploadingStill(null);
     }
+  }
+
+  async function beatAction(
+    action: string,
+    extra?: Record<string, unknown>,
+  ): Promise<{ queue?: BeatQueue; job?: ModalJob; child?: ModalJob; stitch?: ModalJob; error?: string }> {
+    const r = await fetch("/api/generate/beats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, queueId: beatQueueJobId, queue: beatQueue, ...extra }),
+    });
+    if (r.status === 401 || r.status === 403) {
+      throw new Error("Not authorized — log in at /hq first, then come back.");
+    }
+    const j = (await readJson(r)) as {
+      queue?: BeatQueue;
+      job?: ModalJob;
+      child?: ModalJob;
+      stitch?: ModalJob;
+      error?: string;
+    };
+    if (j.queue) setBeatQueue(parseBeatQueue(j.queue));
+    if (j.job?.id) {
+      setBeatQueueJobId(j.job.id);
+      setModalJobs((list) => [j.job as ModalJob, ...list.filter((x) => x.id !== j.job!.id)]);
+    }
+    if (j.child?.id) {
+      setModalJobs((list) => [j.child as ModalJob, ...list.filter((x) => x.id !== j.child!.id)]);
+    }
+    if (j.stitch?.id) {
+      setModalJobs((list) => [j.stitch as ModalJob, ...list.filter((x) => x.id !== j.stitch!.id)]);
+      setResultIsVideo(true);
+      setResultUrl(stillSrc(j.stitch.id, 0));
+    }
+    if (!r.ok) throw new Error(j.error || "Beat queue update failed");
+    return j;
   }
 
   async function sendChat() {
@@ -494,7 +571,7 @@ export default function GenerateStudio() {
       if (job.status === "done") {
         if (poll.current) clearInterval(poll.current);
         setStage(null);
-        setResultIsVideo(isEngineVideoJob(job) || isVideoUrl(job.output_urls?.[0] ?? ""));
+        setResultIsVideo(isEngineVideoJob(job) || isStitchJob(job) || isVideoUrl(job.output_urls?.[0] ?? ""));
         setResultUrl(job.output_urls?.length ? stillSrc(job.id, 0) : null);
         setModalJobs((list) => [job, ...list.filter((x) => x.id !== job.id)]);
       } else if (job.status === "failed") {
@@ -627,6 +704,7 @@ export default function GenerateStudio() {
             source_image_url: source,
             aspect,
             seconds,
+            slow_mo: i2vSlowMo,
           },
           start: !dryRun,
           dryRun,
@@ -665,6 +743,7 @@ export default function GenerateStudio() {
         prompt,
         aspect,
         seconds,
+        card: mode === "t2v" ? { slow_mo: i2vSlowMo } : undefined,
         start: !dryRun,
         dryRun,
       }),
@@ -1230,7 +1309,7 @@ export default function GenerateStudio() {
               <p className="gen-hint">
                 Identity-locked I2V on fal.ai — first frame is the source still. Recipe:{" "}
                 {motionCard.end_image_url?.trim() ? "Wan FLF2V (first + last still)" : "Wan I2V (keyframe)"}. 5s @
-                720p. No stitch. No LatentSync face-lock yet. No skeleton video.
+                720p per clip. Longer pieces = beat queue + stitch. No LatentSync. No skeleton video.
               </p>
               <label className="gen-field gen-field-wide">
                 Source still (gallery still, HTTPS URL, or upload)
@@ -1350,6 +1429,11 @@ export default function GenerateStudio() {
                   <input type="text" value="5s (Wan cap)" disabled />
                 </label>
               </div>
+              <SlowMoChip
+                on={motionCard.slow_mo === true}
+                disabled={busy}
+                onToggle={() => patchMotion({ slow_mo: !motionCard.slow_mo })}
+              />
               <details className="gen-advanced-json">
                 <summary>Advanced JSON</summary>
                 <p className="gen-hint">
@@ -1379,6 +1463,80 @@ export default function GenerateStudio() {
                   {busy ? "Working…" : dryRun ? "Dry run" : "Go"}
                 </button>
               </div>
+              <BeatQueuePanel
+                queue={beatQueue}
+                busy={busy}
+                onAddFromCard={() => {
+                  beatAction("add", { beat: cardToNewBeat(motionCard) }).catch((err) =>
+                    setError(err instanceof Error ? err.message : String(err)),
+                  );
+                }}
+                onAddEmpty={() => {
+                  beatAction("add", { beat: cardToNewBeat({ ...motionCard, source_image_url: "", prompt: motionCard.prompt }) }).catch(
+                    (err) => setError(err instanceof Error ? err.message : String(err)),
+                  );
+                }}
+                onRemove={(id) => {
+                  beatAction("remove", { beatId: id }).catch((err) => setError(err instanceof Error ? err.message : String(err)));
+                }}
+                onMove={(id, delta) => {
+                  beatAction("move", { beatId: id, delta }).catch((err) =>
+                    setError(err instanceof Error ? err.message : String(err)),
+                  );
+                }}
+                onPatch={(id, patch) => {
+                  beatAction("patch", { beatId: id, patch }).catch((err) =>
+                    setError(err instanceof Error ? err.message : String(err)),
+                  );
+                }}
+                onGenerate={async (id) => {
+                  setError(null);
+                  setStage("beat → fal…");
+                  try {
+                    const j = await beatAction("generate", { beatId: id });
+                    if (j.child?.id) {
+                      setActiveJobId(j.child.id);
+                      await pollModalJob(j.child.id);
+                      const q = await fetch("/api/generate/beats", { cache: "no-store" });
+                      if (q.ok) {
+                        const data = (await readJson(q)) as { queue?: BeatQueue; job?: ModalJob };
+                        if (data.queue) setBeatQueue(parseBeatQueue(data.queue));
+                        if (data.job?.id) setBeatQueueJobId(data.job.id);
+                      }
+                    }
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : String(err));
+                  } finally {
+                    setStage(null);
+                  }
+                }}
+                onApprove={(id) => {
+                  beatAction("approve", { beatId: id }).catch((err) =>
+                    setError(err instanceof Error ? err.message : String(err)),
+                  );
+                }}
+                onReject={(id) => {
+                  beatAction("reject", { beatId: id }).catch((err) =>
+                    setError(err instanceof Error ? err.message : String(err)),
+                  );
+                }}
+                onReset={(id) => {
+                  beatAction("reset", { beatId: id }).catch((err) =>
+                    setError(err instanceof Error ? err.message : String(err)),
+                  );
+                }}
+                onStitch={async () => {
+                  setError(null);
+                  setStage("stitching approved beats…");
+                  try {
+                    await beatAction("stitch");
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : String(err));
+                  } finally {
+                    setStage(null);
+                  }
+                }}
+              />
             </>
           ) : (
             <>
@@ -1416,8 +1574,8 @@ export default function GenerateStudio() {
 
               <p className="gen-hint">
                 {mode === "t2i" && "Prompt → fal FLUX.1 [dev] still. Safety checker off. Identity-locked Lady2 stills stay on Modal stills."}
-                {mode === "t2v" && "True text → video on fal Wan T2V. No Gemini keyframe. ≤5s, 9:16 default."}
-                {mode === "i2v" && "Your image + a motion prompt → ≤5s fal Wan I2V clip. The image IS the first frame (same as Motion)."}
+                {mode === "t2v" && "True text → video on fal Wan T2V. No Gemini keyframe. ≤5s, 9:16 default. Optional 0.5× remux after fal."}
+                {mode === "i2v" && "Your image + a motion prompt → ≤5s fal Wan I2V clip. The image IS the first frame (same as Motion). Optional 0.5× remux."}
                 {mode === "v2v" && "Not wired — no fal / Animate V2V path in this repo."}
               </p>
 
@@ -1437,6 +1595,10 @@ export default function GenerateStudio() {
                     </span>
                   )}
                 </label>
+              )}
+
+              {(mode === "i2v" || mode === "t2v") && (
+                <SlowMoChip on={i2vSlowMo} disabled={busy} onToggle={() => setI2vSlowMo((v) => !v)} />
               )}
 
               {mode === "v2v" ? (
@@ -1480,7 +1642,19 @@ export default function GenerateStudio() {
           {resultUrl && (
             <div className="gen-result">
               {resultIsVideo ? (
-                <video src={resultUrl} controls autoPlay loop />
+                <GatedClip
+                  src={resultUrl}
+                  playbackRate={
+                    (mode === "motion" && motionCard.slow_mo) || ((mode === "i2v" || mode === "t2v") && i2vSlowMo)
+                      ? 0.5
+                      : 1
+                  }
+                  label={
+                    (mode === "motion" && motionCard.slow_mo) || ((mode === "i2v" || mode === "t2v") && i2vSlowMo)
+                      ? "0.5× slow-mo — remuxed export when ffmpeg ran; otherwise labeled playbackRate"
+                      : undefined
+                  }
+                />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={resultUrl} alt="result" />

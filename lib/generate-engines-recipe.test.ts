@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 describe("/generate fal engine tabs", () => {
   const root = join(dirname(fileURLToPath(import.meta.url)), "..");
   const studio = readFileSync(join(root, "app/generate/generate-studio.tsx"), "utf8");
+  const beatsUi = readFileSync(join(root, "app/generate/beat-queue.tsx"), "utf8");
   const jobs = readFileSync(join(root, "app/api/generate/jobs/route.ts"), "utf8");
   const poll = readFileSync(join(root, "app/api/generate/jobs/[id]/route.ts"), "utf8");
   const fal = readFileSync(join(root, "lib/fal.ts"), "utf8");
@@ -34,5 +35,11 @@ describe("/generate fal engine tabs", () => {
     assert.match(jobs, /spawnFalMotion/);
     assert.match(studio, /Modal stills/);
     assert.match(studio, /kind: "motion"/);
+    assert.match(studio, /<GatedClip/);
+    assert.match(studio, /\/api\/generate\/beats/);
+    assert.match(beatsUi, /Stitch approved beats/);
+    assert.match(beatsUi, /0\.5× slow-mo/);
+    assert.match(beatsUi, /<video/);
+    assert.match(beatsUi, /controls/);
   });
 });

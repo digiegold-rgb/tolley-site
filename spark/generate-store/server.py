@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Spark-side private still store for /generate Modal jobs.
+"""Spark-side private still + clip store for /generate jobs.
 
-Run on Spark (or the same host as quickgen.tolley.io). Vercel PUTs PNGs here
-after Modal finishes; HQ loads them through GET /api/generate/jobs/:id/image.
+Run on Spark (or the same host as quickgen.tolley.io). Vercel PUTs PNGs or
+MP4s here; HQ loads them through GET /api/generate/jobs/:id/image.
 
     GENERATE_SPARK_STORE_KEY   required (same value as Vercel)
     GENERATE_SPARK_STORE_ROOT  default /home/jelly/growth-engine/shorts/generate-jobs
@@ -13,6 +13,7 @@ after Modal finishes; HQ loads them through GET /api/generate/jobs/:id/image.
 
 Auth: Authorization: Bearer <key>  or  x-api-key: <key>
 Paths: PUT/GET /generate-jobs/{job_id}/{index}
+PUT Content-Type image/png → {index}.png; video/mp4 → {index}.mp4
 """
 
 from __future__ import annotations
@@ -47,16 +48,33 @@ def _authorized(handler: BaseHTTPRequestHandler) -> bool:
     return (handler.headers.get("x-api-key") or "").strip() == expected
 
 
-def _safe_file(job_id: str, index: int) -> Path:
+def _safe_file(job_id: str, index: int, ext: str = "png") -> Path:
     if not JOB_ID_RE.match(job_id):
         raise ValueError("invalid job id")
     if index < 0 or index > 7:
         raise ValueError("invalid index")
+    if ext not in ("png", "mp4"):
+        raise ValueError("invalid ext")
     root = _root()
-    dest = (root / job_id / f"{index}.png").resolve()
+    dest = (root / job_id / f"{index}.{ext}").resolve()
     if dest != root and root not in dest.parents:
         raise ValueError("path escapes store root")
     return dest
+
+
+def _existing_file(job_id: str, index: int) -> tuple[Path, str] | None:
+    for ext, ctype in (("mp4", "video/mp4"), ("png", "image/png")):
+        dest = _safe_file(job_id, index, ext)
+        if dest.is_file():
+            return dest, ctype
+    return None
+
+
+def _ext_for_content_type(content_type: str) -> str:
+    raw = (content_type or "").split(";", 1)[0].strip().lower()
+    if raw in ("video/mp4", "application/mp4", "video/webm"):
+        return "mp4"
+    return "png"
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -89,17 +107,19 @@ class Handler(BaseHTTPRequestHandler):
             self._json(404, {"error": "not found"})
             return
         try:
-            dest = _safe_file(m.group(1), int(m.group(2)))
+            found = _existing_file(m.group(1), int(m.group(2)))
         except ValueError as exc:
             self._json(400, {"error": str(exc)})
             return
-        if not dest.is_file():
+        if not found:
             self._json(404, {"error": "not found"})
             return
+        dest, ctype = found
         data = dest.read_bytes()
         self.send_response(200)
-        self.send_header("Content-Type", "image/png")
+        self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
+        self.send_header("Accept-Ranges", "bytes")
         self.send_header("Cache-Control", "private, no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
@@ -114,12 +134,14 @@ class Handler(BaseHTTPRequestHandler):
             self._json(404, {"error": "not found"})
             return
         try:
-            dest = _safe_file(m.group(1), int(m.group(2)))
+            ext = _ext_for_content_type(self.headers.get("Content-Type") or "")
+            dest = _safe_file(m.group(1), int(m.group(2)), ext)
         except ValueError as exc:
             self._json(400, {"error": str(exc)})
             return
         length = int(self.headers.get("Content-Length") or "0")
-        if length <= 0 or length > 25 * 1024 * 1024:
+        # Stills ~few MB; a 5s 720p clip or a short stitch can be larger.
+        if length <= 0 or length > 80 * 1024 * 1024:
             self._json(400, {"error": "invalid content-length"})
             return
         body = self.rfile.read(length)

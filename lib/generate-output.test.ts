@@ -17,7 +17,7 @@ import {
   sparkOutputRef,
   sparkStoreConfig,
 } from "./generate-output.ts";
-import { persistPngsToSpark } from "./generate-output-persist.ts";
+import { persistMp4sToSpark, persistPngsToSpark } from "./generate-output-persist.ts";
 
 describe("serializeJobOutputUrls", () => {
   it("rewrites every stored ref to the HQ-gated image route", () => {
@@ -121,7 +121,9 @@ describe("spark store config", () => {
 
 describe("parse helpers", () => {
   it("parses spark refs and image indexes", () => {
-    assert.deepEqual(parseSparkOutputRef(sparkOutputRef("abc", 2)), { jobId: "abc", index: 2 });
+    assert.deepEqual(parseSparkOutputRef(sparkOutputRef("abc", 2)), { jobId: "abc", index: 2, ext: "png" });
+    assert.deepEqual(parseSparkOutputRef(sparkOutputRef("abc", 0, "mp4")), { jobId: "abc", index: 0, ext: "mp4" });
+    assert.equal(isLikelyVideoUrl(sparkOutputRef("abc", 0, "mp4")), true);
     assert.equal(parseSparkOutputRef("spark:nope"), null);
     assert.equal(parseJobImageIndex("0"), 0);
     assert.equal(parseJobImageIndex("9"), null);
@@ -157,5 +159,27 @@ describe("persistPngsToSpark", () => {
     assert.equal(calls[0]?.method, "PUT");
     const headers = new Headers(calls[0]?.headers);
     assert.equal(headers.get("authorization"), "Bearer secret");
+  });
+});
+
+describe("persistMp4sToSpark", () => {
+  it("PUTs MP4 bytes as video/mp4 and returns spark .mp4 refs", async () => {
+    const calls: { url: string; headers: HeadersInit | undefined }[] = [];
+    const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), headers: init?.headers });
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }) as typeof fetch;
+    const refs = await persistMp4sToSpark(
+      "jobv",
+      [Buffer.from("ftyp")],
+      {
+        GENERATE_SPARK_STORE_URL: "https://quickgen.tolley.io",
+        GENERATE_SPARK_STORE_KEY: "secret",
+      },
+      fetchImpl,
+    );
+    assert.deepEqual(refs, [sparkOutputRef("jobv", 0, "mp4")]);
+    const headers = new Headers(calls[0]?.headers);
+    assert.equal(headers.get("content-type"), "video/mp4");
   });
 });

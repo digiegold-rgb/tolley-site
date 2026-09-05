@@ -11,12 +11,22 @@ import {
 } from "@/lib/generate-engine";
 import { applyModalResult, serializeJob } from "@/lib/generate-job-store";
 import { isModalConfigured, pollModalCall } from "@/lib/generate-modal";
+import { syncBeatQueueFromChild } from "@/lib/generate-beats-store";
 import {
   falModelIdFromCard,
   persistMotionVideo,
   pollFalMotion,
 } from "@/lib/generate-motion";
 import { prisma } from "@/lib/prisma";
+
+function cardWantsSlowMo(cardJson: unknown): boolean {
+  return Boolean(
+    cardJson &&
+      typeof cardJson === "object" &&
+      !Array.isArray(cardJson) &&
+      (cardJson as { slow_mo?: unknown }).slow_mo === true,
+  );
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -83,13 +93,21 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
           data: { status: "failed", error: poll.error.slice(0, 2000), completedAt: new Date() },
         });
         const fresh = await prisma.generateJob.findUnique({ where: { id: row.id } });
-        if (fresh) return NextResponse.json({ job: serializeJob(fresh) });
+        if (fresh) {
+          await syncBeatQueueFromChild(fresh);
+          return NextResponse.json({ job: serializeJob(fresh) });
+        }
       }
       if ("done" in poll && poll.done) {
-        const url = await persistMotionVideo(row.id, poll.videoUrl, poll.contentType);
+        const url = await persistMotionVideo(row.id, poll.videoUrl, poll.contentType, {
+          slowMo: cardWantsSlowMo(row.cardJson),
+        });
         await applyModalResult(row.id, { status: "done", output_urls: [url] });
         const fresh = await prisma.generateJob.findUnique({ where: { id: row.id } });
-        if (fresh) return NextResponse.json({ job: serializeJob(fresh) });
+        if (fresh) {
+          await syncBeatQueueFromChild(fresh);
+          return NextResponse.json({ job: serializeJob(fresh) });
+        }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -98,7 +116,10 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
         data: { status: "failed", error: message.slice(0, 2000), completedAt: new Date() },
       });
       const fresh = await prisma.generateJob.findUnique({ where: { id: row.id } });
-      if (fresh) return NextResponse.json({ job: serializeJob(fresh) });
+      if (fresh) {
+        await syncBeatQueueFromChild(fresh);
+        return NextResponse.json({ job: serializeJob(fresh) });
+      }
     }
     return NextResponse.json({ job: serializeJob(row) });
   }
