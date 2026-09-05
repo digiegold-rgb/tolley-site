@@ -94,8 +94,10 @@ The `/generate` page itself stays public. Chat→card, Confirm/Go, status, and g
 2. Open https://tolley.io/generate
 3. Stay on **Modal stills**.
 4. Preset defaults to **Lady2 lacy pink front smile**. Confirm the three identity URLs.
-5. Optional: tick **Dry run** and hit **Go** — creates a `GenerateJob`, returns the exact kwargs, does **not** spend an A100.
-6. Untick Dry run, hit **Go**. Status polls `GET /api/generate/jobs/:id` until `done`; stills appear in the gallery.
+5. Edit any recipe field on the card (seed, steps, width, height, true_cfg_scale, guidance_scale, num_images, negative_prompt, identity URLs, prompt) or paste a full card into **Advanced JSON**. **Random seed** sits next to seed.
+6. Chat may change those same kwargs (JSON job card only — no ComfyUI / nodes / `.safetensors` advice).
+7. Optional: tick **Dry run** and hit **Go** — creates a `GenerateJob`, returns the exact kwargs, does **not** spend an A100.
+8. Untick Dry run, hit **Go**. Status polls `GET /api/generate/jobs/:id` until `done`; stills appear in the gallery.
 
 ## Curl: create → status → done
 

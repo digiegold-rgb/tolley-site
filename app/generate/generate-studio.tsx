@@ -10,6 +10,9 @@ import {
   GENERATE_PRESETS,
   applyPreset,
   defaultJobCard,
+  formatJobCardJson,
+  parseJobCardJson,
+  randomSeed,
   type GenerateJobCard,
 } from "@/lib/generate-job-card";
 
@@ -179,6 +182,8 @@ export default function GenerateStudio() {
   const [chatError, setChatError] = useState<string | null>(null);
   const [qwenStatus, setQwenStatus] = useState<{ configured: boolean; model: string | null } | null>(null);
   const [card, setCard] = useState<GenerateJobCard>(() => defaultJobCard());
+  const [jsonDraft, setJsonDraft] = useState(() => formatJobCardJson(defaultJobCard()));
+  const [jsonError, setJsonError] = useState<string | null>(null);
   const [dryRun, setDryRun] = useState(false);
   const [modalStatus, setModalStatus] = useState<{ configured: boolean } | null>(null);
   const [modalJobs, setModalJobs] = useState<ModalJob[]>([]);
@@ -217,7 +222,10 @@ export default function GenerateStudio() {
           setModalStatus({ configured: j.modal.configured });
         }
         if (j.defaults && typeof j.defaults.prompt === "string") {
-          setCard(j.defaults as GenerateJobCard);
+          const next = j.defaults as GenerateJobCard;
+          setCard(next);
+          setJsonDraft(formatJobCardJson(next));
+          setJsonError(null);
         }
         if (Array.isArray(j.jobs)) setModalJobs(j.jobs as ModalJob[]);
       })
@@ -241,8 +249,27 @@ export default function GenerateStudio() {
     return uj.upload_id;
   }
 
+  function commitCard(next: GenerateJobCard) {
+    setCard(next);
+    setJsonDraft(formatJobCardJson(next));
+    setJsonError(null);
+  }
+
   function patchCard(partial: Partial<GenerateJobCard>) {
-    setCard((c) => ({ ...c, ...partial }));
+    setCard((c) => {
+      const next = { ...c, ...partial };
+      setJsonDraft(formatJobCardJson(next));
+      setJsonError(null);
+      return next;
+    });
+  }
+
+  function applyJsonDraft() {
+    try {
+      commitCard(parseJobCardJson(jsonDraft));
+    } catch (e) {
+      setJsonError(e instanceof Error ? e.message : String(e));
+    }
   }
 
   async function sendChat() {
@@ -273,7 +300,7 @@ export default function GenerateStudio() {
         if (data.reply) {
           setMessages((m) => [...m, { id: mid(), role: "assistant", content: data.reply as string }]);
         }
-        if (data.card) setCard(data.card);
+        if (data.card) commitCard(data.card);
       } else {
         const res = await fetch("/api/generate/chat", {
           method: "POST",
@@ -590,7 +617,12 @@ export default function GenerateStudio() {
                   disabled={busy}
                   onChange={(e) => {
                     const id = e.target.value;
-                    setCard((c) => (id ? applyPreset(c, id) : { ...c, preset: id }));
+                    setCard((c) => {
+                      const next = id ? applyPreset(c, id) : { ...c, preset: id };
+                      setJsonDraft(formatJobCardJson(next));
+                      setJsonError(null);
+                      return next;
+                    });
                   }}
                 >
                   {GENERATE_PRESETS.map((p) => (
@@ -620,14 +652,24 @@ export default function GenerateStudio() {
                 />
               </div>
               <div className="gen-card-grid">
-                <label>
+                <label className="gen-seed-field">
                   Seed
-                  <input
-                    type="number"
-                    value={card.seed}
-                    disabled={busy}
-                    onChange={(e) => patchCard({ seed: Number(e.target.value) || 0 })}
-                  />
+                  <div className="gen-seed-row">
+                    <input
+                      type="number"
+                      value={card.seed}
+                      disabled={busy}
+                      onChange={(e) => patchCard({ seed: Number(e.target.value) || 0 })}
+                    />
+                    <button
+                      type="button"
+                      className="gen-seed-random"
+                      disabled={busy}
+                      onClick={() => patchCard({ seed: randomSeed() })}
+                    >
+                      Random seed
+                    </button>
+                  </div>
                 </label>
                 <label>
                   Steps
@@ -706,6 +748,32 @@ export default function GenerateStudio() {
                   ))}
                 </div>
               </div>
+              <details className="gen-advanced-json">
+                <summary>Advanced JSON</summary>
+                <p className="gen-hint">
+                  Full GenerateJobCard — paste or edit any field (seed, steps, width, height, true_cfg_scale,
+                  guidance_scale, num_images, negative_prompt, identity_ref_urls, prompt), then Apply.
+                </p>
+                <textarea
+                  className="gen-box gen-box-json"
+                  value={jsonDraft}
+                  disabled={busy}
+                  spellCheck={false}
+                  onChange={(e) => {
+                    setJsonDraft(e.target.value);
+                    setJsonError(null);
+                  }}
+                />
+                {jsonError && <p className="gen-err">{jsonError}</p>}
+                <button
+                  type="button"
+                  className="gen-json-apply"
+                  disabled={busy}
+                  onClick={applyJsonDraft}
+                >
+                  Apply JSON
+                </button>
+              </details>
               <div className="gen-row">
                 <label className="gen-check">
                   <input type="checkbox" checked={dryRun} disabled={busy} onChange={(e) => setDryRun(e.target.checked)} />

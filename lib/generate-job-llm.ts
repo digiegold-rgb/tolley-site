@@ -41,7 +41,11 @@ RULES
 - Identity lock is three HTTPS reference URLs (front, left profile, right profile). Never invent Spark filesystem paths. If he does not change refs, copy the current URLs unchanged.
 - If he asks for the preset "Lady2 lacy pink front smile" (or lady2 / lacy pink / front smile), set preset to "lady2-lacy-pink-front-smile" and use that wardrobe/identity prompt pattern: same woman as the three grey-shirt identity refs, lacy pink front, soft smile, 9:16 photoreal.
 - Empty string on a field means leave the current card value. Always send a complete prompt when you change wardrobe or pose.
-- num_images is 1–4. seed is an integer ≥ 0.`;
+- num_images is 1–4. seed is an integer ≥ 0.
+
+HEADLESS CONTROL (hard rule)
+Never mention ComfyUI, Comfy nodes, node graphs, .safetensors files, or "open the Comfy interface". This page is headless Modal kwargs / job-card form fields only. Do not invent node-graph, checkpoint, or Comfy workflow advice.
+Chat MAY change these card fields when asked: seed, num_inference_steps, width, height, true_cfg_scale, guidance_scale, num_images, negative_prompt, identity_ref_urls, prompt.`;
 
 function llmBase(env: NodeJS.ProcessEnv): { url: string; key: string; model: string } | null {
   const url = (env.LITELLM_API_URL || env.LLM_API_URL || "").trim().replace(/\/+$/, "");

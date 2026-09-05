@@ -1,19 +1,25 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  GENERATE_JOB_CARD_KEYS,
   GENERATE_RECIPE,
   HISTORICAL_IDENTITY_REF_PATHS,
   LADY2_LACY_PINK_PRESET_ID,
   LADY2_LACY_PINK_PROMPT,
+  MODAL_SPAWN_KWARG_KEYS,
   PROVEN_DEFAULTS,
+  SEED_MAX,
   applyPreset,
   cardToModalKwargs,
   defaultIdentityRefUrls,
   defaultJobCard,
   extractJsonObject,
+  formatJobCardJson,
   mergeJobCard,
   parseGenerateJobCard,
+  parseJobCardJson,
   parseLlmJobCard,
+  randomSeed,
 } from "./generate-job-card.ts";
 
 describe("parseGenerateJobCard", () => {
@@ -111,5 +117,101 @@ describe("cardToModalKwargs", () => {
     assert.equal(kw.job_id, "job_1");
     const dumped = JSON.stringify(kw);
     assert.doesNotMatch(dumped, /MODAL_TOKEN|HF_TOKEN|ak-|as-/);
+  });
+
+  it("forwards every recipe kwarg including guidance_scale, negative_prompt, identity URLs, num_images", () => {
+    const card = parseGenerateJobCard({
+      prompt: "photoreal Lady2, red dress, same face",
+      negative_prompt: "identity drift, watermark",
+      seed: 12,
+      num_inference_steps: 32,
+      width: 768,
+      height: 1344,
+      true_cfg_scale: 3.5,
+      guidance_scale: 1.2,
+      num_images: 3,
+      identity_ref_urls: [
+        "https://blob.example/front.jpg",
+        "https://blob.example/left.jpg",
+        "https://blob.example/right.jpg",
+      ],
+    });
+    const kw = cardToModalKwargs(card);
+    assert.equal(kw.prompt, card.prompt);
+    assert.equal(kw.negative_prompt, "identity drift, watermark");
+    assert.equal(kw.seed, 12);
+    assert.equal(kw.num_inference_steps, 32);
+    assert.equal(kw.width, 768);
+    assert.equal(kw.height, 1344);
+    assert.equal(kw.true_cfg_scale, 3.5);
+    assert.equal(kw.guidance_scale, 1.2);
+    assert.equal(kw.num_images, 3);
+    assert.deepEqual(kw.identity_ref_urls, card.identity_ref_urls);
+    for (const key of MODAL_SPAWN_KWARG_KEYS) {
+      assert.equal(Object.hasOwn(kw, key), true, `missing Modal kwarg ${key}`);
+    }
+  });
+});
+
+describe("chat JSON → card → Modal kwargs", () => {
+  it("accepts a full chat JSON patch for every editable field", () => {
+    const base = defaultJobCard(LADY2_LACY_PINK_PRESET_ID, {});
+    const parsed = parseLlmJobCard(
+      JSON.stringify({
+        reply: "Patched the card.",
+        prompt: "photoreal Lady2, navy swimsuit, same face",
+        negative_prompt: "child, watermark",
+        seed: 99,
+        num_inference_steps: 28,
+        width: 832,
+        height: 1472,
+        true_cfg_scale: 4.5,
+        guidance_scale: 1.4,
+        num_images: 2,
+        identity_ref_urls: [
+          "https://blob.example/front.jpg",
+          "https://blob.example/left.jpg",
+          "https://blob.example/right.jpg",
+        ],
+      }),
+      base,
+    );
+    assert.equal(parsed.card.guidance_scale, 1.4);
+    assert.equal(parsed.card.negative_prompt, "child, watermark");
+    assert.equal(parsed.card.num_images, 2);
+    assert.equal(parsed.card.seed, 99);
+    const kw = cardToModalKwargs(parsed.card);
+    assert.equal(kw.guidance_scale, 1.4);
+    assert.equal(kw.negative_prompt, "child, watermark");
+    assert.equal(kw.num_images, 2);
+    assert.deepEqual(kw.identity_ref_urls, parsed.card.identity_ref_urls);
+  });
+});
+
+describe("Advanced JSON + random seed", () => {
+  it("round-trips the full GenerateJobCard", () => {
+    const card = defaultJobCard(LADY2_LACY_PINK_PRESET_ID, {
+      GENERATE_IDENTITY_REF_FRONT_URL: "https://blob.example/front.jpg",
+      GENERATE_IDENTITY_REF_LEFT_URL: "https://blob.example/left.jpg",
+      GENERATE_IDENTITY_REF_RIGHT_URL: "https://blob.example/right.jpg",
+    });
+    const json = formatJobCardJson(card);
+    const back = parseJobCardJson(json);
+    assert.deepEqual(back, card);
+    for (const key of GENERATE_JOB_CARD_KEYS) {
+      assert.equal(Object.hasOwn(back, key) || back[key] === undefined, true);
+    }
+    assert.throws(() => parseJobCardJson("{not json"), /not valid JSON/);
+    assert.throws(() => parseJobCardJson(JSON.stringify({ prompt: "" })));
+  });
+
+  it("randomSeed stays in the Modal integer range", () => {
+    assert.equal(randomSeed(() => 0), 0);
+    const high = randomSeed(() => 0.999999999);
+    assert.equal(Number.isInteger(high), true);
+    assert.ok(high >= 0 && high <= SEED_MAX);
+    const n = randomSeed();
+    assert.equal(Number.isInteger(n), true);
+    assert.ok(n >= 0 && n <= SEED_MAX);
   });
 });

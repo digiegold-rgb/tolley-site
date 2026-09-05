@@ -9,7 +9,29 @@ describe("JOB_CARD_SYSTEM_PROMPT", () => {
     assert.match(JOB_CARD_SYSTEM_PROMPT, /width=928/);
     assert.match(JOB_CARD_SYSTEM_PROMPT, /true_cfg_scale=4\.0/);
     assert.match(JOB_CARD_SYSTEM_PROMPT, /No credentials/);
-    assert.doesNotMatch(JOB_CARD_SYSTEM_PROMPT, /InstantID|face_lock|UltraSharp|ComfyUI/i);
+    assert.doesNotMatch(JOB_CARD_SYSTEM_PROMPT, /InstantID|face_lock|UltraSharp/i);
+  });
+
+  it("forbids ComfyUI/node advice and allows every job-card kwarg via chat", () => {
+    assert.match(JOB_CARD_SYSTEM_PROMPT, /Never mention ComfyUI/);
+    assert.match(JOB_CARD_SYSTEM_PROMPT, /node graphs/);
+    assert.match(JOB_CARD_SYSTEM_PROMPT, /\.safetensors/);
+    assert.match(JOB_CARD_SYSTEM_PROMPT, /open the Comfy interface/);
+    assert.match(JOB_CARD_SYSTEM_PROMPT, /Modal kwargs \/ job-card form fields only/);
+    for (const field of [
+      "seed",
+      "num_inference_steps",
+      "width",
+      "height",
+      "true_cfg_scale",
+      "guidance_scale",
+      "num_images",
+      "negative_prompt",
+      "identity_ref_urls",
+      "prompt",
+    ]) {
+      assert.match(JOB_CARD_SYSTEM_PROMPT, new RegExp(field));
+    }
   });
 });
 

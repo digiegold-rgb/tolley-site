@@ -134,6 +134,33 @@ export function parseGenerateJobCard(raw: unknown): GenerateJobCard {
   return generateJobCardSchema.parse(raw);
 }
 
+export const SEED_MAX = 2_147_483_647;
+
+/** Integer seed in the card/Modal range. Pass `rng` in tests. */
+export function randomSeed(rng: () => number = Math.random): number {
+  const unit = Math.min(Math.max(rng(), 0), 1 - Number.EPSILON);
+  return Math.min(SEED_MAX, Math.floor(unit * (SEED_MAX + 1)));
+}
+
+export function formatJobCardJson(card: GenerateJobCard): string {
+  return JSON.stringify(card, null, 2);
+}
+
+/** Round-trip helper for the Advanced JSON editor. */
+export function parseJobCardJson(raw: string): GenerateJobCard {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("Advanced JSON is not valid JSON");
+  }
+  return parseGenerateJobCard(parsed);
+}
+
+export const GENERATE_JOB_CARD_KEYS = Object.keys(
+  generateJobCardSchema.shape,
+) as Array<keyof GenerateJobCard>;
+
 /** Merge a partial LLM/user patch onto a card. Empty strings leave the field. */
 export function mergeJobCard(base: GenerateJobCard, patch: unknown): GenerateJobCard {
   const rec = patch && typeof patch === "object" && !Array.isArray(patch)
@@ -215,6 +242,19 @@ export type ModalSpawnKwargs = {
   job_id?: string;
   webhook_url?: string;
 };
+
+export const MODAL_SPAWN_KWARG_KEYS = [
+  "prompt",
+  "negative_prompt",
+  "seed",
+  "num_inference_steps",
+  "height",
+  "width",
+  "true_cfg_scale",
+  "guidance_scale",
+  "identity_ref_urls",
+  "num_images",
+] as const satisfies ReadonlyArray<keyof ModalSpawnKwargs>;
 
 export function cardToModalKwargs(
   card: GenerateJobCard,

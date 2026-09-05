@@ -110,6 +110,9 @@ describe("generate route branding", () => {
     assert.match(studio, /\/api\/generate\/chat/);
     assert.match(studio, /Modal stills/);
     assert.match(studio, /\/api\/generate\/jobs/);
+    assert.match(studio, /Random seed/);
+    assert.match(studio, /Advanced JSON/);
+    assert.match(studio, /Apply JSON/);
     assert.doesNotMatch(studio, /InstantID|ComfyUI|face_lock|UltraSharp/i);
     assert.match(chat, /qwenChatCompletion/);
     assert.match(chat, /QWEN_VLLM/);
@@ -126,5 +129,30 @@ describe("DIRECTOR_SYSTEM_PROMPT identity", () => {
       directorUserPayload({ message: "hi", inference: "", description: "", mode: "t2i" }),
       /Backend LLM: KarlKinda/,
     );
+  });
+});
+
+describe("DIRECTOR_SYSTEM_PROMPT headless control", () => {
+  it("forbids ComfyUI/node advice and names job-card / Modal kwargs", () => {
+    assert.match(DIRECTOR_SYSTEM_PROMPT, /Never mention ComfyUI/);
+    assert.match(DIRECTOR_SYSTEM_PROMPT, /node graphs/);
+    assert.match(DIRECTOR_SYSTEM_PROMPT, /\.safetensors/);
+    assert.match(DIRECTOR_SYSTEM_PROMPT, /open the Comfy interface/);
+    assert.match(DIRECTOR_SYSTEM_PROMPT, /job card/);
+    assert.match(DIRECTOR_SYSTEM_PROMPT, /Modal kwargs/);
+    for (const field of [
+      "seed",
+      "num_inference_steps",
+      "width",
+      "height",
+      "true_cfg_scale",
+      "guidance_scale",
+      "num_images",
+      "negative_prompt",
+      "identity_ref_urls",
+      "prompt",
+    ]) {
+      assert.match(DIRECTOR_SYSTEM_PROMPT, new RegExp(field));
+    }
   });
 });

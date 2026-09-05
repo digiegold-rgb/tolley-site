@@ -32,6 +32,28 @@ describe("spawnKwargsForCard", () => {
     assert.equal(kw.job_id, "j1");
     assert.equal(Object.hasOwn(kw, "token_id"), false);
   });
+
+  it("forwards guidance_scale, negative_prompt, and num_images from a patched card", () => {
+    const card = {
+      ...defaultJobCard("lady2-lacy-pink-front-smile", {
+        GENERATE_IDENTITY_REF_URLS: "https://cdn.example/f.jpg,https://cdn.example/l.jpg,https://cdn.example/r.jpg",
+      }),
+      guidance_scale: 1.7,
+      negative_prompt: "identity drift, child, watermark",
+      num_images: 4,
+      seed: 404,
+    };
+    const kw = spawnKwargsForCard(card);
+    assert.equal(kw.guidance_scale, 1.7);
+    assert.equal(kw.negative_prompt, "identity drift, child, watermark");
+    assert.equal(kw.num_images, 4);
+    assert.equal(kw.seed, 404);
+    assert.deepEqual(kw.identity_ref_urls, [
+      "https://cdn.example/f.jpg",
+      "https://cdn.example/l.jpg",
+      "https://cdn.example/r.jpg",
+    ]);
+  });
 });
 
 describe("buildWebhookUrl", () => {
