@@ -119,6 +119,7 @@ export function BeatQueuePanel({
               <label className="gen-field gen-field-wide">
                 Motion prompt
                 <textarea
+                  name={`beat-prompt-${beat.id}`}
                   className="gen-box gen-box-description"
                   value={beat.prompt}
                   disabled={busy || beat.status === "generating"}

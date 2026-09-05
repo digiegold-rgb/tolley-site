@@ -37,6 +37,9 @@ describe("/generate fal engine tabs", () => {
     assert.match(studio, /kind: "motion"/);
     assert.match(studio, /<GatedClip/);
     assert.match(studio, /\/api\/generate\/beats/);
+    assert.match(studio, /patchBeatLocal/);
+    assert.match(studio, /flushBeatPatchPersist/);
+    assert.doesNotMatch(studio, /beatAction\("patch"/);
     assert.match(beatsUi, /Stitch approved beats/);
     assert.match(beatsUi, /0\.5× slow-mo/);
     assert.match(beatsUi, /<video/);

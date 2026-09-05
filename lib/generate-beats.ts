@@ -200,6 +200,50 @@ export function patchBeat(queue: BeatQueue, beatId: string, patch: Partial<Motio
   return { ...queue, beats };
 }
 
+/** Local form apply — same as patchBeat, then honor from_prev_last. */
+export function applyLocalBeatPatch(
+  queue: BeatQueue,
+  beatId: string,
+  patch: Partial<MotionBeat>,
+): BeatQueue {
+  const next = patchBeat(queue, beatId, patch);
+  const beat = next.beats.find((b) => b.id === beatId);
+  if (beat?.from_prev_last) return applyPrevLastSource(next, beatId);
+  return next;
+}
+
+/** Debounce window for persisting beat prompt / still edits. */
+export const BEAT_PATCH_DEBOUNCE_MS = 400;
+
+/**
+ * Ignore a late save/patch response when the user has typed since that
+ * request was sent. Structural actions (generate / approve / stitch) apply
+ * authoritatively after a flush.
+ */
+export function shouldApplyDebouncedBeatSave(localSeq: number, requestSeq: number): boolean {
+  return localSeq === requestSeq;
+}
+
+export function createBeatSaveGate(): {
+  bump: () => number;
+  current: () => number;
+  shouldApply: (requestSeq: number) => boolean;
+} {
+  let seq = 0;
+  return {
+    bump() {
+      seq += 1;
+      return seq;
+    },
+    current() {
+      return seq;
+    },
+    shouldApply(requestSeq: number) {
+      return shouldApplyDebouncedBeatSave(seq, requestSeq);
+    },
+  };
+}
+
 export function setBeatStatus(queue: BeatQueue, beatId: string, status: BeatStatus): BeatQueue {
   return patchBeat(queue, beatId, { status, error: status === "rejected" ? queue.beats.find((b) => b.id === beatId)?.error : "" });
 }
