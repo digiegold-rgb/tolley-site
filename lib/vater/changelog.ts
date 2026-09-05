@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.28';
+export const APP_VERSION = '1.29';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.29',
+    date: '2026-09-05',
+    title: 'Allow NSFW now rewrites Modal still wardrobe, not only the negative',
+    items: [
+      'On Modal stills, Allow NSFW strips adult NSFW-block terms and adds a wardrobe override so grey-shirt identity refs no longer lock clothes.',
+      'Block NSFW puts those terms back and removes the override. Child and minor stay in the negative. A lingerie or nude keep-still can go in extra image URLs.',
+    ],
+  },
   {
     version: '1.28',
     date: '2026-09-05',

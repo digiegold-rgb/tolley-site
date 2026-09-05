@@ -20,8 +20,16 @@ import {
   formatPipeOverridesJson,
   formatSigmasText,
   mergeJobCard,
+  applyAllowNsfw,
+  applyBlockNsfw,
+  applyNsfwWardrobeOverride,
+  hasNsfwWardrobeOverride,
   mergeNsfwBlockTerms,
+  NSFW_WARDROBE_OVERRIDE_BLOCK,
+  NSFW_WARDROBE_OVERRIDE_END,
+  NSFW_WARDROBE_OVERRIDE_START,
   nsfwBlockState,
+  nsfwChipState,
   parseGenerateJobCard,
   parseJobCardJson,
   parseLlmJobCard,
@@ -30,6 +38,7 @@ import {
   randomSeed,
   sanitizePipeOverrides,
   stripNsfwBlockTerms,
+  stripNsfwWardrobeOverride,
 } from "./generate-job-card.ts";
 
 describe("parseGenerateJobCard", () => {
@@ -473,5 +482,75 @@ describe("NSFW block terms merge + strip", () => {
     assert.equal(kept, "child, minor, watermark");
     assert.equal(stripNsfwBlockTerms(""), "");
     assert.equal(nsfwBlockState("nsfw, nude"), "mixed");
+  });
+});
+
+describe("Allow NSFW wardrobe override", () => {
+  it("injects a marked override once and is idempotent", () => {
+    const once = applyNsfwWardrobeOverride(LADY2_LACY_PINK_PROMPT);
+    const twice = applyNsfwWardrobeOverride(once);
+    assert.equal(twice, once);
+    assert.equal(hasNsfwWardrobeOverride(once), true);
+    assert.equal(once.includes(NSFW_WARDROBE_OVERRIDE_START), true);
+    assert.equal(once.includes(NSFW_WARDROBE_OVERRIDE_END), true);
+    assert.equal(once.includes(NSFW_WARDROBE_OVERRIDE_BLOCK), true);
+    assert.match(once, /grey shirt/i);
+    assert.match(once, /not wardrobe/i);
+    assert.equal(once.indexOf(NSFW_WARDROBE_OVERRIDE_START), once.lastIndexOf(NSFW_WARDROBE_OVERRIDE_START));
+    assert.match(once, /lacy pink/i);
+    assert.equal(stripNsfwWardrobeOverride(once), LADY2_LACY_PINK_PROMPT);
+    assert.equal(stripNsfwWardrobeOverride(LADY2_LACY_PINK_PROMPT), LADY2_LACY_PINK_PROMPT);
+  });
+
+  it("Allow applies override + strips negatives; Block reverses both without moralizing", () => {
+    const base = defaultJobCard(LADY2_LACY_PINK_PRESET_ID, {});
+    assert.equal(nsfwChipState(base), "mixed");
+    assert.equal(nsfwBlockState(base.negative_prompt), "allowed");
+    assert.equal(hasNsfwWardrobeOverride(base.prompt), false);
+
+    const allowed = applyAllowNsfw(base);
+    const allowedAgain = applyAllowNsfw(allowed);
+    assert.deepEqual(allowedAgain, allowed);
+    assert.equal(nsfwChipState(allowed), "allowed");
+    assert.equal(nsfwBlockState(allowed.negative_prompt), "allowed");
+    assert.equal(hasNsfwWardrobeOverride(allowed.prompt), true);
+    assert.doesNotMatch(allowed.negative_prompt, /\bnsfw\b/i);
+    assert.doesNotMatch(allowed.negative_prompt, /\bnude\b/i);
+    assert.match(allowed.negative_prompt, /child/);
+    assert.match(allowed.negative_prompt, /minor/);
+    assert.match(allowed.negative_prompt, /identity drift/);
+    assert.match(allowed.prompt, /lacy pink/i);
+    assert.match(allowed.prompt, /grey shirt/i);
+
+    const blocked = applyBlockNsfw(allowed);
+    const blockedAgain = applyBlockNsfw(blocked);
+    assert.deepEqual(blockedAgain, blocked);
+    assert.equal(nsfwChipState(blocked), "blocked");
+    assert.equal(nsfwBlockState(blocked.negative_prompt), "blocked");
+    assert.equal(hasNsfwWardrobeOverride(blocked.prompt), false);
+    assert.equal(blocked.prompt, base.prompt);
+    assert.match(blocked.negative_prompt, /nsfw/);
+    assert.match(blocked.negative_prompt, /nude/);
+    assert.match(blocked.negative_prompt, /child/);
+    assert.match(blocked.negative_prompt, /minor/);
+    assert.doesNotMatch(blocked.prompt, /inappropriate|not allowed|refuse|forbidden|immoral/i);
+
+    const reallowed = applyAllowNsfw(blocked);
+    assert.equal(reallowed.prompt, allowed.prompt);
+    assert.equal(reallowed.negative_prompt, allowed.negative_prompt);
+    assert.equal(nsfwChipState(reallowed), "allowed");
+  });
+
+  it("keeps child/minor when Allow strips a blocked negative", () => {
+    const blocked = applyBlockNsfw({
+      prompt: "photoreal adult woman, full frontal nude",
+      negative_prompt: "child, nsfw, minor, watermark",
+    });
+    const allowed = applyAllowNsfw(blocked);
+    assert.match(allowed.negative_prompt, /child/);
+    assert.match(allowed.negative_prompt, /minor/);
+    assert.doesNotMatch(allowed.negative_prompt, /\bnsfw\b/i);
+    assert.equal(hasNsfwWardrobeOverride(allowed.prompt), true);
+    assert.match(allowed.prompt, /full frontal nude/);
   });
 });

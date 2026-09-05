@@ -8,19 +8,19 @@ import { useEffect, useRef, useState } from "react";
 import { composeEnginePrompt } from "@/lib/generate-director";
 import {
   GENERATE_PRESETS,
+  applyAllowNsfw,
+  applyBlockNsfw,
   applyPreset,
   defaultJobCard,
   formatJobCardJson,
   formatPipeOverridesJson,
   formatSigmasText,
-  mergeNsfwBlockTerms,
-  nsfwBlockState,
+  nsfwChipState,
   parseJobCardJson,
   parsePipeOverridesJson,
   parseSigmasText,
   randomSeed,
   sanitizePipeOverrides,
-  stripNsfwBlockTerms,
   type GenerateJobCard,
 } from "@/lib/generate-job-card";
 
@@ -518,7 +518,7 @@ export default function GenerateStudio() {
   const needVideo = mode === "v2v";
   const promptReady = mode === "modal" ? card.prompt.trim().length > 0 : composeEnginePrompt(inference, description).length > 0;
   const canGo = !busy && (promptReady || mode === "v2v") && (!needImage || !!imageFile) && (!needVideo || !!videoFile);
-  const nsfwState = nsfwBlockState(card.negative_prompt);
+  const nsfwState = nsfwChipState(card);
 
   return (
     <main className="gen-page">
@@ -676,13 +676,13 @@ export default function GenerateStudio() {
               <div>
                 <div className="gen-neg-head">
                   <p className="gen-label">Negative prompt</p>
-                  <div className="gen-nsfw-chips" role="group" aria-label="NSFW negative terms">
+                  <div className="gen-nsfw-chips" role="group" aria-label="NSFW wardrobe and negative">
                     <button
                       type="button"
                       className={`gen-nsfw-chip${nsfwState === "blocked" ? " gen-nsfw-chip-on" : ""}`}
                       disabled={busy}
                       aria-pressed={nsfwState === "blocked"}
-                      onClick={() => patchCard({ negative_prompt: mergeNsfwBlockTerms(card.negative_prompt) })}
+                      onClick={() => commitCard(applyBlockNsfw(card))}
                     >
                       Block NSFW
                     </button>
@@ -691,12 +691,15 @@ export default function GenerateStudio() {
                       className={`gen-nsfw-chip${nsfwState === "allowed" ? " gen-nsfw-chip-on" : ""}`}
                       disabled={busy}
                       aria-pressed={nsfwState === "allowed"}
-                      onClick={() => patchCard({ negative_prompt: stripNsfwBlockTerms(card.negative_prompt) })}
+                      onClick={() => commitCard(applyAllowNsfw(card))}
                     >
                       Allow NSFW
                     </button>
                   </div>
                 </div>
+                <p className="gen-hint gen-nsfw-hint">
+                  Allow rewrites prompt wardrobe (not only the negative). Grey-shirt identity refs lock clothes unless this override is on, or you add a lingerie/nude body keep-still as an extra image URL.
+                </p>
                 <textarea
                   className="gen-box gen-box-description"
                   value={card.negative_prompt}
@@ -818,14 +821,23 @@ export default function GenerateStudio() {
                 </div>
               </div>
               <div className="gen-field gen-field-wide">
-                Extra image URLs (edit/style refs, HTTPS, 1–3)
+                Extra image URLs (HTTPS, 1–3) — optional body/wardrobe keep-still
+                <p className="gen-hint gen-nsfw-hint">
+                  First extra URL can be a lingerie/nude body keep-still. Clothed grey-shirt identity refs alone will keep covering.
+                </p>
                 <div className="gen-refs">
                   {[0, 1, 2].map((i) => (
                     <input
                       key={`extra-${i}`}
                       value={(card.extra_image_urls ?? [])[i] || ""}
                       disabled={busy}
-                      placeholder={i === 0 ? "https://…/edit-or-style.jpg" : `extra ref ${i + 1} URL`}
+                      placeholder={
+                        i === 0
+                          ? "https://…/body-or-wardrobe.jpg"
+                          : i === 1
+                            ? "extra ref 2 URL"
+                            : "extra ref 3 URL"
+                      }
                       onChange={(e) => {
                         const next = [...(card.extra_image_urls ?? [])];
                         next[i] = e.target.value;
