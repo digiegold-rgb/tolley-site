@@ -41,7 +41,7 @@ Chat on these tabs still uses Spark Qwen (`QWEN_VLLM_*`) to fill Inference / Des
 4. Chat or type Inference + Description.
 5. Optional **Dry run**, then **Generate**.
 6. Status polls `GET /api/generate/jobs/:id` until `done`. Failures show the fal HTTP / finish / log detail — not a bare "image generation failed".
-7. Results land in **Generate gallery** (`/api/generate/jobs/:id/image?i=0`).
+7. Results land in **Generate gallery** (`/api/generate/jobs/:id/image?i=0`). T2V / I2V play **in-page** with `<video controls>` — the gated route serves `video/mp4` (Range) while HQ-logged-in. Optional **0.5× slow-mo** remuxes after fal (same as Motion). Multi-beat stitch lives on the Motion tab — see `docs/generate-motion.md`.
 
 ## Curl
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireGenerateAdmin } from "@/lib/generate-auth";
+import { inferMediaContentType, readableToBuffer, serveMediaBytes } from "@/lib/generate-media";
 import { parseJobImageIndex } from "@/lib/generate-output";
 import { fetchStoredJobImage } from "@/lib/generate-output-persist";
 import { prisma } from "@/lib/prisma";
@@ -14,8 +15,9 @@ type Ctx = { params: Promise<{ id: string }> };
 /**
  * GET /api/generate/jobs/:id/image?i=0
  *
- * HQ/admin-gated still delivery. Studio/gallery must use this route — never a
- * public Vercel Blob CDN URL.
+ * HQ/admin-gated still + clip delivery. Studio/gallery must use this route —
+ * never a public Vercel Blob CDN URL. Motion / T2V / I2V clips are
+ * `video/mp4` with Range so `<video controls>` can seek.
  */
 export async function GET(req: NextRequest, ctx: Ctx) {
   const gate = await requireGenerateAdmin();
@@ -35,13 +37,20 @@ export async function GET(req: NextRequest, ctx: Ctx) {
 
   try {
     const image = await fetchStoredJobImage(id, stored);
-    const body = Buffer.isBuffer(image.body) ? new Uint8Array(image.body) : image.body;
-    return new NextResponse(body, {
-      headers: {
-        "Content-Type": image.contentType,
-        "X-Content-Type-Options": "nosniff",
-        "Cache-Control": "private, no-store",
-      },
+    const buf = await readableToBuffer(image.body);
+    const contentType = inferMediaContentType({
+      stored,
+      fetchedType: image.contentType,
+      body: buf,
+    });
+    const served = serveMediaBytes({
+      body: buf,
+      contentType,
+      rangeHeader: req.headers.get("range"),
+    });
+    return new NextResponse(new Uint8Array(served.body), {
+      status: served.status,
+      headers: served.headers,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

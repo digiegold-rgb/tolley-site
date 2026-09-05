@@ -7,6 +7,7 @@ Private disk for `/generate` Modal stills. Vercel never publishes these as
 
 ```
 /home/jelly/growth-engine/shorts/generate-jobs/{job_id}/{index}.png
+/home/jelly/growth-engine/shorts/generate-jobs/{job_id}/{index}.mp4
 ```
 
 ## Run on Spark
@@ -33,8 +34,8 @@ terminates on Spark.
 
 ## Routes
 
-- `PUT /generate-jobs/{job_id}/{index}` — raw `image/png` body
-- `GET /generate-jobs/{job_id}/{index}` — PNG
+- `PUT /generate-jobs/{job_id}/{index}` — raw `image/png` or `video/mp4` body (max 80MB)
+- `GET /generate-jobs/{job_id}/{index}` — PNG or MP4 (content-type from the stored file)
 - `GET /health` — liveness (no auth)
 
 HQ never hits this host from the browser. `/generate` loads

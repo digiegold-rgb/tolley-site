@@ -60,6 +60,7 @@ export const generateEngineCardSchema = z.object({
   aspect: z.enum(ENGINE_ASPECTS).default("9:16"),
   seconds: z.coerce.number().min(2).max(ENGINE_SECONDS_MAX).default(ENGINE_SECONDS_DEFAULT),
   seed: z.coerce.number().int().min(0).max(2_147_483_647).default(0),
+  slow_mo: z.boolean().default(false),
 });
 
 export type GenerateEngineCard = z.infer<typeof generateEngineCardSchema>;

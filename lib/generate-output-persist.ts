@@ -8,6 +8,7 @@ import { get, put } from "@vercel/blob";
 import {
   blobReadWriteToken,
   classifyModalOutputs,
+  isLikelyVideoUrl,
   isPublicVercelBlobUrl,
   isSparkStoreConfigured,
   isPrivateBlobFallbackEnabled,
@@ -98,6 +99,89 @@ export async function persistPngsToPrivateBlob(
   return refs;
 }
 
+export async function persistMp4sToSpark(
+  jobId: string,
+  clips: Buffer[],
+  env: NodeJS.ProcessEnv = process.env,
+  fetchImpl: PersistFetch = fetch,
+): Promise<string[]> {
+  const cfg = sparkStoreConfig(env);
+  if (!cfg) {
+    throw new GenerateOutputPersistError(
+      "Spark store is not configured. Set GENERATE_SPARK_STORE_URL and GENERATE_SPARK_STORE_KEY (see docs/generate-modal.md).",
+    );
+  }
+  const refs: string[] = [];
+  for (let i = 0; i < clips.length; i++) {
+    const url = `${cfg.baseUrl}/generate-jobs/${encodeURIComponent(jobId)}/${i}`;
+    const res = await fetchImpl(url, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${cfg.key}`,
+        "x-api-key": cfg.key,
+        "Content-Type": "video/mp4",
+      },
+      body: new Uint8Array(clips[i]),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new GenerateOutputPersistError(
+        `Spark store PUT failed (${res.status}): ${text.slice(0, 240) || res.statusText}`,
+      );
+    }
+    refs.push(sparkOutputRef(jobId, i, "mp4"));
+  }
+  return refs;
+}
+
+export async function persistMp4sToPrivateBlob(
+  jobId: string,
+  clips: Buffer[],
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<string[]> {
+  const token = blobReadWriteToken(env);
+  if (!token) {
+    throw new GenerateOutputPersistError(
+      "Private Blob fallback needs GENERATE_BLOB_READ_WRITE_TOKEN or BLOB_READ_WRITE_TOKEN on a private store.",
+    );
+  }
+  const refs: string[] = [];
+  for (let i = 0; i < clips.length; i++) {
+    const blob = await put(`generate/${jobId}/${i}.mp4`, clips[i], {
+      access: "private",
+      contentType: "video/mp4",
+      addRandomSuffix: true,
+      token,
+    });
+    if (isPublicVercelBlobUrl(blob.url)) {
+      throw new GenerateOutputPersistError(
+        "Blob put returned a public URL. Point GENERATE_BLOB_READ_WRITE_TOKEN at a private store (vercel blob create-store … --access private).",
+      );
+    }
+    refs.push(privateBlobOutputRef(blob.pathname || `generate/${jobId}/${i}.mp4`));
+  }
+  return refs;
+}
+
+/** Persist MP4 bytes Spark-first / private Blob. Never public Blob. */
+export async function persistJobMp4s(
+  jobId: string,
+  clips: Buffer[],
+  env: NodeJS.ProcessEnv = process.env,
+  fetchImpl: PersistFetch = fetch,
+): Promise<string[]> {
+  if (!clips.length) return [];
+  if (isSparkStoreConfigured(env)) {
+    return persistMp4sToSpark(jobId, clips, env, fetchImpl);
+  }
+  if (isPrivateBlobFallbackEnabled(env)) {
+    return persistMp4sToPrivateBlob(jobId, clips, env);
+  }
+  throw new GenerateOutputPersistError(
+    "No private video store. Set GENERATE_SPARK_STORE_URL + GENERATE_SPARK_STORE_KEY (preferred), or GENERATE_BLOB_FALLBACK=1 with a private Blob token.",
+  );
+}
+
 export async function persistJobPngs(
   jobId: string,
   pngB64: string[],
@@ -183,6 +267,7 @@ export async function fetchSparkJobImage(
   index: number,
   env: NodeJS.ProcessEnv = process.env,
   fetchImpl: PersistFetch = fetch,
+  ext: "png" | "mp4" = "png",
 ): Promise<FetchedJobImage> {
   const cfg = sparkStoreConfig(env);
   if (!cfg) {
@@ -201,7 +286,7 @@ export async function fetchSparkJobImage(
   }
   return {
     body: res.body,
-    contentType: res.headers.get("content-type") || "image/png",
+    contentType: res.headers.get("content-type") || (ext === "mp4" ? "video/mp4" : "image/png"),
   };
 }
 
@@ -220,7 +305,9 @@ export async function fetchPrivateBlobJobImage(
   }
   return {
     body: result.stream,
-    contentType: result.blob?.contentType || "image/png",
+    contentType:
+      result.blob?.contentType ||
+      (/\.mp4$/i.test(pathname) ? "video/mp4" : "image/png"),
   };
 }
 
@@ -235,7 +322,7 @@ export async function fetchStoredJobImage(
     if (spark.jobId !== jobId) {
       throw new GenerateOutputPersistError("Still does not belong to this job.");
     }
-    return fetchSparkJobImage(spark.jobId, spark.index, env, fetchImpl);
+    return fetchSparkJobImage(spark.jobId, spark.index, env, fetchImpl, spark.ext);
   }
   const blobPath = parsePrivateBlobOutputRef(stored);
   if (blobPath) {
@@ -249,7 +336,9 @@ export async function fetchStoredJobImage(
     }
     return {
       body: res.body,
-      contentType: res.headers.get("content-type") || "image/png",
+      contentType:
+        res.headers.get("content-type") ||
+        (isLikelyVideoUrl(stored) ? "video/mp4" : "image/png"),
     };
   }
   throw new GenerateOutputPersistError("Unknown still storage ref.");

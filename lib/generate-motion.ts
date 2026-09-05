@@ -7,9 +7,9 @@
 
 import { fal } from "@fal-ai/client";
 
-import { persistVideoToBlob } from "./blob";
 import { parseGatedJobImagePath } from "./generate-output";
-import { fetchStoredJobImage } from "./generate-output-persist";
+import { fetchStoredJobImage, persistJobMp4s } from "./generate-output-persist";
+import { remuxSlowMo } from "./generate-ffmpeg";
 import { prisma } from "./prisma";
 import {
   FAL_MODELS,
@@ -122,13 +122,30 @@ export async function persistMotionVideo(
   jobId: string,
   videoUrl: string,
   contentType?: string,
+  opts?: { slowMo?: boolean },
 ): Promise<string> {
   try {
-    const blob = await persistVideoToBlob(videoUrl, `generate-motion-${jobId}`, contentType);
-    return blob || videoUrl;
-  } catch {
-    return videoUrl;
+    const res = await fetch(videoUrl, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching fal clip`);
+    let buf = Buffer.from(await res.arrayBuffer());
+    if (!buf.length) throw new Error("empty fal clip");
+    if (opts?.slowMo) {
+      try {
+        buf = await remuxSlowMo(buf);
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        console.warn(`[generate-motion] 0.5× remux failed for ${jobId}: ${detail}`);
+      }
+    }
+    void contentType;
+    const refs = await persistJobMp4s(jobId, [buf]);
+    if (refs[0]) return refs[0];
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    console.warn(`[generate-motion] private clip persist failed for ${jobId}: ${detail}`);
   }
+  // Proxied later via the gated job route — never a public Blob object.
+  return videoUrl;
 }
 
 export function assertKnownFalMotionModel(id: string): asserts id is FalModelId {
