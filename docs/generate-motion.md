@@ -69,6 +69,8 @@ Chat→card uses the same Spark / LiteLLM vars as Modal stills (`QWEN_VLLM_*` pr
 6. Optional **Dry run**, then **Go** — single-clip path is unchanged. The MP4 plays **in-page with controls**.
 7. For a longer piece: **Add current card** into the beat queue. Generate / approve / regenerate each beat. When every beat is approved, **Stitch approved beats**.
 
+Beat prompt / still fields update **locally first**. Persist is debounced (~400ms) and flushed before generate / approve / stitch. A late save response is ignored if Jared typed again — otherwise concurrent POSTs overwrite newer text (worst on beat 2+).
+
 ## Media route
 
 HQ-gated playback (same cookie as jobs):

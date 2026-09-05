@@ -38,8 +38,11 @@ import {
   ENGINE_RECIPE_T2V,
 } from "@/lib/generate-engine-card";
 import {
+  BEAT_PATCH_DEBOUNCE_MS,
   BEATS_RECIPE,
   STITCH_RECIPE,
+  applyLocalBeatPatch,
+  createBeatSaveGate,
   emptyBeatQueue,
   parseBeatQueue,
   type BeatQueue,
@@ -302,10 +305,38 @@ export default function GenerateStudio() {
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
   const chatEnd = useRef<HTMLDivElement | null>(null);
   const chatBox = useRef<HTMLTextAreaElement | null>(null);
+  const beatQueueRef = useRef(beatQueue);
+  const beatQueueJobIdRef = useRef(beatQueueJobId);
+  const beatSaveGate = useRef(createBeatSaveGate());
+  const beatPatchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => () => {
-    if (poll.current) clearInterval(poll.current);
-  }, []);
+  useEffect(() => {
+    beatQueueRef.current = beatQueue;
+  }, [beatQueue]);
+  useEffect(() => {
+    beatQueueJobIdRef.current = beatQueueJobId;
+  }, [beatQueueJobId]);
+
+  useEffect(
+    () => () => {
+      if (poll.current) clearInterval(poll.current);
+      if (beatPatchTimer.current) {
+        clearTimeout(beatPatchTimer.current);
+        beatPatchTimer.current = null;
+        const queue = beatQueueRef.current;
+        const queueId = beatQueueJobIdRef.current;
+        if (queue.beats.length) {
+          void fetch("/api/generate/beats", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "save", queueId, queue }),
+            keepalive: true,
+          }).catch(() => {});
+        }
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     fetch("/api/generate/chat", { cache: "no-store" })
@@ -438,14 +469,30 @@ export default function GenerateStudio() {
     }
   }
 
+  function commitBeatQueue(next: BeatQueue) {
+    beatQueueRef.current = next;
+    setBeatQueue(next);
+  }
+
+  function applyAuthoritativeQueue(raw: unknown) {
+    beatSaveGate.current.bump();
+    commitBeatQueue(parseBeatQueue(raw));
+  }
+
   async function beatAction(
     action: string,
     extra?: Record<string, unknown>,
+    opts?: { requestSeq?: number; authoritative?: boolean },
   ): Promise<{ queue?: BeatQueue; job?: ModalJob; child?: ModalJob; stitch?: ModalJob; error?: string }> {
     const r = await fetch("/api/generate/beats", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, queueId: beatQueueJobId, queue: beatQueue, ...extra }),
+      body: JSON.stringify({
+        action,
+        queueId: beatQueueJobIdRef.current,
+        queue: beatQueueRef.current,
+        ...extra,
+      }),
     });
     if (r.status === 401 || r.status === 403) {
       throw new Error("Not authorized — log in at /hq first, then come back.");
@@ -457,8 +504,19 @@ export default function GenerateStudio() {
       stitch?: ModalJob;
       error?: string;
     };
-    if (j.queue) setBeatQueue(parseBeatQueue(j.queue));
+    if (j.queue) {
+      const seq = opts?.requestSeq;
+      const apply =
+        opts?.authoritative === true ||
+        seq == null ||
+        beatSaveGate.current.shouldApply(seq);
+      if (apply) {
+        if (opts?.authoritative) applyAuthoritativeQueue(j.queue);
+        else commitBeatQueue(parseBeatQueue(j.queue));
+      }
+    }
     if (j.job?.id) {
+      beatQueueJobIdRef.current = j.job.id;
       setBeatQueueJobId(j.job.id);
       setModalJobs((list) => [j.job as ModalJob, ...list.filter((x) => x.id !== j.job!.id)]);
     }
@@ -472,6 +530,33 @@ export default function GenerateStudio() {
     }
     if (!r.ok) throw new Error(j.error || "Beat queue update failed");
     return j;
+  }
+
+  function scheduleBeatPatchPersist() {
+    if (beatPatchTimer.current) clearTimeout(beatPatchTimer.current);
+    beatPatchTimer.current = setTimeout(() => {
+      beatPatchTimer.current = null;
+      const seq = beatSaveGate.current.current();
+      beatAction("save", undefined, { requestSeq: seq }).catch((err) =>
+        setError(err instanceof Error ? err.message : String(err)),
+      );
+    }, BEAT_PATCH_DEBOUNCE_MS);
+  }
+
+  async function flushBeatPatchPersist() {
+    if (beatPatchTimer.current) {
+      clearTimeout(beatPatchTimer.current);
+      beatPatchTimer.current = null;
+    }
+    const seq = beatSaveGate.current.current();
+    await beatAction("save", undefined, { requestSeq: seq });
+  }
+
+  function patchBeatLocal(id: string, patch: Parameters<typeof applyLocalBeatPatch>[2]) {
+    beatSaveGate.current.bump();
+    const next = applyLocalBeatPatch(beatQueueRef.current, id, patch);
+    commitBeatQueue(next);
+    scheduleBeatPatchPersist();
   }
 
   async function sendChat() {
@@ -1467,41 +1552,54 @@ export default function GenerateStudio() {
                 queue={beatQueue}
                 busy={busy}
                 onAddFromCard={() => {
-                  beatAction("add", { beat: cardToNewBeat(motionCard) }).catch((err) =>
-                    setError(err instanceof Error ? err.message : String(err)),
-                  );
+                  flushBeatPatchPersist()
+                    .then(() => beatAction("add", { beat: cardToNewBeat(motionCard) }, { authoritative: true }))
+                    .catch((err) => setError(err instanceof Error ? err.message : String(err)));
                 }}
                 onAddEmpty={() => {
-                  beatAction("add", { beat: cardToNewBeat({ ...motionCard, source_image_url: "", prompt: motionCard.prompt }) }).catch(
-                    (err) => setError(err instanceof Error ? err.message : String(err)),
-                  );
+                  flushBeatPatchPersist()
+                    .then(() =>
+                      beatAction(
+                        "add",
+                        { beat: cardToNewBeat({ ...motionCard, source_image_url: "", prompt: motionCard.prompt }) },
+                        { authoritative: true },
+                      ),
+                    )
+                    .catch((err) => setError(err instanceof Error ? err.message : String(err)));
                 }}
                 onRemove={(id) => {
-                  beatAction("remove", { beatId: id }).catch((err) => setError(err instanceof Error ? err.message : String(err)));
+                  flushBeatPatchPersist()
+                    .then(() => beatAction("remove", { beatId: id }, { authoritative: true }))
+                    .catch((err) => setError(err instanceof Error ? err.message : String(err)));
                 }}
                 onMove={(id, delta) => {
-                  beatAction("move", { beatId: id, delta }).catch((err) =>
-                    setError(err instanceof Error ? err.message : String(err)),
-                  );
+                  flushBeatPatchPersist()
+                    .then(() => beatAction("move", { beatId: id, delta }, { authoritative: true }))
+                    .catch((err) => setError(err instanceof Error ? err.message : String(err)));
                 }}
                 onPatch={(id, patch) => {
-                  beatAction("patch", { beatId: id, patch }).catch((err) =>
-                    setError(err instanceof Error ? err.message : String(err)),
-                  );
+                  patchBeatLocal(id, patch);
                 }}
                 onGenerate={async (id) => {
                   setError(null);
                   setStage("beat → fal…");
+                  const seqAtStart = beatSaveGate.current.current();
                   try {
-                    const j = await beatAction("generate", { beatId: id });
+                    await flushBeatPatchPersist();
+                    const j = await beatAction("generate", { beatId: id }, { authoritative: true });
                     if (j.child?.id) {
                       setActiveJobId(j.child.id);
                       await pollModalJob(j.child.id);
                       const q = await fetch("/api/generate/beats", { cache: "no-store" });
                       if (q.ok) {
                         const data = (await readJson(q)) as { queue?: BeatQueue; job?: ModalJob };
-                        if (data.queue) setBeatQueue(parseBeatQueue(data.queue));
-                        if (data.job?.id) setBeatQueueJobId(data.job.id);
+                        if (data.queue && beatSaveGate.current.current() === seqAtStart) {
+                          applyAuthoritativeQueue(data.queue);
+                        }
+                        if (data.job?.id) {
+                          beatQueueJobIdRef.current = data.job.id;
+                          setBeatQueueJobId(data.job.id);
+                        }
                       }
                     }
                   } catch (err) {
@@ -1511,25 +1609,26 @@ export default function GenerateStudio() {
                   }
                 }}
                 onApprove={(id) => {
-                  beatAction("approve", { beatId: id }).catch((err) =>
-                    setError(err instanceof Error ? err.message : String(err)),
-                  );
+                  flushBeatPatchPersist()
+                    .then(() => beatAction("approve", { beatId: id }, { authoritative: true }))
+                    .catch((err) => setError(err instanceof Error ? err.message : String(err)));
                 }}
                 onReject={(id) => {
-                  beatAction("reject", { beatId: id }).catch((err) =>
-                    setError(err instanceof Error ? err.message : String(err)),
-                  );
+                  flushBeatPatchPersist()
+                    .then(() => beatAction("reject", { beatId: id }, { authoritative: true }))
+                    .catch((err) => setError(err instanceof Error ? err.message : String(err)));
                 }}
                 onReset={(id) => {
-                  beatAction("reset", { beatId: id }).catch((err) =>
-                    setError(err instanceof Error ? err.message : String(err)),
-                  );
+                  flushBeatPatchPersist()
+                    .then(() => beatAction("reset", { beatId: id }, { authoritative: true }))
+                    .catch((err) => setError(err instanceof Error ? err.message : String(err)));
                 }}
                 onStitch={async () => {
                   setError(null);
                   setStage("stitching approved beats…");
                   try {
-                    await beatAction("stitch");
+                    await flushBeatPatchPersist();
+                    await beatAction("stitch", undefined, { authoritative: true });
                   } catch (err) {
                     setError(err instanceof Error ? err.message : String(err));
                   } finally {

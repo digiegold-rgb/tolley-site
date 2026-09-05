@@ -3,10 +3,12 @@ import { describe, it } from "node:test";
 import {
   BEATS_RECIPE,
   addBeat,
+  applyLocalBeatPatch,
   approvedBeatJobIds,
   beatFromMotionCard,
   canGenerateBeat,
   canStitchBeats,
+  createBeatSaveGate,
   emptyBeat,
   emptyBeatQueue,
   markBeatFromChildJob,
@@ -17,6 +19,7 @@ import {
   patchBeat,
   removeBeat,
   setBeatStatus,
+  shouldApplyDebouncedBeatSave,
   sourceStillFromPrevious,
   stitchBlockers,
 } from "./generate-beats.ts";
@@ -79,5 +82,34 @@ describe("beat queue helpers", () => {
     const parsed = parseBeatQueue(q);
     assert.equal(parsed.beats[0].job_id, "child1");
     assert.equal(emptyBeat().status, "draft");
+  });
+
+  it("applies prompt patches locally so later keystrokes win (beat 2+)", () => {
+    let q = emptyBeatQueue();
+    q = addBeat(q, { prompt: "beat one", source_image_url: STILL });
+    q = addBeat(q, { prompt: "beat two", source_image_url: STILL });
+    const id2 = q.beats[1].id;
+    q = applyLocalBeatPatch(q, id2, { prompt: "she t" });
+    q = applyLocalBeatPatch(q, id2, { prompt: "she tu" });
+    q = applyLocalBeatPatch(q, id2, { prompt: "she turns" });
+    assert.equal(q.beats[1].prompt, "she turns");
+    assert.equal(q.beats[0].prompt, "beat one");
+    const stale = applyLocalBeatPatch(
+      parseBeatQueue({ ...q, beats: q.beats.map((b) => (b.id === id2 ? { ...b, prompt: "she t" } : b)) }),
+      id2,
+      { prompt: "she t" },
+    );
+    assert.notEqual(stale.beats[1].prompt, q.beats[1].prompt);
+  });
+
+  it("drops late save responses after a newer local edit", () => {
+    assert.equal(shouldApplyDebouncedBeatSave(3, 3), true);
+    assert.equal(shouldApplyDebouncedBeatSave(4, 3), false);
+    const gate = createBeatSaveGate();
+    const first = gate.bump();
+    assert.equal(gate.shouldApply(first), true);
+    const second = gate.bump();
+    assert.equal(gate.shouldApply(first), false);
+    assert.equal(gate.shouldApply(second), true);
   });
 });
