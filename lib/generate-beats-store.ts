@@ -35,11 +35,13 @@ export async function latestBeatQueueJob(createdBy: string) {
   return { row, queue: parseBeatQueue(row.cardJson) };
 }
 
+type GenerateJobRow = NonNullable<Awaited<ReturnType<typeof prisma.generateJob.findUnique>>>;
+
 export async function saveBeatQueue(opts: {
   createdBy: string;
   queue: BeatQueue;
   id?: string;
-}): Promise<{ row: Awaited<ReturnType<typeof prisma.generateJob.findUnique>>; queue: BeatQueue }> {
+}): Promise<{ row: GenerateJobRow; queue: BeatQueue }> {
   const data = {
     recipe: BEATS_RECIPE,
     cardJson: parseBeatQueue(opts.queue),

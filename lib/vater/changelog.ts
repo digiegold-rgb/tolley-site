@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.31.1';
+export const APP_VERSION = '1.31.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.31.2',
+    date: '2026-09-05',
+    title: 'Generate Motion beat stitch typechecks for production',
+    items: [
+      'The beat-queue save path now types the parent job as a real row, so production typecheck can finish and Motion stitch can deploy.',
+    ],
+  },
   {
     version: '1.31.1',
     date: '2026-09-05',
