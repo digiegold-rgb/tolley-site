@@ -154,7 +154,9 @@ describe("DIRECTOR_SYSTEM_PROMPT headless control", () => {
       "identity_ref_urls",
       "extra_image_urls",
       "sigmas",
+      "attention_kwargs",
       "pipe_overrides",
+      "modal_kwargs",
       "prompt",
     ]) {
       assert.match(DIRECTOR_SYSTEM_PROMPT, new RegExp(field));

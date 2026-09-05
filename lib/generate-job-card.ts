@@ -35,6 +35,7 @@ export const PROVEN_DEFAULTS = {
   negative_prompt: " ",
   extra_image_urls: [] as string[],
   sigmas: null as number[] | null,
+  attention_kwargs: null as Record<string, unknown> | null,
   pipe_overrides: {} as Record<string, unknown>,
 };
 
@@ -103,6 +104,8 @@ const sigmaList = z.preprocess((raw) => {
 
 /** Keys that must never ride along as Diffusers / Modal overrides. */
 export const PIPE_OVERRIDE_SECRET_KEY = /token|secret|password|api_key|authorization|hf_/i;
+export const PIPE_OVERRIDE_INTERNAL_KEY =
+  /^(image|generator|job_id|webhook_url|callback_on_step_end|denoise|strength|denoising_strength)$/i;
 
 function isSparkPathString(value: string): boolean {
   return value.includes("/home/") || value.includes("/Users/");
@@ -145,7 +148,7 @@ export function sanitizePipeOverrides(obj: unknown): Record<string, unknown> {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) return {};
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-    if (!key || PIPE_OVERRIDE_SECRET_KEY.test(key)) continue;
+    if (!key || PIPE_OVERRIDE_SECRET_KEY.test(key) || PIPE_OVERRIDE_INTERNAL_KEY.test(key)) continue;
     if (typeof value === "string" && isSparkPathString(value)) continue;
     const cleaned = sanitizeJsonValue(value);
     if (cleaned === undefined || !isPlainJsonValue(cleaned)) continue;
@@ -190,6 +193,29 @@ const pipeOverrides = z.preprocess((raw) => {
   return raw;
 }, z.record(z.string(), z.unknown()).default({}).transform(sanitizePipeOverrides));
 
+const attentionKwargs = z.preprocess((raw) => {
+  if (raw && typeof raw === "object" && !Array.isArray(raw) && Object.keys(raw as object).length) {
+    return raw;
+  }
+  return null;
+}, z.union([z.null(), z.record(z.string(), z.unknown())]).optional().nullable().default(null));
+
+function aliasModalKwargs(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const rec = { ...(raw as Record<string, unknown>) };
+  if (rec.modal_kwargs && typeof rec.modal_kwargs === "object" && !Array.isArray(rec.modal_kwargs)) {
+    const existing = rec.pipe_overrides && typeof rec.pipe_overrides === "object" && !Array.isArray(rec.pipe_overrides)
+      ? (rec.pipe_overrides as Record<string, unknown>)
+      : {};
+    rec.pipe_overrides = sanitizePipeOverrides({
+      ...existing,
+      ...(rec.modal_kwargs as Record<string, unknown>),
+    });
+  }
+  delete rec.modal_kwargs;
+  return rec;
+}
+
 export const generateJobCardSchema = z.object({
   recipe: z.literal(GENERATE_RECIPE).default(GENERATE_RECIPE),
   preset: z.string().trim().max(80).optional().nullable(),
@@ -210,6 +236,7 @@ export const generateJobCardSchema = z.object({
   identity_ref_urls: urlList.default([]),
   extra_image_urls: extraImageUrls,
   sigmas: sigmaList,
+  attention_kwargs: attentionKwargs,
   pipe_overrides: pipeOverrides,
   num_images: z.coerce.number().int().min(1).max(4).default(PROVEN_DEFAULTS.num_images),
 });
@@ -274,7 +301,7 @@ export function applyPreset(card: GenerateJobCard, presetId: string): GenerateJo
 }
 
 export function parseGenerateJobCard(raw: unknown): GenerateJobCard {
-  return generateJobCardSchema.parse(raw);
+  return generateJobCardSchema.parse(aliasModalKwargs(raw));
 }
 
 export const SEED_MAX = 2_147_483_647;
@@ -325,7 +352,7 @@ export const GENERATE_JOB_CARD_KEYS = Object.keys(
 /** Merge a partial LLM/user patch onto a card. Empty strings leave the field. */
 export function mergeJobCard(base: GenerateJobCard, patch: unknown): GenerateJobCard {
   const rec = patch && typeof patch === "object" && !Array.isArray(patch)
-    ? (patch as Record<string, unknown>)
+    ? (aliasModalKwargs(patch) as Record<string, unknown>)
     : {};
   const next: Record<string, unknown> = { ...base };
   for (const key of Object.keys(generateJobCardSchema.shape)) {
@@ -402,6 +429,7 @@ export type ModalSpawnKwargs = {
   identity_ref_urls: string[];
   extra_image_urls: string[];
   sigmas?: number[];
+  attention_kwargs?: Record<string, unknown>;
   pipe_overrides?: Record<string, unknown>;
   num_images: number;
   job_id?: string;
@@ -444,6 +472,9 @@ export function cardToModalKwargs(
     identity_ref_urls: card.identity_ref_urls,
     extra_image_urls: extraUrls,
     ...(sigmas ? { sigmas } : {}),
+    ...(card.attention_kwargs && Object.keys(card.attention_kwargs).length
+      ? { attention_kwargs: card.attention_kwargs }
+      : {}),
     num_images: card.num_images,
     ...(extras?.job_id ? { job_id: extras.job_id } : {}),
     ...(extras?.webhook_url ? { webhook_url: extras.webhook_url } : {}),
@@ -451,7 +482,7 @@ export function cardToModalKwargs(
   const overrides = sanitizePipeOverrides(card.pipe_overrides);
   const bag: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(overrides)) {
-    if (IDENTITY_KWARG_KEYS.has(key) || key === "generator") continue;
+    if (IDENTITY_KWARG_KEYS.has(key) || PIPE_OVERRIDE_INTERNAL_KEY.test(key)) continue;
     bag[key] = value;
     if (key in typed && key !== "pipe_overrides") {
       (typed as Record<string, unknown>)[key] = value;

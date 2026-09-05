@@ -76,7 +76,7 @@ Named lookup from Vercel:
 modal.functions.fromName("tolley-qwen-image-edit", "qwen_image_edit")
 ```
 
-Proven kwargs: `width=928`, `height=1664`, `num_inference_steps=40`, `true_cfg_scale=4.0`, `guidance_scale=1.0`, `max_sequence_length=512`, three identity ref URLs, optional `extra_image_urls` (max 3 HTTPS), optional `sigmas`, optional `pipe_overrides` (sanitized Diffusers pipe() escape hatch), `num_images`. This recipe has no denoise/strength.
+Proven kwargs: `width=928`, `height=1664`, `num_inference_steps=40`, `true_cfg_scale=4.0`, `guidance_scale=1.0`, `max_sequence_length=512`, three identity ref URLs, optional `extra_image_urls` (max 3 HTTPS), optional `sigmas`, optional `attention_kwargs`, optional `pipe_overrides` / `modal_kwargs` (sanitized Diffusers pipe() escape hatch), `num_images` (→ `num_images_per_prompt`). This recipe has no denoise/strength.
 
 ## Auth
 

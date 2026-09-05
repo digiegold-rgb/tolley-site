@@ -191,6 +191,7 @@ export default function GenerateStudio() {
   const [overridesDraft, setOverridesDraft] = useState(() =>
     formatPipeOverridesJson(defaultJobCard().pipe_overrides),
   );
+  const [attentionDraft, setAttentionDraft] = useState("");
   const [overridesError, setOverridesError] = useState<string | null>(null);
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [dryRun, setDryRun] = useState(false);
@@ -236,6 +237,11 @@ export default function GenerateStudio() {
           setJsonDraft(formatJobCardJson(next));
           setSigmasDraft(formatSigmasText(next.sigmas));
           setOverridesDraft(formatPipeOverridesJson(next.pipe_overrides));
+          setAttentionDraft(
+            next.attention_kwargs && Object.keys(next.attention_kwargs).length
+              ? JSON.stringify(next.attention_kwargs, null, 2)
+              : "",
+          );
           setOverridesError(null);
           setJsonError(null);
         }
@@ -266,6 +272,11 @@ export default function GenerateStudio() {
     setJsonDraft(formatJobCardJson(next));
     setSigmasDraft(formatSigmasText(next.sigmas));
     setOverridesDraft(formatPipeOverridesJson(next.pipe_overrides));
+    setAttentionDraft(
+      next.attention_kwargs && Object.keys(next.attention_kwargs).length
+        ? JSON.stringify(next.attention_kwargs, null, 2)
+        : "",
+    );
     setOverridesError(null);
     setJsonError(null);
   }
@@ -819,6 +830,33 @@ export default function GenerateStudio() {
                   />
                 </label>
                 <label className="gen-field">
+                  attention_kwargs (optional JSON object)
+                  <textarea
+                    className="gen-box gen-box-sigmas"
+                    value={attentionDraft}
+                    disabled={busy}
+                    spellCheck={false}
+                    placeholder='omit when empty — e.g. {"scale": 1.0}'
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setAttentionDraft(raw);
+                      const trimmed = raw.trim();
+                      if (!trimmed) {
+                        patchCard({ attention_kwargs: null });
+                        return;
+                      }
+                      try {
+                        const parsed = JSON.parse(trimmed) as unknown;
+                        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+                          patchCard({ attention_kwargs: parsed as Record<string, unknown> });
+                        }
+                      } catch {
+                        /* keep typing until JSON is valid */
+                      }
+                    }}
+                  />
+                </label>
+                <label className="gen-field">
                   pipe_overrides JSON
                   <span className="gen-field-hint">rare Diffusers pipe() kwargs — empty object if unused</span>
                   <textarea
@@ -843,8 +881,9 @@ export default function GenerateStudio() {
                 <p className="gen-hint">
                   Full GenerateJobCard — paste or edit any field (seed, steps, width, height, true_cfg_scale,
                   guidance_scale, max_sequence_length, num_images, negative_prompt, identity_ref_urls,
-                  extra_image_urls, sigmas, pipe_overrides, prompt), then Apply. pipe_overrides is the
-                  free-form Diffusers escape hatch (no secrets, no Spark paths).
+                  extra_image_urls, sigmas, attention_kwargs, pipe_overrides / modal_kwargs, prompt), then Apply.
+                  pipe_overrides is the free-form Diffusers escape hatch (no secrets, no Spark paths).
+                  No denoise/strength on this recipe.
                 </p>
                 <textarea
                   className="gen-box gen-box-json"
