@@ -142,7 +142,7 @@ export async function fillJobCardFromChat(
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       throw new Error(
-        ,
+        `LiteLLM chat→card failed (${detail}). Set QWEN_VLLM_BASE_URL for Spark Qwen 3.8.`,
       );
     }
   }

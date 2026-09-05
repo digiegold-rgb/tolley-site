@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { JOB_CARD_SYSTEM_PROMPT, isJobCardLlmConfigured } from "./generate-job-llm.ts";
 
@@ -45,11 +48,11 @@ describe("isJobCardLlmConfigured", () => {
   });
 });
 
+
 describe("fillJobCardFromChat model preference", () => {
-  it("documents Spark Qwen preference over LiteLLM kimi defaults", async () => {
-    const src = await import("node:fs").then((fs) =>
-      fs.readFileSync(new URL("./generate-job-llm.ts", import.meta.url), "utf8"),
-    );
+  it("documents Spark Qwen preference over LiteLLM kimi defaults", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const src = readFileSync(join(here, "generate-job-llm.ts"), "utf8");
     assert.match(src, /prefer Spark Qwen/);
     const qwenIdx = src.indexOf("if (isQwenConfigured(env))");
     const litellmIdx = src.indexOf("if (llmBase(env))");
