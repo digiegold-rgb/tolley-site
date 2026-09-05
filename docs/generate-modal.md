@@ -4,6 +4,8 @@ Identity stills run on Modal (A100 BF16, Diffusers `QwenImageEditPlusPipeline` /
 
 Identity-locked **motion** (still → 5s fal Wan I2V) is a separate tab on the same page — see `docs/generate-motion.md`. Modal stills job-card / NSFW chips are unchanged.
 
+**Location / Hair / Camera chips** (Stills tab only) rewrite durable prompt sections — `[[location]]` / `[[hair]]` / `[[camera]]` — the same way Allow/Block NSFW writes `[[allow-nsfw-wardrobe]]`. Clear removes that block. Camera Clear keeps the preset `Camera:` line if one exists. Identity-lock sentences stay. Extra #1 is still manual for wardrobe; no Extra-image auto-wiring.
+
 Jared chats on https://tolley.io/generate the same way he talks to an operator bot. An LLM fills an **editable job card** (kwargs, not a frozen GUI). Confirm/Go spawns the named Modal function `qwen_image_edit`. Results land in the gallery.
 
 ## Env var checklist
@@ -144,7 +146,7 @@ The `/generate` page itself stays public. Chat→card, Confirm/Go, status, and g
 2. Open https://tolley.io/generate
 3. Stay on **Modal stills**.
 4. Preset defaults to **Lady2 lacy pink front smile**. Confirm the three identity URLs.
-5. Edit any recipe field on the card (seed, steps, width, height, true_cfg_scale / CFG, guidance_scale, max_sequence_length, num_images, negative_prompt, identity URLs, extra image URLs, optional sigmas, optional pipe_overrides, prompt) or paste a full card into **Advanced**. **Random seed** sits next to seed. **Allow NSFW** / **Block NSFW** chips next to Negative prompt: Allow strips adult NSFW-block terms and injects a `[[allow-nsfw-wardrobe]]` prompt override (ignore grey-shirt clothing lock; wardrobe follows the prompt). Block re-merges those terms and removes the override. Identity/quality and child/minor stay. Optional first extra image URL can be a lingerie/nude body keep-still — clothed identity refs alone keep covering.
+5. Edit any recipe field on the card (seed, steps, width, height, true_cfg_scale / CFG, guidance_scale, max_sequence_length, num_images, negative_prompt, identity URLs, extra image URLs, optional sigmas, optional pipe_overrides, prompt) or paste a full card into **Advanced**. **Random seed** sits next to seed. **Location / Hair / Camera** chips under Prompt rewrite durable `[[location]]` / `[[hair]]` / `[[camera]]` blocks (and the matching labeled line when the preset already has one, e.g. `Camera:`). Clear removes that block; Camera Clear restores the preset camera line. Identity-lock sentences stay put. Extra #1 is still manual for wardrobe. **Allow NSFW** / **Block NSFW** chips next to Negative prompt: Allow strips adult NSFW-block terms and injects a `[[allow-nsfw-wardrobe]]` prompt override (ignore grey-shirt clothing lock; wardrobe follows the prompt). Block re-merges those terms and removes the override. Identity/quality and child/minor stay. Optional first extra image URL can be a lingerie/nude body keep-still — clothed identity refs alone keep covering.
 6. Chat may change those same kwargs (JSON job card only — no ComfyUI / nodes / `.safetensors` advice).
 7. Optional: tick **Dry run** and hit **Go** — creates a `GenerateJob`, returns the exact kwargs, does **not** spend an A100.
 8. Untick Dry run, hit **Go**. Status polls `GET /api/generate/jobs/:id` until `done`; stills appear in the gallery.

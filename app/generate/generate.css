@@ -642,6 +642,30 @@
   max-width: 46rem;
 }
 
+.gen-prompt-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.gen-prompt-chip-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gen-prompt-chip-label {
+  flex: 0 0 auto;
+  min-width: 4.6rem;
+  margin: 6px 0 0;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gen-muted);
+}
+
 .gen-gallery-cell {
   display: flex;
   flex-direction: column;
