@@ -5850,3 +5850,25 @@ model VaterRuleRevision {
 
   @@index([code, createdAt])
 }
+
+/// Modal identity stills from /generate. One row per Confirm/Go (or chat→card
+/// create). cardJson is the editable Modal kwargs — not a frozen GUI preset.
+/// Status: queued | running | done | failed.
+model GenerateJob {
+  id          String    @id @default(cuid())
+  status      String    @default("queued")
+  recipe      String    @default("qwen-image-edit-2511")
+  cardJson    Json
+  modalCallId String?
+  outputUrls  String[]  @default([])
+  error       String?
+  createdBy   String
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([createdBy, createdAt])
+  @@index([modalCallId])
+}
