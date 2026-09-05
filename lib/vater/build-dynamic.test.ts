@@ -13,9 +13,9 @@ function readApp(rel: string): string {
 
 const FORCE_DYNAMIC = /export const dynamic\s*=\s*["']force-dynamic["']/;
 
-test("changelog 1.31 is the current shipped version", () => {
-  assert.equal(APP_VERSION, "1.31");
-  assert.equal(CHANGELOG[0]?.version, "1.31");
+test("changelog 1.31.1 is the current shipped version", () => {
+  assert.equal(APP_VERSION, "1.31.1");
+  assert.equal(CHANGELOG[0]?.version, "1.31.1");
 });
 
 test("script writer uses AI Gateway client, not a bare Anthropic constructor", () => {
@@ -39,6 +39,15 @@ test("write-script and talk-script are 300s on the route, not in vercel.json", (
   ];
   for (const file of capped) {
     assert.match(readApp(file), /export const maxDuration = 300/, file);
+    assert.equal(vercel.functions[file], undefined, file);
+  }
+  const generateOnRoute = [
+    ["app/api/generate/beats/route.ts", 120],
+    ["app/api/generate/jobs/[id]/route.ts", 60],
+    ["app/api/generate/jobs/[id]/image/route.ts", 30],
+  ] as const;
+  for (const [file, seconds] of generateOnRoute) {
+    assert.match(readApp(file), new RegExp(`export const maxDuration = ${seconds}`), file);
     assert.equal(vercel.functions[file], undefined, file);
   }
   assert.ok(
