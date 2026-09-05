@@ -46,6 +46,9 @@ describe("JOB_CARD_SYSTEM_PROMPT", () => {
     assert.match(JOB_CARD_SYSTEM_PROMPT, /Allow NSFW/);
     assert.match(JOB_CARD_SYSTEM_PROMPT, /Block NSFW/);
     assert.match(JOB_CARD_SYSTEM_PROMPT, /allow-nsfw-wardrobe/);
+    assert.match(JOB_CARD_SYSTEM_PROMPT, /\[\[location\]\]/);
+    assert.match(JOB_CARD_SYSTEM_PROMPT, /\[\[hair\]\]/);
+    assert.match(JOB_CARD_SYSTEM_PROMPT, /\[\[camera\]\]/);
     assert.match(JOB_CARD_SYSTEM_PROMPT, /Never remove child\/minor/);
   });
 });

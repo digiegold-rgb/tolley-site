@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.30.1';
+export const APP_VERSION = '1.31';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.31',
+    date: '2026-09-05',
+    title: 'Generate stills get Location, Hair, and Camera chips',
+    items: [
+      'On Modal stills, one-tap chips rewrite setting, hair, and camera in the prompt so you do not have to edit the whole card.',
+      'Clear drops that section. Face still follows the identity photos. Wardrobe still needs Extra image #1 when you want a clothes keep-still.',
+    ],
+  },
   {
     version: '1.30.1',
     date: '2026-09-05',

@@ -24,6 +24,16 @@ import {
   type GenerateJobCard,
 } from "@/lib/generate-job-card";
 import {
+  applyCamera,
+  applyHair,
+  applyLocation,
+  CAMERA_CHIPS,
+  HAIR_CHIPS,
+  LOCATION_CHIPS,
+  promptChipId,
+  type PromptChipOption,
+} from "@/lib/generate-prompt-chips";
+import {
   emptyMotionCard,
   formatMotionCardJson,
   parseMotionCardJson,
@@ -76,6 +86,42 @@ type DgxStatus = {
 };
 
 type ChatMsg = { id: string; role: "user" | "assistant"; content: string };
+
+function PromptChipRow({
+  label,
+  ariaLabel,
+  chips,
+  activeId,
+  disabled,
+  onPick,
+}: {
+  label: string;
+  ariaLabel: string;
+  chips: PromptChipOption[];
+  activeId: string;
+  disabled: boolean;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <div className="gen-prompt-chip-row">
+      <span className="gen-prompt-chip-label">{label}</span>
+      <div className="gen-nsfw-chips" role="group" aria-label={ariaLabel}>
+        {chips.map((chip) => (
+          <button
+            key={chip.id}
+            type="button"
+            className={`gen-nsfw-chip${activeId === chip.id ? " gen-nsfw-chip-on" : ""}`}
+            disabled={disabled}
+            aria-pressed={activeId === chip.id}
+            onClick={() => onPick(chip.id)}
+          >
+            {chip.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function mid() {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -846,6 +892,35 @@ export default function GenerateStudio() {
                   disabled={busy}
                   placeholder="Identity lock + wardrobe + camera…"
                 />
+              </div>
+              <div className="gen-prompt-chips">
+                <PromptChipRow
+                  label="Location"
+                  ariaLabel="Location"
+                  chips={LOCATION_CHIPS}
+                  activeId={promptChipId(card.prompt, "location")}
+                  disabled={busy}
+                  onPick={(id) => commitCard(applyLocation(card, id))}
+                />
+                <PromptChipRow
+                  label="Hair"
+                  ariaLabel="Hair"
+                  chips={HAIR_CHIPS}
+                  activeId={promptChipId(card.prompt, "hair")}
+                  disabled={busy}
+                  onPick={(id) => commitCard(applyHair(card, id))}
+                />
+                <PromptChipRow
+                  label="Camera"
+                  ariaLabel="Camera"
+                  chips={CAMERA_CHIPS}
+                  activeId={promptChipId(card.prompt, "camera")}
+                  disabled={busy}
+                  onPick={(id) => commitCard(applyCamera(card, id))}
+                />
+                <p className="gen-hint gen-nsfw-hint">
+                  Chips rewrite Location / Hair / Camera in the prompt. Identity refs still win on face; Extra #1 still needed for wardrobe.
+                </p>
               </div>
               <div>
                 <div className="gen-neg-head">
