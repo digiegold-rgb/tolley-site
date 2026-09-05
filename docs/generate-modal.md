@@ -102,7 +102,9 @@ Skips `generate/identity/**`. Run against the **public** store token (before swa
 
 ### Motion clips on `/generate`
 
-Quickgen tabs (t2v / i2v / v2v) already stream through HQ-gated `/api/admin/quickgen/:id/result` (Spark `quickgen.tolley.io`), not a public Blob URL. That path is unchanged.
+The **Motion** tab (#124) is unchanged in behavior: Wan I2V / FLF2V, HQ gate, dry run, optional last-frame still. Gallery **Use as source** now passes the HQ-gated still route (`/api/generate/jobs/:id/image?i=0`). Vercel resolves that to bytes and uploads to fal storage (1-day) so fal can fetch without a public Blob keep. Finished clips are shown through the same gated job route.
+
+Quickgen tabs (t2v / i2v / v2v) already stream through HQ-gated `/api/admin/quickgen/:id/result`.
 
 ## Deploy the Modal function
 
