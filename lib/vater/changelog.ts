@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.31';
+export const APP_VERSION = '1.31.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.31.1',
+    date: '2026-09-05',
+    title: 'Generate Motion deploys again',
+    items: [
+      'The Motion clip player, slow-mo, and beat stitch can ship. Their time limits live on the routes, not in the shared functions list that was already full.',
+    ],
+  },
   {
     version: '1.31',
     date: '2026-09-05',

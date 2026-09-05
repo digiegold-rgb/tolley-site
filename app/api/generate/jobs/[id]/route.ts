@@ -30,6 +30,8 @@ function cardWantsSlowMo(cardJson: unknown): boolean {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// vercel.json functions is at the 50-key schema cap — do not add this route there.
+export const maxDuration = 60;
 
 type Ctx = { params: Promise<{ id: string }> };
 
