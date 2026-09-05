@@ -1,6 +1,6 @@
 /**
  * Persist /generate stills Spark-first. Private Vercel Blob is fallback only.
- * Never upload job outputs with access: "public".
+ * Never upload job outputs as a public Blob object.
  */
 
 import { get, put } from "@vercel/blob";
@@ -17,7 +17,7 @@ import {
   sparkOutputRef,
   sparkStoreConfig,
   type ClassifiedModalOutputs,
-} from "@/lib/generate-output";
+} from "./generate-output";
 
 export type PersistFetch = typeof fetch;
 

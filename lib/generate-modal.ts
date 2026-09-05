@@ -10,7 +10,7 @@ import {
   type GenerateJobCard,
   type ModalSpawnKwargs,
 } from "@/lib/generate-job-card";
-import { classifyStoredOutput } from "@/lib/generate-output";
+import { classifyStoredOutput } from "./generate-output";
 
 export const MODAL_APP_DEFAULT = "tolley-qwen-image-edit";
 export const MODAL_FUNCTION_DEFAULT = "qwen_image_edit";
