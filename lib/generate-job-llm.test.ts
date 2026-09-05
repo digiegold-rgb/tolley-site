@@ -44,3 +44,15 @@ describe("isJobCardLlmConfigured", () => {
     assert.equal(isJobCardLlmConfigured({ MODAL_TOKEN_ID: "ak-x", MODAL_TOKEN_SECRET: "as-y" }), false);
   });
 });
+
+describe("fillJobCardFromChat model preference", () => {
+  it("documents Spark Qwen preference over LiteLLM kimi defaults", async () => {
+    const src = await import("node:fs").then((fs) =>
+      fs.readFileSync(new URL("./generate-job-llm.ts", import.meta.url), "utf8"),
+    );
+    assert.match(src, /prefer Spark Qwen/);
+    const qwenIdx = src.indexOf("if (isQwenConfigured(env))");
+    const litellmIdx = src.indexOf("if (llmBase(env))");
+    assert.ok(qwenIdx > 0 && litellmIdx > qwenIdx, "Qwen branch must run before LiteLLM");
+  });
+});

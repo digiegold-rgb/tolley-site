@@ -2,7 +2,7 @@
  * Chat → structured Modal job card.
  *
  * Returns ONLY parsed JSON matching generateJobCardSchema (plus an optional
- * director `reply`). Uses LiteLLM / LLM_* first, then Spark Qwen vLLM.
+ * director `reply`). Prefers Spark Qwen vLLM when QWEN_VLLM_* is set; else LiteLLM / LLM_*.
  * Never invents Modal credentials.
  */
 
@@ -119,11 +119,9 @@ export async function fillJobCardFromChat(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<{ card: GenerateJobCard; reply: string; model: string }> {
   const card = current ?? defaultJobCard(undefined, env);
-  if (llmBase(env)) {
-    const text = await chatOpenAiCompatible(env, message, card);
-    const parsed = parseLlmJobCard(text, card);
-    return { ...parsed, model: llmBase(env)!.model };
-  }
+
+  // /generate Modal stills: prefer Spark Qwen 3.8 when configured. Site-wide
+  // LITELLM_* often defaults to broken fallback/kimi groups and must not win.
   if (isQwenConfigured(env)) {
     const result = await qwenChatCompletion(
       [
@@ -135,7 +133,21 @@ export async function fillJobCardFromChat(
     const parsed = parseLlmJobCard(result.text, card);
     return { ...parsed, model: result.model };
   }
+
+  if (llmBase(env)) {
+    try {
+      const text = await chatOpenAiCompatible(env, message, card);
+      const parsed = parseLlmJobCard(text, card);
+      return { ...parsed, model: llmBase(env)!.model };
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        ,
+      );
+    }
+  }
+
   throw new Error(
-    "No LLM configured for chat→card. Set LITELLM_API_URL (or LLM_API_URL) or QWEN_VLLM_BASE_URL.",
+    "No LLM configured for chat→card. Set QWEN_VLLM_BASE_URL (preferred) or LITELLM_API_URL.",
   );
 }
