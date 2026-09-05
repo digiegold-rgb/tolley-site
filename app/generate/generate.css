@@ -589,3 +589,50 @@
 .gen-json-apply {
   margin-top: 8px;
 }
+
+.gen-neg-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.gen-neg-head .gen-label {
+  margin: 0;
+}
+
+.gen-nsfw-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.gen-nsfw-chip {
+  border: 1px solid var(--gen-line-strong);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--gen-text);
+  background: #12101c;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.gen-nsfw-chip:hover:not(:disabled) {
+  border-color: var(--gen-violet);
+}
+
+.gen-nsfw-chip-on {
+  border-color: rgba(143, 125, 255, 0.55);
+  background: linear-gradient(120deg, rgba(143, 125, 255, 0.25), rgba(111, 214, 255, 0.14));
+}
+
+.gen-nsfw-chip:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

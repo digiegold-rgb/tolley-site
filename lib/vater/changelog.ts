@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.27.1';
+export const APP_VERSION = '1.28';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.28',
+    date: '2026-09-05',
+    title: 'Generate Modal stills get Allow NSFW / Block NSFW chips',
+    items: [
+      'On Modal stills, two chips next to Negative prompt merge or strip adult NSFW-block terms without wiping identity or quality negatives.',
+      'Child and minor stay in the negative if they were already there. Chat can still write the negative prompt freely.',
+    ],
+  },
   {
     version: '1.27.1',
     date: '2026-09-05',

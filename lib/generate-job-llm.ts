@@ -50,6 +50,7 @@ RULES
 - attention_kwargs is an optional object passed to the Diffusers AttentionProcessor. Use {} / null if unused.
 - pipe_overrides (alias modal_kwargs) is a free-form object of extra QwenImageEditPlusPipeline.__call__ kwargs. It is sanitized (no tokens, no Spark paths, no denoise/strength) and deep-merged onto spawn kwargs AFTER the typed fields. Put any future/pipe arg Jared pastes here.
 - This recipe has NO denoise/strength. Never invent those fields and never claim they exist. Control with steps, true_cfg_scale (CFG), and negative_prompt.
+- NSFW is dialed via negative_prompt. The studio has Allow NSFW / Block NSFW chips that merge or strip adult NSFW-block terms (deduped; identity/quality terms stay). Chat may still set negative_prompt freely. Never remove child/minor (or other CSAM) terms from negatives.
 - If he asks for the preset "Lady2 lacy pink front smile" (or lady2 / lacy pink / front smile), set preset to "lady2-lacy-pink-front-smile" and use that wardrobe/identity prompt pattern: same woman as the three grey-shirt identity refs, lacy pink front, soft smile, 9:16 photoreal.
 - Empty string on a field means leave the current card value. Always send a complete prompt when you change wardrobe or pose.
 - num_images is 1–4. seed is an integer ≥ 0. max_sequence_length is 64–2048 (default 512).

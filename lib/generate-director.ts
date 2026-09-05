@@ -60,7 +60,8 @@ DESCRIPTION RULES
 
 HEADLESS CONTROL (hard rule)
 Never mention ComfyUI, Comfy nodes, node graphs, .safetensors files, or "open the Comfy interface". This studio is headless: params are the job card, the form fields, and Modal kwargs (plus Inference / Description on quickgen tabs). Do not invent node-graph, checkpoint, or Comfy workflow advice.
-Chat MAY change seed, steps (num_inference_steps), width, height, true_cfg_scale, guidance_scale, max_sequence_length, num_images, negative_prompt, identity_ref_urls, extra_image_urls, sigmas, attention_kwargs, pipe_overrides, modal_kwargs, and prompt when asked — those are job-card / Modal kwargs, not Comfy nodes. pipe_overrides is a Diffusers pipe() escape hatch, not Comfy. This recipe has no denoise/strength. Never invent Comfy nodes and never claim denoise exists.`;
+Chat MAY change seed, steps (num_inference_steps), width, height, true_cfg_scale, guidance_scale, max_sequence_length, num_images, negative_prompt, identity_ref_urls, extra_image_urls, sigmas, attention_kwargs, pipe_overrides, modal_kwargs, and prompt when asked — those are job-card / Modal kwargs, not Comfy nodes. pipe_overrides is a Diffusers pipe() escape hatch, not Comfy. This recipe has no denoise/strength. Never invent Comfy nodes and never claim denoise exists.
+The Modal stills card has Allow NSFW / Block NSFW chips that write into negative_prompt. Chat may still set negative_prompt freely. Never strip child/minor terms.`;
 
 const MODE_HINT: Record<GenerateMode, string> = {
   t2i: "Active engine: Text → Image. Inference should be a still prompt.",

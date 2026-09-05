@@ -13,11 +13,14 @@ import {
   formatJobCardJson,
   formatPipeOverridesJson,
   formatSigmasText,
+  mergeNsfwBlockTerms,
+  nsfwBlockState,
   parseJobCardJson,
   parsePipeOverridesJson,
   parseSigmasText,
   randomSeed,
   sanitizePipeOverrides,
+  stripNsfwBlockTerms,
   type GenerateJobCard,
 } from "@/lib/generate-job-card";
 
@@ -515,6 +518,7 @@ export default function GenerateStudio() {
   const needVideo = mode === "v2v";
   const promptReady = mode === "modal" ? card.prompt.trim().length > 0 : composeEnginePrompt(inference, description).length > 0;
   const canGo = !busy && (promptReady || mode === "v2v") && (!needImage || !!imageFile) && (!needVideo || !!videoFile);
+  const nsfwState = nsfwBlockState(card.negative_prompt);
 
   return (
     <main className="gen-page">
@@ -670,7 +674,29 @@ export default function GenerateStudio() {
                 />
               </div>
               <div>
-                <p className="gen-label">Negative prompt</p>
+                <div className="gen-neg-head">
+                  <p className="gen-label">Negative prompt</p>
+                  <div className="gen-nsfw-chips" role="group" aria-label="NSFW negative terms">
+                    <button
+                      type="button"
+                      className={`gen-nsfw-chip${nsfwState === "blocked" ? " gen-nsfw-chip-on" : ""}`}
+                      disabled={busy}
+                      aria-pressed={nsfwState === "blocked"}
+                      onClick={() => patchCard({ negative_prompt: mergeNsfwBlockTerms(card.negative_prompt) })}
+                    >
+                      Block NSFW
+                    </button>
+                    <button
+                      type="button"
+                      className={`gen-nsfw-chip${nsfwState === "allowed" ? " gen-nsfw-chip-on" : ""}`}
+                      disabled={busy}
+                      aria-pressed={nsfwState === "allowed"}
+                      onClick={() => patchCard({ negative_prompt: stripNsfwBlockTerms(card.negative_prompt) })}
+                    >
+                      Allow NSFW
+                    </button>
+                  </div>
+                </div>
                 <textarea
                   className="gen-box gen-box-description"
                   value={card.negative_prompt}
