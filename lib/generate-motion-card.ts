@@ -158,7 +158,7 @@ export function mergeMotionCard(
     if (!(key in rec)) continue;
     const value = rec[key];
     if (value === undefined || value === null) continue;
-    if (typeof value === "string" && value.trim() === "" && key !== "negative_prompt" && key !== "end_image_url" && key !== "source_image_url") {
+    if (typeof value === "string" && value.trim() === "" && key !== "negative_prompt" && key !== "end_image_url") {
       continue;
     }
     next[key] = value;

@@ -96,6 +96,22 @@ describe("merge + LLM parse + JSON", () => {
     assert.deepEqual(back, full);
   });
 
+  it("does not wipe an existing source still when the LLM sends empty source_image_url", () => {
+    const base = parseGenerateMotionCard({ prompt: "she turns", source_image_url: STILL });
+    const merged = mergeMotionCard(base, {
+      prompt: "she waves, same face",
+      source_image_url: "",
+      end_image_url: "",
+    });
+    assert.equal(merged.source_image_url, STILL);
+    assert.match(merged.prompt, /waves/);
+    const fromLlm = parseLlmMotionCard(
+      '{"reply":"Kept the still.","prompt":"slight smile","source_image_url":""}',
+      base,
+    );
+    assert.equal(fromLlm.card.source_image_url, STILL);
+  });
+
   it("parses fenced LLM JSON", () => {
     const parsed = parseLlmMotionCard(
       '```json\n{"reply":"Ready.","prompt":"slight smile, hair moves","source_image_url":"' +
