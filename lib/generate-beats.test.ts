@@ -102,6 +102,24 @@ describe("beat queue helpers", () => {
     assert.notEqual(stale.beats[1].prompt, q.beats[1].prompt);
   });
 
+  it("keeps spaces in a beat 2 prompt while typing", () => {
+    let q = emptyBeatQueue();
+    q = addBeat(q, { prompt: "beat one", source_image_url: STILL });
+    q = addBeat(q, { prompt: "two", source_image_url: STILL });
+    const id2 = q.beats[1].id;
+    q = applyLocalBeatPatch(q, id2, { prompt: "she " });
+    assert.equal(q.beats[1].prompt, "she ");
+    q = applyLocalBeatPatch(q, id2, { prompt: "she walks" });
+    assert.equal(q.beats[1].prompt, "she walks");
+    q = applyLocalBeatPatch(q, id2, { prompt: "she walks then turns" });
+    assert.equal(q.beats[1].prompt, "she walks then turns");
+    q = applyLocalBeatPatch(q, id2, { from_prev_last: true });
+    q = applyLocalBeatPatch(q, id2, { prompt: "she walks then turns " });
+    assert.equal(q.beats[1].prompt, "she walks then turns ");
+    assert.equal(q.beats[1].from_prev_last, true);
+    assert.equal(q.beats[1].source_image_url, STILL);
+  });
+
   it("drops late save responses after a newer local edit", () => {
     assert.equal(shouldApplyDebouncedBeatSave(3, 3), true);
     assert.equal(shouldApplyDebouncedBeatSave(4, 3), false);

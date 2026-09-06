@@ -39,10 +39,26 @@ describe("/generate fal engine tabs", () => {
     assert.match(studio, /\/api\/generate\/beats/);
     assert.match(studio, /patchBeatLocal/);
     assert.match(studio, /flushBeatPatchPersist/);
+    assert.match(studio, /beatQueueRef/);
+    assert.match(studio, /applyLocalBeatPatch/);
     assert.doesNotMatch(studio, /beatAction\("patch"/);
     assert.match(beatsUi, /Stitch approved beats/);
     assert.match(beatsUi, /0\.5× slow-mo/);
     assert.match(beatsUi, /<video/);
     assert.match(beatsUi, /controls/);
+    assert.match(beatsUi, /gen-beat-strip/);
+    assert.match(beatsUi, /aria-label="Beat timeline"/);
+    assert.match(beatsUi, />\s*Left\s*</);
+    assert.match(beatsUi, />\s*Right\s*</);
+    assert.doesNotMatch(beatsUi, /gen-beat-list/);
+    assert.doesNotMatch(beatsUi, />\s*Up\s*</);
+    assert.doesNotMatch(beatsUi, />\s*Down\s*</);
+  });
+
+  it("lays the beat queue out as a horizontal filmstrip, not stacked cards", () => {
+    const css = readFileSync(join(root, "app/generate/generate.css"), "utf8");
+    assert.match(css, /\.gen-beat-strip\s*\{[^}]*flex-direction:\s*row/s);
+    assert.match(css, /\.gen-beat-timeline\s*\{[^}]*overflow-x:\s*auto/s);
+    assert.doesNotMatch(css, /\.gen-beat-list\s*\{[^}]*flex-direction:\s*column/s);
   });
 });
