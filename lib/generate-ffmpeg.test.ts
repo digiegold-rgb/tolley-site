@@ -5,7 +5,6 @@ import {
   concatMp4sCopy,
   extractLastFrame,
   ffmpegBin,
-  ffmpegCandidates,
   isFfmpegAvailable,
   playbackRateForSlowMo,
   remuxSlowMo,
@@ -26,28 +25,28 @@ function run(bin: string, args: string[]): Promise<void> {
   });
 }
 
-describe("resolveFfmpegPath", () => {
-  it("prefers an existing FFMPEG_PATH over package / PATH fallbacks", () => {
-    const bin = resolveFfmpegPath({ FFMPEG_PATH: process.execPath });
+describe("ffmpegBin", () => {
+  it("prefers an existing FFMPEG_PATH over ffmpeg-static / PATH", () => {
+    const bin = ffmpegBin({ FFMPEG_PATH: process.execPath });
     assert.equal(bin, process.execPath);
-    assert.equal(ffmpegBin({ FFMPEG_PATH: process.execPath }), bin);
+    assert.equal(resolveFfmpegPath({ FFMPEG_PATH: process.execPath }), bin);
   });
 
-  it("skips a missing FFMPEG_PATH and still finds a binary", async () => {
+  it("skips a nonexistent FFMPEG_PATH and uses ffmpeg-static", async () => {
     const avail = await isFfmpegAvailable({ FFMPEG_PATH: "/no/such/ffmpeg-bin" });
     assert.equal(avail.ok, true);
     assert.ok(avail.bin);
     assert.notEqual(avail.bin, "/no/such/ffmpeg-bin");
-    const resolved = resolveFfmpegPath({ FFMPEG_PATH: "/no/such/ffmpeg-bin" });
-    assert.notEqual(resolved, "/no/such/ffmpeg-bin");
-    assert.ok(ffmpegCandidates({ FFMPEG_PATH: "/no/such/ffmpeg-bin" }).includes("/no/such/ffmpeg-bin"));
+    assert.notEqual(avail.bin, "ffmpeg");
+    assert.ok(existsSync(avail.bin));
+    assert.equal(ffmpegBin({ FFMPEG_PATH: "/no/such/ffmpeg-bin" }), avail.bin);
   });
 
-  it("resolves a real file (ffmpeg-static) instead of a bare PATH spawn", () => {
-    const bin = resolveFfmpegPath({});
+  it("resolves require('ffmpeg-static') instead of a bare PATH spawn", () => {
+    const bin = ffmpegBin({});
     assert.notEqual(bin, "ffmpeg");
     assert.ok(existsSync(bin), `expected a file at ${bin}`);
-    assert.match(bin, /ffmpeg/);
+    assert.match(bin, /ffmpeg-static|ffmpeg/);
   });
 });
 

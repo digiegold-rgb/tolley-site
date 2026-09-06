@@ -61,9 +61,9 @@ const nextConfig: NextConfig = {
   // with the bundler. Do not remove the tsc step from "build".
   typescript: { ignoreBuildErrors: true },
   // Modal JS SDK is gRPC/protobuf — keep it out of the webpack graph.
-  // ffmpeg-static (and optional @ffmpeg-installer) must stay external so
-  // generate remux / stitch / last-frame extract can spawn the real binary.
-  serverExternalPackages: ["modal", "ffmpeg-static", "@ffmpeg-installer/ffmpeg"],
+  // ffmpeg-static must stay external so generate remux / stitch / last-frame
+  // extract can spawn the real binary (Vercel Node has no system ffmpeg).
+  serverExternalPackages: ["modal", "ffmpeg-static"],
   // 1.16 hung 35+ min at "Generating static pages (0/655)". 1.17 put
   // force-dynamic on the ROOT layout; collect-page-data then hung instead
   // (this timeout does not apply to collect). Root is static again, like
@@ -101,14 +101,36 @@ const nextConfig: NextConfig = {
     // 8/25: per-character rule template instantiated when a user builds a character
     "/api/vater/rules/character-seed": ["./data/CHARACTER-RULE-TEMPLATE.json"],
     "/api/vater/rules/character-seed/route": ["./data/CHARACTER-RULE-TEMPLATE.json"],
-    // Motion 1 remux/stitch + Motion 2 last-frame extract. Vercel Node has
-    // no system ffmpeg — the static binary must land in these functions.
-    "/api/generate/jobs/[id]": ["./node_modules/ffmpeg-static/**"],
-    "/api/generate/jobs/[id]/route": ["./node_modules/ffmpeg-static/**"],
-    "/api/generate/beats": ["./node_modules/ffmpeg-static/**"],
-    "/api/generate/beats/route": ["./node_modules/ffmpeg-static/**"],
-    "/api/generate/longform": ["./node_modules/ffmpeg-static/**"],
-    "/api/generate/longform/route": ["./node_modules/ffmpeg-static/**"],
+    // Motion 1 remux/stitch + Motion 2 last-frame extract. vercel.json
+    // functions is at the key cap — includeFiles lives here instead.
+    "/api/generate/**": [
+      "./node_modules/ffmpeg-static/ffmpeg",
+      "./node_modules/ffmpeg-static/**",
+    ],
+    "/api/generate/jobs/[id]": [
+      "./node_modules/ffmpeg-static/ffmpeg",
+      "./node_modules/ffmpeg-static/**",
+    ],
+    "/api/generate/jobs/[id]/route": [
+      "./node_modules/ffmpeg-static/ffmpeg",
+      "./node_modules/ffmpeg-static/**",
+    ],
+    "/api/generate/beats": [
+      "./node_modules/ffmpeg-static/ffmpeg",
+      "./node_modules/ffmpeg-static/**",
+    ],
+    "/api/generate/beats/route": [
+      "./node_modules/ffmpeg-static/ffmpeg",
+      "./node_modules/ffmpeg-static/**",
+    ],
+    "/api/generate/longform": [
+      "./node_modules/ffmpeg-static/ffmpeg",
+      "./node_modules/ffmpeg-static/**",
+    ],
+    "/api/generate/longform/route": [
+      "./node_modules/ffmpeg-static/ffmpeg",
+      "./node_modules/ffmpeg-static/**",
+    ],
   },
   async headers() {
     return [
