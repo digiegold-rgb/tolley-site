@@ -3,6 +3,7 @@
 import {
   canStitchLongform,
   estimateLongform,
+  inFlightLongformBeats,
   longformProgress,
   longformStitchBlockers,
   type LongformBeat,
@@ -88,6 +89,9 @@ export function LongformPanel({
   const stitchOk = canStitchLongform(queue);
   const selected = queue.beats.find((b) => b.id === selectedId) || queue.beats[0] || null;
   const selectedIndex = selected ? queue.beats.findIndex((b) => b.id === selected.id) : -1;
+  const inFlight = inFlightLongformBeats(queue);
+  const inFlightIds = new Set(inFlight.map((b) => b.id));
+  const primaryBusy = busy || inFlight.length > 0;
 
   return (
     <div className="gen-longform" data-testid="motion2-longform">
@@ -205,28 +209,32 @@ export function LongformPanel({
           />
           Ripple continuity on regenerate
         </label>
-        <button type="button" className="gen-seed-random" disabled={busy} onClick={onPlan}>
+        <button type="button" className="gen-seed-random" disabled={primaryBusy} onClick={onPlan}>
           Plan {liveEstimate.beat_count} beats
         </button>
         <button
           type="button"
           className="gen-go"
           data-testid="motion2-go"
-          disabled={busy || !canGo}
+          disabled={primaryBusy || (!canGo && !inFlight.length)}
           onClick={onGo}
           style={{ marginLeft: "auto" }}
         >
-          {busy ? "Working…" : dryRun ? "Dry run" : "Go"}
+          {primaryBusy ? "Working…" : dryRun ? "Dry run" : "Go"}
         </button>
       </div>
       {!queue.beats.length ? (
         <p className="gen-hint" data-testid="motion2-plan-first">
           Plan beats first. Go stays off until there is a draft beat to generate.
         </p>
-      ) : !canGo && !busy ? (
+      ) : !canGo && !primaryBusy ? (
         <p className="gen-hint">No beat is ready to generate. Plan a new take, or wait for the last frame.</p>
       ) : null}
-      {stage ? <p className="gen-stage">⏳ {stage}</p> : null}
+      {stage ? (
+        <p className="gen-stage" data-testid="motion2-stage">
+          ⏳ {stage}
+        </p>
+      ) : null}
       {notice ? <p className="gen-library-status" data-testid="motion2-notice">{notice}</p> : null}
 
       {queue.continuity_error ? <p className="gen-err">{queue.continuity_error}</p> : null}
@@ -265,7 +273,7 @@ export function LongformPanel({
                 <textarea
                   className="gen-longform-prompt"
                   value={beat.prompt}
-                  disabled={busy || beat.status === "generating"}
+                  disabled={primaryBusy || beat.status === "generating"}
                   onChange={(e) => onPatch(beat.id, { prompt: e.target.value })}
                   onFocus={() => onSelect(beat.id)}
                 />
@@ -277,13 +285,16 @@ export function LongformPanel({
                   <button
                     type="button"
                     className="gen-seed-random"
-                    disabled={busy || beat.status === "generating"}
+                    data-testid={`motion2-beat-generate-${i + 1}`}
+                    disabled={primaryBusy || inFlightIds.has(beat.id)}
                     onClick={() => onGenerate(beat.id)}
                   >
-                    {beat.status === "draft"
-                      ? "Generate this beat"
-                      : beat.status === "generating"
-                        ? "Generating…"
+                    {inFlightIds.has(beat.id)
+                      ? beat.job_id
+                        ? `Generating… ${beat.job_id}`
+                        : "Generating…"
+                      : beat.status === "draft"
+                        ? "Generate this beat"
                         : "Regenerate"}
                   </button>
                   {beat.status === "ready" || beat.status === "rejected" ? (

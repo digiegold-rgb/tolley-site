@@ -11,8 +11,16 @@ import {
   canGenerateLongformBeat,
   canStitchLongform,
   estimateLongform,
+  applyChildJobsToLongformQueue,
+  bindLongformQueueToJobs,
+  inFlightLongformBeats,
+  longformAlreadyRunningReason,
   longformGenerateClientError,
   longformNeedsNewPlan,
+  longformParentJobStatus,
+  longformRunningNotice,
+  markLongformBeatGenerating,
+  motion2PrimaryBusy,
   nextGeneratableLongformBeat,
   parseLongformQueue,
   parseScriptLines,
@@ -207,6 +215,88 @@ describe("longform stitch gate", () => {
   });
 });
 
+describe("longform in-flight bind", () => {
+  it("treats generating beats and running/queued children as in-flight", () => {
+    let q = planLongformQueue({ targetSeconds: 30, sourceImageUrl: STILL, fallbackPrompt: "walk" });
+    assert.equal(inFlightLongformBeats(q).length, 0);
+    assert.equal(longformParentJobStatus(q), "queued");
+    assert.equal(motion2PrimaryBusy(null, q), false);
+    assert.equal(longformRunningNotice(q), null);
+
+    q = markLongformBeatGenerating(q, q.beats[0].id, "cmtpvb0ov00bxky04j540zszh");
+    assert.equal(inFlightLongformBeats(q).length, 1);
+    assert.equal(longformParentJobStatus(q), "running");
+    assert.equal(motion2PrimaryBusy(null, q), true);
+    assert.equal(motion2PrimaryBusy("planning…", q), true);
+    assert.match(longformRunningNotice(q) || "", /fal running… beat cmtpvb0ov00bxky04j540zszh/);
+    assert.equal(longformAlreadyRunningReason(q, q.beats[0].id), "Beat is already generating");
+    assert.equal(longformNeedsNewPlan(q), false);
+    assert.equal(nextGeneratableLongformBeat(q), null);
+  });
+
+  it("binds a running child onto a draft beat after refresh (lost local stage)", () => {
+    let q = planLongformQueue({ targetSeconds: 30, sourceImageUrl: STILL, fallbackPrompt: "walk" });
+    q = { ...q, beats: q.beats.map((b, i) => (i === 0 ? { ...b, job_id: "child-run", status: "draft" as const } : b)) };
+    const bound = applyChildJobsToLongformQueue(q, [{ id: "child-run", status: "running" }]);
+    assert.equal(bound.beats[0].status, "generating");
+    assert.equal(longformParentJobStatus(bound), "running");
+    assert.match(longformRunningNotice(bound) || "", /fal running… beat child-run/);
+  });
+
+  it("marks the beat ready when the child is done — clip is showable", () => {
+    let q = planLongformQueue({ targetSeconds: 30, sourceImageUrl: STILL, fallbackPrompt: "walk" });
+    q = markLongformBeatGenerating(q, q.beats[0].id, "child-done");
+    const ready = applyChildJobsToLongformQueue(q, [{ id: "child-done", status: "done" }]);
+    assert.equal(ready.beats[0].status, "ready");
+    assert.equal(ready.beats[0].job_id, "child-done");
+    assert.equal(inFlightLongformBeats(ready).length, 0);
+    assert.equal(motion2PrimaryBusy(null, ready), false);
+  });
+
+  it("rebinds via card.beat_id when the queue lost job_id", () => {
+    let q = planLongformQueue({ targetSeconds: 30, sourceImageUrl: STILL, fallbackPrompt: "walk" });
+    const parent = "cmtptqzm300bxl904apn9iimx";
+    const rebound = bindLongformQueueToJobs(
+      q,
+      [
+        {
+          id: "cmtpvb0ov00bxky04j540zszh",
+          status: "running",
+          card: { queue_id: parent, beat_id: q.beats[0].id, longform: true, fal_model: "wan30-i2v" },
+        },
+      ],
+      parent,
+    );
+    assert.equal(rebound.beats[0].status, "generating");
+    assert.equal(rebound.beats[0].job_id, "cmtpvb0ov00bxky04j540zszh");
+    assert.equal(longformParentJobStatus(rebound), "running");
+  });
+
+  it("ignores a running Motion 1 / other-queue child when binding", () => {
+    let q = planLongformQueue({ targetSeconds: 30, sourceImageUrl: STILL, fallbackPrompt: "walk" });
+    const left = bindLongformQueueToJobs(
+      q,
+      [
+        {
+          id: "motion1-child",
+          status: "running",
+          card: { queue_id: "someone-else", beat_id: q.beats[0].id },
+        },
+      ],
+      "cmtptqzm300bxl904apn9iimx",
+    );
+    assert.equal(left.beats[0].status, "draft");
+    assert.equal(left.beats[0].job_id, "");
+  });
+
+  it("does not treat a finished child as idle Generate while stage is still set", () => {
+    let q = planLongformQueue({ targetSeconds: 30, sourceImageUrl: STILL, fallbackPrompt: "walk" });
+    q = { ...q, beats: q.beats.map((b, i) => (i === 0 ? { ...b, status: "ready" as const, job_id: "done1" } : b)) };
+    assert.equal(motion2PrimaryBusy("fal running… beat done1", q), true);
+    assert.equal(motion2PrimaryBusy(null, q), false);
+  });
+});
+
 describe("longform generate 200 body", () => {
   it("treats refused / missing child as a loud client error (prod 200 no-op)", () => {
     assert.match(
@@ -218,6 +308,7 @@ describe("longform generate 200 body", () => {
     );
     assert.match(longformGenerateClientError({}) || "", /Plan beats first/i);
     assert.equal(longformGenerateClientError({ child: { id: "job_1" } }), null);
+    assert.equal(longformGenerateClientError({ already_running: true, child: { id: "job_1" } }), null);
     assert.equal(longformGenerateClientError({ dryRun: true, note: "no spend" }), null);
   });
 

@@ -7,6 +7,7 @@ import {
   LONGFORM_RECIPE,
   emptyLongformQueue,
   longformBeatByJobId,
+  longformParentJobStatus,
   markLongformBeatFromChildJob,
   parseLongformQueue,
   type LongformQueue,
@@ -36,16 +37,18 @@ export async function saveLongformQueue(opts: {
   queue: LongformQueue;
   id?: string;
 }): Promise<{ row: GenerateJobRow; queue: LongformQueue }> {
+  const queue = parseLongformQueue(opts.queue);
+  const status = longformParentJobStatus(queue);
   const data = {
     recipe: LONGFORM_RECIPE,
-    cardJson: parseLongformQueue(opts.queue),
+    cardJson: queue,
     createdBy: opts.createdBy,
-    status: "queued",
+    status,
   };
   const row = opts.id
     ? await prisma.generateJob.update({
         where: { id: opts.id },
-        data: { cardJson: data.cardJson, recipe: LONGFORM_RECIPE },
+        data: { cardJson: data.cardJson, recipe: LONGFORM_RECIPE, status },
       })
     : await prisma.generateJob.create({ data });
   return { row, queue: parseLongformQueue(row.cardJson) };
@@ -77,6 +80,14 @@ export function cardQueueId(cardJson: unknown): string {
       ? (cardJson as Record<string, unknown>)
       : {};
   return typeof rec.queue_id === "string" ? rec.queue_id.trim() : "";
+}
+
+export function cardBeatId(cardJson: unknown): string {
+  const rec =
+    cardJson && typeof cardJson === "object" && !Array.isArray(cardJson)
+      ? (cardJson as Record<string, unknown>)
+      : {};
+  return typeof rec.beat_id === "string" ? rec.beat_id.trim() : "";
 }
 
 export function cardWantsLongform(cardJson: unknown): boolean {

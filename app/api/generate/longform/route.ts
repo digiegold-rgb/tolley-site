@@ -16,6 +16,9 @@ import {
   emptyLongformQueue,
   ensureBeatSourceFromPrev,
   estimateLongform,
+  isInFlightJobStatus,
+  longformAlreadyRunningReason,
+  longformParentJobStatus,
   markLongformBeatGenerating,
   motionCardFromLongformBeat,
   nextGeneratableLongformBeat,
@@ -26,7 +29,8 @@ import {
   type BeatStatus,
   type LongformQueue,
 } from "@/lib/generate-longform";
-import { latestLongformJob, loadLongformJob, saveLongformQueue } from "@/lib/generate-longform-store";
+import { reconcileLongformParent } from "@/lib/generate-longform-advance";
+import { cardBeatId, latestLongformJob, loadLongformJob, saveLongformQueue } from "@/lib/generate-longform-store";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -59,14 +63,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       queue,
       job: null,
+      children: [],
       estimate: publicEstimate(queue),
       fal: falPublicLongformStatus(),
     });
   }
+  const reconciled = await reconcileLongformParent(loaded);
+  const parent = (await loadLongformJob(reconciled.row.id)) || loaded;
+  const childIds = parent.queue.beats.map((b) => b.job_id).filter(Boolean);
+  const children = childIds.length
+    ? (await prisma.generateJob.findMany({ where: { id: { in: childIds } } })).map(serializeJob)
+    : [];
   return NextResponse.json({
-    queue: loaded.queue,
-    job: serializeJob(loaded.row),
-    estimate: publicEstimate(loaded.queue),
+    queue: parent.queue,
+    job: serializeJob(parent.row),
+    children,
+    estimate: publicEstimate(parent.queue),
     fal: falPublicLongformStatus(),
   });
 }
@@ -156,7 +168,10 @@ export async function POST(req: NextRequest) {
       >;
       queue = patchLongformBeat(queue, String(body.beatId || ""), patch);
     } else if (action === "generate" || action === "generate-next") {
-      if (body.queue) {
+      // Prefer the persisted queue so a stale client draft cannot spawn a
+      // second fal job while a child is already running.
+      if (loaded) queue = loaded.queue;
+      else if (body.queue) {
         try {
           queue = parseLongformQueue(body.queue);
         } catch (err) {
@@ -165,9 +180,13 @@ export async function POST(req: NextRequest) {
       }
       let beatId = String(body.beatId || "");
       if (action === "generate-next" && !beatId) {
-        const next = nextGeneratableLongformBeat(queue);
-        if (!next) return jsonError("No remaining beat is ready to generate", 400);
-        beatId = next.id;
+        const generating = queue.beats.find((b) => b.status === "generating");
+        if (generating) beatId = generating.id;
+        else {
+          const next = nextGeneratableLongformBeat(queue);
+          if (!next) return jsonError("No remaining beat is ready to generate", 400);
+          beatId = next.id;
+        }
       }
       return await generateLongformBeat(gate.createdBy, queue, loaded?.row.id, beatId, {
         ripple: body.ripple === true,
@@ -194,6 +213,36 @@ export async function POST(req: NextRequest) {
   });
 }
 
+async function existingInFlightChild(
+  queue: LongformQueue,
+  queueJobId: string | undefined,
+  beatId: string,
+) {
+  const beat = queue.beats.find((b) => b.id === beatId);
+  if (beat?.job_id) {
+    const child = await prisma.generateJob.findUnique({ where: { id: beat.job_id } });
+    if (child && isInFlightJobStatus(child.status)) return child;
+  }
+  if (!queueJobId) return null;
+  const recent = await prisma.generateJob.findMany({
+    where: {
+      status: { in: ["queued", "running"] },
+      recipe: { in: ["fal-wan-i2v", "fal-wan-flf2v"] },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 20,
+  });
+  return (
+    recent.find((row) => {
+      const rec =
+        row.cardJson && typeof row.cardJson === "object" && !Array.isArray(row.cardJson)
+          ? (row.cardJson as Record<string, unknown>)
+          : {};
+      return rec.queue_id === queueJobId && rec.beat_id === beatId;
+    }) || null
+  );
+}
+
 async function generateLongformBeat(
   createdBy: string,
   queue: LongformQueue,
@@ -202,6 +251,31 @@ async function generateLongformBeat(
   opts: { ripple: boolean; dryRun: boolean },
 ) {
   queue = ensureBeatSourceFromPrev(queue, beatId);
+  const liveChild =
+    (await existingInFlightChild(queue, queueJobId, beatId)) ||
+    (await (async () => {
+      const other = queue.beats.find((b) => b.id !== beatId && b.status === "generating" && b.job_id);
+      if (!other?.job_id) return null;
+      const row = await prisma.generateJob.findUnique({ where: { id: other.job_id } });
+      return row && isInFlightJobStatus(row.status) ? row : null;
+    })());
+  if (liveChild) {
+    const bindId =
+      cardBeatId(liveChild.cardJson) ||
+      queue.beats.find((b) => b.job_id === liveChild.id)?.id ||
+      beatId;
+    const generating = markLongformBeatGenerating(queue, bindId, liveChild.id);
+    const saved = await saveLongformQueue({ createdBy, queue: generating, id: queueJobId });
+    return NextResponse.json({
+      already_running: true,
+      note: longformAlreadyRunningReason(generating, bindId, liveChild) || "Beat is already generating",
+      kind: "longform",
+      queue: saved.queue,
+      job: serializeJob(saved.row),
+      child: serializeJob(liveChild),
+      estimate: publicEstimate(saved.queue),
+    });
+  }
   const ready = canGenerateLongformBeat(queue, beatId);
   if (!ready.ok || !ready.beat) return jsonError(ready.reason || "Cannot generate this beat", 400);
   const beat = ready.beat;
@@ -263,7 +337,11 @@ async function generateLongformBeat(
   const generating = markLongformBeatGenerating(saved.queue, beat.id, child.id);
   await prisma.generateJob.update({
     where: { id: saved.row.id },
-    data: { cardJson: generating },
+    data: {
+      cardJson: generating,
+      status: longformParentJobStatus(generating),
+      startedAt: saved.row.startedAt || new Date(),
+    },
   });
 
   if (!isFalConfigured()) {
@@ -279,7 +357,10 @@ async function generateLongformBeat(
       status: "rejected",
       error: "fal.ai is not configured. Set FAL_KEY.",
     });
-    await prisma.generateJob.update({ where: { id: saved.row.id }, data: { cardJson: failedQ } });
+    await prisma.generateJob.update({
+      where: { id: saved.row.id },
+      data: { cardJson: failedQ, status: longformParentJobStatus(failedQ) },
+    });
     return jsonError("fal.ai is not configured. Set FAL_KEY on Vercel.", 503, {
       queue: failedQ,
       job: serializeJob(saved.row),
@@ -324,7 +405,10 @@ async function generateLongformBeat(
       status: "rejected",
       error: messageText.slice(0, 500),
     });
-    await prisma.generateJob.update({ where: { id: saved.row.id }, data: { cardJson: failedQ } });
+    await prisma.generateJob.update({
+      where: { id: saved.row.id },
+      data: { cardJson: failedQ, status: longformParentJobStatus(failedQ) },
+    });
     return jsonError(messageText, 502, {
       queue: failedQ,
       job: serializeJob(saved.row),

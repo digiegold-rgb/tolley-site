@@ -363,6 +363,10 @@ export function markLongformBeatGenerating(
   return patchLongformBeat(queue, beatId, { status: "generating", job_id: jobId, error: "" });
 }
 
+export function isInFlightJobStatus(status: string | null | undefined): boolean {
+  return status === "running" || status === "queued";
+}
+
 export function markLongformBeatFromChildJob(
   queue: LongformQueue,
   jobId: string,
@@ -379,10 +383,134 @@ export function markLongformBeatFromChildJob(
       error: (child.error || "generation failed").slice(0, 500),
     });
   }
-  if (child.status === "running" || child.status === "queued") {
+  if (isInFlightJobStatus(child.status)) {
     return patchLongformBeat(queue, beat.id, { status: "generating" });
   }
   return queue;
+}
+
+/** Beats the Motion 2 UI must treat as live — generating, or a linked child still queued/running. */
+export function inFlightLongformBeats(
+  queue: LongformQueue,
+  children?: Array<{ id: string; status: string }> | null,
+): LongformBeat[] {
+  const byId = new Map((children || []).map((c) => [c.id, c]));
+  return queue.beats.filter((b) => {
+    if (b.status === "generating") return true;
+    if (!b.job_id) return false;
+    const child = byId.get(b.job_id);
+    return Boolean(child && isInFlightJobStatus(child.status));
+  });
+}
+
+export function longformInFlightChildIds(
+  queue: LongformQueue,
+  children?: Array<{ id: string; status: string }> | null,
+): string[] {
+  const ids = new Set<string>();
+  for (const beat of inFlightLongformBeats(queue, children)) {
+    if (beat.job_id) ids.add(beat.job_id);
+  }
+  for (const child of children || []) {
+    if (isInFlightJobStatus(child.status)) ids.add(child.id);
+  }
+  return [...ids];
+}
+
+export function longformRunningNotice(
+  queue: LongformQueue,
+  children?: Array<{ id: string; status: string }> | null,
+): string | null {
+  const beat = inFlightLongformBeats(queue, children)[0];
+  if (!beat) return null;
+  const child = (children || []).find((c) => c.id === beat.job_id);
+  const jobId = beat.job_id || child?.id || "";
+  if (child?.status === "queued" || (!child && beat.status === "generating" && !jobId)) {
+    return jobId ? `queued on fal… beat ${jobId}` : "queued on fal…";
+  }
+  return jobId ? `fal running… beat ${jobId}` : "fal running…";
+}
+
+/** Parent fal-wan-longform job: running while any child is in flight, else queued. */
+export function longformParentJobStatus(
+  queue: LongformQueue,
+  children?: Array<{ id: string; status: string }> | null,
+): "queued" | "running" {
+  return inFlightLongformBeats(queue, children).length ? "running" : "queued";
+}
+
+export function longformAlreadyRunningReason(
+  queue: LongformQueue,
+  beatId: string,
+  child?: { id?: string; status?: string } | null,
+): string | null {
+  const beat = findLongformBeat(queue, beatId);
+  if (!beat) return null;
+  if (beat.status === "generating") return "Beat is already generating";
+  if (child && isInFlightJobStatus(child.status)) return "Beat is already generating";
+  return null;
+}
+
+export function applyChildJobsToLongformQueue(
+  queue: LongformQueue,
+  children: Array<{ id: string; status: string; error?: string | null }>,
+): LongformQueue {
+  let next = queue;
+  for (const child of children) {
+    next = markLongformBeatFromChildJob(next, child.id, child);
+  }
+  return next;
+}
+
+/**
+ * Bind listed GenerateJobs onto a queue: child id on the beat, or card.beat_id
+ * + card.queue_id when the beat lost its job_id locally.
+ */
+export function bindLongformQueueToJobs(
+  queue: LongformQueue,
+  jobs: Array<{
+    id: string;
+    status: string;
+    error?: string | null;
+    card?: unknown;
+    recipe?: string;
+  }>,
+  parentId?: string | null,
+): LongformQueue {
+  let next = applyChildJobsToLongformQueue(queue, jobs);
+  for (const job of jobs) {
+    const rec =
+      job.card && typeof job.card === "object" && !Array.isArray(job.card)
+        ? (job.card as Record<string, unknown>)
+        : {};
+    const beatId = typeof rec.beat_id === "string" ? rec.beat_id.trim() : "";
+    const queueId = typeof rec.queue_id === "string" ? rec.queue_id.trim() : "";
+    if (parentId && queueId && queueId !== parentId) continue;
+    if (!beatId || !findLongformBeat(next, beatId)) continue;
+    if (isInFlightJobStatus(job.status)) {
+      const beat = findLongformBeat(next, beatId);
+      if (beat && (beat.status !== "generating" || beat.job_id !== job.id)) {
+        next = markLongformBeatGenerating(next, beatId, job.id);
+      }
+    } else if (job.status === "done" || job.status === "failed") {
+      next = markLongformBeatFromChildJob(
+        beatId && !longformBeatByJobId(next, job.id)
+          ? patchLongformBeat(next, beatId, { job_id: job.id })
+          : next,
+        job.id,
+        job,
+      );
+    }
+  }
+  return next;
+}
+
+export function motion2PrimaryBusy(
+  stage: string | null | undefined,
+  queue: LongformQueue,
+  children?: Array<{ id: string; status: string }> | null,
+): boolean {
+  return Boolean(stage) || inFlightLongformBeats(queue, children).length > 0;
 }
 
 /**
@@ -439,11 +567,13 @@ export function rippleContinuityAfter(
 export function canGenerateLongformBeat(
   queue: LongformQueue,
   beatId: string,
+  child?: { id?: string; status?: string } | null,
 ): { ok: boolean; reason?: string; beat?: LongformBeat; index?: number } {
   const idx = queue.beats.findIndex((b) => b.id === beatId);
   if (idx < 0) return { ok: false, reason: "Beat not found" };
   const beat = queue.beats[idx];
-  if (beat.status === "generating") return { ok: false, reason: "Beat is already generating", beat, index: idx };
+  const already = longformAlreadyRunningReason(queue, beatId, child);
+  if (already) return { ok: false, reason: already, beat, index: idx };
   if (!beat.prompt.trim()) return { ok: false, reason: "Beat needs a motion prompt", beat, index: idx };
   if (idx > 0) {
     const prev = queue.beats[idx - 1];
@@ -485,12 +615,14 @@ export function longformGenerateClientError(body: {
   child?: { id?: string } | null;
   dryRun?: boolean;
   refused?: boolean;
+  already_running?: boolean;
   reply?: string;
   error?: string;
   note?: string;
 }): string | null {
   if (body.refused) return body.reply || body.error || "Motion 2 refused this prompt.";
   if (body.dryRun) return null;
+  if (body.already_running && body.child?.id) return null;
   if (body.child?.id) return null;
   return (
     body.error ||

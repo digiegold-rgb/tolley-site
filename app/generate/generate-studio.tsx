@@ -66,9 +66,14 @@ import { LongformPanel } from "./longform-queue";
 import {
   LONGFORM_RECIPE,
   applyLocalLongformBeatPatch,
+  bindLongformQueueToJobs,
   emptyLongformQueue,
   estimateLongform,
+  inFlightLongformBeats,
+  longformAlreadyRunningReason,
   longformGenerateClientError,
+  longformRunningNotice,
+  motion2PrimaryBusy,
   nextGeneratableLongformBeat,
   parseLongformQueue,
   type LongformEstimate,
@@ -349,6 +354,8 @@ export default function GenerateStudio() {
   const longformQueueRef = useRef(longformQueue);
   const longformJobIdRef = useRef(longformJobId);
   const longformRippleRef = useRef(longformRipple);
+  const longformPollJobIdRef = useRef<string | null>(null);
+  const longformWaiters = useRef(new Map<string, Promise<ModalJob>>());
 
   useEffect(() => {
     beatQueueRef.current = beatQueue;
@@ -446,7 +453,14 @@ export default function GenerateStudio() {
         }
         if (j.longform_queue) {
           try {
-            const loaded = parseLongformQueue(j.longform_queue);
+            let loaded = parseLongformQueue(j.longform_queue);
+            const parentId =
+              j.longform_queue_job && typeof j.longform_queue_job === "object" && j.longform_queue_job.id
+                ? String(j.longform_queue_job.id)
+                : null;
+            if (Array.isArray(j.jobs)) {
+              loaded = bindLongformQueueToJobs(loaded, j.jobs as ModalJob[], parentId);
+            }
             setLongformQueue(loaded);
             longformQueueRef.current = loaded;
             setLongformEstimate(
@@ -456,7 +470,9 @@ export default function GenerateStudio() {
                 script: loaded.script,
               }),
             );
-            if (loaded.beats[0]) setSelectedLongformBeatId(loaded.beats[0].id);
+            const live = inFlightLongformBeats(loaded)[0];
+            if (live) setSelectedLongformBeatId(live.id);
+            else if (loaded.beats[0]) setSelectedLongformBeatId(loaded.beats[0].id);
           } catch {
             /* keep empty plan */
           }
@@ -666,6 +682,7 @@ export default function GenerateStudio() {
     error?: string;
     dryRun?: boolean;
     note?: string;
+    already_running?: boolean;
   }> {
     const r = await fetch("/api/generate/longform", {
       method: "POST",
@@ -691,6 +708,7 @@ export default function GenerateStudio() {
       dryRun?: boolean;
       note?: string;
       refused?: boolean;
+      already_running?: boolean;
       reply?: string;
     };
     if (j.queue) {
@@ -739,10 +757,14 @@ export default function GenerateStudio() {
     const data = (await readJson(q)) as {
       queue?: LongformQueue;
       job?: ModalJob;
+      children?: ModalJob[];
       estimate?: LongformEstimate;
     };
     if (data.queue) {
-      const next = parseLongformQueue(data.queue);
+      let next = parseLongformQueue(data.queue);
+      if (Array.isArray(data.children)) {
+        next = bindLongformQueueToJobs(next, data.children, data.job?.id);
+      }
       if (next.beats.length || !longformQueueRef.current.beats.length) {
         longformQueueRef.current = next;
         setLongformQueue(next);
@@ -757,6 +779,12 @@ export default function GenerateStudio() {
 
   async function generateLongformClip(id: string) {
     setError(null);
+    const already = longformAlreadyRunningReason(longformQueueRef.current, id);
+    if (already) {
+      setMotion2Notice(already);
+      await resumeMotion2InFlight();
+      return;
+    }
     setStage("longform beat → fal…");
     const j = await longformAction("generate", {
       beatId: id,
@@ -773,8 +801,11 @@ export default function GenerateStudio() {
     const spawnErr = longformGenerateClientError(j);
     if (spawnErr) throw new Error(spawnErr);
     setActiveJobId(j.child!.id);
-    setMotion2Notice(`Beat running on fal… ${j.child!.id}`);
-    await waitForGenerateJob(j.child!.id);
+    setMotion2Notice(
+      j.already_running ? `Already running… beat ${j.child!.id}` : `fal running… beat ${j.child!.id}`,
+    );
+    setStage(`fal running… beat ${j.child!.id}`);
+    await waitForLongformChild(j.child!.id);
     await refreshLongformQueue();
   }
 
@@ -786,12 +817,15 @@ export default function GenerateStudio() {
     if (!current.beats.length) {
       throw new Error("Plan beats first — Motion 2 will not generate until you have a queue.");
     }
+    if (inFlightLongformBeats(current).length) {
+      setMotion2Notice("Already running. Waiting for the in-flight beat.");
+      await resumeMotion2InFlight();
+      return;
+    }
     const nextBeat = nextGeneratableLongformBeat(current);
     if (!nextBeat) {
       throw new Error(
-        current.beats.some((b) => b.status === "generating")
-          ? "A beat is already generating. Wait for it to finish."
-          : "No remaining beat is ready to generate. Plan a new take, or wait for the previous last frame.",
+        "No remaining beat is ready to generate. Plan a new take, or wait for the previous last frame.",
       );
     }
     setStage(dryRun ? "dry run…" : "Motion 2 → fal…");
@@ -828,8 +862,8 @@ export default function GenerateStudio() {
       started += 1;
       setActiveJobId(j.child!.id);
       setMotion2Notice(`fal running… beat ${j.child!.id}`);
-      setStage(`fal running… beat ${j.child!.id.slice(0, 8)}`);
-      await waitForGenerateJob(j.child!.id);
+      setStage(`fal running… beat ${j.child!.id}`);
+      await waitForLongformChild(j.child!.id);
       await refreshLongformQueue();
       if (!nextGeneratableLongformBeat(longformQueueRef.current)) break;
     }
@@ -961,49 +995,95 @@ export default function GenerateStudio() {
     }
   }
 
-  function waitForGenerateJob(jobId: string): Promise<ModalJob> {
-    return new Promise((resolve, reject) => {
+  function waitForLongformChild(jobId: string): Promise<ModalJob> {
+    const existing = longformWaiters.current.get(jobId);
+    if (existing) return existing;
+    const pending = new Promise<ModalJob>((resolve, reject) => {
       if (poll.current) clearInterval(poll.current);
+      longformPollJobIdRef.current = jobId;
+      let tickBusy = false;
       const tick = async () => {
-        const s = await fetch(`/api/generate/jobs/${jobId}`, { cache: "no-store" });
-        if (s.status === 401 || s.status === 403) {
-          if (poll.current) clearInterval(poll.current);
-          reject(new Error("Not authorized — log in at /hq first, then come back."));
-          return;
-        }
-        let sj: { job?: ModalJob; error?: string };
+        if (tickBusy) return;
+        tickBusy = true;
         try {
-          sj = (await readJson(s)) as typeof sj;
-        } catch (pe) {
-          if (poll.current) clearInterval(poll.current);
-          reject(pe instanceof Error ? pe : new Error(String(pe)));
-          return;
-        }
-        const job = sj.job;
-        if (!job) {
-          setStage(sj.error || "working…");
-          return;
-        }
-        if (job.status === "done") {
-          if (poll.current) clearInterval(poll.current);
-          setResultIsVideo(isEngineVideoJob(job) || isStitchJob(job) || isVideoUrl(job.output_urls?.[0] ?? ""));
-          setResultUrl(job.output_urls?.length ? stillSrc(job.id, 0) : null);
+          const s = await fetch(`/api/generate/jobs/${encodeURIComponent(jobId)}`, { cache: "no-store" });
+          if (s.status === 401 || s.status === 403) {
+            if (poll.current) clearInterval(poll.current);
+            reject(new Error("Not authorized — log in at /hq first, then come back."));
+            return;
+          }
+          let sj: { job?: ModalJob; error?: string };
+          try {
+            sj = (await readJson(s)) as typeof sj;
+          } catch {
+            setStage(`fal running… beat ${jobId}`);
+            setMotion2Notice(`fal running… beat ${jobId}`);
+            return;
+          }
+          const job = sj.job;
+          if (!job) {
+            setStage(sj.error || `fal running… beat ${jobId}`);
+            return;
+          }
           setModalJobs((list) => [job, ...list.filter((x) => x.id !== job.id)]);
-          resolve(job);
-        } else if (job.status === "failed") {
-          if (poll.current) clearInterval(poll.current);
-          reject(new Error(job.error || "generation failed"));
-        } else {
-          setStage(
-            job.status === "queued" ? "queued on fal…" : `fal running… beat ${jobId.slice(0, 8)}`,
-          );
+          if (job.status === "done") {
+            if (poll.current) clearInterval(poll.current);
+            setResultIsVideo(isEngineVideoJob(job) || isStitchJob(job) || isVideoUrl(job.output_urls?.[0] ?? ""));
+            setResultUrl(job.output_urls?.length ? stillSrc(job.id, 0) : null);
+            resolve(job);
+          } else if (job.status === "failed") {
+            if (poll.current) clearInterval(poll.current);
+            reject(new Error(job.error || "generation failed"));
+          } else {
+            setActiveJobId(job.id);
+            setStage(
+              job.status === "queued" ? `queued on fal… beat ${jobId}` : `fal running… beat ${jobId}`,
+            );
+            setMotion2Notice(`fal running… beat ${jobId}`);
+            void refreshLongformQueue();
+          }
+        } finally {
+          tickBusy = false;
         }
       };
       void tick();
       poll.current = setInterval(() => {
         void tick();
       }, 4000);
+    }).finally(() => {
+      longformWaiters.current.delete(jobId);
+      if (longformPollJobIdRef.current === jobId) longformPollJobIdRef.current = null;
     });
+    longformWaiters.current.set(jobId, pending);
+    return pending;
+  }
+
+  async function resumeMotion2InFlight() {
+    await refreshLongformQueue();
+    const live = inFlightLongformBeats(longformQueueRef.current).find((b) => b.job_id);
+    const jobId = live?.job_id;
+    if (!jobId) return;
+    setActiveJobId(jobId);
+    setSelectedLongformBeatId(live.id);
+    setMotion2Notice(`fal running… beat ${jobId}`);
+    setStage(`fal running… beat ${jobId}`);
+    try {
+      await waitForLongformChild(jobId);
+      await refreshLongformQueue();
+      const done = longformQueueRef.current.beats.find((b) => b.job_id === jobId);
+      if (done && (done.status === "ready" || done.status === "approved")) {
+        setResultIsVideo(true);
+        setResultUrl(stillSrc(jobId, 0));
+        setMotion2Notice("Beat finished. Review below, or hit Go for the next draft.");
+      }
+    } catch (err) {
+      if (!inFlightLongformBeats(longformQueueRef.current).length) {
+        setError(err instanceof Error ? err.message : String(err));
+        setMotion2Notice(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      if (!inFlightLongformBeats(longformQueueRef.current).length) setStage(null);
+    }
   }
 
   async function pollModalJob(jobId: string) {
@@ -1273,14 +1353,43 @@ export default function GenerateStudio() {
       else if (mode === "modal") await goModal();
       else await goEngine();
     } catch (e) {
-      setStage(null);
+      if (mode !== "motion2" || !inFlightLongformBeats(longformQueueRef.current).length) {
+        setStage(null);
+      }
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
       if (mode === "motion2") setMotion2Notice(msg);
     }
   }
 
-  const busy = stage !== null;
+  const motion2InFlightKey = longformQueue.beats
+    .filter((b) => b.status === "generating" && b.job_id)
+    .map((b) => b.job_id)
+    .join(",");
+  const motion2Stage = mode === "motion2" ? stage || longformRunningNotice(longformQueue) : stage;
+  const busy = mode === "motion2" ? motion2PrimaryBusy(stage, longformQueue) : stage !== null;
+
+  useEffect(() => {
+    if (!motion2InFlightKey) return;
+    void resumeMotion2InFlight();
+    // resumeMotion2InFlight is stable enough: single-flight waiter per child id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [motion2InFlightKey]);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!inFlightLongformBeats(longformQueueRef.current).length) return;
+      void resumeMotion2InFlight();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const needImage = mode === "i2v";
   const i2vReady =
     !!imageFile ||
@@ -2082,7 +2191,7 @@ export default function GenerateStudio() {
               onDryRun={setDryRun}
               onRipple={setLongformRipple}
               notice={motion2Notice}
-              stage={stage}
+              stage={motion2Stage}
               onPlan={() => {
                 setError(null);
                 setMotion2Notice(null);
@@ -2116,8 +2225,15 @@ export default function GenerateStudio() {
               onPatch={patchLongformBeatLocal}
               onGenerate={(id) => {
                 generateLongformClip(id)
-                  .catch((err) => setError(err instanceof Error ? err.message : String(err)))
-                  .finally(() => setStage(null));
+                  .catch((err) => {
+                    setError(err instanceof Error ? err.message : String(err));
+                    if (mode === "motion2") {
+                      setMotion2Notice(err instanceof Error ? err.message : String(err));
+                    }
+                  })
+                  .finally(() => {
+                    if (!inFlightLongformBeats(longformQueueRef.current).length) setStage(null);
+                  });
               }}
               canGo={canGo}
               onGo={() => {
@@ -2245,7 +2361,12 @@ export default function GenerateStudio() {
               )}
             </>
           )}
-          {stage && <p className="gen-stage">⏳ {stage}{activeJobId ? ` · ${activeJobId}` : ""}</p>}
+          {(mode === "motion2" ? motion2Stage : stage) && (
+            <p className="gen-stage" data-testid={mode === "motion2" ? "motion2-fal-stage" : undefined}>
+              ⏳ {mode === "motion2" ? motion2Stage : stage}
+              {activeJobId ? ` · ${activeJobId}` : ""}
+            </p>
+          )}
           {error && <p className="gen-err">{error}</p>}
           {resultUrl && (
             <div className="gen-result">

@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.34';
+export const APP_VERSION = '1.34.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.34.1',
+    date: '2026-09-06',
+    title: 'Motion 2 stays bound while fal is running',
+    items: [
+      'Motion 2 no longer flips back to Generate while a beat’s child job is still queued or running on fal — including after a hard refresh or a cleared local stage.',
+      'Refresh, tab focus, and poll ticks resume the in-flight child and update the beat to ready when the clip lands. A second Generate on a live beat is a no-op.',
+    ],
+  },
   {
     version: '1.34',
     date: '2026-09-06',
