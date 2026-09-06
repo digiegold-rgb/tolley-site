@@ -7,9 +7,12 @@ import { DEFAULT_MOTION_NEGATIVE } from "./generate-motion-card.ts";
 import { isBlockedStudioRequest } from "./generate-director.ts";
 import {
   CINEMA_RECIPE,
+  CINEMA_SECONDS_DEFAULT,
   canGenerateCinemaBeat,
   cinemaGenerateClientError,
+  cinemaSecondsChips,
   cinemaUsdEstimate,
+  clampCinemaSeconds,
   estimateCinema,
   formatCinemaFalError,
   isFalPartnerOrPolicyError,
@@ -19,6 +22,7 @@ import {
   parseCinemaQueue,
   parseOptionalStringList,
   planCinemaQueue,
+  withCinemaModel,
 } from "./generate-cinema.ts";
 import { ESTATE_PROOF_BEATS } from "./generate-cinema-estate.ts";
 
@@ -90,6 +94,44 @@ describe("cinema estate template + queue", () => {
     assert.equal(beats[0].vo.length > 0, true);
     assert.equal(typeof beats[0].seconds, "number");
     assert.equal(beats[0].seconds, ESTATE_PROOF_BEATS[0].seconds);
+  });
+
+  it("clamps cinema seconds per model (kling 3–15, seedance 4–15, default 10)", () => {
+    assert.equal(clampCinemaSeconds(undefined), CINEMA_SECONDS_DEFAULT);
+    assert.equal(clampCinemaSeconds("nope", 10, "kling"), 10);
+    assert.equal(clampCinemaSeconds(2), 4);
+    assert.equal(clampCinemaSeconds(2, 10, "seedance"), 4);
+    assert.equal(clampCinemaSeconds(3, 10, "seedance"), 4);
+    assert.equal(clampCinemaSeconds(2, 10, "kling"), 3);
+    assert.equal(clampCinemaSeconds(3, 10, "kling"), 3);
+    assert.equal(clampCinemaSeconds(10, 10, "kling"), 10);
+    assert.equal(clampCinemaSeconds(15, 10, "kling"), 15);
+    assert.equal(clampCinemaSeconds(15, 10, "seedance"), 15);
+    assert.equal(clampCinemaSeconds(16, 10, "kling"), 15);
+    assert.equal(clampCinemaSeconds(16, 10, "seedance"), 15);
+    assert.deepEqual([...cinemaSecondsChips("kling")], [3, 4, 5, 8, 10, 12, 15]);
+    assert.deepEqual([...cinemaSecondsChips("seedance")], [4, 5, 8, 10, 12, 15]);
+    assert.equal(cinemaUsdEstimate(15, "kling").usdHigh, 2.52);
+  });
+
+  it("keeps a 3s Kling beat and reclamps to 4s when switching to Seedance", () => {
+    const q = parseCinemaQueue({
+      model: "kling",
+      image_urls: [FRONT],
+      beats: [{ id: "k1", seconds: 3, prompt: "hold" }],
+    });
+    assert.equal(q.model, "kling");
+    assert.equal(q.beats[0].seconds, 3);
+    const seed = withCinemaModel(q, "seedance");
+    assert.equal(seed.model, "seedance");
+    assert.equal(seed.beats[0].seconds, 4);
+    const planned = planCinemaQueue({
+      model: "kling",
+      shotlist: { beats: [{ id: "x1", seconds: 3, vo: "Hello." }] },
+      imageUrls: [FRONT],
+    });
+    assert.equal(planned.model, "kling");
+    assert.equal(planned.beats[0].seconds, 3);
   });
 
   it("parses a shotlist JSON import", () => {

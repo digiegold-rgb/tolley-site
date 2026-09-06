@@ -10,12 +10,12 @@ Render + sequential queue + stitch + review.
 
 | Piece | Status |
 |---|---|
-| Seedance 2.0 `bytedance/seedance-2.0/reference-to-video` | **Shipped.** Prompt, `image_urls` (≤9), optional `audio_urls` / `video_urls`, `aspect_ratio` 9:16, `resolution` 720p, `duration` 4–15 (default 10), `generate_audio` default true. |
-| Kling 3 Pro `fal-ai/kling-video/v3/pro/image-to-video` + `elements` | **Shipped** as fallback when Seedance returns partner / content-policy / face-filter. |
+| Seedance 2.0 `bytedance/seedance-2.0/reference-to-video` | **Shipped.** Prompt, `image_urls` (≤9), optional `audio_urls` / `video_urls`, `aspect_ratio` 9:16, `resolution` 720p, `duration` 4–15 (default 10), `generate_audio` default true. Per-beat max **15s** (fal hard limit). Longer = stitch beats. |
+| Kling 3 Pro `fal-ai/kling-video/v3/pro/image-to-video` + `elements` | **Shipped** as fallback when Seedance returns partner / content-policy / face-filter. Duration **3–15** (default 10). fal requires `frontal_image_url` **and** `reference_image_urls` (we duplicate the frontal/start still when only 1–2 refs are pasted). Same 15s per-beat cap; stitch for longer. |
 | Parent + child jobs | Same pattern as Motion 2. Parent `fal-cinema`. Children `fal-seedance-ref` / `fal-kling-elements`. |
 | Run remaining | Sequential only. Go = run remaining, not beat 1 only. Optional previous clip as Seedance `@Video`. |
 | Stitch | Vercel ffmpeg concat-demuxer / stream copy (same as Motion 2). Music bed is stubbed. |
-| Estimate | Seedance ~$0.30/s @720p. Kling ~$0.112–0.168/s. Confirm when remaining spend &gt; ~$5. |
+| Estimate | Seedance ~$0.30/s @720p. Kling ~$0.112–0.168/s (audio on ≈ $0.168/s → 15s ≈ **$2.52**). Confirm when remaining spend &gt; ~$5. |
 | ArcFace / Gemini QA | **Not on Vercel.** Full Spark cinema QA loop stays on Spark. |
 
 ## Recreate proof-estate-01
@@ -38,6 +38,8 @@ On tolley.io:
 7. Approve every beat → **Stitch approved beats**.
 
 Expected spend: **~$25–60** with retakes (8× ~8–10s Seedance @ ~$0.30/s, plus retries). The original Spark proof was ~$57 all-in.
+
+**Per-beat length is 15 seconds max** on both Seedance 2.0 ref-to-video and Kling 3 Pro I2V (`fal-ai/kling-video/v3/pro/image-to-video` duration enum is 3–15 only). We cannot raise Cinema past 15s without a different model. Stitch approved beats for a longer short. Kling with native audio on is ~$0.168/s → a 15s beat is about **$2.52**.
 
 ## Queue binding
 

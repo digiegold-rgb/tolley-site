@@ -36,6 +36,9 @@ export { STITCH_RECIPE };
 export const CINEMA_SECONDS_MIN = 4;
 export const CINEMA_SECONDS_MAX = 15;
 export const CINEMA_SECONDS_DEFAULT = 10;
+export const KLING_SECONDS_MIN = 3;
+export const CINEMA_SECONDS_CHIPS_KLING = [3, 4, 5, 8, 10, 12, 15] as const;
+export const CINEMA_SECONDS_CHIPS_SEEDANCE = [4, 5, 8, 10, 12, 15] as const;
 export const CINEMA_IMAGE_MAX = 9;
 
 export const SEEDANCE_USD_PER_SEC_720P = 0.3;
@@ -53,10 +56,25 @@ export function isCinemaChildRecipe(recipe: string | null | undefined): boolean 
   return recipe === CINEMA_CHILD_SEEDANCE || recipe === CINEMA_CHILD_KLING;
 }
 
-export function clampCinemaSeconds(value: unknown, fallback = CINEMA_SECONDS_DEFAULT): number {
+export function cinemaSecondsRange(model?: CinemaModel): { min: number; max: number } {
+  if (model === "kling") return { min: KLING_SECONDS_MIN, max: CINEMA_SECONDS_MAX };
+  return { min: CINEMA_SECONDS_MIN, max: CINEMA_SECONDS_MAX };
+}
+
+export function cinemaSecondsChips(model?: CinemaModel): readonly number[] {
+  return model === "kling" ? CINEMA_SECONDS_CHIPS_KLING : CINEMA_SECONDS_CHIPS_SEEDANCE;
+}
+
+export function clampCinemaSeconds(
+  value: unknown,
+  fallback = CINEMA_SECONDS_DEFAULT,
+  model?: CinemaModel,
+): number {
+  const { min, max } = cinemaSecondsRange(model);
   const n = Number(value);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(CINEMA_SECONDS_MAX, Math.max(CINEMA_SECONDS_MIN, Math.round(n)));
+  const raw = Number.isFinite(n) ? n : Number(fallback);
+  const picked = Number.isFinite(raw) ? raw : CINEMA_SECONDS_DEFAULT;
+  return Math.min(max, Math.max(min, Math.round(picked)));
 }
 
 export function cinemaUsdEstimate(
@@ -146,14 +164,14 @@ export function newCinemaBeatId(): string {
   return `cn_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function emptyCinemaBeat(partial?: Partial<CinemaBeat>): CinemaBeat {
+export function emptyCinemaBeat(partial?: Partial<CinemaBeat>, model?: CinemaModel): CinemaBeat {
   return {
     id: partial?.id || newCinemaBeatId(),
     status: isBeatStatus(partial?.status) ? partial.status : "draft",
     prompt: typeof partial?.prompt === "string" ? partial.prompt : "",
     vo_line: typeof partial?.vo_line === "string" ? partial.vo_line : "",
     negative_prompt: partial?.negative_prompt ?? DEFAULT_MOTION_NEGATIVE,
-    seconds: clampCinemaSeconds(partial?.seconds),
+    seconds: clampCinemaSeconds(partial?.seconds, CINEMA_SECONDS_DEFAULT, model),
     generate_audio: partial?.generate_audio !== false,
     video_ref_url: (partial?.video_ref_url || "").trim(),
     job_id: (partial?.job_id || "").trim(),
@@ -163,6 +181,9 @@ export function emptyCinemaBeat(partial?: Partial<CinemaBeat>): CinemaBeat {
 
 export function emptyCinemaQueue(partial?: Partial<CinemaQueue>): CinemaQueue {
   const urls = parseHttpsUrlList(partial?.image_urls);
+  const model: CinemaModel = (CINEMA_MODELS as readonly string[]).includes(String(partial?.model))
+    ? (partial!.model as CinemaModel)
+    : "seedance";
   return {
     recipe: CINEMA_RECIPE,
     title: (partial?.title || "").trim() || "Cinema take",
@@ -175,13 +196,11 @@ export function emptyCinemaQueue(partial?: Partial<CinemaQueue>): CinemaQueue {
       partial?.resolution === "480p" || partial?.resolution === "1080p"
         ? partial.resolution
         : MOTION_RESOLUTION_DEFAULT,
-    model: (CINEMA_MODELS as readonly string[]).includes(String(partial?.model))
-      ? (partial!.model as CinemaModel)
-      : "seedance",
+    model,
     generate_audio: partial?.generate_audio !== false,
     pass_prev_video: partial?.pass_prev_video !== false,
     auto_advance: partial?.auto_advance !== false,
-    beats: Array.isArray(partial?.beats) ? partial.beats.map((b) => emptyCinemaBeat(b)) : [],
+    beats: Array.isArray(partial?.beats) ? partial.beats.map((b) => emptyCinemaBeat(b, model)) : [],
     stitch_job_id: (partial?.stitch_job_id || "").trim(),
     stitch_error: (partial?.stitch_error || "").trim(),
   };
@@ -191,7 +210,7 @@ function asRecord(raw: unknown): Record<string, unknown> {
   return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
 }
 
-export function parseCinemaBeat(raw: unknown): CinemaBeat {
+export function parseCinemaBeat(raw: unknown, model?: CinemaModel): CinemaBeat {
   const rec = asRecord(raw);
   const beat = emptyCinemaBeat({
     id: typeof rec.id === "string" ? rec.id : undefined,
@@ -222,6 +241,9 @@ export function parseCinemaBeat(raw: unknown): CinemaBeat {
 export function parseCinemaQueue(raw: unknown): CinemaQueue {
   const rec = asRecord(raw);
   const beatsRaw = Array.isArray(rec.beats) ? rec.beats : [];
+  const model = (CINEMA_MODELS as readonly string[]).includes(String(rec.model))
+    ? (rec.model as CinemaModel)
+    : undefined;
   return emptyCinemaQueue({
     title: typeof rec.title === "string" ? rec.title : undefined,
     script: typeof rec.script === "string" ? rec.script : undefined,
@@ -234,11 +256,11 @@ export function parseCinemaQueue(raw: unknown): CinemaQueue {
           ? rec.priorVideoUrl
           : undefined,
     resolution: rec.resolution as MotionResolution | undefined,
-    model: rec.model as CinemaModel | undefined,
+    model,
     generate_audio: rec.generate_audio !== false,
     pass_prev_video: rec.pass_prev_video !== false,
     auto_advance: rec.auto_advance !== false,
-    beats: beatsRaw.map((b) => parseCinemaBeat(b)),
+    beats: beatsRaw.map((b) => parseCinemaBeat(b, model)),
     stitch_job_id:
       typeof rec.stitch_job_id === "string"
         ? rec.stitch_job_id
@@ -288,9 +310,9 @@ export function parseCinemaShotlistJson(raw: unknown): {
   };
 }
 
-export function cinemaPromptScaffold(vo: string, seconds: number): string {
+export function cinemaPromptScaffold(vo: string, seconds: number, model?: CinemaModel): string {
   const line = vo.trim();
-  const s = clampCinemaSeconds(seconds);
+  const s = clampCinemaSeconds(seconds, CINEMA_SECONDS_DEFAULT, model);
   const mid = Math.max(3, Math.min(s - 2, Math.round(s * 0.4)));
   return [
     `Shot 1 (0-${mid}s): @Image1 the same adult woman, full body, photoreal, 9:16. Soft natural motion.`,
@@ -305,9 +327,9 @@ export function cinemaPromptScaffold(vo: string, seconds: number): string {
 export function estateProofBeats(): EstateProofBeat[] {
   return ESTATE_PROOF_BEATS.map((b) => ({
     id: b.id,
-    seconds: clampCinemaSeconds(b.seconds),
+    seconds: clampCinemaSeconds(b.seconds, CINEMA_SECONDS_DEFAULT, "seedance"),
     vo: b.vo,
-    prompt: b.prompt || cinemaPromptScaffold(b.vo, b.seconds),
+    prompt: b.prompt || cinemaPromptScaffold(b.vo, b.seconds, "seedance"),
   }));
 }
 
@@ -324,6 +346,7 @@ export function planCinemaQueue(opts: {
   fallbackPrompt?: string;
 }): CinemaQueue {
   const imported = opts.shotlist ? parseCinemaShotlistJson(opts.shotlist) : null;
+  const model = opts.model || imported?.model;
   const lines = parseScriptLines(opts.script || "");
   const fromImport = imported?.beats.length
     ? imported.beats.map((b) => {
@@ -332,26 +355,26 @@ export function planCinemaQueue(opts: {
           id: b.id,
           vo_line: vo,
           seconds: b.seconds,
-          prompt: (b.prompt || "").trim() || cinemaPromptScaffold(vo, b.seconds || CINEMA_SECONDS_DEFAULT),
+          prompt: (b.prompt || "").trim() || cinemaPromptScaffold(vo, b.seconds || CINEMA_SECONDS_DEFAULT, model),
           generate_audio: opts.generateAudio !== false,
-        });
+        }, model);
       })
     : lines.map((line) => {
         const looksVo = line.length < 180 && !/^shot\s+\d/i.test(line);
         const vo = looksVo ? line.replace(/^she says exactly:\s*/i, "").replace(/^["“]|["”]$/g, "") : "";
         return emptyCinemaBeat({
           vo_line: vo,
-          prompt: looksVo ? cinemaPromptScaffold(vo, CINEMA_SECONDS_DEFAULT) : line,
+          prompt: looksVo ? cinemaPromptScaffold(vo, CINEMA_SECONDS_DEFAULT, model) : line,
           generate_audio: opts.generateAudio !== false,
-        });
+        }, model);
       });
   const beats = fromImport.length
     ? fromImport
     : [
         emptyCinemaBeat({
-          prompt: (opts.fallbackPrompt || "").trim() || cinemaPromptScaffold("", CINEMA_SECONDS_DEFAULT),
+          prompt: (opts.fallbackPrompt || "").trim() || cinemaPromptScaffold("", CINEMA_SECONDS_DEFAULT, model),
           generate_audio: opts.generateAudio !== false,
-        }),
+        }, model),
       ];
   return emptyCinemaQueue({
     title: opts.title || imported?.title,
@@ -423,8 +446,19 @@ export function patchCinemaBeat(
   const idx = queue.beats.findIndex((b) => b.id === beatId);
   if (idx < 0) throw new Error("Cinema beat not found");
   const beats = queue.beats.slice();
-  beats[idx] = emptyCinemaBeat({ ...beats[idx], ...patch, id: beats[idx].id });
+  beats[idx] = emptyCinemaBeat({ ...beats[idx], ...patch, id: beats[idx].id }, queue.model);
   return { ...queue, beats };
+}
+
+export function withCinemaModel(queue: CinemaQueue, model: CinemaModel): CinemaQueue {
+  return {
+    ...queue,
+    model,
+    beats: queue.beats.map((b) => ({
+      ...b,
+      seconds: clampCinemaSeconds(b.seconds, CINEMA_SECONDS_DEFAULT, model),
+    })),
+  };
 }
 
 export function applyLocalCinemaBeatPatch(
@@ -435,7 +469,11 @@ export function applyLocalCinemaBeatPatch(
   const idx = queue.beats.findIndex((b) => b.id === beatId);
   if (idx < 0) throw new Error("Cinema beat not found");
   const beats = queue.beats.slice();
-  beats[idx] = { ...beats[idx], ...patch, id: beats[idx].id };
+  const next = { ...beats[idx], ...patch, id: beats[idx].id };
+  if (patch.seconds !== undefined) {
+    next.seconds = clampCinemaSeconds(patch.seconds, CINEMA_SECONDS_DEFAULT, queue.model);
+  }
+  beats[idx] = next;
   return { ...queue, beats };
 }
 

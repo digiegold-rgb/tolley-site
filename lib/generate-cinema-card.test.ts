@@ -59,6 +59,30 @@ describe("Seedance / Kling request body shape", () => {
     assert.equal(isBlockedStudioRequest(input.negative_prompt).blocked, true);
   });
 
+  it("always sets reference_image_urls when images are present (1–2 refs)", () => {
+    const one = kling3ElementsInput({
+      prompt: "Shot 1: @Image1 walks.",
+      imageUrls: [FRONT],
+      seconds: 3,
+    });
+    assert.equal(one.start_image_url, FRONT);
+    assert.equal(one.elements[0].frontal_image_url, FRONT);
+    assert.deepEqual(one.elements[0].reference_image_urls, [FRONT]);
+    assert.equal(one.duration, "3");
+
+    const two = kling3ElementsInput({
+      prompt: "Shot 1: @Image1 walks.",
+      imageUrls: [FRONT, BUST],
+      seconds: 10,
+    });
+    assert.equal(two.elements[0].frontal_image_url, BUST);
+    assert.ok(two.elements[0].reference_image_urls?.length);
+    assert.deepEqual(two.elements[0].reference_image_urls, [FRONT]);
+
+    const seed = seedanceRefInput({ prompt: "x", imageUrls: [FRONT], seconds: 3 });
+    assert.equal(seed.duration, "4");
+  });
+
   it("cinemaSpawnInput picks Seedance or Kling from the queue model", () => {
     const q = emptyCinemaQueue({
       image_urls: [FRONT, BUST, ID],
@@ -76,5 +100,16 @@ describe("Seedance / Kling request body shape", () => {
     assert.equal(kling.falModelId, "kling3-elements");
     assert.ok("elements" in kling.input);
     assert.ok("start_image_url" in kling.input);
+    if ("elements" in kling.input) {
+      assert.ok(kling.input.elements[0].reference_image_urls?.length);
+    }
+    const oneStill = cinemaSpawnInput(
+      emptyCinemaQueue({ image_urls: [FRONT], model: "kling" }),
+      estate.beats[0],
+    );
+    assert.ok("elements" in oneStill.input);
+    if ("elements" in oneStill.input) {
+      assert.deepEqual(oneStill.input.elements[0].reference_image_urls, [FRONT]);
+    }
   });
 });

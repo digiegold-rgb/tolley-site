@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.35.1';
+export const APP_VERSION = '1.35.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.35.2',
+    date: '2026-09-06',
+    title: 'Cinema beats stay at 15 seconds max',
+    items: [
+      'Cinema length is a fal hard limit: 3–15 seconds on Kling 3 Pro, 4–15 on Seedance. Default is still 10 seconds; pick 15s max when you want the longest single beat.',
+      'Longer clips are stitched beats, not one longer call. Kling with audio on is about $0.168/s — 15 seconds is about $2.52.',
+      'Kling no longer fails when you only paste one or two identity stills — it always sends a reference image with the frontal.',
+    ],
+  },
   {
     version: '1.35.1',
     date: '2026-09-06',
