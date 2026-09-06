@@ -233,7 +233,7 @@ export function parseCinemaBeat(raw: unknown, model?: CinemaModel): CinemaBeat {
           : undefined,
     job_id: typeof rec.job_id === "string" ? rec.job_id : typeof rec.jobId === "string" ? rec.jobId : undefined,
     error: typeof rec.error === "string" ? rec.error : undefined,
-  });
+  }, model);
   if (!beat.id) throw new Error("Cinema beat needs an id");
   return beat;
 }
