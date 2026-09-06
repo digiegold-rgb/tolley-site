@@ -53,6 +53,10 @@ describe("/generate fal engine tabs", () => {
     assert.doesNotMatch(beatsUi, /gen-beat-list/);
     assert.doesNotMatch(beatsUi, />\s*Up\s*</);
     assert.doesNotMatch(beatsUi, />\s*Down\s*</);
+    assert.match(studio, /writeMotionCardToBeat1/);
+    assert.match(studio, /generateBeatClip/);
+    assert.match(beatsUi, /Prompt & stills above/);
+    assert.doesNotMatch(beatsUi, /Add current card/);
   });
 
   it("lays the beat queue out as a horizontal filmstrip, not stacked cards", () => {

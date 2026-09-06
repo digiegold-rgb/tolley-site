@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.32';
+export const APP_VERSION = '1.32.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.32.1',
+    date: '2026-09-06',
+    title: 'Generate Motion prompt is Beat 1',
+    items: [
+      'The Motion form (source, prompt, end still, slow-mo) is Beat 1. Go generates that beat — there is no second orphan prompt.',
+      'The filmstrip still reads Beat 1 → 2 → 3. Select Beat 1 to highlight the form above; select Beat 2+ to edit that beat below.',
+      'Copy Beat 1 as next (or the selected beat) to add another clip. Stitch still waits until every beat is approved.',
+    ],
+  },
   {
     version: '1.32',
     date: '2026-09-06',

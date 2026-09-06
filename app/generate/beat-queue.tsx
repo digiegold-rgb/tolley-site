@@ -9,6 +9,7 @@ import {
   type BeatQueue,
   type MotionBeat,
 } from "@/lib/generate-beats";
+import { beatPromptEditorForIndex } from "@/lib/generate-studio-motion-sync";
 import type { GenerateMotionCard } from "@/lib/generate-motion-card";
 
 function mediaSrc(jobId: string, index = 0): string {
@@ -63,6 +64,7 @@ function generateLabel(beat: MotionBeat): string {
 function BeatActions({
   beat,
   busy,
+  hideSlowMo,
   onGenerate,
   onApprove,
   onReject,
@@ -71,6 +73,7 @@ function BeatActions({
 }: {
   beat: MotionBeat;
   busy: boolean;
+  hideSlowMo?: boolean;
   onGenerate: (id: string) => void;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
@@ -79,15 +82,17 @@ function BeatActions({
 }) {
   return (
     <div className="gen-beat-actions">
-      <button
-        type="button"
-        className={`gen-nsfw-chip${beat.slow_mo ? " gen-nsfw-chip-on" : ""}`}
-        disabled={busy || beat.status === "generating"}
-        aria-pressed={beat.slow_mo}
-        onClick={() => onPatch(beat.id, { slow_mo: !beat.slow_mo })}
-      >
-        0.5× slow-mo
-      </button>
+      {hideSlowMo ? null : (
+        <button
+          type="button"
+          className={`gen-nsfw-chip${beat.slow_mo ? " gen-nsfw-chip-on" : ""}`}
+          disabled={busy || beat.status === "generating"}
+          aria-pressed={beat.slow_mo}
+          onClick={() => onPatch(beat.id, { slow_mo: !beat.slow_mo })}
+        >
+          0.5× slow-mo
+        </button>
+      )}
       <button
         type="button"
         className="gen-seed-random"
@@ -162,7 +167,10 @@ function BeatStillFields({
 export function BeatQueuePanel({
   queue,
   busy,
+  selectedId: selectedIdProp,
+  onSelect,
   onAddFromCard,
+  addFromLabel,
   onAddEmpty,
   onRemove,
   onMove,
@@ -175,7 +183,10 @@ export function BeatQueuePanel({
 }: {
   queue: BeatQueue;
   busy: boolean;
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
   onAddFromCard: () => void;
+  addFromLabel?: string;
   onAddEmpty: () => void;
   onRemove: (id: string) => void;
   onMove: (id: string, delta: -1 | 1) => void;
@@ -188,15 +199,20 @@ export function BeatQueuePanel({
 }) {
   const stitch = canStitchBeats(queue);
   const blockers = stitchBlockers(queue);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null);
+  const selectedId = selectedIdProp !== undefined ? selectedIdProp : internalSelectedId;
+  const setSelectedId = (id: string | null) => {
+    if (id) onSelect?.(id);
+    if (selectedIdProp === undefined) setInternalSelectedId(id);
+  };
   const prevLen = useRef(queue.beats.length);
   const selected = queue.beats.find((b) => b.id === selectedId) ?? null;
   const selectedIndex = selected ? queue.beats.findIndex((b) => b.id === selected.id) : -1;
+  const copyIndex = selectedIndex >= 0 ? selectedIndex : 0;
 
   useEffect(() => {
     const ids = queue.beats.map((b) => b.id);
     if (!ids.length) {
-      setSelectedId(null);
       prevLen.current = 0;
       return;
     }
@@ -206,6 +222,8 @@ export function BeatQueuePanel({
       setSelectedId(ids[0]);
     }
     prevLen.current = queue.beats.length;
+    // setSelectedId is stable enough for this length/id repair.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue.beats, selectedId]);
 
   useEffect(() => {
@@ -220,13 +238,14 @@ export function BeatQueuePanel({
         <div>
           <p className="gen-label gen-label-live">Beat queue</p>
           <p className="gen-hint">
-            Left → right timeline. One Wan clip per beat (~5s). Review, regenerate, approve. Stitch
-            only when every beat is approved — never on Go.
+            Beat 1 is the form above. Left → right timeline for Beat 1…N. Select Beat 2+ to edit
+            that beat below. One Wan clip per beat (~5s). Stitch only when every beat is approved —
+            never on Go.
           </p>
         </div>
         <div className="gen-beats-actions">
           <button type="button" className="gen-seed-random" disabled={busy} onClick={onAddFromCard}>
-            Add current card
+            {addFromLabel || `Copy Beat ${copyIndex + 1} as next`}
           </button>
           <button type="button" className="gen-seed-random" disabled={busy} onClick={onAddEmpty}>
             Add empty beat
@@ -234,7 +253,7 @@ export function BeatQueuePanel({
         </div>
       </div>
       {queue.beats.length === 0 ? (
-        <p className="gen-hint">No beats yet. Add the current Motion card, or start empty.</p>
+        <p className="gen-hint">Beat 1 seeds from the form above. Add Beat 2+ here.</p>
       ) : (
         <div className="gen-beat-timeline" role="region" aria-label="Beat timeline">
           <ol className="gen-beat-strip">
@@ -268,25 +287,35 @@ export function BeatQueuePanel({
                     Remove
                   </button>
                 </div>
-                <label className="gen-field gen-field-wide">
-                  Motion prompt
-                  <textarea
-                    className="gen-box gen-beat-prompt"
-                    value={beat.prompt}
-                    disabled={busy || beat.status === "generating"}
-                    rows={3}
-                    onFocus={() => setSelectedId(beat.id)}
-                    onChange={(e) => onPatch(beat.id, { prompt: e.target.value })}
-                  />
-                </label>
-                <p className="gen-beat-meta">{stillSummary(beat, i)}</p>
-                <details className="gen-beat-more">
-                  <summary>Stills</summary>
-                  <BeatStillFields beat={beat} index={i} busy={busy} onPatch={onPatch} />
-                </details>
+                {beatPromptEditorForIndex(i).filmstripTextarea ? (
+                  <label className="gen-field gen-field-wide">
+                    Motion prompt
+                    <textarea
+                      className="gen-box gen-beat-prompt"
+                      value={beat.prompt}
+                      disabled={busy || beat.status === "generating"}
+                      rows={3}
+                      onFocus={() => setSelectedId(beat.id)}
+                      onChange={(e) => onPatch(beat.id, { prompt: e.target.value })}
+                    />
+                  </label>
+                ) : (
+                  <p className="gen-beat-prompt-preview">{beat.prompt.trim() || "Prompt & stills above"}</p>
+                )}
+                <p className="gen-beat-meta">
+                  {i === 0 ? "Prompt & stills above" : stillSummary(beat, i)}
+                  {i === 0 && beat.job_id ? " · clip" : ""}
+                </p>
+                {i > 0 ? (
+                  <details className="gen-beat-more">
+                    <summary>Stills</summary>
+                    <BeatStillFields beat={beat} index={i} busy={busy} onPatch={onPatch} />
+                  </details>
+                ) : null}
                 <BeatActions
                   beat={beat}
                   busy={busy}
+                  hideSlowMo={i === 0}
                   onGenerate={onGenerate}
                   onApprove={onApprove}
                   onReject={onReject}
@@ -309,13 +338,13 @@ export function BeatQueuePanel({
           </ol>
         </div>
       )}
-      {selected && selectedIndex >= 0 ? (
+      {selected && selectedIndex > 0 ? (
         <div className="gen-beat-detail" aria-label={`Beat ${selectedIndex + 1} detail`}>
           <div className="gen-beat-detail-head">
             <p className="gen-label">Beat {selectedIndex + 1} detail</p>
             <span className={`gen-beat-status gen-beat-status-${selected.status}`}>{selected.status}</span>
           </div>
-          <p className="gen-hint">Stills and the clip live here so the timeline stays a single row.</p>
+          <p className="gen-hint">Stills and the clip live here so the timeline stays a single row. Beat 1 stays in the form above.</p>
           <BeatStillFields beat={selected} index={selectedIndex} busy={busy} onPatch={onPatch} />
           {selected.error ? <p className="gen-err">{selected.error}</p> : null}
           {selected.job_id &&

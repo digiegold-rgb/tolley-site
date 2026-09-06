@@ -13,7 +13,7 @@ This is **not** ByteDance Seedance. This is **not** LatentSync face-lock.
 | Optional last-frame / pose **still** | **Shipped.** If `end_image_url` is an HTTPS image, we switch to `fal-ai/wan-flf2v` (first + last frame). Same 5s / 720p family. |
 | Inline player | **Shipped.** Result well + Motion / engine galleries use `<video controls>` against the HQ-gated job route (`video/mp4` + Range). Not download-only. |
 | 0.5× slow-mo | **Shipped.** Chip on Motion (and I2V / T2V). After fal returns, Vercel remuxes with ffmpeg `setpts=2*PTS` when `ffmpeg` is on the runtime. Same frames, ~10s wall clock — **not** a longer Wan call. If remux fails, the in-page player uses `playbackRate=0.5` and is labeled. |
-| Beat queue | **Shipped.** Ordered scenes on the Motion tab as a **left-to-right filmstrip** (not stacked cards). Generate **one beat at a time**. Review / reject / regenerate independently. **Stitch approved beats** only when every beat is `approved`. No auto-stitch on Go. |
+| Beat queue | **Shipped.** Ordered scenes on the Motion tab as a **left-to-right filmstrip**. The Motion form **is Beat 1**. Generate **one beat at a time** (Go = Beat 1). Review / reject / regenerate independently. **Stitch approved beats** only when every beat is `approved`. No auto-stitch on Go. |
 | Stitch | **Vercel Node + ffmpeg concat** (optional 0.25s xfade when two clips + `crossfade: true`). Not Spark. Parent job recipe `fal-wan-beats`; stitch job `fal-wan-stitch`. |
 | HQ / admin gate | Same as Modal stills: HQ PIN, shop admin PIN, or `ADMIN_ALLOWLIST_EMAILS`. |
 | Dry run | Persists a queued `GenerateJob`, returns fal kwargs, spends nothing. |
@@ -25,7 +25,7 @@ This is **not** ByteDance Seedance. This is **not** LatentSync face-lock.
 
 **0.5× slow-mo** = remux (or labeled playback). It does **not** ask Wan for more frames.
 
-**Beat queue** = N independent ~5s clips. Longer runtime = stitch, not one Wan call.
+**Beat queue** = N independent ~5s clips. Beat 1 is the Motion form. Longer runtime = stitch, not one Wan call.
 
 It is **not**:
 
@@ -65,11 +65,11 @@ Chat→card uses the same Spark / LiteLLM vars as Modal stills (`QWEN_VLLM_*` pr
 2. Open https://tolley.io/generate
 3. Open the **Motion** tab (Modal stills is unchanged).
 4. Set a source still: click **Use as source** on a Modal gallery still (HQ-gated path — not a public Blob link), paste an HTTPS URL, or upload.
-5. Edit the motion prompt (and optional last-frame still). Optional **0.5× slow-mo** chip.
-6. Optional **Dry run**, then **Go** — single-clip path is unchanged. The MP4 plays **in-page with controls**.
-7. For a longer piece: **Add current card** into the beat queue. Beats sit **left → right** on a filmstrip (horizontal scroll on a phone). Each column keeps a short prompt; select a beat to edit stills and watch the clip **below** the row. Generate / approve / regenerate each beat. When every beat is approved, **Stitch approved beats** at the end of the timeline.
+5. The form **is Beat 1** (source still, prompt, optional last-frame still, 0.5× slow-mo). The filmstrip highlights Beat 1 — it does **not** host a second Beat 1 prompt.
+6. Optional **Dry run**, then **Go** generates **Beat 1** on the same fal path as “Generate this beat”. The MP4 plays **in-page with controls**.
+7. For a longer piece: **Copy Beat 1 as next** (or copy the selected beat) onto the filmstrip. Beats sit **left → right** (horizontal scroll on a phone). Select Beat 2+ to edit that beat’s stills and watch the clip **below** the row. Generate / approve / regenerate each beat. When every beat is approved, **Stitch approved beats** at the end of the timeline.
 
-Beat prompt / still fields update **locally first** (shallow merge — spaces stay while typing). Persist is debounced (~400ms) and flushed before generate / approve / stitch. A late save response is ignored if Jared typed again — otherwise concurrent POSTs overwrite newer text (worst on beat 2+).
+The Motion form and `beats[0]` stay in sync: editing the form writes Beat 1; editing Beat 1 in the strip writes the form. Beat prompt / still fields update **locally first** (shallow merge — spaces stay while typing). Persist is debounced (~400ms) and flushed before generate / approve / stitch. A late save response is ignored if Jared typed again — otherwise concurrent POSTs overwrite newer text (worst on beat 2+).
 
 ## Media route
 
