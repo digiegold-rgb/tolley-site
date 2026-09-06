@@ -3,7 +3,14 @@
 export const ESTATE_PROOF_ID = "proof-estate-01";
 export const ESTATE_PROOF_TITLE = "Estate lady cinema proof";
 
-export const ESTATE_PROOF_BEATS = [
+export type EstateProofBeat = {
+  id: string;
+  seconds: number;
+  vo: string;
+  prompt: string;
+};
+
+export const ESTATE_PROOF_BEATS: EstateProofBeat[] = [
   {
     id: "c01",
     seconds: 10,
@@ -60,4 +67,4 @@ export const ESTATE_PROOF_BEATS = [
     prompt:
       'Shot 1 (0-3s): @Image1 on the lawn, estate behind her. Shot 2 (3-8s): hold @Image2 / @Image3 identity, small smile. She says exactly: "This is the kind of home you don\'t just visit. You arrive." @Audio1',
   },
-] as const;
+];
