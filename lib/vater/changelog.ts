@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.33';
+export const APP_VERSION = '1.34';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.34',
+    date: '2026-09-06',
+    title: 'Generate library privacy + Motion 2 Go',
+    items: [
+      'The generated library on /generate (model stills and prior jobs) stays hidden until you show it. First visit is private; once you expand, this browser remembers.',
+      'Motion 2 Go now plans from your keep still and starts the Wan 3.0 job. If spawn fails, the page shows the error instead of doing nothing.',
+    ],
+  },
   {
     version: '1.33',
     date: '2026-09-06',

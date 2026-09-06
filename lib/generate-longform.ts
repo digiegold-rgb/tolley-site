@@ -488,6 +488,25 @@ export function nextGeneratableLongformBeat(queue: LongformQueue): LongformBeat 
   return null;
 }
 
+/**
+ * Go should plan a fresh take when there is nothing left to generate:
+ * empty queue, leftover finished queue from a prior visit, or all-draft
+ * beats whose Beat 1 still does not match the keep still in the form.
+ * Mid-queue (last-frame wait / generating) is left alone.
+ */
+export function longformNeedsNewPlan(queue: LongformQueue): boolean {
+  if (!queue.source_image_url.trim()) return false;
+  if (!queue.beats.length) return true;
+  if (nextGeneratableLongformBeat(queue)) return false;
+  if (queue.beats.some((b) => b.status === "generating")) return false;
+  const unfinished = queue.beats.filter((b) => b.status === "draft" || b.status === "rejected");
+  if (unfinished.length && unfinished.length === queue.beats.length) {
+    const beat1 = queue.beats[0];
+    return !beat1.source_image_url.trim() || beat1.source_image_url.trim() !== queue.source_image_url.trim();
+  }
+  return queue.beats.every((b) => b.status === "ready" || b.status === "approved");
+}
+
 export function longformStitchBlockers(queue: LongformQueue): string[] {
   if (queue.beats.length < 1) return ["Plan beats first"];
   const blockers: string[] = [];

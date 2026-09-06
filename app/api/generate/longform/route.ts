@@ -156,6 +156,13 @@ export async function POST(req: NextRequest) {
       >;
       queue = patchLongformBeat(queue, String(body.beatId || ""), patch);
     } else if (action === "generate" || action === "generate-next") {
+      if (body.queue) {
+        try {
+          queue = parseLongformQueue(body.queue);
+        } catch (err) {
+          return jsonError(err instanceof Error ? err.message : "Invalid longform queue", 400);
+        }
+      }
       let beatId = String(body.beatId || "");
       if (action === "generate-next" && !beatId) {
         const next = nextGeneratableLongformBeat(queue);

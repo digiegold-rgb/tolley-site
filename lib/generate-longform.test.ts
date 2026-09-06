@@ -9,6 +9,7 @@ import {
   canGenerateLongformBeat,
   canStitchLongform,
   estimateLongform,
+  longformNeedsNewPlan,
   nextGeneratableLongformBeat,
   parseLongformQueue,
   parseScriptLines,
@@ -153,6 +154,32 @@ describe("last-frame continuity", () => {
     assert.equal(nextGeneratableLongformBeat(q), null);
     q = applyLastFrameToNext(q, 0, FRAME);
     assert.equal(nextGeneratableLongformBeat(q)?.id, q.beats[1].id);
+  });
+
+  it("Go replans an empty or leftover-finished queue, not a mid-take", () => {
+    const empty = parseLongformQueue({ source_image_url: STILL, beats: [] });
+    assert.equal(longformNeedsNewPlan(empty), true);
+    assert.equal(longformNeedsNewPlan({ ...empty, source_image_url: "" }), false);
+
+    let planned = planLongformQueue({ targetSeconds: 30, sourceImageUrl: STILL, fallbackPrompt: "walk" });
+    assert.equal(longformNeedsNewPlan(planned), false);
+
+    const finished = {
+      ...planned,
+      beats: planned.beats.map((b, i) => ({ ...b, status: "approved" as const, job_id: `j${i}` })),
+    };
+    assert.equal(longformNeedsNewPlan(finished), true);
+
+    const staleDrafts = {
+      ...planned,
+      source_image_url: STILL,
+      beats: planned.beats.map((b, i) => ({
+        ...b,
+        status: "draft" as const,
+        source_image_url: i === 0 ? "" : "",
+      })),
+    };
+    assert.equal(longformNeedsNewPlan(staleDrafts), true);
   });
 });
 

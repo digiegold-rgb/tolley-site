@@ -40,7 +40,8 @@ export function LongformPanel({
   onPlan,
   onPatch,
   onGenerate,
-  onGenerateRemaining,
+  onGo,
+  canGo,
   onApprove,
   onReject,
   onReset,
@@ -65,7 +66,8 @@ export function LongformPanel({
   onPlan: () => void;
   onPatch: (id: string, patch: Partial<LongformBeat>) => void;
   onGenerate: (id: string) => void;
-  onGenerateRemaining: () => void;
+  onGo: () => void;
+  canGo: boolean;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onReset: (id: string) => void;
@@ -205,11 +207,12 @@ export function LongformPanel({
         <button
           type="button"
           className="gen-go"
-          disabled={busy || !queue.beats.length}
-          onClick={onGenerateRemaining}
+          data-testid="motion2-go"
+          disabled={busy || !canGo}
+          onClick={onGo}
           style={{ marginLeft: "auto" }}
         >
-          {busy ? "Working…" : dryRun ? "Dry run next beat" : "Generate remaining"}
+          {busy ? "Working…" : dryRun ? "Dry run" : "Go"}
         </button>
       </div>
 
