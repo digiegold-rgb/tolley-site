@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TvAnalytics } from "./tv-analytics";
 import { TvDvr } from "./tv-dvr";
-import { TvPipeline } from "./tv-pipeline";
 
 type Result = {
   id: number;
@@ -223,6 +222,7 @@ export function TvClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   // browse state
   const [year, setYear] = useState(CURRENT_YEAR - 1);
@@ -233,16 +233,24 @@ export function TvClient() {
   const [browseError, setBrowseError] = useState("");
 
   const runSearch = useCallback(async (q: string) => {
+    abortRef.current?.abort();
     if (!q.trim()) {
       setResults([]);
       setError("");
+      setLoading(false);
       return;
     }
+    const ac = new AbortController();
+    abortRef.current = ac;
     setLoading(true);
     setError("");
     try {
-      const r = await fetch(`/api/tv/search?query=${encodeURIComponent(q)}`);
+      const r = await fetch(`/api/tv/search?query=${encodeURIComponent(q)}`, {
+        signal: ac.signal,
+        cache: "no-store",
+      });
       const data = await r.json();
+      if (ac.signal.aborted) return;
       if (!r.ok) {
         setError(data.error || "Search failed");
         setResults([]);
@@ -250,15 +258,16 @@ export function TvClient() {
         setResults(data.results || []);
       }
     } catch (e: any) {
+      if (e?.name === "AbortError") return;
       setError(String(e?.message || e));
     } finally {
-      setLoading(false);
+      if (!ac.signal.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     if (debounce.current) clearTimeout(debounce.current);
-    debounce.current = setTimeout(() => runSearch(query), 420);
+    debounce.current = setTimeout(() => runSearch(query), 180);
     return () => {
       if (debounce.current) clearTimeout(debounce.current);
     };
@@ -435,7 +444,6 @@ export function TvClient() {
       </header>
 
       <main style={{ maxWidth: 1140, margin: "0 auto", padding: "22px 20px 0" }}>
-        <TvPipeline />
         {tab === "dvr" ? (
           <div style={{ maxWidth: 640, margin: "0 auto" }}>
             <TvDvr />
