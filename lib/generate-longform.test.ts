@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { DEFAULT_MOTION_NEGATIVE, DEFAULT_MOTION_PROMPT } from "./generate-motion-card.ts";
+import { isBlockedStudioRequest } from "./generate-director.ts";
 import {
   LONGFORM_RECIPE,
   LONGFORM_TARGET_DEFAULT,
@@ -9,6 +11,7 @@ import {
   canGenerateLongformBeat,
   canStitchLongform,
   estimateLongform,
+  longformGenerateClientError,
   longformNeedsNewPlan,
   nextGeneratableLongformBeat,
   parseLongformQueue,
@@ -201,5 +204,30 @@ describe("longform stitch gate", () => {
     let q = planLongformQueue({ targetSeconds: 30, sourceImageUrl: STILL, fallbackPrompt: "walk" });
     q = applyLocalLongformBeatPatch(q, q.beats[1].id, { prompt: "she " });
     assert.equal(q.beats[1].prompt, "she ");
+  });
+});
+
+describe("longform generate 200 body", () => {
+  it("treats refused / missing child as a loud client error (prod 200 no-op)", () => {
+    assert.match(
+      longformGenerateClientError({
+        refused: true,
+        reply: "Real-minor content is not allowed.",
+      }) || "",
+      /Real-minor/,
+    );
+    assert.match(longformGenerateClientError({}) || "", /Plan beats first/i);
+    assert.equal(longformGenerateClientError({ child: { id: "job_1" } }), null);
+    assert.equal(longformGenerateClientError({ dryRun: true, note: "no spend" }), null);
+  });
+
+  it("does not treat the default negative's child/minor tokens as a prompt refuse", () => {
+    assert.match(DEFAULT_MOTION_NEGATIVE, /\bchild\b/);
+    assert.equal(
+      isBlockedStudioRequest(`${DEFAULT_MOTION_PROMPT}\n${DEFAULT_MOTION_NEGATIVE}`).blocked,
+      true,
+      "concatenating negative is the Motion 2 prod trap",
+    );
+    assert.equal(isBlockedStudioRequest(DEFAULT_MOTION_PROMPT).blocked, false);
   });
 });

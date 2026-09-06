@@ -42,6 +42,8 @@ export function LongformPanel({
   onGenerate,
   onGo,
   canGo,
+  notice,
+  stage,
   onApprove,
   onReject,
   onReset,
@@ -68,6 +70,8 @@ export function LongformPanel({
   onGenerate: (id: string) => void;
   onGo: () => void;
   canGo: boolean;
+  notice?: string | null;
+  stage?: string | null;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onReset: (id: string) => void;
@@ -215,6 +219,15 @@ export function LongformPanel({
           {busy ? "Working…" : dryRun ? "Dry run" : "Go"}
         </button>
       </div>
+      {!queue.beats.length ? (
+        <p className="gen-hint" data-testid="motion2-plan-first">
+          Plan beats first. Go stays off until there is a draft beat to generate.
+        </p>
+      ) : !canGo && !busy ? (
+        <p className="gen-hint">No beat is ready to generate. Plan a new take, or wait for the last frame.</p>
+      ) : null}
+      {stage ? <p className="gen-stage">⏳ {stage}</p> : null}
+      {notice ? <p className="gen-library-status" data-testid="motion2-notice">{notice}</p> : null}
 
       {queue.continuity_error ? <p className="gen-err">{queue.continuity_error}</p> : null}
 

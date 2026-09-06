@@ -45,7 +45,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     title: 'Generate library privacy + Motion 2 Go',
     items: [
       'The generated library on /generate (model stills and prior jobs) stays hidden until you show it. First visit is private; once you expand, this browser remembers.',
-      'Motion 2 Go now plans from your keep still and starts the Wan 3.0 job. If spawn fails, the page shows the error instead of doing nothing.',
+      'Motion 2 Go stays off until you Plan a queue. Spawn no longer false-refuses the default negative (“child” as a reject token). A 200 without a clip job now shows an error instead of looking idle.',
     ],
   },
   {
