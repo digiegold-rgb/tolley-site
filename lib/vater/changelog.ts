@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.34.2';
+export const APP_VERSION = '1.35';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.35',
+    date: '2026-09-06',
+    title: 'Cinema lane + Motion 2 reliability',
+    items: [
+      'Cinema on /generate is the estate-lady path: Seedance 2.0 reference-to-video, Kling 3 Pro elements fallback, native audio, sequential Run remaining, and concat stitch. Wan Motion 2 is still Wan — it is not this short.',
+      'Load estate proof template fills c01–c08 VO lines and shot scaffolds. Paste Spark-gated estate-a refs, then Go. Estimate ~$0.30/s Seedance; confirm when remaining spend is over about $5.',
+      'Motion 2 now binds the parent queue id in the URL and this browser, runs remaining drafts (Go is not beat 1 only), unlocks a stuck fal child after ~11 minutes, and asks before a spend over $5. Motion 1 is unchanged.',
+    ],
+  },
   {
     version: '1.34.2',
     date: '2026-09-06',

@@ -95,6 +95,25 @@ export const FAL_MODELS = {
       enable_thinking: false,
     },
   },
+  // Cinema — Seedance 2.0 multi-image ref (estate-lady path). Motion 1/2 do not use this.
+  "seedance-ref": {
+    endpointId: "bytedance/seedance-2.0/reference-to-video" as const,
+    defaults: {
+      resolution: "720p",
+      aspect_ratio: "9:16",
+      duration: "10",
+      generate_audio: true,
+    },
+  },
+  // Cinema fallback — Kling 3 Pro character elements when Seedance partner-filters face refs.
+  "kling3-elements": {
+    endpointId: "fal-ai/kling-video/v3/pro/image-to-video" as const,
+    defaults: {
+      duration: "10",
+      generate_audio: true,
+      shot_type: "customize",
+    },
+  },
 } as const;
 
 export type FalModelId = keyof typeof FAL_MODELS;
@@ -250,6 +269,46 @@ export async function getVideoResult(
   throw new Error(
     `No video URL in fal.ai response (keys: ${Object.keys(data).join(", ") || "none"})`,
   );
+}
+
+export function isFalPartnerOrPolicyText(error: string | null | undefined): boolean {
+  const t = (error || "").toLowerCase();
+  return (
+    t.includes("content_policy") ||
+    t.includes("content policy") ||
+    t.includes("content checker") ||
+    t.includes("partner") ||
+    (t.includes("face") && t.includes("filter")) ||
+    (t.includes("422") && (t.includes("flagged") || t.includes("policy") || t.includes("safety")))
+  );
+}
+
+export function formatCinemaFalFailure(error: string | null | undefined): string {
+  const raw = (error || "generation failed").trim() || "generation failed";
+  if (!isFalPartnerOrPolicyText(raw)) return raw.slice(0, 2000);
+  return (
+    "Seedance partner/face filter — clip not delivered. Switch the model to Kling 3 Pro elements and retry. " +
+    raw
+  ).slice(0, 2000);
+}
+
+export async function submitSeedanceRefToVideo(
+  input: Record<string, unknown>,
+): Promise<{ requestId: string }> {
+  return submitVideoGeneration("seedance-ref", String(input.prompt || ""), input);
+}
+
+export async function submitKling3Elements(
+  input: Record<string, unknown>,
+): Promise<{ requestId: string }> {
+  return submitVideoGeneration("kling3-elements", String(input.prompt || ""), input);
+}
+
+export async function checkCinemaStatus(
+  modelId: "seedance-ref" | "kling3-elements",
+  requestId: string,
+): Promise<FalQueueStatus> {
+  return checkVideoStatus(modelId, requestId);
 }
 
 export interface FalImageResult {

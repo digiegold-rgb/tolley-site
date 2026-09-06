@@ -5,34 +5,31 @@ import { isBlockedStudioRequest } from "@/lib/generate-director";
 import { concatMp4sCopy } from "@/lib/generate-ffmpeg";
 import { serializeJob } from "@/lib/generate-job-store";
 import { readableToBuffer } from "@/lib/generate-media";
-import { falPublicLongformStatus, isFalConfigured, spawnFalWan30Motion, spawnInputForLongformCard } from "@/lib/generate-motion";
-import { parseGenerateMotionCard } from "@/lib/generate-motion-card";
+import { cinemaSpawnInput, falPublicCinemaStatus } from "@/lib/generate-cinema-card";
+import { spawnCinemaBeat } from "@/lib/generate-cinema-fal";
 import { fetchStoredJobImage, persistJobMp4s } from "@/lib/generate-output-persist";
 import {
   STITCH_RECIPE,
-  approvedLongformJobIds,
-  canGenerateLongformBeat,
-  canStitchLongform,
-  emptyLongformQueue,
-  ensureBeatSourceFromPrev,
-  estimateLongform,
-  estimateLongformQueue,
+  approvedCinemaJobIds,
+  canGenerateCinemaBeat,
+  canStitchCinema,
+  cinemaAlreadyRunningReason,
+  cinemaParentJobStatus,
+  emptyCinemaQueue,
+  estimateCinema,
   isInFlightJobStatus,
-  longformAlreadyRunningReason,
-  longformParentJobStatus,
-  markLongformBeatGenerating,
-  motionCardFromLongformBeat,
-  nextGeneratableLongformBeat,
-  parseLongformQueue,
-  patchLongformBeat,
-  planLongformQueue,
-  remainingLongformSpend,
-  setLongformBeatStatus,
+  loadEstateProofTemplate,
+  markCinemaBeatGenerating,
+  nextGeneratableCinemaBeat,
+  parseCinemaQueue,
+  patchCinemaBeat,
+  planCinemaQueue,
   type BeatStatus,
-  type LongformQueue,
-} from "@/lib/generate-longform";
-import { reconcileLongformParent } from "@/lib/generate-longform-advance";
-import { cardBeatId, latestLongformJob, loadLongformJob, saveLongformQueue } from "@/lib/generate-longform-store";
+  type CinemaQueue,
+} from "@/lib/generate-cinema";
+import { reconcileCinemaParent } from "@/lib/generate-cinema-advance";
+import { cardBeatId, latestCinemaJob, loadCinemaJob, saveCinemaQueue } from "@/lib/generate-cinema-store";
+import { isFalConfigured } from "@/lib/generate-motion-card";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -43,12 +40,12 @@ function jsonError(error: string, status: number, extra?: Record<string, unknown
   return NextResponse.json({ error, ...extra }, { status });
 }
 
-function publicEstimate(queue: LongformQueue) {
-  return estimateLongformQueue(queue);
+function publicEstimate(queue: CinemaQueue) {
+  return estimateCinema(queue);
 }
 
 /**
- * GET /api/generate/longform — latest Motion 2 queue for this HQ user.
+ * GET /api/generate/cinema — bound Cinema queue, or latest among operator aliases.
  */
 export async function GET(req: NextRequest) {
   const gate = await requireGenerateAdmin();
@@ -56,23 +53,22 @@ export async function GET(req: NextRequest) {
 
   const id =
     req.nextUrl.searchParams.get("id")?.trim() ||
-    req.nextUrl.searchParams.get("queue")?.trim() ||
+    req.nextUrl.searchParams.get("cinema")?.trim() ||
     req.nextUrl.searchParams.get("queue_id")?.trim() ||
     "";
-  // Explicit id only when restoring. No id = latest among this operator + aliases.
-  const loaded = id ? await loadLongformJob(id) : await latestLongformJob(gate.createdBy);
+  const loaded = id ? await loadCinemaJob(id) : await latestCinemaJob(gate.createdBy);
   if (!loaded) {
-    const queue = emptyLongformQueue();
+    const queue = emptyCinemaQueue();
     return NextResponse.json({
       queue,
       job: null,
       children: [],
       estimate: publicEstimate(queue),
-      fal: falPublicLongformStatus(),
+      fal: falPublicCinemaStatus(),
     });
   }
-  const reconciled = await reconcileLongformParent(loaded);
-  const parent = (await loadLongformJob(reconciled.row.id)) || loaded;
+  const reconciled = await reconcileCinemaParent(loaded);
+  const parent = (await loadCinemaJob(reconciled.row.id)) || loaded;
   const childIds = parent.queue.beats.map((b) => b.job_id).filter(Boolean);
   const children = childIds.length
     ? (await prisma.generateJob.findMany({ where: { id: { in: childIds } } })).map(serializeJob)
@@ -82,15 +78,14 @@ export async function GET(req: NextRequest) {
     job: serializeJob(parent.row),
     children,
     estimate: publicEstimate(parent.queue),
-    fal: falPublicLongformStatus(),
+    fal: falPublicCinemaStatus(),
   });
 }
 
 /**
- * POST /api/generate/longform
- *
- * Actions (never auto-stitch on generate; sequential only — last-frame chain):
- *   save | plan | estimate | generate | generate-next | approve | reject | reset | stitch
+ * POST /api/generate/cinema
+ * Actions: save | plan | estimate | load-estate | generate | generate-next | run-remaining
+ *          | approve | reject | reset | stitch
  */
 export async function POST(req: NextRequest) {
   const gate = await requireGenerateAdmin();
@@ -102,15 +97,15 @@ export async function POST(req: NextRequest) {
     queue?: unknown;
     beatId?: unknown;
     patch?: unknown;
-    targetSeconds?: unknown;
-    beatSeconds?: unknown;
-    sourceImageUrl?: unknown;
     script?: unknown;
-    fallbackPrompt?: unknown;
-    aspect?: unknown;
-    endImageUrl?: unknown;
+    shotlist?: unknown;
+    imageUrls?: unknown;
+    audioUrl?: unknown;
+    priorVideoUrl?: unknown;
+    model?: unknown;
+    generateAudio?: unknown;
+    passPrevVideo?: unknown;
     title?: unknown;
-    ripple?: unknown;
     dryRun?: unknown;
     retry?: unknown;
     confirmSpend?: unknown;
@@ -124,46 +119,46 @@ export async function POST(req: NextRequest) {
   const action = typeof body.action === "string" ? body.action.trim() : "save";
   const queueId = typeof body.queueId === "string" ? body.queueId.trim() : "";
 
-  let loaded = queueId ? await loadLongformJob(queueId) : await latestLongformJob(gate.createdBy);
-  let queue: LongformQueue = loaded ? loaded.queue : emptyLongformQueue();
+  let loaded = queueId ? await loadCinemaJob(queueId) : null;
+  let queue: CinemaQueue = loaded ? loaded.queue : emptyCinemaQueue();
   if (!loaded && body.queue) {
     try {
-      queue = parseLongformQueue(body.queue);
+      queue = parseCinemaQueue(body.queue);
     } catch (err) {
-      return jsonError(err instanceof Error ? err.message : "Invalid longform queue", 400);
+      return jsonError(err instanceof Error ? err.message : "Invalid cinema queue", 400);
     }
   }
 
   try {
     if (action === "estimate") {
-      const estimate = estimateLongform({
-        targetSeconds: body.targetSeconds ?? queue.target_seconds,
-        beatSeconds: body.beatSeconds ?? queue.beat_seconds,
-        script: typeof body.script === "string" ? body.script : queue.script,
-      });
+      if (body.queue) queue = parseCinemaQueue(body.queue);
       return NextResponse.json({
         queue,
         job: loaded ? serializeJob(loaded.row) : null,
-        estimate,
-        fal: falPublicLongformStatus(),
+        estimate: publicEstimate(queue),
+        fal: falPublicCinemaStatus(),
         dryRun: true,
       });
     }
 
-    if (action === "save") {
-      if (body.queue) queue = parseLongformQueue(body.queue);
+    if (action === "load-estate") {
+      queue = loadEstateProofTemplate({
+        imageUrls: Array.isArray(body.imageUrls) ? body.imageUrls.map(String) : queue.image_urls,
+        audioUrl: typeof body.audioUrl === "string" ? body.audioUrl : queue.audio_url,
+        priorVideoUrl: typeof body.priorVideoUrl === "string" ? body.priorVideoUrl : queue.prior_video_url,
+      });
+    } else if (action === "save") {
+      if (body.queue) queue = parseCinemaQueue(body.queue);
     } else if (action === "plan") {
-      const source =
-        typeof body.sourceImageUrl === "string" ? body.sourceImageUrl : queue.source_image_url;
-      if (!source.trim()) return jsonError("Keep still required to plan beats", 400);
-      queue = planLongformQueue({
-        targetSeconds: body.targetSeconds ?? queue.target_seconds,
-        beatSeconds: body.beatSeconds ?? queue.beat_seconds,
-        sourceImageUrl: source,
+      queue = planCinemaQueue({
         script: typeof body.script === "string" ? body.script : queue.script,
-        fallbackPrompt: typeof body.fallbackPrompt === "string" ? body.fallbackPrompt : undefined,
-        aspect: typeof body.aspect === "string" ? (body.aspect as LongformQueue["aspect"]) : queue.aspect,
-        endImageUrl: typeof body.endImageUrl === "string" ? body.endImageUrl : queue.end_image_url,
+        shotlist: body.shotlist,
+        imageUrls: Array.isArray(body.imageUrls) ? body.imageUrls.map(String) : queue.image_urls,
+        audioUrl: typeof body.audioUrl === "string" ? body.audioUrl : queue.audio_url,
+        priorVideoUrl: typeof body.priorVideoUrl === "string" ? body.priorVideoUrl : queue.prior_video_url,
+        model: body.model === "kling" ? "kling" : queue.model,
+        generateAudio: body.generateAudio !== false,
+        passPrevVideo: body.passPrevVideo !== false,
         title: typeof body.title === "string" ? body.title : queue.title,
       });
     } else if (action === "patch") {
@@ -171,16 +166,14 @@ export async function POST(req: NextRequest) {
         string,
         unknown
       >;
-      queue = patchLongformBeat(queue, String(body.beatId || ""), patch);
+      queue = patchCinemaBeat(queue, String(body.beatId || ""), patch);
     } else if (action === "generate" || action === "generate-next" || action === "run-remaining") {
-      // Prefer the persisted queue so a stale client draft cannot spawn a
-      // second fal job while a child is already running.
       if (loaded) queue = loaded.queue;
       else if (body.queue) {
         try {
-          queue = parseLongformQueue(body.queue);
+          queue = parseCinemaQueue(body.queue);
         } catch (err) {
-          return jsonError(err instanceof Error ? err.message : "Invalid longform queue", 400);
+          return jsonError(err instanceof Error ? err.message : "Invalid cinema queue", 400);
         }
       }
       let beatId = String(body.beatId || "");
@@ -188,7 +181,7 @@ export async function POST(req: NextRequest) {
         const generating = queue.beats.find((b) => b.status === "generating");
         if (generating) beatId = generating.id;
         else {
-          const next = nextGeneratableLongformBeat(queue);
+          const next = nextGeneratableCinemaBeat(queue);
           if (!next) {
             const hold = queue.beats.find((b) => b.status === "rejected" && b.error.trim());
             return jsonError(
@@ -201,36 +194,40 @@ export async function POST(req: NextRequest) {
           beatId = next.id;
         }
       }
-      return await generateLongformBeat(gate.createdBy, queue, loaded?.row.id, beatId, {
-        ripple: body.ripple === true,
+      return await generateCinemaBeat(gate.createdBy, queue, loaded?.row.id, beatId, {
         dryRun: body.dryRun === true,
         retry: body.retry === true,
         confirmSpend: body.confirmSpend === true,
       });
     } else if (action === "approve" || action === "reject" || action === "reset") {
       const status: BeatStatus = action === "approve" ? "approved" : action === "reject" ? "rejected" : "draft";
-      queue = setLongformBeatStatus(queue, String(body.beatId || ""), status);
+      const idx = queue.beats.findIndex((b) => b.id === String(body.beatId || ""));
+      if (idx < 0) return jsonError("Cinema beat not found", 400);
+      queue = patchCinemaBeat(queue, queue.beats[idx].id, {
+        status,
+        error: status === "rejected" ? queue.beats[idx].error : "",
+      });
     } else if (action === "stitch") {
-      return await stitchLongform(gate.createdBy, queue, loaded?.row.id);
+      return await stitchCinema(gate.createdBy, queue, loaded?.row.id);
     } else {
-      return jsonError(`Unknown longform action: ${action}`, 400);
+      return jsonError(`Unknown cinema action: ${action}`, 400);
     }
   } catch (err) {
-    return jsonError(err instanceof Error ? err.message : "Longform update failed", 400);
+    return jsonError(err instanceof Error ? err.message : "Cinema update failed", 400);
   }
 
-  const saved = await saveLongformQueue({ createdBy: gate.createdBy, queue, id: loaded?.row.id });
+  const saved = await saveCinemaQueue({ createdBy: gate.createdBy, queue, id: loaded?.row.id });
   return NextResponse.json({
     queue: saved.queue,
     job: serializeJob(saved.row),
     estimate: publicEstimate(saved.queue),
-    fal: falPublicLongformStatus(),
+    fal: falPublicCinemaStatus(),
   });
 }
 
 async function existingInFlightChild(
   createdBy: string,
-  queue: LongformQueue,
+  queue: CinemaQueue,
   queueJobId: string | undefined,
   beatId: string,
 ) {
@@ -244,7 +241,7 @@ async function existingInFlightChild(
     where: {
       createdBy,
       status: { in: ["queued", "running"] },
-      recipe: { in: ["fal-wan-i2v", "fal-wan-flf2v"] },
+      recipe: { in: ["fal-seedance-ref", "fal-kling-elements"] },
     },
     orderBy: { updatedAt: "desc" },
     take: 20,
@@ -260,14 +257,13 @@ async function existingInFlightChild(
   );
 }
 
-async function generateLongformBeat(
+async function generateCinemaBeat(
   createdBy: string,
-  queue: LongformQueue,
+  queue: CinemaQueue,
   queueJobId: string | undefined,
   beatId: string,
-  opts: { ripple: boolean; dryRun: boolean; retry: boolean; confirmSpend?: boolean },
+  opts: { dryRun: boolean; retry: boolean; confirmSpend: boolean },
 ) {
-  queue = ensureBeatSourceFromPrev(queue, beatId);
   const liveChild =
     (await existingInFlightChild(createdBy, queue, queueJobId, beatId)) ||
     (await (async () => {
@@ -281,92 +277,82 @@ async function generateLongformBeat(
       cardBeatId(liveChild.cardJson) ||
       queue.beats.find((b) => b.job_id === liveChild.id)?.id ||
       beatId;
-    const generating = markLongformBeatGenerating(queue, bindId, liveChild.id);
-    const saved = await saveLongformQueue({ createdBy, queue: generating, id: queueJobId });
+    const generating = markCinemaBeatGenerating(queue, bindId, liveChild.id);
+    const saved = await saveCinemaQueue({ createdBy, queue: generating, id: queueJobId });
     return NextResponse.json({
       already_running: true,
-      note: longformAlreadyRunningReason(generating, bindId, liveChild) || "Beat is already generating",
-      kind: "longform",
+      note: cinemaAlreadyRunningReason(generating, bindId, liveChild) || "Beat is already generating",
+      kind: "cinema",
       queue: saved.queue,
       job: serializeJob(saved.row),
       child: serializeJob(liveChild),
       estimate: publicEstimate(saved.queue),
     });
   }
-  const ready = canGenerateLongformBeat(queue, beatId, null, { retry: opts.retry });
+  const ready = canGenerateCinemaBeat(queue, beatId, null, { retry: opts.retry });
   if (!ready.ok || !ready.beat) return jsonError(ready.reason || "Cannot generate this beat", 400);
   const beat = ready.beat;
 
-  // Scan the motion prompt only. The default negative lists "child" / "minor"
-  // as tokens to avoid — concatenating it falsely refused every Motion 2 spawn
-  // with HTTP 200 `{ refused: true }` and no child job.
   const safety = isBlockedStudioRequest(beat.prompt);
   if (safety.blocked) {
     return jsonError(safety.reason || "Request refused", 400, {
       refused: true,
       reply: safety.reason,
       queue,
-      kind: "longform",
+      kind: "cinema",
       estimate: publicEstimate(queue),
     });
   }
 
-  let parsed;
-  try {
-    parsed = motionCardFromLongformBeat(beat);
-  } catch (err) {
-    return jsonError(err instanceof Error ? err.message : "Beat needs a source still", 400);
+  const estimate = publicEstimate(queue);
+  if (!opts.dryRun && estimate.needs_confirm && !opts.confirmSpend) {
+    return jsonError(
+      `About $${estimate.usd.toFixed(2)} for ${estimate.fal_calls} remaining Cinema beat(s) ` +
+        `(${estimate.planned_seconds}s). Continue?`,
+      402,
+      { needs_confirm: true, estimate, queue, kind: "cinema" },
+    );
   }
 
-  const estimate = publicEstimate(queue);
-  const spend = remainingLongformSpend(queue);
-  if (!opts.dryRun && spend.needs_confirm && !opts.confirmSpend) {
-    return jsonError(spend.message, 402, {
-      needs_confirm: true,
-      estimate,
-      spend,
-      queue,
-      kind: "longform",
-    });
-  }
+  const planned = cinemaSpawnInput(queue, beat);
   if (opts.dryRun) {
-    const saved = await saveLongformQueue({ createdBy, queue, id: queueJobId });
+    const saved = await saveCinemaQueue({ createdBy, queue, id: queueJobId });
     return NextResponse.json({
       dryRun: true,
-      kind: "longform",
+      kind: "cinema",
       queue: saved.queue,
       job: serializeJob(saved.row),
       estimate,
-      fal_input: spawnInputForLongformCard(parsed).input,
+      fal_input: planned.input,
       note: estimate.note,
     });
   }
 
-  const saved = await saveLongformQueue({ createdBy, queue, id: queueJobId });
+  const saved = await saveCinemaQueue({ createdBy, queue, id: queueJobId });
   const storedCard = {
-    ...parsed,
+    ...planned.input,
     queue_id: saved.row.id,
     beat_id: beat.id,
-    longform: true,
-    kind: "longform",
-    ripple: opts.ripple,
-    slow_mo: beat.slow_mo,
+    cinema: true,
+    kind: "cinema",
+    fal_model: planned.falModelId,
+    model: planned.model,
   };
   const child = await prisma.generateJob.create({
     data: {
       status: "queued",
-      recipe: parsed.end_image_url ? "fal-wan-flf2v" : "fal-wan-i2v",
+      recipe: planned.recipe,
       cardJson: storedCard,
       createdBy,
     },
   });
 
-  const generating = markLongformBeatGenerating(saved.queue, beat.id, child.id);
+  const generating = markCinemaBeatGenerating(saved.queue, beat.id, child.id);
   await prisma.generateJob.update({
     where: { id: saved.row.id },
     data: {
       cardJson: generating,
-      status: longformParentJobStatus(generating),
+      status: cinemaParentJobStatus(generating),
       startedAt: saved.row.startedAt || new Date(),
     },
   });
@@ -380,13 +366,13 @@ async function generateLongformBeat(
         completedAt: new Date(),
       },
     });
-    const failedQ = patchLongformBeat(generating, beat.id, {
+    const failedQ = patchCinemaBeat(generating, beat.id, {
       status: "rejected",
       error: "fal.ai is not configured. Set FAL_KEY.",
     });
     await prisma.generateJob.update({
       where: { id: saved.row.id },
-      data: { cardJson: failedQ, status: longformParentJobStatus(failedQ) },
+      data: { cardJson: failedQ, status: cinemaParentJobStatus(failedQ) },
     });
     return jsonError("fal.ai is not configured. Set FAL_KEY on Vercel.", 503, {
       queue: failedQ,
@@ -396,7 +382,7 @@ async function generateLongformBeat(
   }
 
   try {
-    const spawned = await spawnFalWan30Motion(parseGenerateMotionCard(parsed));
+    const spawned = await spawnCinemaBeat(saved.queue, beat);
     await prisma.generateJob.update({
       where: { id: child.id },
       data: {
@@ -419,7 +405,7 @@ async function generateLongformBeat(
         startedAt: new Date(),
       }),
       started: true,
-      kind: "longform",
+      kind: "cinema",
       estimate,
     });
   } catch (err) {
@@ -428,29 +414,29 @@ async function generateLongformBeat(
       where: { id: child.id },
       data: { status: "failed", error: messageText.slice(0, 2000), completedAt: new Date() },
     });
-    const failedQ = patchLongformBeat(generating, beat.id, {
+    const failedQ = patchCinemaBeat(generating, beat.id, {
       status: "rejected",
       error: messageText.slice(0, 500),
     });
     await prisma.generateJob.update({
       where: { id: saved.row.id },
-      data: { cardJson: failedQ, status: longformParentJobStatus(failedQ) },
+      data: { cardJson: failedQ, status: cinemaParentJobStatus(failedQ) },
     });
     return jsonError(messageText, 502, {
       queue: failedQ,
       job: serializeJob(saved.row),
-      kind: "longform",
+      kind: "cinema",
       estimate,
     });
   }
 }
 
-async function stitchLongform(createdBy: string, queue: LongformQueue, queueJobId: string | undefined) {
-  const gate = canStitchLongform(queue);
+async function stitchCinema(createdBy: string, queue: CinemaQueue, queueJobId: string | undefined) {
+  const gate = canStitchCinema(queue);
   if (!gate.ok) return jsonError(gate.reason || "Approve every beat before stitch", 400);
 
-  const saved = await saveLongformQueue({ createdBy, queue, id: queueJobId });
-  const jobIds = approvedLongformJobIds(saved.queue);
+  const saved = await saveCinemaQueue({ createdBy, queue, id: queueJobId });
+  const jobIds = approvedCinemaJobIds(saved.queue);
   const clips: Buffer[] = [];
   for (const id of jobIds) {
     const row = await prisma.generateJob.findUnique({ where: { id } });
@@ -469,8 +455,9 @@ async function stitchLongform(createdBy: string, queue: LongformQueue, queueJobI
         recipe: STITCH_RECIPE,
         queue_id: saved.row.id,
         beat_job_ids: jobIds,
-        longform: true,
+        cinema: true,
         stitch_mode: "concat_copy",
+        music_bed: false,
       },
       createdBy,
       startedAt: new Date(),
@@ -499,7 +486,7 @@ async function stitchLongform(createdBy: string, queue: LongformQueue, queueJobI
       job: parent ? serializeJob(parent) : serializeJob(saved.row),
       stitch: serializeJob(done),
       started: false,
-      kind: "longform",
+      kind: "cinema",
       estimate: publicEstimate(nextQueue),
       stitch_mode: "concat_copy",
     });
@@ -514,6 +501,6 @@ async function stitchLongform(createdBy: string, queue: LongformQueue, queueJobI
       where: { id: saved.row.id },
       data: { cardJson: nextQueue },
     });
-    return jsonError(messageText, 502, { queue: nextQueue, kind: "longform" });
+    return jsonError(messageText, 502, { queue: nextQueue, kind: "cinema" });
   }
 }

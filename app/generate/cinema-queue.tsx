@@ -1,53 +1,48 @@
 "use client";
 
 import {
-  canStitchLongform,
-  estimateLongform,
-  failedHoldLongformBeats,
-  formatLongformFalError,
-  inFlightLongformBeats,
-  longformProgress,
-  longformStitchBlockers,
-  motion2GenerateLocked,
-  type LongformBeat,
-  type LongformEstimate,
-  type LongformQueue,
-} from "@/lib/generate-longform";
-import { DurationChips, GatedClip, wan30PriceHint } from "./beat-queue";
+  canStitchCinema,
+  cinemaProgress,
+  cinemaStitchBlockers,
+  cinemaGenerateLocked,
+  estimateCinema,
+  failedHoldCinemaBeats,
+  formatCinemaFalError,
+  inFlightCinemaBeats,
+  type CinemaBeat,
+  type CinemaEstimate,
+  type CinemaModel,
+  type CinemaQueue,
+} from "@/lib/generate-cinema";
+import { GatedClip } from "./beat-queue";
 
 function mediaSrc(jobId: string, index = 0): string {
   return `/api/generate/jobs/${encodeURIComponent(jobId)}/image?i=${index}`;
 }
 
-function stillLooksUsable(url: string): boolean {
-  const u = url.trim();
-  return /^https:\/\//i.test(u) || /^\/api\/generate\/jobs\/[^/]+\/image\?i=\d+$/.test(u);
-}
-
-export function LongformPanel({
+export function CinemaPanel({
   queue,
   estimate,
   busy,
   selectedId,
   dryRun,
-  ripple,
-  uploadingStill,
+  uploadingRef,
   onSelect,
-  onSourceChange,
-  onUploadStill,
-  onTargetSeconds,
-  onBeatSeconds,
+  onImageUrls,
+  onAudioUrl,
+  onPriorVideo,
   onScript,
-  onEndStill,
+  onModel,
+  onGenerateAudio,
+  onPassPrevVideo,
+  onAutoAdvance,
   onDryRun,
-  onRipple,
   onPlan,
+  onLoadEstate,
   onPatch,
   onGenerate,
   onGo,
   onRunRemaining,
-  autoAdvance,
-  onAutoAdvance,
   canGo,
   notice,
   stage,
@@ -58,29 +53,28 @@ export function LongformPanel({
   onRetry,
   onStitch,
 }: {
-  queue: LongformQueue;
-  estimate?: LongformEstimate | null;
+  queue: CinemaQueue;
+  estimate?: CinemaEstimate | null;
   busy: boolean;
   selectedId?: string | null;
   dryRun: boolean;
-  ripple: boolean;
-  uploadingStill?: boolean;
+  uploadingRef?: boolean;
   onSelect: (id: string) => void;
-  onSourceChange: (url: string) => void;
-  onUploadStill: (file: File) => void;
-  onTargetSeconds: (seconds: number) => void;
-  onBeatSeconds: (seconds: number) => void;
+  onImageUrls: (urls: string[]) => void;
+  onAudioUrl: (url: string) => void;
+  onPriorVideo: (url: string) => void;
   onScript: (script: string) => void;
-  onEndStill: (url: string) => void;
+  onModel: (model: CinemaModel) => void;
+  onGenerateAudio: (on: boolean) => void;
+  onPassPrevVideo: (on: boolean) => void;
+  onAutoAdvance: (on: boolean) => void;
   onDryRun: (on: boolean) => void;
-  onRipple: (on: boolean) => void;
   onPlan: () => void;
-  onPatch: (id: string, patch: Partial<LongformBeat>) => void;
+  onLoadEstate: () => void;
+  onPatch: (id: string, patch: Partial<CinemaBeat>) => void;
   onGenerate: (id: string) => void;
   onGo: () => void;
   onRunRemaining: () => void;
-  autoAdvance: boolean;
-  onAutoAdvance: (on: boolean) => void;
   canGo: boolean;
   notice?: string | null;
   stage?: string | null;
@@ -91,123 +85,119 @@ export function LongformPanel({
   onRetry: (id: string) => void;
   onStitch: () => void;
 }) {
-  const liveEstimate =
-    estimate ||
-    estimateLongform({
-      targetSeconds: queue.target_seconds,
-      beatSeconds: queue.beat_seconds,
-      script: queue.script,
-    });
-  const progress = longformProgress(queue);
-  const stitchOk = canStitchLongform(queue);
+  const liveEstimate = estimate || estimateCinema(queue);
+  const progress = cinemaProgress(queue);
+  const stitchOk = canStitchCinema(queue);
   const selected = queue.beats.find((b) => b.id === selectedId) || queue.beats[0] || null;
-  const selectedIndex = selected ? queue.beats.findIndex((b) => b.id === selected.id) : -1;
-  const inFlight = inFlightLongformBeats(queue);
+  const inFlight = inFlightCinemaBeats(queue);
   const inFlightIds = new Set(inFlight.map((b) => b.id));
-  const failedHold = failedHoldLongformBeats(queue);
+  const failedHold = failedHoldCinemaBeats(queue);
   const failedHoldIds = new Set(failedHold.map((b) => b.id));
-  const generateLocked = motion2GenerateLocked(queue);
+  const generateLocked = cinemaGenerateLocked(queue);
   const primaryBusy = busy || inFlight.length > 0;
   const failBanner = failedHold[0]
-    ? formatLongformFalError(failedHold[0].error) +
+    ? formatCinemaFalError(failedHold[0].error) +
       (failedHold[0].job_id ? ` · beat ${failedHold[0].job_id}` : "")
     : null;
 
   return (
-    <div className="gen-longform" data-testid="motion2-longform">
+    <div className="gen-longform" data-testid="cinema-lane">
       <p className="gen-hint">
-        <strong>Motion 2 · Longform</strong> — a continuous ~3-minute take from a keep still +
-        scene plan. Wan 3.0 segments are <strong>5 / 15 / 30s</strong> (default 15s →{" "}
-        {liveEstimate.beat_count}×{liveEstimate.beat_seconds}s ≈ {liveEstimate.planned_seconds}s).
-        After each beat, ffmpeg extracts the last frame and that PNG becomes the next beat’s first
-        frame. Review / regenerate bad beats, then stitch. This is <em>not</em> one native 3-min Wan
-        call, and it is not the Motion 1 filmstrip. Go / Run remaining walks every remaining draft
-        (last-frame chain) — not Beat 1 only. This is not the estate-lady Cinema path.
+        <strong>Cinema</strong> — Seedance 2.0 reference-to-video (the estate-lady path). This is{" "}
+        <em>not</em> Wan Motion 2. Native audio + multi-image refs + multi-shot prompts. Kling 3 Pro
+        elements is the partner/face-filter fallback. Go / Run remaining walks the queue sequentially.
+        Stitch is Vercel ffmpeg concat-copy. ArcFace / Gemini QA stays on Spark.
       </p>
 
+      <button
+        type="button"
+        className="gen-seed-random"
+        data-testid="cinema-load-estate"
+        disabled={primaryBusy}
+        onClick={onLoadEstate}
+      >
+        Load estate proof template
+      </button>
+
       <label className="gen-field gen-field-wide">
-        Keep still (gallery still, HTTPS URL, or upload)
-        <input
-          value={queue.source_image_url}
+        Identity / ref image URLs (up to 9, one per line). @Image1 full body, @Image2 bust, @Image3
+        identity.
+        <textarea
+          data-testid="cinema-image-urls"
+          className="gen-box"
+          rows={4}
+          value={queue.image_urls.join("\n")}
           disabled={busy}
-          placeholder="Use as source on a Modal still, or paste https://…"
-          onChange={(e) => onSourceChange(e.target.value)}
+          placeholder={"https://…/estate-a/front.png\nhttps://…/bust.png\nhttps://…/identity/front.jpg"}
+          onChange={(e) =>
+            onImageUrls(
+              e.target.value
+                .split(/\r?\n/)
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .slice(0, 9),
+            )
+          }
         />
-        <span className="gen-file">
-          Upload still:{" "}
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            disabled={busy || uploadingStill}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) onUploadStill(f);
-            }}
-          />
-          {uploadingStill && <span> uploading…</span>}
-        </span>
+        {uploadingRef && <span className="gen-hint"> uploading…</span>}
       </label>
-      {stillLooksUsable(queue.source_image_url) && (
-        <div className="gen-still-preview">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={queue.source_image_url} alt="Keep still" />
-        </div>
-      )}
 
       <div className="gen-card-grid">
-        <label>
-          Segment length
-          <DurationChips seconds={queue.beat_seconds} disabled={busy} onPick={onBeatSeconds} />
-          <span className="gen-hint">{wan30PriceHint(queue.beat_seconds)} per beat</span>
+        <label className="gen-field">
+          Optional @Audio1 URL
+          <input
+            value={queue.audio_url}
+            disabled={busy}
+            placeholder="https://…/voice.mp3"
+            onChange={(e) => onAudioUrl(e.target.value)}
+          />
+        </label>
+        <label className="gen-field">
+          Optional prior @Video URL
+          <input
+            value={queue.prior_video_url}
+            disabled={busy}
+            placeholder="Previous clip MP4 for continuity"
+            onChange={(e) => onPriorVideo(e.target.value)}
+          />
         </label>
         <label>
-          Target duration
-          <input
-            type="range"
-            min={15}
-            max={300}
-            step={5}
-            value={queue.target_seconds}
+          Model
+          <select
+            data-testid="cinema-model"
+            value={queue.model}
             disabled={busy}
-            onChange={(e) => onTargetSeconds(Number(e.target.value))}
-          />
-          <span className="gen-hint">
-            {queue.target_seconds}s → {liveEstimate.beat_count} × {liveEstimate.beat_seconds}s beats
-            · default 180s / 3 min
-          </span>
-        </label>
-        <label className="gen-field gen-field-wide">
-          Optional end still / FLF2V (applied to every beat if set)
-          <input
-            value={queue.end_image_url}
-            disabled={busy}
-            placeholder="Optional pose still. Leave empty for I2V + last-frame chain."
-            onChange={(e) => onEndStill(e.target.value)}
-          />
+            onChange={(e) => onModel(e.target.value === "kling" ? "kling" : "seedance")}
+          >
+            <option value="seedance">Seedance 2.0 reference-to-video</option>
+            <option value="kling">Kling 3 Pro elements (fallback)</option>
+          </select>
         </label>
       </div>
 
       <div>
-        <p className="gen-label gen-label-live">Scene plan (one motion prompt per line)</p>
+        <p className="gen-label gen-label-live">Script (one beat per line) or paste shotlist JSON</p>
         <p className="gen-hint">
-          Empty = duplicate Beat 1 / default identity-lock prompt across all beats. Extra lines
-          raise beat count above the duration floor.
+          Short VO lines become <code>She says exactly: "…"</code> scaffolds. Import a shotlist JSON
+          with id / seconds / vo / prompt.
         </p>
         <textarea
-          data-testid="motion2-script"
+          data-testid="cinema-script"
           className="gen-box gen-box-inference"
           value={queue.script}
           disabled={busy}
-          rows={6}
-          placeholder={"she turns toward camera, hair moves\nshe walks to the stairs\nshe looks back and smiles"}
+          rows={8}
+          placeholder={'Welcome to the estate.\nThe approach is the first promise.'}
           onChange={(e) => onScript(e.target.value)}
         />
       </div>
 
-      <div className="gen-longform-estimate" data-testid="motion2-estimate">
+      <div className="gen-longform-estimate" data-testid="cinema-estimate">
         <p>
-          <strong>Dry-run estimate:</strong> {liveEstimate.fal_calls} fal Wan 3.0 I2V calls ·{" "}
-          {liveEstimate.planned_seconds}s planned. {liveEstimate.note}
+          <strong>Estimate:</strong> {liveEstimate.fal_calls} remaining fal calls ·{" "}
+          {liveEstimate.planned_seconds}s · ~${liveEstimate.usd.toFixed(2)}
+          {liveEstimate.usd_high != null ? `–$${liveEstimate.usd_high.toFixed(2)}` : ""}{" "}
+          @720p. {liveEstimate.note}
         </p>
       </div>
 
@@ -224,29 +214,38 @@ export function LongformPanel({
         <label className="gen-check">
           <input
             type="checkbox"
-            checked={ripple}
+            checked={queue.generate_audio}
             disabled={busy}
-            onChange={(e) => onRipple(e.target.checked)}
+            onChange={(e) => onGenerateAudio(e.target.checked)}
           />
-          Ripple continuity on regenerate
+          Native audio
         </label>
         <label className="gen-check">
           <input
             type="checkbox"
-            checked={autoAdvance}
+            checked={queue.pass_prev_video}
             disabled={busy}
-            data-testid="motion2-auto-advance"
+            onChange={(e) => onPassPrevVideo(e.target.checked)}
+          />
+          Pass previous clip as @Video
+        </label>
+        <label className="gen-check">
+          <input
+            type="checkbox"
+            checked={queue.auto_advance}
+            disabled={busy}
+            data-testid="cinema-auto-advance"
             onChange={(e) => onAutoAdvance(e.target.checked)}
           />
           Auto-advance
         </label>
         <button type="button" className="gen-seed-random" disabled={primaryBusy} onClick={onPlan}>
-          Plan {liveEstimate.beat_count} beats
+          Plan beats
         </button>
         <button
           type="button"
           className="gen-seed-random"
-          data-testid="motion2-run-remaining"
+          data-testid="cinema-run-remaining"
           disabled={generateLocked || primaryBusy || (!canGo && !inFlight.length)}
           onClick={onRunRemaining}
         >
@@ -255,7 +254,7 @@ export function LongformPanel({
         <button
           type="button"
           className="gen-go"
-          data-testid="motion2-go"
+          data-testid="cinema-go"
           disabled={generateLocked || primaryBusy || (!canGo && !inFlight.length)}
           onClick={onGo}
           style={{ marginLeft: "auto" }}
@@ -264,42 +263,26 @@ export function LongformPanel({
         </button>
       </div>
       <p className="gen-hint">
-        Go = run remaining (sequential last-frame chain). Confirm when remaining spend is over ~$5
-        @720p Wan ($0.10/s).
+        Go = run remaining (sequential). Not beat 1 only. Confirm when remaining spend is over ~$5.
       </p>
       {!queue.beats.length ? (
-        <p className="gen-hint" data-testid="motion2-plan-first">
-          Plan beats first. Go stays off until there is a draft beat to generate.
+        <p className="gen-hint" data-testid="cinema-plan-first">
+          Plan beats or load the estate proof template first.
         </p>
       ) : failedHold.length ? (
-        <p className="gen-hint">
-          Generate stays off until you dismiss, retry, or continue the queue after a stuck/failed beat.
-        </p>
-      ) : !canGo && !primaryBusy ? (
-        <p className="gen-hint">No beat is ready to generate. Plan a new take, or wait for the last frame.</p>
+        <p className="gen-hint">Generate stays off until you dismiss, retry, or continue the queue.</p>
       ) : null}
       {stage ? (
-        <p className="gen-stage" data-testid="motion2-stage">
+        <p className="gen-stage" data-testid="cinema-stage">
           ⏳ {stage}
         </p>
       ) : null}
       {failBanner ? (
-        <div className="gen-longform-fail" data-testid="motion2-fail" role="alert">
-          <p>{failBanner}</p>
-          <button
-            type="button"
-            className="gen-seed-random"
-            data-testid="motion2-continue-queue"
-            disabled={primaryBusy}
-            onClick={onRunRemaining}
-          >
-            Continue queue
-          </button>
-        </div>
+        <p className="gen-longform-fail" data-testid="cinema-fail" role="alert">
+          {failBanner}
+        </p>
       ) : null}
-      {notice ? <p className="gen-library-status" data-testid="motion2-notice">{notice}</p> : null}
-
-      {queue.continuity_error ? <p className="gen-err">{queue.continuity_error}</p> : null}
+      {notice ? <p className="gen-library-status" data-testid="cinema-notice">{notice}</p> : null}
 
       {queue.beats.length > 0 && (
         <div className="gen-longform-review">
@@ -310,30 +293,25 @@ export function LongformPanel({
               {progress.generating ? " · generating" : ""}
             </p>
           </div>
-          <ol className="gen-longform-list" aria-label="Longform beat review">
+          <ol className="gen-longform-list" aria-label="Cinema beat review">
             {queue.beats.map((beat, i) => (
               <li
                 key={beat.id}
                 className={`gen-longform-beat${selected?.id === beat.id ? " gen-longform-beat-on" : ""}`}
               >
-                <button
-                  type="button"
-                  className="gen-longform-select"
-                  onClick={() => onSelect(beat.id)}
-                >
-                  <span className="gen-longform-num">Beat {i + 1}</span>
+                <button type="button" className="gen-longform-select" onClick={() => onSelect(beat.id)}>
+                  <span className="gen-longform-num">
+                    {beat.id.startsWith("c0") ? beat.id.toUpperCase() : `Beat ${i + 1}`}
+                  </span>
                   <span className={`gen-beat-status gen-beat-status-${beat.status}`}>
                     {failedHoldIds.has(beat.id) ? "failed" : beat.status}
                   </span>
                   <span className="gen-longform-meta">
-                    {i === 0
-                      ? "keep still"
-                      : beat.from_prev_last
-                        ? "last frame of previous"
-                        : "custom still"}
-                    {beat.last_frame_url ? " · last frame extracted" : ""}
+                    {beat.seconds}s · {beat.generate_audio ? "audio on" : "silent"}
+                    {beat.video_ref_url ? " · prior clip" : ""}
                   </span>
                 </button>
+                {beat.vo_line ? <p className="gen-hint">VO: {beat.vo_line}</p> : null}
                 <textarea
                   className="gen-longform-prompt"
                   value={beat.prompt}
@@ -341,9 +319,18 @@ export function LongformPanel({
                   onChange={(e) => onPatch(beat.id, { prompt: e.target.value })}
                   onFocus={() => onSelect(beat.id)}
                 />
+                <label className="gen-check">
+                  <input
+                    type="checkbox"
+                    checked={beat.generate_audio}
+                    disabled={primaryBusy || beat.status === "generating"}
+                    onChange={(e) => onPatch(beat.id, { generate_audio: e.target.checked })}
+                  />
+                  generate_audio
+                </label>
                 {beat.error ? (
-                  <p className="gen-err" data-testid={`motion2-beat-error-${i + 1}`}>
-                    {formatLongformFalError(beat.error)}
+                  <p className="gen-err" data-testid={`cinema-beat-error-${i + 1}`}>
+                    {formatCinemaFalError(beat.error)}
                   </p>
                 ) : null}
                 {beat.job_id && (beat.status === "ready" || beat.status === "approved") ? (
@@ -355,7 +342,7 @@ export function LongformPanel({
                       <button
                         type="button"
                         className="gen-seed-random"
-                        data-testid={`motion2-beat-dismiss-${i + 1}`}
+                        data-testid={`cinema-beat-dismiss-${i + 1}`}
                         disabled={primaryBusy}
                         onClick={() => onDismiss(beat.id)}
                       >
@@ -364,7 +351,7 @@ export function LongformPanel({
                       <button
                         type="button"
                         className="gen-seed-random"
-                        data-testid={`motion2-beat-retry-${i + 1}`}
+                        data-testid={`cinema-beat-retry-${i + 1}`}
                         disabled={primaryBusy}
                         onClick={() => onRetry(beat.id)}
                       >
@@ -375,7 +362,7 @@ export function LongformPanel({
                     <button
                       type="button"
                       className="gen-seed-random"
-                      data-testid={`motion2-beat-generate-${i + 1}`}
+                      data-testid={`cinema-beat-generate-${i + 1}`}
                       disabled={primaryBusy || generateLocked || inFlightIds.has(beat.id)}
                       onClick={() => onGenerate(beat.id)}
                     >
@@ -425,14 +412,6 @@ export function LongformPanel({
         </div>
       )}
 
-      {selected && selectedIndex > 0 && stillLooksUsable(selected.source_image_url) && (
-        <div className="gen-still-preview">
-          <p className="gen-hint">Beat {selectedIndex + 1} source (last frame of previous when chained)</p>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={selected.source_image_url} alt="Continuity still" />
-        </div>
-      )}
-
       <div className="gen-longform-stitch">
         {stitchOk.ok ? (
           <button type="button" className="gen-go" disabled={busy} onClick={onStitch}>
@@ -441,8 +420,8 @@ export function LongformPanel({
         ) : (
           <p className="gen-hint">
             Stitch waits until every beat is approved.
-            {longformStitchBlockers(queue)[0] ? ` ${longformStitchBlockers(queue)[0]}.` : ""}
-            {" "}Concat is ffmpeg concat-demuxer (stream copy) on Vercel Node — not Spark.
+            {cinemaStitchBlockers(queue)[0] ? ` ${cinemaStitchBlockers(queue)[0]}.` : ""} Music bed
+            is stubbed for later.
           </p>
         )}
         {queue.stitch_error ? <p className="gen-err">{queue.stitch_error}</p> : null}

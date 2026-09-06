@@ -9,7 +9,7 @@
  * details. CSAM and real-minor content are refused here and in the LLM prompt.
  */
 
-export type GenerateMode = "t2i" | "t2v" | "i2v" | "v2v" | "motion" | "motion2";
+export type GenerateMode = "t2i" | "t2v" | "i2v" | "v2v" | "motion" | "motion2" | "cinema";
 
 export interface DirectorPatch {
   reply: string;
@@ -52,7 +52,7 @@ INFERENCE RULES
 - Engine-ready: subject, identity locks, wardrobe, setting, lighting, lens/camera, mood.
 - Keep the user's requested adult subject and photoreal intent verbatim in spirit.
 - Positive concrete terms (what they HAVE). Do not write "no X" lists that summon X.
-- Match the active engine: still vs motion. Motion 1 clips are ≤5 seconds on fal-ai/wan-i2v. Motion 2 is Wan 3.0 (5 / 15 / 30s).
+- Match the active engine: still vs motion. Motion 1 clips are ≤5 seconds on fal-ai/wan-i2v. Motion 2 is Wan 3.0 (5 / 15 / 30s). Cinema is Seedance 2.0 / Kling — not Wan.
 
 DESCRIPTION RULES
 - Standing bible. Identity, outfit, camera, constraints.
@@ -73,6 +73,8 @@ const MODE_HINT: Record<GenerateMode, string> = {
     "Active engine: fal Wan I2V (fal-ai/wan-i2v, ~5s / 81 frames). Inference is motion for a Modal still / HTTPS first frame. Optional last-frame still = FLF2V. No skeleton video, no Seedance. Motion 2 · Longform is a different tab.",
   motion2:
     "Active engine: Motion 2 longform on Wan 3.0. Segments are 5 / 15 / 30s (default 15). A ~3 min take is N chained I2V beats with ffmpeg last-frame continuity + stitch — not one native 3-min Wan call. Inference should be a multi-line script: one motion prompt per beat / line.",
+  cinema:
+    "Active engine: Cinema on fal Seedance 2.0 reference-to-video (bytedance/seedance-2.0/reference-to-video), Kling 3 Pro elements fallback. This is the estate-lady path — not Wan Motion 2. Inference is a multi-line script or shotlist: one beat per line with She says exactly + @Image1/@Image2/@Image3/@Audio1. Clips 4–15s (default 10), native audio on. Sequential Run remaining. Full ArcFace/Gemini QA stays on Spark.",
 };
 
 export function directorUserPayload(opts: {

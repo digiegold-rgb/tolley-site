@@ -39,6 +39,9 @@ import {
 } from "@/lib/generate-modal";
 import { emptyBeatQueue } from "@/lib/generate-beats";
 import { latestBeatQueueJob } from "@/lib/generate-beats-store";
+import { emptyCinemaQueue } from "@/lib/generate-cinema";
+import { reconcileCinemaParent } from "@/lib/generate-cinema-advance";
+import { latestCinemaJob, loadCinemaJob } from "@/lib/generate-cinema-store";
 import { emptyLongformQueue } from "@/lib/generate-longform";
 import { reconcileLongformParent } from "@/lib/generate-longform-advance";
 import { latestLongformJob, loadLongformJob } from "@/lib/generate-longform-store";
@@ -66,7 +69,7 @@ function isEngineKind(body: { kind?: unknown }): body is { kind: "t2i" | "t2v" }
 /**
  * GET /api/generate/jobs — recent jobs + public Modal / fal status (no tokens).
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   const gate = await requireGenerateAdmin();
   if (!gate.ok) return gate.response;
 
@@ -75,9 +78,19 @@ export async function GET() {
     take: 40,
   });
   const beats = await latestBeatQueueJob(gate.createdBy);
-  const longformLoaded = await latestLongformJob(gate.createdBy);
+  const longformId =
+    req.nextUrl.searchParams.get("queue")?.trim() ||
+    req.nextUrl.searchParams.get("longform")?.trim() ||
+    "";
+  const cinemaId = req.nextUrl.searchParams.get("cinema")?.trim() || "";
+  const longformLoaded = longformId
+    ? await loadLongformJob(longformId)
+    : await latestLongformJob(gate.createdBy);
   const longform = longformLoaded ? await reconcileLongformParent(longformLoaded) : null;
   const longformFresh = longform ? await loadLongformJob(longform.row.id) : null;
+  const cinemaLoaded = cinemaId ? await loadCinemaJob(cinemaId) : await latestCinemaJob(gate.createdBy);
+  const cinema = cinemaLoaded ? await reconcileCinemaParent(cinemaLoaded) : null;
+  const cinemaFresh = cinema ? await loadCinemaJob(cinema.row.id) : null;
   return NextResponse.json({
     jobs: rows.map(serializeJob),
     modal: modalPublicStatus(),
@@ -90,6 +103,8 @@ export async function GET() {
     beat_queue_job: beats ? serializeJob(beats.row) : null,
     longform_queue: longformFresh?.queue ?? emptyLongformQueue(),
     longform_queue_job: longformFresh ? serializeJob(longformFresh.row) : null,
+    cinema_queue: cinemaFresh?.queue ?? emptyCinemaQueue(),
+    cinema_queue_job: cinemaFresh ? serializeJob(cinemaFresh.row) : null,
     engines: falEnginePublicStatus(),
   });
 }

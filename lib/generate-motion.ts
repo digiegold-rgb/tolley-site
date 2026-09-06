@@ -142,6 +142,12 @@ export function falModelIdForRecipe(recipe: string): FalModelId {
 }
 
 export function falModelIdFromCard(cardJson: unknown, recipe: string): FalModelId {
+  const rec =
+    cardJson && typeof cardJson === "object" && !Array.isArray(cardJson)
+      ? (cardJson as Record<string, unknown>)
+      : {};
+  if (rec.fal_model === "seedance-ref" || recipe === "fal-seedance-ref") return "seedance-ref";
+  if (rec.fal_model === "kling3-elements" || recipe === "fal-kling-elements") return "kling3-elements";
   return falModelIdFromCardHint(cardJson, recipe);
 }
 

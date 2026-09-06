@@ -139,5 +139,27 @@ describe("studio motionCard ↔ beats[0]", () => {
     assert.match(longformUi, /onRetry/);
     assert.match(studio, /formatLongformFalError/);
     assert.match(studio, /retry: true/);
+    assert.match(studio, /run-remaining/);
+    assert.match(studio, /confirmSpend/);
+    assert.match(studio, /readBoundQueueId/);
+    assert.match(studio, /queueGetUrl/);
+    assert.match(longformUi, /data-testid="motion2-run-remaining"/);
+    assert.match(longformUi, /data-testid="motion2-auto-advance"/);
+    assert.match(longformUi, /Go = run remaining/i);
+  });
+
+  it("adds a Cinema tab next to Motion 2 without changing Motion 1 filmstrip", () => {
+    const studio = readFileSync(join(root, "app/generate/generate-studio.tsx"), "utf8");
+    const cinemaUi = readFileSync(join(root, "app/generate/cinema-queue.tsx"), "utf8");
+    assert.match(studio, /"cinema"/);
+    assert.match(studio, /Cinema/);
+    assert.match(studio, /<CinemaPanel/);
+    assert.match(studio, /\/api\/generate\/cinema/);
+    assert.match(studio, /Load estate proof template|onLoadEstate/);
+    assert.match(cinemaUi, /data-testid="cinema-load-estate"/);
+    assert.match(cinemaUi, /Seedance/);
+    assert.match(cinemaUi, /Kling/);
+    assert.match(cinemaUi, /data-testid="cinema-run-remaining"/);
+    assert.doesNotMatch(cinemaUi, /gen-beat-strip/);
   });
 });

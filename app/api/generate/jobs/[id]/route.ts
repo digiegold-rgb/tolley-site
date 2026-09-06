@@ -12,6 +12,7 @@ import {
 import { applyModalResult, serializeJob } from "@/lib/generate-job-store";
 import { isModalConfigured, pollModalCall } from "@/lib/generate-modal";
 import { syncBeatQueueFromChild } from "@/lib/generate-beats-store";
+import { syncCinemaFromChild } from "@/lib/generate-cinema-advance";
 import { syncLongformFromChild } from "@/lib/generate-longform-advance";
 import {
   falModelIdFromCard,
@@ -99,6 +100,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
         if (fresh) {
           await syncBeatQueueFromChild(fresh);
           await syncLongformFromChild(fresh);
+          await syncCinemaFromChild(fresh);
           return NextResponse.json({ job: serializeJob(fresh) });
         }
       }
@@ -111,6 +113,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
         if (fresh) {
           await syncBeatQueueFromChild(fresh);
           await syncLongformFromChild(fresh);
+          await syncCinemaFromChild(fresh);
           return NextResponse.json({ job: serializeJob(fresh) });
         }
       }
@@ -124,6 +127,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       if (fresh) {
         await syncBeatQueueFromChild(fresh);
         await syncLongformFromChild(fresh);
+        await syncCinemaFromChild(fresh);
         return NextResponse.json({ job: serializeJob(fresh) });
       }
     }

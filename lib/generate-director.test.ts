@@ -134,6 +134,18 @@ describe("directorUserPayload", () => {
     assert.match(payload, /last-frame/i);
     assert.match(payload, /not one native 3-min Wan/i);
   });
+
+  it("names Seedance / Kling for the Cinema engine — not Wan", () => {
+    const payload = directorUserPayload({
+      message: "recreate the estate lady short",
+      inference: "",
+      description: "",
+      mode: "cinema",
+    });
+    assert.match(payload, /Seedance|Cinema/i);
+    assert.match(payload, /not Wan/i);
+    assert.doesNotMatch(payload, /alibaba\/wan-3\.0/);
+  });
 });
 
 describe("generate route branding", () => {
@@ -154,6 +166,7 @@ describe("generate route branding", () => {
     assert.match(studio, /Modal stills/);
     assert.match(studio, /Motion/);
     assert.match(studio, /Motion 2 · Longform/);
+    assert.match(studio, /Cinema/);
     assert.match(studio, /\/api\/generate\/jobs/);
     assert.match(studio, /\/api\/generate\/upload/);
     assert.match(studio, /Random seed/);
@@ -182,7 +195,8 @@ describe("generate route branding", () => {
     assert.ok(studio.indexOf("commitCard(applyLocation") > modalPanel && studio.indexOf("commitCard(applyLocation") < motionForm);
     assert.match(studio, /Use as source/);
     assert.match(studio, /Wan 3\.0|Wan I2V/);
-    assert.doesNotMatch(studio, /InstantID|ComfyUI|face_lock|UltraSharp|Seedance/i);
+    assert.doesNotMatch(studio, /InstantID|ComfyUI|face_lock|UltraSharp/i);
+    assert.match(studio, /Seedance/);
     assert.match(chat, /qwenChatCompletion/);
     assert.match(chat, /QWEN_VLLM/);
     assert.doesNotMatch(chat, /api\.anthropic\.com|qwen-max|dashscope/i);
@@ -194,7 +208,8 @@ describe("generate route branding", () => {
     assert.match(jobs, /spawnFalT2V/);
     assert.match(jobs, /kind === "t2i"/);
     assert.match(jobs, /parseGenerateJobCard/);
-    assert.doesNotMatch(jobs, /Seedance|latentsync/i);
+    assert.doesNotMatch(jobs, /latentsync/i);
+    assert.doesNotMatch(jobs, /spawnCinemaBeat|spawnSeedance/);
     assert.doesNotMatch(studio, /\/api\/admin\/quickgen["'`]/);
     assert.match(studio, /kind: "i2v"/);
     assert.match(studio, /"t2i"/);
