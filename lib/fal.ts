@@ -73,12 +73,12 @@ export const FAL_MODELS = {
     endpointId: "fal-ai/wan-i2v" as const,
     defaults: { num_frames: 81, resolution: "720p", enable_safety_checker: false },
   },
-  // First + last frame (legacy Wan 2.1). New Motion uses wan30-i2v.
+  // First + last frame (Motion 1). Motion 2 uses wan30-i2v.
   "wan-flf2v": {
     endpointId: "fal-ai/wan-flf2v" as const,
     defaults: { num_frames: 81, resolution: "720p", enable_safety_checker: false },
   },
-  // Generate Motion / Motion 2 — Wan 3.0 I2V (optional end frame on the same call).
+  // Motion 2 · Longform — Wan 3.0 I2V (optional end frame on the same call). Motion 1 does not use this.
   "wan30-i2v": {
     endpointId: "alibaba/wan-3.0/image-to-video" as const,
     defaults: {

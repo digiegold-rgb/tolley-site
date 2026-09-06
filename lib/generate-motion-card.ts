@@ -1,11 +1,13 @@
 /**
  * Structured /generate motion card — identity-locked image→video.
  *
- * Stack (Jared's fal.ai account; no ByteDance Seedance claim):
- *   - alibaba/wan-3.0/image-to-video  first frame (+ optional end still)
- *     duration 2–30s (UI chips 5 / 15 / 30). Safety checker off for Lady2.
+ * Motion 1 (filmstrip) stays on the legacy stack:
+ *   - fal-ai/wan-i2v        first-frame I2V (~5s @ 16fps / 81 frames)
+ *   - fal-ai/wan-flf2v      first+last frame when a pose / end still is set
  *
- * Legacy in-flight jobs may still poll fal-ai/wan-i2v / wan-flf2v.
+ * Motion 2 · Longform uses Wan 3.0 (`cardToWan30FalInput`):
+ *   - alibaba/wan-3.0/image-to-video  duration 2–30s (chips 5 / 15 / 30)
+ *
  * Identity is the source still as frame 1. LatentSync is not wired.
  * Skeleton *video* drive is not supported — only an optional last-frame / pose
  * *still*. Optional 0.5× slow-mo remuxes after fal returns.
@@ -130,8 +132,8 @@ export function isFalConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
 export function falPublicStatus(env: NodeJS.ProcessEnv = process.env): {
   configured: boolean;
   provider: "fal.ai";
-  i2v: "alibaba/wan-3.0/image-to-video";
-  flf2v: "alibaba/wan-3.0/image-to-video";
+  i2v: "fal-ai/wan-i2v";
+  flf2v: "fal-ai/wan-flf2v";
   faceLock: "not-wired";
   stitch: "concat-approved-beats";
   slowMo: "0.5x-remux";
@@ -140,11 +142,29 @@ export function falPublicStatus(env: NodeJS.ProcessEnv = process.env): {
   return {
     configured: isFalConfigured(env),
     provider: "fal.ai",
-    i2v: "alibaba/wan-3.0/image-to-video",
-    flf2v: "alibaba/wan-3.0/image-to-video",
+    i2v: "fal-ai/wan-i2v",
+    flf2v: "fal-ai/wan-flf2v",
     faceLock: "not-wired",
     stitch: "concat-approved-beats",
     slowMo: "0.5x-remux",
+    skeletonVideo: "not-supported",
+  };
+}
+
+export function falPublicLongformStatus(env: NodeJS.ProcessEnv = process.env): {
+  configured: boolean;
+  provider: "fal.ai";
+  i2v: "alibaba/wan-3.0/image-to-video";
+  faceLock: "not-wired";
+  stitch: "concat-copy-approved-beats";
+  skeletonVideo: "not-supported";
+} {
+  return {
+    configured: isFalConfigured(env),
+    provider: "fal.ai",
+    i2v: "alibaba/wan-3.0/image-to-video",
+    faceLock: "not-wired",
+    stitch: "concat-copy-approved-beats",
     skeletonVideo: "not-supported",
   };
 }
@@ -297,7 +317,24 @@ export const MOTION_FAL_MODEL_WAN30 = "wan30-i2v" as const;
 export const LEGACY_MOTION_FAL_MODELS = ["wan26-i2v-720p", "wan26-i2v-1080p", "wan-flf2v"] as const;
 export type MotionFalModelId = typeof MOTION_FAL_MODEL_WAN30 | (typeof LEGACY_MOTION_FAL_MODELS)[number];
 
+/** Motion 1 / legacy Wan 2.x I2V + FLF2V. */
 export type MotionFalInput = {
+  prompt: string;
+  negative_prompt: string;
+  enable_safety_checker: false;
+  enable_prompt_expansion: false;
+  num_frames: number;
+  frames_per_second: number;
+  resolution: "720p";
+  aspect_ratio: MotionAspect;
+  seed?: number;
+  image_url?: string;
+  start_image_url?: string;
+  end_image_url?: string;
+};
+
+/** Motion 2 · Longform — Wan 3.0 I2V. */
+export type Wan30FalInput = {
   prompt: string;
   start_image_url: string;
   duration: number;
@@ -311,28 +348,72 @@ export type MotionFalInput = {
   end_image_url?: string;
 };
 
-export function falModelIdFromCardHint(cardJson: unknown, _recipe: string): MotionFalModelId {
-  void _recipe;
+export function falModelIdFromCardHint(cardJson: unknown, recipe: string): MotionFalModelId {
   if (cardJson && typeof cardJson === "object" && !Array.isArray(cardJson)) {
     const rec = cardJson as Record<string, unknown>;
-    if (rec.fal_model === MOTION_FAL_MODEL_WAN30) return MOTION_FAL_MODEL_WAN30;
+    if (rec.fal_model === MOTION_FAL_MODEL_WAN30 || rec.longform === true || rec.kind === "longform") {
+      return MOTION_FAL_MODEL_WAN30;
+    }
     if ((LEGACY_MOTION_FAL_MODELS as readonly string[]).includes(String(rec.fal_model))) {
       return rec.fal_model as (typeof LEGACY_MOTION_FAL_MODELS)[number];
     }
+    if (typeof rec.end_image_url === "string" && rec.end_image_url.trim()) {
+      return "wan-flf2v";
+    }
   }
-  return MOTION_FAL_MODEL_WAN30;
+  return recipe === MOTION_RECIPE_FLF2V ? "wan-flf2v" : "wan26-i2v-720p";
 }
 
+/** Motion 1 filmstrip — fal-ai/wan-i2v (~5s / 81 frames) or wan-flf2v. */
 export function cardToFalInput(card: GenerateMotionCard): {
   recipe: MotionRecipe;
-  falModelId: typeof MOTION_FAL_MODEL_WAN30;
+  falModelId: "wan26-i2v-720p" | "wan-flf2v";
   input: MotionFalInput;
 } {
   const useFlf = Boolean(card.end_image_url);
-  const input: MotionFalInput = {
+  const base = {
+    prompt: card.prompt,
+    negative_prompt: card.negative_prompt || DEFAULT_MOTION_NEGATIVE,
+    enable_safety_checker: false as const,
+    enable_prompt_expansion: false as const,
+    num_frames: MOTION_NUM_FRAMES,
+    frames_per_second: MOTION_FPS,
+    resolution: "720p" as const,
+    aspect_ratio: card.aspect,
+    ...(card.seed > 0 ? { seed: card.seed } : {}),
+  };
+  if (useFlf) {
+    return {
+      recipe: MOTION_RECIPE_FLF2V,
+      falModelId: "wan-flf2v",
+      input: {
+        ...base,
+        start_image_url: card.source_image_url,
+        end_image_url: card.end_image_url,
+      },
+    };
+  }
+  return {
+    recipe: MOTION_RECIPE_I2V,
+    falModelId: "wan26-i2v-720p",
+    input: {
+      ...base,
+      image_url: card.source_image_url,
+    },
+  };
+}
+
+/** Motion 2 · Longform — alibaba/wan-3.0/image-to-video. */
+export function cardToWan30FalInput(card: GenerateMotionCard): {
+  recipe: MotionRecipe;
+  falModelId: typeof MOTION_FAL_MODEL_WAN30;
+  input: Wan30FalInput;
+} {
+  const useFlf = Boolean(card.end_image_url);
+  const input: Wan30FalInput = {
     prompt: card.prompt,
     start_image_url: card.source_image_url,
-    duration: clampMotionSeconds(card.seconds),
+    duration: clampMotionSeconds(card.seconds, MOTION_SECONDS_LONGFORM_DEFAULT),
     resolution: card.resolution || MOTION_RESOLUTION_DEFAULT,
     aspect_ratio: wan30AspectRatio(card.aspect),
     audio: card.audio === true,
@@ -362,20 +443,16 @@ You MUST reply with a single JSON object and nothing else:
   "end_image_url": "optional last-frame / pose still HTTPS URL, or empty",
   "aspect": "9:16",
   "seconds": 5,
-  "resolution": "720p",
-  "audio": false,
   "seed": 0,
   "slow_mo": false
 }
 
 RULES
 - Output JSON only. No credentials, tokens, FAL_KEY, or Modal account fields.
-- Identity lock is the source still as the first frame (Wan 3.0 I2V, alibaba/wan-3.0/image-to-video). Do not invent ByteDance Seedance access. Do not invent LatentSync / face-swap / stitch.
-- Optional end_image_url is a last-frame / pose STILL (HTTPS image) on the same Wan 3.0 call. Do not accept or invent a skeleton video, drive video, or OpenPose graph — this stack does not take those.
-- seconds is 2–30 (chips 5 / 15 / 30). Motion 1 default 5. Motion 2 default 15. This is NOT a 5s cap.
-- resolution 720p (~$0.10/s) or 1080p (~$0.20/s). audio false unless Jared asks for native audio.
-- enable_safety_checker stays false for the adult Lady2 path.
-- slow_mo true = 0.5× remux after fal (same frames, 2× wall clock). Not a longer Wan call.
+- Identity lock is the source still as the first frame (Wan I2V, fal-ai/wan-i2v, ~5s / 81 frames). Do not invent ByteDance Seedance access. Do not invent LatentSync / face-swap / stitch.
+- Optional end_image_url is a last-frame / pose STILL (HTTPS image) for Wan FLF2V. Do not accept or invent a skeleton video, drive video, or OpenPose graph — this stack does not take those.
+- Clips are 5 seconds (81 frames @ 16fps). seconds other than 5 is ignored. Motion 2 · Longform is a different tab (Wan 3.0, 5 / 15 / 30s).
+- slow_mo true = 0.5× remux after fal (same frames, ~10s wall clock). Not a longer Wan call.
 - Empty string on a field means leave the current card value. Always send a complete motion prompt when you change motion.
 - Never mention ComfyUI, Comfy nodes, node graphs, .safetensors files, or "open the Comfy interface".
-Chat MAY change: prompt, negative_prompt, source_image_url, end_image_url, aspect, seconds, resolution, audio, seed, slow_mo.`;
+Chat MAY change: prompt, negative_prompt, source_image_url, end_image_url, aspect, seed, slow_mo.`;

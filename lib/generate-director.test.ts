@@ -117,8 +117,9 @@ describe("directorUserPayload", () => {
       description: "",
       mode: "motion",
     });
-    assert.match(payload, /Wan 3\.0|Wan I2V/);
-    assert.match(payload, /5 \/ 15 \/ 30|last-frame|end still/);
+    assert.match(payload, /Wan I2V|fal-ai\/wan-i2v/);
+    assert.match(payload, /5s|81 frames|last-frame|FLF2V/);
+    assert.doesNotMatch(payload, /alibaba\/wan-3\.0/);
   });
 
   it("names chained Wan 3.0 beats for Motion 2 longform", () => {

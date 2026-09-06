@@ -5,7 +5,7 @@ import { isBlockedStudioRequest } from "@/lib/generate-director";
 import { concatMp4sCopy } from "@/lib/generate-ffmpeg";
 import { serializeJob } from "@/lib/generate-job-store";
 import { readableToBuffer } from "@/lib/generate-media";
-import { falPublicStatus, isFalConfigured, spawnFalMotion } from "@/lib/generate-motion";
+import { falPublicLongformStatus, isFalConfigured, spawnFalWan30Motion, spawnInputForLongformCard } from "@/lib/generate-motion";
 import { parseGenerateMotionCard } from "@/lib/generate-motion-card";
 import { fetchStoredJobImage, persistJobMp4s } from "@/lib/generate-output-persist";
 import {
@@ -60,14 +60,14 @@ export async function GET(req: NextRequest) {
       queue,
       job: null,
       estimate: publicEstimate(queue),
-      fal: falPublicStatus(),
+      fal: falPublicLongformStatus(),
     });
   }
   return NextResponse.json({
     queue: loaded.queue,
     job: serializeJob(loaded.row),
     estimate: publicEstimate(loaded.queue),
-    fal: falPublicStatus(),
+    fal: falPublicLongformStatus(),
   });
 }
 
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
         queue,
         job: loaded ? serializeJob(loaded.row) : null,
         estimate,
-        fal: falPublicStatus(),
+        fal: falPublicLongformStatus(),
         dryRun: true,
       });
     }
@@ -183,7 +183,7 @@ export async function POST(req: NextRequest) {
     queue: saved.queue,
     job: serializeJob(saved.row),
     estimate: publicEstimate(saved.queue),
-    fal: falPublicStatus(),
+    fal: falPublicLongformStatus(),
   });
 }
 
@@ -226,14 +226,7 @@ async function generateLongformBeat(
       queue: saved.queue,
       job: serializeJob(saved.row),
       estimate,
-      fal_input: {
-        start_image_url: parsed.source_image_url,
-        prompt: parsed.prompt,
-        duration: parsed.seconds,
-        resolution: parsed.resolution,
-        enable_safety_checker: parsed.enable_safety_checker === true,
-        audio: parsed.audio === true,
-      },
+      fal_input: spawnInputForLongformCard(parsed).input,
       note: estimate.note,
     });
   }
@@ -285,7 +278,7 @@ async function generateLongformBeat(
   }
 
   try {
-    const spawned = await spawnFalMotion(parseGenerateMotionCard(parsed));
+    const spawned = await spawnFalWan30Motion(parseGenerateMotionCard(parsed));
     await prisma.generateJob.update({
       where: { id: child.id },
       data: {

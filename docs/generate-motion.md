@@ -1,6 +1,8 @@
 # Identity-locked motion (image→video) on `/generate`
 
-Jared takes a **keep still** (Modal Qwen-Image-Edit output, pasted Blob URL, or upload) into a **Wan 3.0 clip** (5 / 15 / 30s; Motion 1 default **5s**) with the first frame holding identity. Longer “estate lady” pieces are a **beat queue**: one Wan clip per beat, review, then an explicit ffmpeg stitch. For a planned ~3-minute take see **Motion 2 · Longform** (`docs/generate-motion2.md`).
+Jared takes a **keep still** (Modal Qwen-Image-Edit output, pasted Blob URL, or upload) into a **~5s Wan I2V clip** (`fal-ai/wan-i2v`, 81 frames @ 16fps) with the first frame holding identity. Longer “estate lady” pieces are a **beat queue**: one Wan clip per beat, review, then an explicit ffmpeg stitch.
+
+For a planned ~3-minute take on **Wan 3.0** (5 / 15 / 30s segments) see **Motion 2 · Longform** (`docs/generate-motion2.md`). Motion 1 does **not** call Wan 3.0.
 
 This is **not** ByteDance Seedance. This is **not** LatentSync face-lock.
 
@@ -8,9 +10,9 @@ This is **not** ByteDance Seedance. This is **not** LatentSync face-lock.
 
 | Piece | Status |
 |---|---|
-| Source still → clip | **Shipped.** fal.ai `alibaba/wan-3.0/image-to-video` (duration 2–30s; UI chips 5 / 15 / 30). Default 720p, safety checker off, native audio off. ~$0.10/s @720p, ~$0.20/s @1080p. |
+| Source still → clip | **Shipped.** fal.ai `fal-ai/wan-i2v` (~5s / 81 frames @ 16fps). Safety checker off. |
 | Identity | First-frame lock. The still **is** frame 1. |
-| Optional last-frame / pose **still** | **Shipped.** If `end_image_url` is an HTTPS image, the same Wan 3.0 call gets `start_image_url` + `end_image_url`. |
+| Optional last-frame / pose **still** | **Shipped.** If `end_image_url` is an HTTPS image, the job is `fal-ai/wan-flf2v` (`start_image_url` + `end_image_url`). |
 | Inline player | **Shipped.** Result well + Motion / engine galleries use `<video controls>` against the HQ-gated job route (`video/mp4` + Range). Not download-only. |
 | 0.5× slow-mo | **Shipped.** Chip on Motion (and I2V / T2V). After fal returns, Vercel remuxes with ffmpeg `setpts=2*PTS` when `ffmpeg` is on the runtime. Same frames, ~10s wall clock — **not** a longer Wan call. If remux fails, the in-page player uses `playbackRate=0.5` and is labeled. |
 | Beat queue | **Shipped.** Ordered scenes on the Motion tab as a **left-to-right filmstrip**. The Motion form **is Beat 1**. Generate **one beat at a time** (Go = Beat 1). Review / reject / regenerate independently. **Stitch approved beats** only when every beat is `approved`. No auto-stitch on Go. |
@@ -21,17 +23,18 @@ This is **not** ByteDance Seedance. This is **not** LatentSync face-lock.
 
 ## What’s optional (and what it actually is)
 
-**Last-frame / pose still** = a second **image** (another keep, a pose photo, a drawn end frame). Wan 3.0 takes `start_image_url` + optional `end_image_url` on the same call.
+**Last-frame / pose still** = a second **image** (another keep, a pose photo, a drawn end frame). Wan FLF2V interpolates from source → that still.
 
 **0.5× slow-mo** = remux (or labeled playback). It does **not** ask Wan for more frames.
 
-**Beat queue** = N independent Wan 3.0 clips (5 / 15 / 30s). Beat 1 is the Motion form. Longer runtime = stitch, not one Wan call. The old 5s Wan 2.1 cap is gone.
+**Beat queue** = N independent ~5s Wan I2V clips. Beat 1 is the Motion form. Longer runtime = stitch, not one Wan call. The 5s cap is the Wan 2.x I2V limit.
 
 It is **not**:
 
 - A skeleton / OpenPose / DWPose video
 - A drive / puppet clip
 - Animate-Anyone / MimicMotion
+- Wan 3.0 (that is Motion 2 only)
 
 Those inputs are not accepted. The form says so.
 
@@ -54,7 +57,7 @@ Those inputs are not accepted. The form says so.
 | `GENERATE_SPARK_STORE_URL` + `GENERATE_SPARK_STORE_KEY` | clips | Same private store as Modal stills. PUT `video/mp4` → `{index}.mp4`. |
 | `GENERATE_BLOB_FALLBACK=1` + private token | optional | Private Blob fallback for MP4s (never public Blob). |
 | `BLOB_READ_WRITE_TOKEN` | recommended | Upload stills. **Do not** use the public store for private clips. |
-| `DATABASE_URL` | yes | `GenerateJob` table; recipes `fal-wan-i2v`, `fal-wan-flf2v` (both spawn Wan 3.0), `fal-wan-beats`, `fal-wan-longform`, `fal-wan-stitch` |
+| `DATABASE_URL` | yes | `GenerateJob` table; recipes `fal-wan-i2v`, `fal-wan-flf2v` (Motion 1 → Wan 2.x), `fal-wan-beats`, `fal-wan-longform` (Motion 2 → Wan 3.0), `fal-wan-stitch` |
 | HQ / shop / allowlist | yes | Same as Modal stills |
 
 Chat→card uses the same Spark / LiteLLM vars as Modal stills (`QWEN_VLLM_*` preferred).
@@ -65,7 +68,7 @@ Chat→card uses the same Spark / LiteLLM vars as Modal stills (`QWEN_VLLM_*` pr
 2. Open https://tolley.io/generate
 3. Open the **Motion** tab (Modal stills is unchanged).
 4. Set a source still: click **Use as source** on a Modal gallery still (HQ-gated path — not a public Blob link), paste an HTTPS URL, or upload.
-5. The form **is Beat 1** (source still, prompt, optional last-frame still, duration 5/15/30s, 0.5× slow-mo). The filmstrip highlights Beat 1 — it does **not** host a second Beat 1 prompt.
+5. The form **is Beat 1** (source still, prompt, optional last-frame still, 5s Wan cap, 0.5× slow-mo). The filmstrip highlights Beat 1 — it does **not** host a second Beat 1 prompt.
 6. Optional **Dry run**, then **Go** generates **Beat 1** on the same fal path as “Generate this beat”. The MP4 plays **in-page with controls**.
 7. For a longer piece: **Copy Beat 1 as next** (or copy the selected beat) onto the filmstrip. Beats sit **left → right** (horizontal scroll on a phone). Select Beat 2+ to edit that beat’s stills and watch the clip **below** the row. Generate / approve / regenerate each beat. When every beat is approved, **Stitch approved beats** at the end of the timeline.
 
@@ -97,14 +100,12 @@ curl -sS -X POST https://tolley.io/api/generate/jobs \
       "source_image_url": "https://YOUR.public.blob.vercel-storage.com/generate/keep.png",
       "aspect": "9:16",
       "seconds": 5,
-      "resolution": "720p",
-      "audio": false,
       "slow_mo": false
     }
   }'
 ```
 
-Expected: `{ "dryRun": true, "kind": "motion", "fal_input": { "start_image_url": "https://...", "duration": 5, "resolution": "720p", "audio": false, "enable_safety_checker": false, ... } }` — endpoint `alibaba/wan-3.0/image-to-video`. `seconds` / `duration` may be **5, 15, or 30** (2–30 supported). Motion 1 UI default is 5s; Motion 2 default is 15s.
+Expected: `{ "dryRun": true, "kind": "motion", "fal_input": { "image_url": "https://...", "num_frames": 81, "resolution": "720p", "enable_safety_checker": false, ... } }` — endpoint `fal-ai/wan-i2v` (preset `wan26-i2v-720p`). Seconds other than 5 are ignored.
 
 ```bash
 # Confirm/Go
@@ -118,7 +119,7 @@ curl -sS https://tolley.io/api/generate/jobs/JOB_ID \
   -H "cookie: wd_admin=$WD_ADMIN"
 ```
 
-With a last-frame still, add `"end_image_url": "https://.../pose.png"` — job recipe is still `fal-wan-flf2v` for labeling, but fal is the same Wan 3.0 endpoint with `start_image_url` + `end_image_url`.
+With a last-frame still, add `"end_image_url": "https://.../pose.png"` — recipe `fal-wan-flf2v`, fal `fal-ai/wan-flf2v` with `start_image_url` + `end_image_url`.
 
 Beat queue (never stitches on generate):
 
@@ -148,7 +149,7 @@ curl -sS -X POST https://tolley.io/api/generate/beats \
 
 ## Prisma
 
-No new table. Motion jobs reuse `GenerateJob` with `recipe` `fal-wan-i2v` / `fal-wan-flf2v`. The fal request id is stored in `modalCallId` (provider call id).
+No new table. Motion 1 jobs reuse `GenerateJob` with `recipe` `fal-wan-i2v` / `fal-wan-flf2v`. The fal request id is stored in `modalCallId` (provider call id).
 
 The beat queue is a parent row `recipe=fal-wan-beats` whose `cardJson` is `{ title, beats[], stitch_job_id }`. Each beat: `draft | generating | ready | approved | rejected`, plus `job_id` of the child clip. Stitch writes a `fal-wan-stitch` row.
 

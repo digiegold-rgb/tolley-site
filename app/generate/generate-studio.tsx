@@ -60,7 +60,7 @@ import {
   motionCardMatchesBeat1,
   writeMotionCardToBeat1,
 } from "@/lib/generate-studio-motion-sync";
-import { BeatQueuePanel, DurationChips, GatedClip, SlowMoChip, wan30PriceHint } from "./beat-queue";
+import { BeatQueuePanel, GatedClip, SlowMoChip } from "./beat-queue";
 import { LongformPanel } from "./longform-queue";
 import {
   LONGFORM_RECIPE,
@@ -1290,7 +1290,7 @@ export default function GenerateStudio() {
             Generate <em>Directed by you.</em>
           </h1>
           <p className="gen-lede">
-            Talk to the page. Modal stills fill a job card for Qwen-Image-Edit. Motion takes a keep still into a fal Wan 3.0 I2V clip (5 / 15 / 30s). Motion 2 chains those segments with last-frame continuity into a ~3 min take. Text → Image / Video and I2V run on fal (FLUX / Wan) — not Spark Gemini.
+            Talk to the page. Modal stills fill a job card for Qwen-Image-Edit. Motion takes a keep still into a 5s fal Wan I2V clip. Motion 2 chains Wan 3.0 segments (5 / 15 / 30s) with last-frame continuity into a ~3 min take. Text → Image / Video and I2V run on fal (FLUX / Wan) — not Spark Gemini.
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
@@ -1337,7 +1337,7 @@ export default function GenerateStudio() {
               {mode === "modal"
                 ? "Chat fills the Modal job card (JSON kwargs). Edit the card, then Confirm/Go."
                 : mode === "motion"
-                  ? "Chat fills the motion card. Source still + motion prompt → Wan 3.0 I2V (5 / 15 / 30s). Optional end still on the same call."
+                  ? "Chat fills the motion card. Source still + motion prompt → 5s Wan I2V. Optional last-frame still = FLF2V."
                   : mode === "motion2"
                     ? "Chat writes a multi-line scene plan (one prompt per beat). Wan 3.0 segments (default 15s) + last-frame extract chain the take."
                   : mode === "v2v"
@@ -1788,11 +1788,10 @@ export default function GenerateStudio() {
           ) : mode === "motion" ? (
             <>
               <p className="gen-hint">
-                Identity-locked I2V on fal.ai Wan 3.0 — first frame is the source still
-                {motionCard.end_image_url?.trim() ? "; optional end still on the same call" : ""}.{" "}
-                {motionCard.seconds}s @ {motionCard.resolution || "720p"} ({wan30PriceHint(motionCard.seconds)}).
-                This form is <strong>Beat 1</strong>. Go generates Beat 1. Longer pieces = Beat 2+ on the
-                filmstrip, then stitch. No LatentSync. No skeleton video.
+                Identity-locked I2V on fal.ai{" "}
+                {motionCard.end_image_url?.trim() ? "Wan FLF2V (first + last still)" : "Wan I2V (keyframe)"}. 5s @
+                720p per clip. This form is <strong>Beat 1</strong>. Go generates Beat 1. Longer pieces =
+                Beat 2+ on the filmstrip, then stitch. No LatentSync. No skeleton video.
               </p>
               <div
                 className="gen-beat1-block"
@@ -1920,28 +1919,7 @@ export default function GenerateStudio() {
                 </label>
                 <label>
                   Duration
-                  <DurationChips
-                    seconds={motionCard.seconds}
-                    disabled={busy}
-                    onPick={(n) => patchMotion({ seconds: n })}
-                  />
-                  <span className="gen-hint">{wan30PriceHint(motionCard.seconds)} per clip</span>
-                </label>
-                <label>
-                  Resolution
-                  <select
-                    value={motionCard.resolution || "720p"}
-                    disabled={busy}
-                    onChange={(e) =>
-                      patchMotion({
-                        resolution: e.target.value as GenerateMotionCard["resolution"],
-                      })
-                    }
-                  >
-                    <option value="720p">720p · ~$0.10/s</option>
-                    <option value="1080p">1080p · ~$0.20/s</option>
-                    <option value="480p">480p</option>
-                  </select>
+                  <input type="text" value="5s (Wan cap)" disabled />
                 </label>
               </div>
               <SlowMoChip
@@ -1949,15 +1927,6 @@ export default function GenerateStudio() {
                 disabled={busy}
                 onToggle={() => patchMotion({ slow_mo: !motionCard.slow_mo })}
               />
-              <button
-                type="button"
-                className={`gen-nsfw-chip${motionCard.audio ? " gen-nsfw-chip-on" : ""}`}
-                disabled={busy}
-                aria-pressed={motionCard.audio === true}
-                onClick={() => patchMotion({ audio: !motionCard.audio })}
-              >
-                Native audio
-              </button>
               </div>
               <details className="gen-advanced-json">
                 <summary>Advanced JSON</summary>

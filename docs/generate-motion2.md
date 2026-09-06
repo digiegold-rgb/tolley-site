@@ -12,7 +12,7 @@ Motion 2 is a **separate tab** next to Motion. It is purpose-built for a continu
 | Parent recipe | `fal-wan-beats` | `fal-wan-longform` |
 | Continuity | “Use previous still” copies the previous **end pose still or source still** | After each beat, **ffmpeg extracts the last frame of the MP4** and that PNG becomes the next beat’s `source_image_url` |
 | Default length | You add beats by hand (5s default) | Target duration (default **180s / 3 min**) → N beats (`12 × 15s` or `6 × 30s`) |
-| Engine | Wan 3.0 I2V | Same Wan 3.0 I2V |
+| Engine | Legacy `fal-ai/wan-i2v` / `wan-flf2v` (~5s / 81 frames) | Wan 3.0 I2V (`alibaba/wan-3.0/image-to-video`) |
 | Generate | One beat at a time (Go = Beat 1) | Sequential generate remaining (last-frame chain forbids safe parallel) |
 | Stitch | Vercel ffmpeg **re-encode** concat (mixed slow-mo) | Vercel ffmpeg **concat demuxer / stream copy** (36 clips would blow 120s if re-encoded) |
 | Spark stitch | Not used | Not used — stream-copy concat of already-encoded H.264 finishes in seconds on Node |
