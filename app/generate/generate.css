@@ -735,6 +735,28 @@
   margin: 8px 0 4px;
 }
 
+.gen-beat1-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 4px 0 8px;
+  padding: 12px;
+  border: 1px solid rgba(143, 125, 255, 0.28);
+  border-radius: 14px;
+  background: rgba(143, 125, 255, 0.05);
+}
+
+.gen-beat-prompt-preview {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--gen-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .gen-beats {
   margin-top: 18px;
   padding-top: 14px;

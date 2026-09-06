@@ -43,6 +43,7 @@ import {
   STITCH_RECIPE,
   applyLocalBeatPatch,
   createBeatSaveGate,
+  emptyBeat,
   emptyBeatQueue,
   parseBeatQueue,
   type BeatQueue,
@@ -53,7 +54,13 @@ import {
   parseMotionCardJson,
   type GenerateMotionCard,
 } from "@/lib/generate-motion-card";
-import { BeatQueuePanel, GatedClip, SlowMoChip, cardToNewBeat } from "./beat-queue";
+import {
+  copyBeatAsNewDraft,
+  motionCardFromBeat1,
+  motionCardMatchesBeat1,
+  writeMotionCardToBeat1,
+} from "@/lib/generate-studio-motion-sync";
+import { BeatQueuePanel, GatedClip, SlowMoChip } from "./beat-queue";
 
 async function readJson(r: Response): Promise<Record<string, unknown>> {
   const text = await r.text();
@@ -298,8 +305,11 @@ export default function GenerateStudio() {
   const [motionJsonDraft, setMotionJsonDraft] = useState(() => formatMotionCardJson(emptyMotionCard()));
   const [motionJsonError, setMotionJsonError] = useState<string | null>(null);
   const [uploadingStill, setUploadingStill] = useState<"source" | "end" | null>(null);
-  const [beatQueue, setBeatQueue] = useState<BeatQueue>(() => emptyBeatQueue());
+  const [beatQueue, setBeatQueue] = useState<BeatQueue>(() =>
+    writeMotionCardToBeat1(emptyBeatQueue(), emptyMotionCard()),
+  );
   const [beatQueueJobId, setBeatQueueJobId] = useState<string | null>(null);
+  const [selectedBeatId, setSelectedBeatId] = useState<string | null>(null);
   const [i2vSlowMo, setI2vSlowMo] = useState(false);
 
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -307,6 +317,7 @@ export default function GenerateStudio() {
   const chatBox = useRef<HTMLTextAreaElement | null>(null);
   const beatQueueRef = useRef(beatQueue);
   const beatQueueJobIdRef = useRef(beatQueueJobId);
+  const motionCardRef = useRef(motionCard);
   const beatSaveGate = useRef(createBeatSaveGate());
   const beatPatchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -316,6 +327,9 @@ export default function GenerateStudio() {
   useEffect(() => {
     beatQueueJobIdRef.current = beatQueueJobId;
   }, [beatQueueJobId]);
+  useEffect(() => {
+    motionCardRef.current = motionCard;
+  }, [motionCard]);
 
   useEffect(
     () => () => {
@@ -381,9 +395,12 @@ export default function GenerateStudio() {
         if (Array.isArray(j.jobs)) setModalJobs(j.jobs as ModalJob[]);
         if (j.beat_queue) {
           try {
-            setBeatQueue(parseBeatQueue(j.beat_queue));
+            const loaded = parseBeatQueue(j.beat_queue);
+            if (loaded.beats.length && beatSaveGate.current.current() === 0) {
+              applyLoadedBeatQueue(loaded);
+            }
           } catch {
-            /* keep empty */
+            /* keep seeded Beat 1 */
           }
         }
         if (j.beat_queue_job && typeof j.beat_queue_job === "object" && j.beat_queue_job.id) {
@@ -428,19 +445,30 @@ export default function GenerateStudio() {
     }
   }
 
-  function commitMotion(next: GenerateMotionCard | ReturnType<typeof emptyMotionCard>) {
+  function applyMotionCardState(next: GenerateMotionCard | ReturnType<typeof emptyMotionCard>) {
+    motionCardRef.current = next;
     setMotionCard(next);
     setMotionJsonDraft(formatMotionCardJson(next));
     setMotionJsonError(null);
   }
 
+  function commitMotion(next: GenerateMotionCard | ReturnType<typeof emptyMotionCard>) {
+    applyMotionCardState(next);
+    writeBeat1FromCard(next);
+  }
+
   function patchMotion(partial: Partial<GenerateMotionCard>) {
-    setMotionCard((c) => {
-      const next = { ...c, ...partial };
-      setMotionJsonDraft(formatMotionCardJson(next));
-      setMotionJsonError(null);
-      return next;
-    });
+    const next = { ...motionCardRef.current, ...partial };
+    applyMotionCardState(next);
+    writeBeat1FromCard(next);
+  }
+
+  function writeBeat1FromCard(card: GenerateMotionCard | ReturnType<typeof emptyMotionCard>) {
+    const q = writeMotionCardToBeat1(beatQueueRef.current, card);
+    beatSaveGate.current.bump();
+    commitBeatQueue(q, { syncCard: false });
+    scheduleBeatPatchPersist();
+    if (q.beats[0]) setSelectedBeatId(q.beats[0].id);
   }
 
   function applyMotionJsonDraft() {
@@ -469,14 +497,30 @@ export default function GenerateStudio() {
     }
   }
 
-  function commitBeatQueue(next: BeatQueue) {
+  function commitBeatQueue(next: BeatQueue, opts?: { syncCard?: boolean }) {
     beatQueueRef.current = next;
     setBeatQueue(next);
+    if (opts?.syncCard) {
+      const card = motionCardFromBeat1(next);
+      if (!motionCardMatchesBeat1(motionCardRef.current, next)) {
+        applyMotionCardState(card);
+      }
+    }
+  }
+
+  function applyLoadedBeatQueue(queue: BeatQueue) {
+    commitBeatQueue(queue, { syncCard: true });
+    if (queue.beats[0]) setSelectedBeatId(queue.beats[0].id);
   }
 
   function applyAuthoritativeQueue(raw: unknown) {
     beatSaveGate.current.bump();
-    commitBeatQueue(parseBeatQueue(raw));
+    let next = parseBeatQueue(raw);
+    if (!next.beats.length) {
+      next = writeMotionCardToBeat1(next, motionCardRef.current);
+      scheduleBeatPatchPersist();
+    }
+    commitBeatQueue(next, { syncCard: true });
   }
 
   async function beatAction(
@@ -555,7 +599,7 @@ export default function GenerateStudio() {
   function patchBeatLocal(id: string, patch: Parameters<typeof applyLocalBeatPatch>[2]) {
     beatSaveGate.current.bump();
     const next = applyLocalBeatPatch(beatQueueRef.current, id, patch);
-    commitBeatQueue(next);
+    commitBeatQueue(next, { syncCard: next.beats[0]?.id === id });
     scheduleBeatPatchPersist();
   }
 
@@ -715,41 +759,72 @@ export default function GenerateStudio() {
     await pollModalJob(j.job.id);
   }
 
+  async function generateBeatClip(id: string) {
+    setError(null);
+    setStage("beat → fal…");
+    const seqAtStart = beatSaveGate.current.current();
+    await flushBeatPatchPersist();
+    const j = await beatAction("generate", { beatId: id }, { authoritative: true });
+    if (j.child?.id) {
+      setActiveJobId(j.child.id);
+      await pollModalJob(j.child.id);
+      const q = await fetch("/api/generate/beats", { cache: "no-store" });
+      if (q.ok) {
+        const data = (await readJson(q)) as { queue?: BeatQueue; job?: ModalJob };
+        if (data.queue && beatSaveGate.current.current() === seqAtStart) {
+          applyAuthoritativeQueue(data.queue);
+        }
+        if (data.job?.id) {
+          beatQueueJobIdRef.current = data.job.id;
+          setBeatQueueJobId(data.job.id);
+        }
+      }
+    }
+  }
+
   async function goMotion() {
     setError(null);
     setResultUrl(null);
-    setStage(dryRun ? "dry run…" : "submitting…");
-    const r = await fetch("/api/generate/jobs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "motion", card: motionCard, start: !dryRun, dryRun }),
-    });
-    if (r.status === 401 || r.status === 403) {
-      throw new Error("Not authorized — log in at /hq first, then come back.");
+    const q = writeMotionCardToBeat1(beatQueueRef.current, motionCardRef.current);
+    if (q !== beatQueueRef.current) {
+      beatSaveGate.current.bump();
+      commitBeatQueue(q, { syncCard: false });
     }
-    const j = (await readJson(r)) as {
-      job?: ModalJob;
-      error?: string;
-      dryRun?: boolean;
-    };
-    if (!r.ok && !j.job) throw new Error(j.error || "submit failed");
-    if (j.job) setModalJobs((list) => [j.job as ModalJob, ...list.filter((x) => x.id !== j.job!.id)]);
-    if (dryRun || j.dryRun) {
+    const beat1 = q.beats[0];
+    if (!beat1) throw new Error("Beat 1 is missing");
+    setSelectedBeatId(beat1.id);
+
+    if (dryRun) {
+      setStage("dry run…");
+      const card = motionCardFromBeat1(q);
+      const r = await fetch("/api/generate/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "motion", card, start: false, dryRun: true }),
+      });
+      if (r.status === 401 || r.status === 403) {
+        throw new Error("Not authorized — log in at /hq first, then come back.");
+      }
+      const j = (await readJson(r)) as {
+        job?: ModalJob;
+        error?: string;
+        dryRun?: boolean;
+      };
+      if (!r.ok && !j.job) throw new Error(j.error || "submit failed");
+      if (j.job) setModalJobs((list) => [j.job as ModalJob, ...list.filter((x) => x.id !== j.job!.id)]);
       setStage(null);
       setMessages((m) => [
         ...m,
         {
           id: mid(),
           role: "assistant",
-          content: `Dry run queued (${j.job?.id || "no id"}). fal kwargs ready — untick Dry run and hit Go to spend Wan I2V.`,
+          content: `Dry run queued (${j.job?.id || "no id"}). fal kwargs ready — untick Dry run and hit Go to generate Beat 1.`,
         },
       ]);
       return;
     }
-    if (!j.job?.id) throw new Error(j.error || "submit failed");
-    setActiveJobId(j.job.id);
-    setStage("queued on fal…");
-    await pollModalJob(j.job.id);
+
+    await generateBeatClip(beat1.id);
   }
 
   async function goEngine() {
@@ -1394,8 +1469,18 @@ export default function GenerateStudio() {
               <p className="gen-hint">
                 Identity-locked I2V on fal.ai — first frame is the source still. Recipe:{" "}
                 {motionCard.end_image_url?.trim() ? "Wan FLF2V (first + last still)" : "Wan I2V (keyframe)"}. 5s @
-                720p per clip. Longer pieces = beat queue + stitch. No LatentSync. No skeleton video.
+                720p per clip. This form is <strong>Beat 1</strong>. Go generates Beat 1. Longer pieces =
+                Beat 2+ on the filmstrip, then stitch. No LatentSync. No skeleton video.
               </p>
+              <div
+                className="gen-beat1-block"
+                data-testid="motion-beat-1"
+                onFocusCapture={() => {
+                  const id = beatQueue.beats[0]?.id;
+                  if (id) setSelectedBeatId(id);
+                }}
+              >
+              <p className="gen-label gen-label-live">Beat 1</p>
               <label className="gen-field gen-field-wide">
                 Source still (gallery still, HTTPS URL, or upload)
                 <input
@@ -1436,8 +1521,10 @@ export default function GenerateStudio() {
                 </div>
               )}
               <div>
-                <p className="gen-label gen-label-live">Motion prompt</p>
+                <p className="gen-label gen-label-live">Beat 1 prompt</p>
                 <textarea
+                  data-testid="beat-1-prompt"
+                  name="beat-1-prompt"
                   className="gen-box gen-box-inference"
                   value={motionCard.prompt}
                   onChange={(e) => patchMotion({ prompt: e.target.value })}
@@ -1519,6 +1606,7 @@ export default function GenerateStudio() {
                 disabled={busy}
                 onToggle={() => patchMotion({ slow_mo: !motionCard.slow_mo })}
               />
+              </div>
               <details className="gen-advanced-json">
                 <summary>Advanced JSON</summary>
                 <p className="gen-hint">
@@ -1551,20 +1639,24 @@ export default function GenerateStudio() {
               <BeatQueuePanel
                 queue={beatQueue}
                 busy={busy}
+                selectedId={selectedBeatId}
+                onSelect={setSelectedBeatId}
+                addFromLabel={`Copy Beat ${
+                  Math.max(0, beatQueue.beats.findIndex((b) => b.id === selectedBeatId)) + 1
+                } as next`}
                 onAddFromCard={() => {
+                  const src =
+                    beatQueue.beats.find((b) => b.id === selectedBeatId) ?? beatQueue.beats[0];
+                  if (!src) return;
                   flushBeatPatchPersist()
-                    .then(() => beatAction("add", { beat: cardToNewBeat(motionCard) }, { authoritative: true }))
+                    .then(() =>
+                      beatAction("add", { beat: copyBeatAsNewDraft(src) }, { authoritative: true }),
+                    )
                     .catch((err) => setError(err instanceof Error ? err.message : String(err)));
                 }}
                 onAddEmpty={() => {
                   flushBeatPatchPersist()
-                    .then(() =>
-                      beatAction(
-                        "add",
-                        { beat: cardToNewBeat({ ...motionCard, source_image_url: "", prompt: motionCard.prompt }) },
-                        { authoritative: true },
-                      ),
-                    )
+                    .then(() => beatAction("add", { beat: emptyBeat() }, { authoritative: true }))
                     .catch((err) => setError(err instanceof Error ? err.message : String(err)));
                 }}
                 onRemove={(id) => {
@@ -1581,27 +1673,8 @@ export default function GenerateStudio() {
                   patchBeatLocal(id, patch);
                 }}
                 onGenerate={async (id) => {
-                  setError(null);
-                  setStage("beat → fal…");
-                  const seqAtStart = beatSaveGate.current.current();
                   try {
-                    await flushBeatPatchPersist();
-                    const j = await beatAction("generate", { beatId: id }, { authoritative: true });
-                    if (j.child?.id) {
-                      setActiveJobId(j.child.id);
-                      await pollModalJob(j.child.id);
-                      const q = await fetch("/api/generate/beats", { cache: "no-store" });
-                      if (q.ok) {
-                        const data = (await readJson(q)) as { queue?: BeatQueue; job?: ModalJob };
-                        if (data.queue && beatSaveGate.current.current() === seqAtStart) {
-                          applyAuthoritativeQueue(data.queue);
-                        }
-                        if (data.job?.id) {
-                          beatQueueJobIdRef.current = data.job.id;
-                          setBeatQueueJobId(data.job.id);
-                        }
-                      }
-                    }
+                    await generateBeatClip(id);
                   } catch (err) {
                     setError(err instanceof Error ? err.message : String(err));
                   } finally {
