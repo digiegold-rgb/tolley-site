@@ -46,6 +46,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     items: [
       'Beats on Generate Motion now sit in a horizontal filmstrip so you can read Beat 1 → 2 → 3 without stacking full cards.',
       'Select a beat to edit stills and watch the clip below the row. Stitch stays at the end of the timeline. Phone widths scroll sideways.',
+      'Typing a space in a beat prompt no longer gets eaten on the next keystroke.',
     ],
   },
   {
