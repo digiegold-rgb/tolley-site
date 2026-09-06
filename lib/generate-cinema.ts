@@ -210,7 +210,7 @@ export function parseCinemaQueue(raw: unknown): CinemaQueue {
   return emptyCinemaQueue({
     title: typeof rec.title === "string" ? rec.title : undefined,
     script: typeof rec.script === "string" ? rec.script : undefined,
-    image_urls: rec.image_urls ?? rec.imageUrls,
+    image_urls: parseHttpsUrlList(rec.image_urls ?? rec.imageUrls),
     audio_url: typeof rec.audio_url === "string" ? rec.audio_url : typeof rec.audioUrl === "string" ? rec.audioUrl : undefined,
     prior_video_url:
       typeof rec.prior_video_url === "string"
@@ -295,7 +295,7 @@ export type EstateProofBeat = {
 };
 
 export function estateProofBeats(): EstateProofBeat[] {
-  return ESTATE_PROOF_BEATS.map((b) => ({
+  return ESTATE_PROOF_BEATS.map((b: EstateProofBeat) => ({
     id: String(b.id),
     seconds: clampCinemaSeconds(b.seconds),
     vo: String(b.vo || ""),
