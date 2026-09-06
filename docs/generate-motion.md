@@ -53,7 +53,7 @@ Those inputs are not accepted. The form says so.
 | Variable | Required | Notes |
 |---|---|---|
 | `FAL_KEY` | **yes** (to spawn) | Existing fal.ai key (already used for property Wan I2V). Never commit. Never send to the browser. |
-| `FFMPEG_PATH` | no | Override if `ffmpeg` is not on PATH. Stitch + slow-mo remux run **on Vercel Node**, not Spark. |
+| `FFMPEG_PATH` | no | Override if you want a specific binary. Otherwise remux + stitch use the same resolver as Motion 2 (`ffmpeg-static`, then `ffmpeg` on PATH). Runs **on Vercel Node**, not Spark. |
 | `GENERATE_SPARK_STORE_URL` + `GENERATE_SPARK_STORE_KEY` | clips | Same private store as Modal stills. PUT `video/mp4` → `{index}.mp4`. |
 | `GENERATE_BLOB_FALLBACK=1` + private token | optional | Private Blob fallback for MP4s (never public Blob). |
 | `BLOB_READ_WRITE_TOKEN` | recommended | Upload stills. **Do not** use the public store for private clips. |

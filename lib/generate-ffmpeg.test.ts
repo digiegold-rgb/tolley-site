@@ -4,12 +4,16 @@ import {
   concatMp4s,
   concatMp4sCopy,
   extractLastFrame,
+  ffmpegBin,
+  ffmpegCandidates,
   isFfmpegAvailable,
   playbackRateForSlowMo,
   remuxSlowMo,
+  resolveFfmpegPath,
   slowMoLabel,
 } from "./generate-ffmpeg.ts";
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -22,11 +26,40 @@ function run(bin: string, args: string[]): Promise<void> {
   });
 }
 
+describe("resolveFfmpegPath", () => {
+  it("prefers an existing FFMPEG_PATH over package / PATH fallbacks", () => {
+    const bin = resolveFfmpegPath({ FFMPEG_PATH: process.execPath });
+    assert.equal(bin, process.execPath);
+    assert.equal(ffmpegBin({ FFMPEG_PATH: process.execPath }), bin);
+  });
+
+  it("skips a missing FFMPEG_PATH and still finds a binary", async () => {
+    const avail = await isFfmpegAvailable({ FFMPEG_PATH: "/no/such/ffmpeg-bin" });
+    assert.equal(avail.ok, true);
+    assert.ok(avail.bin);
+    assert.notEqual(avail.bin, "/no/such/ffmpeg-bin");
+    const resolved = resolveFfmpegPath({ FFMPEG_PATH: "/no/such/ffmpeg-bin" });
+    assert.notEqual(resolved, "/no/such/ffmpeg-bin");
+    assert.ok(ffmpegCandidates({ FFMPEG_PATH: "/no/such/ffmpeg-bin" }).includes("/no/such/ffmpeg-bin"));
+  });
+
+  it("resolves a real file (ffmpeg-static) instead of a bare PATH spawn", () => {
+    const bin = resolveFfmpegPath({});
+    assert.notEqual(bin, "ffmpeg");
+    assert.ok(existsSync(bin), `expected a file at ${bin}`);
+    assert.match(bin, /ffmpeg/);
+  });
+});
+
 describe("last-frame extract errors", () => {
-  it("fails clearly when ffmpeg is missing", async () => {
+  it("fails clearly when every ffmpeg candidate is missing", async () => {
     await assert.rejects(
-      () => extractLastFrame(Buffer.from("not-an-mp4"), { FFMPEG_PATH: "/no/such/ffmpeg-bin" }),
-      /ffmpeg/,
+      () =>
+        extractLastFrame(Buffer.from("not-an-mp4"), {
+          FFMPEG_PATH: "/no/such/ffmpeg-bin",
+          FFMPEG_SKIP_FALLBACKS: "1",
+        }),
+      /ffmpeg not available for last-frame extract/,
     );
   });
 });

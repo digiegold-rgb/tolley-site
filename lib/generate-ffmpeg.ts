@@ -1,34 +1,168 @@
 /**
- * Vercel-side ffmpeg for /generate Motion: 0.5× remux + concat stitch.
+ * Vercel-side ffmpeg for /generate Motion: 0.5× remux + concat stitch +
+ * Motion 2 last-frame extract.
  *
- * Uses the `ffmpeg` binary on PATH (or FFMPEG_PATH). This is Vercel Node —
- * not Spark. If ffmpeg is missing, callers must fall back (playbackRate for
- * slow-mo; stitch returns a clear error).
+ * One resolver for remux, stitch, and last-frame extract. Do not spawn a
+ * bare `ffmpeg` until every fallback has been tried — Vercel Node has no
+ * system ffmpeg (spawn ffmpeg ENOENT). Order:
+ *   1. FFMPEG_PATH / FFMPEG (when the file exists)
+ *   2. @ffmpeg-installer/ffmpeg
+ *   3. ffmpeg-static
+ *   4. vendored bin/ffmpeg or vendor/ffmpeg under cwd
+ *   5. `ffmpeg` on PATH
+ *
+ * If ffmpeg is still missing after that, remux callers may fall back
+ * (playbackRate for slow-mo); stitch and last-frame extract error clearly.
  */
 
 import { spawn } from "node:child_process";
+import { chmodSync, existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 export const SLOW_MO_RATE = 0.5;
 export const SLOW_MO_SETPTS = 2; // 1 / 0.5
 
+const PATH_FALLBACK = "ffmpeg";
+
+function skipFallbacks(env: NodeJS.ProcessEnv): boolean {
+  const v = (env.FFMPEG_SKIP_FALLBACKS || "").trim().toLowerCase();
+  return v === "1" || v === "true";
+}
+
+function envBins(env: NodeJS.ProcessEnv): string[] {
+  const out: string[] = [];
+  for (const key of ["FFMPEG_PATH", "FFMPEG"] as const) {
+    const raw = (env[key] || "").trim();
+    if (raw && !out.includes(raw)) out.push(raw);
+  }
+  return out;
+}
+
+function ensureExecutable(bin: string): void {
+  if (bin === PATH_FALLBACK || bin === "ffmpeg.exe") return;
+  try {
+    chmodSync(bin, 0o755);
+  } catch {
+    /* spawn reports the real error */
+  }
+}
+
+function isPathLookup(bin: string): boolean {
+  return bin === PATH_FALLBACK || bin === "ffmpeg.exe";
+}
+
+function packageBin(pkg: string, pick: (mod: unknown) => string | undefined): string | undefined {
+  try {
+    // Resolve from the project root, not a webpack chunk path. Vercel copies
+    // ffmpeg-static into the function via outputFileTracingIncludes.
+    const req = createRequire(join(process.cwd(), "package.json"));
+    const mod = req(pkg);
+    const p = pick(mod);
+    if (typeof p === "string" && p.trim()) return p.trim();
+  } catch {
+    /* not installed or not in this serverless bundle */
+  }
+  return undefined;
+}
+
+function installerBin(): string | undefined {
+  return packageBin("@ffmpeg-installer/ffmpeg", (mod) => {
+    if (mod && typeof mod === "object" && "path" in mod) {
+      const p = (mod as { path?: unknown }).path;
+      return typeof p === "string" ? p : undefined;
+    }
+    return undefined;
+  });
+}
+
+function staticBin(): string | undefined {
+  return packageBin("ffmpeg-static", (mod) => {
+    if (typeof mod === "string") return mod;
+    if (mod && typeof mod === "object" && "default" in mod) {
+      const p = (mod as { default?: unknown }).default;
+      return typeof p === "string" ? p : undefined;
+    }
+    return undefined;
+  });
+}
+
+function vendoredBins(): string[] {
+  const cwd = process.cwd();
+  return [
+    join(cwd, "bin", "ffmpeg"),
+    join(cwd, "vendor", "ffmpeg"),
+    join(cwd, "node_modules", "ffmpeg-static", "ffmpeg"),
+    join(cwd, "node_modules", "@ffmpeg-installer", "linux-x64", "ffmpeg"),
+    join(cwd, "node_modules", "@ffmpeg-installer", "ffmpeg", "ffmpeg"),
+  ];
+}
+
+/** Ordered unique candidates. Last entry is the PATH name `ffmpeg`. */
+export function ffmpegCandidates(env: NodeJS.ProcessEnv = process.env): string[] {
+  const out: string[] = [];
+  const add = (p: string | undefined) => {
+    if (p && !out.includes(p)) out.push(p);
+  };
+  for (const p of envBins(env)) add(p);
+  if (skipFallbacks(env)) return out.length ? out : [PATH_FALLBACK];
+  add(installerBin());
+  add(staticBin());
+  for (const p of vendoredBins()) add(p);
+  add(PATH_FALLBACK);
+  return out;
+}
+
+/**
+ * First ffmpeg we can point at. Env wins when that file exists; otherwise
+ * installer / static / vendored / PATH. Shared by remux, stitch, extract.
+ */
+export function resolveFfmpegPath(env: NodeJS.ProcessEnv = process.env): string {
+  const candidates = ffmpegCandidates(env);
+  for (const bin of candidates) {
+    if (isPathLookup(bin)) return bin;
+    if (existsSync(bin)) {
+      ensureExecutable(bin);
+      return bin;
+    }
+  }
+  return candidates[0] || PATH_FALLBACK;
+}
+
+/** Alias — same resolver as remux / stitch / last-frame extract. */
 export function ffmpegBin(env: NodeJS.ProcessEnv = process.env): string {
-  return (env.FFMPEG_PATH || env.FFMPEG || "ffmpeg").trim() || "ffmpeg";
+  return resolveFfmpegPath(env);
 }
 
 export async function isFfmpegAvailable(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<{ ok: boolean; bin: string; error?: string }> {
-  const bin = ffmpegBin(env);
-  try {
-    const { code, stderr } = await run(bin, ["-version"], { timeoutMs: 8_000 });
-    if (code === 0) return { ok: true, bin };
-    return { ok: false, bin, error: stderr.slice(0, 240) || `ffmpeg exited ${code}` };
-  } catch (err) {
-    return { ok: false, bin, error: err instanceof Error ? err.message : String(err) };
+  const candidates = ffmpegCandidates(env);
+  const errors: string[] = [];
+  for (const bin of candidates) {
+    if (!isPathLookup(bin) && !existsSync(bin)) {
+      errors.push(`${bin}: missing`);
+      continue;
+    }
+    if (!isPathLookup(bin)) ensureExecutable(bin);
+    try {
+      const { code, stderr } = await run(bin, ["-version"], { timeoutMs: 8_000 });
+      if (code === 0) return { ok: true, bin };
+      errors.push(`${bin}: ${stderr.slice(0, 160) || `exited ${code}`}`);
+    } catch (err) {
+      errors.push(`${bin}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    if (skipFallbacks(env)) break;
   }
+  return {
+    ok: false,
+    bin: resolveFfmpegPath(env),
+    error:
+      errors.slice(0, 6).join("; ").slice(0, 400) ||
+      "no ffmpeg binary after FFMPEG_PATH, @ffmpeg-installer/ffmpeg, ffmpeg-static, and PATH",
+  };
 }
 
 export function slowMoLabel(slowMo: boolean): string {
