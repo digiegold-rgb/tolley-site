@@ -13,9 +13,9 @@ function readApp(rel: string): string {
 
 const FORCE_DYNAMIC = /export const dynamic\s*=\s*["']force-dynamic["']/;
 
-test("changelog 1.32.1 is the current shipped version", () => {
-  assert.equal(APP_VERSION, "1.32.1");
-  assert.equal(CHANGELOG[0]?.version, "1.32.1");
+test("changelog 1.33 is the current shipped version", () => {
+  assert.equal(APP_VERSION, "1.33");
+  assert.equal(CHANGELOG[0]?.version, "1.33");
 });
 
 test("script writer uses AI Gateway client, not a bare Anthropic constructor", () => {
@@ -43,6 +43,7 @@ test("write-script and talk-script are 300s on the route, not in vercel.json", (
   }
   const generateOnRoute = [
     ["app/api/generate/beats/route.ts", 120],
+    ["app/api/generate/longform/route.ts", 120],
     ["app/api/generate/jobs/[id]/route.ts", 60],
     ["app/api/generate/jobs/[id]/image/route.ts", 30],
   ] as const;

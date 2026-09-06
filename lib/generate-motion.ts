@@ -24,17 +24,23 @@ import {
   MOTION_RECIPE_FLF2V,
   MOTION_RECIPE_I2V,
   cardToFalInput,
+  cardToWan30FalInput,
   falModelIdFromCardHint,
+  falPublicLongformStatus,
   falPublicStatus,
   isFalConfigured,
   isMotionRecipe,
   type GenerateMotionCard,
 } from "./generate-motion-card";
 
-export { falPublicStatus, isFalConfigured, isMotionRecipe };
+export { falPublicLongformStatus, falPublicStatus, isFalConfigured, isMotionRecipe };
 
 export function spawnInputForCard(card: GenerateMotionCard) {
   return cardToFalInput(card);
+}
+
+export function spawnInputForLongformCard(card: GenerateMotionCard) {
+  return cardToWan30FalInput(card);
 }
 
 async function bodyToBuffer(body: ReadableStream<Uint8Array> | Buffer): Promise<Buffer> {
@@ -80,6 +86,27 @@ export async function spawnFalMotion(
       : card.end_image_url,
   };
   const planned = cardToFalInput(resolved);
+  const { requestId } = await submitVideoGeneration(planned.falModelId, planned.input.prompt, {
+    ...planned.input,
+  });
+  return { callId: requestId, recipe: planned.recipe, falModelId: planned.falModelId };
+}
+
+/** Motion 2 · Longform — Wan 3.0. Motion 1 must not call this. */
+export async function spawnFalWan30Motion(
+  card: GenerateMotionCard,
+): Promise<{ callId: string; recipe: typeof MOTION_RECIPE_I2V | typeof MOTION_RECIPE_FLF2V; falModelId: FalModelId }> {
+  if (!isFalConfigured()) {
+    throw new Error("fal.ai is not configured. Set FAL_KEY on Vercel.");
+  }
+  const resolved: GenerateMotionCard = {
+    ...card,
+    source_image_url: await resolveMotionStillForFal(card.source_image_url),
+    end_image_url: card.end_image_url
+      ? await resolveMotionStillForFal(card.end_image_url)
+      : card.end_image_url,
+  };
+  const planned = cardToWan30FalInput(resolved);
   const { requestId } = await submitVideoGeneration(planned.falModelId, planned.input.prompt, {
     ...planned.input,
   });

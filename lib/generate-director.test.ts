@@ -117,8 +117,22 @@ describe("directorUserPayload", () => {
       description: "",
       mode: "motion",
     });
-    assert.match(payload, /Wan I2V/);
-    assert.match(payload, /FLF2V|last-frame/);
+    assert.match(payload, /Wan I2V|fal-ai\/wan-i2v/);
+    assert.match(payload, /5s|81 frames|last-frame|FLF2V/);
+    assert.doesNotMatch(payload, /alibaba\/wan-3\.0/);
+  });
+
+  it("names chained Wan 3.0 beats for Motion 2 longform", () => {
+    const payload = directorUserPayload({
+      message: "3 minute take from this still",
+      inference: "",
+      description: "",
+      mode: "motion2",
+    });
+    assert.match(payload, /Motion 2|longform/i);
+    assert.match(payload, /5 \/ 15 \/ 30s/);
+    assert.match(payload, /last-frame/i);
+    assert.match(payload, /not one native 3-min Wan/i);
   });
 });
 
@@ -139,6 +153,7 @@ describe("generate route branding", () => {
     assert.match(studio, /\/api\/generate\/chat/);
     assert.match(studio, /Modal stills/);
     assert.match(studio, /Motion/);
+    assert.match(studio, /Motion 2 · Longform/);
     assert.match(studio, /\/api\/generate\/jobs/);
     assert.match(studio, /\/api\/generate\/upload/);
     assert.match(studio, /Random seed/);
@@ -166,7 +181,7 @@ describe("generate route branding", () => {
     assert.ok(cameraRow > modalPanel && cameraRow < motionForm);
     assert.ok(studio.indexOf("commitCard(applyLocation") > modalPanel && studio.indexOf("commitCard(applyLocation") < motionForm);
     assert.match(studio, /Use as source/);
-    assert.match(studio, /fal-ai\/wan-i2v|Wan I2V/);
+    assert.match(studio, /Wan 3\.0|Wan I2V/);
     assert.doesNotMatch(studio, /InstantID|ComfyUI|face_lock|UltraSharp|Seedance/i);
     assert.match(chat, /qwenChatCompletion/);
     assert.match(chat, /QWEN_VLLM/);

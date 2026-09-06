@@ -30,7 +30,7 @@ function cardUserPayload(
     "Current motion card:",
     JSON.stringify(current, null, 2),
     "",
-    "Stack: fal-ai/wan-i2v (first frame) or fal-ai/wan-flf2v (first+last still). No Seedance. No LatentSync. No stitch. No skeleton video.",
+    "Stack: fal-ai/wan-i2v (first frame, ~5s / 81 frames) or fal-ai/wan-flf2v when an end still is set. No Seedance. No LatentSync. No skeleton video. Motion 2 · Longform is a different tab (Wan 3.0).",
     "",
     "User:",
     message.trim(),

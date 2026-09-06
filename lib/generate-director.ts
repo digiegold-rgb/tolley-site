@@ -9,7 +9,7 @@
  * details. CSAM and real-minor content are refused here and in the LLM prompt.
  */
 
-export type GenerateMode = "t2i" | "t2v" | "i2v" | "v2v" | "motion";
+export type GenerateMode = "t2i" | "t2v" | "i2v" | "v2v" | "motion" | "motion2";
 
 export interface DirectorPatch {
   reply: string;
@@ -52,7 +52,7 @@ INFERENCE RULES
 - Engine-ready: subject, identity locks, wardrobe, setting, lighting, lens/camera, mood.
 - Keep the user's requested adult subject and photoreal intent verbatim in spirit.
 - Positive concrete terms (what they HAVE). Do not write "no X" lists that summon X.
-- Match the active engine: still vs motion. Clips are ≤5 seconds.
+- Match the active engine: still vs motion. Motion 1 clips are ≤5 seconds on fal-ai/wan-i2v. Motion 2 is Wan 3.0 (5 / 15 / 30s).
 
 DESCRIPTION RULES
 - Standing bible. Identity, outfit, camera, constraints.
@@ -70,7 +70,9 @@ const MODE_HINT: Record<GenerateMode, string> = {
   i2v: "Active engine: fal Wan I2V. Inference is motion for the uploaded first frame (same stack as Motion).",
   v2v: "Active engine: Video → Video is NOT wired. Do not invent a drive-video / Animate path. Tell Jared to use Motion or Image → Video.",
   motion:
-    "Active engine: fal Wan I2V (identity-locked motion). Inference is motion for a Modal still / HTTPS first frame. Optional last-frame still = Wan FLF2V. No skeleton video, no stitch, no Seedance.",
+    "Active engine: fal Wan I2V (fal-ai/wan-i2v, ~5s / 81 frames). Inference is motion for a Modal still / HTTPS first frame. Optional last-frame still = FLF2V. No skeleton video, no Seedance. Motion 2 · Longform is a different tab.",
+  motion2:
+    "Active engine: Motion 2 longform on Wan 3.0. Segments are 5 / 15 / 30s (default 15). A ~3 min take is N chained I2V beats with ffmpeg last-frame continuity + stitch — not one native 3-min Wan call. Inference should be a multi-line script: one motion prompt per beat / line.",
 };
 
 export function directorUserPayload(opts: {

@@ -3,10 +3,11 @@ import { describe, it } from "node:test";
 import {
   DEFAULT_MOTION_PROMPT,
   MOTION_CARD_SYSTEM_PROMPT,
-  MOTION_NUM_FRAMES,
   MOTION_RECIPE_FLF2V,
   MOTION_RECIPE_I2V,
+  MOTION_NUM_FRAMES,
   cardToFalInput,
+  cardToWan30FalInput,
   emptyMotionCard,
   formatMotionCardJson,
   isMotionRecipe,
@@ -64,6 +65,7 @@ describe("cardToFalInput", () => {
       prompt: DEFAULT_MOTION_PROMPT,
       source_image_url: STILL,
       seed: 12,
+      seconds: 15,
     });
     const planned = cardToFalInput(card);
     assert.equal(planned.falModelId, "wan26-i2v-720p");
@@ -71,6 +73,7 @@ describe("cardToFalInput", () => {
     assert.equal(planned.input.start_image_url, undefined);
     assert.equal(planned.input.enable_safety_checker, false);
     assert.equal(planned.input.num_frames, MOTION_NUM_FRAMES);
+    assert.equal(Object.hasOwn(planned.input, "duration"), false);
     assert.doesNotMatch(JSON.stringify(planned), /FAL_KEY|Seedance|latentsync/i);
   });
 
@@ -84,6 +87,45 @@ describe("cardToFalInput", () => {
     assert.equal(planned.falModelId, "wan-flf2v");
     assert.equal(planned.input.start_image_url, STILL);
     assert.equal(planned.input.end_image_url, POSE);
+    assert.equal(Object.hasOwn(planned.input, "image_url"), false);
+    assert.equal(Object.hasOwn(planned.input, "pose_video_url"), false);
+    assert.equal(Object.hasOwn(planned.input, "skeleton_url"), false);
+  });
+});
+
+describe("cardToWan30FalInput", () => {
+  it("emits Wan 3.0 start_image_url kwargs for Motion 2 only", () => {
+    const card = parseGenerateMotionCard({
+      prompt: DEFAULT_MOTION_PROMPT,
+      source_image_url: STILL,
+      seed: 12,
+      seconds: 15,
+    });
+    const planned = cardToWan30FalInput(card);
+    assert.equal(planned.falModelId, "wan30-i2v");
+    assert.equal(planned.input.start_image_url, STILL);
+    assert.equal(planned.input.duration, 15);
+    assert.equal(planned.input.resolution, "720p");
+    assert.equal(planned.input.audio, false);
+    assert.equal(planned.input.enable_safety_checker, false);
+    assert.equal(Object.hasOwn(planned.input, "image_url"), false);
+    assert.equal(Object.hasOwn(planned.input, "num_frames"), false);
+    assert.doesNotMatch(JSON.stringify(planned), /FAL_KEY|Seedance|latentsync/i);
+  });
+
+  it("emits optional end still on the same Wan 3.0 call — not a skeleton video", () => {
+    const card = parseGenerateMotionCard({
+      prompt: "holds the last pose",
+      source_image_url: STILL,
+      end_image_url: POSE,
+      seconds: 30,
+    });
+    const planned = cardToWan30FalInput(card);
+    assert.equal(planned.falModelId, "wan30-i2v");
+    assert.equal(planned.recipe, MOTION_RECIPE_FLF2V);
+    assert.equal(planned.input.start_image_url, STILL);
+    assert.equal(planned.input.end_image_url, POSE);
+    assert.equal(planned.input.duration, 30);
     assert.equal(Object.hasOwn(planned.input, "image_url"), false);
     assert.equal(Object.hasOwn(planned.input, "pose_video_url"), false);
     assert.equal(Object.hasOwn(planned.input, "skeleton_url"), false);
@@ -134,8 +176,10 @@ describe("merge + LLM parse + JSON", () => {
 describe("MOTION_CARD_SYSTEM_PROMPT", () => {
   it("forbids Comfy / Seedance / LatentSync claims and names the real stack", () => {
     assert.match(MOTION_CARD_SYSTEM_PROMPT, /Never mention ComfyUI/);
-    assert.match(MOTION_CARD_SYSTEM_PROMPT, /wan-i2v|first frame/i);
-    assert.match(MOTION_CARD_SYSTEM_PROMPT, /FLF2V|last-frame/);
+    assert.match(MOTION_CARD_SYSTEM_PROMPT, /Wan I2V|first frame/i);
+    assert.match(MOTION_CARD_SYSTEM_PROMPT, /last-frame|end still/i);
+    assert.match(MOTION_CARD_SYSTEM_PROMPT, /5 seconds|81 frames/);
+    assert.doesNotMatch(MOTION_CARD_SYSTEM_PROMPT, /alibaba\/wan-3\.0/);
     assert.match(MOTION_CARD_SYSTEM_PROMPT, /Do not invent ByteDance Seedance/);
     assert.match(MOTION_CARD_SYSTEM_PROMPT, /LatentSync/);
     assert.match(MOTION_CARD_SYSTEM_PROMPT, /skeleton video/);

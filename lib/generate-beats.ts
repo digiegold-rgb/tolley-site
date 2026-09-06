@@ -10,11 +10,15 @@ import {
   DEFAULT_MOTION_NEGATIVE,
   DEFAULT_MOTION_PROMPT,
   MOTION_ASPECTS,
+  MOTION_RESOLUTION_DEFAULT,
+  MOTION_RESOLUTIONS,
   MOTION_SECONDS_DEFAULT,
+  clampMotionSeconds,
   emptyMotionCard,
   parseGenerateMotionCard,
   type GenerateMotionCard,
   type MotionAspect,
+  type MotionResolution,
 } from "./generate-motion-card";
 
 export const BEATS_RECIPE = "fal-wan-beats" as const;
@@ -44,6 +48,8 @@ export type MotionBeat = {
   end_image_url: string;
   aspect: MotionAspect;
   seconds: number;
+  resolution: MotionResolution;
+  audio: boolean;
   seed: number;
   slow_mo: boolean;
   /** When true and this is not beat 0, source is "last frame of previous" intent. */
@@ -76,7 +82,11 @@ export function emptyBeat(partial?: Partial<MotionBeat>): MotionBeat {
     aspect: (MOTION_ASPECTS as readonly string[]).includes(String(partial?.aspect))
       ? (partial!.aspect as MotionAspect)
       : "9:16",
-    seconds: MOTION_SECONDS_DEFAULT,
+    seconds: clampMotionSeconds(partial?.seconds, MOTION_SECONDS_DEFAULT),
+    resolution: (MOTION_RESOLUTIONS as readonly string[]).includes(String(partial?.resolution))
+      ? (partial!.resolution as MotionResolution)
+      : MOTION_RESOLUTION_DEFAULT,
+    audio: partial?.audio === true,
     seed: Number.isFinite(Number(partial?.seed)) ? Number(partial?.seed) : 0,
     slow_mo: partial?.slow_mo === true,
     from_prev_last: partial?.from_prev_last === true,
@@ -109,6 +119,9 @@ export function parseMotionBeat(raw: unknown): MotionBeat {
     source_image_url: typeof rec.source_image_url === "string" ? rec.source_image_url : undefined,
     end_image_url: typeof rec.end_image_url === "string" ? rec.end_image_url : undefined,
     aspect: rec.aspect as MotionAspect | undefined,
+    seconds: rec.seconds as number | undefined,
+    resolution: rec.resolution as MotionResolution | undefined,
+    audio: rec.audio === true,
     seed: typeof rec.seed === "number" ? rec.seed : Number(rec.seed),
     slow_mo: rec.slow_mo === true,
     from_prev_last: rec.from_prev_last === true || rec.fromPrevLast === true,
@@ -146,6 +159,9 @@ export function beatFromMotionCard(
     source_image_url: card.source_image_url,
     end_image_url: card.end_image_url || "",
     aspect: card.aspect,
+    seconds: card.seconds,
+    resolution: "resolution" in card ? card.resolution : MOTION_RESOLUTION_DEFAULT,
+    audio: "audio" in card && card.audio === true,
     seed: card.seed,
     slow_mo: "slow_mo" in card && card.slow_mo === true,
   });
@@ -159,6 +175,8 @@ export function motionCardFromBeat(beat: MotionBeat): GenerateMotionCard {
     end_image_url: beat.end_image_url,
     aspect: beat.aspect,
     seconds: beat.seconds,
+    resolution: beat.resolution,
+    audio: beat.audio,
     seed: beat.seed,
     slow_mo: beat.slow_mo,
   });

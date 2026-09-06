@@ -12,6 +12,7 @@ import {
 import { applyModalResult, serializeJob } from "@/lib/generate-job-store";
 import { isModalConfigured, pollModalCall } from "@/lib/generate-modal";
 import { syncBeatQueueFromChild } from "@/lib/generate-beats-store";
+import { syncLongformFromChild } from "@/lib/generate-longform-advance";
 import {
   falModelIdFromCard,
   persistMotionVideo,
@@ -97,6 +98,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
         const fresh = await prisma.generateJob.findUnique({ where: { id: row.id } });
         if (fresh) {
           await syncBeatQueueFromChild(fresh);
+          await syncLongformFromChild(fresh);
           return NextResponse.json({ job: serializeJob(fresh) });
         }
       }
@@ -108,6 +110,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
         const fresh = await prisma.generateJob.findUnique({ where: { id: row.id } });
         if (fresh) {
           await syncBeatQueueFromChild(fresh);
+          await syncLongformFromChild(fresh);
           return NextResponse.json({ job: serializeJob(fresh) });
         }
       }
@@ -120,6 +123,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       const fresh = await prisma.generateJob.findUnique({ where: { id: row.id } });
       if (fresh) {
         await syncBeatQueueFromChild(fresh);
+        await syncLongformFromChild(fresh);
         return NextResponse.json({ job: serializeJob(fresh) });
       }
     }

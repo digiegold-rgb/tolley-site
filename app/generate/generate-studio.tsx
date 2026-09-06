@@ -61,6 +61,16 @@ import {
   writeMotionCardToBeat1,
 } from "@/lib/generate-studio-motion-sync";
 import { BeatQueuePanel, GatedClip, SlowMoChip } from "./beat-queue";
+import { LongformPanel } from "./longform-queue";
+import {
+  LONGFORM_RECIPE,
+  applyLocalLongformBeatPatch,
+  emptyLongformQueue,
+  estimateLongform,
+  parseLongformQueue,
+  type LongformEstimate,
+  type LongformQueue,
+} from "@/lib/generate-longform";
 
 async function readJson(r: Response): Promise<Record<string, unknown>> {
   const text = await r.text();
@@ -74,6 +84,7 @@ async function readJson(r: Response): Promise<Record<string, unknown>> {
 const MODES = [
   { id: "modal", label: "Modal stills" },
   { id: "motion", label: "Motion" },
+  { id: "motion2", label: "Motion 2 · Longform" },
   { id: "t2i", label: "Text → Image" },
   { id: "t2v", label: "Text → Video" },
   { id: "i2v", label: "Image → Video" },
@@ -102,6 +113,10 @@ function isStitchJob(job: ModalJob): boolean {
 
 function isBeatQueueJob(job: ModalJob): boolean {
   return job.recipe === BEATS_RECIPE;
+}
+
+function isLongformQueueJob(job: ModalJob): boolean {
+  return job.recipe === LONGFORM_RECIPE;
 }
 
 function isEngineJob(job: ModalJob): boolean {
@@ -216,6 +231,7 @@ function ModalGallery({
       !isMotionJob(j) &&
       !isStitchJob(j) &&
       !isBeatQueueJob(j) &&
+      !isLongformQueueJob(j) &&
       j.status === "done" &&
       (j.output_urls?.length ?? 0) > 0,
   );
@@ -311,6 +327,12 @@ export default function GenerateStudio() {
   const [beatQueueJobId, setBeatQueueJobId] = useState<string | null>(null);
   const [selectedBeatId, setSelectedBeatId] = useState<string | null>(null);
   const [i2vSlowMo, setI2vSlowMo] = useState(false);
+  const [longformQueue, setLongformQueue] = useState<LongformQueue>(() => emptyLongformQueue());
+  const [longformJobId, setLongformJobId] = useState<string | null>(null);
+  const [longformEstimate, setLongformEstimate] = useState<LongformEstimate | null>(null);
+  const [longformRipple, setLongformRipple] = useState(false);
+  const [selectedLongformBeatId, setSelectedLongformBeatId] = useState<string | null>(null);
+  const [uploadingLongformStill, setUploadingLongformStill] = useState(false);
 
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
   const chatEnd = useRef<HTMLDivElement | null>(null);
@@ -320,6 +342,9 @@ export default function GenerateStudio() {
   const motionCardRef = useRef(motionCard);
   const beatSaveGate = useRef(createBeatSaveGate());
   const beatPatchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longformQueueRef = useRef(longformQueue);
+  const longformJobIdRef = useRef(longformJobId);
+  const longformRippleRef = useRef(longformRipple);
 
   useEffect(() => {
     beatQueueRef.current = beatQueue;
@@ -330,6 +355,15 @@ export default function GenerateStudio() {
   useEffect(() => {
     motionCardRef.current = motionCard;
   }, [motionCard]);
+  useEffect(() => {
+    longformQueueRef.current = longformQueue;
+  }, [longformQueue]);
+  useEffect(() => {
+    longformJobIdRef.current = longformJobId;
+  }, [longformJobId]);
+  useEffect(() => {
+    longformRippleRef.current = longformRipple;
+  }, [longformRipple]);
 
   useEffect(
     () => () => {
@@ -405,6 +439,26 @@ export default function GenerateStudio() {
         }
         if (j.beat_queue_job && typeof j.beat_queue_job === "object" && j.beat_queue_job.id) {
           setBeatQueueJobId(String(j.beat_queue_job.id));
+        }
+        if (j.longform_queue) {
+          try {
+            const loaded = parseLongformQueue(j.longform_queue);
+            setLongformQueue(loaded);
+            longformQueueRef.current = loaded;
+            setLongformEstimate(
+              estimateLongform({
+                targetSeconds: loaded.target_seconds,
+                beatSeconds: loaded.beat_seconds,
+                script: loaded.script,
+              }),
+            );
+            if (loaded.beats[0]) setSelectedLongformBeatId(loaded.beats[0].id);
+          } catch {
+            /* keep empty plan */
+          }
+        }
+        if (j.longform_queue_job && typeof j.longform_queue_job === "object" && j.longform_queue_job.id) {
+          setLongformJobId(String(j.longform_queue_job.id));
         }
       })
       .catch(() => {});
@@ -596,6 +650,192 @@ export default function GenerateStudio() {
     await beatAction("save", undefined, { requestSeq: seq });
   }
 
+  async function longformAction(
+    action: string,
+    extra?: Record<string, unknown>,
+  ): Promise<{
+    queue?: LongformQueue;
+    job?: ModalJob;
+    child?: ModalJob;
+    stitch?: ModalJob;
+    estimate?: LongformEstimate;
+    error?: string;
+    dryRun?: boolean;
+    note?: string;
+  }> {
+    const r = await fetch("/api/generate/longform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action,
+        queueId: longformJobIdRef.current,
+        queue: longformQueueRef.current,
+        ripple: longformRippleRef.current,
+        ...extra,
+      }),
+    });
+    if (r.status === 401 || r.status === 403) {
+      throw new Error("Not authorized — log in at /hq first, then come back.");
+    }
+    const j = (await readJson(r)) as {
+      queue?: LongformQueue;
+      job?: ModalJob;
+      child?: ModalJob;
+      stitch?: ModalJob;
+      estimate?: LongformEstimate;
+      error?: string;
+      dryRun?: boolean;
+      note?: string;
+    };
+    if (j.queue) {
+      const next = parseLongformQueue(j.queue);
+      longformQueueRef.current = next;
+      setLongformQueue(next);
+    }
+    if (j.estimate) setLongformEstimate(j.estimate);
+    if (j.job?.id) {
+      longformJobIdRef.current = j.job.id;
+      setLongformJobId(j.job.id);
+      setModalJobs((list) => [j.job as ModalJob, ...list.filter((x) => x.id !== j.job!.id)]);
+    }
+    if (j.child?.id) {
+      setModalJobs((list) => [j.child as ModalJob, ...list.filter((x) => x.id !== j.child!.id)]);
+    }
+    if (j.stitch?.id) {
+      setModalJobs((list) => [j.stitch as ModalJob, ...list.filter((x) => x.id !== j.stitch!.id)]);
+      setResultIsVideo(true);
+      setResultUrl(stillSrc(j.stitch.id, 0));
+    }
+    if (!r.ok) throw new Error(j.error || "Longform update failed");
+    return j;
+  }
+
+  function commitLongformLocal(next: LongformQueue) {
+    longformQueueRef.current = next;
+    setLongformQueue(next);
+    setLongformEstimate(
+      estimateLongform({
+        targetSeconds: next.target_seconds,
+        beatSeconds: next.beat_seconds,
+        script: next.script,
+      }),
+    );
+  }
+
+  function patchLongformBeatLocal(id: string, patch: Partial<LongformQueue["beats"][number]>) {
+    commitLongformLocal(applyLocalLongformBeatPatch(longformQueueRef.current, id, patch));
+  }
+
+  async function refreshLongformQueue() {
+    const q = await fetch("/api/generate/longform", { cache: "no-store" });
+    if (!q.ok) return;
+    const data = (await readJson(q)) as {
+      queue?: LongformQueue;
+      job?: ModalJob;
+      estimate?: LongformEstimate;
+    };
+    if (data.queue) {
+      const next = parseLongformQueue(data.queue);
+      longformQueueRef.current = next;
+      setLongformQueue(next);
+    }
+    if (data.estimate) setLongformEstimate(data.estimate);
+    if (data.job?.id) {
+      longformJobIdRef.current = data.job.id;
+      setLongformJobId(data.job.id);
+    }
+  }
+
+  async function generateLongformClip(id: string) {
+    setError(null);
+    setStage("longform beat → fal…");
+    const j = await longformAction("generate", {
+      beatId: id,
+      dryRun,
+      ripple: longformRippleRef.current,
+    });
+    if (j.dryRun) {
+      setStage(null);
+      setMessages((m) => [
+        ...m,
+        {
+          id: mid(),
+          role: "assistant",
+          content: j.note || j.estimate?.note || "Dry run — no fal spend.",
+        },
+      ]);
+      return;
+    }
+    if (j.child?.id) {
+      setActiveJobId(j.child.id);
+      await waitForGenerateJob(j.child.id);
+      await refreshLongformQueue();
+    }
+  }
+
+  async function generateLongformRemaining() {
+    setError(null);
+    if (!longformQueueRef.current.beats.length) {
+      await longformAction("plan", {
+        sourceImageUrl: longformQueueRef.current.source_image_url,
+        script: longformQueueRef.current.script,
+        targetSeconds: longformQueueRef.current.target_seconds,
+        beatSeconds: longformQueueRef.current.beat_seconds,
+        endImageUrl: longformQueueRef.current.end_image_url,
+        aspect: longformQueueRef.current.aspect,
+      });
+    }
+    if (dryRun) {
+      const first = longformQueueRef.current.beats[0];
+      if (!first) throw new Error("Plan beats first");
+      await generateLongformClip(first.id);
+      return;
+    }
+    for (;;) {
+      const q = await fetch("/api/generate/longform", { cache: "no-store" });
+      if (q.ok) {
+        const data = (await readJson(q)) as { queue?: LongformQueue; job?: ModalJob; estimate?: LongformEstimate };
+        if (data.queue) {
+          const next = parseLongformQueue(data.queue);
+          longformQueueRef.current = next;
+          setLongformQueue(next);
+        }
+        if (data.estimate) setLongformEstimate(data.estimate);
+      }
+      try {
+        const j = await longformAction("generate-next", { ripple: longformRippleRef.current });
+        if (j.child?.id) {
+          setActiveJobId(j.child.id);
+          await waitForGenerateJob(j.child.id);
+          await refreshLongformQueue();
+          continue;
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (/No remaining beat/i.test(msg)) break;
+        throw err;
+      }
+      break;
+    }
+  }
+
+  async function uploadLongformStill(file: File) {
+    setUploadingLongformStill(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await fetch("/api/generate/upload", { method: "POST", body: fd });
+      if (r.status === 401 || r.status === 403) {
+        throw new Error("Not authorized — log in at /hq first, then come back.");
+      }
+      const j = (await readJson(r)) as { url?: string; error?: string };
+      if (!r.ok || !j.url) throw new Error(j.error || "upload failed");
+      commitLongformLocal({ ...longformQueueRef.current, source_image_url: j.url });
+    } finally {
+      setUploadingLongformStill(false);
+    }
+  }
+
   function patchBeatLocal(id: string, patch: Parameters<typeof applyLocalBeatPatch>[2]) {
     beatSaveGate.current.bump();
     const next = applyLocalBeatPatch(beatQueueRef.current, id, patch);
@@ -613,7 +853,33 @@ export default function GenerateStudio() {
     setChatError(null);
     setChatBusy(true);
     try {
-      if (mode === "modal" || mode === "motion") {
+      if (mode === "motion2") {
+        const res = await fetch("/api/generate/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: text,
+            history: messages.map((m) => ({ role: m.role, content: m.content })),
+            inference: longformQueueRef.current.script,
+            description: longformQueueRef.current.source_image_url
+              ? `Keep still: ${longformQueueRef.current.source_image_url}`
+              : "",
+            mode: "motion2",
+          }),
+        });
+        const data = (await readJson(res)) as {
+          reply?: string;
+          inference?: string;
+          error?: string;
+        };
+        if (!res.ok) throw new Error(data.error || "Chat failed.");
+        if (data.reply) {
+          setMessages((m) => [...m, { id: mid(), role: "assistant", content: data.reply as string }]);
+        }
+        if (typeof data.inference === "string" && data.inference.trim()) {
+          commitLongformLocal({ ...longformQueueRef.current, script: data.inference });
+        }
+      } else if (mode === "modal" || mode === "motion") {
         const res = await fetch("/api/generate/jobs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -674,6 +940,51 @@ export default function GenerateStudio() {
     }
   }
 
+  function waitForGenerateJob(jobId: string): Promise<ModalJob> {
+    return new Promise((resolve, reject) => {
+      if (poll.current) clearInterval(poll.current);
+      const tick = async () => {
+        const s = await fetch(`/api/generate/jobs/${jobId}`, { cache: "no-store" });
+        if (s.status === 401 || s.status === 403) {
+          if (poll.current) clearInterval(poll.current);
+          reject(new Error("Not authorized — log in at /hq first, then come back."));
+          return;
+        }
+        let sj: { job?: ModalJob; error?: string };
+        try {
+          sj = (await readJson(s)) as typeof sj;
+        } catch (pe) {
+          if (poll.current) clearInterval(poll.current);
+          reject(pe instanceof Error ? pe : new Error(String(pe)));
+          return;
+        }
+        const job = sj.job;
+        if (!job) {
+          setStage(sj.error || "working…");
+          return;
+        }
+        if (job.status === "done") {
+          if (poll.current) clearInterval(poll.current);
+          setResultIsVideo(isEngineVideoJob(job) || isStitchJob(job) || isVideoUrl(job.output_urls?.[0] ?? ""));
+          setResultUrl(job.output_urls?.length ? stillSrc(job.id, 0) : null);
+          setModalJobs((list) => [job, ...list.filter((x) => x.id !== job.id)]);
+          resolve(job);
+        } else if (job.status === "failed") {
+          if (poll.current) clearInterval(poll.current);
+          reject(new Error(job.error || "generation failed"));
+        } else {
+          setStage(
+            job.status === "queued" ? "queued on fal…" : `fal running… beat ${jobId.slice(0, 8)}`,
+          );
+        }
+      };
+      void tick();
+      poll.current = setInterval(() => {
+        void tick();
+      }, 4000);
+    });
+  }
+
   async function pollModalJob(jobId: string) {
     poll.current = setInterval(async () => {
       const s = await fetch(`/api/generate/jobs/${jobId}`, { cache: "no-store" });
@@ -709,7 +1020,7 @@ export default function GenerateStudio() {
         setError(job.error || "generation failed");
       } else {
         setStage(
-          isFalJob(job) || mode === "motion" || mode === "t2i" || mode === "t2v" || mode === "i2v"
+          isFalJob(job) || mode === "motion" || mode === "motion2" || mode === "t2i" || mode === "t2v" || mode === "i2v"
             ? job.status === "queued"
               ? "queued on fal…"
               : "fal running…"
@@ -937,6 +1248,7 @@ export default function GenerateStudio() {
     setResultUrl(null);
     try {
       if (mode === "motion") await goMotion();
+      else if (mode === "motion2") await generateLongformRemaining();
       else if (mode === "modal") await goModal();
       else await goEngine();
     } catch (e) {
@@ -958,6 +1270,9 @@ export default function GenerateStudio() {
         ? motionCard.prompt.trim().length > 0 &&
           (/^https:\/\//i.test(motionCard.source_image_url.trim()) ||
             /^\/api\/generate\/jobs\/[^/]+\/image\?i=\d+$/.test(motionCard.source_image_url.trim()))
+        : mode === "motion2"
+          ? /^https:\/\//i.test(longformQueue.source_image_url.trim()) ||
+            /^\/api\/generate\/jobs\/[^/]+\/image\?i=\d+$/.test(longformQueue.source_image_url.trim())
         : composeEnginePrompt(inference, description).length > 0;
   const canGo =
     !busy &&
@@ -975,7 +1290,7 @@ export default function GenerateStudio() {
             Generate <em>Directed by you.</em>
           </h1>
           <p className="gen-lede">
-            Talk to the page. Modal stills fill a job card for Qwen-Image-Edit. Motion takes a keep still into a 5s fal Wan I2V clip. Text → Image / Video and I2V run on fal (FLUX / Wan) — not Spark Gemini.
+            Talk to the page. Modal stills fill a job card for Qwen-Image-Edit. Motion takes a keep still into a 5s fal Wan I2V clip. Motion 2 chains Wan 3.0 segments (5 / 15 / 30s) with last-frame continuity into a ~3 min take. Text → Image / Video and I2V run on fal (FLUX / Wan) — not Spark Gemini.
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
@@ -991,8 +1306,12 @@ export default function GenerateStudio() {
                 : "Modal · set MODAL_TOKEN_ID"
               : mode === "motion"
                 ? falStatus?.configured
-                  ? "fal · Wan I2V"
+                  ? "fal · Wan 3.0 I2V"
                   : "fal · set FAL_KEY"
+                : mode === "motion2"
+                  ? falStatus?.configured
+                    ? "fal · Wan 3.0 longform"
+                    : "fal · set FAL_KEY"
                 : mode === "t2i"
                   ? falStatus?.configured
                     ? "fal · FLUX.1 [dev]"
@@ -1019,6 +1338,8 @@ export default function GenerateStudio() {
                 ? "Chat fills the Modal job card (JSON kwargs). Edit the card, then Confirm/Go."
                 : mode === "motion"
                   ? "Chat fills the motion card. Source still + motion prompt → 5s Wan I2V. Optional last-frame still = FLF2V."
+                  : mode === "motion2"
+                    ? "Chat writes a multi-line scene plan (one prompt per beat). Wan 3.0 segments (default 15s) + last-frame extract chain the take."
                   : mode === "v2v"
                     ? "Video → Video is not wired. Use Motion or Image → Video."
                     : "Chat writes Inference + Description. Generate hits fal (FLUX / Wan), HQ-gated."}
@@ -1078,7 +1399,7 @@ export default function GenerateStudio() {
               Modal tokens are not set. Add MODAL_TOKEN_ID + MODAL_TOKEN_SECRET (see docs/generate-modal.md). Dry run still works.
             </p>
           )}
-          {(mode === "motion" || mode === "t2i" || mode === "t2v" || mode === "i2v") &&
+          {(mode === "motion" || mode === "motion2" || mode === "t2i" || mode === "t2v" || mode === "i2v") &&
             falStatus &&
             !falStatus.configured &&
             modalAuthed && (
@@ -1467,7 +1788,7 @@ export default function GenerateStudio() {
           ) : mode === "motion" ? (
             <>
               <p className="gen-hint">
-                Identity-locked I2V on fal.ai — first frame is the source still. Recipe:{" "}
+                Identity-locked I2V on fal.ai{" "}
                 {motionCard.end_image_url?.trim() ? "Wan FLF2V (first + last still)" : "Wan I2V (keyframe)"}. 5s @
                 720p per clip. This form is <strong>Beat 1</strong>. Go generates Beat 1. Longer pieces =
                 Beat 2+ on the filmstrip, then stitch. No LatentSync. No skeleton video.
@@ -1710,6 +2031,77 @@ export default function GenerateStudio() {
                 }}
               />
             </>
+          ) : mode === "motion2" ? (
+            <LongformPanel
+              queue={longformQueue}
+              estimate={longformEstimate}
+              busy={busy}
+              selectedId={selectedLongformBeatId}
+              dryRun={dryRun}
+              ripple={longformRipple}
+              uploadingStill={uploadingLongformStill}
+              onSelect={setSelectedLongformBeatId}
+              onSourceChange={(url) => commitLongformLocal({ ...longformQueueRef.current, source_image_url: url })}
+              onUploadStill={(file) => {
+                uploadLongformStill(file).catch((err) =>
+                  setError(err instanceof Error ? err.message : String(err)),
+                );
+              }}
+              onTargetSeconds={(seconds) =>
+                commitLongformLocal({ ...longformQueueRef.current, target_seconds: seconds })
+              }
+              onBeatSeconds={(seconds) =>
+                commitLongformLocal({ ...longformQueueRef.current, beat_seconds: seconds })
+              }
+              onScript={(script) => commitLongformLocal({ ...longformQueueRef.current, script })}
+              onEndStill={(url) => commitLongformLocal({ ...longformQueueRef.current, end_image_url: url })}
+              onDryRun={setDryRun}
+              onRipple={setLongformRipple}
+              onPlan={() => {
+                setError(null);
+                longformAction("plan", {
+                  sourceImageUrl: longformQueueRef.current.source_image_url,
+                  script: longformQueueRef.current.script,
+                  targetSeconds: longformQueueRef.current.target_seconds,
+                  beatSeconds: longformQueueRef.current.beat_seconds,
+                  endImageUrl: longformQueueRef.current.end_image_url,
+                  aspect: longformQueueRef.current.aspect,
+                }).catch((err) => setError(err instanceof Error ? err.message : String(err)));
+              }}
+              onPatch={patchLongformBeatLocal}
+              onGenerate={(id) => {
+                generateLongformClip(id)
+                  .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+                  .finally(() => setStage(null));
+              }}
+              onGenerateRemaining={() => {
+                generateLongformRemaining()
+                  .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+                  .finally(() => setStage(null));
+              }}
+              onApprove={(id) => {
+                longformAction("approve", { beatId: id }).catch((err) =>
+                  setError(err instanceof Error ? err.message : String(err)),
+                );
+              }}
+              onReject={(id) => {
+                longformAction("reject", { beatId: id }).catch((err) =>
+                  setError(err instanceof Error ? err.message : String(err)),
+                );
+              }}
+              onReset={(id) => {
+                longformAction("reset", { beatId: id }).catch((err) =>
+                  setError(err instanceof Error ? err.message : String(err)),
+                );
+              }}
+              onStitch={() => {
+                setError(null);
+                setStage("stitching longform…");
+                longformAction("stitch")
+                  .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+                  .finally(() => setStage(null));
+              }}
+            />
           ) : (
             <>
               <div>
@@ -1836,11 +2228,17 @@ export default function GenerateStudio() {
               </a>
             </div>
           )}
-          {(mode === "modal" || mode === "motion") && (
+          {(mode === "modal" || mode === "motion" || mode === "motion2") && (
             <>
               <ModalGallery
                 jobs={modalJobs}
-                onUseStill={mode === "motion" ? (url) => patchMotion({ source_image_url: url }) : undefined}
+                onUseStill={
+                  mode === "motion"
+                    ? (url) => patchMotion({ source_image_url: url })
+                    : mode === "motion2"
+                      ? (url) => commitLongformLocal({ ...longformQueueRef.current, source_image_url: url })
+                      : undefined
+                }
               />
               <MotionGallery jobs={modalJobs} />
             </>

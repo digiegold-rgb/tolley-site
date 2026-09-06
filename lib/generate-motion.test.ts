@@ -35,14 +35,18 @@ describe("card → fal input", () => {
     const planned = cardToFalInput(card);
     assert.equal(planned.input.image_url, STILL);
     assert.equal(planned.recipe, "fal-wan-i2v");
+    assert.equal(planned.falModelId, "wan26-i2v-720p");
     assert.doesNotMatch(JSON.stringify(planned), /FAL_KEY|ak-|as-/);
   });
 });
 
 describe("falModelIdFromCardHint", () => {
-  it("reads fal_model or end_image_url", () => {
+  it("reads fal_model or end_image_url; Motion 2 cards stay on Wan 3.0", () => {
     assert.equal(falModelIdFromCardHint({ fal_model: "wan-flf2v" }, "fal-wan-i2v"), "wan-flf2v");
+    assert.equal(falModelIdFromCardHint({ fal_model: "wan26-i2v-720p" }, "fal-wan-i2v"), "wan26-i2v-720p");
     assert.equal(falModelIdFromCardHint({ end_image_url: STILL }, "fal-wan-i2v"), "wan-flf2v");
     assert.equal(falModelIdFromCardHint({}, "fal-wan-i2v"), "wan26-i2v-720p");
+    assert.equal(falModelIdFromCardHint({ fal_model: "wan30-i2v" }, "fal-wan-i2v"), "wan30-i2v");
+    assert.equal(falModelIdFromCardHint({ longform: true }, "fal-wan-i2v"), "wan30-i2v");
   });
 });

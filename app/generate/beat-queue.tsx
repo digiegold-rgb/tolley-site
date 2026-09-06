@@ -10,7 +10,11 @@ import {
   type MotionBeat,
 } from "@/lib/generate-beats";
 import { beatPromptEditorForIndex } from "@/lib/generate-studio-motion-sync";
-import type { GenerateMotionCard } from "@/lib/generate-motion-card";
+import {
+  MOTION_SECONDS_CHIPS,
+  wan30UsdEstimate,
+  type GenerateMotionCard,
+} from "@/lib/generate-motion-card";
 
 function mediaSrc(jobId: string, index = 0): string {
   return `/api/generate/jobs/${encodeURIComponent(jobId)}/image?i=${index}`;
@@ -43,6 +47,37 @@ export function GatedClip({
       {label ? <p className="gen-clip-label">{label}</p> : null}
     </div>
   );
+}
+
+export function DurationChips({
+  seconds,
+  disabled,
+  onPick,
+}: {
+  seconds: number;
+  disabled?: boolean;
+  onPick: (seconds: number) => void;
+}) {
+  return (
+    <div className="gen-nsfw-chips" role="group" aria-label="Segment length">
+      {MOTION_SECONDS_CHIPS.map((n) => (
+        <button
+          key={n}
+          type="button"
+          className={`gen-nsfw-chip${seconds === n ? " gen-nsfw-chip-on" : ""}`}
+          disabled={disabled}
+          aria-pressed={seconds === n}
+          onClick={() => onPick(n)}
+        >
+          {n}s
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function wan30PriceHint(seconds: number): string {
+  return `~$${wan30UsdEstimate(seconds, "720p").toFixed(2)} @720p · ~$${wan30UsdEstimate(seconds, "1080p").toFixed(2)} @1080p`;
 }
 
 function stillSummary(beat: MotionBeat, index: number): string {
@@ -410,13 +445,29 @@ export function SlowMoChip({
   );
 }
 
-export function cardToNewBeat(card: GenerateMotionCard | { source_image_url?: string; prompt?: string; negative_prompt?: string; end_image_url?: string; aspect?: MotionBeat["aspect"]; seed?: number; slow_mo?: boolean }): MotionBeat {
+export function cardToNewBeat(
+  card: GenerateMotionCard | {
+    source_image_url?: string;
+    prompt?: string;
+    negative_prompt?: string;
+    end_image_url?: string;
+    aspect?: MotionBeat["aspect"];
+    seconds?: number;
+    resolution?: MotionBeat["resolution"];
+    audio?: boolean;
+    seed?: number;
+    slow_mo?: boolean;
+  },
+): MotionBeat {
   return emptyBeat({
     prompt: card.prompt,
     negative_prompt: card.negative_prompt,
     source_image_url: card.source_image_url,
     end_image_url: card.end_image_url,
     aspect: card.aspect,
+    seconds: card.seconds,
+    resolution: card.resolution,
+    audio: card.audio === true,
     seed: card.seed,
     slow_mo: card.slow_mo === true,
   });

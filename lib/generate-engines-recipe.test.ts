@@ -25,6 +25,10 @@ describe("/generate fal engine tabs", () => {
     assert.match(poll, /pollFalImage/);
     assert.match(poll, /isFalVideoRecipe/);
     assert.match(fal, /fal-ai\/flux\/dev/);
+    assert.match(fal, /fal-ai\/wan-i2v/);
+    assert.match(fal, /alibaba\/wan-3\.0\/image-to-video/);
+    assert.match(fal, /"wan26-i2v-720p"/);
+    assert.match(fal, /"wan30-i2v"/);
     assert.match(fal, /enable_safety_checker: false/);
     assert.match(fal, /formatFalError/);
     assert.doesNotMatch(jobs, /scene_frames|lady-wan22/i);
@@ -44,6 +48,11 @@ describe("/generate fal engine tabs", () => {
     assert.doesNotMatch(studio, /beatAction\("patch"/);
     assert.match(beatsUi, /Stitch approved beats/);
     assert.match(beatsUi, /0\.5× slow-mo/);
+    assert.match(beatsUi, /~5s|5s \(Wan cap\)/);
+    assert.match(studio, /5s \(Wan cap\)/);
+    assert.match(studio, /Wan I2V/);
+    assert.match(studio, /Wan 3\.0/);
+    assert.doesNotMatch(studio, /DurationChips/);
     assert.match(beatsUi, /<video/);
     assert.match(beatsUi, /controls/);
     assert.match(beatsUi, /gen-beat-strip/);
@@ -57,6 +66,28 @@ describe("/generate fal engine tabs", () => {
     assert.match(studio, /generateBeatClip/);
     assert.match(beatsUi, /Prompt & stills above/);
     assert.doesNotMatch(beatsUi, /Add current card/);
+  });
+
+  it("adds a Motion 2 longform tab without overloading the Motion 1 filmstrip", () => {
+    assert.match(studio, /Motion 2 · Longform/);
+    assert.match(studio, /"motion2"/);
+    assert.match(studio, /\/api\/generate\/longform/);
+    const longformApi = readFileSync(join(root, "app/api/generate/longform/route.ts"), "utf8");
+    assert.match(longformApi, /spawnFalWan30Motion/);
+    assert.doesNotMatch(longformApi, /spawnFalMotion\(/);
+    assert.doesNotMatch(jobs, /spawnFalWan30Motion/);
+    assert.match(studio, /<LongformPanel/);
+    assert.match(studio, /waitForGenerateJob/);
+    const longformUi = readFileSync(join(root, "app/generate/longform-queue.tsx"), "utf8");
+    assert.match(longformUi, /DurationChips/);
+    assert.match(longformUi, /data-testid="motion2-longform"/);
+    assert.match(longformUi, /gen-longform-list/);
+    assert.match(longformUi, /last frame/i);
+    assert.doesNotMatch(longformUi, /gen-beat-strip/);
+    assert.doesNotMatch(longformUi, /aria-label="Beat timeline"/);
+    assert.match(jobs, /longform_queue/);
+    assert.match(poll, /syncLongformFromChild/);
+    assert.match(poll, /syncBeatQueueFromChild/);
   });
 
   it("lays the beat queue out as a horizontal filmstrip, not stacked cards", () => {
