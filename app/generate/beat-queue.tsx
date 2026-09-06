@@ -10,7 +10,11 @@ import {
   type MotionBeat,
 } from "@/lib/generate-beats";
 import { beatPromptEditorForIndex } from "@/lib/generate-studio-motion-sync";
-import type { GenerateMotionCard } from "@/lib/generate-motion-card";
+import {
+  MOTION_SECONDS_CHIPS,
+  wan30UsdEstimate,
+  type GenerateMotionCard,
+} from "@/lib/generate-motion-card";
 
 function mediaSrc(jobId: string, index = 0): string {
   return `/api/generate/jobs/${encodeURIComponent(jobId)}/image?i=${index}`;
@@ -43,6 +47,37 @@ export function GatedClip({
       {label ? <p className="gen-clip-label">{label}</p> : null}
     </div>
   );
+}
+
+export function DurationChips({
+  seconds,
+  disabled,
+  onPick,
+}: {
+  seconds: number;
+  disabled?: boolean;
+  onPick: (seconds: number) => void;
+}) {
+  return (
+    <div className="gen-nsfw-chips" role="group" aria-label="Segment length">
+      {MOTION_SECONDS_CHIPS.map((n) => (
+        <button
+          key={n}
+          type="button"
+          className={`gen-nsfw-chip${seconds === n ? " gen-nsfw-chip-on" : ""}`}
+          disabled={disabled}
+          aria-pressed={seconds === n}
+          onClick={() => onPick(n)}
+        >
+          {n}s
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function wan30PriceHint(seconds: number): string {
+  return `~$${wan30UsdEstimate(seconds, "720p").toFixed(2)} @720p · ~$${wan30UsdEstimate(seconds, "1080p").toFixed(2)} @1080p`;
 }
 
 function stillSummary(beat: MotionBeat, index: number): string {
@@ -239,7 +274,7 @@ export function BeatQueuePanel({
           <p className="gen-label gen-label-live">Beat queue</p>
           <p className="gen-hint">
             Beat 1 is the form above. Left → right timeline for Beat 1…N. Select Beat 2+ to edit
-            that beat below. One Wan clip per beat (~5s). Stitch only when every beat is approved —
+            that beat below. One Wan 3.0 clip per beat (5 / 15 / 30s). Stitch only when every beat is approved —
             never on Go.
           </p>
         </div>
@@ -303,7 +338,8 @@ export function BeatQueuePanel({
                   <p className="gen-beat-prompt-preview">{beat.prompt.trim() || "Prompt & stills above"}</p>
                 )}
                 <p className="gen-beat-meta">
-                  {i === 0 ? "Prompt & stills above" : stillSummary(beat, i)}
+                  {beat.seconds}s
+                  {i === 0 ? " · Prompt & stills above" : ` · ${stillSummary(beat, i)}`}
                   {i === 0 && beat.job_id ? " · clip" : ""}
                 </p>
                 {i > 0 ? (
@@ -345,6 +381,15 @@ export function BeatQueuePanel({
             <span className={`gen-beat-status gen-beat-status-${selected.status}`}>{selected.status}</span>
           </div>
           <p className="gen-hint">Stills and the clip live here so the timeline stays a single row. Beat 1 stays in the form above.</p>
+          <label>
+            Duration
+            <DurationChips
+              seconds={selected.seconds}
+              disabled={busy || selected.status === "generating"}
+              onPick={(n) => onPatch(selected.id, { seconds: n })}
+            />
+            <span className="gen-hint">{wan30PriceHint(selected.seconds)} per clip</span>
+          </label>
           <BeatStillFields beat={selected} index={selectedIndex} busy={busy} onPatch={onPatch} />
           {selected.error ? <p className="gen-err">{selected.error}</p> : null}
           {selected.job_id &&
@@ -402,21 +447,37 @@ export function SlowMoChip({
         0.5× slow-mo
       </button>
       <p className="gen-field-hint">
-        After Wan returns (~5s), remux with ffmpeg <code>setpts=2*PTS</code> so the export plays at half
-        speed (~10s). Same frames — not a longer fal call. If remux is unavailable, the in-page player
+        After Wan returns, remux with ffmpeg <code>setpts=2*PTS</code> so the export plays at half
+        speed (2× wall clock). Same frames — not a longer fal call. If remux is unavailable, the in-page player
         uses <code>playbackRate=0.5</code> and is labeled.
       </p>
     </div>
   );
 }
 
-export function cardToNewBeat(card: GenerateMotionCard | { source_image_url?: string; prompt?: string; negative_prompt?: string; end_image_url?: string; aspect?: MotionBeat["aspect"]; seed?: number; slow_mo?: boolean }): MotionBeat {
+export function cardToNewBeat(
+  card: GenerateMotionCard | {
+    source_image_url?: string;
+    prompt?: string;
+    negative_prompt?: string;
+    end_image_url?: string;
+    aspect?: MotionBeat["aspect"];
+    seconds?: number;
+    resolution?: MotionBeat["resolution"];
+    audio?: boolean;
+    seed?: number;
+    slow_mo?: boolean;
+  },
+): MotionBeat {
   return emptyBeat({
     prompt: card.prompt,
     negative_prompt: card.negative_prompt,
     source_image_url: card.source_image_url,
     end_image_url: card.end_image_url,
     aspect: card.aspect,
+    seconds: card.seconds,
+    resolution: card.resolution,
+    audio: card.audio === true,
     seed: card.seed,
     slow_mo: card.slow_mo === true,
   });

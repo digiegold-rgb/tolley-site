@@ -11,7 +11,12 @@ import {
   type BeatQueue,
   type MotionBeat,
 } from "./generate-beats";
-import { emptyMotionCard, type GenerateMotionCard, type MotionAspect } from "./generate-motion-card";
+import {
+  emptyMotionCard,
+  type GenerateMotionCard,
+  type MotionAspect,
+  type MotionResolution,
+} from "./generate-motion-card";
 
 export type StudioMotionCard = GenerateMotionCard | ReturnType<typeof emptyMotionCard>;
 
@@ -21,6 +26,9 @@ export type MotionBeatFields = {
   source_image_url: string;
   end_image_url: string;
   aspect: MotionAspect;
+  seconds: number;
+  resolution: MotionResolution;
+  audio: boolean;
   seed: number;
   slow_mo: boolean;
 };
@@ -32,6 +40,9 @@ export function motionFieldsFromCard(card: StudioMotionCard): MotionBeatFields {
     source_image_url: card.source_image_url,
     end_image_url: card.end_image_url || "",
     aspect: card.aspect,
+    seconds: card.seconds,
+    resolution: card.resolution || "720p",
+    audio: card.audio === true,
     seed: card.seed,
     slow_mo: card.slow_mo === true,
   };
@@ -47,6 +58,8 @@ export function motionCardFromBeatLoose(beat: MotionBeat): ReturnType<typeof emp
     end_image_url: beat.end_image_url,
     aspect: beat.aspect,
     seconds: beat.seconds,
+    resolution: beat.resolution,
+    audio: beat.audio,
     seed: beat.seed,
     slow_mo: beat.slow_mo,
   };
@@ -62,6 +75,9 @@ export function motionCardMatchesBeat1(card: StudioMotionCard, queue: BeatQueue)
     a.source_image_url === beat.source_image_url &&
     a.end_image_url === (beat.end_image_url || "") &&
     a.aspect === beat.aspect &&
+    a.seconds === beat.seconds &&
+    a.resolution === beat.resolution &&
+    a.audio === beat.audio &&
     a.seed === beat.seed &&
     a.slow_mo === beat.slow_mo
   );
@@ -96,6 +112,9 @@ export function copyBeatAsNewDraft(beat: MotionBeat): MotionBeat {
     source_image_url: beat.source_image_url,
     end_image_url: beat.end_image_url,
     aspect: beat.aspect,
+    seconds: beat.seconds,
+    resolution: beat.resolution,
+    audio: beat.audio,
     seed: beat.seed,
     slow_mo: beat.slow_mo,
     from_prev_last: false,

@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.32.1';
+export const APP_VERSION = '1.33';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.33',
+    date: '2026-09-06',
+    title: 'Generate Motion 2 + Wan 3.0 segments',
+    items: [
+      'Motion and Motion 2 now run fal Wan 3.0 image-to-video (5 / 15 / 30 second clips). Motion 1 still defaults to 5s; Motion 2 defaults to 15s so a 3-minute take is about 12 beats.',
+      'A new Motion 2 · Longform tab chains those clips: after each beat, ffmpeg grabs the last frame for the next first frame. Review or regenerate a bad beat; ripple continuity is opt-in.',
+      'Dry-run shows beat count and a ~$0.10/s (720p) / ~$0.20/s (1080p) estimate before you spend. Native audio stays off unless you opt in. The Motion 1 filmstrip is unchanged.',
+    ],
+  },
   {
     version: '1.32.1',
     date: '2026-09-06',

@@ -40,6 +40,7 @@ export async function persistPngsToSpark(
   pngs: Buffer[],
   env: NodeJS.ProcessEnv = process.env,
   fetchImpl: PersistFetch = fetch,
+  startIndex = 0,
 ): Promise<string[]> {
   const cfg = sparkStoreConfig(env);
   if (!cfg) {
@@ -49,7 +50,8 @@ export async function persistPngsToSpark(
   }
   const refs: string[] = [];
   for (let i = 0; i < pngs.length; i++) {
-    const url = `${cfg.baseUrl}/generate-jobs/${encodeURIComponent(jobId)}/${i}`;
+    const idx = startIndex + i;
+    const url = `${cfg.baseUrl}/generate-jobs/${encodeURIComponent(jobId)}/${idx}`;
     const res = await fetchImpl(url, {
       method: "PUT",
       headers: {
@@ -65,7 +67,7 @@ export async function persistPngsToSpark(
         `Spark store PUT failed (${res.status}): ${text.slice(0, 240) || res.statusText}`,
       );
     }
-    refs.push(sparkOutputRef(jobId, i));
+    refs.push(sparkOutputRef(jobId, idx));
   }
   return refs;
 }
@@ -74,6 +76,7 @@ export async function persistPngsToPrivateBlob(
   jobId: string,
   pngs: Buffer[],
   env: NodeJS.ProcessEnv = process.env,
+  startIndex = 0,
 ): Promise<string[]> {
   const token = blobReadWriteToken(env);
   if (!token) {
@@ -83,7 +86,8 @@ export async function persistPngsToPrivateBlob(
   }
   const refs: string[] = [];
   for (let i = 0; i < pngs.length; i++) {
-    const blob = await put(`generate/${jobId}/${i}.png`, pngs[i], {
+    const idx = startIndex + i;
+    const blob = await put(`generate/${jobId}/${idx}.png`, pngs[i], {
       access: "private",
       contentType: "image/png",
       addRandomSuffix: true,
@@ -94,7 +98,7 @@ export async function persistPngsToPrivateBlob(
         "Blob put returned a public URL. Point GENERATE_BLOB_READ_WRITE_TOKEN at a private store (vercel blob create-store … --access private).",
       );
     }
-    refs.push(privateBlobOutputRef(blob.pathname || `generate/${jobId}/${i}.png`));
+    refs.push(privateBlobOutputRef(blob.pathname || `generate/${jobId}/${idx}.png`));
   }
   return refs;
 }
@@ -189,12 +193,27 @@ export async function persistJobPngs(
   fetchImpl: PersistFetch = fetch,
 ): Promise<string[]> {
   const pngs = pngB64.map(decodePngB64);
+  return persistJobPngBuffers(jobId, pngs, env, fetchImpl, 0);
+}
+
+/**
+ * Persist raw PNG buffers Spark-first / private Blob.
+ * `startIndex` lets Motion 2 park a last-frame still at index 1 of a clip job
+ * without overwriting the MP4 at index 0.
+ */
+export async function persistJobPngBuffers(
+  jobId: string,
+  pngs: Buffer[],
+  env: NodeJS.ProcessEnv = process.env,
+  fetchImpl: PersistFetch = fetch,
+  startIndex = 0,
+): Promise<string[]> {
   if (!pngs.length) return [];
   if (isSparkStoreConfigured(env)) {
-    return persistPngsToSpark(jobId, pngs, env, fetchImpl);
+    return persistPngsToSpark(jobId, pngs, env, fetchImpl, startIndex);
   }
   if (isPrivateBlobFallbackEnabled(env)) {
-    return persistPngsToPrivateBlob(jobId, pngs, env);
+    return persistPngsToPrivateBlob(jobId, pngs, env, startIndex);
   }
   throw new GenerateOutputPersistError(
     "No private still store. Set GENERATE_SPARK_STORE_URL + GENERATE_SPARK_STORE_KEY (preferred), or GENERATE_BLOB_FALLBACK=1 with a private Blob token.",

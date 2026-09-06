@@ -109,9 +109,9 @@ export async function pollFalMotion(
   }
 }
 
-export function falModelIdForRecipe(recipe: string): FalModelId {
-  if (recipe === MOTION_RECIPE_FLF2V) return "wan-flf2v";
-  return "wan26-i2v-720p";
+export function falModelIdForRecipe(_recipe: string): FalModelId {
+  void _recipe;
+  return "wan30-i2v";
 }
 
 export function falModelIdFromCard(cardJson: unknown, recipe: string): FalModelId {

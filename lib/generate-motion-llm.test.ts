@@ -13,6 +13,9 @@ describe("MOTION_CARD_SYSTEM_PROMPT (llm module)", () => {
       "source_image_url",
       "end_image_url",
       "aspect",
+      "seconds",
+      "resolution",
+      "audio",
       "seed",
     ]) {
       assert.match(MOTION_CARD_SYSTEM_PROMPT, new RegExp(field));

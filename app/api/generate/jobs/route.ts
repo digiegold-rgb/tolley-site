@@ -39,6 +39,8 @@ import {
 } from "@/lib/generate-modal";
 import { emptyBeatQueue } from "@/lib/generate-beats";
 import { latestBeatQueueJob } from "@/lib/generate-beats-store";
+import { emptyLongformQueue } from "@/lib/generate-longform";
+import { latestLongformJob } from "@/lib/generate-longform-store";
 import { serializeJob } from "@/lib/generate-job-store";
 import { isBlockedStudioRequest } from "@/lib/generate-director";
 import { prisma } from "@/lib/prisma";
@@ -72,6 +74,7 @@ export async function GET() {
     take: 40,
   });
   const beats = await latestBeatQueueJob(gate.createdBy);
+  const longform = await latestLongformJob(gate.createdBy);
   return NextResponse.json({
     jobs: rows.map(serializeJob),
     modal: modalPublicStatus(),
@@ -82,6 +85,8 @@ export async function GET() {
     beat_defaults: emptyBeatQueue(),
     beat_queue: beats ? beats.queue : emptyBeatQueue(),
     beat_queue_job: beats ? serializeJob(beats.row) : null,
+    longform_queue: longform ? longform.queue : emptyLongformQueue(),
+    longform_queue_job: longform ? serializeJob(longform.row) : null,
     engines: falEnginePublicStatus(),
   });
 }

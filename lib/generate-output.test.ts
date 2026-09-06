@@ -160,6 +160,26 @@ describe("persistPngsToSpark", () => {
     const headers = new Headers(calls[0]?.headers);
     assert.equal(headers.get("authorization"), "Bearer secret");
   });
+
+  it("can park a last-frame PNG at index 1 without overwriting 0", async () => {
+    const calls: string[] = [];
+    const fetchImpl = (async (url: string | URL | Request) => {
+      calls.push(String(url));
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }) as typeof fetch;
+    const refs = await persistPngsToSpark(
+      "job9",
+      [Buffer.from("png")],
+      {
+        GENERATE_SPARK_STORE_URL: "https://quickgen.tolley.io",
+        GENERATE_SPARK_STORE_KEY: "secret",
+      },
+      fetchImpl,
+      1,
+    );
+    assert.deepEqual(refs, [sparkOutputRef("job9", 1)]);
+    assert.equal(calls[0], "https://quickgen.tolley.io/generate-jobs/job9/1");
+  });
 });
 
 describe("persistMp4sToSpark", () => {

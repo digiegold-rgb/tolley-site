@@ -64,7 +64,7 @@ export const FAL_MODELS = {
     endpointId: "fal-ai/veo3" as const,
     defaults: {},
   },
-  // Image-to-Video (for real property photos)
+  // Image-to-Video (property photos / legacy clips — keep so in-flight jobs poll)
   "wan26-i2v-720p": {
     endpointId: "fal-ai/wan-i2v" as const,
     defaults: { num_frames: 81, enable_safety_checker: false },
@@ -73,10 +73,23 @@ export const FAL_MODELS = {
     endpointId: "fal-ai/wan-i2v" as const,
     defaults: { num_frames: 81, resolution: "720p", enable_safety_checker: false },
   },
-  // First + last frame (optional pose / end still). Flat id — same Wan 2.1 family.
+  // First + last frame (legacy Wan 2.1). New Motion uses wan30-i2v.
   "wan-flf2v": {
     endpointId: "fal-ai/wan-flf2v" as const,
     defaults: { num_frames: 81, resolution: "720p", enable_safety_checker: false },
+  },
+  // Generate Motion / Motion 2 — Wan 3.0 I2V (optional end frame on the same call).
+  "wan30-i2v": {
+    endpointId: "alibaba/wan-3.0/image-to-video" as const,
+    defaults: {
+      duration: 5,
+      resolution: "720p",
+      aspect_ratio: "9:16",
+      audio: false,
+      enable_safety_checker: false,
+      enable_prompt_expansion: false,
+      enable_thinking: false,
+    },
   },
 } as const;
 

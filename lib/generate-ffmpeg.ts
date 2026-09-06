@@ -127,6 +127,93 @@ export async function remuxSlowMo(
 }
 
 /**
+ * Last video frame of an MP4 as a PNG. Used by Motion 2 to chain beat k → k+1
+ * (`source_image_url` of the next Wan I2V call). Motion 1 does not use this.
+ */
+export async function extractLastFrame(
+  input: Buffer,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<Buffer> {
+  if (!input.length) throw new Error("Need an MP4 to extract the last frame");
+  const avail = await isFfmpegAvailable(env);
+  if (!avail.ok) {
+    throw new Error(
+      `ffmpeg not available for last-frame extract (${avail.error || "not on PATH"}). Motion 2 continuity needs ffmpeg on this runtime.`,
+    );
+  }
+  return withTempDir(async (dir) => {
+    const src = join(dir, "in.mp4");
+    const dest = join(dir, "last.png");
+    await writeFile(src, input);
+    const attempts: string[][] = [
+      ["-y", "-sseof", "-0.05", "-i", src, "-frames:v", "1", "-update", "1", dest],
+      ["-y", "-sseof", "-0.2", "-i", src, "-frames:v", "1", "-update", "1", dest],
+      ["-y", "-i", src, "-vf", "select='eq(n\\,N-1)'", "-vsync", "vfr", "-frames:v", "1", dest],
+    ];
+    let lastErr = "";
+    for (let i = 0; i < attempts.length; i++) {
+      const { code, stderr } = await run(avail.bin, attempts[i], { timeoutMs: 30_000 });
+      if (code === 0) {
+        try {
+          const out = await readFile(dest);
+          if (out.length >= 8 && out[0] === 0x89 && out[1] === 0x50) return out;
+        } catch {
+          /* try next */
+        }
+      }
+      lastErr = stderr.slice(-400);
+      if (i === attempts.length - 1) {
+        throw new Error(`ffmpeg last-frame extract failed: ${lastErr || `exited ${code}`}`);
+      }
+    }
+    throw new Error(`ffmpeg last-frame extract failed: ${lastErr}`);
+  });
+}
+
+/**
+ * Concat many already-encoded H.264 clips via the concat demuxer (stream copy).
+ * This is the Motion 2 stitch path — 36×5s clips would blow Vercel 120s if we
+ * re-encoded. Motion 1 keeps concatMp4s (re-encode) for mixed slow-mo files.
+ */
+export async function concatMp4sCopy(
+  clips: Buffer[],
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<Buffer> {
+  if (clips.length < 1) throw new Error("Need at least one clip to stitch");
+  if (clips.length === 1) return clips[0];
+  const avail = await isFfmpegAvailable(env);
+  if (!avail.ok) {
+    throw new Error(
+      `ffmpeg not available for longform stitch on this runtime (${avail.error || "not on PATH"}). Motion 2 stitch is Vercel Node concat-demuxer (stream copy), not Spark.`,
+    );
+  }
+  return withTempDir(async (dir) => {
+    const listPath = join(dir, "list.txt");
+    const dest = join(dir, "out.mp4");
+    const lines: string[] = [];
+    for (let i = 0; i < clips.length; i++) {
+      const p = join(dir, `c${i}.mp4`);
+      await writeFile(p, clips[i]);
+      lines.push(`file '${p.replace(/'/g, "'\\''")}'`);
+    }
+    await writeFile(listPath, lines.join("\n") + "\n");
+    const { code, stderr } = await run(
+      avail.bin,
+      ["-y", "-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", "-movflags", "+faststart", dest],
+      { timeoutMs: 110_000 },
+    );
+    if (code !== 0) {
+      throw new Error(
+        `ffmpeg concat-demuxer (stream copy) failed: ${stderr.slice(-400)}. Re-encode concat is Motion 1 only — 36 clips would exceed Vercel 120s.`,
+      );
+    }
+    const out = await readFile(dest);
+    if (!out.length) throw new Error("ffmpeg longform stitch produced an empty file");
+    return out;
+  });
+}
+
+/**
  * Simple concat (no crossfade). Clips are re-encoded to one H.264 stream so
  * mixed Wan I2V / remuxed slow-mo files stitch cleanly.
  */
