@@ -19,7 +19,11 @@ export function formatFalError(err: unknown, fallback = "fal.ai request failed")
         (typeof bodyRec.message === "string" && bodyRec.message) ||
         (typeof bodyRec.error === "string" && bodyRec.error) ||
         "";
-      bodyText = nested || JSON.stringify(body).slice(0, 400);
+      const typeHint =
+        (typeof bodyRec.type === "string" && bodyRec.type) ||
+        (typeof bodyRec.error_type === "string" && bodyRec.error_type) ||
+        "";
+      bodyText = [typeHint, nested].filter(Boolean).join(" — ") || JSON.stringify(body).slice(0, 400);
     }
     const parts = [
       typeof status === "number" ? `HTTP ${status}` : "",

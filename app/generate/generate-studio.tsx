@@ -69,10 +69,13 @@ import {
   bindLongformQueueToJobs,
   emptyLongformQueue,
   estimateLongform,
+  failedHoldLongformBeats,
+  formatLongformFalError,
   inFlightLongformBeats,
   longformAlreadyRunningReason,
   longformGenerateClientError,
   longformRunningNotice,
+  motion2GenerateLocked,
   motion2PrimaryBusy,
   nextGeneratableLongformBeat,
   parseLongformQueue,
@@ -471,8 +474,14 @@ export default function GenerateStudio() {
               }),
             );
             const live = inFlightLongformBeats(loaded)[0];
+            const hold = failedHoldLongformBeats(loaded)[0];
             if (live) setSelectedLongformBeatId(live.id);
-            else if (loaded.beats[0]) setSelectedLongformBeatId(loaded.beats[0].id);
+            else if (hold) {
+              setSelectedLongformBeatId(hold.id);
+              const msg = formatLongformFalError(hold.error);
+              setError(msg);
+              setMotion2Notice(msg);
+            } else if (loaded.beats[0]) setSelectedLongformBeatId(loaded.beats[0].id);
           } catch {
             /* keep empty plan */
           }
@@ -777,7 +786,7 @@ export default function GenerateStudio() {
     }
   }
 
-  async function generateLongformClip(id: string) {
+  async function generateLongformClip(id: string, opts?: { retry?: boolean }) {
     setError(null);
     const already = longformAlreadyRunningReason(longformQueueRef.current, id);
     if (already) {
@@ -785,11 +794,19 @@ export default function GenerateStudio() {
       await resumeMotion2InFlight();
       return;
     }
+    const beat = longformQueueRef.current.beats.find((b) => b.id === id);
+    if (beat?.status === "rejected" && beat.error.trim() && !opts?.retry) {
+      const msg = formatLongformFalError(beat.error);
+      setError(msg);
+      setMotion2Notice(msg);
+      return;
+    }
     setStage("longform beat → fal…");
     const j = await longformAction("generate", {
       beatId: id,
       dryRun,
       ripple: longformRippleRef.current,
+      retry: opts?.retry === true,
     });
     if (j.dryRun) {
       const note = j.note || j.estimate?.note || "Dry run — no fal spend. Untick Dry run and hit Go.";
@@ -805,7 +822,13 @@ export default function GenerateStudio() {
       j.already_running ? `Already running… beat ${j.child!.id}` : `fal running… beat ${j.child!.id}`,
     );
     setStage(`fal running… beat ${j.child!.id}`);
-    await waitForLongformChild(j.child!.id);
+    try {
+      await waitForLongformChild(j.child!.id);
+    } catch (err) {
+      await refreshLongformQueue();
+      const held = longformQueueRef.current.beats.find((b) => b.job_id === j.child!.id);
+      throw new Error(formatLongformFalError(held?.error || (err instanceof Error ? err.message : String(err))));
+    }
     await refreshLongformQueue();
   }
 
@@ -820,6 +843,14 @@ export default function GenerateStudio() {
     if (inFlightLongformBeats(current).length) {
       setMotion2Notice("Already running. Waiting for the in-flight beat.");
       await resumeMotion2InFlight();
+      return;
+    }
+    const hold = failedHoldLongformBeats(current)[0];
+    if (hold) {
+      const msg = formatLongformFalError(hold.error);
+      setError(msg);
+      setMotion2Notice(msg);
+      setSelectedLongformBeatId(hold.id);
       return;
     }
     const nextBeat = nextGeneratableLongformBeat(current);
@@ -863,7 +894,15 @@ export default function GenerateStudio() {
       setActiveJobId(j.child!.id);
       setMotion2Notice(`fal running… beat ${j.child!.id}`);
       setStage(`fal running… beat ${j.child!.id}`);
-      await waitForLongformChild(j.child!.id);
+      try {
+        await waitForLongformChild(j.child!.id);
+      } catch (err) {
+        await refreshLongformQueue();
+        const held = longformQueueRef.current.beats.find((b) => b.job_id === j.child!.id);
+        throw new Error(
+          formatLongformFalError(held?.error || (err instanceof Error ? err.message : String(err))),
+        );
+      }
       await refreshLongformQueue();
       if (!nextGeneratableLongformBeat(longformQueueRef.current)) break;
     }
@@ -1077,10 +1116,13 @@ export default function GenerateStudio() {
         setMotion2Notice("Beat finished. Review below, or hit Go for the next draft.");
       }
     } catch (err) {
-      if (!inFlightLongformBeats(longformQueueRef.current).length) {
-        setError(err instanceof Error ? err.message : String(err));
-        setMotion2Notice(err instanceof Error ? err.message : String(err));
-      }
+      await refreshLongformQueue();
+      const raw = err instanceof Error ? err.message : String(err);
+      const held = longformQueueRef.current.beats.find((b) => b.job_id === jobId);
+      const msg = formatLongformFalError(held?.error || raw);
+      setError(msg);
+      setMotion2Notice(msg);
+      if (held) setSelectedLongformBeatId(held.id);
     } finally {
       if (!inFlightLongformBeats(longformQueueRef.current).length) setStage(null);
     }
@@ -1356,7 +1398,8 @@ export default function GenerateStudio() {
       if (mode !== "motion2" || !inFlightLongformBeats(longformQueueRef.current).length) {
         setStage(null);
       }
-      const msg = e instanceof Error ? e.message : String(e);
+      const raw = e instanceof Error ? e.message : String(e);
+      const msg = mode === "motion2" ? formatLongformFalError(raw) : raw;
       setError(msg);
       if (mode === "motion2") setMotion2Notice(msg);
     }
@@ -1409,6 +1452,7 @@ export default function GenerateStudio() {
         : composeEnginePrompt(inference, description).length > 0;
   const canGo =
     !busy &&
+    !(mode === "motion2" && motion2GenerateLocked(longformQueue)) &&
     mode !== "v2v" &&
     promptReady &&
     (!needImage || i2vReady);
@@ -2226,10 +2270,28 @@ export default function GenerateStudio() {
               onGenerate={(id) => {
                 generateLongformClip(id)
                   .catch((err) => {
-                    setError(err instanceof Error ? err.message : String(err));
-                    if (mode === "motion2") {
-                      setMotion2Notice(err instanceof Error ? err.message : String(err));
-                    }
+                    const msg = formatLongformFalError(err instanceof Error ? err.message : String(err));
+                    setError(msg);
+                    setMotion2Notice(msg);
+                  })
+                  .finally(() => {
+                    if (!inFlightLongformBeats(longformQueueRef.current).length) setStage(null);
+                  });
+              }}
+              onDismiss={(id) => {
+                longformAction("reset", { beatId: id })
+                  .then(() => {
+                    setError(null);
+                    setMotion2Notice(null);
+                  })
+                  .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+              }}
+              onRetry={(id) => {
+                generateLongformClip(id, { retry: true })
+                  .catch((err) => {
+                    const msg = formatLongformFalError(err instanceof Error ? err.message : String(err));
+                    setError(msg);
+                    setMotion2Notice(msg);
                   })
                   .finally(() => {
                     if (!inFlightLongformBeats(longformQueueRef.current).length) setStage(null);

@@ -13,13 +13,18 @@ import {
   estimateLongform,
   applyChildJobsToLongformQueue,
   bindLongformQueueToJobs,
+  failedHoldLongformBeats,
+  formatLongformFalError,
   inFlightLongformBeats,
+  isFalContentPolicyError,
   longformAlreadyRunningReason,
   longformGenerateClientError,
   longformNeedsNewPlan,
   longformParentJobStatus,
   longformRunningNotice,
+  markLongformBeatFromChildJob,
   markLongformBeatGenerating,
+  motion2GenerateLocked,
   motion2PrimaryBusy,
   nextGeneratableLongformBeat,
   parseLongformQueue,
@@ -287,6 +292,26 @@ describe("longform in-flight bind", () => {
     );
     assert.equal(left.beats[0].status, "draft");
     assert.equal(left.beats[0].job_id, "");
+  });
+
+  it("shows a fal 422 policy failure loudly and holds Generate until dismiss/retry", () => {
+    let q = planLongformQueue({ targetSeconds: 30, sourceImageUrl: STILL, fallbackPrompt: "walk" });
+    q = markLongformBeatGenerating(q, q.beats[0].id, "cmtpvb0ov00bxky04j540zszh");
+    const failed = markLongformBeatFromChildJob(q, "cmtpvb0ov00bxky04j540zszh", {
+      status: "failed",
+      error:
+        'HTTP 422 — content_policy_violation — The content could not be processed because it contained material flagged by a content checker.',
+    });
+    assert.equal(failed.beats[0].status, "rejected");
+    assert.equal(isFalContentPolicyError(failed.beats[0].error), true);
+    assert.match(failed.beats[0].error, /fal content policy — clip not delivered/);
+    assert.equal(failedHoldLongformBeats(failed).length, 1);
+    assert.equal(motion2GenerateLocked(failed), true);
+    assert.equal(motion2PrimaryBusy(null, failed), false);
+    assert.equal(nextGeneratableLongformBeat(failed), null);
+    assert.equal(canGenerateLongformBeat(failed, failed.beats[0].id).ok, false);
+    assert.equal(canGenerateLongformBeat(failed, failed.beats[0].id, null, { retry: true }).ok, true);
+    assert.match(formatLongformFalError(failed.beats[0].error), /clip not delivered/);
   });
 
   it("does not treat a finished child as idle Generate while stage is still set", () => {

@@ -367,6 +367,37 @@ export function isInFlightJobStatus(status: string | null | undefined): boolean 
   return status === "running" || status === "queued";
 }
 
+export function isFalContentPolicyError(error: string | null | undefined): boolean {
+  const t = (error || "").toLowerCase();
+  return (
+    t.includes("content_policy") ||
+    t.includes("content policy") ||
+    t.includes("content checker") ||
+    t.includes("content could not be processed") ||
+    (t.includes("422") && (t.includes("flagged") || t.includes("policy") || t.includes("safety")))
+  );
+}
+
+/** Persist + show fal failures. Policy 422s stay loud — not an idle Generate. */
+export function formatLongformFalError(error: string | null | undefined): string {
+  const raw = (error || "generation failed").trim() || "generation failed";
+  if (!isFalContentPolicyError(raw)) return raw.slice(0, 500);
+  if (/fal content policy — clip not delivered/i.test(raw)) return raw.slice(0, 500);
+  return `fal content policy — clip not delivered. ${raw}`.slice(0, 500);
+}
+
+/** Rejected + error = fal already attempted. Hold Generate until dismiss/retry. */
+export function failedHoldLongformBeats(queue: LongformQueue): LongformBeat[] {
+  return queue.beats.filter((b) => b.status === "rejected" && Boolean(b.error.trim()));
+}
+
+export function motion2GenerateLocked(
+  queue: LongformQueue,
+  children?: Array<{ id: string; status: string }> | null,
+): boolean {
+  return inFlightLongformBeats(queue, children).length > 0 || failedHoldLongformBeats(queue).length > 0;
+}
+
 export function markLongformBeatFromChildJob(
   queue: LongformQueue,
   jobId: string,
@@ -380,7 +411,7 @@ export function markLongformBeatFromChildJob(
   if (child.status === "failed") {
     return patchLongformBeat(queue, beat.id, {
       status: "rejected",
-      error: (child.error || "generation failed").slice(0, 500),
+      error: formatLongformFalError(child.error),
     });
   }
   if (isInFlightJobStatus(child.status)) {
@@ -568,12 +599,20 @@ export function canGenerateLongformBeat(
   queue: LongformQueue,
   beatId: string,
   child?: { id?: string; status?: string } | null,
+  opts?: { retry?: boolean },
 ): { ok: boolean; reason?: string; beat?: LongformBeat; index?: number } {
   const idx = queue.beats.findIndex((b) => b.id === beatId);
   if (idx < 0) return { ok: false, reason: "Beat not found" };
   const beat = queue.beats[idx];
   const already = longformAlreadyRunningReason(queue, beatId, child);
   if (already) return { ok: false, reason: already, beat, index: idx };
+  if (beat.status === "rejected" && beat.error.trim() && !opts?.retry) {
+    return { ok: false, reason: "Dismiss or retry the failed beat first", beat, index: idx };
+  }
+  const otherHold = failedHoldLongformBeats(queue).find((b) => b.id !== beatId);
+  if (otherHold && !opts?.retry) {
+    return { ok: false, reason: "Dismiss or retry the failed beat first", beat, index: idx };
+  }
   if (!beat.prompt.trim()) return { ok: false, reason: "Beat needs a motion prompt", beat, index: idx };
   if (idx > 0) {
     const prev = queue.beats[idx - 1];
@@ -635,6 +674,7 @@ export function nextGeneratableLongformBeat(queue: LongformQueue): LongformBeat 
   for (let i = 0; i < queue.beats.length; i++) {
     const b = queue.beats[i];
     if (b.status === "generating") return null;
+    if (b.status === "rejected" && b.error.trim()) return null;
     if (b.status === "ready" || b.status === "approved") continue;
     const gate = canGenerateLongformBeat(ensureBeatSourceFromPrev(queue, b.id), b.id);
     if (gate.ok) return gate.beat || b;

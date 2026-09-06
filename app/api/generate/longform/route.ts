@@ -109,6 +109,7 @@ export async function POST(req: NextRequest) {
     title?: unknown;
     ripple?: unknown;
     dryRun?: unknown;
+    retry?: unknown;
   };
   try {
     body = await req.json();
@@ -184,13 +185,22 @@ export async function POST(req: NextRequest) {
         if (generating) beatId = generating.id;
         else {
           const next = nextGeneratableLongformBeat(queue);
-          if (!next) return jsonError("No remaining beat is ready to generate", 400);
+          if (!next) {
+            const hold = queue.beats.find((b) => b.status === "rejected" && b.error.trim());
+            return jsonError(
+              hold
+                ? "Dismiss or retry the failed beat first"
+                : "No remaining beat is ready to generate",
+              400,
+            );
+          }
           beatId = next.id;
         }
       }
       return await generateLongformBeat(gate.createdBy, queue, loaded?.row.id, beatId, {
         ripple: body.ripple === true,
         dryRun: body.dryRun === true,
+        retry: body.retry === true,
       });
     } else if (action === "approve" || action === "reject" || action === "reset") {
       const status: BeatStatus = action === "approve" ? "approved" : action === "reject" ? "rejected" : "draft";
@@ -250,7 +260,7 @@ async function generateLongformBeat(
   queue: LongformQueue,
   queueJobId: string | undefined,
   beatId: string,
-  opts: { ripple: boolean; dryRun: boolean },
+  opts: { ripple: boolean; dryRun: boolean; retry: boolean },
 ) {
   queue = ensureBeatSourceFromPrev(queue, beatId);
   const liveChild =
@@ -278,7 +288,7 @@ async function generateLongformBeat(
       estimate: publicEstimate(saved.queue),
     });
   }
-  const ready = canGenerateLongformBeat(queue, beatId);
+  const ready = canGenerateLongformBeat(queue, beatId, null, { retry: opts.retry });
   if (!ready.ok || !ready.beat) return jsonError(ready.reason || "Cannot generate this beat", 400);
   const beat = ready.beat;
 

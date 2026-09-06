@@ -130,6 +130,18 @@ describe("cardToWan30FalInput", () => {
     assert.equal(Object.hasOwn(planned.input, "pose_video_url"), false);
     assert.equal(Object.hasOwn(planned.input, "skeleton_url"), false);
   });
+
+  it("always sends enable_safety_checker: false (Lady2 / Allow NSFW path)", () => {
+    const forcedOn = parseGenerateMotionCard({
+      prompt: "she removes the straps with her fingers pulling them down",
+      source_image_url: STILL,
+      seconds: 30,
+      enable_safety_checker: true,
+    });
+    const planned = cardToWan30FalInput(forcedOn);
+    assert.equal(planned.input.enable_safety_checker, false);
+    assert.equal(planned.input.duration, 30);
+  });
 });
 
 describe("merge + LLM parse + JSON", () => {

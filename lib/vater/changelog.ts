@@ -46,6 +46,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     items: [
       'Motion 2 no longer flips back to Generate while a beat’s child job is still queued or running on fal — including after a hard refresh or a cleared local stage.',
       'Refresh, tab focus, and poll ticks resume the in-flight child and update the beat to ready when the clip lands. A second Generate on a live beat is a no-op.',
+      'If fal fails (including a Partner content-policy 422), Motion 2 shows the error instead of idle Generate. Generate stays off until you dismiss or retry — no silent second charge.',
     ],
   },
   {

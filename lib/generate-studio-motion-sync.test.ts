@@ -134,5 +134,10 @@ describe("studio motionCard ↔ beats[0]", () => {
     assert.match(longformUi, /inFlightLongformBeats/);
     assert.match(longformUi, /Generating…/);
     assert.match(longformUi, /data-testid="motion2-stage"/);
+    assert.match(longformUi, /data-testid="motion2-fail"/);
+    assert.match(longformUi, /onDismiss/);
+    assert.match(longformUi, /onRetry/);
+    assert.match(studio, /formatLongformFalError/);
+    assert.match(studio, /retry: true/);
   });
 });
