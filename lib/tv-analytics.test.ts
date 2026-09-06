@@ -344,6 +344,13 @@ describe("acquire + DVR paths stay untouched; analytics stays on Overseerr", () 
     assert.match(src, /async function request\(m: Result, quality\?: "4k"\)/);
     assert.match(src, /body: JSON\.stringify\(\{ mediaType: m\.mediaType, mediaId: m\.id, quality \}\)/);
   });
+  it("Search/Browse does not mount Arr pipeline chrome; search stays abortable", () => {
+    const src = readApp("app/tv/tv-client.tsx");
+    assert.equal(src.includes("TvPipeline"), false);
+    assert.equal(src.includes("tv-pipeline"), false);
+    assert.match(src, /AbortController/);
+    assert.match(src, /setTimeout\(\(\) => runSearch\(query\), 180\)/);
+  });
   it("does not add a vercel.json functions key for the analytics route", () => {
     const vercel = JSON.parse(readApp("vercel.json")) as { functions: Record<string, unknown> };
     assert.equal(vercel.functions["app/api/tv/analytics/route.ts"], undefined);
