@@ -156,6 +156,13 @@ export async function POST(req: NextRequest) {
       >;
       queue = patchLongformBeat(queue, String(body.beatId || ""), patch);
     } else if (action === "generate" || action === "generate-next") {
+      if (body.queue) {
+        try {
+          queue = parseLongformQueue(body.queue);
+        } catch (err) {
+          return jsonError(err instanceof Error ? err.message : "Invalid longform queue", 400);
+        }
+      }
       let beatId = String(body.beatId || "");
       if (action === "generate-next" && !beatId) {
         const next = nextGeneratableLongformBeat(queue);
@@ -199,11 +206,14 @@ async function generateLongformBeat(
   if (!ready.ok || !ready.beat) return jsonError(ready.reason || "Cannot generate this beat", 400);
   const beat = ready.beat;
 
-  const safety = isBlockedStudioRequest(`${beat.prompt}\n${beat.negative_prompt}`);
+  // Scan the motion prompt only. The default negative lists "child" / "minor"
+  // as tokens to avoid — concatenating it falsely refused every Motion 2 spawn
+  // with HTTP 200 `{ refused: true }` and no child job.
+  const safety = isBlockedStudioRequest(beat.prompt);
   if (safety.blocked) {
-    return NextResponse.json({
-      reply: safety.reason,
+    return jsonError(safety.reason || "Request refused", 400, {
       refused: true,
+      reply: safety.reason,
       queue,
       kind: "longform",
       estimate: publicEstimate(queue),

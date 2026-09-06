@@ -74,6 +74,7 @@ describe("/generate fal engine tabs", () => {
     assert.match(studio, /\/api\/generate\/longform/);
     const longformApi = readFileSync(join(root, "app/api/generate/longform/route.ts"), "utf8");
     assert.match(longformApi, /spawnFalWan30Motion/);
+    assert.match(longformApi, /if \(body\.queue\)/);
     assert.doesNotMatch(longformApi, /spawnFalMotion\(/);
     assert.doesNotMatch(jobs, /spawnFalWan30Motion/);
     assert.match(studio, /<LongformPanel/);
@@ -88,6 +89,14 @@ describe("/generate fal engine tabs", () => {
     assert.match(jobs, /longform_queue/);
     assert.match(poll, /syncLongformFromChild/);
     assert.match(poll, /syncBeatQueueFromChild/);
+    assert.match(longformUi, /data-testid="motion2-go"/);
+    assert.match(longformUi, /onClick=\{onGo\}/);
+    assert.match(longformUi, /Plan beats first/);
+    assert.match(studio, /longformGenerateClientError/);
+    assert.match(studio, /Plan beats first/);
+    assert.match(longformApi, /isBlockedStudioRequest\(beat\.prompt\)/);
+    assert.doesNotMatch(longformApi, /isBlockedStudioRequest\(`\$\{beat\.prompt\}/);
+    assert.match(studio, /<GenerateLibraryGate/);
   });
 
   it("lays the beat queue out as a horizontal filmstrip, not stacked cards", () => {

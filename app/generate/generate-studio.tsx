@@ -61,12 +61,15 @@ import {
   writeMotionCardToBeat1,
 } from "@/lib/generate-studio-motion-sync";
 import { BeatQueuePanel, GatedClip, SlowMoChip } from "./beat-queue";
+import { GenerateLibraryGate } from "./library-gate";
 import { LongformPanel } from "./longform-queue";
 import {
   LONGFORM_RECIPE,
   applyLocalLongformBeatPatch,
   emptyLongformQueue,
   estimateLongform,
+  longformGenerateClientError,
+  nextGeneratableLongformBeat,
   parseLongformQueue,
   type LongformEstimate,
   type LongformQueue,
@@ -333,6 +336,7 @@ export default function GenerateStudio() {
   const [longformRipple, setLongformRipple] = useState(false);
   const [selectedLongformBeatId, setSelectedLongformBeatId] = useState<string | null>(null);
   const [uploadingLongformStill, setUploadingLongformStill] = useState(false);
+  const [motion2Notice, setMotion2Notice] = useState<string | null>(null);
 
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
   const chatEnd = useRef<HTMLDivElement | null>(null);
@@ -686,6 +690,8 @@ export default function GenerateStudio() {
       error?: string;
       dryRun?: boolean;
       note?: string;
+      refused?: boolean;
+      reply?: string;
     };
     if (j.queue) {
       const next = parseLongformQueue(j.queue);
@@ -706,7 +712,8 @@ export default function GenerateStudio() {
       setResultIsVideo(true);
       setResultUrl(stillSrc(j.stitch.id, 0));
     }
-    if (!r.ok) throw new Error(j.error || "Longform update failed");
+    if (j.refused) throw new Error(j.reply || "Motion 2 refused this prompt.");
+    if (!r.ok) throw new Error(j.error || j.reply || "Longform update failed");
     return j;
   }
 
@@ -736,8 +743,10 @@ export default function GenerateStudio() {
     };
     if (data.queue) {
       const next = parseLongformQueue(data.queue);
-      longformQueueRef.current = next;
-      setLongformQueue(next);
+      if (next.beats.length || !longformQueueRef.current.beats.length) {
+        longformQueueRef.current = next;
+        setLongformQueue(next);
+      }
     }
     if (data.estimate) setLongformEstimate(data.estimate);
     if (data.job?.id) {
@@ -755,68 +764,80 @@ export default function GenerateStudio() {
       ripple: longformRippleRef.current,
     });
     if (j.dryRun) {
+      const note = j.note || j.estimate?.note || "Dry run — no fal spend. Untick Dry run and hit Go.";
       setStage(null);
-      setMessages((m) => [
-        ...m,
-        {
-          id: mid(),
-          role: "assistant",
-          content: j.note || j.estimate?.note || "Dry run — no fal spend.",
-        },
-      ]);
+      setMotion2Notice(note);
+      setMessages((m) => [...m, { id: mid(), role: "assistant", content: note }]);
       return;
     }
-    if (j.child?.id) {
-      setActiveJobId(j.child.id);
-      await waitForGenerateJob(j.child.id);
-      await refreshLongformQueue();
-    }
+    const spawnErr = longformGenerateClientError(j);
+    if (spawnErr) throw new Error(spawnErr);
+    setActiveJobId(j.child!.id);
+    setMotion2Notice(`Beat running on fal… ${j.child!.id}`);
+    await waitForGenerateJob(j.child!.id);
+    await refreshLongformQueue();
   }
 
   async function generateLongformRemaining() {
     setError(null);
-    if (!longformQueueRef.current.beats.length) {
-      await longformAction("plan", {
-        sourceImageUrl: longformQueueRef.current.source_image_url,
-        script: longformQueueRef.current.script,
-        targetSeconds: longformQueueRef.current.target_seconds,
-        beatSeconds: longformQueueRef.current.beat_seconds,
-        endImageUrl: longformQueueRef.current.end_image_url,
-        aspect: longformQueueRef.current.aspect,
-      });
+    setResultUrl(null);
+    setMotion2Notice(null);
+    const current = longformQueueRef.current;
+    if (!current.beats.length) {
+      throw new Error("Plan beats first — Motion 2 will not generate until you have a queue.");
     }
+    const nextBeat = nextGeneratableLongformBeat(current);
+    if (!nextBeat) {
+      throw new Error(
+        current.beats.some((b) => b.status === "generating")
+          ? "A beat is already generating. Wait for it to finish."
+          : "No remaining beat is ready to generate. Plan a new take, or wait for the previous last frame.",
+      );
+    }
+    setStage(dryRun ? "dry run…" : "Motion 2 → fal…");
+    setMotion2Notice(dryRun ? "Dry-running Beat 1 (no GPU)…" : `Starting ${nextBeat.id} on fal…`);
     if (dryRun) {
-      const first = longformQueueRef.current.beats[0];
-      if (!first) throw new Error("Plan beats first");
-      await generateLongformClip(first.id);
+      await generateLongformClip(nextBeat.id);
       return;
     }
+    let started = 0;
     for (;;) {
-      const q = await fetch("/api/generate/longform", { cache: "no-store" });
-      if (q.ok) {
-        const data = (await readJson(q)) as { queue?: LongformQueue; job?: ModalJob; estimate?: LongformEstimate };
-        if (data.queue) {
-          const next = parseLongformQueue(data.queue);
-          longformQueueRef.current = next;
-          setLongformQueue(next);
-        }
-        if (data.estimate) setLongformEstimate(data.estimate);
-      }
+      let j: Awaited<ReturnType<typeof longformAction>>;
       try {
-        const j = await longformAction("generate-next", { ripple: longformRippleRef.current });
-        if (j.child?.id) {
-          setActiveJobId(j.child.id);
-          await waitForGenerateJob(j.child.id);
-          await refreshLongformQueue();
-          continue;
-        }
+        j = await longformAction("generate-next", {
+          dryRun,
+          ripple: longformRippleRef.current,
+        });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        if (/No remaining beat/i.test(msg)) break;
+        if (started && /No remaining beat|last frame|previous beat/i.test(msg)) {
+          setStage(null);
+          return;
+        }
         throw err;
       }
-      break;
+      if (j.dryRun) {
+        const note = j.note || j.estimate?.note || "Dry run — no fal spend. Untick Dry run and hit Go.";
+        setStage(null);
+        setMotion2Notice(note);
+        setMessages((m) => [...m, { id: mid(), role: "assistant", content: note }]);
+        return;
+      }
+      const spawnErr = longformGenerateClientError(j);
+      if (spawnErr) throw new Error(spawnErr);
+      started += 1;
+      setActiveJobId(j.child!.id);
+      setMotion2Notice(`fal running… beat ${j.child!.id}`);
+      setStage(`fal running… beat ${j.child!.id.slice(0, 8)}`);
+      await waitForGenerateJob(j.child!.id);
+      await refreshLongformQueue();
+      if (!nextGeneratableLongformBeat(longformQueueRef.current)) break;
     }
+    if (!started) {
+      throw new Error("No remaining beat is ready to generate. Plan a new take or generate the previous beat first.");
+    }
+    setStage(null);
+    setMotion2Notice("Beat finished. Review below, or hit Go for the next draft.");
   }
 
   async function uploadLongformStill(file: File) {
@@ -1253,7 +1274,9 @@ export default function GenerateStudio() {
       else await goEngine();
     } catch (e) {
       setStage(null);
-      setError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg);
+      if (mode === "motion2") setMotion2Notice(msg);
     }
   }
 
@@ -1271,8 +1294,9 @@ export default function GenerateStudio() {
           (/^https:\/\//i.test(motionCard.source_image_url.trim()) ||
             /^\/api\/generate\/jobs\/[^/]+\/image\?i=\d+$/.test(motionCard.source_image_url.trim()))
         : mode === "motion2"
-          ? /^https:\/\//i.test(longformQueue.source_image_url.trim()) ||
-            /^\/api\/generate\/jobs\/[^/]+\/image\?i=\d+$/.test(longformQueue.source_image_url.trim())
+          ? (/^https:\/\//i.test(longformQueue.source_image_url.trim()) ||
+              /^\/api\/generate\/jobs\/[^/]+\/image\?i=\d+$/.test(longformQueue.source_image_url.trim())) &&
+            Boolean(nextGeneratableLongformBeat(longformQueue))
         : composeEnginePrompt(inference, description).length > 0;
   const canGo =
     !busy &&
@@ -2057,8 +2081,21 @@ export default function GenerateStudio() {
               onEndStill={(url) => commitLongformLocal({ ...longformQueueRef.current, end_image_url: url })}
               onDryRun={setDryRun}
               onRipple={setLongformRipple}
+              notice={motion2Notice}
+              stage={stage}
               onPlan={() => {
                 setError(null);
+                setMotion2Notice(null);
+                if (
+                  !/^https:\/\//i.test(longformQueueRef.current.source_image_url.trim()) &&
+                  !/^\/api\/generate\/jobs\/[^/]+\/image\?i=\d+$/.test(
+                    longformQueueRef.current.source_image_url.trim(),
+                  )
+                ) {
+                  setError("Keep still required to plan beats.");
+                  return;
+                }
+                setStage("planning Motion 2 beats…");
                 longformAction("plan", {
                   sourceImageUrl: longformQueueRef.current.source_image_url,
                   script: longformQueueRef.current.script,
@@ -2066,7 +2103,15 @@ export default function GenerateStudio() {
                   beatSeconds: longformQueueRef.current.beat_seconds,
                   endImageUrl: longformQueueRef.current.end_image_url,
                   aspect: longformQueueRef.current.aspect,
-                }).catch((err) => setError(err instanceof Error ? err.message : String(err)));
+                })
+                  .then((j) => {
+                    const n = j.queue?.beats.length || longformQueueRef.current.beats.length;
+                    const msg = `Planned ${n} beats. Review the queue below, then hit Go.`;
+                    setMotion2Notice(msg);
+                    setMessages((m) => [...m, { id: mid(), role: "assistant", content: msg }]);
+                  })
+                  .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+                  .finally(() => setStage(null));
               }}
               onPatch={patchLongformBeatLocal}
               onGenerate={(id) => {
@@ -2074,10 +2119,9 @@ export default function GenerateStudio() {
                   .catch((err) => setError(err instanceof Error ? err.message : String(err)))
                   .finally(() => setStage(null));
               }}
-              onGenerateRemaining={() => {
-                generateLongformRemaining()
-                  .catch((err) => setError(err instanceof Error ? err.message : String(err)))
-                  .finally(() => setStage(null));
+              canGo={canGo}
+              onGo={() => {
+                void go();
               }}
               onApprove={(id) => {
                 longformAction("approve", { beatId: id }).catch((err) =>
@@ -2229,7 +2273,7 @@ export default function GenerateStudio() {
             </div>
           )}
           {(mode === "modal" || mode === "motion" || mode === "motion2") && (
-            <>
+            <GenerateLibraryGate>
               <ModalGallery
                 jobs={modalJobs}
                 onUseStill={
@@ -2241,10 +2285,10 @@ export default function GenerateStudio() {
                 }
               />
               <MotionGallery jobs={modalJobs} />
-            </>
+            </GenerateLibraryGate>
           )}
           {(mode === "t2i" || mode === "t2v" || mode === "i2v") && (
-            <>
+            <GenerateLibraryGate>
               {mode === "i2v" && (
                 <ModalGallery jobs={modalJobs} onUseStill={(url) => setI2vSourceUrl(url)} />
               )}
@@ -2252,7 +2296,7 @@ export default function GenerateStudio() {
                 jobs={modalJobs}
                 onUseStill={mode === "i2v" ? (url) => setI2vSourceUrl(url) : undefined}
               />
-            </>
+            </GenerateLibraryGate>
           )}
         </section>
       </div>

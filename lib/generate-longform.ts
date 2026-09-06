@@ -476,6 +476,29 @@ export function ensureBeatSourceFromPrev(queue: LongformQueue, beatId: string): 
   return applyLastFrameToNext(queue, idx - 1, src);
 }
 
+/**
+ * A 200 from generate / generate-next is not success unless a child job
+ * started (or it is an explicit dry-run). Prod was returning refused:true
+ * because the default negative lists "child" — the client used to ignore that.
+ */
+export function longformGenerateClientError(body: {
+  child?: { id?: string } | null;
+  dryRun?: boolean;
+  refused?: boolean;
+  reply?: string;
+  error?: string;
+  note?: string;
+}): string | null {
+  if (body.refused) return body.reply || body.error || "Motion 2 refused this prompt.";
+  if (body.dryRun) return null;
+  if (body.child?.id) return null;
+  return (
+    body.error ||
+    body.note ||
+    "Motion 2 returned OK but did not start a clip job. Plan beats first, then hit Go."
+  );
+}
+
 export function nextGeneratableLongformBeat(queue: LongformQueue): LongformBeat | null {
   for (let i = 0; i < queue.beats.length; i++) {
     const b = queue.beats[i];
@@ -486,6 +509,25 @@ export function nextGeneratableLongformBeat(queue: LongformQueue): LongformBeat 
     return null;
   }
   return null;
+}
+
+/**
+ * Go should plan a fresh take when there is nothing left to generate:
+ * empty queue, leftover finished queue from a prior visit, or all-draft
+ * beats whose Beat 1 still does not match the keep still in the form.
+ * Mid-queue (last-frame wait / generating) is left alone.
+ */
+export function longformNeedsNewPlan(queue: LongformQueue): boolean {
+  if (!queue.source_image_url.trim()) return false;
+  if (!queue.beats.length) return true;
+  if (nextGeneratableLongformBeat(queue)) return false;
+  if (queue.beats.some((b) => b.status === "generating")) return false;
+  const unfinished = queue.beats.filter((b) => b.status === "draft" || b.status === "rejected");
+  if (unfinished.length && unfinished.length === queue.beats.length) {
+    const beat1 = queue.beats[0];
+    return !beat1.source_image_url.trim() || beat1.source_image_url.trim() !== queue.source_image_url.trim();
+  }
+  return queue.beats.every((b) => b.status === "ready" || b.status === "approved");
 }
 
 export function longformStitchBlockers(queue: LongformQueue): string[] {

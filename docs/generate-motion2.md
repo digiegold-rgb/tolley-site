@@ -22,9 +22,9 @@ Motion 1 is unchanged. Do not generate Motion 2 jobs through the filmstrip.
 ## Pipeline
 
 1. **Keep still** + **target seconds** (default 180, max 300) + optional **scene plan** (one motion prompt per line).
-2. **Plan** creates N draft beats from target seconds ÷ segment length. Empty script duplicates the identity-lock / Beat-1 prompt. Extra lines raise beat count above the duration floor.
-3. **Dry-run estimate** shows beat count and fal call count **before** spend. Dry run on Generate remaining dry-runs beat 1 only (kwargs, no GPU).
-4. **Generate remaining** runs beats **sequentially**: spawn fal Wan I2V (or FLF2V if an end still is set) → poll → **extract last frame** → persist PNG at child job index `1` (Spark-first / private Blob) → next beat `source_image_url` = gated `/api/generate/jobs/:id/image?i=1`.
+2. **Plan** creates N draft beats from target seconds ÷ segment length. Empty script duplicates the identity-lock / Beat-1 prompt. Extra lines raise beat count above the duration floor. Go stays off until this queue exists.
+3. **Dry-run estimate** shows beat count and fal call count **before** spend. Dry run on Go dry-runs beat 1 only (kwargs, no GPU) and prints the note on the page.
+4. **Go** runs beats **sequentially**: spawn fal Wan 3.0 I2V (or FLF2V if an end still is set) → poll → **extract last frame** → persist PNG at child job index `1` (Spark-first / private Blob) → next beat `source_image_url` = gated `/api/generate/jobs/:id/image?i=1`. A 200 without a child job (refused / dry-run / empty) is treated as an error or an explicit dry-run message — never a silent idle. Safety scans the motion prompt only (not the negative, which lists `child` as a reject token).
 5. **Review** each clip. Regenerate a bad beat. **Ripple continuity** (opt-in) re-chains the new last frame into beat k+1 and resets later beats to draft. Without ripple, later clips stay (expect a cut).
 6. **Approve** every beat, then **Stitch approved beats**. Concat is `ffmpeg -f concat -c copy` on **Vercel Node** (`maxDuration` 120). Not Spark. Crossfade is not on this path (Motion 1 still has optional two-clip xfade).
 
