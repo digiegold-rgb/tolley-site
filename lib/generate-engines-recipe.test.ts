@@ -99,6 +99,22 @@ describe("/generate fal engine tabs", () => {
     assert.match(studio, /<GenerateLibraryGate/);
   });
 
+  it("adds a Cinema tab on Seedance/Kling without overloading Motion 1 or Motion 2", () => {
+    assert.match(studio, /"cinema"/);
+    assert.match(studio, /Cinema/);
+    assert.match(fal, /bytedance\/seedance-2\.0\/reference-to-video/);
+    assert.match(fal, /fal-ai\/kling-video\/v3\/pro\/image-to-video/);
+    assert.match(fal, /"seedance-ref"/);
+    assert.match(fal, /"kling3-elements"/);
+    const cinemaApi = readFileSync(join(root, "app/api/generate/cinema/route.ts"), "utf8");
+    assert.match(cinemaApi, /spawnCinemaBeat/);
+    assert.match(cinemaApi, /isBlockedStudioRequest\(beat\.prompt\)/);
+    assert.doesNotMatch(cinemaApi, /isBlockedStudioRequest\(`\$\{beat\.prompt\}/);
+    assert.match(cinemaApi, /load-estate/);
+    assert.match(jobs, /cinema_queue/);
+    assert.match(poll, /syncCinemaFromChild/);
+  });
+
   it("lays the beat queue out as a horizontal filmstrip, not stacked cards", () => {
     const css = readFileSync(join(root, "app/generate/generate.css"), "utf8");
     assert.match(css, /\.gen-beat-strip\s*\{[^}]*flex-direction:\s*row/s);

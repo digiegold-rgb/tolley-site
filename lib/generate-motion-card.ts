@@ -39,6 +39,16 @@ export const MOTION_RESOLUTION_DEFAULT: MotionResolution = "720p";
 export const WAN30_USD_PER_SEC_720P = 0.1;
 export const WAN30_USD_PER_SEC_1080P = 0.2;
 
+/** Total-seconds estimator (does not clamp to a single 2–30s beat). */
+export function wan30UsdForSeconds(
+  totalSeconds: number,
+  resolution: MotionResolution = MOTION_RESOLUTION_DEFAULT,
+): number {
+  const rate = resolution === "1080p" ? WAN30_USD_PER_SEC_1080P : WAN30_USD_PER_SEC_720P;
+  const s = Math.max(0, Number(totalSeconds) || 0);
+  return Math.round(s * rate * 100) / 100;
+}
+
 export const MOTION_ASPECTS = ["9:16", "16:9", "1:1", "auto"] as const;
 export type MotionAspect = (typeof MOTION_ASPECTS)[number];
 

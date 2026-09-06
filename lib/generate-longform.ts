@@ -20,10 +20,12 @@ import {
   clampMotionSeconds,
   parseGenerateMotionCard,
   wan30UsdEstimate,
+  wan30UsdForSeconds,
   type MotionResolution,
   type GenerateMotionCard,
   type MotionAspect,
 } from "./generate-motion-card";
+import { needsSpendConfirm, SPEND_CONFIRM_USD } from "./generate-queue-binding";
 import {
   BEAT_STATUSES,
   STITCH_RECIPE,
@@ -60,6 +62,8 @@ export type LongformQueue = {
   script: string;
   aspect: MotionAspect;
   end_image_url: string;
+  /** Default ON — after a beat is ready, Run remaining / Go kicks the next draft. */
+  auto_advance: boolean;
   beats: LongformBeat[];
   stitch_job_id: string;
   stitch_error: string;
@@ -72,6 +76,11 @@ export type LongformEstimate = {
   beat_count: number;
   fal_calls: number;
   planned_seconds: number;
+  usd_720p: number;
+  usd_1080p: number;
+  remaining_seconds: number;
+  remaining_usd_720p: number;
+  needs_confirm: boolean;
   note: string;
 };
 
@@ -100,18 +109,79 @@ export function estimateLongform(opts: {
   const fromDuration = beatCountForDuration(clampTargetSeconds(opts.targetSeconds), beatSeconds);
   const beatCount = fromScript > 0 ? Math.max(fromScript, fromDuration) : fromDuration;
   const planned = beatCount * beatSeconds;
-  const usd720 = wan30UsdEstimate(planned, "720p");
-  const usd1080 = wan30UsdEstimate(planned, "1080p");
+  const usd720 = wan30UsdForSeconds(planned, "720p");
+  const usd1080 = wan30UsdForSeconds(planned, "1080p");
   return {
     target_seconds: clampTargetSeconds(opts.targetSeconds),
     beat_seconds: beatSeconds,
     beat_count: beatCount,
     fal_calls: beatCount,
     planned_seconds: planned,
+    usd_720p: usd720,
+    usd_1080p: usd1080,
+    remaining_seconds: planned,
+    remaining_usd_720p: usd720,
+    needs_confirm: needsSpendConfirm(usd720, SPEND_CONFIRM_USD),
     note:
       `${beatCount} Wan 3.0 I2V calls × ${beatSeconds}s ≈ ${planned}s take ` +
       `(~$${usd720.toFixed(2)} @720p / ~$${usd1080.toFixed(2)} @1080p). ` +
-      `Not one native ${planned}s Wan job — last-frame chain + stitch.`,
+      `Not one native ${planned}s Wan job — last-frame chain + stitch. ` +
+      `Go = run remaining (sequential), not Beat 1 only.`,
+  };
+}
+
+export function remainingLongformDrafts(queue: LongformQueue): LongformBeat[] {
+  return queue.beats.filter((b) => b.status === "draft");
+}
+
+export function remainingLongformSeconds(queue: LongformQueue): number {
+  return remainingLongformDrafts(queue).reduce((s, b) => s + b.seconds, 0);
+}
+
+export function remainingLongformUsd(
+  queue: LongformQueue,
+  resolution: MotionResolution = "720p",
+): number {
+  return wan30UsdForSeconds(remainingLongformSeconds(queue), resolution);
+}
+
+export function remainingLongformSpend(queue: LongformQueue): {
+  beats: number;
+  seconds: number;
+  usd: number;
+  needs_confirm: boolean;
+  message: string;
+} {
+  const drafts = remainingLongformDrafts(queue);
+  const seconds = drafts.reduce((s, b) => s + b.seconds, 0);
+  const usd = wan30UsdForSeconds(seconds, "720p");
+  return {
+    beats: drafts.length,
+    seconds,
+    usd,
+    needs_confirm: needsSpendConfirm(usd, SPEND_CONFIRM_USD),
+    message:
+      `About $${usd.toFixed(2)} for ${drafts.length} remaining Wan 3.0 beat(s) ` +
+      `(${seconds}s × $0.10/s @720p). Continue?`,
+  };
+}
+
+export function estimateLongformQueue(queue: LongformQueue): LongformEstimate {
+  const base = estimateLongform({
+    targetSeconds: queue.target_seconds,
+    beatSeconds: queue.beat_seconds,
+    script: queue.script,
+  });
+  const remaining = remainingLongformSpend(queue);
+  return {
+    ...base,
+    remaining_seconds: remaining.seconds,
+    remaining_usd_720p: remaining.usd,
+    needs_confirm: remaining.needs_confirm,
+    note:
+      remaining.beats < base.beat_count
+        ? `${base.note} Remaining: ${remaining.beats} drafts ≈ ${remaining.seconds}s (~$${remaining.usd.toFixed(2)} @720p).`
+        : base.note,
   };
 }
 
@@ -165,6 +235,7 @@ export function emptyLongformQueue(partial?: Partial<LongformQueue>): LongformQu
       ? (partial!.aspect as MotionAspect)
       : "9:16",
     end_image_url: (partial?.end_image_url || "").trim(),
+    auto_advance: partial?.auto_advance !== false,
     beats: Array.isArray(partial?.beats) ? partial.beats.map((b) => emptyLongformBeat(b)) : [],
     stitch_job_id: (partial?.stitch_job_id || "").trim(),
     stitch_error: (partial?.stitch_error || "").trim(),
@@ -230,6 +301,7 @@ export function parseLongformQueue(raw: unknown): LongformQueue {
         : typeof rec.endImageUrl === "string"
           ? rec.endImageUrl
           : undefined,
+    auto_advance: rec.auto_advance !== false && rec.autoAdvance !== false,
     beats: beatsRaw.map((b) => parseLongformBeat(b)),
     stitch_job_id:
       typeof rec.stitch_job_id === "string"

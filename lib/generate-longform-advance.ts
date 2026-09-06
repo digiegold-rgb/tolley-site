@@ -20,9 +20,11 @@ import {
   type LongformQueue,
 } from "./generate-longform";
 import { cardBeatId, cardQueueId, findLongformParentForChild, loadLongformJob } from "./generate-longform-store";
+import { formatStuckQueueError, isStuckInFlightChild } from "./generate-queue-binding";
 import { readableToBuffer } from "./generate-media";
 import { gatedJobImagePath } from "./generate-output";
 import { fetchStoredJobImage, persistJobPngBuffers } from "./generate-output-persist";
+import { falModelIdFromCard, persistMotionVideo, pollFalMotion } from "./generate-motion";
 import { prisma } from "./prisma";
 
 export const LAST_FRAME_OUTPUT_INDEX = 1;
@@ -112,7 +114,60 @@ type ChildRow = {
   error?: string | null;
   cardJson: unknown;
   outputUrls: string[];
+  modalCallId?: string | null;
+  recipe?: string;
+  startedAt?: Date | null;
+  createdAt?: Date;
+  updatedAt?: Date;
 };
+
+async function unlockStuckLongformChild(child: ChildRow): Promise<ChildRow> {
+  if (!isStuckInFlightChild(child)) return child;
+  if (!child.modalCallId) {
+    return prisma.generateJob.update({
+      where: { id: child.id },
+      data: {
+        status: "failed",
+        error: formatStuckQueueError("No fal request id."),
+        completedAt: new Date(),
+      },
+    });
+  }
+  try {
+    const poll = await pollFalMotion(falModelIdFromCard(child.cardJson, child.recipe || ""), child.modalCallId);
+    if ("done" in poll && poll.done) {
+      const url = await persistMotionVideo(child.id, poll.videoUrl, poll.contentType);
+      return prisma.generateJob.update({
+        where: { id: child.id },
+        data: { status: "done", outputUrls: [url], completedAt: new Date(), error: null },
+      });
+    }
+    if ("failed" in poll && poll.failed) {
+      return prisma.generateJob.update({
+        where: { id: child.id },
+        data: { status: "failed", error: poll.error.slice(0, 2000), completedAt: new Date() },
+      });
+    }
+    return prisma.generateJob.update({
+      where: { id: child.id },
+      data: {
+        status: "failed",
+        error: formatStuckQueueError(`fal still ${"status" in poll ? poll.status : "pending"}.`),
+        completedAt: new Date(),
+      },
+    });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return prisma.generateJob.update({
+      where: { id: child.id },
+      data: {
+        status: "failed",
+        error: formatStuckQueueError(detail).slice(0, 2000),
+        completedAt: new Date(),
+      },
+    });
+  }
+}
 
 /**
  * Re-bind beat status from linked (or queue_id-tagged) children so a refresh
@@ -150,7 +205,10 @@ export async function reconcileLongformParent(loaded: {
   }
 
   let next = loaded.queue;
-  for (const child of children) {
+  for (let child of children) {
+    if (isInFlightJobStatus(child.status) && isStuckInFlightChild(child)) {
+      child = await unlockStuckLongformChild(child);
+    }
     if (isInFlightJobStatus(child.status)) {
       if (longformBeatByJobId(next, child.id)) {
         next = markLongformBeatFromChildJob(next, child.id, child);

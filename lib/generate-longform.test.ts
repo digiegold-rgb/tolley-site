@@ -11,6 +11,7 @@ import {
   canGenerateLongformBeat,
   canStitchLongform,
   estimateLongform,
+  remainingLongformSpend,
   applyChildJobsToLongformQueue,
   bindLongformQueueToJobs,
   failedHoldLongformBeats,
@@ -58,6 +59,9 @@ describe("longform duration → beat count", () => {
     assert.match(e.note, /Not one native/);
     assert.match(e.note, /last-frame/);
     assert.match(e.note, /\$/);
+    assert.match(e.note, /run remaining/i);
+    assert.equal(e.usd_720p, 18);
+    assert.equal(e.needs_confirm, true);
     const five = estimateLongform({ targetSeconds: 180, beatSeconds: 5 });
     assert.equal(five.beat_count, 36);
   });
@@ -335,6 +339,29 @@ describe("longform generate 200 body", () => {
     assert.equal(longformGenerateClientError({ child: { id: "job_1" } }), null);
     assert.equal(longformGenerateClientError({ already_running: true, child: { id: "job_1" } }), null);
     assert.equal(longformGenerateClientError({ dryRun: true, note: "no spend" }), null);
+  });
+
+  it("requires spend confirm when remaining N×30s Wan is over $5", () => {
+    const q = planLongformQueue({
+      targetSeconds: 180,
+      beatSeconds: 30,
+      sourceImageUrl: STILL,
+      fallbackPrompt: "walk",
+    });
+    const spend = remainingLongformSpend(q);
+    assert.equal(q.beats.length, 6);
+    assert.equal(spend.seconds, 180);
+    assert.equal(spend.usd, 18);
+    assert.equal(spend.needs_confirm, true);
+    assert.match(spend.message, /\$18/);
+    const cheap = planLongformQueue({
+      targetSeconds: 15,
+      beatSeconds: 15,
+      sourceImageUrl: STILL,
+      fallbackPrompt: "walk",
+    });
+    assert.equal(remainingLongformSpend(cheap).needs_confirm, false);
+    assert.equal(parseLongformQueue(q).auto_advance, true);
   });
 
   it("does not treat the default negative's child/minor tokens as a prompt refuse", () => {

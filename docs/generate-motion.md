@@ -4,7 +4,9 @@ Jared takes a **keep still** (Modal Qwen-Image-Edit output, pasted Blob URL, or 
 
 For a planned ~3-minute take on **Wan 3.0** (5 / 15 / 30s segments) see **Motion 2 · Longform** (`docs/generate-motion2.md`). Motion 1 does **not** call Wan 3.0.
 
-This is **not** ByteDance Seedance. This is **not** LatentSync face-lock.
+The estate-lady cinema short (proof-estate-01) is **Cinema** (`docs/generate-cinema.md`) — Seedance 2.0 / Kling, not Wan.
+
+This is **not** ByteDance Seedance on the Motion tabs. This is **not** LatentSync face-lock.
 
 ## What works
 

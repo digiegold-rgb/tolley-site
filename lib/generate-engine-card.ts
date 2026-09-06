@@ -36,7 +36,9 @@ export function isFalVideoRecipe(recipe: string | null | undefined): boolean {
   return (
     recipe === ENGINE_RECIPE_T2V ||
     recipe === MOTION_RECIPE_I2V ||
-    recipe === MOTION_RECIPE_FLF2V
+    recipe === MOTION_RECIPE_FLF2V ||
+    recipe === "fal-seedance-ref" ||
+    recipe === "fal-kling-elements"
   );
 }
 

@@ -62,13 +62,42 @@ import {
 } from "@/lib/generate-studio-motion-sync";
 import { BeatQueuePanel, GatedClip, SlowMoChip } from "./beat-queue";
 import { GenerateLibraryGate } from "./library-gate";
+import { CinemaPanel } from "./cinema-queue";
 import { LongformPanel } from "./longform-queue";
+import {
+  applyLocalCinemaBeatPatch,
+  bindCinemaQueueToJobs,
+  cinemaGenerateClientError,
+  cinemaGenerateLocked,
+  cinemaPrimaryBusy,
+  cinemaRunningNotice,
+  emptyCinemaQueue,
+  estimateCinema,
+  failedHoldCinemaBeats,
+  formatCinemaFalError,
+  inFlightCinemaBeats,
+  loadEstateProofTemplate,
+  nextGeneratableCinemaBeat,
+  parseCinemaQueue,
+  type CinemaEstimate,
+  type CinemaQueue,
+} from "@/lib/generate-cinema";
+import { CINEMA_RECIPE } from "@/lib/generate-cinema";
+import {
+  LONGFORM_QUEUE_PARAM,
+  LONGFORM_QUEUE_STORAGE_KEY,
+  CINEMA_QUEUE_PARAM,
+  CINEMA_QUEUE_STORAGE_KEY,
+  persistBoundQueueId,
+  queueGetUrl,
+  readBoundQueueId,
+} from "@/lib/generate-queue-binding";
 import {
   LONGFORM_RECIPE,
   applyLocalLongformBeatPatch,
   bindLongformQueueToJobs,
   emptyLongformQueue,
-  estimateLongform,
+  estimateLongformQueue,
   failedHoldLongformBeats,
   formatLongformFalError,
   inFlightLongformBeats,
@@ -79,6 +108,7 @@ import {
   motion2PrimaryBusy,
   nextGeneratableLongformBeat,
   parseLongformQueue,
+  remainingLongformSpend,
   type LongformEstimate,
   type LongformQueue,
 } from "@/lib/generate-longform";
@@ -96,6 +126,7 @@ const MODES = [
   { id: "modal", label: "Modal stills" },
   { id: "motion", label: "Motion" },
   { id: "motion2", label: "Motion 2 · Longform" },
+  { id: "cinema", label: "Cinema" },
   { id: "t2i", label: "Text → Image" },
   { id: "t2v", label: "Text → Video" },
   { id: "i2v", label: "Image → Video" },
@@ -128,6 +159,10 @@ function isBeatQueueJob(job: ModalJob): boolean {
 
 function isLongformQueueJob(job: ModalJob): boolean {
   return job.recipe === LONGFORM_RECIPE;
+}
+
+function isCinemaQueueJob(job: ModalJob): boolean {
+  return job.recipe === CINEMA_RECIPE;
 }
 
 function isEngineJob(job: ModalJob): boolean {
@@ -243,6 +278,7 @@ function ModalGallery({
       !isStitchJob(j) &&
       !isBeatQueueJob(j) &&
       !isLongformQueueJob(j) &&
+      !isCinemaQueueJob(j) &&
       j.status === "done" &&
       (j.output_urls?.length ?? 0) > 0,
   );
@@ -345,6 +381,12 @@ export default function GenerateStudio() {
   const [selectedLongformBeatId, setSelectedLongformBeatId] = useState<string | null>(null);
   const [uploadingLongformStill, setUploadingLongformStill] = useState(false);
   const [motion2Notice, setMotion2Notice] = useState<string | null>(null);
+  const [longformAutoAdvance, setLongformAutoAdvance] = useState(true);
+  const [cinemaQueue, setCinemaQueue] = useState<CinemaQueue>(() => emptyCinemaQueue());
+  const [cinemaJobId, setCinemaJobId] = useState<string | null>(null);
+  const [cinemaEstimate, setCinemaEstimate] = useState<CinemaEstimate | null>(null);
+  const [selectedCinemaBeatId, setSelectedCinemaBeatId] = useState<string | null>(null);
+  const [cinemaNotice, setCinemaNotice] = useState<string | null>(null);
 
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
   const chatEnd = useRef<HTMLDivElement | null>(null);
@@ -359,6 +401,11 @@ export default function GenerateStudio() {
   const longformRippleRef = useRef(longformRipple);
   const longformPollJobIdRef = useRef<string | null>(null);
   const longformWaiters = useRef(new Map<string, Promise<ModalJob>>());
+  const longformAutoAdvanceRef = useRef(longformAutoAdvance);
+  const cinemaQueueRef = useRef(cinemaQueue);
+  const cinemaJobIdRef = useRef(cinemaJobId);
+  const cinemaWaiters = useRef(new Map<string, Promise<ModalJob>>());
+  const cinemaPollJobIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     beatQueueRef.current = beatQueue;
@@ -378,6 +425,47 @@ export default function GenerateStudio() {
   useEffect(() => {
     longformRippleRef.current = longformRipple;
   }, [longformRipple]);
+  useEffect(() => {
+    longformAutoAdvanceRef.current = longformAutoAdvance;
+  }, [longformAutoAdvance]);
+  useEffect(() => {
+    cinemaQueueRef.current = cinemaQueue;
+  }, [cinemaQueue]);
+  useEffect(() => {
+    cinemaJobIdRef.current = cinemaJobId;
+  }, [cinemaJobId]);
+
+  function bindLongformId(id: string | null | undefined) {
+    const next = (id || "").trim();
+    if (!next) return;
+    longformJobIdRef.current = next;
+    setLongformJobId(next);
+    persistBoundQueueId({
+      id: next,
+      storageKey: LONGFORM_QUEUE_STORAGE_KEY,
+      param: LONGFORM_QUEUE_PARAM,
+      storage: typeof window !== "undefined" ? window.localStorage : null,
+      history: typeof window !== "undefined" ? window.history : null,
+      search: typeof window !== "undefined" ? window.location.search : "",
+      pathname: typeof window !== "undefined" ? window.location.pathname : "/generate",
+    });
+  }
+
+  function bindCinemaId(id: string | null | undefined) {
+    const next = (id || "").trim();
+    if (!next) return;
+    cinemaJobIdRef.current = next;
+    setCinemaJobId(next);
+    persistBoundQueueId({
+      id: next,
+      storageKey: CINEMA_QUEUE_STORAGE_KEY,
+      param: CINEMA_QUEUE_PARAM,
+      storage: typeof window !== "undefined" ? window.localStorage : null,
+      history: typeof window !== "undefined" ? window.history : null,
+      search: typeof window !== "undefined" ? window.location.search : "",
+      pathname: typeof window !== "undefined" ? window.location.pathname : "/generate",
+    });
+  }
 
   useEffect(
     () => () => {
@@ -409,7 +497,22 @@ export default function GenerateStudio() {
         }
       })
       .catch(() => {});
-    fetch("/api/generate/jobs", { cache: "no-store" })
+    const boundLongform = readBoundQueueId({
+      search: window.location.search,
+      storage: window.localStorage,
+      storageKey: LONGFORM_QUEUE_STORAGE_KEY,
+      param: LONGFORM_QUEUE_PARAM,
+    });
+    const boundCinema = readBoundQueueId({
+      search: window.location.search,
+      storage: window.localStorage,
+      storageKey: CINEMA_QUEUE_STORAGE_KEY,
+      param: CINEMA_QUEUE_PARAM,
+    });
+    const jobsQs = new URLSearchParams();
+    if (boundLongform) jobsQs.set("queue", boundLongform);
+    if (boundCinema) jobsQs.set("cinema", boundCinema);
+    fetch(jobsQs.toString() ? `/api/generate/jobs?${jobsQs}` : "/api/generate/jobs", { cache: "no-store" })
       .then(async (r) => {
         if (r.status === 401 || r.status === 403) {
           setModalAuthed(false);
@@ -466,13 +569,8 @@ export default function GenerateStudio() {
             }
             setLongformQueue(loaded);
             longformQueueRef.current = loaded;
-            setLongformEstimate(
-              estimateLongform({
-                targetSeconds: loaded.target_seconds,
-                beatSeconds: loaded.beat_seconds,
-                script: loaded.script,
-              }),
-            );
+            setLongformEstimate(estimateLongformQueue(loaded));
+            setLongformAutoAdvance(loaded.auto_advance !== false);
             const live = inFlightLongformBeats(loaded)[0];
             const hold = failedHoldLongformBeats(loaded)[0];
             if (live) setSelectedLongformBeatId(live.id);
@@ -487,7 +585,36 @@ export default function GenerateStudio() {
           }
         }
         if (j.longform_queue_job && typeof j.longform_queue_job === "object" && j.longform_queue_job.id) {
-          setLongformJobId(String(j.longform_queue_job.id));
+          bindLongformId(String(j.longform_queue_job.id));
+        }
+        if (j.cinema_queue) {
+          try {
+            let loaded = parseCinemaQueue(j.cinema_queue);
+            const parentId =
+              j.cinema_queue_job && typeof j.cinema_queue_job === "object" && j.cinema_queue_job.id
+                ? String(j.cinema_queue_job.id)
+                : null;
+            if (Array.isArray(j.jobs)) {
+              loaded = bindCinemaQueueToJobs(loaded, j.jobs as ModalJob[], parentId);
+            }
+            setCinemaQueue(loaded);
+            cinemaQueueRef.current = loaded;
+            setCinemaEstimate(estimateCinema(loaded));
+            const live = inFlightCinemaBeats(loaded)[0];
+            const hold = failedHoldCinemaBeats(loaded)[0];
+            if (live) setSelectedCinemaBeatId(live.id);
+            else if (hold) {
+              setSelectedCinemaBeatId(hold.id);
+              const msg = formatCinemaFalError(hold.error);
+              setError(msg);
+              setCinemaNotice(msg);
+            } else if (loaded.beats[0]) setSelectedCinemaBeatId(loaded.beats[0].id);
+          } catch {
+            /* keep empty cinema plan */
+          }
+        }
+        if (j.cinema_queue_job && typeof j.cinema_queue_job === "object" && j.cinema_queue_job.id) {
+          bindCinemaId(String(j.cinema_queue_job.id));
         }
       })
       .catch(() => {});
@@ -727,8 +854,7 @@ export default function GenerateStudio() {
     }
     if (j.estimate) setLongformEstimate(j.estimate);
     if (j.job?.id) {
-      longformJobIdRef.current = j.job.id;
-      setLongformJobId(j.job.id);
+      bindLongformId(j.job.id);
       setModalJobs((list) => [j.job as ModalJob, ...list.filter((x) => x.id !== j.job!.id)]);
     }
     if (j.child?.id) {
@@ -740,6 +866,11 @@ export default function GenerateStudio() {
       setResultUrl(stillSrc(j.stitch.id, 0));
     }
     if (j.refused) throw new Error(j.reply || "Motion 2 refused this prompt.");
+    if (r.status === 402 && (j as { needs_confirm?: boolean }).needs_confirm) {
+      const msg = j.error || j.estimate?.note || "Confirm Motion 2 spend.";
+      if (!window.confirm(msg)) throw new Error("Spend cancelled.");
+      return longformAction(action, { ...extra, confirmSpend: true });
+    }
     if (!r.ok) throw new Error(j.error || j.reply || "Longform update failed");
     return j;
   }
@@ -747,13 +878,8 @@ export default function GenerateStudio() {
   function commitLongformLocal(next: LongformQueue) {
     longformQueueRef.current = next;
     setLongformQueue(next);
-    setLongformEstimate(
-      estimateLongform({
-        targetSeconds: next.target_seconds,
-        beatSeconds: next.beat_seconds,
-        script: next.script,
-      }),
-    );
+    setLongformEstimate(estimateLongformQueue(next));
+    if (next.auto_advance !== undefined) setLongformAutoAdvance(next.auto_advance !== false);
   }
 
   function patchLongformBeatLocal(id: string, patch: Partial<LongformQueue["beats"][number]>) {
@@ -761,7 +887,9 @@ export default function GenerateStudio() {
   }
 
   async function refreshLongformQueue() {
-    const q = await fetch("/api/generate/longform", { cache: "no-store" });
+    const q = await fetch(queueGetUrl("/api/generate/longform", longformJobIdRef.current), {
+      cache: "no-store",
+    });
     if (!q.ok) return;
     const data = (await readJson(q)) as {
       queue?: LongformQueue;
@@ -780,10 +908,7 @@ export default function GenerateStudio() {
       }
     }
     if (data.estimate) setLongformEstimate(data.estimate);
-    if (data.job?.id) {
-      longformJobIdRef.current = data.job.id;
-      setLongformJobId(data.job.id);
-    }
+    if (data.job?.id) bindLongformId(data.job.id);
   }
 
   async function generateLongformClip(id: string, opts?: { retry?: boolean }) {
@@ -830,6 +955,9 @@ export default function GenerateStudio() {
       throw new Error(formatLongformFalError(held?.error || (err instanceof Error ? err.message : String(err))));
     }
     await refreshLongformQueue();
+    if (longformAutoAdvanceRef.current && nextGeneratableLongformBeat(longformQueueRef.current)) {
+      await generateLongformRemaining();
+    }
   }
 
   async function generateLongformRemaining() {
@@ -859,8 +987,15 @@ export default function GenerateStudio() {
         "No remaining beat is ready to generate. Plan a new take, or wait for the previous last frame.",
       );
     }
+    if (!dryRun) {
+      const spend = remainingLongformSpend(longformQueueRef.current);
+      if (spend.needs_confirm && !window.confirm(spend.message)) {
+        setMotion2Notice(spend.message);
+        return;
+      }
+    }
     setStage(dryRun ? "dry run…" : "Motion 2 → fal…");
-    setMotion2Notice(dryRun ? "Dry-running Beat 1 (no GPU)…" : `Starting ${nextBeat.id} on fal…`);
+    setMotion2Notice(dryRun ? "Dry-running remaining beats (no GPU)…" : `Starting ${nextBeat.id} on fal…`);
     if (dryRun) {
       await generateLongformClip(nextBeat.id);
       return;
@@ -869,9 +1004,10 @@ export default function GenerateStudio() {
     for (;;) {
       let j: Awaited<ReturnType<typeof longformAction>>;
       try {
-        j = await longformAction("generate-next", {
+        j = await longformAction("run-remaining", {
           dryRun,
           ripple: longformRippleRef.current,
+          confirmSpend: true,
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -910,7 +1046,7 @@ export default function GenerateStudio() {
       throw new Error("No remaining beat is ready to generate. Plan a new take or generate the previous beat first.");
     }
     setStage(null);
-    setMotion2Notice("Beat finished. Review below, or hit Go for the next draft.");
+    setMotion2Notice("Queue finished or waiting on last-frame. Review below, or Run remaining.");
   }
 
   async function uploadLongformStill(file: File) {
@@ -927,6 +1063,300 @@ export default function GenerateStudio() {
       commitLongformLocal({ ...longformQueueRef.current, source_image_url: j.url });
     } finally {
       setUploadingLongformStill(false);
+    }
+  }
+
+  function commitCinemaLocal(next: CinemaQueue) {
+    cinemaQueueRef.current = next;
+    setCinemaQueue(next);
+    setCinemaEstimate(estimateCinema(next));
+  }
+
+  async function cinemaAction(
+    action: string,
+    extra?: Record<string, unknown>,
+  ): Promise<{
+    queue?: CinemaQueue;
+    job?: ModalJob;
+    child?: ModalJob;
+    stitch?: ModalJob;
+    estimate?: CinemaEstimate;
+    error?: string;
+    dryRun?: boolean;
+    note?: string;
+    already_running?: boolean;
+  }> {
+    const r = await fetch("/api/generate/cinema", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action,
+        queueId: cinemaJobIdRef.current,
+        queue: cinemaQueueRef.current,
+        ...extra,
+      }),
+    });
+    if (r.status === 401 || r.status === 403) {
+      throw new Error("Not authorized — log in at /hq first, then come back.");
+    }
+    const j = (await readJson(r)) as {
+      queue?: CinemaQueue;
+      job?: ModalJob;
+      child?: ModalJob;
+      stitch?: ModalJob;
+      estimate?: CinemaEstimate;
+      error?: string;
+      dryRun?: boolean;
+      note?: string;
+      refused?: boolean;
+      already_running?: boolean;
+      reply?: string;
+      needs_confirm?: boolean;
+    };
+    if (j.queue) {
+      const next = parseCinemaQueue(j.queue);
+      cinemaQueueRef.current = next;
+      setCinemaQueue(next);
+    }
+    if (j.estimate) setCinemaEstimate(j.estimate);
+    if (j.job?.id) {
+      bindCinemaId(j.job.id);
+      setModalJobs((list) => [j.job as ModalJob, ...list.filter((x) => x.id !== j.job!.id)]);
+    }
+    if (j.child?.id) {
+      setModalJobs((list) => [j.child as ModalJob, ...list.filter((x) => x.id !== j.child!.id)]);
+    }
+    if (j.stitch?.id) {
+      setModalJobs((list) => [j.stitch as ModalJob, ...list.filter((x) => x.id !== j.stitch!.id)]);
+      setResultIsVideo(true);
+      setResultUrl(stillSrc(j.stitch.id, 0));
+    }
+    if (j.refused) throw new Error(j.reply || "Cinema refused this prompt.");
+    if (r.status === 402 && j.needs_confirm) {
+      const msg = j.error || j.estimate?.note || "Confirm Cinema spend.";
+      if (!window.confirm(msg)) throw new Error("Spend cancelled.");
+      return cinemaAction(action, { ...extra, confirmSpend: true });
+    }
+    if (!r.ok) throw new Error(j.error || j.reply || "Cinema update failed");
+    return j;
+  }
+
+  async function refreshCinemaQueue() {
+    const q = await fetch(queueGetUrl("/api/generate/cinema", cinemaJobIdRef.current), {
+      cache: "no-store",
+    });
+    if (!q.ok) return;
+    const data = (await readJson(q)) as {
+      queue?: CinemaQueue;
+      job?: ModalJob;
+      children?: ModalJob[];
+      estimate?: CinemaEstimate;
+    };
+    if (data.queue) {
+      let next = parseCinemaQueue(data.queue);
+      if (Array.isArray(data.children)) {
+        next = bindCinemaQueueToJobs(next, data.children, data.job?.id);
+      }
+      if (next.beats.length || !cinemaQueueRef.current.beats.length) {
+        cinemaQueueRef.current = next;
+        setCinemaQueue(next);
+      }
+    }
+    if (data.estimate) setCinemaEstimate(data.estimate);
+    if (data.job?.id) bindCinemaId(data.job.id);
+  }
+
+  function waitForCinemaChild(jobId: string): Promise<ModalJob> {
+    const existing = cinemaWaiters.current.get(jobId);
+    if (existing) return existing;
+    const pending = new Promise<ModalJob>((resolve, reject) => {
+      if (poll.current) clearInterval(poll.current);
+      cinemaPollJobIdRef.current = jobId;
+      let tickBusy = false;
+      const tick = async () => {
+        if (tickBusy) return;
+        tickBusy = true;
+        try {
+          const s = await fetch(`/api/generate/jobs/${encodeURIComponent(jobId)}`, { cache: "no-store" });
+          if (s.status === 401 || s.status === 403) {
+            if (poll.current) clearInterval(poll.current);
+            reject(new Error("Not authorized — log in at /hq first, then come back."));
+            return;
+          }
+          let sj: { job?: ModalJob; error?: string };
+          try {
+            sj = (await readJson(s)) as typeof sj;
+          } catch {
+            setStage(`fal running… beat ${jobId}`);
+            setCinemaNotice(`fal running… beat ${jobId}`);
+            return;
+          }
+          const job = sj.job;
+          if (!job) {
+            setStage(sj.error || `fal running… beat ${jobId}`);
+            return;
+          }
+          setModalJobs((list) => [job, ...list.filter((x) => x.id !== job.id)]);
+          if (job.status === "done") {
+            if (poll.current) clearInterval(poll.current);
+            setResultIsVideo(true);
+            setResultUrl(job.output_urls?.length ? stillSrc(job.id, 0) : null);
+            resolve(job);
+          } else if (job.status === "failed") {
+            if (poll.current) clearInterval(poll.current);
+            reject(new Error(job.error || "generation failed"));
+          } else {
+            setActiveJobId(job.id);
+            setStage(
+              job.status === "queued" ? `queued on fal… beat ${jobId}` : `fal running… beat ${jobId}`,
+            );
+            setCinemaNotice(`fal running… beat ${jobId}`);
+            void refreshCinemaQueue();
+          }
+        } finally {
+          tickBusy = false;
+        }
+      };
+      void tick();
+      poll.current = setInterval(() => {
+        void tick();
+      }, 4000);
+    }).finally(() => {
+      cinemaWaiters.current.delete(jobId);
+      if (cinemaPollJobIdRef.current === jobId) cinemaPollJobIdRef.current = null;
+    });
+    cinemaWaiters.current.set(jobId, pending);
+    return pending;
+  }
+
+  async function generateCinemaClip(id: string, opts?: { retry?: boolean }) {
+    setError(null);
+    setStage("cinema beat → fal…");
+    const j = await cinemaAction("generate", {
+      beatId: id,
+      dryRun,
+      retry: opts?.retry === true,
+    });
+    if (j.dryRun) {
+      const note = j.note || j.estimate?.note || "Dry run — no fal spend. Untick Dry run and hit Go.";
+      setStage(null);
+      setCinemaNotice(note);
+      setMessages((m) => [...m, { id: mid(), role: "assistant", content: note }]);
+      return;
+    }
+    const spawnErr = cinemaGenerateClientError(j);
+    if (spawnErr) throw new Error(spawnErr);
+    setActiveJobId(j.child!.id);
+    setCinemaNotice(`fal running… beat ${j.child!.id}`);
+    setStage(`fal running… beat ${j.child!.id}`);
+    try {
+      await waitForCinemaChild(j.child!.id);
+    } catch (err) {
+      await refreshCinemaQueue();
+      const held = cinemaQueueRef.current.beats.find((b) => b.job_id === j.child!.id);
+      throw new Error(formatCinemaFalError(held?.error || (err instanceof Error ? err.message : String(err))));
+    }
+    await refreshCinemaQueue();
+    if (cinemaQueueRef.current.auto_advance && nextGeneratableCinemaBeat(cinemaQueueRef.current)) {
+      await generateCinemaRemaining();
+    }
+  }
+
+  async function generateCinemaRemaining() {
+    setError(null);
+    setResultUrl(null);
+    setCinemaNotice(null);
+    const current = cinemaQueueRef.current;
+    if (!current.beats.length) {
+      throw new Error("Plan beats first — Cinema will not generate until you have a queue.");
+    }
+    if (inFlightCinemaBeats(current).length) {
+      setCinemaNotice("Already running. Waiting for the in-flight beat.");
+      await resumeCinemaInFlight();
+      return;
+    }
+    const hold = failedHoldCinemaBeats(current)[0];
+    if (hold) {
+      const msg = formatCinemaFalError(hold.error);
+      setError(msg);
+      setCinemaNotice(msg);
+      setSelectedCinemaBeatId(hold.id);
+      return;
+    }
+    const nextBeat = nextGeneratableCinemaBeat(current);
+    if (!nextBeat) {
+      throw new Error("No remaining beat is ready to generate. Plan a new take or generate the previous beat first.");
+    }
+    setStage(dryRun ? "dry run…" : "Cinema → fal…");
+    if (dryRun) {
+      await generateCinemaClip(nextBeat.id);
+      return;
+    }
+    let started = 0;
+    for (;;) {
+      let j: Awaited<ReturnType<typeof cinemaAction>>;
+      try {
+        j = await cinemaAction("run-remaining", { dryRun, confirmSpend: true });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (started && /No remaining beat|previous beat/i.test(msg)) {
+          setStage(null);
+          return;
+        }
+        throw err;
+      }
+      if (j.dryRun) {
+        const note = j.note || j.estimate?.note || "Dry run — no fal spend.";
+        setStage(null);
+        setCinemaNotice(note);
+        return;
+      }
+      const spawnErr = cinemaGenerateClientError(j);
+      if (spawnErr) throw new Error(spawnErr);
+      started += 1;
+      setActiveJobId(j.child!.id);
+      setCinemaNotice(`fal running… beat ${j.child!.id}`);
+      setStage(`fal running… beat ${j.child!.id}`);
+      try {
+        await waitForCinemaChild(j.child!.id);
+      } catch (err) {
+        await refreshCinemaQueue();
+        const held = cinemaQueueRef.current.beats.find((b) => b.job_id === j.child!.id);
+        throw new Error(
+          formatCinemaFalError(held?.error || (err instanceof Error ? err.message : String(err))),
+        );
+      }
+      await refreshCinemaQueue();
+      if (!nextGeneratableCinemaBeat(cinemaQueueRef.current)) break;
+    }
+    setStage(null);
+    setCinemaNotice("Queue finished. Review below, or Run remaining.");
+  }
+
+  async function resumeCinemaInFlight() {
+    await refreshCinemaQueue();
+    const live = inFlightCinemaBeats(cinemaQueueRef.current).find((b) => b.job_id);
+    const jobId = live?.job_id;
+    if (!jobId) return;
+    setActiveJobId(jobId);
+    setSelectedCinemaBeatId(live.id);
+    setCinemaNotice(`fal running… beat ${jobId}`);
+    setStage(`fal running… beat ${jobId}`);
+    try {
+      await waitForCinemaChild(jobId);
+      await refreshCinemaQueue();
+      if (cinemaQueueRef.current.auto_advance && nextGeneratableCinemaBeat(cinemaQueueRef.current)) {
+        await generateCinemaRemaining();
+      }
+    } catch (err) {
+      await refreshCinemaQueue();
+      const raw = err instanceof Error ? err.message : String(err);
+      const held = cinemaQueueRef.current.beats.find((b) => b.job_id === jobId);
+      const msg = formatCinemaFalError(held?.error || raw);
+      setError(msg);
+      setCinemaNotice(msg);
+    } finally {
+      if (!inFlightCinemaBeats(cinemaQueueRef.current).length) setStage(null);
     }
   }
 
@@ -947,7 +1377,31 @@ export default function GenerateStudio() {
     setChatError(null);
     setChatBusy(true);
     try {
-      if (mode === "motion2") {
+      if (mode === "cinema") {
+        const res = await fetch("/api/generate/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: text,
+            history: messages.map((m) => ({ role: m.role, content: m.content })),
+            inference: cinemaQueueRef.current.script,
+            description: cinemaQueueRef.current.image_urls.join("\n"),
+            mode: "cinema",
+          }),
+        });
+        const data = (await readJson(res)) as {
+          reply?: string;
+          inference?: string;
+          error?: string;
+        };
+        if (!res.ok) throw new Error(data.error || "Chat failed.");
+        if (data.reply) {
+          setMessages((m) => [...m, { id: mid(), role: "assistant", content: data.reply as string }]);
+        }
+        if (typeof data.inference === "string" && data.inference.trim()) {
+          commitCinemaLocal({ ...cinemaQueueRef.current, script: data.inference });
+        }
+      } else if (mode === "motion2") {
         const res = await fetch("/api/generate/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1113,7 +1567,10 @@ export default function GenerateStudio() {
       if (done && (done.status === "ready" || done.status === "approved")) {
         setResultIsVideo(true);
         setResultUrl(stillSrc(jobId, 0));
-        setMotion2Notice("Beat finished. Review below, or hit Go for the next draft.");
+        setMotion2Notice("Beat finished. Review below, or Run remaining.");
+        if (longformAutoAdvanceRef.current && nextGeneratableLongformBeat(longformQueueRef.current)) {
+          await generateLongformRemaining();
+        }
       }
     } catch (err) {
       await refreshLongformQueue();
@@ -1392,16 +1849,26 @@ export default function GenerateStudio() {
     try {
       if (mode === "motion") await goMotion();
       else if (mode === "motion2") await generateLongformRemaining();
+      else if (mode === "cinema") await generateCinemaRemaining();
       else if (mode === "modal") await goModal();
       else await goEngine();
     } catch (e) {
-      if (mode !== "motion2" || !inFlightLongformBeats(longformQueueRef.current).length) {
+      if (
+        (mode !== "motion2" || !inFlightLongformBeats(longformQueueRef.current).length) &&
+        (mode !== "cinema" || !inFlightCinemaBeats(cinemaQueueRef.current).length)
+      ) {
         setStage(null);
       }
       const raw = e instanceof Error ? e.message : String(e);
-      const msg = mode === "motion2" ? formatLongformFalError(raw) : raw;
+      const msg =
+        mode === "motion2"
+          ? formatLongformFalError(raw)
+          : mode === "cinema"
+            ? formatCinemaFalError(raw)
+            : raw;
       setError(msg);
       if (mode === "motion2") setMotion2Notice(msg);
+      if (mode === "cinema") setCinemaNotice(msg);
     }
   }
 
@@ -1409,8 +1876,18 @@ export default function GenerateStudio() {
     .filter((b) => b.status === "generating" && b.job_id)
     .map((b) => b.job_id)
     .join(",");
+  const cinemaInFlightKey = cinemaQueue.beats
+    .filter((b) => b.status === "generating" && b.job_id)
+    .map((b) => b.job_id)
+    .join(",");
   const motion2Stage = mode === "motion2" ? stage || longformRunningNotice(longformQueue) : stage;
-  const busy = mode === "motion2" ? motion2PrimaryBusy(stage, longformQueue) : stage !== null;
+  const cinemaStage = mode === "cinema" ? stage || cinemaRunningNotice(cinemaQueue) : stage;
+  const busy =
+    mode === "motion2"
+      ? motion2PrimaryBusy(stage, longformQueue)
+      : mode === "cinema"
+        ? cinemaPrimaryBusy(stage, cinemaQueue)
+        : stage !== null;
 
   useEffect(() => {
     if (!motion2InFlightKey) return;
@@ -1420,10 +1897,16 @@ export default function GenerateStudio() {
   }, [motion2InFlightKey]);
 
   useEffect(() => {
+    if (!cinemaInFlightKey) return;
+    void resumeCinemaInFlight();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cinemaInFlightKey]);
+
+  useEffect(() => {
     const onVis = () => {
       if (document.visibilityState !== "visible") return;
-      if (!inFlightLongformBeats(longformQueueRef.current).length) return;
-      void resumeMotion2InFlight();
+      if (inFlightLongformBeats(longformQueueRef.current).length) void resumeMotion2InFlight();
+      if (inFlightCinemaBeats(cinemaQueueRef.current).length) void resumeCinemaInFlight();
     };
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("focus", onVis);
@@ -1449,10 +1932,13 @@ export default function GenerateStudio() {
           ? (/^https:\/\//i.test(longformQueue.source_image_url.trim()) ||
               /^\/api\/generate\/jobs\/[^/]+\/image\?i=\d+$/.test(longformQueue.source_image_url.trim())) &&
             Boolean(nextGeneratableLongformBeat(longformQueue))
+        : mode === "cinema"
+          ? cinemaQueue.image_urls.length > 0 && Boolean(nextGeneratableCinemaBeat(cinemaQueue))
         : composeEnginePrompt(inference, description).length > 0;
   const canGo =
     !busy &&
     !(mode === "motion2" && motion2GenerateLocked(longformQueue)) &&
+    !(mode === "cinema" && cinemaGenerateLocked(cinemaQueue)) &&
     mode !== "v2v" &&
     promptReady &&
     (!needImage || i2vReady);
@@ -1467,7 +1953,7 @@ export default function GenerateStudio() {
             Generate <em>Directed by you.</em>
           </h1>
           <p className="gen-lede">
-            Talk to the page. Modal stills fill a job card for Qwen-Image-Edit. Motion takes a keep still into a 5s fal Wan I2V clip. Motion 2 chains Wan 3.0 segments (5 / 15 / 30s) with last-frame continuity into a ~3 min take. Text → Image / Video and I2V run on fal (FLUX / Wan) — not Spark Gemini.
+            Talk to the page. Modal stills fill a job card for Qwen-Image-Edit. Motion takes a keep still into a 5s fal Wan I2V clip. Motion 2 chains Wan 3.0 segments with last-frame continuity. Cinema is the estate-lady path (Seedance 2.0 / Kling fallback) — not Wan. Text → Image / Video and I2V run on fal (FLUX / Wan) — not Spark Gemini.
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
@@ -1488,6 +1974,10 @@ export default function GenerateStudio() {
                 : mode === "motion2"
                   ? falStatus?.configured
                     ? "fal · Wan 3.0 longform"
+                    : "fal · set FAL_KEY"
+                : mode === "cinema"
+                  ? falStatus?.configured
+                    ? "fal · Seedance / Kling cinema"
                     : "fal · set FAL_KEY"
                 : mode === "t2i"
                   ? falStatus?.configured
@@ -1517,6 +2007,8 @@ export default function GenerateStudio() {
                   ? "Chat fills the motion card. Source still + motion prompt → 5s Wan I2V. Optional last-frame still = FLF2V."
                   : mode === "motion2"
                     ? "Chat writes a multi-line scene plan (one prompt per beat). Wan 3.0 segments (default 15s) + last-frame extract chain the take."
+                  : mode === "cinema"
+                    ? "Chat writes cinema beats (one VO / shot line per beat). Seedance 2.0 refs + native audio. Kling is the face-filter fallback."
                   : mode === "v2v"
                     ? "Video → Video is not wired. Use Motion or Image → Video."
                     : "Chat writes Inference + Description. Generate hits fal (FLUX / Wan), HQ-gated."}
@@ -1576,7 +2068,7 @@ export default function GenerateStudio() {
               Modal tokens are not set. Add MODAL_TOKEN_ID + MODAL_TOKEN_SECRET (see docs/generate-modal.md). Dry run still works.
             </p>
           )}
-          {(mode === "motion" || mode === "motion2" || mode === "t2i" || mode === "t2v" || mode === "i2v") &&
+          {(mode === "motion" || mode === "motion2" || mode === "cinema" || mode === "t2i" || mode === "t2v" || mode === "i2v") &&
             falStatus &&
             !falStatus.configured &&
             modalAuthed && (
@@ -2234,6 +2726,11 @@ export default function GenerateStudio() {
               onEndStill={(url) => commitLongformLocal({ ...longformQueueRef.current, end_image_url: url })}
               onDryRun={setDryRun}
               onRipple={setLongformRipple}
+              autoAdvance={longformAutoAdvance}
+              onAutoAdvance={(on) => {
+                setLongformAutoAdvance(on);
+                commitLongformLocal({ ...longformQueueRef.current, auto_advance: on });
+              }}
               notice={motion2Notice}
               stage={motion2Stage}
               onPlan={() => {
@@ -2301,6 +2798,9 @@ export default function GenerateStudio() {
               onGo={() => {
                 void go();
               }}
+              onRunRemaining={() => {
+                void go();
+              }}
               onApprove={(id) => {
                 longformAction("approve", { beatId: id }).catch((err) =>
                   setError(err instanceof Error ? err.message : String(err)),
@@ -2320,6 +2820,136 @@ export default function GenerateStudio() {
                 setError(null);
                 setStage("stitching longform…");
                 longformAction("stitch")
+                  .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+                  .finally(() => setStage(null));
+              }}
+            />
+          ) : mode === "cinema" ? (
+            <CinemaPanel
+              queue={cinemaQueue}
+              estimate={cinemaEstimate}
+              busy={busy}
+              selectedId={selectedCinemaBeatId}
+              dryRun={dryRun}
+              onSelect={setSelectedCinemaBeatId}
+              onImageUrls={(urls) => commitCinemaLocal({ ...cinemaQueueRef.current, image_urls: urls })}
+              onAudioUrl={(url) => commitCinemaLocal({ ...cinemaQueueRef.current, audio_url: url })}
+              onPriorVideo={(url) => commitCinemaLocal({ ...cinemaQueueRef.current, prior_video_url: url })}
+              onScript={(script) => commitCinemaLocal({ ...cinemaQueueRef.current, script })}
+              onModel={(model) => commitCinemaLocal({ ...cinemaQueueRef.current, model })}
+              onGenerateAudio={(on) =>
+                commitCinemaLocal({
+                  ...cinemaQueueRef.current,
+                  generate_audio: on,
+                  beats: cinemaQueueRef.current.beats.map((b) => ({ ...b, generate_audio: on })),
+                })
+              }
+              onPassPrevVideo={(on) => commitCinemaLocal({ ...cinemaQueueRef.current, pass_prev_video: on })}
+              onAutoAdvance={(on) => commitCinemaLocal({ ...cinemaQueueRef.current, auto_advance: on })}
+              onDryRun={setDryRun}
+              notice={cinemaNotice}
+              stage={cinemaStage}
+              canGo={canGo}
+              onPlan={() => {
+                setError(null);
+                setCinemaNotice(null);
+                setStage("planning Cinema beats…");
+                let shotlist: unknown;
+                const raw = cinemaQueueRef.current.script.trim();
+                if (raw.startsWith("{")) {
+                  try {
+                    shotlist = JSON.parse(raw);
+                  } catch {
+                    shotlist = undefined;
+                  }
+                }
+                cinemaAction("plan", {
+                  script: cinemaQueueRef.current.script,
+                  shotlist,
+                  imageUrls: cinemaQueueRef.current.image_urls,
+                  audioUrl: cinemaQueueRef.current.audio_url,
+                  priorVideoUrl: cinemaQueueRef.current.prior_video_url,
+                  model: cinemaQueueRef.current.model,
+                  generateAudio: cinemaQueueRef.current.generate_audio,
+                  passPrevVideo: cinemaQueueRef.current.pass_prev_video,
+                })
+                  .then((j) => {
+                    const n = j.queue?.beats.length || cinemaQueueRef.current.beats.length;
+                    const msg = `Planned ${n} cinema beats. Review, then Go / Run remaining.`;
+                    setCinemaNotice(msg);
+                    setMessages((m) => [...m, { id: mid(), role: "assistant", content: msg }]);
+                  })
+                  .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+                  .finally(() => setStage(null));
+              }}
+              onLoadEstate={() => {
+                const next = loadEstateProofTemplate({
+                  imageUrls: cinemaQueueRef.current.image_urls,
+                  audioUrl: cinemaQueueRef.current.audio_url,
+                  priorVideoUrl: cinemaQueueRef.current.prior_video_url,
+                });
+                commitCinemaLocal(next);
+                setCinemaNotice(
+                  "Loaded proof-estate-01 (c01–c08). Paste Spark-gated estate-a / identity URLs, then Plan or Go.",
+                );
+                if (next.beats[0]) setSelectedCinemaBeatId(next.beats[0].id);
+              }}
+              onPatch={(id, patch) => commitCinemaLocal(applyLocalCinemaBeatPatch(cinemaQueueRef.current, id, patch))}
+              onGenerate={(id) => {
+                generateCinemaClip(id)
+                  .catch((err) => {
+                    const msg = formatCinemaFalError(err instanceof Error ? err.message : String(err));
+                    setError(msg);
+                    setCinemaNotice(msg);
+                  })
+                  .finally(() => {
+                    if (!inFlightCinemaBeats(cinemaQueueRef.current).length) setStage(null);
+                  });
+              }}
+              onGo={() => {
+                void go();
+              }}
+              onRunRemaining={() => {
+                void go();
+              }}
+              onDismiss={(id) => {
+                cinemaAction("reset", { beatId: id })
+                  .then(() => {
+                    setError(null);
+                    setCinemaNotice(null);
+                  })
+                  .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+              }}
+              onRetry={(id) => {
+                generateCinemaClip(id, { retry: true })
+                  .catch((err) => {
+                    const msg = formatCinemaFalError(err instanceof Error ? err.message : String(err));
+                    setError(msg);
+                    setCinemaNotice(msg);
+                  })
+                  .finally(() => {
+                    if (!inFlightCinemaBeats(cinemaQueueRef.current).length) setStage(null);
+                  });
+              }}
+              onApprove={(id) => {
+                cinemaAction("approve", { beatId: id }).catch((err) =>
+                  setError(err instanceof Error ? err.message : String(err)),
+                );
+              }}
+              onReject={(id) => {
+                cinemaAction("reject", { beatId: id }).catch((err) =>
+                  setError(err instanceof Error ? err.message : String(err)),
+                );
+              }}
+              onReset={(id) => {
+                cinemaAction("reset", { beatId: id }).catch((err) =>
+                  setError(err instanceof Error ? err.message : String(err)),
+                );
+              }}
+              onStitch={() => {
+                setError(null);
+                setStage("stitching cinema…");
+                cinemaAction("stitch")
                   .catch((err) => setError(err instanceof Error ? err.message : String(err)))
                   .finally(() => setStage(null));
               }}
@@ -2423,9 +3053,9 @@ export default function GenerateStudio() {
               )}
             </>
           )}
-          {(mode === "motion2" ? motion2Stage : stage) && (
-            <p className="gen-stage" data-testid={mode === "motion2" ? "motion2-fal-stage" : undefined}>
-              ⏳ {mode === "motion2" ? motion2Stage : stage}
+          {((mode === "motion2" ? motion2Stage : mode === "cinema" ? cinemaStage : stage)) && (
+            <p className="gen-stage" data-testid={mode === "motion2" ? "motion2-fal-stage" : mode === "cinema" ? "cinema-fal-stage" : undefined}>
+              ⏳ {mode === "motion2" ? motion2Stage : mode === "cinema" ? cinemaStage : stage}
               {activeJobId ? ` · ${activeJobId}` : ""}
             </p>
           )}
@@ -2455,7 +3085,7 @@ export default function GenerateStudio() {
               </a>
             </div>
           )}
-          {(mode === "modal" || mode === "motion" || mode === "motion2") && (
+          {(mode === "modal" || mode === "motion" || mode === "motion2" || mode === "cinema") && (
             <GenerateLibraryGate>
               <ModalGallery
                 jobs={modalJobs}
@@ -2464,6 +3094,12 @@ export default function GenerateStudio() {
                     ? (url) => patchMotion({ source_image_url: url })
                     : mode === "motion2"
                       ? (url) => commitLongformLocal({ ...longformQueueRef.current, source_image_url: url })
+                      : mode === "cinema"
+                        ? (url) =>
+                            commitCinemaLocal({
+                              ...cinemaQueueRef.current,
+                              image_urls: [...cinemaQueueRef.current.image_urls, url].slice(0, 9),
+                            })
                       : undefined
                 }
               />
