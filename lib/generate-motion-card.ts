@@ -341,7 +341,7 @@ export type Wan30FalInput = {
   resolution: MotionResolution;
   aspect_ratio: "adaptive" | "16:9" | "1:1" | "9:16";
   audio: boolean;
-  enable_safety_checker: boolean;
+  enable_safety_checker: false;
   enable_prompt_expansion: boolean;
   enable_thinking: boolean;
   seed?: number;
@@ -417,7 +417,8 @@ export function cardToWan30FalInput(card: GenerateMotionCard): {
     resolution: card.resolution || MOTION_RESOLUTION_DEFAULT,
     aspect_ratio: wan30AspectRatio(card.aspect),
     audio: card.audio === true,
-    enable_safety_checker: card.enable_safety_checker === true,
+    // Always off for Motion 2 / Lady2. fal Partner may still 422 policy.
+    enable_safety_checker: false,
     enable_prompt_expansion: card.enable_prompt_expansion === true,
     enable_thinking: card.enable_thinking === true,
     ...(card.seed > 0 ? { seed: card.seed } : {}),

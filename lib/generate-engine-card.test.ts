@@ -90,6 +90,18 @@ describe("formatFalError", () => {
     const text = formatFalError(err);
     assert.match(text, /HTTP 422/);
     assert.match(text, /finish_reason=SAFETY/);
+    const policy = formatFalError(
+      Object.assign(new Error("Unprocessable Entity"), {
+        status: 422,
+        body: {
+          type: "content_policy_violation",
+          detail: "The content could not be processed because it contained material flagged by a content checker.",
+        },
+      }),
+    );
+    assert.match(policy, /HTTP 422/);
+    assert.match(policy, /content_policy_violation/);
+    assert.match(policy, /content checker/);
     assert.equal(formatFalFailure({ status: "FAILED", error: "queue rejected", logs: ["step 1"] }), "FAILED — queue rejected — step 1");
   });
 });

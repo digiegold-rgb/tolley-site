@@ -78,7 +78,7 @@ describe("/generate fal engine tabs", () => {
     assert.doesNotMatch(longformApi, /spawnFalMotion\(/);
     assert.doesNotMatch(jobs, /spawnFalWan30Motion/);
     assert.match(studio, /<LongformPanel/);
-    assert.match(studio, /waitForGenerateJob/);
+    assert.match(studio, /waitForLongformChild/);
     const longformUi = readFileSync(join(root, "app/generate/longform-queue.tsx"), "utf8");
     assert.match(longformUi, /DurationChips/);
     assert.match(longformUi, /data-testid="motion2-longform"/);

@@ -3,8 +3,12 @@
 import {
   canStitchLongform,
   estimateLongform,
+  failedHoldLongformBeats,
+  formatLongformFalError,
+  inFlightLongformBeats,
   longformProgress,
   longformStitchBlockers,
+  motion2GenerateLocked,
   type LongformBeat,
   type LongformEstimate,
   type LongformQueue,
@@ -47,6 +51,8 @@ export function LongformPanel({
   onApprove,
   onReject,
   onReset,
+  onDismiss,
+  onRetry,
   onStitch,
 }: {
   queue: LongformQueue;
@@ -75,6 +81,8 @@ export function LongformPanel({
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onReset: (id: string) => void;
+  onDismiss: (id: string) => void;
+  onRetry: (id: string) => void;
   onStitch: () => void;
 }) {
   const liveEstimate =
@@ -88,6 +96,16 @@ export function LongformPanel({
   const stitchOk = canStitchLongform(queue);
   const selected = queue.beats.find((b) => b.id === selectedId) || queue.beats[0] || null;
   const selectedIndex = selected ? queue.beats.findIndex((b) => b.id === selected.id) : -1;
+  const inFlight = inFlightLongformBeats(queue);
+  const inFlightIds = new Set(inFlight.map((b) => b.id));
+  const failedHold = failedHoldLongformBeats(queue);
+  const failedHoldIds = new Set(failedHold.map((b) => b.id));
+  const generateLocked = motion2GenerateLocked(queue);
+  const primaryBusy = busy || inFlight.length > 0;
+  const failBanner = failedHold[0]
+    ? formatLongformFalError(failedHold[0].error) +
+      (failedHold[0].job_id ? ` · beat ${failedHold[0].job_id}` : "")
+    : null;
 
   return (
     <div className="gen-longform" data-testid="motion2-longform">
@@ -205,28 +223,39 @@ export function LongformPanel({
           />
           Ripple continuity on regenerate
         </label>
-        <button type="button" className="gen-seed-random" disabled={busy} onClick={onPlan}>
+        <button type="button" className="gen-seed-random" disabled={primaryBusy} onClick={onPlan}>
           Plan {liveEstimate.beat_count} beats
         </button>
         <button
           type="button"
           className="gen-go"
           data-testid="motion2-go"
-          disabled={busy || !canGo}
+          disabled={generateLocked || primaryBusy || (!canGo && !inFlight.length)}
           onClick={onGo}
           style={{ marginLeft: "auto" }}
         >
-          {busy ? "Working…" : dryRun ? "Dry run" : "Go"}
+          {primaryBusy ? "Working…" : failedHold.length ? "Failed" : dryRun ? "Dry run" : "Go"}
         </button>
       </div>
       {!queue.beats.length ? (
         <p className="gen-hint" data-testid="motion2-plan-first">
           Plan beats first. Go stays off until there is a draft beat to generate.
         </p>
-      ) : !canGo && !busy ? (
+      ) : failedHold.length ? (
+        <p className="gen-hint">Generate stays off until you dismiss or retry the failed beat.</p>
+      ) : !canGo && !primaryBusy ? (
         <p className="gen-hint">No beat is ready to generate. Plan a new take, or wait for the last frame.</p>
       ) : null}
-      {stage ? <p className="gen-stage">⏳ {stage}</p> : null}
+      {stage ? (
+        <p className="gen-stage" data-testid="motion2-stage">
+          ⏳ {stage}
+        </p>
+      ) : null}
+      {failBanner ? (
+        <p className="gen-longform-fail" data-testid="motion2-fail" role="alert">
+          {failBanner}
+        </p>
+      ) : null}
       {notice ? <p className="gen-library-status" data-testid="motion2-notice">{notice}</p> : null}
 
       {queue.continuity_error ? <p className="gen-err">{queue.continuity_error}</p> : null}
@@ -252,7 +281,9 @@ export function LongformPanel({
                   onClick={() => onSelect(beat.id)}
                 >
                   <span className="gen-longform-num">Beat {i + 1}</span>
-                  <span className={`gen-beat-status gen-beat-status-${beat.status}`}>{beat.status}</span>
+                  <span className={`gen-beat-status gen-beat-status-${beat.status}`}>
+                    {failedHoldIds.has(beat.id) ? "failed" : beat.status}
+                  </span>
                   <span className="gen-longform-meta">
                     {i === 0
                       ? "keep still"
@@ -265,28 +296,58 @@ export function LongformPanel({
                 <textarea
                   className="gen-longform-prompt"
                   value={beat.prompt}
-                  disabled={busy || beat.status === "generating"}
+                  disabled={primaryBusy || beat.status === "generating"}
                   onChange={(e) => onPatch(beat.id, { prompt: e.target.value })}
                   onFocus={() => onSelect(beat.id)}
                 />
-                {beat.error ? <p className="gen-err">{beat.error}</p> : null}
+                {beat.error ? (
+                  <p className="gen-err" data-testid={`motion2-beat-error-${i + 1}`}>
+                    {formatLongformFalError(beat.error)}
+                  </p>
+                ) : null}
                 {beat.job_id && (beat.status === "ready" || beat.status === "approved") ? (
                   <GatedClip src={mediaSrc(beat.job_id, 0)} />
                 ) : null}
                 <div className="gen-beat-actions">
-                  <button
-                    type="button"
-                    className="gen-seed-random"
-                    disabled={busy || beat.status === "generating"}
-                    onClick={() => onGenerate(beat.id)}
-                  >
-                    {beat.status === "draft"
-                      ? "Generate this beat"
-                      : beat.status === "generating"
-                        ? "Generating…"
-                        : "Regenerate"}
-                  </button>
-                  {beat.status === "ready" || beat.status === "rejected" ? (
+                  {failedHoldIds.has(beat.id) ? (
+                    <>
+                      <button
+                        type="button"
+                        className="gen-seed-random"
+                        data-testid={`motion2-beat-dismiss-${i + 1}`}
+                        disabled={primaryBusy}
+                        onClick={() => onDismiss(beat.id)}
+                      >
+                        Dismiss
+                      </button>
+                      <button
+                        type="button"
+                        className="gen-seed-random"
+                        data-testid={`motion2-beat-retry-${i + 1}`}
+                        disabled={primaryBusy}
+                        onClick={() => onRetry(beat.id)}
+                      >
+                        Retry
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="gen-seed-random"
+                      data-testid={`motion2-beat-generate-${i + 1}`}
+                      disabled={primaryBusy || generateLocked || inFlightIds.has(beat.id)}
+                      onClick={() => onGenerate(beat.id)}
+                    >
+                      {inFlightIds.has(beat.id)
+                        ? beat.job_id
+                          ? `Generating… ${beat.job_id}`
+                          : "Generating…"
+                        : beat.status === "draft"
+                          ? "Generate this beat"
+                          : "Regenerate"}
+                    </button>
+                  )}
+                  {beat.status === "ready" || (beat.status === "rejected" && !beat.error) ? (
                     <button
                       type="button"
                       className="gen-seed-random"

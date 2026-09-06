@@ -118,4 +118,26 @@ describe("studio motionCard ↔ beats[0]", () => {
     assert.match(beatsUi, /selectedIndex > 0/);
     assert.doesNotMatch(beatsUi, /Add current card/);
   });
+
+  it("Motion 2 resumes in-flight children; Motion 1 still uses pollModalJob", () => {
+    const studio = readFileSync(join(root, "app/generate/generate-studio.tsx"), "utf8");
+    const longformUi = readFileSync(join(root, "app/generate/longform-queue.tsx"), "utf8");
+    assert.match(studio, /waitForLongformChild/);
+    assert.match(studio, /resumeMotion2InFlight/);
+    assert.match(studio, /bindLongformQueueToJobs/);
+    assert.match(studio, /visibilitychange/);
+    assert.match(studio, /motion2PrimaryBusy/);
+    assert.match(studio, /already_running/);
+    assert.match(studio, /async function generateBeatClip[\s\S]*pollModalJob\(j\.child\.id\)/);
+    assert.match(studio, /async function goMotion\(/);
+    assert.doesNotMatch(studio, /async function generateBeatClip[\s\S]*waitForLongformChild/);
+    assert.match(longformUi, /inFlightLongformBeats/);
+    assert.match(longformUi, /Generating…/);
+    assert.match(longformUi, /data-testid="motion2-stage"/);
+    assert.match(longformUi, /data-testid="motion2-fail"/);
+    assert.match(longformUi, /onDismiss/);
+    assert.match(longformUi, /onRetry/);
+    assert.match(studio, /formatLongformFalError/);
+    assert.match(studio, /retry: true/);
+  });
 });

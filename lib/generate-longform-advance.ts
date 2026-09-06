@@ -9,11 +9,17 @@
 import { extractLastFrame } from "./generate-ffmpeg";
 import {
   applyLastFrameToNext,
+  findLongformBeat,
+  isInFlightJobStatus,
+  longformBeatByJobId,
+  longformParentJobStatus,
   markLongformBeatFromChildJob,
+  markLongformBeatGenerating,
+  parseLongformQueue,
   rippleContinuityAfter,
   type LongformQueue,
 } from "./generate-longform";
-import { findLongformParentForChild } from "./generate-longform-store";
+import { cardBeatId, cardQueueId, findLongformParentForChild, loadLongformJob } from "./generate-longform-store";
 import { readableToBuffer } from "./generate-media";
 import { gatedJobImagePath } from "./generate-output";
 import { fetchStoredJobImage, persistJobPngBuffers } from "./generate-output-persist";
@@ -66,7 +72,8 @@ export async function syncLongformFromChild(child: {
 
   let next = markLongformBeatFromChildJob(parent.queue, child.id, child);
 
-  if (child.status === "done" && child.outputUrls[0]) {
+  const existing = longformBeatByJobId(next, child.id);
+  if (child.status === "done" && child.outputUrls[0] && !existing?.last_frame_url) {
     const rec =
       child.cardJson && typeof child.cardJson === "object" && !Array.isArray(child.cardJson)
         ? (child.cardJson as Record<string, unknown>)
@@ -88,8 +95,98 @@ export async function syncLongformFromChild(child: {
     }
   }
 
+  const parentStatus = longformParentJobStatus(next);
   await prisma.generateJob.update({
     where: { id: parent.row.id },
-    data: { cardJson: next },
+    data: {
+      cardJson: next,
+      status: parentStatus,
+      ...(parentStatus === "running" && !parent.row.startedAt ? { startedAt: new Date() } : {}),
+    },
   });
+}
+
+type ChildRow = {
+  id: string;
+  status: string;
+  error?: string | null;
+  cardJson: unknown;
+  outputUrls: string[];
+};
+
+/**
+ * Re-bind beat status from linked (or queue_id-tagged) children so a refresh
+ * cannot leave the parent looking idle while fal is still IN_PROGRESS.
+ */
+export async function reconcileLongformParent(loaded: {
+  row: { id: string; status: string; createdBy: string; startedAt: Date | null };
+  queue: LongformQueue;
+}): Promise<{ queue: LongformQueue; row: { id: string; status: string } }> {
+  const ids = loaded.queue.beats.map((b) => b.job_id).filter(Boolean);
+  const byId = ids.length
+    ? await prisma.generateJob.findMany({ where: { id: { in: ids } } })
+    : [];
+
+  const tagged = await prisma.generateJob.findMany({
+    where: {
+      createdBy: loaded.row.createdBy,
+      status: { in: ["queued", "running", "done", "failed"] },
+      recipe: { in: ["fal-wan-i2v", "fal-wan-flf2v"] },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 40,
+  });
+
+  const seen = new Set<string>();
+  const children: ChildRow[] = [];
+  for (const row of [...byId, ...tagged]) {
+    if (seen.has(row.id)) continue;
+    const qid = cardQueueId(row.cardJson);
+    const linked = Boolean(longformBeatByJobId(loaded.queue, row.id));
+    if (!linked && qid && qid !== loaded.row.id) continue;
+    if (!linked && !qid) continue;
+    seen.add(row.id);
+    children.push(row);
+  }
+
+  let next = loaded.queue;
+  for (const child of children) {
+    if (isInFlightJobStatus(child.status)) {
+      if (longformBeatByJobId(next, child.id)) {
+        next = markLongformBeatFromChildJob(next, child.id, child);
+      } else {
+        const beatId = cardBeatId(child.cardJson);
+        if (beatId && findLongformBeat(next, beatId)) {
+          next = markLongformBeatGenerating(next, beatId, child.id);
+        }
+      }
+      continue;
+    }
+    const beat = longformBeatByJobId(next, child.id);
+    const beatId = beat?.id || cardBeatId(child.cardJson);
+    const current = beatId ? findLongformBeat(next, beatId) : null;
+    if (
+      (child.status === "done" || child.status === "failed") &&
+      current &&
+      (current.status === "generating" || current.status === "draft")
+    ) {
+      await syncLongformFromChild(child);
+      const fresh = await loadLongformJob(loaded.row.id);
+      if (fresh) next = fresh.queue;
+    }
+  }
+
+  const status = longformParentJobStatus(next);
+  if (status !== loaded.row.status || next !== loaded.queue) {
+    const row = await prisma.generateJob.update({
+      where: { id: loaded.row.id },
+      data: {
+        cardJson: next,
+        status,
+        ...(status === "running" && !loaded.row.startedAt ? { startedAt: new Date() } : {}),
+      },
+    });
+    return { row, queue: parseLongformQueue(row.cardJson) };
+  }
+  return { row: loaded.row, queue: next };
 }

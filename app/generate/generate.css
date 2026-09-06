@@ -365,6 +365,18 @@
   margin: 8px 0 0;
 }
 
+.gen-longform-fail {
+  color: var(--gen-err);
+  background: rgba(240, 96, 122, 0.12);
+  border: 1px solid rgba(240, 96, 122, 0.45);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.45;
+  margin: 12px 0 0;
+  padding: 12px 14px;
+}
+
 .gen-stage {
   color: var(--gen-muted);
   font-size: 13px;
