@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
   canStitchBeats,
   emptyBeat,
@@ -43,6 +44,121 @@ export function GatedClip({
   );
 }
 
+function stillSummary(beat: MotionBeat, index: number): string {
+  const bits: string[] = [];
+  if (index > 0 && beat.from_prev_last) bits.push("prev still");
+  else if (beat.source_image_url.trim()) bits.push("source still");
+  else bits.push("no source");
+  if (beat.end_image_url.trim()) bits.push("end still");
+  if (beat.job_id) bits.push("clip");
+  return bits.join(" · ");
+}
+
+function generateLabel(beat: MotionBeat): string {
+  if (beat.status === "draft" || beat.status === "rejected") return nextBeatActionLabel(beat);
+  if (beat.status === "ready" || beat.status === "approved") return "Regenerate";
+  return nextBeatActionLabel(beat);
+}
+
+function BeatActions({
+  beat,
+  busy,
+  onGenerate,
+  onApprove,
+  onReject,
+  onReset,
+  onPatch,
+}: {
+  beat: MotionBeat;
+  busy: boolean;
+  onGenerate: (id: string) => void;
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
+  onReset: (id: string) => void;
+  onPatch: (id: string, patch: Partial<MotionBeat>) => void;
+}) {
+  return (
+    <div className="gen-beat-actions">
+      <button
+        type="button"
+        className={`gen-nsfw-chip${beat.slow_mo ? " gen-nsfw-chip-on" : ""}`}
+        disabled={busy || beat.status === "generating"}
+        aria-pressed={beat.slow_mo}
+        onClick={() => onPatch(beat.id, { slow_mo: !beat.slow_mo })}
+      >
+        0.5× slow-mo
+      </button>
+      <button
+        type="button"
+        className="gen-seed-random"
+        disabled={busy || beat.status === "generating"}
+        onClick={() => onGenerate(beat.id)}
+      >
+        {generateLabel(beat)}
+      </button>
+      {beat.status === "ready" || beat.status === "rejected" ? (
+        <button type="button" className="gen-seed-random" disabled={busy} onClick={() => onApprove(beat.id)}>
+          Approve
+        </button>
+      ) : null}
+      {beat.status === "ready" || beat.status === "approved" ? (
+        <button type="button" className="gen-seed-random" disabled={busy} onClick={() => onReject(beat.id)}>
+          Reject
+        </button>
+      ) : null}
+      {beat.status === "approved" ? (
+        <button type="button" className="gen-seed-random" disabled={busy} onClick={() => onReset(beat.id)}>
+          Unapprove
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function BeatStillFields({
+  beat,
+  index,
+  busy,
+  onPatch,
+}: {
+  beat: MotionBeat;
+  index: number;
+  busy: boolean;
+  onPatch: (id: string, patch: Partial<MotionBeat>) => void;
+}) {
+  return (
+    <div className="gen-beat-stills">
+      <label className="gen-field gen-field-wide">
+        Source still
+        <input
+          value={beat.source_image_url}
+          disabled={busy || beat.status === "generating"}
+          onChange={(e) => onPatch(beat.id, { source_image_url: e.target.value, from_prev_last: false })}
+        />
+      </label>
+      {index > 0 && (
+        <label className="gen-check">
+          <input
+            type="checkbox"
+            checked={beat.from_prev_last}
+            disabled={busy || beat.status === "generating"}
+            onChange={(e) => onPatch(beat.id, { from_prev_last: e.target.checked })}
+          />
+          Use previous beat still (end pose, or source)
+        </label>
+      )}
+      <label className="gen-field gen-field-wide">
+        End still (optional FLF2V)
+        <input
+          value={beat.end_image_url}
+          disabled={busy || beat.status === "generating"}
+          onChange={(e) => onPatch(beat.id, { end_image_url: e.target.value })}
+        />
+      </label>
+    </div>
+  );
+}
+
 export function BeatQueuePanel({
   queue,
   busy,
@@ -72,14 +188,40 @@ export function BeatQueuePanel({
 }) {
   const stitch = canStitchBeats(queue);
   const blockers = stitchBlockers(queue);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const prevLen = useRef(queue.beats.length);
+  const selected = queue.beats.find((b) => b.id === selectedId) ?? null;
+  const selectedIndex = selected ? queue.beats.findIndex((b) => b.id === selected.id) : -1;
+
+  useEffect(() => {
+    const ids = queue.beats.map((b) => b.id);
+    if (!ids.length) {
+      setSelectedId(null);
+      prevLen.current = 0;
+      return;
+    }
+    if (queue.beats.length > prevLen.current) {
+      setSelectedId(ids[ids.length - 1]);
+    } else if (!selectedId || !ids.includes(selectedId)) {
+      setSelectedId(ids[0]);
+    }
+    prevLen.current = queue.beats.length;
+  }, [queue.beats, selectedId]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const node = document.querySelector<HTMLElement>(`[data-beat-id="${selectedId}"]`);
+    node?.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
+  }, [selectedId]);
+
   return (
     <section className="gen-beats" aria-label="Beat queue">
       <div className="gen-beats-head">
         <div>
           <p className="gen-label gen-label-live">Beat queue</p>
           <p className="gen-hint">
-            One Wan clip per beat (~5s). Review, regenerate, approve. Stitch only when every beat is
-            approved — never on Go.
+            Left → right timeline. One Wan clip per beat (~5s). Review, regenerate, approve. Stitch
+            only when every beat is approved — never on Go.
           </p>
         </div>
         <div className="gen-beats-actions">
@@ -94,129 +236,118 @@ export function BeatQueuePanel({
       {queue.beats.length === 0 ? (
         <p className="gen-hint">No beats yet. Add the current Motion card, or start empty.</p>
       ) : (
-        <ol className="gen-beat-list">
-          {queue.beats.map((beat, i) => (
-            <li key={beat.id} className={`gen-beat gen-beat-${beat.status}`}>
-              <div className="gen-beat-top">
-                <span className="gen-beat-num">Beat {i + 1}</span>
-                <span className={`gen-beat-status gen-beat-status-${beat.status}`}>{beat.status}</span>
+        <div className="gen-beat-timeline" role="region" aria-label="Beat timeline">
+          <ol className="gen-beat-strip">
+            {queue.beats.map((beat, i) => (
+              <li
+                key={beat.id}
+                data-beat-id={beat.id}
+                className={`gen-beat gen-beat-${beat.status}${selectedId === beat.id ? " gen-beat-selected" : ""}`}
+              >
+                <button
+                  type="button"
+                  className="gen-beat-select"
+                  aria-pressed={selectedId === beat.id}
+                  onClick={() => setSelectedId(beat.id)}
+                >
+                  <span className="gen-beat-num">Beat {i + 1}</span>
+                  <span className={`gen-beat-status gen-beat-status-${beat.status}`}>{beat.status}</span>
+                </button>
                 <div className="gen-beat-move">
                   <button type="button" disabled={busy || i === 0} onClick={() => onMove(beat.id, -1)}>
-                    Up
+                    Left
                   </button>
                   <button
                     type="button"
                     disabled={busy || i === queue.beats.length - 1}
                     onClick={() => onMove(beat.id, 1)}
                   >
-                    Down
+                    Right
                   </button>
                   <button type="button" disabled={busy} onClick={() => onRemove(beat.id)}>
                     Remove
                   </button>
                 </div>
-              </div>
-              <label className="gen-field gen-field-wide">
-                Motion prompt
-                <textarea
-                  name={`beat-prompt-${beat.id}`}
-                  className="gen-box gen-box-description"
-                  value={beat.prompt}
-                  disabled={busy || beat.status === "generating"}
-                  onChange={(e) => onPatch(beat.id, { prompt: e.target.value })}
-                />
-              </label>
-              <label className="gen-field gen-field-wide">
-                Source still
-                <input
-                  value={beat.source_image_url}
-                  disabled={busy || beat.status === "generating"}
-                  onChange={(e) => onPatch(beat.id, { source_image_url: e.target.value, from_prev_last: false })}
-                />
-              </label>
-              {i > 0 && (
-                <label className="gen-check">
-                  <input
-                    type="checkbox"
-                    checked={beat.from_prev_last}
+                <label className="gen-field gen-field-wide">
+                  Motion prompt
+                  <textarea
+                    className="gen-box gen-beat-prompt"
+                    value={beat.prompt}
                     disabled={busy || beat.status === "generating"}
-                    onChange={(e) => onPatch(beat.id, { from_prev_last: e.target.checked })}
+                    rows={3}
+                    onFocus={() => setSelectedId(beat.id)}
+                    onChange={(e) => onPatch(beat.id, { prompt: e.target.value })}
                   />
-                  Use previous beat still (end pose, or source)
                 </label>
-              )}
-              <label className="gen-field gen-field-wide">
-                End still (optional FLF2V)
-                <input
-                  value={beat.end_image_url}
-                  disabled={busy || beat.status === "generating"}
-                  onChange={(e) => onPatch(beat.id, { end_image_url: e.target.value })}
+                <p className="gen-beat-meta">{stillSummary(beat, i)}</p>
+                <details className="gen-beat-more">
+                  <summary>Stills</summary>
+                  <BeatStillFields beat={beat} index={i} busy={busy} onPatch={onPatch} />
+                </details>
+                <BeatActions
+                  beat={beat}
+                  busy={busy}
+                  onGenerate={onGenerate}
+                  onApprove={onApprove}
+                  onReject={onReject}
+                  onReset={onReset}
+                  onPatch={onPatch}
                 />
-              </label>
-              <div className="gen-row">
-                <button
-                  type="button"
-                  className={`gen-nsfw-chip${beat.slow_mo ? " gen-nsfw-chip-on" : ""}`}
-                  disabled={busy || beat.status === "generating"}
-                  aria-pressed={beat.slow_mo}
-                  onClick={() => onPatch(beat.id, { slow_mo: !beat.slow_mo })}
-                >
-                  0.5× slow-mo
-                </button>
-                <button
-                  type="button"
-                  className="gen-seed-random"
-                  disabled={busy || beat.status === "generating"}
-                  onClick={() => onGenerate(beat.id)}
-                >
-                  {beat.status === "draft" || beat.status === "rejected"
-                    ? nextBeatActionLabel(beat)
-                    : beat.status === "ready" || beat.status === "approved"
-                      ? "Regenerate"
-                      : nextBeatActionLabel(beat)}
-                </button>
-                {beat.status === "ready" || beat.status === "rejected" ? (
-                  <button type="button" className="gen-seed-random" disabled={busy} onClick={() => onApprove(beat.id)}>
-                    Approve
-                  </button>
-                ) : null}
-                {beat.status === "ready" || beat.status === "approved" ? (
-                  <button type="button" className="gen-seed-random" disabled={busy} onClick={() => onReject(beat.id)}>
-                    Reject
-                  </button>
-                ) : null}
-                {beat.status === "approved" ? (
-                  <button type="button" className="gen-seed-random" disabled={busy} onClick={() => onReset(beat.id)}>
-                    Unapprove
-                  </button>
-                ) : null}
-              </div>
-              {beat.error ? <p className="gen-err">{beat.error}</p> : null}
-              {beat.job_id && (beat.status === "ready" || beat.status === "approved" || beat.status === "rejected") ? (
-                <GatedClip
-                  src={mediaSrc(beat.job_id, 0)}
-                  playbackRate={beat.slow_mo ? 0.5 : 1}
-                  label={
-                    beat.slow_mo
-                      ? "0.5× slow-mo — remux after Wan when ffmpeg is on the runtime; otherwise playbackRate."
-                      : undefined
-                  }
-                />
-              ) : null}
+                {beat.error ? <p className="gen-err">{beat.error}</p> : null}
+              </li>
+            ))}
+            <li className="gen-beat gen-beat-stitch-end">
+              <span className="gen-beat-num">Stitch</span>
+              <p className="gen-beat-meta">
+                {stitch.ok ? "All beats approved" : blockers[0] || "Approve every beat"}
+              </p>
+              <button type="button" className="gen-go" disabled={busy || !stitch.ok} onClick={onStitch}>
+                Stitch approved beats
+              </button>
+              {queue.stitch_error ? <p className="gen-err">{queue.stitch_error}</p> : null}
             </li>
-          ))}
-        </ol>
+          </ol>
+        </div>
       )}
-      <div className="gen-beats-stitch">
-        <button type="button" className="gen-go" disabled={busy || !stitch.ok} onClick={onStitch}>
-          Stitch approved beats
-        </button>
-        {!stitch.ok && blockers[0] ? <p className="gen-hint">{blockers[0]}</p> : null}
-        {queue.stitch_error ? <p className="gen-err">{queue.stitch_error}</p> : null}
-        {queue.stitch_job_id ? (
+      {selected && selectedIndex >= 0 ? (
+        <div className="gen-beat-detail" aria-label={`Beat ${selectedIndex + 1} detail`}>
+          <div className="gen-beat-detail-head">
+            <p className="gen-label">Beat {selectedIndex + 1} detail</p>
+            <span className={`gen-beat-status gen-beat-status-${selected.status}`}>{selected.status}</span>
+          </div>
+          <p className="gen-hint">Stills and the clip live here so the timeline stays a single row.</p>
+          <BeatStillFields beat={selected} index={selectedIndex} busy={busy} onPatch={onPatch} />
+          {selected.error ? <p className="gen-err">{selected.error}</p> : null}
+          {selected.job_id &&
+          (selected.status === "ready" || selected.status === "approved" || selected.status === "rejected") ? (
+            <GatedClip
+              src={mediaSrc(selected.job_id, 0)}
+              playbackRate={selected.slow_mo ? 0.5 : 1}
+              label={
+                selected.slow_mo
+                  ? "0.5× slow-mo — remux after Wan when ffmpeg is on the runtime; otherwise playbackRate."
+                  : undefined
+              }
+            />
+          ) : (
+            <p className="gen-hint">Generate this beat to preview the clip here.</p>
+          )}
+        </div>
+      ) : null}
+      {queue.beats.length === 0 ? (
+        <div className="gen-beats-stitch">
+          <button type="button" className="gen-go" disabled={busy || !stitch.ok} onClick={onStitch}>
+            Stitch approved beats
+          </button>
+          {!stitch.ok && blockers[0] ? <p className="gen-hint">{blockers[0]}</p> : null}
+        </div>
+      ) : null}
+      {queue.stitch_job_id ? (
+        <div className="gen-beats-stitch-result">
+          <p className="gen-label">Stitched cut</p>
           <GatedClip src={mediaSrc(queue.stitch_job_id, 0)} label="Stitched MP4 — simple concat on Vercel ffmpeg" />
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </section>
   );
 }

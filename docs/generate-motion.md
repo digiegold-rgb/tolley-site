@@ -13,7 +13,7 @@ This is **not** ByteDance Seedance. This is **not** LatentSync face-lock.
 | Optional last-frame / pose **still** | **Shipped.** If `end_image_url` is an HTTPS image, we switch to `fal-ai/wan-flf2v` (first + last frame). Same 5s / 720p family. |
 | Inline player | **Shipped.** Result well + Motion / engine galleries use `<video controls>` against the HQ-gated job route (`video/mp4` + Range). Not download-only. |
 | 0.5× slow-mo | **Shipped.** Chip on Motion (and I2V / T2V). After fal returns, Vercel remuxes with ffmpeg `setpts=2*PTS` when `ffmpeg` is on the runtime. Same frames, ~10s wall clock — **not** a longer Wan call. If remux fails, the in-page player uses `playbackRate=0.5` and is labeled. |
-| Beat queue | **Shipped.** Ordered scenes on the Motion tab. Generate **one beat at a time**. Review / reject / regenerate independently. **Stitch approved beats** only when every beat is `approved`. No auto-stitch on Go. |
+| Beat queue | **Shipped.** Ordered scenes on the Motion tab as a **left-to-right filmstrip** (not stacked cards). Generate **one beat at a time**. Review / reject / regenerate independently. **Stitch approved beats** only when every beat is `approved`. No auto-stitch on Go. |
 | Stitch | **Vercel Node + ffmpeg concat** (optional 0.25s xfade when two clips + `crossfade: true`). Not Spark. Parent job recipe `fal-wan-beats`; stitch job `fal-wan-stitch`. |
 | HQ / admin gate | Same as Modal stills: HQ PIN, shop admin PIN, or `ADMIN_ALLOWLIST_EMAILS`. |
 | Dry run | Persists a queued `GenerateJob`, returns fal kwargs, spends nothing. |
@@ -67,7 +67,7 @@ Chat→card uses the same Spark / LiteLLM vars as Modal stills (`QWEN_VLLM_*` pr
 4. Set a source still: click **Use as source** on a Modal gallery still (HQ-gated path — not a public Blob link), paste an HTTPS URL, or upload.
 5. Edit the motion prompt (and optional last-frame still). Optional **0.5× slow-mo** chip.
 6. Optional **Dry run**, then **Go** — single-clip path is unchanged. The MP4 plays **in-page with controls**.
-7. For a longer piece: **Add current card** into the beat queue. Generate / approve / regenerate each beat. When every beat is approved, **Stitch approved beats**.
+7. For a longer piece: **Add current card** into the beat queue. Beats sit **left → right** on a filmstrip (horizontal scroll on a phone). Each column keeps a short prompt; select a beat to edit stills and watch the clip **below** the row. Generate / approve / regenerate each beat. When every beat is approved, **Stitch approved beats** at the end of the timeline.
 
 Beat prompt / still fields update **locally first**. Persist is debounced (~400ms) and flushed before generate / approve / stitch. A late save response is ignored if Jared typed again — otherwise concurrent POSTs overwrite newer text (worst on beat 2+).
 

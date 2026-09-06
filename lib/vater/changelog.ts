@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.31.2';
+export const APP_VERSION = '1.32';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.32',
+    date: '2026-09-06',
+    title: 'Generate Motion beat queue is a left-to-right timeline',
+    items: [
+      'Beats on Generate Motion now sit in a horizontal filmstrip so you can read Beat 1 → 2 → 3 without stacking full cards.',
+      'Select a beat to edit stills and watch the clip below the row. Stitch stays at the end of the timeline. Phone widths scroll sideways.',
+    ],
+  },
   {
     version: '1.31.2',
     date: '2026-09-05',
