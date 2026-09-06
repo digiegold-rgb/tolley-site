@@ -214,6 +214,7 @@ export async function POST(req: NextRequest) {
 }
 
 async function existingInFlightChild(
+  createdBy: string,
   queue: LongformQueue,
   queueJobId: string | undefined,
   beatId: string,
@@ -226,6 +227,7 @@ async function existingInFlightChild(
   if (!queueJobId) return null;
   const recent = await prisma.generateJob.findMany({
     where: {
+      createdBy,
       status: { in: ["queued", "running"] },
       recipe: { in: ["fal-wan-i2v", "fal-wan-flf2v"] },
     },
@@ -252,7 +254,7 @@ async function generateLongformBeat(
 ) {
   queue = ensureBeatSourceFromPrev(queue, beatId);
   const liveChild =
-    (await existingInFlightChild(queue, queueJobId, beatId)) ||
+    (await existingInFlightChild(createdBy, queue, queueJobId, beatId)) ||
     (await (async () => {
       const other = queue.beats.find((b) => b.id !== beatId && b.status === "generating" && b.job_id);
       if (!other?.job_id) return null;
