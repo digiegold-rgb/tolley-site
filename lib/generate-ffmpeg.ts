@@ -1,21 +1,98 @@
 /**
- * Vercel-side ffmpeg for /generate Motion: 0.5× remux + concat stitch.
+ * Vercel-side ffmpeg for /generate Motion: 0.5× remux, concat stitch, and
+ * Motion 2 last-frame extract.
  *
- * Uses the `ffmpeg` binary on PATH (or FFMPEG_PATH). This is Vercel Node —
- * not Spark. If ffmpeg is missing, callers must fall back (playbackRate for
- * slow-mo; stitch returns a clear error).
+ * Vercel Node has no system ffmpeg. Remux, stitch, and extract share one
+ * resolver — do not spawn a bare `ffmpeg` first:
+ *   FFMPEG_PATH → FFMPEG → require("ffmpeg-static") → PATH `ffmpeg`
+ *
+ * A missing env path is skipped. Do not rely on a Vercel env pointing at a
+ * nonexistent binary. ffmpeg-static is a dependency and is file-traced into
+ * the generate serverless functions.
+ *
+ * If the binary is still missing after that, remux callers may fall back
+ * (playbackRate for slow-mo); stitch and last-frame extract error clearly.
  */
 
 import { spawn } from "node:child_process";
+import { chmodSync, existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import ffmpegStatic from "ffmpeg-static";
 
 export const SLOW_MO_RATE = 0.5;
 export const SLOW_MO_SETPTS = 2; // 1 / 0.5
 
+const PATH_FALLBACK = "ffmpeg";
+
+function skipFallbacks(env: NodeJS.ProcessEnv): boolean {
+  const v = (env.FFMPEG_SKIP_FALLBACKS || "").trim().toLowerCase();
+  return v === "1" || v === "true";
+}
+
+function ensureExecutable(bin: string): void {
+  if (bin === PATH_FALLBACK || bin === "ffmpeg.exe") return;
+  try {
+    chmodSync(bin, 0o755);
+  } catch {
+    /* spawn reports the real error */
+  }
+}
+
+function usableFile(bin: string | undefined | null): string | undefined {
+  const p = (bin || "").trim();
+  if (!p || p === PATH_FALLBACK || p === "ffmpeg.exe") return undefined;
+  if (!existsSync(p)) return undefined;
+  ensureExecutable(p);
+  return p;
+}
+
+/** require("ffmpeg-static") — import keeps Next from stripping the package. */
+function ffmpegStaticBin(): string | undefined {
+  const fromImport = usableFile(typeof ffmpegStatic === "string" ? ffmpegStatic : null);
+  if (fromImport) return fromImport;
+  try {
+    const req = createRequire(import.meta.url);
+    const loaded = req("ffmpeg-static") as unknown;
+    const fromRequire = usableFile(typeof loaded === "string" ? loaded : null);
+    if (fromRequire) return fromRequire;
+  } catch {
+    /* webpack chunk path — fall through to traced cwd copy */
+  }
+  try {
+    const req = createRequire(join(process.cwd(), "package.json"));
+    const loaded = req("ffmpeg-static") as unknown;
+    const fromCwd = usableFile(typeof loaded === "string" ? loaded : null);
+    if (fromCwd) return fromCwd;
+  } catch {
+    /* not in this bundle */
+  }
+  return usableFile(join(process.cwd(), "node_modules", "ffmpeg-static", "ffmpeg"));
+}
+
+/**
+ * Shared by remux, stitch, and last-frame extract.
+ * FFMPEG_PATH → FFMPEG → require("ffmpeg-static") → `ffmpeg`.
+ * Nonexistent env paths are skipped so a stale Vercel env cannot cause ENOENT.
+ */
 export function ffmpegBin(env: NodeJS.ProcessEnv = process.env): string {
-  return (env.FFMPEG_PATH || env.FFMPEG || "ffmpeg").trim() || "ffmpeg";
+  if (skipFallbacks(env)) {
+    return (env.FFMPEG_PATH || env.FFMPEG || PATH_FALLBACK).trim() || PATH_FALLBACK;
+  }
+  const fromPath = usableFile(env.FFMPEG_PATH);
+  if (fromPath) return fromPath;
+  const fromFfmpeg = usableFile(env.FFMPEG);
+  if (fromFfmpeg) return fromFfmpeg;
+  const fromStatic = ffmpegStaticBin();
+  if (fromStatic) return fromStatic;
+  return PATH_FALLBACK;
+}
+
+/** Same resolver as ffmpegBin — remux / stitch / extract all go through here. */
+export function resolveFfmpegPath(env: NodeJS.ProcessEnv = process.env): string {
+  return ffmpegBin(env);
 }
 
 export async function isFfmpegAvailable(
@@ -27,7 +104,11 @@ export async function isFfmpegAvailable(
     if (code === 0) return { ok: true, bin };
     return { ok: false, bin, error: stderr.slice(0, 240) || `ffmpeg exited ${code}` };
   } catch (err) {
-    return { ok: false, bin, error: err instanceof Error ? err.message : String(err) };
+    return {
+      ok: false,
+      bin,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 }
 

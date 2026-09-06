@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.34.1';
+export const APP_VERSION = '1.34.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.34.2',
+    date: '2026-09-06',
+    title: 'Motion 2 last-frame continuity on production',
+    items: [
+      'Motion 2 can finish a beat on production and hand the last frame to the next beat. Continuity no longer dies with “ffmpeg not available”.',
+      'Remux, stitch, and last-frame extract share one ffmpeg lookup, so Motion 1 slow-mo and stitch stay on the same binary.',
+    ],
+  },
   {
     version: '1.34.1',
     date: '2026-09-06',

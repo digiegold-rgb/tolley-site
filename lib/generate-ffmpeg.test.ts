@@ -4,12 +4,15 @@ import {
   concatMp4s,
   concatMp4sCopy,
   extractLastFrame,
+  ffmpegBin,
   isFfmpegAvailable,
   playbackRateForSlowMo,
   remuxSlowMo,
+  resolveFfmpegPath,
   slowMoLabel,
 } from "./generate-ffmpeg.ts";
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -22,11 +25,40 @@ function run(bin: string, args: string[]): Promise<void> {
   });
 }
 
+describe("ffmpegBin", () => {
+  it("prefers an existing FFMPEG_PATH over ffmpeg-static / PATH", () => {
+    const bin = ffmpegBin({ FFMPEG_PATH: process.execPath });
+    assert.equal(bin, process.execPath);
+    assert.equal(resolveFfmpegPath({ FFMPEG_PATH: process.execPath }), bin);
+  });
+
+  it("skips a nonexistent FFMPEG_PATH and uses ffmpeg-static", async () => {
+    const avail = await isFfmpegAvailable({ FFMPEG_PATH: "/no/such/ffmpeg-bin" });
+    assert.equal(avail.ok, true);
+    assert.ok(avail.bin);
+    assert.notEqual(avail.bin, "/no/such/ffmpeg-bin");
+    assert.notEqual(avail.bin, "ffmpeg");
+    assert.ok(existsSync(avail.bin));
+    assert.equal(ffmpegBin({ FFMPEG_PATH: "/no/such/ffmpeg-bin" }), avail.bin);
+  });
+
+  it("resolves require('ffmpeg-static') instead of a bare PATH spawn", () => {
+    const bin = ffmpegBin({});
+    assert.notEqual(bin, "ffmpeg");
+    assert.ok(existsSync(bin), `expected a file at ${bin}`);
+    assert.match(bin, /ffmpeg-static|ffmpeg/);
+  });
+});
+
 describe("last-frame extract errors", () => {
-  it("fails clearly when ffmpeg is missing", async () => {
+  it("fails clearly when every ffmpeg candidate is missing", async () => {
     await assert.rejects(
-      () => extractLastFrame(Buffer.from("not-an-mp4"), { FFMPEG_PATH: "/no/such/ffmpeg-bin" }),
-      /ffmpeg/,
+      () =>
+        extractLastFrame(Buffer.from("not-an-mp4"), {
+          FFMPEG_PATH: "/no/such/ffmpeg-bin",
+          FFMPEG_SKIP_FALLBACKS: "1",
+        }),
+      /ffmpeg not available for last-frame extract/,
     );
   });
 });

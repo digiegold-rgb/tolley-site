@@ -39,7 +39,7 @@ Same as Motion 1 (`docs/generate-motion.md`):
 | Variable | Notes |
 |---|---|
 | `FAL_KEY` | Required to spawn. Never to the browser. |
-| `FFMPEG_PATH` | Last-frame extract + stitch. Same Vercel Node binary as Motion 1 remux/stitch. |
+| `FFMPEG_PATH` | Optional override when that file exists. Last-frame extract + stitch share Motion 1’s resolver: `FFMPEG_PATH` → `FFMPEG` → `require('ffmpeg-static')` → PATH. A missing env path is ignored. |
 | `GENERATE_SPARK_STORE_URL` + `GENERATE_SPARK_STORE_KEY` | Private MP4 + last-frame PNG. No public Blob. |
 | `GENERATE_BLOB_FALLBACK=1` + private token | Optional fallback. |
 | HQ / shop / allowlist | Same gate as Modal stills. |
