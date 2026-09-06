@@ -200,15 +200,24 @@ export function patchBeat(queue: BeatQueue, beatId: string, patch: Partial<Motio
   return { ...queue, beats };
 }
 
-/** Local form apply — same as patchBeat, then honor from_prev_last. */
+/**
+ * Local form apply. Shallow-merge so a trailing space in the prompt
+ * survives the next keystroke — emptyBeat().trim() would eat it and
+ * make "she walks" type as "shewalks".
+ */
 export function applyLocalBeatPatch(
   queue: BeatQueue,
   beatId: string,
   patch: Partial<MotionBeat>,
 ): BeatQueue {
-  const next = patchBeat(queue, beatId, patch);
-  const beat = next.beats.find((b) => b.id === beatId);
-  if (beat?.from_prev_last) return applyPrevLastSource(next, beatId);
+  const idx = queue.beats.findIndex((b) => b.id === beatId);
+  if (idx < 0) throw new Error("Beat not found");
+  const beats = queue.beats.slice();
+  beats[idx] = { ...beats[idx], ...patch, id: beats[idx].id };
+  const next = { ...queue, beats };
+  if (next.beats[idx].from_prev_last && patch.from_prev_last === true) {
+    return applyPrevLastSource(next, beatId);
+  }
   return next;
 }
 
@@ -268,7 +277,9 @@ export function applyPrevLastSource(queue: BeatQueue, beatId: string): BeatQueue
   const idx = queue.beats.findIndex((b) => b.id === beatId);
   if (idx < 0) throw new Error("Beat not found");
   const src = sourceStillFromPrevious(queue, idx);
-  return patchBeat(queue, beatId, { source_image_url: src, from_prev_last: true });
+  const beats = queue.beats.slice();
+  beats[idx] = { ...beats[idx], source_image_url: src, from_prev_last: true };
+  return { ...queue, beats };
 }
 
 export function canGenerateBeat(beat: MotionBeat): { ok: boolean; reason?: string } {
