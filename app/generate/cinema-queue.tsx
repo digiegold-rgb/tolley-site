@@ -1,10 +1,13 @@
 "use client";
 
 import {
+  CINEMA_SECONDS_DEFAULT,
   canStitchCinema,
   cinemaProgress,
+  cinemaSecondsChips,
   cinemaStitchBlockers,
   cinemaGenerateLocked,
+  clampCinemaSeconds,
   estimateCinema,
   failedHoldCinemaBeats,
   formatCinemaFalError,
@@ -15,6 +18,37 @@ import {
   type CinemaQueue,
 } from "@/lib/generate-cinema";
 import { GatedClip } from "./beat-queue";
+
+function CinemaSecondsChips({
+  seconds,
+  model,
+  disabled,
+  onPick,
+}: {
+  seconds: number;
+  model: CinemaModel;
+  disabled?: boolean;
+  onPick: (seconds: number) => void;
+}) {
+  const chips = cinemaSecondsChips(model);
+  const shown = chips.includes(seconds) ? chips : [...chips, seconds].sort((a, b) => a - b);
+  return (
+    <div className="gen-nsfw-chips" role="group" aria-label="Beat length" data-testid="cinema-seconds-chips">
+      {shown.map((n) => (
+        <button
+          key={n}
+          type="button"
+          className={`gen-nsfw-chip${seconds === n ? " gen-nsfw-chip-on" : ""}`}
+          disabled={disabled}
+          aria-pressed={seconds === n}
+          onClick={() => onPick(clampCinemaSeconds(n, CINEMA_SECONDS_DEFAULT, model))}
+        >
+          {n === 15 ? "15s max" : `${n}s`}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function mediaSrc(jobId: string, index = 0): string {
   return `/api/generate/jobs/${encodeURIComponent(jobId)}/image?i=${index}`;
@@ -174,6 +208,10 @@ export function CinemaPanel({
           </select>
         </label>
       </div>
+      <p className="gen-hint" data-testid="cinema-seconds-limit">
+        Max 15s per beat (fal hard limit). Stitch beats for longer.
+        {queue.model === "kling" ? " Kling allows 3–15s." : " Seedance allows 4–15s."} Default 10s.
+      </p>
 
       <div>
         <p className="gen-label gen-label-live">Script (one beat per line) or paste shotlist JSON</p>
@@ -311,6 +349,12 @@ export function CinemaPanel({
                     {beat.video_ref_url ? " · prior clip" : ""}
                   </span>
                 </button>
+                <CinemaSecondsChips
+                  seconds={beat.seconds}
+                  model={queue.model}
+                  disabled={primaryBusy || beat.status === "generating"}
+                  onPick={(n) => onPatch(beat.id, { seconds: n })}
+                />
                 {beat.vo_line ? <p className="gen-hint">VO: {beat.vo_line}</p> : null}
                 <textarea
                   className="gen-longform-prompt"

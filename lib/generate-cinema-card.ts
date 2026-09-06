@@ -81,7 +81,7 @@ export function seedanceRefInput(opts: {
     image_urls,
     aspect_ratio: opts.aspect || "9:16",
     resolution: opts.resolution || "720p",
-    duration: String(clampCinemaSeconds(opts.seconds, CINEMA_SECONDS_DEFAULT)),
+    duration: String(clampCinemaSeconds(opts.seconds, CINEMA_SECONDS_DEFAULT, "seedance")),
     generate_audio: opts.generateAudio !== false,
   };
   if (video_urls.length) input.video_urls = video_urls;
@@ -99,13 +99,18 @@ export function kling3ElementsInput(opts: {
   const images = (opts.imageUrls || []).map((u) => u.trim()).filter(Boolean).slice(0, 9);
   const start = images[0] || "";
   const frontal = images[1] || images[0] || "";
-  const refs = images.slice(images[1] ? 2 : 1).slice(0, 3);
+  let refs = images.slice(images[1] ? 2 : 1).slice(0, 3);
+  // fal requires (frontal_image_url AND reference_image_urls) OR video_url.
+  // 1–2 stills still need at least one reference URL — duplicate frontal/start.
+  if (!refs.length && (frontal || start)) {
+    refs = [start && start !== frontal ? start : frontal];
+  }
   const element: Kling3Element = { frontal_image_url: frontal };
   if (refs.length) element.reference_image_urls = refs;
   return {
     prompt: klingPromptFromSeedance(opts.prompt),
     start_image_url: start,
-    duration: String(clampCinemaSeconds(opts.seconds, CINEMA_SECONDS_DEFAULT)),
+    duration: String(clampCinemaSeconds(opts.seconds, CINEMA_SECONDS_DEFAULT, "kling")),
     generate_audio: opts.generateAudio !== false,
     elements: [{ ...element }],
     shot_type: "customize",

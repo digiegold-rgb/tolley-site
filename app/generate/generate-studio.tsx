@@ -79,6 +79,7 @@ import {
   loadEstateProofTemplate,
   nextGeneratableCinemaBeat,
   parseCinemaQueue,
+  withCinemaModel,
   type CinemaEstimate,
   type CinemaQueue,
 } from "@/lib/generate-cinema";
@@ -2836,7 +2837,7 @@ export default function GenerateStudio() {
               onAudioUrl={(url) => commitCinemaLocal({ ...cinemaQueueRef.current, audio_url: url })}
               onPriorVideo={(url) => commitCinemaLocal({ ...cinemaQueueRef.current, prior_video_url: url })}
               onScript={(script) => commitCinemaLocal({ ...cinemaQueueRef.current, script })}
-              onModel={(model) => commitCinemaLocal({ ...cinemaQueueRef.current, model })}
+              onModel={(model) => commitCinemaLocal(withCinemaModel(cinemaQueueRef.current, model))}
               onGenerateAudio={(on) =>
                 commitCinemaLocal({
                   ...cinemaQueueRef.current,
