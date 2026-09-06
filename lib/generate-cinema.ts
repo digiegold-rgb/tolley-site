@@ -20,7 +20,12 @@ import {
   MOTION_RESOLUTION_DEFAULT,
   type MotionResolution,
 } from "./generate-motion-card";
-import { ESTATE_PROOF_BEATS, ESTATE_PROOF_TITLE } from "./generate-cinema-estate";
+import {
+  ESTATE_PROOF_BEATS,
+  ESTATE_PROOF_TITLE,
+  type EstateProofBeat,
+} from "./generate-cinema-estate";
+export type { EstateProofBeat };
 import { needsSpendConfirm, SPEND_CONFIRM_USD } from "./generate-queue-binding";
 
 export const CINEMA_RECIPE = "fal-cinema" as const;
@@ -127,6 +132,16 @@ export function parseHttpsUrlList(raw: unknown, max = CINEMA_IMAGE_MAX): string[
   return out;
 }
 
+/** Narrow unknown JSON (or a pasted newline list) to `string[] | undefined`. */
+export function parseOptionalStringList(raw: unknown): string[] | undefined {
+  if (raw == null) return undefined;
+  if (typeof raw === "string") return parseHttpsUrlList(raw);
+  if (Array.isArray(raw) && raw.every((item): item is string => typeof item === "string")) {
+    return raw;
+  }
+  return undefined;
+}
+
 export function newCinemaBeatId(): string {
   return `cn_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -210,7 +225,7 @@ export function parseCinemaQueue(raw: unknown): CinemaQueue {
   return emptyCinemaQueue({
     title: typeof rec.title === "string" ? rec.title : undefined,
     script: typeof rec.script === "string" ? rec.script : undefined,
-    image_urls: parseHttpsUrlList(rec.image_urls ?? rec.imageUrls),
+    image_urls: parseOptionalStringList(rec.image_urls ?? rec.imageUrls),
     audio_url: typeof rec.audio_url === "string" ? rec.audio_url : typeof rec.audioUrl === "string" ? rec.audioUrl : undefined,
     prior_video_url:
       typeof rec.prior_video_url === "string"
@@ -287,19 +302,12 @@ export function cinemaPromptScaffold(vo: string, seconds: number): string {
     .join(" ");
 }
 
-export type EstateProofBeat = {
-  id: string;
-  seconds: number;
-  vo: string;
-  prompt: string;
-};
-
 export function estateProofBeats(): EstateProofBeat[] {
-  return ESTATE_PROOF_BEATS.map((b: EstateProofBeat) => ({
-    id: String(b.id),
+  return ESTATE_PROOF_BEATS.map((b) => ({
+    id: b.id,
     seconds: clampCinemaSeconds(b.seconds),
-    vo: String(b.vo || ""),
-    prompt: String(b.prompt || cinemaPromptScaffold(String(b.vo || ""), Number(b.seconds))),
+    vo: b.vo,
+    prompt: b.prompt || cinemaPromptScaffold(b.vo, b.seconds),
   }));
 }
 

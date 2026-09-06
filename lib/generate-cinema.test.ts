@@ -13,9 +13,11 @@ import {
   estimateCinema,
   formatCinemaFalError,
   isFalPartnerOrPolicyError,
+  estateProofBeats,
   loadEstateProofTemplate,
   nextGeneratableCinemaBeat,
   parseCinemaQueue,
+  parseOptionalStringList,
   planCinemaQueue,
 } from "./generate-cinema.ts";
 import { ESTATE_PROOF_BEATS } from "./generate-cinema-estate.ts";
@@ -71,6 +73,23 @@ describe("cinema estate template + queue", () => {
     assert.equal(raw.beats.length, ESTATE_PROOF_BEATS.length);
     assert.equal(raw.beats[0].id, "c01");
     assert.equal(raw.beats[0].vo, ESTATE_PROOF_BEATS[0].vo);
+  });
+
+  it("narrows unknown JSON image_urls to string[] and keeps estate vo/seconds", () => {
+    assert.deepEqual(parseOptionalStringList(["https://a.example/x.png", "https://a.example/y.png"]), [
+      "https://a.example/x.png",
+      "https://a.example/y.png",
+    ]);
+    assert.equal(parseOptionalStringList([1, "https://a.example/x.png"]), undefined);
+    const q = parseCinemaQueue({
+      image_urls: [FRONT, "https://blob.example/bust.png"],
+      beats: [{ id: "c01", seconds: 10, vo: "Welcome.", prompt: "hold" }],
+    });
+    assert.deepEqual(q.image_urls, [FRONT, "https://blob.example/bust.png"]);
+    const beats = estateProofBeats();
+    assert.equal(beats[0].vo.length > 0, true);
+    assert.equal(typeof beats[0].seconds, "number");
+    assert.equal(beats[0].seconds, ESTATE_PROOF_BEATS[0].seconds);
   });
 
   it("parses a shotlist JSON import", () => {
