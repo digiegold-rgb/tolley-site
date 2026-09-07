@@ -39,4 +39,6 @@ terminates on Spark.
 - `GET /health` — liveness (no auth)
 
 HQ never hits this host from the browser. `/generate` loads
-`GET /api/generate/jobs/:id/image?i=0` after the same Jared/admin gate as Modal jobs.
+`GET /api/generate/jobs/:id/image?i=0` after the Jared/admin gate **and** the
+library PIN cookie (`GENERATE_LIBRARY_PIN`). Spark itself is still
+server-to-server only (`GENERATE_SPARK_STORE_KEY`).

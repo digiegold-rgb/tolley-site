@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireGenerateAdmin } from "@/lib/generate-auth";
+import { requireGenerateLibrary } from "@/lib/generate-library-auth";
 import { inferMediaContentType, readableToBuffer, serveMediaBytes } from "@/lib/generate-media";
 import { parseJobImageIndex } from "@/lib/generate-output";
 import { fetchStoredJobImage } from "@/lib/generate-output-persist";
@@ -15,12 +15,14 @@ type Ctx = { params: Promise<{ id: string }> };
 /**
  * GET /api/generate/jobs/:id/image?i=0
  *
- * HQ/admin-gated still + clip delivery. Studio/gallery must use this route —
- * never a public Vercel Blob CDN URL. Motion / T2V / I2V clips are
- * `video/mp4` with Range so `<video controls>` can seek.
+ * Library-gated still + clip delivery (generate admin + library PIN cookie).
+ * Studio/gallery must use this route — never a public Vercel Blob CDN URL.
+ * Motion / T2V / I2V clips are `video/mp4` with Range so `<video controls>`
+ * can seek. Failures are 404 so unauth / PIN-locked callers do not learn
+ * whether a job id exists.
  */
 export async function GET(req: NextRequest, ctx: Ctx) {
-  const gate = await requireGenerateAdmin();
+  const gate = await requireGenerateLibrary({ hide: true });
   if (!gate.ok) return gate.response;
 
   const { id } = await ctx.params;

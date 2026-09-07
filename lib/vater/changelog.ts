@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.35.2';
+export const APP_VERSION = '1.36';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.36',
+    date: '2026-09-07',
+    title: 'Generate library needs a second passcode',
+    items: [
+      'The /generate stills library stays locked after HQ / admin login until you enter the library passcode. Logging out clears that unlock.',
+      'Anonymous visitors do not see the library, the job list, or still URLs. Motion / Cinema / generate forms still use the existing admin gate.',
+    ],
+  },
   {
     version: '1.35.2',
     date: '2026-09-06',

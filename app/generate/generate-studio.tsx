@@ -364,6 +364,7 @@ export default function GenerateStudio() {
   const [falStatus, setFalStatus] = useState<{ configured: boolean } | null>(null);
   const [modalJobs, setModalJobs] = useState<ModalJob[]>([]);
   const [modalAuthed, setModalAuthed] = useState<boolean | null>(null);
+  const [libraryUnlocked, setLibraryUnlocked] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [motionCard, setMotionCard] = useState(() => emptyMotionCard());
   const [motionJsonDraft, setMotionJsonDraft] = useState(() => formatMotionCardJson(emptyMotionCard()));
@@ -544,7 +545,11 @@ export default function GenerateStudio() {
           setOverridesError(null);
           setJsonError(null);
         }
-        if (Array.isArray(j.jobs)) setModalJobs(j.jobs as ModalJob[]);
+        const unlocked =
+          Boolean(j.library && typeof j.library === "object" && (j.library as { unlocked?: unknown }).unlocked === true);
+        setLibraryUnlocked(unlocked);
+        if (unlocked && Array.isArray(j.jobs)) setModalJobs(j.jobs as ModalJob[]);
+        else setModalJobs([]);
         if (j.beat_queue) {
           try {
             const loaded = parseBeatQueue(j.beat_queue);
@@ -624,6 +629,38 @@ export default function GenerateStudio() {
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, chatBusy]);
+
+  async function reloadLibraryJobs() {
+    const boundLongform = readBoundQueueId({
+      search: window.location.search,
+      storage: window.localStorage,
+      storageKey: LONGFORM_QUEUE_STORAGE_KEY,
+      param: LONGFORM_QUEUE_PARAM,
+    });
+    const boundCinema = readBoundQueueId({
+      search: window.location.search,
+      storage: window.localStorage,
+      storageKey: CINEMA_QUEUE_STORAGE_KEY,
+      param: CINEMA_QUEUE_PARAM,
+    });
+    const jobsQs = new URLSearchParams();
+    if (boundLongform) jobsQs.set("queue", boundLongform);
+    if (boundCinema) jobsQs.set("cinema", boundCinema);
+    const r = await fetch(jobsQs.toString() ? `/api/generate/jobs?${jobsQs}` : "/api/generate/jobs", {
+      cache: "no-store",
+    });
+    if (r.status === 401 || r.status === 403) {
+      setModalAuthed(false);
+      setLibraryUnlocked(false);
+      setModalJobs([]);
+      return;
+    }
+    if (!r.ok) return;
+    const j = (await r.json()) as { jobs?: ModalJob[]; library?: { unlocked?: unknown } };
+    const unlocked = j.library?.unlocked === true;
+    setLibraryUnlocked(unlocked);
+    setModalJobs(unlocked && Array.isArray(j.jobs) ? j.jobs : []);
+  }
 
   function commitCard(next: GenerateJobCard) {
     setCard(next);
@@ -3061,7 +3098,7 @@ export default function GenerateStudio() {
             </p>
           )}
           {error && <p className="gen-err">{error}</p>}
-          {resultUrl && (
+          {resultUrl && libraryUnlocked && (
             <div className="gen-result">
               {resultIsVideo ? (
                 <GatedClip
@@ -3086,8 +3123,19 @@ export default function GenerateStudio() {
               </a>
             </div>
           )}
+          {resultUrl && modalAuthed && !libraryUnlocked && (
+            <p className="gen-hint gen-library-hint">Unlock the library to view this still or clip.</p>
+          )}
           {(mode === "modal" || mode === "motion" || mode === "motion2" || mode === "cinema") && (
-            <GenerateLibraryGate>
+            <GenerateLibraryGate
+              authed={modalAuthed}
+              unlocked={libraryUnlocked}
+              onUnlocked={() => void reloadLibraryJobs()}
+              onLocked={() => {
+                setLibraryUnlocked(false);
+                setModalJobs([]);
+              }}
+            >
               <ModalGallery
                 jobs={modalJobs}
                 onUseStill={
@@ -3108,7 +3156,15 @@ export default function GenerateStudio() {
             </GenerateLibraryGate>
           )}
           {(mode === "t2i" || mode === "t2v" || mode === "i2v") && (
-            <GenerateLibraryGate>
+            <GenerateLibraryGate
+              authed={modalAuthed}
+              unlocked={libraryUnlocked}
+              onUnlocked={() => void reloadLibraryJobs()}
+              onLocked={() => {
+                setLibraryUnlocked(false);
+                setModalJobs([]);
+              }}
+            >
               {mode === "i2v" && (
                 <ModalGallery jobs={modalJobs} onUseStill={(url) => setI2vSourceUrl(url)} />
               )}
