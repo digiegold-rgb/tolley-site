@@ -311,6 +311,10 @@
       "schedule": "*/30 * * * *"
     },
     {
+      "path": "/api/cron/shop/reclaim-listing-jobs",
+      "schedule": "*/10 * * * *"
+    },
+    {
       "path": "/api/cron/treasure-haul-daily",
       "schedule": "0 15 * * *"
     },

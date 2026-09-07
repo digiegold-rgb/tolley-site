@@ -1,4 +1,29 @@
 import { prisma } from "@/lib/prisma";
+import {
+  claimNextListingJob as claimNextOn,
+  enqueueActionForExisting,
+  reclaimListingJobPatch,
+  reclaimStaleListingJobs as reclaimStaleOn,
+  type ListingJobDelegate,
+  type ListingJobRow,
+} from "@/lib/shop/listing-job-reclaim";
+
+export {
+  LISTING_JOB_STALE_MS,
+  enqueueActionForExisting,
+  isClaimableListingJob,
+  isStaleRunningListingJob,
+  listingJobLockAt,
+  reclaimListingJobPatch,
+  staleRunningWhere,
+} from "@/lib/shop/listing-job-reclaim";
+
+export type {
+  EnqueueExistingAction,
+  ListingJobDelegate,
+  ListingJobLock,
+  ListingJobRow,
+} from "@/lib/shop/listing-job-reclaim";
 
 export type DraftPlatform =
   | "fb_marketplace"
@@ -25,9 +50,42 @@ interface EnqueueResult {
   status: string;
 }
 
+function listingJobs(): ListingJobDelegate {
+  return prisma.listingJob as unknown as ListingJobDelegate;
+}
+
+/**
+ * Move every ListingJob stuck in running past the TTL back to queued with
+ * nextAttemptAt=now and startedAt cleared (the running row is the lock).
+ * Platform-agnostic. Safe to call from cron while Spark is dead.
+ *
+ * fb-draft-worker lives on Spark and is NOT in this repo. Spark still
+ * needs a SIGTERM handler; this + /api/cron/shop/reclaim-listing-jobs
+ * is the durable backstop.
+ */
+export async function reclaimStaleListingJobs(
+  now: Date = new Date(),
+): Promise<{ count: number }> {
+  return reclaimStaleOn(listingJobs(), now);
+}
+
+/**
+ * Reclaim stale running locks, then atomically claim the next due
+ * queued|failed job. Fresh running jobs are not stolen.
+ */
+export async function claimNextListingJob(opts?: {
+  platform?: string;
+  now?: Date;
+  ttlMs?: number;
+}): Promise<ListingJobRow | null> {
+  return claimNextOn(listingJobs(), opts);
+}
+
 /**
  * Enqueue a single (product, platform, intent) draft job. Idempotent — a job
  * already in queued/running state is left alone, a failed job is re-queued.
+ * A running job older than LISTING_JOB_STALE_MS is reclaimed (queued now)
+ * so a dead Spark lock cannot block the next draft.
  *
  * `intent` defaults to "post" (publish a new listing). "delist" is used by
  * the unified delist-on-sale flow when the same product has sold elsewhere.
@@ -37,12 +95,15 @@ export async function enqueuePlatformDraft(
   platform: DraftPlatform,
   intent: ListingIntent = "post"
 ): Promise<EnqueueResult> {
+  const now = new Date();
   const existing = await prisma.listingJob.findFirst({
     where: { productId, platform, intent },
     orderBy: { createdAt: "desc" },
   });
 
-  if (existing && (existing.status === "queued" || existing.status === "running")) {
+  const action = enqueueActionForExisting(existing, now);
+
+  if (existing && action === "leave") {
     return {
       jobId: existing.id,
       platform,
@@ -52,12 +113,26 @@ export async function enqueuePlatformDraft(
     };
   }
 
-  if (existing && existing.status === "failed") {
+  if (existing && action === "reclaim-stale") {
+    const resumed = await prisma.listingJob.update({
+      where: { id: existing.id },
+      data: reclaimListingJobPatch(now),
+    });
+    return {
+      jobId: resumed.id,
+      platform,
+      intent,
+      created: false,
+      status: resumed.status,
+    };
+  }
+
+  if (existing && action === "requeue-failed") {
     const resumed = await prisma.listingJob.update({
       where: { id: existing.id },
       data: {
         status: "queued",
-        nextAttemptAt: new Date(),
+        nextAttemptAt: now,
         lastError: null,
         lastStage: null,
       },
@@ -77,7 +152,7 @@ export async function enqueuePlatformDraft(
       platform,
       intent,
       status: "queued",
-      nextAttemptAt: new Date(),
+      nextAttemptAt: now,
     },
   });
   return {
@@ -95,6 +170,9 @@ export async function enqueueDrafts(
   platforms: DraftPlatform[],
   intent: ListingIntent = "post"
 ): Promise<EnqueueResult[]> {
+  // Sweep first so a dead running lock on another product cannot sit
+  // through a bulk-add while we only touch this product's rows.
+  await reclaimStaleListingJobs();
   const unique = Array.from(new Set(platforms));
   return Promise.all(unique.map((p) => enqueuePlatformDraft(productId, p, intent)));
 }
