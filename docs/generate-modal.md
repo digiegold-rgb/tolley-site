@@ -36,6 +36,7 @@ Jared chats on https://tolley.io/generate the same way he talks to an operator b
 | `BLOB_READ_WRITE_TOKEN` | fallback / identity | Existing public-store token. **Do not** use it for new job outputs. Needed to purge old `generate/**` objects (`BLOB_READ_WRITE_TOKEN_PUBLIC`). |
 | `DATABASE_URL` | yes | Prisma `GenerateJob` |
 | `WD_ADMIN_PIN_TOLLEY` or `SHOP_ADMIN_PIN` or `ADMIN_ALLOWLIST_EMAILS` | yes | Same Jared/admin gates as HQ / shop / allowlist |
+| `GENERATE_LIBRARY_PIN` | **yes** (prod) | Second gate for the NSFW job library / stills. Compared only on the server. Local tests fall back to `4044` when unset — production must set this. |
 
 Do **not** set `HF_TOKEN` on Vercel unless you have another reason. The Hugging Face token belongs in the Modal secret.
 
@@ -77,7 +78,7 @@ Modal cannot write `/home/jelly/...` and should not publish `*.public.blob.verce
 2. Expose it on an HTTPS origin Vercel can reach (same pattern as `quickgen.tolley.io`).
 3. Set `GENERATE_SPARK_STORE_URL` + `GENERATE_SPARK_STORE_KEY` on Vercel.
 4. Redeploy Modal (`modal deploy modal/qwen_image_edit.py`). The worker returns PNG bytes on the function result and webhooks `{ job_id, status, outputs_ready: true }` — no public URLs, no multi-MB webhook body.
-5. Vercel poll / webhook persists bytes to Spark. `/generate` gallery loads `GET /api/generate/jobs/:id/image?i=0` (same Jared/admin gate as Modal jobs).
+5. Vercel poll / webhook persists bytes to Spark. `/generate` gallery loads `GET /api/generate/jobs/:id/image?i=0` after generate-admin **and** the library PIN cookie.
 
 ### Private Blob fallback (only if Spark write is blocked)
 
@@ -138,7 +139,9 @@ Job APIs accept any of:
 2. Shop admin PIN cookie (`shop_admin` — log in at `/shop/dashboard`)
 3. NextAuth session whose email is on `ADMIN_ALLOWLIST_EMAILS`
 
-The `/generate` page itself stays public. Chat→card, Confirm/Go, status, and gallery require one of those gates.
+The `/generate` page itself stays public. Chat→card, Confirm/Go, and job status require one of those gates.
+
+The **library** (prior jobs / Modal stills / motion clips / generate gallery) needs a second server-checked passcode after that admin session. Set `GENERATE_LIBRARY_PIN` on Vercel. Unlock issues a short-lived httpOnly cookie bound to the admin actor (`POST /api/generate/library`). HQ logout clears it. Admin login alone does not list jobs or serve `/api/generate/jobs/:id/image` / `media`. Unauthenticated callers get 401/403 on job APIs and 404 on still/media (no existence leak).
 
 ## Dry Modal still from the UI
 
@@ -149,7 +152,7 @@ The `/generate` page itself stays public. Chat→card, Confirm/Go, status, and g
 5. Edit any recipe field on the card (seed, steps, width, height, true_cfg_scale / CFG, guidance_scale, max_sequence_length, num_images, negative_prompt, identity URLs, extra image URLs, optional sigmas, optional pipe_overrides, prompt) or paste a full card into **Advanced**. **Random seed** sits next to seed. **Location / Hair / Camera** chips under Prompt rewrite durable `[[location]]` / `[[hair]]` / `[[camera]]` blocks (and the matching labeled line when the preset already has one, e.g. `Camera:`). Clear removes that block; Camera Clear restores the preset camera line. Identity-lock sentences stay put. Extra #1 is still manual for wardrobe. **Allow NSFW** / **Block NSFW** chips next to Negative prompt: Allow strips adult NSFW-block terms and injects a `[[allow-nsfw-wardrobe]]` prompt override (ignore grey-shirt clothing lock; wardrobe follows the prompt). Block re-merges those terms and removes the override. Identity/quality and child/minor stay. Optional first extra image URL can be a lingerie/nude body keep-still — clothed identity refs alone keep covering.
 6. Chat may change those same kwargs (JSON job card only — no ComfyUI / nodes / `.safetensors` advice).
 7. Optional: tick **Dry run** and hit **Go** — creates a `GenerateJob`, returns the exact kwargs, does **not** spend an A100.
-8. Untick Dry run, hit **Go**. Status polls `GET /api/generate/jobs/:id` until `done`; stills appear in the gallery.
+8. Untick Dry run, hit **Go**. Status polls `GET /api/generate/jobs/:id` until `done`. Unlock the library passcode on the page (`GENERATE_LIBRARY_PIN`) to expand the gallery and load stills.
 
 ## Curl: create → status → done
 

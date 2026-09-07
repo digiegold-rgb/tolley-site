@@ -49,6 +49,8 @@ Parent job id is stored in `localStorage` (`tolley.generate.cinema.queueId`) and
 
 Same `FAL_KEY` as Motion. Never commit keys. Do not burn fal budget in CI — dry-run returns kwargs only.
 
+Creating Cinema jobs uses the generate-admin gate. The prior-job / stills library on `/generate` also needs `GENERATE_LIBRARY_PIN` (see `docs/generate-modal.md`).
+
 ## Follow-ups (not this PR)
 
 - Host `pack/estate-a` refs on Spark-gated URLs Jared can paste.

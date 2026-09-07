@@ -19,7 +19,7 @@ This is **not** ByteDance Seedance on the Motion tabs. This is **not** LatentSyn
 | 0.5× slow-mo | **Shipped.** Chip on Motion (and I2V / T2V). After fal returns, Vercel remuxes with ffmpeg `setpts=2*PTS` when `ffmpeg` is on the runtime. Same frames, ~10s wall clock — **not** a longer Wan call. If remux fails, the in-page player uses `playbackRate=0.5` and is labeled. |
 | Beat queue | **Shipped.** Ordered scenes on the Motion tab as a **left-to-right filmstrip**. The Motion form **is Beat 1**. Generate **one beat at a time** (Go = Beat 1). Review / reject / regenerate independently. **Stitch approved beats** only when every beat is `approved`. No auto-stitch on Go. |
 | Stitch | **Vercel Node + ffmpeg concat** (optional 0.25s xfade when two clips + `crossfade: true`). Not Spark. Parent job recipe `fal-wan-beats`; stitch job `fal-wan-stitch`. |
-| HQ / admin gate | Same as Modal stills: HQ PIN, shop admin PIN, or `ADMIN_ALLOWLIST_EMAILS`. |
+| HQ / admin gate | Same as Modal stills: HQ PIN, shop admin PIN, or `ADMIN_ALLOWLIST_EMAILS`. Creating motion jobs uses that gate. The prior-clip library / stills gallery also needs `GENERATE_LIBRARY_PIN`. |
 | Dry run | Persists a queued `GenerateJob`, returns fal kwargs, spends nothing. |
 | Upload | `POST /api/generate/upload` → Vercel Blob HTTPS URL (`BLOB_READ_WRITE_TOKEN`). |
 
@@ -78,7 +78,7 @@ The Motion form and `beats[0]` stay in sync: editing the form writes Beat 1; edi
 
 ## Media route
 
-HQ-gated playback (same cookie as jobs):
+Library-gated playback (generate admin + `generate_library` PIN cookie):
 
 ```
 GET /api/generate/jobs/:id/image?i=0

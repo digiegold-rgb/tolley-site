@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireGenerateAdmin } from "@/lib/generate-auth";
 import {
+  isGenerateLibraryUnlocked,
+  redactGenerateLibraryJobs,
+} from "@/lib/generate-library-auth";
+import {
   defaultJobCard,
   parseGenerateJobCard,
   type GenerateJobCard,
@@ -68,15 +72,20 @@ function isEngineKind(body: { kind?: unknown }): body is { kind: "t2i" | "t2v" }
 
 /**
  * GET /api/generate/jobs — recent jobs + public Modal / fal status (no tokens).
+ * The `jobs` gallery list is empty until the library PIN cookie is set.
+ * Defaults / Motion / Cinema queues stay on the generate-admin gate.
  */
 export async function GET(req: NextRequest) {
   const gate = await requireGenerateAdmin();
   if (!gate.ok) return gate.response;
 
-  const rows = await prisma.generateJob.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 40,
-  });
+  const libraryUnlocked = await isGenerateLibraryUnlocked(gate.createdBy);
+  const rows = libraryUnlocked
+    ? await prisma.generateJob.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 40,
+      })
+    : [];
   const beats = await latestBeatQueueJob(gate.createdBy);
   const longformId =
     req.nextUrl.searchParams.get("queue")?.trim() ||
@@ -92,7 +101,8 @@ export async function GET(req: NextRequest) {
   const cinema = cinemaLoaded ? await reconcileCinemaParent(cinemaLoaded) : null;
   const cinemaFresh = cinema ? await loadCinemaJob(cinema.row.id) : null;
   return NextResponse.json({
-    jobs: rows.map(serializeJob),
+    jobs: redactGenerateLibraryJobs(rows.map(serializeJob), libraryUnlocked),
+    library: { unlocked: libraryUnlocked },
     modal: modalPublicStatus(),
     fal: falPublicStatus(),
     llm: { configured: isJobCardLlmConfigured() },

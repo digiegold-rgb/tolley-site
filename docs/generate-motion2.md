@@ -46,7 +46,8 @@ Same as Motion 1 (`docs/generate-motion.md`):
 | `FFMPEG_PATH` | Optional override when that file exists. Last-frame extract + stitch share Motion 1’s resolver: `FFMPEG_PATH` → `FFMPEG` → `require('ffmpeg-static')` → PATH. A missing env path is ignored. |
 | `GENERATE_SPARK_STORE_URL` + `GENERATE_SPARK_STORE_KEY` | Private MP4 + last-frame PNG. No public Blob. |
 | `GENERATE_BLOB_FALLBACK=1` + private token | Optional fallback. |
-| HQ / shop / allowlist | Same gate as Modal stills. |
+| HQ / shop / allowlist | Same gate as Modal stills (create jobs). |
+| `GENERATE_LIBRARY_PIN` | Second gate to browse prior jobs / stills on `/generate`. |
 
 Adult Lady2 is allowed. CSAM / minors are refused (`isBlockedStudioRequest`).
 

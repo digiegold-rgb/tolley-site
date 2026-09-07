@@ -21,7 +21,7 @@ describe("/generate still delivery", () => {
     assert.match(persist, /access: "private"/);
     assert.doesNotMatch(persist, /access:\s*["']public["']/);
     assert.doesNotMatch(modalTs, /access:\s*"public"/);
-    assert.match(imageRoute, /requireGenerateAdmin/);
+    assert.match(imageRoute, /requireGenerateLibrary/);
     assert.match(imageRoute, /fetchStoredJobImage/);
   });
 });
