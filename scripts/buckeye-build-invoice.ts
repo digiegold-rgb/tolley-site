@@ -374,6 +374,7 @@ async function findMileageAccountId(): Promise<string | null> {
 
 // ----- Telegram notify (best-effort)
 async function notify(text: string) {
+  if (DRY) return;
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chat = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chat) { log('Telegram creds missing; skipping notify'); return; }
@@ -421,7 +422,7 @@ async function main() {
   const statePath = argVal('--file') || join(STATE_DIR, `week-${week}.json`);
   if (!existsSync(statePath)) {
     const title = `Buckeye ${week}: awaiting delivery slips`;
-    if (!await prisma.mustCompleteItem.findFirst({ where: { title, status: "open" }, select: { id: true } })) {
+    if (!DRY && !await prisma.mustCompleteItem.findFirst({ where: { title, status: "open" }, select: { id: true } })) {
       await prisma.mustCompleteItem.create({ data: { title, priority: "yellow", category: "billing",
         source: "buckeye-build", sortOrder: 20,
         detail: `The invoice builder needs ${statePath}. Import this week's actual delivery slips, then rerun the builder. No invoice or charge has been created.` } });
@@ -651,5 +652,5 @@ main().catch(async (e) => {
   console.error(e);
   await notify(`❌ Buckeye invoice build FAILED: ${e?.message || e}`);
   await prisma.$disconnect();
-  process.exit(1);
-});
+  process.exitCode = 1;
+}).finally(() => prisma.$disconnect());
