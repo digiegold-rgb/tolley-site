@@ -57,8 +57,8 @@ export default function WdLayout({ children }: { children: React.ReactNode }) {
         <WdBubbles />
         <div aria-hidden="true" className="site-dot-grid-blue pointer-events-none fixed inset-0 z-0" />
         {children}
-        <WdFooter />
         <WdEmailBar />
+        <WdFooter />
       </EventTracker>
     </div>
   );
