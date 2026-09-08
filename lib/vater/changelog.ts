@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.37.2';
+export const APP_VERSION = '1.37.3';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.37.3',
+    date: '2026-09-08',
+    title: 'Release builds fit Standard memory again',
+    items: [
+      'Production compile keeps one Next worker and a 6 GB webpack heap. The tighter 4 GB cap and extra webpack worker were killing the Standard 8 GB box.',
+    ],
+  },
   {
     version: '1.37.2', date: '2026-09-08', title: 'More reliable release builds',
     items: ['Release builds use memory more efficiently while retaining validation checks.'],

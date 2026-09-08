@@ -87,9 +87,9 @@ const nextConfig: NextConfig = {
     cpus: 1,
     staticGenerationMaxConcurrency: 1,
     webpackMemoryOptimizations: true,
-    // Sentry adds a custom webpack config, disabling this default. Release each
-    // compiler's heap in its own worker before starting the next compilation.
-    webpackBuildWorker: true,
+    // Do not turn on Next's webpack build worker. With Sentry's custom
+    // webpack config that forks a second compiler heap on Standard 8GB and
+    // SIGKILLs the build (1.37.2). Stay on one collect worker. Stay on Standard.
   },
   images: {
     remotePatterns: [
