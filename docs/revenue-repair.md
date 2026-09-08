@@ -31,9 +31,11 @@ The production dependency audit initially reported four critical package finding
 
 The follow-up production audit reports zero critical findings, with 21 high, four moderate, and two low package findings still open, including propagated dependencies. This release is not a clean security audit. Prioritize compatible transitive patches, then validate the Next/sharp/PostCSS, Nodemailer/Auth.js peer compatibility, and Prisma configuration dependency upgrades separately. Do not accept the audit tool's proposed Auth.js or Prisma downgrades blindly. Package advisories establish affected installed versions, not evidence of a compromise or proof that every vulnerable code path is exposed.
 
-## Read-only recovery preview
+The clean framework build exceeded Node's default 4 GB heap. The bundler receives an explicit 6 GB heap limit with webpack memory optimization enabled; type checking remains a separate process and page generation remains limited to one worker. This keeps the existing build gates and avoids requesting a larger hosting plan.
 
-The live preview found 10 historical W/D analytics submissions: 4 recoverable, 5 duplicate or already known, and 1 invalid. No records were imported. The financial preview matched 47 existing subscription links and 369 existing invoice records; 17 clients and 2 invoice links remain unlinked, ambiguous, or otherwise unverifiable. These are record counts, not a revenue forecast or a list of delinquent customers.
+## Recovery
+
+The live preview found 10 historical W/D analytics submissions: 4 recoverable, 5 duplicate or already known, and 1 invalid. The four recoverable inquiries were imported after the additive migration, preserving their original dates and creating no notifications. The financial preview matched 47 existing subscription links and 369 existing invoice records; 17 clients and 2 invoice links remain unlinked, ambiguous, or otherwise unverifiable. These are record counts, not a revenue forecast or a list of delinquent customers.
 
 `scripts/recover-wd-inquiries.ts` defaults to review. `--apply` creates original-dated, deduplicated HQ records and marks their historical origin. Verify consent before contacting them.
 
@@ -57,7 +59,7 @@ Rollback the application release while retaining the additive schema and capture
 - `/home/jelly/growth-engine/weekly-pnl.mjs` labels collections less recorded ads as a subtotal before costs, identifies missing ad data, and removes amount-only rental classification. Patch: `ops/spark/weekly-pnl-revenue-repair.patch`.
 - User-systemd drop-ins for WhatsApp and OnionShare limit retries to five starts per hour with five-minute spacing. The user daemon reloaded successfully. Services were not force-restarted.
 
-The finalizer wrapper has been validated but is not installed over the live scheduled wrapper. No production database migration, recovery import, application deployment, customer message, or charge was performed during these validations.
+The production additive migration was applied and recorded in Prisma history, and four historical inquiries were recovered. The schema snapshot is private under `/home/jelly/.local/state/tolley-revenue/20260908/`. At this release-preparation checkpoint, the finalizer wrapper has been validated but is not installed over the live scheduled wrapper; the application deployment and financial reconciliation are pending. No customer message or charge was performed by these validations or recovery tools.
 
 ## Work that needs operating input
 

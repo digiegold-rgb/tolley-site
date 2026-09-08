@@ -84,6 +84,7 @@ const nextConfig: NextConfig = {
   experimental: {
     cpus: 1,
     staticGenerationMaxConcurrency: 1,
+    webpackMemoryOptimizations: true,
   },
   images: {
     remotePatterns: [
