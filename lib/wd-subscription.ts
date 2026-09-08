@@ -12,6 +12,7 @@
  */
 
 import Stripe from "stripe";
+import { invoicePaymentFacts, monthlySubscriptionAmount } from "./wd-payment-facts";
 
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
@@ -20,7 +21,6 @@ import { draftDunning } from "@/lib/wd/messaging";
 // The W/D Stripe product and its known prices ($58 bundle, $42 washer-only).
 const WD_PRODUCT_ID = "prod_StRrSxJ969g4hV";
 const WD_PRICE_IDS = new Set(["price_1Rxey029zOZYc3GpfoFkUbmv"]);
-const WD_AMOUNTS = new Set([5800, 4200]); // cents — fallback signal
 
 type StripePriceish = {
   id?: string;
@@ -39,7 +39,6 @@ export function isWdPrice(price?: StripePriceish | null): boolean {
   if (!price) return false;
   if (price.id && WD_PRICE_IDS.has(price.id)) return true;
   if (priceProductId(price) === WD_PRODUCT_ID) return true;
-  if (typeof price.unit_amount === "number" && WD_AMOUNTS.has(price.unit_amount)) return true;
   return false;
 }
 
@@ -53,8 +52,7 @@ export function isWdInvoice(invoice: Stripe.Invoice): boolean {
   if (pd?.product === WD_PRODUCT_ID) return true;
   if (pd?.price && WD_PRICE_IDS.has(pd.price)) return true;
   if (line?.price && isWdPrice(line.price)) return true;
-  const amount = (invoice.lines?.data?.[0] as { amount?: number } | undefined)?.amount;
-  return typeof amount === "number" && WD_AMOUNTS.has(amount);
+  return false;
 }
 
 function periodEndDate(sub: Stripe.Subscription): Date | null {
@@ -78,67 +76,78 @@ async function resolveOrCreateClient(
   custId: string,
   subId: string | null,
 ): Promise<{ id: string } | null> {
-  // 1) by subscription id, 2) by customer id
-  if (subId) {
-    const bySub = await prisma.wdClient.findFirst({ where: { stripeSubscriptionId: subId }, select: { id: true } });
-    if (bySub) return bySub;
-  }
-  const byCust = await prisma.wdClient.findFirst({ where: { stripeCustomerId: custId }, select: { id: true } });
-  if (byCust) return byCust;
-
-  // 3) pull the Stripe customer to match on email/phone or seed a new record
+  if (!subId) return null; // An invoice without a subscription is not a rental match.
   const stripe = getStripeClient();
   const customer = await stripe.customers.retrieve(custId);
   if ("deleted" in customer) return null;
-
-  const email = customer.email || undefined;
-  const phone = customer.phone || undefined;
-
-  if (email) {
-    const byEmail = await prisma.wdClient.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { id: true } });
-    if (byEmail) return byEmail;
-  }
-  if (phone) {
-    const last10 = phone.replace(/\D/g, "").slice(-10);
-    if (last10.length === 10) {
-      const byPhone = await prisma.wdClient.findFirst({ where: { phone: { contains: last10.slice(-7) } }, select: { id: true } });
-      if (byPhone) return byPhone;
+  const email = customer.email?.trim() || null;
+  const phone = customer.phone || null;
+  const last10 = phone?.replace(/\D/g, "").slice(-10);
+  return prisma.$transaction(async tx => {
+    // Serialize linking and creation for a customer; replayed webhooks cannot
+    // create two pending customers or claim the same unlinked record together.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${custId}))`;
+    const exact = await tx.wdClient.findMany({ where: { stripeSubscriptionId: subId }, select: { id: true, stripeCustomerId: true }, take: 2 });
+    if (exact.length === 1 && (!exact[0].stripeCustomerId || exact[0].stripeCustomerId === custId)) return exact[0];
+    if (exact.length) return null; // Existing duplicate/conflicting links require review.
+    const byCustomer = await tx.wdClient.findMany({ where: { stripeCustomerId: custId }, select: { id: true, stripeSubscriptionId: true } });
+    const available = byCustomer.filter(c => !c.stripeSubscriptionId);
+    if (byCustomer.length && available.length !== 1) {
+      console.warn("[wd] unmatched subscription requires account review", subId);
+      return null; // Never overwrite a different (possibly newer) subscription.
     }
-  }
-
-  // 4) auto-create a pending-approval client from the Stripe customer
-  const addr = customer.address;
-  const created = await prisma.wdClient.create({
-    data: {
-      name: customer.name || email || "New rental signup",
-      email: email || null,
-      phone: phone || null,
+    let client = available[0];
+    if (!client) {
+      const candidates = await tx.wdClient.findMany({ where: {
+        stripeSubscriptionId: null,
+        AND: [{ OR: [{ stripeCustomerId: null }, { stripeCustomerId: custId }] },
+          { OR: [...(email ? [{ email: { equals: email, mode: "insensitive" as const } }] : []),
+            ...(last10?.length === 10 ? [{ phone: { not: null } }] : [])] }],
+      }, select: { id: true, email: true, phone: true, stripeSubscriptionId: true } });
+      const matches = candidates.filter(c => email && c.email?.toLowerCase() === email.toLowerCase() || last10?.length === 10 && c.phone?.replace(/\D/g, "").slice(-10) === last10);
+      if (matches.length > 1) return null;
+      client = matches[0];
+    }
+    if (client) {
+      const claimed = await tx.wdClient.updateMany({ where: {
+        id: client.id, stripeSubscriptionId: null,
+        OR: [{ stripeCustomerId: null }, { stripeCustomerId: custId }],
+      }, data: { stripeCustomerId: custId, stripeSubscriptionId: subId } });
+      return claimed.count === 1 ? { id: client.id } : null;
+    }
+    const addr = customer.address;
+    return tx.wdClient.create({ data: {
+      name: customer.name || email || "New rental signup", email, phone,
       address: addr ? [addr.line1, addr.line2, addr.city, addr.state, addr.postal_code].filter(Boolean).join(", ") : null,
-      unitDescription: "Washer & Dryer (self-serve signup)",
-      source: "stripe",
-      paidBy: "tolley",
-      stripeCustomerId: custId,
-      pendingApproval: true,
-      needsReview: true,
-    },
-    select: { id: true },
+      unitDescription: "Rental equipment — verify configuration",
+      source: "stripe", paidBy: "tolley", stripeCustomerId: custId, stripeSubscriptionId: subId,
+      pendingApproval: true, needsReview: true,
+    }, select: { id: true } });
   });
-  console.log(`[wd] auto-created pending client ${created.id} from Stripe customer ${custId}`);
-  return created;
+}
+
+async function queueSubscriptionReview(subId: string, custId: string) {
+  await prisma.mustCompleteItem.createMany({ skipDuplicates: true, data: {
+    id: `wd-link:${subId}`, sortOrder: 0, priority: "red", category: "billing", source: "wd-subscription-sync",
+    title: "Review an unmatched Stripe rental subscription",
+    detail: `Subscription ${subId}, customer ${custId}. The automatic match was ambiguous or would replace another subscription. Verify the rental in Stripe and link it to the correct equipment/customer record; no existing subscription was reassigned.`,
+    links: [{ label: "Rental accounts", url: "/wd/admin" }],
+  } });
 }
 
 /** Sync a W/D subscription's status/period into its WdClient. */
-export async function syncWdSubscription(sub: Stripe.Subscription): Promise<void> {
+export async function syncWdSubscription(sub: Stripe.Subscription): Promise<boolean> {
   const custId = customerId(sub);
   if (!custId) {
     console.warn("[wd] subscription sync skipped: no customer", sub.id);
-    return;
+    return false;
   }
 
   const client = await resolveOrCreateClient(custId, sub.id);
   if (!client) {
     console.warn("[wd] subscription sync skipped: unresolved client", sub.id);
-    return;
+    await queueSubscriptionReview(sub.id, custId);
+    return false;
   }
 
   const status = sub.status; // active | trialing | past_due | canceled | unpaid | incomplete*
@@ -148,6 +157,8 @@ export async function syncWdSubscription(sub: Stripe.Subscription): Promise<void
       stripeCustomerId: custId,
       stripeSubscriptionId: sub.id,
       subscriptionStatus: status,
+      monthlyAmount: monthlySubscriptionAmount(sub.items.data),
+      stripeSyncedAt: new Date(),
       currentPeriodEnd: periodEndDate(sub),
       cancelAtPeriodEnd: sub.cancel_at_period_end ?? false,
       // recovering: a healthy status clears the dunning ladder
@@ -158,6 +169,7 @@ export async function syncWdSubscription(sub: Stripe.Subscription): Promise<void
   });
 
   console.log(`[wd] synced subscription ${sub.id} → client ${client.id} (${status})`);
+  return true;
 }
 
 /**
@@ -165,80 +177,49 @@ export async function syncWdSubscription(sub: Stripe.Subscription): Promise<void
  * dunning ladder and draft a stage-1 outreach (draft only — approve-send).
  */
 export async function recordWdInvoice(
-  invoice: Stripe.Invoice,
-  failed: boolean,
+  eventInvoice: Stripe.Invoice, _failed: boolean, options: { reconcile?: boolean } = {},
 ): Promise<void> {
+  if (!eventInvoice.id) return;
+  const stripe = getStripeClient();
+  // A delayed failed webhook must never overwrite a subsequently paid invoice.
+  const invoice = options.reconcile ? eventInvoice : await stripe.invoices.retrieve(eventInvoice.id);
+  if (invoice.status !== "paid" && !(invoice.status === "open" && invoice.attempt_count > 0)) return;
   const custId = customerId(invoice);
   if (!custId) return;
-
-  const invWithSub = invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
-  const subId =
-    typeof invWithSub.subscription === "string"
-      ? invWithSub.subscription
-      : invWithSub.subscription?.id ?? null;
-
+  const legacy = invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
+  const parent = invoice.parent?.subscription_details?.subscription;
+  const rawSub = parent ?? legacy.subscription;
+  const subId = typeof rawSub === "string" ? rawSub : rawSub?.id ?? null;
   const client = await resolveOrCreateClient(custId, subId);
-  if (!client) return;
-
-  // Derive the billing month (YYYY-MM) from the line period or invoice date.
-  const periodStart =
-    (invoice.lines?.data?.[0] as { period?: { start?: number } } | undefined)?.period?.start ||
-    invoice.created;
-  const month = new Date(periodStart * 1000).toISOString().slice(0, 7);
-  const amount = (failed ? invoice.amount_due : invoice.amount_paid) / 100;
-
-  // Upsert by stripeInvoiceId so retries/webhook replays don't duplicate.
-  const existing = invoice.id
-    ? await prisma.wdPayment.findUnique({ where: { stripeInvoiceId: invoice.id } })
-    : null;
-
-  if (existing) {
-    await prisma.wdPayment.update({
-      where: { id: existing.id },
-      data: {
-        status: failed ? "missed" : "paid",
-        amount,
-        paidAt: failed ? null : new Date(),
-      },
-    });
-  } else {
-    await prisma.wdPayment.create({
-      data: {
-        clientId: client.id,
-        amount,
-        month,
-        status: failed ? "missed" : "paid",
-        source: "stripe",
-        stripeInvoiceId: invoice.id || null,
-        paidAt: failed ? null : new Date(),
-        note: failed ? "Stripe payment failed" : "Auto-recorded from Stripe",
-      },
-    });
+  if (!client) {
+    if (subId) await queueSubscriptionReview(subId, custId);
+    return;
   }
-
-  if (failed) {
-    const updated = await prisma.wdClient.update({
-      where: { id: client.id },
-      data: {
-        lastPaymentStatus: "failed",
-        subscriptionStatus: "past_due",
-        dunningStage: { increment: 1 },
-      },
+  const facts = invoicePaymentFacts(invoice);
+  const month = new Date((invoice.lines.data[0]?.period.start ?? invoice.created) * 1000).toISOString().slice(0, 7);
+  const shouldDraft = await prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${invoice.id}))`;
+    const existing = await tx.wdPayment.findUnique({ where: { stripeInvoiceId: invoice.id } });
+    if (existing?.status === "paid" && facts.status !== "paid") return false;
+    await tx.wdPayment.upsert({ where: { stripeInvoiceId: invoice.id },
+      create: { clientId: client.id, month, source: "stripe", stripeInvoiceId: invoice.id, ...facts },
+      update: { ...facts, month },
     });
-    // Only draft on the first failure of this cycle (stage 1) — cron handles escalation.
-    if (updated.dunningStage <= 1) {
-      try {
-        await draftDunning(updated, 1);
-      } catch (err) {
-        console.warn("[wd] dunning draft failed (non-fatal)", err);
-      }
+    if (options.reconcile) return false;
+    const freshFailure = facts.status === "missed" && facts.failureAttempts > (existing?.failureAttempts ?? 0);
+    if (freshFailure) {
+      await tx.wdClient.update({ where: { id: client.id }, data: {
+        lastPaymentStatus: "failed", dunningStage: { increment: existing && existing.failureAttempts === 0 ? 0 : facts.failureAttempts - (existing?.failureAttempts ?? 0) },
+      } });
     }
-    console.log(`[wd] invoice FAILED for client ${client.id} → dunning stage ${updated.dunningStage}`);
-  } else {
-    await prisma.wdClient.update({
-      where: { id: client.id },
-      data: { lastPaymentStatus: "paid", dunningStage: 0 },
-    });
-    console.log(`[wd] invoice PAID for client ${client.id} ($${amount})`);
+    return freshFailure && !existing && facts.failureAttempts === 1;
+  });
+  // Subscription status comes from the current subscription, not an old invoice.
+  if (!options.reconcile && subId) await syncWdSubscription(await stripe.subscriptions.retrieve(subId));
+  if (shouldDraft) {
+    const current = await prisma.wdClient.findUnique({ where: { id: client.id } });
+    if (current?.subscriptionStatus === "past_due" && current.dunningStage === 1) {
+      await draftDunning(current, 1).catch(() => console.warn("[wd] dunning draft failed"));
+    }
   }
 }

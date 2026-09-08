@@ -174,6 +174,9 @@ function LeadCard({
       <div style={{ marginTop: 6, fontSize: 12, color: "#444" }}>
         {[lead.phone, lead.email].filter(Boolean).join(" · ") || "no contact info"}
       </div>
+      {lead.notifications?.map((n, i) => <div key={`${n.channel}:${i}`} style={{ fontSize: 12, color: n.status === "failed" ? "#b91c1c" : "#555" }}>
+        Owner alert · {n.channel}: {n.status} {n.lastError ? `— ${n.lastError}` : ""}
+      </div>)}
 
       {/* structured fields */}
       {Object.keys(fields).length > 0 && (

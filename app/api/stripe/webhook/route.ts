@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import { recordCheckoutAttribution } from "@/lib/checkout-attribution";
 
 import { getStripeClient } from "@/lib/stripe";
 import { isLeadsPriceId } from "@/lib/leads-subscription";
@@ -102,8 +103,13 @@ export async function POST(request: Request) {
 
   try {
     switch (event.type) {
+      case "checkout.session.async_payment_succeeded": {
+        await recordCheckoutAttribution(event.data.object as Stripe.Checkout.Session);
+        break;
+      }
       case "checkout.session.completed": {
         const checkoutSession = event.data.object as Stripe.Checkout.Session;
+        await recordCheckoutAttribution(checkoutSession);
 
         // Vater card-on-file capture (mode=setup — never a payment).
         if (isVaterSetupSession(checkoutSession)) {
@@ -221,7 +227,7 @@ export async function POST(request: Request) {
         } else if (isVideoOfferSubscription(subscription)) {
           await fulfillVideoOfferSale(subscription);
         } else if (isWdSubscription(subscription)) {
-          await syncWdSubscription(subscription);
+          await syncWdSubscription(await stripe.subscriptions.retrieve(subscription.id));
         } else if (subPriceId && isLeadsPriceId(subPriceId)) {
           await syncLeadsSubscription(subscription);
         } else if (subPriceId && isFoodPriceId(subPriceId)) {

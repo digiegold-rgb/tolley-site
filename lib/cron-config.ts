@@ -16,6 +16,7 @@ export interface CronEntry {
 const day = 1440;
 
 export const CRONS: CronEntry[] = [
+  { path: "/api/cron/lead-notifications", schedule: "*/2 * * * *", cadenceMin: 2, description: "Retry owner lead notifications" },
   { path: "/api/cron/sequence-process", schedule: "0 */1 * * *", cadenceMin: 60, description: "SMS sequence drip" },
   { path: "/api/cron/content-publish", schedule: "0 */1 * * *", cadenceMin: 60, description: "Auto-publish queued content" },
   { path: "/api/cron/dossier-cleanup", schedule: "0 */6 * * *", cadenceMin: 360, description: "Reap stale dossier jobs" },

@@ -1,9 +1,10 @@
+import { WD_PRICE_WASHER, WD_PRICE_BUNDLE } from "@/lib/wd";
 import type { SubsiteManifest } from "@/lib/agent-manifest";
 
 export const manifest: SubsiteManifest = {
   name: "wd",
   title: "Washer & Dryer Rental",
-  purpose: "Rent a washer/dryer in the Kansas City metro for $59/mo (washer) or $99/mo (bundle) — delivery, install, and service included; no credit check, no long-term contract.",
+  purpose: `Rent a washer/dryer in the Kansas City metro for $${WD_PRICE_WASHER}/mo (washer) or $${WD_PRICE_BUNDLE}/mo (bundle) — delivery, install, and service included; no credit check, no long-term contract.`,
   url: "/wd",
   schemaType: "Service",
   jsonEndpoints: [],
@@ -17,8 +18,8 @@ export const manifest: SubsiteManifest = {
   serviceArea: "Kansas City metro (Independence, KCMO, Olathe, Lees Summit, Overland Park)",
   availability: "Same-week delivery typical; same-day available for urgent requests.",
   pricing: [
-    { unit: "monthly", amount: 59, currency: "USD", notes: "Washer only" },
-    { unit: "monthly", amount: 99, currency: "USD", notes: "Washer + dryer bundle" }
+    { unit: "monthly", amount: WD_PRICE_WASHER, currency: "USD", notes: "Washer only" },
+    { unit: "monthly", amount: WD_PRICE_BUNDLE, currency: "USD", notes: "Washer + dryer bundle" }
   ],
   actions: [
     {

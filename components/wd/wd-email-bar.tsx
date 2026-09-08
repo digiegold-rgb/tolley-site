@@ -1,59 +1,55 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { trackEvent } from "@/components/analytics/site-tracker";
 import { gtagEvent } from "@/components/analytics/ga4";
 import { fbqEvent } from "@/components/analytics/meta-pixel";
+import { submitLead, captureAttribution } from "@/lib/lead-capture-client";
 import { WD_SMS_PHONE } from "@/lib/wd";
 
 const PRIVACY_URL = "https://www.tolley.io/wd/privacy";
 const TERMS_URL = "https://www.tolley.io/wd/terms";
+function subscribeToCapture(callback: () => void) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+function wasCaptured() {
+  try { return !!localStorage.getItem("wd_email_captured"); } catch { return false; }
+}
 
 export function WdEmailBar() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [smsConsent, setSmsConsent] = useState(false);
   const [status, setStatus] = useState<"idle" | "sending" | "done">("idle");
+  const [error, setError] = useState("");
   const [dismissed, setDismissed] = useState(false);
 
-  // Don't show if already submitted (persisted in localStorage)
-  useEffect(() => {
-    if (typeof window !== "undefined" && localStorage.getItem("wd_email_captured")) {
-      setDismissed(true);
-    }
-  }, []);
+  const previouslyCaptured = useSyncExternalStore(subscribeToCapture, wasCaptured, () => false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email || status === "sending") return;
 
     setStatus("sending");
-    await fetch("/api/analytics", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "event",
-        site: "wd",
-        path: "/wd",
-        event: "email_capture",
-        label: "sticky_bar",
-        meta: {
-          email,
-          phone: phone || undefined,
-          smsConsent,
-        },
-      }),
-    }).catch(() => {});
-
-    trackEvent("wd", "email_capture", "sticky_bar", { email, smsConsent });
-    gtagEvent("sign_up", { method: "email_bar" });
-    fbqEvent("CompleteRegistration", { content_name: "email_bar" });
-
-    localStorage.setItem("wd_email_captured", "1");
-    setStatus("done");
+    setError("");
+    try {
+      await submitLead("/api/email-capture", {
+        email: email.trim(), source: "wd",
+        data: { phone: phone.trim() || undefined, smsConsent, ...captureAttribution() },
+      });
+      trackEvent("wd", "email_capture", "sticky_bar");
+      gtagEvent("generate_lead", { method: "email_bar" });
+      fbqEvent("Lead", { content_name: "email_bar" });
+      try { localStorage.setItem("wd_email_captured", "1"); } catch { /* storage is optional */ }
+      setStatus("done");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Please try again.");
+      setStatus("idle");
+    }
   }
 
-  if (dismissed || status === "done") return null;
+  if (dismissed || previouslyCaptured || status === "done") return null;
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 safe-bottom">
@@ -68,6 +64,7 @@ export function WdEmailBar() {
           </button>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+            {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               <p className="text-sm font-bold text-blue-900 sm:shrink-0">
                 Service updates & availability alerts

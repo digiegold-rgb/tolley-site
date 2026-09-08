@@ -611,6 +611,7 @@ model EmailLead {
 /// gets back a `receiptToken`, then can GET /api/lead/<token> for status.
 /// Distinct from EmailLead (which is unique-per-email and used for "I want updates").
 model LeadAction {
+  requestKey      String?   @unique
   id              String    @id @default(cuid())
   receiptToken    String    @unique
   subsite         String
@@ -1015,6 +1016,9 @@ model JjPhoneClick {
 }
 
 model SiteView {
+  audience  String @default("unknown")
+  sessionId String?
+  campaign Json?
   id        String   @id @default(cuid())
   site      String
   path      String
@@ -1035,6 +1039,8 @@ model SiteView {
 }
 
 model SiteEvent {
+  sessionId String?
+  eventKey String? @unique
   id        String   @id @default(cuid())
   site      String
   path      String
@@ -1479,6 +1485,8 @@ model ContentCampaign {
 }
 
 model WdClient {
+  monthlyAmount Float?
+  stripeSyncedAt DateTime?
   id                    String      @id @default(cuid())
   name                  String
   address               String?
@@ -1534,6 +1542,8 @@ model WdPayment {
   source          String    @default("manual") // manual | stripe
   stripeInvoiceId String?   @unique
   paidAt          DateTime?
+  paidAtSource    String? // stripe | manual; null = historical, unverified
+  failureAttempts Int      @default(0)
   client          WdClient  @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, month])
@@ -5871,4 +5881,21 @@ model GenerateJob {
   @@index([status, createdAt])
   @@index([createdBy, createdAt])
   @@index([modalCallId])
+}
+
+/// Owner notifications, committed with their source lead; delivery is at least once.
+model LeadNotification {
+  id          String   @id
+  kind        String
+  leadId      String
+  channel     String
+  payload     Json
+  status      String   @default("pending")
+  attempts    Int      @default(0)
+  availableAt DateTime @default(now())
+  lockedAt    DateTime?
+  sentAt      DateTime?
+  lastError   String?
+  createdAt   DateTime @default(now())
+  @@index([status, availableAt])
 }

@@ -13,10 +13,7 @@ export const dynamic = "force-dynamic";
 //   pendingApproval signups, and draft-message count. All actions live in
 //   /wd/admin — this endpoint only surfaces counts/links.
 // - Invoices: open Invoice rows (not PAID/VOID, amountDue > 0).
-// - Week: revenue collected in the last 7 days. WdPayment is filtered to the
-//   current month because the 2026-06-08 Stripe backfill stamped historical
-//   payments (month "2025-08" etc.) with a fresh paidAt — without the month
-//   filter "this week" would count a year of backfill as new cash.
+// - Week: verified collection timestamps only, independent of billing month.
 export async function GET() {
   const { authed } = await validateWdAdmin();
   if (!authed) {
@@ -25,7 +22,6 @@ export async function GET() {
 
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const currentMonth = now.toISOString().slice(0, 7); // "YYYY-MM"
 
   try {
     const [
@@ -39,12 +35,14 @@ export async function GET() {
     ] = await Promise.all([
       // Past-due subscriptions + their missed payments (amount behind).
       prisma.wdClient.findMany({
-        where: { subscriptionStatus: "past_due" },
+        where: { subscriptionStatus: { in: ["past_due", "unpaid"] } },
         select: {
           id: true,
           name: true,
           phone: true,
           unitCost: true,
+          monthlyAmount: true,
+          subscriptionStatus: true,
           dunningStage: true,
           currentPeriodEnd: true,
           payments: {
@@ -82,15 +80,12 @@ export async function GET() {
         },
         orderBy: [{ dueDate: "asc" }, { issueDate: "asc" }],
       }),
-      // W/D cash collected this week (current-month payments only — see note).
+      // Original paid timestamp; unverified historical imports are excluded.
       prisma.wdPayment.aggregate({
         where: {
           status: "paid",
-          month: { gte: currentMonth },
-          OR: [
-            { paidAt: { gte: weekAgo } },
-            { paidAt: null, createdAt: { gte: weekAgo } },
-          ],
+          paidAt: { gte: weekAgo },
+          paidAtSource: { in: ["stripe", "manual"] },
         },
         _sum: { amount: true },
         _count: true,
@@ -103,7 +98,7 @@ export async function GET() {
       }),
       // Pipeline pulse — same stat the weekly P&L digest uses
       // (scripts/pnl-pipeline-stats.mjs leadsAdded7d).
-      prisma.growthLead.count({ where: { createdAt: { gte: weekAgo } } }),
+      prisma.leadAction.count({ where: { createdAt: { gte: weekAgo } } }),
     ]);
 
     // Animate Studio (pay-per-video) — this month's metered usage + video-offer
@@ -137,6 +132,8 @@ export async function GET() {
       name: c.name,
       phone: c.phone,
       unitCost: c.unitCost,
+      monthlyAmount: c.monthlyAmount,
+      subscriptionStatus: c.subscriptionStatus,
       dunningStage: c.dunningStage,
       currentPeriodEnd: c.currentPeriodEnd,
       missedCount: c.payments.length,
@@ -183,7 +180,8 @@ export async function GET() {
         newLeads: newLeadsThisWeek,
       },
       animate: {
-        monthRevenue: (animateMonthAgg._sum.costCents ?? 0) / 100,
+        monthRevenue: (animateMonthAgg._sum.costCents ?? 0) / 100, // compatibility: accrued usage, NOT cash
+        monthUsage: (animateMonthAgg._sum.costCents ?? 0) / 100,
         monthActions: animateMonthAgg._count,
         videoOfferClients,
       },

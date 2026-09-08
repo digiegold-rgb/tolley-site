@@ -15,7 +15,7 @@ export const revalidate = 3600;
  * because their public manifest endpoints are agent-discoverable.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const now = new Date();
+  // Static pages have no authoritative per-page edit timestamp; omit rather than invent it.
 
   const priorityMap: Record<string, number> = {
     "/": 1.0,
@@ -37,7 +37,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const homeRoute: MetadataRoute.Sitemap[number] = {
     url: `${BASE}/`,
-    lastModified: now,
     changeFrequency: "weekly",
     priority: 1.0,
   };
@@ -55,13 +54,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/leads",
     "/scan",
     "/video",
+    "/billing", "/results", "/signup", "/pricing", "/rentals",
   ]);
 
   const subsiteRoutes: MetadataRoute.Sitemap = SUBSITES.filter(
     (s) => !s.skipSitemap && !sitemapExclude.has(s.url),
   ).map((s) => ({
     url: `${BASE}${s.url}`,
-    lastModified: now,
     changeFrequency:
       s.category === "marketing" || s.category === "product"
         ? ("weekly" as const)
@@ -71,31 +70,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Curated extras not represented as standalone subsites
   const extras: MetadataRoute.Sitemap = [
-    { url: `${BASE}/leads/pricing`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
-    { url: `${BASE}/leads/onboard`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
-    { url: `${BASE}/shop/disclosure`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/leads/pricing`, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/shop/disclosure`, changeFrequency: "yearly", priority: 0.3 },
     {
       url: `${BASE}/shop/guides/best-kitchen-gadgets-under-50`,
-      lastModified: now,
       changeFrequency: "monthly",
       priority: 0.8,
     },
     // Real content pages that were missing while login walls got submitted.
-    { url: `${BASE}/shop/haul`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
-    { url: `${BASE}/shop/reviews`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
-    { url: `${BASE}/shop/sold`, lastModified: now, changeFrequency: "weekly", priority: 0.4 },
-    { url: `${BASE}/shop/videos`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
-    { url: `${BASE}/estate/our-work`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
-    { url: `${BASE}/tools/missed-call-calculator`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
-    { url: `${BASE}/tools/lead-follow-up-audit`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
-    { url: `${BASE}/tools/digital-presence-audit`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
-    { url: `${BASE}/tools/phone-presence-audit`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/shop/haul`, changeFrequency: "daily", priority: 0.7 },
+    { url: `${BASE}/shop/reviews`, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${BASE}/shop/sold`, changeFrequency: "weekly", priority: 0.4 },
+    { url: `${BASE}/shop/videos`, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${BASE}/estate/our-work`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${BASE}/tools/missed-call-calculator`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/tools/lead-follow-up-audit`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/tools/digital-presence-audit`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/tools/phone-presence-audit`, changeFrequency: "monthly", priority: 0.6 },
   ];
 
   // Blog posts — 10 static articles that were invisible to crawlers.
   const blogRoutes: MetadataRoute.Sitemap = blogPosts.map((p) => ({
     url: `${BASE}/blog/${p.slug}`,
-    lastModified: now,
     changeFrequency: "monthly" as const,
     priority: 0.7,
   }));
@@ -113,7 +109,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const estateRoutes: MetadataRoute.Sitemap = estateSales.map((s) => ({
     url: `${BASE}/estate/sales/${s.slug}`,
-    lastModified: s.updatedAt ?? now,
+    lastModified: s.updatedAt,
     changeFrequency: "daily" as const,
     priority: 0.8,
   }));
@@ -153,7 +149,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const neighborhoodRoutes: MetadataRoute.Sitemap = neighborhoods.map((n) => ({
     url: `${BASE}/real-estate-agent/${n.slug}`,
-    lastModified: n.generatedAt ?? n.updatedAt ?? now,
+    lastModified: n.generatedAt ?? n.updatedAt,
     changeFrequency: "monthly" as const,
     priority: 0.7,
   }));

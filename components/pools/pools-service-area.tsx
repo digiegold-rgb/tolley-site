@@ -31,7 +31,7 @@ export function PoolsServiceArea() {
           Kansas City Metro
         </p>
         <p className="mt-1 text-sm text-[rgba(22,78,99,0.68)]">
-          Same-week delivery, free over $75
+          Same-week local delivery included
         </p>
       </div>
 

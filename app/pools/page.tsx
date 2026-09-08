@@ -43,7 +43,7 @@ const faqJsonLd = {
     {
       "@type": "Question",
       name: "How fast is pool supply delivery?",
-      acceptedAnswer: { "@type": "Answer", text: "Most orders placed before noon are delivered same-day. Afternoon orders typically arrive next morning. We'll text you a delivery window." },
+      acceptedAnswer: { "@type": "Answer", text: "Same-week delivery in the Kansas City metro, subject to distributor availability. We'll confirm your delivery window by text." },
     },
     {
       "@type": "Question",

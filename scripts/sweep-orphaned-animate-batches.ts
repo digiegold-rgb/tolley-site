@@ -54,6 +54,7 @@ async function main() {
   });
 
   console.log(`${rows.length} project(s) carry an animate-all job id\n`);
+  let failed = 0;
   let swept = 0;
   let charged = 0;
   let delivered = 0;
@@ -82,6 +83,7 @@ async function main() {
 
     const out = await finalizeAnimateAll(r.id, jobId);
     if (!out.ok) {
+      if (out.status !== 409) failed++;
       // 409 = job still running. Everything else is worth seeing.
       console.log(`${out.status === 409 ? "WAIT " : "FAIL "} ${label} — ${out.error}`);
       continue;
@@ -104,6 +106,7 @@ async function main() {
       `${delivered} clip(s) delivered, $${(charged / 100).toFixed(2)} booked`,
   );
   if (!APPLY) console.log("re-run with --apply to write");
+  if (failed) process.exitCode = 1;
 }
 
 main()

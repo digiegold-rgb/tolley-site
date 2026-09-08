@@ -27,6 +27,7 @@ function getTransporter() {
     host: emailHost,
     port: Number.isFinite(emailPort) ? emailPort : 587,
     secure: emailPort === 465,
+    connectionTimeout: 8000, greetingTimeout: 8000, socketTimeout: 10000,
     auth: { user: emailUser, pass: emailPass },
   });
   return transporter;
@@ -52,8 +53,8 @@ export function notifyLead(args: LeadNotifyArgs): void {
   });
 }
 
-async function sendDiscord(args: LeadNotifyArgs) {
-  if (!PULSE_DISCORD_WEBHOOK_URL) return;
+export async function sendDiscord(args: LeadNotifyArgs) {
+  if (!PULSE_DISCORD_WEBHOOK_URL) throw new Error("Discord notification is not configured");
   const fields: { name: string; value: string; inline?: boolean }[] = [
     { name: "Source", value: `\`${args.source}\``, inline: true },
     { name: "Email", value: args.email, inline: true },
@@ -77,14 +78,15 @@ async function sendDiscord(args: LeadNotifyArgs) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) {
     throw new Error(`Discord webhook ${res.status}`);
   }
 }
 
-async function sendEmail(args: LeadNotifyArgs) {
-  if (!emailUser || !emailPass) return; // SMTP not configured
+export async function sendEmail(args: LeadNotifyArgs) {
+  if (!emailUser || !emailPass) throw new Error("Email notification is not configured"); // SMTP not configured
   const dataLines = args.data
     ? Object.entries(args.data).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join("\n")
     : "";
@@ -96,7 +98,7 @@ async function sendEmail(args: LeadNotifyArgs) {
     `Source: ${args.source}`,
     args.data ? "\nData:\n" + dataLines : "",
     "",
-    "https://www.tolley.io/leads",
+    "https://www.tolley.io/hq?tab=inbound",
   ].join("\n");
   await getTransporter().sendMail({
     from: emailFrom,
@@ -135,8 +137,8 @@ export function notifyLeadAction(args: LeadActionNotifyArgs): void {
   });
 }
 
-async function sendActionDiscord(args: LeadActionNotifyArgs) {
-  if (!PULSE_DISCORD_WEBHOOK_URL) return;
+export async function sendActionDiscord(args: LeadActionNotifyArgs) {
+  if (!PULSE_DISCORD_WEBHOOK_URL) throw new Error("Discord notification is not configured");
   const fields: { name: string; value: string; inline?: boolean }[] = [
     { name: "Subsite", value: `\`${args.subsite}\``, inline: true },
     { name: "Action", value: `\`${args.action}\``, inline: true },
@@ -167,12 +169,13 @@ async function sendActionDiscord(args: LeadActionNotifyArgs) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) throw new Error(`Discord webhook ${res.status}`);
 }
 
-async function sendActionEmail(args: LeadActionNotifyArgs) {
-  if (!emailUser || !emailPass) return;
+export async function sendActionEmail(args: LeadActionNotifyArgs) {
+  if (!emailUser || !emailPass) throw new Error("Email notification is not configured");
   const fieldLines = args.fields
     ? Object.entries(args.fields).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join("\n")
     : "—";

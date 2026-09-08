@@ -11,7 +11,7 @@ const faqs = [
   },
   {
     q: "How fast is delivery?",
-    a: "Most orders placed before noon are delivered same-day. Afternoon orders typically arrive next morning. We\u2019ll text you a delivery window.",
+    a: "Same-week delivery in the Kansas City metro, subject to distributor availability. We\u2019ll confirm your delivery window by text.",
   },
   {
     q: "Do I need a membership?",

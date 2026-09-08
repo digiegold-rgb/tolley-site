@@ -16,8 +16,8 @@ const faqs = [
     a: "Yes. Cancel through your billing portal at any time. No contracts, no cancellation fees.",
   },
   {
-    q: "Does Premium include everything in Basic?",
-    a: "Yes. Premium includes all Basic features plus higher agent limits, advanced tooling, and priority support with faster SLA.",
+    q: "How do Starter, Pro, and Team differ?",
+    a: "Starter is $49/month, Pro is $99/month, and Team is $199/month. Compare lead limits, included tools, and seats on the pricing page.",
   },
   {
     q: "Is the data compliant?",

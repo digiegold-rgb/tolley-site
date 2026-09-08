@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { submitLead, captureAttribution } from "@/lib/lead-capture-client";
 import { useSearchParams } from "next/navigation";
 import { trackEvent } from "@/components/analytics/site-tracker";
 import { gtagEvent } from "@/components/analytics/ga4";
@@ -10,13 +11,15 @@ import { WD_CONTACT_PHONE } from "@/lib/wd";
 export function WdLeadForm() {
   const params = useSearchParams();
   const promo = params.get("promo") || params.get("code") || "";
-  const utmSource = params.get("utm_source") || params.get("ref") || "";
+  const requestId = useRef<string | null>(null);
+  const [error, setError] = useState("");
 
   const [form, setForm] = useState({
     name: "",
     phone: "",
     email: "",
     address: "",
+    zip: "",
     unit: "bundle",
     promo,
     message: "",
@@ -29,30 +32,22 @@ export function WdLeadForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name || (!form.phone && !form.email)) return;
+    if (status === "sending") return;
+    if (!form.name.trim() || (!form.phone.trim() && !form.email.trim()) || !/^\d{5}$/.test(form.zip)) {
+      setError("Enter your name, a phone or email, and a five-digit delivery ZIP.");
+      return;
+    }
 
     setStatus("sending");
+    setError("");
     try {
-      await fetch("/api/analytics", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "event",
-          site: "wd",
-          path: "/wd",
-          event: "lead_submit",
-          label: form.unit,
-          referrer: utmSource || undefined,
-          meta: {
-            name: form.name,
-            phone: form.phone,
-            email: form.email,
-            address: form.address,
-            unit: form.unit,
-            promo: form.promo || undefined,
-            message: form.message || undefined,
-          },
-        }),
+      requestId.current ??= crypto.randomUUID();
+      await submitLead("/api/lead/action", {
+        requestId: requestId.current,
+        subsite: "wd", action: "request_wd_quote",
+        contact: { name: form.name.trim(), phone: form.phone.trim() || undefined, email: form.email.trim() || undefined },
+        fields: { zip: form.zip, unit_type: form.unit, address: form.address.trim(),
+          notes: form.message.trim(), promo: form.promo, ...captureAttribution() },
       });
 
       trackEvent("wd", "lead_submit", form.unit, { promo: form.promo });
@@ -60,7 +55,8 @@ export function WdLeadForm() {
       fbqEvent("Lead", { content_name: form.unit });
 
       setStatus("sent");
-    } catch {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Please try again or call us.");
       setStatus("error");
     }
   }
@@ -84,6 +80,7 @@ export function WdLeadForm() {
   return (
     <section className="rounded-2xl bg-white p-6 shadow-lg shadow-blue-100/50 sm:p-8">
       <h2 className="text-xl font-bold text-blue-900">Get a Free Quote</h2>
+      {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
       <p className="mt-1 text-sm text-slate-600">
         Not ready to checkout? Drop your info and we&apos;ll reach out with details.
       </p>
@@ -119,11 +116,14 @@ export function WdLeadForm() {
           className="wd-input w-full"
         />
 
+        <input aria-label="Delivery ZIP" placeholder="Delivery ZIP *" inputMode="numeric" pattern="[0-9]{5}" maxLength={5} required value={form.zip} onChange={(e) => update("zip", e.target.value)} className="wd-input w-full" />
+
         <select
           value={form.unit}
           onChange={(e) => update("unit", e.target.value)}
           className="wd-input w-full"
         >
+          <option value="washer">Washer only ($42/mo)</option>
           <option value="bundle">Washer + Dryer ($58/mo)</option>
         </select>
 

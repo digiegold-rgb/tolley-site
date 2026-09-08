@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Choose Your Farm Area — T-Agent Leads",
-  robots: { index: true, follow: true },
+  robots: { index: false, follow: false },
 };
 
 import { auth } from "@/auth";

@@ -120,7 +120,7 @@ export function HpHero() {
 
         {/* Trusted by line */}
         <p className="hp-fade-up hp-fade-up-d4 mt-8 text-[0.65rem] tracking-[0.12em] text-white/38 uppercase">
-          Trusted by agents in Kansas City, Dallas &amp; beyond
+          Built for real estate agents in Kansas City
         </p>
       </div>
     </section>

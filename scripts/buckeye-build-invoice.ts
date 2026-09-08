@@ -419,7 +419,16 @@ async function main() {
 
   const week = argVal('--week') || isoWeekKey();
   const statePath = argVal('--file') || join(STATE_DIR, `week-${week}.json`);
-  if (!existsSync(statePath)) throw new Error(`State file not found: ${statePath}`);
+  if (!existsSync(statePath)) {
+    const title = `Buckeye ${week}: awaiting delivery slips`;
+    if (!await prisma.mustCompleteItem.findFirst({ where: { title, status: "open" }, select: { id: true } })) {
+      await prisma.mustCompleteItem.create({ data: { title, priority: "yellow", category: "billing",
+        source: "buckeye-build", sortOrder: 20,
+        detail: `The invoice builder needs ${statePath}. Import this week's actual delivery slips, then rerun the builder. No invoice or charge has been created.` } });
+    }
+    log(`AWAITING_INPUT ${week}: no weekly state file; review HQ Must Complete.`);
+    return;
+  }
   const state = JSON.parse(readFileSync(statePath, 'utf8'));
 
   const slips: Slip[] = state.slips || [];

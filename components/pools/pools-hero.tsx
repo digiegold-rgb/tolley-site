@@ -76,7 +76,7 @@ export function PoolsHero() {
             Shop Now
           </a>
           <span className="inline-flex items-center rounded-full border-2 border-cyan-300/40 bg-white/40 px-8 py-3 text-sm font-bold text-cyan-800 backdrop-blur-sm">
-            Free delivery over $75
+            Local delivery included
           </span>
           <a
             href={`tel:${POOLS_CONTACT_PHONE}`}

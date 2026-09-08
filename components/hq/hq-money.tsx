@@ -220,11 +220,11 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
         </div>
         {money.animate && (
           <div className="stat-card">
-            <h4>Animate Studio (mo)</h4>
+            <h4>Studio usage accrued (mo)</h4>
             <div className="val" style={{ fontSize: 15 }}>
-              {usd(money.animate.monthRevenue)}{" "}
+              {usd(money.animate.monthUsage ?? money.animate.monthRevenue)}{" "}
               <span style={{ fontSize: 11, fontWeight: 600, color: "var(--hq-ink-2)" }}>
-                · {money.animate.monthActions} renders · {money.animate.videoOfferClients} video client
+                · {money.animate.monthActions} billable actions · {money.animate.videoOfferClients} video client
                 {money.animate.videoOfferClients === 1 ? "" : "s"}
               </span>
             </div>
@@ -249,7 +249,7 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
           <div style={{ fontWeight: 700, fontSize: 14 }}>
             Washer/Dryer{" "}
             <span style={{ fontWeight: 600, fontSize: 12, color: "var(--hq-ink-2)" }}>
-              {wd.pastDue.length} past due ({usd(wd.pastDueTotal)} behind) · {wd.pendingApproval.length} pending
+              {wd.pastDue.length} past due / unpaid ({usd(wd.pastDueTotal)} behind) · {wd.pendingApproval.length} pending
               approval · {wd.draftCount} message draft{wd.draftCount === 1 ? "" : "s"}
             </span>
           </div>
@@ -264,7 +264,7 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
         </div>
         {wd.pastDue.length === 0 ? (
           <div style={{ fontSize: 13, color: "#999", padding: "4px 0" }}>
-            Nobody past due. Cash floor holding.
+            No past-due or unpaid subscriptions in the local mirror.
           </div>
         ) : (
           wd.pastDue.map((c) => (
@@ -278,7 +278,7 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
                 {usd(c.amountBehind)} behind
               </span>
               <span style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>
-                {c.missedCount} missed · ${c.unitCost}/mo
+                {c.missedCount} missed · {c.subscriptionStatus} · {c.monthlyAmount == null ? "monthly rate awaiting sync" : `${usd(c.monthlyAmount)}/mo`}
               </span>
               {c.dunningStage > 0 && (
                 <span className="pill pill-status-discarded">
@@ -309,7 +309,7 @@ export function HqMoney({ money, loading, onRefresh }: Props) {
             >
               <span style={{ fontSize: 12, fontWeight: 700, minWidth: 140 }}>{c.name}</span>
               <span style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>
-                ${c.unitCost}/mo · signed up {shortDate(c.createdAt)}
+                Equipment cost {usd(c.unitCost)} · signed up {shortDate(c.createdAt)}
               </span>
               <span style={{ marginLeft: "auto", fontSize: 11, color: "#4472c4", fontWeight: 600 }}>
                 approve in /wd/admin →

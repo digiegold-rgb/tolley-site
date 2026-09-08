@@ -1,15 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { formatPoolPrice } from "@/lib/pools";
 
-const fallbackComparisons = [
-  { name: "Chlorine Tablets 25lb", retail: 129, ours: 89 },
-  { name: "Pool Shock 12-Pack", retail: 59, ours: 42 },
-  { name: "Variable Speed Pump 1.5HP", retail: 749, ours: 549 },
-  { name: "Water Test Kit", retail: 42, ours: 28 },
-  { name: "Algaecide 60 Plus", retail: 36, ours: 24 },
-  { name: "Vacuum Hose 36ft", retail: 52, ours: 34 },
-];
-
 async function getTopSavings() {
   try {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -23,7 +14,7 @@ async function getTopSavings() {
          WHERE cp.sku = p.sku AND cp."scannedAt" >= ${sevenDaysAgo}) as "minCompetitorPrice"
       FROM "PoolProduct" p
       WHERE p.status = 'active'
-        AND p."retailPrice" IS NOT NULL OR EXISTS (
+        AND EXISTS (
           SELECT 1 FROM "CompetitorPrice" cp
           WHERE cp.sku = p.sku AND cp."scannedAt" >= ${sevenDaysAgo}
         )
@@ -54,7 +45,8 @@ async function getTopSavings() {
 export async function PoolsSavings() {
   const dbSavings = await getTopSavings();
   const comparisons =
-    dbSavings && dbSavings.length >= 3 ? dbSavings : fallbackComparisons;
+    dbSavings && dbSavings.length >= 3 ? dbSavings : [];
+  if (!comparisons.length) return null;
 
   // Calculate average savings percentage
   const avgSavingsPct =
@@ -131,15 +123,15 @@ export async function PoolsSavings() {
       {/* Hero savings callout — per handoff spec */}
       <div className="mt-5 rounded-2xl border border-cyan-200 bg-gradient-to-r from-cyan-50 to-sky-50 p-6 text-center">
         <p className="text-lg font-extrabold text-cyan-900">
-          Members save an average of{" "}
+          These products average{" "}
           <span className="pools-savings-badge inline-block text-[1.6rem] text-[#0e7490]">
             ${avgSavingsDollars}
           </span>{" "}
-          per order
+          in savings per product
         </p>
         <p className="mt-2 text-sm text-cyan-700/80">
-          Save {avgSavingsPct}%+ vs Walmart, Leslie&apos;s, and other big-box
-          retailers. Delivery included.
+          Average savings of {avgSavingsPct}% across the comparisons above,
+          using competitor prices checked within the last seven days. Delivery included.
         </p>
       </div>
     </section>

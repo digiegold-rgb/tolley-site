@@ -25,6 +25,7 @@ import { HqDnc } from "@/components/hq/hq-dnc";
 import { HqStats } from "@/components/hq/hq-stats";
 import { HqEsnKit } from "@/components/hq/hq-esn-kit";
 import { HqEstates } from "@/components/hq/hq-estates";
+import { HqBusiness } from "@/components/hq/hq-business";
 import { HqEmpireMap } from "@/components/hq/hq-empire-map";
 import { HqFbChats } from "@/components/hq/hq-fb-chats";
 import { HqSmsInbox } from "@/components/hq/hq-sms-inbox";
@@ -46,9 +47,9 @@ import {
   type HqInboundLead,
 } from "@/components/hq/types";
 
-type Tab = "empire" | "must" | "fable5" | "pipeline" | "inbound" | "approvals" | "money" | "sms" | "dnc" | "estates" | "stats" | "site" | "chats" | "hauls" | "posts" | "tiktok" | "bk";
+type Tab = "business" | "empire" | "must" | "fable5" | "pipeline" | "inbound" | "approvals" | "money" | "sms" | "dnc" | "estates" | "stats" | "site" | "chats" | "hauls" | "posts" | "tiktok" | "bk";
 
-const TABS: readonly Tab[] = ["empire", "must", "fable5", "pipeline", "inbound", "approvals", "money", "sms", "dnc", "estates", "stats", "site", "chats", "hauls", "posts", "tiktok", "bk"];
+const TABS: readonly Tab[] = ["business", "empire", "must", "fable5", "pipeline", "inbound", "approvals", "money", "sms", "dnc", "estates", "stats", "site", "chats", "hauls", "posts", "tiktok", "bk"];
 
 function isTab(v: string | null): v is Tab {
   return v != null && (TABS as readonly string[]).includes(v);
@@ -73,12 +74,12 @@ function HqPageInner() {
 
   const searchParams = useSearchParams();
   const urlTab = searchParams.get("tab");
-  const [tab, setTab] = useState<Tab>(isTab(urlTab) ? urlTab : "empire");
+  const [tab, setTab] = useState<Tab>(isTab(urlTab) ? urlTab : "business");
 
   // Keep the URL shareable — replaceState avoids a Next navigation/remount.
   // SMS threads deep-link as /hq?tab=sms&phone=9132833826 — don't strip phone.
   useEffect(() => {
-    if (tab === "empire") {
+    if (tab === "business") {
       window.history.replaceState(null, "", "/hq");
       return;
     }
@@ -632,6 +633,7 @@ function HqPageInner() {
         <div className="tab-bar">
           <div className="tab-strip">
             {/* Ops */}
+            {tabPill("business", "Business")}
             {tabPill("empire", "🗺️ Empire", undefined, "tab-empire")}
             {tabPill("must", "🎯 Must Complete", mustOpen.length, "tab-must")}
             {tabPill(
@@ -815,7 +817,9 @@ function HqPageInner() {
           </div>
         </div>
 
-        {tab === "empire" ? (
+        {tab === "business" ? (
+          <HqBusiness />
+        ) : tab === "empire" ? (
           <HqEmpireMap />
         ) : tab === "must" ? (
           <>

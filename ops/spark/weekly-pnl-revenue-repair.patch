@@ -1,0 +1,55 @@
+--- a/weekly-pnl.mjs
++++ b/weekly-pnl.mjs
+@@ -26,7 +26,6 @@
+ const XERO_ENV = path.join(HOME, 'xero-ledger', '.env');
+ 
+ const WD_PRODUCT = 'prod_StRrSxJ969g4hV';
+-const WD_AMOUNTS = new Set([5800, 4200]);
+ const KITCHEN_PRODUCT = 'prod_UIvHHpyQzxfIP3';
+ 
+ // ---------- env (fallback parse for manual runs; systemd uses EnvironmentFile) ----------
+@@ -90,7 +89,7 @@
+   if (prods.has(WD_PRODUCT)) return 'wd';
+   if (prods.has(KITCHEN_PRODUCT)) return 'kitchen';
+   if (/INV-\d+/i.test(invRef)) return 'invoices'; // Buckeye / Wayne tolley.io invoices
+-  if (WD_AMOUNTS.has(c.amount)) return 'wd';
++  // An amount alone does not identify a business. Leave unmatched charges unclassified.
+   return 'shop';
+ }
+ 
+@@ -127,7 +126,7 @@
+     adNote = ` (ad-spend.json unreadable: ${e.message})`;
+   }
+ } else {
+-  adNote = ' (ads not live)';
++  adNote = ' (ad spend unverified: no source file)';
+ }
+ 
+ // ---------- pipeline stats (companion script inside tolley-site) ----------
+@@ -160,13 +159,13 @@
+ | W/D Rentals | ${usd(lines.wd.gross)} | ${lines.wd.n} |
+ | Buckeye/Wayne invoices | ${usd(lines.invoices.gross)} | ${lines.invoices.n} |
+ | Ruthann's Kitchen | ${usd(lines.kitchen.gross)} | ${lines.kitchen.n} |
+-| Shop / other | ${usd(lines.shop.gross)} | ${lines.shop.n} |
++| Other / unclassified | ${usd(lines.shop.gross)} | ${lines.shop.n} |
+ | **Total revenue** | **${usd(totalRevenue)}** | ${charges.length} |
+ 
+ - Ad spend: ${usd(adSpendCents)}${adNote}
+-- **Net: ${usd(net)}**
+-
+-**Growth pipeline:** ${pipeline ? `${pipeline.totalLeads} leads (${stageStr}) | ${pipeline.draftsPending} drafts pending approval | ${pipeline.leadsAdded7d} added last 7d` : 'stats unavailable this run'}
++- **Collected less recorded ads (before fees and operating costs): ${usd(net)}**
++
++**Growth pipeline:** ${pipeline ? `${pipeline.totalLeads} leads (${stageStr}) | ${pipeline.draftsPending} draft records (includes archived experiments; not sendable inventory) | ${pipeline.leadsAdded7d} added last 7d` : 'stats unavailable this run'}
+ `;
+ 
+ if (!fs.existsSync(PNL_FILE)) {
+@@ -182,7 +181,7 @@
+   `Buckeye/Wayne: ${usd(lines.invoices.gross)} (${lines.invoices.n})\n` +
+   `Kitchen: ${usd(lines.kitchen.gross)} (${lines.kitchen.n})\n` +
+   `Shop/other: ${usd(lines.shop.gross)} (${lines.shop.n})\n` +
+-  `*Total: ${usd(totalRevenue)}* | Ads: ${usd(adSpendCents)}${adNote} | *Net: ${usd(net)}*\n` +
++  `*Total: ${usd(totalRevenue)}* | Ads: ${usd(adSpendCents)}${adNote} | *Collected less recorded ads (before costs): ${usd(net)}*\n` +
+   (pipeline
+     ? `Pipeline: ${pipeline.totalLeads} leads, ${pipeline.draftsPending} drafts pending, +${pipeline.leadsAdded7d} this week`
+     : `Pipeline: stats unavailable`) +
