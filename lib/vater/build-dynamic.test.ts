@@ -13,9 +13,9 @@ function readApp(rel: string): string {
 
 const FORCE_DYNAMIC = /export const dynamic\s*=\s*["']force-dynamic["']/;
 
-test("changelog 1.37.6 is the current shipped version", () => {
-  assert.equal(APP_VERSION, "1.37.6");
-  assert.equal(CHANGELOG[0]?.version, "1.37.6");
+test("changelog 1.37.7 is the current shipped version", () => {
+  assert.equal(APP_VERSION, "1.37.7");
+  assert.equal(CHANGELOG[0]?.version, "1.37.7");
 });
 
 test("script writer uses AI Gateway client, not a bare Anthropic constructor", () => {
@@ -104,10 +104,12 @@ test("collect workers stay at 1 so Standard 8GB can finish page-data", () => {
   assert.match(src, /experimental:\s*\{[\s\S]*cpus:\s*1/);
   assert.match(src, /staticGenerationMaxConcurrency:\s*1/);
   assert.match(src, /typescript:\s*\{\s*ignoreBuildErrors:\s*true\s*\}/);
-  assert.equal(/webpackBuildWorker:\s*true/.test(src), false);
+  assert.match(src, /webpackBuildWorker:\s*false/);
   assert.equal(/NODE_OPTIONS/.test(src), false);
   assert.match(src, /sourcemaps:\s*\{\s*disable:\s*process\.env\.VERCEL === ["']1["']/);
   assert.match(src, /export default process\.env\.VERCEL === ["']1["']\s*\?[\s\S]*nextConfig/);
-  assert.match(pkg, /max-old-space-size=6144/);
-  assert.equal(/max-old-space-size=4096/.test(pkg), false);
+  assert.match(pkg, /node scripts\/build-next\.mjs/);
+  // The real child-process test covers the launcher's 6 GiB compiler heap.
+  // TypeScript has its own smaller process before the compiler starts.
+  assert.match(pkg, /4096 node_modules\/typescript\/bin\/tsc/);
 });

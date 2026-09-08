@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.37.6';
+export const APP_VERSION = '1.37.7';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,10 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.37.7', date: '2026-09-08', title: 'Reduce release build memory overhead',
+    items: ['Release builds keep their memory limit consistent and avoid a large temporary cache.'],
+  },
   {
     version: '1.37.6',
     date: '2026-09-08',
