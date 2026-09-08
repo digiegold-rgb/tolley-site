@@ -13,9 +13,9 @@ function readApp(rel: string): string {
 
 const FORCE_DYNAMIC = /export const dynamic\s*=\s*["']force-dynamic["']/;
 
-test("changelog 1.37.4 is the current shipped version", () => {
-  assert.equal(APP_VERSION, "1.37.4");
-  assert.equal(CHANGELOG[0]?.version, "1.37.4");
+test("changelog 1.37.5 is the current shipped version", () => {
+  assert.equal(APP_VERSION, "1.37.5");
+  assert.equal(CHANGELOG[0]?.version, "1.37.5");
 });
 
 test("script writer uses AI Gateway client, not a bare Anthropic constructor", () => {
@@ -106,6 +106,7 @@ test("collect workers stay at 1 so Standard 8GB can finish page-data", () => {
   assert.match(src, /typescript:\s*\{\s*ignoreBuildErrors:\s*true\s*\}/);
   assert.equal(/webpackBuildWorker:\s*true/.test(src), false);
   assert.equal(/NODE_OPTIONS/.test(src), false);
+  assert.match(src, /sourcemaps:\s*\{\s*disable:\s*process\.env\.VERCEL === ["']1["']/);
   assert.match(pkg, /max-old-space-size=6144/);
   assert.equal(/max-old-space-size=4096/.test(pkg), false);
 });

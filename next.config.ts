@@ -312,15 +312,14 @@ export default withSentryConfig(nextConfig, {
   // succeeds — source maps just aren't uploaded and prod traces stay minified.
   authToken: process.env.SENTRY_AUTH_TOKEN,
 
-  // Source maps are only worth generating when there's a token to upload them
-  // with. Building them unconditionally cost ~4GB of extra webpack heap and
-  // OOM'd local `npm run build` on the DGX for zero benefit — without
-  // SENTRY_AUTH_TOKEN the plugin has nowhere to send them. Set the token
-  // (Vercel build env) and this switches itself on.
-  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+  // Source maps cost ~4GB of extra webpack heap and already OOM'd local
+  // `npm run build` on the DGX. On Vercel Standard (8GB) the token is set, so
+  // the old `disable: !SENTRY_AUTH_TOKEN` switch *turns maps on* and SIGKILLs
+  // the deploy. Keep maps off on Vercel. Upload them from a bigger box later.
+  sourcemaps: { disable: process.env.VERCEL === "1" || !process.env.SENTRY_AUTH_TOKEN },
 
-  // Upload the wider client file set so browser stack traces resolve.
-  widenClientFileUpload: true,
+  // Only widen the upload set when maps are actually being generated.
+  widenClientFileUpload: process.env.VERCEL !== "1" && Boolean(process.env.SENTRY_AUTH_TOKEN),
 
   // NO `tunnelRoute`. It reads as free ad-blocker resistance, but it publishes
   // an unauthenticated POST endpoint on tolley.io that forwards straight into
