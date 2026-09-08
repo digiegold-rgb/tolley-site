@@ -26,6 +26,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 import { finalizeAnimateAll } from "../lib/vater/animate-all-finalize";
+import { autopilot, AutopilotError } from "../lib/vater/autopilot-client";
 
 const prisma = new PrismaClient();
 const APPLY = process.argv.includes("--apply");
@@ -58,6 +59,7 @@ async function main() {
   let swept = 0;
   let charged = 0;
   let delivered = 0;
+  let review = 0;
 
   for (const r of rows) {
     const jobId = r.animateAllJobId!;
@@ -77,12 +79,34 @@ async function main() {
     const withVideo = scenes.filter((s) => s && s.videoUrl).length;
 
     if (!APPLY) {
-      console.log(`CHECK ${label} status=${r.status} clips_in_row=${withVideo}`);
+      try {
+        const job = await autopilot.getJob(jobId);
+        console.log(`CHECK ${label} status=${r.status} clips_in_row=${withVideo} upstream=${job.status}`);
+      } catch (error) {
+        if (error instanceof AutopilotError && error.status === 404) {
+          review++;
+          console.log(`REVIEW ${label} — upstream job is missing; delivery and ledger need review`);
+        } else {
+          failed++;
+          console.log(`FAIL  ${label} — upstream status check failed`);
+        }
+      }
       continue;
     }
 
     const out = await finalizeAnimateAll(r.id, jobId);
     if (!out.ok) {
+      if (out.upstream === 404) {
+        await prisma.mustCompleteItem.createMany({ skipDuplicates: true, data: {
+          id: `animate-orphan:${jobId}`, title: "Review an animation batch missing upstream",
+          priority: "yellow", category: "billing", source: "animate-finalize-sweep", sortOrder: 10,
+          detail: `Project ${r.id}, batch ${jobId}: upstream returned 404. Project status is ${r.status}; ${withVideo} scenes have stored video URLs. Verify delivered assets and the existing usage ledger before deciding whether anything is missing. No automatic reconstruction or charge was attempted.`,
+          links: [{ label: "Studio", url: "/animate" }],
+        } });
+        review++;
+        console.log(`REVIEW ${label} — missing upstream job recorded in HQ`);
+        continue;
+      }
       if (out.status !== 409) failed++;
       // 409 = job still running. Everything else is worth seeing.
       console.log(`${out.status === 409 ? "WAIT " : "FAIL "} ${label} — ${out.error}`);
@@ -106,6 +130,7 @@ async function main() {
       `${delivered} clip(s) delivered, $${(charged / 100).toFixed(2)} booked`,
   );
   if (!APPLY) console.log("re-run with --apply to write");
+  if (review) console.log(`${review} missing upstream batch(es) require delivery/ledger review${APPLY ? " in HQ" : "; no review tasks written in dry-run"}`);
   if (failed) process.exitCode = 1;
 }
 

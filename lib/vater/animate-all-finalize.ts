@@ -136,7 +136,7 @@ export async function finalizeAnimateAll(
       endS: existing.endS ?? 0,
       imageUrl: existing.imageUrl ?? "",
     };
-    updatedCount++;
+    if (existing.videoUrl !== r.url || existing.videoVersion !== r.version) updatedCount++;
 
     // Billed to the project OWNER, never the acting caller — an admin (or a
     // cron with no session at all) must not pay for a customer's batch.
@@ -166,12 +166,12 @@ export async function finalizeAnimateAll(
     animateAllJobId,
   );
 
-  await prisma.youTubeProject.update({
+  if (updatedCount > 0 || mergedCost) await prisma.youTubeProject.update({
     where: { id: projectId },
     data: {
       scenesJson: scenes as unknown as object,
       editedAt: new Date(),
-      status: project.status === "ready" ? "editing" : project.status,
+      status: updatedCount > 0 && project.status === "ready" ? "editing" : project.status,
       ...(mergedCost ? { costJson: mergedCost as unknown as object } : {}),
     },
   });
