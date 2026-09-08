@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.37.5';
+export const APP_VERSION = '1.37.6';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.37.6',
+    date: '2026-09-08',
+    title: 'Release builds skip the Sentry webpack plugin on Standard',
+    items: [
+      'Production compile no longer wraps Next in the Sentry webpack plugin on the Standard 8 GB box. Error reporting at runtime stays. Maps can still be built on a bigger machine.',
+    ],
+  },
   {
     version: '1.37.5',
     date: '2026-09-08',
