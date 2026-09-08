@@ -13,9 +13,9 @@ function readApp(rel: string): string {
 
 const FORCE_DYNAMIC = /export const dynamic\s*=\s*["']force-dynamic["']/;
 
-test("changelog 1.37.3 is the current shipped version", () => {
-  assert.equal(APP_VERSION, "1.37.3");
-  assert.equal(CHANGELOG[0]?.version, "1.37.3");
+test("changelog 1.37.4 is the current shipped version", () => {
+  assert.equal(APP_VERSION, "1.37.4");
+  assert.equal(CHANGELOG[0]?.version, "1.37.4");
 });
 
 test("script writer uses AI Gateway client, not a bare Anthropic constructor", () => {
@@ -76,6 +76,8 @@ test("session/DB trees that hang SSG are marked at the route, not root", () => {
     "app/video/page.tsx",
     "app/video/studio/page.tsx",
     "app/animate/layout.tsx",
+    "app/hq/layout.tsx",
+    "app/generate/layout.tsx",
     "app/real-estate-agent/page.tsx",
     "app/real-estate-agent/[slug]/page.tsx",
   ]) {

@@ -4,6 +4,9 @@ import type { ReactNode } from "react";
 import { jellyDisplay, jellySerif } from "@/components/animate/fonts";
 import "./generate.css";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: "Generate | Jelly Studio · Tolley.io",
   description:

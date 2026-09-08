@@ -4,6 +4,9 @@ import { ToastProvider } from "@/components/ui/Toast";
 
 import "./hq.css";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: "Growth HQ",
   robots: { index: false, follow: false },
