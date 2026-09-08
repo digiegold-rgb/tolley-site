@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { geolocation } from "@vercel/functions";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { validateWdAdmin } from "@/lib/wd-auth";
 import {
   BOT_UA,
   isBot,
@@ -79,9 +80,11 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 async function isRateLimited(ip: string | null): Promise<boolean> {
   if (!ip) return false;
   const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MS);
+  const ipHash = maybeHashIp(ip);
+  const identity = ipHash ? { OR: [{ ip }, { ipHash }] } : { ip };
   const [viewCount, eventCount] = await Promise.all([
-    prisma.siteView.count({ where: { ip, createdAt: { gte: since } } }),
-    prisma.siteEvent.count({ where: { ip, createdAt: { gte: since } } }),
+    prisma.siteView.count({ where: { ...identity, createdAt: { gte: since } } }),
+    prisma.siteEvent.count({ where: { ...identity, createdAt: { gte: since } } }),
   ]);
   return viewCount + eventCount >= RATE_LIMIT_COUNT;
 }
@@ -118,6 +121,12 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { type, site, path, event, label, referrer, meta } = body;
+    if (event === "payment_confirmed") {
+      return NextResponse.json({ error: "Reserved event" }, { status: 400, headers: corsHeaders(origin) });
+    }
+    const sessionId = typeof body.sessionId === "string" && /^[a-f0-9-]{36}$/i.test(body.sessionId) ? body.sessionId : null;
+    const campaign = Object.fromEntries(["utm_source", "utm_medium", "utm_campaign", "ref"].flatMap(key =>
+      typeof body.campaign?.[key] === "string" ? [[key, body.campaign[key].slice(0, 120)]] : []));
 
     if (!site || !path) {
       return NextResponse.json(
@@ -168,11 +177,18 @@ export async function POST(request: NextRequest) {
           region,
           city,
           meta: meta || undefined,
+          sessionId,
         },
       });
     } else {
+      const hasSession = request.cookies.getAll().some(c => /authjs.session-token/.test(c.name));
+      const session = hasSession ? await auth() : null;
+      const operator = request.cookies.has("wd_admin") && (await validateWdAdmin()).authed;
+      const adminEmails = [process.env.ADMIN_ALLOWLIST_EMAILS, process.env.VATER_ADMIN_ALLOWLIST_EMAILS].join(",").split(",").map(e => e.trim().toLowerCase());
+      const audience = operator || session?.user?.email && adminEmails.includes(session.user.email.toLowerCase()) ? "operator" : session?.user?.id ? "customer" : "anonymous";
       await prisma.siteView.create({
         data: {
+          audience, sessionId, campaign,
           site,
           path,
           referrer: referrer || null,

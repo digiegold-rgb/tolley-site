@@ -33,7 +33,7 @@ export function HpCta() {
             >
               <span className="text-xs tracking-[0.1em] text-violet-200/70 uppercase">Most Popular</span>
               <span className="mt-1.5 text-sm font-semibold text-violet-50">See Plans — $49/mo</span>
-              <span className="mt-1 text-xs text-violet-200/60">7-day free trial, no card needed</span>
+              <span className="mt-1 text-xs text-violet-200/60">7-day free trial; payment method required</span>
             </Link>
             <a
               href="mailto:support@tolley.io?subject=T-Agent%20Demo%20Request"

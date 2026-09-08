@@ -22,39 +22,35 @@ export async function POST() {
   const stripe = getStripeClient();
   let subsSynced = 0;
   let invoicesRecorded = 0;
+  let subscriptionsNeedingReview = 0;
 
   try {
-    const subs = await stripe.subscriptions.list({
-      limit: 100,
-      status: "all",
-      expand: ["data.customer"],
-    });
-
-    const wdSubs = subs.data.filter((s) => isWdSubscription(s));
+    const allSubs = await stripe.subscriptions.list({ limit: 100, status: "all" }).autoPagingToArray({ limit: 10000 });
+    const wdSubs = allSubs.filter(isWdSubscription).sort((a, b) => a.created - b.created);
 
     for (const sub of wdSubs) {
-      await syncWdSubscription(sub);
+      if (!await syncWdSubscription(sub)) { subscriptionsNeedingReview++; continue; }
       subsSynced++;
 
       // Backfill invoice history for this subscription.
       const invoices = await stripe.invoices.list({
         subscription: sub.id,
         limit: 100,
-      } as Stripe.InvoiceListParams);
+      } as Stripe.InvoiceListParams).autoPagingToArray({ limit: 10000 });
 
-      for (const inv of invoices.data) {
+      for (const inv of invoices) {
         if (inv.status === "paid") {
-          await recordWdInvoice(inv, false);
+          await recordWdInvoice(inv, false, { reconcile: true });
           invoicesRecorded++;
         } else if (inv.status === "open" && (inv.attempt_count ?? 0) > 0) {
           // an open invoice that's been attempted = a failure in progress
-          await recordWdInvoice(inv, true);
+          await recordWdInvoice(inv, true, { reconcile: true });
           invoicesRecorded++;
         }
       }
     }
 
-    return NextResponse.json({ ok: true, subsSynced, invoicesRecorded });
+    return NextResponse.json({ ok: true, subsSynced, invoicesRecorded, subscriptionsNeedingReview });
   } catch (err) {
     console.error("[wd/sync]", err);
     return NextResponse.json(

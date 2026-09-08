@@ -1,5 +1,7 @@
 "use client";
 
+import { visitorSessionId } from "@/lib/lead-capture-client";
+import type { MouseEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { trackEvent } from "@/components/analytics/site-tracker";
 import { gtagEvent } from "@/components/analytics/ga4";
@@ -25,7 +27,12 @@ export function WdCheckoutLink({ href, label, children, className }: WdCheckoutL
     ? `${href}${href.includes("?") ? "&" : "?"}prefilled_promo_code=${encodeURIComponent(promo)}`
     : href;
 
-  function handleClick() {
+  function handleClick(event: MouseEvent<HTMLAnchorElement>) {
+    const sessionId = visitorSessionId();
+    if (sessionId) {
+      const url = new URL(finalHref); url.searchParams.set("client_reference_id", `tolley_${sessionId}`);
+      event.currentTarget.href = url.toString();
+    }
     trackEvent("wd", "checkout_click", label, { promo: promo || "none" });
     gtagEvent("begin_checkout", { item_name: label, coupon: promo || "" });
     fbqEvent("InitiateCheckout", { content_name: label });

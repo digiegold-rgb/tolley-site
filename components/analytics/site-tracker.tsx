@@ -1,5 +1,6 @@
 "use client";
 
+import { visitorSessionId, captureAttribution } from "@/lib/lead-capture-client";
 import { useEffect, useCallback } from "react";
 
 function classifyReferrer(ref: string): string {
@@ -37,6 +38,7 @@ export function SiteTracker({ site }: { site: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: "view",
+        sessionId: visitorSessionId(), campaign: captureAttribution(),
         site,
         path: window.location.pathname,
         referrer: getReferrer(),
@@ -59,6 +61,7 @@ export function trackEvent(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       type: "event",
+      sessionId: visitorSessionId(),
       site,
       path: typeof window !== "undefined" ? window.location.pathname : "/",
       event,

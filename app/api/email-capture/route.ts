@@ -1,7 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { notifyLead } from "@/lib/lead-notify";
+import { enqueueLeadNotifications, deliverLeadNotifications } from "@/lib/lead-notification-outbox";
 import { rateLimitByIp } from "@/lib/rate-limit";
 import { sendEstateAddressIfRevealed } from "@/lib/estate-alert-autoresponder";
 import { sendDropWelcome } from "@/lib/shop/drop-autoresponder";
@@ -18,26 +18,28 @@ export async function POST(request: Request) {
   const limited = await rateLimitByIp(request, "email-capture", 10, 3600);
   if (limited) return limited;
   try {
-    const { email, name, source, data } = await request.json() as {
+    const { email: rawEmail, name, source, data } = await request.json() as {
       email?: string;
       name?: string;
       source?: string;
       data?: Record<string, unknown>;
     };
 
-    if (!email || !email.includes("@")) {
+    const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
+    if (!email || !email.includes("@") || email.length > 254) {
       return NextResponse.json({ error: "Valid email required" }, { status: 400 });
     }
 
-    if (!source) {
+    if (typeof source !== "string" || !source.trim() || source.length > 100) {
       return NextResponse.json({ error: "Source required" }, { status: 400 });
     }
 
     // Detect new vs duplicate so we only notify once per email
-    const existing = await prisma.emailLead.findUnique({ where: { email }, select: { id: true } });
-    const isNew = !existing;
+    const existing = await prisma.emailLead.findUnique({ where: { email }, select: { id: true, source: true } });
+    const isNew = !existing || existing.source !== source;
 
-    const lead = await prisma.emailLead.upsert({
+    const lead = await prisma.$transaction(async tx => {
+      const lead = await tx.emailLead.upsert({
       where: { email },
       create: {
         email,
@@ -48,6 +50,7 @@ export async function POST(request: Request) {
         optedIn: true,
       },
       update: {
+        ...(isNew ? { status: "new", statusNote: null, statusUpdatedAt: new Date() } : {}),
         // Don't overwrite name if already set; update source/data to latest
         ...(name ? { name } : {}),
         source,
@@ -55,7 +58,11 @@ export async function POST(request: Request) {
       },
     });
 
-    notifyLead({ source, email, name, data, isNew });
+      // Idempotent outbox keys also cover retries after a lost HTTP response.
+      if (isNew) await enqueueLeadNotifications(tx, "email", lead.id, { source, email, name, data });
+      return lead;
+    });
+    after(() => deliverLeadNotifications(lead.id));
 
     // Estate-alerts joiners expect the address, not a wait. The cron only
     // blasts once per sale, so anyone joining after that blast is covered here.

@@ -112,7 +112,11 @@ export async function GET(request: NextRequest) {
       counts[g.status] = (counts[g.status] ?? 0) + g._count._all;
     }
 
-    return NextResponse.json({ leads: rows, counts });
+    const delivery = await prisma.leadNotification.findMany({ where: { leadId: { in: [...actions.map(a => a.id), ...emailLeads.map(l => l.id)] } },
+      select: { leadId: true, kind: true, channel: true, status: true, attempts: true, lastError: true, sentAt: true } });
+    const leads = rows.map(row => ({ ...row, notifications: delivery.filter(n =>
+      (n.kind === "email" ? `email_${n.leadId}` : n.leadId) === row.id) }));
+    return NextResponse.json({ leads, counts });
   } catch (err) {
     console.error("[hq/inbound] load failed", err);
     return NextResponse.json({ error: "Failed to load inbound leads" }, { status: 500 });

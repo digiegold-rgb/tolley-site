@@ -130,7 +130,7 @@ export function WalkthroughBooking() {
         walkthrough.
       </p>
 
-      <fieldset className="mt-7">
+      <fieldset className="mt-7 min-w-0 max-w-full">
         <legend className="mb-3 text-[0.68rem] tracking-[0.24em] uppercase" style={{ color: "var(--es-brass)" }}>
           Preferred day
         </legend>

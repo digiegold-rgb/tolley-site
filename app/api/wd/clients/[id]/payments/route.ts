@@ -15,9 +15,9 @@ export async function POST(
   const { id } = await params;
 
   try {
-    const { amount, month, note, status } = await request.json();
+    const { amount, month, note, status, paidAt } = await request.json();
 
-    if (typeof amount !== "number" || amount <= 0) {
+    if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
       return NextResponse.json({ error: "Valid amount required" }, { status: 400 });
     }
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
@@ -37,6 +37,8 @@ export async function POST(
         month,
         status: status || "paid",
         note: note?.trim() || null,
+        paidAt: (status || "paid") === "paid" ? new Date(paidAt || Date.now()) : null,
+        paidAtSource: (status || "paid") === "paid" ? "manual" : null,
       },
     });
 
@@ -57,7 +59,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await params;
+  const { id: clientId } = await params;
   const paymentId = new URL(request.url).searchParams.get("paymentId");
   if (!paymentId) {
     return NextResponse.json({ error: "paymentId required" }, { status: 400 });
@@ -68,9 +70,14 @@ export async function PATCH(
     if (!["paid", "late", "missed"].includes(status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
+    const existing = await prisma.wdPayment.findFirst({ where: { id: paymentId, clientId } });
+    if (!existing) return NextResponse.json({ error: "Payment not found" }, { status: 404 });
     const payment = await prisma.wdPayment.update({
       where: { id: paymentId },
-      data: { status },
+      data: { status,
+        paidAt: status === "paid" ? (existing.status === "paid" ? existing.paidAt : new Date()) : null,
+        paidAtSource: status === "paid" ? (existing.status === "paid" ? existing.paidAtSource : "manual") : null,
+      },
     });
     return NextResponse.json(payment);
   } catch {

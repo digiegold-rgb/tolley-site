@@ -25,7 +25,7 @@ const steps = [
     emoji: "\uD83C\uDFE0",
     title: "Delivered to Your Door",
     description:
-      "Same-day delivery in the KC metro. Delivery cost is baked into the price — no surprise fees.",
+      "Same-week delivery in the KC metro, subject to distributor availability. Local delivery is included; we confirm your window by text.",
   },
 ];
 

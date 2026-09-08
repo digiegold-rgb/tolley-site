@@ -32,7 +32,7 @@ export default function LeadsTopbar({
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-white/10 bg-[#06050a]/80 px-5 backdrop-blur">
       <button
         onClick={() => palette.open()}
-        className="flex h-9 min-w-[20rem] items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 text-left text-sm text-white/40 transition-colors hover:border-white/20 hover:bg-white/10"
+        className="flex h-9 min-w-0 flex-1 md:min-w-[20rem] md:flex-none items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 text-left text-sm text-white/40 transition-colors hover:border-white/20 hover:bg-white/10"
       >
         <svg
           width="14"

@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 // his own dashboards is not a site visit.
 
 const INTERNAL_PATH_RE =
-  /^\/(hq|login|admin|account|signup|api|_next)(\/|$)|\/(admin|dashboard)(\/|$)/i;
+  /^\/(hq|login|admin|account|signup|api|_next|generate|tv|research|chat|action|food)(\/|$)|\/(admin|dashboard)(\/|$)/i;
 
 // Day key in Central time so "today" matches how Jared reads the dashboard.
 function dayKeyCT(d: Date): string {
@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
 
   const select = {
     path: true,
+    audience: true,
     referrer: true,
     ip: true,
     ipHash: true,
@@ -63,19 +64,20 @@ export async function GET(req: NextRequest) {
     }),
     prisma.siteView.findMany({
       where: { createdAt: { gte: prevStart, lt: periodStart } },
-      select: { path: true, ip: true, ipHash: true, userAgent: true, city: true },
+      select: { audience: true, path: true, ip: true, ipHash: true, userAgent: true, city: true },
     }),
     fetchSearchConsoleSummary(days).catch(() => null),
   ]);
 
   const keep = (v: {
     path: string;
+    audience: string;
     ip: string | null;
     ipHash: string | null;
     userAgent: string | null;
     city?: string | null;
   }) =>
-    keepVisitRow(v, skipIps, skipHashes) && !INTERNAL_PATH_RE.test(v.path);
+    keepVisitRow(v, skipIps, skipHashes) && !INTERNAL_PATH_RE.test(v.path) && !["operator", "customer"].includes(v.audience);
 
   const current = rawCurrent.filter(keep);
   const prev = rawPrev.filter(keep);
@@ -146,6 +148,10 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     days,
+    excludedCustomerOrOperatorViews: rawCurrent.filter(v => ["operator", "customer"].includes(v.audience)).length,
+    historicalUnknownAudienceViews: current.filter(v => v.audience === "unknown").length,
+    measurement: "Recorded views after bot and operator filters; not verified prospects. Studio traffic is reported separately.",
+    studioViews: current.filter(v => v.path === "/animate" || v.path.startsWith("/animate/")).length,
     totals: {
       views: current.length,
       visitors: uniq(current),

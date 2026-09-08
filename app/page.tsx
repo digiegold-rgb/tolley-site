@@ -8,7 +8,6 @@ import { HpFeatures } from "@/components/homepage/hp-features";
 import { HpHowItWorks } from "@/components/homepage/hp-how-it-works";
 import { HpDemo } from "@/components/homepage/hp-demo";
 import { HpPricing } from "@/components/homepage/hp-pricing";
-import { HpTestimonials } from "@/components/homepage/hp-testimonials";
 import { HpFaq } from "@/components/homepage/hp-faq";
 import { HpCta } from "@/components/homepage/hp-cta";
 import { HpNewsletter } from "@/components/homepage/hp-newsletter";
@@ -32,7 +31,6 @@ export default async function Home() {
       <HpHowItWorks />
       <HpDemo />
       <HpPricing />
-      <HpTestimonials />
       <HpNewsletter />
       <HpFaq />
       <HpCta />

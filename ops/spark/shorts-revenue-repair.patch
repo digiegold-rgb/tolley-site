@@ -1,0 +1,39 @@
+--- a/shorts/make-product-short.mjs
++++ b/shorts/make-product-short.mjs
+@@ -2279,6 +2279,11 @@
+ // main
+ // ---------------------------------------------------------------------------
+ async function main() {
++  // Stop before buying scripts or keyframes if the local render/TTS server is down.
++  if (!process.argv.includes("--script-only")) {
++    const { requireRenderDependencies } = await import("../lib/render-preflight.mjs");
++    await requireRenderDependencies(COMFY_URL);
++  }
+   const args = process.argv.slice(2);
+   const get = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null; };
+   const productId = get("--product-id");
+@@ -2308,6 +2313,7 @@
+   const angle = (brief && brief.angle) || ANGLES[idx % ANGLES.length];
+ 
+   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), "short-"));
++  let completed = false;
+   try {
+     let product = null, imagery = null;
+     if (brief) {
+@@ -2605,6 +2611,7 @@
+     }
+ 
+     log(`done in ${renderSeconds}s -> ${videoFile} (${totalDur.toFixed(1)}s video, ${sceneFrames.filter(Boolean).length} scenes, ${ai.generated} AI clips, ${lip.synced} lip-synced)`);
++    completed = true;
+     console.log("RESULT_JSON " + JSON.stringify({
+       video: videoFile, meta: metaFile, title: meta.title, template, voice,
+       productId: product.id, renderSeconds, durationSec: totalDur,
+@@ -2625,7 +2632,7 @@
+     } catch { /* rename failed — leave workDir in place rather than lose it */ }
+     throw err;
+   } finally {
+-    fs.rmSync(workDir, { recursive: true, force: true });
++    if (completed) fs.rmSync(workDir, { recursive: true, force: true });
+   }
+ }
+ 

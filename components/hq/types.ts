@@ -66,6 +66,8 @@ export interface HqTwilioBalance {
 // ─── Money tab (GET /api/hq/money) ───
 
 export interface HqMoneyPastDue {
+  monthlyAmount: number | null;
+  subscriptionStatus: string | null;
   id: string;
   name: string;
   phone: string | null;
@@ -117,6 +119,7 @@ export interface HqMoney {
   };
   animate?: {
     monthRevenue: number;
+    monthUsage: number;
     monthActions: number;
     videoOfferClients: number;
   };
@@ -147,6 +150,7 @@ export const STAGE_LABEL: Record<string, string> = {
 };
 
 export interface HqInboundLead {
+  notifications?: { channel: string; status: string; attempts: number; lastError: string | null; sentAt: string | null }[];
   id: string;
   receiptToken: string;
   subsite: string;

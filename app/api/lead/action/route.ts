@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSubsite } from "@/lib/subsites";
 import { validateActionFields } from "@/lib/agent-manifest";
-import { notifyLeadAction } from "@/lib/lead-notify";
+import { enqueueLeadNotifications, deliverLeadNotifications } from "@/lib/lead-notification-outbox";
 import { rateLimitByIp } from "@/lib/rate-limit";
 import crypto from "node:crypto";
 
@@ -32,6 +32,7 @@ export async function POST(req: Request) {
   if (limited) return limited;
 
   let body: {
+    requestId?: string;
     subsite?: string;
     action?: string;
     contact?: { email?: string; name?: string; phone?: string };
@@ -80,29 +81,26 @@ export async function POST(req: Request) {
     );
   }
 
-  const receiptToken = crypto.randomBytes(8).toString("base64url");
-
-  const row = await prisma.leadAction.create({
-    data: {
-      receiptToken,
-      subsite,
-      action,
-      email: contact.email ?? null,
-      name: contact.name ?? null,
-      phone: contact.phone ?? null,
-      structured: (fields as Prisma.InputJsonValue) ?? Prisma.JsonNull,
-    },
+  const normalizedContact = {
+    email: contact.email?.trim().toLowerCase() || null,
+    phone: contact.phone?.trim() || null, name: contact.name?.trim() || null,
+  };
+  const requestKey = typeof body.requestId === "string" && /^[a-zA-Z0-9-]{16,80}$/.test(body.requestId)
+    ? crypto.createHash("sha256").update(JSON.stringify([body.requestId, subsite, action, normalizedContact, fields])).digest("hex")
+    : null;
+  const row = await prisma.$transaction(async tx => {
+    if (requestKey) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${requestKey}))`;
+    const create = { receiptToken: crypto.randomBytes(16).toString("base64url"), subsite, action,
+      ...normalizedContact, requestKey, structured: fields as Prisma.InputJsonValue };
+    const lead = requestKey
+      ? await tx.leadAction.upsert({ where: { requestKey }, create, update: {} })
+      : await tx.leadAction.create({ data: create });
+    await enqueueLeadNotifications(tx, "action", lead.id, {
+      subsite, action, ...normalizedContact, fields, receiptToken: lead.receiptToken,
+    });
+    return lead;
   });
-
-  notifyLeadAction({
-    subsite,
-    action,
-    email: contact.email,
-    name: contact.name,
-    phone: contact.phone,
-    fields,
-    receiptToken,
-  });
+  after(() => deliverLeadNotifications(row.id));
 
   return NextResponse.json({
     receiptToken: row.receiptToken,
