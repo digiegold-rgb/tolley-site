@@ -63,7 +63,8 @@ export default function HqCityRanks() {
     };
   }, [toast]);
 
-  if (!data || !data.lastSweep) return null; // nothing until the first sweep
+  if (!data) return null;
+  if (!data.lastSweep) return <p>City ranks: no sweep recorded. Current rankings are unknown.</p>;
 
   const byCity = new Map<string, { google?: RankRow; youtube?: RankRow }>();
   for (const r of data.ranks) {
@@ -93,7 +94,7 @@ export default function HqCityRanks() {
   return (
     <div style={{ border: "1px solid var(--hq-line)", borderRadius: 12, padding: "12px 14px", background: "#fff", marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-        <span style={{ fontWeight: 700, fontSize: 14 }}>🔎 City search ranks</span>
+        <span style={{ fontWeight: 700, fontSize: 14 }}>🔎 Last recorded city search ranks</span>
         <span style={{ fontSize: 12, color: "var(--hq-ink-2)" }}>
           {ranked}/{data.ranks.length} placements found · sweep {new Date(data.lastSweep).toLocaleDateString()}
         </span>
@@ -104,6 +105,7 @@ export default function HqCityRanks() {
           {open ? "collapse" : `all ${cities.length}`}
         </button>
       </div>
+      <p style={{ fontSize: 12, color: "var(--hq-amber)" }}>Historical observations, not live rankings. Each result is dated below; the scheduled sweep is monthly.</p>
       <div style={{ overflowX: "auto", marginTop: 8 }}>
         <table style={{ borderCollapse: "collapse", fontSize: 12, minWidth: 360 }}>
           <thead>
@@ -117,7 +119,7 @@ export default function HqCityRanks() {
             {shown.map(([label, slot]) => (
               <tr key={label} style={{ borderTop: "1px solid #f2f2f7" }}>
                 <td style={{ padding: "4px 10px 4px 0", whiteSpace: "nowrap" }}>{label}</td>
-                <td style={{ padding: "4px 10px" }}>{cell(slot.google)}</td>
+                <td style={{ padding: "4px 10px" }}>{cell(slot.google)}<div style={{ fontSize: 10 }}>{slot.google ? new Date(slot.google.checkedAt).toLocaleDateString() : "Not collected"}</div></td>
                 <td style={{ padding: "4px 10px" }}>
                   {slot.youtube?.foundUrl ? (
                     <a href={slot.youtube.foundUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
@@ -126,6 +128,7 @@ export default function HqCityRanks() {
                   ) : (
                     cell(slot.youtube)
                   )}
+                  <div style={{ fontSize: 10 }}>{slot.youtube ? new Date(slot.youtube.checkedAt).toLocaleDateString() : "Not collected"}</div>
                 </td>
               </tr>
             ))}

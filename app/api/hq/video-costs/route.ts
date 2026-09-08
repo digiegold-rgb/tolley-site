@@ -102,6 +102,7 @@ interface Row {
   postCents: number;
   estimated: boolean;
   renderedAt: Date;
+  updatedAt: Date;
 }
 
 function total(r: Row): number {
@@ -126,7 +127,7 @@ export async function GET(request: NextRequest) {
       select: {
         videoKey: true, pipeline: true, title: true, template: true, status: true,
         url: true, clipsCents: true, lipsyncCents: true, imageCents: true, scriptCents: true,
-        ttsCents: true, postCents: true, estimated: true, renderedAt: true,
+        ttsCents: true, postCents: true, estimated: true, renderedAt: true, updatedAt: true,
       },
     })) as Row[];
 
@@ -179,6 +180,11 @@ export async function GET(request: NextRequest) {
     const videoCount = rows.filter((r) => r.pipeline !== "overhead").length;
 
     return NextResponse.json({
+      lastSyncedAt: rows.length ? new Date(Math.max(...rows.map(r => +r.updatedAt))).toISOString() : null,
+      oldestSyncedAt: rows.length ? new Date(Math.min(...rows.map(r => +r.updatedAt))).toISOString() : null,
+      postedCount: rows.filter(r => r.pipeline !== "overhead" && r.status === "posted").length,
+      draftCount: rows.filter(r => r.pipeline !== "overhead" && r.status !== "posted").length,
+      reconciled: false,
       grandTotalCents,
       videoCount,
       // All-in average: full-scope spend (overhead included) over shipped videos —

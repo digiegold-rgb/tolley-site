@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.37.8';
+export const APP_VERSION = '1.37.9';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,10 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.37.9', date: '2026-09-08', title: 'Posts reporting with clear coverage and dates',
+    items: ['Posts separates current activity, stored video counts, reported publications, and estimated costs.', 'Stale channels and missing dates are disclosed; repeated submissions do not create duplicate reports.', 'Video refreshes include older tracked uploads, and rankings preserve prior observations when collection fails.'],
+  },
   {
     version: '1.37.8', date: '2026-09-08', title: 'Clearer rental and pool offers',
     items: ['The optional washer/dryer signup form sits above the footer without covering the rental page.', 'Removed unverified competitor-price claims from the pool page and search descriptions.'],

@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { validateWdAdmin } from "@/lib/wd-auth";
 import { loadVideoViews } from "@/lib/hq-posts-read";
+import { secretEquals } from "@/lib/secret-compare";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,9 +16,10 @@ export const dynamic = "force-dynamic";
 // Page insights while its reels quietly rack up hundreds of views each. The
 // per-video counts (collect.mjs → collectFbVideos) are the real number.
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const { authed } = await validateWdAdmin();
-  if (!authed) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const sync = request.headers.get("x-sync-secret");
+  if (!authed && !(sync && process.env.SYNC_SECRET && secretEquals(sync, process.env.SYNC_SECRET))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     return NextResponse.json(await loadVideoViews());

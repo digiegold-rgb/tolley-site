@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useToast } from "@/components/ui/Toast";
 import { isHttpUrl } from "./types";
+import { staleMetric } from "@/lib/posts-accuracy";
 
 // Video spend — what each video cost and what they have cost in total, ever.
 //
@@ -46,6 +47,11 @@ interface LiveBill {
 }
 
 interface Payload {
+  lastSyncedAt: string | null;
+  oldestSyncedAt: string | null;
+  postedCount: number;
+  draftCount: number;
+  reconciled: boolean;
   grandTotalCents: number;
   videoCount: number;
   avgCents: number;
@@ -82,7 +88,7 @@ const COMPONENT_LABEL: Record<string, string> = {
   scriptCents: "Storyboard (Kimi K3, est)",
   ttsCents: "Voice (ElevenLabs / local TTS)",
   postCents: "Posting (X API)",
-  overheadCents: "Modal overhead (retries/experiments, real bill)",
+  overheadCents: "Modal overhead (allocated estimate)",
 };
 
 function money(cents: number): string {
@@ -176,12 +182,13 @@ export function HqVideoCosts() {
         }}
       >
         <div>
-          <div style={{ fontSize: 11, color: "var(--hq-ink-2)", fontWeight: 600 }}>ALL-TIME VIDEO SPEND</div>
+          <div style={{ fontSize: 11, color: "var(--hq-ink-2)", fontWeight: 600 }}>RECORDED VIDEO COSTS · INCOMPLETE LEDGER</div>
           <div style={{ fontSize: 30, fontWeight: 800, color: "#4a2a8a", lineHeight: 1.1 }}>
             {money(data.grandTotalCents)}
           </div>
           <div style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>
-            {data.videoCount} videos · {money(data.avgCents)} avg all-in
+            {data.videoCount} video records · {money(data.avgCents)} per record, including overhead
+            <div>{data.postedCount} marked posted · {data.draftCount} draft or unverified</div>
           </div>
         </div>
         <div style={{ borderLeft: "1px solid #d9c9f5", paddingLeft: 22 }}>
@@ -192,10 +199,9 @@ export function HqVideoCosts() {
           <div style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>{data.thisMonth.count} videos</div>
         </div>
         <div style={{ flex: 1, minWidth: 200, fontSize: 11, color: "var(--hq-ink-2)" }}>
-          Full-scope: per-video renderer estimates PLUS a monthly &quot;Modal GPU overhead&quot;
-          row (real metered bill minus what shipped videos claim — retries, warm pools,
-          experiments), so this total reconciles to the actual Modal bill.
-          {" "}{money(data.estimatedCents)} of the total carries an estimated component.
+          Stored pipeline costs and allocated overhead. Coverage is incomplete and has not been reconciled to current provider bills. Do not add this ledger to provider totals: their costs can overlap.
+          {" "}{money(data.estimatedCents)} is on rows with estimated components.
+          <div>Latest record sync: {data.lastSyncedAt ? new Date(data.lastSyncedAt).toLocaleString() : "unknown"}. Historical costs retain their own record dates; a recent sync does not verify ledger completeness.</div>
         </div>
         <button
           onClick={() => void load()}
@@ -213,9 +219,10 @@ export function HqVideoCosts() {
             .map((b) => (
               <div key={b.provider} title={b.note ?? ""} style={{ border: "1px solid #d9c9f5", borderRadius: 10, padding: "8px 14px", background: "#fbf9ff", maxWidth: 340 }}>
                 <div style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>
-                  💳 {b.label} — real bill{b.kind === "estimated" ? " (est)" : ""}
+                  💳 {b.label} — {b.kind === "estimated" ? "estimate" : "reported provider amount"}
                 </div>
                 <div style={{ fontSize: 17, fontWeight: 700, color: "#4a2a8a" }}>{money(b.amountCents)} lifetime</div>
+                <div style={{ fontSize: 11, color: staleMetric(b.asOf) ? "var(--hq-red)" : "var(--hq-ink-2)" }}>As of {new Date(b.asOf).toLocaleString()}{staleMetric(b.asOf) ? " · stale" : ""}</div>
                 {b.note && <div style={{ fontSize: 10, color: "var(--hq-ink-2)", marginTop: 2 }}>{b.note}</div>}
               </div>
             ))}
@@ -230,7 +237,7 @@ export function HqVideoCosts() {
             <div style={{ fontSize: 17, fontWeight: 700 }}>{money(p.cents)}</div>
             <div style={{ fontSize: 10, color: "var(--hq-ink-2)" }}>
               {p.pipeline === "overhead"
-                ? `${p.count} months · real bill remainder`
+                ? `${p.count} months · allocated overhead`
                 : `${p.count} videos · ${money(Math.round(p.cents / p.count))} each`}
             </div>
           </div>
@@ -288,7 +295,7 @@ export function HqVideoCosts() {
                   )}
                   {v.status !== "posted" && (
                     <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 4, background: "#fff4e5", color: "var(--hq-amber)" }}>
-                      DRAFT
+                      {v.pipeline === "overhead" ? "ALLOCATION" : v.status.toUpperCase()}
                     </span>
                   )}
                 </td>

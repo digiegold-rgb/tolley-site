@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { staleMetric, type ActivityWindow } from "@/lib/posts-accuracy";
 
 // Live view counter — the "subscriber counter" for the whole empire.
 // One big odometer (total views across every channel for the picked window)
 // over per-channel cards with views + subscriber/follower deltas. Data lands
 // hourly from the DGX collector; this just re-reads every 2 minutes.
 
-interface WindowStat { views: number | null; partial: boolean; since: string | null }
+type WindowStat = ActivityWindow;
 
 interface Channel {
   key: string;
@@ -16,6 +17,8 @@ interface Channel {
   note: string | null;
   url: string;
   lifetimeViews: number | null;
+  lifetimeAsOf: string | null;
+  lifetimeStale: boolean;
   subscribers: number | null;
   subDelta1d: number | null;
   subDelta7d: number | null;
@@ -38,7 +41,7 @@ interface LiveStat {
 
 interface Payload {
   updatedAt: string | null;
-  totals: Record<string, { views: number; partial: boolean }>;
+  totals: Record<string, { views: number | null; partial: boolean; included: number; excluded: number; approximate: boolean }>;
   channels: Channel[];
 }
 
@@ -48,7 +51,7 @@ const WINDOW_LABELS: Record<WindowKey, string> = {
   d30: "30 days",
   d90: "90 days",
   d365: "1 year",
-  lifetime: "All-time",
+  lifetime: "Cumulative",
 };
 
 // cardBg/cardBorder tint the whole card so platforms read as groups at a
@@ -153,7 +156,7 @@ function LiveStrip({ live }: { live: LiveStat }) {
             borderRadius: 4, background: "#e8f8ee", color: "var(--hq-green)", whiteSpace: "nowrap",
           }}
         >
-          ● LIVE
+          {staleMetric(live.asOf) ? "STALE COUNTS" : "RECENT COUNTS"}
         </span>
         <span style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums", fontSize: 13 }}>
           {h24.views.toLocaleString()}
@@ -166,6 +169,7 @@ function LiveStrip({ live }: { live: LiveStat }) {
         7d uploads: <strong style={{ color: "#3c3c43" }}>{d7.views.toLocaleString()}</strong> on{" "}
         {d7.videos} video{d7.videos === 1 ? "" : "s"}
       </div>
+      <div style={{ color: "var(--hq-ink-3)" }}>Oldest contributing collection: {new Date(live.asOf).toLocaleString()}</div>
       {live.topTitle && live.topViews !== null && (
         <div
           style={{
@@ -242,12 +246,12 @@ export function HqViewCounter() {
     );
   }
 
-  const channelViews = (c: Channel): { views: number | null; partial: boolean; since: string | null } => {
+  const channelViews = (c: Channel): WindowStat => {
     if (win === "lifetime") {
-      return { views: c.lifetimeViews, partial: c.platform === "facebook", since: null };
+      return { views: c.lifetimeViews, partial: c.platform !== "youtube", since: null, asOf: c.lifetimeAsOf, stale: c.lifetimeStale };
     }
     const w = c.windows[win];
-    return { views: w?.views ?? null, partial: w?.partial ?? false, since: w?.since ?? null };
+    return w ?? { views: null, partial: true, since: null, stale: true };
   };
 
   const total = win === "lifetime" ? data.totals.lifetime : data.totals[win];
@@ -269,10 +273,15 @@ export function HqViewCounter() {
         }}
       >
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#9a9aa2", marginBottom: 10 }}>
-          Total views — all channels · {WINDOW_LABELS[win]}
+          {win === "lifetime" ? "Tracked cumulative views" : "Recorded view activity"} · {WINDOW_LABELS[win]}
           {anyPartial ? " †" : ""}
         </div>
-        <Odometer value={shown} size={54} />
+        {total?.views == null ? <div style={{ fontSize: 32 }}>Unavailable</div> : <Odometer value={shown} size={54} />}
+        <p style={{ fontSize: 12, color: "#c7c7cf" }}>
+          {total?.included ?? 0} channels included · {total?.excluded ?? 0} stale or unavailable channels excluded.
+          {anyPartial && " Partial coverage; missing data is not zero."}
+          {total?.approximate && " Includes approximate net counter changes."}
+        </p>
         <div style={{ marginTop: 14, display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
           {(Object.keys(WINDOW_LABELS) as WindowKey[]).map((k) => (
             <button
@@ -291,8 +300,8 @@ export function HqViewCounter() {
           ))}
         </div>
         <div style={{ marginTop: 10, fontSize: 11, color: "#6e6e78" }}>
-          {data.updatedAt ? `updated ${ago(data.updatedAt)} · refreshes hourly` : "waiting for first collection…"}
-          {anyPartial && " · † some channels tracked from a later start date"}
+          {data.updatedAt ? `Newest collector activity ${ago(data.updatedAt)}; see each metric's dates below.` : "Waiting for first collection…"}
+          <div>Views are platform counts, not unique people, website visits, leads, or revenue.</div>
         </div>
       </div>
 
@@ -332,22 +341,24 @@ export function HqViewCounter() {
                 // window delta exists yet, but lifetime does. A bare "—" reads
                 // as broken — show the all-time number, honestly labeled,
                 // until the first day-over-day delta lands.
-                const fallback = v.views === null && c.lifetimeViews !== null;
-                const shown = v.views ?? c.lifetimeViews;
+                const shown = v.views;
                 return (
                   <div style={{ fontSize: 26, fontWeight: 800, fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>
                     {shown !== null ? shown.toLocaleString() : "—"}
                     <span style={{ fontSize: 11, fontWeight: 600, color: "var(--hq-ink-3)", marginLeft: 6 }}>
-                      {fallback ? `${metric} · all-time` : metric}
+                      {metric}{v.stale ? " · stale" : ""}
                     </span>
                   </div>
                 );
               })()}
-              {v.views === null && c.lifetimeViews !== null && (
-                <div style={{ fontSize: 10, color: "var(--hq-amber)", marginTop: 2 }}>
-                  {WINDOW_LABELS[win]} splits start after day 2 of tracking
-                </div>
-              )}
+              <div style={{ fontSize: 11, color: v.stale ? "var(--hq-red)" : "var(--hq-ink-2)", marginTop: 4 }}>
+                {v.asOf ? `Observed ${new Date(v.asOf).toLocaleString()}` : "No comparable observations"}
+                {v.stale && " · excluded from current aggregate"}
+                {v.partial && " · partial coverage"}
+                {v.through && ` · through ${v.through}`}
+                {v.reason && <div>{v.reason}</div>}
+                {win === "lifetime" && <div>Platform lifetime counter or tracked-history sum; coverage varies.</div>}
+              </div>
               {v.since && (
                 <div style={{ fontSize: 10, color: "var(--hq-amber)", marginTop: 2 }}>since {v.since}</div>
               )}

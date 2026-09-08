@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
 import { secretEquals } from "@/lib/secret-compare";
 import { loadPostLog } from "@/lib/hq-posts-read";
+import { createHash } from "node:crypto";
+import { postIdentity } from "@/lib/posts-accuracy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,8 +54,7 @@ export async function POST(request: NextRequest) {
       const firedRaw = str(e?.firedAt, 40);
       const fired = firedRaw ? new Date(firedRaw) : new Date();
       const cost = Number(e?.costCents);
-      return [
-        {
+      const row = {
           job,
           runId,
           channel,
@@ -66,22 +67,25 @@ export async function POST(request: NextRequest) {
           videoKey: str(e?.videoKey, 600),
           costCents: Number.isFinite(cost) && cost > 0 ? Math.round(cost) : 0,
           firedAt: Number.isNaN(fired.getTime()) ? new Date() : fired,
-        },
-      ];
+      };
+      // Hash the supplied event time, not a new server timestamp on a retry.
+      // A shared run can contain many cities: URL/video/title remain in the key.
+      const key = postIdentity({ ...row, firedAt: firedRaw && !Number.isNaN(fired.getTime()) ? fired : null });
+      return [{ ...row, id: `post-${createHash("sha256").update(key).digest("hex")}` }];
     });
 
     if (!data.length) {
       return NextResponse.json({ error: "no valid entries" }, { status: 400 });
     }
 
-    await prisma.postLogEntry.createMany({ data });
+    const result = await prisma.postLogEntry.createMany({ data, skipDuplicates: true });
 
     // Keep the ledger bounded — 90 days is enough to spot a channel that has
     // been quietly dead for a month, which is the longest gap worth catching.
     const cutoff = new Date(Date.now() - 90 * 24 * 3_600_000);
     await prisma.postLogEntry.deleteMany({ where: { firedAt: { lt: cutoff } } });
 
-    return NextResponse.json({ ok: true, runId, written: data.length });
+    return NextResponse.json({ ok: true, runId, written: result.count, duplicates: data.length - result.count });
   } catch (err) {
     console.error("[hq/post-log POST]", err);
     return NextResponse.json({ error: "Failed to write post log" }, { status: 500 });

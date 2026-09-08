@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { staleMetric } from "@/lib/posts-accuracy";
 
 // Local disk footprint + self-hosting savings, pushed nightly by the DGX
 // (video-disk-footprint.py --push, 03:20 cron).
@@ -145,9 +146,10 @@ export function HqVideoFootprint() {
   return (
     <div style={{ marginBottom: 28 }}>
       <h3 style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--hq-ink-2)", margin: "0 0 10px" }}>
-        Local footprint &amp; self-hosting savings
+        Recorded local footprint &amp; hosting estimates
       </h3>
 
+      <p style={{ fontSize: 12, color: staleMetric(data.collectedAt) ? "var(--hq-red)" : "var(--hq-ink-2)" }}>Disk scan recorded {new Date(data.collectedAt).toLocaleString()}{staleMetric(data.collectedAt) ? " · stale snapshot" : ""}. Hosting comparisons are modeled estimates, not cash earned or saved.</p>
       {/* ── headline: total disk + what self-hosting saves ── */}
       <div
         style={{
@@ -191,7 +193,7 @@ export function HqVideoFootprint() {
             <div style={{ fontSize: 22, fontWeight: 700, color: "#1a7f37", letterSpacing: -0.4 }}>
               {money(s.maxSavings)}
             </div>
-            <div style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>max saved/mo vs commercial</div>
+            <div style={{ fontSize: 11, color: "var(--hq-ink-2)" }}>hypothetical monthly difference · not realized savings</div>
           </div>
         )}
       </div>

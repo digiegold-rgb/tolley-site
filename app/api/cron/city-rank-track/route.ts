@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { secretEquals } from "@/lib/secret-compare";
 import { serpapiCall, serpapiKey } from "@/lib/serpapi";
 import {
   TRACKED_CITIES,
@@ -27,9 +28,9 @@ export const maxDuration = 300;
 
 function authorized(req: NextRequest): boolean {
   const auth = req.headers.get("authorization");
-  if (auth && auth === `Bearer ${process.env.CRON_SECRET}`) return true;
+  if (auth && process.env.CRON_SECRET && secretEquals(auth, `Bearer ${process.env.CRON_SECRET}`)) return true;
   const sync = req.headers.get("x-sync-secret");
-  if (sync && sync === process.env.SYNC_SECRET) return true;
+  if (sync && process.env.SYNC_SECRET && secretEquals(sync, process.env.SYNC_SECRET)) return true;
   return false;
 }
 
@@ -54,9 +55,8 @@ async function trackGoogle(c: TrackedCity): Promise<void> {
     params: { q: query, location: "Kansas City, Missouri, United States", num: "20" },
     timeoutMs: 15000,
   });
-  const organic = result.ok && Array.isArray(result.data?.organic_results)
-    ? result.data.organic_results
-    : [];
+  if (!result.ok || !Array.isArray(result.data?.organic_results)) throw new Error("Google rank collection unavailable; preserving prior observation");
+  const organic = result.data.organic_results;
   const hit = organic.find((r) =>
     isOurGoogleResult(r.link ?? "", r.title ?? ""),
   );
@@ -80,9 +80,8 @@ async function trackYoutube(c: TrackedCity): Promise<void> {
     params: { search_query: query },
     timeoutMs: 15000,
   });
-  const videos = result.ok && Array.isArray(result.data?.video_results)
-    ? result.data.video_results
-    : [];
+  if (!result.ok || !Array.isArray(result.data?.video_results)) throw new Error("YouTube rank collection unavailable; preserving prior observation");
+  const videos = result.data.video_results;
   let position: number | null = null;
   let hit: YoutubeResult | undefined;
   for (let i = 0; i < videos.length; i++) {

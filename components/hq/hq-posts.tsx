@@ -11,6 +11,7 @@ import { HqViewCounter } from "./hq-view-counter";
 import { HqVideoViews } from "./hq-video-views";
 import { HqAdsStatus } from "./hq-ads-status";
 import HqCityRanks from "./hq-city-ranks";
+import { useReportClock } from "@/lib/use-report-clock";
 
 // Posts tab — did every automated channel actually fire?
 //
@@ -68,6 +69,10 @@ interface Payload {
     costByChannel: Record<string, number>;
     problems: number;
     declaredChannels: number;
+    rawRecords: number;
+    duplicateRecords: number;
+    successWithoutLink: number;
+    publicationLinks: number;
   };
 }
 
@@ -81,7 +86,7 @@ const STATUS_STYLE: Record<string, { bg: string; fg: string; label: string }> = 
   ok: { bg: "#e8f8ee", fg: "var(--hq-green)", label: "OK" },
   failing: { bg: "#fdecea", fg: "var(--hq-red)", label: "FAILING" },
   dark: { bg: "#fdecea", fg: "var(--hq-red)", label: "DARK" },
-  never: { bg: "#fff4e5", fg: "var(--hq-amber)", label: "NEVER RAN" },
+  never: { bg: "#fff4e5", fg: "var(--hq-amber)", label: "NO REPORT" },
 };
 
 function ago(iso: string): string {
@@ -104,6 +109,7 @@ function money(cents: number): string {
 // One-liner pushed hourly by the DGX (dgx-activity-scan.sh): what the box is
 // actively working on right now. Renders nothing until the first push lands.
 function DgxActivityLine() {
+  const now = useReportClock();
   const { toast } = useToast();
   const [act, setAct] = useState<{ line: string; updatedAt: string } | null>(null);
 
@@ -133,7 +139,7 @@ function DgxActivityLine() {
   }, [toast]);
 
   if (!act) return null;
-  const stale = Date.now() - Date.parse(act.updatedAt) > 2 * 3600_000;
+  const stale = now - Date.parse(act.updatedAt) > 2 * 3600_000;
   return (
     <div
       style={{
@@ -225,12 +231,14 @@ export function HqPosts() {
         <div style={{ flex: 1, minWidth: 220 }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: problems.length ? "var(--hq-red)" : "var(--hq-green)" }}>
             {problems.length
-              ? `${problems.length} of ${data.summary.declaredChannels} channels need attention`
-              : `All ${data.summary.declaredChannels} channels posting on schedule`}
+              ? `${problems.length} of ${data.summary.declaredChannels} scheduled posting checks need attention`
+              : `All ${data.summary.declaredChannels} scheduled checks have recent success reports`}
           </div>
           <div style={{ fontSize: 12, color: "var(--hq-ink-2)", marginTop: 2 }}>
-            Last {data.days}d — {data.summary.ok} posted · {data.summary.failed} failed ·{" "}
-            {data.summary.skipped} skipped · {money(data.summary.costCents)} spent
+            Last {data.days * 24}h — {data.summary.ok} reported successes · {data.summary.failed} reported failures ·{" "}
+            {data.summary.skipped} skipped · {money(data.summary.costCents)} recorded posting API cost
+            <div>{data.summary.duplicateRecords} repeated records excluded. {data.summary.publicationLinks} distinct publication links; {data.summary.successWithoutLink} success reports lack a link.</div>
+            <div>Reports are not independent publication verification. Checks refer to scheduled jobs and destinations, not unique accounts. Missing history can mean missing instrumentation.</div>
           </div>
         </div>
         <select
@@ -238,7 +246,7 @@ export function HqPosts() {
           onChange={(e) => setDays(Number(e.target.value))}
           style={{ padding: "5px 10px", border: "1px solid var(--hq-border)", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#fff" }}
         >
-          <option value={1}>Today</option>
+          <option value={1}>Last 24 hours</option>
           <option value={7}>7 days</option>
           <option value={30}>30 days</option>
         </select>
@@ -299,7 +307,7 @@ export function HqPosts() {
       {Object.keys(data.summary.costByChannel).length > 0 && (
         <>
           <h3 style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--hq-ink-2)", margin: "0 0 10px" }}>
-            Cost — last {data.days}d
+            Recorded posting API cost — last {data.days}d
           </h3>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 26 }}>
             {Object.entries(data.summary.costByChannel)
@@ -319,7 +327,7 @@ export function HqPosts() {
 
       {/* ── Run feed ── */}
       <h3 style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--hq-ink-2)", margin: "0 0 10px" }}>
-        Every post — last {data.days}d
+        Posting reports — last {data.days}d
       </h3>
       {data.runs.length === 0 ? (
         <div style={{ padding: 16, color: "var(--hq-ink-2)", fontSize: 13, border: "1px dashed var(--hq-border)", borderRadius: 10 }}>

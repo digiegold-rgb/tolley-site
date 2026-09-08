@@ -21,6 +21,8 @@ import {
 import { VIEW_CHANNELS } from "@/lib/view-counter";
 import { channelWindows, VIEW_WINDOWS } from "@/lib/view-counter-windows";
 import { computeHealth, SCHEDULED_JOBS } from "@/lib/post-schedule";
+import { activityTotal, staleMetric, uniquePostRows } from "@/lib/posts-accuracy";
+import { metricObservedAt } from "@/lib/view-counter-windows";
 
 export type DgxActivityPayload = {
   line: string | null;
@@ -29,12 +31,15 @@ export type DgxActivityPayload = {
 
 export type ViewCounterPayload = {
   updatedAt: string | null;
-  totals: Record<string, { views: number; partial: boolean }>;
+  totals: Record<string, ReturnType<typeof activityTotal>>;
   channels: ReturnType<typeof shapeViewChannel>[];
 };
 
 export type VideoViewsPayload = {
   updatedAt: string | null;
+  oldestPulledAt: string | null;
+  staleVideos: number;
+  freshViews: number | null;
   totalViews: number;
   videos: Array<{
     id: string;
@@ -79,6 +84,10 @@ export type PostLogPayload = {
     costByChannel: Record<string, number>;
     problems: number;
     declaredChannels: number;
+    rawRecords: number;
+    duplicateRecords: number;
+    successWithoutLink: number;
+    publicationLinks: number;
   };
 };
 
@@ -137,6 +146,9 @@ function shapeViewChannel(
   const vids = allVids.filter((v) => v.publishedAt.getTime() >= now - 8 * 86400_000);
 
   const latestSubs = subs[subs.length - 1]?.subscribers ?? null;
+  const countRow = latestSnap ?? dailies.at(-1) ?? null;
+  const lifetimeAsOf = countRow ? metricObservedAt(countRow, now).toISOString() : null;
+  const lifetimeStale = staleMetric(lifetimeAsOf, now);
   const subsSinceMs = cfg.subsSince ? Date.parse(cfg.subsSince) : contentSinceMs;
   const subsForDelta = subsSinceMs ? subs.filter((r) => r.day.getTime() >= subsSinceMs) : subs;
   const subAt = (daysAgo: number): number | null => {
@@ -174,6 +186,8 @@ function shapeViewChannel(
     note: cfg.note ?? null,
     url: cfg.url,
     lifetimeViews,
+    lifetimeAsOf,
+    lifetimeStale,
     subscribers: latestSubs,
     subDelta1d: latestSubs !== null && sub1d !== null ? latestSubs - sub1d : null,
     subDelta7d: latestSubs !== null && sub7d !== null ? latestSubs - sub7d : null,
@@ -187,7 +201,7 @@ function shapeViewChannel(
           topTitle: top?.title ?? null,
           topViews: top ? Number(top.views) : null,
           topVideoId: top?.videoId ?? null,
-          asOf: new Date(vids.reduce((m, v) => Math.max(m, v.pulledAt.getTime()), 0)).toISOString(),
+          asOf: new Date(Math.min(...vids.map(v => v.pulledAt.getTime()))).toISOString(),
         }
       : null,
     lastPulledAt: hist.length ? hist[hist.length - 1].pulledAt.toISOString() : null,
@@ -224,18 +238,12 @@ export async function loadViewCounter(): Promise<ViewCounterPayload> {
   const viewChannels = channels.filter(
     (c) => c.platform !== "bluesky" && c.platform !== "linkedin" && c.platform !== "pinterest",
   );
-  const totals: Record<string, { views: number; partial: boolean }> = {};
+  const totals: ViewCounterPayload["totals"] = {};
   for (const days of VIEW_WINDOWS) {
     const k = `d${days}`;
-    totals[k] = {
-      views: viewChannels.reduce((s, c) => s + (c.windows[k]?.views ?? 0), 0),
-      partial: viewChannels.some((c) => c.windows[k]?.partial && (c.windows[k]?.views ?? 0) > 0),
-    };
+    totals[k] = activityTotal(viewChannels.map(c => c.windows[k]));
   }
-  totals.lifetime = {
-    views: viewChannels.reduce((s, c) => s + (c.lifetimeViews ?? 0), 0),
-    partial: viewChannels.some((c) => c.platform === "facebook" && (c.lifetimeViews ?? 0) > 0),
-  };
+  totals.lifetime = activityTotal(viewChannels.map(c => ({ views: c.lifetimeViews, partial: c.platform !== "youtube", since: null, stale: c.lifetimeStale })));
 
   return {
     updatedAt: rows.length
@@ -249,7 +257,6 @@ export async function loadViewCounter(): Promise<ViewCounterPayload> {
 export async function loadVideoViews(): Promise<VideoViewsPayload> {
   const rows = await prisma.channelVideoStat.findMany({
     orderBy: { publishedAt: "desc" },
-    take: 5000,
   });
 
   const videos = rows
@@ -292,6 +299,9 @@ export async function loadVideoViews(): Promise<VideoViewsPayload> {
   }
 
   return {
+    oldestPulledAt: videos.length ? new Date(Math.min(...videos.map(v => Date.parse(v.pulledAt)))).toISOString() : null,
+    staleVideos: videos.filter(v => staleMetric(v.pulledAt)).length,
+    freshViews: videos.some(v => !staleMetric(v.pulledAt)) ? videos.filter(v => !staleMetric(v.pulledAt)).reduce((s,v) => s + v.views,0) : null,
     updatedAt: rows.length
       ? new Date(Math.max(...rows.map((r) => r.pulledAt.getTime()))).toISOString()
       : null,
@@ -305,11 +315,11 @@ export async function loadPostLog(daysRaw: number): Promise<PostLogPayload> {
   const days = Math.min(90, Math.max(1, Number(daysRaw) || 7));
   const since = new Date(Date.now() - days * 24 * 3_600_000);
 
-  const entries = await prisma.postLogEntry.findMany({
+  const rawEntries = await prisma.postLogEntry.findMany({
     where: { firedAt: { gte: since } },
     orderBy: { firedAt: "desc" },
-    take: 1000,
   });
+  const entries = uniquePostRows(rawEntries);
 
   const healthRows = await prisma.postLogEntry.findMany({
     where: { firedAt: { gte: new Date(Date.now() - 90 * 24 * 3_600_000) } },
@@ -390,6 +400,10 @@ export async function loadPostLog(daysRaw: number): Promise<PostLogPayload> {
       costByChannel,
       problems: health.filter((h) => h.status !== "ok").length,
       declaredChannels: SCHEDULED_JOBS.reduce((s, j) => s + j.channels.length, 0),
+      rawRecords: rawEntries.length,
+      duplicateRecords: rawEntries.length - entries.length,
+      successWithoutLink: entries.filter(e => e.status === "ok" && !e.url?.match(/^https?:\/\//)).length,
+      publicationLinks: new Set(entries.filter(e => e.status === "ok" && e.url?.match(/^https?:\/\//)).map(e => e.url)).size,
     },
   };
 }

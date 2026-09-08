@@ -1,4 +1,5 @@
 "use client";
+import { useReportClock } from "@/lib/use-report-clock";
 
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -168,6 +169,7 @@ function Row({
 }
 
 export function HqAdsStatus() {
+  const now = useReportClock();
   const { toast } = useToast();
   const [data, setData] = useState<AdsSnapshot | null>(null);
 
@@ -199,7 +201,7 @@ export function HqAdsStatus() {
   const rows = data.accounts.flatMap((account) =>
     account.campaigns.map((c) => ({ account, campaign: c })),
   );
-  const stale = Date.now() - Date.parse(data.asOf) > 26 * 3600_000;
+  const stale = now - Date.parse(data.asOf) > 6 * 3600_000;
 
   return (
     <div
@@ -240,6 +242,7 @@ export function HqAdsStatus() {
         </span>
       </div>
 
+      <p style={{ fontSize: 12, color: "var(--hq-ink-2)" }}>Account windows can differ: today, yesterday, and lifetime amounts must not be added as one daily total. Provider reporting is delayed; these figures are not reconciled revenue.</p>
       {rows.length > 0 && (
         <div style={{ overflowX: "auto", marginBottom: 8 }}>
           <table

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { HqShowMore, HQ_PAGE_SIZE } from "./hq-show-more";
 import { PLATFORM_BADGE, FALLBACK_BADGE } from "./hq-view-counter";
+import { staleMetric } from "@/lib/posts-accuracy";
 
 // Every tracked video, one row each, with its own view count.
 //
@@ -37,6 +38,9 @@ interface ChannelRollup {
 
 interface Payload {
   updatedAt: string | null;
+  oldestPulledAt: string | null;
+  staleVideos: number;
+  freshViews: number | null;
   totalViews: number;
   videos: VideoRow[];
   channels: ChannelRollup[];
@@ -102,7 +106,7 @@ export function HqVideoViews() {
   return (
     <div style={{ marginBottom: 26 }}>
       <h3 style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--hq-ink-2)", margin: "0 0 10px" }}>
-        Every video — views
+        Tracked videos — stored view counts
       </h3>
 
       {/* ── Filter + sort bar ── */}
@@ -144,8 +148,10 @@ export function HqVideoViews() {
 
       <div style={{ fontSize: 12, color: "var(--hq-ink-2)", marginBottom: 10 }}>
         {rows.length.toLocaleString()} video{rows.length === 1 ? "" : "s"} ·{" "}
-        <strong style={{ color: "#3c3c43" }}>{shownViews.toLocaleString()} views</strong>
-        {data.updatedAt ? ` · counts pulled ${ago(data.updatedAt)}` : ""}
+        <strong style={{ color: "#3c3c43" }}>{shownViews.toLocaleString()} stored views</strong>
+        <div>{rows.filter(v => staleMetric(v.pulledAt)).length} shown video counts are older than 36 hours. This sum combines collection dates and is not a current channel total.</div>
+        <div>Across all tracked videos: {data.freshViews?.toLocaleString() ?? "unavailable"} views on rows refreshed within 36 hours; {data.staleVideos} stale rows.</div>
+        {data.oldestPulledAt && <div>Collection range: {new Date(data.oldestPulledAt).toLocaleString()} – {data.updatedAt ? new Date(data.updatedAt).toLocaleString() : "unknown"}</div>}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -174,6 +180,7 @@ export function HqVideoViews() {
               <span style={{ fontSize: 17, fontWeight: 800, fontVariantNumeric: "tabular-nums", minWidth: 74, textAlign: "right" }}>
                 {v.views.toLocaleString()}
                 <span style={{ fontSize: 10, fontWeight: 600, color: "var(--hq-ink-3)", marginLeft: 4 }}>views</span>
+                <div style={{ fontSize: 10, color: staleMetric(v.pulledAt) ? "var(--hq-red)" : "var(--hq-ink-3)" }}>Collected {ago(v.pulledAt)}{staleMetric(v.pulledAt) ? " · stale" : ""}</div>
               </span>
             </div>
           );
