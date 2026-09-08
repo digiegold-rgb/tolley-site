@@ -131,7 +131,7 @@ export const VIEW_CHANNELS: readonly ViewChannel[] = [
     key: "pi-homes",
     platform: "pinterest",
     label: "Your KC Homes",
-    note: "impressions · Pinterest analytics",
+    note: "impressions · platform estimates",
     url: "https://www.pinterest.com/yourkchomes/",
   },
   {
@@ -140,7 +140,7 @@ export const VIEW_CHANNELS: readonly ViewChannel[] = [
     key: "pi-hauls",
     platform: "pinterest",
     label: "Treasure Hauls",
-    note: "impressions · incl. estate board for now",
+    note: "impressions · platform estimates · includes estate board",
     url: "https://www.pinterest.com/digiegold/",
   },
   {
@@ -151,7 +151,7 @@ export const VIEW_CHANNELS: readonly ViewChannel[] = [
     key: "x-ykh",
     platform: "x",
     label: "Your KC Homes",
-    note: "KC content · affiliate links",
+    note: "sampled tweet counts · incomplete coverage",
     url: "https://x.com/yourkchomes",
   },
   {

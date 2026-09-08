@@ -53,7 +53,7 @@ export async function listingProofStats(): Promise<ListingProofStats | null> {
     if (!cfg) continue;
     const w = channelWindows(byChannel.get(key) ?? [], vidsByChannel.get(key) ?? [], cfg, now, [30]);
     const d30 = w.windows.d30;
-    if (!d30 || d30.views === null) continue;
+    if (!d30 || d30.views === null || d30.stale || d30.partial || d30.method !== "daily" || cfg.platform !== "youtube") continue;
     any = true;
     total += d30.views;
     channels.push({ key, label: cfg.label, views30d: d30.views, partial: d30.partial });

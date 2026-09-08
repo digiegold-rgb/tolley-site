@@ -51,13 +51,14 @@ export async function POST(request: NextRequest) {
     // is a day row. One endpoint, one push, two tables.
     if (typeof item.videoId === "string" && item.videoId) {
       const publishedMs = Date.parse(String(item.publishedAt ?? ""));
-      if (!CHANNEL_KEYS.has(channelKey) || Number.isNaN(publishedMs)) { skipped++; continue; }
+      const views = item.views;
+      if (!CHANNEL_KEYS.has(channelKey) || Number.isNaN(publishedMs) || typeof views !== "number" || !Number.isSafeInteger(views) || views < 0) { skipped++; continue; }
       const videoId = item.videoId;
       const url = typeof item.url === "string" && item.url ? item.url.slice(0, 500) : null;
       const data = {
         title: String(item.title ?? "").slice(0, 300),
         publishedAt: new Date(publishedMs),
-        views: BigInt(Math.max(0, Math.round(Number(item.views ?? 0)))),
+        views: BigInt(views),
         // A push that omits the url must not erase one an earlier push stored.
         ...(url ? { url } : {}),
         pulledAt: new Date(),
@@ -79,6 +80,8 @@ export async function POST(request: NextRequest) {
     if (!CHANNEL_KEYS.has(channelKey) || Number.isNaN(dayMs)) { skipped++; continue; }
     const d = new Date(dayMs);
     const day = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    const metricFields = [item.totalViews, item.dayViews, item.subscribers];
+    if (metricFields.every(v => v == null) || metricFields.some(v => v != null && (typeof v !== "number" || !Number.isSafeInteger(v) || v < 0)) || day.getTime() > Date.now() + 86400000) { skipped++; continue; }
 
     const totalViews =
       item.totalViews === null || item.totalViews === undefined ? null : BigInt(Math.round(Number(item.totalViews)));
