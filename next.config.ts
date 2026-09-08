@@ -66,6 +66,12 @@ const nextConfig: NextConfig = {
   // These Node-only SDKs contributed over 11 MB of generated source and roughly
   // 700 modules to compilation. Load their installed packages at runtime.
   serverExternalPackages: ["modal", "ffmpeg-static", "twilio", "@google-analytics/data"],
+  webpack(config, { dev }) {
+    // Multi-gigabyte filesystem-cache packs add memory during serialization.
+    // This only controls webpack's build cache, not application data caching.
+    if (!dev) config.cache = false;
+    return config;
+  },
   // 1.16 hung 35+ min at "Generating static pages (0/655)". 1.17 put
   // force-dynamic on the ROOT layout; collect-page-data then hung instead
   // (this timeout does not apply to collect). Root is static again, like
@@ -90,6 +96,7 @@ const nextConfig: NextConfig = {
     // Do not turn on Next's webpack build worker. With Sentry's custom
     // webpack config that forks a second compiler heap on Standard 8GB and
     // SIGKILLs the build (1.37.2). Stay on one collect worker. Stay on Standard.
+    webpackBuildWorker: false,
   },
   images: {
     remotePatterns: [
