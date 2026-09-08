@@ -63,7 +63,9 @@ const nextConfig: NextConfig = {
   // Modal JS SDK is gRPC/protobuf — keep it out of the webpack graph.
   // ffmpeg-static must stay external so generate remux / stitch / last-frame
   // extract can spawn the real binary (Vercel Node has no system ffmpeg).
-  serverExternalPackages: ["modal", "ffmpeg-static"],
+  // These Node-only SDKs contributed over 11 MB of generated source and roughly
+  // 700 modules to compilation. Load their installed packages at runtime.
+  serverExternalPackages: ["modal", "ffmpeg-static", "twilio", "@google-analytics/data"],
   // 1.16 hung 35+ min at "Generating static pages (0/655)". 1.17 put
   // force-dynamic on the ROOT layout; collect-page-data then hung instead
   // (this timeout does not apply to collect). Root is static again, like
@@ -85,6 +87,9 @@ const nextConfig: NextConfig = {
     cpus: 1,
     staticGenerationMaxConcurrency: 1,
     webpackMemoryOptimizations: true,
+    // Sentry adds a custom webpack config, disabling this default. Release each
+    // compiler's heap in its own worker before starting the next compilation.
+    webpackBuildWorker: true,
   },
   images: {
     remotePatterns: [
