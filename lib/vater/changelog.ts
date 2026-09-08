@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.37.3';
+export const APP_VERSION = '1.37.4';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.37.4',
+    date: '2026-09-08',
+    title: 'HQ and Generate skip static collect',
+    items: [
+      'HQ and Generate no longer prerender on deploy. That keeps the Standard build from sitting in page-data collect until the slot times out.',
+    ],
+  },
   {
     version: '1.37.3',
     date: '2026-09-08',
