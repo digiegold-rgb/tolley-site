@@ -21,6 +21,8 @@ try {
   assert.equal(leads.length, 1);
   assert.equal(await p.leadNotification.count({ where: { leadId: leads[0].id } }), 2);
   assert.equal((await fetch(base + '/api/hq/business')).status, 401);
+  assert.equal((await fetch(base + '/api/analytics/ga4')).status, 401, 'external analytics SDK loads without bypassing auth');
+  assert.equal((await fetch(base + '/api/sms/webhook')).status, 405, 'external Twilio SDK loads; GET sends no messages');
   assert.equal((await fetch(base + '/api/admin/persona', { headers: { authorization: 'Bearer %' } })).status, 401);
   const anonymousSession = await fetch(base + '/api/auth/session');
   assert.equal(anonymousSession.status, 200);
