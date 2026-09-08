@@ -304,7 +304,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
+const sentryWebpackOptions = {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
 
@@ -330,4 +330,12 @@ export default withSentryConfig(nextConfig, {
   // WITH a Vercel WAF rate-limit rule on /monitoring, not on its own.
 
   silent: !process.env.CI,
-});
+};
+
+// The Sentry webpack plugin still wraps every compilation on Vercel even with
+// maps off. After the revenue graph that extra plugin heap SIGKILLs Standard
+// 8GB (~25 min into next build). Runtime Sentry stays via instrumentation.ts.
+// Do not enable Turbo machines to get the plugin back.
+export default process.env.VERCEL === "1"
+  ? nextConfig
+  : withSentryConfig(nextConfig, sentryWebpackOptions);
