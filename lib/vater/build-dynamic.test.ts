@@ -13,9 +13,9 @@ function readApp(rel: string): string {
 
 const FORCE_DYNAMIC = /export const dynamic\s*=\s*["']force-dynamic["']/;
 
-test("changelog 1.36 is the current shipped version", () => {
-  assert.equal(APP_VERSION, "1.36");
-  assert.equal(CHANGELOG[0]?.version, "1.36");
+test("changelog 1.37.3 is the current shipped version", () => {
+  assert.equal(APP_VERSION, "1.37.3");
+  assert.equal(CHANGELOG[0]?.version, "1.37.3");
 });
 
 test("script writer uses AI Gateway client, not a bare Anthropic constructor", () => {
@@ -65,7 +65,7 @@ test("root layout is not force-dynamic — that hung 1.17 collect-page-data", ()
 
 test("session/DB trees that hang SSG are marked at the route, not root", () => {
   for (const file of [
-    "app/leads/layout.tsx",
+    "app/leads/(workspace)/layout.tsx",
     "app/shop/layout.tsx",
     "app/account/layout.tsx",
     "app/estate/layout.tsx",
@@ -98,8 +98,12 @@ test("staticPageGenerationTimeout stays 60 so leftover SSG cannot occupy the slo
 
 test("collect workers stay at 1 so Standard 8GB can finish page-data", () => {
   const src = readApp("next.config.ts");
+  const pkg = readApp("package.json");
   assert.match(src, /experimental:\s*\{[\s\S]*cpus:\s*1/);
   assert.match(src, /staticGenerationMaxConcurrency:\s*1/);
   assert.match(src, /typescript:\s*\{\s*ignoreBuildErrors:\s*true\s*\}/);
+  assert.equal(/webpackBuildWorker:\s*true/.test(src), false);
   assert.equal(/NODE_OPTIONS/.test(src), false);
+  assert.match(pkg, /max-old-space-size=6144/);
+  assert.equal(/max-old-space-size=4096/.test(pkg), false);
 });
