@@ -52,7 +52,7 @@ export function WdEmailBar() {
   if (dismissed || previouslyCaptured || status === "done") return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 safe-bottom">
+    <div className="relative z-10 py-8">
       <div className="mx-auto max-w-4xl px-4 pb-4">
         <div className="relative rounded-2xl border border-blue-200 bg-white/95 px-5 py-3.5 shadow-xl shadow-blue-200/30 backdrop-blur-lg">
           <button

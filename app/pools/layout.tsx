@@ -19,7 +19,7 @@ export const revalidate = 0;
 export const metadata: Metadata = {
   title: "Pool Supplies, Delivered | Your KC Homes LLC",
   description:
-    "Pool supplies at contractor pricing, delivered to your door in Kansas City. Beat Walmart and Leslie's prices — no membership required.",
+    "Pool chemicals, equipment, and accessories delivered to your door in Kansas City. No membership required.",
   keywords: [
     "pool supplies Kansas City",
     "pool chemicals delivery KC",

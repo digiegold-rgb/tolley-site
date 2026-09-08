@@ -17,7 +17,7 @@ function WavyText({ text }: { text: string }) {
 }
 
 const tags = [
-  "Beat Walmart Prices",
+  "Pool Chemicals & Equipment",
   "KC Metro Delivery",
   "No Membership Required",
 ];

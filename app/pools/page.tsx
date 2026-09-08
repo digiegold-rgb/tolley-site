@@ -12,7 +12,7 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
   name: "Pool Supplies Delivered by Your KC Homes LLC",
-  description: "Pool supplies at contractor pricing delivered to your door in Kansas City. Beat Walmart and Leslie's prices — no membership required.",
+  description: "Pool chemicals, equipment, and accessories delivered to your door in Kansas City. No membership required.",
   url: "https://www.tolley.io/pools",
   telephone: "913-283-3826",
   email: "Jared@yourkchomes.com",
