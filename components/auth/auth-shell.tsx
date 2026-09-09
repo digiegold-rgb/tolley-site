@@ -94,7 +94,7 @@ export function AuthShell(props: AuthShellProps) {
       <section className="relative z-20 w-full max-w-md">
         <div className="mb-4 text-center">
           <p className="mb-3 text-[0.72rem] font-medium tracking-[0.42em] text-white/68 uppercase">
-            {brand}
+            <Link href={brand === "t-agent" ? "/agent" : "/"}>{brand}</Link>
           </p>
           <h1 className="text-xl font-semibold tracking-[0.02em] text-white/95 sm:text-2xl">
             {title}

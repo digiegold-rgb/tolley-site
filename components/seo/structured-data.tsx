@@ -1,3 +1,5 @@
+import { LEADS_TIERS } from "@/lib/leads-subscription";
+
 /**
  * Server-side JSON-LD structured data component.
  *
@@ -56,7 +58,7 @@ export const organizationSchema = {
   url: "https://www.tolley.io",
   logo: "https://www.tolley.io/favicon.ico",
   description:
-    "Autonomous AI services for real estate, delivery, rentals, and local commerce. Operated by Jared Tolley from the Kansas City metro.",
+    "Software, creative tools, rentals, real estate, and local services from Jared Tolley in Kansas City.",
   founder: {
     "@type": "Person",
     name: "Jared Tolley",
@@ -83,9 +85,7 @@ export const organizationSchema = {
 };
 
 /**
- * WebSite schema with SearchAction — site-wide, used in the root layout.
- * Enables the Google sitelinks search box and signals the canonical search endpoint
- * to LLM crawlers.
+ * WebSite schema for the Tolley landing page, used in the root layout.
  */
 export const websiteSchema = {
   "@context": "https://schema.org",
@@ -94,72 +94,35 @@ export const websiteSchema = {
   url: "https://www.tolley.io",
   name: "Tolley.io",
   description:
-    "T-Agent AI SaaS for real estate, plus rentals, delivery, and local commerce in Kansas City.",
+    "Explore T-Agent real estate tools, Jelly Studio video creation, rentals, and Kansas City services.",
   publisher: {
     "@id": "https://www.tolley.io/#organization",
   },
-  potentialAction: {
-    "@type": "SearchAction",
-    target: {
-      "@type": "EntryPoint",
-      urlTemplate: "https://www.tolley.io/search?q={search_term_string}",
-    },
-    "query-input": "required name=search_term_string",
-  },
+
 };
 
-/**
- * SoftwareApplication schema for T-Agent.
- * Use on /pricing and / (homepage) to signal the primary product to LLMs.
- */
+/** T-Agent product schema for /agent and /leads/pricing. */
 export const tAgentSoftwareSchema = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  "@id": "https://www.tolley.io/#t-agent",
+  "@id": "https://www.tolley.io/agent#software",
   name: "T-Agent",
   applicationCategory: "BusinessApplication",
-  applicationSubCategory: "RealEstateAgent AI Platform",
   operatingSystem: "Web",
-  url: "https://www.tolley.io",
-  description:
-    "T-Agent is an AI SaaS for real estate agents and small brokerages. Autonomous agents handle lead research, market analysis, listing prep, and buyer/seller communications via SMS and email. Powered by a 25-agent OpenClaw backend on NVIDIA DGX Spark.",
-  offers: [
-    {
-      "@type": "Offer",
-      name: "Basic",
-      price: "50.00",
+  url: "https://www.tolley.io/agent",
+  description: "Real estate lead research, scoring, property dossiers, and follow-up tools for agents and small teams.",
+  offers: LEADS_TIERS.map(tier => ({
+    "@type": "Offer",
+    name: tier.name,
+    price: tier.price.toFixed(2),
+    priceCurrency: "USD",
+    priceSpecification: {
+      "@type": "UnitPriceSpecification",
+      price: tier.price.toFixed(2),
       priceCurrency: "USD",
-      priceSpecification: {
-        "@type": "UnitPriceSpecification",
-        price: "50.00",
-        priceCurrency: "USD",
-        billingDuration: "P1M",
-      },
-      url: "https://www.tolley.io/pricing",
+      billingDuration: "P1M",
     },
-    {
-      "@type": "Offer",
-      name: "Premium",
-      price: "200.00",
-      priceCurrency: "USD",
-      priceSpecification: {
-        "@type": "UnitPriceSpecification",
-        price: "200.00",
-        priceCurrency: "USD",
-        billingDuration: "P1M",
-      },
-      url: "https://www.tolley.io/pricing",
-    },
-  ],
-  provider: {
-    "@id": "https://www.tolley.io/#organization",
-  },
-  featureList: [
-    "Autonomous lead research and enrichment",
-    "Market analysis and comparable sales reports",
-    "Listing preparation and description generation",
-    "Twilio A2P compliant SMS outreach",
-    "Property dossier generation from photo or address",
-    "Credit-based billing (pay per agent action, not per seat)",
-  ],
+    url: "https://www.tolley.io/leads/pricing",
+  })),
+  provider: { "@id": "https://www.tolley.io/#organization" },
 };

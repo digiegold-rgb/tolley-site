@@ -89,7 +89,7 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   // ── JARED — BUSINESSES ────────────────────────────────────────────────────
   { id: "biz-estate", label: "Tolley Estate Sales", lane: "jared-biz", row: 0, col: 0, kind: "business", icon: "🏷️", signal: "db:estate", cadenceMin: 3 * day, href: "/estate", note: "#1 focus. Sale #1: $5k+ gross / 2 days @ 35%." },
   { id: "biz-wd", label: "W/D Rentals", lane: "jared-biz", row: 0, col: 1, kind: "business", icon: "🌀", signal: "db:wd", cadenceMin: 2 * day, href: "/wd/admin", note: "Real MRR $1,476 · 26 subs (7/8 reconcile)." },
-  { id: "biz-tagent", label: "T-Agent / Tolley SaaS", lane: "jared-biz", row: 0, col: 2, kind: "business", icon: "🤖", signal: "manual:paused", href: "/", note: "Parked until paying clients (priority list). Flip signal back to db:tagent when revived." },
+  { id: "biz-tagent", label: "T-Agent / Tolley SaaS", lane: "jared-biz", row: 0, col: 2, kind: "business", icon: "🤖", signal: "manual:paused", href: "/agent", note: "Parked until paying clients (priority list). Flip signal back to db:tagent when revived." },
   { id: "biz-realestate", label: "Real Estate (MLS)", lane: "jared-biz", row: 0, col: 3, kind: "business", icon: "🏠", signal: "cron:/api/cron/mls-sync", href: "/homes", note: "MLS Grid = DEMO feed, frozen ~6/2." },
   { id: "biz-delivery", label: "1099 Delivery", lane: "jared-biz", row: 0, col: 4, kind: "business", icon: "📦", signal: "cron:/api/cron/dispatch-match", href: "/drive" },
   { id: "biz-shop", label: "Shop / Reselling", lane: "jared-biz", row: 0, col: 5, kind: "business", icon: "🛒", signal: "cron:/api/cron/shop-intelligence", href: "/shop" },

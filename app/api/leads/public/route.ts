@@ -1,3 +1,4 @@
+import { LEADS_TIERS } from "@/lib/leads-subscription";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -13,14 +14,13 @@ export async function GET() {
   return NextResponse.json(
     {
       product: "T-Agent Lead Pipeline",
-      url: "https://www.tolley.io/leads",
+      url: "https://www.tolley.io/agent",
+      workspace: "https://www.tolley.io/leads/dashboard",
       summary:
         "AI-driven motivated-seller lead pipeline for real estate agents — weekly digests, scoring, dossier synthesis, MLS-grid integration.",
-      pricing: {
-        starter: { monthly: 49, includes: "100 leads/mo, weekly digest" },
-        pro: { monthly: 149, includes: "500 leads/mo, daily digest, dossier synthesis, SMS auto-responder" },
-        team: { monthly: 499, includes: "Unlimited leads, multi-agent, custom integrations" },
-      },
+      pricing: Object.fromEntries(LEADS_TIERS.map(tier => [tier.id, {
+        monthly: tier.price, currency: "USD", includes: tier.features.join(", "),
+      }])),
       capabilities: [
         "MLS-grid IDX/VOW import",
         "Lead scoring with motivated-seller signals",
@@ -45,7 +45,8 @@ export async function GET() {
       cta: {
         pricing: "https://www.tolley.io/leads/pricing",
         onboard: "https://www.tolley.io/leads/onboard",
-        signup: "https://www.tolley.io/signup",
+        signup: "https://www.tolley.io/signup?callbackUrl=%2Fleads%2Fdashboard",
+        demo: "https://www.tolley.io/agent#demo",
       },
     },
     {

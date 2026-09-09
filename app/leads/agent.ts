@@ -1,3 +1,4 @@
+import { LEADS_TIERS } from "@/lib/leads-subscription";
 import type { SubsiteManifest } from "@/lib/agent-manifest";
 
 export const manifest: SubsiteManifest = {
@@ -13,11 +14,10 @@ export const manifest: SubsiteManifest = {
   mcpTools: ["get_subsite_info"],
   category: "product",
   status: "auth",
-  pricing: [
-    { unit: "monthly", amount: 49, currency: "USD", notes: "Starter — 100 leads/mo, weekly digest" },
-    { unit: "monthly", amount: 149, currency: "USD", notes: "Pro — 500 leads, daily digest, dossier synthesis, SMS auto-responder" },
-    { unit: "monthly", amount: 499, currency: "USD", notes: "Team — unlimited leads, multi-agent" }
-  ],
+  pricing: LEADS_TIERS.map(tier => ({
+    unit: "monthly", amount: tier.price, currency: "USD",
+    notes: `${tier.name} — ${tier.features.join(", ")}`,
+  })),
   actions: [
     {
       verb: "request_pipeline_demo",

@@ -14,7 +14,7 @@ export function HpNavbar({ isAuthenticated }: HpNavbarProps) {
     <nav className="fixed inset-x-0 top-0 z-50 flex items-center justify-center px-4 pt-4">
       <div className="flex w-full max-w-6xl items-center justify-between rounded-full border border-white/18 bg-black/35 px-5 py-2.5 backdrop-blur-xl">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/agent" className="flex items-center gap-2">
           <span className="text-[0.72rem] font-medium tracking-[0.42em] text-white/90 uppercase">
             t-agent
           </span>
@@ -23,13 +23,13 @@ export function HpNavbar({ isAuthenticated }: HpNavbarProps) {
         {/* Desktop nav */}
         <div className="hidden items-center gap-6 md:flex">
           <a
-            href="#features"
+            href="/agent#features"
             className="text-xs tracking-[0.1em] text-white/68 uppercase transition hover:text-white"
           >
             Features
           </a>
           <a
-            href="#pricing"
+            href="/agent#pricing"
             className="text-xs tracking-[0.1em] text-white/68 uppercase transition hover:text-white"
           >
             Pricing
@@ -68,7 +68,7 @@ export function HpNavbar({ isAuthenticated }: HpNavbarProps) {
           ) : (
             <>
               <Link
-                href="/login"
+                href="/login?callbackUrl=%2Fleads%2Fdashboard"
                 className="text-xs tracking-[0.1em] text-white/72 uppercase transition hover:text-white"
               >
                 Sign In
@@ -120,14 +120,14 @@ export function HpNavbar({ isAuthenticated }: HpNavbarProps) {
         <div className="absolute top-full right-4 left-4 mt-2 rounded-2xl border border-white/18 bg-[rgba(8,7,15,0.92)] p-5 backdrop-blur-2xl md:hidden">
           <div className="flex flex-col gap-4">
             <a
-              href="#features"
+              href="/agent#features"
               onClick={() => setMenuOpen(false)}
               className="text-sm tracking-[0.08em] text-white/72 uppercase transition hover:text-white"
             >
               Features
             </a>
             <a
-              href="#pricing"
+              href="/agent#pricing"
               onClick={() => setMenuOpen(false)}
               className="text-sm tracking-[0.08em] text-white/72 uppercase transition hover:text-white"
             >
@@ -168,7 +168,7 @@ export function HpNavbar({ isAuthenticated }: HpNavbarProps) {
             ) : (
               <>
                 <Link
-                  href="/login"
+                  href="/login?callbackUrl=%2Fleads%2Fdashboard"
                   className="text-sm tracking-[0.08em] text-white/72 uppercase transition hover:text-white"
                 >
                   Sign In

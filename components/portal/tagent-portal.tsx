@@ -846,7 +846,7 @@ export function TAgentPortal() {
             visible={isAccountOpen}
             email={session?.user?.email}
             onManageBilling={openBillingPortal}
-            onSignOut={() => void signOut({ callbackUrl: "/" })}
+            onSignOut={() => void signOut({ callbackUrl: "/agent" })}
           />
         </div>
       ) : null}

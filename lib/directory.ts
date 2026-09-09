@@ -232,7 +232,7 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
     emoji: "🔎",
     accent: "slate",
   },
-  leads: {
+  agent: {
     group: "AI & Ventures",
     tagline: "T-Agent — the real-estate lead pipeline",
     bullets: ["Motivated sellers", "AI enrichment", "For agents"],
@@ -319,7 +319,7 @@ export function buildDirectory(): DirectoryEntry[] {
     const INFRA = new Set([
       "about", "billing", "crypto", "data-retention", "gpu", "pricing", "privacy",
       "results", "security", "signup", "terms", "start", "circle", "blog", "markets",
-      "rental", "rentals", "go", "pay", "tools", "client", "client-portal",
+      "rental", "rentals", "go", "pay", "tools", "client", "client-portal", "leads",
     ]);
     for (const s of SUBSITES) {
       if (INFRA.has(s.name)) continue;

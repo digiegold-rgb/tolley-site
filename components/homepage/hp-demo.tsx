@@ -1,6 +1,6 @@
 export function HpDemo() {
   return (
-    <section className="relative z-10 mx-auto w-full max-w-6xl px-5 py-16 sm:px-8">
+    <section id="demo" className="relative z-10 mx-auto w-full max-w-6xl scroll-mt-24 px-5 py-16 sm:px-8">
       <div className="rounded-3xl border border-white/18 bg-[linear-gradient(160deg,rgba(255,255,255,0.16),rgba(129,75,229,0.1)),rgba(8,7,15,0.58)] p-6 shadow-[0_20px_48px_rgba(3,2,10,0.62)] backdrop-blur-2xl sm:p-10">
         <div className="mb-8 text-center">
           <p className="text-[0.72rem] font-medium tracking-[0.42em] text-white/68 uppercase">
@@ -9,6 +9,7 @@ export function HpDemo() {
           <h2 className="mt-3 text-2xl font-semibold tracking-[0.02em] text-white/95 sm:text-3xl">
             Intelligence at a glance
           </h2>
+          <p className="mt-3 text-sm text-white/60">Illustrative example — fictional lead and signals.</p>
         </div>
 
         {/* Mock dashboard */}

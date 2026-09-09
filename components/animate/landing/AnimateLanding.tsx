@@ -77,7 +77,6 @@ import "./landing.css";
 
 const t = JELLY_TOKENS.dark;
 
-const SEAT = "#beta";
 const SIGNUP = "/signup?callbackUrl=%2Fanimate";
 const SIGNIN = "/login?callbackUrl=%2Fanimate";
 
@@ -344,7 +343,7 @@ export function AnimateLanding(): React.ReactElement {
           <a className="jc-nav-link jsl-navlink" href="#stories">Stories</a>
           <a className="jc-nav-link jsl-navlink" href="#boxoffice">Box office</a>
           <PillButton variant="ghost" size="md" href={SIGNIN} data-testid="nav-sign-in">Sign in</PillButton>
-          <PillButton variant="gradient" size="md" href={SEAT}>Request a seat</PillButton>
+          <PillButton variant="gradient" size="md" href={SIGNUP}>Start creating</PillButton>
         </div>
       </nav>
 
@@ -859,28 +858,28 @@ export function AnimateLanding(): React.ReactElement {
             Directed by you.
           </GradientText>
           <p style={{ ...LEAD, fontSize: 16.5, maxWidth: 520, margin: "0 auto 32px" }}>
-            Public beta. Limited seats. Request a seat. A $10 starter credit is
+            Public beta. Create an account to get started. A $10 starter credit is
             waiting behind the card form — nothing is charged until you spend it.
           </p>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-            <PillButton variant="gradient" size="lg" href={SEAT}>Request a seat</PillButton>
-            <PillButton variant="ghost" size="lg" href={SIGNIN}>Have a code? Sign in</PillButton>
+            <PillButton variant="gradient" size="lg" href={SIGNUP}>Start creating</PillButton>
+            <PillButton variant="ghost" size="lg" href={SIGNIN}>Already have an account? Sign in</PillButton>
           </div>
         </div>
       </section>
 
-      {/* the form the two "Request a seat" pills point at */}
+      {/* Optional emailed signup link; direct signup is available above */}
       <section className="jsl-band" style={{ maxWidth: 820, paddingTop: 20, paddingBottom: 120 }}>
         <GlassCard id="beta" className="jc-rise" radius={JELLY_TOKENS.radius.xxl} padding="30px 28px" halo>
           <MicroLabel tone="violet" size={11} tracking="0.24em" style={{ marginBottom: 12 }}>
-            REQUEST A SEAT
+            PREFER A SIGNUP LINK BY EMAIL?
           </MicroLabel>
           <p style={{ ...LEAD, fontSize: 15, marginBottom: 20 }}>
-            Tell us what you want to make. Request a seat. A $10 starter credit
+            Tell us what you want to make and we’ll email a signup link. A $10 starter credit
             — enough to take a script to finished still scenes — is waiting on
             the other side of the card form.
           </p>
-          <InviteRequestForm />
+          <InviteRequestForm copy={{ submit: "Email me a signup link", doneTitle: "Check your inbox", doneBody: "Your signup link is on its way. You can also use Start creating above to sign up directly." }} />
         </GlassCard>
       </section>
 
@@ -896,7 +895,7 @@ export function AnimateLanding(): React.ReactElement {
           <a className="jc-nav-link" href="/animate/terms" style={{ color: t.textFaint }}>Terms</a>
           <a className="jc-nav-link" href="/animate/privacy" style={{ color: t.textFaint }}>Privacy</a>
           <a className="jc-nav-link" href="/animate/beta" style={{ color: t.textFaint }}>Beta</a>
-          <span>v{APP_VERSION} · Public beta. Limited seats. Request a seat.</span>
+          <span>v{APP_VERSION} · Public beta · Signup is open.</span>
         </div>
       </footer>
     </CinemaRoot>

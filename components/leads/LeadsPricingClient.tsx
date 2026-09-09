@@ -7,16 +7,18 @@ import LeadsPricingActions from "./LeadsPricingActions";
 type Props = {
   isLoggedIn: boolean;
   currentTier: string | null;
+  annualPrices: Partial<Record<"starter" | "pro" | "team", number>>;
 };
 
-export default function LeadsPricingClient({ isLoggedIn, currentTier }: Props) {
+export default function LeadsPricingClient({ isLoggedIn, currentTier, annualPrices }: Props) {
   const [interval, setInterval] = useState<"monthly" | "annual">("monthly");
-  const isAnnual = interval === "annual";
+  const annualAvailable = LEADS_TIERS.every(tier => typeof annualPrices[tier.id] === "number");
+  const isAnnual = annualAvailable && interval === "annual";
 
   return (
     <>
       {/* Billing toggle */}
-      <div className="flex items-center justify-center gap-3 mb-10">
+      {annualAvailable && <div className="flex items-center justify-center gap-3 mb-10">
         <span
           className={`text-sm font-medium transition-colors ${
             !isAnnual ? "text-white" : "text-white/40"
@@ -31,6 +33,7 @@ export default function LeadsPricingClient({ isLoggedIn, currentTier }: Props) {
           }`}
           role="switch"
           aria-checked={isAnnual}
+          aria-label="Annual billing"
         >
           <span
             className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
@@ -44,16 +47,15 @@ export default function LeadsPricingClient({ isLoggedIn, currentTier }: Props) {
           }`}
         >
           Annual
-          <span className="rounded-full bg-green-500/20 border border-green-500/30 px-2 py-0.5 text-[0.65rem] font-bold text-green-400 uppercase tracking-wider">
-            Save 20%
-          </span>
+
         </span>
-      </div>
+      </div>}
 
       {/* Pricing cards */}
       <div className="grid sm:grid-cols-3 gap-6 mb-16">
         {LEADS_TIERS.map((tier) => {
-          const displayPrice = isAnnual ? Math.round(tier.price * 0.8) : tier.price;
+          const annualTotal = annualPrices[tier.id];
+          const displayPrice = isAnnual ? ((annualTotal ?? 0) / 12).toFixed(2) : tier.price;
 
           return (
             <div
@@ -80,7 +82,7 @@ export default function LeadsPricingClient({ isLoggedIn, currentTier }: Props) {
                 </div>
                 {isAnnual && (
                   <p className="text-xs text-white/40 mt-1">
-                    ${displayPrice * 12}/year &mdash; saves ${(tier.price - displayPrice) * 12}/yr
+                    ${annualTotal?.toFixed(2)} billed yearly
                   </p>
                 )}
               </div>

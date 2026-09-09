@@ -7,6 +7,7 @@ import type { SubsiteManifest } from "./agent-manifest";
 import { manifest as about } from "@/app/about/agent";
 import { manifest as advertising } from "@/app/advertising/agent";
 import { manifest as agents } from "@/app/agents/agent";
+import { manifest as agent } from "@/app/agent/agent";
 import { manifest as animate } from "@/app/animate/agent";
 import { manifest as realestateanimated } from "@/app/realestateanimated/agent";
 import { manifest as billing } from "@/app/billing/agent";
@@ -63,6 +64,7 @@ export const SUBSITES: SubsiteManifest[] = [
   about,
   advertising,
   agents,
+  agent,
   animate,
   realestateanimated,
   billing,

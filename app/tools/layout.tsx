@@ -19,7 +19,7 @@ export default function ToolsLayout({ children }: { children: ReactNode }) {
       {/* Navbar */}
       <nav className="fixed inset-x-0 top-0 z-50 flex items-center justify-center px-4 pt-4">
         <div className="flex w-full max-w-5xl items-center justify-between rounded-full border border-white/18 bg-black/35 px-5 py-2.5 backdrop-blur-xl">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/agent" className="flex items-center gap-2">
             <span className="text-[0.72rem] font-medium tracking-[0.42em] text-white/90 uppercase">
               t-agent
             </span>
@@ -62,17 +62,17 @@ export default function ToolsLayout({ children }: { children: ReactNode }) {
             Start 7-Day Free Trial
           </Link>
           <Link
-            href="/leads/demo"
+            href="/agent#demo"
             className="rounded-full border border-white/18 bg-white/[0.05] px-8 py-3 text-sm font-semibold tracking-[0.1em] text-white/80 uppercase transition hover:bg-white/[0.1]"
           >
             See the Demo
           </Link>
         </div>
-        <p className="mt-4 text-xs text-white/35">No credit card required during trial · Cancel anytime</p>
+        <p className="mt-4 text-xs text-white/35">7-day trial · Card required · Cancel anytime</p>
         <div className="mt-6 flex items-center justify-center gap-6">
           <Link href="/" className="text-xs tracking-[0.08em] text-white/40 uppercase hover:text-white/70">Home</Link>
           <Link href="/blog" className="text-xs tracking-[0.08em] text-white/40 uppercase hover:text-white/70">Blog</Link>
-          <Link href="/leads/demo" className="text-xs tracking-[0.08em] text-white/40 uppercase hover:text-white/70">Demo</Link>
+          <Link href="/agent#demo" className="text-xs tracking-[0.08em] text-white/40 uppercase hover:text-white/70">Example</Link>
           <Link href="/privacy" className="text-xs tracking-[0.08em] text-white/40 uppercase hover:text-white/70">Privacy</Link>
         </div>
       </footer>

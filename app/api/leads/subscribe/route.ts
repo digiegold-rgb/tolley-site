@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { ensureStripeCustomer, getAppUrl } from "@/lib/billing";
 import { getStripeClient } from "@/lib/stripe";
 import { getLeadsPriceIdsForInterval, type LeadsTier } from "@/lib/leads-subscription";
+import { getAnnualLeadsPrices } from "@/lib/leads-pricing-server";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,10 @@ export async function POST(request: Request) {
 
     const priceIds = getLeadsPriceIdsForInterval(interval);
     const priceId = priceIds[tier as "starter" | "pro" | "team"];
+
+    if (interval === "annual" && !(tier in await getAnnualLeadsPrices())) {
+      return NextResponse.json({ error: "Annual billing is currently unavailable. Please choose monthly billing." }, { status: 503 });
+    }
 
     const stripeCustomerId = await ensureStripeCustomer({
       userId,

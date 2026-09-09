@@ -2,8 +2,8 @@ import type { SubsiteManifest } from "@/lib/agent-manifest";
 
 export const manifest: SubsiteManifest = {
   name: "pricing",
-  title: "Tolley.io Pricing",
-  purpose: "Master pricing list across Tolley.io — rentals, delivery, real estate, SaaS — with per-product links to richer detail and direct booking.",
+  title: "T-Agent Pricing",
+  purpose: "Legacy T-Agent pricing address. Redirects to /leads/pricing for current plans; visit /start for other Tolley products and services.",
   url: "/pricing",
   schemaType: "WebPage",
   jsonEndpoints: [],

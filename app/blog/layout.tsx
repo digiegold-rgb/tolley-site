@@ -35,7 +35,7 @@ export default function BlogLayout({ children }: { children: React.ReactNode }) 
       <div aria-hidden="true" className="site-dot-grid-purple pointer-events-none fixed inset-0 z-0" />
       <header className="relative z-10 border-b border-white/8">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-5 py-4 sm:px-8">
-          <Link href="/" className="text-[0.75rem] font-semibold uppercase tracking-widest text-white/60 transition hover:text-white">
+          <Link href="/agent" className="text-[0.75rem] font-semibold uppercase tracking-widest text-white/60 transition hover:text-white">
             ← t-agent
           </Link>
           <Link

@@ -2,10 +2,12 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { captureAttribution } from "@/lib/lead-capture-client";
 
 // Any path starting with one of these prefixes has its own per-site
 // SiteTracker in its own layout — we skip those here to avoid double-tracking.
 const SUBSITE_PREFIXES = [
+  "/agent",
   "/wd",
   "/trailer",
   "/generator",
@@ -90,6 +92,8 @@ export function MainSiteTracker() {
         site: "home",
         path: pathname,
         referrer: getReferrer(),
+        sessionId: captureAttribution().sessionId,
+        campaign: captureAttribution(),
       }),
     }).catch(() => {});
   }, [pathname]);
