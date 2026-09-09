@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { mkdirSync } from "node:fs";
 import { chromium } from "playwright";
 
-const base = process.env.REVENUE_TEST_URL || "http://127.0.0.1:3018";
-const publicOnly = process.env.FRONT_DOORS_PUBLIC_ONLY === "1";
+const base = process.argv[2] || process.env.REVENUE_TEST_URL || "http://127.0.0.1:3018";
+const publicOnly = !["localhost", "127.0.0.1"].includes(new URL(base).hostname) || process.env.FRONT_DOORS_PUBLIC_ONLY === "1";
 const shots = "/tmp/tolley-front-doors";
 mkdirSync(shots, { recursive: true });
 const browser = await chromium.launch({ headless: true });
