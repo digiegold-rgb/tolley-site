@@ -1616,7 +1616,7 @@ function LivePipelineProgress({
   pollError: string | null;
 }) {
   const l = job.listing;
-  const [clock, setClock] = useState(() => new Date(job.updatedAt).getTime());
+  const [clock, setClock] = useState(() => new Date(job.createdAt).getTime());
   useEffect(() => {
     const timer = setInterval(() => setClock(Date.now()), 1000);
     return () => clearInterval(timer);
