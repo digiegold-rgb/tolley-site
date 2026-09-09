@@ -1,3 +1,4 @@
+import { requireVaterAdminPageSession } from "@/lib/admin-auth";
 import { VaterHubHero } from "@/components/vater/vater-hub-hero";
 import { VaterHubCards } from "@/components/vater/vater-hub-cards";
 
@@ -52,7 +53,10 @@ const faqJsonLd = {
   ],
 };
 
-export default function VaterPage() {
+export const metadata = { robots: { index: false, follow: false } };
+
+export default async function VaterPage() {
+  await requireVaterAdminPageSession("/vater");
   return (
     <main>
       <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>

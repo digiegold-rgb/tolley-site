@@ -1,7 +1,9 @@
+import { CircleRouter } from "@/app/circle/circle-router";
+import { EmailCaptureForm } from "@/components/tools/EmailCaptureForm";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { directoryByGroup, type DirectoryEntry } from "@/lib/directory";
+import { directoryByGroup, type DirectoryGroup, type DirectoryEntry } from "@/lib/directory";
 
 export const metadata: Metadata = {
   alternates: { canonical: "https://www.tolley.io/start" },
@@ -14,6 +16,17 @@ export const metadata: Metadata = {
     url: "https://www.tolley.io/start",
     type: "website",
   },
+};
+
+const GROUP_LOOK: Record<DirectoryGroup, { emoji: string; color: string }> = {
+  "Start a Business": { emoji: "🚀", color: "#f97316" },
+  "Real Estate": { emoji: "🏡", color: "#0ea5e9" },
+  "Home Services": { emoji: "🧰", color: "#06b6d4" },
+  Rentals: { emoji: "🧺", color: "#3b82f6" },
+  "Hauling & Delivery": { emoji: "🚛", color: "#ef4444" },
+  "Shop & Food": { emoji: "🛍️", color: "#ec4899" },
+  "AI & Ventures": { emoji: "🤖", color: "#8b5cf6" },
+  Events: { emoji: "💍", color: "#f43f5e" },
 };
 
 // Tailwind can't see runtime-built class strings, so map accent stems to the
@@ -94,11 +107,15 @@ export default function StartPage() {
             <Link href="/sales" className="rounded-full bg-orange-500 px-5 py-2 text-sm font-bold text-black transition hover:bg-orange-400">
               🚀 Start a business
             </Link>
-            <Link href="/leads" className="rounded-full border border-white/15 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/40">
+            <Link href="/agent" className="rounded-full border border-white/15 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/40">
               🎯 For real-estate agents
             </Link>
           </div>
         </div>
+
+        <section id="route" className="mb-10 w-full scroll-mt-8">
+          <CircleRouter groups={groups.map(({ group, entries }) => ({ group, entries, ...GROUP_LOOK[group] }))} />
+        </section>
 
         {/* Sections */}
         <div className="flex w-full flex-col gap-10">
@@ -119,12 +136,11 @@ export default function StartPage() {
           ))}
         </div>
 
-        <Link
-          href="/circle"
-          className="mt-10 text-xs font-semibold text-purple-400 transition hover:text-purple-300"
-        >
-          See how it all connects &rarr; the Circle
-        </Link>
+        <section className="mt-10 w-full max-w-md text-center">
+          <h2 className="text-lg font-bold text-white">Local deals and service updates</h2>
+          <EmailCaptureForm source="circle" ctaText="Keep me updated"
+            successMessage="You're on the list. Talk soon." className="mt-4" />
+        </section>
         <p className="mt-4 text-xs text-neutral-600">
           &copy; {new Date().getFullYear()} tolley.io &middot; Independence, MO
         </p>

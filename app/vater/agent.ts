@@ -12,7 +12,7 @@ export const manifest: SubsiteManifest = {
   shareEndpoint: "/api/share",
   mcpTools: [],
   category: "marketing",
-  status: "public",
+  status: "auth",
   skipJsonLd: true,
   actions: []
 };

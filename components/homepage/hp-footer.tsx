@@ -61,7 +61,7 @@ const directory = [
       { label: "Shop", href: "/shop" },
       { label: "Free Tools", href: "/tools" },
       { label: "Blog", href: "/blog" },
-      { label: "The Circle", href: "/circle" },
+      { label: "All services", href: "/start" },
       { label: "About", href: "/about" },
     ],
   },

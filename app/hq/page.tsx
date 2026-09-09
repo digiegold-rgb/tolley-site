@@ -641,6 +641,8 @@ function HqPageInner() {
                 <button onClick={() => { setTab("hauls"); closeIdeas(); }}>💎 Hauls</button>
                 <button onClick={() => { setTab("tiktok"); closeIdeas(); }}>🛍 TikTok</button>
                 {/* Route links, not tab states. */}
+                <a href="/vater" onClick={closeIdeas}>🏭 Vater owner tools</a>
+                <a href="/water" onClick={closeIdeas}>💧 Pool water dashboard</a>
                 <a
                   href="/generate"
                   onClick={closeIdeas}
@@ -656,7 +658,7 @@ function HqPageInner() {
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={closeIdeas}
-                  title="Persona Editor — needs a site login (NextAuth admin), not the HQ PIN — opens in a new tab."
+                  title="Persona Editor — owner account required; opens in a new tab."
                 >
                   💃 Persona <span className="doc-sub">needs site login</span>
                 </a>

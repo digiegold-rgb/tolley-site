@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const NAV_LINKS = [
   { label: "Hub", href: "/vater" },
@@ -10,10 +13,14 @@ const NAV_LINKS = [
 ] as const;
 
 export function VaterFooter() {
+  const pathname = usePathname();
+  const links = pathname.startsWith("/vater/courses")
+    ? [{ label: "Tolley.io", href: "/" }, { label: "Course waitlists", href: "/vater/courses" }, { label: "Jelly Studio", href: "/animate" }]
+    : NAV_LINKS;
   return (
     <footer className="sticky bottom-0 z-50 border-t border-sky-500/20 bg-[#061020]/80 backdrop-blur-md">
       <nav className="mx-auto flex max-w-5xl items-center justify-center gap-1 px-4 py-3 sm:gap-3">
-        {NAV_LINKS.map(({ label, href }) => (
+        {links.map(({ label, href }) => (
           <Link
             key={href}
             href={href}

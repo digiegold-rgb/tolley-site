@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.38.1';
+export const APP_VERSION = '1.38.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,10 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.38.2', date: '2026-09-09', title: 'Clearer service routes and fewer empty pages',
+    items: ['All Services includes contact routing and email updates; hauling and cleanouts share one destination.', 'Empty shop videos and neighborhood indexes lead to useful pages until content is published.', 'Owner tools stay accessible from HQ, and returning video customers keep their original workspaces and credits.', 'GPU and Game remain available.'],
+  },
   {
     version: '1.38.1', date: '2026-09-09', title: 'Safer accounts and more reliable reporting',
     items: ['Owner dashboards require account sign-in and an authenticator, with recovery codes.', 'Each T-Agent customer keeps separate lead notes and pipeline changes.', 'Page visits are recorded once, and the public studio page loads less editor code.', 'Updated security dependencies and browser protections.'],

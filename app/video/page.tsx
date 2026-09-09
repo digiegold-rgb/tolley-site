@@ -1,3 +1,4 @@
+import { routeDestination, type RouteSearchParams } from "@/lib/public-route-policy";
 import Link from "next/link";
 
 import { auth } from "@/auth";
@@ -13,10 +14,10 @@ import { VideoFaq } from "@/components/video/video-faq";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function VideoPage() {
+export default async function VideoPage({ searchParams }: { searchParams: Promise<RouteSearchParams> }) {
   const session = await auth();
   if (!session?.user?.id) {
-    redirect("/login?callbackUrl=/video");
+    redirect(routeDestination("/animate", await searchParams));
   }
 
   return (

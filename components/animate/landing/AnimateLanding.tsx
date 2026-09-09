@@ -892,6 +892,8 @@ export function AnimateLanding(): React.ReactElement {
           <span style={{ letterSpacing: "0.14em", color: t.textSecondary, fontWeight: 600 }}>JELLY STUDIO</span>
           <span>KANSAS CITY, MO</span>
           <div style={{ flex: 1 }} />
+          <a className="jc-nav-link" href="/login?callbackUrl=%2Fvideo" style={{ color: t.textFaint }}>Original video workspace &amp; credits</a>
+          <a className="jc-nav-link" href="/login?callbackUrl=%2Fvideo%2Fstudio" style={{ color: t.textFaint }}>Original studio</a>
           <a className="jc-nav-link" href="/animate/terms" style={{ color: t.textFaint }}>Terms</a>
           <a className="jc-nav-link" href="/animate/privacy" style={{ color: t.textFaint }}>Privacy</a>
           <a className="jc-nav-link" href="/animate/beta" style={{ color: t.textFaint }}>Beta</a>

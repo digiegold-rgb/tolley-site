@@ -553,7 +553,7 @@ export default async function EstatePage() {
         </p>
         <p className="mt-1 text-xs" style={{ color: "rgba(243,234,217,0.35)" }}>
           Operated by Your KC Homes LLC · Part of{" "}
-          <a href="https://www.tolley.io/circle" className="underline underline-offset-2">
+          <a href="https://www.tolley.io/start" className="underline underline-offset-2">
             the Tolley circle
           </a>
         </p>
@@ -579,7 +579,7 @@ export default async function EstatePage() {
           <Link href="/cleanouts" className="hover:underline">Cleanouts</Link>
           <Link href="/shop" className="hover:underline">Shop</Link>
           <Link href="/homes" className="hover:underline">Real Estate</Link>
-          <Link href="/circle" className="hover:underline">Everything We Do</Link>
+          <Link href="/start" className="hover:underline">Everything We Do</Link>
         </div>
       </footer>
       <MoreFromTolley currentSubsite="estate" />

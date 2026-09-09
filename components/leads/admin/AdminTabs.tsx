@@ -32,21 +32,12 @@ const FEATURES: AdminFeature[] = [
   },
   {
     id: "integrations",
-    title: "Integrations",
+    title: "CSV import",
     description:
-      "Connect Twilio A2P, MLS Grid, NARRPR, Remine, Facebook Business, Google My Business, Stripe.",
-    href: "/leads/connects",
+      "Upload a CSV of leads from your dashboard.",
+    href: "/leads/dashboard",
     accent: "blue",
     icon: <Icon path="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1 M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />,
-  },
-  {
-    id: "mls",
-    title: "MLS Session Hub",
-    description:
-      "Heartland MLS Clareity SSO, Matrix-Tax, Remine, RPR, Realist, Cloud CMA — all unlocked by one login.",
-    href: "/leads/connects",
-    accent: "emerald",
-    icon: <Icon path="M12 2 4 6v12l8 4 8-4V6l-8-4z M4 6l8 4 8-4 M12 10v12" />,
   },
   {
     id: "settings",

@@ -1,3 +1,4 @@
+import { SHOP_VIDEO_WHERE } from "@/lib/shop-video-visibility";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -96,10 +97,7 @@ async function getTabCounts(): Promise<TabCounts> {
         .catch(() => 0),
       prisma.product
         .count({
-          where: {
-            videoUrl: { not: null },
-            status: { in: ["listed", "sold"] },
-          },
+          where: SHOP_VIDEO_WHERE,
         })
         .catch(() => 0),
       prisma.review
@@ -232,8 +230,8 @@ export default async function ShopLayout({
               Terms
             </Link>
             <span className="text-white/20">|</span>
-            <Link href="/circle" className="transition hover:text-white/70">
-              The Circle
+            <Link href="/start#route" className="transition hover:text-white/70">
+              Get help choosing
             </Link>
             <span className="text-white/20">|</span>
             <Link href="/start" className="transition hover:text-white/70">

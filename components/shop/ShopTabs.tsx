@@ -39,7 +39,7 @@ export default function ShopTabs({ position, counts }: ShopTabsProps) {
       className={`${positionClass} -webkit-overflow-scrolling-touch overflow-x-auto`}
     >
       <ul className="mx-auto flex max-w-5xl items-center gap-1.5 px-4 py-2">
-        {TABS.map((tab) => {
+        {TABS.filter((tab) => tab.key !== "videos" || (counts?.videos ?? 0) > 0).map((tab) => {
           const active = pathname === tab.href;
           const count = counts?.[tab.key];
           return (

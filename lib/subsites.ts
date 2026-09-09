@@ -1,3 +1,4 @@
+import { UNPROMOTED_SUBSITES } from "@/lib/public-route-policy";
 import type { SubsiteManifest } from "./agent-manifest";
 
 // Per-subsite manifests are imported here. Each app/<name>/agent.ts exports
@@ -128,7 +129,7 @@ export function publicSubsites(): SubsiteManifest[] {
 
 export function discoverableSubsites(): SubsiteManifest[] {
   // public + auth-gated (auth ones expose product metadata via /api/<name>/public)
-  return SUBSITES;
+  return SUBSITES.filter((s) => !UNPROMOTED_SUBSITES.has(s.name));
 }
 
 export function subsiteNames(): string[] {

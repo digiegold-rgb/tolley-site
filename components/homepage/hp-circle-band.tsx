@@ -39,7 +39,7 @@ export function HpCircleBand() {
             </Link>
           ))}
           <Link
-            href="/circle"
+            href="/start"
             className="rounded-full bg-purple-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-purple-400"
           >
             ⭕ Everything

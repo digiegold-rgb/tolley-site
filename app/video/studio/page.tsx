@@ -1,7 +1,8 @@
+import { routeDestination, type RouteSearchParams } from "@/lib/public-route-policy";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { StudioClient } from "./studio-client";
-import { StudioLanding } from "./studio-landing";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -11,12 +12,12 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
-export default async function StudioPage() {
+export default async function StudioPage({ searchParams }: { searchParams: Promise<RouteSearchParams> }) {
   const session = await auth();
 
-  // Not logged in → show landing page
+  // New visitors enter through the current product; existing customers keep their workspace.
   if (!session?.user?.id) {
-    return <StudioLanding />;
+    redirect(routeDestination("/animate", await searchParams));
   }
 
   const isAdmin =

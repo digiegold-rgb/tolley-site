@@ -1,3 +1,4 @@
+import { requireVaterAdminPageSession } from "@/lib/admin-auth";
 import type { Metadata } from "next";
 
 import { DropshipArbitrage } from "@/components/vater/dropship-arbitrage";
@@ -8,12 +9,14 @@ import { DropshipPipeline } from "@/components/vater/dropship-pipeline";
 import { DropshipSetup } from "@/components/vater/dropship-setup";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: false },
   title: "Dropship | Amazon to eBay Arbitrage — Vater Ventures",
   description:
     "AI-powered Amazon-to-eBay dropshipping. Scan price gaps, auto-list at markup, fulfill direct. Zero inventory arbitrage automated.",
 };
 
-export default function DropshipPage() {
+export default async function DropshipPage() {
+  await requireVaterAdminPageSession("/vater/dropship");
   return (
     <main>
       <DropshipHero />

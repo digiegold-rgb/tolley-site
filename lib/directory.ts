@@ -1,3 +1,4 @@
+import { UNPROMOTED_SUBSITES } from "@/lib/public-route-policy";
 import { SUBSITES } from "@/lib/subsites";
 
 /**
@@ -114,7 +115,7 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
   },
   trailer: {
     group: "Rentals",
-    tagline: "Enclosed cargo trailer rental",
+    tagline: "Utility trailer & car hauler rental",
     bullets: ["16ft to 20ft", "Up to 10,000 lbs", "Utility & car haulers"],
     image: "/trailer/20/20-1.jpg",
     emoji: "🚚",
@@ -122,7 +123,7 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
   },
   generator: {
     group: "Rentals",
-    tagline: "Honda generator rental for jobs & events",
+    tagline: "Generator rental for jobs & events",
     bullets: ["Portable power", "Delivery available", "Jobs & events"],
     image: "/generator/gen-1.jpg",
     emoji: "⚡",
@@ -130,10 +131,10 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
   },
   kerplunk: {
     group: "Rentals",
-    tagline: "Furniture rental — Kerplunk",
-    bullets: ["Furnish fast", "Flexible terms", "KC metro"],
+    tagline: "Giant Kerplunk yard game rental",
+    bullets: ["Parties & events", "Giant yard game", "KC metro"],
     image: "/kerplunk/kerplunk-1.jpg",
-    emoji: "🛋️",
+    emoji: "🎯",
     accent: "violet",
   },
   "picnic-table": {
@@ -187,8 +188,8 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
   },
   drive: {
     group: "Hauling & Delivery",
-    tagline: "On-demand delivery — Red Alert Dispatch",
-    bullets: ["Same-day", "KC metro", "Request a run"],
+    tagline: "Drive with Red Alert Dispatch",
+    bullets: ["Driver opportunities", "KC metro", "Apply to drive"],
     emoji: "🚗",
     accent: "red",
   },
@@ -303,6 +304,7 @@ export function buildDirectory(): DirectoryEntry[] {
   const entries: DirectoryEntry[] = [];
 
   for (const [name, meta] of Object.entries(DIRECTORY_DISPLAY)) {
+    if (UNPROMOTED_SUBSITES.has(name)) continue;
     const sub = byName.get(name);
     if (!sub) {
       if (process.env.NODE_ENV !== "production") {

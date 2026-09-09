@@ -181,6 +181,10 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      { source: "/clean", destination: "/cleanouts", permanent: true },
+      { source: "/circle", destination: "/start", permanent: true },
+      { source: "/leads/connects", destination: "/leads/dashboard", permanent: false },
+      { source: "/leads/dossier/property/:address", destination: "/agent#demo", permanent: true },
       { source: "/leads/demo", destination: "/agent#demo", permanent: true },
       { source: "/agent/demo", destination: "/agent#demo", permanent: true },
       { source: "/agent/pricing", destination: "/leads/pricing", permanent: true },
@@ -195,7 +199,7 @@ const nextConfig: NextConfig = {
       // destination page's OG tags.
       {
         source: "/m/wd",
-        destination: "/rental?utm_source=messenger&utm_medium=auto_reply",
+        destination: "/wd?utm_source=messenger&utm_medium=auto_reply",
         permanent: false,
       },
       {
