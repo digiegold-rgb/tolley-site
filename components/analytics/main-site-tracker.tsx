@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { captureAttribution } from "@/lib/lead-capture-client";
+import { captureAttribution, visitorSessionId } from "@/lib/lead-capture-client";
 
 // Any path starting with one of these prefixes has its own per-site
 // SiteTracker in its own layout — we skip those here to avoid double-tracking.
@@ -92,7 +92,7 @@ export function MainSiteTracker() {
         site: "home",
         path: pathname,
         referrer: getReferrer(),
-        sessionId: captureAttribution().sessionId,
+        sessionId: visitorSessionId(),
         campaign: captureAttribution(),
       }),
     }).catch(() => {});
