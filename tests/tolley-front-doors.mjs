@@ -47,6 +47,10 @@ try {
   await page.waitForURL(/\/agent$/);
   await page.locator("#features").waitFor();
   await page.waitForLoadState("networkidle");
+  // A soft navigation can be network-idle before React flushes passive effects.
+  const eventDeadline = Date.now() + 15000;
+  while (!analytics.some(e => e.type === "view" && e.path === "/agent") && Date.now() < eventDeadline) await page.waitForTimeout(100);
+  await page.waitForTimeout(500);
   const agentViews = analytics.filter(e => e.type === "view" && e.path === "/agent");
   assert.equal(agentViews.length, 1, "one tracker owns each /agent visit");
   assert.equal(agentViews[0].site, "agent");
