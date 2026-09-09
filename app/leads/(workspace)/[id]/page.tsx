@@ -1,3 +1,5 @@
+import { customerLeads } from "@/lib/customer-leads";
+import { requireLeadSubscriber } from "@/lib/lead-subscriber";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -17,7 +19,7 @@ export default async function LeadDetailPage({
     redirect("/login?callbackUrl=/leads");
   }
 
-  const lead = await prisma.lead.findUnique({
+  const lead = await (customerLeads((await requireLeadSubscriber()).id)).findUnique({
     where: { id },
     include: {
       listing: {

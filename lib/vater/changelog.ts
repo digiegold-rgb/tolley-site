@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.38.0';
+export const APP_VERSION = '1.38.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,10 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.38.1', date: '2026-09-09', title: 'Safer accounts and more reliable reporting',
+    items: ['Owner dashboards require account sign-in and an authenticator, with recovery codes.', 'Each T-Agent customer keeps separate lead notes and pipeline changes.', 'Page visits are recorded once, and the public studio page loads less editor code.', 'Updated security dependencies and browser protections.'],
+  },
   {
     version: '1.38.0', date: '2026-09-08', title: 'A new Tolley home, with T-Agent at /agent',
     items: ['The Tolley homepage introduces T-Agent, Jelly Studio, and Kansas City services.', 'T-Agent keeps its full homepage at /agent, with connected navigation, pricing, signup, and discovery links.', 'Jelly Studio signup is clearly open. T-Agent annual pricing is shown only when configured, using actual checkout amounts.'],

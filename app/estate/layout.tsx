@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Fraunces } from "next/font/google";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import "./estate.css";
 
 const fraunces = Fraunces({
@@ -43,7 +42,6 @@ export const metadata: Metadata = {
 export default function EstateLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`estate-page ${fraunces.variable}`}>
-      <SiteTracker site="estate" />
       {children}
     </div>
   );

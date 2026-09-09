@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import { EmailCaptureForm } from "@/components/tools/EmailCaptureForm";
 import { directoryByGroup, type DirectoryGroup } from "@/lib/directory";
 import { getCircleStats } from "@/lib/circle-stats";
@@ -65,7 +64,6 @@ export default async function CirclePage() {
 
   return (
     <div className="circle-page">
-      <SiteTracker site="circle" />
       <main className="relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col items-center px-5 py-10 sm:py-14">
         {/* Hero */}
         <div className="mb-8 text-center">

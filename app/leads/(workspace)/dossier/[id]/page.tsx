@@ -1,5 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { secretEquals } from "@/lib/secret-compare";
+import { isAdminEmail } from "@/lib/admin-auth";
+import { requireLeadSubscriber } from "@/lib/lead-subscriber";
 import { prisma } from "@/lib/prisma";
 import DossierView from "@/components/leads/DossierView";
 
@@ -16,13 +20,15 @@ export default async function DossierDetailPage({
 }) {
   const { id } = await params;
   const { key } = await searchParams;
-  const hasKeyAuth = key === process.env.SYNC_SECRET;
+  const hasKeyAuth = secretEquals(key, process.env.SYNC_SECRET);
+  const session = await auth();
+  const canEdit = hasKeyAuth || Boolean(session?.user?.id && isAdminEmail(session.user.email) && !session.impersonatedBy);
 
   if (!hasKeyAuth) {
-    const session = await auth();
     if (!session?.user?.id) {
       redirect("/login?callbackUrl=/leads/dossier");
     }
+    if (!canEdit) await requireLeadSubscriber();
   }
 
   const job = await prisma.dossierJob.findUnique({
@@ -31,7 +37,7 @@ export default async function DossierDetailPage({
       listing: {
         include: {
           enrichment: true,
-          leads: { take: 1, orderBy: { score: "desc" } },
+          leads: { where: { ownerSubscriberId: null, OR: [{ source: null }, { source: { not: "fsbo_manual" } }] }, select: { score: true }, take: 1, orderBy: { score: "desc" } },
         },
       },
       result: true,
@@ -50,15 +56,15 @@ export default async function DossierDetailPage({
 
   return (
     <>
-      <a
+      <Link
         href="/leads/dossier"
         className="text-sm text-blue-400 hover:underline mb-4 inline-block"
       >
         &larr; Back to dossiers
-      </a>
+      </Link>
 
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <DossierView job={serializedJob as any} syncKey={key || ""} />
+      <DossierView canEdit={canEdit} job={serializedJob as any} syncKey={hasKeyAuth ? key! : ""} />
     </>
   );
 }

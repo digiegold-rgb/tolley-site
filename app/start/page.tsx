@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import { directoryByGroup, type DirectoryEntry } from "@/lib/directory";
 
 export const metadata: Metadata = {
@@ -81,7 +80,6 @@ export default function StartPage() {
   const groups = directoryByGroup();
   return (
     <div className="start-page">
-      <SiteTracker site="start" />
       <main className="relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col items-center px-5 py-10 sm:py-14">
         {/* Hero */}
         <div className="mb-10 text-center">

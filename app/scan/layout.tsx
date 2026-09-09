@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Russo_One } from "next/font/google";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import "./scan.css";
 
 const russoOne = Russo_One({
@@ -23,7 +22,6 @@ export default function ScanLayout({
 }) {
   return (
     <div className={`scan-page scan-texture ${russoOne.variable}`}>
-      <SiteTracker site="scan" />
       {children}
     </div>
   );

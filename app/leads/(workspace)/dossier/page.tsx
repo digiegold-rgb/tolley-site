@@ -1,5 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { secretEquals } from "@/lib/secret-compare";
+import { isAdminEmail } from "@/lib/admin-auth";
+import { requireLeadSubscriber } from "@/lib/lead-subscriber";
 import { prisma } from "@/lib/prisma";
 import { getPluginManifest } from "@/lib/dossier/plugins/registry";
 import DossierList from "@/components/leads/DossierList";
@@ -12,13 +16,15 @@ export default async function DossierPage({
   searchParams: Promise<{ key?: string }>;
 }) {
   const { key } = await searchParams;
-  const hasKeyAuth = key === process.env.SYNC_SECRET;
+  const hasKeyAuth = secretEquals(key, process.env.SYNC_SECRET);
+  const session = await auth();
+  const canEdit = hasKeyAuth || Boolean(session?.user?.id && isAdminEmail(session.user.email) && !session.impersonatedBy);
 
   if (!hasKeyAuth) {
-    const session = await auth();
     if (!session?.user?.id) {
       redirect("/login?callbackUrl=/leads/dossier");
     }
+    if (!canEdit) await requireLeadSubscriber();
   }
 
   const [jobs, total] = await Promise.all([
@@ -71,12 +77,12 @@ export default async function DossierPage({
             Deep research dossiers — owner data, court records, social profiles
           </p>
         </div>
-        <a
+        <Link
           href="/leads/narrpr"
           className="rounded-lg bg-orange-600/80 px-4 py-2 text-sm font-medium text-white hover:bg-orange-500 transition-colors flex items-center gap-2"
         >
           <span>NARRPR Import</span>
-        </a>
+        </Link>
       </div>
 
       {/* Plugin status */}
@@ -105,7 +111,7 @@ export default async function DossierPage({
       <DossierList
         jobs={data.jobs}
         total={data.total}
-        syncKey={key || ""}
+        syncKey={hasKeyAuth ? key! : ""}
       />
     </>
   );

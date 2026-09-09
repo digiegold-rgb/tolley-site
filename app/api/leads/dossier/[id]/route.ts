@@ -8,15 +8,22 @@
  */
 
 import { NextRequest, NextResponse, after } from "next/server";
+import { secretEquals } from "@/lib/secret-compare";
+import { isAdminEmail } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { runDossierPipeline } from "@/lib/dossier/pipeline";
 
 async function checkAuth(req: NextRequest): Promise<boolean> {
-  const secret = req.headers.get("x-sync-secret");
-  if (secret && secret === process.env.SYNC_SECRET) return true;
+  if (secretEquals(req.headers.get("x-sync-secret"), process.env.SYNC_SECRET)) return true;
   const { auth: getSession } = await import("@/auth");
   const session = await getSession();
-  return Boolean(session?.user?.id);
+  if (!session?.user?.id) return false;
+  if (session.impersonatedBy && req.method !== "GET") return false;
+  if (isAdminEmail(session.user.email)) return true;
+  // Shared research edits and re-runs alter source data for every customer.
+  if (req.method !== "GET") return false;
+  const subscriber = await prisma.leadSubscriber.findUnique({ where: { userId: session.user.id }, select: { status: true } });
+  return subscriber?.status === "active";
 }
 
 // ── GET — job status + result ───────────────────────────────
@@ -36,7 +43,7 @@ export async function GET(
       listing: {
         include: {
           enrichment: true,
-          leads: { take: 1, orderBy: { score: "desc" } },
+          leads: { where: { ownerSubscriberId: null, OR: [{ source: null }, { source: { not: "fsbo_manual" } }] }, select: { score: true }, take: 1, orderBy: { score: "desc" } },
         },
       },
       result: true,

@@ -148,7 +148,7 @@ interface Listing {
     estimatedAnnualTax: number | null;
     taxBurdenRating: string | null;
   } | null;
-  leads: { score: number; status: string }[];
+  leads: { score: number }[];
 }
 
 interface StepDetail {
@@ -211,9 +211,11 @@ type Section = "brief" | "narrative" | "owners" | "parcel" | "legal" | "history"
 
 export default function DossierView({
   job: initialJob,
+  canEdit = false,
   syncKey,
 }: {
   job: DossierJob;
+  canEdit?: boolean;
   syncKey: string;
 }) {
   // Keep job in state so we can live-poll status while queued/running.
@@ -469,7 +471,7 @@ export default function DossierView({
       </div>
 
       {/* ── Manual Info & Re-run ── */}
-      {(job.status === "complete" || job.status === "partial" || job.status === "failed") && (
+      {canEdit && (job.status === "complete" || job.status === "partial" || job.status === "failed") && (
         <div className="rounded-xl bg-purple-500/5 border border-purple-500/20 p-4">
           <h3 className="text-sm font-medium text-purple-300 mb-3">Add Info / Re-run Research</h3>
           <div className="flex flex-wrap gap-2 mb-3">
@@ -1614,7 +1616,12 @@ function LivePipelineProgress({
   pollError: string | null;
 }) {
   const l = job.listing;
-  const elapsedMs = Date.now() - new Date(job.createdAt).getTime();
+  const [clock, setClock] = useState(() => new Date(job.updatedAt).getTime());
+  useEffect(() => {
+    const timer = setInterval(() => setClock(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const elapsedMs = Math.max(0, clock - new Date(job.createdAt).getTime());
   const elapsedStr = formatElapsed(elapsedMs);
 
   const details: Record<string, StepDetail> = job.stepDetails || {};

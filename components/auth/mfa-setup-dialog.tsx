@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 type MfaSetupDialogProps = {
   onComplete: () => void;
@@ -59,10 +59,12 @@ export function MfaSetupDialog({ onComplete, onCancel }: MfaSetupDialogProps) {
     }
   }
 
-  // Auto-start on mount
-  if (step === "loading" && !loading && !error) {
-    startSetup();
-  }
+  const started = useRef(false);
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    void startSetup();
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">

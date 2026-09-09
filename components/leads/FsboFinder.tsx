@@ -52,6 +52,7 @@ export default function FsboFinder({ leads }: { leads: FsboLead[] }) {
   const [showTips, setShowTips] = useState(true);
   const [selectedLead, setSelectedLead] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
     address: "",
     city: "",
@@ -71,6 +72,7 @@ export default function FsboFinder({ leads }: { leads: FsboLead[] }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
+    setError("");
     try {
       const res = await fetch("/api/leads", {
         method: "POST",
@@ -88,9 +90,11 @@ export default function FsboFinder({ leads }: { leads: FsboLead[] }) {
         setAllLeads((prev) => [newLead, ...prev]);
         setForm({ address: "", city: "", zip: "", ownerName: "", phone: "", email: "", askingPrice: "", source: "Zillow", notes: "" });
         setShowForm(false);
+      } else {
+        setError((await res.json()).error || "Could not save this lead. Please try again.");
       }
     } catch {
-      /* fail silently */
+      setError("Could not save this lead. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -99,6 +103,7 @@ export default function FsboFinder({ leads }: { leads: FsboLead[] }) {
   return (
     <section className="space-y-6">
       <h1 className="text-2xl font-bold text-white">FSBO Finder</h1>
+      {error && <p role="alert" className="text-red-400">{error}</p>}
 
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[

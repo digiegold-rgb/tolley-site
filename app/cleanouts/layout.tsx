@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Oswald } from "next/font/google";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import "./cleanouts.css";
 
 const oswald = Oswald({
@@ -26,7 +25,6 @@ export const metadata: Metadata = {
 export default function CleanoutsLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`cleanouts-page ${oswald.variable}`}>
-      <SiteTracker site="cleanouts" />
       {children}
     </div>
   );

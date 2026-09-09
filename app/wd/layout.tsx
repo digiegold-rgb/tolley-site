@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Fredoka } from "next/font/google";
 
 import { WdBubbles } from "@/components/wd/wd-bubbles";
-import { SiteTracker, EventTracker } from "@/components/analytics/site-tracker";
+import { EventTracker } from "@/components/analytics/site-tracker";
 import { GA4 } from "@/components/analytics/ga4";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
 import { WdFooter } from "@/components/wd/wd-footer";
@@ -50,7 +50,6 @@ export const metadata: Metadata = {
 export default function WdLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`wd-page ${fredoka.variable}`}>
-      <SiteTracker site="wd" />
       <GA4 />
       <MetaPixel />
       <EventTracker site="wd">

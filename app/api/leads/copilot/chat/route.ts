@@ -1,3 +1,4 @@
+import { customerLeads } from "@/lib/customer-leads";
 /**
  * POST /api/leads/copilot/chat
  *
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
 
   const [hotLeads, overdueCount, pipelineCounts, recentListings] =
     await Promise.all([
-      prisma.lead.findMany({
+      customerLeads(sub.id).findMany({
         where: { score: { gte: 60 }, ...farmWhere },
         include: {
           listing: {
@@ -115,7 +116,7 @@ export async function POST(req: NextRequest) {
           dueDate: { lt: new Date() },
         },
       }),
-      prisma.lead.groupBy({
+      customerLeads(sub.id).groupBy({
         by: ["status"],
         where: farmWhere,
         _count: { id: true },

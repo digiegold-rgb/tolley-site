@@ -1,3 +1,4 @@
+import { customerLeads } from "@/lib/customer-leads";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -65,7 +66,7 @@ export async function GET(
       }
       if (filters.tags && filters.tags.length > 0) {
         leadWhere.ContactTag = {
-          some: { Tag: { name: { in: filters.tags } } },
+          some: { Tag: { subscriberId: sub.id, name: { in: filters.tags } } },
         };
       }
       if (filters.sources && filters.sources.length > 0) {
@@ -92,7 +93,7 @@ export async function GET(
       // Build orderBy
       const leadOrderBy = buildLeadOrderBy(sortBy, sortDir);
 
-      const leads = await prisma.lead.findMany({
+      const leads = await customerLeads(sub.id).findMany({
         where: leadWhere,
         include: {
           listing: {
@@ -109,11 +110,11 @@ export async function GET(
               status: true,
             },
           },
-          ContactTag: { include: { Tag: true } },
+          ContactTag: { where: { Tag: { subscriberId: sub.id } }, include: { Tag: true } },
           _count: {
             select: {
-              CrmTask: { where: { status: "pending" } },
-              CrmActivity: true,
+              CrmTask: { where: { subscriberId: sub.id, status: "pending" } },
+              CrmActivity: { where: { subscriberId: sub.id } },
             },
           },
         },
@@ -141,7 +142,7 @@ export async function GET(
       }
       if (filters.tags && filters.tags.length > 0) {
         clientWhere.ContactTag = {
-          some: { Tag: { name: { in: filters.tags } } },
+          some: { Tag: { subscriberId: sub.id, name: { in: filters.tags } } },
         };
       }
       if (filters.minScore !== undefined && filters.minScore > 0) {
@@ -153,11 +154,11 @@ export async function GET(
       const clients = await prisma.client.findMany({
         where: clientWhere,
         include: {
-          ContactTag: { include: { Tag: true } },
+          ContactTag: { where: { Tag: { subscriberId: sub.id } }, include: { Tag: true } },
           _count: {
             select: {
-              CrmTask: { where: { status: "pending" } },
-              CrmActivity: true,
+              CrmTask: { where: { subscriberId: sub.id, status: "pending" } },
+              CrmActivity: { where: { subscriberId: sub.id } },
             },
           },
         },

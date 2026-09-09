@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Chakra_Petch } from "next/font/google";
 
 import { HvacSnowflakes } from "@/components/hvac/hvac-snowflakes";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import { HvacFooter } from "@/components/hvac/hvac-footer";
 import "./hvac.css";
 
@@ -45,7 +44,6 @@ export const metadata: Metadata = {
 export default function HvacLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`hvac-page hvac-frost ${chakraPetch.variable}`}>
-      <SiteTracker site="hvac" />
       <HvacSnowflakes />
       <div aria-hidden="true" className="site-dot-grid-cyan pointer-events-none fixed inset-0 z-0" />
       {children}

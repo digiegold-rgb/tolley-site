@@ -463,6 +463,8 @@ model Listing {
 }
 
 model Lead {
+  ownerSubscriberId String?
+  customerState CustomerLeadState[]
   id             String        @id @default(cuid())
   listingId      String?
   score          Int           @default(0)
@@ -5898,4 +5900,27 @@ model LeadNotification {
   lastError   String?
   createdAt   DateTime @default(now())
   @@index([status, availableAt])
+}
+
+/// Customer-owned annotations; source Lead records remain shared and immutable to customers.
+model CustomerLeadState {
+  id String @id @default(cuid())
+  subscriberId String
+  leadId String
+  status String @default("new")
+  notes String?
+  referredTo String?
+  referralStatus String?
+  referralFee Float?
+  contactedAt DateTime?
+  closedAt DateTime?
+  ownerName String?
+  ownerPhone String?
+  ownerEmail String?
+  pipelineStage String @default("new_lead")
+  pipelineOrder Int @default(0)
+  updatedAt DateTime @updatedAt
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  @@unique([subscriberId, leadId])
+  @@index([subscriberId, status])
 }

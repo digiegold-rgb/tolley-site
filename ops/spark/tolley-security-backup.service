@@ -1,0 +1,11 @@
+[Unit]
+Description=Encrypted offsite backup of Tolley database and Spark configuration
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/env node --env-file=/home/jelly/.config/tolley-security/production.env /home/jelly/.local/lib/tolley/security-backup.mjs
+TimeoutStartSec=2h
+Nice=10

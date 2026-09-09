@@ -1,3 +1,5 @@
+import { customerLeads } from "@/lib/customer-leads";
+import { requireLeadSubscriber } from "@/lib/lead-subscriber";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -40,7 +42,7 @@ export default async function CockpitPage() {
   // Gather all Cockpit data in a single Promise.all
   const [hotLeads, statusCounts, overdueTasks, lastSync, listingCount, leadCount] =
     await Promise.all([
-      prisma.lead.findMany({
+      (customerLeads((await requireLeadSubscriber()).id)).findMany({
         where: {
           score: { gte: 50 },
           ...(sub.farmZips.length > 0
@@ -61,7 +63,7 @@ export default async function CockpitPage() {
         orderBy: [{ score: "desc" }, { updatedAt: "desc" }],
         take: 10,
       }),
-      prisma.lead.groupBy({
+      (customerLeads((await requireLeadSubscriber()).id)).groupBy({
         by: ["status"],
         where:
           sub.farmZips.length > 0
@@ -83,7 +85,7 @@ export default async function CockpitPage() {
         orderBy: { createdAt: "desc" },
       }),
       prisma.listing.count(),
-      prisma.lead.count({
+      (customerLeads((await requireLeadSubscriber()).id)).count({
         where: { score: { gte: 20 } },
       }),
     ]);

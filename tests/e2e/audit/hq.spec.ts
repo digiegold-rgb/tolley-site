@@ -1,9 +1,9 @@
 /**
  * tests/e2e/audit/hq.spec.ts — READ-ONLY audit sweep of /hq.
  *
- * Auth: POST /api/hq/auth {pin} (see app/api/hq/auth/route.ts — body shape is
- * `{ pin: string }`, response sets the httpOnly `wd_admin` cookie). The PIN
- * comes from AUDIT_HQ_PIN, falling back to WD_ADMIN_PIN_TOLLEY in .env.local.
+ * Auth: AUDIT_HQ_STORAGE_STATE points to a private Playwright storage-state
+ * file saved after a real owner account sign-in and MFA challenge.
+ * Never commit that file; it contains session credentials.
  *
  * Every tab in app/hq/page.tsx TABS is visited via /hq?tab=<t>, plus
  * /hq/storefront. For each: networkidle, screenshots + overflow at 3
@@ -17,6 +17,7 @@
  *   AUDIT_OUT_DIR=/home/jelly/Shared/site-audit/2026-08-15/baseline \
  *   npm run audit:hq
  */
+import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 
 import {
@@ -27,7 +28,6 @@ import {
   attachCollectors,
   checkInternalLinks,
   gotoSettled,
-  hqPin,
   installNetworkGuard,
   newCollector,
   safeClickSweep,
@@ -88,8 +88,8 @@ test('hq audit sweep', async ({ page }) => {
     /* ── 0. Unauthenticated posture ───────────────────────────────────── */
     c.route = 'unauth:/hq';
     await gotoSettled(page, '/hq');
-    const pinInput = page.locator('input[placeholder="Enter PIN"]');
-    const pinVisible = await pinInput
+    const signIn = page.getByRole('link', { name: /sign in/i });
+    const signInVisible = await signIn
       .first()
       .isVisible({ timeout: 10_000 })
       .catch(() => false);
@@ -98,11 +98,11 @@ test('hq audit sweep', async ({ page }) => {
       id: c.route,
       url: `${BASE_URL}/hq`,
       persona: 'signed-out',
-      notes: [pinVisible ? 'PIN screen shown' : 'NO PIN SCREEN — investigate'],
+      notes: [signInVisible ? 'Owner sign-in shown' : 'NO SIGN-IN LINK — investigate'],
       overflow: {},
       screenshots: [unauthShot],
     });
-    expect(pinVisible, '/hq unauthenticated must show the PIN screen').toBe(true);
+    expect(signInVisible, '/hq unauthenticated must show owner sign-in').toBe(true);
 
     c.route = 'unauth:/api/hq/leads';
     const leadsUnauth = await page.request.get(`${BASE_URL}/api/hq/leads`);
@@ -117,18 +117,13 @@ test('hq audit sweep', async ({ page }) => {
     expect(leadsUnauth.status(), 'GET /api/hq/leads unauthenticated must be 401').toBe(401);
 
     /* ── 1. Authenticate ──────────────────────────────────────────────── */
-    const pin = hqPin();
-    expect(
-      typeof pin === 'string' && pin.length > 0,
-      'AUDIT_HQ_PIN or WD_ADMIN_PIN_TOLLEY (.env.local) must be set',
-    ).toBe(true);
-
+    const statePath = process.env.AUDIT_HQ_STORAGE_STATE;
+    expect(statePath, 'AUDIT_HQ_STORAGE_STATE must contain a fresh owner session with MFA').toBeTruthy();
+    const state = JSON.parse(readFileSync(statePath!, 'utf8'));
+    await page.context().addCookies(state.cookies);
     c.route = 'auth';
-    const authRes = await page.request.post(`${BASE_URL}/api/hq/auth`, {
-      data: { pin },
-      headers: { 'Content-Type': 'application/json' },
-    });
-    expect(authRes.status(), 'POST /api/hq/auth should return 200').toBe(200);
+    const authRes = await page.request.get(`${BASE_URL}/api/hq/leads`);
+    expect(authRes.status(), 'Saved owner session must pass MFA and HQ authorization').toBe(200);
 
     /* ── 2. Every tab ─────────────────────────────────────────────────── */
     const targets: Array<{ id: string; path: string }> = [
@@ -150,7 +145,7 @@ test('hq audit sweep', async ({ page }) => {
       routes.push({
         id: target.id,
         url: `${BASE_URL}${target.path}`,
-        persona: 'admin (PIN)',
+        persona: 'owner (account + MFA)',
         notes: [],
         overflow: sweep.overflow,
         screenshots: sweep.screenshots,

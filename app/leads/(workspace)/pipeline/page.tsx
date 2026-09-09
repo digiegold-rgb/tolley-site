@@ -1,3 +1,5 @@
+import { customerLeads } from "@/lib/customer-leads";
+import { requireLeadSubscriber } from "@/lib/lead-subscriber";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -27,7 +29,7 @@ export default async function PipelinePage() {
   if (!sub || sub.status !== "active") redirect("/leads/pricing");
   if (!sub.onboarded) redirect("/leads/onboard");
 
-  const leads = await prisma.lead.findMany({
+  const leads = await (customerLeads((await requireLeadSubscriber()).id)).findMany({
     where:
       sub.farmZips.length > 0
         ? { listing: { zip: { in: sub.farmZips } } }

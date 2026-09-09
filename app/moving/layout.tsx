@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
 import { MovingFooter } from "@/components/moving/moving-footer";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import "./moving.css";
 
 const inter = Inter({
@@ -42,7 +41,6 @@ export const metadata: Metadata = {
 export default function MovingLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`moving-page mv-grid ${inter.variable}`}>
-      <SiteTracker site="moving" />
       <div aria-hidden="true" className="site-dot-grid-emerald pointer-events-none fixed inset-0 z-0" />
       {children}
       <MovingFooter />

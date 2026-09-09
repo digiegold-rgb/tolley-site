@@ -1,6 +1,6 @@
 "use client";
 
-import { visitorSessionId, captureAttribution } from "@/lib/lead-capture-client";
+import { visitorSessionId } from "@/lib/lead-capture-client";
 import { useEffect, useCallback } from "react";
 
 function classifyReferrer(ref: string): string {
@@ -28,25 +28,6 @@ function getReferrer(): string {
   const refParam = params.get("ref") || params.get("utm_source");
   if (refParam) return refParam;
   return classifyReferrer(document.referrer);
-}
-
-/** Universal page view + event tracker. Drop into any site layout. */
-export function SiteTracker({ site }: { site: string }) {
-  useEffect(() => {
-    fetch("/api/analytics", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "view",
-        sessionId: visitorSessionId(), campaign: captureAttribution(),
-        site,
-        path: window.location.pathname,
-        referrer: getReferrer(),
-      }),
-    }).catch(() => {});
-  }, [site]);
-
-  return null;
 }
 
 /** Track a specific event (phone click, CTA, form, etc.) */

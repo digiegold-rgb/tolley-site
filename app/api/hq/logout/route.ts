@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { clearGenerateLibraryCookie } from "@/lib/generate-library-auth";
@@ -22,6 +23,11 @@ export async function POST() {
       sameSite: cookie.sameSite,
       path: cookie.path,
     });
+  }
+  for (const cookie of (await cookies()).getAll()) {
+    if (cookie.name.includes("authjs.session-token") || cookie.name === "tolley_mfa") {
+      response.cookies.set(cookie.name, "", { maxAge: 0, path: "/", httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" });
+    }
   }
   return response;
 }

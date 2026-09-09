@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Anton, Work_Sans, Permanent_Marker } from "next/font/google";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import "./sales.css";
 
 const anton = Anton({
@@ -55,7 +54,6 @@ export const metadata: Metadata = {
 export default function SalesLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`lp-page ${anton.variable} ${workSans.variable} ${marker.variable}`}>
-      <SiteTracker site="sales" />
       {children}
     </div>
   );

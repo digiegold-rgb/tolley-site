@@ -1,3 +1,6 @@
+import { customerLeads } from "@/lib/customer-leads";
+import { secretEquals } from "@/lib/secret-compare";
+import { isAdminEmail } from "@/lib/admin-auth";
 /**
  * POST /api/leads/dossier — Request dossier research for 1-5 properties
  * GET  /api/leads/dossier — List all dossier jobs with status
@@ -13,17 +16,20 @@ import { auth as getSession } from "@/auth";
 
 const prisma = new PrismaClient();
 
-async function checkAuth(req: NextRequest): Promise<boolean> {
-  const secret = req.headers.get("x-sync-secret");
-  if (secret && secret === process.env.SYNC_SECRET) return true;
+async function leadStore(req: NextRequest) {
+  if (secretEquals(req.headers.get("x-sync-secret"), process.env.SYNC_SECRET)) return prisma.lead;
   const session = await getSession();
-  return Boolean(session?.user?.id);
+  if (!session?.user?.id) return null;
+  if (isAdminEmail(session.user.email)) return prisma.lead;
+  const sub = await prisma.leadSubscriber.findUnique({ where: { userId: session.user.id } });
+  return sub?.status === "active" ? customerLeads(sub.id) : null;
 }
 
 // ── POST: Request new dossier research ──────────────────────
 
 export async function POST(req: NextRequest) {
-  if (!(await checkAuth(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const store = await leadStore(req);
+  if (!store) return NextResponse.json({ error: "Active subscription or operator access required" }, { status: 403 });
 
   const body = await req.json();
   const { listingIds, leadIds } = body as {
@@ -43,7 +49,7 @@ export async function POST(req: NextRequest) {
   const leadIdMap: Record<string, string> = {};
 
   if (leadIds?.length) {
-    const leads = await prisma.lead.findMany({
+    const leads = await store.findMany({
       where: { id: { in: leadIds } },
       select: { id: true, listingId: true },
     });
@@ -127,7 +133,8 @@ export async function POST(req: NextRequest) {
 // ── GET: List dossier jobs ──────────────────────────────────
 
 export async function GET(req: NextRequest) {
-  if (!(await checkAuth(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const store = await leadStore(req);
+  if (!store) return NextResponse.json({ error: "Active subscription or operator access required" }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status"); // filter by status

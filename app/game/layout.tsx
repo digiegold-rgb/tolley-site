@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Fredoka } from "next/font/google";
 
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import { GA4 } from "@/components/analytics/ga4";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
 import "./game.css";
@@ -36,7 +35,6 @@ export const viewport = {
 export default function GameLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`game-page ${fredoka.variable}`}>
-      <SiteTracker site="game" />
       <GA4 />
       <MetaPixel />
       {children}

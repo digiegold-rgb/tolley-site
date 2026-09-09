@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 
 export const metadata: Metadata = {
   title: "Shop Her Look | tolley.io/fit",
@@ -18,7 +17,6 @@ export const metadata: Metadata = {
 export default function FitLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#0b0b10] text-white">
-      <SiteTracker site="fit" />
       <header className="border-b border-white/10 bg-gradient-to-r from-pink-500/15 via-fuchsia-500/5 to-transparent">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
           <Link href="/fit" className="flex items-center gap-2 text-lg font-bold">

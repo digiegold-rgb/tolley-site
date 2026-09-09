@@ -30,6 +30,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const callbackUrl = resolveCallbackUrl(params.callbackUrl);
   const session = await auth();
 
+  if (session?.mfaRequired) {
+    redirect(`/login/mfa-challenge?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+  }
+
   if (session?.user?.id) {
     redirect(callbackUrl);
   }

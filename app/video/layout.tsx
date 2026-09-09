@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
 
 import { VideoFooterWrapper } from "@/components/video/video-footer-wrapper";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import "./video.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -39,7 +38,6 @@ export const metadata: Metadata = {
 export default function VideoLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`video-page vid-grain vid-scanlines ${spaceGrotesk.variable}`}>
-      <SiteTracker site="video" />
       <div aria-hidden="true" className="site-dot-grid-purple pointer-events-none fixed inset-0 z-0" />
       {children}
       <VideoFooterWrapper />

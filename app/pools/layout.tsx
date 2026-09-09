@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
 
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import { PoolsCartProvider } from "@/components/pools/pools-cart-provider";
 import { PoolsCartDrawer } from "@/components/pools/pools-cart-drawer";
 import { PoolsFooter } from "@/components/pools/pools-footer";
@@ -49,7 +48,6 @@ export default function PoolsLayout({ children }: { children: React.ReactNode })
   return (
     <PoolsCartProvider>
       <div className={`pools-page ${nunito.variable}`}>
-        <SiteTracker site="pools" />
         <div aria-hidden="true" className="site-dot-grid-cyan pointer-events-none fixed inset-0 z-0" />
         {children}
         <PoolsFooter />

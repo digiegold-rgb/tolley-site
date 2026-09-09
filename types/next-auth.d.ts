@@ -2,6 +2,7 @@ import { DefaultSession } from "next-auth";
 
 declare module "next-auth" {
   interface Session {
+    mfaRequired?: "setup" | "verify";
     issuedAt?: string;
     /**
      * Set ONLY while an admin is running a "view as user" support session
@@ -26,6 +27,8 @@ declare module "next-auth" {
 
 declare module "next-auth/jwt" {
   interface JWT {
+    authSessionId?: string;
+    authAt?: number;
     /** User.sessionVersion this token was minted against (revocation). */
     sv?: number;
     /** Unix seconds of the last sessionVersion re-check. */

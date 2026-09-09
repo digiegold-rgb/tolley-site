@@ -1,5 +1,6 @@
 // Run only against the isolated test app: REVENUE_TEST_URL=http://127.0.0.1:3018 node tests/revenue-repair.mjs
 import assert from 'node:assert/strict';
+import { createOwnerSession } from './helpers/owner-session.mjs';
 import { chromium } from 'playwright';
 import { PrismaClient } from '@prisma/client';
 const base = process.env.REVENUE_TEST_URL;
@@ -7,6 +8,7 @@ if (base !== 'http://127.0.0.1:3018' || !process.env.DATABASE_URL?.includes('127
   throw new Error('Tests require the isolated localhost app and database.');
 }
 const p = new PrismaClient();
+let owner;
 const browser = await chromium.launch({ headless: true });
 const poolSku = `revenue-test-${crypto.randomUUID()}`;
 try {
@@ -28,10 +30,8 @@ try {
   assert.equal(anonymousSession.status, 200);
   assert.equal(await anonymousSession.json(), null);
   assert.equal((await fetch(base + '/api/cron/lead-notifications')).status, 401);
-  const login = await fetch(base + '/api/wd/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: 'revenue-test-admin-only' }) });
-  assert.equal(login.status, 200, 'Run the isolated server with WD_ADMIN_PIN_TOLLEY=revenue-test-admin-only');
-  const cookie = login.headers.get('set-cookie')?.split(';')[0];
-  assert.ok(cookie);
+  owner = await createOwnerSession(p, base);
+  const cookie = owner.cookie;
   const business = await fetch(base + '/api/hq/business', { headers: { cookie } });
   assert.equal(business.status, 200);
   const summary = await business.json();
@@ -75,4 +75,5 @@ try {
   await page.goto(base + '/pools', { waitUntil: 'networkidle', timeout: 120000 });
   assert.deepEqual(hydrationErrors, [], 'public pages must hydrate without errors');
   console.log('PASS: durable capture, deduplication, notification queue, auth, mobile widths, and failed-form retry.');
-} finally { await browser.close(); await p.poolProduct.deleteMany({ where: { sku: poolSku } }); await p.$disconnect(); }
+} finally {
+  await owner?.cleanup(); await browser.close(); await p.poolProduct.deleteMany({ where: { sku: poolSku } }); await p.$disconnect(); }

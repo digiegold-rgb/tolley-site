@@ -1,3 +1,4 @@
+import { customerCrmReferences } from "@/lib/customer-crm-references";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -135,6 +136,10 @@ export async function POST(request: NextRequest) {
 
     if (!title || typeof title !== "string" || title.trim().length === 0) {
       return NextResponse.json({ error: "Task title is required" }, { status: 400 });
+    }
+
+    if (!await customerCrmReferences(sub.id, { leadId, clientId, dealId })) {
+      return NextResponse.json({ error: "Contact or deal not found" }, { status: 404 });
     }
 
     const task = await prisma.crmTask.create({

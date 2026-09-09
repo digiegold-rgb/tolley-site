@@ -6,7 +6,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  await requireAdminApiSession();
+  const guard = await requireAdminApiSession();
+  if (!guard.ok) return guard.response;
 
   const url = new URL(request.url);
   const ticker = url.searchParams.get("ticker");

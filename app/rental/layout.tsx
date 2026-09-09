@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 
 import { RentalFooter } from "@/components/rental/rental-footer";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import { GA4 } from "@/components/analytics/ga4";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
 import "./rental.css";
@@ -29,7 +28,6 @@ export const metadata: Metadata = {
 export default function RentalLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`rental-page rent-dots ${poppins.variable}`}>
-      <SiteTracker site="rental" />
       <GA4 />
       <MetaPixel />
       {children}

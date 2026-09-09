@@ -1,3 +1,4 @@
+import { customerLeads } from "@/lib/customer-leads";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -20,6 +21,7 @@ export async function GET(request: NextRequest) {
     where: { userId: session.user.id },
     select: {
       id: true,
+      status: true,
       tier: true,
       smsUsed: true,
       smsLimit: true,
@@ -29,7 +31,7 @@ export async function GET(request: NextRequest) {
       createdAt: true,
     },
   });
-  if (!sub) {
+  if (!sub || sub.status !== "active") {
     return NextResponse.json({ error: "No subscription" }, { status: 403 });
   }
 
@@ -40,7 +42,7 @@ export async function GET(request: NextRequest) {
   // Funnel — all leads for this subscriber's farm area
   const [funnel, activity, conversations, recentLeads] = await Promise.all([
     // Lead funnel counts by status
-    prisma.lead.groupBy({
+    customerLeads(sub.id).groupBy({
       by: ["status"],
       _count: { id: true },
     }),
@@ -62,7 +64,7 @@ export async function GET(request: NextRequest) {
     }),
 
     // Recent converted leads with referral fees
-    prisma.lead.findMany({
+    customerLeads(sub.id).findMany({
       where: {
         status: { in: ["referred", "closed"] },
         referralFee: { not: null },

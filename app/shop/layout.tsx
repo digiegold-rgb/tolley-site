@@ -4,7 +4,6 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { withPrismaTimeout } from "@/lib/prisma-url";
 import { TREASURE_HAUL_FB_URL, TREASURE_HAUL_MESSENGER_URL } from "@/lib/shop";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import ShopTabs from "@/components/shop/ShopTabs";
 import TreasureHaulBanner from "@/components/shop/TreasureHaulBanner";
 import AmazonStorefrontBanner from "@/components/shop/AmazonStorefrontBanner";
@@ -132,7 +131,6 @@ export default async function ShopLayout({
 
   return (
     <div className="shop-page">
-      <SiteTracker site="shop" />
       {ONELINK_INSTANCE_ID && (
         <Script
           id="amazon-onelink"
