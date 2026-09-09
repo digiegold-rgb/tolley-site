@@ -314,7 +314,7 @@ export function AgentSetupDashboard({
             </button>
             <button
               type="button"
-              onClick={() => void signOut({ callbackUrl: "/" })}
+              onClick={() => void signOut({ callbackUrl: "/agent" })}
               className="rounded-full border border-white/22 bg-white/[0.06] px-4 py-2 text-xs font-semibold tracking-[0.1em] text-white/92 uppercase transition hover:bg-white/[0.11]"
             >
               Logout

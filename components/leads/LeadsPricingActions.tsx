@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 export default function LeadsPricingActions({
   tierId,
@@ -17,7 +18,7 @@ export default function LeadsPricingActions({
 
   async function handleSubscribe() {
     if (!isLoggedIn) {
-      window.location.href = "/login?callbackUrl=/leads/pricing";
+      window.location.href = "/signup?callbackUrl=" + encodeURIComponent("/leads/pricing");
       return;
     }
 
@@ -41,6 +42,17 @@ export default function LeadsPricingActions({
     } finally {
       setLoading(false);
     }
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <Link
+        href="/signup?callbackUrl=%2Fleads%2Fpricing"
+        className="block w-full rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-white/20"
+      >
+        Sign up to subscribe
+      </Link>
+    );
   }
 
   if (isCurrent) {

@@ -300,7 +300,7 @@ export default function DigestLandingPage() {
         <div className="dg-rule mx-auto mb-6 max-w-xs" aria-hidden="true" />
         <p>
           KC Motivated Seller Digest · built and curated in Independence, MO by{" "}
-          <a href="https://www.tolley.io" className="underline" style={{ color: "var(--dg-navy)" }}>
+          <a href="/agent" className="underline" style={{ color: "var(--dg-navy)" }}>
             tolley.io
           </a>
         </p>

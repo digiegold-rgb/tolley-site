@@ -182,6 +182,9 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      { source: "/leads/demo", destination: "/agent#demo", permanent: true },
+      { source: "/agent/demo", destination: "/agent#demo", permanent: true },
+      { source: "/agent/pricing", destination: "/leads/pricing", permanent: true },
       // TikTok Shop command center lives as an /hq tab.
       {
         source: "/tikshop",

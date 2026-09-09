@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://www.tolley.io/leads/pricing" },
 };
 
+import { getAnnualLeadsPrices } from "@/lib/leads-pricing-server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import LeadsPricingClient from "@/components/leads/LeadsPricingClient";
@@ -19,6 +20,7 @@ import {
 export default async function LeadsPricingPage() {
   const session = await auth();
   const userId = session?.user?.id;
+  const annualPrices = await getAnnualLeadsPrices();
 
   let currentTier: string | null = null;
   if (userId) {
@@ -49,7 +51,7 @@ export default async function LeadsPricingPage() {
         </div>
 
         {/* Billing toggle + pricing cards (client component for interactivity) */}
-        <LeadsPricingClient isLoggedIn={!!userId} currentTier={currentTier} />
+        <LeadsPricingClient isLoggedIn={!!userId} currentTier={currentTier} annualPrices={annualPrices} />
 
         {/* What's included */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 mb-12">

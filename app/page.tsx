@@ -1,102 +1,66 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { auth } from "@/auth";
-import { HpNavbar } from "@/components/homepage/hp-navbar";
-import { HpHero } from "@/components/homepage/hp-hero";
-import { HpCircleBand } from "@/components/homepage/hp-circle-band";
-import { HpSocialProof } from "@/components/homepage/hp-social-proof";
-import { HpFeatures } from "@/components/homepage/hp-features";
-import { HpHowItWorks } from "@/components/homepage/hp-how-it-works";
-import { HpDemo } from "@/components/homepage/hp-demo";
-import { HpPricing } from "@/components/homepage/hp-pricing";
-import { HpFaq } from "@/components/homepage/hp-faq";
-import { HpCta } from "@/components/homepage/hp-cta";
-import { HpNewsletter } from "@/components/homepage/hp-newsletter";
-import { HpFooter } from "@/components/homepage/hp-footer";
+import { EventTracker } from "@/components/analytics/site-tracker";
+import { LegacyAgentLinks } from "@/components/homepage/legacy-agent-links";
+import styles from "./tolley-home.module.css";
 
-/* auth() → Prisma session adapter. First SSG worker is usually `/`. */
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const metadata: Metadata = {
+  title: "Tolley | Tools, Creative Work & Kansas City Services",
+  description: "Explore T-Agent real estate tools, Jelly Studio video creation, and Tolley's rentals, real estate, estate sales and local services.",
+  alternates: { canonical: "https://www.tolley.io/" },
+  openGraph: { title: "Tolley | Find what you need", description: "Tools for your work. A studio for your stories. Help close to home.", url: "https://www.tolley.io/", type: "website" },
+};
 
-export default async function Home() {
-  const session = await auth();
-  const isAuthenticated = Boolean(session?.user?.id);
+const services = [
+  { name: "Washer & dryer rentals", text: "Explore equipment rental options and request availability in your ZIP.", href: "/wd" },
+  { name: "Homes & real estate", text: "Find Kansas City homes and connect with Jared about your next move.", href: "/homes" },
+  { name: "Estate sales", text: "Browse upcoming sales or get help planning a sale of your own.", href: "/estate" },
+  { name: "Rentals for the day", text: "Trailers, generators, tables and more for your next project or gathering.", href: "/rental" },
+  { name: "Moving & cleanouts", text: "Find moving help, hauling and estate cleanout services.", href: "/cleanouts" },
+  { name: "Shop the finds", text: "Explore furniture, household finds and the latest treasure hauls.", href: "/shop" },
+];
 
-  return (
-    <main className="homepage portal-shell ambient-noise relative min-h-screen overflow-hidden">
-      <HpNavbar isAuthenticated={isAuthenticated} />
-      <HpHero />
-      <HpCircleBand />
-      <HpSocialProof />
-      <HpFeatures />
-      <HpHowItWorks />
-      <HpDemo />
-      <HpPricing />
-      <HpNewsletter />
-      <HpFaq />
-      <HpCta />
-      <HpFooter />
-      <div className="site-legal-footer fixed inset-x-0 bottom-4 z-40 flex items-center justify-center px-4">
-        <nav
-          aria-label="Legal links"
-          className="rounded-full border border-white/18 bg-black/35 px-4 py-2 backdrop-blur-xl"
-        >
-          <ul className="flex items-center gap-4 text-[0.7rem] tracking-[0.08em] text-white/72 uppercase">
-            <li>
-              <Link className="font-semibold text-orange-300 transition hover:text-orange-200" href="/start">
-                All 40+ Services →
-              </Link>
-            </li>
-            <li aria-hidden="true" className="text-white/45">
-              |
-            </li>
-            <li>
-              <Link className="transition hover:text-white" href="/privacy">
-                Privacy Policy
-              </Link>
-            </li>
-            <li aria-hidden="true" className="text-white/45">
-              |
-            </li>
-            <li>
-              <Link className="transition hover:text-white" href="/terms">
-                Terms &amp; Conditions
-              </Link>
-            </li>
-            <li aria-hidden="true" className="text-white/45">
-              |
-            </li>
-            <li>
-              <Link className="transition hover:text-white" href="/wd">
-                Wash &amp; Dry Rental
-              </Link>
-            </li>
-            <li aria-hidden="true" className="text-white/45">
-              |
-            </li>
-            <li>
-              <Link className="transition hover:text-white" href="/trailer">
-                Trailer Rental
-              </Link>
-            </li>
-            <li aria-hidden="true" className="text-white/45">
-              |
-            </li>
-            <li>
-              <Link className="transition hover:text-white" href="/generator">
-                Generator Rental
-              </Link>
-            </li>
-            <li aria-hidden="true" className="text-white/45">
-              |
-            </li>
-            <li>
-              <Link className="transition hover:text-white" href="/pools">
-                Pool Supplies
-              </Link>
-            </li>
-          </ul>
-        </nav>
+export default function TolleyHome() {
+  return <EventTracker site="home"><main className={`tolley-home ${styles.home}`}>
+    <LegacyAgentLinks />
+    <a href="#main-content" className={styles.skip}>Skip to content</a>
+    <header className={styles.header}>
+      <Link href="/" className={styles.wordmark} aria-label="Tolley home">tolley<span>●</span></Link>
+      <nav aria-label="Main navigation" className={styles.nav}><a href="#products">Products</a><a href="#services">Local services</a><Link href="/start">Explore all ↗</Link></nav>
+    </header>
+    <section id="main-content" className={styles.hero}>
+      <p className={styles.eyebrow}>Independent ideas. Useful things.</p>
+      <h1>What can Tolley<br />help you <em>do?</em></h1>
+      <p className={styles.intro}>Tools for your work. A studio for your stories.<br />And hands-on help around Kansas City.</p>
+      <a className={styles.jump} href="#products">Find your starting point <span aria-hidden="true">↓</span></a>
+      <div className={styles.heroMark} aria-hidden="true"><span>T</span><i /></div>
+    </section>
+    <section id="products" className={styles.section} aria-labelledby="products-title">
+      <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Built by Tolley</p><h2 id="products-title">Two ways to make more possible.</h2></div><span className={styles.sectionNote}>Choose the product that fits your work.</span></div>
+      <div className={styles.products}>
+        <article className={`${styles.product} ${styles.agent}`}>
+          <div className={styles.productTop}><span>FOR REAL ESTATE AGENTS</span><span aria-hidden="true">↗</span></div>
+          <div className={styles.agentArt} aria-hidden="true"><div><span>PROPERTY</span><i /><i /><i /></div><div><span>RESEARCH</span><i /><i /></div><div><span>NEXT ACTION</span><i /></div></div>
+          <h3>T-Agent</h3><p>Get a clearer picture<br />of your next opportunity.</p>
+          <div className={styles.productDescription}>Explore lead research, property dossiers, scoring and follow-up tools in one real estate workspace.</div>
+          <div className={styles.actions}><Link className={styles.primary} href="/agent" data-track-event="product_click" data-track-label="agent">Explore T-Agent ↗</Link><Link className={styles.secondary} href="/login?callbackUrl=%2Fleads%2Fdashboard">T-Agent sign in</Link></div>
+        </article>
+        <article className={`${styles.product} ${styles.studio}`}>
+          <div className={styles.productTop}><span>FOR PEOPLE WITH A STORY</span><span>PUBLIC BETA</span></div>
+          <div className={styles.filmArt} aria-hidden="true"><div /><div /><div /><span>YOUR STORY. YOUR FILM.</span></div>
+          <h3>Jelly Studio</h3><p>Turn a story worth telling<br />into a film worth sharing.</p>
+          <div className={styles.productDescription}>Create with your script, narration and generated scenes. Explore the demos and pay-per-video studio.</div>
+          <div className={styles.actions}><Link className={styles.primary} href="/animate" data-track-event="product_click" data-track-label="animate">Explore Jelly Studio ↗</Link><Link className={styles.secondary} href="/login?callbackUrl=%2Fanimate">Jelly Studio sign in</Link></div>
+        </article>
       </div>
-    </main>
-  );
+    </section>
+    <section id="services" className={styles.section} aria-labelledby="services-title">
+      <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Around Kansas City</p><h2 id="services-title">Help with the everyday.<br />And the next big step.</h2></div><Link href="/start" className={styles.textLink}>All services ↗</Link></div>
+      <div className={styles.services}>{services.map((service, i) => <Link className={styles.service} href={service.href} key={service.href} data-track-event="service_click" data-track-label={service.href}>
+        <div><span className={styles.serviceNumber}>0{i + 1}</span><span aria-hidden="true">↗</span></div><h3>{service.name}</h3><p>{service.text}</p>
+      </Link>)}</div>
+    </section>
+    <section className={styles.about} aria-labelledby="about-title"><p className={styles.eyebrow}>A name behind the work</p><h2 id="about-title">Hi, I’m Jared Tolley.</h2><p>I build tools and run services from the Kansas City area. Each offering has its own home here, so you can go straight to the details, see what’s available, and take the next step.</p><Link href="/about" className={styles.textLink}>Meet Jared ↗</Link></section>
+    <footer className={styles.footer}><Link href="/" className={styles.wordmark}>tolley<span>●</span></Link><p>Kansas City roots. Ideas that travel.</p><nav aria-label="Footer navigation"><Link href="/agent">T-Agent</Link><Link href="/animate">Jelly Studio</Link><Link href="/start">All offerings</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></nav><small>© {new Date().getFullYear()} Tolley.io</small></footer>
+  </main></EventTracker>;
 }

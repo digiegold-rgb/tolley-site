@@ -49,11 +49,7 @@ export function getLeadsPriceIdsForInterval(interval: "monthly" | "annual") {
 
     if (starter && pro && team) return { starter, pro, team };
 
-    // Fall back to monthly if annual prices not yet configured
-    console.warn(
-      "[leads] Annual price IDs not configured — falling back to monthly. " +
-        "Set STRIPE_PRICE_STARTER_ANNUAL, STRIPE_PRICE_PRO_LEADS_ANNUAL, STRIPE_PRICE_TEAM_ANNUAL."
-    );
+    throw new Error("Annual leads prices are not configured");
   }
 
   return getLeadsPriceIds();

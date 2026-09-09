@@ -26,10 +26,10 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://tolley.io'),
-  title: "t-agent | Real Estate Unlocked",
+  metadataBase: new URL('https://www.tolley.io'),
+  title: "Tolley | Products & Services",
   description:
-    "T-Agent is a premium search portal for real estate agents to unlock trusted vendors, guidance, and deal-closing momentum.",
+    "Explore Tolley's software, creative tools, rentals and local services. Based in the Kansas City area.",
 };
 
 export default function RootLayout({

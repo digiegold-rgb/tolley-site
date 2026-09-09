@@ -2,6 +2,7 @@
 
 export const TRACKED_SITES = [
   { id: "home", label: "Home Page", color: "#a855f7", path: "/" },
+  { id: "agent", label: "T-Agent", color: "#8b5cf6", path: "/agent" },
   { id: "homes", label: "Real Estate", color: "#0ea5e9", path: "/homes" },
   { id: "trailer", label: "Trailer Rental", color: "#f59e0b", path: "/trailer" },
   { id: "hvac", label: "HVAC Service", color: "#06b6d4", path: "/hvac" },

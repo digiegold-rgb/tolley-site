@@ -4,8 +4,8 @@ const columns = [
   {
     heading: "Product",
     links: [
-      { label: "Features", href: "#features" },
-      { label: "Pricing", href: "/pricing" },
+      { label: "Features", href: "/agent#features" },
+      { label: "Pricing", href: "/leads/pricing" },
       { label: "Demo", href: "mailto:support@tolley.io?subject=T-Agent%20Demo%20Request" },
     ],
   },
@@ -80,7 +80,7 @@ export function HpFooter() {
         {/* Brand */}
         <div>
           <p className="text-[0.72rem] font-medium tracking-[0.42em] text-white/90 uppercase">
-            t-agent
+              t-agent
           </p>
           <p className="mt-3 text-xs leading-5 text-white/55">
             AI-powered lead intelligence for real estate professionals.
@@ -130,7 +130,7 @@ export function HpFooter() {
       {/* More from Tolley — compact directory so every subsite has an inbound link */}
       <div className="mx-auto mt-10 max-w-6xl border-t border-white/[0.07] pt-8">
         <p className="text-[0.68rem] font-semibold tracking-[0.14em] text-white/45 uppercase">
-          More from Tolley
+          <Link href="/">More from Tolley</Link>
         </p>
         <div className="mt-4 grid gap-6 sm:grid-cols-3">
           {directory.map((col) => (
