@@ -44,7 +44,10 @@ the disposable database. It verifies separate customer notes and statuses,
 manual-lead visibility, rejected source-field writes, scoped counts, proof
 binding/expiry/tampering, route classification, local mail transport and merge
 compatibility. Later additions also cover rejected CRM references and unsupported
-delegate operations. See the final local handoff for the latest build/lint result.
+delegate operations; those passed too. Final source TypeScript passed. Focused
+lint passed with six warnings and no errors. JavaScript test syntax and the
+backup unit/timer validation passed (systemd reported unrelated inaccessible
+system units). The staged-secret comparison found no matching production secrets.
 
 HTTP tests are prepared in `tests/security-http.mjs`. Existing posts/revenue
 regressions now use a real credentials + CSRF + MFA fixture flow in
@@ -53,7 +56,10 @@ single pageviews for W/D and Animate and enforced CSP violations. These modified
 HTTP/browser regressions have **not passed yet**: starting a local listener and
 new database/Docker commands were denied under the current sandbox.
 
-The earlier build passed before the final review edits; a final build is required.
+The earlier build passed before the final review edits. The final rebuild remains
+incomplete at Google-font network retries; a completed final build is required.
+A fresh npm audit could not resolve the registry; the prior completed audit was
+clean. Git push could not resolve GitHub, so the branch is local and has no PR.
 Do not substitute a type check or signed-token unit test for the real sign-in,
 owner enrollment, checkout and browser checks.
 
@@ -165,6 +171,10 @@ access before changing SSH, SMB, FTP, GPU or media-server exposure; a listener o
 
 - Keep the owner's dirty `/home/jelly/tolley-site` checkout intact.
 - Current work is isolated in `/home/jelly/tolley-revenue-repair`.
+- The last build is in `tolley-security-build.scope`; its Google-font fetches
+  have no production request timeout. Attempting to stop the scope was denied
+  by the user-bus permission boundary. Check and stop it before another build
+  when normal service access is restored.
 - Task-created containers: `tolley-security-test` (localhost port 55438) and
   `tolley-security-restore` (no network/ports). Remove them after required checks.
 - Backup environment is private at
