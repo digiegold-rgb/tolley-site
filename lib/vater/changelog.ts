@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.38.2';
+export const APP_VERSION = '1.39.0';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,10 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.39.0', date: '2026-09-09', title: 'T-Agent starts with your next three follow-ups',
+    items: ['Today brings your due follow-ups, contact details, and next steps into one place.', 'Save a person and a promise together; log an attempt, conversation, or appointment and schedule the next follow-up.', 'Owner accounts can bring new website inquiries into their private workspace without a subscription purchase.', 'Research tools remain available in Overview.'],
+  },
   {
     version: '1.38.2', date: '2026-09-09', title: 'Clearer service routes and fewer empty pages',
     items: ['All Services includes contact routing and email updates; hauling and cleanouts share one destination.', 'Empty shop videos and neighborhood indexes lead to useful pages until content is published.', 'Owner tools stay accessible from HQ, and returning video customers keep their original workspaces and credits.', 'GPU and Game remain available.'],

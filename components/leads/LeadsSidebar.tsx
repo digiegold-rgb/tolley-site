@@ -107,7 +107,7 @@ const HelpIcon = (
 const PRIMARY: SidebarItem[] = [
   {
     href: "/leads",
-    label: "Cockpit",
+    label: "Today",
     icon: CockpitIcon,
     match: /^\/leads$/,
   },
