@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Oswald } from "next/font/google";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import "./clean.css";
 
 const oswald = Oswald({
@@ -26,7 +25,6 @@ export const metadata: Metadata = {
 export default function CleanLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`clean-page ${oswald.variable}`}>
-      <SiteTracker site="clean" />
       {children}
     </div>
   );

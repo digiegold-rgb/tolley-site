@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { isAdminEmail } from "@/lib/admin-auth";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { withPrismaTimeout } from "@/lib/prisma-url";
@@ -41,6 +43,7 @@ export default async function LeadsLayout({
 }) {
   const session = await auth();
   const userId = session?.user?.id;
+  const owner = Boolean(userId && !session?.mfaRequired && !session?.impersonatedBy && isAdminEmail(session?.user?.email));
 
   let tier: string | null = null;
   let smsUsed: number | undefined;
@@ -93,11 +96,11 @@ export default async function LeadsLayout({
 
   return (
     <ToastProvider>
-      <LeadsCommandProvider>
+      <LeadsCommandProvider owner={owner}>
         <LeadsRightRailProvider>
           <div className="min-h-screen bg-[#0a0814] text-white [background-image:radial-gradient(1200px_600px_at_80%_-10%,rgba(167,139,250,0.08),transparent_60%),radial-gradient(900px_500px_at_10%_10%,rgba(94,234,212,0.06),transparent_60%)]">
             <div className="flex">
-              <LeadsSidebar tier={tier} />
+              <LeadsSidebar tier={tier} owner={owner} />
               <div className="flex min-w-0 flex-1 flex-col">
                 <LeadsTopbar
                   tier={tier}
@@ -107,7 +110,11 @@ export default async function LeadsLayout({
                   lastSyncAt={lastSyncAt}
                   totalListings={totalListings}
                 />
-                <main className="flex-1 px-6 py-6">
+                <nav aria-label="Mobile workspace" className="flex flex-wrap gap-4 border-b border-white/10 px-4 py-3 text-sm text-white/75 md:hidden">
+                  <Link href="/leads">Today</Link><Link href="/leads/pipeline">Pipeline</Link><Link href="/leads/people">People</Link><Link href="/leads/marketing">Marketing</Link><Link href="/leads/admin">Admin</Link>
+                  {owner && <Link href="/leads/tools" className="text-teal-200">Business tools</Link>}
+                </nav>
+                <main className="min-w-0 flex-1 px-4 py-6 md:px-6">
                   <div className="mx-auto max-w-[1400px]">{children}</div>
                 </main>
               </div>

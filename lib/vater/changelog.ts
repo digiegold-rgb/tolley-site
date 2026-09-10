@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.38.0';
+export const APP_VERSION = '1.39.0';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,18 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.39.0', date: '2026-09-09', title: 'T-Agent brings follow-ups and business tools together',
+    items: ['Today brings your due follow-ups, contact details, and next steps into one place.', 'Save a person and a promise together; log an attempt, conversation, or appointment and schedule the next follow-up.', 'Owner accounts can bring new website inquiries into their private workspace without a subscription purchase.', 'Owner tools bring seller signals, marketing visibility, inventory, affiliates, and revenue operations into T-Agent.', 'Approved probate and distress opportunities can be saved with a private Today follow-up.', 'A first-week guide links directly to your daily workflow; owners can read and download their original personal-use plan.'],
+  },
+  {
+    version: '1.38.2', date: '2026-09-09', title: 'Clearer service routes and fewer empty pages',
+    items: ['All Services includes contact routing and email updates; hauling and cleanouts share one destination.', 'Empty shop videos and neighborhood indexes lead to useful pages until content is published.', 'Owner tools stay accessible from HQ, and returning video customers keep their original workspaces and credits.', 'GPU and Game remain available.'],
+  },
+  {
+    version: '1.38.1', date: '2026-09-09', title: 'Safer accounts and more reliable reporting',
+    items: ['Owner dashboards require account sign-in and an authenticator, with recovery codes.', 'Each T-Agent customer keeps separate lead notes and pipeline changes.', 'Page visits are recorded once, and the public studio page loads less editor code.', 'Updated security dependencies and browser protections.'],
+  },
   {
     version: '1.38.0', date: '2026-09-08', title: 'A new Tolley home, with T-Agent at /agent',
     items: ['The Tolley homepage introduces T-Agent, Jelly Studio, and Kansas City services.', 'T-Agent keeps its full homepage at /agent, with connected navigation, pricing, signup, and discovery links.', 'Jelly Studio signup is clearly open. T-Agent annual pricing is shown only when configured, using actual checkout amounts.'],

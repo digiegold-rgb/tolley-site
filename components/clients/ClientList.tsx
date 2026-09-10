@@ -696,6 +696,7 @@ export default function ClientList({ clients: initialClients }: { clients: Clien
                   value={form.buyerSeller}
                   onChange={(e) => setForm((p) => ({ ...p, buyerSeller: e.target.value }))}
                 >
+                  <option value="contact">General contact</option>
                   <option value="buyer">Buyer</option>
                   <option value="seller">Seller</option>
                   <option value="both">Both</option>

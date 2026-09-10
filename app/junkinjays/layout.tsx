@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Russo_One } from "next/font/google";
 import { JjSparks } from "@/components/junkinjays/jj-sparks";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import "./junkinjays.css";
 
 const russoOne = Russo_One({
@@ -27,7 +26,6 @@ export const metadata: Metadata = {
 export default function JunkinjaysLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`junkinjays-page jj-rust ${russoOne.variable}`}>
-      <SiteTracker site="junkinjays" />
       <JjSparks />
       <div aria-hidden="true" className="site-dot-grid-orange pointer-events-none fixed inset-0 z-0" />
       {children}

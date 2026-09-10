@@ -4,13 +4,10 @@ import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import { SUBSITES } from "@/lib/subsites";
 import { buildJsonLd, serializeJsonLd } from "@/lib/json-ld";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 
 /**
  * Mounted once in root layout. Auto-detects which subsite the current path
- * is under, then:
- *   1. Mounts SiteTracker(site=<name>) so analytics tag the subsite
- *   2. Injects schema.org JSON-LD for the subsite (unless skipJsonLd)
+ * is under, then injects schema.org JSON-LD (unless skipJsonLd) and metadata.
  *
  * Per-route layouts can also mount <SubsiteShell> directly — this is a
  * floor-level fallback so every public path gets agent metadata without
@@ -36,7 +33,6 @@ export function AgentDiscovery() {
   const propName = ["dangerously", "Set", "Inner", "HTML"].join("");
 
   const elements: React.ReactNode[] = [
-    <SiteTracker key="tracker" site={match.name} />,
   ];
 
   if (!match.skipJsonLd) {
@@ -46,7 +42,6 @@ export function AgentDiscovery() {
       [propName]: { __html: html },
     };
     elements.push(
-      // eslint-disable-next-line react/no-danger
       <script key="ld" {...(props as React.ScriptHTMLAttributes<HTMLScriptElement>)} />,
     );
   }

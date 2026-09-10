@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Russo_One } from "next/font/google";
 import { MpLeaves } from "@/components/moupins/mp-leaves";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import "./moupins.css";
 
 const russoOne = Russo_One({
@@ -48,7 +47,6 @@ export default function MoupinsLayout({
 }) {
   return (
     <div className={`moupins-page mp-texture ${russoOne.variable}`}>
-      <SiteTracker site="moupins" />
       <MpLeaves />
       {children}
     </div>

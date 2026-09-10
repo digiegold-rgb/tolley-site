@@ -8,7 +8,8 @@ const SERVICE_URL =
   process.env.TRADING_AGENTS_URL || "https://tradingagents.tolley.io";
 
 export async function POST(request: NextRequest) {
-  await requireAdminApiSession();
+  const guard = await requireAdminApiSession();
+  if (!guard.ok) return guard.response;
 
   const body = await request.json().catch(() => ({}));
   const ticker = String(body.ticker ?? "").toUpperCase().trim();
@@ -37,7 +38,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  await requireAdminApiSession();
+  const guard = await requireAdminApiSession();
+  if (!guard.ok) return guard.response;
   const res = await fetch(`${SERVICE_URL}/status`, {
     signal: AbortSignal.timeout(10000),
   }).catch(() => null);

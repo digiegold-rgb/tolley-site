@@ -13,8 +13,10 @@ import { buildCommands } from "@/lib/command-registry";
  */
 export default function LeadsCommandProvider({
   children,
+  owner = false,
 }: {
   children: ReactNode;
+  owner?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -24,8 +26,9 @@ export default function LeadsCommandProvider({
       buildCommands({
         navigate: (href) => router.push(href),
         toast,
+        owner,
       }),
-    [router, toast]
+    [router, toast, owner]
   );
 
   return (

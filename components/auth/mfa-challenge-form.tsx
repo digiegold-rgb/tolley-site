@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
 
-export function MfaChallengeForm() {
+
+export function MfaChallengeForm({ callbackUrl }: { callbackUrl: string }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [useBackup, setUseBackup] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,8 +32,7 @@ export function MfaChallengeForm() {
       }
 
       // MFA cleared — redirect to dashboard
-      router.push("/account");
-      router.refresh();
+      window.location.assign(callbackUrl);
     } catch {
       setError("Something went wrong");
     } finally {

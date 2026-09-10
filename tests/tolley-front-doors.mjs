@@ -18,6 +18,13 @@ await context.route("**/*", async route => {
 });
 const page = await context.newPage();
 const errors = [];
+const cspViolations = [];
+await page.exposeFunction("recordCspViolation", violation => cspViolations.push(violation));
+await page.addInitScript(() => {
+  document.addEventListener("securitypolicyviolation", event => {
+    if (event.disposition === "enforce") window.recordCspViolation({ directive: event.effectiveDirective, blockedURI: event.blockedURI });
+  });
+});
 const analytics = [];
 page.on("request", request => { if (new URL(request.url()).pathname === "/api/analytics" && request.method() === "POST") { try { analytics.push(request.postDataJSON()); } catch {} } });
 page.on("pageerror", error => errors.push(error.message));
@@ -47,6 +54,10 @@ try {
   await page.waitForURL(/\/agent$/);
   await page.locator("#features").waitFor();
   await page.waitForLoadState("networkidle");
+  // A soft navigation can be network-idle before React flushes passive effects.
+  const eventDeadline = Date.now() + 15000;
+  while (!analytics.some(e => e.type === "view" && e.path === "/agent") && Date.now() < eventDeadline) await page.waitForTimeout(100);
+  await page.waitForTimeout(500);
   const agentViews = analytics.filter(e => e.type === "view" && e.path === "/agent");
   assert.equal(agentViews.length, 1, "one tracker owns each /agent visit");
   assert.equal(agentViews[0].site, "agent");
@@ -82,11 +93,21 @@ try {
   await visit("/signup?callbackUrl=%2Fanimate");
   assert(await page.getByRole("link", {name:/Jelly Studio/i}).count() > 0);
   assert.equal(await page.locator('input[name="invite"][required]').count(), 0);
+  const animateViewsBefore = analytics.filter(e => e.type === "view" && e.path === "/animate").length;
   await visit("/animate");
+  await page.waitForLoadState("networkidle");
+  assert.equal(analytics.filter(e => e.type === "view" && e.path === "/animate").length - animateViewsBefore, 1, "one pageview per Animate visit");
+  assert.equal(analytics.findLast(e => e.type === "view" && e.path === "/animate").site, "animate");
   assert(await page.getByRole("link", {name:"Start creating",exact:true}).count() >= 2);
   for (const link of await page.getByRole("link", {name:"Start creating",exact:true}).all()) {
     assert.equal(await link.getAttribute("href"), "/signup?callbackUrl=%2Fanimate");
   }
+  const wdViewsBefore = analytics.filter(e => e.type === "view" && e.path === "/wd").length;
+  await visit("/wd");
+  await page.waitForLoadState("networkidle");
+  assert.equal(analytics.filter(e => e.type === "view" && e.path === "/wd").length - wdViewsBefore, 1, "one pageview per W/D visit");
+  assert.equal(analytics.findLast(e => e.type === "view" && e.path === "/wd").site, "wd");
+  assert.deepEqual(cspViolations, [], "enforced CSP must preserve front-door functionality");
   const sitemap = await context.request.get(base + "/sitemap.xml", {timeout:180000});
   assert.equal(sitemap.status(), 200);
   assert.match(await sitemap.text(), /<loc>https:\/\/www\.tolley\.io\/agent<\/loc>/);

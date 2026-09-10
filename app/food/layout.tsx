@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Fredoka } from "next/font/google";
-import { SiteTracker, EventTracker } from "@/components/analytics/site-tracker";
+import { EventTracker } from "@/components/analytics/site-tracker";
 import { FoodNav } from "@/components/food/food-nav";
 import { FoodSparkles } from "@/components/food/food-sparkles";
 import { FoodChat } from "@/components/food/food-chat";
@@ -34,7 +34,6 @@ export const metadata: Metadata = {
 export default function FoodLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`food-page ${fredoka.variable}`}>
-      <SiteTracker site="food" />
       <EventTracker site="food">
         <FoodSparkles />
         <FoodNav />

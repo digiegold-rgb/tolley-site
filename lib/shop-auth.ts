@@ -1,3 +1,5 @@
+import { auth } from "@/auth";
+import { isAdminEmail } from "@/lib/admin-auth";
 import { cookies } from "next/headers";
 import { createHmac } from "node:crypto";
 import { secretEquals } from "@/lib/secret-compare";
@@ -6,6 +8,9 @@ const COOKIE_NAME = "shop_admin";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 export async function validateShopAdmin(): Promise<boolean> {
+  const session = await auth();
+  if (session?.mfaRequired || session?.impersonatedBy) return false;
+  if (session?.user?.id && isAdminEmail(session.user.email)) return true;
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME);
   if (!token?.value) return false;

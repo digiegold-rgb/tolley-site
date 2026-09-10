@@ -1,5 +1,7 @@
+import { SHOP_VIDEO_WHERE } from "@/lib/shop-video-visibility";
+import { redirect } from "next/navigation";
+import { routeDestination, type RouteSearchParams } from "@/lib/public-route-policy";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import VideoTile from "@/components/shop/VideoTile";
 
@@ -18,38 +20,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function VideosPage() {
+export default async function VideosPage({ searchParams }: { searchParams: Promise<RouteSearchParams> }) {
   const products = await prisma.product.findMany({
-    where: {
-      videoUrl: { not: null },
-      status: { in: ["listed", "sold"] },
-    },
+    where: SHOP_VIDEO_WHERE,
     orderBy: { createdAt: "desc" },
     include: {
       listings: { where: { platform: "shop" }, take: 1 },
     },
   });
 
-  if (products.length === 0) {
-    return (
-      <div className="flex min-h-[40vh] flex-col items-center justify-center text-center">
-        <p className="text-4xl">🎬</p>
-        <h2 className="mt-4 text-xl font-bold text-white">
-          No product videos yet — check back soon.
-        </h2>
-        <p className="mt-2 text-sm text-white/50">
-          We&rsquo;re filming short walkarounds of new arrivals. Follow on
-          Facebook for first notice.
-        </p>
-        <Link
-          href="/shop"
-          className="shop-cta mt-6 rounded-full px-5 py-2 text-sm font-semibold text-white"
-        >
-          Browse the shop
-        </Link>
-      </div>
-    );
-  }
+  if (products.length === 0) redirect(routeDestination("/shop", await searchParams));
 
   const tiles = products.map((p) => ({
     id: p.id,

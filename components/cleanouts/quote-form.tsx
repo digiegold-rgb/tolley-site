@@ -110,14 +110,14 @@ export function CleanoutQuoteForm() {
 
       <div>
         <label htmlFor="tc-details" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/50">
-          What needs clearing?
+          What needs clearing, moving, or delivering?
         </label>
         <textarea
           id="tc-details"
           rows={4}
           value={details}
           onChange={(e) => setDetails(e.target.value)}
-          placeholder="e.g. 2-bed rental unit, full of furniture and boxes — tenant moved out last week"
+          placeholder="Describe the items, access, and timing. For moving or transport, include pickup and delivery addresses."
           className="tc-input resize-y px-3.5 py-2.5 text-sm"
         />
       </div>

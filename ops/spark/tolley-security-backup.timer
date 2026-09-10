@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily encrypted Tolley backup
+
+[Timer]
+OnCalendar=*-*-* 04:30:00 America/Chicago
+RandomizedDelaySec=20m
+Persistent=true
+Unit=tolley-security-backup.service
+
+[Install]
+WantedBy=timers.target

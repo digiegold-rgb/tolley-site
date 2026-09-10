@@ -1,3 +1,4 @@
+import { requireVaterAdminPageSession } from "@/lib/admin-auth";
 import { MerchHero } from "@/components/vater/merch-hero";
 import { MerchWorkflow } from "@/components/vater/merch-workflow";
 import { MerchPlatforms } from "@/components/vater/merch-platforms";
@@ -5,12 +6,14 @@ import { MerchSetup } from "@/components/vater/merch-setup";
 import { MerchFaq } from "@/components/vater/merch-faq";
 
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "Merch — Print-on-Demand Empire | Vater Ventures",
   description:
     "AI-generated designs on Etsy, fulfilled by Printful. Zero inventory, zero shipping — pure print-on-demand profit.",
 };
 
-export default function MerchPage() {
+export default async function MerchPage() {
+  await requireVaterAdminPageSession("/vater/merch");
   return (
     <main>
       <MerchHero />

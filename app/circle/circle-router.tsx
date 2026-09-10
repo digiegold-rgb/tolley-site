@@ -20,9 +20,11 @@ function getRef(): string {
   return p.get("ref") || p.get("utm_source") || document.referrer || "direct";
 }
 
-export function CircleRouter({ groups }: { groups: FlywheelGroup[] }) {
+type RouterGroup = Omit<FlywheelGroup, "visits30d" | "leads30d">;
+
+export function CircleRouter({ groups }: { groups: RouterGroup[] }) {
   const router = useRouter();
-  const [need, setNeed] = useState<FlywheelGroup | null>(null);
+  const [need, setNeed] = useState<RouterGroup | null>(null);
   const [product, setProduct] = useState<FlywheelProduct | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -37,7 +39,12 @@ export function CircleRouter({ groups }: { groups: FlywheelGroup[] }) {
     if (!need || !product) return;
     setBusy(true);
     setError(null);
-    const dest = `${product.url}?ref=circle`;
+    const destination = new URL(product.url, window.location.origin);
+    new URLSearchParams(window.location.search).forEach((value, key) => {
+      if (key.startsWith("utm_") || ["ref", "gclid", "fbclid"].includes(key)) destination.searchParams.set(key, value);
+    });
+    if (!destination.searchParams.has("ref")) destination.searchParams.set("ref", "circle");
+    const dest = `${destination.pathname}${destination.search}${destination.hash}`;
 
     if (hasContact) {
       try {

@@ -16,8 +16,6 @@ export default function WdAdminPage() {
   const [authed, setAuthed] = useState(false);
   const [checking, setChecking] = useState(true);
   const [role, setRole] = useState<WdRole | null>(null);
-  const [pin, setPin] = useState("");
-  const [pinError, setPinError] = useState("");
   const [clients, setClients] = useState<WdClientData[]>([]);
   const [repairs, setRepairs] = useState<RepairItem[]>([]);
   const [tab, setTab] = useState<TabFilter>("all");
@@ -50,28 +48,7 @@ export default function WdAdminPage() {
   }, [authed]);
 
   // ─── Login ───
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setPinError("");
-    const res = await fetch("/api/wd/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pin }),
-    });
-    if (res.ok) {
-      const d = await res.json();
-      setRole(d.role);
-      setAuthed(true);
-      // Load data
-      const cr = await fetch("/api/wd/clients");
-      if (cr.ok) {
-        const cd = await cr.json();
-        setClients(cd.clients);
-      }
-    } else {
-      setPinError("Invalid PIN");
-    }
-  }
+
 
   // ─── Refresh clients ───
   async function refresh() {
@@ -188,19 +165,8 @@ export default function WdAdminPage() {
       <div className="auth-screen">
         <div className="auth-box">
           <h2>WD Admin</h2>
-          <form onSubmit={handleLogin}>
-            <input
-              type="password"
-              inputMode="numeric"
-              placeholder="Enter PIN"
-              value={pin}
-              onChange={e => setPin(e.target.value)}
-              style={{ width: "100%", padding: "8px", marginBottom: 8, border: "1px solid #ccc", borderRadius: 3, fontSize: 14, textAlign: "center", boxSizing: "border-box" }}
-              autoFocus
-            />
-            {pinError && <div style={{ color: "#c44", fontSize: 12, marginBottom: 4 }}>{pinError}</div>}
-            <button className="btn btn-primary" style={{ width: "100%" }}>Login</button>
-          </form>
+          <p>Use your owner account and authenticator to continue.</p>
+          <a className="btn btn-primary" href="/login?callbackUrl=/wd/admin">Sign in securely</a>
         </div>
       </div>
     );

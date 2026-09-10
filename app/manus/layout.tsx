@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
 
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import "./manus.css";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -22,7 +21,6 @@ export default function ManusLayout({
 }) {
   return (
     <div className={`manus-page ${jetbrainsMono.variable}`}>
-      <SiteTracker site="manus" />
       <div className="manus-scanline" />
       <div aria-hidden="true" className="site-dot-grid-emerald pointer-events-none fixed inset-0 z-0" />
       {children}

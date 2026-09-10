@@ -1,3 +1,5 @@
+import { customerLeads } from "@/lib/customer-leads";
+import { requireLeadSubscriber } from "@/lib/lead-subscriber";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -34,7 +36,7 @@ export default async function PeoplePage() {
       : {};
 
   const [leads, clients, matchClients] = await Promise.all([
-    prisma.lead.findMany({
+    (customerLeads((await requireLeadSubscriber()).id)).findMany({
       where: { score: { gte: 20 }, ...farmFilter },
       include: {
         listing: {

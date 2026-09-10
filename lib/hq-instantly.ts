@@ -74,7 +74,7 @@ export async function sendLeadViaInstantly(lead: {
       customVariables: {
         demo_url: lead.demoUrl
           ? `https://www.tolley.io${lead.demoUrl}`
-          : "https://www.tolley.io/circle",
+          : "https://www.tolley.io/start",
         rating: lead.rating != null ? String(lead.rating) : "5",
         reviews: lead.reviews != null ? String(lead.reviews) : "great",
         category: lead.category?.trim() || "local business",

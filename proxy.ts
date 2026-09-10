@@ -133,7 +133,7 @@ export async function proxy(request: NextRequest) {
   if (
     request.method !== "GET" &&
     request.cookies.get(VIEW_AS_COOKIE) &&
-    (pathname.startsWith("/api/vater") || pathname.startsWith("/api/stripe"))
+    (pathname.startsWith("/api/vater") || pathname.startsWith("/api/stripe") || pathname.startsWith("/api/leads"))
   ) {
     return NextResponse.json(
       {

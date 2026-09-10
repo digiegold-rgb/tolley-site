@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Barlow_Condensed } from "next/font/google";
 
 import { LmFooter } from "@/components/lastmile/lm-footer";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import { LmStreaks } from "@/components/lastmile/lm-streaks";
 
 import "./lastmile.css";
@@ -50,7 +49,6 @@ export default function LastmileLayout({
 }) {
   return (
     <div className={`lastmile-page lm-radar ${barlowCondensed.variable}`}>
-      <SiteTracker site="lastmile" />
       <LmStreaks />
       <div aria-hidden="true" className="site-dot-grid-red pointer-events-none fixed inset-0 z-0" />
       {children}

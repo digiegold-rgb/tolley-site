@@ -1,3 +1,6 @@
+import { customerLeads } from "@/lib/customer-leads";
+import { requireLeadSubscriber } from "@/lib/lead-subscriber";
+import Link from "next/link";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -9,12 +12,7 @@ import ActivityTracker from "@/components/leads/ActivityTracker";
 
 export const revalidate = 600;
 
-export default async function AgentDashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ key?: string }>;
-}) {
-  const params = await searchParams;
+export default async function AgentDashboardPage() {
 
   const session = await auth();
   const userId = session?.user?.id;
@@ -39,7 +37,7 @@ export default async function AgentDashboardPage({
     sub.tier === "team" ? 50 : sub.tier === "pro" ? 25 : 10;
 
   const [leads, stats] = await Promise.all([
-    prisma.lead.findMany({
+    (customerLeads((await requireLeadSubscriber()).id)).findMany({
       where: {
         score: { gte: 20 },
         ...(sub.farmZips.length > 0
@@ -103,7 +101,7 @@ export default async function AgentDashboardPage({
       orderBy: [{ score: "desc" }, { createdAt: "desc" }],
       take: dailyLimit * 3,
     }),
-    prisma.lead.groupBy({
+    (customerLeads((await requireLeadSubscriber()).id)).groupBy({
       by: ["status"],
       where: {
         ...(sub.farmZips.length > 0
@@ -131,12 +129,12 @@ export default async function AgentDashboardPage({
           <span className="rounded-full bg-purple-500/20 border border-purple-500/30 px-3 py-0.5 text-xs font-medium text-purple-300 capitalize">
             {sub.tier}
           </span>
-          <a
+          <Link
             href="/leads/onboard"
             className="text-xs text-white/40 hover:text-white/60"
           >
             Edit farm area
-          </a>
+          </Link>
         </div>
       </div>
 

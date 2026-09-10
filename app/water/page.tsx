@@ -1,3 +1,4 @@
+import { requireAdminPageSession } from "@/lib/admin-auth";
 import { validateShopAdmin } from "@/lib/shop-auth";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { prisma } from "@/lib/prisma";
@@ -8,6 +9,7 @@ import { WaterPinGate } from "./pin-gate";
 export const dynamic = "force-dynamic";
 
 export default async function WaterPage() {
+  await requireAdminPageSession("/water");
   const isAdmin = await validateShopAdmin();
   if (!isAdmin) return <WaterPinGate />;
 

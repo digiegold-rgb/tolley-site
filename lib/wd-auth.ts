@@ -1,4 +1,5 @@
-import { cookies } from "next/headers";
+import { auth } from "@/auth";
+import { isVaterAdminEmail } from "@/lib/admin-auth";
 import { createHmac } from "node:crypto";
 import { secretEquals } from "@/lib/secret-compare";
 
@@ -37,31 +38,10 @@ function buildToken(role: WdRole, pin: string, iat = Math.floor(Date.now() / 100
 }
 
 export async function validateWdAdmin(): Promise<{ authed: boolean; role: WdRole | null }> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME);
-  if (!token?.value) return { authed: false, role: null };
-
-  const tolleyPin = process.env.WD_ADMIN_PIN_TOLLEY;
-  if (!tolleyPin) return { authed: false, role: null };
-
-  const dot = token.value.indexOf(".");
-  if (dot < 1) return { authed: false, role: null };
-
-  const iat = Number(token.value.slice(0, dot));
-  const sig = token.value.slice(dot + 1);
-  if (!Number.isInteger(iat) || iat <= 0 || !sig) return { authed: false, role: null };
-
-  // Expired (or clock-skewed into the future by more than a minute) → reject
-  // before spending an HMAC.
-  const ageSeconds = Math.floor(Date.now() / 1000) - iat;
-  if (ageSeconds > COOKIE_MAX_AGE || ageSeconds < -60) {
-    return { authed: false, role: null };
-  }
-
-  if (secretEquals(sig, signToken("tolley", tolleyPin, iat))) {
+  const session = await auth();
+  if (session?.user?.id && !session.impersonatedBy && isVaterAdminEmail(session.user.email)) {
     return { authed: true, role: "tolley" };
   }
-
   return { authed: false, role: null };
 }
 

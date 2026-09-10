@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 
 import { HomesFooter } from "@/components/homes/homes-footer";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import "./homes.css";
 
 const poppins = Poppins({
@@ -44,7 +43,6 @@ export const metadata: Metadata = {
 export default function HomesLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`homes-page homes-grid ${poppins.variable}`}>
-      <SiteTracker site="homes" />
       <div aria-hidden="true" className="site-dot-grid-sky pointer-events-none fixed inset-0 z-0" />
       {children}
       <HomesFooter />

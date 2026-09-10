@@ -69,8 +69,6 @@ function HqPageInner() {
 
   const [checking, setChecking] = useState(true);
   const [authed, setAuthed] = useState(false);
-  const [pin, setPin] = useState("");
-  const [pinError, setPinError] = useState("");
 
   const searchParams = useSearchParams();
   const urlTab = searchParams.get("tab");
@@ -364,25 +362,7 @@ function HqPageInner() {
   }, [authed, loadFable5]);
 
   // ─── Login ───
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setPinError("");
-    try {
-      const res = await fetch("/api/hq/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin }),
-      });
-      if (!res.ok) {
-        setPinError(res.status === 401 ? "Invalid PIN" : await readApiError(res, "Login failed"));
-        return;
-      }
-      await loadLeads();
-      setAuthed(true);
-    } catch (err) {
-      setPinError(err instanceof Error ? err.message : "Login failed");
-    }
-  }
+
 
   // ─── Logout ───
   async function handleLogout() {
@@ -400,7 +380,6 @@ function HqPageInner() {
     // Drop every loaded row with the session — the next person at this screen
     // should see the PIN prompt, not the last operator's pipeline.
     setAuthed(false);
-    setPin("");
     setLeads([]);
     setDrafts([]);
     setInbound([]);
@@ -560,21 +539,8 @@ function HqPageInner() {
       <div className="auth-screen">
         <div className="auth-box">
           <h2>Growth HQ</h2>
-          <form onSubmit={handleLogin}>
-            <input
-              type="password"
-              inputMode="numeric"
-              placeholder="Enter PIN"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              style={{ width: "100%", padding: "8px 12px", marginBottom: 12, border: "1px solid var(--hq-border)", borderRadius: 8, fontSize: 14, textAlign: "center", boxSizing: "border-box" }}
-              autoFocus
-            />
-            {pinError && (
-              <div style={{ color: "#c44", fontSize: 12, marginBottom: 8 }}>{pinError}</div>
-            )}
-            <button className="btn btn-primary" style={{ width: "100%" }}>Login</button>
-          </form>
+          <p>Use your owner account and authenticator to continue.</p>
+          <a className="btn btn-primary" href="/login?callbackUrl=/hq">Sign in securely</a>
         </div>
       </div>
     );
@@ -675,6 +641,8 @@ function HqPageInner() {
                 <button onClick={() => { setTab("hauls"); closeIdeas(); }}>💎 Hauls</button>
                 <button onClick={() => { setTab("tiktok"); closeIdeas(); }}>🛍 TikTok</button>
                 {/* Route links, not tab states. */}
+                <a href="/vater" onClick={closeIdeas}>🏭 Vater owner tools</a>
+                <a href="/water" onClick={closeIdeas}>💧 Pool water dashboard</a>
                 <a
                   href="/generate"
                   onClick={closeIdeas}
@@ -690,7 +658,7 @@ function HqPageInner() {
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={closeIdeas}
-                  title="Persona Editor — needs a site login (NextAuth admin), not the HQ PIN — opens in a new tab."
+                  title="Persona Editor — owner account required; opens in a new tab."
                 >
                   💃 Persona <span className="doc-sub">needs site login</span>
                 </a>
@@ -709,7 +677,7 @@ function HqPageInner() {
                   onClick={closeDocs}
                 >
                   🎥 Jelly Ad — Lady V2, 28 segments
-                  <span className="doc-sub">The feature-film ad plan: why "cartoony" wasn't Lady, native 1080p vs 4K pricing, the 15 features, the fit and the loft, all 28 segment lines, the cut table, and the cost — Sep 1, 2026</span>
+                  <span className="doc-sub">The feature-film ad plan: why &quot;cartoony&quot; wasn&apos;t Lady, native 1080p vs 4K pricing, the 15 features, the fit and the loft, all 28 segment lines, the cut table, and the cost — Sep 1, 2026</span>
                 </a>
                 <a
                   href="/research/jelly-studio-capabilities-2026-08.pdf"

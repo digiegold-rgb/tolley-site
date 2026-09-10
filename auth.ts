@@ -11,6 +11,7 @@ import { verifyPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 import { isAdminEmail } from "@/lib/admin-auth";
 import { readSessionVersion } from "@/lib/auth/session-version";
+import { mfaRequirement } from "@/lib/auth/mfa-session";
 import { readViewAsUserId } from "@/lib/vater/acting-as";
 import { isLiveWorkspace, readWsUserId } from "@/lib/vater/workspaces";
 
@@ -323,10 +324,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       if (user?.id) {
         token.sub = user.id;
+        token.authSessionId = randomUUID();
+        token.authAt = nowSeconds;
         token.sv = (await readSessionVersion(user.id)) ?? 0;
         token.svAt = nowSeconds;
         return token;
       }
+
+      // Older sessions have no stable MFA binding. Require a new sign-in.
+      if (!token.authSessionId) return null;
 
       const checkedAt = typeof token.svAt === "number" ? token.svAt : 0;
       if (token.sub && nowSeconds - checkedAt >= SESSION_VERSION_RECHECK_SECONDS) {
@@ -347,6 +353,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
 
     async session({ session, token }) {
+      if (token.sub && token.authSessionId) {
+        const required = await mfaRequirement(token.sub, String(token.email || ""), token.authSessionId);
+        if (required) {
+          session.mfaRequired = required;
+          // Every existing API/page authorization check sees no usable identity.
+          (session as import("next-auth").Session).user = undefined;
+          return session;
+        }
+      }
       if (session.user && token.sub) {
         session.user.id = token.sub;
       }

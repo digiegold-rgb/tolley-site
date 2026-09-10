@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Exo_2 } from "next/font/google";
 
 import { GeneratorFooter } from "@/components/generator/generator-footer";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import { GA4 } from "@/components/analytics/ga4";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
 import "./generator.css";
@@ -44,7 +43,6 @@ export const metadata: Metadata = {
 export default function GeneratorLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`generator-page gen-circuit ${exo2.variable}`}>
-      <SiteTracker site="generator" />
       <GA4 />
       <MetaPixel />
       <div aria-hidden="true" className="site-dot-grid-yellow pointer-events-none fixed inset-0 z-0" />

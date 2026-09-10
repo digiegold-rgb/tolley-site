@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Barlow_Condensed } from "next/font/google";
 
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import { LmFooter } from "@/components/lastmile/lm-footer";
 
 import "../lastmile/lastmile.css";
@@ -50,7 +49,6 @@ export default function DriveLayout({
 }) {
   return (
     <div className={`lastmile-page lm-radar ${barlowCondensed.variable}`}>
-      <SiteTracker site="drive" />
       <div aria-hidden="true" className="site-dot-grid-red pointer-events-none fixed inset-0 z-0" />
 
       {/* Minimal nav bar */}

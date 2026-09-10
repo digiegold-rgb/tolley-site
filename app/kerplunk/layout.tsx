@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Fredoka } from "next/font/google";
 
 import { KerplunkFooter } from "@/components/kerplunk/kerplunk-footer";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import { GA4 } from "@/components/analytics/ga4";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
 import "./kerplunk.css";
@@ -28,7 +27,6 @@ export const metadata: Metadata = {
 export default function KerplunkLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`kerplunk-page kp-confetti ${fredoka.variable}`}>
-      <SiteTracker site="kerplunk" />
       <GA4 />
       <MetaPixel />
       {children}

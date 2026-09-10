@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { customerLeads } from "@/lib/customer-leads";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -31,9 +32,13 @@ export async function POST(request: NextRequest) {
     if (!tagId || typeof tagId !== "string") {
       return NextResponse.json({ error: "tagId is required" }, { status: 400 });
     }
-    if (!leadId && !clientId) {
-      return NextResponse.json({ error: "Either leadId or clientId is required" }, { status: 400 });
+    if ((!leadId && !clientId) || (leadId && clientId) || (leadId && typeof leadId !== "string") || (clientId && typeof clientId !== "string")) {
+      return NextResponse.json({ error: "One leadId or clientId is required" }, { status: 400 });
     }
+    const contact = leadId
+      ? await customerLeads(sub.id).findUnique({ where: { id: leadId }, select: { id: true } })
+      : await prisma.client.findFirst({ where: { id: clientId, subscriberId: sub.id }, select: { id: true } });
+    if (!contact) return NextResponse.json({ error: "Contact not found" }, { status: 404 });
 
     // Verify tag ownership
     const tag = await prisma.tag.findUnique({ where: { id: tagId } });
@@ -100,9 +105,13 @@ export async function DELETE(request: NextRequest) {
     if (!tagId || typeof tagId !== "string") {
       return NextResponse.json({ error: "tagId is required" }, { status: 400 });
     }
-    if (!leadId && !clientId) {
-      return NextResponse.json({ error: "Either leadId or clientId is required" }, { status: 400 });
+    if ((!leadId && !clientId) || (leadId && clientId) || (leadId && typeof leadId !== "string") || (clientId && typeof clientId !== "string")) {
+      return NextResponse.json({ error: "One leadId or clientId is required" }, { status: 400 });
     }
+    const contact = leadId
+      ? await customerLeads(sub.id).findUnique({ where: { id: leadId }, select: { id: true } })
+      : await prisma.client.findFirst({ where: { id: clientId, subscriberId: sub.id }, select: { id: true } });
+    if (!contact) return NextResponse.json({ error: "Contact not found" }, { status: 404 });
 
     // Get tag name for activity log
     const tag = await prisma.tag.findUnique({ where: { id: tagId } });

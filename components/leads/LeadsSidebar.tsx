@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import {
   Sidebar,
@@ -106,7 +107,7 @@ const HelpIcon = (
 const PRIMARY: SidebarItem[] = [
   {
     href: "/leads",
-    label: "Cockpit",
+    label: "Today",
     icon: CockpitIcon,
     match: /^\/leads$/,
   },
@@ -193,7 +194,7 @@ const LEGACY_GROUPS: Array<{ label: string; items: SidebarItem[] }> = [
     items: [
       { href: "/leads/analytics", label: "Analytics" },
       { href: "/leads/workflow", label: "Workflow editor" },
-      { href: "/leads/connects", label: "Integrations" },
+      { href: "/leads/dashboard", label: "CSV import" },
       { href: "/leads/settings", label: "Settings" },
       { href: "/leads/pricing", label: "Billing" },
       { href: "/leads/onboard", label: "Onboarding" },
@@ -203,13 +204,15 @@ const LEGACY_GROUPS: Array<{ label: string; items: SidebarItem[] }> = [
 
 export default function LeadsSidebar({
   tier,
+  owner = false,
 }: {
   tier?: string | null;
+  owner?: boolean;
 }) {
   const [legacyOpen, setLegacyOpen] = useState(false);
 
   return (
-    <Sidebar className="sticky top-0 h-screen overflow-y-auto">
+    <Sidebar className="sticky top-0 hidden h-screen shrink-0 overflow-y-auto md:flex">
       <SidebarBrand href="/leads">
         <span className="text-white/80">t-agent</span>
         {tier && (
@@ -224,6 +227,14 @@ export default function LeadsSidebar({
           <SidebarLink key={item.href} item={item} />
         ))}
       </SidebarSection>
+
+      {owner && <SidebarSection label="Your business">
+        <SidebarLink item={{ href: "/leads/tools", label: "All business tools", icon: AdminIcon, match: /^\/leads\/tools$/ }} />
+        <SidebarLink item={{ href: "/leads/tools/probate", label: "Seller research", icon: PeopleIcon, match: /^\/leads\/tools\/(probate|distress)$/ }} />
+        <SidebarLink item={{ href: "/leads/tools/neighborhoods", label: "Marketing visibility", icon: MarketingIcon, match: /^\/leads\/tools\/(neighborhoods|maps|ai-overview|reviews)$/ }} />
+        <SidebarLink item={{ href: "/leads/tools/inventory", label: "Commerce", icon: PipelineIcon, match: /^\/leads\/tools\/(inventory|trends|arbitrage|affiliates|amazon-subtags)$/ }} />
+        <SidebarLink item={{ href: "/leads/tools/analytics", label: "Business operations", icon: CockpitIcon, match: /^\/leads\/tools\/(analytics|revenue|connections)$/ }} />
+      </SidebarSection>}
 
       <SidebarSection label="Shortcuts">
         {SHORTCUTS.map((item) => (
@@ -258,18 +269,15 @@ export default function LeadsSidebar({
       </div>
 
       <SidebarFooter>
-        {/* "Help & shortcuts" used to link /leads/_dev/primitives — a private
-            (_-prefixed) folder Next never routes, so it 404'd in prod. Point
-            at the T-Agent landing until a real help page exists. */}
-        <a
-          href="/leads"
-          className="flex items-center gap-2 text-xs text-white/30 hover:text-white/60"
+        <Link
+          href="/leads/guide"
+          className="flex items-center gap-2 text-sm text-white/65 hover:text-white"
         >
           <span className="flex h-4 w-4 items-center justify-center">
             {HelpIcon}
           </span>
-          <span>Help &amp; shortcuts</span>
-        </a>
+          <span>First-week guide</span>
+        </Link>
       </SidebarFooter>
     </Sidebar>
   );

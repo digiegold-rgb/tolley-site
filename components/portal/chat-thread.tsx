@@ -52,10 +52,6 @@ function isSafeUrl(link?: string) {
   return /^https?:\/\//i.test(link);
 }
 
-function toSlug(value: string) {
-  return encodeURIComponent(value.trim().replace(/\s+/g, "-").toLowerCase());
-}
-
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) {
@@ -126,7 +122,7 @@ function VendorCard({
           onClick={() => onSeeDossier(card)}
           className="action-chip rounded-full px-[15px] py-2 text-[0.84rem] font-medium text-white/92 transition hover:text-white"
         >
-          See dossier
+          View product demo
         </button>
       </div>
     </article>
@@ -215,7 +211,7 @@ function ListingCards({
                 onClick={() => onSeeDossier(card)}
                 className="action-chip rounded-full px-3 py-1.5 text-[0.65rem] font-semibold tracking-[0.09em] text-white/82 uppercase transition hover:text-white"
               >
-                See dossier
+                View product demo
               </button>
               {isSafeUrl(card.link) ? (
                 <a
@@ -277,7 +273,7 @@ export function ChatThread({
     if (!target) {
       return;
     }
-    router.push(`/leads/dossier/property/${toSlug(target)}`);
+    router.push("/agent#demo");
   };
 
   return (

@@ -42,6 +42,9 @@ export interface TcService {
 }
 
 export const TC_SERVICES: TcService[] = [
+  { title: "Furniture moving", desc: "Furniture, appliances, and heavy items moved locally. Tell us the pickup, destination, stairs, and access for a free quote." },
+  { title: "Vehicle & equipment transport", desc: "Car, truck, and equipment hauling. Send the load details and pickup and delivery addresses for a quote." },
+  { title: "Local delivery", desc: "Marketplace finds, appliances, lumber, and jobsite drops — $3 per loaded mile, quoted up front." },
   {
     title: "Estate cleanouts",
     desc: "Full-house clearing handled respectfully, with before/after photos. Resale value comes off the bill, usable goods get donated.",

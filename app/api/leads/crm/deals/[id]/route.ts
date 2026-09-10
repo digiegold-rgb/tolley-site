@@ -1,3 +1,4 @@
+import { customerCrmReferences } from "@/lib/customer-crm-references";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -147,6 +148,10 @@ export async function PATCH(
     }
 
     const body = await request.json();
+
+    if (!await customerCrmReferences(sub.id, { leadId: body.leadId, clientId: body.clientId })) {
+      return NextResponse.json({ error: "Contact or deal not found" }, { status: 404 });
+    }
 
     // Build update data — only allowed fields
     const allowed = [

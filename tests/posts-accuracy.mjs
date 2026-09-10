@@ -1,11 +1,13 @@
 // Destructive fixtures are restricted to the disposable revenue test database.
 import assert from 'node:assert/strict';
+import { createOwnerSession } from './helpers/owner-session.mjs';
 import { PrismaClient } from '@prisma/client';
 import { chromium } from 'playwright';
 
 const base = process.env.REVENUE_TEST_URL;
 if (base !== 'http://127.0.0.1:3018' || !process.env.DATABASE_URL?.includes('127.0.0.1:55438/tolley_revenue_test')) throw new Error('Isolated test app/database required');
 const p = new PrismaClient();
+let owner;
 const day = 86400000, now = Date.now(), today = Math.floor(now / day) * day;
 const sync = { 'x-sync-secret': 'posts-test-sync-only', 'Content-Type': 'application/json' };
 let browser;
@@ -14,10 +16,8 @@ try {
   await p.channelVideoStat.deleteMany();
   await p.postLogEntry.deleteMany();
   await p.videoCost.deleteMany();
-  const login = await fetch(base + '/api/wd/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: 'revenue-test-admin-only' }) });
-  assert.equal(login.status, 200);
-  const cookie = login.headers.get('set-cookie')?.split(';')[0];
-  assert.ok(cookie);
+  owner = await createOwnerSession(p, base);
+  const cookie = owner.cookie;
   const read = async path => {
     const response = await fetch(base + path, { headers: { cookie } });
     assert.equal(response.status, 200, path);
@@ -86,8 +86,10 @@ try {
 
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, serviceWorkers: 'block' });
-  const [name, ...value] = cookie.split('=');
-  await context.addCookies([{ name, value: value.join('='), url: base }]);
+  await context.addCookies(cookie.split('; ').map(pair => {
+    const index = pair.indexOf('=');
+    return { name: pair.slice(0, index), value: pair.slice(index + 1), url: base };
+  }));
   await context.route('**/*', route => {
     const req = route.request();
     if (!req.url().startsWith(base) && !req.url().startsWith('data:')) return route.abort();
@@ -109,6 +111,7 @@ try {
   assert.equal(views.totals.d30.views, null, 'no data must never display a zero total');
   console.log('PASS: concurrent idempotency, distinct publications, preserved legacy rows, auth, complete/partial/unknown windows, invalid-metric rejection, cost scope, browser rendering.');
 } finally {
+  await owner?.cleanup();
   await browser?.close();
   await p.$disconnect();
 }

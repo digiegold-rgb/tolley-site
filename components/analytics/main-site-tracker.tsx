@@ -4,42 +4,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { captureAttribution, visitorSessionId } from "@/lib/lead-capture-client";
 
-// Any path starting with one of these prefixes has its own per-site
-// SiteTracker in its own layout — we skip those here to avoid double-tracking.
-const SUBSITE_PREFIXES = [
-  "/agent",
-  "/wd",
-  "/trailer",
-  "/generator",
-  "/homes",
-  "/video",
-  "/start",
-  "/pools",
-  "/moupins",
-  "/rental",
-  "/shop",
-  "/food",
-  "/drive",
-  "/junkinjays",
-  "/lastmile",
-  "/hvac",
-  "/client",
-  "/tables",
-  "/kerplunk",
-  "/moving",
-  "/picnic-table",
-  "/scan",
-  "/manus",
-  "/water",
-  "/vater",
-];
-
-// Paths we explicitly never track as "home" views.
-const NEVER_TRACK = [
-  "/api/",
-  "/admin",
-  "/_next",
-];
+import { analyticsSiteForPath } from "@/lib/analytics-site";
 
 function classifyReferrer(ref: string): string {
   if (!ref) return "direct";
@@ -66,8 +31,8 @@ function getReferrer(): string {
 }
 
 /**
- * Fires a pageview for any tolley.io path that isn't a known subsite
- * (which has its own SiteTracker). Mounted once in the root layout.
+ * The sole pageview owner for public and customer routes. Mounted once in
+ * the root layout; pathname changes track navigation between subsites.
  */
 export function MainSiteTracker() {
   const pathname = usePathname();
@@ -75,21 +40,15 @@ export function MainSiteTracker() {
   useEffect(() => {
     if (!pathname) return;
 
-    // Subsites track themselves.
-    const isSubsite = SUBSITE_PREFIXES.some(
-      (p) => pathname === p || pathname.startsWith(p + "/"),
-    );
-    if (isSubsite) return;
-
-    // Never-track paths.
-    if (NEVER_TRACK.some((p) => pathname.startsWith(p))) return;
+    const site = analyticsSiteForPath(pathname);
+    if (!site) return;
 
     fetch("/api/analytics", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: "view",
-        site: "home",
+        site,
         path: pathname,
         referrer: getReferrer(),
         sessionId: visitorSessionId(),

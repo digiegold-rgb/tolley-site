@@ -9,6 +9,7 @@
 import { auth } from "@/auth";
 import type { Metadata, Viewport } from "next";
 import { redirect } from "next/navigation";
+import { StudioLoader } from "@/components/animate/StudioLoader";
 import { AnimateLanding } from "@/components/animate/landing/AnimateLanding";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +60,7 @@ export default async function AnimateStudioPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const session = await auth();
+  if (session?.mfaRequired) redirect("/login/mfa-challenge?callbackUrl=%2Fanimate");
   if (!session?.user?.id) {
     return <AnimateLanding />;
   }
@@ -73,6 +75,5 @@ export default async function AnimateStudioPage({
   }
   /* Load Shell only for signed-in visitors so the public landing JS chunk
    * does not ship in-app help-drawer / studio-chrome strings. */
-  const { Shell } = await import("@/components/animate/Shell");
-  return <Shell />;
+  return <StudioLoader />;
 }

@@ -1,6 +1,5 @@
 import { getSubsite } from "@/lib/subsites";
 import { buildJsonLd } from "@/lib/json-ld";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import { JsonLd } from "./JsonLd";
 
 /**
@@ -12,9 +11,7 @@ import { JsonLd } from "./JsonLd";
  *     return <><SubsiteShell name="<name>"/>{children}</>;
  *   }
  *
- * Mounts:
- *   1. <SiteTracker site="<name>"/> — pageview + events tagged with subsite
- *   2. JSON-LD structured data (skipped if manifest.skipJsonLd)
+ * Mounts JSON-LD structured data (skipped if manifest.skipJsonLd).
  *
  * The agent-manifest <link rel="alternate"> and <meta name="agent-purpose">
  * tags are emitted via `subsiteMetadata(name)` — call from the layout's
@@ -26,7 +23,6 @@ export function SubsiteShell({ name }: { name: string }) {
   const jsonLd = manifest.skipJsonLd ? null : buildJsonLd(manifest);
   return (
     <>
-      <SiteTracker site={manifest.name} />
       {jsonLd && <JsonLd data={jsonLd} />}
     </>
   );

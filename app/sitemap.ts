@@ -1,3 +1,4 @@
+import { SHOP_VIDEO_WHERE } from "@/lib/shop-video-visibility";
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { withPrismaTimeout } from "@/lib/prisma-url";
@@ -47,6 +48,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // /trading, and the rest render login walls — submitting them tells Google
   // the site is mostly auth-gated dashboards.
   const sitemapExclude = new Set([
+    "/clean", "/circle", "/vater", "/advertising", "/real-estate-agent",
     "/water",
     "/crypto",
     "/agents",
@@ -82,7 +84,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/shop/haul`, changeFrequency: "daily", priority: 0.7 },
     { url: `${BASE}/shop/reviews`, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/shop/sold`, changeFrequency: "weekly", priority: 0.4 },
-    { url: `${BASE}/shop/videos`, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/estate/our-work`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE}/tools/missed-call-calculator`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/tools/lead-follow-up-audit`, changeFrequency: "monthly", priority: 0.6 },
@@ -154,6 +155,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "monthly" as const,
     priority: 0.7,
   }));
+
+  if (neighborhoods.length > 0) extras.push({ url: `${BASE}/real-estate-agent`, changeFrequency: "weekly", priority: 0.9 });
+  const videoCount = await withPrismaTimeout(prisma.product.count({
+    where: SHOP_VIDEO_WHERE,
+  }).catch(() => 0), 0);
+  if (videoCount > 0) extras.push({ url: `${BASE}/shop/videos`, changeFrequency: "weekly", priority: 0.6 });
 
   // Use publicSubsites for log so we don't surprise builds
   void publicSubsites;

@@ -1,22 +1,8 @@
-/**
- * Signal → Lead promotion.
- *
- * Both ProbateSignal and DistressSignal have carried a `leadId` column since
- * they were built, and nothing ever wrote to it. As of 2026-07-26 that meant
- * 20 promoted probate signals and 26 promoted distress signals — 46 leads the
- * scanners had already paid SerpAPI to find and that Cordless had already
- * hand-reviewed — were sitting in their own tables with no route into the CRM.
- * The Lead table's newest row of any source was six weeks old.
- *
- * Promotion now does three things atomically-ish:
- *   1. creates a Lead (the CRM's unit of work, already wired to pipelines,
- *      tasks, activities and the /hq funnel views)
- *   2. back-links it onto the signal so promotion is idempotent
- *   3. queues a Must Complete item, because a lead nobody is told about is
- *      the same as no lead — this is the standing "feed me, don't make me
- *      search" rail the distress scanner already uses.
- */
+/** Promote source signals with an atomic source link and optional private Today
+ * task. Scheduled legacy callers retain their HQ reminder; signed-in T-Agent
+ * adoption saves its own task/activity without resetting completed work. */
 
+import { persistSignalPromotion } from "@/lib/leads/promote-signal";
 import { prisma } from "@/lib/prisma";
 import { isPersonName, salvageHeirName } from "@/lib/leads/heir-name";
 import { probateLeadScore, type ProbateScoreFactors } from "@/lib/leads/probate-score";
@@ -29,6 +15,7 @@ export interface PromoteResult {
   ok: boolean;
   leadId?: string;
   deduped?: boolean;
+  taskId?: string;
   error?: string;
 }
 
@@ -52,7 +39,7 @@ async function queueMustComplete(args: {
         category: args.category,
         title: args.title,
         detail: args.detail,
-        links: [{ label: "Open in CRM", url: `https://www.tolley.io/hq?tab=leads&lead=${args.leadId}` }],
+        links: [{ label: "Open in CRM", url: `https://www.tolley.io/leads/${args.leadId}` }],
         source: "serpapi-lead-engine",
       },
     });
@@ -64,10 +51,9 @@ async function queueMustComplete(args: {
 }
 
 /** Promote a probate signal into the CRM. Safe to call twice. */
-export async function promoteProbateSignal(signalId: string): Promise<PromoteResult> {
+export async function promoteProbateSignal(signalId: string, subscriberId?: string): Promise<PromoteResult> {
   const signal = await prisma.probateSignal.findUnique({ where: { id: signalId } });
   if (!signal) return { ok: false, error: "signal not found" };
-  if (signal.leadId) return { ok: true, leadId: signal.leadId, deduped: true };
 
   const heirs = Array.isArray(signal.heirsJson)
     ? (signal.heirsJson as { name?: string; relationship?: string }[])
@@ -113,8 +99,7 @@ export async function promoteProbateSignal(signalId: string): Promise<PromoteRes
   };
 
   try {
-    const lead = await prisma.lead.create({
-      data: {
+    const result = await persistSignalPromotion("probate", signalId, {
         source: "probate-scan",
         status: "new",
         pipelineStage: "new_lead",
@@ -122,35 +107,28 @@ export async function promoteProbateSignal(signalId: string): Promise<PromoteRes
         scoreFactors,
         // The heir is who you can actually talk to; the decedent is not —
         // but only a validated person name goes here, never a phrase.
-        ownerName: heirContact ?? signal.decedentName,
+        ownerName: heirContact,
         notes,
         parcelId: signal.parcelId ?? null,
-      },
-    });
+    }, subscriberId);
 
-    await prisma.probateSignal.update({
-      where: { id: signalId },
-      data: { leadId: lead.id, status: "promoted" },
-    });
-
-    await queueMustComplete({
+    if (!subscriberId) await queueMustComplete({
       title: `Work probate lead: ${signal.matchedAddress ?? signal.decedentName}${locality ? ` (${locality})` : ""}`,
       detail: notes,
       category: "growth",
-      leadId: lead.id,
+      leadId: result.leadId,
     });
 
-    return { ok: true, leadId: lead.id };
+    return { ok: true, ...result };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "promotion failed" };
   }
 }
 
 /** Promote a distress signal into the CRM. Safe to call twice. */
-export async function promoteDistressSignal(signalId: string): Promise<PromoteResult> {
+export async function promoteDistressSignal(signalId: string, subscriberId?: string): Promise<PromoteResult> {
   const signal = await prisma.distressSignal.findUnique({ where: { id: signalId } });
   if (!signal) return { ok: false, error: "signal not found" };
-  if (signal.leadId) return { ok: true, leadId: signal.leadId, deduped: true };
 
   const locality = [signal.city, signal.state].filter(Boolean).join(", ");
   const notes = [
@@ -166,8 +144,7 @@ export async function promoteDistressSignal(signalId: string): Promise<PromoteRe
     .join("\n");
 
   try {
-    const lead = await prisma.lead.create({
-      data: {
+    const result = await persistSignalPromotion("distress", signalId, {
         source: `distress-${signal.kind}`,
         status: "new",
         pipelineStage: "new_lead",
@@ -179,22 +156,16 @@ export async function promoteDistressSignal(signalId: string): Promise<PromoteRe
         },
         ownerName: signal.ownerGuess ?? null,
         notes,
-      },
-    });
+    }, subscriberId);
 
-    await prisma.distressSignal.update({
-      where: { id: signalId },
-      data: { leadId: lead.id, status: "promoted" },
-    });
-
-    await queueMustComplete({
+    if (!subscriberId) await queueMustComplete({
       title: `Work ${signal.kind} lead: ${signal.addressGuess ?? signal.title.slice(0, 60)}${locality ? ` (${locality})` : ""}`,
       detail: notes,
       category: "growth",
-      leadId: lead.id,
+      leadId: result.leadId,
     });
 
-    return { ok: true, leadId: lead.id };
+    return { ok: true, ...result };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "promotion failed" };
   }

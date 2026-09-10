@@ -1,3 +1,4 @@
+import { requireVaterAdminPageSession } from "@/lib/admin-auth";
 import type { Metadata } from "next";
 
 import { GovBidsHero } from "@/components/vater/govbids-hero";
@@ -7,12 +8,14 @@ import { GovBidsSetup } from "@/components/vater/govbids-setup";
 import { GovBidsFaq } from "@/components/vater/govbids-faq";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: false },
   title: "GovBids | Vater Ventures",
   description:
     "Win government and military supply contracts with AI-powered bid scanning, cost calculation, and proposal generation. $700B+ market, low competition, high margins.",
 };
 
-export default function GovBidsPage() {
+export default async function GovBidsPage() {
+  await requireVaterAdminPageSession("/vater/govbids");
   return (
     <main>
       <GovBidsHero />

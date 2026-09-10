@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Oswald } from "next/font/google";
 
 import { TrailerFooter } from "@/components/trailer/trailer-footer";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import { GA4 } from "@/components/analytics/ga4";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
 import "./trailer.css";
@@ -44,7 +43,6 @@ export const metadata: Metadata = {
 export default function TrailerLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`trailer-page trailer-grit ${oswald.variable}`}>
-      <SiteTracker site="trailer" />
       <GA4 />
       <MetaPixel />
       <div aria-hidden="true" className="site-dot-grid-amber pointer-events-none fixed inset-0 z-0" />

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { customerLeads } from "@/lib/customer-leads";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
           triggered++;
 
           // Mark lead as auto-responded
-          await prisma.lead.update({
+          await customerLeads(sub.id).update({
             where: { id: lead.id },
             data: {
               status: "contacted",

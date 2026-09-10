@@ -122,7 +122,7 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
 
   // ── JARED — FUNNEL ───────────────────────────────────────────────────────
   { id: "fun-site", label: "tolley.io", lane: "jared-funnel", row: 0, col: 0, kind: "page", icon: "🌐", signal: "db:views:any", cadenceMin: 720, href: "/" },
-  { id: "fun-circle", label: "The Circle", lane: "jared-funnel", row: 0, col: 1, kind: "page", icon: "⭕", signal: "db:circle", cadenceMin: day, href: "/circle", note: "The flywheel. Watch leads-by-ref here." },
+  { id: "fun-circle", label: "The Circle", lane: "jared-funnel", row: 0, col: 1, kind: "page", icon: "⭕", signal: "db:circle", cadenceMin: day, href: "/start#route", note: "The flywheel. Watch leads-by-ref here." },
   { id: "fun-start", label: "/start Registry", lane: "jared-funnel", row: 1, col: 1, kind: "page", icon: "🧭", signal: "db:views:start", cadenceMin: 2 * day, href: "/start" },
   { id: "fun-inbox", label: "/hq Inbox", lane: "jared-funnel", row: 0, col: 2, kind: "page", icon: "📥", signal: "db:inbox", cadenceMin: 3 * day, href: "/hq?tab=inbound" },
   { id: "fun-telegram", label: "Telegram Pings", lane: "jared-funnel", row: 0, col: 5, kind: "channel", icon: "✈️", signal: "dgx:unit:daily-receipt", cadenceMin: day, note: "Daily receipt 07:00 + lead/reply pings." },

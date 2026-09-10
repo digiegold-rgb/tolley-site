@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { routeDestination, type RouteSearchParams } from "@/lib/public-route-policy";
 import type { Metadata } from "next";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import Link from "next/link";
@@ -13,12 +15,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://www.tolley.io/real-estate-agent" },
 };
 
-export default async function NeighborhoodIndex() {
+export default async function NeighborhoodIndex({ searchParams }: { searchParams: Promise<RouteSearchParams> }) {
   const pages = await prisma.neighborhoodPage.findMany({
     where: { published: true },
     orderBy: [{ state: "asc" }, { city: "asc" }],
     select: { slug: true, name: true, city: true, state: true },
   });
+
+  if (pages.length === 0) redirect(routeDestination("/homes", await searchParams));
 
   const moPages = pages.filter((p) => p.state === "MO");
   const ksPages = pages.filter((p) => p.state === "KS");
@@ -51,11 +55,6 @@ export default async function NeighborhoodIndex() {
           </p>
         </header>
 
-        {pages.length === 0 && (
-          <div className="mt-8 rounded-lg border border-white/10 bg-white/5 p-6 text-center text-sm text-white/60">
-            Pages are still being generated. Check back shortly.
-          </div>
-        )}
 
         {moPages.length > 0 && (
           <section className="mt-10">

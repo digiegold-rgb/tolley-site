@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins, Space_Grotesk, Inter } from "next/font/google";
 
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import { GA4 } from "@/components/analytics/ga4";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
 import "./client.css";
@@ -70,7 +69,6 @@ export default function ClientLayout({
 
   return (
     <div className={`client-page ${poppins.variable} ${spaceGrotesk.variable} ${inter.variable}`}>
-      <SiteTracker site="client" />
       <GA4 />
       <MetaPixel />
       {/* JSON-LD: hardcoded schema object; `<` escaped for defense-in-depth */}

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
 
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import "./crazybins.css";
 
 const nunito = Nunito({
@@ -54,7 +53,6 @@ export const metadata: Metadata = {
 export default function CrazybinsLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`crazybins-page ${nunito.variable}`}>
-      <SiteTracker site="crazybins" />
       {children}
     </div>
   );

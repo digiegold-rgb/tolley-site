@@ -1,3 +1,4 @@
+import { customerLeads } from "@/lib/customer-leads";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -47,7 +48,7 @@ export async function GET() {
       where.listing = { zip: { in: sub.farmZips } };
     }
 
-    const leads = await prisma.lead.findMany({
+    const leads = await customerLeads(sub.id).findMany({
       where,
       include: {
         listing: {
@@ -132,7 +133,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Get current lead
-    const existing = await prisma.lead.findUnique({
+    const existing = await customerLeads(sub.id).findUnique({
       where: { id: leadId },
       select: { status: true },
     });
@@ -141,7 +142,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Update lead status
-    const updated = await prisma.lead.update({
+    const updated = await customerLeads(sub.id).update({
       where: { id: leadId },
       data: {
         status: newStage,

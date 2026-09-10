@@ -1,28 +1,27 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
-// Content-Security-Policy in REPORT-ONLY mode: browsers report violations but
-// block nothing, so this can't break Stripe/Maps/Pixel/GA4/blob usage. Review
-// the reports, then promote to an enforcing `Content-Security-Policy` header.
-const cspReportOnly = [
+// Enforce the policy by default; CSP_ENFORCE=0 is an explicit rollback.
+// Inline Next bootstrap remains allowed to preserve static page delivery.
+const contentSecurityPolicy = [
   "default-src 'self'",
-  // Next.js ships inline bootstrap scripts; 'unsafe-inline'/'unsafe-eval' are
-  // needed until a nonce-based CSP is wired. Third-party JS hosts allowlisted.
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://maps.googleapis.com https://va.vercel-scripts.com",
+  // Static Next bootstrap needs inline scripts. Production never allows eval.
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""} https://js.stripe.com https://checkout.stripe.com https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://maps.googleapis.com https://va.vercel-scripts.com https://static.ads-twitter.com https://analytics.twitter.com https://maps.gstatic.com`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   // Vater/Jelly Studio finals stream from the Vercel Blob CDN
   // (*.blob.vercel-storage.com); allow it explicitly so promoting this CSP to
   // enforcing does not break Library playback (media falls back to default-src
   // 'self' otherwise). blob:/data: cover local previews.
-  "media-src 'self' blob: data: https://*.blob.vercel-storage.com",
+  "media-src 'self' blob: data: https://*.blob.vercel-storage.com https://media.tolley.io",
   "font-src 'self' data: https://fonts.gstatic.com",
   "connect-src 'self' https: wss:",
-  "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com https://www.facebook.com",
+  "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com https://www.facebook.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
+  "worker-src 'self' blob:",
   // Without a report destination, report-only mode collects nothing —
   // /api/csp-report samples violations so promotion to enforcing has data.
   "report-uri /api/csp-report",
@@ -40,14 +39,13 @@ const securityHeaders = [
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=(self), interest-cohort=()",
   },
-  // CSP_ENFORCE=1 (Vercel env) promotes the policy to enforcing; unset = report-only.
-  // Rollback = flip the env var + redeploy, no code change (overhaul 2026-08-15).
+  // Rollback requires an explicit CSP_ENFORCE=0 and redeploy.
   {
     key:
-      process.env.CSP_ENFORCE === "1"
-        ? "Content-Security-Policy"
-        : "Content-Security-Policy-Report-Only",
-    value: cspReportOnly,
+      process.env.CSP_ENFORCE === "0"
+        ? "Content-Security-Policy-Report-Only"
+        : "Content-Security-Policy",
+    value: contentSecurityPolicy,
   },
 ];
 
@@ -90,6 +88,10 @@ const nextConfig: NextConfig = {
   // force-dynamic the root layout (1.17 hang). Do not re-enable
   // typescript checking inside next build (2026-08-19 OOM).
   experimental: {
+    // Use the installed TypeScript compiler API to read config. The CLI
+    // subprocess returned empty --showConfig output in this environment.
+    // Full type checking remains the separate mandatory npm build step.
+    useTypeScriptCli: false,
     cpus: 1,
     staticGenerationMaxConcurrency: 1,
     webpackMemoryOptimizations: true,
@@ -98,6 +100,7 @@ const nextConfig: NextConfig = {
     // SIGKILLs the build (1.37.2). Stay on one collect worker. Stay on Standard.
     webpackBuildWorker: false,
   },
+  poweredByHeader: false,
   images: {
     remotePatterns: [
       {
@@ -106,9 +109,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // data/VATER-RULES.pdf is read at runtime by the studio-gated rules route;
-  // without this it never makes it into the serverless bundle.
+  // Include authenticated document assets read at runtime in serverless bundles.
   outputFileTracingIncludes: {
+    "/leads/guide/owner": ["./docs/product/tagent-personal-use-20260909.md"],
+    "/api/leads/guide/plan": ["./docs/product/tagent-personal-use-20260909.md"],
     "/api/vater/rules": ["./data/VATER-RULES.pdf"],
     "/api/vater/rules/route": ["./data/VATER-RULES.pdf"],
     // 8/25: per-character rule template instantiated when a user builds a character
@@ -155,13 +159,13 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
           // Same story for CSP: the global frame-ancestors 'none' would block the
-          // same-origin iframe once CSP_ENFORCE=1 (audit AN-10, 2026-08-15).
+          // same-origin iframe under the enforced policy (audit AN-10, 2026-08-15).
           {
             key:
-              process.env.CSP_ENFORCE === "1"
-                ? "Content-Security-Policy"
-                : "Content-Security-Policy-Report-Only",
-            value: cspReportOnly.replace(
+              process.env.CSP_ENFORCE === "0"
+                ? "Content-Security-Policy-Report-Only"
+                : "Content-Security-Policy",
+            value: contentSecurityPolicy.replace(
               "frame-ancestors 'none'",
               "frame-ancestors 'self'",
             ),
@@ -182,6 +186,10 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      { source: "/clean", destination: "/cleanouts", permanent: true },
+      { source: "/circle", destination: "/start", permanent: true },
+      { source: "/leads/connects", destination: "/leads/dashboard", permanent: false },
+      { source: "/leads/dossier/property/:address", destination: "/agent#demo", permanent: true },
       { source: "/leads/demo", destination: "/agent#demo", permanent: true },
       { source: "/agent/demo", destination: "/agent#demo", permanent: true },
       { source: "/agent/pricing", destination: "/leads/pricing", permanent: true },
@@ -196,7 +204,7 @@ const nextConfig: NextConfig = {
       // destination page's OG tags.
       {
         source: "/m/wd",
-        destination: "/rental?utm_source=messenger&utm_medium=auto_reply",
+        destination: "/wd?utm_source=messenger&utm_medium=auto_reply",
         permanent: false,
       },
       {

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 
 import { TablesFooter } from "@/components/tables/tables-footer";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import { GA4 } from "@/components/analytics/ga4";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
 import "./tables.css";
@@ -28,7 +27,6 @@ export const metadata: Metadata = {
 export default function TablesLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`tables-page tbl-weave ${outfit.variable}`}>
-      <SiteTracker site="tables" />
       <GA4 />
       <MetaPixel />
       {children}

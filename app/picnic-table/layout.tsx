@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
 
 import { PicnicFooter } from "@/components/picnic-table/picnic-footer";
-import { SiteTracker } from "@/components/analytics/site-tracker";
 import { GA4 } from "@/components/analytics/ga4";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
 import "./picnic-table.css";
@@ -28,7 +27,6 @@ export const metadata: Metadata = {
 export default function PicnicTableLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`picnic-page pt-dots ${nunito.variable}`}>
-      <SiteTracker site="picnic-table" />
       <GA4 />
       <MetaPixel />
       {children}
