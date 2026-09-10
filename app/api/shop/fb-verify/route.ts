@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
 
   try {
     revalidatePath("/shop");
-    revalidatePath("/shop/dashboard");
+    revalidatePath("/leads/tools/inventory");
   } catch {
     /* best-effort */
   }

@@ -263,7 +263,7 @@ export async function POST(req: NextRequest) {
   if (markedSold > 0 || updated > 0) {
     try {
       revalidatePath("/shop");
-      revalidatePath("/shop/dashboard");
+      revalidatePath("/leads/tools/inventory");
       revalidatePath("/shop/admin/cross-listing");
     } catch {
       /* best effort */

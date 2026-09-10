@@ -9,12 +9,12 @@ import {
   extractOverviewText,
   type AiOverviewBlock,
 } from "@/lib/serpapi/ai-overview-config";
-import { validateShopAdmin } from "@/lib/shop-auth";
+import { validateOwnerTool as validateShopAdmin } from "@/lib/leads/owner-tool-auth";
 
 export const maxDuration = 60;
 
 export async function POST(_req: NextRequest) {
-  if (!(await validateShopAdmin())) {
+  if (!(await validateShopAdmin(_req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (!serpapiKey()) {

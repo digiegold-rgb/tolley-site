@@ -1,7 +1,7 @@
 type LegalPageShellProps = {
   title: string;
   subtitle: string;
-  /** Brand line above the title. Defaults to T-Agent; Jelly Studio's legal
+  /** Brand line above the title. Defaults to Tolley; Jelly Studio's legal
    *  pages pass their own so a studio customer never sees a real-estate SaaS
    *  masthead on the document they are agreeing to. */
   kicker?: string;
@@ -11,7 +11,7 @@ type LegalPageShellProps = {
 export function LegalPageShell({
   title,
   subtitle,
-  kicker = "t-agent | real estate unlocked",
+  kicker = "Tolley · Policies & information",
   children,
 }: LegalPageShellProps) {
   return (

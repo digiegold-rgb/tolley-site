@@ -29,6 +29,7 @@ export default function robots(): MetadataRoute.Robots {
     "/signature",
     "/food/",
     "/shop/dashboard",
+    "/leads/tools",
     "/shop/admin",
     "/drive/dashboard",
     "/drive/driver",

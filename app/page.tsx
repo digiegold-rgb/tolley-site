@@ -23,11 +23,6 @@ const services = [
 export default function TolleyHome() {
   return <EventTracker site="home"><main className={`tolley-home ${styles.home}`}>
     <LegacyAgentLinks />
-    <a href="#main-content" className={styles.skip}>Skip to content</a>
-    <header className={styles.header}>
-      <Link href="/" className={styles.wordmark} aria-label="Tolley home">tolley<span>●</span></Link>
-      <nav aria-label="Main navigation" className={styles.nav}><a href="#products">Products</a><a href="#services">Local services</a><Link href="/start">Explore all ↗</Link></nav>
-    </header>
     <section id="main-content" className={styles.hero}>
       <p className={styles.eyebrow}>Independent ideas. Useful things.</p>
       <h1>What can Tolley<br />help you <em>do?</em></h1>
@@ -61,6 +56,5 @@ export default function TolleyHome() {
       </Link>)}</div>
     </section>
     <section className={styles.about} aria-labelledby="about-title"><p className={styles.eyebrow}>A name behind the work</p><h2 id="about-title">Hi, I’m Jared Tolley.</h2><p>I build tools and run services from the Kansas City area. Each offering has its own home here, so you can go straight to the details, see what’s available, and take the next step.</p><Link href="/about" className={styles.textLink}>Meet Jared ↗</Link></section>
-    <footer className={styles.footer}><Link href="/" className={styles.wordmark}>tolley<span>●</span></Link><p>Kansas City roots. Ideas that travel.</p><nav aria-label="Footer navigation"><Link href="/agent">T-Agent</Link><Link href="/animate">Jelly Studio</Link><Link href="/start">All offerings</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></nav><small>© {new Date().getFullYear()} Tolley.io</small></footer>
   </main></EventTracker>;
 }

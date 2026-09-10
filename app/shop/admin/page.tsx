@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function ShopAdminRedirect() {
-  redirect("/shop/dashboard/tools");
+  redirect("/leads/tools/connections");
 }

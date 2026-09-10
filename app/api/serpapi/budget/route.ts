@@ -9,7 +9,7 @@
 
 import { NextResponse } from "next/server";
 import { budgetReport, billingCycleStart } from "@/lib/serpapi";
-import { validateShopAdmin } from "@/lib/shop-auth";
+import { validateOwnerTool as validateShopAdmin } from "@/lib/leads/owner-tool-auth";
 
 export const dynamic = "force-dynamic";
 

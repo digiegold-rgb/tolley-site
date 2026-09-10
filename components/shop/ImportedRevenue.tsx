@@ -83,7 +83,7 @@ export function ImportedRevenue() {
       <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
         <p className="text-sm text-white/60">
           No imported revenue yet. Drop your weekly Numbers/Excel export at{" "}
-          <Link href="/shop/dashboard/tools/revenue" className="text-purple-300 underline">
+          <Link href="/leads/tools/revenue" className="text-purple-300 underline">
             Tools → Revenue Import
           </Link>
           .

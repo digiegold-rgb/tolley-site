@@ -15,6 +15,7 @@ const BOT_UA =
 const ADMIN_PATH_PREFIXES = [
   "/shop/admin",
   "/shop/dashboard",
+  "/leads/tools",
   "/shop/new",
 ];
 

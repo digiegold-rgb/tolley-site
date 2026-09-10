@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { validateShopAdmin } from "@/lib/shop-auth";
 import { resolveAmazonTag } from "@/lib/shop";
 import BatchClient, { type BatchProduct } from "./BatchClient";
 
@@ -13,8 +13,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 async function isAdmin() {
-  const c = await cookies();
-  return !!c.get("shop_admin");
+  return validateShopAdmin();
 }
 
 export default async function AmazonBatchPage() {

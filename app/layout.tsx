@@ -8,12 +8,15 @@ import { XPixel } from "@/components/analytics/x-pixel";
 import { MainSiteTracker } from "@/components/analytics/main-site-tracker";
 import { AgentDiscovery } from "@/components/agent/AgentDiscovery";
 import { VideoSpeedKeybinds } from "@/components/ui/VideoSpeedKeybinds";
+import TolleyPublicFrame from "@/components/tolley/TolleyPublicFrame";
 import {
   StructuredData,
   organizationSchema,
   websiteSchema,
 } from "@/components/seo/structured-data";
 import "./globals.css";
+import "./tolley-theme.css";
+import "./tolley-service-theme.css";
 
 const sora = Sora({
   variable: "--font-sora",
@@ -45,7 +48,7 @@ export default function RootLayout({
       </head>
       <body className={`${sora.variable} ${jetBrainsMono.variable} antialiased`}>
         <AuthSessionProvider>
-          {children}
+          <TolleyPublicFrame>{children}</TolleyPublicFrame>
           <MainSiteTracker />
           <AgentDiscovery />
           <VideoSpeedKeybinds />

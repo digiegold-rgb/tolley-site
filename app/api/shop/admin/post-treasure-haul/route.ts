@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
   });
 
   revalidatePath("/shop");
-  revalidatePath("/shop/dashboard");
+  revalidatePath("/leads/tools/inventory");
 
   return NextResponse.json({
     ok: true,

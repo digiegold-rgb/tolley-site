@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
       select: { id: true, capturedAt: true },
     });
     try {
-      revalidatePath("/shop/dashboard/affiliates");
+      revalidatePath("/leads/tools/affiliates");
     } catch {
       /* best-effort */
     }
@@ -258,7 +258,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    revalidatePath("/shop/dashboard/affiliates");
+    revalidatePath("/leads/tools/affiliates");
   } catch {
     /* best-effort */
   }

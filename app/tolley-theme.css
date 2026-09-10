@@ -1,0 +1,77 @@
+/* Tolley's public design tokens. These never replace a product app's theme. */
+.tolley-site {
+  --tolley-bg: #101815;
+  --tolley-surface: #19251e;
+  --tolley-raised: #233229;
+  --tolley-text: #f4f3e9;
+  --tolley-muted: #b6c2b9;
+  --tolley-accent: #d7edaa;
+  --tolley-accent-hover: #e3f4c1;
+  --tolley-on-accent: #172019;
+  --tolley-line: #ffffff26;
+  --tolley-font: var(--font-sora), sans-serif;
+  --tolley-display: Georgia, serif;
+  --tolley-radius: 16px;
+  --tolley-gutter: clamp(22px, 4vw, 40px);
+  background: var(--tolley-bg);
+  color: var(--tolley-text);
+  font-family: var(--tolley-font);
+  min-height: 100vh;
+  isolation: isolate;
+  color-scheme: dark;
+}
+body:has(.tolley-site) { background: #101815; padding-bottom: 0; }
+.tolley-site a { text-underline-offset: 4px; }
+.tolley-site :where(a, button, input, select, textarea, summary):focus-visible,
+.tolley-site .tolley-content :where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--tolley-accent); outline-offset: 4px;
+}
+.tolley-content { min-width: 0; }
+.tolley-header, .tolley-footer { max-width: 1240px; margin-inline: auto; padding-inline: var(--tolley-gutter); position: relative; z-index: 10; }
+.tolley-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; padding-block: 26px; border-bottom: 1px solid var(--tolley-line); }
+.tolley-site .tolley-wordmark { color: var(--tolley-text); font-size: 33px; font-weight: 700; letter-spacing: -2px; line-height: 1; text-decoration: none; }
+.tolley-wordmark span { color: var(--tolley-accent); font-size: 12px; vertical-align: middle; margin-left: 5px; }
+.tolley-header nav, .tolley-footer nav { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; font-size: 13px; }
+.tolley-header nav a, .tolley-footer nav a { color: var(--tolley-muted); text-decoration: none; }
+.tolley-header nav a:hover, .tolley-footer nav a:hover { color: var(--tolley-accent); }
+.tolley-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 28px; padding-block: 40px 28px; border-top: 1px solid var(--tolley-line); }
+.tolley-footer p, .tolley-footer small { color: var(--tolley-muted); font-size: 12px; }
+.tolley-footer p { margin-top: 14px; }
+.tolley-footer small { flex-basis: 100%; }
+.tolley-site .tolley-skip { position: fixed; top: -100px; left: 22px; z-index: 100; background: var(--tolley-accent); color: var(--tolley-on-accent); padding: 12px 18px; border-radius: 8px; }
+.tolley-site .tolley-skip:focus { top: 12px; }
+.tolley-prose-page { max-width: 860px; margin-inline: auto; padding: 64px var(--tolley-gutter) 80px; }
+.tolley-prose-page h1 { font-size: clamp(36px, 6vw, 58px); line-height: 1.1; letter-spacing: -.045em; font-weight: 500; color: var(--tolley-text); }
+.tolley-prose-page h2 { color: var(--tolley-text); letter-spacing: -.025em; }
+.tolley-prose-page p { color: var(--tolley-muted); line-height: 1.85; }
+.tolley-prose-page strong { color: var(--tolley-text); }
+.tolley-prose-page a { color: var(--tolley-accent); }
+.tolley-site .tolley-panel { background: var(--tolley-surface); border: 1px solid var(--tolley-line); border-radius: var(--tolley-radius); }
+.tolley-site .tolley-button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; border-radius: 8px; padding: 12px 20px; background: var(--tolley-accent); color: var(--tolley-on-accent); font-size: 14px; font-weight: 600; text-decoration: none; }
+.tolley-site .tolley-button:hover { background: var(--tolley-accent-hover); }
+.tolley-site .tolley-content :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea, select) { background-color: var(--tolley-surface); color: var(--tolley-text); border-color: var(--tolley-line); border-radius: 8px; }
+.tolley-site .tolley-content :where(input, textarea)::placeholder { color: var(--tolley-muted); opacity: .8; }
+.tolley-site .legal-page { min-height: 0; padding-block: 56px 72px; }
+.tolley-site .legal-card { background: var(--tolley-surface); border-color: var(--tolley-line); box-shadow: none; backdrop-filter: none; border-radius: var(--tolley-radius); }
+.tolley-site .legal-page > [aria-hidden="true"], .tolley-site .site-legal-footer { display: none; }
+.tolley-site .start-page { background: transparent; }
+.tolley-site .start-page main { min-height: 0; }
+.tolley-site .tolley-service-card { background: var(--tolley-surface); border: 1px solid var(--tolley-line); border-radius: var(--tolley-radius); box-shadow: none; }
+.tolley-site .tolley-service-card:hover { border-color: var(--tolley-accent); background: var(--tolley-raised); }
+.tolley-site .tolley-service-card p { color: var(--tolley-text); }
+.tolley-site .tolley-service-card :where(li, p + p) { color: var(--tolley-muted); }
+@media (max-width: 600px) {
+  .tolley-header { padding-block: 22px; gap: 16px; }
+  .tolley-site .tolley-wordmark { font-size: 28px; }
+  .tolley-header nav { gap: 16px; font-size: 12px; }
+  .tolley-footer nav { gap: 16px; }
+  .tolley-prose-page { padding-block: 40px 56px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tolley-site *, .tolley-site *::before, .tolley-site *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+@media print {
+  .tolley-site { --tolley-bg: #fff; --tolley-surface: #fff; --tolley-raised: #f4f4f4; --tolley-text: #171f19; --tolley-muted: #39473d; --tolley-accent: #244c2f; --tolley-line: #b6c2b9; min-height: 0; color-scheme: light; }
+  body:has(.tolley-site) { background: #fff; }
+  .tolley-site :is(.tolley-header, .tolley-footer, .tolley-skip) { display: none; }
+}

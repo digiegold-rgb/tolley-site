@@ -1,7 +1,7 @@
 import { SHOP_VIDEO_WHERE } from "@/lib/shop-video-visibility";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { validateShopAdmin } from "@/lib/shop-auth";
 import { prisma } from "@/lib/prisma";
 import { withPrismaTimeout } from "@/lib/prisma-url";
 import { TREASURE_HAUL_FB_URL, TREASURE_HAUL_MESSENGER_URL } from "@/lib/shop";
@@ -112,8 +112,7 @@ async function getTabCounts(): Promise<TabCounts> {
 
 async function isAdmin(): Promise<boolean> {
   try {
-    const cookieStore = await cookies();
-    return !!cookieStore.get("shop_admin");
+    return await validateShopAdmin();
   } catch {
     return false;
   }
@@ -159,7 +158,7 @@ export default async function ShopLayout({
             )}
             {admin && (
               <Link
-                href="/shop/dashboard"
+                href="/leads/tools/inventory"
                 className="rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-300 transition hover:bg-purple-500/20"
               >
                 Dashboard

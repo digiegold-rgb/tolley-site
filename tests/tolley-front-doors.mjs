@@ -50,8 +50,26 @@ try {
   }
   await page.setViewportSize({ width: 390, height: 850 });
   await page.screenshot({ path: `${shots}/home-mobile.png`, fullPage: true });
+  // Public routes share the frame and palette at both viewport sizes.
+  for (const path of ["/about", "/start", "/privacy", "/wd", "/pools", "/sales"]) {
+    await visit(path);
+    assert.equal(await page.locator(".tolley-header").count(), 1, path);
+    assert.equal(await page.locator(".tolley-footer").count(), 1, path);
+    assert.equal(await page.locator(".tolley-site").evaluate(el => getComputedStyle(el).backgroundColor), "rgb(16, 24, 21)", path);
+    assert.equal(await page.locator(".tolley-site").evaluate(el => getComputedStyle(el).color), "rgb(244, 243, 233)", path);
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 1000 });
+      assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${path} overflow at ${width}`);
+      await page.screenshot({ path: `${shots}/${path.slice(1)}-${width}.png`, fullPage: true });
+    }
+  }
+  // Exercise Next soft navigation across the theme boundary as well as reloads.
+  await page.locator('.tolley-header a[aria-label="Tolley home"]').click();
+  await page.waitForURL(base + "/");
+  await page.setViewportSize({ width: 390, height: 850 });
   await page.getByRole("link", { name: "Explore T-Agent", exact: false }).click();
   await page.waitForURL(/\/agent$/);
+  assert.equal(await page.locator(".tolley-site").count(), 0, "T-Agent keeps its product theme after soft navigation");
   await page.locator("#features").waitFor();
   await page.waitForLoadState("networkidle");
   // A soft navigation can be network-idle before React flushes passive effects.
@@ -95,6 +113,7 @@ try {
   assert.equal(await page.locator('input[name="invite"][required]').count(), 0);
   const animateViewsBefore = analytics.filter(e => e.type === "view" && e.path === "/animate").length;
   await visit("/animate");
+  assert.equal(await page.locator(".tolley-site").count(), 0, "Animate keeps its product theme");
   await page.waitForLoadState("networkidle");
   assert.equal(analytics.filter(e => e.type === "view" && e.path === "/animate").length - animateViewsBefore, 1, "one pageview per Animate visit");
   assert.equal(analytics.findLast(e => e.type === "view" && e.path === "/animate").site, "animate");

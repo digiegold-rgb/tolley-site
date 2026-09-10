@@ -3,7 +3,7 @@
  * a Sun/Tue/Fri rotation that fans out to Facebook, Instagram, and Pinterest.
  * Each platform uses its own canonical Amazon Associates subtag (brand_fb /
  * ig / pin) so attribution lands in the right Tracking ID once subtags are
- * registered (see `/shop/dashboard/amazon-subtags`). Until they're registered,
+ * registered (see `/leads/tools/amazon-subtags`). Until they're registered,
  * everything safely falls back to the master tag.
  */
 
