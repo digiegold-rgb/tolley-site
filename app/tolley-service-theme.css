@@ -1,0 +1,738 @@
+/* Compatibility skin for existing service components. Every rule is scoped to
+ * the public frame; shared Shop components keep their app theme in T-Agent.
+ * New public components should use the semantic classes in tolley-theme.css. */
+.tolley-site :is(.wd-page, .pools-page, .homes-page, .trailer-page, .generator-page, .hvac-page, .lastmile-page, .moving-page, .rental-page, .tables-page, .picnic-page, .kerplunk-page, .estate-page, .cleanouts-page, .shop-page, .drive-page, .lp-page) {
+  background: var(--tolley-bg); color: var(--tolley-text); font-family: var(--tolley-font); min-height: 0;
+  --font-fredoka: var(--font-sora); --font-nunito: var(--font-sora); --font-poppins: var(--font-sora);
+  --font-oswald: var(--font-sora); --font-barlow: var(--font-sora); --font-barlow-condensed: var(--font-sora);
+  --font-fraunces: Georgia; --font-lp-display: var(--font-sora); --font-lp-body: var(--font-sora); --font-lp-marker: Georgia;
+}
+.tolley-site .estate-page { --es-ink: var(--tolley-bg); --es-panel: var(--tolley-surface); --es-panel-2: var(--tolley-raised); --es-line: var(--tolley-line); --es-brass: var(--tolley-accent); --es-brass-bright: var(--tolley-accent-hover); --es-cream: var(--tolley-text); --es-cream-dim: var(--tolley-muted); }
+.tolley-site .cleanouts-page { --tc-bg: var(--tolley-bg); --tc-panel: var(--tolley-surface); --tc-panel-2: var(--tolley-raised); --tc-line: var(--tolley-line); --tc-orange: var(--tolley-accent); --tc-orange-deep: var(--tolley-accent-hover); --tc-steel: var(--tolley-muted); }
+.tolley-site .lp-page { --lp-bg: var(--tolley-bg); --lp-bg-2: var(--tolley-bg); --lp-panel: var(--tolley-surface); --lp-panel-2: var(--tolley-raised); --lp-line: var(--tolley-line); --lp-amber: var(--tolley-accent); --lp-amber-deep: var(--tolley-accent-hover); --lp-rust: var(--tolley-accent); --lp-steel: var(--tolley-muted); }
+.tolley-site :is(.site-dot-grid-blue, .site-dot-grid-cyan, .site-dot-grid-sky, .site-dot-grid-purple, .site-dot-grid-amber, .site-dot-grid-yellow, .site-dot-grid-teal, .site-dot-grid-emerald, .wd-bubbles, .pools-floats, .gen-spark, .gen-arc, .gen-pulse-ring) { display: none; }
+.tolley-site :is(.homes-grid, .rent-dots, .lp-pegboard) { background-image: none; }
+.tolley-site :is(.wd-wave-char, .wd-glow, .pools-glow, .pools-ripple, .pools-savings-badge, .trailer-glow, .gen-cta-glow, .hvac-glow, .lm-glow) { animation: none; text-shadow: none; }
+.tolley-site :is(.wd-card, .pools-card, .homes-card, .trailer-card, .gen-card, .hvac-card, .lm-card, .moving-card, .rental-card, .tables-card, .picnic-card, .kerplunk-card, .shop-card, .shop-admin-form, .drive-card) { background: var(--tolley-surface); border: 1px solid var(--tolley-line); border-radius: var(--tolley-radius); box-shadow: none; backdrop-filter: none; }
+.tolley-site :is(.wd-card, .pools-card, .homes-card, .trailer-card, .gen-card, .hvac-card, .lm-card, .moving-card, .rental-card, .tables-card, .picnic-card, .kerplunk-card, .shop-card):hover { transform: translateY(-2px); box-shadow: none; border-color: var(--tolley-accent); }
+.tolley-site :is(.homes-neon-text, .trailer-neon-text, .gen-neon-text, .hvac-neon-text, .lm-neon-text, .moving-neon-text, .tables-neon-text, .kerplunk-neon-text) { color: var(--tolley-accent); text-shadow: none; }
+.tolley-site :is(.shop-header, .tc-strip, .lp-strip) { background: var(--tolley-bg); border-color: var(--tolley-line); box-shadow: none; }
+.tolley-site :is(.shop-btn-primary, .tc-btn-primary, .lp-btn-primary, .drive-btn) { background: var(--tolley-accent); color: var(--tolley-on-accent); border-radius: 8px; font-family: var(--tolley-font); text-transform: none; letter-spacing: 0; box-shadow: none; }
+.tolley-site :is(.shop-btn-primary, .tc-btn-primary, .lp-btn-primary, .drive-btn):hover { background: var(--tolley-accent-hover); color: var(--tolley-on-accent); box-shadow: none; }
+.tolley-site :is(.tc-btn-secondary, .lp-btn-secondary, .drive-btn-outline) { color: var(--tolley-text); background: transparent; border: 1px solid var(--tolley-line); border-radius: 8px; font-family: var(--tolley-font); }
+.tolley-site :is(.drive-section-amber, .drive-section-cream, .drive-section-pink, .drive-section-mauve, .drive-section-dark) { background: var(--tolley-bg); color: var(--tolley-text); }
+.tolley-site :is(.drive-hero-text, .drive-heading-lg, .drive-heading-md, .drive-body, .drive-faq-q, .drive-stat-label, .drive-compare-label, .drive-compare-value) { color: var(--tolley-text); }
+.tolley-site :is(.drive-hero-red, .drive-hero-cyan, .drive-hero-purple, .drive-stat-number, .drive-step-num) { color: var(--tolley-accent); }
+.tolley-site :is(.tc-display, .drive-hero-text, .drive-heading-lg, .drive-heading-md) { font-family: var(--tolley-font); text-transform: none; letter-spacing: -.03em; }
+.tolley-site :is(.tc-hazard, .trailer-hazard) { background: var(--tolley-line); }
+.tolley-site :is(.shop-badge, .wd-bullet, .gen-bullet) { background: var(--tolley-surface); color: var(--tolley-accent); border-color: var(--tolley-line); box-shadow: none; }
+
+/* Utility palette adapters below retain layout/responsive/interaction classes.
+ * Red and green feedback utilities are deliberately not remapped. */
+
+
+.tolley-site :where(.from-\[\#0a0e27\]),
+.tolley-site :where(.from-\[\#0a1628\]),
+.tolley-site :where(.from-\[\#0a1a12\]),
+.tolley-site :where(.from-\[\#0b1a0f\]),
+.tolley-site :where(.from-\[\#0d0808\]),
+.tolley-site :where(.from-\[\#0d1a2d\]),
+.tolley-site :where(.from-\[\#12081e\]),
+.tolley-site :where(.from-\[\#1a0a05\]),
+.tolley-site :where(.from-\[\#1a0a2e\]),
+.tolley-site :where(.from-\[\#FF9900\]\/10),
+.tolley-site :where(.from-\[\#c8a84e\]),
+.tolley-site :where(.from-\[\#e040a0\]),
+.tolley-site :where(.from-\[\#ecfeff\]),
+.tolley-site :where(.from-amber-500\/10),
+.tolley-site :where(.from-amber-500\/15),
+.tolley-site :where(.from-amber-500\/8),
+.tolley-site :where(.from-amber-500\/\[0\.06\]),
+.tolley-site :where(.from-black\/70),
+.tolley-site :where(.from-blue-50),
+.tolley-site :where(.from-blue-500\/15),
+.tolley-site :where(.from-blue-700),
+.tolley-site :where(.from-cyan-50),
+.tolley-site :where(.from-cyan-500\/8),
+.tolley-site :where(.from-neutral-950),
+.tolley-site :where(.from-orange-500\/10),
+.tolley-site :where(.from-pink-500\/15),
+.tolley-site :where(.from-purple-300),
+.tolley-site :where(.from-purple-400),
+.tolley-site :where(.from-purple-500),
+.tolley-site :where(.from-purple-500\/10),
+.tolley-site :where(.from-purple-500\/15),
+.tolley-site :where(.from-purple-500\/40),
+.tolley-site :where(.from-purple-500\/\[0\.04\]),
+.tolley-site :where(.from-purple-900\/40),
+.tolley-site :where(.hover\:from-orange-500\/15):hover { --tw-gradient-from: var(--tolley-bg); }
+
+.tolley-site :where(.to-\[\#0a0e27\]),
+.tolley-site :where(.to-\[\#0a1628\]),
+.tolley-site :where(.to-\[\#0a1a12\]),
+.tolley-site :where(.to-\[\#0b1a0f\]),
+.tolley-site :where(.to-\[\#0c1030\]),
+.tolley-site :where(.to-\[\#0c1e14\]),
+.tolley-site :where(.to-\[\#0d0808\]),
+.tolley-site :where(.to-\[\#0d1f12\]),
+.tolley-site :where(.to-\[\#12081e\]),
+.tolley-site :where(.to-\[\#180830\]),
+.tolley-site :where(.to-\[\#180d28\]),
+.tolley-site :where(.to-\[\#1a0a05\]),
+.tolley-site :where(.to-\[\#1a0a2e\]),
+.tolley-site :where(.to-\[\#cffafe\]),
+.tolley-site :where(.to-\[\#cffafe\]\/50),
+.tolley-site :where(.to-amber-500\/5),
+.tolley-site :where(.to-amber-500\/\[0\.02\]),
+.tolley-site :where(.to-amber-500\/\[0\.04\]),
+.tolley-site :where(.to-black\/60),
+.tolley-site :where(.to-blue-400),
+.tolley-site :where(.to-blue-500\/5),
+.tolley-site :where(.to-cyan-50),
+.tolley-site :where(.to-cyan-500\/\[0\.02\]),
+.tolley-site :where(.to-gray-900\/60),
+.tolley-site :where(.to-neutral-950),
+.tolley-site :where(.to-orange-500\/5),
+.tolley-site :where(.to-pink-500\/5),
+.tolley-site :where(.to-purple-500\/5),
+.tolley-site :where(.to-sky-50),
+.tolley-site :where(.to-violet-400),
+.tolley-site :where(.to-violet-500),
+.tolley-site :where(.to-violet-700\/40) { --tw-gradient-to: var(--tolley-bg); }
+
+.tolley-site :where(.via-\[\#0a1a14\]),
+.tolley-site :where(.via-\[\#0d1233\]),
+.tolley-site :where(.via-\[\#0d1f16\]),
+.tolley-site :where(.via-\[\#0e1f12\]),
+.tolley-site :where(.via-\[\#0f1d35\]),
+.tolley-site :where(.via-\[\#150a0a\]),
+.tolley-site :where(.via-\[\#1a0c2a\]),
+.tolley-site :where(.via-\[\#2a1245\]),
+.tolley-site :where(.via-\[\#3a1d05\]),
+.tolley-site :where(.via-amber-500\/5),
+.tolley-site :where(.via-blue-600),
+.tolley-site :where(.via-neutral-900),
+.tolley-site :where(.via-orange-500\/4),
+.tolley-site :where(.via-orange-500\/5),
+.tolley-site :where(.via-sky-50),
+.tolley-site :where(.via-slate-900),
+.tolley-site :where(.via-violet-500\/5) { --tw-gradient-via: var(--tolley-surface); }
+
+.tolley-site .group:hover :where(.group-hover\:ring-purple-400\/50),
+.tolley-site :where(.focus\:ring-cyan-400):focus,
+.tolley-site :where(.ring-amber-300\/40),
+.tolley-site :where(.ring-amber-500),
+.tolley-site :where(.ring-black\/40),
+.tolley-site :where(.ring-cyan-200\/60),
+.tolley-site :where(.ring-purple-400),
+.tolley-site :where(.ring-white\/10),
+.tolley-site :where(.ring-yellow-400) { --tw-ring-color: var(--tolley-line); }
+
+.tolley-site :where(.bg-cyan-950\/20),
+.tolley-site :where(.bg-sky-950\/20) { background-color: color-mix(in srgb, var(--tolley-bg) 20%, transparent); }
+
+.tolley-site :where(.bg-cyan-950\/30),
+.tolley-site :where(.bg-sky-950\/30) { background-color: color-mix(in srgb, var(--tolley-bg) 30%, transparent); }
+
+.tolley-site :where(.bg-gray-900\/40),
+.tolley-site :where(.bg-neutral-900\/40),
+.tolley-site :where(.bg-purple-900\/40) { background-color: color-mix(in srgb, var(--tolley-bg) 40%, transparent); }
+
+.tolley-site :where(.bg-gray-900\/60),
+.tolley-site :where(.bg-neutral-900\/60) { background-color: color-mix(in srgb, var(--tolley-bg) 60%, transparent); }
+
+.tolley-site :where(.bg-\[\#0b0514\]\/95) { background-color: color-mix(in srgb, var(--tolley-bg) 95%, transparent); }
+
+.tolley-site :where(.bg-white\/\[0\.01\]) { background-color: color-mix(in srgb, var(--tolley-surface) 1%, transparent); }
+
+.tolley-site :where(.bg-\[\#c4a56e\]\/10),
+.tolley-site :where(.bg-\[\#c8a84e\]\/10),
+.tolley-site :where(.bg-\[\#e040a0\]\/10),
+.tolley-site :where(.bg-amber-400\/10),
+.tolley-site :where(.bg-amber-500\/10),
+.tolley-site :where(.bg-amber-500\/\[0\.1\]),
+.tolley-site :where(.bg-blue-500\/10),
+.tolley-site :where(.bg-cyan-400\/10),
+.tolley-site :where(.bg-orange-500\/10),
+.tolley-site :where(.bg-pink-400\/10),
+.tolley-site :where(.bg-purple-400\/10),
+.tolley-site :where(.bg-purple-500\/10),
+.tolley-site :where(.bg-sky-500\/10),
+.tolley-site :where(.bg-white\/10),
+.tolley-site :where(.bg-yellow-400\/10),
+.tolley-site :where(.bg-yellow-400\/\[0\.1\]),
+.tolley-site :where(.bg-zinc-500\/10),
+.tolley-site :where(.hover\:bg-white\/10):hover { background-color: color-mix(in srgb, var(--tolley-surface) 10%, transparent); }
+
+.tolley-site :where(.bg-amber-500\/\[0\.12\]),
+.tolley-site :where(.bg-cyan-500\/12),
+.tolley-site :where(.bg-orange-500\/\[0\.12\]),
+.tolley-site :where(.bg-sky-300\/12) { background-color: color-mix(in srgb, var(--tolley-surface) 12%, transparent); }
+
+.tolley-site :where(.bg-\[\#FF9900\]\/15),
+.tolley-site :where(.bg-\[\#e040a0\]\/15),
+.tolley-site :where(.bg-black\/15),
+.tolley-site :where(.bg-blue-300\/15),
+.tolley-site :where(.bg-blue-500\/15),
+.tolley-site :where(.bg-cyan-300\/15),
+.tolley-site :where(.bg-cyan-400\/15),
+.tolley-site :where(.bg-purple-400\/15),
+.tolley-site :where(.bg-purple-500\/15),
+.tolley-site :where(.bg-violet-500\/15),
+.tolley-site :where(.bg-white\/15),
+.tolley-site :where(.hover\:bg-amber-500\/\[0\.15\]):hover,
+.tolley-site :where(.hover\:bg-yellow-400\/\[0\.15\]):hover { background-color: color-mix(in srgb, var(--tolley-surface) 15%, transparent); }
+
+.tolley-site :where(.bg-white\/\[0\.02\]) { background-color: color-mix(in srgb, var(--tolley-surface) 2%, transparent); }
+
+.tolley-site :where(.bg-\[\#e040a0\]\/20),
+.tolley-site :where(.bg-amber-500\/20),
+.tolley-site :where(.bg-black\/20),
+.tolley-site :where(.bg-blue-500\/20),
+.tolley-site :where(.bg-cyan-200\/20),
+.tolley-site :where(.bg-purple-500\/20),
+.tolley-site :where(.bg-violet-300\/20),
+.tolley-site :where(.bg-white\/20),
+.tolley-site :where(.hover\:bg-amber-400\/20):hover,
+.tolley-site :where(.hover\:bg-blue-500\/20):hover,
+.tolley-site :where(.hover\:bg-cyan-400\/20):hover,
+.tolley-site :where(.hover\:bg-orange-500\/20):hover,
+.tolley-site :where(.hover\:bg-pink-400\/20):hover,
+.tolley-site :where(.hover\:bg-purple-500\/20):hover,
+.tolley-site :where(.hover\:bg-white\/20):hover { background-color: color-mix(in srgb, var(--tolley-surface) 20%, transparent); }
+
+.tolley-site :where(.bg-black\/25),
+.tolley-site :where(.bg-cyan-300\/25),
+.tolley-site :where(.bg-white\/25),
+.tolley-site :where(.hover\:bg-\[\#FF9900\]\/25):hover,
+.tolley-site :where(.hover\:bg-blue-500\/25):hover,
+.tolley-site :where(.hover\:bg-purple-500\/25):hover,
+.tolley-site :where(.hover\:bg-violet-500\/25):hover { background-color: color-mix(in srgb, var(--tolley-surface) 25%, transparent); }
+
+.tolley-site :where(.hover\:bg-violet-300\/28):hover { background-color: color-mix(in srgb, var(--tolley-surface) 28%, transparent); }
+
+.tolley-site :where(.bg-white\/\[0\.03\]),
+.tolley-site :where(.hover\:bg-white\/\[0\.03\]):hover { background-color: color-mix(in srgb, var(--tolley-surface) 3%, transparent); }
+
+.tolley-site .group:hover :where(.group-hover\:bg-black\/30),
+.tolley-site :where(.bg-black\/30),
+.tolley-site :where(.bg-blue-500\/30),
+.tolley-site :where(.bg-cyan-50\/30),
+.tolley-site :where(.bg-purple-500\/30),
+.tolley-site :where(.hover\:bg-blue-500\/30):hover,
+.tolley-site :where(.hover\:bg-purple-500\/30):hover { background-color: color-mix(in srgb, var(--tolley-surface) 30%, transparent); }
+
+.tolley-site :where(.bg-black\/35) { background-color: color-mix(in srgb, var(--tolley-surface) 35%, transparent); }
+
+.tolley-site :where(.bg-amber-500\/\[0\.04\]),
+.tolley-site :where(.bg-blue-500\/\[0\.04\]),
+.tolley-site :where(.bg-cyan-400\/\[0\.04\]),
+.tolley-site :where(.bg-cyan-500\/\[0\.04\]),
+.tolley-site :where(.bg-sky-500\/\[0\.04\]),
+.tolley-site :where(.bg-teal-500\/\[0\.04\]),
+.tolley-site :where(.bg-white\/\[0\.04\]),
+.tolley-site :where(.bg-yellow-400\/\[0\.04\]),
+.tolley-site :where(.bg-yellow-500\/\[0\.04\]) { background-color: color-mix(in srgb, var(--tolley-surface) 4%, transparent); }
+
+.tolley-site :where(.bg-amber-500\/40),
+.tolley-site :where(.bg-black\/40),
+.tolley-site :where(.bg-cyan-50\/40),
+.tolley-site :where(.bg-purple-500\/40),
+.tolley-site :where(.bg-white\/40) { background-color: color-mix(in srgb, var(--tolley-surface) 40%, transparent); }
+
+.tolley-site :where(.hover\:bg-white\/45):hover { background-color: color-mix(in srgb, var(--tolley-surface) 45%, transparent); }
+
+.tolley-site :where(.bg-amber-500\/\[0\.05\]),
+.tolley-site :where(.bg-blue-500\/\[0\.05\]),
+.tolley-site :where(.bg-orange-500\/5),
+.tolley-site :where(.bg-orange-500\/\[0\.05\]),
+.tolley-site :where(.bg-purple-500\/5),
+.tolley-site :where(.bg-white\/5),
+.tolley-site :where(.bg-yellow-300\/\[0\.05\]),
+.tolley-site :where(.hover\:bg-white\/5):hover,
+.tolley-site :where(.hover\:bg-white\/\[0\.05\]):hover { background-color: color-mix(in srgb, var(--tolley-surface) 5%, transparent); }
+
+.tolley-site :where(.bg-black\/50),
+.tolley-site :where(.bg-blue-50\/50),
+.tolley-site :where(.bg-cyan-50\/50),
+.tolley-site :where(.bg-neutral-800\/50),
+.tolley-site :where(.bg-purple-500\/50),
+.tolley-site :where(.bg-slate-800\/50) { background-color: color-mix(in srgb, var(--tolley-surface) 50%, transparent); }
+
+.tolley-site :where(.bg-black\/55),
+.tolley-site :where(.bg-white\/55) { background-color: color-mix(in srgb, var(--tolley-surface) 55%, transparent); }
+
+.tolley-site :where(.bg-amber-500\/\[0\.06\]),
+.tolley-site :where(.bg-cyan-400\/\[0\.06\]),
+.tolley-site :where(.bg-cyan-500\/6),
+.tolley-site :where(.bg-pink-500\/\[0\.06\]),
+.tolley-site :where(.bg-purple-500\/\[0\.06\]),
+.tolley-site :where(.bg-sky-500\/\[0\.06\]),
+.tolley-site :where(.bg-violet-300\/\[0\.06\]),
+.tolley-site :where(.bg-white\/\[0\.06\]) { background-color: color-mix(in srgb, var(--tolley-surface) 6%, transparent); }
+
+.tolley-site :where(.bg-amber-500\/60),
+.tolley-site :where(.bg-black\/60),
+.tolley-site :where(.bg-neutral-800\/60),
+.tolley-site :where(.hover\:bg-white\/60):hover { background-color: color-mix(in srgb, var(--tolley-surface) 60%, transparent); }
+
+.tolley-site :where(.bg-black\/65) { background-color: color-mix(in srgb, var(--tolley-surface) 65%, transparent); }
+
+.tolley-site :where(.bg-amber-500\/\[0\.07\]),
+.tolley-site :where(.bg-cyan-400\/\[0\.07\]),
+.tolley-site :where(.bg-sky-500\/\[0\.07\]),
+.tolley-site :where(.bg-white\/\[0\.07\]),
+.tolley-site :where(.bg-yellow-400\/\[0\.07\]),
+.tolley-site :where(.hover\:bg-white\/\[0\.07\]):hover { background-color: color-mix(in srgb, var(--tolley-surface) 7%, transparent); }
+
+.tolley-site :where(.bg-black\/70),
+.tolley-site :where(.hover\:bg-black\/70):hover { background-color: color-mix(in srgb, var(--tolley-surface) 70%, transparent); }
+
+.tolley-site :where(.bg-amber-400\/\[0\.08\]),
+.tolley-site :where(.bg-amber-500\/\[0\.08\]),
+.tolley-site :where(.bg-cyan-400\/8),
+.tolley-site :where(.bg-cyan-400\/\[0\.08\]),
+.tolley-site :where(.bg-neutral-500\/\[0\.08\]),
+.tolley-site :where(.bg-sky-500\/\[0\.08\]),
+.tolley-site :where(.bg-teal-400\/\[0\.08\]),
+.tolley-site :where(.bg-yellow-400\/\[0\.08\]),
+.tolley-site :where(.focus\:bg-white\/\[0\.08\]):focus { background-color: color-mix(in srgb, var(--tolley-surface) 8%, transparent); }
+
+.tolley-site .group:hover :where(.group-hover\:bg-purple-500\/80),
+.tolley-site :where(.bg-black\/80),
+.tolley-site :where(.bg-purple-500\/80),
+.tolley-site :where(.bg-violet-200\/80),
+.tolley-site :where(.bg-white\/80),
+.tolley-site :where(.hover\:bg-black\/80):hover,
+.tolley-site :where(.hover\:bg-white\/80):hover { background-color: color-mix(in srgb, var(--tolley-surface) 80%, transparent); }
+
+.tolley-site :where(.bg-\[\#FF9900\]\/85),
+.tolley-site :where(.bg-purple-500\/85),
+.tolley-site :where(.hover\:bg-black\/85):hover { background-color: color-mix(in srgb, var(--tolley-surface) 85%, transparent); }
+
+.tolley-site :where(.bg-amber-400\/90),
+.tolley-site :where(.bg-purple-500\/90),
+.tolley-site :where(.hover\:bg-black\/90):hover { background-color: color-mix(in srgb, var(--tolley-surface) 90%, transparent); }
+
+.tolley-site :where(.bg-white\/95) { background-color: color-mix(in srgb, var(--tolley-surface) 95%, transparent); }
+
+.tolley-site .group:hover :where(.group-hover\:bg-\[\#c4a56e\]),
+.tolley-site .group:hover :where(.group-hover\:bg-\[\#c8a84e\]),
+.tolley-site .group:hover :where(.group-hover\:bg-\[\#e040a0\]),
+.tolley-site .group:hover :where(.group-hover\:bg-yellow-400),
+.tolley-site :where(.bg-\[\#FF9900\]),
+.tolley-site :where(.bg-\[\#c4a56e\]),
+.tolley-site :where(.bg-\[\#c8a84e\]),
+.tolley-site :where(.bg-\[\#e040a0\]),
+.tolley-site :where(.bg-amber-400),
+.tolley-site :where(.bg-amber-500),
+.tolley-site :where(.bg-blue-400),
+.tolley-site :where(.bg-blue-600),
+.tolley-site :where(.bg-cyan-400),
+.tolley-site :where(.bg-cyan-500),
+.tolley-site :where(.bg-cyan-600),
+.tolley-site :where(.bg-orange-500),
+.tolley-site :where(.bg-purple-400),
+.tolley-site :where(.bg-purple-500),
+.tolley-site :where(.bg-sky-500),
+.tolley-site :where(.bg-teal-400),
+.tolley-site :where(.bg-teal-500),
+.tolley-site :where(.bg-yellow-400),
+.tolley-site :where(.bg-yellow-500),
+.tolley-site :where(.hover\:bg-\[\#c4a56e\]):hover,
+.tolley-site :where(.hover\:bg-\[\#c8a84e\]):hover,
+.tolley-site :where(.hover\:bg-\[\#e040a0\]):hover,
+.tolley-site :where(.hover\:bg-\[\#ffb13a\]):hover,
+.tolley-site :where(.hover\:bg-blue-700):hover,
+.tolley-site :where(.hover\:bg-cyan-600):hover,
+.tolley-site :where(.hover\:bg-cyan-700):hover,
+.tolley-site :where(.hover\:bg-orange-400):hover,
+.tolley-site :where(.hover\:bg-purple-400):hover { background-color: var(--tolley-accent); }
+
+.tolley-site :where(.bg-\[\#06050a\]),
+.tolley-site :where(.bg-\[\#0a0914\]),
+.tolley-site :where(.bg-\[\#0a0e27\]),
+.tolley-site :where(.bg-\[\#0a1a12\]),
+.tolley-site :where(.bg-\[\#0b0b0f\]),
+.tolley-site :where(.bg-\[\#0b1a0f\]),
+.tolley-site :where(.bg-\[\#0c0b14\]),
+.tolley-site :where(.bg-\[\#0c1030\]),
+.tolley-site :where(.bg-\[\#0c1e14\]),
+.tolley-site :where(.bg-\[\#0d1a2d\]),
+.tolley-site :where(.bg-\[\#0d1f12\]),
+.tolley-site :where(.bg-\[\#120808\]),
+.tolley-site :where(.bg-\[\#12081e\]),
+.tolley-site :where(.bg-\[\#13131a\]),
+.tolley-site :where(.bg-\[\#180d28\]),
+.tolley-site :where(.bg-gray-900),
+.tolley-site :where(.bg-neutral-900),
+.tolley-site :where(.bg-neutral-950),
+.tolley-site :where(.bg-zinc-950) { background-color: var(--tolley-bg); }
+
+.tolley-site :where(.bg-amber-300),
+.tolley-site :where(.bg-black),
+.tolley-site :where(.bg-blue-100),
+.tolley-site :where(.bg-cyan-100),
+.tolley-site :where(.bg-cyan-50),
+.tolley-site :where(.bg-gray-700),
+.tolley-site :where(.bg-neutral-800),
+.tolley-site :where(.bg-purple-300),
+.tolley-site :where(.bg-slate-100),
+.tolley-site :where(.bg-slate-300),
+.tolley-site :where(.bg-slate-400),
+.tolley-site :where(.bg-slate-50),
+.tolley-site :where(.bg-slate-500),
+.tolley-site :where(.bg-teal-300),
+.tolley-site :where(.bg-white),
+.tolley-site :where(.disabled\:bg-gray-700):disabled,
+.tolley-site :where(.hover\:bg-amber-300):hover,
+.tolley-site :where(.hover\:bg-blue-200):hover,
+.tolley-site :where(.hover\:bg-blue-50):hover,
+.tolley-site :where(.hover\:bg-cyan-100):hover,
+.tolley-site :where(.hover\:bg-cyan-200):hover,
+.tolley-site :where(.hover\:bg-slate-100):hover,
+.tolley-site :where(.hover\:bg-slate-200):hover { background-color: var(--tolley-surface); }
+
+.tolley-site :where(.border-\[\#FF9900\]\/30),
+.tolley-site :where(.border-\[\#c4a56e\]),
+.tolley-site :where(.border-\[\#c4a56e\]\/15),
+.tolley-site :where(.border-\[\#c4a56e\]\/25),
+.tolley-site :where(.border-\[\#c4a56e\]\/30),
+.tolley-site :where(.border-\[\#c8a84e\]),
+.tolley-site :where(.border-\[\#c8a84e\]\/15),
+.tolley-site :where(.border-\[\#c8a84e\]\/20),
+.tolley-site :where(.border-\[\#c8a84e\]\/25),
+.tolley-site :where(.border-\[\#c8a84e\]\/30),
+.tolley-site :where(.border-\[\#e040a0\]),
+.tolley-site :where(.border-\[\#e040a0\]\/15),
+.tolley-site :where(.border-\[\#e040a0\]\/20),
+.tolley-site :where(.border-\[\#e040a0\]\/25),
+.tolley-site :where(.border-\[\#e040a0\]\/30),
+.tolley-site :where(.border-amber-300\/20),
+.tolley-site :where(.border-amber-300\/25),
+.tolley-site :where(.border-amber-300\/30),
+.tolley-site :where(.border-amber-400),
+.tolley-site :where(.border-amber-400\/20),
+.tolley-site :where(.border-amber-400\/25),
+.tolley-site :where(.border-amber-400\/30),
+.tolley-site :where(.border-amber-500\/15),
+.tolley-site :where(.border-amber-500\/20),
+.tolley-site :where(.border-amber-500\/25),
+.tolley-site :where(.border-amber-500\/30),
+.tolley-site :where(.border-amber-500\/40),
+.tolley-site :where(.border-blue-100),
+.tolley-site :where(.border-blue-200),
+.tolley-site :where(.border-blue-300),
+.tolley-site :where(.border-blue-400),
+.tolley-site :where(.border-blue-500\/15),
+.tolley-site :where(.border-blue-500\/30),
+.tolley-site :where(.border-cyan-100),
+.tolley-site :where(.border-cyan-200),
+.tolley-site :where(.border-cyan-300\/40),
+.tolley-site :where(.border-cyan-400),
+.tolley-site :where(.border-cyan-400\/15),
+.tolley-site :where(.border-cyan-400\/20),
+.tolley-site :where(.border-cyan-400\/25),
+.tolley-site :where(.border-cyan-400\/30),
+.tolley-site :where(.border-cyan-50),
+.tolley-site :where(.border-cyan-500\/15),
+.tolley-site :where(.border-cyan-700\/30),
+.tolley-site :where(.border-cyan-800\/30),
+.tolley-site :where(.border-gray-600),
+.tolley-site :where(.border-gray-700),
+.tolley-site :where(.border-gray-700\/50),
+.tolley-site :where(.border-neutral-400),
+.tolley-site :where(.border-neutral-500),
+.tolley-site :where(.border-neutral-500\/25),
+.tolley-site :where(.border-neutral-600),
+.tolley-site :where(.border-neutral-700),
+.tolley-site :where(.border-neutral-800),
+.tolley-site :where(.border-orange-500\/30),
+.tolley-site :where(.border-orange-500\/40),
+.tolley-site :where(.border-pink-400\/30),
+.tolley-site :where(.border-pink-500\/25),
+.tolley-site :where(.border-purple-300\/40),
+.tolley-site :where(.border-purple-400),
+.tolley-site :where(.border-purple-400\/20),
+.tolley-site :where(.border-purple-400\/25),
+.tolley-site :where(.border-purple-400\/30),
+.tolley-site :where(.border-purple-400\/40),
+.tolley-site :where(.border-purple-500),
+.tolley-site :where(.border-purple-500\/20),
+.tolley-site :where(.border-purple-500\/30),
+.tolley-site :where(.border-sky-500\/10),
+.tolley-site :where(.border-sky-500\/15),
+.tolley-site :where(.border-sky-500\/20),
+.tolley-site :where(.border-sky-500\/25),
+.tolley-site :where(.border-sky-800\/30),
+.tolley-site :where(.border-sky-800\/40),
+.tolley-site :where(.border-slate-200),
+.tolley-site :where(.border-slate-600),
+.tolley-site :where(.border-slate-700\/40),
+.tolley-site :where(.border-slate-700\/50),
+.tolley-site :where(.border-teal-400\/25),
+.tolley-site :where(.border-teal-500\/15),
+.tolley-site :where(.border-violet-200\/25),
+.tolley-site :where(.border-violet-200\/45),
+.tolley-site :where(.border-violet-500\/30),
+.tolley-site :where(.border-white\/10),
+.tolley-site :where(.border-white\/12),
+.tolley-site :where(.border-white\/14),
+.tolley-site :where(.border-white\/15),
+.tolley-site :where(.border-white\/18),
+.tolley-site :where(.border-white\/20),
+.tolley-site :where(.border-white\/30),
+.tolley-site :where(.border-white\/5),
+.tolley-site :where(.border-white\/60),
+.tolley-site :where(.border-white\/8),
+.tolley-site :where(.border-yellow-400\/15),
+.tolley-site :where(.border-yellow-400\/20),
+.tolley-site :where(.border-yellow-400\/25),
+.tolley-site :where(.border-yellow-400\/30),
+.tolley-site :where(.border-yellow-500\/15),
+.tolley-site :where(.border-zinc-500\/30),
+.tolley-site :where(.focus\:border-cyan-400):focus,
+.tolley-site :where(.focus\:border-violet-400\/40):focus,
+.tolley-site :where(.focus\:border-white\/40):focus,
+.tolley-site :where(.hover\:border-\[\#c4a56e\]\/50):hover,
+.tolley-site :where(.hover\:border-\[\#c8a84e\]\/50):hover,
+.tolley-site :where(.hover\:border-\[\#e040a0\]\/50):hover,
+.tolley-site :where(.hover\:border-amber-300\/40):hover,
+.tolley-site :where(.hover\:border-amber-300\/60):hover,
+.tolley-site :where(.hover\:border-amber-400\/40):hover,
+.tolley-site :where(.hover\:border-amber-400\/50):hover,
+.tolley-site :where(.hover\:border-amber-500\/60):hover,
+.tolley-site :where(.hover\:border-blue-300):hover,
+.tolley-site :where(.hover\:border-cyan-400\/40):hover,
+.tolley-site :where(.hover\:border-cyan-400\/50):hover,
+.tolley-site :where(.hover\:border-gray-400):hover,
+.tolley-site :where(.hover\:border-orange-500\/60):hover,
+.tolley-site :where(.hover\:border-sky-500\/40):hover,
+.tolley-site :where(.hover\:border-white\/15):hover,
+.tolley-site :where(.hover\:border-white\/22):hover,
+.tolley-site :where(.hover\:border-white\/25):hover,
+.tolley-site :where(.hover\:border-white\/30):hover,
+.tolley-site :where(.hover\:border-white\/40):hover,
+.tolley-site :where(.hover\:border-yellow-400\/40):hover,
+.tolley-site :where(.hover\:border-yellow-400\/50):hover { border-color: var(--tolley-line); }
+
+.tolley-site :where(.hover\:text-\[\#c4a56e\]):hover,
+.tolley-site :where(.hover\:text-\[\#c8a84e\]):hover,
+.tolley-site :where(.hover\:text-\[\#dbc278\]):hover,
+.tolley-site :where(.hover\:text-\[\#e040a0\]):hover,
+.tolley-site :where(.hover\:text-\[\#e88dc0\]):hover,
+.tolley-site :where(.hover\:text-\[\#ff7a1a\]):hover,
+.tolley-site :where(.hover\:text-amber-200):hover,
+.tolley-site :where(.hover\:text-amber-300):hover,
+.tolley-site :where(.hover\:text-amber-400):hover,
+.tolley-site :where(.hover\:text-blue-300):hover,
+.tolley-site :where(.hover\:text-blue-600):hover,
+.tolley-site :where(.hover\:text-cyan-300):hover,
+.tolley-site :where(.hover\:text-cyan-400):hover,
+.tolley-site :where(.hover\:text-cyan-600):hover,
+.tolley-site :where(.hover\:text-cyan-700):hover,
+.tolley-site :where(.hover\:text-orange-200):hover,
+.tolley-site :where(.hover\:text-purple-200):hover,
+.tolley-site :where(.hover\:text-purple-300):hover,
+.tolley-site :where(.hover\:text-sky-300):hover,
+.tolley-site :where(.hover\:text-sky-400):hover,
+.tolley-site :where(.hover\:text-teal-300):hover,
+.tolley-site :where(.hover\:text-teal-400):hover,
+.tolley-site :where(.hover\:text-yellow-300):hover,
+.tolley-site :where(.hover\:text-yellow-400):hover,
+.tolley-site :where(.text-\[\#0e7490\]),
+.tolley-site :where(.text-\[\#FF9900\]),
+.tolley-site :where(.text-\[\#c4a56e\]),
+.tolley-site :where(.text-\[\#c4a56e\]\/70),
+.tolley-site :where(.text-\[\#c4a56e\]\/80),
+.tolley-site :where(.text-\[\#c8a84e\]),
+.tolley-site :where(.text-\[\#c8a84e\]\/60),
+.tolley-site :where(.text-\[\#c8a84e\]\/70),
+.tolley-site :where(.text-\[\#c8a84e\]\/80),
+.tolley-site :where(.text-\[\#d4b87a\]),
+.tolley-site :where(.text-\[\#dbc278\]),
+.tolley-site :where(.text-\[\#e040a0\]),
+.tolley-site :where(.text-\[\#e040a0\]\/70),
+.tolley-site :where(.text-\[\#e040a0\]\/80),
+.tolley-site :where(.text-\[\#f06cc0\]),
+.tolley-site :where(.text-\[\#ff7a1a\]),
+.tolley-site :where(.text-\[\#ff7a1a\]\/60),
+.tolley-site :where(.text-amber-100),
+.tolley-site :where(.text-amber-100\/85),
+.tolley-site :where(.text-amber-200),
+.tolley-site :where(.text-amber-200\/60),
+.tolley-site :where(.text-amber-200\/70),
+.tolley-site :where(.text-amber-200\/80),
+.tolley-site :where(.text-amber-300),
+.tolley-site :where(.text-amber-300\/30),
+.tolley-site :where(.text-amber-300\/70),
+.tolley-site :where(.text-amber-300\/80),
+.tolley-site :where(.text-amber-300\/85),
+.tolley-site :where(.text-amber-400),
+.tolley-site :where(.text-amber-400\/70),
+.tolley-site :where(.text-amber-400\/80),
+.tolley-site :where(.text-amber-500\/60),
+.tolley-site :where(.text-amber-500\/70),
+.tolley-site :where(.text-blue-100),
+.tolley-site :where(.text-blue-200),
+.tolley-site :where(.text-blue-300),
+.tolley-site :where(.text-blue-400),
+.tolley-site :where(.text-blue-400\/70),
+.tolley-site :where(.text-blue-500),
+.tolley-site :where(.text-blue-600),
+.tolley-site :where(.text-blue-700),
+.tolley-site :where(.text-cyan-200),
+.tolley-site :where(.text-cyan-300),
+.tolley-site :where(.text-cyan-400),
+.tolley-site :where(.text-cyan-400\/60),
+.tolley-site :where(.text-cyan-400\/70),
+.tolley-site :where(.text-cyan-400\/80),
+.tolley-site :where(.text-cyan-500),
+.tolley-site :where(.text-cyan-600),
+.tolley-site :where(.text-cyan-700),
+.tolley-site :where(.text-cyan-700\/80),
+.tolley-site :where(.text-fuchsia-300),
+.tolley-site :where(.text-orange-300),
+.tolley-site :where(.text-orange-400),
+.tolley-site :where(.text-pink-200),
+.tolley-site :where(.text-pink-300),
+.tolley-site :where(.text-purple-100),
+.tolley-site :where(.text-purple-200),
+.tolley-site :where(.text-purple-200\/80),
+.tolley-site :where(.text-purple-300),
+.tolley-site :where(.text-purple-400),
+.tolley-site :where(.text-purple-400\/50),
+.tolley-site :where(.text-purple-400\/60),
+.tolley-site :where(.text-sky-300),
+.tolley-site :where(.text-sky-400),
+.tolley-site :where(.text-sky-400\/70),
+.tolley-site :where(.text-sky-400\/80),
+.tolley-site :where(.text-sky-700\/80),
+.tolley-site :where(.text-teal-300),
+.tolley-site :where(.text-teal-400),
+.tolley-site :where(.text-teal-400\/70),
+.tolley-site :where(.text-teal-400\/80),
+.tolley-site :where(.text-violet-400),
+.tolley-site :where(.text-violet-50),
+.tolley-site :where(.text-yellow-300),
+.tolley-site :where(.text-yellow-300\/50),
+.tolley-site :where(.text-yellow-400),
+.tolley-site :where(.text-yellow-400\/40),
+.tolley-site :where(.text-yellow-400\/60),
+.tolley-site :where(.text-yellow-400\/70),
+.tolley-site :where(.text-yellow-400\/80) { color: var(--tolley-accent); }
+
+.tolley-site .group:hover :where(.group-hover\:text-white\/50),
+.tolley-site .group:hover :where(.group-hover\:text-white\/55),
+.tolley-site .group:hover :where(.group-hover\:text-white\/85),
+.tolley-site :where(.hover\:text-gray-300):hover,
+.tolley-site :where(.hover\:text-slate-600):hover,
+.tolley-site :where(.hover\:text-white\/40):hover,
+.tolley-site :where(.hover\:text-white\/50):hover,
+.tolley-site :where(.hover\:text-white\/60):hover,
+.tolley-site :where(.hover\:text-white\/70):hover,
+.tolley-site :where(.hover\:text-white\/80):hover,
+.tolley-site :where(.placeholder\:text-neutral-600)::placeholder,
+.tolley-site :where(.placeholder\:text-slate-400)::placeholder,
+.tolley-site :where(.placeholder\:text-white\/30)::placeholder,
+.tolley-site :where(.placeholder\:text-white\/35)::placeholder,
+.tolley-site :where(.text-gray-300),
+.tolley-site :where(.text-gray-400),
+.tolley-site :where(.text-gray-500),
+.tolley-site :where(.text-gray-600),
+.tolley-site :where(.text-neutral-300),
+.tolley-site :where(.text-neutral-400),
+.tolley-site :where(.text-neutral-500),
+.tolley-site :where(.text-neutral-600),
+.tolley-site :where(.text-slate-300),
+.tolley-site :where(.text-slate-400),
+.tolley-site :where(.text-slate-500),
+.tolley-site :where(.text-slate-600),
+.tolley-site :where(.text-white\/0),
+.tolley-site :where(.text-white\/10),
+.tolley-site :where(.text-white\/15),
+.tolley-site :where(.text-white\/20),
+.tolley-site :where(.text-white\/25),
+.tolley-site :where(.text-white\/30),
+.tolley-site :where(.text-white\/35),
+.tolley-site :where(.text-white\/40),
+.tolley-site :where(.text-white\/45),
+.tolley-site :where(.text-white\/50),
+.tolley-site :where(.text-white\/55),
+.tolley-site :where(.text-white\/60),
+.tolley-site :where(.text-white\/65),
+.tolley-site :where(.text-white\/66),
+.tolley-site :where(.text-white\/70),
+.tolley-site :where(.text-white\/72),
+.tolley-site :where(.text-white\/75),
+.tolley-site :where(.text-white\/78),
+.tolley-site :where(.text-white\/80),
+.tolley-site :where(.text-white\/83),
+.tolley-site :where(.text-white\/84),
+.tolley-site :where(.text-white\/85),
+.tolley-site :where(.text-white\/90),
+.tolley-site :where(.text-white\/94),
+.tolley-site :where(.text-white\/95),
+.tolley-site :where(.text-zinc-300) { color: var(--tolley-muted); }
+
+.tolley-site .group:hover :where(.group-hover\:text-\[\#0a0e27\]),
+.tolley-site .group:hover :where(.group-hover\:text-\[\#0a1a12\]),
+.tolley-site .group:hover :where(.group-hover\:text-\[\#0b1a0f\]),
+.tolley-site .group:hover :where(.group-hover\:text-black),
+.tolley-site .group:hover :where(.group-hover\:text-white),
+.tolley-site :where(.hover\:text-blue-800):hover,
+.tolley-site :where(.hover\:text-cyan-800):hover,
+.tolley-site :where(.hover\:text-white):hover,
+.tolley-site :where(.text-\[\#0a0e27\]),
+.tolley-site :where(.text-\[\#0a1628\]),
+.tolley-site :where(.text-\[\#0a1a12\]),
+.tolley-site :where(.text-\[\#0b1a0f\]),
+.tolley-site :where(.text-\[\#164e63\]),
+.tolley-site :where(.text-\[\#1a0a2e\]),
+.tolley-site :where(.text-black),
+.tolley-site :where(.text-blue-800),
+.tolley-site :where(.text-blue-900),
+.tolley-site :where(.text-cyan-800),
+.tolley-site :where(.text-cyan-900),
+.tolley-site :where(.text-neutral-700),
+.tolley-site :where(.text-neutral-900),
+.tolley-site :where(.text-sky-900),
+.tolley-site :where(.text-slate-700),
+.tolley-site :where(.text-white) { color: var(--tolley-text); }
+
+.tolley-site :where(.decoration-\[\#ff7a1a\]\/40),
+.tolley-site :where(.decoration-amber-500\/30),
+.tolley-site :where(.decoration-blue-300),
+.tolley-site :where(.decoration-cyan-300),
+.tolley-site :where(.decoration-white\/35),
+.tolley-site :where(.hover\:decoration-\[\#ff7a1a\]):hover { text-decoration-color: var(--tolley-line); }
+
+.tolley-site :is(.bg-\[\#FF9900\], .bg-\[\#c4a56e\], .bg-\[\#c8a84e\], .bg-\[\#e040a0\], .bg-amber-400, .bg-amber-500, .bg-blue-400, .bg-blue-600, .bg-cyan-400, .bg-cyan-500, .bg-cyan-600, .bg-orange-500, .bg-purple-400, .bg-purple-500, .bg-sky-500, .bg-teal-400, .bg-teal-500, .bg-yellow-400, .bg-yellow-500) { color: var(--tolley-on-accent); }
+.tolley-site :is(a, button):is(.bg-\[\#FF9900\], .bg-\[\#c4a56e\], .bg-\[\#c8a84e\], .bg-\[\#e040a0\], .bg-amber-400, .bg-amber-500, .bg-blue-400, .bg-blue-600, .bg-cyan-400, .bg-cyan-500, .bg-cyan-600, .bg-orange-500, .bg-purple-400, .bg-purple-500, .bg-sky-500, .bg-teal-400, .bg-teal-500, .bg-yellow-400, .bg-yellow-500) { border-radius: 8px; }
+.tolley-site :is(.bg-\[\#FF9900\], .bg-\[\#c4a56e\], .bg-\[\#c8a84e\], .bg-\[\#e040a0\], .bg-amber-400, .bg-amber-500, .bg-blue-400, .bg-blue-600, .bg-cyan-400, .bg-cyan-500, .bg-cyan-600, .bg-orange-500, .bg-purple-400, .bg-purple-500, .bg-sky-500, .bg-teal-400, .bg-teal-500, .bg-yellow-400, .bg-yellow-500) > :where(span, strong, svg, p, h2, h3) { color: var(--tolley-on-accent); }
+
+/* Components with an explicit paper or light-button treatment. */
+.tolley-site :is(.wd-glow, .pools-glow, .lp-ticket-submit, .lp-buyout-button) { background: var(--tolley-accent); color: var(--tolley-on-accent); border-radius: 8px; box-shadow: none; }
+.tolley-site :is(.lp-index-card, .lp-ticket, .lp-receipt-card, .lp-ready-card) { background: var(--tolley-surface); color: var(--tolley-text); border-color: var(--tolley-line); }
+.tolley-site :is(.lp-field-label, .lp-field-label-dark, .lp-index-tag, .lp-ticket-num) { color: var(--tolley-muted); }
+.tolley-site :is(.es-btn-primary, .tc-btn-primary, .lp-btn-primary) { color: var(--tolley-on-accent); }
+
+/* Gradient-filled headings need an ink color when their old stops are removed. */
+.tolley-site .bg-clip-text.text-transparent { background: none; color: var(--tolley-accent); -webkit-text-fill-color: currentColor; }
+.tolley-site :is(.lp-hero, .tc-hero) { background: none; }
+.tolley-site :is(.lp-check, .lp-ticket-perf) { background: var(--tolley-raised); color: var(--tolley-text); border-color: var(--tolley-line); }
+.tolley-site .lp-check:has(input:checked) { background: var(--tolley-raised); border-color: var(--tolley-accent); }
+.tolley-site .lp-check input { accent-color: var(--tolley-accent); }
+.tolley-site .lp-ticket-submit:hover:not(:disabled) { background: var(--tolley-accent-hover); color: var(--tolley-on-accent); }
+.tolley-site .lp-ticket .text-red-900 { color: #fecaca; background: #3d2020; border-color: #f8717166; }
+.tolley-site :is(.lp-index-card, .lp-ticket) [class*="text-black"] { color: var(--tolley-text); }
+.tolley-site :is(.lp-tool-card, .lp-step, .lp-not-panel, .lp-ready-card, .tc-card, .es-card, .es-sale-card) { border-radius: var(--tolley-radius); }
+.tolley-site :is(.site-dot-grid-red, .lm-streaks) { display: none; }
+.tolley-site .lm-radar::before { display: none; }
+.tolley-site .lastmile-page :is(a, button).bg-red-600 { background: var(--tolley-accent); color: var(--tolley-on-accent); }
+.tolley-site .lastmile-page :is(a, button).bg-red-600:hover { background: var(--tolley-accent-hover); }
+.tolley-site .lastmile-page nav .text-red-500 { color: var(--tolley-accent); }
+.tolley-site[data-tolley-service="housing"] :where(.bg-zinc-50, .dark\:bg-zinc-900) { background: var(--tolley-surface); }
+.tolley-site[data-tolley-service="housing"] [class*="border-zinc-"] { border-color: var(--tolley-line); }
+.tolley-site[data-tolley-service="housing"] .text-emerald-600 { color: var(--tolley-accent); }
+.tolley-site[data-tolley-service="housing"] button.bg-blue-600:hover { background: var(--tolley-accent-hover); }

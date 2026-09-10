@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10 text-white/85">
+    <main className="tolley-prose-page">
       <h1 className="text-3xl font-bold text-white">About tolley.io</h1>
       <p className="mt-2 text-sm text-white/60">
         Independence, MO &middot; Kansas City metro
@@ -52,7 +52,7 @@ export default function AboutPage() {
         </p>
       </section>
 
-      <section className="mt-8 rounded-xl border border-white/10 bg-white/5 p-5">
+      <section className="tolley-panel mt-8 p-6">
         <h2 className="text-lg font-semibold text-white">Find us online</h2>
         <ul className="mt-3 space-y-1 text-sm">
           <li>
