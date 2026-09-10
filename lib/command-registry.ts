@@ -22,6 +22,8 @@ export interface CommandContext {
     description?: string;
     variant?: "default" | "success" | "error" | "warning";
   }) => void;
+  /** Site owner — extra T-Agent business tools in the palette */
+  owner?: boolean;
 }
 
 export function buildCommands(ctx: CommandContext): Command[] {
@@ -239,5 +241,16 @@ export function buildCommands(ctx: CommandContext): Command[] {
       shortcut: ["?"],
       run: nav("/leads/_dev/primitives"),
     },
+    ...(ctx.owner
+      ? [
+          {
+            id: "owner.tools",
+            title: "Go to owner tools",
+            group: "Your business",
+            keywords: ["owner", "tools", "probate", "distress", "inventory"],
+            run: nav("/leads/tools"),
+          } satisfies Command,
+        ]
+      : []),
   ];
 }

@@ -88,10 +88,6 @@ const nextConfig: NextConfig = {
   // force-dynamic the root layout (1.17 hang). Do not re-enable
   // typescript checking inside next build (2026-08-19 OOM).
   experimental: {
-    // Use the installed TypeScript compiler API to read config. The CLI
-    // subprocess returned empty --showConfig output in this environment.
-    // Full type checking remains the separate mandatory npm build step.
-    useTypeScriptCli: false,
     cpus: 1,
     staticGenerationMaxConcurrency: 1,
     webpackMemoryOptimizations: true,
