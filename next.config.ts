@@ -109,9 +109,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // data/VATER-RULES.pdf is read at runtime by the studio-gated rules route;
-  // without this it never makes it into the serverless bundle.
+  // Include authenticated document assets read at runtime in serverless bundles.
   outputFileTracingIncludes: {
+    "/leads/guide/owner": ["./docs/product/tagent-personal-use-20260909.md"],
+    "/api/leads/guide/plan": ["./docs/product/tagent-personal-use-20260909.md"],
     "/api/vater/rules": ["./data/VATER-RULES.pdf"],
     "/api/vater/rules/route": ["./data/VATER-RULES.pdf"],
     // 8/25: per-character rule template instantiated when a user builds a character

@@ -41,7 +41,7 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '1.39.0', date: '2026-09-09', title: 'T-Agent starts with your next three follow-ups',
-    items: ['Today brings your due follow-ups, contact details, and next steps into one place.', 'Save a person and a promise together; log an attempt, conversation, or appointment and schedule the next follow-up.', 'Owner accounts can bring new website inquiries into their private workspace without a subscription purchase.', 'Research tools remain available in Overview.'],
+    items: ['Today brings your due follow-ups, contact details, and next steps into one place.', 'Save a person and a promise together; log an attempt, conversation, or appointment and schedule the next follow-up.', 'Owner accounts can bring new website inquiries into their private workspace without a subscription purchase.', 'Research tools remain available in Overview.', 'A first-week guide links directly to your daily workflow; owners can read and download their original personal-use plan.'],
   },
   {
     version: '1.38.2', date: '2026-09-09', title: 'Clearer service routes and fewer empty pages',
