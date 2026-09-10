@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.39.1';
+export const APP_VERSION = '1.39.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -40,6 +40,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.39.2',
+    date: '2026-09-10',
+    title: 'Shared Tolley theme and Shop tools inside T-Agent',
+    items: [
+      'Shop dashboard sections now route into T-Agent owner tools with the same sign-in rules.',
+      'Tolley public pages share forest, cream, and sage styling; product apps keep their own look.',
+    ],
+  },
+  {
     version: '1.39.1',
     date: '2026-09-10',
     title: 'T-Agent daily desk typechecks for production',
@@ -49,7 +58,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.39.0', date: '2026-09-09', title: 'T-Agent brings follow-ups and business tools together',
-    items: ['Today brings your due follow-ups, contact details, and next steps into one place.', 'Save a person and a promise together; log an attempt, conversation, or appointment and schedule the next follow-up.', 'Owner accounts can bring new website inquiries into their private workspace without a subscription purchase.', 'Owner tools bring seller signals, marketing visibility, inventory, affiliates, and revenue operations into T-Agent.', 'Approved probate and distress opportunities can be saved with a private Today follow-up.', 'A first-week guide links directly to your daily workflow; owners can read and download their original personal-use plan.', 'Tolley’s homepage, About, policies, service directory, and service pages share forest, cream, and sage styling with consistent navigation. Product apps retain their own identity.'],
+    items: ['Today brings your due follow-ups, contact details, and next steps into one place.', 'Save a person and a promise together; log an attempt, conversation, or appointment and schedule the next follow-up.', 'Owner accounts can bring new website inquiries into their private workspace without a subscription purchase.', 'Owner tools bring seller signals, marketing visibility, inventory, affiliates, and revenue operations into T-Agent.', 'Approved probate and distress opportunities can be saved with a private Today follow-up.', 'A first-week guide links directly to your daily workflow; owners can read and download their original personal-use plan.'],
   },
   {
     version: '1.38.2', date: '2026-09-09', title: 'Clearer service routes and fewer empty pages',
