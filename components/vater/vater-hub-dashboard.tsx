@@ -61,7 +61,7 @@ export function VaterHubDashboard() {
 
       {/* Trend Intelligence Link */}
       <Link
-        href="/shop/dashboard/trends"
+        href="/leads/tools/trends"
         className="vater-card mb-10 flex items-center gap-4 p-5 transition-all hover:border-amber-500/30 group"
       >
         <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-2xl">

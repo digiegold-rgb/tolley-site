@@ -551,7 +551,7 @@ export async function POST(req: NextRequest) {
 
     // Mirror price changes onto the shop PlatformListing (storefront reads
     // listings[0].price first, then falls back to targetPrice) and snapshot
-    // the change for /shop/dashboard price history. Best-effort: a failed
+    // the change for /leads/tools/inventory price history. Best-effort: a failed
     // listing upsert shouldn't poison the rest of the batch.
     if (didUpdatePrice && row.priceCents != null) {
       const newPrice = row.priceCents / 100;
@@ -683,7 +683,7 @@ export async function POST(req: NextRequest) {
   ) {
     try {
       revalidatePath("/shop");
-      revalidatePath("/shop/dashboard");
+      revalidatePath("/leads/tools/inventory");
       if (mode === "backfill-sold" || absenceSold > 0) {
         revalidatePath("/shop/sold");
       }

@@ -509,7 +509,7 @@ export default function BulkAddPage() {
     <div className="relative z-10 text-white">
       <div className="mx-auto max-w-5xl px-4 py-6">
         <header className="mb-6 flex items-center justify-between">
-          <Link href="/shop/dashboard" className="text-xs text-white/50 hover:text-white/80">
+          <Link href="/leads/tools/inventory" className="text-xs text-white/50 hover:text-white/80">
             ← Dashboard
           </Link>
           <h1 className="text-sm font-semibold uppercase tracking-widest text-purple-300">
@@ -814,7 +814,7 @@ export default function BulkAddPage() {
                     </div>
                     {job.productId && (
                       <Link
-                        href={`/shop/dashboard?product=${job.productId}`}
+                        href={`/leads/tools/inventory?product=${job.productId}`}
                         className="rounded border border-white/15 px-2 py-1 text-[0.65rem] text-white/60 hover:bg-white/5"
                       >
                         View

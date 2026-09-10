@@ -53,7 +53,7 @@ function buildDigest(
     }
     if (rows.length > 8) lines.push(`  …and ${rows.length - 8} more`);
   }
-  lines.push(`\nReview & promote at tolley.io/shop/dashboard/serpapi/distress`);
+  lines.push(`\nReview & promote at tolley.io/leads/tools/distress`);
   return lines.join("\n");
 }
 

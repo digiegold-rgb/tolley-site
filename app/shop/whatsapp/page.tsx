@@ -192,7 +192,7 @@ export default function WhatsappScanPage() {
             <Link href="/shop/whatsapp/watches" className="text-green-300 hover:text-green-200">
               Auto-watch →
             </Link>
-            <Link href="/shop/dashboard" className="text-white/50 hover:text-white">
+            <Link href="/leads/tools/inventory" className="text-white/50 hover:text-white">
               Dashboard
             </Link>
           </div>
@@ -386,7 +386,7 @@ export default function WhatsappScanPage() {
                   Open Facebook drafts
                 </a>
                 <Link
-                  href="/shop/dashboard"
+                  href="/leads/tools/inventory"
                   className="rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-sm"
                 >
                   View inventory

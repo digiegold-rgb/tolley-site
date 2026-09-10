@@ -7,7 +7,7 @@ import {
   ZIP_GRID,
   matchTrackedBusiness,
 } from "@/lib/serpapi/maps-config";
-import { validateShopAdmin } from "@/lib/shop-auth";
+import { validateOwnerTool as validateShopAdmin } from "@/lib/leads/owner-tool-auth";
 
 export const maxDuration = 120;
 
@@ -81,7 +81,7 @@ async function trackOne(
 }
 
 export async function POST(_req: NextRequest) {
-  if (!(await validateShopAdmin())) {
+  if (!(await validateShopAdmin(_req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (!serpapiKey()) {

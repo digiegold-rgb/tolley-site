@@ -4,6 +4,18 @@ Branch: `feat/tagent-daily-use-20260909`, based on URL-cleanup commit `4025fa0` 
 
 Product findings, the first-week trial, and the separate seller-data repair plan are in [the personal-use plan](../product/tagent-personal-use-20260909.md).
 
+The pending v1.39.0 scope now also includes all 14 Shop dashboard tools in
+T-Agent, plus probate/distress adoption into Today and dossier linkage. See
+[the business-tools integration record](tagent-business-tools-20260909.md) for
+the complete route mapping, access boundaries, and release acceptance checks.
+
+Integration validation: final full `tsc --noEmit -p tsconfig.build.json` passed
+(exit 0); focused ESLint passed with zero warnings/errors. The tools, guide,
+daily-use, and URL-cleanup regression suites all passed. Link/changelog and
+whitespace checks passed. Logs: `/tmp/tagent-tools-types.log`,
+`/tmp/tagent-tools-lint.log`, and `/tmp/tagent-tools-tests.log`. Production build,
+real PostgreSQL, authenticated browser, and deployment checks remain outstanding.
+
 ## Routes and data
 
 - `/leads`: authenticated Today view, built from private CRM tasks/contacts and explicitly logged results.

@@ -4,13 +4,12 @@
  */
 
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { validateOwnerTool } from "@/lib/leads/owner-tool-auth";
 import { prisma } from "@/lib/prisma";
 import { computeMargin } from "@/lib/vater/arbitrage-scanner";
 
 export async function GET(req: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  if (!await validateOwnerTool(req)) {
     return NextResponse.json({ error: "LOGIN_REQUIRED" }, { status: 401 });
   }
 
@@ -28,8 +27,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  if (!await validateOwnerTool(req)) {
     return NextResponse.json({ error: "LOGIN_REQUIRED" }, { status: 401 });
   }
 

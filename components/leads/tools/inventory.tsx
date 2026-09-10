@@ -47,14 +47,13 @@ export default function DashboardPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    setError(null);
     fetch("/api/shop/analytics?days=7")
       .then(async r => {
         const json = await r.json();
         if (!r.ok) throw new Error(json.error || "Could not load this tool. Try again.");
         return json;
       })
-      .then(setData)
+      .then(json => { setData(json); setError(null); })
       .catch(e => setError(e instanceof Error ? e.message : "Could not load sales"));
   }, [refreshKey]);
 

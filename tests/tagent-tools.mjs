@@ -176,6 +176,9 @@ for (session of [null, customer, { ...owner, mfaRequired: true }, { ...owner, im
 }
 assert.equal(calls, beforeDenied);
 session = owner;
+assert.equal(await validateOwnerTool(new Request("https://example.invalid/api", { method: "POST", headers: { origin: "https://foreign.invalid" } })), false);
+assert.equal(await validateOwnerTool(new Request("https://example.invalid/api", { method: "POST", headers: { origin: "https://example.invalid" } })), true);
+assert.equal((await PATCH(request(null), params)).status, 400);
 assert.equal((await PATCH(request({ status: "promoted" }, "https://foreign.invalid"), params)).status, 403);
 assert.equal((await PATCH(request({ status: "made-up" }), params)).status, 400);
 const adopted = await PATCH(request({ status: "promoted", subscriberId: "other-sub" }), params);

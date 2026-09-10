@@ -12,8 +12,10 @@
  */
 
 import type { Command } from "@/components/ui/CommandPalette";
+import { OWNER_TOOLS } from "@/lib/leads/owner-tools";
 
 export interface CommandContext {
+  owner?: boolean;
   /** Navigate via Next router */
   navigate: (href: string) => void;
   /** Show a toast */
@@ -31,10 +33,11 @@ export function buildCommands(ctx: CommandContext): Command[] {
   };
 
   return [
+    ...(ctx.owner ? OWNER_TOOLS.map(tool => ({ id: `owner.${tool.slug}`, title: tool.label, group: "Owner tools", keywords: [tool.group, tool.description], run: nav(`/leads/tools/${tool.slug}`) })) : []),
     // ── Navigation ──────────────────────────────────────────────────
     {
       id: "nav.cockpit",
-      title: "Go to Cockpit",
+      title: "Go to Today",
       group: "Navigation",
       keywords: ["home", "dashboard", "overview"],
       run: nav("/leads"),

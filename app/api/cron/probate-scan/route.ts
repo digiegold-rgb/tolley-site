@@ -57,7 +57,7 @@ async function handler(req: NextRequest) {
           lines.push(`…and ${discovery.newSignals - fresh.length} more`);
         }
         lines.push(
-          "\nReview + promote: https://www.tolley.io/shop/dashboard/serpapi/probate"
+          "\nReview + promote: https://www.tolley.io/leads/tools/probate"
         );
         notifyRoutineBrief({
           slug: "probate-scan",

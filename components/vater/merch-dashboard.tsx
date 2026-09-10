@@ -108,7 +108,7 @@ export function MerchDashboard() {
 
       {/* Trend Intelligence Link */}
       <Link
-        href="/shop/dashboard/trends"
+        href="/leads/tools/trends"
         className="vater-card mb-6 flex items-center gap-4 p-4 transition-all hover:border-amber-500/30 group"
       >
         <span className="text-xl">🔍</span>
