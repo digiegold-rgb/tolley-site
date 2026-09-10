@@ -1,0 +1,164 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { ProfitCalculator } from "@/components/shop/ProfitCalculator";
+
+interface ArbitragePair {
+  id: string;
+  ebayTitle: string;
+  ebayPrice: number;
+  ebayUrl: string | null;
+  ebayImageUrl: string | null;
+  amazonTitle: string;
+  amazonPrice: number;
+  amazonUrl: string | null;
+  profit: number;
+  marginPercent: number;
+  roi: number;
+  status: string;
+  category: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export default function ArbitragePage() {
+  const [pairs, setPairs] = useState<ArbitragePair[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("pending");
+
+  const [error, setError] = useState<string | null>(null);
+  const loadPairs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/vater/arbitrage?status=${encodeURIComponent(filter)}`, {
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPairs(Array.isArray(data?.pairs) ? data.pairs : []);
+      } else {
+        throw new Error("Could not load opportunities. Try again.");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load opportunities.");
+    }
+    setLoading(false);
+  }, [filter]);
+
+  useEffect(() => { void loadPairs(); }, [loadPairs]);
+
+  async function sourceProduct(pair: ArbitragePair) {
+    try {
+      const res = await fetch("/api/shop/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: pair.ebayTitle,
+          category: pair.category || undefined,
+          costBasis: pair.amazonPrice,
+          targetPrice: pair.ebayPrice,
+          sourcingType: "online_arbitrage",
+          sourcingVendor: pair.amazonTitle.split(":")[0],
+          imageUrls: pair.ebayImageUrl ? [pair.ebayImageUrl] : [],
+          status: "draft",
+        }),
+      });
+
+      if (!res.ok) throw new Error("Could not create draft");
+      alert("Product draft created from arbitrage pair!");
+    } catch {
+      alert("Failed to create product");
+    }
+  }
+
+  return (
+    <div>
+      <h1 className="text-xl font-bold text-white">Arbitrage</h1>
+      {error && <p role="alert" className="mt-3 text-red-300">{error}</p>}
+      <p className="mt-1 text-sm text-white/40">
+        Review stored price comparisons and create a product draft. Confirm current prices, availability, and fees before sourcing.
+      </p>
+
+      {/* Filters */}
+      <div className="mt-4 flex gap-2">
+        {["pending", "approved", "rejected", "listed"].map((s) => (
+          <button
+            key={s}
+            onClick={() => setFilter(s)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition capitalize ${
+              filter === s
+                ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                : "text-white/40 border border-white/10 hover:bg-white/5"
+            }`}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {/* Pairs list */}
+      <div className="mt-4 space-y-3">
+        {loading ? (
+          <p className="py-8 text-center text-white/30 text-sm">Loading pairs...</p>
+        ) : pairs.length === 0 ? (
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center">
+            <p className="text-2xl">💰</p>
+            <p className="mt-2 text-sm text-white/40">
+              No stored opportunities match this filter.
+            </p>
+          </div>
+        ) : (
+          pairs.map((pair) => (
+            <div
+              key={pair.id}
+              className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{pair.ebayTitle}</p>
+                  <div className="mt-1 flex items-center gap-3 text-xs">
+                    <span className="text-blue-400">eBay: ${pair.ebayPrice.toFixed(2)}</span>
+                    <span className="text-white/20">→</span>
+                    <span className="text-orange-400">Source: ${pair.amazonPrice.toFixed(2)}</span>
+                  </div>
+                  {pair.notes && (
+                    <p className="mt-1 text-[0.65rem] text-white/25 line-clamp-1">{pair.notes}</p>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-lg font-bold text-green-400">${pair.profit.toFixed(2)}</p>
+                  <p className="text-xs text-white/30">{pair.roi.toFixed(0)}% ROI</p>
+                </div>
+              </div>
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={() => sourceProduct(pair)}
+                  className="shop-btn-primary rounded-lg px-3 py-1.5 text-xs"
+                >
+                  Create product draft
+                </button>
+                {pair.ebayUrl && (
+                  <a
+                    href={pair.ebayUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/40 hover:text-white/60"
+                  >
+                    View on eBay
+                  </a>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Profit Calculator */}
+      <div className="mt-8">
+        <h2 className="mb-3 text-sm font-semibold text-white/60">Profit Calculator</h2>
+        <ProfitCalculator />
+      </div>
+    </div>
+  );
+}

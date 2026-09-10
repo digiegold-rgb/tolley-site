@@ -65,7 +65,7 @@ async function probateCandidates(limit: number): Promise<Candidate[]> {
   // walk down until we find `limit` un-bridged ones (filtered by the caller).
   const rows = await prisma.probateSignal.findMany({
     where: {
-      status: { in: ["discovered", "enriched"] },
+      status: { in: ["discovered", "enriched", "promoted"] },
       matchedAddress: { not: null },
     },
     orderBy: { createdAt: "desc" },
@@ -95,7 +95,7 @@ async function distressCandidates(limit: number): Promise<Candidate[]> {
   if (limit <= 0) return [];
   const rows = await prisma.distressSignal.findMany({
     where: {
-      status: { in: ["new", "reviewed"] },
+      status: { in: ["new", "reviewed", "promoted"] },
       addressGuess: { not: null },
     },
     orderBy: { createdAt: "desc" },
@@ -160,6 +160,7 @@ async function bridgeOne(
 
   let listingId: string;
   if (existing) {
+    await linkPromotedSignal(c.model, c.signalId, existing.id);
     if (existing.dossierJobs.length > 0) return null; // already bridged
     listingId = existing.id;
   } else {
@@ -179,6 +180,7 @@ async function bridgeOne(
       select: { id: true },
     });
     listingId = listing.id;
+    await linkPromotedSignal(c.model, c.signalId, listingId);
   }
 
   const job = await prisma.dossierJob.create({
@@ -192,6 +194,15 @@ async function bridgeOne(
   });
 
   return { listingId, dossierJobId: job.id };
+}
+
+/** Connect later research to an already-adopted lead without replacing a
+ * manually selected listing or copying any customer's private workflow. */
+export async function linkPromotedSignal(model: "probate" | "distress", signalId: string, listingId: string) {
+  const signal = model === "probate"
+    ? await prisma.probateSignal.findUnique({ where: { id: signalId }, select: { leadId: true } })
+    : await prisma.distressSignal.findUnique({ where: { id: signalId }, select: { leadId: true } });
+  if (signal?.leadId) await prisma.lead.updateMany({ where: { id: signal.leadId, listingId: null }, data: { listingId } });
 }
 
 /**

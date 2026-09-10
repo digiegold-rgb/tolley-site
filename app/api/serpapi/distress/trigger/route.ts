@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { serpapiKey } from "@/lib/serpapi";
-import { validateShopAdmin } from "@/lib/shop-auth";
+import { validateOwnerTool as validateShopAdmin } from "@/lib/leads/owner-tool-auth";
 import { runDistressDiscovery } from "@/lib/serpapi/distress-runner";
 
 export const maxDuration = 120;
 
 export async function POST(_req: NextRequest) {
-  if (!(await validateShopAdmin())) {
+  if (!(await validateShopAdmin(_req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (!serpapiKey()) {

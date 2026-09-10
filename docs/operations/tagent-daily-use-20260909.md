@@ -47,6 +47,27 @@ The mandatory standalone `tsc --noEmit -p tsconfig.build.json` gate in `npm run 
 
 ## Before deployment
 
+### Continuation release check — September 9, 2026
+
+The user authorized continuing and releasing. Rechecked implementation commit
+`e0443e5`: guide, daily-use, and URL-cleanup suites all passed. Changelog v1.39.0,
+link audit (276 pages, 873 handlers, 290 static hrefs), whitespace, and unchanged
+GPU/Game checks passed. Existing directory/write-only-model warnings remain.
+
+Release is still blocked by the current execution environment:
+
+- `git ls-remote origin refs/heads/main` failed to resolve `github.com`.
+- Docker access was denied at `/var/run/docker.sock`.
+- A disposable loopback listener failed with `EPERM`.
+- User service-manager access failed with `Operation not permitted`.
+
+No new full build was started: the previous build log confirms unresolved
+Google Fonts DNS failures, and required database/browser checks cannot run with
+the above access restrictions. No production migration, push, or deployment was
+performed. Continue the release steps below in an environment with GitHub/build
+network access and the required local database, listener, and service access.
+The outstanding issue is execution access, not missing user release approval.
+
 1. Complete the prerequisites in `security-release-20260909.md` and `url-cleanup-20260909.md`; do not deploy this stacked branch while those migrations/authentication checks are unresolved.
 2. Obtain a successful full production build and run authenticated staging tests against real PostgreSQL.
 3. Test two customer accounts plus owner/non-owner sessions. Prove cross-account IDs cannot be read, adopted or completed, and incomplete MFA cannot activate a workspace.
