@@ -1519,6 +1519,7 @@ model WdClient {
   pendingApproval       Boolean     @default(false) // new self-serve signup awaiting 1-click approve
   dunningStage          Int         @default(0) // 0=ok, 1=day0, 2=day3, 3=day7+ (failed-payment ladder)
   reminderSentForPeriod DateTime? // currentPeriodEnd the renew-soon nudge was last drafted for
+  welcomeSentAt         DateTime? // auto (or admin) welcome SMS+email stamped once — signup idempotency
   // Permanent bounce flag — HQ must not text these (Twilio 30003/30005).
   smsUndeliverable      Boolean     @default(false)
   smsUndeliverableAt    DateTime?

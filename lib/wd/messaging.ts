@@ -3,9 +3,10 @@
  *
  * Drafting + sending for Washer/Dryer customer messages. Default flow is
  * "draft" — a WdMessage row is created and surfaced in /hq (SMS tab) and
- * /wd/admin, where Tolley taps Send (1-click approve-send). Nothing here
- * auto-sends except via sendWdMessage(), which the admin Send button and
- * (optionally) crons call. The inbox never sends on its own.
+ * /wd/admin, where Tolley taps Send (1-click approve-send). Paid Stripe
+ * signups auto-send via lib/wd/welcome.ts (separate from this draft path).
+ * sendWdMessage() is the admin Send button and (optionally) crons. The
+ * inbox never sends on its own.
  */
 
 import type { WdClient } from "@prisma/client";
@@ -24,6 +25,7 @@ import {
 } from "@/lib/wd/sms-undeliverable";
 import { WD_STRIPE_PORTAL_URL, WD_CONTACT_PHONE } from "@/lib/wd";
 import { jaredGreeting } from "@/lib/wd/voice";
+import { wdWelcomePlanAmount } from "@/lib/wd/welcome-copy";
 
 export { last10Digits, toE164 };
 
@@ -31,6 +33,7 @@ export type WdMessageKind =
   | "reminder"
   | "dunning"
   | "approval"
+  | "welcome"
   | "ai_reply"
   | "inbound"
   | "manual"
@@ -38,7 +41,7 @@ export type WdMessageKind =
 export type WdChannel = "sms" | "email";
 
 /** Keep /leads/conversations current when Jared sends from the W/D path. Non-critical. */
-async function mirrorSentSms(to: string, body: string): Promise<void> {
+export async function mirrorSentSms(to: string, body: string): Promise<void> {
   try {
     const key = last10Digits(to);
     let conversation = await prisma.smsConversation.findFirst({
@@ -135,7 +138,10 @@ export async function sendWdMessage(messageId: string): Promise<{ ok: boolean; e
         return { ok: false, error: "recipient opted out of SMS" };
       }
       try {
-        await sendSms(to, msg.body);
+        const meta = (msg.meta ?? {}) as { messagingServiceSid?: unknown };
+        const messagingServiceSid =
+          typeof meta.messagingServiceSid === "string" ? meta.messagingServiceSid.trim() || undefined : undefined;
+        await sendSms(to, msg.body, messagingServiceSid ? { messagingServiceSid } : {});
       } catch (err) {
         if (err instanceof SmsUndeliverableError) {
           return { ok: false, error: SMS_UNDELIVERABLE_ERROR };
@@ -163,6 +169,12 @@ export async function sendWdMessage(messageId: string): Promise<{ ok: boolean; e
       where: { id: messageId },
       data: { status: "sent", sentAt: new Date() },
     });
+    if (msg.clientId && (msg.kind === "welcome" || msg.kind === "approval")) {
+      await prisma.wdClient.updateMany({
+        where: { id: msg.clientId, welcomeSentAt: null },
+        data: { welcomeSentAt: new Date() },
+      });
+    }
     return { ok: true };
   } catch (err) {
     const error = err instanceof Error ? err.message : "send failed";
@@ -184,10 +196,23 @@ const fmtDate = (d?: Date | null) =>
 
 /** Welcome message(s) on 1-click approval of a new signup. */
 export async function draftWelcome(client: WdClient): Promise<string[]> {
+  if (client.welcomeSentAt) return [];
+  const already = await prisma.wdMessage.findFirst({
+    where: {
+      clientId: client.id,
+      direction: "outbound",
+      kind: { in: ["welcome", "approval"] },
+      status: { in: ["sent", "draft", "sending"] },
+    },
+    select: { id: true },
+  });
+  if (already) return [];
+
   const ids: string[] = [];
+  const amount = wdWelcomePlanAmount(client.monthlyAmount);
   const sms =
     `Hi ${firstName(client)}, it's Jared with Tolley Washer & Dryer Rental — you're all set! ` +
-    `Your $58/mo rental is active. Text this number anytime for service or questions. Thanks for joining!`;
+    `Your $${amount}/mo rental is active. Text this number anytime for service or questions. Thanks for joining!`;
   if (toE164(client.phone)) {
     ids.push(await createWdDraft({ clientId: client.id, phone: client.phone, channel: "sms", kind: "approval", body: sms }));
   }

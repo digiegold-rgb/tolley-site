@@ -50,7 +50,7 @@ function twilioStatusCallbackUrl(): string {
 export async function sendSms(
   to: string,
   body: string,
-  opts: { complianceReply?: boolean } = {}
+  opts: { complianceReply?: boolean; messagingServiceSid?: string } = {}
 ): Promise<string> {
   if (!opts.complianceReply && (await isOptedOut(to))) {
     console.warn("[twilio] suppressed send to opted-out number", to);
@@ -63,7 +63,7 @@ export async function sendSms(
   }
 
   const tw = getTwilioClient();
-  const from = getTwilioPhone();
+  const messagingServiceSid = opts.messagingServiceSid?.trim() || undefined;
 
   // Truncate to ~1600 chars (standard SMS concatenation limit)
   const truncated = body.length > 1580 ? body.slice(0, 1577) + "..." : body;
@@ -71,9 +71,11 @@ export async function sendSms(
   try {
     const msg = await tw.messages.create({
       to,
-      from,
       body: truncated,
       statusCallback: twilioStatusCallbackUrl(),
+      ...(messagingServiceSid
+        ? { messagingServiceSid }
+        : { from: getTwilioPhone() }),
     });
     await maybeFlagFromTwilioResult({
       phone: to,

@@ -38,9 +38,10 @@ export async function sendWdEmail(opts: {
   subject: string;
   html: string;
   text: string;
+  from?: string;
 }): Promise<void> {
   await getTransporter().sendMail({
-    from: emailFrom,
+    from: opts.from || emailFrom,
     to: opts.to,
     subject: opts.subject,
     text: opts.text,
