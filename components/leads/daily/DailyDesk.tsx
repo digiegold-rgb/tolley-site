@@ -17,6 +17,29 @@ function tomorrowLocal() {
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}T10:00`;
 }
 
+function DraftEditor({ task, onSaved }: { task: DailyTask; onSaved: (message: string) => void }) {
+  const [body, setBody] = useState(task.draft?.body || "");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  if (!task.draft) return null;
+  const draft = task.draft;
+  async function saveDraft() {
+    setBusy(true); setMessage("");
+    try { await save({ action: "save-draft", taskId: task.id, body, previousBody: draft.body }); onSaved("Draft saved for your review."); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "Could not save draft"); }
+    finally { setBusy(false); }
+  }
+  return <div className="mt-4 space-y-3">
+    <p className="text-sm text-white/65">Dossier motivation score: {draft.score}/100 · Researched {new Intl.DateTimeFormat("en-US", { timeZone: DAILY_TIME_ZONE, month: "short", day: "numeric" }).format(new Date(draft.researchedAt))}. This ranks research signals; verify current facts and the living contact before sending.</p>
+    {!!draft.reasons.length && <p className="text-sm text-amber-200">Signals to review: {draft.reasons.join(" · ")}</p>}
+    <Link className="block text-sm text-teal-200 underline" href={`/leads/dossier/${encodeURIComponent(draft.dossierId)}`}>Review dossier & sources</Link>
+    <label className="block text-sm">Personal outreach draft<textarea className={input} rows={5} maxLength={4000} value={body} onChange={e => setBody(e.target.value)} /></label>
+    <p className="text-xs text-white/55">Add your name and a verified personal detail. Review and send yourself, then record the touch below.</p>
+    <div className="flex flex-wrap gap-4"><button type="button" className={button} disabled={busy || !body.trim()} onClick={saveDraft}>{busy ? "Saving…" : "Save draft"}</button><button type="button" className="text-sm text-teal-200 underline" onClick={async () => { try { await navigator.clipboard.writeText(body); setMessage("Copied. Send it yourself when you approve it."); } catch { setMessage("Could not copy. Select the draft text to copy it manually."); } }}>Copy draft</button></div>
+    {message && <p role="status" className="text-sm text-amber-200">{message}</p>}
+  </div>;
+}
+
 function FollowUpCard({ task, index, now, onSaved }: { task: DailyTask; index: number; now: Date; onSaved: (message: string) => void }) {
   const [outcome,setOutcome] = useState<DailyOutcome>("conversation");
   const [note,setNote] = useState("");
@@ -37,7 +60,8 @@ function FollowUpCard({ task, index, now, onSaved }: { task: DailyTask; index: n
     finally { setBusy(false); }
   }
   return <article className="rounded-2xl border border-white/15 bg-white/[0.04] p-5" data-testid="daily-task">
-    <div className="flex items-start gap-3"><span className="rounded-full bg-teal-300/10 px-3 py-1 text-teal-200">{index+1}</span><div className="min-w-0"><h3 className="text-lg font-semibold">{task.title}</h3><p className="mt-1 text-sm text-amber-200">{taskReason(task,now)}</p></div></div>
+    <div className="flex items-start gap-3"><span className="rounded-full bg-teal-300/10 px-3 py-1 text-teal-200">{index+1}</span><div className="min-w-0"><h3 className="text-lg font-semibold">{task.title}</h3><p className="mt-1 text-sm text-amber-200">{task.draft ? "Draft only · awaiting your review and manual send" : taskReason(task,now)}</p></div></div>
+    {task.draft && <DraftEditor key={`${task.id}:${task.draft.body}`} task={task} onSaved={onSaved} />}
     {task.person && <p className="mt-4 font-medium">{task.person}</p>}
     {task.description && <p className="mt-2 whitespace-pre-wrap text-sm text-white/65">{task.description}</p>}
     <div className="mt-4 flex flex-wrap gap-4 text-sm">
@@ -105,6 +129,14 @@ export default function DailyDesk({ data, owner }: { data: DailyDeskData; owner:
     <p className="text-xs text-white/45">Counts reflect the results you log here. Today uses {DAILY_TIME_ZONE}; appointments are shown separately from conversations.</p>
     {message && <p role="status" className="rounded-xl border border-teal-300/20 p-3 text-sm text-teal-200">{message}</p>}
     {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
+    {owner && <section aria-label="Weekday scored targets" className="space-y-4 rounded-2xl border border-teal-300/20 p-5">
+      <h2 className="text-xl font-semibold">Five scored targets · drafts for review</h2>
+      <p className="text-sm text-white/65">Weekdays at 8am Chicago time. Independence and Kansas City, with a dossier completed in the last 14 days and a motivation score of at least 50/100. Nothing is sent automatically.</p>
+      {data.weekdayDrop ? <p className="text-sm text-amber-200">Latest drop: {data.weekdayDrop.day} · {data.weekdayDrop.count}/5 ready.{data.weekdayDrop.shortfall > 0 ? ` ${data.weekdayDrop.shortfall} fewer than the target qualified. Review source coverage in Research & tools.` : ""}</p> : <p className="text-sm text-white/55">No weekday drop has been recorded yet.</p>}
+      {(data.sellerDrafts || []).map((task, i) => <FollowUpCard key={task.id} task={task} index={i} now={new Date(data.asOf)} onSaved={onSaved} />)}
+      {!data.sellerDrafts?.length && <p className="text-sm text-white/55">No drafts awaiting review.</p>}
+      <Link href="/leads/tools" className="block text-sm text-teal-200 underline">Review probate, distress & neighborhood tools</Link>
+    </section>}
     <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
       <section className="space-y-4"><h2 className="text-xl font-semibold">Your next moves</h2>
         {handled >= 3 && !showAll && <div className="rounded-2xl border border-teal-300/20 p-6"><h3 className="font-semibold text-teal-200">Your three are handled.</h3><p className="mt-2 text-sm text-white/65">{data.pendingCount ? `${data.pendingCount} follow-ups are still due or undated. Review any time-sensitive promises before stopping.` : "Your next follow-ups are saved. You can get back to your day."}</p></div>}
