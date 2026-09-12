@@ -8,17 +8,29 @@ export const WD_CONTACT_EMAIL = "Jared@yourkchomes.com";
 export const WD_CONTACT_PHONE = "913-283-3826";
 export const WD_SMS_PHONE = "913-600-7508";
 export const WD_WELCOME_FROM = "Jared <jared@yourkchomes.com>";
-/** Live W/D A2P Messaging Service (sender +19136007508). Resource id, not a secret. */
-export const WD_MESSAGING_SERVICE_SID_DEFAULT = "MG82db38fc4ae258c8869e4f0ae6c525ed";
-/** Already-welcomed live customer — never auto-welcome again (Dorothy Johnson, 2026-09-12). */
-export const WD_SKIP_AUTO_WELCOME_CUSTOMER_IDS = ["cus_VFPkiB9RKXHrep"] as const;
+/** Live W/D A2P Messaging Service (sender +19136007508). Public resource id, not a secret. */
+export const WD_MESSAGING_SERVICE_SID = "MG82db38fc4ae258c8869e4f0ae6c525ed";
 
-/** Messaging Service SID for W/D customer SMS. Env overrides; falls back to the live MS. */
-export function wdMessagingServiceSid(
-  raw: string | null | undefined = process.env.TWILIO_WD_MESSAGING_SERVICE_SID,
-): string {
-  const v = (raw ?? "").trim();
-  return v || WD_MESSAGING_SERVICE_SID_DEFAULT;
+export type WdPreWelcomedCustomer = {
+  stripeCustomerId: string;
+  smsSid: string;
+  emailId: string;
+  welcomedAt: string;
+};
+
+/** Manual welcomes that must never be auto-sent again. Dorothy Johnson, 2026-09-12 ~12:41 CT. */
+export const WD_PRE_WELCOMED_CUSTOMERS: readonly WdPreWelcomedCustomer[] = [
+  {
+    stripeCustomerId: "cus_VFPkiB9RKXHrep",
+    smsSid: "SMc8426e22b6d97ba7cbc8609a01fb06a1",
+    emailId: "1a096d6a31068fcc",
+    welcomedAt: "2026-09-12T17:41:00.000Z",
+  },
+];
+
+export function wdPreWelcomedCustomer(custId?: string | null): WdPreWelcomedCustomer | undefined {
+  if (!custId) return undefined;
+  return WD_PRE_WELCOMED_CUSTOMERS.find((c) => c.stripeCustomerId === custId);
 }
 export const WD_FACEBOOK_URL = "https://www.facebook.com/share/1AafKhE5tq/?mibextid=wwXIfr";
 export const WD_BRAND = "Wash & Dry Rental";

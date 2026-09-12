@@ -20,10 +20,11 @@ import { getStripeClient } from "@/lib/stripe";
 import { sendSms } from "@/lib/twilio";
 import { SmsOptedOutError } from "@/lib/sms-optout";
 import {
-  WD_SKIP_AUTO_WELCOME_CUSTOMER_IDS,
+  WD_MESSAGING_SERVICE_SID,
   WD_STRIPE_PORTAL_URL,
   WD_WELCOME_FROM,
-  wdMessagingServiceSid,
+  wdPreWelcomedCustomer,
+  type WdPreWelcomedCustomer,
 } from "@/lib/wd";
 import { sendWdEmail, wdEmailHtml } from "@/lib/wd/email";
 import { mirrorSentSms } from "@/lib/wd/messaging";
@@ -230,7 +231,7 @@ async function sendWelcomeSms(opts: {
   }
 
   try {
-    await sendSms(opts.to, opts.body, { messagingServiceSid: wdMessagingServiceSid() });
+    await sendSms(opts.to, opts.body, { messagingServiceSid: WD_MESSAGING_SERVICE_SID });
     await mirrorSentSms(opts.to, opts.body);
     await prisma.wdMessage.update({
       where: { id: opts.messageId },
@@ -306,20 +307,71 @@ async function sendWelcomeEmail(opts: {
   }
 }
 
-async function stampStripeWelcome(custId: string): Promise<void> {
+async function stampStripeWelcome(custId: string, sentAt?: Date): Promise<void> {
   try {
     const stripe = getStripeClient();
     const customer = await stripe.customers.retrieve(custId);
     if ("deleted" in customer) return;
+    if (customer.metadata?.[WD_WELCOME_STRIPE_META] === "1") return;
     await stripe.customers.update(custId, {
       metadata: {
         ...customer.metadata,
         [WD_WELCOME_STRIPE_META]: "1",
-        wd_welcome_sent_at: new Date().toISOString(),
+        wd_welcome_sent_at: (sentAt ?? new Date()).toISOString(),
       },
     });
   } catch (err) {
     console.warn("[wd] welcome stripe metadata failed", custId, err);
+  }
+}
+
+/** Persist welcome_sent for a customer who was already welcomed by hand. Never sends. */
+async function seedPreWelcomedCustomer(record: WdPreWelcomedCustomer): Promise<void> {
+  const welcomedAt = new Date(record.welcomedAt);
+  try {
+    await prisma.wdClient.updateMany({
+      where: { stripeCustomerId: record.stripeCustomerId, welcomeSentAt: null },
+      data: { welcomeSentAt: welcomedAt },
+    });
+    const clients = await prisma.wdClient.findMany({
+      where: { stripeCustomerId: record.stripeCustomerId },
+      select: { id: true, phone: true },
+    });
+    for (const client of clients) {
+      await prisma.wdMessage.upsert({
+        where: { id: welcomeMessageId(client.id, "sms") },
+        create: {
+          id: welcomeMessageId(client.id, "sms"),
+          clientId: client.id,
+          phone: client.phone,
+          channel: "sms",
+          kind: "welcome",
+          status: "sent",
+          body: "Manual welcome 2026-09-12 — do not resend.",
+          sentAt: welcomedAt,
+          meta: { manual: true, twilioSid: record.smsSid },
+        },
+        update: {},
+      });
+      await prisma.wdMessage.upsert({
+        where: { id: welcomeMessageId(client.id, "email") },
+        create: {
+          id: welcomeMessageId(client.id, "email"),
+          clientId: client.id,
+          channel: "email",
+          kind: "welcome",
+          status: "sent",
+          subject: WD_WELCOME_SUBJECT,
+          body: "Manual welcome 2026-09-12 — do not resend.",
+          sentAt: welcomedAt,
+          meta: { manual: true, emailId: record.emailId },
+        },
+        update: {},
+      });
+    }
+    await stampStripeWelcome(record.stripeCustomerId, welcomedAt);
+  } catch (err) {
+    console.warn("[wd] pre-welcomed seed failed", record.stripeCustomerId, err);
   }
 }
 
@@ -385,8 +437,10 @@ export async function maybeSendWdSignupWelcome(trigger: WdWelcomeTrigger): Promi
 
   const custId = triggerCustomerId(trigger);
   if (!custId) return { status: "skipped", reason: "no customer" };
-  if ((WD_SKIP_AUTO_WELCOME_CUSTOMER_IDS as readonly string[]).includes(custId)) {
-    return { status: "skipped", reason: "skip-list customer" };
+  const preWelcomed = wdPreWelcomedCustomer(custId);
+  if (preWelcomed) {
+    await seedPreWelcomedCustomer(preWelcomed);
+    return { status: "skipped", reason: "already welcomed (seeded)" };
   }
 
   const stripe = getStripeClient();
@@ -421,7 +475,7 @@ export async function maybeSendWdSignupWelcome(trigger: WdWelcomeTrigger): Promi
 
   const smsBody = wdWelcomeSmsBody({ name: fresh.name, amount });
   const emailBody = wdWelcomeEmailBody({ name: fresh.name, amount });
-  const msSid = wdMessagingServiceSid();
+  const msSid = WD_MESSAGING_SERVICE_SID;
 
   let smsOk = false;
   let emailOk = false;

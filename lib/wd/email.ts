@@ -1,12 +1,9 @@
 /**
  * lib/wd/email.ts
  *
- * Transactional email for Washer/Dryer rentals. Reuses the same SMTP config as
- * Ruthann's Kitchen (lib/food/email.ts) so credentials live in one place.
- *
- * Env vars (already configured in prod for the NextAuth email provider):
- *   EMAIL_SERVER_HOST, EMAIL_SERVER_PORT, EMAIL_SERVER_USER,
- *   EMAIL_SERVER_PASSWORD, EMAIL_FROM
+ * Transactional email for Washer/Dryer rentals. Reuses the existing SMTP /
+ * SendGrid path (same EMAIL_SERVER_* as Ruthann's Kitchen / NextAuth).
+ * Welcome mail uses EMAIL_WD_FROM or EMAIL_FROM, then Jared <jared@yourkchomes.com>.
  */
 
 import nodemailer from "nodemailer";

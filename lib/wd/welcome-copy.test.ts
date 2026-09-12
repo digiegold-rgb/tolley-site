@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
-  WD_MESSAGING_SERVICE_SID_DEFAULT,
+  WD_MESSAGING_SERVICE_SID,
+  WD_PRE_WELCOMED_CUSTOMERS,
   WD_PRICE_BUNDLE,
   WD_PRICE_WASHER,
   WD_SITE_URL,
-  WD_SKIP_AUTO_WELCOME_CUSTOMER_IDS,
   WD_SMS_PHONE,
   WD_STRIPE_PORTAL_URL,
-  wdMessagingServiceSid,
+  wdPreWelcomedCustomer,
 } from "@/lib/wd";
 import {
   isPaidWdCheckout,
@@ -103,21 +103,18 @@ describe("signup invoice / checkout / subscription gates", () => {
   });
 });
 
-describe("messaging service + skip list", () => {
-  it("uses env override then the live W/D Messaging Service SID", () => {
-    const prev = process.env.TWILIO_WD_MESSAGING_SERVICE_SID;
-    try {
-      delete process.env.TWILIO_WD_MESSAGING_SERVICE_SID;
-      assert.equal(wdMessagingServiceSid(), WD_MESSAGING_SERVICE_SID_DEFAULT);
-      assert.equal(wdMessagingServiceSid("  MG_override  "), "MG_override");
-    } finally {
-      if (prev === undefined) delete process.env.TWILIO_WD_MESSAGING_SERVICE_SID;
-      else process.env.TWILIO_WD_MESSAGING_SERVICE_SID = prev;
-    }
+describe("messaging service + Dorothy seed", () => {
+  it("hardcodes the live W/D Messaging Service SID (not a vault secret)", () => {
+    assert.equal(WD_MESSAGING_SERVICE_SID, "MG82db38fc4ae258c8869e4f0ae6c525ed");
   });
 
-  it("keeps Dorothy on the skip list and stamps a dedicated Stripe metadata key", () => {
-    assert.ok(WD_SKIP_AUTO_WELCOME_CUSTOMER_IDS.includes("cus_VFPkiB9RKXHrep"));
+  it("seeds Dorothy as already welcomed so retries never re-send", () => {
+    const d = wdPreWelcomedCustomer("cus_VFPkiB9RKXHrep");
+    assert.ok(d);
+    assert.equal(d.smsSid, "SMc8426e22b6d97ba7cbc8609a01fb06a1");
+    assert.equal(d.emailId, "1a096d6a31068fcc");
+    assert.equal(wdPreWelcomedCustomer("cus_other"), undefined);
+    assert.equal(WD_PRE_WELCOMED_CUSTOMERS.length, 1);
     assert.equal(WD_WELCOME_STRIPE_META, "wd_welcome_sent");
   });
 });
