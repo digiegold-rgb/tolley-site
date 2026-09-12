@@ -15,7 +15,6 @@ import type { Command } from "@/components/ui/CommandPalette";
 import { OWNER_TOOLS } from "@/lib/leads/owner-tools";
 
 export interface CommandContext {
-  owner?: boolean;
   /** Navigate via Next router */
   navigate: (href: string) => void;
   /** Show a toast */
