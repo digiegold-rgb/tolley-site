@@ -1,7 +1,6 @@
 import twilio from "twilio";
 
 import { isOptedOut, SmsOptedOutError } from "@/lib/sms-optout";
-import { WD_MESSAGING_SERVICE_SID } from "@/lib/wd";
 import {
   isSmsUndeliverablePhone,
   maybeFlagFromTwilioResult,
@@ -29,6 +28,14 @@ export function getTwilioPhone(): string {
   const phone = process.env.TWILIO_PHONE_NUMBER;
   if (!phone) throw new Error("Missing TWILIO_PHONE_NUMBER");
   return phone;
+}
+
+/** From-phone unless the caller explicitly passes a Messaging Service SID. */
+export function resolveTwilioSendIdentity(
+  messagingServiceSid?: string,
+): { messagingServiceSid: string } | { from: "phone" } {
+  const sid = messagingServiceSid?.trim();
+  return sid ? { messagingServiceSid: sid } : { from: "phone" };
 }
 
 /**
@@ -64,12 +71,7 @@ export async function sendSms(
   }
 
   const tw = getTwilioClient();
-  // Prefer the W/D Messaging Service (public SID, not a secret). Callers can
-  // pass a different MS SID; From is only used when MS is explicitly disabled.
-  const messagingServiceSid =
-    opts.messagingServiceSid === ""
-      ? undefined
-      : opts.messagingServiceSid?.trim() || WD_MESSAGING_SERVICE_SID;
+  const identity = resolveTwilioSendIdentity(opts.messagingServiceSid);
 
   // Truncate to ~1600 chars (standard SMS concatenation limit)
   const truncated = body.length > 1580 ? body.slice(0, 1577) + "..." : body;
@@ -79,8 +81,8 @@ export async function sendSms(
       to,
       body: truncated,
       statusCallback: twilioStatusCallbackUrl(),
-      ...(messagingServiceSid
-        ? { messagingServiceSid }
+      ...("messagingServiceSid" in identity
+        ? { messagingServiceSid: identity.messagingServiceSid }
         : { from: getTwilioPhone() }),
     });
     await maybeFlagFromTwilioResult({
