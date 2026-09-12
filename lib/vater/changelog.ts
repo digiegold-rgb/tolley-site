@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.39.2';
+export const APP_VERSION = '1.40';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.40',
+    date: '2026-09-12',
+    title: 'Weekday seller drafts in Today',
+    items: [
+      'Owner desks can receive up to five scored Independence and Kansas City targets each weekday at 8am Chicago time.',
+      'Review the dossier, edit and copy a personal draft, then log your manual outreach and next follow-up.',
+      'Shortfalls are visible; drafts are never sent automatically.',
+    ],
+  },
   {
     version: '1.39.2',
     date: '2026-09-10',

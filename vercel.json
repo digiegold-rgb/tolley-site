@@ -158,6 +158,7 @@
     }
   },
   "crons": [
+    { "path": "/api/cron/leads-weekday-drop", "schedule": "0 13,14 * * 1-5" },
     {
       "path": "/api/cron/sequence-process",
       "schedule": "0 */1 * * *"

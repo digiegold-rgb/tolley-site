@@ -2,6 +2,7 @@ export const DAILY_TIME_ZONE = "America/Chicago";
 export const DAILY_OUTCOMES = ["attempted", "conversation", "appointment", "completed", "snooze"] as const;
 export type DailyOutcome = typeof DAILY_OUTCOMES[number];
 export interface DailyTask {
+  draft?: import("./weekday-plan").SellerDraft | null;
   id: string;
   title: string;
   description: string | null;
@@ -13,6 +14,8 @@ export interface DailyTask {
   href: string | null;
 }
 export interface DailyDeskData {
+  sellerDrafts?: DailyTask[];
+  weekdayDrop?: { day: string; count: number; shortfall: number } | null;
   tasks: DailyTask[];
   pendingCount: number;
   upcoming: DailyTask[];
