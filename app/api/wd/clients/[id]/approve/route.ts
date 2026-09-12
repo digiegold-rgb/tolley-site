@@ -8,8 +8,8 @@ export const runtime = "nodejs";
 
 /**
  * POST /api/wd/clients/[id]/approve — Tolley-only 1-click approval for a
- * self-serve signup. Confirms the client and drafts a welcome SMS + email
- * (draft only; admin taps Send to fire them).
+ * self-serve signup. Confirms the client. Drafts a welcome SMS + email only
+ * when Stripe auto-welcome has not already sent (draft only; admin taps Send).
  */
 export async function POST(
   _request: Request,

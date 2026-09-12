@@ -30,6 +30,14 @@ export function getTwilioPhone(): string {
   return phone;
 }
 
+/** From-phone unless the caller explicitly passes a Messaging Service SID. */
+export function resolveTwilioSendIdentity(
+  messagingServiceSid?: string,
+): { messagingServiceSid: string } | { from: "phone" } {
+  const sid = messagingServiceSid?.trim();
+  return sid ? { messagingServiceSid: sid } : { from: "phone" };
+}
+
 /**
  * Send an SMS via Twilio.
  * Returns the message SID.
@@ -50,7 +58,7 @@ function twilioStatusCallbackUrl(): string {
 export async function sendSms(
   to: string,
   body: string,
-  opts: { complianceReply?: boolean } = {}
+  opts: { complianceReply?: boolean; messagingServiceSid?: string } = {}
 ): Promise<string> {
   if (!opts.complianceReply && (await isOptedOut(to))) {
     console.warn("[twilio] suppressed send to opted-out number", to);
@@ -63,7 +71,7 @@ export async function sendSms(
   }
 
   const tw = getTwilioClient();
-  const from = getTwilioPhone();
+  const identity = resolveTwilioSendIdentity(opts.messagingServiceSid);
 
   // Truncate to ~1600 chars (standard SMS concatenation limit)
   const truncated = body.length > 1580 ? body.slice(0, 1577) + "..." : body;
@@ -71,9 +79,11 @@ export async function sendSms(
   try {
     const msg = await tw.messages.create({
       to,
-      from,
       body: truncated,
       statusCallback: twilioStatusCallbackUrl(),
+      ...("messagingServiceSid" in identity
+        ? { messagingServiceSid: identity.messagingServiceSid }
+        : { from: getTwilioPhone() }),
     });
     await maybeFlagFromTwilioResult({
       phone: to,

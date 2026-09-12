@@ -18,6 +18,7 @@ import {
   syncWdSubscription,
   recordWdInvoice,
 } from "@/lib/wd-subscription";
+import { maybeSendWdSignupWelcome } from "@/lib/wd/welcome";
 // Engine 1 self-serve "buy this website" close ($500 + $49/mo). Narrow,
 // self-contained handler so it can't affect the W/D / leads / food paths.
 import {
@@ -203,6 +204,7 @@ export async function POST(request: Request) {
             const sub = await stripe.subscriptions.retrieve(subId);
             if (isWdSubscription(sub)) {
               await syncWdSubscription(sub);
+              await maybeSendWdSignupWelcome({ source: "checkout", session: checkoutSession, subscription: sub });
               break;
             }
           }
@@ -227,7 +229,11 @@ export async function POST(request: Request) {
         } else if (isVideoOfferSubscription(subscription)) {
           await fulfillVideoOfferSale(subscription);
         } else if (isWdSubscription(subscription)) {
-          await syncWdSubscription(await stripe.subscriptions.retrieve(subscription.id));
+          const sub = await stripe.subscriptions.retrieve(subscription.id);
+          await syncWdSubscription(sub);
+          if (event.type === "customer.subscription.created") {
+            await maybeSendWdSignupWelcome({ source: "subscription", subscription: sub });
+          }
         } else if (subPriceId && isLeadsPriceId(subPriceId)) {
           await syncLeadsSubscription(subscription);
         } else if (subPriceId && isFoodPriceId(subPriceId)) {
@@ -255,6 +261,7 @@ export async function POST(request: Request) {
         const paidInvoice = event.data.object as Stripe.Invoice;
         if (isWdInvoice(paidInvoice)) {
           await recordWdInvoice(paidInvoice, false);
+          await maybeSendWdSignupWelcome({ source: "invoice", invoice: paidInvoice });
           break;
         }
         if (isVaterInvoice(paidInvoice)) {

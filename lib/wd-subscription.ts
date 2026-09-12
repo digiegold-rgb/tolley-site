@@ -13,47 +13,27 @@
 
 import Stripe from "stripe";
 import { invoicePaymentFacts, monthlySubscriptionAmount } from "./wd-payment-facts";
+import {
+  isWdInvoice,
+  isWdPrice,
+  isWdSignupInvoice,
+  isWdSubscription,
+  isPaidWdCheckout,
+  isPaidWdSubscription,
+} from "./wd-product";
 
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { draftDunning } from "@/lib/wd/messaging";
 
-// The W/D Stripe product and its known prices ($58 bundle, $42 washer-only).
-const WD_PRODUCT_ID = "prod_StRrSxJ969g4hV";
-const WD_PRICE_IDS = new Set(["price_1Rxey029zOZYc3GpfoFkUbmv"]);
-
-type StripePriceish = {
-  id?: string;
-  unit_amount?: number | null;
-  product?: string | Stripe.Product | Stripe.DeletedProduct | null;
+export {
+  isWdInvoice,
+  isWdPrice,
+  isWdSignupInvoice,
+  isWdSubscription,
+  isPaidWdCheckout,
+  isPaidWdSubscription,
 };
-
-function priceProductId(price?: StripePriceish | null): string | null {
-  const p = price?.product;
-  if (!p) return null;
-  return typeof p === "string" ? p : p.id;
-}
-
-/** Is this Stripe price part of the W/D product? */
-export function isWdPrice(price?: StripePriceish | null): boolean {
-  if (!price) return false;
-  if (price.id && WD_PRICE_IDS.has(price.id)) return true;
-  if (priceProductId(price) === WD_PRODUCT_ID) return true;
-  return false;
-}
-
-export function isWdSubscription(sub: Stripe.Subscription): boolean {
-  return isWdPrice(sub.items?.data?.[0]?.price as StripePriceish);
-}
-
-export function isWdInvoice(invoice: Stripe.Invoice): boolean {
-  const line = invoice.lines?.data?.[0] as unknown as { pricing?: { price_details?: { price?: string; product?: string } }; price?: StripePriceish } | undefined;
-  const pd = line?.pricing?.price_details;
-  if (pd?.product === WD_PRODUCT_ID) return true;
-  if (pd?.price && WD_PRICE_IDS.has(pd.price)) return true;
-  if (line?.price && isWdPrice(line.price)) return true;
-  return false;
-}
 
 function periodEndDate(sub: Stripe.Subscription): Date | null {
   const root = (sub as unknown as { current_period_end?: number }).current_period_end;
