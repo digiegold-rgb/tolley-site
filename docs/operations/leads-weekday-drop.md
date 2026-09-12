@@ -1,6 +1,6 @@
 # Weekday scored targets and drafts
 
-The owner Today desk at `/leads` receives up to five draft cards per weekday at 8am America/Chicago. Deploy this branch and set `LEADS_DESK_SUBSCRIBER_ID` to the active owner's existing LeadSubscriber ID to activate it. The subscriber's user email must also pass the existing admin allowlist. An unconfigured cron returns 503. This change is prepared locally; production configuration and deployment have not been changed.
+The owner Today desk at `/leads` receives up to five draft cards per weekday at 8am America/Chicago. Deploy this branch and set `LEADS_DESK_SUBSCRIBER_ID` to the active owner's existing LeadSubscriber ID to activate it. The subscriber's user email must also pass the existing admin allowlist. An unconfigured cron returns 503. The production deployment uses this setting to select the owner workspace; it never creates or activates customer subscriptions.
 
 `/api/cron/leads-weekday-drop` requires the existing `CRON_SECRET`. Vercel calls at 13:00 and 14:00 UTC on weekdays; the handler only creates a drop during Chicago's 8am hour. This handles both CST and CDT. Use this schedule as the sole draft producer; the standing desk check can remain read-only. Successful runs produce no notification. Failures use HTTP error status and an internal error log; source shortages appear in Today.
 
