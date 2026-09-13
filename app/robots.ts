@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
  * Dynamic robots.txt. Replaces public/robots.txt.
  *
  * Public surface: open to all bots, including AI training crawlers, on every
- * route EXCEPT admin (which is always disallowed).
+ * public page. Private app routes and APIs remain excluded, with exact
+ * exceptions for the public OpenAPI document and agent index.
  *
  * Each AI bot of interest is named explicitly so policy is explicit and
  * auditable, even though `User-agent: *` covers them.
@@ -60,6 +61,8 @@ export default function robots(): MetadataRoute.Robots {
     "/billing",
   ];
   const adminDisallow = [...ADMIN_ROUTES, ...internalDisallow];
+  // End anchors prevent these exceptions from opening API subpaths.
+  const publicAllow = ["/", "/api/openapi.json$", "/api/agent-index$"];
 
   const aiBots = [
     "GPTBot",
@@ -81,8 +84,8 @@ export default function robots(): MetadataRoute.Robots {
 
   return {
     rules: [
-      { userAgent: "*", allow: "/", disallow: adminDisallow },
-      ...aiBots.map((ua) => ({ userAgent: ua, allow: "/", disallow: adminDisallow })),
+      { userAgent: "*", allow: publicAllow, disallow: adminDisallow },
+      ...aiBots.map((ua) => ({ userAgent: ua, allow: publicAllow, disallow: adminDisallow })),
     ],
     sitemap: `${BASE}/sitemap.xml`,
     host: BASE,

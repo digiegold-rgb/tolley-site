@@ -9,7 +9,8 @@ const BASE = "https://www.tolley.io";
 /**
  * GET /.well-known/agent-card.json
  *
- * A2A agent card describing every public subsite under tolley.io.
+ * Tolley discovery card describing every public subsite under tolley.io.
+ * This metadata is not an A2A protocol implementation.
  * Replaces the previous static file at public/.well-known/agent-card.json.
  *
  * Each public subsite contributes a `skill` derived from its manifest, plus

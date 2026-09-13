@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.41.1';
+export const APP_VERSION = '1.41.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.41.2',
+    date: '2026-09-12',
+    title: 'Clearer discovery for AI tools',
+    items: [
+      'AI tools can find public guides and API documentation directly from Tolley pages.',
+      'Crawler guidance consistently permits AI search, citation, and training on allowed public content.',
+    ],
+  },
   {
     version: '1.41.1',
     date: '2026-09-12',

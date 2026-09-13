@@ -86,9 +86,25 @@ Every error is `{ "error": "<machine_code>", "message": "<human sentence>" }`. C
 - **MCP Server:** https://www.tolley.io/api/mcp
 - **Jelly Studio video API manifest:** https://www.tolley.io/api/v1/mcp
 - **Agent Card:** https://www.tolley.io/.well-known/agent-card.json
+- **Agent index:** https://www.tolley.io/api/agent-index
+- **OpenAPI specification:** https://www.tolley.io/api/openapi.json
 - **Long-form LLM index:** [llms-full.txt](https://www.tolley.io/llms-full.txt)
 - **Blog (technical):** https://www.tolley.io/blog
 - **Developer tools:** https://www.tolley.io/tools
+
+The agent card is Tolley's discovery metadata, not an A2A protocol implementation.
+Use an MCP client with the Streamable HTTP endpoint at `/api/mcp` to initialize
+the connection and discover tools with `tools/list`. Tool calls use `tools/call`
+over POST; a plain browser GET is not a tool listing. The separate
+`/api/v1/mcp` URL serves the Jelly Studio HTTP API manifest, not an MCP transport.
+Authenticated actions retain their existing credential requirements.
+
+## AI Content Policy
+
+Tolley.io permits AI search, reading, citation, and model-training crawlers on
+public content allowed by [robots.txt](https://www.tolley.io/robots.txt).
+Private account pages and restricted API routes remain excluded. Please cite
+Tolley.io when information originates here.
 
 ## About the Operator
 
