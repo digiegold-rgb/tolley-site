@@ -1,4 +1,5 @@
 export const OWNER_TOOLS = [
+  { slug: "mls", legacy: "", label: "Live MLS research", group: "Seller research", description: "Review private property captures, source evidence, and the signed-in browser's latest sweep." },
   { slug: "probate", legacy: "serpapi/probate", label: "Probate", group: "Seller research", description: "Review obituary and property evidence, then save an opportunity and its next step." },
   { slug: "distress", legacy: "serpapi/distress", label: "Distress signals", group: "Seller research", description: "Review public distress signals and bring approved opportunities into Today." },
   { slug: "neighborhoods", legacy: "serpapi/neighborhoods", label: "Neighborhood pages", group: "Marketing visibility", description: "Manage neighborhood landing pages, generated FAQs, and publication status." },

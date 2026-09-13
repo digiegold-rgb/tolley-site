@@ -150,3 +150,28 @@ assert.equal((await cron.GET(cronRequest(process.env.CRON_SECRET))).status,403,'
 db.leadSubscriber.find(s=>s.id==='a').user.email='owner@example.invalid';
 assert.equal((await cron.GET(cronRequest(process.env.CRON_SECRET))).status,200);
 console.log('Weekday draft rendering and cron authentication/configuration/owner gates passed.');
+
+let ingested = null;
+stubs['@/lib/leads/mls-ingest']={ingestMlsSweep:async(sub,input)=>{ingested={sub,input};return {saved:0};}};
+const mlsApi=load('app/api/leads/mls-ingest/route.ts');
+const mlsRequest=(secret,body)=>new NextRequest('https://test.invalid/api/leads/mls-ingest',{method:'POST',headers:{'content-type':'application/json','x-sync-secret':secret},body:JSON.stringify(body)});
+const emptySweep={runId:randomUUID(),observedAt:now.toISOString(),status:'empty',message:'No matches',captures:[]};
+delete process.env.SYNC_SECRET;
+assert.equal((await mlsApi.POST(mlsRequest('undefined',emptySweep))).status,401);
+process.env.SYNC_SECRET='mls-test-only';
+assert.equal((await mlsApi.POST(mlsRequest('wrong',emptySweep))).status,401);
+delete process.env.LEADS_DESK_SUBSCRIBER_ID;
+assert.equal((await mlsApi.POST(mlsRequest(process.env.SYNC_SECRET,emptySweep))).status,503);
+process.env.LEADS_DESK_SUBSCRIBER_ID='a';
+const mlsSub=db.leadSubscriber.find(s=>s.id==='a');
+mlsSub.user.email='customer@example.invalid';
+assert.equal((await mlsApi.POST(mlsRequest(process.env.SYNC_SECRET,emptySweep))).status,403);
+mlsSub.user.email='owner@example.invalid';mlsSub.status='inactive';
+assert.equal((await mlsApi.POST(mlsRequest(process.env.SYNC_SECRET,emptySweep))).status,403);
+mlsSub.status='active';
+assert.equal((await mlsApi.POST(mlsRequest(process.env.SYNC_SECRET,{...emptySweep,status:'ready'}))).status,400);
+assert.equal((await mlsApi.POST(mlsRequest(process.env.SYNC_SECRET,{...emptySweep,subscriberId:'foreign'}))).status,200);
+assert.equal(ingested.sub,'a');assert.equal(ingested.input.subscriberId,undefined);
+const mlsHtml=renderToStaticMarkup(React.createElement(DailyDesk,{data:{...ownerData,mlsHealth:{status:'reauth_required',message:'Sign in on Spark',observedAt:now.toISOString()},sellerDrafts:[{...ownerData.sellerDrafts[0],draft:{...draft,researchKind:'mls',dossierId:'mls-capture:test'}}]},owner:true}));
+assert.match(mlsHtml,/\/leads\/mls\/mls-capture/);assert.match(mlsHtml,/Sign in on Spark/);
+console.log('Private MLS ingest secret/configuration/owner/schema gates and research rendering passed.');

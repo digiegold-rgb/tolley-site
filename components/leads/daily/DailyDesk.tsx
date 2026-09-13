@@ -32,7 +32,7 @@ function DraftEditor({ task, onSaved }: { task: DailyTask; onSaved: (message: st
   return <div className="mt-4 space-y-3">
     <p className="text-sm text-white/65">Dossier motivation score: {draft.score}/100 · Researched {new Intl.DateTimeFormat("en-US", { timeZone: DAILY_TIME_ZONE, month: "short", day: "numeric" }).format(new Date(draft.researchedAt))}. This ranks research signals; verify current facts and the living contact before sending.</p>
     {!!draft.reasons.length && <p className="text-sm text-amber-200">Signals to review: {draft.reasons.join(" · ")}</p>}
-    <Link className="block text-sm text-teal-200 underline" href={`/leads/dossier/${encodeURIComponent(draft.dossierId)}`}>Review dossier & sources</Link>
+    <Link className="block text-sm text-teal-200 underline" href={`/leads/${draft.researchKind === "mls" ? "mls" : "dossier"}/${encodeURIComponent(draft.dossierId)}`}>Review dossier & sources</Link>
     <label className="block text-sm">Personal outreach draft<textarea className={input} rows={5} maxLength={4000} value={body} onChange={e => setBody(e.target.value)} /></label>
     <p className="text-xs text-white/55">Add your name and a verified personal detail. Review and send yourself, then record the touch below.</p>
     <div className="flex flex-wrap gap-4"><button type="button" className={button} disabled={busy || !body.trim()} onClick={saveDraft}>{busy ? "Saving…" : "Save draft"}</button><button type="button" className="text-sm text-teal-200 underline" onClick={async () => { try { await navigator.clipboard.writeText(body); setMessage("Copied. Send it yourself when you approve it."); } catch { setMessage("Could not copy. Select the draft text to copy it manually."); } }}>Copy draft</button></div>
@@ -131,7 +131,8 @@ export default function DailyDesk({ data, owner }: { data: DailyDeskData; owner:
     {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
     {owner && <section aria-label="Weekday scored targets" className="space-y-4 rounded-2xl border border-teal-300/20 p-5">
       <h2 className="text-xl font-semibold">Five scored targets · drafts for review</h2>
-      <p className="text-sm text-white/65">Weekdays at 8am Chicago time. Independence and Kansas City, with a dossier completed in the last 14 days and a motivation score of at least 50/100. Nothing is sent automatically.</p>
+      <p className="text-sm text-white/65">Weekdays at 8am Chicago time. Independence and Kansas City targets scoring at least 50/100, from verified MLS research within 36 hours or dossiers completed within 14 days. Nothing is sent automatically.</p>
+      {data.mlsHealth && <p className="text-sm text-amber-200">Live MLS: {data.mlsHealth.status.replaceAll("_", " ")} · {data.mlsHealth.message} <Link href="/leads/tools/mls" className="underline">Review MLS research</Link></p>}
       {data.weekdayDrop ? <p className="text-sm text-amber-200">Latest drop: {data.weekdayDrop.day} · {data.weekdayDrop.count}/5 ready.{data.weekdayDrop.shortfall > 0 ? ` ${data.weekdayDrop.shortfall} fewer than the target qualified. Review source coverage in Research & tools.` : ""}</p> : <p className="text-sm text-white/55">No weekday drop has been recorded yet.</p>}
       {(data.sellerDrafts || []).map((task, i) => <FollowUpCard key={task.id} task={task} index={i} now={new Date(data.asOf)} onSaved={onSaved} />)}
       {!data.sellerDrafts?.length && <p className="text-sm text-white/55">No drafts awaiting review.</p>}

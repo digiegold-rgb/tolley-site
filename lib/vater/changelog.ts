@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.40.1';
+export const APP_VERSION = '1.41';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.41',
+    date: '2026-09-12',
+    title: 'Live private MLS research for Today',
+    items: [
+      'Owner desks can collect verified Independence and Kansas City properties from their signed-in Remine account before the weekday drop.',
+      'Review private MLS facts, scoring reasons and capture times; stale or relisted matches are excluded.',
+      'Eligible captures feed up to five personal drafts at 8am Chicago time. Sending stays manual.',
+    ],
+  },
   {
     version: '1.40.1',
     date: '2026-09-12',

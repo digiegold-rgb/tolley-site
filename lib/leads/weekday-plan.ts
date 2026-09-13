@@ -4,6 +4,7 @@ import { DAILY_TIME_ZONE, dailyBounds } from "./daily-plan";
 export const WEEKDAY_TARGET_LIMIT = 5;
 export const WEEKDAY_MIN_SCORE = 50;
 export const sellerDraftSchema = z.object({
+  researchKind: z.enum(["dossier", "mls"]).optional(),
   version: z.literal(1), score: z.number().min(0).max(100), dossierId: z.string(),
   researchedAt: z.iso.datetime(), address: z.string(), reasons: z.array(z.string()),
   body: z.string().trim().min(1).max(4000),

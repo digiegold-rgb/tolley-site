@@ -1,0 +1,14 @@
+[Unit]
+Description=Private owner MLS research before the Today drop
+After=research-worker.service network-online.target
+Wants=research-worker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/jelly/tolley-leads-live-mls
+EnvironmentFile=/home/jelly/.config/tolley-mls/worker.env
+ExecStart=/usr/bin/node --import /home/jelly/.npm-global/lib/node_modules/tsx/dist/loader.mjs ops/spark/leads-mls-worker.mjs --publish
+TimeoutStartSec=300
+MemoryMax=1G
+UMask=0077
+
