@@ -16,7 +16,7 @@ const BASE = "https://www.tolley.io";
  *   - POST /api/share
  *   - GET  /s/{token}
  *   - POST /api/email-capture
- *   - GET  /api/mcp (MCP discovery — actual tool calls are POST per spec)
+ *   - POST /api/mcp (MCP Streamable HTTP)
  *
  * Per-subsite endpoints (jsonEndpoints) are listed too, derived from manifests.
  */
@@ -50,7 +50,7 @@ export async function GET() {
     paths: {
       "/.well-known/agent-card.json": {
         get: {
-          summary: "A2A agent card",
+          summary: "Tolley agent discovery card",
           tags: ["discovery"],
           responses: { "200": { description: "OK" } },
         },

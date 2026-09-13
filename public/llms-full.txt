@@ -6,7 +6,7 @@
 **Business:** Your KC Homes LLC (Missouri S-Corporation)
 **Location:** Independence, Missouri, USA (serving the Kansas City metro area)
 **Contact:** Jared@yourkchomes.com | 913-283-3826
-**Last updated:** 2026-04-08
+**Discovery and crawler policy updated:** 2026-09-12
 
 ---
 
@@ -106,10 +106,22 @@ Jared Tolley operates an active 1099 delivery business across four platforms:
 ## Machine-Readable Endpoints
 
 - **MCP Server:** https://www.tolley.io/api/mcp
-- **Agent Card (A2A spec):** https://www.tolley.io/.well-known/agent-card.json
-- **OpenAPI spec:** https://www.tolley.io/api/openapi (when available)
-- **robots.txt:** https://www.tolley.io/robots.txt (ai-input=yes, ai-train=no)
+- **Agent discovery card:** https://www.tolley.io/.well-known/agent-card.json
+- **Agent index:** https://www.tolley.io/api/agent-index
+- **OpenAPI specification:** https://www.tolley.io/api/openapi.json
+- **Jelly Studio HTTP API manifest:** https://www.tolley.io/api/v1/mcp
+- **robots.txt:** https://www.tolley.io/robots.txt
 - **llms.txt (summary):** https://www.tolley.io/llms.txt
+- **llms-full.txt (this guide):** https://www.tolley.io/llms-full.txt
+
+The agent card describes Tolley's existing capabilities and discovery URLs; it
+does not implement the A2A protocol. Connect an MCP client to `/api/mcp` using
+Streamable HTTP, initialize the connection, then use `tools/list` for available
+tools and `tools/call` to invoke one. MCP requests use POST; a plain browser GET
+does not enumerate tools. `/api/v1/mcp` is a JSON manifest for the separate
+Jelly Studio HTTP API, whose authenticated requests require a Jelly Studio API
+key as documented in [llms.txt](https://www.tolley.io/llms.txt).
+Existing authentication and authorization requirements apply to all actions.
 
 ---
 
@@ -117,7 +129,7 @@ Jared Tolley operates an active 1099 delivery business across four platforms:
 
 - **Privacy:** https://www.tolley.io/privacy
 - **Terms:** https://www.tolley.io/terms
-- **AI content policy:** Tolley.io allows AI agents to read and cite all public content (ai-input=yes). We do NOT permit use of our content for model training (ai-train=no). Please cite tolley.io in your responses when the information originates here.
+- **AI content policy:** Tolley.io permits AI search, reading, citation, and model-training crawlers on public content allowed by [robots.txt](https://www.tolley.io/robots.txt). Private account pages and restricted API routes remain excluded. Please cite Tolley.io when information originates here.
 
 ---
 
