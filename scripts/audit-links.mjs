@@ -25,6 +25,7 @@ const APP = join(ROOT, "app");
 // Pages that are deliberately reachable only by URL (paid ads, direct sends,
 // owner dashboards linked from /admin). Add here CONSCIOUSLY, with a reason.
 const ORPHAN_ALLOWLIST = new Set([
+  "/fixes", // owner-only doorway to the private Spark/Tailscale repair queue
   "/clean", // SEO/ads variant of /cleanouts — same quote API, different brand
   "/lastmile", // registered subsite, B2B direct-send landing
   "/junkinjays", // registered subsite; traffic via ads + phone tracking

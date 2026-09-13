@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.41';
+export const APP_VERSION = '1.41.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.41.1',
+    date: '2026-09-12',
+    title: 'Private Fixes workspace doorway',
+    items: [
+      'Owners can open their private repair triage workspace from Fixes after connecting their approved devices.',
+    ],
+  },
   {
     version: '1.41',
     date: '2026-09-12',
