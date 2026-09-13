@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekday MLS research at 6:30 and 7:15 Chicago time
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 06:30:00 America/Chicago
+OnCalendar=Mon..Fri *-*-* 07:15:00 America/Chicago
+Persistent=false
+Unit=leads-mls.service
+
+[Install]
+WantedBy=timers.target

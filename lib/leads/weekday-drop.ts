@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { normalizePhone } from "@/lib/sms-optout";
-import { sellerDraftBody, WEEKDAY_MIN_SCORE, WEEKDAY_TARGET_LIMIT, weekdayDropClock, type SellerDraft } from "./weekday-plan";
+import { readSellerDraft, sellerDraftBody, WEEKDAY_MIN_SCORE, WEEKDAY_TARGET_LIMIT, weekdayDropClock, type SellerDraft } from "./weekday-plan";
+import { privateMlsResearchSchema } from "./mls-research";
 
 /** Only CRM drafts and an internal run receipt are written. No outbound queue. */
 export async function createWeekdayDrop(subscriberId: string, now = new Date()) {
@@ -23,17 +24,44 @@ export async function createWeekdayDrop(subscriberId: string, now = new Date()) 
       orderBy: [{ result: { motivationScore: "desc" } }, { completedAt: "desc" }, { id: "asc" }], take: 500,
     });
     const [history, optouts, legacyOptouts] = await Promise.all([
-      tx.crmTask.findMany({ where: { subscriberId, OR: [{ type: "seller_draft" }, { status: "pending" }, { completedAt: { gte: cutoff } }] }, select: { id: true, status: true, leadId: true, type: true, Lead: { select: { listingId: true, listing: { select: { address: true, city: true, state: true } } } } } }),
+      tx.crmTask.findMany({ where: { subscriberId, OR: [{ type: "seller_draft" }, { status: "pending" }, { completedAt: { gte: cutoff } }] }, select: { id: true, status: true, leadId: true, type: true, description: true, Lead: { select: { listingId: true, listing: { select: { address: true, city: true, state: true } } } } } }),
       tx.smsOptOut.findMany({ where: { optedOut: true }, select: { phone: true } }),
       tx.smsConversation.findMany({ where: { status: "opted_out" }, select: { phoneNumber: true } }),
     ]);
     const suppressedPhones = new Set([...optouts.map(o => o.phone), ...legacyOptouts.map(o => o.phoneNumber)].map(normalizePhone).filter(Boolean));
     const used = new Set(history.filter(t => t.type === "seller_draft").map(t => t.Lead?.listingId).filter(Boolean));
-    const propertyKey = (l: { address: string; city: string | null; state: string | null }) => `${l.address}|${l.city}|${l.state}`.toLowerCase().replace(/[^a-z0-9|]/g, "");
+    const propertyKey = (l: { address: string; city: string | null; state: string | null }) => `${l.address}|${l.city}|${l.state}`.toLowerCase().replace(/[^a-z0-9]/g, "");
     const usedAddresses = new Set(history.filter(t => t.type === "seller_draft" && t.Lead?.listing).map(t => propertyKey(t.Lead!.listing!)));
+    for (const task of history.filter(t => t.type === "seller_draft")) {
+      const draft = readSellerDraft(task.description);
+      if (draft) usedAddresses.add(draft.address.toLowerCase().replace(/[^a-z0-9]/g, ""));
+    }
     const taskIds: string[] = [];
-    for (const job of jobs) {
+    const snapshots = await tx.crmActivity.findMany({where:{subscriberId,type:"mls_capture",createdAt:{gte:new Date(now.getTime()-36*3600000)}},include:{Lead:{include:{customerState:{where:{subscriberId}}}}},orderBy:{createdAt:"desc"},take:300});
+    const sweep = (await tx.crmActivity.findUnique({where:{id:`mls-sweep:${subscriberId}`}}))?.metadata as {runId?:string;status?:string} | null;
+    const privateCandidates = snapshots.flatMap(row => {
+      const parsed = privateMlsResearchSchema.safeParse(row.metadata);
+      if (!parsed.success || parsed.data.score < WEEKDAY_MIN_SCORE || !row.Lead || row.Lead.ownerSubscriberId !== subscriberId) return [];
+      if (sweep?.status !== "ready" || sweep.runId !== parsed.data.runId) return [];
+      const state = row.Lead.customerState[0];
+      if (row.Lead.status !== "new" || row.Lead.contactedAt || row.Lead.closedAt || (state && (state.status !== "new" || state.contactedAt || state.closedAt))) return [];
+      if (history.some(t=>t.leadId===row.leadId) || suppressedPhones.has(normalizePhone(state?.ownerPhone ?? row.Lead.ownerPhone))) return [];
+      if (new Date(parsed.data.capture.observedAt).getTime() < now.getTime()-36*3600000 || new Date(parsed.data.capture.observedAt) > now) return [];
+      return [{kind:"mls" as const,row,research:parsed.data,score:parsed.data.score,id:row.id}];
+    });
+    const candidates = [...jobs.map(job=>({kind:"dossier" as const,job,score:job.result!.motivationScore!,id:job.id})),...privateCandidates].sort((a,b)=>b.score-a.score || a.id.localeCompare(b.id));
+    for (const candidate of candidates) {
       if (taskIds.length === WEEKDAY_TARGET_LIMIT) break;
+      if (candidate.kind === "mls") {
+        const {capture,score,reasons} = candidate.research;
+        if (usedAddresses.has(propertyKey(capture))) continue;
+        const address = `${capture.address}, ${capture.city}, ${capture.state}`;
+        const draft: SellerDraft = {version:1,researchKind:"mls",score,dossierId:candidate.row.id,researchedAt:capture.observedAt,address,reasons,body:sellerDraftBody(address)};
+        const taskId = `${runId}:${taskIds.length+1}`;
+        await tx.crmTask.create({data:{id:taskId,subscriberId,leadId:candidate.row.leadId,type:"seller_draft",title:`${score}/100 · ${address}`,description:JSON.stringify(draft),dueDate:now,priority:"high"}});
+        taskIds.push(taskId); usedAddresses.add(propertyKey(capture)); continue;
+      }
+      const job = candidate.job;
       const listing = job.listing;
       if (used.has(listing.id) || usedAddresses.has(propertyKey(listing))) continue;
       used.add(listing.id);

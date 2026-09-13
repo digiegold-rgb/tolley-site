@@ -1,0 +1,54 @@
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { prisma } from "../lib/prisma";
+import { customerLeads } from "../lib/customer-leads";
+import { ingestMlsSweep } from "../lib/leads/mls-ingest";
+import { mlsCaptureSchema, mlsSweepSchema, scoreMlsCapture } from "../lib/leads/mls-research";
+import { createWeekdayDrop } from "../lib/leads/weekday-drop";
+import { readSellerDraft } from "../lib/leads/weekday-plan";
+import { captureRemineProperty } from "../ops/spark/leads-mls-parser.mjs";
+
+if(process.env.DATABASE_URL!=="postgresql://postgres@127.0.0.1:55438/tolley_weekday_test")throw new Error("Dedicated local test DB required");
+const key=randomUUID(), a=`mls-a-${key}`, b=`mls-b-${key}`;
+const now=new Date("2026-09-14T13:00:00Z");
+const capture=(n=0)=>mlsCaptureSchema.parse({provider:"remine",recordId:`Lfixture${n}`,mlsNumber:`12345${n}`,observedAt:now.toISOString(),sourceUrl:"https://hmls.remine.com/discover",address:`${n+100} Test Street`,city:"Independence",state:"MO",zip:"64050",status:"Expired",daysOnMarket:120+n,listPrice:200000,originalListPrice:250000,detailVerified:true,detailText:"Verified synthetic property evidence. ".repeat(5)});
+const sweep=(captures=[capture()])=>mlsSweepSchema.parse({runId:randomUUID(),observedAt:now.toISOString(),status:"ready",message:"Test sweep",captures});
+async function main(){
+  const search={remineid:"Lid",listingId:"123",address:{street:"100 Test Street",city:"Independence",state:"MO",zip:"64050"},status:"Expired"};
+  const listing={ListingId:"123",ListingContractDate:"2026-07-01",StandardStatus:"Expired",City:"Independence",StateOrProvince:"MO",PostalCode:"64050",PropertyType:"Residential",BedroomsTotal:3,ListPrice:200000,DaysOnMarket:120};
+  const detail={id:"Lid",listings:[listing],ownerOccupants:[]};
+  assert(captureRemineProperty(search,detail,now.toISOString(),"Insights"));
+  assert.equal(captureRemineProperty(search,{...detail,id:"other"},now.toISOString(),"Insights"),null);
+  assert.equal(captureRemineProperty(search,{...detail,listings:[listing,{...listing,ListingId:"999",ListingContractDate:"2026-09-01",StandardStatus:"Active"}]},now.toISOString(),"Insights"),null,"reject expired hits that have relisted");
+  assert.equal(captureRemineProperty(search,{...detail,listings:[{...listing,StandardStatus:"Closed"}]},now.toISOString(),"Insights"),null);
+  assert(!mlsCaptureSchema.safeParse({...capture(),sourceUrl:"https://attacker.invalid"}).success);
+  assert.equal(scoreMlsCapture({...capture(),city:"Independence",state:"KS"}).score,0);
+  assert.equal(scoreMlsCapture({...capture(),status:"Sold"}).score,0);
+  const listingCount=await prisma.listing.count(), dossierCount=await prisma.dossierJob.count();
+  for(const id of[a,b])await prisma.user.create({data:{id,email:`${id}@example.invalid`,leadSubscription:{create:{id,farmCities:[],farmZips:[],specialties:[]}}}});
+  const input=sweep(Array.from({length:6},(_,n)=>capture(n)));
+  await Promise.all([ingestMlsSweep(a,input,now),ingestMlsSweep(a,input,now)]);
+  assert.equal(await prisma.crmActivity.count({where:{subscriberId:a,type:"mls_capture"}}),6,"ingest retries do not duplicate properties");
+  assert.equal(await prisma.listing.count(),listingCount,"MLS material never enters shared listings");
+  assert.equal(await prisma.dossierJob.count(),dossierCount,"MLS material never enters shared dossiers");
+  const privateLead=await prisma.lead.findFirstOrThrow({where:{ownerSubscriberId:a}});
+  assert.equal(await customerLeads(b).findUnique({where:{id:privateLead.id}}),null);
+  await createWeekdayDrop(a,now);
+  const drafts=await prisma.crmTask.findMany({where:{subscriberId:a,type:"seller_draft"}});
+  assert.equal(drafts.length,5);
+  assert(drafts.every(t=>readSellerDraft(t.description)?.researchKind==="mls"));
+  await ingestMlsSweep(b,sweep(),now);
+  await ingestMlsSweep(b,{runId:randomUUID(),observedAt:new Date(+now+1000).toISOString(),status:"reauth_required",message:"Sign in required",captures:[]},new Date(+now+1000));
+  await createWeekdayDrop(b,new Date(+now+2000));
+  assert.equal(await prisma.crmTask.count({where:{subscriberId:b}}),0,"failed latest sweep disables prior captures");
+  const tomorrow=new Date("2026-09-15T13:00:00Z");
+  await ingestMlsSweep(a,{runId:randomUUID(),observedAt:tomorrow.toISOString(),status:"empty",message:"No current matches",captures:[]},tomorrow);
+  await createWeekdayDrop(a,tomorrow);
+  assert.equal(await prisma.crmTask.count({where:{subscriberId:a,type:"seller_draft"}}),5,"an omitted or relisted property cannot leak from the prior sweep");
+  await assert.rejects(ingestMlsSweep(a,input,tomorrow),/fresh/);
+  assert.equal(await prisma.growthTouch.count(),0);assert.equal(await prisma.smsMessage.count(),0);
+  console.log("PASS: exact property/current-listing verification, relist rejection, source validation, geographic scoring, atomic private ingestion, tenant isolation, five drafts, stale/failed sweep exclusion, zero shared MLS/outbound writes.");
+}
+main().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{
+  await prisma.crmTask.deleteMany({where:{subscriberId:{in:[a,b]}}});await prisma.crmActivity.deleteMany({where:{subscriberId:{in:[a,b]}}});await prisma.lead.deleteMany({where:{ownerSubscriberId:{in:[a,b]}}});await prisma.user.deleteMany({where:{id:{in:[a,b]}}});await prisma.$disconnect();
+});

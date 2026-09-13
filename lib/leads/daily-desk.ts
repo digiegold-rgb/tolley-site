@@ -18,6 +18,8 @@ export async function loadDailyDesk(subscriberId: string, owner: boolean, now = 
   const sellerDrafts = owner ? await prisma.crmTask.findMany({ where: { subscriberId, type: "seller_draft", status: "pending", dueDate: { lt: end } }, orderBy: [{ dueDate: "desc" }, { id: "asc" }], take: 50 }) : [];
   const drop = owner ? await prisma.crmActivity.findFirst({ where: { subscriberId, type: "weekday_drop" }, orderBy: { createdAt: "desc" } }) : null;
   const report = drop?.metadata as { day?: string; count?: number; shortfall?: number } | null;
+  const mlsSweep = owner ? await prisma.crmActivity.findUnique({where:{id:`mls-sweep:${subscriberId}`}}) : null;
+  const mls = mlsSweep?.metadata as {status?:string;message?:string;observedAt?:string} | null;
   const all = [...pending, ...upcoming, ...sellerDrafts];
   // Resolve linked records through ownership checks instead of raw global relations.
   const [linkedClients, leads, deals] = await Promise.all([
@@ -36,6 +38,7 @@ export async function loadDailyDesk(subscriberId: string, owner: boolean, now = 
   };
   const count = (type: string, since: Date) => activities.filter(a => a.type === type && a.createdAt >= since).length;
   return {
+    mlsHealth: mls && typeof mls.status === "string" && typeof mls.message === "string" && typeof mls.observedAt === "string" ? {status: new Date(mls.observedAt).getTime() < now.getTime()-36*3600000 ? "stale" : mls.status,message:mls.message,observedAt:mls.observedAt} : null,
     sellerDrafts: sellerDrafts.map(toTask),
     weekdayDrop: report && typeof report.day === "string" && typeof report.count === "number" && typeof report.shortfall === "number" ? { day: report.day, count: report.count, shortfall: report.shortfall } : null,
     tasks: orderDailyTasks(pending.map(toTask), now), upcoming: upcoming.map(toTask), pendingCount,

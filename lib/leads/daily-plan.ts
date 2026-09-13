@@ -14,6 +14,7 @@ export interface DailyTask {
   href: string | null;
 }
 export interface DailyDeskData {
+  mlsHealth?: {status:string;message:string;observedAt:string} | null;
   sellerDrafts?: DailyTask[];
   weekdayDrop?: { day: string; count: number; shortfall: number } | null;
   tasks: DailyTask[];
