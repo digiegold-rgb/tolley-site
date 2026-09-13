@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.40';
+export const APP_VERSION = '1.40.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.40.1',
+    date: '2026-09-12',
+    title: 'Business funding guide in HQ Docs',
+    items: [
+      'HQ Docs now includes a sourced guide to grants, Missouri and federal loans, and local business support for Your KC Homes.',
+    ],
+  },
   {
     version: '1.40',
     date: '2026-09-12',
