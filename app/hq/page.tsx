@@ -671,6 +671,15 @@ function HqPageInner() {
               <summary className="tab-btn">📄 Docs ▾</summary>
               <div className="tab-docs-menu">
                 <a
+                  href="/research/your-kc-homes-funding-2026-09.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeDocs}
+                >
+                  💵 Your KC Homes — Grants &amp; Growth Loans
+                  <span className="doc-sub">Missouri and federal funding options for real estate and washer/dryer service, eligibility, lender contacts, and a 30-day plan — Sep 12, 2026</span>
+                </a>
+                <a
                   href="/research/jelly-ad-plan-2026-09.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
