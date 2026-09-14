@@ -273,7 +273,7 @@ export function BeatQueuePanel({
         <div>
           <p className="gen-label gen-label-live">Beat queue</p>
           <p className="gen-hint">
-            Beat 1 is the form above. Left → right timeline for Beat 1…N. Select Beat 2+ to edit
+            Edit the first clip in Describe & add sources. Left → right timeline for Beat 1…N. Select Beat 2+ to edit
             that beat below. One Wan clip per beat (~5s). Stitch only when every beat is approved —
             never on Go.
           </p>
@@ -288,7 +288,7 @@ export function BeatQueuePanel({
         </div>
       </div>
       {queue.beats.length === 0 ? (
-        <p className="gen-hint">Beat 1 seeds from the form above. Add Beat 2+ here.</p>
+        <p className="gen-hint">The first clip uses your prompt and starting image. Add Beat 2+ here.</p>
       ) : (
         <div className="gen-beat-timeline" role="region" aria-label="Beat timeline">
           <ol className="gen-beat-strip">
@@ -335,10 +335,10 @@ export function BeatQueuePanel({
                     />
                   </label>
                 ) : (
-                  <p className="gen-beat-prompt-preview">{beat.prompt.trim() || "Prompt & stills above"}</p>
+                  <p className="gen-beat-prompt-preview">{beat.prompt.trim() || "Prompt & source in step 2"}</p>
                 )}
                 <p className="gen-beat-meta">
-                  {i === 0 ? "Prompt & stills above" : stillSummary(beat, i)}
+                  {i === 0 ? "Prompt & source in step 2" : stillSummary(beat, i)}
                   {i === 0 && beat.job_id ? " · clip" : ""}
                 </p>
                 {i > 0 ? (
@@ -379,7 +379,7 @@ export function BeatQueuePanel({
             <p className="gen-label">Beat {selectedIndex + 1} detail</p>
             <span className={`gen-beat-status gen-beat-status-${selected.status}`}>{selected.status}</span>
           </div>
-          <p className="gen-hint">Stills and the clip live here so the timeline stays a single row. Beat 1 stays in the form above.</p>
+          <p className="gen-hint">Stills and the clip live here so the timeline stays a single row. Edit the first clip in step 2.</p>
           <BeatStillFields beat={selected} index={selectedIndex} busy={busy} onPatch={onPatch} />
           {selected.error ? <p className="gen-err">{selected.error}</p> : null}
           {selected.job_id &&

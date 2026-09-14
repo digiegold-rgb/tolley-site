@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.41.4';
+export const APP_VERSION = '1.42';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.42',
+    date: '2026-09-14',
+    title: 'Guided image and video creation',
+    items: [
+      'Generate now walks you through choosing a workflow, adding your idea and references, adjusting settings, and reviewing your result.',
+      'All detailed controls remain available, with a full controls view and optional director assistance.',
+      'Missing inputs point to the step that needs attention. A shared library lets you carry stills into video workflows.',
+    ],
+  },
   {
     version: '1.41.4',
     date: '2026-09-14',

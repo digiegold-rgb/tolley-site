@@ -1,5 +1,7 @@
 "use client";
 
+import { WorkflowSection } from "./workflow";
+
 import {
   canStitchLongform,
   estimateLongform,
@@ -115,15 +117,8 @@ export function LongformPanel({
 
   return (
     <div className="gen-longform" data-testid="motion2-longform">
-      <p className="gen-hint">
-        <strong>Motion 2 · Longform</strong> — a continuous ~3-minute take from a keep still +
-        scene plan. Wan 3.0 segments are <strong>5 / 15 / 30s</strong> (default 15s →{" "}
-        {liveEstimate.beat_count}×{liveEstimate.beat_seconds}s ≈ {liveEstimate.planned_seconds}s).
-        After each beat, ffmpeg extracts the last frame and that PNG becomes the next beat’s first
-        frame. Review / regenerate bad beats, then stitch. This is <em>not</em> one native 3-min Wan
-        call, and it is not the Motion 1 filmstrip. Go / Run remaining walks every remaining draft
-        (last-frame chain) — not Beat 1 only. This is not the estate-lady Cinema path.
-      </p>
+      <WorkflowSection step={1}>
+      <p className="gen-hint">Choose the image that starts your video. Add a scene plan below, one movement per line.</p>
 
       <label className="gen-field gen-field-wide">
         Keep still (gallery still, HTTPS URL, or upload)
@@ -154,6 +149,25 @@ export function LongformPanel({
         </div>
       )}
 
+      <div>
+        <p className="gen-label gen-label-live">Scene plan (one motion prompt per line)</p>
+        <p className="gen-hint">
+          Empty = duplicate Beat 1 / default identity-lock prompt across all beats. Extra lines
+          raise beat count above the duration floor.
+        </p>
+        <textarea
+          data-testid="motion2-script"
+          className="gen-box gen-box-inference"
+          value={queue.script}
+          disabled={busy}
+          rows={6}
+          placeholder={"she turns toward camera, hair moves\nshe walks to the stairs\nshe looks back and smiles"}
+          onChange={(e) => onScript(e.target.value)}
+        />
+      </div>
+
+      </WorkflowSection>
+      <WorkflowSection step={2}>
       <div className="gen-card-grid">
         <label>
           Segment length
@@ -185,23 +199,6 @@ export function LongformPanel({
             onChange={(e) => onEndStill(e.target.value)}
           />
         </label>
-      </div>
-
-      <div>
-        <p className="gen-label gen-label-live">Scene plan (one motion prompt per line)</p>
-        <p className="gen-hint">
-          Empty = duplicate Beat 1 / default identity-lock prompt across all beats. Extra lines
-          raise beat count above the duration floor.
-        </p>
-        <textarea
-          data-testid="motion2-script"
-          className="gen-box gen-box-inference"
-          value={queue.script}
-          disabled={busy}
-          rows={6}
-          placeholder={"she turns toward camera, hair moves\nshe walks to the stairs\nshe looks back and smiles"}
-          onChange={(e) => onScript(e.target.value)}
-        />
       </div>
 
       <div className="gen-longform-estimate" data-testid="motion2-estimate">
@@ -243,15 +240,12 @@ export function LongformPanel({
         <button type="button" className="gen-seed-random" disabled={primaryBusy} onClick={onPlan}>
           Plan {liveEstimate.beat_count} beats
         </button>
-        <button
-          type="button"
-          className="gen-seed-random"
-          data-testid="motion2-run-remaining"
-          disabled={generateLocked || primaryBusy || (!canGo && !inFlight.length)}
-          onClick={onRunRemaining}
-        >
-          Run remaining
-        </button>
+      </div>
+      {queue.beats.length > 0 && <p className="gen-ready" role="status">{queue.beats.length} scenes planned. Continue to Generate &amp; review to check your shots and start rendering.</p>}
+      {notice && <p className="gen-hint" role="status">{notice}</p>}
+      </WorkflowSection>
+      <WorkflowSection step={3}>
+      <div className="gen-row">
         <button
           type="button"
           className="gen-go"
@@ -260,12 +254,11 @@ export function LongformPanel({
           onClick={onGo}
           style={{ marginLeft: "auto" }}
         >
-          {primaryBusy ? "Working…" : failedHold.length ? "Failed" : dryRun ? "Dry run" : "Go"}
+          {primaryBusy ? "Working…" : failedHold.length ? "Failed" : dryRun ? "Dry run" : "Generate remaining clips"}
         </button>
       </div>
       <p className="gen-hint">
-        Go = run remaining (sequential last-frame chain). Confirm when remaining spend is over ~$5
-        @720p Wan ($0.10/s).
+        Clips generate in sequence, using the previous clip’s last frame. Review each one below before joining the final video.
       </p>
       {!queue.beats.length ? (
         <p className="gen-hint" data-testid="motion2-plan-first">
@@ -442,7 +435,7 @@ export function LongformPanel({
           <p className="gen-hint">
             Stitch waits until every beat is approved.
             {longformStitchBlockers(queue)[0] ? ` ${longformStitchBlockers(queue)[0]}.` : ""}
-            {" "}Concat is ffmpeg concat-demuxer (stream copy) on Vercel Node — not Spark.
+
           </p>
         )}
         {queue.stitch_error ? <p className="gen-err">{queue.stitch_error}</p> : null}
@@ -452,6 +445,7 @@ export function LongformPanel({
           </div>
         ) : null}
       </div>
+      </WorkflowSection>
     </div>
   );
 }

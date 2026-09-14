@@ -5,6 +5,8 @@
 // /api/generate/jobs (HQ-gated). T2I/T2V/I2V use fal (FAL_KEY), not Spark
 // quickgen / Gemini keyframes. Do not change /animate, billing, or auth.
 import { useEffect, useRef, useState } from "react";
+import { WorkflowContext, WorkflowNav, WorkflowPicker, WorkflowSection } from "./workflow";
+import { GENERATE_WORKFLOWS, WORKFLOW_STEPS, workflowBlockers, type WorkflowStep } from "@/lib/generate-workflow";
 import { composeEnginePrompt } from "@/lib/generate-director";
 import {
   GENERATE_PRESETS,
@@ -123,17 +125,7 @@ async function readJson(r: Response): Promise<Record<string, unknown>> {
   }
 }
 
-const MODES = [
-  { id: "modal", label: "Modal stills" },
-  { id: "motion", label: "Motion" },
-  { id: "motion2", label: "Motion 2 · Longform" },
-  { id: "cinema", label: "Cinema" },
-  { id: "t2i", label: "Text → Image" },
-  { id: "t2v", label: "Text → Video" },
-  { id: "i2v", label: "Image → Video" },
-  { id: "v2v", label: "Video → Video" },
-] as const;
-type Mode = (typeof MODES)[number]["id"];
+type Mode = import("@/lib/generate-workflow").WorkflowMode;
 
 type ModalJob = {
   id: string;
@@ -275,6 +267,7 @@ function ModalGallery({
 }) {
   const stills = jobs.filter(
     (j) =>
+      !isEngineJob(j) &&
       !isMotionJob(j) &&
       !isStitchJob(j) &&
       !isBeatQueueJob(j) &&
@@ -333,7 +326,33 @@ function MotionGallery({ jobs }: { jobs: ModalJob[] }) {
 }
 
 export default function GenerateStudio() {
-  const [mode, setMode] = useState<Mode>("modal");
+  const [mode, setMode] = useState<Mode>("t2i");
+  const [workflowStep, setWorkflowStep] = useState<WorkflowStep>(0);
+  const [allControls, setAllControls] = useState(false);
+  const [runNotice, setRunNotice] = useState<string | null>(null);
+  const libraryPanel = useRef<HTMLElement>(null);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const workflowHeading = useRef<HTMLHeadingElement>(null);
+
+  function navigateStep(step: WorkflowStep) {
+    setWorkflowStep(step);
+    setAllControls(false);
+    requestAnimationFrame(() => {
+      workflowHeading.current?.focus({ preventScroll: true });
+      workflowHeading.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+  function selectWorkflow(next: Mode) {
+    setMode(next);
+    const url = new URL(window.location.href);
+    url.searchParams.set("workflow", next);
+    window.history.replaceState(window.history.state, "", url);
+    setError(null);
+    setResultUrl(null);
+    setActiveJobId(null);
+    setRunNotice(null);
+  }
   const [inference, setInference] = useState("");
   const [description, setDescription] = useState("");
   const [aspect, setAspect] = useState("9:16");
@@ -511,6 +530,11 @@ export default function GenerateStudio() {
       storageKey: CINEMA_QUEUE_STORAGE_KEY,
       param: CINEMA_QUEUE_PARAM,
     });
+    const params = new URLSearchParams(window.location.search);
+    const requestedWorkflow = params.get("workflow");
+    if (GENERATE_WORKFLOWS.some(item => item.id === requestedWorkflow)) { setMode(requestedWorkflow as Mode); setWorkflowStep(1); }
+    else if (params.has("cinema")) { setMode("cinema"); setWorkflowStep(3); }
+    else if (params.has("queue")) { setMode("motion2"); setWorkflowStep(3); }
     const jobsQs = new URLSearchParams();
     if (boundLongform) jobsQs.set("queue", boundLongform);
     if (boundCinema) jobsQs.set("cinema", boundCinema);
@@ -520,8 +544,9 @@ export default function GenerateStudio() {
           setModalAuthed(false);
           return null;
         }
-        setModalAuthed(r.ok);
-        return r.ok ? r.json() : null;
+        if (!r.ok) throw new Error("Could not check generation services. Try checking your sign-in again.");
+        setModalAuthed(true);
+        return r.json();
       })
       .then((j) => {
         if (!j) return;
@@ -623,11 +648,11 @@ export default function GenerateStudio() {
           bindCinemaId(String(j.cinema_queue_job.id));
         }
       })
-      .catch(() => {});
+      .catch(() => setError("Could not load generation services. Check your connection and try again."));
   }, []);
 
   useEffect(() => {
-    chatEnd.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length || chatBusy) chatEnd.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [messages, chatBusy]);
 
   async function reloadLibraryJobs() {
@@ -656,7 +681,10 @@ export default function GenerateStudio() {
       return;
     }
     if (!r.ok) return;
-    const j = (await r.json()) as { jobs?: ModalJob[]; library?: { unlocked?: unknown } };
+    const j = (await r.json()) as { jobs?: ModalJob[]; library?: { unlocked?: unknown }; modal?: { configured: boolean }; fal?: { configured: boolean } };
+    setModalAuthed(true);
+    if (j.modal) setModalStatus(j.modal);
+    if (j.fal) setFalStatus(j.fal);
     const unlocked = j.library?.unlocked === true;
     setLibraryUnlocked(unlocked);
     setModalJobs(unlocked && Array.isArray(j.jobs) ? j.jobs : []);
@@ -1882,6 +1910,8 @@ export default function GenerateStudio() {
   }
 
   async function go() {
+    setWorkflowStep(3);
+    setRunNotice(null);
     setError(null);
     setResultUrl(null);
     try {
@@ -1890,6 +1920,7 @@ export default function GenerateStudio() {
       else if (mode === "cinema") await generateCinemaRemaining();
       else if (mode === "modal") await goModal();
       else await goEngine();
+      if (dryRun && mode !== "motion2" && mode !== "cinema") setRunNotice("Test complete. Your request was checked without rendering. Turn off Dry run and select Generate when you’re ready.");
     } catch (e) {
       if (
         (mode !== "motion2" || !inFlightLongformBeats(longformQueueRef.current).length) &&
@@ -1973,14 +2004,54 @@ export default function GenerateStudio() {
         : mode === "cinema"
           ? cinemaQueue.image_urls.length > 0 && Boolean(nextGeneratableCinemaBeat(cinemaQueue))
         : composeEnginePrompt(inference, description).length > 0;
-  const canGo =
+  const engineCanGo =
     !busy &&
     !(mode === "motion2" && motion2GenerateLocked(longformQueue)) &&
     !(mode === "cinema" && cinemaGenerateLocked(cinemaQueue)) &&
     mode !== "v2v" &&
     promptReady &&
-    (!needImage || i2vReady);
+    (!needImage || i2vReady) &&
+    modalAuthed === true;
   const nsfwState = nsfwChipState(card);
+  const workflow = GENERATE_WORKFLOWS.find(item => item.id === mode) || GENERATE_WORKFLOWS[0];
+  const workflowPrompt = mode === "modal" ? card.prompt : mode === "motion" ? motionCard.prompt
+    : mode === "motion2" ? longformQueue.script : mode === "cinema" ? cinemaQueue.script : composeEnginePrompt(inference, description);
+  const blockers = workflowBlockers({
+    mode, prompt: workflowPrompt,
+    source: mode === "motion" ? motionCard.source_image_url : mode === "motion2" ? longformQueue.source_image_url : i2vSourceUrl,
+    hasFile: mode === "i2v" && Boolean(imageFile),
+    references: mode === "modal" ? card.identity_ref_urls : cinemaQueue.image_urls,
+    beatCount: mode === "motion2" ? longformQueue.beats.length : cinemaQueue.beats.length,
+  });
+  const providerReady = mode === "modal" ? modalStatus?.configured : falStatus?.configured;
+  const canGo = engineCanGo && !blockers.length && (dryRun || providerReady !== false) && !chatBusy && !uploadingStill && !uploadingLongformStill;
+  function openLibrary() {
+    setLibraryOpen(true);
+    requestAnimationFrame(() => libraryPanel.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
+  function useLibraryStill(url: string) {
+    if (busy || chatBusy) return;
+    if (mode === "motion") patchMotion({ source_image_url: url });
+    else if (mode === "motion2") commitLongformLocal({ ...longformQueueRef.current, source_image_url: url });
+    else if (mode === "cinema") commitCinemaLocal({ ...cinemaQueueRef.current, image_urls: [...cinemaQueueRef.current.image_urls, url].slice(0, 9) });
+    else { selectWorkflow("i2v"); setI2vSourceUrl(url); setImageFile(null); }
+    setLibraryOpen(false);
+    navigateStep(1);
+  }
+  const nextBlocker = blockers.find(item => item.step <= workflowStep);
+  const stepDescriptions = [
+    "Start with the result you want. We’ll walk you through the rest.",
+    mode === "modal" ? "Describe the character and scene, then add reference photos. Use the director if you want help writing the prompt."
+      : mode === "motion2" ? "Choose your starting image and describe what happens, one scene per line."
+      : mode === "cinema" ? "Add your reference images and write a shot list. You can also start with the estate template."
+      : mode === "motion" || mode === "i2v" ? "Choose a starting image and describe the movement you want to see."
+      : "Write what you want to see. Add scene details, or ask the director to help shape your idea.",
+    mode === "motion2" || mode === "cinema" ? "Set your options, check the estimate, then plan your scenes. Planning does not start a render."
+      : "The defaults are a starting point. Adjust the format and any detailed controls you need before generating.",
+    mode === "motion2" || mode === "cinema" || mode === "motion" ? "Generate your clips, review each take, approve the ones you like, then join them into a finished video."
+      : "Check your choices, generate, then preview and download your result. You can go back and adjust anything.",
+  ];
+
 
   return (
     <main className="gen-page">
@@ -1990,73 +2061,42 @@ export default function GenerateStudio() {
           <h1 className="gen-title">
             Generate <em>Directed by you.</em>
           </h1>
-          <p className="gen-lede">
-            Talk to the page. Modal stills fill a job card for Qwen-Image-Edit. Motion takes a keep still into a 5s fal Wan I2V clip. Motion 2 chains Wan 3.0 segments with last-frame continuity. Cinema is the estate-lady path (Seedance 2.0 / Kling fallback) — not Wan. Text → Image / Video and I2V run on fal (FLUX / Wan) — not Spark Gemini.
-          </p>
+          <p className="gen-lede">From an idea to a finished image or film. One step at a time.</p>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-          <nav className="gen-nav">
-            <a href="/animate">Studio</a>
-            <a href="/persona">Persona</a>
-            <a href="/hq">HQ</a>
-          </nav>
-          <span className="gen-status-pill">
-            {mode === "modal"
-              ? modalStatus?.configured
-                ? "Modal · Qwen-Image-Edit-2511"
-                : "Modal · set MODAL_TOKEN_ID"
-              : mode === "motion"
-                ? falStatus?.configured
-                  ? "fal · Wan 3.0 I2V"
-                  : "fal · set FAL_KEY"
-                : mode === "motion2"
-                  ? falStatus?.configured
-                    ? "fal · Wan 3.0 longform"
-                    : "fal · set FAL_KEY"
-                : mode === "cinema"
-                  ? falStatus?.configured
-                    ? "fal · Seedance / Kling cinema"
-                    : "fal · set FAL_KEY"
-                : mode === "t2i"
-                  ? falStatus?.configured
-                    ? "fal · FLUX.1 [dev]"
-                    : "fal · set FAL_KEY"
-                  : mode === "t2v"
-                    ? falStatus?.configured
-                      ? "fal · Wan T2V"
-                      : "fal · set FAL_KEY"
-                    : mode === "i2v"
-                      ? falStatus?.configured
-                        ? "fal · Wan I2V"
-                        : "fal · set FAL_KEY"
-                      : "V2V · not wired"}
-          </span>
+        <div className="gen-top-actions">
+          <nav className="gen-nav"><a href="/animate">Studio</a><a href="/persona">Persona</a><a href="/hq">HQ</a></nav>
+          <button type="button" className="gen-view-toggle" aria-expanded={libraryOpen} onClick={() => libraryOpen ? setLibraryOpen(false) : openLibrary()}>{libraryOpen ? "Close library" : "Open library"}</button>
         </div>
       </header>
 
-      <div className="gen-grid">
-        <section className="gen-panel gen-chat" aria-label="Director chat">
+      <WorkflowContext.Provider value={{ step: workflowStep, all: allControls }}>
+      <WorkflowNav step={workflowStep} all={allControls} onStep={navigateStep} onAll={() => setAllControls(v => !v)} />
+      <div className="gen-workspace-heading">
+        <div>
+          <p className="gen-micro">{allControls ? "Your workspace" : `Step ${workflowStep + 1} of 4`}{workflowStep > 0 ? ` · ${workflow.title}` : ""}</p>
+          <h2 ref={workflowHeading} tabIndex={-1}>{allControls ? "All controls" : WORKFLOW_STEPS[workflowStep]}</h2>
+          <p>{allControls ? "Every control is available below. Switch to Guided view for step-by-step direction." : stepDescriptions[workflowStep]}</p>
+        </div>
+        {workflowStep > 0 && <button type="button" className="gen-view-toggle" disabled={busy || chatBusy} onClick={() => navigateStep(0)}>Change workflow</button>}
+      </div>
+      <WorkflowSection step={0}><WorkflowPicker mode={mode} disabled={busy || chatBusy} onSelect={selectWorkflow} /></WorkflowSection>
+      {(workflowStep > 0 || allControls) && <div className="gen-workspace-tools">
+        <span>{workflow.engine}</span>
+        {(mode === "motion" || mode === "motion2" || mode === "cinema" || mode === "i2v") && <button type="button" className="gen-view-toggle" onClick={openLibrary}>Choose from library</button>}
+        <button type="button" className="gen-view-toggle" aria-expanded={assistantOpen} onClick={() => setAssistantOpen(v => !v)}>{assistantOpen ? "Close director" : "Help me write this"}</button>
+      </div>}
+      <div className={`gen-grid gen-guided-grid${assistantOpen && (workflowStep > 0 || allControls) ? " has-assistant" : ""}`} hidden={workflowStep === 0 && !allControls}>
+
+        <section className="gen-panel gen-chat" aria-label="Director chat" hidden={!assistantOpen}>
           <div className="gen-panel-head">
             <p className="gen-label">Chat · director</p>
-            <p className="gen-hint">
-              {mode === "modal"
-                ? "Chat fills the Modal job card (JSON kwargs). Edit the card, then Confirm/Go."
-                : mode === "motion"
-                  ? "Chat fills the motion card. Source still + motion prompt → 5s Wan I2V. Optional last-frame still = FLF2V."
-                  : mode === "motion2"
-                    ? "Chat writes a multi-line scene plan (one prompt per beat). Wan 3.0 segments (default 15s) + last-frame extract chain the take."
-                  : mode === "cinema"
-                    ? "Chat writes cinema beats (one VO / shot line per beat). Seedance 2.0 refs + native audio. Kling is the face-filter fallback."
-                  : mode === "v2v"
-                    ? "Video → Video is not wired. Use Motion or Image → Video."
-                    : "Chat writes Inference + Description. Generate hits fal (FLUX / Wan), HQ-gated."}
-            </p>
+            <p className="gen-hint">Tell the director what you want to make. It updates the current workflow’s prompt or scene plan. Review those edits before generating.</p>
           </div>
           <div className="gen-chat-log">
             {messages.length === 0 && !chatBusy && (
               <div className="gen-empty">
                 <strong>Talk to Generate</strong>
-                Ask for a still, a wardrobe change, or an identity-locked clip. Modal stills and Motion fill a job card — you hit Go.
+                Describe your subject, setting, and mood. For video, add what moves and how the camera follows. You stay in control of when generation starts.
               </div>
             )}
             {messages.map((m) => (
@@ -2087,7 +2127,8 @@ export default function GenerateStudio() {
                 }
               }}
               rows={2}
-              placeholder="Direct the still or clip… (Enter to send)"
+              aria-label="Message the director"
+              placeholder="Describe your idea… (Enter to send)"
             />
             <button className="gen-send" type="button" onClick={sendChat} disabled={chatBusy || !chatInput.trim()}>
               Send
@@ -2095,15 +2136,25 @@ export default function GenerateStudio() {
           </div>
         </section>
 
-        <section className="gen-panel gen-right" aria-label="Inference, description, and engines">
-          {mode !== "modal" && mode !== "v2v" && modalAuthed === false && (
+        <section className="gen-panel gen-right" aria-label="Creation controls">
+          <WorkflowSection step={3}>
+            <div className="gen-review-summary">
+              <h3>{resultUrl ? "Your result" : "Ready to create?"}</h3>
+              <dl><div><dt>Workflow</dt><dd>{workflow.title}</dd></div><div><dt>Output</dt><dd>{mode === "modal" ? `${card.num_images} image(s) · ${card.width} × ${card.height}` : mode === "motion2" ? `${longformQueue.beats.length} scenes · ${longformQueue.target_seconds}s target` : mode === "cinema" ? `${cinemaQueue.beats.length} shots` : mode === "motion" ? `Video · ${motionCard.aspect}` : `${mode === "t2i" ? "Image" : `${seconds}s video`} · ${aspect}`}</dd></div></dl>
+              {workflowPrompt && <details><summary>Review your prompt / scene plan</summary><p className="gen-review-prompt">{workflowPrompt}</p></details>}
+              {blockers.length > 0 && <ul className="gen-readiness">{blockers.map(item => <li key={item.message}><button type="button" onClick={() => navigateStep(item.step)}>{item.message} <span aria-hidden="true">→</span></button></li>)}</ul>}
+              {!blockers.length && !busy && !resultUrl && <p className="gen-ready">Your inputs are ready. Review the settings, then start generation below.</p>}
+              {dryRun && <p className="gen-hint">Test mode is on. This checks the request without rendering an image or video.</p>}
+            </div>
+          </WorkflowSection>
+          {modalAuthed !== true && (
             <p className="gen-banner gen-banner-warn">
-              Generate jobs are Jared/admin gated. Log in at /hq (or shop dashboard), then come back.
+              {modalAuthed === false ? "Sign in to start generating." : "Checking access to generation services…"} <a href="/hq" target="_blank" rel="noreferrer">Open HQ sign-in ↗</a>, then <button type="button" className="gen-view-toggle" onClick={() => void reloadLibraryJobs().catch(() => setError("Could not check sign-in. Try again."))}>check sign-in</button>.
             </p>
           )}
           {mode === "modal" && modalStatus && !modalStatus.configured && modalAuthed && (
             <p className="gen-banner gen-banner-warn">
-              Modal tokens are not set. Add MODAL_TOKEN_ID + MODAL_TOKEN_SECRET (see docs/generate-modal.md). Dry run still works.
+              The character image engine is unavailable. You can still prepare your inputs or test the request with Dry run.
             </p>
           )}
           {(mode === "motion" || mode === "motion2" || mode === "cinema" || mode === "t2i" || mode === "t2v" || mode === "i2v") &&
@@ -2111,7 +2162,7 @@ export default function GenerateStudio() {
             !falStatus.configured &&
             modalAuthed && (
             <p className="gen-banner gen-banner-warn">
-              FAL_KEY is not set. Add it on Vercel (see docs/generate-engines.md). Dry run still works.
+              The image and video engine is unavailable. You can still prepare your inputs or test the request with Dry run.
             </p>
           )}
           {mode === "v2v" && (
@@ -2123,30 +2174,14 @@ export default function GenerateStudio() {
             qwenStatus &&
             !qwenStatus.configured && (
             <p className="gen-banner gen-banner-warn">
-              Chat needs Spark vLLM. Set QWEN_VLLM_BASE_URL + QWEN_VLLM_MODEL (see docs/generate-qwen-vllm.md). You can still edit the boxes and Generate if HQ is signed in.
+              The director is unavailable. Write your prompt directly below to continue.
             </p>
           )}
 
-          <div className="gen-tabs">
-            {MODES.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className={`gen-tab ${mode === m.id ? "gen-tab-on" : ""}`}
-                onClick={() => setMode(m.id)}
-                disabled={busy}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-
           {mode === "modal" ? (
             <>
-              <p className="gen-hint">
-                Headless Modal kwargs — edit anything. Recipe: Qwen-Image-Edit-2511 BF16, three identity refs. Confirm/Go
-                {dryRun ? " dry-runs the card." : " spends an A100."}
-              </p>
+              <WorkflowSection step={1}>
+              <p className="gen-hint">Start with a preset or write your own scene. Add reference photos below to keep the same character.</p>
               <label className="gen-field">
                 Preset
                 <select
@@ -2173,6 +2208,7 @@ export default function GenerateStudio() {
                 <p className="gen-label gen-label-live">Prompt</p>
                 <textarea
                   className="gen-box gen-box-inference"
+                  aria-label="Character prompt"
                   value={card.prompt}
                   onChange={(e) => patchCard({ prompt: e.target.value })}
                   disabled={busy}
@@ -2208,6 +2244,55 @@ export default function GenerateStudio() {
                   Chips rewrite Location / Hair / Camera in the prompt. Identity refs still win on face; Extra #1 still needed for wardrobe.
                 </p>
               </div>
+              <div className="gen-field gen-field-wide">
+                Identity refs (HTTPS — front / left / right)
+                <div className="gen-refs">
+                  {[0, 1, 2].map((i) => (
+                    <input
+                      key={i}
+                      aria-label={`Identity reference ${i + 1}`}
+                      value={card.identity_ref_urls[i] || ""}
+                      disabled={busy}
+                      placeholder={i === 0 ? "front.jpg URL" : i === 1 ? "profile-left.jpg URL" : "profile-right.jpg URL"}
+                      onChange={(e) => {
+                        const next = [...card.identity_ref_urls];
+                        next[i] = e.target.value;
+                        patchCard({ identity_ref_urls: next });
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="gen-field gen-field-wide">
+                Extra image URLs (HTTPS, 1–3) — optional body/wardrobe keep-still
+                <p className="gen-hint gen-nsfw-hint">
+                  First extra URL can be a lingerie/nude body keep-still. Clothed grey-shirt identity refs alone will keep covering.
+                </p>
+                <div className="gen-refs">
+                  {[0, 1, 2].map((i) => (
+                    <input
+                      key={`extra-${i}`}
+                      aria-label={`Extra image ${i + 1}`}
+                      value={(card.extra_image_urls ?? [])[i] || ""}
+                      disabled={busy}
+                      placeholder={
+                        i === 0
+                          ? "https://…/body-or-wardrobe.jpg"
+                          : i === 1
+                            ? "extra ref 2 URL"
+                            : "extra ref 3 URL"
+                      }
+                      onChange={(e) => {
+                        const next = [...(card.extra_image_urls ?? [])];
+                        next[i] = e.target.value;
+                        patchCard({ extra_image_urls: next });
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+              </WorkflowSection>
+              <WorkflowSection step={2}>
               <div>
                 <div className="gen-neg-head">
                   <p className="gen-label">Negative prompt</p>
@@ -2237,6 +2322,7 @@ export default function GenerateStudio() {
                 </p>
                 <textarea
                   className="gen-box gen-box-description"
+                  aria-label="Character negative prompt"
                   value={card.negative_prompt}
                   onChange={(e) => patchCard({ negative_prompt: e.target.value })}
                   disabled={busy}
@@ -2337,51 +2423,6 @@ export default function GenerateStudio() {
               <p className="gen-hint">
                 No denoise/strength on this recipe — use steps + CFG + negative.
               </p>
-              <div className="gen-field gen-field-wide">
-                Identity refs (HTTPS — front / left / right)
-                <div className="gen-refs">
-                  {[0, 1, 2].map((i) => (
-                    <input
-                      key={i}
-                      value={card.identity_ref_urls[i] || ""}
-                      disabled={busy}
-                      placeholder={i === 0 ? "front.jpg URL" : i === 1 ? "profile-left.jpg URL" : "profile-right.jpg URL"}
-                      onChange={(e) => {
-                        const next = [...card.identity_ref_urls];
-                        next[i] = e.target.value;
-                        patchCard({ identity_ref_urls: next });
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div className="gen-field gen-field-wide">
-                Extra image URLs (HTTPS, 1–3) — optional body/wardrobe keep-still
-                <p className="gen-hint gen-nsfw-hint">
-                  First extra URL can be a lingerie/nude body keep-still. Clothed grey-shirt identity refs alone will keep covering.
-                </p>
-                <div className="gen-refs">
-                  {[0, 1, 2].map((i) => (
-                    <input
-                      key={`extra-${i}`}
-                      value={(card.extra_image_urls ?? [])[i] || ""}
-                      disabled={busy}
-                      placeholder={
-                        i === 0
-                          ? "https://…/body-or-wardrobe.jpg"
-                          : i === 1
-                            ? "extra ref 2 URL"
-                            : "extra ref 3 URL"
-                      }
-                      onChange={(e) => {
-                        const next = [...(card.extra_image_urls ?? [])];
-                        next[i] = e.target.value;
-                        patchCard({ extra_image_urls: next });
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
               <details className="gen-advanced-json">
                 <summary>Advanced JSON</summary>
                 <label className="gen-field">
@@ -2482,24 +2523,22 @@ export default function GenerateStudio() {
                   Apply JSON
                 </button>
               </details>
+              </WorkflowSection>
+              <WorkflowSection step={3}>
               <div className="gen-row">
                 <label className="gen-check">
                   <input type="checkbox" checked={dryRun} disabled={busy} onChange={(e) => setDryRun(e.target.checked)} />
                   Dry run (no GPU)
                 </label>
                 <button className="gen-go" type="button" onClick={go} disabled={!canGo} style={{ marginLeft: "auto" }}>
-                  {busy ? "Working…" : dryRun ? "Dry run" : "Go"}
+                  {busy ? "Working…" : dryRun ? "Dry run" : "Generate character still"}
                 </button>
               </div>
+              </WorkflowSection>
             </>
           ) : mode === "motion" ? (
             <>
-              <p className="gen-hint">
-                Identity-locked I2V on fal.ai{" "}
-                {motionCard.end_image_url?.trim() ? "Wan FLF2V (first + last still)" : "Wan I2V (keyframe)"}. 5s @
-                720p per clip. This form is <strong>Beat 1</strong>. Go generates Beat 1. Longer pieces =
-                Beat 2+ on the filmstrip, then stitch. No LatentSync. No skeleton video.
-              </p>
+
               <div
                 className="gen-beat1-block"
                 data-testid="motion-beat-1"
@@ -2508,7 +2547,8 @@ export default function GenerateStudio() {
                   if (id) setSelectedBeatId(id);
                 }}
               >
-              <p className="gen-label gen-label-live">Beat 1</p>
+              <WorkflowSection step={1}>
+              <p className="gen-hint">Start with the first clip. After generating, add and review more clips in the sequence.</p>
               <label className="gen-field gen-field-wide">
                 Source still (gallery still, HTTPS URL, or upload)
                 <input
@@ -2560,10 +2600,13 @@ export default function GenerateStudio() {
                   placeholder="Same face. Soft smile, hair and fabric move…"
                 />
               </div>
+              </WorkflowSection>
+              <WorkflowSection step={2}>
               <div>
                 <p className="gen-label">Negative prompt</p>
                 <textarea
                   className="gen-box gen-box-description"
+                  aria-label="Motion negative prompt"
                   value={motionCard.negative_prompt}
                   onChange={(e) => patchMotion({ negative_prompt: e.target.value })}
                   disabled={busy}
@@ -2634,7 +2677,9 @@ export default function GenerateStudio() {
                 disabled={busy}
                 onToggle={() => patchMotion({ slow_mo: !motionCard.slow_mo })}
               />
+              </WorkflowSection>
               </div>
+              <WorkflowSection step={2}>
               <details className="gen-advanced-json">
                 <summary>Advanced JSON</summary>
                 <p className="gen-hint">
@@ -2655,15 +2700,18 @@ export default function GenerateStudio() {
                   Apply JSON
                 </button>
               </details>
+              </WorkflowSection>
+              <WorkflowSection step={3}>
               <div className="gen-row">
                 <label className="gen-check">
                   <input type="checkbox" checked={dryRun} disabled={busy} onChange={(e) => setDryRun(e.target.checked)} />
                   Dry run (no GPU)
                 </label>
                 <button className="gen-go" type="button" onClick={go} disabled={!canGo} style={{ marginLeft: "auto" }}>
-                  {busy ? "Working…" : dryRun ? "Dry run" : "Go"}
+                  {busy ? "Working…" : dryRun ? "Dry run" : "Generate first clip"}
                 </button>
               </div>
+              <button type="button" className="gen-view-toggle" onClick={() => navigateStep(1)}>Edit first clip prompt & source →</button>
               <BeatQueuePanel
                 queue={beatQueue}
                 busy={busy}
@@ -2737,6 +2785,7 @@ export default function GenerateStudio() {
                   }
                 }}
               />
+              </WorkflowSection>
             </>
           ) : mode === "motion2" ? (
             <LongformPanel
@@ -2913,7 +2962,7 @@ export default function GenerateStudio() {
                 })
                   .then((j) => {
                     const n = j.queue?.beats.length || cinemaQueueRef.current.beats.length;
-                    const msg = `Planned ${n} cinema beats. Review, then Go / Run remaining.`;
+                    const msg = `Planned ${n} cinema beats. Continue to Generate & review to render your planned clips.`;
                     setCinemaNotice(msg);
                     setMessages((m) => [...m, { id: mid(), role: "assistant", content: msg }]);
                   })
@@ -2994,11 +3043,13 @@ export default function GenerateStudio() {
             />
           ) : (
             <>
+              <WorkflowSection step={1}>
               <div>
-                <p className="gen-label gen-label-live">Inference</p>
-                <p className="gen-hint">Actual prompt sent to the engine. Chat may write this; you can edit it before Generate.</p>
+                <p className="gen-label gen-label-live">Your prompt</p>
+                <p className="gen-hint">Describe your subject, setting, style, and — for video — movement.</p>
                 <textarea
                   className="gen-box gen-box-inference"
+                  aria-label="Your prompt"
                   value={inference}
                   onChange={(e) => setInference(e.target.value)}
                   disabled={busy}
@@ -3015,10 +3066,11 @@ export default function GenerateStudio() {
               </div>
 
               <div>
-                <p className="gen-label">Description</p>
-                <p className="gen-hint">Scene / character notes — identity, outfit, camera, constraints. Generate reads this with Inference.</p>
+                <p className="gen-label">Scene details (optional)</p>
+                <p className="gen-hint">Add any details the result should keep: outfit, lighting, camera angle, or constraints.</p>
                 <textarea
                   className="gen-box gen-box-description"
+                  aria-label="Scene details"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={busy}
@@ -3026,21 +3078,15 @@ export default function GenerateStudio() {
                 />
               </div>
 
-              <p className="gen-hint">
-                {mode === "t2i" && "Prompt → fal FLUX.1 [dev] still. Safety checker off. Identity-locked Lady2 stills stay on Modal stills."}
-                {mode === "t2v" && "True text → video on fal Wan T2V. No Gemini keyframe. ≤5s, 9:16 default. Optional 0.5× remux after fal."}
-                {mode === "i2v" && "Your image + a motion prompt → ≤5s fal Wan I2V clip. The image IS the first frame (same as Motion). Optional 0.5× remux."}
-                {mode === "v2v" && "Not wired — no fal / Animate V2V path in this repo."}
-              </p>
-
               {mode === "i2v" && (
                 <label className="gen-file">
                   Image to animate:{" "}
                   <input
                     type="file"
+                    aria-label="Upload image to animate"
                     accept="image/*"
                     disabled={busy}
-                    onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+                    onChange={(e) => { setImageFile(e.target.files?.[0] ?? null); if (e.target.files?.[0]) setI2vSourceUrl(""); }}
                   />
                   {(imageFile || i2vSourceUrl) && (
                     <span>
@@ -3051,6 +3097,9 @@ export default function GenerateStudio() {
                 </label>
               )}
 
+              {mode === "i2v" && <label className="gen-field">Or paste an image URL<input aria-label="Starting image URL" value={i2vSourceUrl} disabled={busy} placeholder="https://…/image.jpg" onChange={e => { setI2vSourceUrl(e.target.value); setImageFile(null); }} /></label>}
+              </WorkflowSection>
+              <WorkflowSection step={2}>
               {(mode === "i2v" || mode === "t2v") && (
                 <SlowMoChip on={i2vSlowMo} disabled={busy} onToggle={() => setI2vSlowMo((v) => !v)} />
               )}
@@ -3061,7 +3110,7 @@ export default function GenerateStudio() {
                 </p>
               ) : (
                 <div className="gen-row">
-                  <select className="gen-select" value={aspect} onChange={(e) => setAspect(e.target.value)} disabled={busy}>
+                  <select aria-label="Output aspect ratio" className="gen-select" value={aspect} onChange={(e) => setAspect(e.target.value)} disabled={busy}>
                     <option value="9:16">9:16 vertical</option>
                     <option value="16:9">16:9 wide</option>
                     <option value="1:1">1:1 square</option>
@@ -3077,9 +3126,14 @@ export default function GenerateStudio() {
                         disabled={busy}
                         onChange={(e) => setSeconds(+e.target.value)}
                       />
-                      {seconds}s
+                      Duration: {seconds}s
                     </label>
                   )}
+                </div>
+              )}
+              </WorkflowSection>
+              <WorkflowSection step={3}>
+                <div className="gen-row">
                   <label className="gen-check">
                     <input type="checkbox" checked={dryRun} disabled={busy} onChange={(e) => setDryRun(e.target.checked)} />
                     Dry run (no GPU)
@@ -3088,7 +3142,7 @@ export default function GenerateStudio() {
                     {busy ? "Working…" : dryRun ? "Dry run" : "Generate"}
                   </button>
                 </div>
-              )}
+              </WorkflowSection>
             </>
           )}
           {((mode === "motion2" ? motion2Stage : mode === "cinema" ? cinemaStage : stage)) && (
@@ -3097,7 +3151,9 @@ export default function GenerateStudio() {
               {activeJobId ? ` · ${activeJobId}` : ""}
             </p>
           )}
-          {error && <p className="gen-err">{error}</p>}
+          {error && <p className="gen-err" role="alert">{error}</p>}
+          {runNotice && <p className="gen-ready" role="status">{runNotice}</p>}
+          <WorkflowSection step={3}>
           {resultUrl && libraryUnlocked && (
             <div className="gen-result">
               {resultIsVideo ? (
@@ -3124,58 +3180,33 @@ export default function GenerateStudio() {
             </div>
           )}
           {resultUrl && modalAuthed && !libraryUnlocked && (
-            <p className="gen-hint gen-library-hint">Unlock the library to view this still or clip.</p>
+            <p className="gen-hint gen-library-hint">Your result is ready. <button type="button" className="gen-view-toggle" onClick={openLibrary}>Unlock the library to preview it</button>.</p>
           )}
-          {(mode === "modal" || mode === "motion" || mode === "motion2" || mode === "cinema") && (
-            <GenerateLibraryGate
-              authed={modalAuthed}
-              unlocked={libraryUnlocked}
-              onUnlocked={() => void reloadLibraryJobs()}
-              onLocked={() => {
-                setLibraryUnlocked(false);
-                setModalJobs([]);
-              }}
-            >
-              <ModalGallery
-                jobs={modalJobs}
-                onUseStill={
-                  mode === "motion"
-                    ? (url) => patchMotion({ source_image_url: url })
-                    : mode === "motion2"
-                      ? (url) => commitLongformLocal({ ...longformQueueRef.current, source_image_url: url })
-                      : mode === "cinema"
-                        ? (url) =>
-                            commitCinemaLocal({
-                              ...cinemaQueueRef.current,
-                              image_urls: [...cinemaQueueRef.current.image_urls, url].slice(0, 9),
-                            })
-                      : undefined
-                }
-              />
-              <MotionGallery jobs={modalJobs} />
-            </GenerateLibraryGate>
-          )}
-          {(mode === "t2i" || mode === "t2v" || mode === "i2v") && (
-            <GenerateLibraryGate
-              authed={modalAuthed}
-              unlocked={libraryUnlocked}
-              onUnlocked={() => void reloadLibraryJobs()}
-              onLocked={() => {
-                setLibraryUnlocked(false);
-                setModalJobs([]);
-              }}
-            >
-              {mode === "i2v" && (
-                <ModalGallery jobs={modalJobs} onUseStill={(url) => setI2vSourceUrl(url)} />
-              )}
-              <EngineGallery
-                jobs={modalJobs}
-                onUseStill={mode === "i2v" ? (url) => setI2vSourceUrl(url) : undefined}
-              />
-            </GenerateLibraryGate>
-          )}
+          </WorkflowSection>
         </section>
       </div>
+      <section ref={libraryPanel} className="gen-library-workspace" hidden={!libraryOpen} aria-label="Your library">
+        <h2>Your library</h2>
+        <p className="gen-hint">Preview previous results or choose an image for your current workflow.</p>
+        {modalAuthed !== true && <p className="gen-hint">Sign in at <a href="/hq">HQ</a> to open your private library.</p>}
+        <GenerateLibraryGate authed={modalAuthed} unlocked={libraryUnlocked}
+          onUnlocked={() => void reloadLibraryJobs()}
+          onLocked={() => { setLibraryUnlocked(false); setModalJobs([]); }}>
+          <ModalGallery jobs={modalJobs} onUseStill={busy || chatBusy ? undefined : useLibraryStill} />
+          <EngineGallery jobs={modalJobs} onUseStill={busy || chatBusy ? undefined : useLibraryStill} />
+          <MotionGallery jobs={modalJobs} />
+          {libraryUnlocked && modalJobs.length === 0 && <p className="gen-hint">No saved results yet. Generate your first image or video to see it here.</p>}
+        </GenerateLibraryGate>
+      </section>
+      <footer className="gen-workflow-footer">
+        <div><strong>{workflow.title}</strong><span>{nextBlocker ? nextBlocker.message : workflowStep === 3 ? "Generate above, then review and download your result." : `Next: ${WORKFLOW_STEPS[workflowStep + 1]}`}</span></div>
+        <div className="gen-footer-buttons">
+          {workflowStep > 0 && <button type="button" className="gen-view-toggle" onClick={() => navigateStep((workflowStep - 1) as WorkflowStep)}>← Back</button>}
+          {workflowStep < 3 && <button type="button" className="gen-go" disabled={Boolean(nextBlocker)} onClick={() => navigateStep((workflowStep + 1) as WorkflowStep)}>{workflowStep === 0 ? "Start this workflow" : workflowStep === 1 ? "Continue to settings" : "Review & generate"} →</button>}
+          {workflowStep === 3 && nextBlocker && <button type="button" className="gen-view-toggle" onClick={() => navigateStep(nextBlocker.step)}>Complete missing inputs →</button>}
+        </div>
+      </footer>
+      </WorkflowContext.Provider>
     </main>
   );
 }

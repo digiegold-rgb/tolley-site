@@ -114,7 +114,7 @@ describe("studio motionCard ↔ beats[0]", () => {
     assert.doesNotMatch(studio, /async function goMotion\(\)[\s\S]*kind: "motion", card: motionCard, start: !dryRun/);
     assert.match(beatsUi, /i === 0/);
     assert.match(beatsUi, /beatPromptEditorForIndex/);
-    assert.match(beatsUi, /Prompt & stills above/);
+    assert.match(beatsUi, /Prompt & source in step 2/);
     assert.match(beatsUi, /selectedIndex > 0/);
     assert.doesNotMatch(beatsUi, /Add current card/);
   });
@@ -143,9 +143,9 @@ describe("studio motionCard ↔ beats[0]", () => {
     assert.match(studio, /confirmSpend/);
     assert.match(studio, /readBoundQueueId/);
     assert.match(studio, /queueGetUrl/);
-    assert.match(longformUi, /data-testid="motion2-run-remaining"/);
+    assert.match(longformUi, /data-testid="motion2-go"/);
     assert.match(longformUi, /data-testid="motion2-auto-advance"/);
-    assert.match(longformUi, /Go = run remaining/i);
+    assert.match(longformUi, /Generate remaining clips/i);
   });
 
   it("adds a Cinema tab next to Motion 2 without changing Motion 1 filmstrip", () => {
@@ -159,7 +159,7 @@ describe("studio motionCard ↔ beats[0]", () => {
     assert.match(cinemaUi, /data-testid="cinema-load-estate"/);
     assert.match(cinemaUi, /Seedance/);
     assert.match(cinemaUi, /Kling/);
-    assert.match(cinemaUi, /data-testid="cinema-run-remaining"/);
+    assert.match(cinemaUi, /data-testid="cinema-go"/);
     assert.doesNotMatch(cinemaUi, /gen-beat-strip/);
   });
 });

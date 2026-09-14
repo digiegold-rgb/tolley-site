@@ -165,7 +165,7 @@ describe("generate route branding", () => {
     assert.match(studio, /\/api\/generate\/chat/);
     assert.match(studio, /Modal stills/);
     assert.match(studio, /Motion/);
-    assert.match(studio, /Motion 2 · Longform/);
+    assert.match(readFileSync(join(here, "generate-workflow.ts"), "utf8"), /Motion 2 · Longform/);
     assert.match(studio, /Cinema/);
     assert.match(studio, /\/api\/generate\/jobs/);
     assert.match(studio, /\/api\/generate\/upload/);
@@ -196,7 +196,7 @@ describe("generate route branding", () => {
     assert.match(studio, /Use as source/);
     assert.match(studio, /Wan 3\.0|Wan I2V/);
     assert.doesNotMatch(studio, /InstantID|ComfyUI|face_lock|UltraSharp/i);
-    assert.match(studio, /Seedance/);
+    assert.match(readFileSync(join(here, "generate-workflow.ts"), "utf8"), /Seedance/);
     assert.match(chat, /qwenChatCompletion/);
     assert.match(chat, /QWEN_VLLM/);
     assert.doesNotMatch(chat, /api\.anthropic\.com|qwen-max|dashscope/i);
