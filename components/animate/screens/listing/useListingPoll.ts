@@ -10,6 +10,7 @@
 import * as React from 'react';
 import type { ListingJobDto, ListingJobStatusValue } from '@/lib/vater/listing/contract';
 import { listingApi, listingErrorMessage } from './listing-api';
+import { needsListingDeliveryRecovery } from '@/lib/vater/listing/delivery';
 
 const MOVING: ReadonlySet<ListingJobStatusValue> = new Set(['staging', 'rendering', 'finishing']);
 
@@ -62,9 +63,10 @@ export function useListingPoll(jobId: string | null | undefined, initial: Listin
   }, [jobId]);
 
   const status = job?.status;
+  const recoverDelivery = job ? needsListingDeliveryRecovery(job) : false;
   React.useEffect(() => {
     if (!jobId) return;
-    if (!isMovingStatus(status)) return;
+    if (!isMovingStatus(status) && !recoverDelivery) return;
     let cancelled = false;
     const tick = async () => {
       if (cancelled) return;
@@ -76,7 +78,7 @@ export function useListingPoll(jobId: string | null | undefined, initial: Listin
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [jobId, status, intervalMs, refresh]);
+  }, [jobId, status, recoverDelivery, intervalMs, refresh]);
 
   return { job, error, polling, setJob, refresh };
 }

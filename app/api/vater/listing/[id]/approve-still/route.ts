@@ -47,7 +47,9 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
     return listingError(409, { error: `Nothing to approve — listing is ${job.status}.`, code: "bad_state" });
   }
   if (!isListingSku(job.sku)) return listingError(422, { error: "No SKU on this listing.", code: "no_sku" });
-  if (!job.stagedStillUrl) return listingError(409, { error: "The staged still has not arrived yet.", code: "bad_state" });
+  if (job.sku !== "beauty_shot" && (!job.stagedStillUrl || !job.stagedStillLabeledUrl)) {
+    return listingError(409, { error: "The staged photo has not been delivered. Check its status before approving.", code: "bad_state" });
+  }
   const sku = job.sku;
   const spec = LISTING_SKUS[sku];
 
@@ -86,7 +88,7 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
       idempotencyKey,
       listingId: id,
       photos,
-      stagedStillUrl: job.stagedStillUrl,
+      stagedStillUrl: sku === "beauty_shot" ? undefined : job.stagedStillUrl ?? undefined,
       engine,
       durationS: spec.durationS,
       resolution: engine === "modal-wan" ? "480p" : "720p",
@@ -110,7 +112,8 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
 
   const updated = await prisma.vaterListingJob.update({
     where: { id },
-    data: { status: "rendering", dgxRenderJobId: created.jobId, errorCode: null, errorMessage: null },
+    data: { status: "rendering", dgxRenderJobId: created.jobId, errorCode: null, errorMessage: null,
+      ...(sku === "beauty_shot" ? { stagedStillUrl: null, stagedStillLabeledUrl: null } : {}) },
   });
   queueVaterEvent({
     userId,

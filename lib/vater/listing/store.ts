@@ -413,7 +413,8 @@ export async function computePreflight(input: PreflightInput): Promise<ListingPr
   const label = frameLabelSpec(sku ?? "virtual_staging", lane, job.sourceKind === "streetview" ? "streetview" : "upload");
   const lines: string[] = [];
   if (spec) lines.push(`${spec.label} — $${(priceCents / 100).toFixed(2)}`);
-  if (job.look) lines.push(`Look: ${job.look}${spec?.kind === "video" ? ` · ${job.engine === "modal-wan" ? "Economy" : "Photoreal"}` : ""}`);
+  if (sku === "beauty_shot") lines.push("Camera motion from your original photo. No furniture is added; filming starts after payment.");
+  if (job.look && sku !== "beauty_shot") lines.push(`Look: ${job.look}${spec?.kind === "video" ? ` · ${job.engine === "modal-wan" ? "Economy" : "Photoreal"}` : ""}`);
   lines.push(lint.ok ? "Fair-Housing check: passed" : "Fair-Housing check: BLOCKED");
   lines.push(label.required ? `Label burned on frame: "${label.text}"` : "MLS-safe still: no label (photo-description line included)");
   if (card.ok) lines.push(`End card: ${card.rulePack === "default" ? "broker rule" : card.rulePack + " broker rule"} · Equal Housing Opportunity`);
@@ -464,7 +465,7 @@ export const DGX_SKU_FOR: Record<Exclude<ListingSku, "virtual_staging">, Listing
 };
 
 /** DGX error codes that refund the customer (Part D: never charged for these). */
-export const REFUNDABLE_ERROR_CODES: ReadonlySet<string> = new Set(["moderation", "compliance", "qa_geometry", "timeout"]);
+export const REFUNDABLE_ERROR_CODES: ReadonlySet<string> = new Set(["moderation", "compliance", "qa_geometry", "timeout", "delivery_failed"]);
 
 export function endCardFromProfile(profile: AgentProfile): ListingEndCard {
   return {

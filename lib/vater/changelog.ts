@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.42.1';
+export const APP_VERSION = '1.42.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,17 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.42.2',
+    date: '2026-09-14',
+    title: 'Reliable Listing Studio delivery',
+    items: [
+      'Fixed a file upload failure that left generated photos missing at approval.',
+      'Beauty Shots film the original room directly, with clearer camera-motion descriptions.',
+      'Missing previews cannot be approved or trigger a paid retry; missing render files enter the failure and refund flow.',
+      'Beauty Shot proof pages show the original photo and finished video.',
+    ],
+  },
   {
     version: '1.42.1',
     date: '2026-09-14',
