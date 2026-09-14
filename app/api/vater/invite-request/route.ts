@@ -12,6 +12,8 @@
  * for any utm_source), we mint the email-locked invite and email the link
  * right here instead of the "within 24h" ack. The inbox row is still filed
  * (as `won`, note says auto) so /hq keeps the full picture.
+ * Listing Studio requests are auto-approved for every source. These are
+ * access requests; a `won` invite row is not evidence of a paid sale.
  */
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
@@ -26,6 +28,7 @@ import {
 } from "@/lib/animate-sms";
 import { toE164 } from "@/lib/phone";
 import { PRODUCT_NAME, PRODUCT_SUBSITE, type Product } from "@/lib/vater/product";
+import { shouldAutoApproveInvite } from "@/lib/vater/invite-approval";
 
 export const runtime = "nodejs";
 
@@ -45,14 +48,6 @@ function pickUtm(v: unknown): Record<string, string> {
     if (s) out[k] = s.toLowerCase();
   }
   return out;
-}
-
-function autoApproveSource(utm: Record<string, string>): boolean {
-  const src = utm.utm_source;
-  if (!src) return false;
-  const allowed = (process.env.ANIMATE_AUTO_APPROVE_SOURCES ?? "fb,facebook,ig,instagram,meta")
-    .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-  return allowed.includes("*") || allowed.includes(src);
 }
 
 export async function POST(request: NextRequest) {
@@ -81,12 +76,13 @@ export async function POST(request: NextRequest) {
   }
   const phone = sms.phone ? toE164(sms.phone) ?? sms.phone : null;
   const utm = pickUtm(body.utm);
-  const autoApprove = autoApproveSource(utm);
   // Which front door the form sat on. "realestate" = Listing Studio landing
   // (tolley.io/realestateanimated): its own LeadAction.subsite, its own
   // invite link (callbackUrl=/realestateanimated → VaterAccount.origin), its
   // own email sign-off and a "[Listing Studio]" Telegram prefix.
   const product: Product = body.subsite === "realestate" ? "realestate" : "jelly";
+  const autoApprove = shouldAutoApproveInvite(product, utm.utm_source, process.env.ANIMATE_AUTO_APPROVE_SOURCES);
+  const approvalSource = utm.utm_source || "direct";
   const subsite = PRODUCT_SUBSITE[product];
   const source = product === "realestate" ? "realestate-landing" : "animate-landing";
   const productName = PRODUCT_NAME[product];
@@ -140,7 +136,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Could not send your request. Email jared@yourkchomes.com." }, { status: 500 });
   }
 
-  // Paid-ad traffic: mint + email the invite link right now (Jared 8/17).
+  // Listing visitors and eligible Jelly paid traffic receive an email-locked
+  // signup link without manual sales or approval work.
   // Falls through to the normal ack path if minting/emailing fails, so the
   // requester still hears back and the row stays open for manual approval.
   let autoApproved = false;
@@ -151,7 +148,7 @@ export async function POST(request: NextRequest) {
         count: 1,
         maxUses: 1,
         email,
-        note: `auto-approved ${utm.utm_source}${utm.utm_campaign ? `/${utm.utm_campaign}` : ""} ${new Date().toISOString().slice(0, 10)}`,
+        note: `auto-approved ${product}/${approvalSource}${utm.utm_campaign ? `/${utm.utm_campaign}` : ""} ${new Date().toISOString().slice(0, 10)}`,
         createdBy: "invite-request:auto",
       });
       if (inv) {
@@ -160,7 +157,7 @@ export async function POST(request: NextRequest) {
         autoCode = formatInviteCode(inv.code);
         await prisma.leadAction.updateMany({
           where: { subsite, action: "invite-request", email, status: { notIn: ["won", "lost"] } },
-          data: { status: "won", statusNote: `AUTO-approved (${utm.utm_source}) — invite ${autoCode} emailed`, statusUpdatedAt: new Date() },
+          data: { status: "won", statusNote: `AUTO-approved (${approvalSource}) — invite ${autoCode} emailed; signup access, not a purchase`, statusUpdatedAt: new Date() },
         }).catch(() => undefined);
       }
     } catch (err) {
