@@ -27,12 +27,9 @@ import { manifest as gpu } from "@/app/gpu/agent";
 import { manifest as homes } from "@/app/homes/agent";
 import { manifest as housing } from "@/app/housing/agent";
 import { manifest as hvac } from "@/app/hvac/agent";
-import { manifest as kerplunk } from "@/app/kerplunk/agent";
 import { manifest as leads } from "@/app/leads/agent";
 import { manifest as markets } from "@/app/markets/agent";
-import { manifest as moving } from "@/app/moving/agent";
 import { manifest as pay } from "@/app/pay/agent";
-import { manifest as picnicTable } from "@/app/picnic-table/agent";
 import { manifest as pools } from "@/app/pools/agent";
 import { manifest as pricing } from "@/app/pricing/agent";
 import { manifest as privacy } from "@/app/privacy/agent";
@@ -46,7 +43,6 @@ import { manifest as security } from "@/app/security/agent";
 import { manifest as shop } from "@/app/shop/agent";
 import { manifest as signup } from "@/app/signup/agent";
 import { manifest as start } from "@/app/start/agent";
-import { manifest as tables } from "@/app/tables/agent";
 import { manifest as terms } from "@/app/terms/agent";
 import { manifest as tools } from "@/app/tools/agent";
 import { manifest as trailer } from "@/app/trailer/agent";
@@ -78,12 +74,9 @@ export const SUBSITES: SubsiteManifest[] = [
   homes,
   housing,
   hvac,
-  kerplunk,
   leads,
   markets,
-  moving,
   pay,
-  picnicTable,
   pools,
   pricing,
   privacy,
@@ -97,7 +90,6 @@ export const SUBSITES: SubsiteManifest[] = [
   shop,
   signup,
   start,
-  tables,
   terms,
   tools,
   trailer,

@@ -25,6 +25,8 @@ export interface PillButtonProps {
   rel?: string;
   'aria-label'?: string;
   'data-testid'?: string;
+  'data-track-event'?: string;
+  'data-track-label'?: string;
   title?: string;
 }
 
@@ -34,7 +36,7 @@ const SIZES: Record<PillSize, React.CSSProperties> = {
   lg: { padding: '15px 32px', fontSize: 15.5 },
 };
 
-export function PillButton({ children, variant = 'gradient', size = 'md', href, onClick, disabled, type = 'button', style, target, rel, title, 'aria-label': ariaLabel, 'data-testid': testId }: PillButtonProps): React.ReactElement {
+export function PillButton({ children, variant = 'gradient', size = 'md', href, onClick, disabled, type = 'button', style, target, rel, title, 'aria-label': ariaLabel, 'data-testid': testId, 'data-track-event': trackEvent, 'data-track-label': trackLabel }: PillButtonProps): React.ReactElement {
   const { t } = useTheme();
   const variants: Record<PillVariant, React.CSSProperties> = {
     gradient: { background: JELLY_TOKENS.gradPrimary, color: JELLY_TOKENS.onGradient, border: '1px solid transparent', fontWeight: 700, boxShadow: JELLY_TOKENS.brandGlow },
@@ -62,12 +64,12 @@ export function PillButton({ children, variant = 'gradient', size = 'md', href, 
   if (href && !disabled) {
     const external = /^(https?:)?\/\//.test(href) || href.startsWith('mailto:');
     if (href.startsWith('#') || external) {
-      return <a href={href} target={target} rel={rel} title={title} aria-label={ariaLabel} data-testid={testId} className={cls} style={s} onClick={onClick}>{children}</a>;
+      return <a href={href} target={target} rel={rel} title={title} aria-label={ariaLabel} data-testid={testId} data-track-event={trackEvent} data-track-label={trackLabel} className={cls} style={s} onClick={onClick}>{children}</a>;
     }
-    return <Link href={href} title={title} aria-label={ariaLabel} data-testid={testId} className={cls} style={s} onClick={onClick}>{children}</Link>;
+    return <Link href={href} title={title} aria-label={ariaLabel} data-testid={testId} data-track-event={trackEvent} data-track-label={trackLabel} className={cls} style={s} onClick={onClick}>{children}</Link>;
   }
   return (
-    <button type={type} disabled={disabled} title={title} aria-label={ariaLabel} data-testid={testId} className={cls} style={s} onClick={onClick}>
+    <button type={type} disabled={disabled} title={title} aria-label={ariaLabel} data-testid={testId} data-track-event={trackEvent} data-track-label={trackLabel} className={cls} style={s} onClick={onClick}>
       {children}
     </button>
   );

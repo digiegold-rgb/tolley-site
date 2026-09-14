@@ -1,5 +1,6 @@
 /** Keep operational manifests available without advertising them as products. */
 export const UNPROMOTED_SUBSITES = new Set([
+  "pools", // Off-season: background work paused; keep out of public promotion.
   "advertising", "water", "video", "vater", "scan", "agents", "circle",
   "real-estate-agent",
 ]);

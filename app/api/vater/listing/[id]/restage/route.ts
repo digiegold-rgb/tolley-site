@@ -51,6 +51,12 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     return listingError(409, { error: `Re-stage is only available while a still is awaiting your approval (listing is ${job.status}).`, code: "bad_state" });
   }
   if (!isListingSku(job.sku)) return listingError(422, { error: "No SKU on this listing.", code: "no_sku" });
+  if (job.sku === "beauty_shot") {
+    return listingError(422, { error: "Beauty Shot animates your original photo and does not need virtual staging.", code: "bad_state" });
+  }
+  if (!job.stagedStillUrl || !job.stagedStillLabeledUrl) {
+    return listingError(409, { error: "The first photo has not been delivered. Check its status before paying for another try.", code: "bad_state" });
+  }
   if (job.restageCount >= MAX_RESTAGES) {
     return listingError(409, { error: `You've re-staged this photo ${MAX_RESTAGES} times — try a different photo or style.`, code: "bad_state" });
   }

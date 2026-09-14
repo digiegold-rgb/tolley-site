@@ -5,6 +5,7 @@ import React from 'react';
 import { JELLY_TOKENS, glass } from '../tokens';
 import { PillButton } from '../cinema';
 import { AnimateSmsConsent } from '../AnimateSmsConsent';
+import { trackEvent } from '@/components/analytics/site-tracker';
 
 /** Signed-out "Request a seat" form on the landing → POST /api/vater/invite-request
  *  → /hq Must Complete + Telegram.
@@ -55,6 +56,7 @@ export interface InviteRequestFormProps {
 
 export function InviteRequestForm({ subsite = 'animate', copy }: InviteRequestFormProps = {}): React.ReactElement {
   const [state, setState] = React.useState<'idle' | 'busy' | 'done' | 'error'>('idle');
+  const [ready, setReady] = React.useState(false);
   const [msg, setMsg] = React.useState<string>('');
   const [autoApproved, setAutoApproved] = React.useState(false);
   const [smsOptIn, setSmsOptIn] = React.useState(false);
@@ -62,6 +64,7 @@ export function InviteRequestForm({ subsite = 'animate', copy }: InviteRequestFo
   const utmRef = React.useRef<Record<string, string>>({});
   React.useEffect(() => {
     utmRef.current = readUtm();
+    setReady(true);
   }, []);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -85,9 +88,13 @@ export function InviteRequestForm({ subsite = 'animate', copy }: InviteRequestFo
       });
       const j = (await r.json().catch(() => ({}))) as { error?: string; autoApproved?: boolean };
       if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      if (subsite === 'realestate') {
+        trackEvent('realestateanimated', j.autoApproved ? 'listing_signup_link_sent' : 'listing_signup_pending');
+      }
       setAutoApproved(Boolean(j.autoApproved));
       setState('done');
     } catch (err) {
+      if (subsite === 'realestate') trackEvent('realestateanimated', 'listing_signup_error');
       setMsg(err instanceof Error ? err.message : 'Something went wrong');
       setState('error');
     }
@@ -111,11 +118,11 @@ export function InviteRequestForm({ subsite = 'animate', copy }: InviteRequestFo
           color: t.text,
         }}
       >
-        <strong style={{ fontSize: 16 }}>{copy?.doneTitle ?? 'You\u2019re in — check your email.'}</strong>
+        <strong style={{ fontSize: 16 }}>{autoApproved ? (copy?.doneTitle ?? 'Check your email for your signup link.') : 'Your request is saved.'}</strong>
         <span style={{ fontSize: 14, color: t.textSecondary }}>
-          {copy?.doneBody ?? (autoApproved
-            ? 'Your signup link is on its way right now (check spam if it\u2019s not there in a minute).'
-            : 'Your seat is reserved. A signup link will land in your inbox — check spam if it isn\u2019t there in a minute.')}
+          {autoApproved
+            ? (copy?.doneBody ?? 'We sent your signup link. Check spam if you don’t see it, then follow the link to create your account.')
+            : 'Your signup link has not been sent yet. Support will follow up by email; you do not need to submit another request.'}
         </span>
       </div>
     );
@@ -149,7 +156,7 @@ export function InviteRequestForm({ subsite = 'animate', copy }: InviteRequestFo
         disabled={state === 'busy'}
       />
       <div>
-        <PillButton variant="gradient" size="lg" type="submit" disabled={state === 'busy'}>
+        <PillButton variant="gradient" size="lg" type="submit" disabled={!ready || state === 'busy'}>
           {state === 'busy' ? 'Sending…' : (copy?.submit ?? 'Request a seat')}
         </PillButton>
       </div>

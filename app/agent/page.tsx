@@ -53,7 +53,7 @@ export default async function AgentHome() {
           <ul className="flex flex-wrap justify-center items-center gap-4 text-[0.7rem] tracking-[0.08em] text-white/72 uppercase">
             <li>
               <Link className="font-semibold text-orange-300 transition hover:text-orange-200" href="/start">
-                All 40+ Services →
+                Explore Tolley.io →
               </Link>
             </li>
             <li aria-hidden="true" className="text-white/45">
@@ -94,14 +94,6 @@ export default async function AgentHome() {
             <li>
               <Link className="transition hover:text-white" href="/generator">
                 Generator Rental
-              </Link>
-            </li>
-            <li aria-hidden="true" className="text-white/45">
-              |
-            </li>
-            <li>
-              <Link className="transition hover:text-white" href="/pools">
-                Pool Supplies
               </Link>
             </li>
           </ul>

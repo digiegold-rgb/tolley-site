@@ -44,6 +44,8 @@ const OFFERINGS = [
 ];
 
 async function main() {
+  throw new Error("Home Essentials Box was retired on 2026-09-14. Do not republish it.");
+
   // Bind to Jared's account so the claim flow can't be hijacked.
   const owner = await prisma.user.findUnique({ where: { email: OWNER_EMAIL } });
   if (!owner) {

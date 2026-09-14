@@ -35,6 +35,7 @@ export const DIRECTORY_GROUP_ORDER: DirectoryGroup[] = [
 ];
 
 interface DisplayMeta {
+  title?: string;
   group: DirectoryGroup;
   tagline: string;
   bullets: string[];
@@ -49,9 +50,10 @@ interface DisplayMeta {
 // subsites are intentionally absent — they are not consumer products.
 const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
   sales: {
+    title: "The Launchpad",
     group: "Start a Business",
-    tagline: "Start a business with no license, no bank, no money",
-    bullets: ["Ready-to-run businesses", "I handle the back office", "Handshake deal"],
+    tagline: "Build your business with practical support",
+    bullets: ["Your idea", "Website & payments", "Work with Jared"],
     image: "/sales/receipts/shop.jpg",
     emoji: "🚀",
     accent: "orange",
@@ -65,6 +67,7 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
     accent: "amber",
   },
   homes: {
+    title: "Your KC Homes",
     group: "Real Estate",
     tagline: "Buy & sell homes with a licensed KC agent",
     bullets: ["Kansas City metro", "Licensed agent", "Full service"],
@@ -81,6 +84,7 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
     accent: "sky",
   },
   hvac: {
+    title: "Heating & Cooling",
     group: "Home Services",
     tagline: "Heating & cooling, 24/7 — The Cool Guys KC",
     bullets: ["24/7 emergency", "Repair & install", "Independence, MO"],
@@ -105,6 +109,7 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
     accent: "teal",
   },
   wd: {
+    title: "Washer & Dryer Rental",
     group: "Rentals",
     tagline: "Washer & dryer rental — delivered & installed",
     bullets: ["Monthly, no credit check", "Delivered & installed", "KC metro"],
@@ -114,6 +119,7 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
     featured: true,
   },
   trailer: {
+    title: "Trailer Rental",
     group: "Rentals",
     tagline: "Utility trailer & car hauler rental",
     bullets: ["16ft to 20ft", "Up to 10,000 lbs", "Utility & car haulers"],
@@ -122,44 +128,13 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
     accent: "amber",
   },
   generator: {
+    title: "Generator Rental",
     group: "Rentals",
     tagline: "Generator rental for jobs & events",
     bullets: ["Portable power", "Delivery available", "Jobs & events"],
     image: "/generator/gen-1.jpg",
     emoji: "⚡",
     accent: "yellow",
-  },
-  kerplunk: {
-    group: "Rentals",
-    tagline: "Giant Kerplunk yard game rental",
-    bullets: ["Parties & events", "Giant yard game", "KC metro"],
-    image: "/kerplunk/kerplunk-1.jpg",
-    emoji: "🎯",
-    accent: "violet",
-  },
-  "picnic-table": {
-    group: "Rentals",
-    tagline: "Picnic table rental for events",
-    bullets: ["Events & parties", "Delivered", "By the day"],
-    image: "/picnic-table/picnic-1.jpg",
-    emoji: "🧺",
-    accent: "green",
-  },
-  tables: {
-    group: "Rentals",
-    tagline: "Table & chair rental",
-    bullets: ["Events & gatherings", "Delivered & set up", "KC metro"],
-    image: "/tables/tables-10.jpg",
-    emoji: "🪑",
-    accent: "stone",
-  },
-  moving: {
-    group: "Rentals",
-    tagline: "Reusable moving-supply bundles",
-    bullets: ["Skip the cardboard", "Reusable bins", "Packing kits"],
-    image: "/moving/mv-1.jpg",
-    emoji: "📦",
-    accent: "emerald",
   },
   shop: {
     group: "Shop & Food",
@@ -216,6 +191,7 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
     accent: "violet",
   },
   estate: {
+    title: "Estate Sales",
     group: "Home Services",
     tagline: "Boutique estate sales in Independence — free walkthrough, fast settlement",
     bullets: [
@@ -228,6 +204,7 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
     featured: true,
   },
   crazybins: {
+    title: "Crazy Bin Store #2",
     group: "Shop & Food",
     tagline: "Liquidation bin store — 60–80% off retail",
     bullets: ["Independence, MO", "New bins weekly", "Daily price ladder"],
@@ -235,6 +212,7 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
     accent: "red",
   },
   animate: {
+    title: "Jelly Studio",
     group: "AI & Ventures",
     tagline: "The most affordable faceless-video studio — pay only for what you render, no subscription (public beta)",
     bullets: ["AI video studio", "Pay per video", "Auto-billed via Stripe"],
@@ -266,7 +244,7 @@ export function buildDirectory(): DirectoryEntry[] {
       }
       continue;
     }
-    entries.push({ ...meta, name, url: sub.url, title: sub.title });
+    entries.push({ ...meta, name, url: sub.url, title: meta.title ?? sub.title });
   }
 
   if (process.env.NODE_ENV !== "production") {

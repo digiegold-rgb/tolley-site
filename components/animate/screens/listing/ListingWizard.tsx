@@ -34,7 +34,7 @@ const STEP_HINTS: readonly string[] = [
   'Street, city, state, ZIP. The state picks the advertising rule we follow for you.',
   'Beds, baths, square feet, features. Speak or type. Fair-Housing check runs as you go.',
   'Pick one: a staged photo, a before→after video, a beauty shot.',
-  'Choose the look, see the price, pay. You approve the staged photo before anything is filmed.',
+  'See the price before you pay. Reveals need staged-photo approval; Beauty Shot films your original room directly.',
 ];
 
 /** tier-context is being extended by the API workstream — read the new fields defensively. */

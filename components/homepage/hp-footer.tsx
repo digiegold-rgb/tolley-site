@@ -13,7 +13,6 @@ const columns = [
     heading: "Services",
     links: [
       { label: "Washer & Dryer Rental", href: "/wd" },
-      { label: "Pool Supplies", href: "/pools" },
     ],
   },
   {
@@ -35,17 +34,12 @@ const directory = [
       { label: "Washer & Dryer", href: "/wd" },
       { label: "Trailers", href: "/trailer" },
       { label: "Generators", href: "/generator" },
-      { label: "Tables & Chairs", href: "/tables" },
-      { label: "Picnic Tables", href: "/picnic-table" },
-      { label: "Giant Kerplunk", href: "/kerplunk" },
     ],
   },
   {
     heading: "Home Services",
     links: [
-      { label: "Moving & Hauling", href: "/moving" },
       { label: "HVAC", href: "/hvac" },
-      { label: "Pool Supplies", href: "/pools" },
     ],
   },
   {

@@ -94,18 +94,6 @@ const KNOWN_HEARTBEAT_CRONS: { path: string; schedule: string; cadenceMin: numbe
       return r?.discoveredAt ?? null;
     },
   },
-  {
-    path: "/api/cron/pools-intelligence",
-    schedule: "0 4 * * *",
-    cadenceMin: 1440,
-    check: async () => {
-      const r = await prisma.poolInsight.findFirst({
-        orderBy: { createdAt: "desc" },
-        select: { createdAt: true },
-      });
-      return r?.createdAt ?? null;
-    },
-  },
 ];
 
 export async function GET() {

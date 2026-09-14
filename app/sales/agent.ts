@@ -2,9 +2,9 @@ import type { SubsiteManifest } from "@/lib/agent-manifest";
 
 export const manifest: SubsiteManifest = {
   name: "sales",
-  title: "The Launchpad — Start a Business With No License, No Bank, No Money",
+  title: "The Launchpad — Build Your Business With Tolley",
   purpose:
-    "Jared (Cordless/Tolley.io, Independence MO) gives people who can't start a business the normal way — no driver's license, no bank account, a record, no money — the platform to start anyway: an established LLC, a working Stripe account, a website live same-day, wholesale supplier accounts, trucks and equipment, and marketing automation, in exchange for a small cut while they're on the rails. Not a course, not a loan, not an MLM. A handshake deal that can end in a Buyout Button — the operator eventually owns the whole thing.",
+    "Practical business support from Jared at Tolley.io: websites, payments, suppliers, equipment, and marketing. Bring an idea and agree the scope, costs, responsibilities, and revenue share before launching.",
   url: "/sales",
   schemaType: "Service",
   jsonEndpoints: [],
@@ -106,8 +106,6 @@ export const manifest: SubsiteManifest = {
           type: "enum",
           required: true,
           enum: [
-            "pool-supply",
-            "home-essentials-box",
             "landscape-supply",
             "hvac-supply",
             "own-idea",

@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.42';
+export const APP_VERSION = '1.43';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -40,7 +40,7 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '1.42',
+    version: '1.43',
     date: '2026-09-14',
     title: 'Guided image and video creation',
     items: [
@@ -50,6 +50,38 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Missing inputs point to the step that needs attention. A shared library lets you carry stills into video workflows.',
       'Owner sign-in resumes two-factor verification and refreshes access without losing your draft. Workflows show provider configuration status.',
       'Character stills offer Qwen and FLUX.2 model choices plus searchable location, hair, and camera catalogs with hundreds of choices in each.',
+    ],
+  },
+  {
+    version: '1.42.2',
+    date: '2026-09-14',
+    title: 'Reliable Listing Studio delivery',
+    items: [
+      'Fixed a file upload failure that left generated photos missing at approval.',
+      'Beauty Shots film the original room directly, with clearer camera-motion descriptions.',
+      'Missing previews cannot be approved or trigger a paid retry; missing render files enter the failure and refund flow.',
+      'Beauty Shot proof pages show the original photo and finished video.',
+    ],
+  },
+  {
+    version: '1.42.1',
+    date: '2026-09-14',
+    title: 'Listing Studio starts online',
+    items: [
+      'Listing Studio emails signup links automatically, including for visitors arriving directly or from search.',
+      'Available photo and video options lead straight to signup; the unfinished tour bundle is no longer advertised for sale.',
+      'Help in the listing studio connects you to instructions and support tickets.',
+    ],
+  },
+  {
+    version: '1.42',
+    date: '2026-09-14',
+    title: 'A simpler Tolley directory and Launchpad',
+    items: [
+      'Replaced the T-Agent background video with an interactive property research illustration.',
+      'Find current services faster with a refreshed Start page and clearer business support on the Launchpad.',
+      'Retired Kerplunk, picnic tables, tables and chairs, moving supplies, and Home Essentials Box.',
+      'Paused pool supply background work for the off-season and removed seasonal offers from promotion.',
     ],
   },
   {

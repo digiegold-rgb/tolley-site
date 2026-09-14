@@ -23,6 +23,7 @@ import { listingApi, listingErrorMessage, proofPageUrl } from './listing-api';
 import { useListingPoll, isMovingStatus } from './useListingPoll';
 import { SupportStrip } from './SupportStrip';
 import { Badge, BigButton, Notice } from './listing-ui';
+import { needsListingDeliveryRecovery } from '@/lib/vater/listing/delivery';
 
 const PHASES: Array<{ key: string; label: string; sub: string }> = [
   { key: 'staging', label: 'Staging your photo', sub: 'Furnishing the room from your photo' },
@@ -58,12 +59,14 @@ export interface ListingProgressProps {
 export default function ListingProgress({ job: initial, onJob, onMakeAnother, licenseVerified }: ListingProgressProps): React.ReactElement {
   const { t } = useTheme();
   const billing = useBillingMode();
-  const { job: polled, error: pollErr, setJob } = useListingPoll(initial.id, initial);
+  const { job: polled, error: pollErr, setJob, refresh } = useListingPoll(initial.id, initial);
   const job = polled ?? initial;
   const [busy, setBusy] = React.useState<'approve' | 'restage' | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
   const [copied, setCopied] = React.useState(false);
   const [money, setMoney] = React.useState<MoneyConfirmRequest | null>(null);
+  const [loadedPreview, setLoadedPreview] = React.useState<string | null>(null);
+  const [failedPreview, setFailedPreview] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (polled) onJob(polled);
@@ -71,9 +74,12 @@ export default function ListingProgress({ job: initial, onJob, onMakeAnother, li
 
   const spec = job.sku ? LISTING_SKUS[job.sku] : null;
   const isStill = spec?.kind === 'still';
-  const phases = isStill ? PHASES.slice(0, 2) : PHASES;
-  const idx = phaseIndex(job.status, !!isStill);
-  const moving = isMovingStatus(job.status);
+  const isBeauty = job.sku === 'beauty_shot';
+  const recovery = needsListingDeliveryRecovery(job);
+  const beautyOffset = job.status === 'awaiting_approval' ? 1 : 2;
+  const phases = isBeauty ? PHASES.slice(beautyOffset) : isStill ? PHASES.slice(0, 2) : PHASES;
+  const idx = recovery ? 0 : Math.max(0, phaseIndex(job.status, !!isStill) - (isBeauty ? beautyOffset : 0));
+  const moving = isMovingStatus(job.status) || recovery;
 
   const approve = async () => {
     setBusy('approve');
@@ -128,9 +134,16 @@ export default function ListingProgress({ job: initial, onJob, onMakeAnother, li
 
   // A still SKU's finalUrl is the labeled PNG — never feed it to <video>.
   const mediaUrl = isStill ? null : (job.finalUrl ?? job.videoUrl ?? null);
-  const stillUrl = job.stagedStillLabeledUrl ?? job.stagedStillUrl ?? null;
   const original = job.sourceImageUrls?.[0] ?? null;
+  const stillUrl = isBeauty ? original : job.stagedStillLabeledUrl ?? job.stagedStillUrl ?? null;
+  const canApprove = !!stillUrl && !recovery && loadedPreview === stillUrl && failedPreview !== stillUrl;
   const downloadUrl = mediaUrl ?? stillUrl;
+  const previewRef = React.useCallback((image: HTMLImageElement | null) => {
+    if (image?.complete && image.naturalWidth > 0 && stillUrl) {
+      setLoadedPreview(stillUrl);
+      setFailedPreview(null);
+    }
+  }, [stillUrl]);
 
   const wrap: React.CSSProperties = { maxWidth: 1040, margin: '0 auto', padding: '8px 12px 48px', fontFamily: JELLY_TOKENS.font, fontSize: 18, color: t.text, display: 'grid', gap: 18 };
 
@@ -158,7 +171,7 @@ export default function ListingProgress({ job: initial, onJob, onMakeAnother, li
         </ol>
         {moving && (
           <div style={{ marginTop: 14, fontSize: 16, color: t.textSecondary }} aria-live="polite">
-            {job.status === 'staging'
+            {recovery ? 'Checking delivery of your generated photo.' : job.status === 'staging'
               ? 'Staging usually takes about a minute.'
               : 'Filming and finishing usually take 10–15 minutes.'}{' '}
             You can close this tab — it’s saved in <strong>My listings</strong> and will be there when it’s done.
@@ -168,14 +181,21 @@ export default function ListingProgress({ job: initial, onJob, onMakeAnother, li
       </GlassCard>
 
       {/* approval */}
-      {job.status === 'awaiting_approval' && (
+      {recovery && (
+        <GlassCard radius={JELLY_TOKENS.radius.xxl} padding="22px 24px" data-testid="listing-missing-still">
+          <h2>Your generated photo has not been delivered</h2>
+          <p>We are checking the render service. There is no new image to approve, and you do not need to pay for another try.</p>
+          <BigButton variant="outline" onClick={() => void refresh()}>Check delivery</BigButton>
+        </GlassCard>
+      )}
+      {job.status === 'awaiting_approval' && !recovery && (
         <GlassCard radius={JELLY_TOKENS.radius.xxl} padding="22px 24px" shadow data-testid="listing-approval">
-          <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>Here’s your staged photo. Happy with it?</div>
+          <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>{isBeauty ? 'Animate this room as it is?' : 'Here’s your staged photo. Happy with it?'}</div>
           <div style={{ fontSize: 17, color: t.textSecondary, marginBottom: 16 }}>
-            {isStill ? 'Approve to get the final files (labeled social version + MLS-safe version).' : 'Approve and we film the video from it. Nothing more is charged for the video — it was included.'}
+            {isBeauty ? 'Beauty Shot adds a slow camera move to your original photo. It does not furnish the room. Your video is already included in the price.' : isStill ? 'Approve to get the final files (labeled social version + MLS-safe version).' : 'Approve and we film the video from it. Nothing more is charged for the video — it was included.'}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: original ? 'minmax(0, 1fr) minmax(0, 2fr)' : '1fr', gap: 14, alignItems: 'start' }} className="listing-approval-grid">
-            {original && (
+          <div style={{ display: 'grid', gridTemplateColumns: original && !isBeauty ? 'minmax(0, 1fr) minmax(0, 2fr)' : '1fr', gap: 14, alignItems: 'start' }} className="listing-approval-grid">
+            {original && !isBeauty && (
               <figure style={{ margin: 0, ...glass(t), borderRadius: JELLY_TOKENS.radius.lg, overflow: 'hidden' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={original} alt="Original photo" style={{ display: 'block', width: '100%', height: 'auto' }} />
@@ -185,20 +205,21 @@ export default function ListingProgress({ job: initial, onJob, onMakeAnother, li
             {stillUrl && (
               <figure style={{ margin: 0, ...glass(t), borderRadius: JELLY_TOKENS.radius.lg, overflow: 'hidden', border: `2px solid ${JELLY_TOKENS.brand}` }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={stillUrl} alt="Staged photo" data-testid="listing-staged-still" style={{ display: 'block', width: '100%', height: 'auto' }} />
-                <figcaption style={{ fontSize: 14, color: t.textFaint, padding: '8px 12px' }}>After — staged · label burned on frame</figcaption>
+                <img ref={previewRef} src={stillUrl} alt={isBeauty ? 'Original room to animate' : 'Staged photo'} data-testid="listing-staged-still" onLoad={() => { setLoadedPreview(stillUrl); setFailedPreview(null); }} onError={() => setFailedPreview(stillUrl)} style={{ display: 'block', width: '100%', height: 'auto' }} />
+                <figcaption style={{ fontSize: 14, color: t.textFaint, padding: '8px 12px' }}>{isBeauty ? 'Your original photo — camera motion only' : 'After — staged · label burned on frame'}</figcaption>
               </figure>
             )}
           </div>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 18 }}>
-            <BigButton onClick={() => void approve()} busy={busy === 'approve'} disabled={busy !== null} data-testid="listing-approve-still">
+            <BigButton onClick={() => void approve()} busy={busy === 'approve'} disabled={busy !== null || !canApprove} data-testid="listing-approve-still">
               ✓ Approve{isStill ? '' : ' and film it'}
             </BigButton>
-            <BigButton variant="ghost" onClick={askRestage} disabled={busy !== null} busy={busy === 'restage'} data-testid="listing-restage">
+            {!isBeauty && <BigButton variant="ghost" onClick={askRestage} disabled={busy !== null || !canApprove} busy={busy === 'restage'} data-testid="listing-restage">
               Try again ({formatListingPrice(RESTAGE_PRICE_CENTS)})
-            </BigButton>
+            </BigButton>}
             {job.restageCount > 0 && <span style={{ alignSelf: 'center', fontSize: 15, color: t.textFaint }}>Tried {job.restageCount} extra time{job.restageCount === 1 ? '' : 's'}</span>}
           </div>
+          {failedPreview === stillUrl && stillUrl && <Notice tone="block" style={{ marginTop: 12 }}>The preview could not load. Approval is disabled. Refresh the page or send a support ticket; do not pay for another try.</Notice>}
           {err && <Notice tone="block" style={{ marginTop: 12 }}>{err}</Notice>}
         </GlassCard>
       )}

@@ -34,13 +34,6 @@ export const CRONS: CronEntry[] = [
   { path: "/api/cron/market-collect", schedule: "0 6,18 * * *", cadenceMin: 720, description: "Trading market data" },
   { path: "/api/cron/crypto-sync", schedule: "0 */4 * * *", cadenceMin: 240, description: "Crypto balance sync" },
   { path: "/api/cron/trading-agents", schedule: "0 21 * * 1-5", cadenceMin: day, description: "Trading agent decisions (M-F)" },
-  {
-    path: "/api/cron/pools-intelligence",
-    schedule: "0 4 * * *",
-    cadenceMin: day,
-    description: "Pool pricing + insights",
-    heartbeat: async () => (await prisma.poolInsight.findFirst({ orderBy: { createdAt: "desc" }, select: { createdAt: true } }))?.createdAt ?? null,
-  },
   { path: "/api/cron/regrid-scan", schedule: "0 3 * * 1", cadenceMin: 7 * day, description: "Weekly Regrid parcel scan" },
   { path: "/api/cron/sms-reset", schedule: "0 0 1 * *", cadenceMin: 30 * day, description: "Monthly SMS quota reset" },
   { path: "/api/cron/shop-intelligence", schedule: "0 3 * * *", cadenceMin: day, description: "Shop intel scan" },

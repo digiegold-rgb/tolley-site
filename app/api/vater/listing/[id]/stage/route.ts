@@ -3,9 +3,8 @@
  *
  * server re-lint → checkBudget → rate limit (root human) → owner/lane →
  * debitForAction(`re:<sku>:<id>`, projectId=id) → DGX `staging` job →
- * status `staging`. Every SKU starts with a staging job: the agent approves
- * the still (Step "Your approval") before any video money is spent on the
- * DGX side; `virtual_staging` IS the still.
+ * status `staging`. Beauty Shot starts filming the original photo directly;
+ * before/after reveals first stage a still for approval.
  *
  * Refund path: a DGX kickoff that fails after the debit refunds immediately;
  * a job that fails later refunds from /poll (moderation | compliance |
@@ -23,10 +22,12 @@ import { queueVaterEvent } from "@/lib/vater/events";
 import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
 import { budgetActionFor, isListingSku, LISTING_SKUS, listingDebitKey } from "@/lib/vater/listing-pricing";
 import { buildPromptJson } from "@/lib/vater/listing/prompts";
+import { listingStartPlan } from "@/lib/vater/listing/delivery";
 import {
   complianceSnapshot,
   computePreflight,
   endCardFromProfile,
+  engineOf,
   idempotencyKeyFor,
   listingError,
   listingFactsFor,
@@ -95,17 +96,24 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
   }
 
   const profile = pre.profile;
+  const plan = listingStartPlan(sku);
+  const engine = engineOf(job);
   const photos = job.sourceImageUrls.map((url, i) => ({ url, room: job.roomType ?? undefined, label: i === 0 ? "primary" : undefined }));
-  const inputs = { photos, style: job.style, roomType: job.roomType, look: job.look, lane: job.lane, n: job.restageCount };
-  const idempotencyKey = await idempotencyKeyFor("staging", id, inputs);
+  const inputs = { photos, style: job.style, roomType: job.roomType, look: job.look, lane: job.lane, n: job.restageCount,
+    ...(plan.dgxSku === "beauty" ? { engine, durationS: spec.durationS } : {}) };
+  const idempotencyKey = await idempotencyKeyFor(plan.dgxSku, id, inputs);
 
   let created;
   try {
     created = await autopilot.createListingJob({
-      sku: "staging",
+      sku: plan.dgxSku,
       idempotencyKey,
       listingId: id,
       photos,
+      ...(plan.dgxSku === "beauty" ? {
+        engine, durationS: spec.durationS, upscale: true,
+        resolution: engine === "modal-wan" ? "480p" as const : "720p" as const,
+      } : {}),
       style: job.style ?? undefined,
       roomType: job.roomType ?? undefined,
       look: lookOf(job),
@@ -133,9 +141,11 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
   const updated = await prisma.vaterListingJob.update({
     where: { id },
     data: {
-      status: "staging",
+      status: plan.status,
       step: 5,
-      dgxStagingJobId: created.jobId,
+      ...(plan.dgxSku === "beauty"
+        ? { dgxRenderJobId: created.jobId, stagedStillUrl: null, stagedStillLabeledUrl: null }
+        : { dgxStagingJobId: created.jobId }),
       priceCents: chargeCents,
       promptJson: promptJson as unknown as Prisma.InputJsonValue,
       complianceJson: complianceSnapshot(job, profile, pre),
@@ -147,7 +157,7 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
   queueVaterEvent({
     userId,
     kind: "render.phase",
-    message: `Listing Studio: ${spec.label} started (staging).`,
+    message: `Listing Studio: ${spec.label} started (${plan.status}).`,
     projectId: id,
     jobId: created.jobId,
     data: { sku, chargeCents, reused: created.reused, product: "realestate" },

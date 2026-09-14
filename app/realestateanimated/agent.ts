@@ -4,7 +4,7 @@ export const manifest: SubsiteManifest = {
   name: "realestateanimated",
   title: "Listing Studio by Jelly! — listing videos from one photo",
   purpose:
-    "Real-estate lane of Jelly! Studio for agents: upload one listing photo, pick Virtual Staging or a Before→After Reveal, pay per video, post it. Fair-Housing safe by default (Equal Housing Opportunity on every export, on-frame virtual-staging label, broker line per state rules, MLS-safe export, public proof page). Invite-only beta.",
+    "Real-estate lane of Jelly! Studio for agents: upload one listing photo, pick Virtual Staging or a Before→After Reveal, pay per video, post it. Includes Equal Housing Opportunity on exports, virtual-staging labels, broker end cards, and a public proof page. Beta with automatic email signup links and in-app support tickets.",
   url: "/realestateanimated",
   schemaType: "SoftwareApplication",
   jsonEndpoints: [],
