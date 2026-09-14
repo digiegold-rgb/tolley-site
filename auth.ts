@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { headers } from "next/headers";
 
 import NextAuth from "next-auth";
 import Email from "next-auth/providers/email";
@@ -380,7 +381,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
        * support session can still target any user, tab or not. */
       try {
         if (session.user && token.sub) {
-          const wsUserId = await readWsUserId(token.sub);
+          const pathname = (await headers()).get("x-tolley-pathname") || "";
+          const isLeadsRequest = pathname === "/leads" || pathname.startsWith("/leads/")
+            || pathname === "/api/leads" || pathname.startsWith("/api/leads/");
+          // T-Agent subscriptions and CRM data belong to the real login, not
+          // the hidden User selected by a Jelly Studio tab. Support view-as
+          // still runs below and keeps its existing read-only restrictions.
+          const wsUserId = isLeadsRequest ? null : await readWsUserId(token.sub);
           if (
             wsUserId &&
             wsUserId !== token.sub &&

@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.41.2';
+export const APP_VERSION = '1.41.3';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.41.3',
+    date: '2026-09-14',
+    title: 'T-Agent owner sign-in routing',
+    items: [
+      'Owners go from pricing to their included T-Agent workspace without checkout.',
+      'Pricing sign-in opens T-Agent and resumes authenticator verification when needed.',
+      'Switching Jelly Studio tabs no longer changes your T-Agent account or subscription.',
+    ],
+  },
   {
     version: '1.41.2',
     date: '2026-09-12',

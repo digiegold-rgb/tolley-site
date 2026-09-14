@@ -10,6 +10,8 @@ export const metadata: Metadata = {
 
 import { getAnnualLeadsPrices } from "@/lib/leads-pricing-server";
 import { auth } from "@/auth";
+import { isAdminEmail } from "@/lib/admin-auth";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import LeadsPricingClient from "@/components/leads/LeadsPricingClient";
 import {
@@ -19,7 +21,11 @@ import {
 
 export default async function LeadsPricingPage() {
   const session = await auth();
+  if (session?.mfaRequired) redirect("/login/mfa-challenge?callbackUrl=%2Fleads");
   const userId = session?.user?.id;
+  if (userId && !session?.impersonatedBy && isAdminEmail(session.user?.email)) {
+    redirect("/leads");
+  }
   const annualPrices = await getAnnualLeadsPrices();
 
   let currentTier: string | null = null;

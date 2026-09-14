@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { isAdminEmail } from "@/lib/admin-auth";
 import { ensureStripeCustomer, getAppUrl } from "@/lib/billing";
 import { getStripeClient } from "@/lib/stripe";
 import { getLeadsPriceIdsForInterval, type LeadsTier } from "@/lib/leads-subscription";
@@ -17,8 +18,16 @@ export async function POST(request: Request) {
   const session = await auth();
   const userId = session?.user?.id;
 
-  if (!userId) {
+  if (!userId || session?.mfaRequired) {
     return NextResponse.json({ error: "LOGIN_REQUIRED" }, { status: 401 });
+  }
+
+  if (session.impersonatedBy) {
+    return NextResponse.json({ error: "VIEW_AS_READ_ONLY" }, { status: 403 });
+  }
+
+  if (isAdminEmail(session.user?.email)) {
+    return NextResponse.json({ url: "/leads" });
   }
 
   try {

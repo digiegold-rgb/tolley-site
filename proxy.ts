@@ -160,6 +160,9 @@ export async function proxy(request: NextRequest) {
   }
 
   const headers = new Headers(request.headers);
+  // Server auth uses the actual route to keep Studio tabs out of T-Agent.
+  // Always overwrite client input; this header is not a caller-selected scope.
+  headers.set("x-tolley-pathname", pathname);
   if (
     (pathname === "/api/ask" || isApiProtected) &&
     !headers.has("x-request-id")
