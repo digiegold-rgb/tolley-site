@@ -22,21 +22,12 @@ const marker = Permanent_Marker({
 });
 
 export const metadata: Metadata = {
-  title: "The Launchpad — Start a Business With No License, No Bank, No Money | Tolley.io",
+  title: "The Launchpad — Build Your Business With Tolley",
   description:
-    "No driver's license, no bank account, a record, no money — you can still start a business in Kansas City. Jared gives you the LLC, the Stripe account, a website live same-day, wholesale suppliers, trucks, and marketing already running. You bring the idea and the hustle. Handshake deal, no course to buy.",
-  keywords: [
-    "start a business with no money",
-    "start a business no license",
-    "start a business no bank account",
-    "second chance business Kansas City",
-    "business opportunity Independence MO",
-    "start a business with a record",
-  ],
+    "Bring your business idea. Jared at Tolley.io helps with websites, payments, suppliers, equipment, and marketing. Start with a conversation in Kansas City.",
   openGraph: {
-    title: "The Launchpad — You Can Still Start",
-    description:
-      "You bring the idea and the hustle. Jared brings the LLC, the Stripe account, a website same-day, suppliers, trucks, and marketing. You can be selling tonight.",
+    title: "You bring the idea. Let’s build it.",
+    description: "Practical business support from The Launchpad at Tolley.io.",
     url: "https://www.tolley.io/sales",
     siteName: "The Launchpad",
     locale: "en_US",
@@ -44,16 +35,22 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "The Launchpad — You Can Still Start",
+    title: "The Launchpad — Build Your Business With Tolley",
     description:
-      "No license, no bank account, a record, no money — you can still start a business. Bring the idea. Jared brings everything else.",
+      "Your idea. Websites, payments, and practical support from Tolley.io.",
   },
   alternates: { canonical: "https://www.tolley.io/sales" },
 };
 
-export default function SalesLayout({ children }: { children: React.ReactNode }) {
+export default function SalesLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div className={`lp-page ${anton.variable} ${workSans.variable} ${marker.variable}`}>
+    <div
+      className={`lp-page ${anton.variable} ${workSans.variable} ${marker.variable}`}
+    >
       {children}
     </div>
   );
