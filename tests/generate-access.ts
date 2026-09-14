@@ -38,6 +38,7 @@ async function main() {
     const login = await popupPromise;
     console.log("Opened login tab");
     login.setDefaultTimeout(60_000);
+    await expect(login.getByRole("heading", { name: "Sign in to Generate", exact: true })).toBeVisible({ timeout: 60_000 });
     await expect(login.getByRole("button", { name: "Sign In", exact: true })).toBeEnabled({ timeout: 60_000 });
     await login.locator('input[type="email"]').fill(email);
     await login.locator('input[type="password"]').fill(password);
@@ -98,6 +99,8 @@ async function main() {
     await prisma.vaterAccount.update({ where: { userId: user.id }, data: { tier: "public" } });
     const forbidden = await context.request.get(`${base}/api/generate/access`);
     assert.equal(forbidden.status(), 403); assert.equal((await forbidden.json()).code, "FORBIDDEN");
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await expect(page.getByRole("link", { name: "Sign out / switch account ↗" })).toHaveAttribute("href", "/logout", { timeout: 60_000 });
     console.log("PASS real owner credentials → MFA → automatic access refresh with draft preserved; all seven workflows and model variants accept real API dry runs; non-owner blocked.");
   } finally {
     await browser.close();

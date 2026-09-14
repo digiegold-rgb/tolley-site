@@ -41,23 +41,24 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   // Brand the auth screen off the destination: /animate signups are Jelly
   // Studio customers, not T-Agent search users (audit AN-03, 2026-08-15).
   const product = productForPath(callbackUrl);
-  const isStudio = product !== null;
+  const isGenerate = callbackUrl === "/generate" || callbackUrl.startsWith("/generate?");
+  const isStudio = product !== null || isGenerate;
   const isListing = product === "realestate";
 
   return (
     <AuthShell
       brand={isListing ? "listing studio" : isStudio ? "jelly studio" : "t-agent"}
-      title={isListing ? "Sign in to Listing Studio" : isStudio ? "Sign in to Jelly Studio" : "Sign In"}
+      title={isGenerate ? "Sign in to Generate" : isListing ? "Sign in to Listing Studio" : isStudio ? "Sign in to Jelly Studio" : "Sign In"}
       subtitle={
-        isListing
+        isGenerate ? "Use your owner account and complete two-factor authentication to return to your generation workspace." : isListing
           ? "Pick up where you left off — your listings, videos and billing are waiting."
           : isStudio
             ? "Pick up where you left off — your projects, library and billing are waiting."
             : "Use your account credentials to continue in T-Agent."
       }
-      alternatePrompt="Need access?"
-      alternateLabel="Create account"
-      alternateHref={`/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+      alternatePrompt={isGenerate ? "Owner access is required." : "Need access?"}
+      alternateLabel={isGenerate ? "Back to Generate" : "Create account"}
+      alternateHref={isGenerate ? "/generate" : `/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`}
     >
       <LoginForm />
     </AuthShell>
