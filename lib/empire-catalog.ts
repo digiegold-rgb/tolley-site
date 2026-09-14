@@ -91,7 +91,7 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
   { id: "biz-wd", label: "W/D Rentals", lane: "jared-biz", row: 0, col: 1, kind: "business", icon: "🌀", signal: "db:wd", cadenceMin: 2 * day, href: "/wd/admin", note: "Real MRR $1,476 · 26 subs (7/8 reconcile)." },
   { id: "biz-tagent", label: "T-Agent / Tolley SaaS", lane: "jared-biz", row: 0, col: 2, kind: "business", icon: "🤖", signal: "manual:paused", href: "/agent", note: "Parked until paying clients (priority list). Flip signal back to db:tagent when revived." },
   { id: "biz-realestate", label: "Real Estate (MLS)", lane: "jared-biz", row: 0, col: 3, kind: "business", icon: "🏠", signal: "cron:/api/cron/mls-sync", href: "/homes", note: "MLS Grid = DEMO feed, frozen ~6/2." },
-  { id: "biz-delivery", label: "1099 Delivery", lane: "jared-biz", row: 0, col: 4, kind: "business", icon: "📦", signal: "cron:/api/cron/dispatch-match", href: "/drive" },
+  { id: "biz-delivery", label: "1099 Delivery", lane: "jared-biz", row: 0, col: 4, kind: "business", icon: "📦", signal: "manual:killed", note: "Drive and Last-Mile Delivery sites retired 2026-09-14." },
   { id: "biz-shop", label: "Shop / Reselling", lane: "jared-biz", row: 0, col: 5, kind: "business", icon: "🛒", signal: "cron:/api/cron/shop-intelligence", href: "/shop" },
   { id: "biz-trading", label: "Trading Engine", lane: "jared-biz", row: 1, col: 0, kind: "business", icon: "📈", signal: "dgx:unit:trading-sync", cadenceMin: 10, href: "/trading" },
   { id: "biz-pools", label: "Pools", lane: "jared-biz", row: 1, col: 1, kind: "business", icon: "🏊", signal: "manual:paused", href: "/pools", note: "Paused 8/7 (Jared: dead weight) — pool360-sync scraper timing out on 0 SKUs. Flip signal back to dgx:unit:pool360-sync to revive." },
@@ -140,7 +140,7 @@ export const EMPIRE_NODES: EmpireNodeDef[] = [
 
   // ── OUTSIDE CLIENTS ──────────────────────────────────────────────────────
   { id: "cli-crazybins", label: "Crazy Bin Store #2", lane: "clients", row: 0, col: 0, kind: "page", icon: "🗑️", signal: "db:views:crazybins", cadenceMin: week, href: "/crazybins" },
-  { id: "cli-weddings", label: "13:13 Weddings", lane: "clients", row: 0, col: 1, kind: "page", icon: "💒", signal: "db:views:e-and-t", cadenceMin: 2 * week, href: "/e-and-t" },
+  { id: "cli-weddings", label: "13:13 Weddings", lane: "clients", row: 0, col: 1, kind: "page", icon: "💒", signal: "manual:killed", note: "Site retired 2026-09-14." },
   { id: "cli-olsson", label: "Olsson BPO (Ed M.)", lane: "clients", row: 0, col: 2, kind: "business", icon: "🏗️", signal: "manual:missing", note: "BPO drafted 5/19 — verify in Matrix before send." },
   { id: "cli-buckeye-extract", label: "Buckeye Extract", lane: "clients", row: 0, col: 3, kind: "pipeline", icon: "🧾", signal: "dgx:unit:buckeye-extract", cadenceMin: 120, note: "Slips → Gemini OCR, hourly." },
   { id: "cli-buckeye-build", label: "Buckeye Invoice", lane: "clients", row: 0, col: 4, kind: "pipeline", icon: "🔨", signal: "dgx:unit:buckeye-build", cadenceMin: 2 * day, note: "Weekly draft Sun 20:00 → AP Alicia Borden." },

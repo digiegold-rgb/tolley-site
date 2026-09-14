@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Image from "next/image";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import {
@@ -27,18 +28,6 @@ const LP_RECEIPTS: LpReceipt[] = [
     href: "/crazybins",
     shot: "/sales/receipts/crazybins.jpg",
     outcome: "Client site built from their Facebook content.",
-  },
-  {
-    name: "13:13 Weddings & Events",
-    href: "/e-and-t",
-    shot: "/sales/receipts/e-and-t.jpg",
-    outcome: "Wedding planner's full site, built same-day from a brochure.",
-  },
-  {
-    name: "Tolley Cleanouts",
-    href: "/cleanouts",
-    shot: "/sales/receipts/cleanouts.jpg",
-    outcome: "Live service line with quote requests.",
   },
   {
     name: "W/D Rentals",
@@ -309,11 +298,10 @@ export default function SalesPage() {
           </a>
         </p>
         <div className="mt-3 flex flex-wrap justify-center gap-3 text-xs text-[color:var(--lp-steel)] opacity-40">
-          <a href="/cleanouts" className="hover:opacity-100">Cleanouts</a>
-          <a href="/wd" className="hover:opacity-100">W/D Rental</a>
-          <a href="/shop" className="hover:opacity-100">Shop</a>
-          <a href="/homes" className="hover:opacity-100">Real Estate</a>
-          <a href="/start" className="hover:opacity-100">All Tolley.io</a>
+          <Link href="/wd" className="hover:opacity-100">W/D Rental</Link>
+          <Link href="/shop" className="hover:opacity-100">Shop</Link>
+          <Link href="/homes" className="hover:opacity-100">Real Estate</Link>
+          <Link href="/start" className="hover:opacity-100">All Tolley.io</Link>
         </div>
       </footer>
       <MoreFromTolley currentSubsite="sales" />

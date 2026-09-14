@@ -32,13 +32,6 @@ const LINKS: KeepShoppingLink[] = [
     cta: "Talk to Jared about your home",
   },
   {
-    href: "/cleanouts?ref=estate",
-    emoji: "📦",
-    title: "Whole-house cleanout",
-    desc: "Clearing an estate or a property? We empty it top to bottom — anything with resale value lowers your bill, and you get it broom-clean.",
-    cta: "Get a cleanout quote",
-  },
-  {
     href: "/food?ref=estate",
     emoji: "🍽️",
     title: "Ruthann's Kitchen",

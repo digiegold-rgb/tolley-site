@@ -33,7 +33,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/blog": 0.7,
     "/pools": 0.6,
     "/water": 0.6,
-    "/drive": 0.6,
     "/vater": 0.5,
   };
 

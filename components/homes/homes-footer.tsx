@@ -54,12 +54,6 @@ export function HomesFooter() {
           >
             Generator Rental &rarr;
           </Link>
-          <Link
-            href="/lastmile"
-            className="rounded-lg border border-red-500/15 bg-red-500/[0.04] px-4 py-2 text-xs font-bold tracking-wider text-red-400/70 uppercase transition hover:text-red-300"
-          >
-            Last-Mile Delivery &rarr;
-          </Link>
         </div>
 
         <p className="mt-4 text-center text-sm font-light text-neutral-600">

@@ -11,7 +11,6 @@
 - **[Tolley Shop](https://www.tolley.io/shop)** — Local Kansas City marketplace mirror (furniture, electronics, home goods, tools). Updated daily from Facebook Marketplace inventory.
 - **[Content Studio](https://www.tolley.io/content)** — Video-to-multi-platform auto-posting pipeline. One upload publishes to YouTube, TikTok, Facebook, Instagram, and Pinterest with per-platform metadata.
 - **[Snap & Know](https://www.tolley.io/scan)** — Photo-to-property-dossier tool for real estate agents. Upload a listing photo, get location, value range, and comp analysis.
-- **[Red Alert Dispatch](https://www.tolley.io/drive)** — Last-mile delivery platform MVP for 1099 drivers.
 
 ## Rental and Service Marketplace (Kansas City)
 
@@ -20,7 +19,6 @@
 - **[Generator Rental](https://www.tolley.io/generator)** — FIRMAN T07571 tri-fuel generator, 7500W running power.
 - **[Moving Supplies](https://www.tolley.io/moving)** — Reusable totes, blankets, rubber bands bundle rental.
 - **[HVAC Services](https://www.tolley.io/hvac)** — The Cool Guys Heating & Air Conditioning, 24/7 emergency service.
-- **[Last-Mile Delivery](https://www.tolley.io/lastmile)** — Red Alert Dispatch, 3000+ deliveries completed, $2/mile pricing.
 - **[Real Estate](https://www.tolley.io/homes)** — Jared Tolley, United Real Estate Kansas City, residential buyer/seller representation.
 - **[Pool Supplies](https://www.tolley.io/pools)** — Pool Corp wholesale pricing and delivery for pool service companies.
 

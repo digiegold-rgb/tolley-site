@@ -28,12 +28,6 @@ export default async function StartAnalyticsPage() {
           </div>
           <div className="flex items-center gap-3">
             <a
-              href="/junkinjays/analytics"
-              className="rounded-lg bg-[#e85d04]/10 border border-[#e85d04]/30 px-3 py-1.5 text-xs text-[#e85d04] hover:bg-[#e85d04]/20 transition"
-            >
-              JJ Analytics
-            </a>
-            <a
               href="/start"
               className="rounded-lg bg-purple-600/10 border border-purple-500/30 px-3 py-1.5 text-xs text-purple-400 hover:bg-purple-600/20 transition"
             >

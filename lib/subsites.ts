@@ -14,14 +14,11 @@ import { manifest as realestateanimated } from "@/app/realestateanimated/agent";
 import { manifest as billing } from "@/app/billing/agent";
 import { manifest as blog } from "@/app/blog/agent";
 import { manifest as circle } from "@/app/circle/agent";
-import { manifest as cleanouts } from "@/app/cleanouts/agent";
 import { manifest as crazybins } from "@/app/crazybins/agent";
 import { manifest as estate } from "@/app/estate/agent";
 import { manifest as client } from "@/app/client/agent";
 import { manifest as crypto } from "@/app/crypto/agent";
 import { manifest as dataRetention } from "@/app/data-retention/agent";
-import { manifest as drive } from "@/app/drive/agent";
-import { manifest as eAndT } from "@/app/e-and-t/agent";
 import { manifest as food } from "@/app/food/agent";
 import { manifest as game } from "@/app/game/agent";
 import { manifest as generator } from "@/app/generator/agent";
@@ -30,12 +27,9 @@ import { manifest as gpu } from "@/app/gpu/agent";
 import { manifest as homes } from "@/app/homes/agent";
 import { manifest as housing } from "@/app/housing/agent";
 import { manifest as hvac } from "@/app/hvac/agent";
-import { manifest as junkinjays } from "@/app/junkinjays/agent";
 import { manifest as kerplunk } from "@/app/kerplunk/agent";
-import { manifest as lastmile } from "@/app/lastmile/agent";
 import { manifest as leads } from "@/app/leads/agent";
 import { manifest as markets } from "@/app/markets/agent";
-import { manifest as moupins } from "@/app/moupins/agent";
 import { manifest as moving } from "@/app/moving/agent";
 import { manifest as pay } from "@/app/pay/agent";
 import { manifest as picnicTable } from "@/app/picnic-table/agent";
@@ -71,14 +65,11 @@ export const SUBSITES: SubsiteManifest[] = [
   billing,
   blog,
   circle,
-  cleanouts,
   client,
   crazybins,
   estate,
   crypto,
   dataRetention,
-  drive,
-  eAndT,
   food,
   game,
   generator,
@@ -87,12 +78,9 @@ export const SUBSITES: SubsiteManifest[] = [
   homes,
   housing,
   hvac,
-  junkinjays,
   kerplunk,
-  lastmile,
   leads,
   markets,
-  moupins,
   moving,
   pay,
   picnicTable,

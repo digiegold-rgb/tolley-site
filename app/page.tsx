@@ -16,7 +16,6 @@ const services = [
   { name: "Homes & real estate", text: "Find Kansas City homes and connect with Jared about your next move.", href: "/homes" },
   { name: "Estate sales", text: "Browse upcoming sales or get help planning a sale of your own.", href: "/estate" },
   { name: "Rentals for the day", text: "Trailers, generators, tables and more for your next project or gathering.", href: "/rental" },
-  { name: "Moving & cleanouts", text: "Find moving help, hauling and estate cleanout services.", href: "/cleanouts" },
   { name: "Shop the finds", text: "Explore furniture, household finds and the latest treasure hauls.", href: "/shop" },
 ];
 

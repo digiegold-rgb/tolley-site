@@ -9,7 +9,7 @@ import { buildDirectory } from "@/lib/directory";
  * the SaaS page below stays untouched.
  */
 
-const QUICK_PICKS = ["homes", "wd", "lastmile", "shop", "pools", "cleanouts"];
+const QUICK_PICKS = ["homes", "wd", "shop", "pools"];
 
 export function HpCircleBand() {
   const byName = new Map(buildDirectory().map((e) => [e.name, e]));

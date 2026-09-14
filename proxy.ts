@@ -3,6 +3,8 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { isAgentRequest } from "@/lib/agent-detection";
 
+import { isRetiredSitePath } from "@/lib/retired-sites";
+
 const PAGE_GUARDS = ["/agents", "/settings", "/admin", "/results"];
 const API_GUARDS = ["/api/agents", "/api/admin", "/api/results"];
 
@@ -75,6 +77,22 @@ const authSecret =
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  // Return before auth and page rendering, including nested routes and RSC requests.
+  // The matcher leaves static assets available to other sites that share them.
+  if (isRetiredSitePath(pathname)) {
+    return new NextResponse(
+      '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Page removed</title></head><body><main><h1>This page has been removed.</h1><p>This site is no longer available.</p><a href="/">Visit Tolley.io</a></main></body></html>',
+      {
+        status: 410,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "X-Robots-Tag": "noindex",
+          "Cache-Control": "public, max-age=0, s-maxage=3600",
+        },
+      },
+    );
+  }
 
   // Agent detection — log AI agent traffic
   const ua = request.headers.get("user-agent") ?? undefined;

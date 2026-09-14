@@ -36,15 +36,6 @@ import {
   HVAC_REVIEW_COUNT,
 } from "@/lib/hvac";
 import {
-  LM_FLEET,
-  LM_SERVICES,
-  LM_RATE,
-  LM_PHONE,
-  LM_COMPANY,
-  LM_DELIVERIES,
-  LM_STARS,
-} from "@/lib/lastmile";
-import {
   HM_AGENT_NAME,
   HM_BROKERAGE,
   HM_SERVICES,
@@ -121,12 +112,6 @@ export function registerTools(server: McpServer) {
                     description:
                       "Heating & air conditioning, 24/7 service, 4.7★",
                     url: "https://www.tolley.io/hvac",
-                  },
-                  {
-                    name: LM_COMPANY,
-                    description:
-                      "Last-mile delivery, 3000+ deliveries, $2/mile",
-                    url: "https://www.tolley.io/lastmile",
                   },
                   {
                     name: "Real Estate — " + HM_AGENT_NAME,
@@ -292,44 +277,6 @@ export function registerTools(server: McpServer) {
                   text: r.text,
                 })),
                 url: "https://www.tolley.io/hvac",
-              },
-              null,
-              2
-            ),
-          },
-        ],
-      };
-    }
-  );
-
-  // 6. get_lastmile_info
-  server.tool(
-    "get_lastmile_info",
-    "Returns delivery fleet, rates, and service areas",
-    {},
-    async () => {
-      log("get_lastmile_info", {});
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                company: LM_COMPANY,
-                rate: LM_RATE,
-                deliveries: LM_DELIVERIES,
-                rating: LM_STARS,
-                phone: LM_PHONE,
-                fleet: LM_FLEET.map((v) => ({
-                  name: v.name,
-                  capacity: v.capacity,
-                  feature: v.feature,
-                })),
-                services: LM_SERVICES.map((s) => ({
-                  category: s.category,
-                  items: [...s.items],
-                })),
-                url: "https://www.tolley.io/lastmile",
               },
               null,
               2

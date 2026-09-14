@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.41.3';
+export const APP_VERSION = '1.41.4';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.41.4',
+    date: '2026-09-14',
+    title: 'Retired unused sites',
+    items: [
+      'Removed Moupins, Junkin Jays, Last-Mile Delivery, Drive, Cleanouts, and E & T from the site directory and navigation.',
+      'Retired pages now show that they are no longer available.',
+    ],
+  },
   {
     version: '1.41.3',
     date: '2026-09-14',

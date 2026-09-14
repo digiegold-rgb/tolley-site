@@ -14,7 +14,6 @@ const columns = [
     links: [
       { label: "Washer & Dryer Rental", href: "/wd" },
       { label: "Pool Supplies", href: "/pools" },
-      { label: "Last-Mile Delivery", href: "/lastmile" },
     ],
   },
   {
@@ -44,12 +43,9 @@ const directory = [
   {
     heading: "Home Services",
     links: [
-      { label: "Cleanouts", href: "/cleanouts" },
       { label: "Moving & Hauling", href: "/moving" },
-      { label: "Scrap Pickup", href: "/junkinjays" },
       { label: "HVAC", href: "/hvac" },
       { label: "Pool Supplies", href: "/pools" },
-      { label: "Last-Mile Delivery", href: "/lastmile" },
     ],
   },
   {
