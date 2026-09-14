@@ -60,4 +60,4 @@ try{
  }
  assert.deepEqual(errors,[]);
  console.log('PASS: missing/404 previews cannot approve or buy retries; valid images unlock; legacy Beauty uses original; direct Beauty films; ready video downloads; desktop/mobile, no browser errors. APIs mocked; no render spend or messages.');
-}finally{await browser.close();rmSync(fixture,{recursive:true});}
+}finally{await browser.close();rmSync(fixture,{recursive:true});rmSync('.next/dev/types/app/realestateanimated/delivery-test',{recursive:true,force:true});}
