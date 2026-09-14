@@ -50,6 +50,7 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
   const sku = job.sku;
   const spec = sku ? LISTING_SKUS[sku] : null;
   const isStill = spec?.kind === 'still';
+  const isBeauty = sku === 'beauty_shot';
 
   const [look, setLook] = React.useState<ListingLook>(job.look ?? 'photoreal');
   const [engine, setEngine] = React.useState<ListingEngine>(job.engine ?? 'seedance');
@@ -87,7 +88,7 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
   }
   const notes: TicketNote[] = [
     { label: 'Fair-Housing check', value: 'on every export', tone: 'cyan' },
-    { label: 'Label on frame', value: spec?.materialChange ? 'AI-generated · virtually staged' : 'virtually staged', tone: 'faint' },
+    { label: 'Label on frame', value: isBeauty ? 'AI-generated' : spec?.materialChange ? 'AI-generated · virtually staged' : 'virtually staged', tone: 'faint' },
     { label: 'Failed render', value: 'never charged', tone: 'cyan' },
   ];
   if (preflight?.unmetered) notes.push({ label: 'billing', value: 'unmetered account — no credit needed', tone: 'cyan' });
@@ -122,7 +123,7 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
     setErr(null);
     setBlockers([]);
     try {
-      await onSave({ look, engine: effectiveEngine, lane: mls ? 'mls' : 'social', reel: reel && !isStill, step: 5 });
+      await onSave({ look: isBeauty ? 'photoreal' : look, engine: effectiveEngine, lane: mls ? 'mls' : 'social', reel: reel && !isStill, step: 5 });
       const pf = await listingApi.preflight(job.id);
       setPreflight(pf);
       if (!pf.ok || pf.blockers.length) {
@@ -143,9 +144,9 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
         lines: pf.lines?.length
           ? pf.lines
           : [
-              `${spec.label} (${LOOKS.find((l) => l.id === look)?.title ?? look}) from your photo.`,
+              isBeauty ? 'A slow camera move through your original photo. No furniture is added.' : `${spec.label} (${LOOKS.find((l) => l.id === look)?.title ?? look}) from your photo.`,
               'Fair-Housing check: passed. Label burned on frame. Equal Housing Opportunity on the end card.',
-              `Ready in ${spec.etaLabel}. You approve the staged photo before any video is filmed.`,
+              `Ready in ${spec.etaLabel}. ${isBeauty ? 'Filming starts after payment.' : 'You approve the staged photo before any video is filmed.'}`,
             ],
         unitCents: unit,
         unitLabel: isStill ? 'photo' : 'video',
@@ -171,12 +172,12 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
 
   return (
     <div data-testid="listing-step-5">
-      <StepHeader step={5} title="Pick the look, then pay" lede={spec ? `${spec.label} · ${spec.blurb}` : 'Go back and pick a video type first.'} />
+      <StepHeader step={5} title={isBeauty ? 'Review your Beauty Shot, then pay' : 'Pick the look, then pay'} lede={spec ? `${spec.label} · ${spec.blurb}` : 'Go back and pick a video type first.'} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(280px, 0.9fr)', gap: 20, alignItems: 'start' }} className="listing-look-grid">
         <div style={{ display: 'grid', gap: 18 }}>
-          {/* Look */}
-          <div>
+          {/* Beauty Shot preserves the original room; staging looks do not apply. */}
+          {isBeauty ? <Notice>A slow camera move through your original photo. No furniture is added. Choose Before &amp; After Reveal for a furnished transformation.</Notice> : <div>
             <div style={{ fontSize: 19, fontWeight: 700, color: t.text, marginBottom: 10 }}>Look</div>
             <div role="radiogroup" aria-label="Look" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
               {LOOKS.map((l) => (
@@ -193,7 +194,7 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
                 />
               ))}
             </div>
-          </div>
+          </div>}
 
           {/* Engine */}
           {hasEconomy && spec && sku && (
@@ -335,7 +336,7 @@ function CreditPacksModal({ needCents, balanceCents, onClose }: { needCents?: nu
     setErr(null);
     try {
       const url = await listingApi.buyPack(pack, STUDIO_HOME.realestate);
-      window.location.href = url;
+      window.location.assign(url);
     } catch (e) {
       setErr(listingErrorMessage(e, 'Could not open checkout.'));
       setBusy(null);

@@ -23,6 +23,7 @@ import { mergeVideoCost } from "@/lib/vater/video-cost";
 import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
 import { readAgentProfile } from "@/lib/vater/listing/agent-profile";
 import { isListingSku, LISTING_SKUS } from "@/lib/vater/listing-pricing";
+import { listingDeliveryError, needsListingDeliveryRecovery } from "@/lib/vater/listing/delivery";
 import {
   DGX_SKU_FOR,
   endCardFromProfile,
@@ -55,7 +56,7 @@ export async function GET(_request: NextRequest, ctx: Ctx) {
   // finishing = the Vertical Reel add-on's own 9:16 render, kicked below once
   // the landscape video is done.
   const phase =
-    job.status === "staging" ? "staging" : job.status === "rendering" ? "rendering" : job.status === "finishing" ? "finishing" : null;
+    job.status === "staging" || needsListingDeliveryRecovery(job) ? "staging" : job.status === "rendering" ? "rendering" : job.status === "finishing" ? "finishing" : null;
   const dgxId =
     phase === "staging" ? job.dgxStagingJobId : phase === "rendering" ? job.dgxRenderJobId : phase === "finishing" ? job.dgxVerticalJobId : null;
   if (!phase || !dgxId) {
@@ -79,6 +80,14 @@ export async function GET(_request: NextRequest, ctx: Ctx) {
 
   const costs = mergeVideoCost(job.costJson, st.result?.costs, dgxId);
   const costData: Prisma.VaterListingJobUpdateInput = costs ? { costJson: costs as unknown as Prisma.InputJsonValue } : {};
+
+  if (st.status === "done") {
+    const deliveryError = listingDeliveryError(phase, st.result?.assets);
+    if (deliveryError) {
+      st = { ...st, status: "failed", errorCode: "delivery_failed", error: deliveryError };
+      dgx.status = st.status;
+    }
+  }
 
   if (st.status === "done") {
     const a = st.result?.assets ?? {};

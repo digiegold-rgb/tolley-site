@@ -56,6 +56,7 @@ async function uploadOne(filePath: string, projectId: string): Promise<string> {
 /** Upload any file to an explicit Blob pathname. mp4 → faststart remux first. */
 async function uploadKey(filePath: string, key: string, contentType?: string | null): Promise<string> {
   return uploadFileToBlob(filePath, key, contentType);
+}
 
 
 async function backfill() {

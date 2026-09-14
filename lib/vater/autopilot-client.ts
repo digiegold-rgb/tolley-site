@@ -728,7 +728,7 @@ export type ListingJobInput = OwnerRouting & {
   sourceJobId?: string;
 };
 
-export type ListingErrorCode = "moderation" | "qa_geometry" | "compliance" | "timeout" | "upstream";
+export type ListingErrorCode = "moderation" | "qa_geometry" | "compliance" | "timeout" | "upstream" | "delivery_failed";
 
 export type ListingJobAssets = {
   originalUrl?: string;
