@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState, useSyncExternalStore } from "react";
 import { signIn } from "next-auth/react";
 
 function resolveCallbackUrl(value: string | null) {
@@ -13,7 +13,12 @@ function resolveCallbackUrl(value: string | null) {
   return value;
 }
 
+const subscribeToHydration = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
+
 export function LoginForm() {
+  const ready = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
   const searchParams = useSearchParams();
   const callbackUrl = useMemo(
     () => resolveCallbackUrl(searchParams.get("callbackUrl")),
@@ -67,6 +72,7 @@ export function LoginForm() {
       </label>
       <input
         type="email"
+        disabled={!ready}
         value={email}
         onChange={(event) => setEmail(event.target.value)}
         placeholder="you@agency.com"
@@ -79,6 +85,7 @@ export function LoginForm() {
       </label>
       <input
         type="password"
+        disabled={!ready}
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         placeholder="••••••••"
@@ -100,10 +107,10 @@ export function LoginForm() {
 
       <button
         type="submit"
-        disabled={status === "loading"}
+        disabled={!ready || status === "loading"}
         className="mt-2 w-full rounded-full border border-white/22 bg-white/[0.06] px-4 py-2 text-xs font-semibold tracking-[0.12em] text-white/92 uppercase transition hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-70"
       >
-        {status === "loading" ? "Signing In..." : "Sign In"}
+        {!ready ? "Loading sign-in…" : status === "loading" ? "Signing In..." : "Sign In"}
       </button>
 
     </form>

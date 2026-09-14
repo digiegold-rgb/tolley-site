@@ -123,6 +123,8 @@ export const FAL_MODELS = {
 export type FalModelId = keyof typeof FAL_MODELS;
 
 export const FAL_IMAGE_MODELS = {
+  "qwen-edit": { endpointId: "fal-ai/qwen-image-edit-2511" as const, defaults: { output_format: "png" } },
+  "flux2-edit": { endpointId: "fal-ai/flux-2/edit" as const, defaults: { output_format: "png" } },
   "flux-schnell": {
     endpointId: "fal-ai/flux/schnell" as const,
     defaults: { num_images: 1, output_format: "png", num_inference_steps: 4, enable_safety_checker: false },
@@ -321,6 +323,7 @@ export async function checkCinemaStatus(
 
 export interface FalImageResult {
   imageUrl: string;
+  imageUrls: string[];
   contentType?: string;
   seed?: number;
   hasNsfw?: boolean;
@@ -358,6 +361,7 @@ export async function getImageResult(
 
   return {
     imageUrl: first.url,
+    imageUrls: images.flatMap((image: { url?: string }) => typeof image?.url === "string" ? [image.url] : []),
     contentType: first.content_type,
     seed: typeof data.seed === "number" ? data.seed : undefined,
     hasNsfw,

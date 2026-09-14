@@ -6,7 +6,7 @@ import {
   falT2VModelId,
   isFalImageRecipe,
   isFalVideoRecipe,
-  persistFalStill,
+  persistFalStills,
   pollFalImage,
 } from "@/lib/generate-engine";
 import { applyModalResult, serializeJob } from "@/lib/generate-job-store";
@@ -66,8 +66,8 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
         if (fresh) return NextResponse.json({ job: serializeJob(fresh) });
       }
       if ("done" in poll && poll.done) {
-        const stored = await persistFalStill(row.id, poll.imageUrl);
-        await applyModalResult(row.id, { status: "done", output_urls: [stored] });
+        const stored = await persistFalStills(row.id, poll.imageUrls);
+        await applyModalResult(row.id, { status: "done", output_urls: stored });
         const fresh = await prisma.generateJob.findUnique({ where: { id: row.id } });
         if (fresh) return NextResponse.json({ job: serializeJob(fresh) });
       }

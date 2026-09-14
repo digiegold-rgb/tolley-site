@@ -52,6 +52,8 @@ import { latestLongformJob, loadLongformJob } from "@/lib/generate-longform-stor
 import { serializeJob } from "@/lib/generate-job-store";
 import { isBlockedStudioRequest } from "@/lib/generate-director";
 import { prisma } from "@/lib/prisma";
+import { referenceImagePlan } from "@/lib/generate-reference";
+import { submitImageGeneration } from "@/lib/fal";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -531,6 +533,26 @@ async function postStill(
   }
 
   const shouldSpawn = !dryRun && (explicitStart || !message);
+
+  if (card.model !== "qwen-modal") {
+    let plan;
+    try { plan = referenceImagePlan(card); }
+    catch (error) { return jsonError(error instanceof Error ? error.message : "Invalid reference inputs", 400); }
+    if (!dryRun && !isFalConfigured()) return jsonError("The selected image provider is not configured. Choose Modal Qwen or configure fal.ai.", 503);
+    const row = await prisma.generateJob.create({ data: {
+      status: "queued", recipe: plan.recipe, cardJson: { ...card, fal_model: plan.falModelId }, createdBy,
+    } });
+    if (dryRun) return NextResponse.json({ job: serializeJob(row), card, reply, dryRun: true, started: false, fal_input: plan.input, fal_model: plan.falModelId });
+    try {
+      const result = await submitImageGeneration(plan.falModelId, plan.input.prompt, plan.input);
+      const running = await prisma.generateJob.update({ where: { id: row.id }, data: { status: "running", modalCallId: result.requestId, startedAt: new Date() } });
+      return NextResponse.json({ job: serializeJob(running), card, reply, started: true });
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Image submission failed";
+      const failed = await prisma.generateJob.update({ where: { id: row.id }, data: { status: "failed", error: detail.slice(0, 2000), completedAt: new Date() } });
+      return jsonError(detail, 502, { job: serializeJob(failed) });
+    }
+  }
 
   const kwargs = spawnKwargsForCard(card);
   const row = await prisma.generateJob.create({

@@ -181,7 +181,7 @@ describe("generate route branding", () => {
     assert.match(studio, /applyHair/);
     assert.match(studio, /applyCamera/);
     assert.match(studio, /grey-shirt identity refs lock clothes/i);
-    assert.match(studio, /Chips rewrite Location \/ Hair \/ Camera/);
+    assert.match(studio, /Combine a location, hairstyle, and camera setup/);
     const modalPanel = studio.indexOf('{mode === "modal" ? (');
     const motionForm = studio.indexOf("mode === \"motion\" ? (");
     const blockChip = studio.indexOf("Block NSFW");

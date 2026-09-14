@@ -7,7 +7,7 @@ import type { GenerateMotionCard } from "@/lib/generate-motion-card";
 import type { BeatQueue } from "@/lib/generate-beats";
 import type { LongformQueue } from "@/lib/generate-longform";
 import { clampCinemaSeconds, estimateCinema, type CinemaQueue } from "@/lib/generate-cinema";
-import { COST_CHECKED, COST_SOURCES, cinemaClipCost, costRange, imageCost, modalCost, motionCost, usd } from "@/lib/generate-cost";
+import { COST_CHECKED, COST_SOURCES, cinemaClipCost, costRange, imageCost, modalCost, motionCost, referenceImageCost, usd } from "@/lib/generate-cost";
 
 export function ModelCostPanel({ mode, model, onModel, disabled, dryRun, seconds, aspect, card, motion, beats, longform, cinema }: {
   mode: WorkflowMode; model: string; onModel: (model: string) => void; disabled: boolean; dryRun: boolean;
@@ -24,10 +24,11 @@ export function ModelCostPanel({ mode, model, onModel, disabled, dryRun, seconds
     note = "One image per call. Image dimensions round up to 2 billable megapixels.";
     source = model === "flux-schnell" ? COST_SOURCES.schnell : COST_SOURCES.flux;
   } else if (mode === "modal") {
-    low = modalCost(minutes, 1); total = modalCost(minutes, card.num_images); unit = "per image · runtime assumption";
-    options = [{ id: "qwen", label: "Qwen Image Edit · Modal", price: usd(low) }];
-    note = `For ${card.width} × ${card.height}, ${card.num_inference_steps} steps: enter expected billable minutes per image, including startup. This is a budget assumption, not a measured runtime. Batch time and actual resource use can differ. Only Qwen is connected for this character workflow.`;
-    source = COST_SOURCES.modal;
+    const quote = (id: string) => id === "qwen-modal" ? modalCost(minutes, 1) : referenceImageCost(id, card.width, card.height, card.identity_ref_urls.length + card.extra_image_urls.length);
+    options = [{ id: "qwen-modal", label: "Qwen Image Edit · Modal" }, { id: "qwen-edit", label: "Qwen Image Edit 2511 · fal.ai" }, { id: "flux2-edit", label: "FLUX.2 Edit · fal.ai" }].map(o => ({ ...o, price: usd(quote(o.id)) }));
+    low = quote(model); total = low * card.num_images; unit = "per image generation";
+    note = model === "qwen-modal" ? `For ${card.width} × ${card.height}, ${card.num_inference_steps} steps: enter expected billable minutes per image, including startup. This is a budget assumption, not measured runtime.` : `Estimate rounds output up to whole megapixels.${model === "flux2-edit" ? " Includes 1 MP per reference photo. FLUX.2 supports up to 4 references; negative prompt is saved but not sent because this model does not support it." : " Qwen uses True CFG as its guidance scale."} Diffusers overrides, sigmas, attention settings and sequence length are Modal-only; they stay saved when switching models.`;
+    source = model === "qwen-modal" ? COST_SOURCES.modal : model === "qwen-edit" ? COST_SOURCES.qwenEdit : COST_SOURCES.flux2Edit;
   } else if (mode === "cinema") {
     const next = cinema.beats.find(b => b.status === "draft" || b.status === "rejected");
     const duration = next?.seconds ?? 10;
@@ -63,14 +64,14 @@ export function ModelCostPanel({ mode, model, onModel, disabled, dryRun, seconds
   return <section className="gen-model-cost" aria-label="Model and internal cost" data-testid="model-cost">
     <div className="gen-model-cost-top">
       <label className="gen-field">Generation model
-        <select aria-label="Generation model" data-testid={mode === "cinema" ? "cinema-model" : "generation-model"} value={model} disabled={disabled || options.length < 2} onChange={e => onModel(e.target.value)}>
-          {options.map(o => <option key={o.id} value={o.id}>{o.label} · ~{o.price} / generation</option>)}
-        </select>
+        {options.length === 1 ? <span className="gen-single-model" data-testid="single-generation-model">{options[0].label} · ~{options[0].price} / generation</span> : <select aria-label="Generation model" data-testid={mode === "cinema" ? "cinema-model" : "generation-model"} value={model} disabled={disabled} onChange={e => onModel(e.target.value)}>
+          {options.map(o => <option key={o.id} value={o.id}>{o.label} · ~{o.price} / {mode === "modal" ? "image" : "generation"}</option>)}
+        </select>}
       </label>
       <div aria-live="polite" aria-atomic="true"><span className="gen-micro">Estimated internal cost · USD</span><strong className="gen-cost-number">~{costRange(low, high)}</strong><span>{unit}</span></div>
       {total != null && <div aria-live="polite"><span className="gen-micro">{mode === "modal" ? `${card.num_images} image batch` : "Remaining sequence"}</span><strong className="gen-cost-number">~{costRange(total, totalHigh)}</strong></div>}
     </div>
-    {mode === "modal" && <label className="gen-field">Assumed compute minutes per image<input aria-label="Assumed compute minutes per image" type="number" min="0.1" max="20" step="0.1" value={minutes} onChange={e => setMinutes(Math.min(20, Math.max(0.1, Number(e.target.value) || 0.1)))} /></label>}
+    {mode === "modal" && model === "qwen-modal" && <label className="gen-field">Assumed compute minutes per image<input aria-label="Assumed compute minutes per image" type="number" min="0.1" max="20" step="0.1" value={minutes} onChange={e => setMinutes(Math.min(20, Math.max(0.1, Number(e.target.value) || 0.1)))} /></label>}
     <p className="gen-hint">{note}</p>
     {dryRun && <p className="gen-ready">Dry run: $0 generation spend. Estimates above apply when you turn test mode off.</p>}
     <details><summary>What this estimate includes</summary><p className="gen-hint">Provider generation cost before credits or discounts; no retail markup. Excludes director chat, storage, uploads, and video processing. Each regenerate or retry is another provider request. Estimates are not an invoice. Rates checked {COST_CHECKED}. <a href={source} target="_blank" rel="noreferrer">Provider pricing ↗</a></p></details>

@@ -5,6 +5,9 @@
 // /api/generate/jobs (HQ-gated). T2I/T2V/I2V use fal (FAL_KEY), not Spark
 // quickgen / Gemini keyframes. Do not change /animate, billing, or auth.
 import { useEffect, useRef, useState } from "react";
+import { GenerateAccessStatus } from "./access-status";
+import { PromptPicker as PromptChipRow } from "./prompt-picker";
+import { referenceModelProblem } from "@/lib/generate-reference";
 import { ModelCostPanel } from "./model-cost";
 import { WorkflowContext, WorkflowNav, WorkflowPicker, WorkflowSection } from "./workflow";
 import { GENERATE_WORKFLOWS, WORKFLOW_STEPS, workflowBlockers, usableStudioImage, type WorkflowStep } from "@/lib/generate-workflow";
@@ -28,13 +31,13 @@ import {
 } from "@/lib/generate-job-card";
 import {
   applyCamera,
+  applyCustomPromptChoice,
   applyHair,
   applyLocation,
   CAMERA_CHIPS,
   HAIR_CHIPS,
   LOCATION_CHIPS,
   promptChipId,
-  type PromptChipOption,
 } from "@/lib/generate-prompt-chips";
 import {
   ENGINE_RECIPE_T2I,
@@ -177,42 +180,6 @@ function isVideoUrl(url: string): boolean {
 }
 
 type ChatMsg = { id: string; role: "user" | "assistant"; content: string };
-
-function PromptChipRow({
-  label,
-  ariaLabel,
-  chips,
-  activeId,
-  disabled,
-  onPick,
-}: {
-  label: string;
-  ariaLabel: string;
-  chips: PromptChipOption[];
-  activeId: string;
-  disabled: boolean;
-  onPick: (id: string) => void;
-}) {
-  return (
-    <div className="gen-prompt-chip-row">
-      <span className="gen-prompt-chip-label">{label}</span>
-      <div className="gen-nsfw-chips" role="group" aria-label={ariaLabel}>
-        {chips.map((chip) => (
-          <button
-            key={chip.id}
-            type="button"
-            className={`gen-nsfw-chip${activeId === chip.id ? " gen-nsfw-chip-on" : ""}`}
-            disabled={disabled}
-            aria-pressed={activeId === chip.id}
-            onClick={() => onPick(chip.id)}
-          >
-            {chip.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function mid() {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -693,7 +660,7 @@ export default function GenerateStudio() {
       setModalJobs([]);
       return;
     }
-    if (!r.ok) return;
+    if (!r.ok) throw new Error("Could not load the library. Your inputs are preserved.");
     const j = (await r.json()) as { jobs?: ModalJob[]; library?: { unlocked?: unknown }; modal?: { configured: boolean }; fal?: { configured: boolean } };
     setModalAuthed(true);
     if (j.modal) setModalStatus(j.modal);
@@ -775,7 +742,7 @@ export default function GenerateStudio() {
       fd.append("file", file);
       const r = await fetch("/api/generate/upload", { method: "POST", body: fd });
       if (r.status === 401 || r.status === 403) {
-        throw new Error("Not authorized — log in at /hq first, then come back.");
+        throw new Error("Access expired or needs two-factor authentication. Use Sign in to Generate above, then return to this tab.");
       }
       const j = (await readJson(r)) as { url?: string; error?: string };
       if (!r.ok || !j.url) throw new Error(j.error || "upload failed");
@@ -828,7 +795,7 @@ export default function GenerateStudio() {
       }),
     });
     if (r.status === 401 || r.status === 403) {
-      throw new Error("Not authorized — log in at /hq first, then come back.");
+      throw new Error("Access expired or needs two-factor authentication. Use Sign in to Generate above, then return to this tab.");
     }
     const j = (await readJson(r)) as {
       queue?: BeatQueue;
@@ -911,7 +878,7 @@ export default function GenerateStudio() {
       }),
     });
     if (r.status === 401 || r.status === 403) {
-      throw new Error("Not authorized — log in at /hq first, then come back.");
+      throw new Error("Access expired or needs two-factor authentication. Use Sign in to Generate above, then return to this tab.");
     }
     const j = (await readJson(r)) as {
       queue?: LongformQueue;
@@ -1135,7 +1102,7 @@ export default function GenerateStudio() {
       fd.append("file", file);
       const r = await fetch("/api/generate/upload", { method: "POST", body: fd });
       if (r.status === 401 || r.status === 403) {
-        throw new Error("Not authorized — log in at /hq first, then come back.");
+        throw new Error("Access expired or needs two-factor authentication. Use Sign in to Generate above, then return to this tab.");
       }
       const j = (await readJson(r)) as { url?: string; error?: string };
       if (!r.ok || !j.url) throw new Error(j.error || "upload failed");
@@ -1176,7 +1143,7 @@ export default function GenerateStudio() {
       }),
     });
     if (r.status === 401 || r.status === 403) {
-      throw new Error("Not authorized — log in at /hq first, then come back.");
+      throw new Error("Access expired or needs two-factor authentication. Use Sign in to Generate above, then return to this tab.");
     }
     const j = (await readJson(r)) as {
       queue?: CinemaQueue;
@@ -1259,7 +1226,7 @@ export default function GenerateStudio() {
           const s = await fetch(`/api/generate/jobs/${encodeURIComponent(jobId)}`, { cache: "no-store" });
           if (s.status === 401 || s.status === 403) {
             if (poll.current) clearInterval(poll.current);
-            reject(new Error("Not authorized — log in at /hq first, then come back."));
+            reject(new Error("Access expired or needs two-factor authentication. Use Sign in to Generate above, then return to this tab."));
             return;
           }
           let sj: { job?: ModalJob; error?: string };
@@ -1517,7 +1484,7 @@ export default function GenerateStudio() {
           ),
         });
         if (res.status === 401 || res.status === 403) {
-          throw new Error("Not authorized — log in at /hq first, then come back.");
+          throw new Error("Access expired or needs two-factor authentication. Use Sign in to Generate above, then return to this tab.");
         }
         const data = (await readJson(res)) as {
           reply?: string;
@@ -1581,7 +1548,7 @@ export default function GenerateStudio() {
           const s = await fetch(`/api/generate/jobs/${encodeURIComponent(jobId)}`, { cache: "no-store" });
           if (s.status === 401 || s.status === 403) {
             if (poll.current) clearInterval(poll.current);
-            reject(new Error("Not authorized — log in at /hq first, then come back."));
+            reject(new Error("Access expired or needs two-factor authentication. Use Sign in to Generate above, then return to this tab."));
             return;
           }
           let sj: { job?: ModalJob; error?: string };
@@ -1670,7 +1637,7 @@ export default function GenerateStudio() {
       if (s.status === 401 || s.status === 403) {
         if (poll.current) clearInterval(poll.current);
         setStage(null);
-        setError("Not authorized — log in at /hq first, then come back.");
+        setError("Access expired or needs two-factor authentication. Use Sign in to Generate above, then return to this tab.");
         return;
       }
       let sj: { job?: ModalJob; error?: string };
@@ -1721,7 +1688,7 @@ export default function GenerateStudio() {
       body: JSON.stringify({ card, start: !dryRun, dryRun }),
     });
     if (r.status === 401 || r.status === 403) {
-      throw new Error("Not authorized — log in at /hq first, then come back.");
+      throw new Error("Access expired or needs two-factor authentication. Use Sign in to Generate above, then return to this tab.");
     }
     const j = (await readJson(r)) as {
       job?: ModalJob;
@@ -1738,14 +1705,14 @@ export default function GenerateStudio() {
         {
           id: mid(),
           role: "assistant",
-          content: `Dry run queued (${j.job?.id || "no id"}). Kwargs ready — untick Dry run and hit Go to spend the A100.`,
+          content: `Dry run queued (${j.job?.id || "no id"}). Request ready. Turn off Dry run and generate to use the selected model.`,
         },
       ]);
       return;
     }
     if (!j.job?.id) throw new Error(j.error || "submit failed");
     setActiveJobId(j.job.id);
-    setStage("queued on Modal…");
+    setStage(card.model === "qwen-modal" ? "queued on Modal…" : "queued on fal…");
     await pollModalJob(j.job.id);
   }
 
@@ -1807,7 +1774,7 @@ export default function GenerateStudio() {
         body: JSON.stringify({ kind: "motion", card, start: false, dryRun: true }),
       });
       if (r.status === 401 || r.status === 403) {
-        throw new Error("Not authorized — log in at /hq first, then come back.");
+        throw new Error("Access expired or needs two-factor authentication. Use Sign in to Generate above, then return to this tab.");
       }
       const j = (await readJson(r)) as {
         job?: ModalJob;
@@ -1849,7 +1816,7 @@ export default function GenerateStudio() {
         fd.append("file", imageFile);
         const up = await fetch("/api/generate/upload", { method: "POST", body: fd });
         if (up.status === 401 || up.status === 403) {
-          throw new Error("Not authorized — log in at /hq first, then come back.");
+          throw new Error("Access expired or needs two-factor authentication. Use Sign in to Generate above, then return to this tab.");
         }
         const uj = (await readJson(up)) as { url?: string; error?: string };
         if (!up.ok || !uj.url) throw new Error(uj.error || "upload failed");
@@ -1876,7 +1843,7 @@ export default function GenerateStudio() {
         }),
       });
       if (r.status === 401 || r.status === 403) {
-        throw new Error("Not authorized — log in at /hq first, then come back.");
+        throw new Error("Access expired or needs two-factor authentication. Use Sign in to Generate above, then return to this tab.");
       }
       const j = (await readJson(r)) as { job?: ModalJob; error?: string; dryRun?: boolean };
       if (!r.ok && !j.job) throw new Error(j.error || "submit failed");
@@ -1914,7 +1881,7 @@ export default function GenerateStudio() {
       }),
     });
     if (r.status === 401 || r.status === 403) {
-      throw new Error("Not authorized — log in at /hq first, then come back.");
+      throw new Error("Access expired or needs two-factor authentication. Use Sign in to Generate above, then return to this tab.");
     }
     const j = (await readJson(r)) as { job?: ModalJob; error?: string; dryRun?: boolean };
     if (!r.ok && !j.job) throw new Error(j.error || "submit failed");
@@ -2051,7 +2018,9 @@ export default function GenerateStudio() {
     references: mode === "modal" ? card.identity_ref_urls : cinemaQueue.image_urls,
     beatCount: mode === "motion2" ? longformQueue.beats.length : cinemaQueue.beats.length,
   });
-  const providerReady = mode === "modal" ? modalStatus?.configured : falStatus?.configured;
+  const referenceProblem = mode === "modal" ? referenceModelProblem(card) : null;
+  if (referenceProblem) blockers.push({ step: 2, message: referenceProblem });
+  const providerReady = mode === "modal" && card.model === "qwen-modal" ? modalStatus?.configured : falStatus?.configured;
   const canGo = engineCanGo && !blockers.length && (dryRun || providerReady !== false) && !chatBusy && !uploadingStill && !uploadingLongformStill;
   function openLibrary() {
     setLibraryOpen(true);
@@ -2097,6 +2066,12 @@ export default function GenerateStudio() {
         </div>
       </header>
 
+      <GenerateAccessStatus onAccess={access => {
+        setModalAuthed(access.authenticated);
+        if (access.modal) setModalStatus(access.modal);
+        if (access.fal) setFalStatus(access.fal);
+      }} onSignedIn={reloadLibraryJobs} />
+
       <WorkflowContext.Provider value={{ step: workflowStep, all: allControls }}>
       <WorkflowNav step={workflowStep} all={allControls} onStep={navigateStep} onAll={() => setAllControls(v => !v)} />
       <div className="gen-workspace-heading">
@@ -2107,18 +2082,19 @@ export default function GenerateStudio() {
         </div>
         {workflowStep > 0 && <button type="button" className="gen-view-toggle" disabled={busy || chatBusy} onClick={() => navigateStep(0)}>Change workflow</button>}
       </div>
-      <WorkflowSection step={0}><WorkflowPicker mode={mode} disabled={busy || chatBusy} onSelect={selectWorkflow} /></WorkflowSection>
+      <WorkflowSection step={0}><WorkflowPicker authenticated={modalAuthed} modal={modalStatus?.configured} fal={falStatus?.configured} mode={mode} disabled={busy || chatBusy} onSelect={selectWorkflow} /></WorkflowSection>
       {(workflowStep > 0 || allControls) && <div className="gen-workspace-tools">
         <span>{workflow.engine}</span>
         {(mode === "motion" || mode === "motion2" || mode === "cinema" || mode === "i2v") && <button type="button" className="gen-view-toggle" onClick={openLibrary}>Choose from library</button>}
         <button type="button" className="gen-view-toggle" aria-expanded={assistantOpen} onClick={() => setAssistantOpen(v => !v)}>{assistantOpen ? "Close director" : "Help me write this"}</button>
       </div>}
       {(workflowStep > 0 || allControls) && <ModelCostPanel
-        mode={mode} model={mode === "t2i" ? imageModel : mode === "t2v" ? textVideoModel : mode === "i2v" ? imageVideoModel : mode === "motion" ? motionCard.model : mode === "cinema" ? cinemaQueue.model : mode === "modal" ? "qwen" : "wan30-i2v"}
+        mode={mode} model={mode === "t2i" ? imageModel : mode === "t2v" ? textVideoModel : mode === "i2v" ? imageVideoModel : mode === "motion" ? motionCard.model : mode === "cinema" ? cinemaQueue.model : mode === "modal" ? card.model : "wan30-i2v"}
         onModel={(model) => {
           if (mode === "t2i") setImageModel(model);
           else if (mode === "t2v") setTextVideoModel(model);
           else if (mode === "i2v") setImageVideoModel(model);
+          else if (mode === "modal") patchCard({ model: model as GenerateJobCard["model"] });
           else if (mode === "motion") patchMotion({ model: model === "wan30-i2v" ? model : "wan-legacy" });
           else if (mode === "cinema") commitCinemaLocal(withCinemaModel(cinemaQueueRef.current, model === "kling" ? "kling" : "seedance"));
         }}
@@ -2188,17 +2164,12 @@ export default function GenerateStudio() {
               {dryRun && <p className="gen-hint">Test mode is on. This checks the request without rendering an image or video.</p>}
             </div>
           </WorkflowSection>
-          {modalAuthed !== true && (
-            <p className="gen-banner gen-banner-warn">
-              {modalAuthed === false ? "Sign in to start generating." : "Checking access to generation services…"} <a href="/hq" target="_blank" rel="noreferrer">Open HQ sign-in ↗</a>, then <button type="button" className="gen-view-toggle" onClick={() => void reloadLibraryJobs().catch(() => setError("Could not check sign-in. Try again."))}>check sign-in</button>.
-            </p>
-          )}
-          {mode === "modal" && modalStatus && !modalStatus.configured && modalAuthed && (
+          {mode === "modal" && card.model === "qwen-modal" && modalStatus && !modalStatus.configured && modalAuthed && (
             <p className="gen-banner gen-banner-warn">
               The character image engine is unavailable. You can still prepare your inputs or test the request with Dry run.
             </p>
           )}
-          {(mode === "motion" || mode === "motion2" || mode === "cinema" || mode === "t2i" || mode === "t2v" || mode === "i2v") &&
+          {((mode === "modal" && card.model !== "qwen-modal") || mode === "motion" || mode === "motion2" || mode === "cinema" || mode === "t2i" || mode === "t2v" || mode === "i2v") &&
             falStatus &&
             !falStatus.configured &&
             modalAuthed && (
@@ -2261,6 +2232,7 @@ export default function GenerateStudio() {
                   label="Location"
                   ariaLabel="Location"
                   chips={LOCATION_CHIPS}
+                  onCustom={text => commitCard(applyCustomPromptChoice(card, "location", text))}
                   activeId={promptChipId(card.prompt, "location")}
                   disabled={busy}
                   onPick={(id) => commitCard(applyLocation(card, id))}
@@ -2269,6 +2241,7 @@ export default function GenerateStudio() {
                   label="Hair"
                   ariaLabel="Hair"
                   chips={HAIR_CHIPS}
+                  onCustom={text => commitCard(applyCustomPromptChoice(card, "hair", text))}
                   activeId={promptChipId(card.prompt, "hair")}
                   disabled={busy}
                   onPick={(id) => commitCard(applyHair(card, id))}
@@ -2277,12 +2250,13 @@ export default function GenerateStudio() {
                   label="Camera"
                   ariaLabel="Camera"
                   chips={CAMERA_CHIPS}
+                  onCustom={text => commitCard(applyCustomPromptChoice(card, "camera", text))}
                   activeId={promptChipId(card.prompt, "camera")}
                   disabled={busy}
                   onPick={(id) => commitCard(applyCamera(card, id))}
                 />
                 <p className="gen-hint gen-nsfw-hint">
-                  Chips rewrite Location / Hair / Camera in the prompt. Identity refs still win on face; Extra #1 still needed for wardrobe.
+                  Combine a location, hairstyle, and camera setup, or write your own. Each choice updates its part of the prompt; reference photos guide identity.
                 </p>
               </div>
               <div className="gen-field gen-field-wide">
@@ -3234,7 +3208,7 @@ export default function GenerateStudio() {
       <section ref={libraryPanel} className="gen-library-workspace" hidden={!libraryOpen} aria-label="Your library">
         <h2>Your library</h2>
         <p className="gen-hint">{mode === "modal" || mode === "t2i" || mode === "t2v" ? "Preview previous results. Use as source opens Animate an image with the still you choose." : "Preview previous results or choose an image for your current workflow."}</p>
-        {modalAuthed !== true && <p className="gen-hint">Sign in at <a href="/hq">HQ</a> to open your private library.</p>}
+        {modalAuthed !== true && <p className="gen-hint">Use Sign in to Generate above to open your private library.</p>}
         <GenerateLibraryGate authed={modalAuthed} unlocked={libraryUnlocked}
           onUnlocked={() => void reloadLibraryJobs()}
           onLocked={() => { setLibraryUnlocked(false); setModalJobs([]); }}>

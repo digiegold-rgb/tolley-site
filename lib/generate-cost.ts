@@ -13,6 +13,8 @@ export const COST_SOURCES = {
   seedance: "https://fal.ai/models/bytedance/seedance-2.0/reference-to-video",
   kling: "https://fal.ai/models/fal-ai/kling-video/v3/pro/image-to-video",
   modal: "https://modal.com/pricing",
+  qwenEdit: "https://fal.ai/models/fal-ai/qwen-image-edit-2511",
+  flux2Edit: "https://fal.ai/models/fal-ai/flux-2/edit",
 };
 export function usd(value: number): string {
   return `$${value.toFixed(value > 0 && value < 0.01 ? 3 : 2)}`;
@@ -51,4 +53,10 @@ export function cinemaClipCost({ model, seconds, audio = true, resolution = "720
   // and up to 15s combined reference-video duration determine the invoice.
   const rate = resolution === "1080p" ? 0.682 : resolution === "480p" ? SEEDANCE_RATE_720P * (480 / 720) ** 2 : SEEDANCE_RATE_720P;
   return videoInput ? { low: seconds * rate * 0.6, high: (seconds + 15) * rate * 0.6 } : { low: seconds * rate };
+}
+
+/** Conservative whole-MP estimate. FLUX.2 also bills resized reference inputs. */
+export function referenceImageCost(model: string, width: number, height: number, references: number): number {
+  const outputMP = Math.ceil(width * height / 1_000_000);
+  return model === "qwen-edit" ? outputMP * 0.03 : (outputMP + references) * 0.012;
 }

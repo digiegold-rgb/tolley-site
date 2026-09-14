@@ -33,7 +33,7 @@ const DEFAULT_T2V_NEGATIVE =
   "child, minor, deformed face, extra limbs, blurry, lowres, watermark, text, cartoon, still image, morph";
 
 export function isFalImageRecipe(recipe: string | null | undefined): boolean {
-  return recipe === ENGINE_RECIPE_T2I;
+  return recipe === ENGINE_RECIPE_T2I || recipe === "fal-qwen-edit" || recipe === "fal-flux2-edit";
 }
 
 export function isFalVideoRecipe(recipe: string | null | undefined): boolean {
@@ -47,7 +47,7 @@ export function isFalVideoRecipe(recipe: string | null | undefined): boolean {
 }
 
 export function isEngineRecipe(recipe: string | null | undefined): boolean {
-  return isFalImageRecipe(recipe) || recipe === ENGINE_RECIPE_T2V;
+  return recipe === ENGINE_RECIPE_T2I || recipe === ENGINE_RECIPE_T2V;
 }
 
 /** Wan wants 4n+1 frames. Cap at 81 (~5s @ 16fps). */

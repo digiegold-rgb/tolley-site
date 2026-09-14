@@ -1297,3 +1297,29 @@
 .gen-model-cost > label { max-width: 310px; margin-top: 12px; }
 .gen-model-cost a { color: inherit; text-decoration: underline; }
 @media (max-width: 600px) { .gen-model-cost { padding: 16px; } .gen-model-cost-top { gap: 16px; } .gen-model-cost-top > label { min-width: 0; flex-basis: 100%; } }
+
+.gen-access-status { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 18px 22px; margin: 18px 0; border: 1px solid var(--gen-line-strong); border-radius: 14px; background: #171525; }
+.gen-access-status.is-ready { border-color: #62cec059; background: #62cec00a; }
+.gen-access-status strong { font-size: 14px; }
+.gen-access-status p { margin: 6px 0 0; max-width: 750px; color: var(--gen-muted); font-size: 13px; line-height: 1.6; }
+.gen-access-status .gen-top-actions { flex-shrink: 0; }
+.gen-choice-availability { border-top: 1px solid var(--gen-line); padding-top: 10px; color: var(--gen-cyan); font-size: 11px; line-height: 1.5; }
+.gen-single-model { display: block; padding: 12px 0; font-size: 14px; color: var(--gen-cyan); }
+.gen-prompt-picker { display: grid; gap: 10px; padding: 18px; border: 1px solid var(--gen-line); border-radius: 12px; background: #ffffff03; min-width: 0; }
+.gen-prompt-picker-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
+.gen-prompt-picker-heading label { text-transform: uppercase; letter-spacing: .08em; }
+.gen-prompt-picker-heading span { color: var(--gen-cyan); font-size: 12px; }
+.gen-prompt-picker input, .gen-prompt-picker select { width: 100%; min-width: 0; box-sizing: border-box; color: var(--gen-text); background: #11111e; border: 1px solid var(--gen-line-strong); border-radius: 8px; padding: 12px; font: inherit; font-size: 14px; }
+.gen-prompt-picker select { text-overflow: ellipsis; }
+.gen-prompt-picker input:focus, .gen-prompt-picker select:focus { outline: 2px solid var(--gen-violet); outline-offset: 2px; }
+.gen-prompt-picker-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--gen-muted); }
+.gen-prompt-picker-actions > span { margin-right: auto; }
+.gen-prompt-picker button { color: var(--gen-violet-soft); background: transparent; border: 1px solid var(--gen-line); border-radius: 7px; padding: 8px 12px; cursor: pointer; font: inherit; font-size: 12px; }
+.gen-prompt-picker button:disabled { opacity: .4; cursor: default; }
+.gen-prompt-picker details { font-size: 12px; color: var(--gen-muted); }
+.gen-prompt-picker summary { padding: 6px 0; cursor: pointer; }
+.gen-prompt-custom { display: flex; gap: 8px; margin-top: 8px; }
+.gen-prompt-custom button { flex-shrink: 0; }
+@media (max-width: 760px) { .gen-access-status { align-items: stretch; flex-direction: column; gap: 12px; padding: 16px; } .gen-access-status .gen-top-actions { flex-wrap: wrap; } .gen-prompt-picker { padding: 12px; } .gen-prompt-custom { flex-direction: column; } }
+
+@media (min-width: 1000px) { .gen-prompt-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; } .gen-prompt-chips > .gen-hint { grid-column: 1 / -1; } }

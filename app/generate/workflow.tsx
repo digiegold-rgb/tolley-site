@@ -12,7 +12,7 @@ export function WorkflowSection({ step, children }: { step: WorkflowStep | Workf
   return <div className="gen-workflow-section" hidden={!visible}>{children}</div>;
 }
 
-export function WorkflowPicker({ mode, disabled, onSelect }: { mode: WorkflowMode; disabled: boolean; onSelect: (mode: WorkflowMode) => void }) {
+export function WorkflowPicker({ mode, disabled, onSelect, authenticated, modal, fal }: { authenticated: boolean | null; modal?: boolean; fal?: boolean; mode: WorkflowMode; disabled: boolean; onSelect: (mode: WorkflowMode) => void }) {
   return <div className="gen-workflow-picker">
     {["Start simple", "Direct every detail"].map(group => <div key={group}>
       <h3 className="gen-choice-group">{group}</h3>
@@ -24,10 +24,11 @@ export function WorkflowPicker({ mode, disabled, onSelect }: { mode: WorkflowMod
           <span className="gen-choice-description">{item.description}</span>
           <span className="gen-choice-output">{item.output}</span>
           <span className="gen-choice-engine">{item.engine}</span>
+          <span className="gen-choice-availability">{authenticated !== true ? "Sign in to check provider availability" : (item.id === "modal" ? modal || fal : fal) === true ? "Provider configured · ready to prepare" : (item.id === "modal" ? modal === false && fal === false : fal === false) ? "Provider setup required" : "Checking provider…"}</span>
         </button>)}
       </div>
     </div>)}
-    <p className="gen-hint">Video → Video is not available yet. To start from existing media, choose Animate an image.</p>
+    <p className="gen-hint">Provider status checks configuration; it does not guarantee a successful render. Video → Video is not available yet. To start from existing media, choose Animate an image.</p>
   </div>;
 }
 

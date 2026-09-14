@@ -407,6 +407,7 @@ function aliasModalKwargs(raw: unknown): unknown {
 export const generateJobCardSchema = z.object({
   recipe: z.literal(GENERATE_RECIPE).default(GENERATE_RECIPE),
   preset: z.string().trim().max(80).optional().nullable(),
+  model: z.enum(["qwen-modal", "qwen-edit", "flux2-edit"]).default("qwen-modal"),
   prompt: z.string().trim().min(1).max(8000),
   negative_prompt: z.string().max(4000).default(PROVEN_DEFAULTS.negative_prompt),
   seed: z.coerce.number().int().min(0).max(2_147_483_647).default(PROVEN_DEFAULTS.seed),

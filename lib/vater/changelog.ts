@@ -48,6 +48,8 @@ export const CHANGELOG: ChangelogEntry[] = [
       'All detailed controls remain available, with a full controls view and optional director assistance.',
       'Compare compatible models and estimated internal generation costs before submitting. Model switches preserve your inputs, and sequences show costs per clip and remaining total.',
       'Missing inputs point to the step that needs attention. A shared library lets you carry stills into video workflows.',
+      'Owner sign-in resumes two-factor verification and refreshes access without losing your draft. Workflows show provider configuration status.',
+      'Character stills offer Qwen and FLUX.2 model choices plus searchable location, hair, and camera catalogs with hundreds of choices in each.',
     ],
   },
   {
