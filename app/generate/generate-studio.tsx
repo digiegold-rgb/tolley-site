@@ -6,7 +6,7 @@
 // quickgen / Gemini keyframes. Do not change /animate, billing, or auth.
 import { useEffect, useRef, useState } from "react";
 import { WorkflowContext, WorkflowNav, WorkflowPicker, WorkflowSection } from "./workflow";
-import { GENERATE_WORKFLOWS, WORKFLOW_STEPS, workflowBlockers, type WorkflowStep } from "@/lib/generate-workflow";
+import { GENERATE_WORKFLOWS, WORKFLOW_STEPS, workflowBlockers, usableStudioImage, type WorkflowStep } from "@/lib/generate-workflow";
 import { composeEnginePrompt } from "@/lib/generate-director";
 import {
   GENERATE_PRESETS,
@@ -358,6 +358,14 @@ export default function GenerateStudio() {
   const [aspect, setAspect] = useState("9:16");
   const [seconds, setSeconds] = useState(5);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const imageInput = useRef<HTMLInputElement>(null);
+  const [imagePreview, setImagePreview] = useState("");
+  useEffect(() => {
+    if (!imageFile) { setImagePreview(""); return; }
+    const url = URL.createObjectURL(imageFile);
+    setImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
   const [i2vSourceUrl, setI2vSourceUrl] = useState("");
   const [stage, setStage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -2034,7 +2042,7 @@ export default function GenerateStudio() {
     if (mode === "motion") patchMotion({ source_image_url: url });
     else if (mode === "motion2") commitLongformLocal({ ...longformQueueRef.current, source_image_url: url });
     else if (mode === "cinema") commitCinemaLocal({ ...cinemaQueueRef.current, image_urls: [...cinemaQueueRef.current.image_urls, url].slice(0, 9) });
-    else { selectWorkflow("i2v"); setI2vSourceUrl(url); setImageFile(null); }
+    else { selectWorkflow("i2v"); setI2vSourceUrl(url); setImageFile(null); if (imageInput.current) imageInput.current.value = ""; }
     setLibraryOpen(false);
     navigateStep(1);
   }
@@ -3083,6 +3091,7 @@ export default function GenerateStudio() {
                   Image to animate:{" "}
                   <input
                     type="file"
+                    ref={imageInput}
                     aria-label="Upload image to animate"
                     accept="image/*"
                     disabled={busy}
@@ -3097,7 +3106,11 @@ export default function GenerateStudio() {
                 </label>
               )}
 
-              {mode === "i2v" && <label className="gen-field">Or paste an image URL<input aria-label="Starting image URL" value={i2vSourceUrl} disabled={busy} placeholder="https://…/image.jpg" onChange={e => { setI2vSourceUrl(e.target.value); setImageFile(null); }} /></label>}
+              {mode === "i2v" && <label className="gen-field">Or paste an image URL<input aria-label="Starting image URL" value={i2vSourceUrl} disabled={busy} placeholder="https://…/image.jpg" onChange={e => { setI2vSourceUrl(e.target.value); setImageFile(null); if (imageInput.current) imageInput.current.value = ""; }} /></label>}
+              {mode === "i2v" && (imagePreview || usableStudioImage(i2vSourceUrl)) && <div className="gen-still-preview">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imagePreview || i2vSourceUrl} alt="Selected starting image" />
+              </div>}
               </WorkflowSection>
               <WorkflowSection step={2}>
               {(mode === "i2v" || mode === "t2v") && (
@@ -3187,7 +3200,7 @@ export default function GenerateStudio() {
       </div>
       <section ref={libraryPanel} className="gen-library-workspace" hidden={!libraryOpen} aria-label="Your library">
         <h2>Your library</h2>
-        <p className="gen-hint">Preview previous results or choose an image for your current workflow.</p>
+        <p className="gen-hint">{mode === "modal" || mode === "t2i" || mode === "t2v" ? "Preview previous results. Use as source opens Animate an image with the still you choose." : "Preview previous results or choose an image for your current workflow."}</p>
         {modalAuthed !== true && <p className="gen-hint">Sign in at <a href="/hq">HQ</a> to open your private library.</p>}
         <GenerateLibraryGate authed={modalAuthed} unlocked={libraryUnlocked}
           onUnlocked={() => void reloadLibraryJobs()}

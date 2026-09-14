@@ -107,6 +107,8 @@ try {
   await page.getByLabel("Upload image to animate").setInputFiles({ name: "source.png", mimeType: "image/png", buffer: png });
   await step(2); await step(1);
   assert.equal(await page.getByLabel("Upload image to animate").evaluate((el: HTMLInputElement) => el.files?.[0]?.name), "source.png");
+  await page.getByLabel("Starting image URL").fill("https://example.com/replacement.png");
+  assert.equal(await page.getByLabel("Upload image to animate").evaluate((el: HTMLInputElement) => el.files?.length), 0);
   await choose("Create a character still");
   await expect(page.getByLabel("Identity reference 1", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Random seed", exact: true })).toBeHidden();
@@ -154,6 +156,11 @@ try {
   await noOverflow(page);
   await page.screenshot({ path: `${out}/06-director-mobile.png`, fullPage: true });
   await page.getByRole("button", { name: "Close director" }).click();
+  await page.goto(`${base}/generate?queue=longform-test`, { waitUntil: "networkidle" });
+  await expect(page.getByRole("heading", { name: "Generate & review", exact: true })).toBeVisible();
+  await expect(page.getByTestId("motion2-go")).toBeVisible();
+  await page.goto(`${base}/generate?workflow=i2v&queue=longform-test&cinema=cinema-test`, { waitUntil: "networkidle" });
+  await expect(page.getByLabel("Starting image URL")).toBeVisible();
   authed = false;
   await page.goto(`${base}/generate`, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "Start this workflow" }).click();
