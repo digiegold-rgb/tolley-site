@@ -1284,3 +1284,16 @@
   .gen-review-summary { padding: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .gen-root * { scroll-behavior: auto !important; transition: none !important; } }
+
+/* Model selection and internal generation quote remain visible through steps 2–4. */
+.gen-model-cost { margin: 0 0 22px; padding: 20px 24px; border: 1px solid rgba(98,206,192,.35); border-radius: 16px; background: rgba(98,206,192,.055); }
+.gen-model-cost-top { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+.gen-model-cost-top > label { flex: 1; min-width: 230px; }
+.gen-model-cost select { width: 100%; max-width: 100%; background: var(--gen-panel, #151b21); color: inherit; border: 1px solid var(--gen-border, #39404a); padding: 12px; border-radius: 9px; }
+.gen-model-cost-top > div { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.gen-cost-number { font-size: 27px; font-variant-numeric: tabular-nums; color: #96e4d6; }
+.gen-model-cost > p { margin: 12px 0 0; }
+.gen-model-cost details { margin-top: 10px; font-size: 12px; }
+.gen-model-cost > label { max-width: 310px; margin-top: 12px; }
+.gen-model-cost a { color: inherit; text-decoration: underline; }
+@media (max-width: 600px) { .gen-model-cost { padding: 16px; } .gen-model-cost-top { gap: 16px; } .gen-model-cost-top > label { min-width: 0; flex-basis: 100%; } }

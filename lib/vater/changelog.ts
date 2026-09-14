@@ -46,6 +46,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     items: [
       'Generate now walks you through choosing a workflow, adding your idea and references, adjusting settings, and reviewing your result.',
       'All detailed controls remain available, with a full controls view and optional director assistance.',
+      'Compare compatible models and estimated internal generation costs before submitting. Model switches preserve your inputs, and sequences show costs per clip and remaining total.',
       'Missing inputs point to the step that needs attention. A shared library lets you carry stills into video workflows.',
     ],
   },

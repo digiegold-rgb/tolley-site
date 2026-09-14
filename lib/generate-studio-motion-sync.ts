@@ -21,6 +21,7 @@ import {
 export type StudioMotionCard = GenerateMotionCard | ReturnType<typeof emptyMotionCard>;
 
 export type MotionBeatFields = {
+  model: "wan-legacy" | "wan30-i2v";
   prompt: string;
   negative_prompt: string;
   source_image_url: string;
@@ -35,6 +36,7 @@ export type MotionBeatFields = {
 
 export function motionFieldsFromCard(card: StudioMotionCard): MotionBeatFields {
   return {
+    model: card.model,
     prompt: card.prompt,
     negative_prompt: card.negative_prompt,
     source_image_url: card.source_image_url,
@@ -52,6 +54,7 @@ export function motionFieldsFromCard(card: StudioMotionCard): MotionBeatFields {
 export function motionCardFromBeatLoose(beat: MotionBeat): ReturnType<typeof emptyMotionCard> {
   return {
     ...emptyMotionCard(),
+    model: beat.model || "wan-legacy",
     prompt: beat.prompt,
     negative_prompt: beat.negative_prompt,
     source_image_url: beat.source_image_url,
@@ -70,6 +73,7 @@ export function motionCardMatchesBeat1(card: StudioMotionCard, queue: BeatQueue)
   if (!beat) return false;
   const a = motionFieldsFromCard(card);
   return (
+    a.model === (beat.model || "wan-legacy") &&
     a.prompt === beat.prompt &&
     a.negative_prompt === beat.negative_prompt &&
     a.source_image_url === beat.source_image_url &&
@@ -107,6 +111,7 @@ export function motionCardFromBeat1(queue: BeatQueue): ReturnType<typeof emptyMo
 /** Copy Beat 1 (or the selected beat) into a new draft — no clip / status. */
 export function copyBeatAsNewDraft(beat: MotionBeat): MotionBeat {
   return emptyBeat({
+    model: beat.model || "wan-legacy",
     prompt: beat.prompt,
     negative_prompt: beat.negative_prompt,
     source_image_url: beat.source_image_url,

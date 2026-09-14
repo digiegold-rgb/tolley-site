@@ -1,5 +1,6 @@
 "use client";
 
+import { motionCost, usd } from "@/lib/generate-cost";
 import { useEffect, useRef, useState } from "react";
 import {
   canStitchBeats,
@@ -347,6 +348,13 @@ export function BeatQueuePanel({
                     <BeatStillFields beat={beat} index={i} busy={busy} onPatch={onPatch} />
                   </details>
                 ) : null}
+                <label className="gen-field">Beat {i + 1} model
+                  <select aria-label={`Beat ${i + 1} model`} value={beat.model || "wan-legacy"} disabled={busy || beat.status === "generating"} onChange={e => onPatch(beat.id, { model: e.target.value === "wan30-i2v" ? "wan30-i2v" : "wan-legacy" })}>
+                    <option value="wan-legacy">Wan 2.1 · ~$0.40 / generation</option>
+                    <option value="wan30-i2v">Wan 3.0 · ~{usd(motionCost("wan30-i2v", beat.seconds, beat.resolution))} / generation</option>
+                  </select>
+                </label>
+                <p className="gen-beat-meta">Internal cost: ~{usd(motionCost(beat.model, beat.seconds, beat.resolution))} per generation / retry</p>
                 <BeatActions
                   beat={beat}
                   busy={busy}

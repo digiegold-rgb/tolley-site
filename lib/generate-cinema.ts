@@ -9,6 +9,7 @@
  * Stitch reuses fal-wan-stitch concat-copy. ArcFace/Gemini QA stays on Spark.
  */
 
+import { cinemaClipCost, SEEDANCE_RATE_720P } from "./generate-cost";
 import {
   BEAT_STATUSES,
   STITCH_RECIPE,
@@ -41,7 +42,7 @@ export const CINEMA_SECONDS_CHIPS_KLING = [3, 4, 5, 8, 10, 12, 15] as const;
 export const CINEMA_SECONDS_CHIPS_SEEDANCE = [4, 5, 8, 10, 12, 15] as const;
 export const CINEMA_IMAGE_MAX = 9;
 
-export const SEEDANCE_USD_PER_SEC_720P = 0.3;
+export const SEEDANCE_USD_PER_SEC_720P = SEEDANCE_RATE_720P;
 export const KLING_USD_PER_SEC_LOW = 0.112;
 export const KLING_USD_PER_SEC_HIGH = 0.168;
 
@@ -406,27 +407,21 @@ export function loadEstateProofTemplate(opts?: {
   });
 }
 
-export function estimateCinema(queue: Pick<CinemaQueue, "beats" | "model">): CinemaEstimate {
+export function estimateCinema(queue: Pick<CinemaQueue, "beats" | "model"> & Partial<CinemaQueue>): CinemaEstimate {
   const remaining = queue.beats.filter((b) => b.status === "draft" || (b.status === "rejected" && !b.error.trim()));
-  const planned = remaining.reduce((s, b) => s + b.seconds, 0);
-  const priced = cinemaUsdEstimate(planned, queue.model);
-  const note =
-    queue.model === "kling"
-      ? `${remaining.length} Kling 3 Pro I2V calls × remaining drafts ≈ ${planned}s ` +
-        `(~$${priced.usd.toFixed(2)}–$${(priced.usdHigh || priced.usd).toFixed(2)} @720p). ` +
-        `Fallback when Seedance partner/face filter blocks refs.`
-      : `${remaining.length} Seedance 2.0 reference-to-video calls × remaining drafts ≈ ${planned}s ` +
-        `(~$${priced.usd.toFixed(2)} @720p, ~$${SEEDANCE_USD_PER_SEC_720P}/s). ` +
-        `Wan Motion 2 cannot match this path.`;
+  const prices = remaining.map(b => cinemaClipCost({
+    model: queue.model, seconds: b.seconds, audio: b.generate_audio, resolution: queue.resolution,
+    videoInput: Boolean(b.video_ref_url || queue.prior_video_url || (queue.pass_prev_video && queue.beats.indexOf(b) > 0)),
+  }));
+  const usd = Math.round(prices.reduce((s, p) => s + p.low, 0) * 100) / 100;
+  const high = Math.round(prices.reduce((s, p) => s + (p.high ?? p.low), 0) * 100) / 100;
   return {
-    beat_count: queue.beats.length,
-    fal_calls: remaining.length,
-    planned_seconds: planned,
-    usd: priced.usd,
-    usd_high: priced.usdHigh,
-    model: queue.model,
-    needs_confirm: needsSpendConfirm(priced.usdHigh ?? priced.usd, SPEND_CONFIRM_USD),
-    note,
+    beat_count: queue.beats.length, fal_calls: remaining.length,
+    planned_seconds: remaining.reduce((s, b) => s + b.seconds, 0),
+    usd, usd_high: high > usd ? high : undefined, model: queue.model,
+    needs_confirm: needsSpendConfirm(high, SPEND_CONFIRM_USD),
+    note: queue.model === "kling" ? "Audio setting priced separately for each shot."
+      : "Seedance token-based estimate. Video references include 0–15s of input footage per call; exact dimensions and runtime determine the bill.",
   };
 }
 

@@ -110,10 +110,10 @@ export async function persistFalStill(jobId: string, imageUrl: string): Promise<
   return imageUrl;
 }
 
-export function falT2VModelId(): FalModelId {
-  return "wan26-720p";
+export function falT2VModelId(card?: unknown): FalModelId {
+  return (card as { fal_model?: string } | null)?.fal_model === "wan30-t2v" ? "wan30-t2v" : "wan26-720p";
 }
 
-export function falT2IModelId(): FalImageModelId {
-  return "flux-dev";
+export function falT2IModelId(card?: unknown): FalImageModelId {
+  return (card as { fal_model?: string } | null)?.fal_model === "flux-schnell" ? "flux-schnell" : "flux-dev";
 }

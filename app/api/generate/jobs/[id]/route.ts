@@ -53,7 +53,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
 
   if (row.status === "running" && row.modalCallId && isFalImageRecipe(row.recipe)) {
     try {
-      const poll = await pollFalImage(falT2IModelId(), row.modalCallId);
+      const poll = await pollFalImage(falT2IModelId(row.cardJson), row.modalCallId);
       if ("pending" in poll && poll.pending) {
         return NextResponse.json({ job: serializeJob(row) });
       }
@@ -86,7 +86,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   if (row.status === "running" && row.modalCallId && isFalVideoRecipe(row.recipe)) {
     try {
       const falModel =
-        row.recipe === "fal-wan-t2v" ? falT2VModelId() : falModelIdFromCard(row.cardJson, row.recipe);
+        row.recipe === "fal-wan-t2v" ? falT2VModelId(row.cardJson) : falModelIdFromCard(row.cardJson, row.recipe);
       const poll = await pollFalMotion(falModel, row.modalCallId);
       if ("pending" in poll && poll.pending) {
         return NextResponse.json({ job: serializeJob(row) });

@@ -2,10 +2,12 @@
 /** Browser workflow regression. API calls are fulfilled locally; never starts paid jobs. */
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
-import { chromium, expect, type Page } from "@playwright/test";
+import { chromium, expect as baseExpect, type Page } from "@playwright/test";
 import { defaultJobCard } from "../lib/generate-job-card";
 import { emptyLongformQueue, planLongformQueue, estimateLongform } from "../lib/generate-longform";
 import { emptyCinemaQueue, planCinemaQueue, estimateCinema } from "../lib/generate-cinema";
+
+const expect = baseExpect.configure({ timeout: 15_000 });
 
 async function main() {
 const base = process.env.GENERATE_TEST_URL || "http://127.0.0.1:3024";
@@ -20,6 +22,8 @@ let longform = emptyLongformQueue();
 let cinema = emptyCinemaQueue();
 let jobs: any[] = [];
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+context.setDefaultTimeout(30_000);
+context.setDefaultNavigationTimeout(60_000);
 await context.route("**/api/**", async route => {
   const path = new URL(route.request().url()).pathname;
   const method = route.request().method();
@@ -59,12 +63,17 @@ await context.route("**/api/**", async route => {
 await context.route("https://example.com/**", route => route.fulfill({ contentType: "image/png", body: png }));
 const page = await context.newPage();
 page.on("pageerror", err => errors.push(err.message));
+async function visit(url: string) {
+  const loaded = page.waitForResponse(r => new URL(r.url()).pathname === "/api/generate/jobs" && r.request().method() === "GET");
+  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await loaded; // The client effect has mounted; controls now have React handlers.
+}
 async function step(n: number) { await page.getByRole("navigation", { name: "Creation steps" }).getByRole("button").nth(n).click(); }
 async function choose(name: string) { await step(0); await page.getByRole("button", { name: new RegExp(`^${name}`) }).click(); await page.getByRole("button", { name: "Start this workflow" }).click(); }
 async function noOverflow(p: Page) { assert(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "Horizontal overflow"); }
 try {
   await mkdir(out, { recursive: true });
-  await page.goto(`${base}/generate`, { waitUntil: "networkidle", timeout: 180_000 });
+  await visit(`${base}/generate`);
   await expect(page.getByRole("heading", { name: "Choose a workflow", exact: true })).toBeVisible();
   await expect(page.getByLabel("Your prompt", { exact: true })).toBeHidden();
   await expect(page.getByRole("button", { name: "Open library", exact: true })).toBeEnabled();
@@ -79,6 +88,8 @@ try {
   await page.getByLabel("Scene details", { exact: true }).fill("Soft morning light, no text");
   await page.getByRole("button", { name: "Continue to settings" }).click();
   await page.getByLabel("Output aspect ratio").selectOption("16:9");
+  await page.getByLabel("Generation model", { exact: true }).selectOption("flux-schnell");
+  await expect(page.getByTestId("model-cost")).toContainText("$0.006");
   await step(1);
   await expect(page.getByLabel("Your prompt", { exact: true })).toHaveValue("A ceramic vase on a sunlit oak table");
   await page.screenshot({ path: `${out}/02-brief-desktop.png`, fullPage: true });
@@ -88,6 +99,8 @@ try {
   await expect(page.getByRole("status").filter({ hasText: "Test complete" })).toBeVisible();
   const test = posts.find(p => p.path === "/api/generate/jobs")!.body;
   assert.equal(test.start, false); assert.equal(test.dryRun, true); assert.equal(test.aspect, "16:9");
+  assert.equal(test.card.model, "flux-schnell");
+  await expect(page.getByTestId("model-cost")).toContainText("$0 generation spend");
   assert.match(test.prompt, /ceramic vase/); assert.match(test.prompt, /morning light/);
   await page.getByRole("checkbox", { name: "Dry run" }).uncheck();
   failNext = true;
@@ -107,9 +120,23 @@ try {
   await page.getByLabel("Upload image to animate").setInputFiles({ name: "source.png", mimeType: "image/png", buffer: png });
   await step(2); await step(1);
   assert.equal(await page.getByLabel("Upload image to animate").evaluate((el: HTMLInputElement) => el.files?.[0]?.name), "source.png");
+  await page.getByLabel("Generation model", { exact: true }).selectOption("wan30-i2v");
+  assert.equal(await page.getByLabel("Upload image to animate").evaluate((el: HTMLInputElement) => el.files?.[0]?.name), "source.png");
   await page.getByLabel("Starting image URL").fill("https://example.com/replacement.png");
   assert.equal(await page.getByLabel("Upload image to animate").evaluate((el: HTMLInputElement) => el.files?.length), 0);
+  await step(3);
+  await page.getByRole("checkbox", { name: "Dry run" }).check();
+  await page.getByRole("button", { name: "Dry run", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Test complete" })).toBeVisible();
+  const imageVideo = posts.filter(p => p.path === "/api/generate/jobs").at(-1)!.body;
+  assert.equal(imageVideo.card.model, "wan30-i2v");
+  assert.equal(imageVideo.card.source_image_url, "https://example.com/replacement.png");
+  await page.getByRole("checkbox", { name: "Dry run" }).uncheck();
   await choose("Create a character still");
+  await expect(page.getByLabel("Generation model", { exact: true })).toBeDisabled();
+  await expect(page.getByTestId("model-cost")).toContainText("$0.25");
+  await page.getByLabel("Assumed compute minutes per image").fill("10");
+  await expect(page.getByTestId("model-cost")).toContainText("$0.50");
   await expect(page.getByLabel("Identity reference 1", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Random seed", exact: true })).toBeHidden();
   await step(2);
@@ -119,8 +146,20 @@ try {
   await page.screenshot({ path: `${out}/03-character-settings.png`, fullPage: true });
   await choose("Direct a sequence");
   await page.getByTestId("beat-1-prompt").fill("Camera moves gently around the vase");
+  await page.getByLabel("Generation model", { exact: true }).selectOption("wan30-i2v");
   await step(2); await step(1);
   await expect(page.getByTestId("beat-1-prompt")).toHaveValue("Camera moves gently around the vase");
+  await page.locator('input[placeholder="Use as source on a Modal still, or paste https://…"]').fill("https://example.com/motion.png");
+  await step(3);
+  await page.getByRole("checkbox", { name: "Dry run" }).check();
+  await page.getByLabel("Beat 1 model", { exact: true }).selectOption("wan-legacy");
+  await expect(page.getByLabel("Generation model", { exact: true })).toHaveValue("wan-legacy");
+  await page.getByLabel("Beat 1 model", { exact: true }).selectOption("wan30-i2v");
+  await page.locator(".gen-beat-actions").first().getByRole("button", { name: "Generate this beat", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Test complete" })).toBeVisible();
+  assert.equal(posts.filter(p => p.path === "/api/generate/jobs").at(-1)!.body.card.model, "wan30-i2v");
+  assert(!posts.some(p => p.path === "/api/generate/beats" && p.body.action === "generate"), "Dry-run beat must not submit a paid request");
+  await page.getByRole("checkbox", { name: "Dry run" }).uncheck();
   await choose("Build a continuous video");
   await page.locator('input[placeholder="Use as source on a Modal still, or paste https://…"]').fill("https://example.com/source.png");
   await page.getByTestId("motion2-script").fill("Camera moves forward\nCamera moves left");
@@ -140,6 +179,12 @@ try {
   await expect(page.getByRole("button", { name: "Review & generate" })).toBeEnabled();
   await step(3);
   await expect(page.getByTestId("cinema-go")).toBeEnabled();
+  await page.getByLabel("Generation model", { exact: true }).selectOption("kling");
+  await expect(page.getByTestId("model-cost")).toContainText("$1.68");
+  await step(1);
+  await expect(page.getByTestId("cinema-script")).toHaveValue("Welcome to the garden.\nWatch the sun come up.");
+  await expect(page.getByTestId("cinema-image-urls")).toHaveValue("https://example.com/reference.png");
+  await step(3);
   await expect(page.getByRole("list", { name: "Cinema beat review" })).toBeVisible();
   await page.screenshot({ path: `${out}/04-cinema-review.png`, fullPage: true });
   await page.getByRole("button", { name: "All controls", exact: true }).click();
@@ -151,18 +196,27 @@ try {
   await step(0); await noOverflow(page);
   await page.screenshot({ path: `${out}/05-workflows-mobile.png`, fullPage: true });
   await choose("Create a video from text");
+  await page.getByLabel("Generation model", { exact: true }).selectOption("wan30-t2v");
+  await expect(page.getByTestId("model-cost")).toContainText("$0.50");
+  await step(3);
+  await page.getByRole("checkbox", { name: "Dry run" }).check();
+  await page.getByRole("button", { name: "Dry run", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Test complete" })).toBeVisible();
+  assert.equal(posts.filter(p => p.path === "/api/generate/jobs").at(-1)!.body.card.model, "wan30-t2v");
+  await page.getByRole("checkbox", { name: "Dry run" }).uncheck();
+  await step(1);
   await page.getByRole("button", { name: "Help me write this" }).click();
   await expect(page.getByLabel("Message the director")).toBeVisible();
   await noOverflow(page);
   await page.screenshot({ path: `${out}/06-director-mobile.png`, fullPage: true });
   await page.getByRole("button", { name: "Close director" }).click();
-  await page.goto(`${base}/generate?queue=longform-test`, { waitUntil: "networkidle" });
+  await visit(`${base}/generate?queue=longform-test`);
   await expect(page.getByRole("heading", { name: "Generate & review", exact: true })).toBeVisible();
   await expect(page.getByTestId("motion2-go")).toBeVisible();
-  await page.goto(`${base}/generate?workflow=i2v&queue=longform-test&cinema=cinema-test`, { waitUntil: "networkidle" });
+  await visit(`${base}/generate?workflow=i2v&queue=longform-test&cinema=cinema-test`);
   await expect(page.getByLabel("Starting image URL")).toBeVisible();
   authed = false;
-  await page.goto(`${base}/generate`, { waitUntil: "networkidle" });
+  await visit(`${base}/generate`);
   await page.getByRole("button", { name: "Start this workflow" }).click();
   await page.getByLabel("Your prompt", { exact: true }).fill("Keep this unsaved prompt after sign-in");
   await step(3);
@@ -173,7 +227,11 @@ try {
   await step(1);
   await expect(page.getByLabel("Your prompt", { exact: true })).toHaveValue("Keep this unsaved prompt after sign-in");
   assert.deepEqual(errors, []);
-  console.log(`PASS: seven workflows, step persistence, source handoff, dry-run payload, failed render recovery, library gate, queue planning, all controls, mobile layout, sign-in recovery. Screenshots: ${out}`);
+  console.log(`PASS: seven workflows, step persistence, source handoff, model switching and prices, dry-run payloads and per-beat protection, failed render recovery, library gate, queue planning, all controls, mobile layout, sign-in recovery. Screenshots: ${out}`);
+} catch (err) {
+  await page.screenshot({ path: `${out}/failure.png`, fullPage: true });
+  console.error((await page.locator("body").innerText()).slice(-7000));
+  throw err;
 } finally { await browser.close(); }
 
 }

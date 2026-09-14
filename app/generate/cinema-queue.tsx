@@ -1,5 +1,6 @@
 "use client";
 
+import { cinemaClipCost, costRange } from "@/lib/generate-cost";
 import { WorkflowSection } from "./workflow";
 
 import {
@@ -68,7 +69,6 @@ export function CinemaPanel({
   onAudioUrl,
   onPriorVideo,
   onScript,
-  onModel,
   onGenerateAudio,
   onPassPrevVideo,
   onAutoAdvance,
@@ -120,7 +120,8 @@ export function CinemaPanel({
   onRetry: (id: string) => void;
   onStitch: () => void;
 }) {
-  const liveEstimate = estimate || estimateCinema(queue);
+  const liveEstimate = estimateCinema(queue);
+  void estimate;
   const progress = cinemaProgress(queue);
   const stitchOk = canStitchCinema(queue);
   const selected = queue.beats.find((b) => b.id === selectedId) || queue.beats[0] || null;
@@ -211,18 +212,7 @@ export function CinemaPanel({
             onChange={(e) => onPriorVideo(e.target.value)}
           />
         </label>
-        <label>
-          Model
-          <select
-            data-testid="cinema-model"
-            value={queue.model}
-            disabled={busy}
-            onChange={(e) => onModel(e.target.value === "kling" ? "kling" : "seedance")}
-          >
-            <option value="seedance">Seedance 2.0 reference-to-video</option>
-            <option value="kling">Kling 3 Pro elements (fallback)</option>
-          </select>
-        </label>
+
       </div>
       <p className="gen-hint" data-testid="cinema-seconds-limit">
         Max 15s per beat (fal hard limit). Stitch beats for longer.
@@ -234,7 +224,7 @@ export function CinemaPanel({
           <strong>Estimate:</strong> {liveEstimate.fal_calls} remaining fal calls ·{" "}
           {liveEstimate.planned_seconds}s · ~${liveEstimate.usd.toFixed(2)}
           {liveEstimate.usd_high != null ? `–$${liveEstimate.usd_high.toFixed(2)}` : ""}{" "}
-          @720p. {liveEstimate.note}
+          {queue.model === "kling" ? "Kling Pro" : `@${queue.resolution}`}. {liveEstimate.note}
         </p>
       </div>
 
@@ -341,7 +331,7 @@ export function CinemaPanel({
                     {failedHoldIds.has(beat.id) ? "failed" : beat.status}
                   </span>
                   <span className="gen-longform-meta">
-                    {beat.seconds}s · {beat.generate_audio ? "audio on" : "silent"}
+                    {beat.seconds}s · {beat.generate_audio ? "audio on" : "silent"} · ~{(() => { const p = cinemaClipCost({ model: queue.model, seconds: beat.seconds, audio: beat.generate_audio, resolution: queue.resolution, videoInput: Boolean(beat.video_ref_url || queue.prior_video_url || (queue.pass_prev_video && queue.beats.indexOf(beat) > 0)) }); return costRange(p.low, p.high); })()} per generation
                     {beat.video_ref_url ? " · prior clip" : ""}
                   </span>
                 </button>

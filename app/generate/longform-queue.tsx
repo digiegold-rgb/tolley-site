@@ -1,5 +1,6 @@
 "use client";
 
+import { motionCost, usd } from "@/lib/generate-cost";
 import { WorkflowSection } from "./workflow";
 
 import {
@@ -342,6 +343,7 @@ export function LongformPanel({
                 {beat.job_id && (beat.status === "ready" || beat.status === "approved") ? (
                   <GatedClip src={mediaSrc(beat.job_id, 0)} />
                 ) : null}
+                <p className="gen-hint">Internal cost: ~{usd(motionCost("wan30-i2v", beat.seconds, beat.resolution))} per {beat.seconds}s generation / retry · {beat.resolution}</p>
                 <div className="gen-beat-actions">
                   {failedHoldIds.has(beat.id) ? (
                     <>

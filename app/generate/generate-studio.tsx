@@ -5,6 +5,7 @@
 // /api/generate/jobs (HQ-gated). T2I/T2V/I2V use fal (FAL_KEY), not Spark
 // quickgen / Gemini keyframes. Do not change /animate, billing, or auth.
 import { useEffect, useRef, useState } from "react";
+import { ModelCostPanel } from "./model-cost";
 import { WorkflowContext, WorkflowNav, WorkflowPicker, WorkflowSection } from "./workflow";
 import { GENERATE_WORKFLOWS, WORKFLOW_STEPS, workflowBlockers, usableStudioImage, type WorkflowStep } from "@/lib/generate-workflow";
 import { composeEnginePrompt } from "@/lib/generate-director";
@@ -59,6 +60,7 @@ import {
 import {
   copyBeatAsNewDraft,
   motionCardFromBeat1,
+  motionCardFromBeatLoose,
   motionCardMatchesBeat1,
   writeMotionCardToBeat1,
 } from "@/lib/generate-studio-motion-sync";
@@ -357,6 +359,9 @@ export default function GenerateStudio() {
   const [description, setDescription] = useState("");
   const [aspect, setAspect] = useState("9:16");
   const [seconds, setSeconds] = useState(5);
+  const [imageModel, setImageModel] = useState("flux-dev");
+  const [textVideoModel, setTextVideoModel] = useState("wan26-720p");
+  const [imageVideoModel, setImageVideoModel] = useState("wan-legacy");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const imageInput = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState("");
@@ -1746,6 +1751,20 @@ export default function GenerateStudio() {
 
   async function generateBeatClip(id: string) {
     setError(null);
+    if (dryRun) {
+      const beat = beatQueueRef.current.beats.find(b => b.id === id);
+      if (!beat) throw new Error("Beat not found");
+      setStage("dry run…");
+      const r = await fetch("/api/generate/jobs", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "motion", card: motionCardFromBeatLoose(beat), start: false, dryRun: true }),
+      });
+      const j = await readJson(r) as { error?: string };
+      if (!r.ok) throw new Error(j.error || "Dry run failed");
+      setRunNotice("Test complete. This beat was checked without rendering. Turn off Dry run to generate.");
+      setStage(null);
+      return;
+    }
     setStage("beat → fal…");
     const seqAtStart = beatSaveGate.current.current();
     await flushBeatPatchPersist();
@@ -1847,8 +1866,9 @@ export default function GenerateStudio() {
           card: {
             prompt,
             source_image_url: source,
+            model: imageVideoModel,
             aspect,
-            seconds,
+            seconds: imageVideoModel === "wan-legacy" ? 5 : seconds,
             slow_mo: i2vSlowMo,
           },
           start: !dryRun,
@@ -1888,7 +1908,7 @@ export default function GenerateStudio() {
         prompt,
         aspect,
         seconds,
-        card: mode === "t2v" ? { slow_mo: i2vSlowMo } : undefined,
+        card: { model: mode === "t2v" ? textVideoModel : imageModel, slow_mo: i2vSlowMo },
         start: !dryRun,
         dryRun,
       }),
@@ -2093,6 +2113,19 @@ export default function GenerateStudio() {
         {(mode === "motion" || mode === "motion2" || mode === "cinema" || mode === "i2v") && <button type="button" className="gen-view-toggle" onClick={openLibrary}>Choose from library</button>}
         <button type="button" className="gen-view-toggle" aria-expanded={assistantOpen} onClick={() => setAssistantOpen(v => !v)}>{assistantOpen ? "Close director" : "Help me write this"}</button>
       </div>}
+      {(workflowStep > 0 || allControls) && <ModelCostPanel
+        mode={mode} model={mode === "t2i" ? imageModel : mode === "t2v" ? textVideoModel : mode === "i2v" ? imageVideoModel : mode === "motion" ? motionCard.model : mode === "cinema" ? cinemaQueue.model : mode === "modal" ? "qwen" : "wan30-i2v"}
+        onModel={(model) => {
+          if (mode === "t2i") setImageModel(model);
+          else if (mode === "t2v") setTextVideoModel(model);
+          else if (mode === "i2v") setImageVideoModel(model);
+          else if (mode === "motion") patchMotion({ model: model === "wan30-i2v" ? model : "wan-legacy" });
+          else if (mode === "cinema") commitCinemaLocal(withCinemaModel(cinemaQueueRef.current, model === "kling" ? "kling" : "seedance"));
+        }}
+        disabled={busy || chatBusy || (mode === "motion2" && motion2GenerateLocked(longformQueue)) || (mode === "cinema" && cinemaGenerateLocked(cinemaQueue))}
+        dryRun={dryRun} seconds={seconds} aspect={aspect as "9:16" | "16:9" | "1:1"}
+        card={card} motion={motionCard} beats={beatQueue} longform={longformQueue} cinema={cinemaQueue}
+      />}
       <div className={`gen-grid gen-guided-grid${assistantOpen && (workflowStep > 0 || allControls) ? " has-assistant" : ""}`} hidden={workflowStep === 0 && !allControls}>
 
         <section className="gen-panel gen-chat" aria-label="Director chat" hidden={!assistantOpen}>
@@ -2148,7 +2181,7 @@ export default function GenerateStudio() {
           <WorkflowSection step={3}>
             <div className="gen-review-summary">
               <h3>{resultUrl ? "Your result" : "Ready to create?"}</h3>
-              <dl><div><dt>Workflow</dt><dd>{workflow.title}</dd></div><div><dt>Output</dt><dd>{mode === "modal" ? `${card.num_images} image(s) · ${card.width} × ${card.height}` : mode === "motion2" ? `${longformQueue.beats.length} scenes · ${longformQueue.target_seconds}s target` : mode === "cinema" ? `${cinemaQueue.beats.length} shots` : mode === "motion" ? `Video · ${motionCard.aspect}` : `${mode === "t2i" ? "Image" : `${seconds}s video`} · ${aspect}`}</dd></div></dl>
+              <dl><div><dt>Workflow</dt><dd>{workflow.title}</dd></div><div><dt>Output</dt><dd>{mode === "modal" ? `${card.num_images} image(s) · ${card.width} × ${card.height}` : mode === "motion2" ? `${longformQueue.beats.length} scenes · ${longformQueue.target_seconds}s target` : mode === "cinema" ? `${cinemaQueue.beats.length} shots` : mode === "motion" ? `Video · ${motionCard.aspect}` : `${mode === "t2i" ? "Image" : `${mode === "i2v" && imageVideoModel === "wan-legacy" ? 5 : seconds}s video`} · ${aspect}`}</dd></div></dl>
               {workflowPrompt && <details><summary>Review your prompt / scene plan</summary><p className="gen-review-prompt">{workflowPrompt}</p></details>}
               {blockers.length > 0 && <ul className="gen-readiness">{blockers.map(item => <li key={item.message}><button type="button" onClick={() => navigateStep(item.step)}>{item.message} <span aria-hidden="true">→</span></button></li>)}</ul>}
               {!blockers.length && !busy && !resultUrl && <p className="gen-ready">Your inputs are ready. Review the settings, then start generation below.</p>}
@@ -2677,7 +2710,7 @@ export default function GenerateStudio() {
                 </label>
                 <label>
                   Duration
-                  <input type="text" value="5s (Wan cap)" disabled />
+                  <input type="text" value={motionCard.model === "wan30-i2v" ? `${motionCard.seconds}s` : "5s (Wan cap)"} disabled />
                 </label>
               </div>
               <SlowMoChip
@@ -3128,7 +3161,7 @@ export default function GenerateStudio() {
                     <option value="16:9">16:9 wide</option>
                     <option value="1:1">1:1 square</option>
                   </select>
-                  {mode !== "t2i" && (
+                  {mode === "i2v" && imageVideoModel === "wan-legacy" ? <span className="gen-hint">Duration: 5s · legacy Wan</span> : mode !== "t2i" && (
                     <label style={{ fontSize: 13, color: "var(--gen-muted)", display: "flex", alignItems: "center", gap: 8 }}>
                       <input
                         type="range"
