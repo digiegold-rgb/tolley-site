@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "The Launchpad — You Can Still Start | Tolley.io";
+export const alt = "The Launchpad — Let’s Build Your Business | Tolley.io";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -41,13 +41,13 @@ export default async function OG() {
             fontFamily: "sans-serif",
             fontWeight: 800,
             textTransform: "uppercase",
-            fontSize: 88,
+            fontSize: 72,
             lineHeight: 1.02,
             letterSpacing: "-0.01em",
             display: "flex",
           }}
         >
-          You Can Still Start
+          Let’s Build Your Business
         </div>
         <div
           style={{
@@ -59,7 +59,7 @@ export default async function OG() {
             display: "flex",
           }}
         >
-          No license. No bank account. A record. Bring the idea &mdash; Jared brings everything else.
+          You bring the idea. Websites, payments, and practical support from Tolley.io.
         </div>
         <div
           style={{

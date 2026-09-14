@@ -138,42 +138,6 @@ export interface LpReadyBusiness {
 
 export const LP_READY_BUSINESSES: LpReadyBusiness[] = [
   {
-    key: "pool-supply",
-    name: "Pool Supply Delivery",
-    status: "live",
-    statusLabel: "Live — take over today",
-    supplier: "PoolCorp / Pool360 contractor account",
-    pitch:
-      "Contractor-tier chemicals, parts, and equipment delivered same-day in the KC metro. The storefront is already taking real orders.",
-    built: [
-      "PoolCorp / Pool360 contractor account",
-      "Live Stripe storefront, 30+ products",
-      "Daily stock + price sync from the warehouse",
-      "Delivery van already on the road",
-    ],
-    youDo: "You sell and deliver. I handle supplier, site, payments, books.",
-    href: "/pools",
-    shot: "/sales/ready/pools.jpg",
-  },
-  {
-    key: "home-essentials-box",
-    name: "Home Essentials Box",
-    status: "live",
-    statusLabel: "Live — take over today",
-    supplier: "Buckeye Cleaning wholesale account",
-    pitch:
-      "Monthly boxes of household essentials — paper towels, TP, hand soap, cleaners — at wholesale cost, delivered to the door. Subscriptions bill themselves.",
-    built: [
-      "Buckeye Cleaning wholesale account",
-      "Subscription storefront with Stripe billing",
-      "Three box tiers priced and live",
-      "Delivery route support",
-    ],
-    youDo: "You pack and deliver boxes. The subscriptions do the rest.",
-    href: "/biz/home-essentials-box",
-    shot: "/sales/ready/essentials.jpg",
-  },
-  {
     key: "landscape-supply",
     name: "Landscape Supply Direct",
     status: "launching",

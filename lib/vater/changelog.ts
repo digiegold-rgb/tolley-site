@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.41.4';
+export const APP_VERSION = '1.42';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,17 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.42',
+    date: '2026-09-14',
+    title: 'A simpler Tolley directory and Launchpad',
+    items: [
+      'Replaced the T-Agent background video with an interactive property research illustration.',
+      'Find current services faster with a refreshed Start page and clearer business support on the Launchpad.',
+      'Retired Kerplunk, picnic tables, tables and chairs, moving supplies, and Home Essentials Box.',
+      'Paused pool supply background work for the off-season and removed seasonal offers from promotion.',
+    ],
+  },
   {
     version: '1.41.4',
     date: '2026-09-14',

@@ -200,10 +200,6 @@
       "schedule": "0 */4 * * *"
     },
     {
-      "path": "/api/cron/pools-intelligence",
-      "schedule": "0 4 * * *"
-    },
-    {
       "path": "/api/cron/sms-reset",
       "schedule": "0 0 1 * *"
     },

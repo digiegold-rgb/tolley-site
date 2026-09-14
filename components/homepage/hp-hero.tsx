@@ -1,127 +1,242 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useState } from "react";
+import "./hp-hero.css";
+
+const views = [
+  {
+    label: "Discover",
+    title: "A clearer view of your market.",
+    note: "Bring property and lead signals into one workspace.",
+    tag: "PROPERTY SIGNALS",
+    rows: ["Property record", "Ownership history", "Market context"],
+  },
+  {
+    label: "Research",
+    title: "Connect the details.",
+    note: "Review a property dossier before deciding your next move.",
+    tag: "PROPERTY DOSSIER",
+    rows: ["Research summary", "Source references", "Notes & context"],
+  },
+  {
+    label: "Follow up",
+    title: "Make the next move count.",
+    note: "Turn your research into a focused plan for follow-up.",
+    tag: "NEXT STEPS",
+    rows: [
+      "Review the dossier",
+      "Prepare your outreach",
+      "Track the conversation",
+    ],
+  },
+];
+const parcels = Array.from({ length: 24 }, (_, index) => ({
+  x: 44 + (index % 6) * 72,
+  y: 48 + Math.floor(index / 6) * 77,
+}));
 
 export function HpHero() {
-  const gridRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = gridRef.current;
-    if (!el) return;
-    const handler = (e: MouseEvent) => {
-      const rect = el.getBoundingClientRect();
-      el.style.setProperty("--glow-x", `${e.clientX - rect.left}px`);
-      el.style.setProperty("--glow-y", `${e.clientY - rect.top}px`);
-    };
-    el.addEventListener("mousemove", handler);
-    return () => el.removeEventListener("mousemove", handler);
-  }, []);
-
+  const [step, setStep] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const view = views[step];
   return (
-    <section
-      ref={gridRef}
-      className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 pt-24 pb-16 sm:px-8"
-    >
-      {/* AI-generated hero video background.
-          Source: Wan 2.2 14B T2V via ComfyUI on DGX Spark
-          (aerial neighborhood at blue hour, pingpong loop). */}
-      <video
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover"
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="metadata"
-        poster="/heroes/homepage-still.png"
-      >
-        <source src="/heroes/homepage-loop.mp4" type="video/mp4" />
-      </video>
-
-      {/* Film grain overlay */}
-      <div
-        aria-hidden="true"
-        className="hp-hero-grain pointer-events-none absolute inset-0 z-[1]"
-      />
-
-      {/* Drifting light-leak */}
-      <div
-        aria-hidden="true"
-        className="hp-hero-light-leak pointer-events-none absolute inset-0 z-[1]"
-      />
-
-      {/* Dark gradient overlay so the headline stays readable over the image. */}
-      <div
-        aria-hidden="true"
-        className="hp-hero-bg-overlay absolute inset-0 z-[1]"
-      />
-
-      {/* Vignette */}
-      <div
-        aria-hidden="true"
-        className="hp-hero-vignette pointer-events-none absolute inset-0 z-[1]"
-      />
-
-      {/* Mouse-follow glow — sits above the hero image + overlay */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-[2]"
-        style={{
-          background:
-            "radial-gradient(600px circle at var(--glow-x, 50%) var(--glow-y, 50%), rgba(139,92,246,0.1), transparent 60%)",
-        }}
-      />
-
-      {/* Decorative spotlights */}
-      <div aria-hidden="true" className="portal-spotlight portal-spotlight-left" />
-      <div aria-hidden="true" className="portal-spotlight portal-spotlight-right" />
-
-      <div className="relative z-10 mx-auto max-w-4xl text-center">
-        {/* Badge */}
-        <div className="hp-fade-up mb-6 inline-flex items-center gap-2 rounded-full border border-white/18 bg-black/25 px-4 py-1.5 backdrop-blur-sm">
-          <span className="progress-orb !h-2 !w-2" />
-          <span className="text-[0.68rem] tracking-[0.14em] text-white/68 uppercase">
-            AI-Powered Lead Intelligence
-          </span>
+    <section className="ta-hero">
+      <div className="ta-hero-inner">
+        <div className="ta-hero-copy">
+          <p className="ta-eyebrow">
+            <span /> T-Agent / Real estate intelligence
+          </p>
+          <h1>
+            See the property.
+            <br />
+            <em>
+              Understand
+              <br />
+              the opportunity.
+            </em>
+          </h1>
+          <p className="ta-lede">
+            Put lead research, property dossiers, and follow-up in one place.
+            Spend less time piecing things together and more time making your
+            next move.
+          </p>
+          <div className="ta-hero-actions">
+            <Link href="/leads/pricing" className="ta-primary">
+              Explore T-Agent <span aria-hidden="true">↗</span>
+            </Link>
+            <a href="#features" className="ta-secondary">
+              See how it works ↓
+            </a>
+          </div>
+          <p className="ta-hero-footnote">
+            Built in Kansas City. Built for real estate agents.
+          </p>
         </div>
-
-        {/* Headline */}
-        <h1 className="hp-fade-up hp-fade-up-d1 text-4xl font-semibold leading-[1.15] tracking-[0.01em] text-white/95 sm:text-5xl md:text-6xl">
-          Know your leads before
-          <br />
-          <span className="hp-gradient-text">
-            they know you&apos;re coming.
-          </span>
-        </h1>
-
-        {/* Sub-copy */}
-        <p className="hp-fade-up hp-fade-up-d2 mx-auto mt-6 max-w-2xl text-base leading-7 text-white/72 sm:text-lg sm:leading-8">
-          T-Agent enriches every lead with court records, social profiles, and
-          AI-scored motivation — giving real estate agents the unfair advantage
-          they need to close.
-        </p>
-
-        {/* CTAs */}
-        <div className="hp-fade-up hp-fade-up-d3 mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <Link
-            href="/leads/pricing"
-            className="group relative rounded-full border border-violet-200/45 bg-violet-300/20 px-8 py-3 text-sm font-semibold tracking-[0.1em] text-violet-50 uppercase shadow-[0_0_32px_rgba(139,92,246,0.25)] transition-all hover:bg-violet-300/28 hover:shadow-[0_0_48px_rgba(139,92,246,0.45)] hover:scale-[1.02]"
-          >
-            <span className="relative z-10">See Plans — From $49/mo</span>
-          </Link>
-          <Link
-            href="#features"
-            className="rounded-full border border-white/22 bg-white/[0.07] px-8 py-3 text-sm font-semibold tracking-[0.1em] text-white uppercase transition-all hover:bg-white/[0.12] hover:border-white/30"
-          >
-            See How It Works
-          </Link>
+        <div
+          className={`ta-visual${paused ? " ta-paused" : ""}`}
+          aria-label="Interactive illustration of the T-Agent workflow"
+        >
+          <div className="ta-window-bar">
+            <span className="ta-window-brand">
+              <span /> T-AGENT
+            </span>
+            <span>ILLUSTRATIVE PREVIEW</span>
+          </div>
+          <div className="ta-map-wrap">
+            <div className="ta-map-label">
+              <span>YOUR MARKET, CONNECTED</span>
+              <span className="ta-coordinate">PROPERTY → CONTEXT → ACTION</span>
+            </div>
+            <svg
+              className="ta-map"
+              viewBox="0 0 520 350"
+              fill="none"
+              aria-hidden="true"
+            >
+              <defs>
+                <pattern
+                  id="ta-map-grid"
+                  width="18"
+                  height="18"
+                  patternUnits="userSpaceOnUse"
+                >
+                  <circle cx="1" cy="1" r=".6" fill="#394a56" />
+                </pattern>
+                <linearGradient
+                  id="ta-map-road"
+                  x1="0"
+                  y1="0"
+                  x2="520"
+                  y2="350"
+                >
+                  <stop stopColor="#314757" />
+                  <stop offset="1" stopColor="#253542" />
+                </linearGradient>
+              </defs>
+              <rect width="520" height="350" fill="url(#ta-map-grid)" />
+              <g transform="translate(26 20) rotate(-8 260 175)">
+                <path
+                  d="M5 113H502M5 190H502M5 267H502M111 9V345M255 9V345M399 9V345"
+                  stroke="url(#ta-map-road)"
+                  strokeWidth="16"
+                />
+                <path
+                  d="M5 113H502M5 190H502M5 267H502M111 9V345M255 9V345M399 9V345"
+                  stroke="#61717c"
+                  strokeOpacity=".35"
+                  strokeDasharray="3 6"
+                />
+                {parcels.map(({ x, y }, index) => (
+                  <g key={index} opacity={index === 8 ? 0 : 1}>
+                    <rect
+                      x={x - 6}
+                      y={y - 10}
+                      width="52"
+                      height="48"
+                      rx="3"
+                      fill="#1e303d"
+                      stroke="#3c5360"
+                    />
+                    <path
+                      d={`M${x} ${y + 10}l17 -13 17 13v19h-34Z`}
+                      fill={index % 3 === 0 ? "#465660" : "#334854"}
+                      stroke="#74858c"
+                      strokeOpacity=".5"
+                    />
+                    <path
+                      d={`M${x} ${y + 10}h34M${x + 17} ${y - 3}v13`}
+                      stroke="#7d929b"
+                      strokeOpacity=".6"
+                    />
+                  </g>
+                ))}
+                <path
+                  className="ta-signal-path"
+                  d="M61 61L61 113H183V138M349 293V190H205V151M421 61V113H205V138"
+                  stroke="#e4b87f"
+                  strokeWidth="1.5"
+                  strokeDasharray="5 7"
+                />
+                <circle
+                  className="ta-map-pulse"
+                  cx="205"
+                  cy="151"
+                  r="38"
+                  stroke="#e4b87f"
+                  strokeWidth="1"
+                />
+                <circle
+                  cx="205"
+                  cy="151"
+                  r="31"
+                  fill="#ddb27c"
+                  fillOpacity=".1"
+                  stroke="#e4b87f"
+                  strokeOpacity=".4"
+                />
+                <rect
+                  x="179"
+                  y="119"
+                  width="52"
+                  height="48"
+                  rx="3"
+                  fill="#ddb27c"
+                  stroke="#ffe3b6"
+                />
+                <path d="M185 140l20-17 20 17v21h-40Z" fill="#faf0d8" />
+                <path d="M185 140h40M205 123v17" stroke="#a4784e" />
+                <rect x="201" y="149" width="8" height="12" fill="#a4784e" />
+                <circle cx="61" cy="61" r="4" fill="#e4b87f" />
+                <circle cx="349" cy="293" r="4" fill="#e4b87f" />
+                <circle cx="421" cy="61" r="4" fill="#e4b87f" />
+              </g>
+            </svg>
+            <div className="ta-map-caption">
+              <span>
+                <i /> One property. A fuller picture.
+              </span>
+              <button
+                type="button"
+                aria-pressed={paused}
+                onClick={() => setPaused(!paused)}
+              >
+                {paused ? "Play motion" : "Pause motion"}
+              </button>
+            </div>
+          </div>
+          <div className="ta-preview-bottom">
+            <div className="ta-preview-tabs" aria-label="Explore the workflow">
+              {views.map((item, index) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  aria-pressed={step === index}
+                  onClick={() => setStep(index)}
+                >
+                  <span>0{index + 1}</span>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <div className="ta-preview-content" aria-live="polite">
+              <p className="ta-preview-tag">{view.tag}</p>
+              <h2>{view.title}</h2>
+              <p>{view.note}</p>
+              <div className="ta-preview-rows">
+                {view.rows.map((row, index) => (
+                  <div key={row}>
+                    <span className="ta-row-mark" aria-hidden="true">
+                      {step === 2 ? String(index + 1).padStart(2, "0") : "↗"}
+                    </span>
+                    <span>{row}</span>
+                    <span aria-hidden="true">—</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
-
-        {/* Trusted by line */}
-        <p className="hp-fade-up hp-fade-up-d4 mt-8 text-[0.65rem] tracking-[0.12em] text-white/38 uppercase">
-          Built for real estate agents in Kansas City
-        </p>
       </div>
     </section>
   );
