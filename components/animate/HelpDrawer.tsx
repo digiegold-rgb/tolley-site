@@ -214,7 +214,7 @@ export function HelpDrawer({
             gap: 28,
           }}
         >
-          {isRealEstate && <CallTextStrip />}
+          {isRealEstate && <ListingSupportNotice />}
 
           <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {steps.map((s) => (
@@ -328,60 +328,17 @@ export function HelpDrawer({
   );
 }
 
-/* ─── Call / text strip (Listing Studio only) ─────────────────────────────
- * The agent is on their phone between showings. Two taps: call or text the
- * Jelly Animate Twilio number (LISTING_BRAND.support). Inbound only — the SMS
- * webhook files the text on /hq and pings Telegram; Jared answers himself.
- */
-
-function CallTextStrip(): React.ReactElement | null {
+/** Listing customers use the same ticket form as the rest of the studio. */
+function ListingSupportNotice(): React.ReactElement {
   const { t } = useTheme();
-  const { support } = useProduct();
-  if (!support.phone && !support.sms) return null;
-  const smsHref = support.sms ? `sms:${support.sms}?&body=Listing%20Studio%20help` : null;
   return (
-    <section
-      data-testid="help-call-text"
-      style={{
-        ...glass(t, { strong: true }),
-        borderRadius: JELLY_TOKENS.radius.lg,
-        padding: 16,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-      }}
-    >
-      <MicroLabel tone="cyan">Talk to a person</MicroLabel>
-      <div style={{ fontSize: 15, fontWeight: 600, color: t.text, lineHeight: 1.4 }}>
-        Stuck? Call or text — no ticket, no bot.
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {support.phone && (
-          <PillButton size="sm" href={`tel:${support.phone}`} data-testid="help-call">
-            Call {formatPhone(support.phone)}
-          </PillButton>
-        )}
-        {smsHref && (
-          <PillButton variant="outline" size="sm" href={smsHref} data-testid="help-text">
-            Text us
-          </PillButton>
-        )}
-      </div>
-      {(support.who || support.hours) && (
-        <div style={{ fontSize: 12.5, color: t.textSecondary, lineHeight: 1.6 }}>
-          {support.who}
-          {support.who && support.hours ? ' · ' : ''}
-          {support.hours}
-        </div>
-      )}
+    <section style={{ ...glass(t), borderRadius: JELLY_TOKENS.radius.lg, padding: 16 }}>
+      <MicroLabel tone="cyan">Help &amp; support tickets</MicroLabel>
+      <p style={{ color: t.textSecondary, lineHeight: 1.5 }}>
+        Follow the steps below. If you need help, use the report form to send a ticket with your project details.
+      </p>
     </section>
   );
-}
-
-/** +19139149429 → (913) 914-9429; anything else is shown as given. */
-function formatPhone(e164: string): string {
-  const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(e164);
-  return m ? `(${m[1]}) ${m[2]}-${m[3]}` : e164;
 }
 
 /* ─── Section label ─── */
@@ -494,6 +451,7 @@ interface FeedbackSectionProps {
 const FeedbackSection = React.forwardRef<HTMLDivElement, FeedbackSectionProps>(
   function FeedbackSection({ route, projectId, supportEmail = HELP_SUPPORT_EMAIL }, ref): React.ReactElement {
     const { t } = useTheme();
+    const { product } = useProduct();
     const [message, setMessage] = React.useState('');
     const [includeContext, setIncludeContext] = React.useState(true);
     const [sending, setSending] = React.useState(false);
@@ -511,6 +469,7 @@ const FeedbackSection = React.forwardRef<HTMLDivElement, FeedbackSectionProps>(
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             message: text,
+            product,
             route: includeContext ? (route ?? null) : null,
             projectId: includeContext ? (projectId ?? null) : null,
           }),

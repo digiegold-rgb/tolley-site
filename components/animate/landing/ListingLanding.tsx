@@ -15,7 +15,7 @@
  * name never contains "Realtor"; "REALTORS®" only when referring to NAR members.
  * Big type: 17–18 px body, one idea per block, no jargon.
  */
-import { LISTING_SKUS, LISTING_SKU_IDS, LISTING_PACKS, formatListingPrice } from '@/lib/vater/listing-pricing';
+import { LISTING_SKUS, LISTING_SKU_IDS, formatListingPrice } from '@/lib/vater/listing-pricing';
 import { creditPackOptions } from '@/lib/vater/credit-packs';
 import { STUDIO_HOME, PRODUCT_NAME } from '@/lib/vater/product';
 import { LISTING_BRAND } from '../brands';
@@ -23,6 +23,7 @@ import { JELLY_TOKENS, glass } from '../tokens';
 import { CinemaRoot, GlassCard, GradientText, Marquee, MicroLabel, PillButton } from '../cinema';
 import { InviteRequestForm } from './InviteRequestForm';
 import { ListingHeroMedia, ProofAvatar } from './ListingHeroMedia';
+import { EventTracker } from '@/components/analytics/site-tracker';
 import './landing.css';
 import './listing-landing.css';
 
@@ -32,18 +33,12 @@ const t = JELLY_TOKENS.dark;
 const HOME = STUDIO_HOME.realestate;
 const SIGNUP = `/signup?callbackUrl=${encodeURIComponent(HOME)}`;
 const SIGNIN = `/login?callbackUrl=${encodeURIComponent(HOME)}`;
-const SEAT = '#invite';
+const SEAT = '#start';
 
 const SECTION: React.CSSProperties = { paddingTop: 84, paddingBottom: 84 };
 const H2: React.CSSProperties = { fontWeight: 600, fontSize: 'clamp(32px, 4vw, 48px)', lineHeight: 1.08, letterSpacing: '-0.025em', margin: '0 0 14px' };
 const LEAD: React.CSSProperties = { fontSize: 18, lineHeight: 1.65, color: t.textSecondary, margin: 0 };
 const ACT_LABEL: React.CSSProperties = { marginBottom: 14 };
-
-function prettyPhone(e164: string): string {
-  const d = e164.replace(/\D/g, '');
-  if (d.length === 11 && d.startsWith('1')) return `(${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`;
-  return e164;
-}
 
 function fmtViews(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
@@ -75,12 +70,12 @@ const FH_POINTS: Array<{ title: string; body: string }> = [
 ];
 
 const FAQ: Array<{ q: string; a: string }> = [
-  { q: 'Do I need to know anything about AI?', a: 'No. Upload a photo, tap a few buttons, pay. If you get stuck, call or text and Jared answers himself.' },
+  { q: 'Do I need a sales call or demo?', a: 'No. Enter your email below to receive a signup link automatically. Create your account, upload a photo, and follow the steps. The Help panel has instructions and a form to send a support ticket.' },
   { q: 'Is this allowed on the MLS?', a: 'Virtual staging of furniture is allowed on most boards (Heartland MLS included) when it is labeled — we label it and give you an MLS-safe copy. Videos that change the home itself (a before→after reveal that swaps the floors) are for your socials and marketing, not the MLS photo slots. We say so on the button.' },
   { q: 'What does it cost?', a: `A staged photo is ${formatListingPrice(LISTING_SKUS.virtual_staging.priceCents)}. A before→after video is ${formatListingPrice(LISTING_SKUS.before_after.economyPriceCents ?? LISTING_SKUS.before_after.priceCents)}–${formatListingPrice(LISTING_SKUS.before_after.priceCents)}. You buy credit in small packs and only spend it when you press Pay. No subscription. A failed render is never charged.` },
   { q: 'How long does it take?', a: `A staged photo comes back in about a minute for your approval. A video is usually ready ${LISTING_SKUS.before_after.etaLabel} after you approve the photo.` },
   { q: 'What if I don’t like the staged photo?', a: 'Tap “Try again” for 99¢ and we roll a fresh version. Nothing is filmed until you approve one.' },
-  { q: 'Who is behind this?', a: 'Jared Tolley — a licensed Missouri Salesperson (Your KC Homes team · United Real Estate Kansas City) who uses this on his own listings. Support is his phone number, not a ticket queue.' },
+  { q: 'Who is behind this?', a: 'Jared Tolley — a licensed Missouri Salesperson (Your KC Homes team · United Real Estate Kansas City). Use Help in the studio to send a support ticket, or email support@tolley.io.' },
 ];
 
 export default function ListingLanding({ proofStats }: { proofStats: ProofStats }): React.ReactElement {
@@ -90,6 +85,7 @@ export default function ListingLanding({ proofStats }: { proofStats: ProofStats 
   const packs = creditPackOptions();
 
   return (
+    <EventTracker site="realestateanimated">
     <CinemaRoot className="jsl" beam density="full" data-testid="listing-landing">
       {/* ══ nav ══ */}
       <nav className="jsl-band" style={{ display: 'flex', alignItems: 'center', gap: 14, paddingTop: 22, paddingBottom: 22 }}>
@@ -107,7 +103,7 @@ export default function ListingLanding({ proofStats }: { proofStats: ProofStats 
           <a className="jc-nav-link jsl-navlink" href="#pricing">Prices</a>
           <a className="jc-nav-link jsl-navlink" href="#fair-housing">Fair Housing</a>
           <PillButton variant="ghost" size="md" href={SIGNIN} data-testid="nav-sign-in">Sign in</PillButton>
-          <PillButton variant="gradient" size="md" href={SEAT}>Get an invite</PillButton>
+          <PillButton variant="gradient" size="md" href={SEAT} data-track-event="listing_start" data-track-label="nav">Start creating</PillButton>
         </div>
       </nav>
 
@@ -127,19 +123,15 @@ export default function ListingLanding({ proofStats }: { proofStats: ProofStats 
             <strong style={{ color: t.text }}>From {formatListingPrice(LISTING_SKUS.virtual_staging.priceCents)} a photo. No subscription.</strong>
           </p>
           <div className="jc-rise-load jc-d3" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <PillButton variant="gradient" size="lg" href={SEAT} data-testid="hero-cta">Get an invite</PillButton>
+            <PillButton variant="gradient" size="lg" href={SEAT} data-testid="hero-cta" data-track-event="listing_start" data-track-label="hero">Try virtual staging</PillButton>
             <PillButton variant="ghost" size="lg" href="#steps">See the 5 steps ↓</PillButton>
           </div>
           <div className="jc-rise-load jc-d4" style={{ fontSize: 15, color: t.textFaint, marginTop: 16, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-            <span>$10 starter credit on signup</span>
+            <span>$10 starter credit for still images</span>
             <span>·</span>
             <span>Failed renders never charged</span>
-            {support.phone && (
-              <>
-                <span>·</span>
-                <a href={`tel:${support.phone}`} style={{ color: t.textSecondary, textDecoration: 'none' }}>Questions? Call {prettyPhone(support.phone)}</a>
-              </>
-            )}
+            <span>·</span>
+            <span>No sales call required</span>
           </div>
         </div>
         <ListingHeroMedia />
@@ -183,7 +175,7 @@ export default function ListingLanding({ proofStats }: { proofStats: ProofStats 
                   <li>A staged photo you approve before anything is filmed</li>
                   <li>A finished video with your broker line and the Equal Housing logo</li>
                   <li>An MLS-safe copy and a public proof page</li>
-                  <li>A phone number that a licensed agent answers</li>
+                  <li>In-app instructions and support tickets when you need help</li>
                 </ul>
               </GlassCard>
             )}
@@ -198,7 +190,7 @@ export default function ListingLanding({ proofStats }: { proofStats: ProofStats 
           <h2 style={H2}>
             Upload. Type. Tap. <GradientText serif>Pay. Post.</GradientText>
           </h2>
-          <p style={{ ...LEAD, maxWidth: 620, marginBottom: 28 }}>One thing per screen. Big buttons. Nothing to learn. If a step ever feels confusing, that is our bug — call and we fix it.</p>
+          <p style={{ ...LEAD, maxWidth: 620, marginBottom: 28 }}>Follow the steps at your own pace. Your price is shown before you pay, and Help is available in the studio.</p>
           <div className="jrl-steps" data-slot="five-steps">
             {STEPS.map((s) => (
               <GlassCard key={s.n} radius={JELLY_TOKENS.radius.xl} padding="20px 18px" hover style={{ display: 'grid', gap: 10, alignContent: 'start' }}>
@@ -242,19 +234,10 @@ export default function ListingLanding({ proofStats }: { proofStats: ProofStats 
                       <span style={{ fontSize: 13.5, fontWeight: 600, color: JELLY_TOKENS.success, border: `1px solid ${JELLY_TOKENS.success}`, borderRadius: 999, padding: '4px 10px', display: 'inline-block' }}>MLS-safe copy included</span>
                     )}
                   </div>
+                  <PillButton variant="outline" size="md" href={SEAT} data-testid={`start-${id}`} data-track-event="listing_start" data-track-label={id}>Start with {s.label.toLowerCase()}</PillButton>
                 </GlassCard></div>
               );
             })}
-            {LISTING_PACKS.map((p) => (
-              <div key={p.id} data-slot="pricing-ticket" style={{ display: 'contents' }}><GlassCard variant="ticket" data-testid={`landing-pack-${p.id}`} radius={JELLY_TOKENS.radius.xl} padding="22px 20px" style={{ display: 'grid', gap: 10, alignContent: 'start' }}>
-                <MicroLabel tone="violet" size={11} tracking="0.24em">BUNDLE — {p.label.toUpperCase()}</MicroLabel>
-                <div className="jc-tabular" style={{ fontSize: 40, fontWeight: 700, letterSpacing: '-0.02em' }}>{formatListingPrice(p.priceCents)}</div>
-                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 16, lineHeight: 1.55, color: t.textSecondary }}>
-                  {p.includes.map((line) => <li key={line}>{line}</li>)}
-                </ul>
-                <div style={{ fontSize: 14, color: t.textFaint }}>One new listing, fully covered.</div>
-              </GlassCard></div>
-            ))}
           </div>
 
           {later.length > 0 && (
@@ -304,19 +287,20 @@ export default function ListingLanding({ proofStats }: { proofStats: ProofStats 
 
       {/* ══ invite ══ */}
       <section className="jsl-band" style={{ maxWidth: 820, paddingTop: 20, paddingBottom: 60 }}>
-        <div data-slot="invite-form" style={{ display: 'contents' }}><GlassCard id="invite" className="jc-rise" radius={JELLY_TOKENS.radius.xxl} padding="30px 28px" halo>
-          <MicroLabel tone="cyan" style={ACT_LABEL}>PRIVATE BETA — LIMITED SEATS</MicroLabel>
+        <span id="invite" />
+        <div data-slot="invite-form" style={{ display: 'contents' }}><GlassCard id="start" className="jc-rise" radius={JELLY_TOKENS.radius.xxl} padding="30px 28px" halo>
+          <MicroLabel tone="cyan" style={ACT_LABEL}>START ONLINE · BETA</MicroLabel>
           <h2 style={{ ...H2, fontSize: 'clamp(28px, 3.4vw, 40px)' }}>
-            Get an invite. <GradientText serif>We’ll walk you through the first one.</GradientText>
+            Try your first photo. <GradientText serif>Start on your own time.</GradientText>
           </h2>
-          <p style={{ ...LEAD, marginBottom: 20 }}>Leave your email and we send a signup link. Tell us your brokerage and state so the end card is right on your very first video.</p>
+          <p style={{ ...LEAD, marginBottom: 20 }}>Enter your email and we automatically send your signup link. Your account includes $10 in starter credit for still images. Videos use purchased credit. No appointment needed.</p>
           <InviteRequestForm
             subsite="realestate"
             copy={{
               aboutPlaceholder: 'Your brokerage, your state, and how many listings a month',
-              submit: 'Send me an invite',
-              doneTitle: 'You’re on the list — check your email.',
-              doneBody: 'Your signup link is on its way. Check spam if it isn’t there in a minute — or just call the number below.',
+              submit: 'Email my signup link',
+              doneTitle: 'Your signup link has been sent.',
+              doneBody: 'Open the link in your email to create your account and start your first photo. Check spam if you don’t see it.',
               fallbackEmail: support.email,
             }}
           />
@@ -345,13 +329,12 @@ export default function ListingLanding({ proofStats }: { proofStats: ProofStats 
       <footer className="jsl-band" style={{ paddingTop: 30, paddingBottom: 60, borderTop: `1px solid ${t.border}`, display: 'grid', gap: 18 }}>
         <div data-slot="support-strip" style={{ ...glass(t), borderRadius: JELLY_TOKENS.radius.xl, padding: '18px 20px', display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 260px' }}>
-            <div style={{ fontSize: 18, fontWeight: 700 }}>Talk to a person</div>
-            <div style={{ fontSize: 15, color: t.textSecondary }}>{support.who}{support.hours ? ` · ${support.hours}` : ''}</div>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>Help when you need it</div>
+            <div style={{ fontSize: 15, color: t.textSecondary }}>Read the answers above, or send a support ticket from Help in your studio.</div>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {support.phone && <PillButton variant="outline" size="lg" href={`tel:${support.phone}`} data-testid="footer-call">📞 Call {prettyPhone(support.phone)}</PillButton>}
-            {support.sms && <PillButton variant="outline" size="lg" href={`sms:${support.sms}?&body=${encodeURIComponent('Listing Studio question')}`} data-testid="footer-text">💬 Text us</PillButton>}
-            <PillButton variant="ghost" size="lg" href={`mailto:${support.email}`}>Email</PillButton>
+            <PillButton variant="outline" size="lg" href="#faq">Read the FAQ</PillButton>
+            <PillButton variant="ghost" size="lg" href={`mailto:${support.email}`}>Email support</PillButton>
           </div>
         </div>
         <div className="jrl-footer-links" style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center', color: t.textFaint, fontSize: 15 }}>
@@ -367,5 +350,6 @@ export default function ListingLanding({ proofStats }: { proofStats: ProofStats 
         </div>
       </footer>
     </CinemaRoot>
+    </EventTracker>
   );
 }

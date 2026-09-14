@@ -51,9 +51,16 @@ export async function sendInviteRequestAck(
     [
       hi,
       "",
-      `Thanks for asking for a ${b.name} invite. We're onboarding ${who} in small waves right now,`,
-      "and every request is reviewed by a person — you'll get your personal invite link at this",
-      "address, usually within 24 hours.",
+      ...(product === "realestate"
+        ? [
+          "Your Listing Studio request is saved, but we could not deliver your signup link automatically.",
+          "Support has your request and will follow up at this email address. You do not need to submit it again.",
+        ]
+        : [
+          `Thanks for asking for a ${b.name} invite. We're onboarding ${who} in small waves right now,`,
+          "and every request is reviewed by a person — you'll get your personal invite link at this",
+          "address, usually within 24 hours.",
+        ]),
       "",
       "Nothing to do until then. If you have a question, just reply to this email.",
       "",
@@ -85,7 +92,9 @@ export async function sendInviteLinkEmail(
       `Invite code: ${display}`,
       "",
       "Open the link, create your account with this same email, and you'll land in the studio",
-      "with a $10 promo credit already applied. Reply to this email if anything gets in the way.",
+      product === "realestate"
+        ? "with $10 in starter credit for still images. Upload a room photo to start. Videos use purchased credit; the price is shown before you pay. Use Help in the studio for instructions or to file a support ticket."
+        : "with a $10 promo credit already applied. Reply to this email if anything gets in the way.",
       "",
       "— Jared",
       `${b.name} · ${b.home}`,

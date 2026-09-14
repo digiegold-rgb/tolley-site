@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.42';
+export const APP_VERSION = '1.42.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.42.1',
+    date: '2026-09-14',
+    title: 'Listing Studio starts online',
+    items: [
+      'Listing Studio emails signup links automatically, including for visitors arriving directly or from search.',
+      'Available photo and video options lead straight to signup; the unfinished tour bundle is no longer advertised for sale.',
+      'Help in the listing studio connects you to instructions and support tickets.',
+    ],
+  },
   {
     version: '1.42',
     date: '2026-09-14',

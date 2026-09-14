@@ -48,7 +48,7 @@ export const metadata: Metadata = {
   },
   title: `${LISTING_BRAND.name} — listing videos from one photo · pay per listing · Fair-Housing safe`,
   description:
-    "Upload one listing photo and get it virtually staged in a minute, then turn it into a Before → After reveal, a beauty pan or a walkthrough tour — 1080p, labeled \"Virtually staged\", MLS-safe export, your license end card. Pay per listing, never per month. Failed renders are never charged. Built by a licensed Missouri agent. Invite-only beta.",
+    "Upload one listing photo and get it virtually staged in a minute, then turn it into a Before → After reveal, a beauty pan or a walkthrough tour — 1080p, labeled \"Virtually staged\", MLS-safe export, your license end card. Pay per listing, never per month. Failed renders are never charged. Built by a licensed Missouri agent. Beta. Get your signup link automatically; no sales call required.",
 };
 
 export default async function ListingStudioPage({
