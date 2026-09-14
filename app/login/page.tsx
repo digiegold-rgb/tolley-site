@@ -14,7 +14,7 @@ type LoginPageProps = {
 };
 
 function resolveCallbackUrl(value: string | undefined) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || /[\\\r\n]/.test(value)) {
     return "/leads/dashboard";
   }
   return value;

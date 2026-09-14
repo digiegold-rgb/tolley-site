@@ -2,19 +2,18 @@
 
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 
 function resolveCallbackUrl(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || /[\\\r\n]/.test(value)) {
     return "/leads/dashboard";
   }
   return value;
 }
 
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = useMemo(
     () => resolveCallbackUrl(searchParams.get("callbackUrl")),
@@ -38,21 +37,27 @@ export function LoginForm() {
     setStatus("loading");
     setErrorMessage(null);
 
-    const result = await signIn("credentials", {
-      email: email.trim().toLowerCase(),
-      password,
-      callbackUrl,
-      redirect: false,
-    });
+    try {
+      const result = await signIn("credentials", {
+        email: email.trim().toLowerCase(),
+        password,
+        callbackUrl,
+        redirect: false,
+      });
 
-    if (result?.error) {
+      if (!result || result.error || !result.ok) {
+        setStatus("error");
+        setErrorMessage("Sign-in failed. Check your email and password, then try again.");
+        return;
+      }
+
+      // Re-read the new session on the server, including its MFA requirement,
+      // instead of reusing a route prefetched while the user was signed out.
+      window.location.assign(callbackUrl);
+    } catch {
       setStatus("error");
-      setErrorMessage("Invalid email or password.");
-      return;
+      setErrorMessage("Could not connect to sign in. Please try again.");
     }
-
-    router.push(result?.url || callbackUrl);
-    router.refresh();
   };
 
   return (
