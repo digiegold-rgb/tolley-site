@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Step 1 — Photo. Drop / choose / take a photo → POST /api/vater/upload →
+ * Step 1 — Photo. Drop / choose / take a photo → direct Blob upload →
  * Blob URL saved on the draft. Or "No photo? Use the address instead" →
  * POST /api/vater/listing/property-image (Street View copy on Blob).
  *
@@ -14,7 +14,7 @@ import { useTheme } from '../../../theme-context';
 import { listingApi, listingErrorMessage } from '../listing-api';
 import { BigButton, Field, Notice, Select, StepHeader, StepNav, TextInput, US_STATES } from '../listing-ui';
 
-const MAX_BYTES = 10 * 1024 * 1024;
+import { LISTING_PHOTO_MAX_BYTES, LISTING_PHOTO_ACCEPT, listingPhotoType } from '@/lib/vater/listing/photo-upload';
 
 export interface PhotoStepProps {
   job: ListingJobDto;
@@ -24,6 +24,8 @@ export interface PhotoStepProps {
 
 export default function PhotoStep({ job, onSave, onNext }: PhotoStepProps): React.ReactElement {
   const { t } = useTheme();
+  const [progress, setProgress] = React.useState(0);
+  const uploading = React.useRef(false);
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
   const [over, setOver] = React.useState(false);
@@ -35,30 +37,33 @@ export default function PhotoStep({ job, onSave, onNext }: PhotoStepProps): Reac
   const photo = job.sourceImageUrls?.[0] ?? null;
 
   const handleFile = async (file: File | null | undefined) => {
-    if (!file) return;
+    if (!file || uploading.current) return;
     setErr(null);
-    if (!file.type.startsWith('image/')) {
-      setErr('That file is not a photo. Please choose a JPG, PNG or HEIC photo.');
+    if (!listingPhotoType(file)) {
+      setErr('Choose a JPG, PNG or WebP photo. Export RAW, TIFF or HEIC files as JPG first.');
       return;
     }
-    if (file.size > MAX_BYTES) {
-      setErr('That photo is bigger than 10 MB. Most phones can send a smaller copy — try “Medium” size.');
+    if (file.size > LISTING_PHOTO_MAX_BYTES) {
+      setErr('That photo is bigger than 100 MB. Export a JPG up to 100 MB and try again.');
       return;
     }
+    uploading.current = true;
+    setProgress(0);
     setBusy(true);
     try {
-      const url = await listingApi.upload(file);
+      const url = await listingApi.upload(file, setProgress);
       await onSave({ sourceKind: 'upload', sourceImageUrls: [url], step: 1 });
     } catch (e) {
       setErr(listingErrorMessage(e, 'The upload did not go through. Please try again.'));
     } finally {
       setBusy(false);
+      uploading.current = false;
       if (pickRef.current) pickRef.current.value = '';
       if (camRef.current) camRef.current.value = '';
     }
   };
 
-  const useAddress = async () => {
+  const fetchAddressPhoto = async () => {
     setErr(null);
     if (!addr.address.trim()) {
       setErr('Type the street address first.');
@@ -102,11 +107,11 @@ export default function PhotoStep({ job, onSave, onNext }: PhotoStepProps): Reac
 
   return (
     <div data-testid="listing-step-1">
-      <StepHeader step={1} title="Add one photo of the room" lede="A phone photo is fine. Empty rooms work best — that is the whole point." />
+      <StepHeader step={1} title="Add one photo of the room" lede="Use your photographer’s full-resolution JPG, PNG or WebP, up to 100 MB. We keep your original and prepare a copy for the video." />
 
       {/* Hidden inputs: one opens the camera on phones, one opens the photo library / file picker. */}
-      <input ref={pickRef} data-testid="listing-upload" type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => void handleFile(e.target.files?.[0])} />
-      <input ref={camRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={(e) => void handleFile(e.target.files?.[0])} />
+      <input ref={pickRef} data-testid="listing-upload" type="file" accept={LISTING_PHOTO_ACCEPT} disabled={busy} style={{ display: 'none' }} onChange={(e) => void handleFile(e.target.files?.[0])} />
+      <input ref={camRef} type="file" accept={LISTING_PHOTO_ACCEPT} disabled={busy} capture="environment" style={{ display: 'none' }} onChange={(e) => void handleFile(e.target.files?.[0])} />
 
       {photo ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -139,7 +144,7 @@ export default function PhotoStep({ job, onSave, onNext }: PhotoStepProps): Reac
             <Field label="ZIP"><TextInput value={addr.zip} onChange={(e) => setAddr({ ...addr, zip: e.target.value })} inputMode="numeric" autoComplete="postal-code" /></Field>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <BigButton onClick={() => void useAddress()} busy={busy} data-testid="listing-use-address">Get the street photo</BigButton>
+            <BigButton onClick={() => void fetchAddressPhoto()} busy={busy} data-testid="listing-use-address">Get the street photo</BigButton>
             <BigButton variant="ghost" onClick={() => setAddressMode(false)} disabled={busy}>Never mind — I have a photo</BigButton>
           </div>
           <div style={{ fontSize: 15, color: t.textFaint }}>Street photos are labeled “AI-generated — rendering” on the video. Good for exterior reveals; for rooms, a real photo is much better.</div>
@@ -184,8 +189,8 @@ export default function PhotoStep({ job, onSave, onNext }: PhotoStepProps): Reac
             }}
           >
             <div aria-hidden style={{ fontSize: 46, lineHeight: 1 }}>🏠</div>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>{busy ? 'Uploading your photo…' : 'Tap here to choose a photo'}</div>
-            <div style={{ fontSize: 17, color: t.textSecondary }}>or drag one onto this box · JPG, PNG or HEIC · up to 10 MB</div>
+            <div style={{ fontSize: 22, fontWeight: 700 }}>{busy ? (progress === 100 ? 'Saving your photo…' : `Uploading your photo… ${progress}%`) : 'Tap here to choose a photo'}</div>
+            <div style={{ fontSize: 17, color: t.textSecondary }}>or drag one onto this box · JPG, PNG or WebP · up to 100 MB</div>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <BigButton onClick={() => pickRef.current?.click()} busy={busy} data-testid="listing-choose-photo">Choose a photo</BigButton>
@@ -202,6 +207,10 @@ export default function PhotoStep({ job, onSave, onNext }: PhotoStepProps): Reac
         </div>
       )}
 
+      {busy && uploading.current && <div role="status" aria-live="polite" style={{ marginTop: 14 }}>
+        {progress === 100 ? 'Saving your photo…' : `Uploading your photo… ${progress}%`}
+        <progress aria-label="Photo upload" value={progress} max={100} style={{ display: 'block', width: '100%', maxWidth: 720 }} />
+      </div>}
       <div style={{ marginTop: 18, display: 'grid', gap: 10, maxWidth: 720 }}>
         <Notice tone="info">
           <strong>No people in the photo</strong> — no sellers, no kids, no pets in frame. The video model refuses photos with people, and Fair Housing rules keep people out of listing media anyway.
