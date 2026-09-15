@@ -36,6 +36,9 @@ describe("/generate fal engine tabs", () => {
 
   it("keeps Modal stills and Motion spawn paths", () => {
     assert.match(jobs, /spawnQwenImageEdit/);
+    assert.match(jobs, /routeGpuJob/);
+    assert.match(jobs, /requireWiredGpuBackend/);
+    assert.doesNotMatch(jobs, /backend:\s*["']spark["']/);
     assert.match(jobs, /spawnFalMotion/);
     assert.match(studio, /Modal stills/);
     assert.match(studio, /kind: "motion"/);

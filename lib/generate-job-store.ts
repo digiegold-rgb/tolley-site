@@ -3,6 +3,7 @@ import { classifyModalOutputs, serializeJobOutputUrls } from "@/lib/generate-out
 import { durableUrlsFromModalResult } from "@/lib/generate-output-persist";
 import { type ModalCallResult } from "@/lib/generate-modal";
 import { isGenerateJobStatus, type GenerateJobStatus } from "@/lib/generate-job-card";
+import { gpuJobFinishFields } from "@/lib/gpu-job-log";
 
 export function serializeJob(row: {
   id: string;
@@ -17,6 +18,10 @@ export function serializeJob(row: {
   completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  backend?: string | null;
+  kind?: string | null;
+  durationMs?: number | null;
+  costUsd?: number | null;
 }) {
   return {
     id: row.id,
@@ -30,9 +35,34 @@ export function serializeJob(row: {
     createdBy: row.createdBy,
     startedAt: row.startedAt,
     completedAt: row.completedAt,
+    backend: row.backend ?? "modal",
+    kind: row.kind ?? null,
+    durationMs: row.durationMs ?? null,
+    costUsd: row.costUsd ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+/** Wall time + Modal cost (or null) for a terminal GenerateJob update. */
+export async function generateJobFinishPatch(
+  jobId: string,
+  result?: unknown,
+): Promise<{
+  completedAt: Date;
+  durationMs: number | null;
+  costUsd: number | null;
+  backend: string;
+}> {
+  const row = await prisma.generateJob.findUnique({
+    where: { id: jobId },
+    select: { startedAt: true, backend: true },
+  });
+  return gpuJobFinishFields({
+    startedAt: row?.startedAt ?? null,
+    backend: row?.backend,
+    result,
+  });
 }
 
 export async function applyModalResult(
@@ -62,7 +92,7 @@ export async function applyModalResult(
         data: {
           status: "failed",
           error: `Still persist failed: ${message}`.slice(0, 2000),
-          completedAt: new Date(),
+          ...(await generateJobFinishPatch(jobId, result)),
         },
       });
       return { status: "failed", outputUrls: [], error: message };
@@ -83,7 +113,7 @@ export async function applyModalResult(
       status,
       outputUrls,
       error,
-      completedAt: new Date(),
+      ...(await generateJobFinishPatch(jobId, result)),
     },
   });
   return { status, outputUrls, error };

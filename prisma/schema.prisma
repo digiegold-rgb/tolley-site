@@ -5869,6 +5869,8 @@ model VaterRuleRevision {
 /// Modal identity stills from /generate. One row per Confirm/Go (or chat→card
 /// create). cardJson is the editable Modal kwargs — not a frozen GUI preset.
 /// Status: queued | running | done | failed.
+/// GPU log: backend (modal | nebius), kind (still | short-motion | long-video | batch),
+/// wall-clock durationMs, costUsd from the provider (null when Modal does not return it).
 model GenerateJob {
   id          String    @id @default(cuid())
   status      String    @default("queued")
@@ -5880,12 +5882,17 @@ model GenerateJob {
   createdBy   String
   startedAt   DateTime?
   completedAt DateTime?
+  backend     String    @default("modal")
+  kind        String?
+  durationMs  Int?
+  costUsd     Float?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@index([status, createdAt])
   @@index([createdBy, createdAt])
   @@index([modalCallId])
+  @@index([backend, createdAt])
 }
 
 /// Owner notifications, committed with their source lead; delivery is at least once.
