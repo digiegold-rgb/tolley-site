@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { applyMortgageToEquity } from "@/lib/credit/sync";
+import type { MortgageSnapshot } from "@/lib/credit/types";
 
 type Readiness = {
   ready: boolean;
@@ -91,16 +93,19 @@ function GateShell({
 
 export function HelocReadiness({
   readiness,
+  mortgage,
   onSaved,
 }: {
   readiness?: Readiness | null;
+  mortgage?: MortgageSnapshot | null;
   onSaved?: () => void;
 }) {
   const [income, setIncome] = useState("");
   const [saving, setSaving] = useState(false);
 
   if (!readiness) return null;
-  const { fico, equity, dti } = readiness;
+  const { fico, dti } = readiness;
+  const equity = applyMortgageToEquity(readiness.equity, mortgage);
 
   const saveIncome = async () => {
     const val = parseInt(income.replace(/[^0-9]/g, ""), 10);
@@ -192,6 +197,22 @@ export function HelocReadiness({
             <p>
               Equity {usd(equity.equity)} · ~{usd(equity.available80)} @ 80%
             </p>
+            {mortgage && (
+              <p>
+                {mortgage.lender}
+                {mortgage.accountLast4 ? ` ····${mortgage.accountLast4}` : ""}
+                {mortgage.nextDueDate ? ` · due ${mortgage.nextDueDate}` : ""}
+                {mortgage.ratePct != null ? ` · ${mortgage.ratePct}%` : ""}
+                {mortgage.totalPayment != null
+                  ? ` · ${usd(mortgage.totalPayment)}/mo`
+                  : ""}
+                {mortgage.pmiActive == null
+                  ? ""
+                  : mortgage.pmiActive
+                    ? " · PMI on"
+                    : " · PMI off"}
+              </p>
+            )}
           </div>
         </GateShell>
 

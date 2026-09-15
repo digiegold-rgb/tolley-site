@@ -12,25 +12,31 @@ export function ManualScoreEntry({ onSaved }: { onSaved: () => void }) {
   const save = async () => {
     setSaving(true);
     try {
-      const entry: Record<string, any> = {
+      const entry: Record<string, unknown> = {
         date: new Date().toISOString().split("T")[0],
-        sources: {},
+        source: "manual",
+        sources: {} as Record<string, string>,
       };
-      if (transunion) {
-        entry.transunion = parseInt(transunion);
-        entry.sources.transunion = "manual";
+      const sources = entry.sources as Record<string, string>;
+      const tu = transunion ? parseInt(transunion, 10) : NaN;
+      const eq = equifax ? parseInt(equifax, 10) : NaN;
+      const ex = experian ? parseInt(experian, 10) : NaN;
+      const ko = kickoff ? parseInt(kickoff, 10) : NaN;
+      if (Number.isFinite(tu)) {
+        entry.transunion = tu;
+        sources.transunion = "manual";
       }
-      if (equifax) {
-        entry.equifax = parseInt(equifax);
-        entry.sources.equifax = "manual";
+      if (Number.isFinite(eq)) {
+        entry.equifax = eq;
+        sources.equifax = "manual";
       }
-      if (experian) {
-        entry.experian = parseInt(experian);
-        entry.sources.experian = "manual";
+      if (Number.isFinite(ex)) {
+        entry.experian = ex;
+        sources.experian = "manual";
       }
-      if (kickoff) {
-        entry.kickoff_score = parseInt(kickoff);
-        entry.sources.kickoff = "manual";
+      if (Number.isFinite(ko)) {
+        entry.kickoff_score = ko;
+        sources.kickoff = "manual";
       }
 
       await fetch("/api/credit/scores", {
@@ -53,7 +59,7 @@ export function ManualScoreEntry({ onSaved }: { onSaved: () => void }) {
           { label: "TransUnion", value: transunion, set: setTransunion },
           { label: "Equifax", value: equifax, set: setEquifax },
           { label: "Experian", value: experian, set: setExperian },
-          { label: "Kickoff", value: kickoff, set: setKickoff },
+          { label: "Kikoff", value: kickoff, set: setKickoff },
         ].map((field) => (
           <div key={field.label}>
             <label className="mb-1 block text-xs text-white/40">

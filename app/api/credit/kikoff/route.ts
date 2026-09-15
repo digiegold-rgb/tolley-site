@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApiSession } from "@/lib/admin-auth";
-import { normalizeDisputeBody } from "@/lib/credit/sync";
 
 const LEDGER_URL = process.env.LEDGER_URL || "http://localhost:8920";
 const LEDGER_TOKEN = process.env.LEDGER_BEARER_TOKEN || "";
@@ -10,7 +9,7 @@ export async function GET() {
   if (!adminCheck.ok) return adminCheck.response;
 
   try {
-    const res = await fetch(`${LEDGER_URL}/credit/disputes`, {
+    const res = await fetch(`${LEDGER_URL}/credit/kikoff`, {
       headers: { Authorization: `Bearer ${LEDGER_TOKEN}` },
       signal: AbortSignal.timeout(10000),
     });
@@ -20,20 +19,13 @@ export async function GET() {
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   const adminCheck = await requireAdminApiSession();
   if (!adminCheck.ok) return adminCheck.response;
 
   try {
-    const raw = await req.json();
-    const body = normalizeDisputeBody(
-      raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}
-    );
-    // Route to update if disputeId present, otherwise add new
-    const url = body.disputeId
-      ? `${LEDGER_URL}/credit/disputes/${body.disputeId}`
-      : `${LEDGER_URL}/credit/disputes`;
-    const res = await fetch(url, {
+    const body = await request.json();
+    const res = await fetch(`${LEDGER_URL}/credit/kikoff`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LEDGER_TOKEN}`,
