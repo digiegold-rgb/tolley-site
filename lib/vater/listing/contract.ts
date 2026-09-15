@@ -42,6 +42,7 @@ export interface ListingJobDraft {
   engine?: ListingEngine;
   lane?: ListingLane;
   reel?: boolean;
+  durationS?: number | null;
 }
 
 /** What GET /api/vater/listing[/id] returns for one job. */
@@ -65,6 +66,7 @@ export interface ListingJobDto extends Required<Pick<ListingJobDraft, "step" | "
   engine: ListingEngine;
   lane: ListingLane;
   reel: boolean;
+  durationS: number | null;
   stagedStillUrl: string | null;
   stagedStillLabeledUrl: string | null;
   mlsSafeStillUrl: string | null;
@@ -115,6 +117,7 @@ export interface ListingPreflight {
   blockers: ListingBlocker[];
   warnings: ListingWarning[];
   priceCents: number;
+  durationS: number | null;
   estCostCents: number;
   balanceCents: number;
   /** Owner / studio / VaterAccount.unmetered — no credit gate, billed out-of-band. */

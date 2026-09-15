@@ -23,6 +23,8 @@ import {
   LISTING_SKUS,
   listingEstCostCents,
   listingPriceCents,
+  listingDurationS,
+  validBeautyDuration,
   type ListingEngine,
   type ListingLane,
   type ListingLook,
@@ -158,6 +160,7 @@ export function toDto(j: ListingRow): ListingJobDto {
     engine: (ENGINES.has(j.engine) ? j.engine : "seedance") as ListingEngine,
     lane: (LANES.has(j.lane) ? j.lane : "social") as ListingLane,
     reel: j.reel,
+    durationS: isListingSku(j.sku) ? listingDurationS(j.sku, j.durationS) ?? null : null,
     stagedStillUrl: j.stagedStillUrl,
     stagedStillLabeledUrl: j.stagedStillLabeledUrl,
     mlsSafeStillUrl: j.mlsSafeStillUrl,
@@ -274,6 +277,12 @@ export function validateDraft(body: unknown): DraftValidation {
     if (typeof b.lane !== "string" || !LANES.has(b.lane)) return { ok: false, error: "lane must be social | mls" };
     data.lane = b.lane;
   }
+  if (b.durationS !== undefined) {
+    if (b.durationS !== null && !validBeautyDuration(b.durationS)) {
+      return { ok: false, error: "durationS must be a whole number from 4 to 30 seconds" };
+    }
+    data.durationS = b.durationS as number | null;
+  }
   if (b.reel !== undefined) {
     if (typeof b.reel !== "boolean") return { ok: false, error: "reel must be boolean" };
     data.reel = b.reel;
@@ -285,21 +294,23 @@ export function validateDraft(body: unknown): DraftValidation {
 // Pricing helpers
 // ---------------------------------------------------------------------------
 
-export function jobPriceCents(j: Pick<ListingRow, "sku" | "engine" | "sourceImageUrls" | "reel">): number {
+export function jobPriceCents(j: Pick<ListingRow, "sku" | "engine" | "sourceImageUrls" | "reel" | "durationS">): number {
   if (!isListingSku(j.sku)) return 0;
   return listingPriceCents(j.sku, {
     engine: (ENGINES.has(j.engine) ? j.engine : "seedance") as ListingEngine,
     photos: j.sourceImageUrls?.length ?? 0,
     reel: j.reel,
+    durationS: isListingSku(j.sku) ? listingDurationS(j.sku, j.durationS) ?? null : null,
   });
 }
 
-export function jobEstCostCents(j: Pick<ListingRow, "sku" | "engine" | "sourceImageUrls" | "reel">): number {
+export function jobEstCostCents(j: Pick<ListingRow, "sku" | "engine" | "sourceImageUrls" | "reel" | "durationS">): number {
   if (!isListingSku(j.sku)) return 0;
   return listingEstCostCents(j.sku, {
     engine: (ENGINES.has(j.engine) ? j.engine : "seedance") as ListingEngine,
     photos: j.sourceImageUrls?.length ?? 0,
     reel: j.reel,
+    durationS: isListingSku(j.sku) ? listingDurationS(j.sku, j.durationS) ?? null : null,
   });
 }
 
@@ -413,6 +424,7 @@ export async function computePreflight(input: PreflightInput): Promise<ListingPr
   const label = frameLabelSpec(sku ?? "virtual_staging", lane, job.sourceKind === "streetview" ? "streetview" : "upload");
   const lines: string[] = [];
   if (spec) lines.push(`${spec.label} — $${(priceCents / 100).toFixed(2)}`);
+  if (sku === "beauty_shot") lines.push(`${listingDurationS(sku, job.durationS)} seconds of generated motion, plus about 3 seconds for the end card.`);
   if (sku === "beauty_shot") lines.push("Camera motion from your original photo. No furniture is added; filming starts after payment.");
   if (job.look && sku !== "beauty_shot") lines.push(`Look: ${job.look}${spec?.kind === "video" ? ` · ${job.engine === "modal-wan" ? "Economy" : "Photoreal"}` : ""}`);
   lines.push(lint.ok ? "Fair-Housing check: passed" : "Fair-Housing check: BLOCKED");
@@ -425,6 +437,7 @@ export async function computePreflight(input: PreflightInput): Promise<ListingPr
     blockers,
     warnings,
     priceCents,
+    durationS: sku ? listingDurationS(sku, job.durationS) ?? null : null,
     estCostCents,
     balanceCents,
     unmetered,

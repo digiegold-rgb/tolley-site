@@ -81,10 +81,10 @@ export const LISTING_SKUS: Record<ListingSku, ListingSkuSpec> = {
     phase: "p0",
   },
   beauty_shot: {
-    priceCents: 1400,
-    estCostCents: 240,
+    priceCents: 500,
+    estCostCents: 250,
     label: "Room Beauty Shot",
-    blurb: "A slow, cinematic push-in on the room exactly as it is. 5 seconds.",
+    blurb: "A slow, cinematic push-in on the room exactly as it is. Choose 4–30 seconds.",
     etaLabel: "about 4 minutes",
     kind: "video",
     minPhotos: 1,
@@ -149,7 +149,7 @@ export const RESTAGE_PRICE_CENTS = 99;
 export const REEL_ADDON_CENTS: Record<"video_photoreal" | "video_economy" | "beauty", number> = {
   video_photoreal: 1900,
   video_economy: 900,
-  beauty: 900,
+  beauty: 500,
 };
 
 export interface ListingPack {
@@ -170,7 +170,23 @@ export const LISTING_PACKS: ListingPack[] = [
   },
 ];
 
+/** Seedance 2.5 accepts whole seconds from 4 through 30. No silent truncation. */
+export const BEAUTY_DURATION = { min: 4, max: 30, default: 5 } as const;
+
+export function validBeautyDuration(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value)
+    && value >= BEAUTY_DURATION.min && value <= BEAUTY_DURATION.max;
+}
+
+export function listingDurationS(sku: ListingSku, durationS?: number | null): number | undefined {
+  if (sku !== "beauty_shot") return LISTING_SKUS[sku].durationS;
+  if (durationS == null) return BEAUTY_DURATION.default;
+  if (!validBeautyDuration(durationS)) throw new RangeError("Beauty Shot duration must be a whole number from 4 to 30 seconds.");
+  return durationS;
+}
+
 export interface ListingPriceOpts {
+  durationS?: number | null;
   engine?: ListingEngine;
   photos?: number;
   reel?: boolean;
@@ -188,6 +204,7 @@ export function listingPriceCents(sku: ListingSku, opts: ListingPriceOpts = {}):
   if (opts.reel && spec.kind === "video") {
     cents += sku === "beauty_shot" ? REEL_ADDON_CENTS.beauty : economy ? REEL_ADDON_CENTS.video_economy : REEL_ADDON_CENTS.video_photoreal;
   }
+  if (sku === "beauty_shot") cents = Math.round(cents * listingDurationS(sku, opts.durationS)! / BEAUTY_DURATION.default);
   return cents;
 }
 
@@ -201,6 +218,7 @@ export function listingEstCostCents(sku: ListingSku, opts: ListingPriceOpts = {}
     cents += extra * Math.round(spec.estCostCents / (spec.includedPhotos || 1));
   }
   if (opts.reel && spec.kind === "video") cents += economy ? 274 : sku === "beauty_shot" ? 250 : 570;
+  if (sku === "beauty_shot") cents = Math.ceil(cents * listingDurationS(sku, opts.durationS)! / BEAUTY_DURATION.default);
   return cents;
 }
 
@@ -222,5 +240,5 @@ export function listingDebitKey(sku: ListingSku, listingJobId: string): string {
   return `re:${sku}:${listingJobId}`;
 }
 
-/** Minimum list/cost multiple the house accepts. */
+/** Default margin target for other products; Beauty uses the owner-approved $1/second rate. */
 export const LISTING_MIN_MARGIN = 4;

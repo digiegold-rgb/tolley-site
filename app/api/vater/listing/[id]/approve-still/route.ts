@@ -13,7 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { autopilot } from "@/lib/vater/autopilot-client";
 import { queueVaterEvent } from "@/lib/vater/events";
 import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
-import { isListingSku, LISTING_SKUS } from "@/lib/vater/listing-pricing";
+import { isListingSku, listingDurationS, LISTING_SKUS } from "@/lib/vater/listing-pricing";
 import {
   computePreflight,
   DGX_SKU_FOR,
@@ -78,7 +78,7 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
   const photos = job.sourceImageUrls.map((url, i) => ({ url, room: job.roomType ?? undefined, label: i === 0 ? "primary" : undefined }));
   const dgxSku = DGX_SKU_FOR[sku];
   const engine = engineOf(job);
-  const inputs = { photos, stagedStillUrl: job.stagedStillUrl, engine, look: job.look, style: job.style, roomType: job.roomType, reel: job.reel, durationS: spec.durationS };
+  const inputs = { photos, stagedStillUrl: job.stagedStillUrl, engine, look: job.look, style: job.style, roomType: job.roomType, reel: job.reel, durationS: listingDurationS(sku, job.durationS) };
   const idempotencyKey = await idempotencyKeyFor(dgxSku, id, inputs);
 
   let created;
@@ -90,7 +90,7 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
       photos,
       stagedStillUrl: sku === "beauty_shot" ? undefined : job.stagedStillUrl ?? undefined,
       engine,
-      durationS: spec.durationS,
+      durationS: listingDurationS(sku, job.durationS),
       resolution: engine === "modal-wan" ? "480p" : "720p",
       upscale: true,
       style: job.style ?? undefined,

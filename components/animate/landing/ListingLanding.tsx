@@ -224,7 +224,7 @@ export default function ListingLanding({ proofStats }: { proofStats: ProofStats 
                   </div>
                   <div style={{ fontSize: 16, lineHeight: 1.5, color: t.textSecondary }}>{s.blurb}</div>
                   <div style={{ fontSize: 14.5, color: t.textFaint }}>
-                    {s.kind === 'still' ? 'Photo' : `${s.durationS}-second video`} · ready in {s.etaLabel}
+                    {id === 'beauty_shot' ? '$1 per second · $5 shown for 5 seconds' : s.kind === 'still' ? 'Photo' : `${s.durationS}-second video`} · ready in {s.etaLabel}
                     {s.economyPriceCents ? ' · Economy or Photoreal engine' : ''}
                   </div>
                   <div style={{ marginTop: 'auto' }}>

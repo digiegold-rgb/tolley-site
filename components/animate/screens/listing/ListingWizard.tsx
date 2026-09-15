@@ -171,6 +171,19 @@ export default function ListingWizard({ jobId }: ListingWizardProps): React.Reac
         job={job}
         onJob={setJob}
         licenseVerified={licenseVerified}
+        onChangeLength={async () => {
+          const next = await listingApi.create({
+            sku: 'beauty_shot', step: 5, sourceKind: job.sourceKind, sourceImageUrls: job.sourceImageUrls,
+            address: job.address, city: job.city, state: job.state, zip: job.zip, lat: job.lat, lng: job.lng,
+            beds: job.beds, baths: job.baths, sqft: job.sqft, features: job.features, dictationRaw: job.dictationRaw,
+            roomType: job.roomType, style: job.style, look: 'photoreal', engine: 'seedance', lane: job.lane,
+            reel: job.reel, durationS: job.durationS ?? 5,
+          });
+          setJob(next);
+          setStep(5);
+          route.setSelectedProjectId(next.id);
+          window.location.hash = `r=listing&p=${encodeURIComponent(next.id)}`;
+        }}
         onMakeAnother={() => {
           setJob(null);
           route.setSelectedProjectId(null);
