@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { routeStudioGenerateGpuJob } from "@/lib/gpu-job-kind";
+import { requireWiredGpuBackend } from "@/lib/gpu-router";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
   .split(",")
@@ -53,6 +55,14 @@ export async function POST(req: NextRequest) {
 
   const modelId = model || "flux_schnell";
   const creditsNeeded = STUDIO_COSTS[modelId] ?? 2;
+  const gpuType = type === "video" ? "video" : "image";
+  const gpuRoute = routeStudioGenerateGpuJob(gpuType);
+  try {
+    requireWiredGpuBackend(gpuRoute);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message, gpu_route: gpuRoute }, { status: 501 });
+  }
 
   // Admin bypass — no credit check
   if (admin) {
@@ -66,6 +76,8 @@ export async function POST(req: NextRequest) {
         status: "generating",
         creditsUsed: 0,
         metadata: { source: "studio", type: type || "image" },
+        backend: gpuRoute.backend,
+        kind: gpuRoute.kind,
       },
     });
     return NextResponse.json({
@@ -104,6 +116,8 @@ export async function POST(req: NextRequest) {
         status: "generating",
         creditsUsed: creditsNeeded,
         metadata: { source: "studio", type: type || "image" },
+        backend: gpuRoute.backend,
+        kind: gpuRoute.kind,
       },
     }),
     prisma.videoCredit.update({

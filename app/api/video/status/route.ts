@@ -7,6 +7,7 @@ import {
   type FalModelId,
 } from "@/lib/fal";
 import { persistVideoToBlob } from "@/lib/blob";
+import { gpuJobFinishFields } from "@/lib/gpu-job-log";
 import { logVideoUsage } from "@/lib/llm-usage";
 
 export async function GET(req: Request) {
@@ -81,6 +82,12 @@ export async function GET(req: Request) {
         // Blob upload failed — fall back to fal.ai CDN URL
       }
 
+      const finish = gpuJobFinishFields({
+        startedAt: generation.startedAt,
+        result,
+        backend: generation.backend ?? "modal",
+      });
+
       // Update DB record
       await prisma.videoGeneration.update({
         where: { id: generation.id },
@@ -90,7 +97,7 @@ export async function GET(req: Request) {
           blobUrl: blobUrl,
           thumbnailUrl: result.thumbnailUrl || null,
           durationSecs: result.durationSecs || null,
-          completedAt: new Date(),
+          ...finish,
         },
       });
 
@@ -118,11 +125,17 @@ export async function GET(req: Request) {
     if (falStatus.status === "FAILED") {
       const errorMsg = falStatus.logs?.slice(-1)[0] || "Generation failed on fal.ai";
 
+      const finish = gpuJobFinishFields({
+        startedAt: generation.startedAt,
+        backend: generation.backend ?? "modal",
+      });
+
       await prisma.videoGeneration.update({
         where: { id: generation.id },
         data: {
           status: "failed",
           errorMessage: errorMsg,
+          ...finish,
         },
       });
 

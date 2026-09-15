@@ -9,6 +9,7 @@ import {
   GPU_JOB_KINDS,
   NEBIUS_NOT_WIRED,
   NEBIUS_RUNTIME_SEC,
+  gpuKindForMotionEstimate,
   requireWiredGpuBackend,
   routeGpuJob,
 } from "./gpu-router.ts";
@@ -24,8 +25,19 @@ describe("routeGpuJob", () => {
       assert.equal(routeGpuJob({ kind, estimatedRuntimeSec: -4 }).backend, "modal");
     }
     const still = routeGpuJob({ kind: "still" });
+    assert.equal(still.kind, "still");
     assert.match(still.reason, /Modal short path/);
     assert.doesNotMatch(still.reason, /spark/i);
+  });
+
+  it("maps motion length estimates to short-motion vs long-video", () => {
+    assert.equal(gpuKindForMotionEstimate(null), "short-motion");
+    assert.equal(gpuKindForMotionEstimate(12), "short-motion");
+    assert.equal(gpuKindForMotionEstimate(1199), "short-motion");
+    assert.equal(gpuKindForMotionEstimate(NEBIUS_RUNTIME_SEC), "long-video");
+    assert.equal(gpuKindForMotionEstimate(20 * 60 + 1), "long-video");
+    assert.equal(routeGpuJob({ kind: gpuKindForMotionEstimate(30), estimatedRuntimeSec: 30 }).backend, "modal");
+    assert.equal(routeGpuJob({ kind: gpuKindForMotionEstimate(NEBIUS_RUNTIME_SEC) }).backend, "nebius");
   });
 
   it("sends estimated runtime ≥ 20 minutes to Nebius (stub)", () => {
@@ -62,9 +74,9 @@ describe("routeGpuJob", () => {
 
 describe("requireWiredGpuBackend", () => {
   it("allows Modal and throws a clear not-wired error for Nebius", () => {
-    requireWiredGpuBackend({ backend: "modal", reason: "test" });
+    requireWiredGpuBackend({ backend: "modal", kind: "still", reason: "test" });
     assert.throws(
-      () => requireWiredGpuBackend({ backend: "nebius", reason: "kind is batch — reserved for Nebius (not wired)" }),
+      () => requireWiredGpuBackend({ backend: "nebius", kind: "batch", reason: "kind is batch — reserved for Nebius (not wired)" }),
       (err: unknown) => {
         assert.ok(err instanceof Error);
         assert.match(err.message, /not wired/i);

@@ -6,12 +6,16 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
+import { attachGpuRoute } from "@/lib/gpu-job-log";
+import { routeAnimateGpuJob } from "@/lib/gpu-job-kind";
+import { requireWiredGpuBackend } from "@/lib/gpu-router";
 import { autopilot, AutopilotError } from "@/lib/vater/autopilot-client";
-import { getAnimationPriceCents } from "@/lib/vater/pricing";
+import { getAnimationPrice, getAnimationPriceCents } from "@/lib/vater/pricing";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
 import { consumeRateLimit } from "@/lib/rate-limit";
 import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
 import type { AnimateLayerQuality } from "@/lib/vater/animate-layer";
+import type { Prisma } from "@prisma/client";
 
 export type AnimateAllTarget = {
   sceneIdx: number;
@@ -114,6 +118,18 @@ export async function kickoffAnimateAll(input: {
     };
   }
 
+  const gpuRoute = routeAnimateGpuJob(getAnimationPrice(input.quality)?.etaLabel);
+  try {
+    requireWiredGpuBackend(gpuRoute);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      ok: false,
+      status: 501,
+      body: { error: message, gpu_route: gpuRoute },
+    };
+  }
+
   let kickoff;
   try {
     const { ownerId, ownerTier, ownerLane } =
@@ -137,12 +153,10 @@ export async function kickoffAnimateAll(input: {
     throw err;
   }
 
-  const existing = input.motionModeFull
-    ? await prisma.youTubeProject.findUnique({
-        where: { id: input.projectId },
-        select: { settingsJson: true },
-      })
-    : null;
+  const existing = await prisma.youTubeProject.findUnique({
+    where: { id: input.projectId },
+    select: { settingsJson: true, costJson: true },
+  });
   const currentSettings =
     existing?.settingsJson &&
     typeof existing.settingsJson === "object" &&
@@ -155,6 +169,11 @@ export async function kickoffAnimateAll(input: {
     data: {
       animateAllJobId: kickoff.animateAllJobId,
       animateAllStartedAt: new Date(),
+      costJson: attachGpuRoute(existing?.costJson, {
+        backend: gpuRoute.backend,
+        kind: gpuRoute.kind,
+        reason: gpuRoute.reason,
+      }) as Prisma.InputJsonValue,
       ...(input.motionModeFull
         ? { settingsJson: { ...currentSettings, motionMode: "full" } }
         : {}),

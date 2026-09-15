@@ -27,6 +27,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import {
+  attachGpuRoute,
+  foldGpuJobLog,
+  gpuJobFinishFields,
+  gpuLogEntryFromFinish,
+} from "@/lib/gpu-job-log";
+import { routeAnimateGpuJob } from "@/lib/gpu-job-kind";
+import { requireWiredGpuBackend } from "@/lib/gpu-router";
+import {
   autopilot,
   AutopilotError,
   type AnimationQuality,
@@ -36,6 +44,7 @@ import type { SceneSpec } from "@/lib/vater/video-spec";
 import { canAccessProject } from "@/lib/vater/project-access";
 import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
 import {
+  getAnimationPrice,
   getAnimationPriceCents,
   isCustomerAnimationQuality,
   isLocalAnimationQuality,
@@ -215,6 +224,14 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     );
   }
 
+  const gpuRoute = routeAnimateGpuJob(getAnimationPrice(quality)?.etaLabel);
+  try {
+    requireWiredGpuBackend(gpuRoute);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message, gpu_route: gpuRoute }, { status: 501 });
+  }
+
   // ── Rate limit + per-scene lock ──
   const rl = await consumeRateLimit(`vater:anim:${session.user.id}`, 6, 60);
   if (!rl.allowed) return rateLimited(rl);
@@ -230,6 +247,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     );
   }
 
+  const sceneStartedAt = new Date();
   let result: AnimateSceneResult;
   let animateJobIdForBilling = "";
   try {
@@ -374,6 +392,21 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       (result as { costs?: unknown }).costs,
       animateJobIdForBilling,
     );
+    const stamped = attachGpuRoute(mergedCost ?? fresh?.costJson, {
+      backend: gpuRoute.backend,
+      kind: gpuRoute.kind,
+      reason: gpuRoute.reason,
+    });
+    const finish = gpuJobFinishFields({
+      startedAt: sceneStartedAt,
+      result,
+      backend: gpuRoute.backend,
+    });
+    const loggedCost = foldGpuJobLog(
+      stamped,
+      null,
+      gpuLogEntryFromFinish(animateJobIdForBilling, gpuRoute.kind, finish),
+    );
 
     const currentStatus = fresh?.status ?? project.status;
     const updated = await prisma.youTubeProject.update({
@@ -382,7 +415,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         scenesJson: nextScenes as unknown as object,
         editedAt: new Date(),
         status: currentStatus === "ready" ? "editing" : currentStatus,
-        ...(mergedCost ? { costJson: mergedCost as unknown as object } : {}),
+        ...(loggedCost ? { costJson: loggedCost as unknown as object } : {}),
       },
       select: {
         id: true,

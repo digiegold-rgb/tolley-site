@@ -26,6 +26,7 @@ export type GpuRouteInput = {
 
 export type GpuRouteDecision = {
   backend: GpuBackend;
+  kind: GpuJobKind;
   reason: string;
 };
 
@@ -41,6 +42,19 @@ function finiteNonNegativeSec(value: number | null | undefined): number | null {
 }
 
 /**
+ * Motion / listing-video kind from a length or GPU-runtime estimate.
+ * Stills stay `still` — callers must not use this helper for stills.
+ * Missing / invalid estimates are short-motion (Modal unless runtime ≥ 20m).
+ */
+export function gpuKindForMotionEstimate(
+  estimatedSec?: number | null,
+): Extract<GpuJobKind, "short-motion" | "long-video"> {
+  const estimated = finiteNonNegativeSec(estimatedSec);
+  if (estimated != null && estimated >= NEBIUS_RUNTIME_SEC) return "long-video";
+  return "short-motion";
+}
+
+/**
  * Choose Modal (short) or Nebius (long). Never Spark.
  *
  * Nebius when estimated runtime ≥ 20 minutes OR kind is long-video / batch.
@@ -53,18 +67,21 @@ export function routeGpuJob(input: GpuRouteInput): GpuRouteDecision {
   if (kind === "long-video") {
     return {
       backend: "nebius",
+      kind,
       reason: "kind is long-video — reserved for Nebius (not wired)",
     };
   }
   if (kind === "batch") {
     return {
       backend: "nebius",
+      kind,
       reason: "kind is batch — reserved for Nebius (not wired)",
     };
   }
   if (estimated != null && estimated >= NEBIUS_RUNTIME_SEC) {
     return {
       backend: "nebius",
+      kind,
       reason: `estimated runtime ${estimated}s ≥ ${NEBIUS_RUNTIME_SEC}s — reserved for Nebius (not wired)`,
     };
   }
@@ -73,6 +90,7 @@ export function routeGpuJob(input: GpuRouteInput): GpuRouteDecision {
     estimated == null ? "no runtime estimate" : `estimated runtime ${estimated}s < ${NEBIUS_RUNTIME_SEC}s`;
   return {
     backend: "modal",
+    kind,
     reason: `kind is ${kind}, ${runtimeNote} — Modal short path`,
   };
 }
@@ -80,7 +98,7 @@ export function routeGpuJob(input: GpuRouteInput): GpuRouteDecision {
 /** Stills / short-motion callers still only spawn Modal. */
 export function requireWiredGpuBackend(
   decision: GpuRouteDecision,
-): asserts decision is { backend: "modal"; reason: string } {
+): asserts decision is { backend: "modal"; kind: GpuJobKind; reason: string } {
   if (decision.backend === "nebius") {
     console.warn(`[gpu-router] ${NEBIUS_NOT_WIRED} (${decision.reason})`);
     throw new Error(`${NEBIUS_NOT_WIRED} (${decision.reason})`);

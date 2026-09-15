@@ -3,6 +3,9 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { submitVideoGeneration, type FalModelId } from "@/lib/fal";
+import { gpuJobFinishFields } from "@/lib/gpu-job-log";
+import { routeVideoGenerateGpuJob } from "@/lib/gpu-job-kind";
+import { requireWiredGpuBackend } from "@/lib/gpu-router";
 import { getTierConfig, type VideoTier } from "@/lib/video";
 import { logVideoUsage } from "@/lib/llm-usage";
 import { classifyPrompt } from "@/lib/video/classify-prompt";
@@ -127,6 +130,14 @@ export async function POST(req: Request) {
     metadata = { intent: "creative", skipPropertyCheck: true };
   }
 
+  const gpuRoute = routeVideoGenerateGpuJob(tierConfig);
+  try {
+    requireWiredGpuBackend(gpuRoute);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message, gpu_route: gpuRoute }, { status: 501 });
+  }
+
   // ─── Credit Check (admins bypass) ──────────────────────
   if (!admin) {
     const credit = await prisma.videoCredit.findUnique({
@@ -158,6 +169,8 @@ export async function POST(req: Request) {
       resolution: tierConfig.resolution,
       metadata,
       startedAt: new Date(),
+      backend: gpuRoute.backend,
+      kind: gpuRoute.kind,
     },
   });
 
@@ -215,11 +228,16 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     // Mark generation as failed
+    const finish = gpuJobFinishFields({
+      startedAt: generation.startedAt,
+      backend: gpuRoute.backend,
+    });
     await prisma.videoGeneration.update({
       where: { id: generation.id },
       data: {
         status: "failed",
         errorMessage: err instanceof Error ? err.message : "Submit failed",
+        ...finish,
       },
     });
 
