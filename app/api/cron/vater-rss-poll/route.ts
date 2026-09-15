@@ -32,6 +32,21 @@ function isAuthorized(req: NextRequest): boolean {
   return false;
 }
 
+function isReadOnlyTransactionError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /25006|read-only transaction/i.test(msg);
+}
+
+/** One retry — Neon can surface 25006 briefly during compute handoff. */
+async function writeRetry<T>(op: () => Promise<T>): Promise<T> {
+  try {
+    return await op();
+  } catch (err) {
+    if (!isReadOnlyTransactionError(err)) throw err;
+    return await op();
+  }
+}
+
 interface PerFeedResult {
   feedId: string;
   feedUrl: string;
@@ -90,28 +105,32 @@ export async function GET(req: NextRequest) {
 
         if (existing) {
           // Refresh mutable display fields only
-          await prisma.vaterRssItem.update({
-            where: { id: existing.id },
-            data: {
-              title: item.title,
-              description: item.description,
-              thumbnail: item.thumbnail,
-            },
-          });
+          await writeRetry(() =>
+            prisma.vaterRssItem.update({
+              where: { id: existing.id },
+              data: {
+                title: item.title,
+                description: item.description,
+                thumbnail: item.thumbnail,
+              },
+            }),
+          );
           itemRow = existing;
         } else {
-          const created = await prisma.vaterRssItem.create({
-            data: {
-              feedId: feed.id,
-              guid: item.guid,
-              title: item.title,
-              url: item.url,
-              publishedAt: item.publishedAt,
-              description: item.description,
-              thumbnail: item.thumbnail,
-            },
-            select: { id: true },
-          });
+          const created = await writeRetry(() =>
+            prisma.vaterRssItem.create({
+              data: {
+                feedId: feed.id,
+                guid: item.guid,
+                title: item.title,
+                url: item.url,
+                publishedAt: item.publishedAt,
+                description: item.description,
+                thumbnail: item.thumbnail,
+              },
+              select: { id: true },
+            }),
+          );
           itemRow = { id: created.id, project: null };
         }
 
@@ -127,24 +146,26 @@ export async function GET(req: NextRequest) {
         if (!item.url) continue;
 
         try {
-          const project = await prisma.youTubeProject.create({
-            data: {
-              mode: "transcribe",
-              userId: feed.userId ?? undefined,
-              sourceUrl: item.url,
-              sourceTitle: item.title,
-              sourceType: "rss",
-              rssItemId: itemRow.id,
-              goal: feed.defaultGoal,
-              targetDuration: feed.defaultWords
-                ? Math.max(1, Math.round(feed.defaultWords / 150))
-                : 10,
-              targetWordCount: feed.defaultWords ?? 1500,
-              stylePreset: feed.defaultStyle ?? "cinematic",
-              voiceCloneId: feed.defaultVoiceId,
-              status: "fetching",
-            },
-          });
+          const project = await writeRetry(() =>
+            prisma.youTubeProject.create({
+              data: {
+                mode: "transcribe",
+                userId: feed.userId ?? undefined,
+                sourceUrl: item.url,
+                sourceTitle: item.title,
+                sourceType: "rss",
+                rssItemId: itemRow.id,
+                goal: feed.defaultGoal,
+                targetDuration: feed.defaultWords
+                  ? Math.max(1, Math.round(feed.defaultWords / 150))
+                  : 10,
+                targetWordCount: feed.defaultWords ?? 1500,
+                stylePreset: feed.defaultStyle ?? "cinematic",
+                voiceCloneId: feed.defaultVoiceId,
+                status: "fetching",
+              },
+            }),
+          );
 
           // Kick off the autopilot fetch-source job
           const job = await autopilot.fetchSource({
@@ -152,10 +173,12 @@ export async function GET(req: NextRequest) {
             sourceUrl: item.url,
           });
 
-          await prisma.youTubeProject.update({
-            where: { id: project.id },
-            data: { autopilotJobId: job.jobId, progress: 5 },
-          });
+          await writeRetry(() =>
+            prisma.youTubeProject.update({
+              where: { id: project.id },
+              data: { autopilotJobId: job.jobId, progress: 5 },
+            }),
+          );
 
           r.promotedProjects += 1;
         } catch (err) {
@@ -171,22 +194,39 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      await prisma.vaterRssFeed.update({
-        where: { id: feed.id },
-        data: {
-          lastPolledAt: new Date(),
-          lastItemGuid: lastSeenGuid,
-          errorMessage: null,
-          ...(titleChanged ? { title: titleChanged } : {}),
-        },
-      });
+      await writeRetry(() =>
+        prisma.vaterRssFeed.update({
+          where: { id: feed.id },
+          data: {
+            lastPolledAt: new Date(),
+            lastItemGuid: lastSeenGuid,
+            errorMessage: null,
+            ...(titleChanged ? { title: titleChanged } : {}),
+          },
+        }),
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "unknown error";
       r.errors.push(`feed parse: ${msg}`);
-      await prisma.vaterRssFeed.update({
-        where: { id: feed.id },
-        data: { lastPolledAt: new Date(), errorMessage: msg.slice(0, 500) },
-      });
+      if (isReadOnlyTransactionError(err)) {
+        r.errors.push(
+          "feed update skipped: DATABASE_URL is not writable and this repo has no write URL configured",
+        );
+      } else {
+        try {
+          await writeRetry(() =>
+            prisma.vaterRssFeed.update({
+              where: { id: feed.id },
+              data: { lastPolledAt: new Date(), errorMessage: msg.slice(0, 500) },
+            }),
+          );
+        } catch (markErr) {
+          if (!isReadOnlyTransactionError(markErr)) throw markErr;
+          r.errors.push(
+            "feed update skipped: DATABASE_URL is not writable and this repo has no write URL configured",
+          );
+        }
+      }
     }
 
     results.push(r);
