@@ -22,7 +22,7 @@ import { queueVaterEvent } from "@/lib/vater/events";
 import { mergeVideoCost } from "@/lib/vater/video-cost";
 import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
 import { readAgentProfile } from "@/lib/vater/listing/agent-profile";
-import { isListingSku, LISTING_SKUS } from "@/lib/vater/listing-pricing";
+import { isListingSku, listingDurationS, LISTING_SKUS } from "@/lib/vater/listing-pricing";
 import { listingDeliveryError, needsListingDeliveryRecovery } from "@/lib/vater/listing/delivery";
 import {
   DGX_SKU_FOR,
@@ -128,12 +128,11 @@ export async function GET(_request: NextRequest, ctx: Ctx) {
         // Vertical Reel add-on: same staged still, same recipe, 9:16 canvas.
         try {
           const sku = videoSku;
-          const spec = LISTING_SKUS[sku];
           const profile = await readAgentProfile(rootUserId);
           const owner = await ownerFieldsForSessionWithLane(session, job.userId);
           const photos = job.sourceImageUrls.map((url, i) => ({ url, room: job.roomType ?? undefined, label: i === 0 ? "primary" : undefined }));
           const engine = engineOf(job);
-          const inputs = { photos, stagedStillUrl: job.stagedStillUrl, engine, look: job.look, style: job.style, roomType: job.roomType, reel: true, aspect: "9:16", durationS: spec.durationS };
+          const inputs = { photos, stagedStillUrl: job.stagedStillUrl, engine, look: job.look, style: job.style, roomType: job.roomType, reel: true, aspect: "9:16", durationS: listingDurationS(sku, job.durationS) };
           const created = await autopilot.createListingJob({
             sku: DGX_SKU_FOR[sku],
             idempotencyKey: await idempotencyKeyFor(`${DGX_SKU_FOR[sku]}-vertical`, id, inputs),
@@ -141,7 +140,7 @@ export async function GET(_request: NextRequest, ctx: Ctx) {
             photos,
             stagedStillUrl: job.stagedStillUrl ?? undefined,
             engine,
-            durationS: spec.durationS,
+            durationS: listingDurationS(sku, job.durationS),
             resolution: engine === "modal-wan" ? "480p" : "720p",
             upscale: true,
             style: job.style ?? undefined,

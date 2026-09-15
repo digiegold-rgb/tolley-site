@@ -8,9 +8,9 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: "Generate | Jelly Studio · Tolley.io",
+  title: "Gen2 | Jelly Studio · Tolley.io",
   description:
-    "Talk to Generate — Modal stills, identity-locked fal Wan I2V motion, or fal FLUX / Wan T2V / I2V engine tabs.",
+    "Create images and videos with a guided workflow: choose your output, add a prompt and sources, adjust every setting, then generate and review.",
   robots: { index: false, follow: false },
 };
 
@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 
 export default function GenerateLayout({ children }: { children: ReactNode }) {
   return (
-    <div className={`${jellyDisplay.variable} ${jellySerif.variable} gen-root`}>
+    <div className={`${jellyDisplay.variable} ${jellySerif.variable} gen2-root`}>
       {children}
     </div>
   );

@@ -26,26 +26,26 @@ async function main() {
     await prisma.vaterAccount.create({ data: { userId: user.id, tier: "owner" } });
     // A known disposable enrollment, used only in this isolated fixture.
     await prisma.userMfa.create({ data: { userId: user.id, totpSecret: "JBSWY3DPEHPK3PXP", verified: true, enabledAt: new Date() } });
-    const denied = await context.request.get(`${base}/api/generate/access`);
+    const denied = await context.request.get(`${base}/api/gen2/access`);
     assert.equal(denied.status(), 401); assert.equal((await denied.json()).code, "LOGIN_REQUIRED");
     console.log("PASS signed-out API gate; opening form");
-    await page.goto(`${base}/generate`);
-    await expect(page.getByRole("link", { name: "Sign in to Generate ↗", exact: true })).toBeVisible({ timeout: 120_000 });
+    await page.goto(`${base}/gen2`);
+    await expect(page.getByRole("link", { name: "Sign in to Gen2 ↗", exact: true })).toBeVisible({ timeout: 120_000 });
     await page.getByRole("button", { name: "Start this workflow" }).click();
     await page.getByLabel("Your prompt", { exact: true }).fill("A ceramic vase. Preserve this draft through login.");
     const popupPromise = page.waitForEvent("popup");
-    await page.getByRole("link", { name: "Sign in to Generate ↗", exact: true }).click();
+    await page.getByRole("link", { name: "Sign in to Gen2 ↗", exact: true }).click();
     const login = await popupPromise;
     console.log("Opened login tab");
     login.setDefaultTimeout(60_000);
-    await expect(login.getByRole("heading", { name: "Sign in to Generate", exact: true })).toBeVisible({ timeout: 60_000 });
+    await expect(login.getByRole("heading", { name: "Sign in to Gen2", exact: true })).toBeVisible({ timeout: 60_000 });
     await expect(login.getByRole("button", { name: "Sign In", exact: true })).toBeEnabled({ timeout: 60_000 });
     await login.locator('input[type="email"]').fill(email);
     await login.locator('input[type="password"]').fill(password);
     await login.locator('form').filter({ has: login.locator('input[type="password"]') }).getByRole("button", { name: /sign in/i }).click();
     console.log("Submitted authentication form");
-    await login.waitForURL(`${base}/generate`, { timeout: 60_000, waitUntil: "domcontentloaded" });
-    const mfa = await context.request.get(`${base}/api/generate/access`);
+    await login.waitForURL(`${base}/gen2`, { timeout: 60_000, waitUntil: "domcontentloaded" });
+    const mfa = await context.request.get(`${base}/api/gen2/access`);
     assert.equal(mfa.status(), 403); assert.equal((await mfa.json()).code, "MFA_REQUIRED");
     await expect(login.getByRole("link", { name: "Complete two-factor ↗" })).toBeVisible({ timeout: 60_000 });
     const challengeUrl = await login.getByRole("link", { name: "Complete two-factor ↗" }).getAttribute("href");
@@ -60,8 +60,8 @@ async function main() {
     const verification = await verificationResponse;
     assert.equal(verification.status(), 200, verification.status() === 200 ? undefined : JSON.stringify(await verification.json()));
     console.log("PASS real credentials and TOTP verification");
-    await login.waitForURL(`${base}/generate`, { timeout: 60_000, waitUntil: "domcontentloaded" });
-    const allowed = await context.request.get(`${base}/api/generate/access`);
+    await login.waitForURL(`${base}/gen2`, { timeout: 60_000, waitUntil: "domcontentloaded" });
+    const allowed = await context.request.get(`${base}/api/gen2/access`);
     assert.equal(allowed.status(), 200); assert.equal((await allowed.json()).authenticated, true);
     await page.bringToFront();
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
@@ -97,7 +97,7 @@ async function main() {
     }
     // A valid signed-in account without owner entitlement must still be rejected.
     await prisma.vaterAccount.update({ where: { userId: user.id }, data: { tier: "public" } });
-    const forbidden = await context.request.get(`${base}/api/generate/access`);
+    const forbidden = await context.request.get(`${base}/api/gen2/access`);
     assert.equal(forbidden.status(), 403); assert.equal((await forbidden.json()).code, "FORBIDDEN");
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     await expect(page.getByRole("link", { name: "Sign out / switch account ↗" })).toHaveAttribute("href", "/logout", { timeout: 60_000 });

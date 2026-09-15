@@ -32,15 +32,15 @@ export function WorkflowPicker({ mode, disabled, onSelect, authenticated, modal,
   </div>;
 }
 
-export function WorkflowNav({ step, all, onStep, onAll }: { step: WorkflowStep; all: boolean; onStep: (step: WorkflowStep) => void; onAll: () => void }) {
+export function WorkflowNav({ step, all, onStep, onAll, disabled }: { disabled: boolean; step: WorkflowStep; all: boolean; onStep: (step: WorkflowStep) => void; onAll: () => void }) {
   return <div className="gen-workflow-nav">
     <nav aria-label="Creation steps"><ol>
       {WORKFLOW_STEPS.map((label, i) => <li key={label}>
-        <button type="button" aria-current={!all && step === i ? "step" : undefined} onClick={() => onStep(i as WorkflowStep)}>
+        <button type="button" disabled={disabled} aria-current={!all && step === i ? "step" : undefined} onClick={() => onStep(i as WorkflowStep)}>
           <span className="gen-step-number">{i + 1}</span><span>{label}</span>
         </button>
       </li>)}
     </ol></nav>
-    <button type="button" className="gen-view-toggle" aria-pressed={all} onClick={onAll}>{all ? "Guided view" : "All controls"}</button>
+    <button type="button" disabled={disabled} className="gen-view-toggle" aria-pressed={all} onClick={onAll}>{all ? "Guided view" : "All controls"}</button>
   </div>;
 }

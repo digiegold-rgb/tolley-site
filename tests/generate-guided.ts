@@ -27,11 +27,11 @@ context.setDefaultNavigationTimeout(60_000);
 await context.route("**/api/**", async route => {
   const path = new URL(route.request().url()).pathname;
   const method = route.request().method();
-  if (!path.startsWith("/api/generate/")) return route.fulfill({ json: {} });
+  if (!path.startsWith("/api/generate/") && path !== "/api/gen2/access") return route.fulfill({ json: {} });
   const body = method === "POST" && path !== "/api/generate/upload" ? route.request().postDataJSON() : {};
   if (method === "POST") posts.push({ path, body });
   if (path.endsWith("/image")) return route.fulfill({ contentType: "image/png", body: png });
-  if (path === "/api/generate/access") return route.fulfill({ status: authed ? 200 : 401, json: authed ? { authenticated: true, modal: { configured: true }, fal: { configured: true } } : { code: "LOGIN_REQUIRED", error: "Sign in with your owner account to use Generate.", loginUrl: "/login?callbackUrl=%2Fgenerate" } });
+  if (path === "/api/gen2/access") return route.fulfill({ status: authed ? 200 : 401, json: authed ? { authenticated: true, modal: { configured: true }, fal: { configured: true } } : { code: "LOGIN_REQUIRED", error: "Sign in with your owner account to use Generate.", loginUrl: "/login?callbackUrl=%2Fgen2" } });
   if (path === "/api/generate/chat") return route.fulfill({ json: { configured: true } });
   if (path === "/api/generate/library") { unlocked = method === "POST"; return route.fulfill({ json: { unlocked } }); }
   if (path === "/api/generate/upload") return route.fulfill({ json: { url: "https://example.com/upload.png" } });
@@ -74,7 +74,21 @@ async function choose(name: string) { await step(0); await page.getByRole("butto
 async function noOverflow(p: Page) { assert(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "Horizontal overflow"); }
 try {
   await mkdir(out, { recursive: true });
+  const loadingContext = await browser.newContext({ javaScriptEnabled: false });
+  try {
+    const loadingPage = await loadingContext.newPage();
+    await loadingPage.goto(`${base}/gen2`, { waitUntil: "domcontentloaded" });
+    await expect(loadingPage.getByRole("button", { name: "Start this workflow" })).toBeDisabled();
+    await expect(loadingPage.getByRole("button", { name: /^Create an image/ })).toBeDisabled();
+    await expect(loadingPage.getByRole("button", { name: "All controls", exact: true })).toBeDisabled();
+  } finally { await loadingContext.close(); }
   await visit(`${base}/generate`);
+  await expect(page.locator(".gen-root")).toBeVisible();
+  await expect(page.locator(".gen2-root")).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Creation steps" })).toHaveCount(0);
+  await visit(`${base}/gen2`);
+  await expect(page.locator(".gen2-root")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Original Generate", exact: true })).toHaveAttribute("href", "/generate");
   await expect(page.getByRole("heading", { name: "Choose a workflow", exact: true })).toBeVisible();
   await expect(page.getByLabel("Your prompt", { exact: true })).toBeHidden();
   await expect(page.getByRole("button", { name: "Open library", exact: true })).toBeEnabled();
@@ -236,13 +250,13 @@ try {
   await noOverflow(page);
   await page.screenshot({ path: `${out}/06-director-mobile.png`, fullPage: true });
   await page.getByRole("button", { name: "Close director" }).click();
-  await visit(`${base}/generate?queue=longform-test`);
+  await visit(`${base}/gen2?queue=longform-test`);
   await expect(page.getByRole("heading", { name: "Generate & review", exact: true })).toBeVisible();
   await expect(page.getByTestId("motion2-go")).toBeVisible();
-  await visit(`${base}/generate?workflow=i2v&queue=longform-test&cinema=cinema-test`);
+  await visit(`${base}/gen2?workflow=i2v&queue=longform-test&cinema=cinema-test`);
   await expect(page.getByLabel("Starting image URL")).toBeVisible();
   authed = false;
-  await visit(`${base}/generate`);
+  await visit(`${base}/gen2`);
   await page.getByRole("button", { name: "Start this workflow" }).click();
   await page.getByLabel("Your prompt", { exact: true }).fill("Keep this unsaved prompt after sign-in");
   await step(3);

@@ -1,4 +1,4 @@
-import type { PromptChipOption } from "./generate-prompt-chips";
+import type { PromptChipOption } from "./gen2-prompt-chips";
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const locations: Record<string, string[]> = {

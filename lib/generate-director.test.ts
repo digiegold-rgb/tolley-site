@@ -151,9 +151,9 @@ describe("directorUserPayload", () => {
 describe("generate route branding", () => {
   it("does not inherit t-agent Real Estate Unlocked on /generate", () => {
     const here = dirname(fileURLToPath(import.meta.url));
-    const layout = readFileSync(join(here, "../app/generate/layout.tsx"), "utf8");
-    const page = readFileSync(join(here, "../app/generate/page.tsx"), "utf8");
-    const studio = readFileSync(join(here, "../app/generate/generate-studio.tsx"), "utf8");
+    const layout = readFileSync(join(here, "../app/gen2/layout.tsx"), "utf8");
+    const page = readFileSync(join(here, "../app/gen2/page.tsx"), "utf8");
+    const studio = readFileSync(join(here, "../app/gen2/generate-studio.tsx"), "utf8");
     const chat = readFileSync(join(here, "../app/api/generate/chat/route.ts"), "utf8");
     for (const src of [layout, page, studio]) {
       assert.doesNotMatch(src, /Real Estate Unlocked/i);

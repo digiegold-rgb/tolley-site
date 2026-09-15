@@ -53,15 +53,16 @@ export interface ListingProgressProps {
   job: ListingJobDto;
   onJob: (job: ListingJobDto) => void;
   onMakeAnother: () => void;
+  onChangeLength?: () => Promise<void>;
   licenseVerified: boolean;
 }
 
-export default function ListingProgress({ job: initial, onJob, onMakeAnother, licenseVerified }: ListingProgressProps): React.ReactElement {
+export default function ListingProgress({ job: initial, onJob, onMakeAnother, onChangeLength, licenseVerified }: ListingProgressProps): React.ReactElement {
   const { t } = useTheme();
   const billing = useBillingMode();
   const { job: polled, error: pollErr, setJob, refresh } = useListingPoll(initial.id, initial);
   const job = polled ?? initial;
-  const [busy, setBusy] = React.useState<'approve' | 'restage' | null>(null);
+  const [busy, setBusy] = React.useState<'approve' | 'restage' | 'duplicate' | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
   const [copied, setCopied] = React.useState(false);
   const [money, setMoney] = React.useState<MoneyConfirmRequest | null>(null);
@@ -152,7 +153,7 @@ export default function ListingProgress({ job: initial, onJob, onMakeAnother, li
       {/* ladder */}
       <GlassCard radius={JELLY_TOKENS.radius.xxl} padding="22px 24px" shadow>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-          <div style={{ fontSize: 24, fontWeight: 700 }}>{spec?.label ?? 'Your listing'}{job.address ? ` · ${job.address}` : ''}</div>
+          <div style={{ fontSize: 24, fontWeight: 700 }}>{spec?.label ?? 'Your listing'}{isBeauty ? ` · ${job.durationS ?? 5}s` : ''}{job.address ? ` · ${job.address}` : ''}</div>
           {job.status === 'ready' ? <Badge tone="ok">Done</Badge> : job.status === 'failed' ? <Badge tone="warn">Did not finish</Badge> : job.status === 'cancelled' ? <Badge tone="faint">Cancelled</Badge> : <Badge tone="brand">{moving ? 'Working…' : 'Waiting for you'}</Badge>}
         </div>
         <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: `repeat(${phases.length}, minmax(0, 1fr))`, gap: 10 }} aria-label="Progress">
@@ -268,8 +269,14 @@ export default function ListingProgress({ job: initial, onJob, onMakeAnother, li
                 </BigButton>
               )
             )}
+            {isBeauty && onChangeLength && <BigButton variant="outline" data-testid="listing-change-length"
+              busy={busy === 'duplicate'} disabled={busy !== null}
+              onClick={() => { setBusy('duplicate'); setErr(null); void onChangeLength().catch(error => {
+                setErr(listingErrorMessage(error, 'Could not open a new version.'));
+              }).finally(() => setBusy(null)); }}>Change video length</BigButton>}
             <BigButton variant="ghost" onClick={onMakeAnother} data-testid="listing-make-another">＋ Make another</BigButton>
           </div>
+          {err && <Notice tone="block" style={{ marginTop: 12 }}>{err}</Notice>}
           <div style={{ marginTop: 16, display: 'grid', gap: 6, fontSize: 15, color: t.textFaint }}>
             <div>{isStill ? '✓ “AI-generated - virtually staged” label on frame · ✓ unlabeled MLS-safe copy kept for the photo slot' : <>✓ Equal Housing Opportunity on the end card · ✓ “Virtually staged” label on frame · ✓ your broker line per {job.state ? `${job.state} rules` : 'your state rules'}</>}</div>
             {spec?.materialChange && <div>Social & marketing use — not for MLS photo slots. The proof page pairs it with your original photo.</div>}

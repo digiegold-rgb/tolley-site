@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
+import { LOCATION_CHIPS as ORIGINAL_LOCATIONS, HAIR_CHIPS as ORIGINAL_HAIR, CAMERA_CHIPS as ORIGINAL_CAMERA } from "./generate-prompt-chips";
 import { defaultJobCard } from "./generate-job-card";
-import { LOCATION_CHIPS, HAIR_CHIPS, CAMERA_CHIPS, applyLocation, applyHair, applyCamera, applyCustomPromptChoice, promptChipId } from "./generate-prompt-chips";
+import { LOCATION_CHIPS, HAIR_CHIPS, CAMERA_CHIPS, applyLocation, applyHair, applyCamera, applyCustomPromptChoice, promptChipId } from "./gen2-prompt-chips";
 it("each searchable catalog has hundreds of unique, labeled prompt choices", () => {
   for (const choices of [LOCATION_CHIPS, HAIR_CHIPS, CAMERA_CHIPS]) {
     assert(choices.length > 350);
@@ -23,4 +24,8 @@ it("catalog combinations and custom entries replace just their own prompt dimens
   assert.equal(promptChipId(custom.prompt, "camera"), camera.id);
   assert.equal(custom.prompt.includes(location.line), false);
   assert.equal(applyLocation(custom, "clear").prompt.includes("quiet library"), false);
+});
+
+it("expanded Gen2 choices leave the original Generate presets unchanged", () => {
+  for (const choices of [ORIGINAL_LOCATIONS, ORIGINAL_HAIR, ORIGINAL_CAMERA]) assert.equal(choices.length, 7);
 });

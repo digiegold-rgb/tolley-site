@@ -42,14 +42,25 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '1.43',
     date: '2026-09-14',
-    title: 'Guided image and video creation',
+    title: 'Gen2 image and video workspace',
     items: [
-      'Generate now walks you through choosing a workflow, adding your idea and references, adjusting settings, and reviewing your result.',
+      'The separate Gen2 page walks you through choosing a workflow, adding your idea and references, adjusting settings, and reviewing your result.',
       'All detailed controls remain available, with a full controls view and optional director assistance.',
       'Compare compatible models and estimated internal generation costs before submitting. Model switches preserve your inputs, and sequences show costs per clip and remaining total.',
       'Missing inputs point to the step that needs attention. A shared library lets you carry stills into video workflows.',
       'Owner sign-in resumes two-factor verification and refreshes access without losing your draft. Workflows show provider configuration status.',
       'Character stills offer Qwen and FLUX.2 model choices plus searchable location, hair, and camera catalogs with hundreds of choices in each.',
+    ],
+  },
+  {
+    version: '1.42.3',
+    date: '2026-09-14',
+    title: 'Choose your Beauty Shot length and price',
+    items: [
+      'Beauty Shots now cost $1 per second: the default five-second video is $5.',
+      'Choose 4–30 seconds with a slider and see the total update immediately, including a separate vertical version when selected.',
+      'Your saved length carries through confirmation, billing and rendering; the end card adds no extra charge.',
+      'Open a completed Beauty Shot and choose Change video length to reuse its photo and details for a new version.',
     ],
   },
   {

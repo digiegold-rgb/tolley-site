@@ -22,15 +22,15 @@ export type GenerateActor = {
   createdBy: string;
 };
 
-export async function requireGenerateAdmin(): Promise<
+export async function requireGenerateAdmin(destination: "/generate" | "/gen2" = "/generate"): Promise<
   | { ok: true; createdBy: string }
   | { ok: false; response: NextResponse }
 > {
   const session = await auth();
-  const loginUrl = "/login?callbackUrl=%2Fgenerate";
+  const loginUrl = `/login?callbackUrl=${encodeURIComponent(destination)}`;
   if (session?.mfaRequired) return { ok: false, response: NextResponse.json({
     error: "Complete two-factor authentication to use Generate.", code: "MFA_REQUIRED",
-    loginUrl: "/login/mfa-challenge?callbackUrl=%2Fgenerate",
+    loginUrl: `/login/mfa-challenge?callbackUrl=${encodeURIComponent(destination)}`,
   }, { status: 403 }) };
   if (!session?.user?.id) return { ok: false, response: NextResponse.json({
     error: "Sign in with your owner account to use Generate.", code: "LOGIN_REQUIRED", loginUrl,

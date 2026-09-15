@@ -1,6 +1,6 @@
 "use client";
 import { useId, useMemo, useState } from "react";
-import type { PromptChipOption } from "@/lib/generate-prompt-chips";
+import type { PromptChipOption } from "@/lib/gen2-prompt-chips";
 
 export function PromptPicker({ label, ariaLabel, chips, activeId, disabled, onPick, onCustom }: {
   label: string; ariaLabel: string; chips: PromptChipOption[]; activeId: string; disabled: boolean;

@@ -104,8 +104,8 @@ describe("studio motionCard ↔ beats[0]", () => {
   });
 
   it("does not present two independent Beat 1 prompt textareas in the studio UI", () => {
-    const studio = readFileSync(join(root, "app/generate/generate-studio.tsx"), "utf8");
-    const beatsUi = readFileSync(join(root, "app/generate/beat-queue.tsx"), "utf8");
+    const studio = readFileSync(join(root, "app/gen2/generate-studio.tsx"), "utf8");
+    const beatsUi = readFileSync(join(root, "app/gen2/beat-queue.tsx"), "utf8");
     assert.match(studio, /writeMotionCardToBeat1/);
     assert.match(studio, /motionCardFromBeat1/);
     assert.match(studio, /data-testid="beat-1-prompt"/);
@@ -120,8 +120,8 @@ describe("studio motionCard ↔ beats[0]", () => {
   });
 
   it("Motion 2 resumes in-flight children; Motion 1 still uses pollModalJob", () => {
-    const studio = readFileSync(join(root, "app/generate/generate-studio.tsx"), "utf8");
-    const longformUi = readFileSync(join(root, "app/generate/longform-queue.tsx"), "utf8");
+    const studio = readFileSync(join(root, "app/gen2/generate-studio.tsx"), "utf8");
+    const longformUi = readFileSync(join(root, "app/gen2/longform-queue.tsx"), "utf8");
     assert.match(studio, /waitForLongformChild/);
     assert.match(studio, /resumeMotion2InFlight/);
     assert.match(studio, /bindLongformQueueToJobs/);
@@ -149,8 +149,8 @@ describe("studio motionCard ↔ beats[0]", () => {
   });
 
   it("adds a Cinema tab next to Motion 2 without changing Motion 1 filmstrip", () => {
-    const studio = readFileSync(join(root, "app/generate/generate-studio.tsx"), "utf8");
-    const cinemaUi = readFileSync(join(root, "app/generate/cinema-queue.tsx"), "utf8");
+    const studio = readFileSync(join(root, "app/gen2/generate-studio.tsx"), "utf8");
+    const cinemaUi = readFileSync(join(root, "app/gen2/cinema-queue.tsx"), "utf8");
     assert.match(studio, /"cinema"/);
     assert.match(studio, /Cinema/);
     assert.match(studio, /<CinemaPanel/);

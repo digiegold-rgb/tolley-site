@@ -1,0 +1,1 @@
+ALTER TABLE "VaterListingJob" ADD COLUMN IF NOT EXISTS "durationS" INTEGER;

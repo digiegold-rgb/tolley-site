@@ -126,8 +126,8 @@ export const listingApi = {
     return request<ListingPreflight>(`${LISTING_API}/${encodeURIComponent(id)}/preflight`);
   },
 
-  async stage(id: string): Promise<ListingJobDto> {
-    return unwrapJob(await request(`${LISTING_API}/${encodeURIComponent(id)}/stage`, { method: 'POST', body: '{}' }));
+  async stage(id: string, quote?: { priceCents: number; durationS: number | null }): Promise<ListingJobDto> {
+    return unwrapJob(await request(`${LISTING_API}/${encodeURIComponent(id)}/stage`, { method: 'POST', body: JSON.stringify(quote ?? {}) }));
   },
 
   async approveStill(id: string): Promise<ListingJobDto> {

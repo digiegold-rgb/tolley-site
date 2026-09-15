@@ -1,5 +1,8 @@
 "use client";
 
+import { cinemaClipCost, costRange } from "@/lib/generate-cost";
+import { WorkflowSection } from "./workflow";
+
 import {
   CINEMA_SECONDS_DEFAULT,
   canStitchCinema,
@@ -66,7 +69,6 @@ export function CinemaPanel({
   onAudioUrl,
   onPriorVideo,
   onScript,
-  onModel,
   onGenerateAudio,
   onPassPrevVideo,
   onAutoAdvance,
@@ -75,7 +77,6 @@ export function CinemaPanel({
   onLoadEstate,
   onPatch,
   onGenerate,
-  onGo,
   onRunRemaining,
   canGo,
   notice,
@@ -119,7 +120,8 @@ export function CinemaPanel({
   onRetry: (id: string) => void;
   onStitch: () => void;
 }) {
-  const liveEstimate = estimate || estimateCinema(queue);
+  const liveEstimate = estimateCinema(queue);
+  void estimate;
   const progress = cinemaProgress(queue);
   const stitchOk = canStitchCinema(queue);
   const selected = queue.beats.find((b) => b.id === selectedId) || queue.beats[0] || null;
@@ -136,12 +138,8 @@ export function CinemaPanel({
 
   return (
     <div className="gen-longform" data-testid="cinema-lane">
-      <p className="gen-hint">
-        <strong>Cinema</strong> — Seedance 2.0 reference-to-video (the estate-lady path). This is{" "}
-        <em>not</em> Wan Motion 2. Native audio + multi-image refs + multi-shot prompts. Kling 3 Pro
-        elements is the partner/face-filter fallback. Go / Run remaining walks the queue sequentially.
-        Stitch is Vercel ffmpeg concat-copy. ArcFace / Gemini QA stays on Spark.
-      </p>
+      <WorkflowSection step={1}>
+      <p className="gen-hint">Add references for the people, place, and visual style. Write one shot per line, or load the estate template.</p>
 
       <button
         type="button"
@@ -176,6 +174,25 @@ export function CinemaPanel({
         {uploadingRef && <span className="gen-hint"> uploading…</span>}
       </label>
 
+      <div>
+        <p className="gen-label gen-label-live">Script (one beat per line) or paste shotlist JSON</p>
+        <p className="gen-hint">
+          Short VO lines become <code>She says exactly: &quot;…&quot;</code> scaffolds. Import a shotlist JSON
+          with id / seconds / vo / prompt.
+        </p>
+        <textarea
+          data-testid="cinema-script"
+          className="gen-box gen-box-inference"
+          value={queue.script}
+          disabled={busy}
+          rows={8}
+          placeholder={'Welcome to the estate.\nThe approach is the first promise.'}
+          onChange={(e) => onScript(e.target.value)}
+        />
+      </div>
+
+      </WorkflowSection>
+      <WorkflowSection step={2}>
       <div className="gen-card-grid">
         <label className="gen-field">
           Optional @Audio1 URL
@@ -195,47 +212,19 @@ export function CinemaPanel({
             onChange={(e) => onPriorVideo(e.target.value)}
           />
         </label>
-        <label>
-          Model
-          <select
-            data-testid="cinema-model"
-            value={queue.model}
-            disabled={busy}
-            onChange={(e) => onModel(e.target.value === "kling" ? "kling" : "seedance")}
-          >
-            <option value="seedance">Seedance 2.0 reference-to-video</option>
-            <option value="kling">Kling 3 Pro elements (fallback)</option>
-          </select>
-        </label>
+
       </div>
       <p className="gen-hint" data-testid="cinema-seconds-limit">
         Max 15s per beat (fal hard limit). Stitch beats for longer.
         {queue.model === "kling" ? " Kling allows 3–15s." : " Seedance allows 4–15s."} Default 10s.
       </p>
 
-      <div>
-        <p className="gen-label gen-label-live">Script (one beat per line) or paste shotlist JSON</p>
-        <p className="gen-hint">
-          Short VO lines become <code>She says exactly: "…"</code> scaffolds. Import a shotlist JSON
-          with id / seconds / vo / prompt.
-        </p>
-        <textarea
-          data-testid="cinema-script"
-          className="gen-box gen-box-inference"
-          value={queue.script}
-          disabled={busy}
-          rows={8}
-          placeholder={'Welcome to the estate.\nThe approach is the first promise.'}
-          onChange={(e) => onScript(e.target.value)}
-        />
-      </div>
-
       <div className="gen-longform-estimate" data-testid="cinema-estimate">
         <p>
           <strong>Estimate:</strong> {liveEstimate.fal_calls} remaining fal calls ·{" "}
           {liveEstimate.planned_seconds}s · ~${liveEstimate.usd.toFixed(2)}
           {liveEstimate.usd_high != null ? `–$${liveEstimate.usd_high.toFixed(2)}` : ""}{" "}
-          @720p. {liveEstimate.note}
+          {queue.model === "kling" ? "Kling Pro" : `@${queue.resolution}`}. {liveEstimate.note}
         </p>
       </div>
 
@@ -280,28 +269,25 @@ export function CinemaPanel({
         <button type="button" className="gen-seed-random" disabled={primaryBusy} onClick={onPlan}>
           Plan beats
         </button>
-        <button
-          type="button"
-          className="gen-seed-random"
-          data-testid="cinema-run-remaining"
-          disabled={generateLocked || primaryBusy || (!canGo && !inFlight.length)}
-          onClick={onRunRemaining}
-        >
-          Run remaining
-        </button>
+      </div>
+      {queue.beats.length > 0 && <p className="gen-ready" role="status">{queue.beats.length} scenes planned. Continue to Generate &amp; review to check your shots and start rendering.</p>}
+      {notice && <p className="gen-hint" role="status">{notice}</p>}
+      </WorkflowSection>
+      <WorkflowSection step={3}>
+      <div className="gen-row">
         <button
           type="button"
           className="gen-go"
           data-testid="cinema-go"
           disabled={generateLocked || primaryBusy || (!canGo && !inFlight.length)}
-          onClick={onGo}
+          onClick={onRunRemaining}
           style={{ marginLeft: "auto" }}
         >
-          {primaryBusy ? "Working…" : failedHold.length ? "Failed" : dryRun ? "Dry run" : "Go"}
+          {primaryBusy ? "Working…" : failedHold.length ? "Failed" : dryRun ? "Dry run" : "Generate remaining clips"}
         </button>
       </div>
       <p className="gen-hint">
-        Go = run remaining (sequential). Not beat 1 only. Confirm when remaining spend is over ~$5.
+        Shots generate in sequence. Review and approve each shot below, then join your finished film.
       </p>
       {!queue.beats.length ? (
         <p className="gen-hint" data-testid="cinema-plan-first">
@@ -345,7 +331,7 @@ export function CinemaPanel({
                     {failedHoldIds.has(beat.id) ? "failed" : beat.status}
                   </span>
                   <span className="gen-longform-meta">
-                    {beat.seconds}s · {beat.generate_audio ? "audio on" : "silent"}
+                    {beat.seconds}s · {beat.generate_audio ? "audio on" : "silent"} · ~{(() => { const p = cinemaClipCost({ model: queue.model, seconds: beat.seconds, audio: beat.generate_audio, resolution: queue.resolution, videoInput: Boolean(beat.video_ref_url || queue.prior_video_url || (queue.pass_prev_video && queue.beats.indexOf(beat) > 0)) }); return costRange(p.low, p.high); })()} per generation
                     {beat.video_ref_url ? " · prior clip" : ""}
                   </span>
                 </button>
@@ -464,8 +450,7 @@ export function CinemaPanel({
         ) : (
           <p className="gen-hint">
             Stitch waits until every beat is approved.
-            {cinemaStitchBlockers(queue)[0] ? ` ${cinemaStitchBlockers(queue)[0]}.` : ""} Music bed
-            is stubbed for later.
+            {cinemaStitchBlockers(queue)[0] ? ` ${cinemaStitchBlockers(queue)[0]}.` : ""}
           </p>
         )}
         {queue.stitch_error ? <p className="gen-err">{queue.stitch_error}</p> : null}
@@ -475,6 +460,7 @@ export function CinemaPanel({
           </div>
         ) : null}
       </div>
+      </WorkflowSection>
     </div>
   );
 }

@@ -1,13 +1,13 @@
-# Guided Generate workspace
+# Gen2 generation workspace
 
-`/generate` starts with a choice of outcome and four steps:
+`/gen2` starts with a choice of outcome and four steps:
 
 1. **Choose a workflow** — seven workflows with provider-configuration status, described by their inputs and outputs. Video → Video remains unavailable and is explained without presenting a working action.
 2. **Describe & add sources** — prompts, references, uploads, and scene scripts. The optional director edits the same underlying cards as the manual controls.
 3. **Adjust settings** — format, duration, seeds, negative prompts, content controls, JSON overrides, and queue planning as appropriate to the selected workflow.
 4. **Generate & review** — input summary, actionable missing-input messages, generation, clip approval/retry, stitching, and gated downloads.
 
-**All controls** displays every step together. Numbered navigation permits inspection of any step; the forward button explains missing prerequisites. Forms stay mounted across step navigation, preserving file selections and JSON drafts. Server queue persistence and bindings remain unchanged. `?workflow=` preserves a selected workflow when queue bindings also exist; explicit `?queue=` or `?cinema=` links without a workflow open the relevant review step.
+**All controls** displays every step together. Numbered navigation permits inspection of any step; the forward button explains missing prerequisites. Forms stay mounted across step navigation, preserving file selections and JSON drafts. Server queue persistence remains shared; Gen2 browser bindings use their own storage keys. `?workflow=` preserves a selected workflow when queue bindings also exist; explicit `?queue=` or `?cinema=` links without a workflow open the relevant review step.
 
 | Workflow | Engine / API path | Required input |
 | --- | --- | --- |
@@ -21,7 +21,7 @@
 
 The shared library retains its server-verified passcode gate. Selecting a still sets the current video workflow's source and returns to step 2. Selecting from a still-creation workflow opens Animate an image. Engine video outputs are excluded from the Modal still gallery.
 
-Generation requires an owner account with completed MFA. The dedicated `/api/generate/access` check distinguishes missing login, pending MFA, insufficient permissions and service failure. Direct sign-in opens on the same origin with a Generate callback; focus/visibility refresh resumes the original draft. Legacy HQ PIN cookies do not grant access. The login inputs and submit button wait for client initialization to prevent native form reloads before hydration. Test-run success and provider errors are visible in the workspace even with the director closed.
+Generation requires an owner account with completed MFA. The dedicated `/api/gen2/access` check distinguishes missing login, pending MFA, insufficient permissions and service failure. Direct sign-in opens on the same origin with a `/gen2` callback; focus/visibility refresh resumes the original draft. Legacy HQ PIN cookies do not grant access. The login inputs and submit button wait for client initialization to prevent native form reloads before hydration. Test-run success and provider errors are visible in the workspace even with the director closed.
 
 ## Verification
 
@@ -55,3 +55,11 @@ Character stills include 486 location, 390 hairstyle, and 366 camera choices. Ca
 `DATABASE_URL=postgresql://postgres@127.0.0.1:55438/tolley_revenue_test GENERATE_TEST_URL=http://localhost:3034 node --import <tsx-loader> tests/generate-access.ts` creates and removes a disposable local owner account. It exercises real credentials, real TOTP verification, same-origin access refresh with the original prompt preserved, non-owner rejection, and real API dry runs across all seven workflows and supported model variants. It refuses nonlocal URLs and databases and never submits a paid generation.
 
 Provider configuration status is not a render health check. Completed paid images/videos are not verified by these dry-run tests.
+
+The original `/generate` page and its compact preset lists are retained. Gen2 uses separate browser queue bindings and shares the existing authenticated generation APIs and job library.
+
+## Preview deployment
+
+CLI deployments must include `-m githubDeployment=1 -m githubCommitRef=feat/generate-guided-workflow` to load the branch-specific provider credentials. Generic `gitCommitRef` metadata alone does not link branch environment variables. Verify that the resulting deployment contains `FAL_KEY` and the owner allowlist keys; do not print credential values. This was the cause of the earlier preview's unavailable-engine message. See [Vercel's branch environment guide](https://vercel.com/kb/guide/branch-variables-and-domains-not-linked-to-cli-deployments).
+
+The redesigned workspace is served at `/gen2` on previews and any future production release. `/generate` retains the original page, styles and compact presets. Gen2 styles are scoped to `.gen2-root`.

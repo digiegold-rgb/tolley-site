@@ -9,6 +9,7 @@
  * Prompt-first only — no Extra-image auto-wiring, no Modal kwargs.
  */
 
+import { LOCATION_CATALOG, HAIR_CATALOG, CAMERA_CATALOG } from "./generate-prompt-catalog";
 import { GENERATE_PRESETS } from "./generate-job-card";
 
 export type PromptChipDimension = "location" | "hair" | "camera";
@@ -16,6 +17,7 @@ export type PromptChipDimension = "location" | "hair" | "camera";
 export type PromptChipOption = {
   id: string;
   label: string;
+  group?: string;
   /** Full labeled sentence written inside the marker. Empty = Clear. */
   line: string;
 };
@@ -59,6 +61,7 @@ export const LOCATION_CHIPS: PromptChipOption[] = [
     label: "Luxury hotel room",
     line: "Location: luxury hotel room, warm practical lamps, upscale interiors, shallow DOF background.",
   },
+  ...LOCATION_CATALOG,
 ];
 
 export const HAIR_CHIPS: PromptChipOption[] = [
@@ -93,6 +96,7 @@ export const HAIR_CHIPS: PromptChipOption[] = [
     label: "Shoulder-length bob",
     line: "Hair: shoulder-length bob, clean cut, natural color, soft movement.",
   },
+  ...HAIR_CATALOG,
 ];
 
 export const CAMERA_CHIPS: PromptChipOption[] = [
@@ -127,6 +131,7 @@ export const CAMERA_CHIPS: PromptChipOption[] = [
     label: "Full-body wide",
     line: "Camera: vertical 9:16, full-body, wider 35mm, eye-level, subject fully in frame.",
   },
+  ...CAMERA_CATALOG,
 ];
 
 const DIMENSIONS: Record<
@@ -269,9 +274,10 @@ function clearPromptChip<T extends { prompt: string; preset?: string | null }>(
   dimension: PromptChipDimension,
 ): T {
   const { label, chips } = DIMENSIONS[dimension];
+  const previousMarker = extractPromptChipBlock(card.prompt, dimension);
   let prompt = stripPromptChipBlock(card.prompt, dimension);
   const current = extractLabeledSentence(prompt, label);
-  if (current && isChipSentence(current, chips)) {
+  if (current && (isChipSentence(current, chips) || (previousMarker && normalizeChipText(current) === normalizeChipText(previousMarker)))) {
     const original = presetPromptFor(card)
       ? extractLabeledSentence(presetPromptFor(card)!, label)
       : null;
@@ -315,4 +321,12 @@ export function clearHair<T extends { prompt: string; preset?: string | null }>(
 
 export function clearCamera<T extends { prompt: string; preset?: string | null }>(card: T): T {
   return clearPromptChip(card, "camera");
+}
+
+/** Custom entries use the same replaceable prompt block as catalog choices. */
+export function applyCustomPromptChoice<T extends { prompt: string; preset?: string | null }>(card: T, dimension: PromptChipDimension, text: string): T {
+  const value = text.trim().slice(0, 500).replace(/\[\[.*?\]\]/g, "");
+  if (!value) return clearPromptChip(card, dimension);
+  const line = `${DIMENSIONS[dimension].label}: ${value.replace(/\.+$/, "")}.`;
+  return { ...card, prompt: upsertPromptChipBlock(replaceLabeledSentence(stripPromptChipBlock(card.prompt, dimension), DIMENSIONS[dimension].label, line), dimension, line) };
 }
