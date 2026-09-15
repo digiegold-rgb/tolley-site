@@ -1,3 +1,5 @@
+import { upload as uploadBlob } from '@vercel/blob/client';
+import { listingPhotoType, LISTING_PHOTO_MAX_BYTES } from '@/lib/vater/listing/photo-upload';
 /**
  * listing-api.ts — typed fetch helpers over lib/vater/listing/contract.ts.
  *
@@ -173,13 +175,20 @@ export const listingApi = {
     return body.agentProfile ?? null;
   },
 
-  /** Photo upload → Vercel Blob (10 MB cap). Returns the public URL. */
-  async upload(file: File): Promise<string> {
-    const fd = new FormData();
-    fd.append('file', file);
-    const body = await request<{ url?: string }>('/api/vater/upload', { method: 'POST', body: fd });
-    if (!body.url) throw new Error('Upload did not return a file address.');
-    return body.url;
+  /** Direct multipart upload preserves the full original and retries failed parts. */
+  async upload(file: File, onProgress?: (percentage: number) => void): Promise<string> {
+    const contentType = listingPhotoType(file);
+    if (!contentType) throw new Error('Choose a JPG, PNG or WebP photo. Export RAW, TIFF or HEIC files as JPG first.');
+    if (!file.size || file.size > LISTING_PHOTO_MAX_BYTES) throw new Error('Choose a photo up to 100 MB.');
+    const extension = contentType === 'image/jpeg' ? 'jpg' : contentType.split('/')[1];
+    const blob = await uploadBlob(`vater/listing-photos/${crypto.randomUUID()}.${extension}`, file, {
+      access: 'public',
+      handleUploadUrl: '/api/vater/upload',
+      contentType,
+      multipart: true,
+      onUploadProgress: ({ percentage }) => onProgress?.(Math.round(percentage)),
+    });
+    return blob.url;
   },
 
   /** Credit pack checkout; returns the Stripe URL to send the browser to. */

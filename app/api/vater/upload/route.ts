@@ -12,12 +12,13 @@
  *    That is the ONLY way BYO narration works: a serverless request body is
  *    capped at 4.5MB on Vercel (feedback_body_size_limit), so a 50MB WAV
  *    posted as multipart would 413 long before the size check below runs.
- *    Audio only on this path, 50MB ceiling enforced by the issued token.
+ *    Audio: 50MB. Listing photos: 100MB, scoped to their own prefix.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { auth } from "@/auth";
+import { listingPhotoTokenPolicy } from "@/lib/vater/listing/photo-upload";
 
 /** Images/reference art — unchanged from the original 10MB ceiling. */
 const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
@@ -60,22 +61,27 @@ export async function POST(request: NextRequest) {
   }
   const userId = session.user.id;
 
-  // Client-upload handshake (large audio). Detected by content-type so the
+  // Client-upload handshake (large photos and audio). Detected by content-type so the
   // five existing multipart callers are untouched.
   if ((request.headers.get("content-type") ?? "").includes("application/json")) {
-    const body = (await request.json()) as HandleUploadBody;
     try {
+      const body = (await request.json()) as HandleUploadBody;
       const result = await handleUpload({
         body,
         request,
-        onBeforeGenerateToken: async () => ({
+        onBeforeGenerateToken: async (pathname) => {
+          if (pathname.startsWith("vater/listing-photos/")) {
+            return { ...listingPhotoTokenPolicy(pathname), tokenPayload: JSON.stringify({ userId }) };
+          }
+          return ({
           // Wildcard first — browsers disagree on the exact type they report
           // for .wav/.m4a, and a mismatch here rejects the whole upload.
           allowedContentTypes: ["audio/*", ...AUDIO_TYPES],
           maximumSizeInBytes: AUDIO_MAX_BYTES,
           addRandomSuffix: true,
           tokenPayload: JSON.stringify({ userId }),
-        }),
+          });
+        },
       });
       return NextResponse.json(result);
     } catch (err) {

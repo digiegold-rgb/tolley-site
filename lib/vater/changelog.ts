@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.42.3';
+export const APP_VERSION = '1.42.4';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.42.4',
+    date: '2026-09-14',
+    title: 'Full-resolution listing photo uploads',
+    items: [
+      'Upload JPG, PNG and WebP photos up to 100 MB, with visible progress and automatic retries for interrupted parts.',
+      'Your full-resolution original stays intact. A separate copy is prepared for the AI so large photos do not exceed its input limit.',
+    ],
+  },
   {
     version: '1.42.3',
     date: '2026-09-14',
