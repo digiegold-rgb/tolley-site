@@ -71,7 +71,7 @@ export async function pollFalImage(
   requestId: string,
 ): Promise<
   | { pending: true; status: "IN_QUEUE" | "IN_PROGRESS" }
-  | { done: true; imageUrl: string; contentType?: string }
+  | { done: true; imageUrl: string; imageUrls: string[]; contentType?: string }
   | { failed: true; error: string }
 > {
   const status = await checkImageStatus(falModelId, requestId);
@@ -83,7 +83,7 @@ export async function pollFalImage(
   }
   try {
     const result = await getImageResult(falModelId, requestId);
-    return { done: true, imageUrl: result.imageUrl, contentType: result.contentType };
+    return { done: true, imageUrl: result.imageUrl, imageUrls: result.imageUrls, contentType: result.contentType };
   } catch (err) {
     return { failed: true, error: formatFalError(err, "fal flux result failed") };
   }
@@ -110,10 +110,27 @@ export async function persistFalStill(jobId: string, imageUrl: string): Promise<
   return imageUrl;
 }
 
-export function falT2VModelId(): FalModelId {
-  return "wan26-720p";
+export function falT2VModelId(card?: unknown): FalModelId {
+  return (card as { fal_model?: string } | null)?.fal_model === "wan30-t2v" ? "wan30-t2v" : "wan26-720p";
 }
 
-export function falT2IModelId(): FalImageModelId {
-  return "flux-dev";
+export function falT2IModelId(card?: unknown): FalImageModelId {
+  const id = (card as { fal_model?: string } | null)?.fal_model;
+  return id === "qwen-edit" || id === "flux2-edit" || id === "flux-schnell" ? id : "flux-dev";
+}
+
+/** Persist a whole batch together, preserving distinct output indexes. */
+export async function persistFalStills(jobId: string, urls: string[]): Promise<string[]> {
+  try {
+    const pngs = await Promise.all(urls.map(async url => {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`Image download failed (${response.status})`);
+      const bytes = Buffer.from(await response.arrayBuffer());
+      if (!bytes.length) throw new Error("Empty image response");
+      return bytes.toString("base64");
+    }));
+    const stored = await persistJobPngs(jobId, pngs);
+    if (stored.length === urls.length) return stored;
+  } catch (error) { console.warn(`[generate-engine] Batch persistence failed for ${jobId}`, error instanceof Error ? error.message : "Unknown error"); }
+  return urls;
 }

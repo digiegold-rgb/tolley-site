@@ -6,8 +6,9 @@ import { fileURLToPath } from "node:url";
 
 describe("/generate fal engine tabs", () => {
   const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-  const studio = readFileSync(join(root, "app/generate/generate-studio.tsx"), "utf8");
-  const beatsUi = readFileSync(join(root, "app/generate/beat-queue.tsx"), "utf8");
+  const studio = readFileSync(join(root, "app/gen2/generate-studio.tsx"), "utf8");
+  const workflows = readFileSync(join(root, "lib/generate-workflow.ts"), "utf8");
+  const beatsUi = readFileSync(join(root, "app/gen2/beat-queue.tsx"), "utf8");
   const jobs = readFileSync(join(root, "app/api/generate/jobs/route.ts"), "utf8");
   const poll = readFileSync(join(root, "app/api/generate/jobs/[id]/route.ts"), "utf8");
   const fal = readFileSync(join(root, "lib/fal.ts"), "utf8");
@@ -51,7 +52,7 @@ describe("/generate fal engine tabs", () => {
     assert.match(beatsUi, /~5s|5s \(Wan cap\)/);
     assert.match(studio, /5s \(Wan cap\)/);
     assert.match(studio, /Wan I2V/);
-    assert.match(studio, /Wan 3\.0/);
+    assert.match(fal, /wan-3\.0/);
     assert.doesNotMatch(studio, /DurationChips/);
     assert.match(beatsUi, /<video/);
     assert.match(beatsUi, /controls/);
@@ -64,12 +65,12 @@ describe("/generate fal engine tabs", () => {
     assert.doesNotMatch(beatsUi, />\s*Down\s*</);
     assert.match(studio, /writeMotionCardToBeat1/);
     assert.match(studio, /generateBeatClip/);
-    assert.match(beatsUi, /Prompt & stills above/);
+    assert.match(beatsUi, /Prompt & source in step 2/);
     assert.doesNotMatch(beatsUi, /Add current card/);
   });
 
   it("adds a Motion 2 longform tab without overloading the Motion 1 filmstrip", () => {
-    assert.match(studio, /Motion 2 · Longform/);
+    assert.match(workflows, /Motion 2 · Longform/);
     assert.match(studio, /"motion2"/);
     assert.match(studio, /\/api\/generate\/longform/);
     const longformApi = readFileSync(join(root, "app/api/generate/longform/route.ts"), "utf8");
@@ -79,7 +80,7 @@ describe("/generate fal engine tabs", () => {
     assert.doesNotMatch(jobs, /spawnFalWan30Motion/);
     assert.match(studio, /<LongformPanel/);
     assert.match(studio, /waitForLongformChild/);
-    const longformUi = readFileSync(join(root, "app/generate/longform-queue.tsx"), "utf8");
+    const longformUi = readFileSync(join(root, "app/gen2/longform-queue.tsx"), "utf8");
     assert.match(longformUi, /DurationChips/);
     assert.match(longformUi, /data-testid="motion2-longform"/);
     assert.match(longformUi, /gen-longform-list/);
@@ -116,7 +117,7 @@ describe("/generate fal engine tabs", () => {
   });
 
   it("lays the beat queue out as a horizontal filmstrip, not stacked cards", () => {
-    const css = readFileSync(join(root, "app/generate/generate.css"), "utf8");
+    const css = readFileSync(join(root, "app/gen2/generate.css"), "utf8");
     assert.match(css, /\.gen-beat-strip\s*\{[^}]*flex-direction:\s*row/s);
     assert.match(css, /\.gen-beat-timeline\s*\{[^}]*overflow-x:\s*auto/s);
     assert.doesNotMatch(css, /\.gen-beat-list\s*\{[^}]*flex-direction:\s*column/s);

@@ -36,7 +36,7 @@ import {
 export { falPublicLongformStatus, falPublicStatus, isFalConfigured, isMotionRecipe };
 
 export function spawnInputForCard(card: GenerateMotionCard) {
-  return cardToFalInput(card);
+  return card.model === "wan30-i2v" ? cardToWan30FalInput(card) : cardToFalInput(card);
 }
 
 export function spawnInputForLongformCard(card: GenerateMotionCard) {
@@ -85,7 +85,7 @@ export async function spawnFalMotion(
       ? await resolveMotionStillForFal(card.end_image_url)
       : card.end_image_url,
   };
-  const planned = cardToFalInput(resolved);
+  const planned = spawnInputForCard(resolved);
   const { requestId } = await submitVideoGeneration(planned.falModelId, planned.input.prompt, {
     ...planned.input,
   });

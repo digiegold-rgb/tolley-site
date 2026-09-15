@@ -52,8 +52,9 @@ describe("cinema estate template + queue", () => {
     assert.match(q.beats[0].prompt, /She says exactly: "Welcome."/);
     const e = estimateCinema(q);
     assert.equal(e.fal_calls, 2);
-    assert.equal(e.usd, cinemaUsdEstimate(q.beats[0].seconds + q.beats[1].seconds, "seedance").usd);
-    assert.equal(e.needs_confirm, e.usd > 5);
+    assert.equal(e.usd, 4.85); // First shot + discounted reference-video input on the second.
+    assert.equal(e.usd_high, 7.59); // Includes up to 15s of reference video.
+    assert.equal(e.needs_confirm, (e.usd_high ?? e.usd) > 5);
     assert.match(e.note, /Seedance/);
   });
 

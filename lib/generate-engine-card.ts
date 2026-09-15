@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { FLUX_PIXELS } from "./generate-cost";
 
 import { MOTION_RECIPE_FLF2V, MOTION_RECIPE_I2V } from "./generate-motion-card";
 
@@ -16,6 +17,9 @@ export type EngineAspect = (typeof ENGINE_ASPECTS)[number];
 
 export const ENGINE_SECONDS_DEFAULT = 5;
 export const ENGINE_SECONDS_MAX = 5;
+
+export const ENGINE_IMAGE_MODELS = ["flux-dev", "flux-schnell"] as const;
+export const ENGINE_VIDEO_MODELS = ["wan26-720p", "wan30-t2v"] as const;
 
 export const FLUX_IMAGE_SIZE = {
   "9:16": "portrait_16_9",
@@ -29,7 +33,7 @@ const DEFAULT_T2V_NEGATIVE =
   "child, minor, deformed face, extra limbs, blurry, lowres, watermark, text, cartoon, still image, morph";
 
 export function isFalImageRecipe(recipe: string | null | undefined): boolean {
-  return recipe === ENGINE_RECIPE_T2I;
+  return recipe === ENGINE_RECIPE_T2I || recipe === "fal-qwen-edit" || recipe === "fal-flux2-edit";
 }
 
 export function isFalVideoRecipe(recipe: string | null | undefined): boolean {
@@ -43,7 +47,7 @@ export function isFalVideoRecipe(recipe: string | null | undefined): boolean {
 }
 
 export function isEngineRecipe(recipe: string | null | undefined): boolean {
-  return isFalImageRecipe(recipe) || recipe === ENGINE_RECIPE_T2V;
+  return recipe === ENGINE_RECIPE_T2I || recipe === ENGINE_RECIPE_T2V;
 }
 
 /** Wan wants 4n+1 frames. Cap at 81 (~5s @ 16fps). */
@@ -63,6 +67,7 @@ export const generateEngineCardSchema = z.object({
   seconds: z.coerce.number().min(2).max(ENGINE_SECONDS_MAX).default(ENGINE_SECONDS_DEFAULT),
   seed: z.coerce.number().int().min(0).max(2_147_483_647).default(0),
   slow_mo: z.boolean().default(false),
+  model: z.enum([...ENGINE_IMAGE_MODELS, ...ENGINE_VIDEO_MODELS]).optional(),
 });
 
 export type GenerateEngineCard = z.infer<typeof generateEngineCardSchema>;
@@ -82,15 +87,17 @@ export function parseGenerateEngineCard(
           ? DEFAULT_T2V_NEGATIVE
           : DEFAULT_T2I_NEGATIVE,
   });
+  const allowed: readonly string[] = kind === "t2i" ? ENGINE_IMAGE_MODELS : ENGINE_VIDEO_MODELS;
+  if (parsed.model && !allowed.includes(parsed.model)) throw new Error("Model is incompatible with this workflow");
   return parsed;
 }
 
 export function cardToFalT2IInput(card: GenerateEngineCard): {
   recipe: typeof ENGINE_RECIPE_T2I;
-  falModelId: "flux-dev";
+  falModelId: "flux-dev" | "flux-schnell";
   input: {
     prompt: string;
-    image_size: (typeof FLUX_IMAGE_SIZE)[EngineAspect];
+    image_size: { width: number; height: number };
     enable_safety_checker: false;
     num_images: 1;
     output_format: "png";
@@ -99,10 +106,10 @@ export function cardToFalT2IInput(card: GenerateEngineCard): {
 } {
   return {
     recipe: ENGINE_RECIPE_T2I,
-    falModelId: "flux-dev",
+    falModelId: card.model === "flux-schnell" ? "flux-schnell" : "flux-dev",
     input: {
       prompt: card.prompt,
-      image_size: FLUX_IMAGE_SIZE[card.aspect],
+      image_size: FLUX_PIXELS[card.aspect],
       enable_safety_checker: false,
       num_images: 1,
       output_format: "png",
@@ -113,19 +120,32 @@ export function cardToFalT2IInput(card: GenerateEngineCard): {
 
 export function cardToFalT2VInput(card: GenerateEngineCard): {
   recipe: typeof ENGINE_RECIPE_T2V;
-  falModelId: "wan26-720p";
+  falModelId: "wan26-720p" | "wan30-t2v";
   input: {
     prompt: string;
-    negative_prompt: string;
+    negative_prompt?: string;
     enable_safety_checker: false;
     enable_prompt_expansion: false;
-    num_frames: number;
-    frames_per_second: 16;
+    num_frames?: number;
+    frames_per_second?: 16;
+    duration?: number;
+    audio?: boolean;
+    enable_thinking?: boolean;
     resolution: "720p";
     aspect_ratio: EngineAspect;
     seed?: number;
   };
 } {
+  if (card.model === "wan30-t2v") return {
+    recipe: ENGINE_RECIPE_T2V,
+    falModelId: "wan30-t2v",
+    input: {
+      prompt: card.prompt, duration: Math.round(card.seconds), resolution: "720p",
+      aspect_ratio: card.aspect, audio: false, enable_thinking: false,
+      enable_safety_checker: false, enable_prompt_expansion: false,
+      ...(card.seed > 0 ? { seed: card.seed } : {}),
+    },
+  };
   return {
     recipe: ENGINE_RECIPE_T2V,
     falModelId: "wan26-720p",

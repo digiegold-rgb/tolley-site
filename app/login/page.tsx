@@ -41,23 +41,25 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   // Brand the auth screen off the destination: /animate signups are Jelly
   // Studio customers, not T-Agent search users (audit AN-03, 2026-08-15).
   const product = productForPath(callbackUrl);
-  const isStudio = product !== null;
+  const isGen2 = callbackUrl === "/gen2" || callbackUrl.startsWith("/gen2?");
+  const isGenerate = callbackUrl === "/generate" || callbackUrl.startsWith("/generate?");
+  const isStudio = product !== null || isGenerate || isGen2;
   const isListing = product === "realestate";
 
   return (
     <AuthShell
       brand={isListing ? "listing studio" : isStudio ? "jelly studio" : "t-agent"}
-      title={isListing ? "Sign in to Listing Studio" : isStudio ? "Sign in to Jelly Studio" : "Sign In"}
+      title={isGen2 ? "Sign in to Gen2" : isGenerate ? "Sign in to Generate" : isListing ? "Sign in to Listing Studio" : isStudio ? "Sign in to Jelly Studio" : "Sign In"}
       subtitle={
-        isListing
+        (isGenerate || isGen2) ? "Use your owner account and complete two-factor authentication to return to your generation workspace." : isListing
           ? "Pick up where you left off — your listings, videos and billing are waiting."
           : isStudio
             ? "Pick up where you left off — your projects, library and billing are waiting."
             : "Use your account credentials to continue in T-Agent."
       }
-      alternatePrompt="Need access?"
-      alternateLabel="Create account"
-      alternateHref={`/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+      alternatePrompt={(isGenerate || isGen2) ? "Owner access is required." : "Need access?"}
+      alternateLabel={isGen2 ? "Back to Gen2" : isGenerate ? "Back to Generate" : "Create account"}
+      alternateHref={isGen2 ? "/gen2" : isGenerate ? "/generate" : `/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`}
     >
       <LoginForm />
     </AuthShell>

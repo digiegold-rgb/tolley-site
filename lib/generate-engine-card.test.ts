@@ -3,7 +3,6 @@ import { describe, it } from "node:test";
 import {
   ENGINE_RECIPE_T2I,
   ENGINE_RECIPE_T2V,
-  FLUX_IMAGE_SIZE,
   cardToFalT2IInput,
   cardToFalT2VInput,
   falEnginePublicStatus,
@@ -13,6 +12,7 @@ import {
   parseGenerateEngineCard,
   wanFramesForSeconds,
 } from "./generate-engine-card.ts";
+import { FLUX_PIXELS } from "./generate-cost.ts";
 import { MOTION_RECIPE_I2V } from "./generate-motion-card.ts";
 import { formatFalError, formatFalFailure } from "./fal.ts";
 
@@ -38,7 +38,7 @@ describe("card → fal input", () => {
     const planned = cardToFalT2IInput(card);
     assert.equal(planned.falModelId, "flux-dev");
     assert.equal(planned.input.enable_safety_checker, false);
-    assert.equal(planned.input.image_size, FLUX_IMAGE_SIZE["9:16"]);
+    assert.deepEqual(planned.input.image_size, FLUX_PIXELS["9:16"]);
     assert.equal(planned.input.seed, 7);
     assert.doesNotMatch(JSON.stringify(planned), /FAL_KEY|Gemini|quickgen/i);
   });

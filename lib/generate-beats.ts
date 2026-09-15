@@ -40,6 +40,7 @@ export function isStitchRecipe(recipe: string | null | undefined): boolean {
 }
 
 export type MotionBeat = {
+  model?: "wan-legacy" | "wan30-i2v";
   id: string;
   status: BeatStatus;
   prompt: string;
@@ -73,6 +74,7 @@ export function newBeatId(): string {
 export function emptyBeat(partial?: Partial<MotionBeat>): MotionBeat {
   const source = (partial?.source_image_url || "").trim();
   return {
+    model: partial?.model === "wan30-i2v" ? "wan30-i2v" : "wan-legacy",
     id: partial?.id || newBeatId(),
     status: isBeatStatus(partial?.status) ? partial.status : "draft",
     prompt: (partial?.prompt || "").trim() || DEFAULT_MOTION_PROMPT,
@@ -112,6 +114,7 @@ function asRecord(raw: unknown): Record<string, unknown> {
 export function parseMotionBeat(raw: unknown): MotionBeat {
   const rec = asRecord(raw);
   const beat = emptyBeat({
+    model: rec.model === "wan30-i2v" ? "wan30-i2v" : "wan-legacy",
     id: typeof rec.id === "string" ? rec.id : undefined,
     status: isBeatStatus(rec.status) ? rec.status : "draft",
     prompt: typeof rec.prompt === "string" ? rec.prompt : undefined,
@@ -154,6 +157,7 @@ export function beatFromMotionCard(
 ): MotionBeat {
   return emptyBeat({
     ...partial,
+    model: card.model,
     prompt: card.prompt,
     negative_prompt: card.negative_prompt,
     source_image_url: card.source_image_url,
@@ -169,6 +173,7 @@ export function beatFromMotionCard(
 
 export function motionCardFromBeat(beat: MotionBeat): GenerateMotionCard {
   return parseGenerateMotionCard({
+    model: beat.model,
     prompt: beat.prompt,
     negative_prompt: beat.negative_prompt,
     source_image_url: beat.source_image_url,

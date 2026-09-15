@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.42.3';
+export const APP_VERSION = '1.43';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,19 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.43',
+    date: '2026-09-14',
+    title: 'Gen2 image and video workspace',
+    items: [
+      'The separate Gen2 page walks you through choosing a workflow, adding your idea and references, adjusting settings, and reviewing your result.',
+      'All detailed controls remain available, with a full controls view and optional director assistance.',
+      'Compare compatible models and estimated internal generation costs before submitting. Model switches preserve your inputs, and sequences show costs per clip and remaining total.',
+      'Missing inputs point to the step that needs attention. A shared library lets you carry stills into video workflows.',
+      'Owner sign-in resumes two-factor verification and refreshes access without losing your draft. Workflows show provider configuration status.',
+      'Character stills offer Qwen and FLUX.2 model choices plus searchable location, hair, and camera catalogs with hundreds of choices in each.',
+    ],
+  },
   {
     version: '1.42.3',
     date: '2026-09-14',

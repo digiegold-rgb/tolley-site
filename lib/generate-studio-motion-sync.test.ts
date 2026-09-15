@@ -104,8 +104,8 @@ describe("studio motionCard ↔ beats[0]", () => {
   });
 
   it("does not present two independent Beat 1 prompt textareas in the studio UI", () => {
-    const studio = readFileSync(join(root, "app/generate/generate-studio.tsx"), "utf8");
-    const beatsUi = readFileSync(join(root, "app/generate/beat-queue.tsx"), "utf8");
+    const studio = readFileSync(join(root, "app/gen2/generate-studio.tsx"), "utf8");
+    const beatsUi = readFileSync(join(root, "app/gen2/beat-queue.tsx"), "utf8");
     assert.match(studio, /writeMotionCardToBeat1/);
     assert.match(studio, /motionCardFromBeat1/);
     assert.match(studio, /data-testid="beat-1-prompt"/);
@@ -114,14 +114,14 @@ describe("studio motionCard ↔ beats[0]", () => {
     assert.doesNotMatch(studio, /async function goMotion\(\)[\s\S]*kind: "motion", card: motionCard, start: !dryRun/);
     assert.match(beatsUi, /i === 0/);
     assert.match(beatsUi, /beatPromptEditorForIndex/);
-    assert.match(beatsUi, /Prompt & stills above/);
+    assert.match(beatsUi, /Prompt & source in step 2/);
     assert.match(beatsUi, /selectedIndex > 0/);
     assert.doesNotMatch(beatsUi, /Add current card/);
   });
 
   it("Motion 2 resumes in-flight children; Motion 1 still uses pollModalJob", () => {
-    const studio = readFileSync(join(root, "app/generate/generate-studio.tsx"), "utf8");
-    const longformUi = readFileSync(join(root, "app/generate/longform-queue.tsx"), "utf8");
+    const studio = readFileSync(join(root, "app/gen2/generate-studio.tsx"), "utf8");
+    const longformUi = readFileSync(join(root, "app/gen2/longform-queue.tsx"), "utf8");
     assert.match(studio, /waitForLongformChild/);
     assert.match(studio, /resumeMotion2InFlight/);
     assert.match(studio, /bindLongformQueueToJobs/);
@@ -143,14 +143,14 @@ describe("studio motionCard ↔ beats[0]", () => {
     assert.match(studio, /confirmSpend/);
     assert.match(studio, /readBoundQueueId/);
     assert.match(studio, /queueGetUrl/);
-    assert.match(longformUi, /data-testid="motion2-run-remaining"/);
+    assert.match(longformUi, /data-testid="motion2-go"/);
     assert.match(longformUi, /data-testid="motion2-auto-advance"/);
-    assert.match(longformUi, /Go = run remaining/i);
+    assert.match(longformUi, /Generate remaining clips/i);
   });
 
   it("adds a Cinema tab next to Motion 2 without changing Motion 1 filmstrip", () => {
-    const studio = readFileSync(join(root, "app/generate/generate-studio.tsx"), "utf8");
-    const cinemaUi = readFileSync(join(root, "app/generate/cinema-queue.tsx"), "utf8");
+    const studio = readFileSync(join(root, "app/gen2/generate-studio.tsx"), "utf8");
+    const cinemaUi = readFileSync(join(root, "app/gen2/cinema-queue.tsx"), "utf8");
     assert.match(studio, /"cinema"/);
     assert.match(studio, /Cinema/);
     assert.match(studio, /<CinemaPanel/);
@@ -159,7 +159,7 @@ describe("studio motionCard ↔ beats[0]", () => {
     assert.match(cinemaUi, /data-testid="cinema-load-estate"/);
     assert.match(cinemaUi, /Seedance/);
     assert.match(cinemaUi, /Kling/);
-    assert.match(cinemaUi, /data-testid="cinema-run-remaining"/);
+    assert.match(cinemaUi, /data-testid="cinema-go"/);
     assert.doesNotMatch(cinemaUi, /gen-beat-strip/);
   });
 });

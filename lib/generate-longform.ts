@@ -19,7 +19,6 @@ import {
   MOTION_SECONDS_LONGFORM_DEFAULT,
   clampMotionSeconds,
   parseGenerateMotionCard,
-  wan30UsdEstimate,
   wan30UsdForSeconds,
   type MotionResolution,
   type GenerateMotionCard,
@@ -154,7 +153,7 @@ export function remainingLongformSpend(queue: LongformQueue): {
 } {
   const drafts = remainingLongformDrafts(queue);
   const seconds = drafts.reduce((s, b) => s + b.seconds, 0);
-  const usd = wan30UsdForSeconds(seconds, "720p");
+  const usd = Math.round(drafts.reduce((sum, beat) => sum + wan30UsdForSeconds(beat.seconds, beat.resolution), 0) * 100) / 100;
   return {
     beats: drafts.length,
     seconds,
@@ -162,7 +161,7 @@ export function remainingLongformSpend(queue: LongformQueue): {
     needs_confirm: needsSpendConfirm(usd, SPEND_CONFIRM_USD),
     message:
       `About $${usd.toFixed(2)} for ${drafts.length} remaining Wan 3.0 beat(s) ` +
-      `(${seconds}s × $0.10/s @720p). Continue?`,
+      `(${seconds}s, using each beat’s resolution). Continue?`,
   };
 }
 
@@ -180,7 +179,7 @@ export function estimateLongformQueue(queue: LongformQueue): LongformEstimate {
     needs_confirm: remaining.needs_confirm,
     note:
       remaining.beats < base.beat_count
-        ? `${base.note} Remaining: ${remaining.beats} drafts ≈ ${remaining.seconds}s (~$${remaining.usd.toFixed(2)} @720p).`
+        ? `${base.note} Remaining: ${remaining.beats} drafts ≈ ${remaining.seconds}s (~$${remaining.usd.toFixed(2)}, using each beat’s resolution).`
         : base.note,
   };
 }

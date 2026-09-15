@@ -112,6 +112,7 @@ const optionalHttpsUrl = z
   .refine((u) => !u || isAllowedMotionStillUrl(u), "Must be an HTTPS URL or a Generate gallery still");
 
 export const generateMotionCardSchema = z.object({
+  model: z.enum(["wan-legacy", "wan30-i2v"]).default("wan-legacy"),
   recipe: z.enum(MOTION_RECIPES).default(MOTION_RECIPE_I2V),
   prompt: z.string().trim().min(1).max(5000),
   negative_prompt: z.string().max(2000).default(DEFAULT_MOTION_NEGATIVE),
@@ -182,6 +183,7 @@ export function falPublicLongformStatus(env: NodeJS.ProcessEnv = process.env): {
 export function defaultMotionCard(partial?: Partial<GenerateMotionCard>): GenerateMotionCard {
   const source = (partial?.source_image_url || "").trim();
   return generateMotionCardSchema.parse({
+    model: partial?.model || "wan-legacy",
     recipe: partial?.end_image_url ? MOTION_RECIPE_FLF2V : MOTION_RECIPE_I2V,
     prompt: partial?.prompt?.trim() || DEFAULT_MOTION_PROMPT,
     negative_prompt: partial?.negative_prompt ?? DEFAULT_MOTION_NEGATIVE,
@@ -204,6 +206,7 @@ export function emptyMotionCard(): Omit<GenerateMotionCard, "source_image_url"> 
   source_image_url: string;
 } {
   return {
+    model: "wan-legacy",
     recipe: MOTION_RECIPE_I2V,
     prompt: DEFAULT_MOTION_PROMPT,
     negative_prompt: DEFAULT_MOTION_NEGATIVE,
@@ -264,6 +267,7 @@ export function mergeMotionCard(
   if (!source) {
     return {
       ...emptyMotionCard(),
+      model: next.model === "wan30-i2v" ? "wan30-i2v" : "wan-legacy",
       prompt: String(next.prompt || DEFAULT_MOTION_PROMPT),
       negative_prompt: String(next.negative_prompt ?? DEFAULT_MOTION_NEGATIVE),
       end_image_url: String(next.end_image_url || ""),

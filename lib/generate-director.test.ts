@@ -151,9 +151,9 @@ describe("directorUserPayload", () => {
 describe("generate route branding", () => {
   it("does not inherit t-agent Real Estate Unlocked on /generate", () => {
     const here = dirname(fileURLToPath(import.meta.url));
-    const layout = readFileSync(join(here, "../app/generate/layout.tsx"), "utf8");
-    const page = readFileSync(join(here, "../app/generate/page.tsx"), "utf8");
-    const studio = readFileSync(join(here, "../app/generate/generate-studio.tsx"), "utf8");
+    const layout = readFileSync(join(here, "../app/gen2/layout.tsx"), "utf8");
+    const page = readFileSync(join(here, "../app/gen2/page.tsx"), "utf8");
+    const studio = readFileSync(join(here, "../app/gen2/generate-studio.tsx"), "utf8");
     const chat = readFileSync(join(here, "../app/api/generate/chat/route.ts"), "utf8");
     for (const src of [layout, page, studio]) {
       assert.doesNotMatch(src, /Real Estate Unlocked/i);
@@ -165,7 +165,7 @@ describe("generate route branding", () => {
     assert.match(studio, /\/api\/generate\/chat/);
     assert.match(studio, /Modal stills/);
     assert.match(studio, /Motion/);
-    assert.match(studio, /Motion 2 · Longform/);
+    assert.match(readFileSync(join(here, "generate-workflow.ts"), "utf8"), /Motion 2 · Longform/);
     assert.match(studio, /Cinema/);
     assert.match(studio, /\/api\/generate\/jobs/);
     assert.match(studio, /\/api\/generate\/upload/);
@@ -181,7 +181,7 @@ describe("generate route branding", () => {
     assert.match(studio, /applyHair/);
     assert.match(studio, /applyCamera/);
     assert.match(studio, /grey-shirt identity refs lock clothes/i);
-    assert.match(studio, /Chips rewrite Location \/ Hair \/ Camera/);
+    assert.match(studio, /Combine a location, hairstyle, and camera setup/);
     const modalPanel = studio.indexOf('{mode === "modal" ? (');
     const motionForm = studio.indexOf("mode === \"motion\" ? (");
     const blockChip = studio.indexOf("Block NSFW");
@@ -196,7 +196,7 @@ describe("generate route branding", () => {
     assert.match(studio, /Use as source/);
     assert.match(studio, /Wan 3\.0|Wan I2V/);
     assert.doesNotMatch(studio, /InstantID|ComfyUI|face_lock|UltraSharp/i);
-    assert.match(studio, /Seedance/);
+    assert.match(readFileSync(join(here, "generate-workflow.ts"), "utf8"), /Seedance/);
     assert.match(chat, /qwenChatCompletion/);
     assert.match(chat, /QWEN_VLLM/);
     assert.doesNotMatch(chat, /api\.anthropic\.com|qwen-max|dashscope/i);
