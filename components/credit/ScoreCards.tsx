@@ -239,7 +239,7 @@ export function ScoreCards({
           <span>start {startScore ?? "--"}</span>
           <span>goal {goal}</span>
         </div>
-        {hasTrend && (
+        {hasTrend && trend && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className="text-[0.6rem] tracking-wider text-white/35 uppercase">
               Trend
