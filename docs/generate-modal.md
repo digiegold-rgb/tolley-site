@@ -1,6 +1,8 @@
 # Chat-driven Modal stills on `/generate`
 
-Identity stills run on Modal (A100 BF16, Diffusers `QwenImageEditPlusPipeline` / `Qwen/Qwen-Image-Edit-2511`). Spark Comfy / InstantID / face_lock / UltraSharp are not used.
+Identity stills run on Modal (A100 BF16, Diffusers `QwenImageEditPlusPipeline` / `Qwen/Qwen-Image-Edit-2511`). Spark Comfy / InstantID / face_lock / UltraSharp are not used. GPU **routing** is a separate stub (`docs/gpu-router.md`): stills go to Modal; Nebius is reserved for long/batch later and is not wired; Spark is never a GPU backend.
+
+Finished stills persist wall time (`durationMs`) and Modal `costUsd` when the worker returns it (often null) on `GenerateJob`.
 
 Identity-locked **motion** (still → 5s fal Wan I2V) is a separate tab on the same page — see `docs/generate-motion.md`. Modal stills job-card / NSFW chips are unchanged.
 
@@ -237,4 +239,4 @@ curl -sS -D- https://tolley.io/api/generate/jobs/JOB_ID/image?i=0 \
 npx prisma migrate deploy
 ```
 
-Adds `GenerateJob` (`status`, `cardJson`, `modalCallId`, `outputUrls`, `error`, `createdBy`, timestamps).
+Adds `GenerateJob` (`status`, `cardJson`, `modalCallId`, `outputUrls`, `error`, `createdBy`, timestamps, plus `backend` / `kind` / `durationMs` / `costUsd` — see `docs/gpu-router.md`).

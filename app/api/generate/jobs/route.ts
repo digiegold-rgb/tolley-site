@@ -49,8 +49,9 @@ import { latestCinemaJob, loadCinemaJob } from "@/lib/generate-cinema-store";
 import { emptyLongformQueue } from "@/lib/generate-longform";
 import { reconcileLongformParent } from "@/lib/generate-longform-advance";
 import { latestLongformJob, loadLongformJob } from "@/lib/generate-longform-store";
-import { serializeJob } from "@/lib/generate-job-store";
+import { generateJobFinishPatch, serializeJob } from "@/lib/generate-job-store";
 import { isBlockedStudioRequest } from "@/lib/generate-director";
+import { requireWiredGpuBackend, routeGpuJob } from "@/lib/gpu-router";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -533,12 +534,15 @@ async function postStill(
   const shouldSpawn = !dryRun && (explicitStart || !message);
 
   const kwargs = spawnKwargsForCard(card);
+  const gpuRoute = routeGpuJob({ kind: "still", estimatedRuntimeSec: null });
   const row = await prisma.generateJob.create({
     data: {
       status: dryRun ? "queued" : "queued",
       recipe: card.recipe,
       cardJson: card,
       createdBy,
+      backend: gpuRoute.backend,
+      kind: "still",
     },
   });
 
@@ -550,6 +554,7 @@ async function postStill(
       dryRun: true,
       modal_kwargs: kwargs,
       modal: modalPublicStatus(),
+      gpu_route: gpuRoute,
       started: false,
     });
   }
@@ -559,8 +564,24 @@ async function postStill(
       job: serializeJob(row),
       card,
       reply,
+      gpu_route: gpuRoute,
       started: false,
     });
+  }
+
+  try {
+    requireWiredGpuBackend(gpuRoute);
+  } catch (err) {
+    const messageText = err instanceof Error ? err.message : String(err);
+    const failed = await prisma.generateJob.update({
+      where: { id: row.id },
+      data: {
+        status: "failed",
+        error: messageText.slice(0, 2000),
+        ...(await generateJobFinishPatch(row.id)),
+      },
+    });
+    return jsonError(messageText, 501, { job: serializeJob(failed), gpu_route: gpuRoute });
   }
 
   if (!isModalConfigured()) {
@@ -569,7 +590,7 @@ async function postStill(
       data: {
         status: "failed",
         error: "Modal is not configured. Set MODAL_TOKEN_ID and MODAL_TOKEN_SECRET.",
-        completedAt: new Date(),
+        ...(await generateJobFinishPatch(row.id)),
       },
     });
     return jsonError(
@@ -590,6 +611,7 @@ async function postStill(
         status: "running",
         modalCallId: spawned.callId,
         startedAt: new Date(),
+        backend: "modal",
       },
     });
     return NextResponse.json({
@@ -598,6 +620,7 @@ async function postStill(
       reply,
       started: true,
       modal_call_id: spawned.callId,
+      gpu_route: gpuRoute,
     });
   } catch (err) {
     const messageText = err instanceof Error ? err.message : String(err);
@@ -606,7 +629,7 @@ async function postStill(
       data: {
         status: "failed",
         error: messageText.slice(0, 2000),
-        completedAt: new Date(),
+        ...(await generateJobFinishPatch(row.id)),
       },
     });
     return jsonError(messageText, 502, { job: serializeJob(failed) });

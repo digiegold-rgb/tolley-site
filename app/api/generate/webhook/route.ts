@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { generateWebhookSecret, verifyGenerateWebhook } from "@/lib/generate-auth-core";
-import { applyModalResult, serializeJob } from "@/lib/generate-job-store";
+import { applyModalResult, generateJobFinishPatch, serializeJob } from "@/lib/generate-job-store";
 import { isModalConfigured, pollModalCall } from "@/lib/generate-modal";
 import { prisma } from "@/lib/prisma";
 
@@ -74,7 +74,11 @@ export async function POST(req: NextRequest) {
       const message = err instanceof Error ? err.message : String(err);
       await prisma.generateJob.update({
         where: { id: jobId },
-        data: { status: "failed", error: message.slice(0, 2000), completedAt: new Date() },
+        data: {
+          status: "failed",
+          error: message.slice(0, 2000),
+          ...(await generateJobFinishPatch(jobId)),
+        },
       });
     }
   }

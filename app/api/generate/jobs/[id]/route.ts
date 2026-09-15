@@ -9,7 +9,7 @@ import {
   persistFalStill,
   pollFalImage,
 } from "@/lib/generate-engine";
-import { applyModalResult, serializeJob } from "@/lib/generate-job-store";
+import { applyModalResult, generateJobFinishPatch, serializeJob } from "@/lib/generate-job-store";
 import { isModalConfigured, pollModalCall } from "@/lib/generate-modal";
 import { syncBeatQueueFromChild } from "@/lib/generate-beats-store";
 import { syncCinemaFromChild } from "@/lib/generate-cinema-advance";
@@ -146,7 +146,11 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       const message = err instanceof Error ? err.message : String(err);
       await prisma.generateJob.update({
         where: { id: row.id },
-        data: { status: "failed", error: message.slice(0, 2000), completedAt: new Date() },
+        data: {
+          status: "failed",
+          error: message.slice(0, 2000),
+          ...(await generateJobFinishPatch(row.id)),
+        },
       });
       const fresh = await prisma.generateJob.findUnique({ where: { id: row.id } });
       if (fresh) return NextResponse.json({ job: serializeJob(fresh) });

@@ -21,6 +21,11 @@ export type ModalCallResult = {
   output_png_b64?: string[];
   outputs_ready?: boolean;
   error?: string | null;
+  /** Present only if the worker / Modal runtime returns usage. Never estimated. */
+  cost_usd?: number | null;
+  costUsd?: number | null;
+  cost?: number | null;
+  usage?: { cost_usd?: number; costUsd?: number; cost?: number } | null;
 };
 
 export function isModalConfigured(env: NodeJS.ProcessEnv = process.env): boolean {

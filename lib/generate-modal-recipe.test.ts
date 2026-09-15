@@ -67,3 +67,19 @@ describe("modal/qwen_image_edit.py", () => {
     assert.doesNotMatch(src, /_put_blob\(/);
   });
 });
+
+describe("Modal stills GPU log wiring", () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+  it("persists duration and cost on applyModalResult and the webhook fail path", () => {
+    const store = readFileSync(join(root, "lib/generate-job-store.ts"), "utf8");
+    const webhook = readFileSync(join(root, "app/api/generate/webhook/route.ts"), "utf8");
+    const poll = readFileSync(join(root, "app/api/generate/jobs/[id]/route.ts"), "utf8");
+    assert.match(store, /generateJobFinishPatch/);
+    assert.match(store, /durationMs/);
+    assert.match(store, /costUsd/);
+    assert.match(webhook, /generateJobFinishPatch/);
+    assert.match(poll, /generateJobFinishPatch/);
+    assert.doesNotMatch(store, /backend:\s*["']spark["']/);
+  });
+});
