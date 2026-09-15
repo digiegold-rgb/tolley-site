@@ -5451,6 +5451,8 @@ model VaterListingJob {
   lane                  String    @default("social")
   /// 9:16 Listing Reel add-on (a second render, never a crop).
   reel                  Boolean   @default(false)
+  /// Requested generated motion length; null preserves the SKU default for older jobs.
+  durationS             Int?
   /// Site-side prompt preview (DGX builds the authoritative prompt).
   promptJson            Json?
   /// Compliance snapshot at /stage: lint result, end-card spec, label spec.

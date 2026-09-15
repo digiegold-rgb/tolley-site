@@ -10,10 +10,10 @@ import {
   budgetActionFor,
 } from "./listing-pricing";
 
-test("every SKU lists at >= 4x expected cost (both engines)", () => {
+test("default margins hold; Beauty uses the owner-approved $1 per second rate", () => {
   for (const sku of LISTING_SKU_IDS) {
     const spec = LISTING_SKUS[sku];
-    assert.ok(spec.priceCents / spec.estCostCents >= LISTING_MIN_MARGIN, `${sku} photoreal margin`);
+    assert.ok(spec.priceCents / spec.estCostCents >= (sku === "beauty_shot" ? 2 : LISTING_MIN_MARGIN), `${sku} photoreal margin`);
     if (spec.economyPriceCents != null) {
       assert.ok(
         spec.economyPriceCents / (spec.economyEstCostCents ?? 1) >= LISTING_MIN_MARGIN,
@@ -36,7 +36,7 @@ test("economy engine and reel add-on price correctly", () => {
   assert.equal(listingPriceCents("before_after"), 2900);
   assert.equal(listingPriceCents("before_after", { engine: "modal-wan" }), 1900);
   assert.equal(listingPriceCents("before_after", { reel: true }), 2900 + 1900);
-  assert.equal(listingPriceCents("beauty_shot", { reel: true }), 1400 + 900);
+  assert.equal(listingPriceCents("beauty_shot", { reel: true }), 500 + 500);
   assert.equal(listingPriceCents("virtual_staging", { reel: true }), 499);
 });
 

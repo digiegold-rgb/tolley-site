@@ -20,7 +20,7 @@ import { checkBudget } from "@/lib/vater/billing/check-budget";
 import { debitForAction, refundOnFailure } from "@/lib/vater/billing/ledger";
 import { queueVaterEvent } from "@/lib/vater/events";
 import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
-import { budgetActionFor, isListingSku, LISTING_SKUS, listingDebitKey } from "@/lib/vater/listing-pricing";
+import { budgetActionFor, isListingSku, listingDurationS, LISTING_SKUS, listingDebitKey } from "@/lib/vater/listing-pricing";
 import { buildPromptJson } from "@/lib/vater/listing/prompts";
 import { listingStartPlan } from "@/lib/vater/listing/delivery";
 import {
@@ -44,7 +44,7 @@ export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function POST(_request: NextRequest, ctx: Ctx) {
+export async function POST(request: NextRequest, ctx: Ctx) {
   const session = await auth();
   if (!session?.user?.id) return loginRequired();
   const { id } = await ctx.params;
@@ -66,6 +66,14 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
   const pre = await computePreflight({ job, rootUserId, balanceCents: Number.POSITIVE_INFINITY });
   if (!pre.ok) {
     return listingError(422, { error: "Fix the items below before we can start.", blockers: pre.blockers, code: pre.blockers[0]?.code });
+  }
+
+  let quote: Record<string, unknown>;
+  try { quote = await request.json(); } catch { return listingError(400, { error: "Invalid JSON" }); }
+  if (!quote || typeof quote !== "object" || Array.isArray(quote)) return listingError(400, { error: "Invalid quote" });
+  if ((quote.priceCents !== undefined && quote.priceCents !== pre.priceCents)
+    || (quote.durationS !== undefined && quote.durationS !== pre.durationS)) {
+    return listingError(409, { error: "The length or price changed. Review the current total and confirm again.", code: "bad_state" });
   }
 
   // 2. Money gate at LIST price (unmetered accounts gate at 0¢).
@@ -95,12 +103,22 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Billing is not ready. Try again in a minute." }, { status: 503, headers: NO_STORE });
   }
 
+  if (chargeCents > 0 && debit.outcome === "existing") {
+    const [prior, total] = await Promise.all([
+      prisma.vaterCreditLedger.findUnique({ where: { dedupeKey: listingDebitKey(sku, id) }, select: { deltaCents: true } }),
+      prisma.vaterCreditLedger.aggregate({ where: { projectId: id }, _sum: { deltaCents: true } }),
+    ]);
+    if (prior?.deltaCents !== -chargeCents || -(total._sum.deltaCents ?? 0) < chargeCents) {
+      return listingError(409, { error: "This order has already been billed or refunded. Use Make another for a new video and price.", code: "bad_state" });
+    }
+  }
+
   const profile = pre.profile;
   const plan = listingStartPlan(sku);
   const engine = engineOf(job);
   const photos = job.sourceImageUrls.map((url, i) => ({ url, room: job.roomType ?? undefined, label: i === 0 ? "primary" : undefined }));
   const inputs = { photos, style: job.style, roomType: job.roomType, look: job.look, lane: job.lane, n: job.restageCount,
-    ...(plan.dgxSku === "beauty" ? { engine, durationS: spec.durationS } : {}) };
+    ...(plan.dgxSku === "beauty" ? { engine, durationS: listingDurationS(sku, job.durationS) } : {}) };
   const idempotencyKey = await idempotencyKeyFor(plan.dgxSku, id, inputs);
 
   let created;
@@ -111,7 +129,7 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
       listingId: id,
       photos,
       ...(plan.dgxSku === "beauty" ? {
-        engine, durationS: spec.durationS, upscale: true,
+        engine, durationS: listingDurationS(sku, job.durationS), upscale: true,
         resolution: engine === "modal-wan" ? "480p" as const : "720p" as const,
       } : {}),
       style: job.style ?? undefined,
@@ -137,7 +155,7 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
     );
   }
 
-  const promptJson = buildPromptJson({ sku, roomType: job.roomType, style: job.style, look: lookOf(job), sourceKind: job.sourceKind, durationS: spec.durationS, reel: job.reel });
+  const promptJson = buildPromptJson({ sku, roomType: job.roomType, style: job.style, look: lookOf(job), sourceKind: job.sourceKind, durationS: listingDurationS(sku, job.durationS), reel: job.reel });
   const updated = await prisma.vaterListingJob.update({
     where: { id },
     data: {

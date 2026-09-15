@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.42.2';
+export const APP_VERSION = '1.42.3';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,17 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.42.3',
+    date: '2026-09-14',
+    title: 'Choose your Beauty Shot length and price',
+    items: [
+      'Beauty Shots now cost $1 per second: the default five-second video is $5.',
+      'Choose 4–30 seconds with a slider and see the total update immediately, including a separate vertical version when selected.',
+      'Your saved length carries through confirmation, billing and rendering; the end card adds no extra charge.',
+      'Open a completed Beauty Shot and choose Change video length to reuse its photo and details for a new version.',
+    ],
+  },
   {
     version: '1.42.2',
     date: '2026-09-14',

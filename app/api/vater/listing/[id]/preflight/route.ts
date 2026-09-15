@@ -30,6 +30,7 @@ export async function GET(_request: NextRequest, ctx: Ctx) {
     blockers: pre.blockers,
     warnings: pre.warnings,
     priceCents: pre.priceCents,
+    durationS: pre.durationS,
     estCostCents: pre.estCostCents,
     balanceCents: pre.balanceCents,
     unmetered: pre.unmetered,

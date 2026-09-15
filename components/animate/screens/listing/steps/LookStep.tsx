@@ -17,7 +17,7 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';
 import type { ListingBlocker, ListingJobDraft, ListingJobDto, ListingPreflight } from '@/lib/vater/listing/contract';
 import type { ListingEngine, ListingLook } from '@/lib/vater/listing-pricing';
-import { LISTING_SKUS, REEL_ADDON_CENTS, formatListingPrice, listingEstCostCents, listingPriceCents } from '@/lib/vater/listing-pricing';
+import { BEAUTY_DURATION, listingDurationS, LISTING_SKUS, formatListingPrice, listingEstCostCents, listingPriceCents } from '@/lib/vater/listing-pricing';
 import { CREDIT_PACKS, packCreditsCents } from '@/lib/vater/credit-packs';
 import { STUDIO_HOME } from '@/lib/vater/product';
 import { MoneyConfirmModal, useBillingMode, type MoneyConfirmRequest } from '@/components/vater/editor/MoneyConfirmModal';
@@ -55,6 +55,8 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
   const [look, setLook] = React.useState<ListingLook>(job.look ?? 'photoreal');
   const [engine, setEngine] = React.useState<ListingEngine>(job.engine ?? 'seedance');
   const [mls, setMls] = React.useState(job.lane === 'mls');
+  const [durationS, setDurationS] = React.useState(job.durationS ?? BEAUTY_DURATION.default);
+  const saveQueue = React.useRef<Promise<void>>(Promise.resolve());
   const [reel, setReel] = React.useState(!!job.reel);
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
@@ -66,24 +68,24 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
   const hasEconomy = !!spec?.economyPriceCents;
   const effectiveEngine: ListingEngine = hasEconomy ? engine : 'seedance';
   const photos = job.sourceImageUrls?.length ?? 1;
-  const priceCents = sku ? listingPriceCents(sku, { engine: effectiveEngine, photos, reel: reel && !isStill }) : 0;
-  const estCostCents = sku ? listingEstCostCents(sku, { engine: effectiveEngine, photos, reel: reel && !isStill }) : 0;
-  const reelCents = sku && !isStill ? (sku === 'beauty_shot' ? REEL_ADDON_CENTS.beauty : effectiveEngine === 'modal-wan' ? REEL_ADDON_CENTS.video_economy : REEL_ADDON_CENTS.video_photoreal) : 0;
+  const priceCents = sku ? listingPriceCents(sku, { engine: effectiveEngine, photos, durationS, reel: reel && !isStill }) : 0;
+  const estCostCents = sku ? listingEstCostCents(sku, { engine: effectiveEngine, photos, durationS, reel: reel && !isStill }) : 0;
+  const baseCents = sku ? listingPriceCents(sku, { engine: effectiveEngine, photos, durationS }) : 0;
+  const reelCents = sku && !isStill ? listingPriceCents(sku, { engine: effectiveEngine, photos, durationS, reel: true }) - baseCents : 0;
 
   // Autosave each choice so a refresh keeps them.
   const persist = React.useCallback(
     (patch: ListingJobDraft) => {
-      void onSave({ ...patch, step: 5 }).catch(() => {
-        /* Pay re-saves everything; a dropped autosave is not fatal. */
-      });
+      saveQueue.current = saveQueue.current.catch(() => {}).then(() => onSave({ ...patch, step: 5 }));
+      void saveQueue.current.catch(() => { /* Pay retries the complete selection. */ });
     },
     [onSave],
   );
 
   const rows: TicketRow[] = [];
   if (spec && sku) {
-    const base = listingPriceCents(sku, { engine: effectiveEngine, photos });
-    rows.push({ key: 'sku', label: `${spec.label}${hasEconomy ? (effectiveEngine === 'modal-wan' ? ' · Economy' : ' · Photoreal') : ''}`, usd: base / 100 });
+    const base = listingPriceCents(sku, { engine: effectiveEngine, photos, durationS });
+    rows.push({ key: 'sku', label: `${spec.label}${isBeauty ? ` · ${durationS}s` : ''}${hasEconomy ? (effectiveEngine === 'modal-wan' ? ' · Economy' : ' · Photoreal') : ''}`, usd: base / 100 });
     if (reel && !isStill) rows.push({ key: 'reel', label: 'Vertical Reel (9:16) add-on', usd: reelCents / 100 });
   }
   const notes: TicketNote[] = [
@@ -94,12 +96,12 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
   if (preflight?.unmetered) notes.push({ label: 'billing', value: 'unmetered account — no credit needed', tone: 'cyan' });
   else if (preflight && typeof preflight.balanceCents === 'number') notes.push({ label: 'your balance', value: `$${(preflight.balanceCents / 100).toFixed(2)}` });
 
-  const stageNow = async () => {
+  const stageNow = async (quote: { priceCents: number; durationS: number | null }) => {
     if (!sku) return;
     setBusy(true);
     setErr(null);
     try {
-      const next = await listingApi.stage(job.id);
+      const next = await listingApi.stage(job.id, quote);
       onStaged(next);
     } catch (e) {
       if (isListingApiError(e) && e.insufficientCredits) {
@@ -123,7 +125,8 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
     setErr(null);
     setBlockers([]);
     try {
-      await onSave({ look: isBeauty ? 'photoreal' : look, engine: effectiveEngine, lane: mls ? 'mls' : 'social', reel: reel && !isStill, step: 5 });
+      await saveQueue.current.catch(() => {});
+      await onSave({ durationS: isBeauty ? durationS : null, look: isBeauty ? 'photoreal' : look, engine: effectiveEngine, lane: mls ? 'mls' : 'social', reel: reel && !isStill, step: 5 });
       const pf = await listingApi.preflight(job.id);
       setPreflight(pf);
       if (!pf.ok || pf.blockers.length) {
@@ -138,7 +141,11 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
           return;
         }
       }
-      const unit = pf.priceCents || priceCents;
+      if (pf.priceCents !== priceCents || pf.durationS !== (listingDurationS(sku, durationS) ?? null)) {
+        setErr('Your saved length or price changed. Review the current selection and try again.');
+        return;
+      }
+      const unit = pf.priceCents;
       setMoney({
         title: `${spec.label} — ${formatListingPrice(unit)}`,
         lines: pf.lines?.length
@@ -153,7 +160,7 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
         count: 1,
         estCostCents: pf.estCostCents || estCostCents,
         confirmLabel: billing.unmetered ? undefined : `Pay ${formatListingPrice(unit)}`,
-        onConfirm: () => void stageNow(),
+        onConfirm: () => void stageNow({ priceCents: pf.priceCents, durationS: pf.durationS }),
       });
     } catch (e) {
       if (isListingApiError(e) && e.insufficientCredits) {
@@ -168,7 +175,7 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
     }
   };
 
-  const card: React.CSSProperties = { ...glass(t), borderRadius: JELLY_TOKENS.radius.xl, padding: 20, display: 'grid', gap: 12 };
+  const card: React.CSSProperties = { ...glass(t), borderRadius: JELLY_TOKENS.radius.xl, padding: 20, minWidth: 0, display: 'grid', gap: 12 };
 
   return (
     <div data-testid="listing-step-5">
@@ -176,6 +183,28 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(280px, 0.9fr)', gap: 20, alignItems: 'start' }} className="listing-look-grid">
         <div style={{ display: 'grid', gap: 18 }}>
+          {isBeauty && (
+            <div style={card} data-testid="listing-duration-control">
+              <label htmlFor="listing-duration" style={{ fontSize: 20, fontWeight: 700 }}>
+                Video length: <output data-testid="listing-duration-value">{durationS} seconds</output>
+              </label>
+              <input id="listing-duration" type="range" min={BEAUTY_DURATION.min} max={BEAUTY_DURATION.max} step={1}
+                value={durationS} disabled={busy} aria-label="Video length" aria-valuetext={`${durationS} seconds`}
+                data-testid="listing-duration" style={{ width: '100%', accentColor: JELLY_TOKENS.brand }}
+                onChange={(event) => setDurationS(Number(event.target.value))}
+                onPointerUp={(event) => persist({ durationS: Number(event.currentTarget.value) })}
+                onKeyUp={(event) => persist({ durationS: Number(event.currentTarget.value) })}
+                onBlur={(event) => persist({ durationS: Number(event.currentTarget.value) })} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}><span>4 seconds</span><span>30 seconds</span></div>
+              <div aria-live="polite" data-testid="listing-duration-price" style={{ fontSize: 22, fontWeight: 700 }}>
+                {formatListingPrice(priceCents)}{reel ? ' total · landscape + vertical' : ' · landscape video'}
+              </div>
+              <div style={{ fontSize: 15, color: t.textSecondary }}>
+                $1 per second of generated motion. Your end card adds about 3 seconds at no extra charge.
+                {reel ? ' The vertical version has the same length and adds $1 per second.' : ''}
+              </div>
+            </div>
+          )}
           {/* Beauty Shot preserves the original room; staging looks do not apply. */}
           {isBeauty ? <Notice>A slow camera move through your original photo. No furniture is added. Choose Before &amp; After Reveal for a furnished transformation.</Notice> : <div>
             <div style={{ fontSize: 19, fontWeight: 700, color: t.text, marginBottom: 10 }}>Look</div>
@@ -229,7 +258,7 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
 
           {/* Options */}
           <div style={card}>
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, fontSize: 17, color: t.text, cursor: licenseVerified ? 'pointer' : 'not-allowed', opacity: licenseVerified ? 1 : 0.6 }}>
+            {!isBeauty && <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, fontSize: 17, color: t.text, cursor: licenseVerified ? 'pointer' : 'not-allowed', opacity: licenseVerified ? 1 : 0.6 }}>
               <input
                 type="checkbox"
                 data-testid="listing-mls-safe"
@@ -248,7 +277,7 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
                   {licenseVerified ? '' : <Badge tone="warn">Verify your license on step 3 to unlock</Badge>}
                 </div>
               </span>
-            </label>
+            </label>}
             {!isStill && spec && (
               <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, fontSize: 17, color: t.text, cursor: 'pointer' }}>
                 <input
@@ -301,7 +330,7 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
             size="card"
             footer={
               <>
-                You pay only when you press Pay. {isStill ? 'The photo' : 'The staged photo'} comes back for your approval first{isStill ? '.' : ' — the video is filmed after you approve it.'}
+                You pay only when you confirm. {isBeauty ? `${durationS} seconds of camera motion from your original photo, plus the end card. Filming starts after payment.` : `${isStill ? 'The photo' : 'The staged photo'} comes back for your approval first${isStill ? '.' : ' — the video is filmed after you approve it.'}`}
                 {spec?.materialChange ? ' Social & marketing use — not for MLS photo slots.' : ''}
               </>
             }
@@ -318,7 +347,7 @@ export default function LookStep({ job, onSave, onBack, onStaged, onGoToStep, li
 
       <MoneyConfirmModal request={money} billing={billing} onClose={() => setMoney(null)} />
       {packsOpen && <CreditPacksModal needCents={packsOpen.needCents} balanceCents={packsOpen.balanceCents} onClose={() => setPacksOpen(null)} />}
-      <style>{`@media (max-width: 860px) { .listing-look-grid { grid-template-columns: 1fr !important; } }`}</style>
+      <style>{`@media (max-width: 860px) { .listing-look-grid { grid-template-columns: minmax(0, 1fr) !important; } }`}</style>
     </div>
   );
 }
