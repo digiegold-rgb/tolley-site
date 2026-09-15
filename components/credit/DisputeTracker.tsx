@@ -1,21 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-type Dispute = {
-  id: string;
-  type: string;
-  debtId: string | null;
-  creditor: string;
-  bureau: string | null;
-  status: string;
-  sentDate: string | null;
-  responseDeadline: string | null;
-  resolvedDate: string | null;
-  outcome: string | null;
-  trackingNumber: string | null;
-  notes: string | null;
-};
+import type { DisputeDoc, DisputeRow } from "@/lib/credit/types";
 
 const typeLabels: Record<string, string> = {
   fcra_dispute: "FCRA Dispute",
@@ -23,7 +9,25 @@ const typeLabels: Record<string, string> = {
   fdcpa_validation: "Debt Validation",
   goodwill: "Goodwill Letter",
   pay_for_delete: "Pay-for-Delete",
+  instant_dispute: "Instant Dispute",
+  kikoff_dispute: "Kikoff Dispute",
 };
+
+const channelLabels: Record<string, string> = {
+  online: "Online",
+  kikoff: "Kikoff",
+  certified_mail: "Certified mail",
+  email: "Email",
+  other: "Other",
+};
+
+const docKinds: DisputeDoc["kind"][] = [
+  "letter",
+  "court_order",
+  "id",
+  "address_proof",
+  "other",
+];
 
 const statusFlow: Record<string, { label: string; color: string }> = {
   draft: { label: "Draft", color: "bg-white/10 text-white/40" },
@@ -36,49 +40,81 @@ const statusFlow: Record<string, { label: string; color: string }> = {
   escalated: { label: "Escalated", color: "bg-red-500/20 text-red-400" },
 };
 
+const emptyForm = {
+  type: "fcra_dispute",
+  creditor: "",
+  bureau: "transunion",
+  status: "sent",
+  sentDate: new Date().toISOString().split("T")[0],
+  filedDate: new Date().toISOString().split("T")[0],
+  trackingNumber: "",
+  notes: "",
+  fileNumber: "",
+  accountLast4: "",
+  caseNumber: "",
+  channel: "certified_mail",
+  docs: [] as DisputeDoc[],
+};
+
 function daysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null;
   const diff = new Date(dateStr).getTime() - Date.now();
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
+function filedOrSent(d: DisputeRow): string | null {
+  return d.filedDate || d.sentDate || null;
+}
+
 export function DisputeTracker({
   disputes,
   onAddNew,
 }: {
-  disputes?: Dispute[];
+  disputes?: DisputeRow[];
   onAddNew?: () => void;
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
-  const [form, setForm] = useState({
-    type: "fcra_dispute",
-    creditor: "",
-    bureau: "transunion",
-    status: "sent",
-    sentDate: new Date().toISOString().split("T")[0],
-    trackingNumber: "",
-    notes: "",
-  });
+  const [form, setForm] = useState(emptyForm);
 
   const handleAdd = async () => {
+    const filedDate = form.filedDate || form.sentDate || null;
+    const sentDate = form.sentDate || form.filedDate || null;
     try {
       await fetch("/api/credit/disputes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          type: form.type,
+          creditor: form.creditor,
+          bureau: form.bureau,
+          status: form.status,
+          sentDate,
+          filedDate,
+          trackingNumber: form.trackingNumber || null,
+          notes: form.notes || null,
+          fileNumber: form.fileNumber || null,
+          accountLast4: form.accountLast4 || null,
+          caseNumber: form.caseNumber || null,
+          channel: form.channel || null,
+          docs: form.docs.filter((d) => d.label || d.pathOrUrl),
+        }),
       });
       setShowAddForm(false);
       setForm({
-        type: "fcra_dispute",
-        creditor: "",
-        bureau: "transunion",
-        status: "sent",
+        ...emptyForm,
         sentDate: new Date().toISOString().split("T")[0],
-        trackingNumber: "",
-        notes: "",
+        filedDate: new Date().toISOString().split("T")[0],
+        docs: [],
       });
       onAddNew?.();
     } catch {}
+  };
+
+  const updateDoc = (index: number, patch: Partial<DisputeDoc>) => {
+    setForm({
+      ...form,
+      docs: form.docs.map((d, i) => (i === index ? { ...d, ...patch } : d)),
+    });
   };
 
   return (
@@ -124,6 +160,7 @@ export function DisputeTracker({
                 <option value="transunion">TransUnion</option>
                 <option value="equifax">Equifax</option>
                 <option value="experian">Experian</option>
+                <option value="all">All bureaus</option>
               </select>
             </div>
             <div>
@@ -141,16 +178,76 @@ export function DisputeTracker({
             </div>
             <div>
               <label className="mb-1 block text-xs text-white/50">
-                Sent Date
+                Filed / sent date
               </label>
               <input
                 type="date"
                 value={form.sentDate}
                 onChange={(e) =>
-                  setForm({ ...form, sentDate: e.target.value })
+                  setForm({
+                    ...form,
+                    sentDate: e.target.value,
+                    filedDate: e.target.value,
+                  })
                 }
                 className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-white/50">
+                File number
+              </label>
+              <input
+                value={form.fileNumber}
+                onChange={(e) =>
+                  setForm({ ...form, fileNumber: e.target.value })
+                }
+                placeholder="Instant Dispute / Kikoff id"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-white/20"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-white/50">
+                Account last 4
+              </label>
+              <input
+                value={form.accountLast4}
+                onChange={(e) =>
+                  setForm({ ...form, accountLast4: e.target.value })
+                }
+                placeholder="8534"
+                maxLength={4}
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-white/20"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-white/50">
+                Case number
+              </label>
+              <input
+                value={form.caseNumber}
+                onChange={(e) =>
+                  setForm({ ...form, caseNumber: e.target.value })
+                }
+                placeholder="2516-CV04747"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-white/20"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-white/50">
+                Channel
+              </label>
+              <select
+                value={form.channel}
+                onChange={(e) => setForm({ ...form, channel: e.target.value })}
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
+              >
+                {Object.entries(channelLabels).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           <div>
@@ -175,6 +272,69 @@ export function DisputeTracker({
               className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-white/20"
             />
           </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-white/50">Documents</label>
+              <button
+                type="button"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    docs: [
+                      ...form.docs,
+                      { label: "", pathOrUrl: "", kind: "other" },
+                    ],
+                  })
+                }
+                className="text-[0.65rem] text-[#00d4ff] hover:underline"
+              >
+                + Add doc
+              </button>
+            </div>
+            {form.docs.map((doc, i) => (
+              <div key={i} className="grid grid-cols-6 gap-2">
+                <input
+                  value={doc.label}
+                  onChange={(e) => updateDoc(i, { label: e.target.value })}
+                  placeholder="Label"
+                  className="col-span-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white placeholder:text-white/20"
+                />
+                <input
+                  value={doc.pathOrUrl}
+                  onChange={(e) => updateDoc(i, { pathOrUrl: e.target.value })}
+                  placeholder="Path or URL"
+                  className="col-span-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white placeholder:text-white/20"
+                />
+                <select
+                  value={doc.kind}
+                  onChange={(e) =>
+                    updateDoc(i, { kind: e.target.value as DisputeDoc["kind"] })
+                  }
+                  className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white"
+                >
+                  {docKinds.map((k) => (
+                    <option key={k} value={k}>
+                      {k}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm({
+                      ...form,
+                      docs: form.docs.filter((_, idx) => idx !== i),
+                    })
+                  }
+                  className="text-[0.65rem] text-white/40 hover:text-red-400"
+                >
+                  remove
+                </button>
+              </div>
+            ))}
+          </div>
+
           <button
             onClick={handleAdd}
             className="rounded-lg bg-[#00d4ff] px-4 py-2 text-xs font-bold text-black hover:bg-[#00b4d8]"
@@ -194,13 +354,15 @@ export function DisputeTracker({
           {disputes.map((d) => {
             const days = daysUntil(d.responseDeadline);
             const overdue = days !== null && days < 0;
+            const filed = filedOrSent(d);
+            const docs = d.docs ?? [];
             return (
               <div
                 key={d.id}
                 className="rounded-xl border border-white/10 bg-white/5 p-3"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium text-white">
                       {d.creditor}
                     </span>
@@ -212,6 +374,11 @@ export function DisputeTracker({
                         ({d.bureau})
                       </span>
                     )}
+                    {d.accountLast4 && (
+                      <span className="text-xs text-white/30">
+                        ····{d.accountLast4}
+                      </span>
+                    )}
                   </div>
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusFlow[d.status]?.color || "bg-white/10 text-white/40"}`}
@@ -219,8 +386,15 @@ export function DisputeTracker({
                     {statusFlow[d.status]?.label || d.status}
                   </span>
                 </div>
-                <div className="mt-1 flex items-center gap-3 text-xs text-white/40">
-                  {d.sentDate && <span>Sent: {d.sentDate}</span>}
+                <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-white/40">
+                  {filed && <span>Filed: {filed}</span>}
+                  {d.channel && (
+                    <span>{channelLabels[d.channel] || d.channel}</span>
+                  )}
+                  {d.fileNumber && (
+                    <span className="font-mono">file {d.fileNumber}</span>
+                  )}
+                  {d.caseNumber && <span>case {d.caseNumber}</span>}
                   {d.responseDeadline && (
                     <span
                       className={
@@ -240,6 +414,16 @@ export function DisputeTracker({
                     <span className="font-mono">{d.trackingNumber}</span>
                   )}
                 </div>
+                {docs.length > 0 && (
+                  <ul className="mt-1 space-y-0.5 text-[0.65rem] text-white/35">
+                    {docs.map((doc, i) => (
+                      <li key={`${doc.pathOrUrl}-${i}`}>
+                        {doc.label || doc.pathOrUrl}{" "}
+                        <span className="text-white/25">({doc.kind})</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {d.notes && (
                   <p className="mt-1 text-xs italic text-white/30">
                     {d.notes}

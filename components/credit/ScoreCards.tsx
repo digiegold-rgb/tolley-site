@@ -1,13 +1,6 @@
 "use client";
 
-type BureauReading = {
-  value: number | null;
-  date: string | null;
-  source: string | null;
-  previous: number | null;
-  change: number | null;
-  ageDays: number | null;
-};
+import type { BureauReading, ScoreTrend } from "@/lib/credit/types";
 
 type PerBureau = {
   transunion: BureauReading;
@@ -22,6 +15,19 @@ type ScoreCardsProps = {
   avgScore: number | null;
   startScore: number | null;
   goal?: number;
+  trend?: ScoreTrend | null;
+  lastScoreSyncAt?: string | null;
+};
+
+const EMPTY_READING: BureauReading = {
+  value: null,
+  date: null,
+  pulledAt: null,
+  source: null,
+  model: null,
+  previous: null,
+  change: null,
+  ageDays: null,
 };
 
 function freshness(ageDays: number | null): {
@@ -51,11 +57,24 @@ function freshness(ageDays: number | null): {
 }
 
 function fmtDate(d: string | null): string {
-  if (!d) return "—";
+  if (!d) return "--";
   return new Date(d + "T00:00:00").toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });
+}
+
+function fmtPulledAt(iso: string | null): string {
+  if (!iso) return "--";
+  return (
+    new Date(iso).toLocaleString("en-US", {
+      timeZone: "America/Chicago",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }) + " CT"
+  );
 }
 
 function ScoreCard({
@@ -67,14 +86,14 @@ function ScoreCard({
   reading: BureauReading | undefined;
   accentColor: string;
 }) {
-  const r = reading ?? {
-    value: null,
-    date: null,
-    source: null,
-    previous: null,
-    change: null,
-    ageDays: null,
-  };
+  const r = reading
+    ? {
+        ...EMPTY_READING,
+        ...reading,
+        pulledAt: reading.pulledAt ?? null,
+        model: reading.model ?? null,
+      }
+    : EMPTY_READING;
   const fr = freshness(r.ageDays);
   return (
     <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0d1117] p-5">
@@ -112,14 +131,45 @@ function ScoreCard({
               <span className="text-white/25"> · prev {r.previous}</span>
             )}
           </p>
+          <p className="mt-0.5 text-[0.6rem] text-white/30">
+            {r.model ?? "--"} · pulled {fmtPulledAt(r.pulledAt)}
+          </p>
         </>
       ) : (
         <>
           <p className="mt-2 text-4xl font-black text-white/15">--</p>
           <p className="mt-2 text-[0.65rem] text-white/30">never pulled</p>
+          <p className="mt-0.5 text-[0.6rem] text-white/25">
+            {r.model ?? "--"} · pulled {fmtPulledAt(r.pulledAt)}
+          </p>
         </>
       )}
     </div>
+  );
+}
+
+function TrendChip({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | undefined;
+}) {
+  if (value == null) return null;
+  const up = value > 0;
+  const flat = value === 0;
+  return (
+    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[0.65rem] text-white/60">
+      {label}{" "}
+      <span
+        className={
+          flat ? "text-white/40" : up ? "text-green-400" : "text-red-400"
+        }
+      >
+        {up ? "+" : ""}
+        {value}
+      </span>
+    </span>
   );
 }
 
@@ -129,6 +179,8 @@ export function ScoreCards({
   avgScore,
   startScore,
   goal = 680,
+  trend,
+  lastScoreSyncAt,
 }: ScoreCardsProps) {
   const start = startScore ?? 0;
   const best = bestScore ?? 0;
@@ -136,6 +188,11 @@ export function ScoreCards({
   const pct = Math.min(100, Math.max(0, Math.round(((best - start) / span) * 100)));
   const gained = best - start;
   const remaining = Math.max(0, goal - best);
+  const hasTrend =
+    trend &&
+    (trend.transunion != null ||
+      trend.equifax != null ||
+      trend.experian != null);
 
   return (
     <div className="space-y-4">
@@ -182,6 +239,25 @@ export function ScoreCards({
           <span>start {startScore ?? "--"}</span>
           <span>goal {goal}</span>
         </div>
+        {hasTrend && trend && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-[0.6rem] tracking-wider text-white/35 uppercase">
+              Trend
+            </span>
+            <TrendChip label="TU" value={trend.transunion} />
+            <TrendChip label="EQ" value={trend.equifax} />
+            <TrendChip label="EX" value={trend.experian} />
+          </div>
+        )}
+        {lastScoreSyncAt && (
+          <p className="mt-2 text-[0.6rem] text-white/25">
+            last score sync{" "}
+            {new Date(lastScoreSyncAt).toLocaleString("en-US", {
+              timeZone: "America/Chicago",
+            })}{" "}
+            CT
+          </p>
+        )}
       </div>
 
       {/* Per-bureau cards */}

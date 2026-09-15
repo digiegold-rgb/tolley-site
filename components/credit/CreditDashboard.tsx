@@ -16,11 +16,26 @@ import { RoadmapTimeline } from "./RoadmapTimeline";
 import { LegalDashboard } from "./LegalDashboard";
 import { HelocReadiness } from "./HelocReadiness";
 import { BusinessVentures } from "./BusinessVentures";
+import { OnePayCard } from "./OnePayCard";
+import { KikoffStatusCard } from "./KikoffStatusCard";
+import { AltBureaus } from "./AltBureaus";
+import type {
+  AltBureauPlaceholder,
+  DisputeRow,
+  KikoffStatus,
+  MortgageSnapshot,
+  OnePaySnapshot,
+  ScoreTrend,
+} from "@/lib/credit/types";
 
 type DashboardData = {
   helocReadiness?: any;
   ventures?: any[];
   incomeSummary?: any;
+  onePay?: OnePaySnapshot | null;
+  mortgage?: MortgageSnapshot | null;
+  kikoff?: KikoffStatus | null;
+  altBureaus?: AltBureauPlaceholder[] | null;
   scores: {
     latest: any;
     previous: any;
@@ -29,8 +44,9 @@ type DashboardData = {
     avgScore: number | null;
     startScore: number | null;
     startDate: string | null;
-    trend: { transunion: number; equifax: number } | null;
+    trend: ScoreTrend | null;
     historyCount: number;
+    lastScoreSyncAt?: string | null;
   };
   utilization: {
     overall: {
@@ -51,7 +67,7 @@ type DashboardData = {
   debtTotals: any;
   scoreProjection: any[];
   tactics: any[];
-  disputes: any[];
+  disputes: DisputeRow[];
   violations: any[];
   lastSync: string | null;
 };
@@ -298,6 +314,7 @@ export function CreditDashboard({
           {/* HELOC readiness — the #1 goal, three gates */}
           <HelocReadiness
             readiness={data?.helocReadiness}
+            mortgage={data?.mortgage}
             onSaved={refresh}
           />
 
@@ -308,7 +325,12 @@ export function CreditDashboard({
             avgScore={data?.scores?.avgScore ?? null}
             startScore={data?.scores?.startScore ?? null}
             goal={680}
+            trend={data?.scores?.trend ?? null}
+            lastScoreSyncAt={data?.scores?.lastScoreSyncAt ?? null}
           />
+
+          <KikoffStatusCard status={data?.kikoff} />
+          <AltBureaus bureaus={data?.altBureaus} />
 
           {/* Score Projection Slider */}
           <ScoreProjection
@@ -317,6 +339,7 @@ export function CreditDashboard({
           />
 
           {/* Debt Tracker */}
+          <OnePayCard snapshot={data?.onePay} />
           <DebtTracker debts={data?.debts} totals={data?.debtTotals} />
 
           {/* 5-Month Roadmap */}
@@ -338,6 +361,7 @@ export function CreditDashboard({
 
       {activeTab === "debts" && (
         <div className="space-y-5">
+          <OnePayCard snapshot={data?.onePay} />
           <DebtTracker debts={data?.debts} totals={data?.debtTotals} />
           <RoadmapTimeline />
           <GoalsTimeline goals={data?.goals} />
@@ -363,7 +387,11 @@ export function CreditDashboard({
 
       {activeTab === "plan" && (
         <div className="space-y-5">
-          <HelocReadiness readiness={data?.helocReadiness} onSaved={refresh} />
+          <HelocReadiness
+            readiness={data?.helocReadiness}
+            mortgage={data?.mortgage}
+            onSaved={refresh}
+          />
           <GoalsTimeline goals={data?.goals} />
         </div>
       )}

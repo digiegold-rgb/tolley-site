@@ -122,7 +122,7 @@ export function ScoreHistoryChart() {
             stroke="#a78bfa"
             strokeWidth={2}
             dot={{ r: 4, fill: "#a78bfa" }}
-            name="Kickoff"
+            name="Kikoff"
             connectNulls
           />
         </LineChart>
@@ -134,7 +134,7 @@ export function ScoreHistoryChart() {
           { name: "TransUnion", color: "#60a5fa" },
           { name: "Equifax", color: "#34d399" },
           { name: "Experian", color: "#f97316" },
-          { name: "Kickoff", color: "#a78bfa" },
+          { name: "Kikoff", color: "#a78bfa" },
         ].map((l) => (
           <div key={l.name} className="flex items-center gap-1.5">
             <div

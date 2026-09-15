@@ -6,6 +6,7 @@ import { DisputeTracker } from "./DisputeTracker";
 import { LetterGenerator } from "./LetterGenerator";
 import { ViolationLogger } from "./ViolationLogger";
 import { SOLCalculator } from "./SOLCalculator";
+import type { DisputeRow } from "@/lib/credit/types";
 
 export function LegalDashboard({
   courtCases,
@@ -19,7 +20,7 @@ export function LegalDashboard({
   courtCases?: any[];
   courtCasesLastCheck?: string | null;
   tactics?: any[];
-  disputes?: any[];
+  disputes?: DisputeRow[];
   violations?: any[];
   debts?: any[];
   onRefresh?: () => void;
