@@ -23,11 +23,18 @@
  * already have handled.
  */
 import { prisma } from "@/lib/prisma";
+import {
+  foldGpuJobLog,
+  gpuJobFinishFields,
+  gpuLogEntryFromFinish,
+  readGpuRoute,
+} from "@/lib/gpu-job-log";
 import { autopilot, AutopilotError } from "@/lib/vater/autopilot-client";
 import type { SceneSpec } from "@/lib/vater/video-spec";
 import { getAnimationPrice } from "@/lib/vater/pricing";
 import { recordUsage } from "@/lib/vater/billing/record-usage";
 import { mergeVideoCost } from "@/lib/vater/video-cost";
+import type { Prisma } from "@prisma/client";
 
 export type FinalizeOutcome =
   | {
@@ -81,6 +88,7 @@ export async function finalizeAnimateAll(
   }
 
   if (job.status === "failed") {
+    await persistAnimateGpuLog(projectId, animateAllJobId, job.result);
     return { ok: false, status: 502, error: job.error || "animate-all job failed" };
   }
   if (job.status !== "done") {
@@ -100,7 +108,14 @@ export async function finalizeAnimateAll(
   // same column meanwhile.
   const project = await prisma.youTubeProject.findUnique({
     where: { id: projectId },
-    select: { id: true, userId: true, scenesJson: true, status: true, costJson: true },
+    select: {
+      id: true,
+      userId: true,
+      scenesJson: true,
+      status: true,
+      costJson: true,
+      animateAllStartedAt: true,
+    },
   });
   if (!project) return { ok: false, status: 404, error: "Project not found" };
 
@@ -165,14 +180,25 @@ export async function finalizeAnimateAll(
     (job.result as { costs?: unknown } | null)?.costs,
     animateAllJobId,
   );
+  const route = readGpuRoute(mergedCost ?? project.costJson);
+  const finish = gpuJobFinishFields({
+    startedAt: project.animateAllStartedAt,
+    result: job.result,
+    backend: route?.backend ?? "modal",
+  });
+  const loggedCost = foldGpuJobLog(
+    project.costJson,
+    mergedCost as Record<string, unknown> | null,
+    gpuLogEntryFromFinish(animateAllJobId, route?.kind ?? "short-motion", finish),
+  );
 
-  if (updatedCount > 0 || mergedCost) await prisma.youTubeProject.update({
+  if (updatedCount > 0 || loggedCost) await prisma.youTubeProject.update({
     where: { id: projectId },
     data: {
       scenesJson: scenes as unknown as object,
       editedAt: new Date(),
       status: updatedCount > 0 && project.status === "ready" ? "editing" : project.status,
-      ...(mergedCost ? { costJson: mergedCost as unknown as object } : {}),
+      ...(loggedCost ? { costJson: loggedCost as Prisma.InputJsonValue } : {}),
     },
   });
 
@@ -185,4 +211,32 @@ export async function finalizeAnimateAll(
     chargedCents,
     alreadyBilledCents,
   };
+}
+
+async function persistAnimateGpuLog(
+  projectId: string,
+  animateAllJobId: string,
+  result: unknown,
+): Promise<void> {
+  const project = await prisma.youTubeProject.findUnique({
+    where: { id: projectId },
+    select: { costJson: true, animateAllStartedAt: true },
+  });
+  if (!project) return;
+  const route = readGpuRoute(project.costJson);
+  const finish = gpuJobFinishFields({
+    startedAt: project.animateAllStartedAt,
+    result,
+    backend: route?.backend ?? "modal",
+  });
+  const logged = foldGpuJobLog(
+    project.costJson,
+    null,
+    gpuLogEntryFromFinish(animateAllJobId, route?.kind ?? "short-motion", finish),
+  );
+  if (!logged) return;
+  await prisma.youTubeProject.update({
+    where: { id: projectId },
+    data: { costJson: logged as Prisma.InputJsonValue },
+  });
 }

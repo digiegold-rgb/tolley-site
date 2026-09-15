@@ -2055,6 +2055,11 @@ model VideoGeneration {
   narrationText    String?
   narrationVoiceId String?
   narrationBlobUrl String?
+  /// GPU router log (same shape as GenerateJob). costUsd is provider-reported, never guessed.
+  backend          String?
+  kind             String?
+  durationMs       Int?
+  costUsd          Float?
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])

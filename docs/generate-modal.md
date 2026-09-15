@@ -1,6 +1,6 @@
 # Chat-driven Modal stills on `/generate`
 
-Identity stills run on Modal (A100 BF16, Diffusers `QwenImageEditPlusPipeline` / `Qwen/Qwen-Image-Edit-2511`). Spark Comfy / InstantID / face_lock / UltraSharp are not used. GPU **routing** is a separate stub (`docs/gpu-router.md`): stills go to Modal; Nebius is reserved for long/batch later and is not wired; Spark is never a GPU backend.
+Identity stills run on Modal (A100 BF16, Diffusers `QwenImageEditPlusPipeline` / `Qwen/Qwen-Image-Edit-2511`). Spark Comfy / InstantID / face_lock / UltraSharp are not used. GPU **routing** is a separate stub (`docs/gpu-router.md`): `/generate` stills, Animate, and realestate generate all go through `routeGpuJob`; Nebius is reserved for long/batch later and is not wired; Spark is never a GPU backend.
 
 Finished stills persist wall time (`durationMs`) and Modal `costUsd` when the worker returns it (often null) on `GenerateJob`.
 

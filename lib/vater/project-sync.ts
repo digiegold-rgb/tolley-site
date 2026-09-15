@@ -48,6 +48,12 @@ import {
   type YouTubeProjectStatus,
 } from "@/lib/vater/youtube-status";
 import { mergeVideoCost } from "@/lib/vater/video-cost";
+import {
+  foldGpuJobLog,
+  gpuJobFinishFields,
+  gpuLogEntryFromFinish,
+  readGpuRoute,
+} from "@/lib/gpu-job-log";
 import { debitForProject, refundOnFailure } from "@/lib/vater/billing/ledger";
 import { hasUnmeteredStudioAccess } from "@/lib/vater/billing/check-budget";
 import { appendScriptVersion } from "@/lib/vater/script-versions";
@@ -773,6 +779,26 @@ export async function syncProjectFromJob(
     console.log(
       `[vater/poll] project=${id} job=${project.autopilotJobId} DONE — finalVideoUrl=${data.finalVideoUrl ?? "(none)"} audioUrl=${data.audioUrl ?? "(none)"} transcript=${result.transcript ? `${result.transcript.length}c` : "(none)"}`,
     );
+  }
+
+  if (terminalJob && project.autopilotJobId) {
+    const existingCost = data.costJson ?? project.costJson;
+    const route = readGpuRoute(existingCost);
+    const finish = gpuJobFinishFields({
+      startedAt: new Date(jobStartedAt),
+      result: job.result,
+      backend: route?.backend ?? "modal",
+    });
+    const logged = foldGpuJobLog(
+      existingCost,
+      null,
+      gpuLogEntryFromFinish(
+        project.autopilotJobId,
+        route?.kind ?? (project.animUntilS ? "short-motion" : "still"),
+        finish,
+      ),
+    );
+    if (logged) data.costJson = logged as Prisma.InputJsonValue;
   }
 
   const updated = await prisma.youTubeProject.update({

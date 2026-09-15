@@ -17,8 +17,11 @@
  * that neither gate route exposes.
  */
 import "server-only";
-import type { YouTubeProject } from "@prisma/client";
+import type { Prisma, YouTubeProject } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { attachGpuRoute } from "@/lib/gpu-job-log";
+import { routeFilmProduceGpuJob } from "@/lib/gpu-job-kind";
+import { requireWiredGpuBackend } from "@/lib/gpu-router";
 import { autopilot, type RunCreationVariation, type StyleSnapshot } from "./autopilot-client";
 import { buildStyleSnapshot } from "./style-snapshot";
 import { ownerFieldsForProject } from "./owner-tier";
@@ -158,6 +161,22 @@ export async function startRunCreation(
   ) {
     throw new ScriptGateError(ELEVENLABS_KEY_REQUIRED);
   }
+
+  const gpuRoute = routeFilmProduceGpuJob({
+    targetDurationMin: project.targetDuration,
+    animUntilS: project.animUntilS,
+  });
+  requireWiredGpuBackend(gpuRoute);
+  await prisma.youTubeProject.update({
+    where: { id: project.id },
+    data: {
+      costJson: attachGpuRoute(project.costJson, {
+        backend: gpuRoute.backend,
+        kind: gpuRoute.kind,
+        reason: gpuRoute.reason,
+      }) as Prisma.InputJsonValue,
+    },
+  });
 
   const job = await autopilot.runCreation({
     projectId: project.id,

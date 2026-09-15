@@ -10,6 +10,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
+import { attachGpuRoute } from "@/lib/gpu-job-log";
+import { routeListingGpuJob } from "@/lib/gpu-job-kind";
+import { requireWiredGpuBackend } from "@/lib/gpu-router";
 import { autopilot } from "@/lib/vater/autopilot-client";
 import { queueVaterEvent } from "@/lib/vater/events";
 import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
@@ -74,6 +78,18 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
     return listingError(422, { error: "Fix the items below before filming.", blockers: pre.blockers, code: pre.blockers[0]?.code });
   }
 
+  const gpuRoute = routeListingGpuJob({
+    skuKind: spec.kind,
+    etaLabel: spec.etaLabel,
+    durationS: listingDurationS(sku, job.durationS),
+  });
+  try {
+    requireWiredGpuBackend(gpuRoute);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return listingError(501, { error: message, code: "gpu_backend" });
+  }
+
   const owner = await ownerFieldsForSessionWithLane(session, job.userId);
   const photos = job.sourceImageUrls.map((url, i) => ({ url, room: job.roomType ?? undefined, label: i === 0 ? "primary" : undefined }));
   const dgxSku = DGX_SKU_FOR[sku];
@@ -112,8 +128,18 @@ export async function POST(_request: NextRequest, ctx: Ctx) {
 
   const updated = await prisma.vaterListingJob.update({
     where: { id },
-    data: { status: "rendering", dgxRenderJobId: created.jobId, errorCode: null, errorMessage: null,
-      ...(sku === "beauty_shot" ? { stagedStillUrl: null, stagedStillLabeledUrl: null } : {}) },
+    data: {
+      status: "rendering",
+      dgxRenderJobId: created.jobId,
+      errorCode: null,
+      errorMessage: null,
+      costJson: attachGpuRoute(job.costJson, {
+        backend: gpuRoute.backend,
+        kind: gpuRoute.kind,
+        reason: gpuRoute.reason,
+      }) as Prisma.InputJsonValue,
+      ...(sku === "beauty_shot" ? { stagedStillUrl: null, stagedStillLabeledUrl: null } : {}),
+    },
   });
   queueVaterEvent({
     userId,

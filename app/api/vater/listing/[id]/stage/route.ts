@@ -14,6 +14,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { attachGpuRoute } from "@/lib/gpu-job-log";
+import { routeListingGpuJob } from "@/lib/gpu-job-kind";
+import { requireWiredGpuBackend } from "@/lib/gpu-router";
 import { consumeRateLimit, rateLimited } from "@/lib/rate-limit";
 import { autopilot } from "@/lib/vater/autopilot-client";
 import { checkBudget } from "@/lib/vater/billing/check-budget";
@@ -74,6 +77,19 @@ export async function POST(request: NextRequest, ctx: Ctx) {
   if ((quote.priceCents !== undefined && quote.priceCents !== pre.priceCents)
     || (quote.durationS !== undefined && quote.durationS !== pre.durationS)) {
     return listingError(409, { error: "The length or price changed. Review the current total and confirm again.", code: "bad_state" });
+  }
+
+  // 1b. GPU router — before money moves. Nebius stays unwired (fail clear).
+  const gpuRoute = routeListingGpuJob({
+    skuKind: spec.kind,
+    etaLabel: spec.etaLabel,
+    durationS: listingDurationS(sku, job.durationS),
+  });
+  try {
+    requireWiredGpuBackend(gpuRoute);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return listingError(501, { error: message, code: "gpu_backend" });
   }
 
   // 2. Money gate at LIST price (unmetered accounts gate at 0¢).
@@ -167,6 +183,11 @@ export async function POST(request: NextRequest, ctx: Ctx) {
       priceCents: chargeCents,
       promptJson: promptJson as unknown as Prisma.InputJsonValue,
       complianceJson: complianceSnapshot(job, profile, pre),
+      costJson: attachGpuRoute(job.costJson, {
+        backend: gpuRoute.backend,
+        kind: gpuRoute.kind,
+        reason: gpuRoute.reason,
+      }) as Prisma.InputJsonValue,
       errorCode: null,
       errorMessage: null,
     },

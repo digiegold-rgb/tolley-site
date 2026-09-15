@@ -20,6 +20,14 @@ import { autopilot, type ListingJobStatus } from "@/lib/vater/autopilot-client";
 import { refundOnFailure } from "@/lib/vater/billing/ledger";
 import { queueVaterEvent } from "@/lib/vater/events";
 import { mergeVideoCost } from "@/lib/vater/video-cost";
+import {
+  foldGpuJobLog,
+  gpuJobFinishFields,
+  gpuLogEntryFromFinish,
+  readGpuRoute,
+} from "@/lib/gpu-job-log";
+import { routeListingGpuJob } from "@/lib/gpu-job-kind";
+import { requireWiredGpuBackend } from "@/lib/gpu-router";
 import { ownerFieldsForSessionWithLane } from "@/lib/vater/owner-tier";
 import { readAgentProfile } from "@/lib/vater/listing/agent-profile";
 import { isListingSku, listingDurationS, LISTING_SKUS } from "@/lib/vater/listing-pricing";
@@ -79,7 +87,20 @@ export async function GET(_request: NextRequest, ctx: Ctx) {
   }
 
   const costs = mergeVideoCost(job.costJson, st.result?.costs, dgxId);
-  const costData: Prisma.VaterListingJobUpdateInput = costs ? { costJson: costs as unknown as Prisma.InputJsonValue } : {};
+  const route = readGpuRoute(costs ?? job.costJson);
+  const finish = gpuJobFinishFields({
+    startedAt: route?.startedAt ? new Date(route.startedAt) : job.updatedAt,
+    result: st.result,
+    backend: route?.backend ?? "modal",
+  });
+  const logged = foldGpuJobLog(
+    job.costJson,
+    costs as Record<string, unknown> | null,
+    gpuLogEntryFromFinish(dgxId, route?.kind ?? "short-motion", finish),
+  );
+  const costData: Prisma.VaterListingJobUpdateInput = logged
+    ? { costJson: logged as Prisma.InputJsonValue }
+    : {};
 
   if (st.status === "done") {
     const deliveryError = listingDeliveryError(phase, st.result?.assets);
@@ -132,6 +153,12 @@ export async function GET(_request: NextRequest, ctx: Ctx) {
           const owner = await ownerFieldsForSessionWithLane(session, job.userId);
           const photos = job.sourceImageUrls.map((url, i) => ({ url, room: job.roomType ?? undefined, label: i === 0 ? "primary" : undefined }));
           const engine = engineOf(job);
+          const gpuRoute = routeListingGpuJob({
+            skuKind: LISTING_SKUS[sku].kind,
+            etaLabel: LISTING_SKUS[sku].etaLabel,
+            durationS: listingDurationS(sku, job.durationS),
+          });
+          requireWiredGpuBackend(gpuRoute);
           const inputs = { photos, stagedStillUrl: job.stagedStillUrl, engine, look: job.look, style: job.style, roomType: job.roomType, reel: true, aspect: "9:16", durationS: listingDurationS(sku, job.durationS) };
           const created = await autopilot.createListingJob({
             sku: DGX_SKU_FOR[sku],

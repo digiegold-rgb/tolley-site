@@ -176,7 +176,7 @@ export type AgentProfilePatch = Partial<
 /** Standard error envelope for 4xx from listing routes. */
 export interface ListingApiError {
   error: string;
-  code?: ListingBlockerCode | "not_found" | "forbidden" | "bad_state" | "rate_limited";
+  code?: ListingBlockerCode | "not_found" | "forbidden" | "bad_state" | "rate_limited" | "gpu_backend";
   blockers?: ListingBlocker[];
   needCents?: number;
 }
