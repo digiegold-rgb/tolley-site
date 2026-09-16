@@ -64,7 +64,7 @@ function fmtDate(d: string | null): string {
   });
 }
 
-function fmtPulledAt(iso: string | null): string {
+function fmtPulledAt(iso: string | null | undefined): string {
   if (!iso) return "--";
   return (
     new Date(iso).toLocaleString("en-US", {
