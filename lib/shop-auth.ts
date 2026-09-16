@@ -9,8 +9,18 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 export async function validateShopAdmin(): Promise<boolean> {
   const session = await auth();
-  if (session?.mfaRequired || session?.impersonatedBy) return false;
-  if (session?.user?.id && isAdminEmail(session.user.email)) return true;
+  // Session-based shop admin still requires a completed (non-MFA, non-impersonated)
+  // allowlist login. A valid shop_admin PIN cookie is a separate credential and
+  // must still unlock /tv after POST /api/shop/auth — even if this browser has a
+  // pending MFA challenge. Do not return false on mfaRequired before the cookie.
+  if (
+    session?.user?.id &&
+    !session.mfaRequired &&
+    !session.impersonatedBy &&
+    isAdminEmail(session.user.email)
+  ) {
+    return true;
+  }
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME);
   if (!token?.value) return false;
