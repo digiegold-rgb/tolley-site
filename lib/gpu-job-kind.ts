@@ -7,8 +7,8 @@ import {
   gpuKindForMotionEstimate,
   routeGpuJob,
   type GpuRouteDecision,
-} from "./gpu-router.ts";
-import { parseEtaToSeconds } from "./gpu-job-log.ts";
+} from "./gpu-router";
+import { parseEtaToSeconds } from "./gpu-job-log";
 
 export function routeAnimateGpuJob(etaLabel: string | null | undefined): GpuRouteDecision {
   const estimatedRuntimeSec = parseEtaToSeconds(etaLabel);
