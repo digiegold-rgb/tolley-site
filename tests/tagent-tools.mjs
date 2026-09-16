@@ -111,11 +111,21 @@ assert.equal(calls, 0, "Page/auth checks cannot load business data for denied se
 
 const { validateShopAdmin, getExpectedToken } = load("lib/shop-auth.ts");
 process.env.AUTH_SECRET = "fixture-only"; process.env.SHOP_ADMIN_PIN = "fixture-only";
+session = owner; cookie = null;
 assert.equal(await validateShopAdmin(), true, "Owner APIs work with the same session and no PIN cookie");
 cookie = { value: getExpectedToken() };
-session = { ...owner, mfaRequired: true }; assert.equal(await validateShopAdmin(), false);
-session = { ...owner, impersonatedBy: "support" }; assert.equal(await validateShopAdmin(), false);
-session = customer; cookie = null; assert.equal(await validateShopAdmin(), false);
+session = { ...owner, mfaRequired: true };
+assert.equal(await validateShopAdmin(), true, "Valid PIN cookie unlocks even when MFA is pending");
+session = { ...owner, impersonatedBy: "support" };
+assert.equal(await validateShopAdmin(), true, "Valid PIN cookie unlocks even while impersonating");
+session = null;
+assert.equal(await validateShopAdmin(), true, "PIN cookie alone is enough");
+cookie = null;
+session = { ...owner, mfaRequired: true };
+assert.equal(await validateShopAdmin(), false, "MFA still blocks session-based admin access");
+session = { ...owner, impersonatedBy: "support" };
+assert.equal(await validateShopAdmin(), false, "Impersonation still blocks session-based admin access");
+session = customer; assert.equal(await validateShopAdmin(), false);
 session = null; assert.equal(await validateShopAdmin(), false);
 assert.equal(await validateOwnerTool(), false);
 
