@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { getFoodApiUserId } from "@/lib/food/auth";
 import { prisma } from "@/lib/prisma";
 import { parseYummlyZip, parseRawJson } from "@/lib/food/yummly-parser";
 import { normalizeRecipeBatch } from "@/lib/food/yummly-normalizer";
@@ -25,10 +26,9 @@ const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB cap
 const MAX_RECIPES_PER_IMPORT = 500;
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const userId = await getFoodApiUserId();
+  if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   const formData = await request.formData().catch(() => null);
   if (!formData) {
@@ -48,11 +48,12 @@ export async function POST(request: NextRequest) {
   }
 
   // Make sure a household exists for this user before we start inserting.
+  const session = await auth();
   const household = await prisma.foodHousehold.upsert({
-    where: { userId: session.user.id },
+    where: { userId: userId },
     create: {
-      userId: session.user.id,
-      name: session.user.name
+      userId: userId,
+      name: session?.user?.name
         ? `${session.user.name}'s Kitchen`
         : "My Kitchen",
     },

@@ -3,12 +3,17 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { isFoodAccessGranted } from "@/lib/food-subscription";
+import { resolveFoodAccess } from "@/lib/food/auth";
 import { FoodOnboardingWizard } from "@/components/food/food-onboarding-wizard";
 
 export default async function FoodOnboardingPage() {
+  const access = await resolveFoodAccess();
+  if (!access.ok) redirect("/food");
+  // Family PIN unlocks the kitchen; do not send them through SaaS onboarding.
+  if (access.via === "pin") redirect("/food");
   const session = await auth();
   if (!session?.user?.id) {
-    redirect("/login?callbackUrl=/food/onboarding");
+    redirect("/food");
   }
 
   // Create the household shell if it doesn't exist — the wizard edits it in place.

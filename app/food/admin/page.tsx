@@ -25,6 +25,10 @@ function getAdminEmails(): string[] {
 
 export default async function FoodAdminPage() {
   const session = await auth();
+  // Funnel dashboard stays MFA-strict. PIN unlock is family kitchen only.
+  if (session?.mfaRequired) {
+    redirect("/login/mfa-challenge?callbackUrl=/food/admin");
+  }
   if (!session?.user?.id) {
     redirect("/login?callbackUrl=/food/admin");
   }

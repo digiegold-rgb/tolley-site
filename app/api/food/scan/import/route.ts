@@ -1,18 +1,18 @@
 // Food API route
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getFoodApiUserId } from "@/lib/food/auth";
 import { prisma } from "@/lib/prisma";
 import { parseImportText } from "@/lib/food/ai-import";
 import { ingestOrders } from "@/lib/food/import-ingest";
 import { after } from "next/server";
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id)
+  const userId = await getFoodApiUserId();
+  if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const household = await prisma.foodHousehold.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: userId },
   });
   if (!household)
     return NextResponse.json({ error: "No household" }, { status: 404 });

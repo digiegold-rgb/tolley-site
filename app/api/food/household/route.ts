@@ -1,15 +1,15 @@
 // Food API route
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getFoodApiUserId } from "@/lib/food/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id)
+  const userId = await getFoodApiUserId();
+  if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const household = await prisma.foodHousehold.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: userId },
     include: { members: true },
   });
 
@@ -20,12 +20,12 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id)
+  const userId = await getFoodApiUserId();
+  if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const existing = await prisma.foodHousehold.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: userId },
   });
   if (!existing)
     return NextResponse.json({ error: "No household" }, { status: 404 });
@@ -55,12 +55,12 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id)
+  const userId = await getFoodApiUserId();
+  if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const existing = await prisma.foodHousehold.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: userId },
   });
   if (existing)
     return NextResponse.json(
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
 
   const household = await prisma.foodHousehold.create({
     data: {
-      userId: session.user.id,
+      userId: userId,
       name: name || "My Kitchen",
       timezone: timezone || "America/Chicago",
       weeklyBudget: weeklyBudget ? Number(weeklyBudget) : null,

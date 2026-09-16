@@ -2,19 +2,15 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { getFoodHousehold } from "@/lib/food/auth";
 import { FoodHero } from "@/components/food/food-hero";
 import { FoodRecipeCard } from "@/components/food/food-recipe-card";
 
 export default async function FoodDashboardPage() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login?callbackUrl=/food");
-
-  const household = await prisma.foodHousehold.findUnique({
-    where: { userId: session.user.id },
-    include: { members: true },
-  });
-
+  const household = await getFoodHousehold();
   if (!household) redirect("/food/settings");
+
+  const session = await auth();
 
   const now = new Date();
   const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
@@ -55,7 +51,7 @@ export default async function FoodDashboardPage() {
   ]);
 
   const expiringCount = expiringItems.length;
-  const userName = session.user.name?.split(" ")[0] || "Chef";
+  const userName = session?.user?.name?.split(" ")[0] || household.name.split(" ")[0] || "Chef";
 
   const quickActions = [
     { title: "Plan This Week's Meals", description: "Build your weekly menu and stay organized", href: "/food/plan", emoji: "📅", color: "var(--food-pink)" },
