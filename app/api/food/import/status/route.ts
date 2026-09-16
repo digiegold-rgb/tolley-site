@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getFoodApiUserId } from "@/lib/food/auth";
 import { prisma } from "@/lib/prisma";
 import { getStoreStatus, type StoreKey } from "@/lib/food/grocery-scraper-client";
 
@@ -23,12 +23,12 @@ async function safeStatus(store: StoreKey) {
 }
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id)
+  const userId = await getFoodApiUserId();
+  if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const household = await prisma.foodHousehold.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: userId },
     select: { lastWalmartSyncAt: true, lastSamsclubSyncAt: true },
   });
 

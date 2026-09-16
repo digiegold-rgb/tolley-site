@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { isFoodAccessGranted } from "@/lib/food-subscription";
+import { resolveFoodAccess } from "@/lib/food/auth";
 import { FoodBillingClient } from "@/components/food/food-billing-client";
 import { trackFoodEvent } from "@/lib/food/track";
 
@@ -11,9 +12,14 @@ type BillingPageProps = {
 };
 
 export default async function FoodBillingPage({ searchParams }: BillingPageProps) {
+  const access = await resolveFoodAccess();
+  if (!access.ok) redirect("/food");
+  // Family PIN is not a SaaS checkout path.
+  if (access.via === "pin") redirect("/food");
+
   const session = await auth();
   if (!session?.user?.id) {
-    redirect("/login?callbackUrl=/food/billing");
+    redirect("/food");
   }
 
   const params = (await searchParams) || {};

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getFoodApiUserId } from "@/lib/food/auth";
 import { prisma } from "@/lib/prisma";
 import { chooseReplacement } from "@/lib/food/slot-replacement";
 
@@ -7,8 +7,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slotId: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id)
+  const userId = await getFoodApiUserId();
+  if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { slotId } = await params;
@@ -18,7 +18,7 @@ export async function GET(
   const excludeIds = excludeParam.split(",").map((s) => s.trim()).filter(Boolean);
 
   const household = await prisma.foodHousehold.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: userId },
     include: { members: true },
   });
   if (!household)

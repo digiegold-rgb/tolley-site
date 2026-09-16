@@ -7,6 +7,22 @@ import { secretEquals } from "@/lib/secret-compare";
 const COOKIE_NAME = "shop_admin";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
+/**
+ * shop_admin cookie only. Used by /tv and Ruthann's Kitchen so one family PIN
+ * unlocks both, even when NextAuth has wiped session.user for a pending MFA
+ * challenge. Missing SHOP_ADMIN_PIN / AUTH_SECRET is a closed gate, not a 500.
+ */
+export async function hasValidShopAdminCookie(): Promise<boolean> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME);
+  if (!token?.value) return false;
+  try {
+    return secretEquals(token.value, getExpectedToken());
+  } catch {
+    return false;
+  }
+}
+
 export async function validateShopAdmin(): Promise<boolean> {
   const session = await auth();
   // Session-based shop admin still requires a completed (non-MFA, non-impersonated)
@@ -21,10 +37,7 @@ export async function validateShopAdmin(): Promise<boolean> {
   ) {
     return true;
   }
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME);
-  if (!token?.value) return false;
-  return secretEquals(token.value, getExpectedToken());
+  return hasValidShopAdminCookie();
 }
 
 /**

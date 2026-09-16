@@ -1,6 +1,6 @@
 // Food API route
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getFoodApiUserId } from "@/lib/food/auth";
 import { prisma } from "@/lib/prisma";
 import { chooseTopRecipe, type ScoreContext } from "@/lib/food/recipe-scorer";
 import { normalizeCuisine } from "@/lib/food/cuisines";
@@ -29,12 +29,12 @@ const CREATIVE_IDEAS = [
 ];
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id)
+  const userId = await getFoodApiUserId();
+  if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const household = await prisma.foodHousehold.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: userId },
     include: { members: true },
   });
   if (!household)

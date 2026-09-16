@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Fredoka } from "next/font/google";
 import { EventTracker } from "@/components/analytics/site-tracker";
 import { FoodNav } from "@/components/food/food-nav";
 import { FoodSparkles } from "@/components/food/food-sparkles";
 import { FoodChat } from "@/components/food/food-chat";
+import { isFoodPinGateExempt, resolveFoodAccess } from "@/lib/food/auth";
+import { FoodPinGate } from "./food-pin-gate";
 import "./food.css";
 
 const fredoka = Fredoka({
@@ -31,7 +34,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function FoodLayout({ children }: { children: React.ReactNode }) {
+export default async function FoodLayout({ children }: { children: React.ReactNode }) {
+  const pathname = (await headers()).get("x-tolley-pathname") || "";
+  const access = isFoodPinGateExempt(pathname) ? { ok: true } : await resolveFoodAccess();
+
+  if (!access.ok) {
+    return (
+      <div className={`food-page ${fredoka.variable}`}>
+        <FoodPinGate />
+      </div>
+    );
+  }
+
   return (
     <div className={`food-page ${fredoka.variable}`}>
       <EventTracker site="food">
