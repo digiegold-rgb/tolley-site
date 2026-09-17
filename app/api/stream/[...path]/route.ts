@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateWdAdmin } from "@/lib/wd-auth";
 
 // Authenticated proxy → DGX stream director (stream-api.tolley.io) for /stream.
-// Gate: the /hq PIN cookie. tolley.io holds NO platform stream keys — the
+// Gate: same as /hq — owner NextAuth session + MFA via validateWdAdmin(). tolley.io holds NO platform stream keys — the
 // director on the DGX owns them; this route only forwards commands + status.
 const UPSTREAM = process.env.STREAM_API_URL || "https://stream-api.tolley.io";
 

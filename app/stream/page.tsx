@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // tolley.io/stream — one-handed phone remote for the house live pipeline.
-// PIN-gated (same /hq PIN). All commands go through /api/stream/* → DGX director.
+// Gated like /hq: owner NextAuth session + MFA (validateWdAdmin). Commands go through /api/stream/* → DGX director.
 // tolley.io stores no stream keys.
 
 type Dest = "youtube" | "tiktok";
@@ -31,8 +31,7 @@ function fmt(s: number) {
 
 export default function StreamPage() {
   const [authed, setAuthed] = useState(false);
-  const [pin, setPin] = useState("");
-  const [pinError, setPinError] = useState("");
+  const [checking, setChecking] = useState(true);
   const [status, setStatus] = useState<Status | null>(null);
   const [offline, setOffline] = useState<string>("");
   const [busy, setBusy] = useState("");
@@ -45,13 +44,16 @@ export default function StreamPage() {
   const load = useCallback(async () => {
     try {
       const r = await fetch("/api/stream/status", { cache: "no-store" });
-      if (r.status === 401) { setAuthed(false); return; }
+      if (r.status === 401) { setAuthed(false); setChecking(false); return; }
       const j = await r.json();
+      setAuthed(true);
+      setChecking(false);
       if (!r.ok) { setOffline(j.error || `HTTP ${r.status}`); return; }
       setOffline("");
       setStatus(j);
       if (j.armed) setSel({ youtube: j.destinations.youtube.enabled, tiktok: j.destinations.tiktok.enabled });
     } catch (e) {
+      setChecking(false);
       setOffline(e instanceof Error ? e.message : "network error");
     }
   }, []);
@@ -64,18 +66,11 @@ export default function StreamPage() {
     return () => window.clearInterval(t);
   }, [authed, load]);
 
-  async function login(e: React.FormEvent) {
-    e.preventDefault();
-    setPinError("");
-    const r = await fetch("/api/hq/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
-    if (!r.ok) { setPinError(r.status === 401 ? "Invalid PIN" : "Login failed"); return; }
-    setAuthed(true);
-  }
-
   async function cmd(path: string, body?: unknown) {
     setBusy(path);
     try {
       const r = await fetch(`/api/stream/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body ?? {}) });
+      if (r.status === 401) { setAuthed(false); return; }
       const j = await r.json();
       if (r.ok) { setStatus(j); setOffline(""); } else setOffline(j.error || `HTTP ${r.status}`);
     } catch (e) {
@@ -106,15 +101,17 @@ export default function StreamPage() {
     setHoldPct(0);
   }
 
+  if (checking) {
+    return <main style={S.wrap}><h1 style={S.h1}>📡 Stream</h1><div style={{ color: "#9aa" }}>Loading…</div></main>;
+  }
+
   if (!authed) {
+    // Same gate as /hq: owner account + authenticator (NextAuth admin session). No PIN.
     return (
       <main style={S.wrap}>
         <h1 style={S.h1}>📡 Stream</h1>
-        <form onSubmit={login} style={{ display: "grid", gap: 10 }}>
-          <input value={pin} onChange={(e) => setPin(e.target.value)} type="password" inputMode="numeric" placeholder="PIN" autoFocus style={S.input} />
-          {pinError && <div style={{ color: "#ff6b6b", fontSize: 13 }}>{pinError}</div>}
-          <button type="submit" style={{ ...S.btn, ...S.primary }}>Unlock</button>
-        </form>
+        <p style={{ color: "#9aa", fontSize: 15 }}>Use your owner account and authenticator to continue.</p>
+        <a href="/login?callbackUrl=/stream" style={{ ...S.btn, ...S.primary, display: "block", textAlign: "center", textDecoration: "none" }}>Sign in securely</a>
       </main>
     );
   }
@@ -207,7 +204,6 @@ function Tile({ label, ok, text, dim }: { label: string; ok: boolean; text: stri
 const S: Record<string, React.CSSProperties> = {
   wrap: { maxWidth: 480, margin: "0 auto", padding: "16px 16px 40px", fontFamily: "system-ui, -apple-system, sans-serif", color: "#eef", background: "#0b1220", minHeight: "100vh" },
   h1: { fontSize: 22, margin: "6px 0 14px" },
-  input: { fontSize: 20, padding: 14, borderRadius: 10, border: "1px solid #334", background: "#111a2b", color: "#eef" },
   btn: { fontSize: 18, fontWeight: 600, padding: "18px 16px", borderRadius: 14, border: "none", cursor: "pointer", touchAction: "none", userSelect: "none", WebkitUserSelect: "none" },
   primary: { background: "#2ecc71", color: "#062" },
   secondary: { background: "#1c2940", color: "#dde" },
