@@ -17,6 +17,7 @@ type Status = {
   destinations: Record<Dest, { enabled: boolean; configured: boolean; running: boolean; uptimeS: number }>;
   limits: { camGoneEndMin: number; maxStreamMin: number; brbAfterS: number };
   ingest: { url: string; keyTail: string };
+  studio: { online: boolean; ageS: number; studioRunning: boolean; obsRunning: boolean; host: string };
   events: { t: number; kind: string; msg: string }[];
 };
 
@@ -134,15 +135,21 @@ export default function StreamPage() {
       <div style={S.grid}>
         <Tile label="Camera" ok={!!cam?.connected} text={cam?.connected ? `${cam.kbps} kbps · ${fmt(cam.sinceS)}` : cam ? `gone ${fmt(cam.goneS)}` : "—"} />
         <Tile label="OBS" ok={!!s?.obs.connected} text={s ? `${s.obs.scene || "?"}${s.obs.streaming ? " · encoding" : ""}` : "—"} />
-        {DESTS.map((d) => (
-          <Tile key={d} label={LABEL[d]} ok={!!s?.destinations[d].running} dim={!s?.destinations[d].configured}
-            text={!s ? "—" : !s.destinations[d].configured ? "no key" : s.destinations[d].running ? `live ${fmt(s.destinations[d].uptimeS)}` : s.destinations[d].enabled ? "waiting" : "off"} />
-        ))}
+        {DESTS.map((d) => {
+          // TikTok without a stream key runs through LIVE Studio on the PC: show the poller heartbeat instead.
+          if (d === "tiktok" && s && !s.destinations.tiktok.configured) {
+            const st = s.studio;
+            return <Tile key={d} label="TikTok · LIVE Studio" ok={st.online && st.studioRunning}
+              text={!st.online ? (st.ageS < 0 ? "PC not set up" : `PC offline ${fmt(st.ageS)}`) : st.studioRunning ? "LIVE Studio open" : st.obsRunning ? "PC ready · open LIVE Studio" : "PC on · OBS down"} />;
+          }
+          return <Tile key={d} label={LABEL[d]} ok={!!s?.destinations[d].running} dim={!s?.destinations[d].configured}
+            text={!s ? "—" : !s.destinations[d].configured ? "no key" : s.destinations[d].running ? `live ${fmt(s.destinations[d].uptimeS)}` : s.destinations[d].enabled ? "waiting" : "off"} />;
+        })}
       </div>
 
       {/* destinations */}
       <div style={{ display: "flex", gap: 8, margin: "14px 0" }}>
-        {DESTS.map((d) => (
+        {DESTS.filter((d) => !(d === "tiktok" && s && !s.destinations.tiktok.configured)).map((d) => (
           <button key={d} onClick={() => toggleDest(d)} disabled={!s?.destinations[d].configured}
             style={{ ...S.chip, ...(sel[d] ? S.chipOn : {}), opacity: s?.destinations[d].configured ? 1 : 0.4 }}>
             {sel[d] ? "✓ " : ""}{LABEL[d]}
@@ -175,6 +182,7 @@ export default function StreamPage() {
         <div style={{ fontSize: 13, color: "#bcc", display: "grid", gap: 6 }}>
           <div>Mimo URL: <code>{s.ingest.url}</code> · key ends …{s.ingest.keyTail}</div>
           <div>Auto-end after camera gone {s.limits.camGoneEndMin} min · max {s.limits.maxStreamMin} min · BRB after {s.limits.brbAfterS}s</div>
+          <div>PC poller: {s.studio.online ? `online (${s.studio.host})` : "offline"} · LIVE Studio {s.studio.studioRunning ? "running" : "closed"} · Ending here force-closes LIVE Studio</div>
           <div>MediaMTX {s.mediamtx.ok ? "ok" : "DOWN"} · program {s.obs.programReady ? "ready" : "idle"} {s.obs.lastError && `· OBS: ${s.obs.lastError}`}</div>
           <button style={{ ...S.btn, ...S.secondary, padding: "10px" }} disabled={!!busy} onClick={() => { if (window.confirm("Rotate the camera key? You must re-enter it in Mimo (sent to Telegram).")) void cmd("rotate-key"); }}>
             🔑 Rotate camera key
