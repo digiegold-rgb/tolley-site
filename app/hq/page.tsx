@@ -644,6 +644,13 @@ function HqPageInner() {
                 <a href="/vater" onClick={closeIdeas}>🏭 Vater owner tools</a>
                 <a href="/water" onClick={closeIdeas}>💧 Pool water dashboard</a>
                 <a
+                  href="/stream"
+                  onClick={closeIdeas}
+                  title="Stream — live remote: Go Live / End / Privacy for the house OBS pipeline"
+                >
+                  📡 Stream
+                </a>
+                <a
                   href="/generate"
                   onClick={closeIdeas}
                   title="Generate — Qwen 3.8 director + prompt → image / video"
