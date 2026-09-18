@@ -200,7 +200,7 @@ export default function StreamPage() {
           // TikTok without a stream key runs through LIVE Studio on the PC: show the poller heartbeat instead.
           const ds = s?.destinations[d];
           if (s && !ds) return null; // older director: no such destination
-          if (d === "whatnot" && !ds?.configured) return null; // Whatnot runs through OBS on the Mac (WHIP), not a pusher
+          if (d === "whatnot" && !ds?.configured) return null; // Whatnot runs through the stream PC's OBS (WHIP), not a pusher
           if (d === "tiktok" && s && !ds?.configured) {
             const st = s.studio;
             return <Tile key={d} label="TikTok · LIVE Studio" ok={st.online && st.studioRunning}
@@ -229,15 +229,14 @@ export default function StreamPage() {
         ))}
       </div>
 
-      {/* Whatnot streams over WHIP through ITS OWN page driving a local OBS (not an RTMP key), so it is not a pusher here:
-          OBS on the Mac pulls the house program feed and Whatnot's "Stream with OBS" page points that OBS at the show. */}
+      {/* Whatnot streams over WHIP through ITS OWN Show Tools page driving a local OBS (no RTMP key), so it is not a pusher here:
+          the OBS on the wired Windows stream PC already shows the house program feed, and Whatnot's page points that OBS at the show. */}
       <details style={{ margin: "-4px 0 14px", fontSize: 13, color: "#bcc" }}>
-        <summary style={{ cursor: "pointer" }}>🟣 Whatnot — goes out through OBS on the Mac</summary>
+        <summary style={{ cursor: "pointer" }}>🟣 Whatnot — goes out through the OBS on the stream PC</summary>
         <div style={{ display: "grid", gap: 6, marginTop: 8, lineHeight: 1.5 }}>
-          <span>1. Here: <b>Go Live</b> with nothing ticked (LIVE Studio off) and start the cameras — that lights up the house program feed.</span>
-          <span>2. Mac OBS: one Media Source (uncheck “Local File”) with this input. Cuts, BRB and Privacy all ride along.</span>
-          <code style={{ background: "#0e1626", padding: "6px 8px", borderRadius: 8, userSelect: "all", wordBreak: "break-all" }}>rtsp://192.168.2.196:8554/program</code>
-          <span>3. Whatnot Seller Hub → Stream with OBS (Chrome on the same Mac) → Connect → Open Show → Start Show.</span>
+          <span>1. Here: <b>Go Live</b> with nothing ticked (LIVE Studio off) and start the cameras — the PC&apos;s OBS then shows the house picture (cuts, BRB and Privacy ride along).</span>
+          <span>2. On the PC (Chrome Remote Desktop), in Chrome: Whatnot Seller Hub → Show OBS Tools → Connect → <b>Start Show</b>. Connect only right before the show; keep that tab open.</span>
+          <span>3. Run the show from the Mac or the Whatnot app. End it in Whatnot first, then hold END STREAM here.</span>
         </div>
       </details>
 
