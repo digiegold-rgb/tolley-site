@@ -1,6 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 export const MFA_COOKIE = "tolley_mfa";
-export const MFA_MAX_AGE = 12 * 60 * 60;
+// Fixed lifetime from the last successful code entry; ordinary visits do not extend it.
+export const MFA_MAX_AGE = 30 * 24 * 60 * 60;
 const secret = () => process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "";
 
 export function enrollmentKey(mfa: { id: string; totpSecret: string }): string {

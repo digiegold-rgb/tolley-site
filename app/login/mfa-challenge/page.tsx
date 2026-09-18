@@ -17,10 +17,10 @@ export default async function MfaChallengePage({ searchParams }: {
   return <main className="flex min-h-screen items-center justify-center px-4">
     <div className="w-full max-w-sm space-y-6">
       <h1 className="text-xl font-semibold text-white">Two-factor authentication</h1>
-      {!identity.fresh ? <p>Your sign-in challenge expired. Sign out and sign in again to continue.</p>
+      {required === "setup" && !identity.fresh ? <p>Your sign-in challenge expired. Sign out and sign in again to continue.</p>
         : required === "setup" ? <><p>Protect your owner account with an authenticator app. Save the recovery codes before continuing.</p>
           <MfaEnrollment callbackUrl={callbackUrl} /></>
-        : <><p>Enter your authenticator code or one of your recovery codes.</p><MfaChallengeForm callbackUrl={callbackUrl} /></>}
+        : <><p>Enter your authenticator code or one of your recovery codes. This browser will remember verification for 30 days, unless you sign out or clear its cookies.</p><MfaChallengeForm callbackUrl={callbackUrl} /></>}
       <Link href="/logout" className="text-sm underline">Sign out</Link>
     </div>
   </main>;

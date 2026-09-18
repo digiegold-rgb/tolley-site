@@ -42,7 +42,8 @@ try {
   assert(!verifyMfaProof(proof, "user-b", "session-a", "enrollment-a", issued));
   assert(!verifyMfaProof(proof, "user-a", "session-b", "enrollment-a", issued));
   assert(!verifyMfaProof(proof, "user-a", "session-a", "enrollment-b", issued));
-  assert(!verifyMfaProof(proof, "user-a", "session-a", "enrollment-a", issued + 13 * 3600000));
+  assert(verifyMfaProof(proof, "user-a", "session-a", "enrollment-a", issued + 29 * 24 * 3600000));
+  assert(!verifyMfaProof(proof, "user-a", "session-a", "enrollment-a", issued + 30 * 24 * 3600000));
   assert(!verifyMfaProof(proof + "x", "user-a", "session-a", "enrollment-a", issued));
   assert.equal(analyticsSiteForPath("/animate"), "animate");
   assert.equal(analyticsSiteForPath("/wd/admin"), "wd");
