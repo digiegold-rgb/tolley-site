@@ -32,6 +32,12 @@ export type LineupItem = {
   tiktokListed: boolean;
   soldAt: string | null;
   notes: string | null;
+  quantity: number;
+  dimsSource: string | null;
+  specsNote: string | null;
+  amazonTitle: string | null;
+  amazonPriceAt: string | null;
+  specsCheckedAt: string | null;
   product: LineupProduct;
 };
 

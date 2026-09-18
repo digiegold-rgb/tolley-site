@@ -31,7 +31,8 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ slug: 
 
   const item = await prisma.streamLineupItem.update({
     where: { id: found.id },
-    data: { amazonUrl: plainAmazonUrl(asin), amazonVerified: true, amazonPriceCents: await cachedAmazonPriceCents(asin) },
+    // specsCheckedAt: null → the DGX lineup-specs worker reads this product's live price + package specs.
+    data: { amazonUrl: plainAmazonUrl(asin), amazonVerified: true, amazonPriceCents: await cachedAmazonPriceCents(asin), amazonTitle: null, amazonPriceAt: null, specsCheckedAt: null },
     include: ITEM_INCLUDE,
   });
   return NextResponse.json({ item, asin });

@@ -5974,6 +5974,15 @@ model StreamLineupItem {
   tiktokListed     Boolean      @default(false)
   soldAt           DateTime?
   notes            String?      @db.Text
+  quantity         Int          @default(1)
+  /// Where weight/size came from: "amazon-package" | "amazon-item" (item specs + box allowance) | "manual"
+  dimsSource       String?
+  /// Human-readable raw specs the DGX lineup-specs worker read off the Amazon page
+  specsNote        String?
+  amazonTitle      String?
+  amazonPriceAt    DateTime?
+  /// null = the DGX worker should (re)read the Amazon page for this item
+  specsCheckedAt   DateTime?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
   lineup           StreamLineup @relation(fields: [lineupId], references: [id], onDelete: Cascade)

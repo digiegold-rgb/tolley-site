@@ -162,11 +162,12 @@ export default function LineupClicker({ slug }: { slug: string }) {
                 {item.amazonPriceCents ? (
                   <span style={{ fontSize: 20, color: "#bcc" }}>
                     Amazon <s>{money(item.amazonPriceCents / 100)}</s>{pct ? <b style={{ color: "#2ecc71" }}> · {pct}% under</b> : null}
-                    <span style={{ fontSize: 12, color: "#789" }}> (cached — the big screen has today&apos;s price)</span>
+                    <span style={{ fontSize: 12, color: "#789" }}> ({item.amazonPriceAt ? `read ${new Date(item.amazonPriceAt).toLocaleDateString([], { month: "short", day: "numeric" })}` : "cached"} — the big screen has today&apos;s price)</span>
                   </span>
                 ) : <span style={{ fontSize: 14, color: "#789" }}>no cached Amazon price — read it off the big screen</span>}
               </div>
               <div style={{ fontSize: 14, color: "#9ab", display: "flex", gap: 14, flexWrap: "wrap" }}>
+                <span style={{ color: item.quantity > 1 ? "#ffd166" : "#9ab", fontWeight: 600 }}>qty {item.quantity}</span>
                 {item.weightOz ? <span>⚖ {item.weightOz} oz ({(item.weightOz / 16).toFixed(1)} lb)</span> : <span style={{ color: "#f5c542" }}>⚖ no weight</span>}
                 {item.lengthIn && item.widthIn && item.heightIn ? <span>📦 {item.lengthIn} × {item.widthIn} × {item.heightIn} in</span> : <span style={{ color: "#f5c542" }}>📦 no box size</span>}
                 {item.tiktokListed ? <span style={{ color: "#69e0ff" }}>✓ in TikTok Shop</span> : <span style={{ color: "#f5c542" }}>not in TikTok Shop yet</span>}

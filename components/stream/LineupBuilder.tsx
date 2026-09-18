@@ -20,6 +20,11 @@ export default function LineupBuilder({ initialSlug }: { initialSlug: string | n
   const [open, setOpen] = useState<string | null>(null);
   const [err, setErr] = useState("");
   const dragId = useRef<string | null>(null);
+  const [imgIdx, setImgIdx] = useState<Record<string, number>>({});
+  const flip = useCallback((id: string, by: number, n: number) => {
+    if (n < 2) return;
+    setImgIdx((m) => ({ ...m, [id]: (((m[id] ?? 0) + by) % n + n) % n }));
+  }, []);
 
   const fail = useCallback((e: unknown) => setErr(e instanceof Error ? e.message : "Something went wrong"), []);
 
@@ -132,6 +137,37 @@ export default function LineupBuilder({ initialSlug }: { initialSlug: string | n
     });
   }
 
+  // ↑/↓ = previous/next line item (opens its worksheet), ←/→ = flip through that item's pictures.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const items = lineup?.items ?? [];
+      if (!items.length) return;
+      const at = items.findIndex((i) => i.id === open);
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const to = at < 0 ? 0 : Math.min(items.length - 1, Math.max(0, at + (e.key === "ArrowDown" ? 1 : -1)));
+        setOpen(items[to].id);
+        window.setTimeout(() => document.getElementById(`li-${items[to].id}`)?.scrollIntoView({ block: "start", behavior: "smooth" }), 0);
+      } else if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && at >= 0) {
+        e.preventDefault();
+        flip(items[at].id, e.key === "ArrowRight" ? 1 : -1, items[at].product.imageUrls.length);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lineup, open, flip]);
+
+  // The DGX reads each item's Amazon page (price + package size/weight) within ~1 min — refetch until it has.
+  const specsPending = !!lineup?.items.some((i) => i.amazonUrl && !i.specsCheckedAt);
+  useEffect(() => {
+    if (!specsPending) return;
+    const t = window.setInterval(() => { if (!document.hidden) setLineupKey((k) => k + 1); }, 15000);
+    return () => window.clearInterval(t);
+  }, [specsPending]);
+
   const counts = useMemo(() => {
     const items = lineup?.items ?? [];
     return {
@@ -190,7 +226,8 @@ export default function LineupBuilder({ initialSlug }: { initialSlug: string | n
             {lineup.items.map((item, idx) => (
               <div
                 key={item.id}
-                style={{ ...S.row, ...(item.soldAt ? { opacity: 0.55 } : {}) }}
+                id={`li-${item.id}`}
+                style={{ ...S.row, ...(item.soldAt ? { opacity: 0.55 } : {}), ...(open === item.id ? S.rowOn : {}), scrollMarginTop: 8 }}
                 onDragOver={(e) => { e.preventDefault(); dragOver(item.id); }}
                 onDrop={(e) => e.preventDefault()}
               >
@@ -203,11 +240,12 @@ export default function LineupBuilder({ initialSlug }: { initialSlug: string | n
                     title="Drag to reorder"
                   >⠿</span>
                   <span style={S.idx}>{idx + 1}</span>
-                  <Thumb src={item.product.imageUrls[0]} size={48} />
+                  <Gallery urls={item.product.imageUrls} at={imgIdx[item.id] ?? 0} size={open === item.id ? 0 : 112} onFlip={(by) => flip(item.id, by, item.product.imageUrls.length)} />
                   <button style={S.titleBtn} onClick={() => setOpen(open === item.id ? null : item.id)}>
                     <div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.product.title}</div>
                     <div style={{ fontSize: 12, color: "#9ab", display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <span>{money(item.salePrice)}</span>
+                      <span style={{ color: item.quantity > 1 ? "#ffd166" : "#9ab" }}>qty {item.quantity}</span>
                       {item.amazonPriceCents ? <span>Amazon {money(item.amazonPriceCents / 100)}</span> : null}
                       <Flags item={item} />
                     </div>
@@ -216,7 +254,10 @@ export default function LineupBuilder({ initialSlug }: { initialSlug: string | n
                   <button style={S.icon} onClick={() => move(item.id, 1)} disabled={idx === lineup.items.length - 1} aria-label="Move down">▼</button>
                   <button style={S.icon} onClick={() => void removeItem(item.id)} aria-label="Remove from lineup">✕</button>
                 </div>
-                {open === item.id && <Worksheet slug={lineup.slug} item={item} patch={patchItem} replace={replaceItem} fail={fail} />}
+                {open === item.id && (
+                  <Worksheet slug={lineup.slug} item={item} patch={patchItem} replace={replaceItem} fail={fail}
+                    imgAt={imgIdx[item.id] ?? 0} onFlip={(by) => flip(item.id, by, item.product.imageUrls.length)} />
+                )}
               </div>
             ))}
           </section>
@@ -252,6 +293,32 @@ function Thumb({ src, size }: { src?: string | null; size: number }) {
     : <div style={{ width: size, height: size, borderRadius: 8, background: "#0a0f1a", flexShrink: 0 }} />;
 }
 
+// One picture at a time with ‹ › (and ←/→ on the selected row). size 0 = hidden (the open row shows the big one).
+function Gallery({ urls, at, size, onFlip }: { urls: string[]; at: number; size: number; onFlip: (by: number) => void }) {
+  if (size === 0) return null;
+  const n = urls.length;
+  const src = urls[Math.min(at, Math.max(0, n - 1))];
+  const arrow: React.CSSProperties = {
+    position: "absolute", top: "50%", transform: "translateY(-50%)", width: size > 200 ? 44 : 26, height: size > 200 ? 64 : 40,
+    border: "none", background: "rgba(5,10,20,0.6)", color: "#fff", fontSize: size > 200 ? 28 : 18, cursor: "pointer", borderRadius: 8,
+  };
+  return (
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0, maxWidth: "100%" }}>
+      {src
+        // eslint-disable-next-line @next/next/no-img-element -- Blob URLs from the shop; owner-only page
+        ? <a href={src} target="_blank" rel="noreferrer" title="Open full size"><img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: size > 200 ? "contain" : "cover", borderRadius: 10, background: "#0a0f1a", display: "block" }} /></a>
+        : <div style={{ width: "100%", height: "100%", borderRadius: 10, background: "#0a0f1a" }} />}
+      {n > 1 && (
+        <>
+          <button type="button" aria-label="Previous picture" style={{ ...arrow, left: 2 }} onClick={(e) => { e.stopPropagation(); onFlip(-1); }}>‹</button>
+          <button type="button" aria-label="Next picture" style={{ ...arrow, right: 2 }} onClick={(e) => { e.stopPropagation(); onFlip(1); }}>›</button>
+          <span style={{ position: "absolute", bottom: 4, right: 6, fontSize: 11, color: "#fff", background: "rgba(5,10,20,0.65)", borderRadius: 6, padding: "1px 6px" }}>{Math.min(at, n - 1) + 1}/{n}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
 function CopyRow({ label, value, multiline }: { label: string; value: string; multiline?: boolean }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -273,9 +340,11 @@ function CopyRow({ label, value, multiline }: { label: string; value: string; mu
   );
 }
 
-function Worksheet({ slug, item, patch, replace, fail }: {
+function Worksheet({ slug, item, patch, replace, fail, imgAt, onFlip }: {
   slug: string;
   item: LineupItem;
+  imgAt: number;
+  onFlip: (by: number) => void;
   patch: (id: string, body: Record<string, unknown>) => Promise<void>;
   replace: (item: LineupItem) => void;
   fail: (e: unknown) => void;
@@ -283,18 +352,19 @@ function Worksheet({ slug, item, patch, replace, fail }: {
   const p = item.product;
   const pct = pctUnderAmazon(item.salePrice, item.amazonPriceCents);
 
-  function numField(label: string, field: "weightOz" | "lengthIn" | "widthIn" | "heightIn" | "salePrice", unit: string) {
+  function numField(label: string, field: "weightOz" | "lengthIn" | "widthIn" | "heightIn" | "salePrice" | "quantity", unit: string) {
     return (
       <label style={{ display: "grid", gap: 2, fontSize: 12, color: "#9ab" }}>
         {label}
         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <input
             key={`${field}-${item[field] ?? ""}`}
-            type="number" inputMode="decimal" min={0} step={field === "weightOz" ? 1 : 0.01}
+            type="number" inputMode="decimal" min={0} step={field === "weightOz" || field === "quantity" ? 1 : 0.01}
             defaultValue={item[field] ?? ""}
             onBlur={(e) => {
               const v = e.currentTarget.value.trim();
               if (v === String(item[field] ?? "")) return;
+              if (field === "quantity" && v === "") return;
               void patch(item.id, { [field]: v === "" ? null : Number(v) });
             }}
             style={{ ...S.input, width: 84 }}
@@ -318,10 +388,13 @@ function Worksheet({ slug, item, patch, replace, fail }: {
 
   return (
     <div style={S.sheet}>
-      <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 }}>
-        {p.imageUrls.map((u) => (
-          <a key={u} href={u} target="_blank" rel="noreferrer" title="Open full size"><Thumb src={u} size={92} /></a>
-        ))}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <Gallery urls={p.imageUrls} at={imgAt} size={420} onFlip={onFlip} />
+        <div style={{ fontSize: 12, color: "#89a", lineHeight: 1.7 }}>
+          <div>← → flip pictures</div>
+          <div>↑ ↓ previous / next item</div>
+          <div>click the picture for full size</div>
+        </div>
       </div>
 
       <CopyRow label="Title" value={p.title} />
@@ -330,11 +403,36 @@ function Worksheet({ slug, item, patch, replace, fail }: {
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
         {numField("Sale price", "salePrice", "$")}
-        {numField("Weight", "weightOz", "oz")}
-        {numField("Length", "lengthIn", "in")}
-        {numField("Width", "widthIn", "in")}
-        {numField("Height", "heightIn", "in")}
-        {item.weightOz ? <span style={{ fontSize: 12, color: "#9ab", paddingBottom: 8 }}>= {(item.weightOz / 16).toFixed(2)} lb</span> : null}
+        {numField("Quantity on hand", "quantity", "pcs")}
+      </div>
+
+      <div style={S.amz}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={S.label}>Package — weight + box size for the shipping label</span>
+          <SourceBadge item={item} />
+          <button type="button" style={{ ...S.btn, ...S.secondary, padding: "5px 10px", fontSize: 12 }} disabled={!item.amazonUrl}
+            onClick={() => void patch(item.id, { recheckSpecs: true, overwrite: true })} title="Re-read the Amazon page and overwrite weight/size">
+            ↻ re-read from Amazon
+          </button>
+        </div>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+          {numField("Weight", "weightOz", "oz")}
+          {numField("Length", "lengthIn", "in")}
+          {numField("Width", "widthIn", "in")}
+          {numField("Height", "heightIn", "in")}
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <Chip label="lb" value={item.weightOz ? (item.weightOz / 16).toFixed(2) : ""} />
+          <Chip label="oz" value={item.weightOz ? String(item.weightOz) : ""} />
+          <Chip label="L" value={item.lengthIn ? String(item.lengthIn) : ""} />
+          <Chip label="W" value={item.widthIn ? String(item.widthIn) : ""} />
+          <Chip label="H" value={item.heightIn ? String(item.heightIn) : ""} />
+        </div>
+        {item.specsNote && <div style={{ fontSize: 12, color: "#9ab" }}>Amazon lists: {item.specsNote}</div>}
+        <div style={{ fontSize: 12, color: "#89a" }}>
+          Filled in automatically from the item&apos;s Amazon page. When Amazon only gives the bare product&apos;s size, 2&quot; is added per side for the retail box
+          and the weight gets +20% + ½ lb, rounded UP — so labels err heavy, not light. Type over any number to lock your own value.
+        </div>
       </div>
 
       <div style={S.amz}>
@@ -343,11 +441,12 @@ function Worksheet({ slug, item, patch, replace, fail }: {
           {item.amazonUrl
             ? <a href={item.amazonUrl} target="_blank" rel="noreferrer" style={S.a}>{item.amazonUrl.replace("https://www.", "")} ↗</a>
             : <span style={{ color: "#ff7b6b", fontSize: 14 }}>No Amazon link yet — paste one below</span>}
-          {item.amazonPriceCents ? <span style={{ fontSize: 13, color: "#bcc" }}>cached {money(item.amazonPriceCents / 100)}{pct ? ` · you're ${pct}% under` : ""}</span> : null}
+          {item.amazonPriceCents ? <span style={{ fontSize: 13, color: "#bcc" }}>{item.amazonPriceAt ? `Amazon today ${money(item.amazonPriceCents / 100)} (read ${new Date(item.amazonPriceAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })})` : `cached ${money(item.amazonPriceCents / 100)}`}{pct ? ` · you're ${pct}% under` : ""}</span> : null}
           {p.asinMatchScore !== null && !item.amazonVerified && (
             <span style={{ fontSize: 12, color: p.asinMatchScore < LOW_MATCH ? "#ff9f43" : "#9ab" }}>auto-match score {p.asinMatchScore.toFixed(2)}</span>
           )}
         </div>
+        {item.amazonTitle && <div style={{ fontSize: 13, color: "#cdd" }}>Amazon calls it: <em>{item.amazonTitle}</em></div>}
         <label style={S.check}>
           <input type="checkbox" checked={item.amazonVerified} disabled={!item.amazonUrl} onChange={(e) => void patch(item.id, { amazonVerified: e.target.checked })} />
           ✓ I opened it — this is the right Amazon product
@@ -374,6 +473,29 @@ function Worksheet({ slug, item, patch, replace, fail }: {
         />
       </label>
     </div>
+  );
+}
+
+function SourceBadge({ item }: { item: LineupItem }) {
+  const src = item.dimsSource;
+  const [text, color] =
+    !item.amazonUrl ? ["needs an Amazon link first", "#ff7b6b"]
+    : !item.specsCheckedAt ? ["reading Amazon… (up to a minute)", "#69e0ff"]
+    : src === "manual" ? ["your numbers (locked)", "#2ecc71"]
+    : src === "amazon-package" ? ["Amazon package size", "#2ecc71"]
+    : src?.includes("ai-weight") ? ["Amazon size + box allowance · WEIGHT IS AN AI GUESS", "#ff9f43"]
+    : src?.startsWith("amazon-item") ? ["Amazon item size + box allowance", "#f5c542"]
+    : ["Amazon lists no size/weight — enter by hand", "#ff7b6b"];
+  return <span style={{ fontSize: 12, color, border: `1px solid ${color}55`, borderRadius: 999, padding: "2px 8px" }}>{text}</span>;
+}
+
+function Chip({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button type="button" disabled={!value} style={{ ...S.btn, ...S.secondary, padding: "6px 10px", fontSize: 13, opacity: value ? 1 : 0.4 }}
+      onClick={() => { void navigator.clipboard.writeText(value).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1000); }); }}>
+      {copied ? "✓ copied" : `📋 ${label} ${value || "—"}`}
+    </button>
   );
 }
 
@@ -453,6 +575,7 @@ const S: Record<string, React.CSSProperties> = {
   primary: { background: "#2ecc71", color: "#062" },
   secondary: { background: "#1c2940", color: "#dde" },
   row: { background: "#111a2b", borderRadius: 12, marginBottom: 8, overflow: "hidden" },
+  rowOn: { outline: "2px solid #4a90e2" },
   rowHead: { display: "flex", alignItems: "center", gap: 8, padding: 8 },
   grip: { cursor: "grab", color: "#667", fontSize: 18, padding: "0 2px", userSelect: "none" },
   idx: { width: 26, textAlign: "right", color: "#89a", fontVariantNumeric: "tabular-nums", fontSize: 14 },

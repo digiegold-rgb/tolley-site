@@ -32,6 +32,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   const data: {
     amazonVerified?: boolean; tiktokListed?: boolean; soldAt?: Date | null; notes?: string | null;
     salePrice?: number | null; weightOz?: number | null; lengthIn?: number | null; widthIn?: number | null; heightIn?: number | null;
+    quantity?: number; dimsSource?: string | null; specsCheckedAt?: Date | null;
   } = {};
   if (typeof body.amazonVerified === "boolean") data.amazonVerified = body.amazonVerified;
   if (typeof body.tiktokListed === "boolean") data.tiktokListed = body.tiktokListed;
@@ -43,6 +44,18 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
       if (n === undefined) return NextResponse.json({ error: `${k} must be a number` }, { status: 400 });
       data[k] = n;
     }
+  }
+  if ("quantity" in body) {
+    const n = num(body.quantity, 9999);
+    if (n === undefined || n === null) return NextResponse.json({ error: "quantity must be a number" }, { status: 400 });
+    data.quantity = Math.max(0, Math.round(n));
+  }
+  // A hand-typed weight/size wins: the DGX specs worker never overwrites a "manual" row.
+  if (["weightOz", "lengthIn", "widthIn", "heightIn"].some((k) => k in body)) data.dimsSource = "manual";
+  // { recheckSpecs: true } → the DGX lineup-specs worker re-reads the Amazon page (price + package specs) within ~1 min.
+  if (body.recheckSpecs === true) {
+    data.specsCheckedAt = null;
+    if (body.overwrite === true) data.dimsSource = null;
   }
   if ("weightOz" in body) {
     const n = num(body.weightOz, 100_000);
