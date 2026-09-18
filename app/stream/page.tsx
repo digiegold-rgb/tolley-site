@@ -21,6 +21,9 @@ type Status = {
   events: { t: number; kind: string; msg: string }[];
 };
 
+type ChatMsg = { id: number; t: number; p: "yt" | "tt"; u: string; m: string; k: "chat" | "gift" | "join"; amt?: string };
+type ChatState = { items: ChatMsg[]; last: number; youtube?: { connected: boolean; video: string; error: string }; tiktok?: { connected: boolean; user: string; error: string; viewers: number }; error?: string };
+
 const DESTS: Dest[] = ["youtube", "tiktok"];
 const LABEL: Record<Dest, string> = { youtube: "YouTube", tiktok: "TikTok" };
 
@@ -39,6 +42,12 @@ export default function StreamPage() {
   const [sel, setSel] = useState<Record<Dest, boolean>>({ youtube: true, tiktok: false });
   const [holdPct, setHoldPct] = useState(0);
   const [showAdv, setShowAdv] = useState(false);
+  const [chat, setChat] = useState<ChatMsg[]>([]);
+  const [chatMeta, setChatMeta] = useState<ChatState | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [showJoins, setShowJoins] = useState(false);
+  const chatLast = useRef(0);
+  const chatBox = useRef<HTMLDivElement | null>(null);
   const holdTimer = useRef<number | null>(null);
   const holdStart = useRef(0);
 
@@ -66,6 +75,28 @@ export default function StreamPage() {
     const t = window.setInterval(() => void load(), 3000);
     return () => window.clearInterval(t);
   }, [authed, load]);
+
+  // Live chat: merged YouTube + TikTok feed, polled every 2 s while signed in.
+  useEffect(() => {
+    if (!authed) return;
+    let stop = false;
+    const tick = async () => {
+      try {
+        const r = await fetch(`/api/stream/chat?since=${chatLast.current}&limit=80`, { cache: "no-store" });
+        if (!r.ok) return;
+        const j: ChatState = await r.json();
+        setChatMeta(j);
+        if (j.items?.length) {
+          chatLast.current = j.last;
+          setChat((prev) => [...prev, ...j.items].slice(-300));
+        }
+      } catch { /* keep polling */ }
+    };
+    void tick();
+    const t = window.setInterval(() => { if (!stop) void tick(); }, 2000);
+    return () => { stop = true; window.clearInterval(t); };
+  }, [authed]);
+  useEffect(() => { const el = chatBox.current; if (el) el.scrollTop = el.scrollHeight; }, [chat, chatOpen]);
 
   async function cmd(path: string, body?: unknown) {
     setBusy(path);
@@ -176,6 +207,34 @@ export default function StreamPage() {
         </button>
       </div>
 
+      {/* live chat (YouTube + TikTok merged) */}
+      <div style={{ marginTop: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <div style={{ fontSize: 13, color: "#8a9", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Chat ·
+            <span style={{ color: chatMeta?.youtube?.connected ? "#2ecc71" : "#667" }}> ▶ YT</span>
+            <span style={{ color: chatMeta?.tiktok?.connected ? "#2ecc71" : "#667" }}> ♪ TT{chatMeta?.tiktok?.connected && chatMeta.tiktok.viewers ? ` ${chatMeta.tiktok.viewers}👀` : ""}</span>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button style={S.link} onClick={() => setShowJoins((v) => !v)}>{showJoins ? "hide joins" : "show joins"}</button>
+            <button style={S.link} onClick={() => setChatOpen((v) => !v)}>{chatOpen ? "▾ small" : "▴ full screen"}</button>
+          </div>
+        </div>
+        <div ref={chatBox} style={{ ...S.chat, height: chatOpen ? "70vh" : 220 }}>
+          {chat.filter((c) => showJoins || c.k !== "join").length === 0 && (
+            <div style={{ color: "#667", fontSize: 14 }}>{chatMeta?.error ? chatMeta.error : "No messages yet. YouTube connects when a live is found; TikTok when @digiegold is live."}</div>
+          )}
+          {chat.filter((c) => showJoins || c.k !== "join").map((c) => (
+            <div key={`${c.p}-${c.id}`} style={{ ...S.msg, ...(c.k === "gift" ? S.msgGift : {}) }}>
+              <span style={{ color: c.p === "yt" ? "#ff5c5c" : "#69e0ff", fontWeight: 700 }}>{c.p === "yt" ? "▶" : "♪"} </span>
+              <span style={{ color: "#dfe", fontWeight: 600 }}>{c.u}</span>
+              {c.k === "gift" && <span style={{ color: "#f5c542" }}> 🎁 {c.amt}</span>}
+              <span style={{ color: c.k === "join" ? "#889" : "#fff" }}> {c.m}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* advanced */}
       <button onClick={() => setShowAdv((v) => !v)} style={{ ...S.link, marginTop: 18 }}>{showAdv ? "▾" : "▸"} advanced</button>
       {showAdv && s && (
@@ -183,6 +242,11 @@ export default function StreamPage() {
           <div>Mimo URL: <code>{s.ingest.url}</code> · key ends …{s.ingest.keyTail}</div>
           <div>Auto-end after camera gone {s.limits.camGoneEndMin} min · max {s.limits.maxStreamMin} min · BRB after {s.limits.brbAfterS}s</div>
           <div>PC poller: {s.studio.online ? `online (${s.studio.host})` : "offline"} · LIVE Studio {s.studio.studioRunning ? "running" : "closed"} · Ending here force-closes LIVE Studio</div>
+          <div>Chat YT: {chatMeta?.youtube?.video || "searching for a live…"} {chatMeta?.youtube?.error && `· ${chatMeta.youtube.error}`} · TT: {chatMeta?.tiktok?.error || (chatMeta?.tiktok?.connected ? "connected" : "not live")}</div>
+          <form onSubmit={(e) => { e.preventDefault(); const f = e.currentTarget; const v = (f.elements.namedItem("yturl") as HTMLInputElement).value; void fetch("/api/stream/chat/youtube", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: v }) }); }} style={{ display: "flex", gap: 6 }}>
+            <input name="yturl" placeholder="paste YouTube live URL if chat can't find it" style={{ flex: 1, fontSize: 13, padding: 8, borderRadius: 8, border: "1px solid #334", background: "#111a2b", color: "#eef" }} />
+            <button type="submit" style={{ ...S.btn, ...S.secondary, padding: "8px 10px", fontSize: 13 }}>set</button>
+          </form>
           <div>MediaMTX {s.mediamtx.ok ? "ok" : "DOWN"} · program {s.obs.programReady ? "ready" : "idle"} {s.obs.lastError && `· OBS: ${s.obs.lastError}`}</div>
           <button style={{ ...S.btn, ...S.secondary, padding: "10px" }} disabled={!!busy} onClick={() => { if (window.confirm("Rotate the camera key? You must re-enter it in Mimo (sent to Telegram).")) void cmd("rotate-key"); }}>
             🔑 Rotate camera key
@@ -223,4 +287,7 @@ const S: Record<string, React.CSSProperties> = {
   tile: { background: "#111a2b", borderRadius: 12, padding: "10px 12px" },
   banner: { background: "#5a1f1a", color: "#ffd", padding: "10px 12px", borderRadius: 10, marginBottom: 12, fontSize: 14 },
   link: { background: "none", border: "none", color: "#8ab", fontSize: 14, padding: 0, cursor: "pointer" },
+  chat: { background: "#0e1626", border: "1px solid #223", borderRadius: 12, padding: "8px 10px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 },
+  msg: { fontSize: 17, lineHeight: 1.3, wordBreak: "break-word" },
+  msgGift: { background: "#2a2410", borderRadius: 8, padding: "4px 6px" },
 };
