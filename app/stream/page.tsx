@@ -247,6 +247,10 @@ export default function StreamPage() {
             <input name="yturl" placeholder="paste YouTube live URL if chat can't find it" style={{ flex: 1, fontSize: 13, padding: 8, borderRadius: 8, border: "1px solid #334", background: "#111a2b", color: "#eef" }} />
             <button type="submit" style={{ ...S.btn, ...S.secondary, padding: "8px 10px", fontSize: 13 }}>set</button>
           </form>
+          <form onSubmit={(e) => { e.preventDefault(); const f = e.currentTarget; const v = (f.elements.namedItem("ttuser") as HTMLInputElement).value; void fetch("/api/stream/chat/tiktok", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user: v }) }); }} style={{ display: "flex", gap: 6 }}>
+            <input name="ttuser" placeholder={`TikTok @handle to follow (now @${chatMeta?.tiktok?.user || "digiegold"})`} style={{ flex: 1, fontSize: 13, padding: 8, borderRadius: 8, border: "1px solid #334", background: "#111a2b", color: "#eef" }} />
+            <button type="submit" style={{ ...S.btn, ...S.secondary, padding: "8px 10px", fontSize: 13 }}>set</button>
+          </form>
           <div>MediaMTX {s.mediamtx.ok ? "ok" : "DOWN"} · program {s.obs.programReady ? "ready" : "idle"} {s.obs.lastError && `· OBS: ${s.obs.lastError}`}</div>
           <button style={{ ...S.btn, ...S.secondary, padding: "10px" }} disabled={!!busy} onClick={() => { if (window.confirm("Rotate the camera key? You must re-enter it in Mimo (sent to Telegram).")) void cmd("rotate-key"); }}>
             🔑 Rotate camera key
