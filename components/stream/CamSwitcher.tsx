@@ -63,7 +63,8 @@ export default function CamSwitcher({ cameras, armed, onStatus, compact }: Props
   const anyUp = isArmed && !!cams?.some((c) => c.connected);
   useEffect(() => {
     if (!anyUp) return;
-    const t = window.setInterval(() => setTick((n) => n + 1), 1000);
+    // Every thumb is a Vercel function hit through the tunnel: 2 s, and not at all while the tab is hidden.
+    const t = window.setInterval(() => { if (!document.hidden) setTick((n) => n + 1); }, 2000);
     return () => window.clearInterval(t);
   }, [anyUp]);
 
