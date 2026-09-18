@@ -219,6 +219,7 @@ export default function LineupBuilder({ initialSlug }: { initialSlug: string | n
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <a href={`/stream/products/${lineup.slug}`} style={{ ...S.btn, ...S.primary, textDecoration: "none" }}>▶ Open clicker</a>
+                <a href={`/api/stream-lineup/${lineup.slug}/whatnot`} style={{ ...S.btn, background: "#6c3df4", color: "#fff", textDecoration: "none" }} title="Whatnot bulk-import CSV for this lineup (settings are in the purple panel below)">⬇ Whatnot CSV</a>
                 <button onClick={() => void deleteLineup()} style={{ ...S.btn, ...S.secondary }}>Delete</button>
               </div>
             </div>
@@ -254,6 +255,15 @@ export default function LineupBuilder({ initialSlug }: { initialSlug: string | n
                       <Flags item={item} />
                     </div>
                   </button>
+                  <label style={{ display: "grid", justifyItems: "center", fontSize: 10, color: "#89a", flexShrink: 0 }} title="Quantity on hand (goes into the Whatnot CSV)">
+                    QTY
+                    <input
+                      key={`q-${item.id}-${item.quantity}`} type="number" min={0} step={1} defaultValue={item.quantity}
+                      onBlur={(e) => { const n = Number(e.currentTarget.value); if (e.currentTarget.value !== "" && Number.isFinite(n) && n !== item.quantity) void patchItem(item.id, { quantity: n }); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                      style={{ ...S.input, width: 56, padding: 6, textAlign: "center" }}
+                    />
+                  </label>
                   <button style={S.icon} onClick={() => move(item.id, -1)} disabled={idx === 0} aria-label="Move up">▲</button>
                   <button style={S.icon} onClick={() => move(item.id, 1)} disabled={idx === lineup.items.length - 1} aria-label="Move down">▼</button>
                   <button style={S.icon} onClick={() => void removeItem(item.id)} aria-label="Remove from lineup">✕</button>

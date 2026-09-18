@@ -33,6 +33,15 @@ export default function LineupClicker({ slug }: { slug: string }) {
   const items = useMemo(() => lineup?.items ?? [], [lineup]);
   const item: LineupItem | undefined = items[idx];
 
+  // Which of the current item's photos is showing (↑/↓ or the ‹ › buttons). Keyed by item so a new product starts at photo 1.
+  const [pic, setPic] = useState<{ id: string; n: number }>({ id: "", n: 0 });
+  const photos = item?.product.imageUrls ?? [];
+  const picAt = item && pic.id === item.id ? Math.min(pic.n, Math.max(0, photos.length - 1)) : 0;
+  const flipPic = useCallback((by: number) => {
+    if (!item || photos.length < 2) return;
+    setPic({ id: item.id, n: ((picAt + by) % photos.length + photos.length) % photos.length });
+  }, [item, photos.length, picAt]);
+
   useEffect(() => {
     let stop = false;
     (async () => {
@@ -104,13 +113,15 @@ export default function LineupClicker({ slug }: { slug: string }) {
       switch (e.key) {
         case "ArrowRight": case " ": case "PageDown": e.preventDefault(); go(idx + 1); break;
         case "ArrowLeft": case "PageUp": e.preventDefault(); go(idx - 1); break;
+        case "ArrowDown": e.preventDefault(); flipPic(1); break;
+        case "ArrowUp": e.preventDefault(); flipPic(-1); break;
         case "a": case "A": e.preventDefault(); show(item?.amazonUrl, true); break;
         case "s": case "S": e.preventDefault(); void toggleSold(); break;
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, idx, item, show, toggleSold]);
+  }, [go, idx, item, show, toggleSold, flipPic]);
 
   if (err && !lineup) {
     return <main style={S.wrap}><div style={S.banner}>{err}</div><Link href="/stream/products" style={S.a}>← lineups</Link></main>;
@@ -149,11 +160,27 @@ export default function LineupClicker({ slug }: { slug: string }) {
         <div style={S.cols}>
           <section style={S.now}>
             <div style={S.photo}>
-              {item.product.imageUrls[0] && (
+              {photos[picAt] && (
                 // eslint-disable-next-line @next/next/no-img-element -- Blob URL from the shop, owner-only page
-                <img src={item.product.imageUrls[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                <img src={photos[picAt]} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
               )}
               {item.soldAt && <span style={S.sold}>SOLD</span>}
+              {photos.length > 1 && (
+                <>
+                  <button type="button" aria-label="Previous photo" style={{ ...S.picArrow, left: 8 }} onClick={() => flipPic(-1)}>‹</button>
+                  <button type="button" aria-label="Next photo" style={{ ...S.picArrow, right: 8 }} onClick={() => flipPic(1)}>›</button>
+                  <span style={S.picCount}>{picAt + 1} / {photos.length} · ↑ ↓</span>
+                </>
+              )}
+              {photos.length > 1 && (
+                <div style={S.picStrip}>
+                  {photos.map((u, k) => (
+                    // eslint-disable-next-line @next/next/no-img-element -- Blob URL from the shop, owner-only page
+                    <img key={u} src={u} alt="" onClick={() => setPic({ id: item.id, n: k })}
+                      style={{ width: 54, height: 54, objectFit: "cover", borderRadius: 8, cursor: "pointer", flexShrink: 0, outline: k === picAt ? "2px solid #4a90e2" : "none", opacity: k === picAt ? 1 : 0.7 }} />
+                  ))}
+                </div>
+              )}
             </div>
             <div style={{ minWidth: 0 }}>
               <h1 style={S.title}>{item.product.title}</h1>
@@ -235,6 +262,9 @@ const S: Record<string, React.CSSProperties> = {
   hint: { background: "#16233a", color: "#cde", padding: "10px 12px", borderRadius: 10, marginBottom: 12, fontSize: 14 },
   cols: { display: "flex", flexWrap: "wrap", gap: 22, alignItems: "flex-start" },
   now: { flex: "3 1 560px", minWidth: 0, display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", alignItems: "start" },
+  picArrow: { position: "absolute", top: "45%", transform: "translateY(-50%)", width: 48, height: 72, border: "none", borderRadius: 10, background: "rgba(5,10,20,0.6)", color: "#fff", fontSize: 32, cursor: "pointer" },
+  picCount: { position: "absolute", top: 10, right: 10, fontSize: 12, color: "#fff", background: "rgba(5,10,20,0.65)", borderRadius: 8, padding: "2px 8px" },
+  picStrip: { position: "absolute", left: 8, right: 8, bottom: 8, display: "flex", gap: 6, overflowX: "auto", padding: 4, background: "rgba(5,10,20,0.55)", borderRadius: 10 },
   photo: { position: "relative", aspectRatio: "1 / 1", background: "#0a0f1a", borderRadius: 14, overflow: "hidden" },
   sold: { position: "absolute", left: 12, top: 12, background: "#2ecc71", color: "#062", fontWeight: 800, borderRadius: 8, padding: "4px 10px" },
   title: { fontSize: 28, lineHeight: 1.2, margin: 0 },
