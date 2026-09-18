@@ -181,7 +181,6 @@ export default function StreamPage() {
   const dgxDown = !!offline;
   const live = !!s?.armed;
   const onAirCam = s?.cameras?.find((c) => c.onAir);
-  const whatnot = s?.destinations.whatnot;
   const studioLane = !!s && !s.destinations.tiktok?.configured; // TikTok goes out through LIVE Studio on the PC
 
   return (
@@ -201,6 +200,7 @@ export default function StreamPage() {
           // TikTok without a stream key runs through LIVE Studio on the PC: show the poller heartbeat instead.
           const ds = s?.destinations[d];
           if (s && !ds) return null; // older director: no such destination
+          if (d === "whatnot" && !ds?.configured) return null; // Whatnot runs through OBS on the Mac (WHIP), not a pusher
           if (d === "tiktok" && s && !ds?.configured) {
             const st = s.studio;
             return <Tile key={d} label="TikTok · LIVE Studio" ok={st.online && st.studioRunning}
@@ -221,7 +221,7 @@ export default function StreamPage() {
 
       {/* destinations */}
       <div style={{ display: "flex", gap: 8, margin: "14px 0" }}>
-        {DESTS.filter((d) => !(s && !s.destinations[d]) && !(d === "tiktok" && s && !s.destinations.tiktok?.configured)).map((d) => (
+        {DESTS.filter((d) => !(s && !s.destinations[d]) && !(d === "tiktok" && s && !s.destinations.tiktok?.configured) && !(d === "whatnot" && !s?.destinations.whatnot?.configured)).map((d) => (
           <button key={d} onClick={() => toggleDest(d)} disabled={!s?.destinations[d]?.configured}
             style={{ ...S.chip, ...(sel[d] ? S.chipOn : {}), opacity: s?.destinations[d]?.configured ? 1 : 0.4 }}>
             {sel[d] ? "✓ " : ""}{LABEL[d]}
@@ -229,29 +229,17 @@ export default function StreamPage() {
         ))}
       </div>
 
-      {whatnot && (
-        <details style={{ margin: "-4px 0 14px", fontSize: 13, color: "#bcc" }}>
-          <summary style={{ cursor: "pointer" }}>
-            Whatnot show key · {whatnot.configured ? `set${whatnot.keyTail ? ` (…${whatnot.keyTail})` : ""}` : "not set"} — new one every show
-          </summary>
-          <form
-            style={{ display: "grid", gap: 6, marginTop: 8 }}
-            onSubmit={(e) => {
-              e.preventDefault();
-              const f = e.currentTarget;
-              const url = (f.elements.namedItem("wnurl") as HTMLInputElement).value.trim();
-              const key = (f.elements.namedItem("wnkey") as HTMLInputElement).value.trim();
-              if (!url || !key) return;
-              void cmd("destinations/whatnot/key", { url, key });
-              f.reset(); // the key never stays in the page
-            }}
-          >
-            <input name="wnurl" placeholder="RTMP URL from Whatnot Seller Hub → Stream with OBS" autoComplete="off" style={S.input} />
-            <input name="wnkey" type="password" placeholder="Stream key" autoComplete="off" style={S.input} />
-            <button type="submit" disabled={!!busy} style={{ ...S.btn, ...S.secondary, padding: "10px", fontSize: 14 }}>Save Whatnot key</button>
-          </form>
-        </details>
-      )}
+      {/* Whatnot streams over WHIP through ITS OWN page driving a local OBS (not an RTMP key), so it is not a pusher here:
+          OBS on the Mac pulls the house program feed and Whatnot's "Stream with OBS" page points that OBS at the show. */}
+      <details style={{ margin: "-4px 0 14px", fontSize: 13, color: "#bcc" }}>
+        <summary style={{ cursor: "pointer" }}>🟣 Whatnot — goes out through OBS on the Mac</summary>
+        <div style={{ display: "grid", gap: 6, marginTop: 8, lineHeight: 1.5 }}>
+          <span>1. Here: <b>Go Live</b> with nothing ticked (LIVE Studio off) and start the cameras — that lights up the house program feed.</span>
+          <span>2. Mac OBS: one Media Source (uncheck “Local File”) with this input. Cuts, BRB and Privacy all ride along.</span>
+          <code style={{ background: "#0e1626", padding: "6px 8px", borderRadius: 8, userSelect: "all", wordBreak: "break-all" }}>rtsp://192.168.2.196:8554/program</code>
+          <span>3. Whatnot Seller Hub → Stream with OBS (Chrome on the same Mac) → Connect → Open Show → Start Show.</span>
+        </div>
+      </details>
 
       {!live && studioLane && s?.cameras && (
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#bcc", margin: "0 0 12px" }}>
