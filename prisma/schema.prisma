@@ -5949,6 +5949,8 @@ model StreamLineup {
   slug         String             @unique
   name         String
   currentIndex Int                @default(0)
+  /// Whatnot export defaults: { type, startPrice, heavyProfile }
+  whatnot      Json?
   active       Boolean            @default(false)
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
@@ -5983,6 +5985,8 @@ model StreamLineupItem {
   amazonPriceAt    DateTime?
   /// null = the DGX worker should (re)read the Amazon page for this item
   specsCheckedAt   DateTime?
+  /// Whatnot CSV fields: { category, subCategory, condition, hazmat, shippingProfile?, source: "ai" | "manual" }
+  whatnot          Json?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
   lineup           StreamLineup @relation(fields: [lineupId], references: [id], onDelete: Cascade)

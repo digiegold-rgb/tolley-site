@@ -38,10 +38,14 @@ export type LineupItem = {
   amazonTitle: string | null;
   amazonPriceAt: string | null;
   specsCheckedAt: string | null;
+  whatnot: { category?: string; subCategory?: string; condition?: string; hazmat?: string; shippingProfile?: string; source?: string } | null;
   product: LineupProduct;
 };
 
-export type Lineup = { id: string; slug: string; name: string; currentIndex: number; active: boolean; items: LineupItem[] };
+export type Lineup = {
+  id: string; slug: string; name: string; currentIndex: number; active: boolean; items: LineupItem[];
+  whatnot: { type?: "Auction" | "Buy it Now"; startPrice?: number; heavyProfile?: string } | null;
+};
 export type LineupSummary = Omit<Lineup, "items"> & { itemCount: number };
 
 export type PickerProduct = {

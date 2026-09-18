@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { WHATNOT, defaultCondition, templateProfileFor } from "@/lib/stream/whatnot";
+
 import {
   api, dimsMissing, money, pctUnderAmazon,
   type Lineup, type LineupItem, type LineupSummary, type PickerProduct,
@@ -221,6 +223,8 @@ export default function LineupBuilder({ initialSlug }: { initialSlug: string | n
               </div>
             </div>
 
+            <WhatnotPanel lineup={lineup} refreshKey={lineupKey} onSaved={(w) => setLineup((l) => (l ? { ...l, whatnot: w } : l))} fail={fail} />
+
             {lineup.items.length === 0 && <p style={{ color: "#9aa" }}>Empty. Tap products on the right to add them in the order you&apos;ll sell them.</p>}
 
             {lineup.items.map((item, idx) => (
@@ -431,7 +435,7 @@ function Worksheet({ slug, item, patch, replace, fail, imgAt, onFlip }: {
         {item.specsNote && <div style={{ fontSize: 12, color: "#9ab" }}>Amazon lists: {item.specsNote}</div>}
         <div style={{ fontSize: 12, color: "#89a" }}>
           Filled in automatically from the item&apos;s Amazon page. When Amazon only gives the bare product&apos;s size, 2&quot; is added per side for the retail box
-          and the weight gets +20% + ½ lb, rounded UP — so labels err heavy, not light. Type over any number to lock your own value.
+          and the weight gets +15% + ¼ lb, rounded UP — so labels err heavy, not light. No Amazon link yet? It looks for one automatically (unverified — check it). Type over any number to lock your own value.
         </div>
       </div>
 
@@ -457,6 +461,8 @@ function Worksheet({ slug, item, patch, replace, fail, imgAt, onFlip }: {
         </form>
       </div>
 
+      <WhatnotFields item={item} patch={patch} />
+
       <label style={S.check}>
         <input type="checkbox" checked={item.tiktokListed} onChange={(e) => void patch(item.id, { tiktokListed: e.target.checked })} />
         ✓ Added to TikTok Shop
@@ -476,6 +482,122 @@ function Worksheet({ slug, item, patch, replace, fail, imgAt, onFlip }: {
   );
 }
 
+// Whatnot CSV export: lineup-wide settings + what still needs attention before the file is clean.
+function WhatnotPanel({ lineup, refreshKey, onSaved, fail }: {
+  lineup: Lineup;
+  refreshKey: number;
+  onSaved: (w: Lineup["whatnot"]) => void;
+  fail: (e: unknown) => void;
+}) {
+  const [show, setShow] = useState(false);
+  const [rows, setRows] = useState<{ title: string; warnings: string[] }[] | null>(null);
+  const w = lineup.whatnot ?? {};
+  const type = w.type ?? "Auction";
+  const sig = JSON.stringify([lineup.items.map((i) => [i.id, i.weightOz, i.quantity, i.salePrice, i.soldAt, i.whatnot]), w]);
+
+  useEffect(() => {
+    if (!show) return;
+    let stop = false;
+    (async () => {
+      try {
+        const j = await api<{ rows: { title: string; warnings: string[] }[] }>(`/api/stream-lineup/${lineup.slug}/whatnot?preview=1`);
+        if (!stop) setRows(j.rows);
+      } catch (e) { if (!stop) fail(e); }
+    })();
+    return () => { stop = true; };
+  }, [show, lineup.slug, sig, refreshKey, fail]);
+
+  async function save(next: Record<string, unknown>) {
+    try {
+      const j = await api<{ lineup: { whatnot: Lineup["whatnot"] } }>(`/api/stream-lineup/${lineup.slug}`, "PATCH", { whatnot: { ...w, ...next } });
+      onSaved(j.lineup.whatnot);
+    } catch (e) { fail(e); }
+  }
+
+  const warn = rows?.filter((r) => r.warnings.length) ?? [];
+  return (
+    <div style={{ ...S.amz, marginBottom: 10 }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <button type="button" style={{ ...S.btn, ...S.secondary, padding: "8px 12px" }} onClick={() => setShow((v) => !v)}>🟣 Whatnot show CSV {show ? "▴" : "▾"}</button>
+        {show && rows && <span style={{ fontSize: 13, color: warn.length ? "#f5c542" : "#2ecc71" }}>{rows.length} listings · {warn.length ? `${warn.length} need a look` : "all clean"}</span>}
+      </div>
+      {show && (
+        <>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+            <label style={{ display: "grid", gap: 2, fontSize: 12, color: "#9ab" }}>
+              Listing type
+              <select value={type} onChange={(e) => void save({ type: e.target.value })} style={S.input}>
+                <option>Auction</option>
+                <option>Buy it Now</option>
+              </select>
+            </label>
+            {type === "Auction" ? (
+              <label style={{ display: "grid", gap: 2, fontSize: 12, color: "#9ab" }}>
+                Starting bid ($)
+                <input key={`sp-${w.startPrice ?? 1}`} type="number" min={0} step={1} defaultValue={w.startPrice ?? 1} style={{ ...S.input, width: 90 }}
+                  onBlur={(e) => { const n = Number(e.currentTarget.value); if (Number.isFinite(n) && n !== (w.startPrice ?? 1)) void save({ startPrice: n }); }} />
+              </label>
+            ) : <span style={{ fontSize: 12, color: "#9ab", paddingBottom: 10 }}>price = each item&apos;s sale price · offers on</span>}
+            <label style={{ display: "grid", gap: 2, fontSize: 12, color: "#9ab", flex: 1, minWidth: 220 }}>
+              Custom shipping profile for items over 14 lb (exact name you created in Whatnot)
+              <input key={`hp-${w.heavyProfile ?? ""}`} defaultValue={w.heavyProfile ?? ""} placeholder="e.g. Heavy 15-25 lbs" style={S.input}
+                onBlur={(e) => { if (e.currentTarget.value.trim() !== (w.heavyProfile ?? "")) void save({ heavyProfile: e.currentTarget.value }); }} />
+            </label>
+            <a href={`/api/stream-lineup/${lineup.slug}/whatnot`} style={{ ...S.btn, ...S.primary, textDecoration: "none" }}>⬇ Download CSV</a>
+          </div>
+          {warn.length > 0 && (
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#f5c542", display: "grid", gap: 2 }}>
+              {warn.map((r) => <li key={r.title}><b style={{ color: "#dde" }}>{r.title.slice(0, 60)}</b> — {r.warnings.join("; ")}</li>)}
+            </ul>
+          )}
+          <div style={{ fontSize: 12, color: "#89a" }}>
+            Upload it in Whatnot on a computer: Seller Hub → Shows → open the show → Add → Create Temporary Listing → Upload CSV. Photos come along
+            automatically (up to 8 per item), sold items are skipped, order = your sale order. Category / condition per item are under each item below.
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function WhatnotFields({ item, patch }: { item: LineupItem; patch: (id: string, body: Record<string, unknown>) => Promise<void> }) {
+  const w = item.whatnot ?? {};
+  const subs = w.category ? WHATNOT.sub[w.category] ?? [] : [];
+  const conds = w.subCategory ? WHATNOT.cond[w.subCategory] ?? [] : [];
+  const auto = templateProfileFor(item.weightOz);
+  const set = (next: Record<string, string | undefined>) => void patch(item.id, { whatnot: { ...w, ...next } });
+  const sel = (label: string, value: string, options: string[], onChange: (v: string) => void, disabled = false) => (
+    <label style={{ display: "grid", gap: 2, fontSize: 12, color: "#9ab", minWidth: 150, flex: 1 }}>
+      {label}
+      <select value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)} style={S.input}>
+        <option value="">—</option>
+        {options.map((o) => <option key={o}>{o}</option>)}
+      </select>
+    </label>
+  );
+  return (
+    <div style={S.amz}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <span style={S.label}>Whatnot listing</span>
+        <span style={{ fontSize: 12, color: !w.category ? "#f5c542" : w.source === "ai" ? "#69e0ff" : "#2ecc71" }}>
+          {!w.category ? "category not picked yet (auto-pick runs within a minute)" : w.source === "ai" ? "auto-picked — glance at it" : "your pick"}
+        </span>
+      </div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        {sel("Category", w.category ?? "", WHATNOT.categories, (v) => set({ category: v || undefined, subCategory: undefined, condition: undefined }))}
+        {sel("Sub category", w.subCategory ?? "", subs, (v) => set({ subCategory: v || undefined, condition: v ? defaultCondition(v) || undefined : undefined }), !subs.length)}
+        {sel("Condition", w.condition ?? "", conds, (v) => set({ condition: v || undefined }), !conds.length)}
+        {sel("Hazmat", w.hazmat ?? "Not Hazmat", WHATNOT.hazmat, (v) => set({ hazmat: v || undefined }))}
+      </div>
+      <label style={{ display: "grid", gap: 2, fontSize: 12, color: "#9ab" }}>
+        Shipping profile — from the package weight: <b style={{ color: auto ? "#dde" : "#f5c542" }}>{auto ?? (item.weightOz ? "over 14 lb → uses the lineup’s custom heavy profile" : "needs a weight")}</b>
+        <input key={`wsp-${w.shippingProfile ?? ""}`} defaultValue={w.shippingProfile ?? ""} placeholder="leave empty, or type the exact name of a custom Whatnot shipping profile for this item" style={S.input}
+          onBlur={(e) => { if (e.currentTarget.value.trim() !== (w.shippingProfile ?? "")) set({ shippingProfile: e.currentTarget.value.trim() || undefined }); }} />
+      </label>
+    </div>
+  );
+}
+
 function SourceBadge({ item }: { item: LineupItem }) {
   const src = item.dimsSource;
   const [text, color] =
@@ -484,6 +606,7 @@ function SourceBadge({ item }: { item: LineupItem }) {
     : src === "manual" ? ["your numbers (locked)", "#2ecc71"]
     : src === "amazon-package" ? ["Amazon package size", "#2ecc71"]
     : src?.includes("ai-weight") ? ["Amazon size + box allowance · WEIGHT IS AN AI GUESS", "#ff9f43"]
+    : src?.startsWith("amazon-item") && !item.weightOz ? ["Amazon size + box allowance · NO WEIGHT on Amazon — read the carton label or weigh it", "#ff9f43"]
     : src?.startsWith("amazon-item") ? ["Amazon item size + box allowance", "#f5c542"]
     : ["Amazon lists no size/weight — enter by hand", "#ff7b6b"];
   return <span style={{ fontSize: 12, color, border: `1px solid ${color}55`, borderRadius: 999, padding: "2px 8px" }}>{text}</span>;

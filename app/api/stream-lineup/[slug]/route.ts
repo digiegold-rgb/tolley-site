@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { getLineup } from "@/lib/stream/lineup";
+import { normalizeLineupSettings } from "@/lib/stream/whatnot";
 import { validateWdAdmin } from "@/lib/wd-auth";
 
 export const runtime = "nodejs";
@@ -18,7 +19,7 @@ export async function GET(_request: NextRequest, ctx: Ctx) {
   return NextResponse.json({ lineup }, { headers: { "cache-control": "no-store" } });
 }
 
-// { name?, currentIndex?, active? } — activating one lineup deactivates the rest.
+// { name?, currentIndex?, active?, whatnot? } — activating one lineup deactivates the rest.
 export async function PATCH(request: NextRequest, ctx: Ctx) {
   const { authed } = await validateWdAdmin();
   if (!authed) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -28,7 +29,8 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   const lineup = await prisma.streamLineup.findUnique({ where: { slug }, select: { id: true, _count: { select: { items: true } } } });
   if (!lineup) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  const data: { name?: string; currentIndex?: number; active?: boolean } = {};
+  const data: { name?: string; currentIndex?: number; active?: boolean; whatnot?: { type: string; startPrice: number; heavyProfile: string } } = {};
+  if (body?.whatnot && typeof body.whatnot === "object") data.whatnot = normalizeLineupSettings(body.whatnot);
   if (typeof body?.name === "string" && body.name.trim()) data.name = body.name.trim().slice(0, 120);
   if (Number.isInteger(body?.currentIndex)) {
     data.currentIndex = Math.min(Math.max(0, body.currentIndex), Math.max(0, lineup._count.items - 1));

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { ITEM_INCLUDE } from "@/lib/stream/lineup";
+import { normalizeItemFields } from "@/lib/stream/whatnot";
 import { validateWdAdmin } from "@/lib/wd-auth";
 
 export const runtime = "nodejs";
@@ -32,8 +33,13 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   const data: {
     amazonVerified?: boolean; tiktokListed?: boolean; soldAt?: Date | null; notes?: string | null;
     salePrice?: number | null; weightOz?: number | null; lengthIn?: number | null; widthIn?: number | null; heightIn?: number | null;
-    quantity?: number; dimsSource?: string | null; specsCheckedAt?: Date | null;
+    quantity?: number; dimsSource?: string | null; specsCheckedAt?: Date | null; whatnot?: Record<string, string>;
   } = {};
+  // Whatnot CSV fields — only strings that exist in Whatnot's template survive; a hand edit is marked manual.
+  if (body.whatnot && typeof body.whatnot === "object") {
+    const w = normalizeItemFields({ ...body.whatnot, source: "manual" });
+    data.whatnot = Object.fromEntries(Object.entries(w).filter(([, v]) => v !== undefined)) as Record<string, string>;
+  }
   if (typeof body.amazonVerified === "boolean") data.amazonVerified = body.amazonVerified;
   if (typeof body.tiktokListed === "boolean") data.tiktokListed = body.tiktokListed;
   if (typeof body.sold === "boolean") data.soldAt = body.sold ? new Date() : null;
