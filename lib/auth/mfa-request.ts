@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { consumeRateLimit, rateLimitByIp } from "@/lib/rate-limit";
 import { readMfaIdentity } from "./mfa-session";
 
-export async function requireMfaRequest(request: NextRequest) {
+export async function requireMfaRequest(request: NextRequest, { requireFreshSignIn = true } = {}) {
   const origin = request.headers.get("origin");
   if (!origin || origin !== request.nextUrl.origin) {
     return { response: NextResponse.json({ error: "Invalid request origin" }, { status: 403 }) };
@@ -10,7 +10,7 @@ export async function requireMfaRequest(request: NextRequest) {
   const limited = await rateLimitByIp(request, "mfa", 30, 900);
   if (limited) return { response: limited };
   const identity = await readMfaIdentity();
-  if (!identity || !identity.fresh) {
+  if (!identity || (requireFreshSignIn && !identity.fresh)) {
     return { response: NextResponse.json({ error: "Please sign out and sign in again to verify your identity.",
       code: "REAUTH_REQUIRED" }, { status: 401 }) };
   }

@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.42.4';
+export const APP_VERSION = '1.42.5';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.42.5',
+    date: '2026-09-17',
+    title: 'Fewer authenticator prompts',
+    items: [
+      'Authenticator verification now lasts 30 days in each signed-in browser.',
+      'When verification expires, enter a new code without having to sign out and back in first.',
+      'Signing out, clearing cookies or resetting your password still requires verification again.',
+    ],
+  },
   {
     version: '1.42.4',
     date: '2026-09-14',

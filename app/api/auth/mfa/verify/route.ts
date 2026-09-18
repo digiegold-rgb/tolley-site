@@ -5,9 +5,11 @@ import { requireMfaRequest } from "@/lib/auth/mfa-request";
 import { enrollmentKey, mfaCookie, signMfaProof } from "@/lib/auth/mfa-session";
 
 export async function POST(request: NextRequest) {
-  const guard = await requireMfaRequest(request);
+  // An enrolled authenticator can renew MFA throughout a valid login session.
+  // Creating/changing enrollment still requires a recent primary sign-in.
+  const guard = await requireMfaRequest(request, { requireFreshSignIn: false });
   if (guard.response) return guard.response;
-  const { userId, sessionId } = guard.identity!;
+  const { userId, sessionId, fresh } = guard.identity!;
   const body = await request.json().catch(() => null);
   if (!body || typeof body.code !== "string" || !/^(?:\d{6}|[a-fA-F0-9]{8})$/.test(body.code)) {
     return NextResponse.json({ error: "Invalid code" }, { status: 400 });
@@ -15,7 +17,7 @@ export async function POST(request: NextRequest) {
   const key = await prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
     const mfa = await tx.userMfa.findUnique({ where: { userId } });
-    if (!mfa) return null;
+    if (!mfa || (!mfa.verified && !fresh)) return null;
     if (body.isBackupCode === true) {
       if (!mfa.verified) return null;
       const codes = await tx.mfaBackupCode.findMany({ where: { userId, usedAt: null } });
