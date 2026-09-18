@@ -1,12 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+import CamSwitcher, { type StreamCam } from "@/components/stream/CamSwitcher";
 
 // tolley.io/stream — one-handed phone remote for the house live pipeline.
 // Gated like /hq: owner NextAuth session + MFA (validateWdAdmin). Commands go through /api/stream/* → DGX director.
 // tolley.io stores no stream keys.
 
-type Dest = "youtube" | "tiktok";
+type Dest = "youtube" | "tiktok" | "whatnot";
+type DestState = { enabled: boolean; configured: boolean; running: boolean; uptimeS: number; keyTail?: string };
 type Status = {
   armed: boolean;
   privacy: boolean;
@@ -14,7 +18,9 @@ type Status = {
   camera: { connected: boolean; kbps: number; sinceS: number; goneS: number };
   obs: { connected: boolean; scene: string; streaming: boolean; programReady: boolean; lastError: string };
   mediamtx: { ok: boolean };
-  destinations: Record<Dest, { enabled: boolean; configured: boolean; running: boolean; uptimeS: number }>;
+  // `whatnot`, `cameras` and `keyTail` only exist on a multi-cam director — everything new is optional.
+  destinations: Partial<Record<Dest, DestState>>;
+  cameras?: StreamCam[];
   limits: { camGoneEndMin: number; maxStreamMin: number; brbAfterS: number };
   ingest: { url: string; keyTail: string };
   studio: { online: boolean; ageS: number; studioRunning: boolean; obsRunning: boolean; host: string };
@@ -24,8 +30,10 @@ type Status = {
 type ChatMsg = { id: number; t: number; p: "yt" | "tt"; u: string; m: string; k: "chat" | "gift" | "join"; amt?: string };
 type ChatState = { items: ChatMsg[]; last: number; youtube?: { connected: boolean; video: string; error: string }; tiktok?: { connected: boolean; user: string; error: string; viewers: number }; error?: string };
 
-const DESTS: Dest[] = ["youtube", "tiktok"];
-const LABEL: Record<Dest, string> = { youtube: "YouTube", tiktok: "TikTok" };
+const DESTS: Dest[] = ["youtube", "tiktok", "whatnot"];
+const LABEL: Record<Dest, string> = { youtube: "YouTube", tiktok: "TikTok", whatnot: "Whatnot" };
+
+type NowSelling = { slug: string; name: string; currentIndex: number; total: number; currentTitle: string | null };
 
 function fmt(s: number) {
   if (!s) return "0:00";
@@ -39,7 +47,9 @@ export default function StreamPage() {
   const [status, setStatus] = useState<Status | null>(null);
   const [offline, setOffline] = useState<string>("");
   const [busy, setBusy] = useState("");
-  const [sel, setSel] = useState<Record<Dest, boolean>>({ youtube: true, tiktok: false });
+  const [sel, setSel] = useState<Record<Dest, boolean>>({ youtube: true, tiktok: false, whatnot: false });
+  const [openStudio, setOpenStudio] = useState(true);
+  const [selling, setSelling] = useState<NowSelling | null>(null);
   const [holdPct, setHoldPct] = useState(0);
   const [showAdv, setShowAdv] = useState(false);
   const [chat, setChat] = useState<ChatMsg[]>([]);
@@ -61,7 +71,7 @@ export default function StreamPage() {
       if (!r.ok) { setOffline(j.error || `HTTP ${r.status}`); return; }
       setOffline("");
       setStatus(j);
-      if (j.armed) setSel({ youtube: j.destinations.youtube.enabled, tiktok: j.destinations.tiktok.enabled });
+      if (j.armed) setSel({ youtube: !!j.destinations.youtube?.enabled, tiktok: !!j.destinations.tiktok?.enabled, whatnot: !!j.destinations.whatnot?.enabled });
     } catch (e) {
       setChecking(false);
       setOffline(e instanceof Error ? e.message : "network error");
@@ -75,6 +85,23 @@ export default function StreamPage() {
     const t = window.setInterval(() => void load(), 3000);
     return () => window.clearInterval(t);
   }, [authed, load]);
+
+  // "Now selling" — the active product lineup, if the clicker is running one.
+  useEffect(() => {
+    if (!authed) return;
+    let stop = false;
+    const tick = async () => {
+      try {
+        const r = await fetch("/api/stream-lineup", { cache: "no-store" });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (!stop) setSelling(j.active ?? null);
+      } catch { /* keep polling */ }
+    };
+    void tick();
+    const t = window.setInterval(() => void tick(), 10_000);
+    return () => { stop = true; window.clearInterval(t); };
+  }, [authed]);
 
   // Live chat: merged YouTube + TikTok feed, polled every 2 s while signed in.
   useEffect(() => {
@@ -104,7 +131,8 @@ export default function StreamPage() {
       const r = await fetch(`/api/stream/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body ?? {}) });
       if (r.status === 401) { setAuthed(false); return; }
       const j = await r.json();
-      if (r.ok) { setStatus(j); setOffline(""); } else setOffline(j.error || `HTTP ${r.status}`);
+      if (!r.ok) setOffline(j.error || `HTTP ${r.status}`);
+      else { setOffline(""); if (typeof j?.armed === "boolean") setStatus(j); else void load(); }
     } catch (e) {
       setOffline(e instanceof Error ? e.message : "network error");
     } finally {
@@ -152,6 +180,9 @@ export default function StreamPage() {
   const cam = s?.camera;
   const dgxDown = !!offline;
   const live = !!s?.armed;
+  const onAirCam = s?.cameras?.find((c) => c.onAir);
+  const whatnot = s?.destinations.whatnot;
+  const studioLane = !!s && !s.destinations.tiktok?.configured; // TikTok goes out through LIVE Studio on the PC
 
   return (
     <main style={S.wrap}>
@@ -164,34 +195,75 @@ export default function StreamPage() {
 
       {/* status strip */}
       <div style={S.grid}>
-        <Tile label="Camera" ok={!!cam?.connected} text={cam?.connected ? `${cam.kbps} kbps · ${fmt(cam.sinceS)}` : cam ? `gone ${fmt(cam.goneS)}` : "—"} />
+        <Tile label={onAirCam ? `Camera · ${onAirCam.label || `Cam ${onAirCam.slot}`}` : "Camera"} ok={!!cam?.connected} text={cam?.connected ? `${onAirCam?.kbps ?? cam.kbps} kbps · ${fmt(cam.sinceS)}` : cam ? `gone ${fmt(cam.goneS)}` : "—"} />
         <Tile label="OBS" ok={!!s?.obs.connected} text={s ? `${s.obs.scene || "?"}${s.obs.streaming ? " · encoding" : ""}` : "—"} />
         {DESTS.map((d) => {
           // TikTok without a stream key runs through LIVE Studio on the PC: show the poller heartbeat instead.
-          if (d === "tiktok" && s && !s.destinations.tiktok.configured) {
+          const ds = s?.destinations[d];
+          if (s && !ds) return null; // older director: no such destination
+          if (d === "tiktok" && s && !ds?.configured) {
             const st = s.studio;
             return <Tile key={d} label="TikTok · LIVE Studio" ok={st.online && st.studioRunning}
               text={!st.online ? (st.ageS < 0 ? "PC not set up" : `PC offline ${fmt(st.ageS)}`) : st.studioRunning ? "LIVE Studio open" : st.obsRunning ? "PC ready · open LIVE Studio" : "PC on · OBS down"} />;
           }
-          return <Tile key={d} label={LABEL[d]} ok={!!s?.destinations[d].running} dim={!s?.destinations[d].configured}
-            text={!s ? "—" : !s.destinations[d].configured ? "no key" : s.destinations[d].running ? `live ${fmt(s.destinations[d].uptimeS)}` : s.destinations[d].enabled ? "waiting" : "off"} />;
+          return <Tile key={d} label={LABEL[d]} ok={!!ds?.running} dim={!ds?.configured}
+            text={!ds ? "—" : !ds.configured ? "no key" : ds.running ? `live ${fmt(ds.uptimeS)}` : ds.enabled ? "waiting" : "off"} />;
         })}
       </div>
 
+      {selling && (
+        <a href={`/stream/products/${selling.slug}`} style={S.selling}>
+          🛒 Now selling: <b>{selling.currentTitle || "—"}</b> ({Math.min(selling.currentIndex + 1, selling.total)}/{selling.total})
+        </a>
+      )}
+
+      <CamSwitcher cameras={s?.cameras ?? null} armed={live} onStatus={(j) => { const st = j as Status; if (typeof st?.armed === "boolean") setStatus(st); }} />
+
       {/* destinations */}
       <div style={{ display: "flex", gap: 8, margin: "14px 0" }}>
-        {DESTS.filter((d) => !(d === "tiktok" && s && !s.destinations.tiktok.configured)).map((d) => (
-          <button key={d} onClick={() => toggleDest(d)} disabled={!s?.destinations[d].configured}
-            style={{ ...S.chip, ...(sel[d] ? S.chipOn : {}), opacity: s?.destinations[d].configured ? 1 : 0.4 }}>
+        {DESTS.filter((d) => !(s && !s.destinations[d]) && !(d === "tiktok" && s && !s.destinations.tiktok?.configured)).map((d) => (
+          <button key={d} onClick={() => toggleDest(d)} disabled={!s?.destinations[d]?.configured}
+            style={{ ...S.chip, ...(sel[d] ? S.chipOn : {}), opacity: s?.destinations[d]?.configured ? 1 : 0.4 }}>
             {sel[d] ? "✓ " : ""}{LABEL[d]}
           </button>
         ))}
       </div>
 
+      {whatnot && (
+        <details style={{ margin: "-4px 0 14px", fontSize: 13, color: "#bcc" }}>
+          <summary style={{ cursor: "pointer" }}>
+            Whatnot show key · {whatnot.configured ? `set${whatnot.keyTail ? ` (…${whatnot.keyTail})` : ""}` : "not set"} — new one every show
+          </summary>
+          <form
+            style={{ display: "grid", gap: 6, marginTop: 8 }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              const f = e.currentTarget;
+              const url = (f.elements.namedItem("wnurl") as HTMLInputElement).value.trim();
+              const key = (f.elements.namedItem("wnkey") as HTMLInputElement).value.trim();
+              if (!url || !key) return;
+              void cmd("destinations/whatnot/key", { url, key });
+              f.reset(); // the key never stays in the page
+            }}
+          >
+            <input name="wnurl" placeholder="RTMP URL from Whatnot Seller Hub → Stream with OBS" autoComplete="off" style={S.input} />
+            <input name="wnkey" type="password" placeholder="Stream key" autoComplete="off" style={S.input} />
+            <button type="submit" disabled={!!busy} style={{ ...S.btn, ...S.secondary, padding: "10px", fontSize: 14 }}>Save Whatnot key</button>
+          </form>
+        </details>
+      )}
+
+      {!live && studioLane && s?.cameras && (
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#bcc", margin: "0 0 12px" }}>
+          <input type="checkbox" checked={openStudio} onChange={(e) => setOpenStudio(e.target.checked)} />
+          Open TikTok LIVE Studio on the PC
+        </label>
+      )}
+
       {/* main controls */}
       <div style={{ display: "grid", gap: 12 }}>
         {!live ? (
-          <button style={{ ...S.btn, ...S.primary }} disabled={!!busy || dgxDown} onClick={() => cmd("go-live", { destinations: sel })}>
+          <button style={{ ...S.btn, ...S.primary }} disabled={!!busy || dgxDown} onClick={() => cmd("go-live", { destinations: sel, studio: openStudio })}>
             {busy === "go-live" ? "…" : "▶ Go Live"}
           </button>
         ) : (
@@ -236,7 +308,10 @@ export default function StreamPage() {
       </div>
 
       {/* advanced */}
-      <button onClick={() => setShowAdv((v) => !v)} style={{ ...S.link, marginTop: 18 }}>{showAdv ? "▾" : "▸"} advanced</button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 18 }}>
+        <button onClick={() => setShowAdv((v) => !v)} style={S.link}>{showAdv ? "▾" : "▸"} advanced</button>
+        <Link href="/stream/products" style={{ color: "#8ab", fontSize: 14, textDecoration: "none" }}>🛒 Product lineups</Link>
+      </div>
       {showAdv && s && (
         <div style={{ fontSize: 13, color: "#bcc", display: "grid", gap: 6 }}>
           <div>Mimo URL: <code>{s.ingest.url}</code> · key ends …{s.ingest.keyTail}</div>
@@ -252,9 +327,20 @@ export default function StreamPage() {
             <button type="submit" style={{ ...S.btn, ...S.secondary, padding: "8px 10px", fontSize: 13 }}>set</button>
           </form>
           <div>MediaMTX {s.mediamtx.ok ? "ok" : "DOWN"} · program {s.obs.programReady ? "ready" : "idle"} {s.obs.lastError && `· OBS: ${s.obs.lastError}`}</div>
-          <button style={{ ...S.btn, ...S.secondary, padding: "10px" }} disabled={!!busy} onClick={() => { if (window.confirm("Rotate the camera key? You must re-enter it in Mimo (sent to Telegram).")) void cmd("rotate-key"); }}>
-            🔑 Rotate camera key
-          </button>
+          {s.cameras?.length ? (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {s.cameras.map((c) => (
+                <button key={c.slot} style={{ ...S.btn, ...S.secondary, padding: "10px", fontSize: 14, flex: 1 }} disabled={!!busy}
+                  onClick={() => { if (window.confirm(`Rotate the key for camera ${c.slot}? That phone must be re-set up (new key goes to Telegram).`)) void cmd("rotate-key", { slot: c.slot }); }}>
+                  🔑 Cam {c.slot}{c.keyTail ? ` …${c.keyTail}` : ""}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <button style={{ ...S.btn, ...S.secondary, padding: "10px" }} disabled={!!busy} onClick={() => { if (window.confirm("Rotate the camera key? You must re-enter it in the camera app (sent to Telegram).")) void cmd("rotate-key"); }}>
+              🔑 Rotate camera key
+            </button>
+          )}
           <div style={{ marginTop: 6, color: "#8a9" }}>Recent</div>
           {s.events.slice(0, 12).map((e, i) => (
             <div key={i} style={{ color: "#9ab" }}>{new Date(e.t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · {e.msg}</div>
@@ -290,6 +376,8 @@ const S: Record<string, React.CSSProperties> = {
   grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 },
   tile: { background: "#111a2b", borderRadius: 12, padding: "10px 12px" },
   banner: { background: "#5a1f1a", color: "#ffd", padding: "10px 12px", borderRadius: 10, marginBottom: 12, fontSize: 14 },
+  input: { fontSize: 14, padding: 10, borderRadius: 8, border: "1px solid #334", background: "#111a2b", color: "#eef" },
+  selling: { display: "block", margin: "12px 0 0", padding: "10px 12px", borderRadius: 10, background: "#16233a", color: "#dfe", fontSize: 14, textDecoration: "none" },
   link: { background: "none", border: "none", color: "#8ab", fontSize: 14, padding: 0, cursor: "pointer" },
   chat: { background: "#0e1626", border: "1px solid #223", borderRadius: 12, padding: "8px 10px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 },
   msg: { fontSize: 17, lineHeight: 1.3, wordBreak: "break-word" },

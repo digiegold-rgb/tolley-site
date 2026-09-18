@@ -17,7 +17,8 @@ async function proxy(request: NextRequest, path: string[]) {
     return NextResponse.json({ error: "STREAM_API_KEY not configured" }, { status: 500 });
   }
 
-  const target = `${UPSTREAM}/${path.join("/")}`;
+  // Keep the query string (chat polls with ?since=&limit=; thumbnails cache-bust with ?t=).
+  const target = `${UPSTREAM}/${path.map(encodeURIComponent).join("/")}${request.nextUrl.search}`;
   const init: RequestInit = {
     method: request.method,
     headers: { "x-api-key": key, "content-type": "application/json" },
@@ -30,10 +31,14 @@ async function proxy(request: NextRequest, path: string[]) {
 
   try {
     const upstream = await fetch(target, init);
-    const body = await upstream.text();
+    // Bytes, not text: /thumb/*.jpg is binary. Upstream content-type passes straight through.
+    const body = await upstream.arrayBuffer();
     return new NextResponse(body, {
       status: upstream.status,
-      headers: { "content-type": "application/json", "cache-control": "no-store" },
+      headers: {
+        "content-type": upstream.headers.get("content-type") || "application/json",
+        "cache-control": "no-store",
+      },
     });
   } catch {
     return NextResponse.json(

@@ -2337,6 +2337,7 @@ model Product {
   sales               ShopSale[]
   listingJobs         ListingJob[]
   reviews             Review[]
+  streamLineupItems   StreamLineupItem[]
 
   @@index([status, createdAt])
   @@index([category])
@@ -5938,4 +5939,47 @@ model CustomerLeadState {
   lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
   @@unique([subscriberId, leadId])
   @@index([subscriberId, status])
+}
+
+/// tolley.io/stream — an ordered run-of-show of shop products for a live sale.
+/// The clicker at /stream/products/<slug> walks items in sortOrder and drives
+/// the big-screen Amazon window; currentIndex survives reloads.
+model StreamLineup {
+  id           String             @id @default(cuid())
+  slug         String             @unique
+  name         String
+  currentIndex Int                @default(0)
+  active       Boolean            @default(false)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  items        StreamLineupItem[]
+}
+
+/// One product in a lineup + the prep-worksheet data entered while weighing
+/// and measuring it for TikTok Shop. amazonUrl is a PLAIN /dp/ link (no
+/// affiliate tag — it is only ever opened on the owner's own screen).
+model StreamLineupItem {
+  id               String       @id @default(cuid())
+  lineupId         String
+  productId        String
+  sortOrder        Int
+  amazonUrl        String?
+  amazonVerified   Boolean      @default(false)
+  amazonPriceCents Int?
+  salePrice        Float?
+  weightOz         Int?
+  lengthIn         Float?
+  widthIn          Float?
+  heightIn         Float?
+  tiktokListed     Boolean      @default(false)
+  soldAt           DateTime?
+  notes            String?      @db.Text
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  lineup           StreamLineup @relation(fields: [lineupId], references: [id], onDelete: Cascade)
+  product          Product      @relation(fields: [productId], references: [id])
+
+  @@unique([lineupId, productId])
+  @@index([lineupId, sortOrder])
+  @@index([productId])
 }
