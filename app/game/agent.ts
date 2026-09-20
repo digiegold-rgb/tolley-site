@@ -4,7 +4,7 @@ export const manifest: SubsiteManifest = {
   name: "game",
   title: "Portal Hoppers",
   purpose:
-    "Free original 3D woodland adventure: explore with Cubo, solve temple puzzles, and free the Heartwood Guardian. Solo, keyboard/mouse or controller, no account. The original touch-compatible co-op platformer remains at /game/classic.",
+    "Portal Hoppers in 3D: rescue fifteen friends from Captain Clank across the original ten worlds, earn powers, meet Cubo, and enjoy the original soundtrack. Animated Blender characters, Super Hopper difficulty, keyboard, controller, and touch controls. The original two-player platformer remains at /game/classic.",
   url: "/game",
   schemaType: "SoftwareApplication",
   jsonEndpoints: [],

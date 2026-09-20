@@ -92,6 +92,13 @@ export class Synth {
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(m ? 0 : 0.8, this.ctx.currentTime, 0.02);
   }
 
+  /** Independent mix controls; defaults preserve the original game's sound. */
+  setVolumes(music: number, effects: number): void {
+    if (!this.ctx) return;
+    this.musicBus?.gain.setTargetAtTime(Math.max(0, Math.min(1, music)) * 0.45, this.ctx.currentTime, 0.03);
+    this.sfxBus?.gain.setTargetAtTime(Math.max(0, Math.min(1, effects)) * 0.7, this.ctx.currentTime, 0.03);
+  }
+
   get now(): number {
     return this.ctx ? this.ctx.currentTime : 0;
   }
@@ -144,6 +151,7 @@ export class Synth {
 }
 
 const SFX: Record<SfxName, (s: Synth) => void> = {
+  step: (s) => s.noise(0.045, 0.065, 620),
   jump: (s) => s.playNote(300, 0.14, "square", 0.25, { slideTo: 620 }),
   ultraCharge: (s) => s.playNote(120, 0.5, "sawtooth", 0.12, { slideTo: 480 }),
   ultra: (s) => {
