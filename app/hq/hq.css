@@ -255,7 +255,8 @@
   }
   .hq-admin .tab-sep { display: none; }
   .hq-admin .tab-bar-end { flex: 1 1 100%; }
-  .hq-admin .tab-docs-menu { right: auto; left: 0; }
+  .hq-admin .tab-docs { position: static; }
+  .hq-admin .tab-docs-menu { right: auto; left: 0; max-width: 100%; }
 }
 
 /* ─── Buttons ─── */
