@@ -148,6 +148,17 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      // Rapier's bundled physics runs as WebAssembly. Keep this permission
+      // confined to game routes; JavaScript eval remains forbidden in production.
+      {
+        source: "/game/:path*",
+        headers: [{
+          key: process.env.CSP_ENFORCE === "0"
+            ? "Content-Security-Policy-Report-Only"
+            : "Content-Security-Policy",
+          value: contentSecurityPolicy.replace("script-src 'self'", "script-src 'self' 'wasm-unsafe-eval'"),
+        }],
+      },
       // The Rules PDF renders inside an iframe on /animate; the global
       // X-Frame-Options: DENY would blank it. Last matching key wins.
       {

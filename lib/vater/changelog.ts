@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.46.0';
+export const APP_VERSION = '1.46.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.46.1',
+    date: '2026-09-20',
+    title: 'Whisperwood physics loads under the live security policy',
+    items: ['The 3D adventure can load its physics engine while the rest of the site keeps its existing security policy.'],
+  },
   {
     version: '1.46.0',
     date: '2026-09-20',
