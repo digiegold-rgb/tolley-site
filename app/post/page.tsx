@@ -22,7 +22,10 @@ export default function PostDoorway() {
           <h1>Your next listing<br />starts with<br /><em>a photo.</em></h1>
           <p className={styles.description}>Photograph your finds. Get an editable first draft. Make it yours, then choose the marketplaces you sell on.</p>
           {appAvailable ? (
-            <a className={styles.button} href="https://post.tolley.io">Open Tolley Post ↗</a>
+            <div>
+              <a className={styles.button} href="https://post.tolley.io/demo">Try the live demo ↗</a>
+              <p className={styles.demoNote}>No login needed. Edit sample products and watch simulated marketplace delivery.</p>
+            </div>
           ) : (
             <p className={styles.launchNote}>A new seller workspace is taking shape.<br />Public signup and subscriptions are not open yet.</p>
           )}
