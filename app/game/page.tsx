@@ -1,14 +1,14 @@
-import { GameShell } from "@/components/game/GameShell";
+import AdventureShell from "@/components/game/adventure/AdventureShell";
 
 export default function GamePage() {
   return (
     <main>
       <p className="sr-only">
-        Portal Hoppers is a free co-op pixel platformer. Pick Zip the frog, Ember the fox or Moxie the cat, team up with Cubo the cube, hop through
-        ten worlds, free fifteen caged friends and unlock their powers. Move with the arrow keys, jump with Space (hold it for an Ultra Jump), bash
-        with X and use powers with C. A second player can drive Cubo with WASD and Shift. Touch controls appear on phones and tablets.
+        Portal Hoppers: Whisperwood is an original 3D woodland adventure. Explore with Ember, Zip, or Moxie and your companion Cubo.
+        Awaken three beacons, solve five temple rooms, and free the Heartwood Guardian. Use a keyboard and mouse or a controller.
+        The original two-player platformer and touchscreen controls remain available in Portal Hoppers Classic.
       </p>
-      <GameShell />
+      <AdventureShell />
     </main>
   );
 }
