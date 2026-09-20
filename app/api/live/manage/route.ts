@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     } else if (b.action === "confirm" || b.action === "end") {
       if (typeof b.id !== "string") throw new Error("Show required");
       const show = await prisma.liveShow.findUniqueOrThrow({ where: { id: b.id } });
-      await prisma.liveShow.update({ where: { id: show.id }, data: b.action === "end" ? { endedAt: new Date(), confirmedUntil: null } : { endedAt: null, confirmedUntil: new Date(Date.now() + show.durationMin * 60000) } });
+      await prisma.liveShow.update({ where: { id: show.id }, data: b.action === "end" ? { endedAt: new Date() } : { endedAt: null, confirmedUntil: new Date(Date.now() + show.durationMin * 60000) } });
     } else if (b.action === "ledger") {
       if (typeof b.id !== "string") throw new Error("Show required");
       await prisma.liveShow.update({ where: { id: b.id }, data: { ledger: ledgerSchema.parse(b.ledger) } });

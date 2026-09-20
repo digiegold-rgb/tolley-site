@@ -40,7 +40,9 @@ export async function reservePublication(clipId: string, platform: LivePlatform)
     const binding = (settings?.bindings as Record<string, Binding> | null)?.[platform];
     if (!settings || settings.publishingPaused || !binding?.accountId) return null;
     const clip = await tx.liveClip.findUnique({ where: { id: clipId } });
-    if (!clip || clip.status !== "ready" || !canAutoPublish(clip.review)) return null;
+    if (!clip || !clip.showId || clip.status !== "ready" || !canAutoPublish(clip.review)) return null;
+    const show = await tx.liveShow.findUnique({ where: { id: clip.showId } });
+    if (!show?.confirmedUntil) return null;
     if (await tx.livePublication.findUnique({ where: { clipId_platform: { clipId, platform } } })) return null;
     // Rolling 24 hours is stricter than a calendar-day cap, including midnight/DST.
     const count = await tx.livePublication.count({ where: { platform, createdAt: { gte: new Date(Date.now() - 86400000) } } });
@@ -97,4 +99,13 @@ export async function registerClip(data: { id: string; showId?: string; recordin
   const url = new URL(data.mediaUrl);
   if (url.protocol !== "https:" || !url.hostname.endsWith(".public.blob.vercel-storage.com")) throw new Error("Clip must use the public media store");
   return prisma.liveClip.upsert({ where: { id: data.id }, create: { ...data, title: data.title.slice(0,90), caption: data.caption.slice(0,1000), status: canAutoPublish(data.review) ? "ready" : "held" }, update: {} });
+}
+
+/** Only confirmed public show windows authorize recording clips, including after ending. */
+export async function matchShowForClip(recordedAt: string, startS: number, endS: number) {
+  const stamp = Date.parse(recordedAt);
+  if (!Number.isFinite(stamp)) return null;
+  const start = new Date(stamp + startS * 1000), end = new Date(stamp + endS * 1000);
+  const shows = await prisma.liveShow.findMany({ where: { confirmedUntil: { gte: end }, OR: [{ endedAt: null }, { endedAt: { gte: end } }] }, orderBy: { startsAt: "desc" }, take: 20 });
+  return shows.find(s => s.confirmedUntil && s.confirmedUntil.getTime() - s.durationMin * 60000 <= start.getTime())?.id || null;
 }

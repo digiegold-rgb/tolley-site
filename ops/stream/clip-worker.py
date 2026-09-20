@@ -5,6 +5,7 @@ The source archive is read-only. All local work stays outside Content Autopilot'
 """
 import argparse, base64, fcntl, hashlib, json, os, re, sqlite3, subprocess, sys, time
 from pathlib import Path
+from datetime import datetime, timezone
 import requests
 ROOT = Path(__file__).resolve().parents[2]
 WORK = Path.home() / '.local/state/tolley-stream-clips'
@@ -103,7 +104,7 @@ def process(recording):
     d=WORK/recording[:-4];d.mkdir(parents=True,exist_ok=True);source=d/recording
     if not source.exists():
         partial=source.with_suffix('.partial')
-        run(['scp','-O','-q','-o','BatchMode=yes','-o','ConnectTimeout=8',REMOTE+':'+ARCHIVE+recording,str(partial)],timeout=600);partial.rename(source)
+        run(['scp','-O','-p','-q','-o','BatchMode=yes','-o','ConnectTimeout=8',REMOTE+':'+ARCHIVE+recording,str(partial)],timeout=600);partial.rename(source)
     transcript_file=d/'transcript.json'
     if transcript_file.exists(): transcript=json.loads(transcript_file.read_text())
     else:
@@ -112,6 +113,9 @@ def process(recording):
             if not idle(): raise RuntimeError('House armed; deferring transcription')
         transcript=transcribe(str(source),model_size='medium.en',cpu_threads=2,on_segment=progress)
         transcript_file.write_text(json.dumps(transcript))
+    recorded_at=datetime.strptime(recording[:-4],'%Y-%m-%d_%H-%M-%S').replace(tzinfo=timezone.utc)
+    if abs(recorded_at.timestamp()+transcript['duration']-source.stat().st_mtime)>180:
+        raise RuntimeError('Recording timestamps do not match UTC archive names; holding for review')
     choices=d/'candidates.json'
     if not choices.exists(): choices.write_text(json.dumps(select_candidates(transcript)))
     for clip in json.loads(choices.read_text()):
@@ -121,7 +125,7 @@ def process(recording):
         if (cd/'registered').exists(): continue
         video,segments=render(source,clip,transcript['segments'],cd)
         review=review_clip(video,clip,segments,cd)
-        manifest={'id':ident,'recording':recording,'startS':clip['start'],'endS':clip['end'],'title':clip['title'],'caption':clip['caption'],'review':review,'file':str(video)}
+        manifest={'id':ident,'recording':recording,'startS':clip['start'],'endS':clip['end'],'title':clip['title'],'caption':clip['caption'],'review':review,'file':str(video),'recordedAt':recorded_at.isoformat()}
         path=cd/'manifest.json';path.write_text(json.dumps(manifest));bridge('ingest',path);(cd/'registered').touch()
     # Remove only this worker's completed download; NAS originals and held clips remain intact.
     source.unlink(missing_ok=True)

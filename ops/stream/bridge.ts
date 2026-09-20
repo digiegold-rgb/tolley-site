@@ -1,16 +1,19 @@
 import { readFile } from "node:fs/promises";
 import { put } from "@vercel/blob";
 import { prisma } from "../../lib/prisma";
-import { drainClips, registerClip } from "../../lib/live/publish";
+import { drainClips, registerClip, matchShowForClip } from "../../lib/live/publish";
 import { canAutoPublish } from "../../lib/live/core";
 const [command, path] = process.argv.slice(2);
 async function main() {
   if (command === "drain") return drainClips();
   if (command === "ingest") {
     const manifest = JSON.parse(await readFile(path, "utf8"));
-    const { file, ...data } = manifest;
+    const { file, recordedAt, ...data } = manifest;
+    const showId = await matchShowForClip(recordedAt, data.startS, data.endS);
+    data.showId = showId;
+    if (!showId) data.review = { ...data.review, reason: "No confirmed public show covers this clip. Held locally." };
     if (await prisma.liveClip.findUnique({ where: { id: data.id } })) return;
-    if (!canAutoPublish(data.review)) {
+    if (!showId || !canAutoPublish(data.review)) {
       // Held media stays on the DGX, never uploaded to a public bucket.
       await prisma.liveClip.create({ data: { ...data, mediaUrl: "", status: "held" } }); return;
     }
