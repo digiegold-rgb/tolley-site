@@ -61,7 +61,7 @@ export async function drainClips() {
       // Recheck the pause/hold immediately before starting the remote request.
       const settings = await prisma.liveSettings.findUnique({ where: { id: "treasure-hauls" } });
       const fresh = await prisma.liveClip.findUnique({ where: { id: clip.id } });
-      if (settings?.publishingPaused || fresh?.status !== "ready") {
+      if (settings?.publishingPaused || fresh?.status !== "ready" || (settings?.bindings as Record<string, Binding> | null)?.[platform]?.accountId !== job.accountId) {
         await prisma.livePublication.delete({ where: { id: job.id } }); continue;
       }
       let result: { externalId: string; url: string };

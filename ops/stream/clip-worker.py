@@ -123,6 +123,8 @@ def process(recording):
         review=review_clip(video,clip,segments,cd)
         manifest={'id':ident,'recording':recording,'startS':clip['start'],'endS':clip['end'],'title':clip['title'],'caption':clip['caption'],'review':review,'file':str(video)}
         path=cd/'manifest.json';path.write_text(json.dumps(manifest));bridge('ingest',path);(cd/'registered').touch()
+    # Remove only this worker's completed download; NAS originals and held clips remain intact.
+    source.unlink(missing_ok=True)
     return len(json.loads(choices.read_text()))
 
 def main():

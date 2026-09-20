@@ -68,7 +68,7 @@ export async function postYouTube(input: PostInput): Promise<PostResult> {
       categoryId: process.env.YOUTUBE_CATEGORY_ID || "22",
     },
     status: {
-      privacyStatus: process.env.YOUTUBE_PRIVACY_STATUS || "public",
+      privacyStatus: input.source === "stream" ? "public" : process.env.YOUTUBE_PRIVACY_STATUS || "public",
       selfDeclaredMadeForKids: false,
     },
   };
