@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.44.0';
+export const APP_VERSION = '1.45.0';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,15 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.45.0',
+    date: '2026-09-20',
+    title: 'Try the Tolley Post interactive demo',
+    items: [
+      'Try sample photos, edit product drafts and watch simulated delivery to five marketplaces without signing in.',
+      'A guided tour walks through the workflow; sample data stays in your browser and nothing is posted or charged.',
+    ],
+  },
   {
     version: '1.44.0',
     date: '2026-09-20',
