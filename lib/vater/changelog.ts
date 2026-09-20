@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.46.2';
+export const APP_VERSION = '1.46.3';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.46.3',
+    date: '2026-09-20',
+    title: 'HQ document links fit phone screens',
+    items: ['The HQ Docs and Ideas dropdowns stay within the screen on mobile, including the new Whatnot report link.'],
+  },
   {
     version: '1.46.2',
     date: '2026-09-20',
