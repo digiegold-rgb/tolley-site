@@ -21,7 +21,9 @@ export async function postYouTube(input: PostInput): Promise<PostResult> {
   const clientSecret = process.env.YOUTUBE_CLIENT_SECRET?.trim();
   // Fresh token from the DB (saved by /api/social/oauth/youtube re-auth) wins;
   // the env var is the legacy fallback and may be stale.
-  const stored = await getStoredToken("youtube");
+  if (input.source === "stream" && !input.accountId) return { ok: false, error: "Stream YouTube account is unbound" };
+  const stored = await getStoredToken("youtube", input.accountId);
+  if (input.accountId && !stored) return { ok: false, error: "Bound YouTube account is not connected" };
   const refreshToken = stored?.refreshToken || process.env.YOUTUBE_REFRESH_TOKEN?.trim();
 
   if (!clientId || !clientSecret || !refreshToken) {
@@ -33,6 +35,12 @@ export async function postYouTube(input: PostInput): Promise<PostResult> {
 
   const accessToken = await refreshAccessToken(clientId, clientSecret, refreshToken);
   if (!accessToken.ok) return accessToken;
+
+  if (input.accountId) {
+    const identity = await fetch("https://www.googleapis.com/youtube/v3/channels?part=id&mine=true", { headers: { Authorization: `Bearer ${accessToken.token}` } });
+    const j = await identity.json();
+    if (!identity.ok || !j.items?.some((c: { id: string }) => c.id === input.accountId)) return { ok: false, error: "YouTube account identity mismatch" };
+  }
 
   // Stream media from the blob URL into the YouTube resumable upload.
   const mediaRes = await fetch(input.mediaUrl, { signal: AbortSignal.timeout(90_000) });
@@ -91,6 +99,9 @@ export async function postYouTube(input: PostInput): Promise<PostResult> {
     return { ok: false, error: `YouTube upload ${res.status}: ${text.slice(0, 200)}` };
   }
   const json = (await res.json()) as { id: string };
+  if (json.id) await input.onExternalId?.(json.id);
+
+  if (input.source === "stream" && (json as { status?: { privacyStatus?: string } }).status?.privacyStatus !== "public") return { ok: false, error: "YouTube upload is not public; reconcile video status" };
 
   // Best-effort custom thumbnail (the action-api /socialthumb burns the title
   // over a real frame). Needs "custom thumbnails" enabled on the channel

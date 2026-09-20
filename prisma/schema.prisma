@@ -5996,3 +5996,62 @@ model StreamLineupItem {
   @@index([lineupId, sortOrder])
   @@index([productId])
 }
+
+/// Public show metadata is independent of the private stream director.
+model LiveSettings {
+  id             String   @id @default("treasure-hauls")
+  referralUrl    String?
+  dailyTime      String?
+  publishingPaused Boolean @default(true)
+  bindings       Json     @default("{}")
+  updatedAt      DateTime @updatedAt
+}
+
+model LiveShow {
+  id             String   @id @default(cuid())
+  title          String
+  category       String
+  startsAt       DateTime
+  durationMin    Int      @default(120)
+  whatnotUrl     String
+  confirmedUntil DateTime?
+  endedAt        DateTime?
+  ledger         Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([startsAt])
+}
+
+model LiveClip {
+  id          String   @id
+  showId      String?
+  recording   String
+  startS      Float
+  endS        Float
+  title       String
+  caption     String
+  mediaUrl    String
+  status      String   @default("held")
+  review      Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  publications LivePublication[]
+  @@index([status, createdAt])
+}
+
+model LivePublication {
+  id          String   @id @default(cuid())
+  clipId      String
+  platform    String
+  accountId   String
+  status      String   @default("posting")
+  externalId  String?
+  url         String?
+  error       String?
+  attempts    Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  clip        LiveClip @relation(fields: [clipId], references: [id], onDelete: Restrict)
+  @@unique([clipId, platform])
+  @@index([platform, createdAt])
+}

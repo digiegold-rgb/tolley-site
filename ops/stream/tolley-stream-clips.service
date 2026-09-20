@@ -1,0 +1,11 @@
+[Unit]
+Description=Treasure Hauls finalized-recording clips
+After=network-online.target
+[Service]
+Type=oneshot
+WorkingDirectory=/home/jelly/tolley-live-growth
+ExecStart=/usr/bin/python3 /home/jelly/tolley-live-growth/ops/stream/clip-worker.py --discover --publish
+Nice=15
+CPUWeight=10
+IOWeight=10
+TimeoutStartSec=3h

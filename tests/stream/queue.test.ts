@@ -1,0 +1,21 @@
+import test, { after } from "node:test";
+import assert from "node:assert/strict";
+import { prisma } from "../../lib/prisma";
+import { reservePublication } from "../../lib/live/publish";
+const review = {transcriptSafe:true,visualSafe:true,humiliationFree:true,profanityHandled:true,noCurrentOffer:true,confidence:1,reason:"test"};
+test("durable reservations prevent duplicates, enforce cap and honor pause/holds",async()=>{
+ if(!process.env.DATABASE_URL?.endsWith('/tolley_live_growth_test')) throw new Error('Isolated test database required');
+ await prisma.livePublication.deleteMany();await prisma.liveClip.deleteMany();
+ await prisma.liveSettings.upsert({where:{id:"treasure-hauls"},create:{publishingPaused:false,bindings:{facebook:{accountId:"test-page",label:"test"}}},update:{publishingPaused:false,bindings:{facebook:{accountId:"test-page",label:"test"}}}});
+ for(const id of ['one','two','three','held']) await prisma.liveClip.create({data:{id,recording:"test",startS:0,endS:30,title:"test",caption:"test",mediaUrl:"https://example.test/video.mp4",status:id==='held'?'held':'ready',review}});
+ const concurrent=await Promise.all(Array.from({length:5},()=>reservePublication('one','facebook')));
+ assert.equal(concurrent.filter(Boolean).length,1);
+ assert.equal(await reservePublication('held','facebook'),null);
+ assert.equal(await reservePublication('two','youtube'),null);
+ assert.ok(await reservePublication('two','facebook'));
+ assert.equal(await reservePublication('three','facebook'),null);
+ await prisma.liveSettings.update({where:{id:"treasure-hauls"},data:{publishingPaused:true}});
+ assert.equal(await reservePublication('three','facebook'),null);
+ await prisma.livePublication.deleteMany();await prisma.liveClip.deleteMany();
+});
+after(()=>prisma.$disconnect());

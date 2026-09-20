@@ -51,6 +51,8 @@ export async function POST(request: Request) {
       },
       update: {
         ...(isNew ? { status: "new", statusNote: null, statusUpdatedAt: new Date() } : {}),
+        // An explicit new drop-list consent reactivates a previously unsubscribed address.
+        ...(source === "shop-drops" && data?.consent === "Treasure Haul drop emails" ? { optedIn: true } : {}),
         // Don't overwrite name if already set; update source/data to latest
         ...(name ? { name } : {}),
         source,

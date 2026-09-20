@@ -19,8 +19,10 @@ export async function postInstagram(input: PostInput): Promise<PostResult> {
   // stored in the DB and wins; the env tokens are legacy fallbacks that lack
   // the IG publish scopes (error #10). The stored row's accountId is the IG
   // user id granted during OAuth, so env INSTAGRAM_BUSINESS_ID is optional.
-  const stored = await getStoredToken("instagram");
-  const igUserId = process.env.INSTAGRAM_BUSINESS_ID?.trim() || stored?.accountId;
+  if (input.source === "stream" && !input.accountId) return { ok: false, error: "Stream Instagram account is unbound" };
+  const stored = await getStoredToken("instagram", input.accountId);
+  if (input.accountId && !stored) return { ok: false, error: "Bound Instagram account is not connected" };
+  const igUserId = input.accountId || process.env.INSTAGRAM_BUSINESS_ID?.trim() || stored?.accountId;
   const token =
     stored?.accessToken ||
     process.env.INSTAGRAM_PAGE_TOKEN ||
@@ -34,6 +36,10 @@ export async function postInstagram(input: PostInput): Promise<PostResult> {
     };
   }
 
+  if (input.accountId) {
+    const r = await fetch(`${FB_API}/${API_VERSION}/${igUserId}?fields=id`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok || (await r.json()).id !== input.accountId) return { ok: false, error: "Instagram account identity mismatch" };
+  }
   const caption = combineCaptionAndTags(input);
 
   // Step 1: create container
@@ -86,12 +92,12 @@ export async function postInstagram(input: PostInput): Promise<PostResult> {
     return { ok: false, error: `IG publish ${pRes.status}: ${text.slice(0, 200)}` };
   }
   const { id: mediaId } = (await pRes.json()) as { id: string };
+  if (mediaId) await input.onExternalId?.(mediaId);
+  if (input.source !== "stream") return { ok: true, externalId: mediaId, url: `https://www.instagram.com/reel/${mediaId}/` };
 
-  return {
-    ok: true,
-    externalId: mediaId,
-    url: `https://www.instagram.com/reel/${mediaId}/`,
-  };
+  const linkRes = await fetch(`${FB_API}/${API_VERSION}/${mediaId}?fields=permalink`, { headers: { Authorization: `Bearer ${token}` } });
+  const link = linkRes.ok ? (await linkRes.json()).permalink : "";
+  return { ok: true, externalId: mediaId, url: link || "" };
 }
 
 async function waitForContainerReady(

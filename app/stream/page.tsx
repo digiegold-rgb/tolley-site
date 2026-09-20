@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { broadcastLabel } from "@/lib/live/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import CamSwitcher, { type StreamCam } from "@/components/stream/CamSwitcher";
@@ -12,6 +13,7 @@ import CamSwitcher, { type StreamCam } from "@/components/stream/CamSwitcher";
 type Dest = "youtube" | "tiktok" | "whatnot";
 type DestState = { enabled: boolean; configured: boolean; running: boolean; uptimeS: number; keyTail?: string };
 type Status = {
+  recording?: { state: string; ageS: number | null; bytes: number; error?: string };
   armed: boolean;
   privacy: boolean;
   liveSinceS: number;
@@ -82,7 +84,7 @@ export default function StreamPage() {
   useEffect(() => {
     if (!authed) return;
     void load();
-    const t = window.setInterval(() => void load(), 3000);
+    const t = window.setInterval(() => { if (!document.hidden) void load(); }, 3000);
     return () => window.clearInterval(t);
   }, [authed, load]);
 
@@ -120,7 +122,7 @@ export default function StreamPage() {
       } catch { /* keep polling */ }
     };
     void tick();
-    const t = window.setInterval(() => { if (!stop) void tick(); }, 2000);
+    const t = window.setInterval(() => { if (!stop && !document.hidden) void tick(); }, 2000);
     return () => { stop = true; window.clearInterval(t); };
   }, [authed]);
   useEffect(() => { const el = chatBox.current; if (el) el.scrollTop = el.scrollHeight; }, [chat, chatOpen]);
@@ -187,7 +189,7 @@ export default function StreamPage() {
     <main style={S.wrap}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
         <h1 style={S.h1}>📡 Stream</h1>
-        <span style={{ fontSize: 13, color: "#9aa" }}>{live ? `LIVE ${fmt(s!.liveSinceS)}` : "off air"}</span>
+        <span style={{ fontSize: 13, color: "#9aa" }}>{dgxDown ? "Status unavailable" : broadcastLabel(s)}</span>
       </div>
 
       {dgxDown && <div style={S.banner}>DGX unreachable: {offline}</div>}
@@ -207,9 +209,12 @@ export default function StreamPage() {
               text={!st.online ? (st.ageS < 0 ? "PC not set up" : `PC offline ${fmt(st.ageS)}`) : st.studioRunning ? "LIVE Studio open" : st.obsRunning ? "PC ready · open LIVE Studio" : "PC on · OBS down"} />;
           }
           return <Tile key={d} label={LABEL[d]} ok={!!ds?.running} dim={!ds?.configured}
-            text={!ds ? "—" : !ds.configured ? "no key" : ds.running ? `live ${fmt(ds.uptimeS)}` : ds.enabled ? "waiting" : "off"} />;
+            text={!ds ? "—" : !ds.configured ? "no key" : ds.running ? `sending ${fmt(ds.uptimeS)}` : ds.enabled ? "waiting" : "off"} />;
         })}
       </div>
+
+      <p style={{ fontSize: 13, color: "#9ab", lineHeight: 1.6 }}>Sending video does not confirm a platform is live. Confirm Whatnot in Seller Hub. <Link href="/stream/growth">Schedule, clips & profit →</Link></p>
+      <div style={{ marginBottom: 12 }}><Tile label="NAS recording" ok={s?.recording?.state === "recording"} text={s?.recording ? `${s.recording.state}${s.recording.ageS !== null ? ` · updated ${s.recording.ageS}s ago` : ""}${s.recording.error ? ` · ${s.recording.error}` : ""}` : "Health not reported"}/></div>
 
       {selling && (
         <a href={`/stream/products/${selling.slug}`} style={S.selling}>
@@ -234,7 +239,7 @@ export default function StreamPage() {
       <details style={{ margin: "-4px 0 14px", fontSize: 13, color: "#bcc" }}>
         <summary style={{ cursor: "pointer" }}>🟣 Whatnot — goes out through the OBS on the stream PC</summary>
         <div style={{ display: "grid", gap: 6, marginTop: 8, lineHeight: 1.5 }}>
-          <span>1. Here: <b>Go Live</b> with nothing ticked (LIVE Studio off) and start the cameras — the PC&apos;s OBS then shows the house picture (cuts, BRB and Privacy ride along).</span>
+          <span>1. Here: <b>Arm house</b> with nothing ticked (LIVE Studio off) and start the cameras — the PC&apos;s OBS then shows the house picture (cuts, BRB and Privacy ride along).</span>
           <span>2. On the PC (Chrome Remote Desktop), in Chrome: Whatnot Seller Hub → Show OBS Tools → Connect → <b>Start Show</b>. Connect only right before the show; keep that tab open.</span>
           <span>3. Run the show from the Mac or the Whatnot app. End it in Whatnot first, then hold END STREAM here.</span>
         </div>
@@ -251,7 +256,7 @@ export default function StreamPage() {
       <div style={{ display: "grid", gap: 12 }}>
         {!live ? (
           <button style={{ ...S.btn, ...S.primary }} disabled={!!busy || dgxDown} onClick={() => cmd("go-live", { destinations: sel, studio: openStudio })}>
-            {busy === "go-live" ? "…" : "▶ Go Live"}
+            {busy === "go-live" ? "…" : "▶ Arm house"}
           </button>
         ) : (
           <button
@@ -266,6 +271,7 @@ export default function StreamPage() {
         </button>
       </div>
 
+      <p style={{ color: "#9ab", fontSize: 12, marginTop: 18 }}>Chat below: YouTube and TikTok only. Keep Whatnot chat open in Seller Hub.</p>
       {/* live chat (YouTube + TikTok merged) */}
       <div style={{ marginTop: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
@@ -317,14 +323,14 @@ export default function StreamPage() {
           {s.cameras?.length ? (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {s.cameras.map((c) => (
-                <button key={c.slot} style={{ ...S.btn, ...S.secondary, padding: "10px", fontSize: 14, flex: 1 }} disabled={!!busy}
+                <button key={c.slot} style={{ ...S.btn, ...S.secondary, padding: "10px", fontSize: 14, flex: 1 }} disabled={!!busy || live}
                   onClick={() => { if (window.confirm(`Rotate the key for camera ${c.slot}? That phone must be re-set up (new key goes to Telegram).`)) void cmd("rotate-key", { slot: c.slot }); }}>
                   🔑 Cam {c.slot}{c.keyTail ? ` …${c.keyTail}` : ""}
                 </button>
               ))}
             </div>
           ) : (
-            <button style={{ ...S.btn, ...S.secondary, padding: "10px" }} disabled={!!busy} onClick={() => { if (window.confirm("Rotate the camera key? You must re-enter it in the camera app (sent to Telegram).")) void cmd("rotate-key"); }}>
+            <button style={{ ...S.btn, ...S.secondary, padding: "10px" }} disabled={!!busy || live} onClick={() => { if (window.confirm("Rotate the camera key? You must re-enter it in the camera app (sent to Telegram).")) void cmd("rotate-key"); }}>
               🔑 Rotate camera key
             </button>
           )}
