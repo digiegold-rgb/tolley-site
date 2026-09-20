@@ -110,6 +110,14 @@ export function platformAt(p: Platform, time: number): Point {
     z: p.z,
   };
 }
+// Keep Cubo's personality, but translate directions for the 3D adaptation.
+const CUBO_3D_HINTS: Record<number, string> = {
+  3: "Steer toward the floating ledges as you fall. We can catch our breath on each island!",
+  4: "I float above the water. You can swim! Tap JUMP to paddle up toward an island.",
+  5: "Pipe express! Stand beside the first pipe and press E — or the Cubo / portal button — to take a shortcut.",
+  8: "Watch the Sugar Sultan's glowing ring. Jump over it, then bash while the Sultan rests!",
+  10: "One last rescue mission! Outsmart Captain Clank, wake the orb, and we'll all hop home together.",
+};
 export function buildWorld(n: number) {
   const source = LEVELS[Math.max(0, Math.min(9, n - 1))];
   const theme = THEMES[source.id - 1];
@@ -196,7 +204,7 @@ export function buildWorld(n: number) {
     id: source.id,
     name: source.name,
     intro: source.introLine,
-    cuboLine: source.cuboLine,
+    cuboLine: CUBO_3D_HINTS[source.id] ?? source.cuboLine,
     music: source.music,
     theme,
     platforms,
