@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { chromium } from 'playwright';
+const base=process.env.LIVE_TEST_URL || 'http://127.0.0.1:3021';
+const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+const page=await browser.newPage({viewport:{width:390,height:844}});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto(base+'/live',{waitUntil:'domcontentloaded',timeout:120000});
+await page.getByRole('heading',{name:/You never know/}).waitFor();
+assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'mobile overflow');
+await page.screenshot({path:'/tmp/tolley-live-mobile.png',fullPage:true});
+await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:'/tmp/tolley-live-desktop.png',fullPage:true});
+const privateApi=await page.request.get(base+'/api/live/manage');assert.equal(privateApi.status(),401);
+const privatePost=await page.request.post(base+'/api/live/manage',{data:{action:'pause',paused:false}});assert.equal(privatePost.status(),401);
+const director=await page.request.get(base+'/api/stream/status');assert.equal(director.status(),401);
+await page.goto(base+'/stream',{waitUntil:'domcontentloaded',timeout:120000});assert.match(page.url(),/\/login/);
+assert.deepEqual(errors,[]);
+console.log('Public mobile/desktop render, owner gates and no client errors: passed');await browser.close();

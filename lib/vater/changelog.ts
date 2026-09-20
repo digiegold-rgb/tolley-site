@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.43.0';
+export const APP_VERSION = '1.44.0';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -40,12 +40,22 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '1.43.0',
+    version: '1.44.0',
     date: '2026-09-20',
     title: 'Meet Tolley Post',
     items: [
       'A new Post introduction previews a separate photo-to-marketplace-draft workspace for sellers.',
       'Public signup and subscriptions remain closed while marketplace connections are validated.',
+    ],
+  },
+  {
+    version: '1.43.0',
+    date: '2026-09-20',
+    title: 'Treasure Hauls live hub and show management',
+    items: [
+      'A public Treasure Hauls page brings together the next show, highlights and the drop list.',
+      'Private show management tracks schedules, costs, promotion results and automatic clip publishing.',
+      'Stream controls distinguish arming from broadcasting, surface failed camera cuts and show recording health.',
     ],
   },
   {

@@ -13,6 +13,7 @@ export type StreamCam = {
   kbps?: number;
   onAir?: boolean;
   audio?: boolean;
+  audioLive?: boolean;
   keyTail?: string;
 };
 
@@ -37,6 +38,7 @@ export default function CamSwitcher({ cameras, armed, onStatus, compact }: Props
   const [own, setOwn] = useState<{ cameras?: StreamCam[]; armed?: boolean } | null>(null);
   const [tick, setTick] = useState(0);
   const [busy, setBusy] = useState(0);
+  const [error, setError] = useState("");
   const [pending, setPending] = useState<number | null>(null);
   const [failedAt, setFailedAt] = useState<Record<number, number>>({});
 
@@ -69,26 +71,29 @@ export default function CamSwitcher({ cameras, armed, onStatus, compact }: Props
   }, [anyUp]);
 
   const post = useCallback(async (path: string, slot: number) => {
+    if (busy) return;
+    setError("");
     setBusy(slot);
     if (path === "camera") setPending(slot);
     try {
       const r = await fetch(`/api/stream/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slot }) });
       const j = await r.json().catch(() => null);
-      if (r.ok && j) {
+      if (!r.ok) throw new Error(j?.error || j?.detail || `Camera command failed (${r.status})`);
+      if (j) {
         if (selfPoll && Array.isArray(j.cameras)) setOwn({ cameras: j.cameras, armed: !!j.armed });
         onStatus?.(j);
       }
-    } catch { /* next poll shows the truth */ } finally {
+    } catch (e) { setError(e instanceof Error ? e.message : "Camera command failed. Check the current picture before retrying."); } finally {
       setBusy(0);
       setPending(null);
     }
-  }, [onStatus, selfPoll]);
+  }, [onStatus, selfPoll, busy]);
 
   // 1–4 cut cameras (never while typing, never with a modifier held).
   useEffect(() => {
     if (!cams?.length) return;
     function onKey(e: KeyboardEvent) {
-      if (e.metaKey || e.ctrlKey || e.altKey || typing()) return;
+      if (busy || e.repeat || e.metaKey || e.ctrlKey || e.altKey || typing()) return;
       const n = Number(e.key);
       if (!Number.isInteger(n) || n < 1 || n > 4) return;
       const cam = cams!.find((c) => c.slot === n);
@@ -98,16 +103,17 @@ export default function CamSwitcher({ cameras, armed, onStatus, compact }: Props
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [cams, post]);
+  }, [cams, post, busy]);
 
   if (!cams?.length) return null;
 
   return (
     <div style={{ margin: compact ? 0 : "14px 0 0" }}>
       {!compact && <div style={C.head}>Cameras · tap or press 1–{Math.min(4, cams.length)} to cut</div>}
+      {error && <p role="alert" style={{ color: "#ffb5a8", fontSize: 14 }}>{error}</p>}
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${compact ? cams.length : 2}, 1fr)`, gap: 8 }}>
         {cams.map((c) => {
-          const onAir = pending ? pending === c.slot : !!c.onAir;
+          const onAir = !!c.onAir;
           const showThumb = c.connected && isArmed && tick - (failedAt[c.slot] ?? -99) > 10;
           return (
             <div key={c.slot} style={{ ...C.tile, ...(onAir ? C.onAir : {}), opacity: c.connected ? 1 : 0.45 }}>
@@ -128,18 +134,19 @@ export default function CamSwitcher({ cameras, armed, onStatus, compact }: Props
                 )}
                 <span style={C.num}>{c.slot}</span>
                 {onAir && <span style={C.badge}>ON AIR</span>}
+                {pending === c.slot && <span style={{ ...C.badge, top: 30, background: "#856100" }}>SWITCHING…</span>}
               </button>
               <div style={C.foot}>
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {c.label || `Cam ${c.slot}`}{c.connected ? ` · ${c.kbps ?? 0}k` : " · off"}
                 </span>
                 <button
-                  style={{ ...C.mic, ...(c.audio ? C.micOn : {}) }}
+                  style={{ ...C.mic, ...(c.audioLive ? C.micOn : {}) }}
                   disabled={!c.connected || !!c.audio || !!busy}
-                  title={c.audio ? "Audio comes from this camera" : "Take audio from this camera"}
+                  title={c.audioLive ? (c.audio ? "Active microphone · audio lock" : "Active fallback microphone") : c.audio ? "Audio lock · microphone currently unavailable" : "Lock audio to this camera"}
                   onClick={() => void post("camera/audio", c.slot)}
                 >
-                  🎙
+                  {c.audioLive ? "🎙 LIVE" : c.audio ? "🎙 LOCK" : "🎙"}
                 </button>
               </div>
             </div>

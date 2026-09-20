@@ -15,6 +15,8 @@ export const ALL_PLATFORMS: Platform[] = [
 
 export interface PostInput {
   id: string; // SocialPost.id
+  onExternalId?: (id: string) => Promise<void>; // Persist remote identity before optional follow-up work
+  accountId?: string; // Required explicit binding for stream clips
   source?: string; // SocialPost.source — drives per-brand account routing (e.g. FB page)
   mediaUrl: string;
   mediaType: "video" | "image" | "carousel";

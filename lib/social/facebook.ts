@@ -38,6 +38,7 @@ function pickPageAndToken(source?: string): { pageId: string; token: string } | 
 }
 
 export async function postFacebook(input: PostInput): Promise<PostResult> {
+  if (input.source === "stream") return { ok: false, error: "Stream clips require the dedicated bound-account Reel queue" };
   const cfg = pickPageAndToken(input.source);
   if (!cfg) {
     return {
