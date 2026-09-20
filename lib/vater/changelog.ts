@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.46.3';
+export const APP_VERSION = '1.47.0';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.47.0',
+    date: '2026-09-20',
+    title: 'The original Portal Hoppers adventure comes to life in 3D',
+    items: [
+      'Return to the original ten worlds, rescue fifteen friends from Captain Clank, earn their powers, and hop through portals with Cubo.',
+      'Zip, Ember, and Moxie now have rounded, animated 3D character models in colorful worlds, with the original music and sound effects.',
+      'Super Hopper adds quicker hazards and tighter timing. Play with a keyboard, controller, or touch controls, with separate music and effects volumes.',
+    ],
+  },
   {
     version: '1.46.3',
     date: '2026-09-20',

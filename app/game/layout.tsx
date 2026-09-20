@@ -12,12 +12,12 @@ const fredoka = Fredoka({
 
 export const metadata: Metadata = {
   alternates: { canonical: "https://www.tolley.io/game" },
-  title: "Portal Hoppers: Whisperwood — 3D adventure | Tolley.io",
+  title: "Portal Hoppers 3D — 3D adventure | Tolley.io",
   description:
-    "Explore a colorful 3D woodland, solve ancient temple puzzles, and awaken the forest with Cubo. A free, original family-friendly adventure for keyboard, mouse, or controller. No download.",
+    "The Portal Hoppers you love, in 3D: ten colorful worlds, fifteen friends to rescue, Cubo, magical powers, and the original music. Free family-friendly fun with harder challenges.",
   openGraph: {
-    title: "Portal Hoppers: Whisperwood — 3D adventure",
-    description: "Three beacons. One forgotten temple. Explore, solve, and discover an original woodland adventure.",
+    title: "Portal Hoppers 3D — 3D adventure",
+    description: "Ten magical worlds. Fifteen friends. One big rescue adventure. Meet the animated heroes of Portal Hoppers 3D.",
     type: "website",
   },
   robots: { index: true, follow: true },

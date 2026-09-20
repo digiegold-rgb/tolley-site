@@ -1,14 +1,14 @@
-import AdventureShell from "@/components/game/adventure/AdventureShell";
+import PortalShell from "@/components/game/portal3d/PortalShell";
 
 export default function GamePage() {
   return (
     <main>
       <p className="sr-only">
-        Portal Hoppers: Whisperwood is an original 3D woodland adventure. Explore with Ember, Zip, or Moxie and your companion Cubo.
-        Awaken three beacons, solve five temple rooms, and free the Heartwood Guardian. Use a keyboard and mouse or a controller.
-        The original two-player platformer and touchscreen controls remain available in Portal Hoppers Classic.
+        Portal Hoppers in 3D. Help Zip, Ember, and Moxie rescue fifteen friends from Captain Clank across ten magical worlds.
+        Meet Cubo, earn powers, jump moving platforms, bash portal orbs, and enjoy the original Portal Hoppers soundtrack.
+        Keyboard, controller, and touchscreen controls. Choose Super Hopper for harder challenges.
       </p>
-      <AdventureShell />
+      <PortalShell />
     </main>
   );
 }

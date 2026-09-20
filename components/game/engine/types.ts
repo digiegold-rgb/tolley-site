@@ -156,6 +156,7 @@ export interface FriendDef {
 
 /* ── audio ─────────────────────────────────────────────────────────────── */
 export type SfxName =
+  | "step"
   | "jump"
   | "ultraCharge"
   | "ultra"
