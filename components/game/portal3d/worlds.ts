@@ -203,7 +203,11 @@ export function buildWorld(n: number) {
   return {
     id: source.id,
     name: source.name,
-    intro: source.introLine,
+    intro: ({
+      3: "A sky full of floating ledges! Hop down carefully and find the portal orb below.",
+      5: "A tangle of green pipes. That shiny entrance looks like a shortcut!",
+      10: "Captain Clank's last hideout. Stop the cage machine and bring every friend home.",
+    } as Record<number, string>)[source.id] ?? source.introLine,
     cuboLine: CUBO_3D_HINTS[source.id] ?? source.cuboLine,
     music: source.music,
     theme,
