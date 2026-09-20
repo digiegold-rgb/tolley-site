@@ -44,10 +44,11 @@ export async function getStoredTokens(
 
 export async function getStoredToken(
   platform: string,
+  accountId?: string,
 ): Promise<{ accessToken: string; refreshToken: string | null; accountId: string | null } | null> {
   try {
     const row = await prisma.platformConnection.findFirst({
-      where: { subscriberId: ADMIN_SUBSCRIBER, platform, status: "active" },
+      where: { subscriberId: ADMIN_SUBSCRIBER, platform, status: "active", ...(accountId ? { platformAccountId: accountId } : {}) },
       orderBy: { updatedAt: "desc" },
     });
     if (!row) return null;

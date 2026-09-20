@@ -1,0 +1,30 @@
+import test, { after } from "node:test";
+import assert from "node:assert/strict";
+import { prisma } from "../../lib/prisma";
+import { reservePublication, matchShowForClip } from "../../lib/live/publish";
+const review = {transcriptSafe:true,visualSafe:true,humiliationFree:true,profanityHandled:true,noCurrentOffer:true,confidence:1,reason:"test"};
+test("durable reservations prevent duplicates, enforce cap and honor pause/holds",async()=>{
+ if(!process.env.DATABASE_URL?.endsWith('/tolley_live_growth_test')) throw new Error('Isolated test database required');
+ await prisma.livePublication.deleteMany();await prisma.liveClip.deleteMany();
+ const show=await prisma.liveShow.create({data:{title:"Queue test",category:"Electronics",startsAt:new Date(),durationMin:120,whatnotUrl:"https://www.whatnot.com/live/test",confirmedUntil:new Date(Date.now()+7200000)}});
+ await prisma.liveSettings.upsert({where:{id:"treasure-hauls"},create:{publishingPaused:false,bindings:{facebook:{accountId:"test-page",label:"test"}}},update:{publishingPaused:false,bindings:{facebook:{accountId:"test-page",label:"test"}}}});
+ for(const id of ['one','two','three','held']) await prisma.liveClip.create({data:{id,showId:show.id,recording:"test",startS:0,endS:30,title:"test",caption:"test",mediaUrl:"https://example.test/video.mp4",status:id==='held'?'held':'ready',review}});
+ const concurrent=await Promise.all(Array.from({length:5},()=>reservePublication('one','facebook')));
+ assert.equal(concurrent.filter(Boolean).length,1);
+ assert.equal(await reservePublication('held','facebook'),null);
+ assert.equal(await reservePublication('two','youtube'),null);
+ assert.ok(await reservePublication('two','facebook'));
+ assert.equal(await reservePublication('three','facebook'),null);
+ await prisma.liveSettings.update({where:{id:"treasure-hauls"},data:{publishingPaused:true}});
+ assert.equal(await reservePublication('three','facebook'),null);
+ await prisma.livePublication.deleteMany();await prisma.liveClip.deleteMany();await prisma.liveShow.delete({where:{id:show.id}});
+});
+test("only clips wholly inside a confirmed public show can be associated",async()=>{
+ const show=await prisma.liveShow.create({data:{title:"Boundary test",category:"Electronics",startsAt:new Date("2026-09-01T17:00:00Z"),durationMin:60,whatnotUrl:"https://www.whatnot.com/live/test",confirmedUntil:new Date("2026-09-01T18:00:00Z"),endedAt:new Date("2026-09-01T17:45:00Z")}});
+ assert.equal(await matchShowForClip("2026-09-01T17:00:00Z",30,60),show.id);
+ assert.equal(await matchShowForClip("2026-09-01T16:59:50Z",0,30),null);
+ assert.equal(await matchShowForClip("2026-09-01T17:44:50Z",0,30),null);
+ assert.equal(await matchShowForClip("invalid",0,30),null);
+ await prisma.liveShow.delete({where:{id:show.id}});
+});
+after(()=>prisma.$disconnect());

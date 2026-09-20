@@ -8,6 +8,7 @@ export function TolleyHeader() {
       <nav aria-label="Tolley navigation">
         <Link href="/#products">Products</Link>
         <Link href="/start">Services</Link>
+        <Link href="/live">Treasure Hauls</Link>
         <Link href="/about">About</Link>
       </nav>
     </header>

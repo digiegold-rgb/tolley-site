@@ -72,6 +72,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Curated extras not represented as standalone subsites
   const extras: MetadataRoute.Sitemap = [
+    { url: `${BASE}/live`, changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE}/leads/pricing`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/shop/disclosure`, changeFrequency: "yearly", priority: 0.3 },
     {
