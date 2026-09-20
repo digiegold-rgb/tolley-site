@@ -4,7 +4,7 @@ This is the 3D adaptation of Portal Hoppers, replacing the unrelated Whisperwood
 
 ## What carries over
 
-`worlds.ts` directly imports the original `worlds/levels.ts`: all ten world names, story introductions, music assignments, rescue order and fifteen friends. It uses `worlds/friends.ts` for the heroes, dialogue, powers and friend identities. `audio.ts` plays the actual original `Synth` and `Sequencer` compositions and effects. The new 3D simulation translates jumping, Ultra Jump, bashing cages three times, stomping enemies, three-hit portal orbs, checkpoints, Cubo boosts, and the Power Wheel into free movement on X/Z with vertical jumping. Three bosses retain their original identities. Levels are newly arranged 3D adaptations, not exact tile-map extrusions.
+`worlds.ts` directly imports the original `worlds/levels.ts`: all ten world names, music assignments, rescue order and fifteen friends. Original introductions and Cubo dialogue are adapted where the 3D controls and terrain differ. It uses `worlds/friends.ts` for the heroes, dialogue, powers and friend identities. `audio.ts` plays the actual original `Synth` and `Sequencer` compositions and effects. The new 3D simulation translates jumping, Ultra Jump, bashing cages three times, stomping enemies, three-hit portal orbs, checkpoints, Cubo boosts, and the Power Wheel into free movement on X/Z with vertical jumping. Three bosses retain their original identities. Levels are newly arranged 3D adaptations, not exact tile-map extrusions.
 
 ## Original art pipeline
 
