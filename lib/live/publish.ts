@@ -58,7 +58,7 @@ export async function drainClips() {
   for (const clip of clips) for (const platform of LIVE_PLATFORMS) {
     const job = await reservePublication(clip.id, platform);
     if (!job) continue;
-    const input: PostInput = { id: clip.id, source: "stream", accountId: job.accountId, onExternalId: async id => { await prisma.livePublication.update({ where: { id: job.id }, data: { externalId: id } }); }, mediaType: "video", mediaUrl: clip.mediaUrl, title: clip.title, caption: `${clip.caption}\n\nFrom a previous Treasure Hauls show; items may be sold. Follow @treasure_hauls on Whatnot. Next show: tolley.io/live (link in profile).`, hashtags: ["#TreasureHauls", "#Reselling", "#Shorts"] };
+    const input: PostInput = { id: clip.id, source: "stream", accountId: job.accountId, onExternalId: async id => { await prisma.livePublication.update({ where: { id: job.id }, data: { externalId: id } }); }, mediaType: "video", mediaUrl: clip.mediaUrl, title: clip.title, caption: `${clip.caption}\n\nFrom a previous Treasure Hauls show; items may be sold. Follow @treasure_hauls on Whatnot. Next show: https://www.tolley.io/live?utm_source=${platform}`, hashtags: ["#TreasureHauls", "#Reselling", "#Shorts"] };
     try {
       // Recheck the pause/hold immediately before starting the remote request.
       const settings = await prisma.liveSettings.findUnique({ where: { id: "treasure-hauls" } });
