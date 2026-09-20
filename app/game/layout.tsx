@@ -12,12 +12,12 @@ const fredoka = Fredoka({
 
 export const metadata: Metadata = {
   alternates: { canonical: "https://www.tolley.io/game" },
-  title: "Portal Hoppers — free browser platformer | Tolley.io",
+  title: "Portal Hoppers: Whisperwood — 3D adventure | Tolley.io",
   description:
-    "Portal Hoppers: a free, original co-op pixel platformer. Hop through 10 wild worlds with Cubo the cube, free 15 caged friends, unlock their powers, and beat the Sugar Sultan, The Whistler and Captain Clank. Keyboard or touch. No download.",
+    "Explore a colorful 3D woodland, solve ancient temple puzzles, and awaken the forest with Cubo. A free, original family-friendly adventure for keyboard, mouse, or controller. No download.",
   openGraph: {
-    title: "Portal Hoppers — free browser platformer",
-    description: "Hop through 10 worlds, free 15 friends, get home. Play free in your browser — keyboard or touch.",
+    title: "Portal Hoppers: Whisperwood — 3D adventure",
+    description: "Three beacons. One forgotten temple. Explore, solve, and discover an original woodland adventure.",
     type: "website",
   },
   robots: { index: true, follow: true },
@@ -26,8 +26,6 @@ export const metadata: Metadata = {
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover" as const,
   themeColor: "#05030f",
 };

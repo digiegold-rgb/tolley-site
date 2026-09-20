@@ -1,5 +1,5 @@
 /**
- * Portal Hoppers smoke suite — tolley.io/game
+ * Portal Hoppers smoke suite — tolley.io/game/classic
  *
  *   PLAYWRIGHT_BASE_URL=http://localhost:3000 npx playwright test tests/e2e/game.spec.ts
  *
@@ -56,7 +56,7 @@ async function canvasVariance(page: Page): Promise<number> {
 test.describe('Portal Hoppers', () => {
   test('title renders and Enter reaches hero select', async ({ page }) => {
     watch(page);
-    await page.goto('/game?mute=1');
+    await page.goto('/game/classic?mute=1');
     const canvas = page.getByTestId('game-canvas');
     await expect(canvas).toHaveAttribute('data-screen', 'title');
     await expect(page.getByText('PORTAL', { exact: true })).toBeVisible();
@@ -71,7 +71,7 @@ test.describe('Portal Hoppers', () => {
   for (let n = 1; n <= 10; n++) {
     test(`level ${n} boots, hero moves, Cubo follows`, async ({ page }) => {
       watch(page);
-      await page.goto(`/game?level=${n}&god=1&mute=1&seed=7`);
+      await page.goto(`/game/classic?level=${n}&god=1&mute=1&seed=7`);
       const canvas = page.getByTestId('game-canvas');
       await expect(canvas).toHaveAttribute('data-screen', 'play');
       await page.waitForFunction(() => !!window.__portalGame);
@@ -96,7 +96,7 @@ test.describe('Portal Hoppers', () => {
 
   test('god run: K through all 10 worlds reaches the ending and saves', async ({ page }) => {
     watch(page);
-    await page.goto('/game?level=1&god=1&mute=1&seed=3');
+    await page.goto('/game/classic?level=1&god=1&mute=1&seed=3');
     const canvas = page.getByTestId('game-canvas');
     await expect(canvas).toHaveAttribute('data-screen', 'play');
     for (let n = 1; n <= 10; n++) {
@@ -124,7 +124,7 @@ test.describe('Portal Hoppers', () => {
     const ctx = await browser.newContext({ ...devices['iPad (gen 7)'] });
     const page = await ctx.newPage();
     watch(page);
-    await page.goto('/game?level=2&god=1&mute=1&seed=5');
+    await page.goto('/game/classic?level=2&god=1&mute=1&seed=5');
     await page.waitForFunction(() => !!window.__portalGame);
     const right = page.locator('[data-touch="right"]');
     await expect(right).toBeVisible();
@@ -143,7 +143,7 @@ test.describe('Portal Hoppers', () => {
   });
 
   test('audio context unlocks after a key press', async ({ page }) => {
-    await page.goto('/game?level=2&god=1&seed=5');
+    await page.goto('/game/classic?level=2&god=1&seed=5');
     await page.waitForFunction(() => !!window.__portalGame);
     await page.keyboard.press('Space');
     await page.waitForTimeout(300);
@@ -154,7 +154,7 @@ test.describe('Portal Hoppers', () => {
   test('reduced motion still plays without errors', async ({ page }) => {
     watch(page);
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/game?level=6&god=1&mute=1&seed=9');
+    await page.goto('/game/classic?level=6&god=1&mute=1&seed=9');
     await page.waitForFunction(() => !!window.__portalGame);
     await page.keyboard.down('ArrowRight');
     await page.waitForTimeout(800);

@@ -4,7 +4,7 @@ export const manifest: SubsiteManifest = {
   name: "game",
   title: "Portal Hoppers",
   purpose:
-    "Free original co-op pixel platformer playable in the browser: ten worlds, an AI companion (Cubo), fifteen rescuable friends with unique powers, three bosses. Keyboard or touch, no download, no account.",
+    "Free original 3D woodland adventure: explore with Cubo, solve temple puzzles, and free the Heartwood Guardian. Solo, keyboard/mouse or controller, no account. The original touch-compatible co-op platformer remains at /game/classic.",
   url: "/game",
   schemaType: "SoftwareApplication",
   jsonEndpoints: [],
@@ -14,6 +14,6 @@ export const manifest: SubsiteManifest = {
   mcpTools: [],
   category: "misc",
   status: "public",
-  keywords: ["free browser game", "platformer", "co-op game for kids", "pixel game", "no download game"],
+  keywords: ["free browser game", "3D adventure", "family-friendly game", "puzzle adventure", "no download game"],
   actions: [],
 };

@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.45.0';
+export const APP_VERSION = '1.46.0';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.46.0',
+    date: '2026-09-20',
+    title: 'Portal Hoppers explores Whisperwood in 3D',
+    items: [
+      'Explore an original woodland adventure with Ember, Zip, Moxie, and Cubo, using a keyboard and mouse or controller.',
+      'Awaken three beacons, solve five temple rooms, and challenge the Heartwood Guardian with your sword, shield, and boomerang.',
+      'Choose Adventure or Challenge, save your discoveries in this browser, and return to the original co-op game through Classic.',
+    ],
+  },
   {
     version: '1.45.0',
     date: '2026-09-20',
