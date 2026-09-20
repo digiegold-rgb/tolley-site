@@ -1,0 +1,27 @@
+{
+  "observed_date": "2026-09-20",
+  "timezone": "America/Chicago",
+  "method": "Approximately 25 minutes of manual browser research around 08:11–08:35 CDT; four live rooms visually observed, plus public profiles, completed-sale histories and supplier pages. No audio transcription. Convenience sample, not a market census.",
+  "categories": {"TCG":15400,"Sports cards":7900,"Electronics":5400,"Arts / handmade":628},
+  "quilting_subcategory_viewers":178,
+  "sellers": [
+    {"name":"Coppertop_toolbox","viewers":[37,55],"sold_display":"1.2K","rating":4.9,"followers":"1.2K","url":"https://www.whatnot.com/user/coppertop_toolbox","live":"https://www.whatnot.com/live/c776e248-e1a0-4684-963d-a80ce53df715"},
+    {"name":"DeepDiveFabrics","viewers":[30,36],"sold_display":"23.3K","rating":5.0,"followers":"4.4K","url":"https://www.whatnot.com/user/deepdivefabrics","live":"https://www.whatnot.com/live/cae7852f-0a40-4646-921b-7a708152e2a9"},
+    {"name":"CrazyBidz","viewers":[773,975],"sold_display":"179.5K","rating":4.8,"followers":"435.7K","url":"https://www.whatnot.com/user/crazybidz","live":"https://www.whatnot.com/live/0d7bfba5-0080-46ef-a96e-2ca74cee7e21"},
+    {"name":"MintJulepGlow","viewers":[100,108],"sold_display":"44.1K","rating":5.0,"followers":"63.2K","url":"https://www.whatnot.com/user/mintjulepglow","live":"https://www.whatnot.com/live/901663a0-4465-4745-8304-16ba06b73d50"}
+  ],
+  "fabric_sales":{"lots":[38,39,40,41,42,43],"prices":[6,6,6,6,7,8],"distinct_buyers":4},
+  "socket_history":{"prices":[7,5,3,15,3,4,8,8,9,6,7,3,4],"distinct_buyers":7,"note":"Generic socket lots: individual contents not identified. Not SKU comparisons."},
+  "electronics_history":{"prices":[9,10,7,7,15,21],"note":"Generic Tiny Pull lots, contents not consistently identified."},
+  "beauty_history":{"prices":[35,51,37,38,32],"distinct_buyers":3,"largest_buyer_lots":3,"note":"Generic lot names; do not infer price per bottle or SKU."},
+  "fabric_model":{"yard_cost":2.99,"purchase_tax_buffer":0.10,"waste_fraction":0.05,"packaging":0.35,"refund_reserve":0.05,"buyer_shipping":4.47,"buyer_tax_assumption":0.10,"commission":0.08,"processing":0.029,"fixed_fee":0.30,"prices":[4,6,8],"batch_sales":40,"batch_ad":10,"labor_hours":4,"hourly_labor":20,"purchase_yards":30},
+  "tool_model":{"hammer":8,"premium":0.18,"purchase_tax_buffer":0.10,"pickup_allocation":2,"packaging":0.75,"buyer_shipping":7.75,"refund_reserve":0.05,"prices":[20,25,30],"labor_minutes":20},
+  "sources":{
+    "browse":"https://www.whatnot.com/browse",
+    "fees":"https://help.whatnot.com/hc/en-us/articles/4847069165965-Whatnot-seller-fees",
+    "fabric_blue":"https://marshalldrygoods.com/product/45-christmas-haul-blue/",
+    "fabric_red":"https://marshalldrygoods.com/product/45-chimers-allover-red/",
+    "tools":"https://www.equip-bid.com/auction/47725/item/284",
+    "tool_auction":"https://www.equip-bid.com/auction/47725"
+  }
+}

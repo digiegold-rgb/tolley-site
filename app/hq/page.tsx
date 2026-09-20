@@ -678,6 +678,15 @@ function HqPageInner() {
               <summary className="tab-btn">📄 Docs ▾</summary>
               <div className="tab-docs-menu">
                 <a
+                  href="/research/whatnot-market-study-2026-09-20.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeDocs}
+                >
+                  Whatnot — Market, Margins &amp; Sourcing
+                  <span className="doc-sub">Four live seller case studies, five charts, product photos, real sourcing and a starter-budget test — Sep 20, 2026</span>
+                </a>
+                <a
                   href="/research/your-kc-homes-funding-2026-09.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
