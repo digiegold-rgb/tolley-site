@@ -1,0 +1,17 @@
+[Unit]
+Description=Tolley private stream coach and chat history
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/jelly/stream-director
+ExecStart=/home/jelly/stream-director/.venv/bin/python /home/jelly/stream-director/coach_service.py
+Restart=on-failure
+RestartSec=5
+UMask=0077
+Nice=10
+CPUWeight=20
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

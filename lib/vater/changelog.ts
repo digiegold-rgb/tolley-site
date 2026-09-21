@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.47.0';
+export const APP_VERSION = '1.48.0';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.48.0',
+    date: '2026-09-21',
+    title: 'A private coach for your live shows',
+    items: [
+      'Stream Coach saves connected chat, flags buyer questions and keeps manually entered show sales together.',
+      'Review saved show recaps and ask a private AI coach for suggestions grounded in your show records.',
+      'Tracking works while the page is closed and never starts or stops your broadcast.',
+    ],
+  },
   {
     version: '1.47.0',
     date: '2026-09-20',
