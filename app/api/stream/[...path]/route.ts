@@ -12,6 +12,8 @@ async function proxy(request: NextRequest, path: string[]) {
   if (!authed) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  // Coach requests use the dedicated proxy with its method, size and origin checks.
+  if (path[0] === "coach") return NextResponse.json({ error: "Not found" }, { status: 404 });
   const key = process.env.STREAM_API_KEY;
   if (!key) {
     return NextResponse.json({ error: "STREAM_API_KEY not configured" }, { status: 500 });
