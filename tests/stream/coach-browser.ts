@@ -32,6 +32,15 @@ async function main() {
     await page.getByText('Does the hair dryer work on 220v?', { exact: true }).first().waitFor();
     await page.screenshot({ path: '/tmp/stream-coach-desktop.png', fullPage: true });
     const before = await (await context.request.get(base + '/api/stream-coach/snapshot')).json();
+    assert.equal(before.automation.enabled, true);
+    assert.equal(before.automation.viewers[0].latest, 0);
+    assert.equal(before.whatnot.profile.followers, 68);
+    assert.equal(before.metrics.salesCents, 1800, 'Public lifetime sold count never becomes revenue');
+    await page.getByRole('button', { name: 'Pause auto detection', exact: true }).click();
+    await page.getByRole('button', { name: 'Enable auto detection', exact: true }).waitFor();
+    assert.equal((await (await context.request.get(base + '/api/stream-coach/snapshot')).json()).automation.enabled, false);
+    await page.getByRole('button', { name: 'Enable auto detection', exact: true }).click();
+    await page.getByRole('button', { name: 'Pause auto detection', exact: true }).waitFor();
     await page.getByRole('button', { name: '✓ Handled', exact: true }).first().click();
     await page.waitForTimeout(1000);
     const after = await (await context.request.get(base + '/api/stream-coach/snapshot')).json();
