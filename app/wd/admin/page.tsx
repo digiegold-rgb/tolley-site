@@ -178,6 +178,7 @@ export default function WdAdminPage() {
       <div className="topbar">
         <span className="title">WD Admin — Tolley</span>
         <div className="actions">
+          <a className="btn btn-sm" href="/wd/call" style={{ textDecoration: "none" }}>Call tenant</a>
           {role === "tolley" && (
             <button className="btn btn-sm btn-primary" onClick={() => setShowAddModal(true)} disabled={loading}>
               + New Client

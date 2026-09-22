@@ -2,7 +2,7 @@
  * operational routes deliberately do not inherit it. Add new services here. */
 export const TOLLEY_CORE_ROUTES = ["/", "/about", "/start", "/privacy", "/terms", "/security", "/data-retention", "/advertising"];
 export const TOLLEY_SERVICE_ROOTS = ["wd", "pools", "homes", "housing", "trailer", "generator", "hvac", "lastmile", "moving", "rental", "tables", "picnic-table", "kerplunk", "estate", "cleanouts", "shop", "drive", "sales", "real-estate-agent"];
-const OPERATIONAL_SEGMENTS = new Set(["admin", "dashboard", "driver", "portal", "analytics", "new", "whatsapp"]);
+const OPERATIONAL_SEGMENTS = new Set(["admin", "dashboard", "driver", "portal", "analytics", "new", "whatsapp", "call"]);
 
 export function tolleyThemeForPath(pathname: string | null) {
   if (!pathname) return null;
