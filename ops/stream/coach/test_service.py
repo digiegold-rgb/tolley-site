@@ -19,6 +19,7 @@ class CoachTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory()
         coach.DB_PATH=Path(self.temp.name)/'test.sqlite3'
+        coach.WHATNOT_PATH=Path(self.temp.name)/'whatnot.json'
         coach.initialize()
         self.sid=coach.action({'action':'start','title':'Test auction'})['id']
         with coach.db() as c:

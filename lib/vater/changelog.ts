@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.48.0';
+export const APP_VERSION = '1.49.0';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.49.0',
+    date: '2026-09-21',
+    title: 'Automatic stream data tracking',
+    items: [
+      'Verified YouTube and TikTok live shows start tracking automatically, even with Stream Coach closed.',
+      'Save timestamped audience measurements, observed peaks and chat history with each show.',
+      'Track public Whatnot follower and lifetime sold counts separately from your manual show sales.',
+    ],
+  },
   {
     version: '1.48.0',
     date: '2026-09-21',

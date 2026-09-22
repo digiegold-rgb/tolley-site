@@ -1,0 +1,17 @@
+[Unit]
+Description=Tolley read-only Whatnot data observer
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/jelly/stream-director
+ExecStart=/usr/bin/node /home/jelly/stream-director/whatnot-observer.mjs
+Restart=on-failure
+RestartSec=15
+UMask=0077
+Nice=10
+CPUWeight=20
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
