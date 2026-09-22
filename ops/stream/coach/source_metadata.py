@@ -14,13 +14,15 @@ def youtube_page(html):
             vid=details.get('videoId','')
             if not re.fullmatch(r'[a-zA-Z0-9_-]{11}',vid):continue
             owner=details.get('channelId')
-            is_live=live.get('isLiveNow') is True and not live.get('endTimestamp')
+            is_live=None
+            if live.get('endTimestamp') or live.get('isLiveNow') is False:is_live=False
+            elif live.get('isLiveNow') is True:is_live=True
             started=None
             try:started=datetime.fromisoformat(live['startTimestamp'].replace('Z','+00:00')).timestamp()
             except (ValueError,KeyError,TypeError):pass
             return {'video':f'https://www.youtube.com/watch?v={vid}','source':f'https://www.youtube.com/watch?v={vid}',
                     'title':str(details.get('title','YouTube live show'))[:120], 'channelId':owner,
-                    'verified':owner==YOUTUBE_CHANNEL, 'liveNow':bool(is_live and owner==YOUTUBE_CHANNEL),
+                    'verified':owner==YOUTUBE_CHANNEL, 'liveNow':is_live if owner==YOUTUBE_CHANNEL else None,
                     'startedAt':started}
         except (ValueError,TypeError,AttributeError):continue
     # Absence of a recognized player is unknown, never proof a running show ended.

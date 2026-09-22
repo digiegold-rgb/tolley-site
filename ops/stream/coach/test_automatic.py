@@ -51,6 +51,9 @@ class AutomaticTests(unittest.TestCase):
     def test_youtube_archive_is_not_live_even_if_isLive_true(self):
         p={'videoDetails':{'videoId':'abcdefghijk','channelId':YOUTUBE_CHANNEL,'isLive':True},'microformat':{'playerMicroformatRenderer':{'liveBroadcastDetails':{'isLiveNow':False,'endTimestamp':'2026-09-21T01:00:00Z'}}}}
         self.assertIs(youtube_page('var ytInitialPlayerResponse = '+json.dumps(p))['liveNow'],False)
+    def test_partial_youtube_player_never_proves_offline(self):
+        p={'videoDetails':{'videoId':'abcdefghijk','channelId':YOUTUBE_CHANNEL}}
+        self.assertIsNone(youtube_page('var ytInitialPlayerResponse = '+json.dumps(p))['liveNow'])
     def test_profile_lifetime_sales_do_not_enter_gross_sales(self):
         self.observe()
         with service.db() as c:automatic.profile(c,{'publicStatus':'connected','profile':{'handle':'treasure_hauls','followers':68,'sold':97,'observedAt':self.now}},self.now)
