@@ -247,9 +247,12 @@ export function HqSmsInbox({ onCounts }: { onCounts?: (needsSend: number) => voi
               <div className="sms-title">SMS — 913-600-7508</div>
               <div className="sms-sub">Every text. Draft, then one tap to send. Nothing goes out on its own.</div>
             </div>
-            <button className="btn btn-sm" onClick={() => { setLoading(true); void loadThreads(); }}>
-              {loading ? "…" : "↻"}
-            </button>
+            <div style={{ display: "flex", gap: 6 }}>
+              <a className="btn btn-sm" href="/wd/call" style={{ textDecoration: "none" }}>Call</a>
+              <button className="btn btn-sm" onClick={() => { setLoading(true); void loadThreads(); }}>
+                {loading ? "…" : "↻"}
+              </button>
+            </div>
           </div>
           <HqTwilioBalancePill />
         </div>
@@ -328,6 +331,15 @@ export function HqSmsInbox({ onCounts }: { onCounts?: (needsSend: number) => voi
                 {thread?.optedOut && <span className="sms-badge stop">STOP</span>}
                 {thread?.smsUndeliverable && <span className="sms-badge dead">DEAD</span>}
               </div>
+              {thread?.e164 && (
+                <a
+                  className="btn btn-sm"
+                  style={{ marginLeft: "auto", textDecoration: "none", flex: "none" }}
+                  href={`/wd/call?phone=${encodeURIComponent(thread.e164)}&name=${encodeURIComponent(thread.name || "")}`}
+                >
+                  Call
+                </a>
+              )}
             </div>
             <div className="sms-msgs">
               {threadLoading && <div className="sms-empty">Loading…</div>}
