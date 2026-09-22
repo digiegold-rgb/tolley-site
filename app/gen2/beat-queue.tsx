@@ -1,5 +1,6 @@
 "use client";
 
+import { FailureNotice } from "./recovery";
 import { motionCost, usd } from "@/lib/generate-cost";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -365,7 +366,7 @@ export function BeatQueuePanel({
                   onReset={onReset}
                   onPatch={onPatch}
                 />
-                {beat.error ? <p className="gen-err">{beat.error}</p> : null}
+                {beat.error ? <FailureNotice error={beat.error} /> : null}
               </li>
             ))}
             <li className="gen-beat gen-beat-stitch-end">
@@ -389,7 +390,7 @@ export function BeatQueuePanel({
           </div>
           <p className="gen-hint">Stills and the clip live here so the timeline stays a single row. Edit the first clip in step 2.</p>
           <BeatStillFields beat={selected} index={selectedIndex} busy={busy} onPatch={onPatch} />
-          {selected.error ? <p className="gen-err">{selected.error}</p> : null}
+          {selected.error ? <FailureNotice error={selected.error} /> : null}
           {selected.job_id &&
           (selected.status === "ready" || selected.status === "approved" || selected.status === "rejected") ? (
             <GatedClip
@@ -445,9 +446,8 @@ export function SlowMoChip({
         0.5× slow-mo
       </button>
       <p className="gen-field-hint">
-        After Wan returns (~5s), remux with ffmpeg <code>setpts=2*PTS</code> so the export plays at half
-        speed (~10s). Same frames — not a longer fal call. If remux is unavailable, the in-page player
-        uses <code>playbackRate=0.5</code> and is labeled.
+        Plays the result at half speed. It does not generate extra frames or reduce the render cost.
+        When a slowed download is unavailable, only preview playback changes.
       </p>
     </div>
   );

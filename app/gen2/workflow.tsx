@@ -1,9 +1,25 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useState, useId, type ReactNode } from "react";
 import { GENERATE_WORKFLOWS, WORKFLOW_STEPS, type WorkflowMode, type WorkflowStep } from "@/lib/generate-workflow";
 
 export const WorkflowContext = createContext<{ step: WorkflowStep; all: boolean }>({ step: 0, all: false });
+
+/** Disclosure changes presentation only: advanced values stay applied when closed. */
+export function AdvancedOptions({ children, hint, title = "Advanced options" }: { children: ReactNode; hint: string; title?: string }) {
+  const { all } = useContext(WorkflowContext);
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  return <section className="gen-advanced-options">
+    <button type="button" className="gen-advanced-toggle" aria-expanded={all || open} aria-controls={panelId} onClick={() => setOpen(v => !v)} disabled={all}>
+      <span><strong>{title}</strong><small>{hint}</small></span><span aria-hidden="true">{all || open ? "−" : "+"}</span>
+    </button>
+    <div id={panelId} className="gen-advanced-content" hidden={!all && !open}>
+      <p className="gen-hint">Closing this panel keeps your settings. All controls view expands these options too.</p>
+      {children}
+    </div>
+  </section>;
+}
 
 /** Keep forms mounted across steps so file selections and editor drafts survive navigation. */
 export function WorkflowSection({ step, children }: { step: WorkflowStep | WorkflowStep[]; children: ReactNode }) {

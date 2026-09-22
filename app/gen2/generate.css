@@ -1,5 +1,33 @@
 /* Gen2 workspace — styles scoped to .gen2-root so /generate stays unchanged. */
 
+.gen2-root .gen-advanced-options { border: 1px solid var(--gen-line); border-radius: 12px; margin: 16px 0; overflow: hidden; min-width: 0; }
+.gen2-root .gen-advanced-toggle { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; padding: 16px; text-align: left; border: 0; color: var(--gen-text); background: rgba(143,125,255,.06); cursor: pointer; font: inherit; }
+.gen2-root .gen-advanced-toggle strong { display: block; font-size: 14px; }
+.gen2-root .gen-advanced-toggle small { display: block; color: var(--gen-muted); font-size: 12px; margin-top: 5px; line-height: 1.5; }
+.gen2-root .gen-advanced-toggle[aria-expanded="true"] { border-bottom: 1px solid var(--gen-line); }
+.gen2-root .gen-advanced-toggle:disabled { cursor: default; opacity: 1; }
+.gen2-root .gen-advanced-content { padding: 16px; display: grid; gap: 14px; }
+.gen2-root .gen-advanced-content[hidden] { display: none; }
+.gen2-root .gen-settings-intro { margin: 0 0 18px; }
+.gen2-root .gen-settings-intro h3 { font-size: 18px; margin: 0 0 6px; }
+.gen2-root .gen-settings-intro p { color: var(--gen-muted); font-size: 13px; margin: 0; line-height: 1.6; }
+.gen2-root .gen-examples { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.gen2-root .gen-examples > span { font-size: 12px; color: var(--gen-muted); }
+.gen2-root .gen-failure { padding: 18px; border: 1px solid rgba(245,179,75,.4); border-radius: 12px; background: rgba(245,179,75,.06); margin: 14px 0; min-width: 0; }
+.gen2-root .gen-failure-heading { display: flex; gap: 10px; align-items: baseline; color: #ffd399; font-size: 15px; }
+.gen2-root .gen-failure-heading > span { border: 1px solid currentColor; width: 20px; height: 20px; border-radius: 50%; text-align: center; flex-shrink: 0; }
+.gen2-root .gen-failure p { font-size: 13px; color: var(--gen-text); line-height: 1.65; }
+.gen2-root .gen-failure details { margin-top: 12px; font-size: 12px; color: var(--gen-muted); }
+.gen2-root .gen-failure summary { cursor: pointer; padding: 5px 0; }
+.gen2-root .gen-failure .gen-error-details { overflow-wrap: anywhere; white-space: pre-wrap; font-family: monospace; color: var(--gen-muted); max-height: 180px; overflow-y: auto; }
+.gen2-root .gen-failure .gen-view-toggle { display: inline-flex; align-items: center; text-decoration: none; min-height: 40px; }
+.gen2-root .gen-longform-beat { scroll-margin-top: 24px; }
+.gen2-root .gen-advanced-toggle:focus-visible, .gen2-root .gen-examples button:focus-visible, .gen2-root .gen-failure summary:focus-visible { outline: 2px solid var(--gen-cyan); outline-offset: -3px; }
+@media (max-width: 600px) {
+  .gen2-root .gen-advanced-content, .gen2-root .gen-failure { padding: 12px; }
+  .gen2-root .gen-footer-buttons { flex-wrap: wrap; }
+}
+
 .gen2-root {
   --gen-ink: #0a0a14;
   --gen-violet: #8f7dff;
@@ -1323,3 +1351,11 @@
 @media (max-width: 760px) { .gen2-root .gen-access-status { align-items: stretch; flex-direction: column; gap: 12px; padding: 16px; } .gen2-root .gen-access-status .gen-top-actions { flex-wrap: wrap; } .gen2-root .gen-prompt-picker { padding: 12px; } .gen2-root .gen-prompt-custom { flex-direction: column; } }
 
 @media (min-width: 1000px) { .gen2-root .gen-prompt-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; } .gen2-root .gen-prompt-chips > .gen-hint { grid-column: 1 / -1; } }
+
+.gen2-root .gen-library-toolbar { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin: 16px 0; }
+.gen2-root .gen-library-toolbar button[aria-pressed="true"] { color: var(--gen-cyan); border-color: var(--gen-cyan); background: rgba(111,214,255,.08); }
+.gen2-root .gen-library-search { padding: 12px; border: 1px solid var(--gen-line); background: var(--gen-panel); color: var(--gen-text); border-radius: 10px; width: min(100%, 360px); min-width: 0; box-sizing: border-box; }
+.gen2-root .gen-result-caption { font-size: 13px; line-height: 1.5; padding: 0 10px; overflow-wrap: anywhere; }
+.gen2-root .gen-gallery-cell > .gen-row { padding: 0 10px 12px; flex-wrap: wrap; }
+
+.gen2-root .gen-card-grid select { width: 100%; min-width: 0; border: 1px solid var(--gen-line-strong); border-radius: 10px; padding: 10px 12px; background: #0a0912; color: var(--gen-text); font: inherit; font-size: 13px; box-sizing: border-box; }

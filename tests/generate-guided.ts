@@ -17,7 +17,7 @@ const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
 const browser = await chromium.launch({ headless: true });
 const errors: string[] = [];
 const posts: { path: string; body: any }[] = [];
-let authed = true, unlocked = false, failNext = false;
+let authed = true, unlocked = false, failNext = false, simulateCinemaRun = false;
 let longform = emptyLongformQueue();
 let cinema = emptyCinemaQueue();
 let jobs: any[] = [];
@@ -33,7 +33,7 @@ await context.route("**/api/**", async route => {
   if (path.endsWith("/image")) return route.fulfill({ contentType: "image/png", body: png });
   if (path === "/api/gen2/access") return route.fulfill({ status: authed ? 200 : 401, json: authed ? { authenticated: true, modal: { configured: true }, fal: { configured: true } } : { code: "LOGIN_REQUIRED", error: "Sign in with your owner account to use Generate.", loginUrl: "/login?callbackUrl=%2Fgen2" } });
   if (path === "/api/generate/chat") return route.fulfill({ json: { configured: true } });
-  if (path === "/api/generate/library") { unlocked = method === "POST"; return route.fulfill({ json: { unlocked } }); }
+  if (path === "/api/generate/library") { if (method === "POST") unlocked = true; if (method === "DELETE") unlocked = false; return route.fulfill({ json: { unlocked } }); }
   if (path === "/api/generate/upload") return route.fulfill({ json: { url: "https://example.com/upload.png" } });
   if (path === "/api/generate/jobs" && method === "GET") return route.fulfill({ status: authed ? 200 : 401, json: authed ? {
     jobs: unlocked ? jobs : [], library: { unlocked }, modal: { configured: true }, fal: { configured: true },
@@ -47,13 +47,23 @@ await context.route("**/api/**", async route => {
     jobs = [job];
     return route.fulfill({ json: { job } });
   }
-  if (path === "/api/generate/jobs/guided-test") return route.fulfill({ json: { job: jobs[0] } });
+  if (path.startsWith("/api/generate/jobs/")) return route.fulfill({ json: { job: jobs.find(j => j.id === path.split("/").at(-1)) } });
   if (path === "/api/generate/longform") {
     if (body.action === "plan") longform = planLongformQueue(body);
     else if (body.action === "save" && body.queue) longform = body.queue;
     return route.fulfill({ json: { queue: longform, job: { id: "longform-test" }, estimate: estimateLongform({ targetSeconds: longform.target_seconds, beatSeconds: longform.beat_seconds }) } });
   }
   if (path === "/api/generate/cinema") {
+    if (simulateCinemaRun && body.action === "run-remaining") {
+      const next = cinema.beats.find(b => b.status === "draft");
+      assert(next, "There must be a next scene in the mocked queue");
+      const child = { id: `cinema-child-${next.id}`, recipe: "fal-kling-elements", status: "done", output_urls: ["https://example.com/video.mp4"] };
+      jobs.push(child);
+      cinema = { ...cinema, beats: cinema.beats.map(b => b.id === next.id ? { ...b, status: "ready", job_id: child.id } : b) };
+      return route.fulfill({ json: { child, queue: cinema, job: { id: "cinema-test" } } });
+    }
+    if (body.action === "reset") cinema = { ...cinema, beats: cinema.beats.map(b => b.id === body.beatId ? { ...b, status: "draft", error: "" } : b) };
+    if (body.action === "generate" && body.dryRun) return route.fulfill({ json: { dryRun: true, queue: cinema, note: "Dry run — no fal spend." } });
     if (body.action === "plan") cinema = planCinemaQueue(body);
     else if (body.action === "save" && body.queue) cinema = body.queue;
     return route.fulfill({ json: { queue: cinema, job: { id: "cinema-test" }, estimate: estimateCinema(cinema) } });
@@ -103,24 +113,32 @@ try {
   await page.getByLabel("Scene details", { exact: true }).fill("Soft morning light, no text");
   await page.getByRole("button", { name: "Continue to settings" }).click();
   await page.getByLabel("Output aspect ratio").selectOption("16:9");
+  await expect(page.getByLabel("Generation seed", { exact: true })).toBeHidden();
+  await page.getByRole("button", { name: /^Advanced options/ }).click();
+  await page.getByLabel("Generation seed", { exact: true }).fill("12345");
+  await page.getByRole("button", { name: /^Advanced options/ }).click();
+  await expect(page.getByLabel("Generation seed", { exact: true })).toBeHidden();
   await page.getByLabel("Generation model", { exact: true }).selectOption("flux-schnell");
   await expect(page.getByTestId("model-cost")).toContainText("$0.006");
   await step(1);
   await expect(page.getByLabel("Your prompt", { exact: true })).toHaveValue("A ceramic vase on a sunlit oak table");
   await page.screenshot({ path: `${out}/02-brief-desktop.png`, fullPage: true });
-  await step(3);
+  await page.getByRole("button", { name: "Review with current settings →", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Generate & review", exact: true })).toBeVisible();
   await page.getByRole("checkbox", { name: "Dry run" }).check();
   await page.getByRole("button", { name: "Dry run", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "Test complete" })).toBeVisible();
   const test = posts.find(p => p.path === "/api/generate/jobs")!.body;
   assert.equal(test.start, false); assert.equal(test.dryRun, true); assert.equal(test.aspect, "16:9");
   assert.equal(test.card.model, "flux-schnell");
+  assert.equal(test.card.seed, 12345);
   await expect(page.getByTestId("model-cost")).toContainText("$0 generation spend");
   assert.match(test.prompt, /ceramic vase/); assert.match(test.prompt, /morning light/);
   await page.getByRole("checkbox", { name: "Dry run" }).uncheck();
   failNext = true;
   await page.getByRole("button", { name: "Generate", exact: true }).click();
-  await expect(page.locator(".gen-err[role=alert]")).toHaveText("Test provider temporarily unavailable");
+  await expect(page.getByTestId("generation-error")).toContainText("Test provider temporarily unavailable");
+  await expect(page.getByTestId("generation-error")).toContainText("Generation needs attention");
   await page.getByRole("button", { name: "Generate", exact: true }).click();
   await expect(page.getByRole("button", { name: "Unlock the library to preview it" })).toBeVisible();
   await expect(page.locator(".gen-result")).toHaveCount(0);
@@ -179,6 +197,10 @@ try {
   await page.screenshot({ path: `${out}/character-dropdowns-desktop.png`, fullPage: true });
   await expect(page.getByRole("button", { name: "Random seed", exact: true })).toBeHidden();
   await step(2);
+  await expect(page.getByLabel("Character image shape")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Random seed", exact: true })).toBeHidden();
+  await page.getByRole("button", { name: /^Advanced options/ }).click();
+  await expect(page.getByRole("button", { name: "Random seed", exact: true })).toBeVisible();
   await page.getByRole("group", { name: "NSFW wardrobe and negative" }).getByRole("button", { name: "Allow NSFW" }).click();
   await page.getByText("Advanced JSON", { exact: true }).click();
   await expect(page.getByRole("button", { name: "Apply JSON", exact: true })).toBeVisible();
@@ -238,11 +260,17 @@ try {
   await page.getByLabel("Your prompt", { exact: true }).fill("A ceramic vase turns slowly on a sunlit table");
   await page.getByLabel("Generation model", { exact: true }).selectOption("wan30-t2v");
   await expect(page.getByTestId("model-cost")).toContainText("$0.50");
+  await step(2);
+  await page.getByRole("button", { name: /^Advanced options/ }).click();
+  await page.getByLabel("Video negative prompt").fill("watermark, shaky camera");
+  await step(1);
+  await expect(page.getByLabel("Your prompt", { exact: true })).toHaveValue("A ceramic vase turns slowly on a sunlit table");
   await step(3);
   await page.getByRole("checkbox", { name: "Dry run" }).check();
   await page.getByRole("button", { name: "Dry run", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "Test complete" })).toBeVisible();
   assert.equal(posts.filter(p => p.path === "/api/generate/jobs").at(-1)!.body.card.model, "wan30-t2v");
+  assert.equal(posts.filter(p => p.path === "/api/generate/jobs").at(-1)!.body.card.negative_prompt, "watermark, shaky camera");
   await page.getByRole("checkbox", { name: "Dry run" }).uncheck();
   await step(1);
   await page.getByRole("button", { name: "Help me write this" }).click();
@@ -255,6 +283,67 @@ try {
   await expect(page.getByTestId("motion2-go")).toBeVisible();
   await visit(`${base}/gen2?workflow=i2v&queue=longform-test&cinema=cinema-test`);
   await expect(page.getByLabel("Starting image URL")).toBeVisible();
+  jobs.push({ id: "kling-library-test", recipe: "fal-kling-elements", status: "done", card: { prompt: "Garden walk with native audio" }, output_urls: ["/api/generate/jobs/kling-library-test/image?i=0"] });
+  jobs.push({ id: "motion-library-test", recipe: "fal-wan-i2v", status: "done", card: { prompt: "Gentle camera pan" }, output_urls: ["/api/generate/jobs/motion-library-test/image?i=0", "/api/generate/jobs/motion-library-test/image?i=1"] });
+  await visit(`${base}/gen2?workflow=t2i`);
+  await page.getByRole("button", { name: "Open library", exact: true }).click();
+  const library = page.getByRole("region", { name: "Your library" });
+  await library.getByRole("button", { name: /^Videos/ }).click();
+  await expect(library.locator("video")).toHaveCount(2);
+  await expect(library.locator("img")).toHaveCount(0);
+  await page.getByLabel("Search your library").fill("Garden");
+  await expect(library.locator("video")).toHaveCount(1);
+  await expect(library.locator("video")).toHaveAttribute("src", "/api/generate/jobs/kling-library-test/image?i=0");
+  await page.getByLabel("Search your library").fill("");
+  await library.getByRole("button", { name: /^Images/ }).click();
+  await expect(library.locator("video")).toHaveCount(0);
+  await expect(library.locator("img")).toHaveCount(2);
+  await noOverflow(page);
+  cinema = { ...cinema, auto_advance: false, beats: cinema.beats.map((b, i) => i === 0 ? { ...b, status: "rejected", error: "HTTP 403 — Forbidden — User is locked. Reason: Exhausted balance." } : b) };
+  await visit(`${base}/gen2?workflow=t2i`);
+  await expect(page.getByText("fal balance exhausted", { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId("generation-error")).toHaveCount(0);
+  await choose("Make a cinematic film");
+  await expect(page.locator(".gen-failure[role=alert]").filter({ visible: true })).toContainText("Scene 1: fal balance exhausted");
+  await page.getByRole("button", { name: "Review scene 1 →", exact: true }).click();
+  await expect(page.getByTestId("cinema-fail")).toContainText("fal is the billing service for Kling and Wan");
+  await expect(page.getByTestId("cinema-fail").getByRole("link", { name: /Open fal billing/ })).toHaveAttribute("href", "https://fal.ai/dashboard/billing");
+  await page.getByTestId("cinema-fail").getByRole("button", { name: "Review scene 1 →", exact: true }).click();
+  await expect(page.getByLabel("Scene 1 prompt", { exact: true })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Continue queue", exact: true })).toHaveCount(0);
+  const beforeClear = posts.length;
+  await page.getByTestId("cinema-beat-dismiss-1").click();
+  await expect(page.getByTestId("cinema-fail")).toHaveCount(0);
+  assert(posts.slice(beforeClear).some(p => p.body.action === "reset"));
+  assert(!posts.slice(beforeClear).some(p => ["generate", "run-remaining"].includes(p.body.action)));
+  await step(2);
+  await page.getByRole("checkbox", { name: "Dry run" }).check();
+  await step(3);
+  const beforeSingle = posts.length;
+  await page.getByTestId("cinema-go").click();
+  await expect(page.getByTestId("cinema-notice")).toContainText("no fal spend");
+  const single = posts.slice(beforeSingle).filter(p => ["generate", "run-remaining"].includes(p.body.action));
+  assert.equal(single.length, 1);
+  assert.equal(single[0].body.action, "generate");
+  assert.equal(single[0].body.dryRun, true);
+  await step(2);
+  await page.getByRole("checkbox", { name: "Dry run" }).uncheck();
+  await step(3);
+  simulateCinemaRun = true;
+  await page.getByLabel("Scene 1 prompt", { exact: true }).fill("A slow garden walk, soft morning light");
+  const beforeMockRender = posts.length;
+  await expect(page.getByTestId("cinema-go")).toHaveText("Generate next clip");
+  await page.getByTestId("cinema-go").click();
+  await expect(page.getByTestId("cinema-notice")).toContainText("Clip finished");
+  const renderRequests = posts.slice(beforeMockRender).filter(p => p.path === "/api/generate/cinema" && ["generate", "run-remaining"].includes(p.body.action));
+  assert.equal(renderRequests.length, 1, "Auto-advance off must stop after one completed mocked scene");
+  const saved = posts.slice(beforeMockRender).find(p => p.path === "/api/generate/cinema" && p.body.action === "save");
+  assert(saved, "Scene edits must be saved before the provider request");
+  assert.equal(saved.body.queue.beats[0].prompt, "A slow garden walk, soft morning light");
+  assert.equal(saved.body.queue.auto_advance, false);
+  assert.equal(cinema.beats.filter(b => b.status === "draft").length, 1);
+  await expect(page.getByTestId("cinema-go")).toBeEnabled();
+  await page.screenshot({ path: `${out}/07-recovered-scene-mobile.png`, fullPage: true });
   authed = false;
   await visit(`${base}/gen2`);
   await page.getByRole("button", { name: "Start this workflow" }).click();

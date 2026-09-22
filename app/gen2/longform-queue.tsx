@@ -1,13 +1,13 @@
 "use client";
 
 import { motionCost, usd } from "@/lib/generate-cost";
-import { WorkflowSection } from "./workflow";
+import { AdvancedOptions, WorkflowSection } from "./workflow";
+import { FailureNotice } from "./recovery";
 
 import {
   canStitchLongform,
   estimateLongform,
   failedHoldLongformBeats,
-  formatLongformFalError,
   inFlightLongformBeats,
   longformProgress,
   longformStitchBlockers,
@@ -48,7 +48,6 @@ export function LongformPanel({
   onPatch,
   onGenerate,
   onGo,
-  onRunRemaining,
   autoAdvance,
   onAutoAdvance,
   canGo,
@@ -111,10 +110,14 @@ export function LongformPanel({
   const failedHoldIds = new Set(failedHold.map((b) => b.id));
   const generateLocked = motion2GenerateLocked(queue);
   const primaryBusy = busy || inFlight.length > 0;
-  const failBanner = failedHold[0]
-    ? formatLongformFalError(failedHold[0].error) +
-      (failedHold[0].job_id ? ` · beat ${failedHold[0].job_id}` : "")
-    : null;
+  const failedScene = failedHold[0];
+  function reviewFailure() {
+    if (!failedScene) return;
+    onSelect(failedScene.id);
+    const element = document.getElementById(`motion2-scene-${failedScene.id}`);
+    element?.scrollIntoView({ behavior: "smooth", block: "center" });
+    element?.querySelector("textarea")?.focus({ preventScroll: true });
+  }
 
   return (
     <div className="gen-longform" data-testid="motion2-longform">
@@ -236,12 +239,13 @@ export function LongformPanel({
             data-testid="motion2-auto-advance"
             onChange={(e) => onAutoAdvance(e.target.checked)}
           />
-          Auto-advance
+          Automatically generate the next scene
         </label>
         <button type="button" className="gen-seed-random" disabled={primaryBusy} onClick={onPlan}>
           Plan {liveEstimate.beat_count} beats
         </button>
       </div>
+      <p className="gen-hint">With automatic generation off, each click renders one scene. Turn it on only when you want to run the remaining sequence at the estimate shown.</p>
       {queue.beats.length > 0 && <p className="gen-ready" role="status">{queue.beats.length} scenes planned. Continue to Generate &amp; review to check your shots and start rendering.</p>}
       {notice && <p className="gen-hint" role="status">{notice}</p>}
       </WorkflowSection>
@@ -255,7 +259,7 @@ export function LongformPanel({
           onClick={onGo}
           style={{ marginLeft: "auto" }}
         >
-          {primaryBusy ? "Working…" : failedHold.length ? "Failed" : dryRun ? "Dry run" : "Generate remaining clips"}
+          {primaryBusy ? "Working…" : failedHold.length ? "Sequence paused" : dryRun ? "Dry run" : (autoAdvance ? "Generate remaining clips" : "Generate next clip")}
         </button>
       </div>
       <p className="gen-hint">
@@ -267,7 +271,7 @@ export function LongformPanel({
         </p>
       ) : failedHold.length ? (
         <p className="gen-hint">
-          Generate stays off until you dismiss, retry, or continue the queue after a stuck/failed beat.
+          Review the failed scene below. Clear failure returns it to a draft; it does not skip or render the scene.
         </p>
       ) : !canGo && !primaryBusy ? (
         <p className="gen-hint">No beat is ready to generate. Plan a new take, or wait for the last frame.</p>
@@ -277,20 +281,7 @@ export function LongformPanel({
           ⏳ {stage}
         </p>
       ) : null}
-      {failBanner ? (
-        <div className="gen-longform-fail" data-testid="motion2-fail" role="alert">
-          <p>{failBanner}</p>
-          <button
-            type="button"
-            className="gen-seed-random"
-            data-testid="motion2-continue-queue"
-            disabled={primaryBusy}
-            onClick={onRunRemaining}
-          >
-            Continue queue
-          </button>
-        </div>
-      ) : null}
+      {failedScene && <FailureNotice error={failedScene.error} scene={queue.beats.indexOf(failedScene) + 1} onReview={reviewFailure} testId="motion2-fail" />}
       {notice ? <p className="gen-library-status" data-testid="motion2-notice">{notice}</p> : null}
 
       {queue.continuity_error ? <p className="gen-err">{queue.continuity_error}</p> : null}
@@ -308,6 +299,7 @@ export function LongformPanel({
             {queue.beats.map((beat, i) => (
               <li
                 key={beat.id}
+                id={`motion2-scene-${beat.id}`}
                 className={`gen-longform-beat${selected?.id === beat.id ? " gen-longform-beat-on" : ""}`}
               >
                 <button
@@ -330,16 +322,23 @@ export function LongformPanel({
                 </button>
                 <textarea
                   className="gen-longform-prompt"
+                  aria-label={`Scene ${i + 1} prompt`}
                   value={beat.prompt}
                   disabled={primaryBusy || beat.status === "generating"}
                   onChange={(e) => onPatch(beat.id, { prompt: e.target.value })}
                   onFocus={() => onSelect(beat.id)}
                 />
-                {beat.error ? (
-                  <p className="gen-err" data-testid={`motion2-beat-error-${i + 1}`}>
-                    {formatLongformFalError(beat.error)}
-                  </p>
-                ) : null}
+                <AdvancedOptions title={`Scene ${i + 1} advanced options`} hint="Duration, resolution, seed, negative prompt and source image">
+                  <div className="gen-card-grid">
+                    <label>Seconds<input aria-label={`Scene ${i + 1} seconds`} type="number" min={2} max={30} value={beat.seconds} disabled={primaryBusy} onChange={e => onPatch(beat.id, { seconds: Math.min(30, Math.max(2, Number(e.target.value) || 2)) })} /></label>
+                    <label>Resolution<select aria-label={`Scene ${i + 1} resolution`} value={beat.resolution} disabled={primaryBusy} onChange={e => onPatch(beat.id, { resolution: e.target.value as typeof beat.resolution })}><option value="720p">720p</option><option value="1080p">1080p</option></select></label>
+                    <label>Seed<input aria-label={`Scene ${i + 1} seed`} type="number" min={0} max={2147483647} value={beat.seed} disabled={primaryBusy} onChange={e => onPatch(beat.id, { seed: Math.min(2147483647, Math.max(0, Math.trunc(Number(e.target.value) || 0))) })} /></label>
+                  </div>
+                  <label className="gen-field">Negative prompt<textarea aria-label={`Scene ${i + 1} negative prompt`} className="gen-box" rows={3} value={beat.negative_prompt} disabled={primaryBusy} onChange={e => onPatch(beat.id, { negative_prompt: e.target.value })} /></label>
+                  <label className="gen-check"><input type="checkbox" checked={beat.from_prev_last} disabled={primaryBusy || i === 0} onChange={e => onPatch(beat.id, { from_prev_last: e.target.checked })} />Continue from the previous scene’s last frame</label>
+                  <label className="gen-field">Starting image URL<input aria-label={`Scene ${i + 1} starting image`} value={beat.source_image_url} disabled={primaryBusy || beat.from_prev_last} onChange={e => onPatch(beat.id, { source_image_url: e.target.value })} /></label>
+                </AdvancedOptions>
+                {beat.error && <FailureNotice error={beat.error} testId={`motion2-beat-error-${i + 1}`} />}
                 {beat.job_id && (beat.status === "ready" || beat.status === "approved") ? (
                   <GatedClip src={mediaSrc(beat.job_id, 0)} />
                 ) : null}
@@ -354,7 +353,7 @@ export function LongformPanel({
                         disabled={primaryBusy}
                         onClick={() => onDismiss(beat.id)}
                       >
-                        Dismiss
+                        Clear failure
                       </button>
                       <button
                         type="button"
@@ -363,7 +362,7 @@ export function LongformPanel({
                         disabled={primaryBusy}
                         onClick={() => onRetry(beat.id)}
                       >
-                        Retry
+                        Retry scene
                       </button>
                     </>
                   ) : (

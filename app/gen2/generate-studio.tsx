@@ -9,7 +9,9 @@ import { GenerateAccessStatus } from "./access-status";
 import { PromptPicker as PromptChipRow } from "./prompt-picker";
 import { referenceModelProblem } from "@/lib/generate-reference";
 import { ModelCostPanel } from "./model-cost";
-import { WorkflowContext, WorkflowNav, WorkflowPicker, WorkflowSection } from "./workflow";
+import { gen2OutputIsVideo } from "@/lib/gen2-library";
+import { FailureNotice } from "./recovery";
+import { AdvancedOptions, WorkflowContext, WorkflowNav, WorkflowPicker, WorkflowSection } from "./workflow";
 import { GENERATE_WORKFLOWS, WORKFLOW_STEPS, workflowBlockers, usableStudioImage, type WorkflowStep } from "@/lib/generate-workflow";
 import { composeEnginePrompt } from "@/lib/generate-director";
 import {
@@ -168,7 +170,7 @@ function isEngineJob(job: ModalJob): boolean {
 }
 
 function isEngineVideoJob(job: ModalJob): boolean {
-  return job.recipe === ENGINE_RECIPE_T2V || isMotionJob(job) || isStitchJob(job);
+  return gen2OutputIsVideo(job.recipe, job.output_urls?.[0] || "", 0);
 }
 
 function isFalJob(job: ModalJob): boolean {
@@ -190,110 +192,6 @@ function stillSrc(jobId: string, index: number): string {
   return `/api/generate/jobs/${encodeURIComponent(jobId)}/image?i=${index}`;
 }
 
-function EngineGallery({
-  jobs,
-  onUseStill,
-}: {
-  jobs: ModalJob[];
-  onUseStill?: (url: string) => void;
-}) {
-  const items = jobs.filter((j) => isEngineJob(j) && j.status === "done" && (j.output_urls?.length ?? 0) > 0);
-  if (!items.length) return null;
-  return (
-    <div className="gen-gallery">
-      <h2>Generate gallery</h2>
-      <div className="gen-gallery-grid">
-        {items.map((j) =>
-          (j.output_urls ?? []).map((_, i) => (
-            <div key={`${j.id}-${i}`} className="gen-gallery-cell">
-              {isEngineVideoJob(j) ? (
-                <GatedClip src={stillSrc(j.id, i)} />
-              ) : (
-                <a href={stillSrc(j.id, i)} target="_blank" rel="noreferrer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={stillSrc(j.id, i)} alt="Generate result" loading="lazy" />
-                </a>
-              )}
-              {onUseStill && !isEngineVideoJob(j) && (
-                <button type="button" className="gen-use-still" onClick={() => onUseStill(stillSrc(j.id, i))}>
-                  Use as source
-                </button>
-              )}
-            </div>
-          )),
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ModalGallery({
-  jobs,
-  onUseStill,
-}: {
-  jobs: ModalJob[];
-  onUseStill?: (url: string) => void;
-}) {
-  const stills = jobs.filter(
-    (j) =>
-      !isEngineJob(j) &&
-      !isMotionJob(j) &&
-      !isStitchJob(j) &&
-      !isBeatQueueJob(j) &&
-      !isLongformQueueJob(j) &&
-      !isCinemaQueueJob(j) &&
-      j.status === "done" &&
-      (j.output_urls?.length ?? 0) > 0,
-  );
-  if (!stills.length) return null;
-  return (
-    <div className="gen-gallery">
-      <h2>Modal stills</h2>
-      <div className="gen-gallery-grid">
-        {stills.map((j) =>
-          (j.output_urls ?? []).map((_, i) => (
-            <div key={`${j.id}-${i}`} className="gen-gallery-cell">
-              <a href={stillSrc(j.id, i)} target="_blank" rel="noreferrer">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={stillSrc(j.id, i)} alt="Modal still" loading="lazy" />
-              </a>
-              {onUseStill && (
-                <button type="button" className="gen-use-still" onClick={() => onUseStill(stillSrc(j.id, i))}>
-                  Use as source
-                </button>
-              )}
-            </div>
-          )),
-        )}
-      </div>
-    </div>
-  );
-}
-
-function MotionGallery({ jobs }: { jobs: ModalJob[] }) {
-  const clips = jobs.filter(
-    (j) => (isMotionJob(j) || isStitchJob(j)) && j.status === "done" && (j.output_urls?.length ?? 0) > 0,
-  );
-  if (!clips.length) return null;
-  return (
-    <div className="gen-gallery">
-      <h2>Motion clips</h2>
-      <div className="gen-gallery-grid">
-        {clips.map((j) =>
-          (j.output_urls ?? []).map((_, i) => (
-            <div key={`${j.id}-${i}`} className="gen-gallery-cell">
-              <GatedClip
-                src={stillSrc(j.id, i)}
-                label={isStitchJob(j) ? "Stitched" : undefined}
-              />
-            </div>
-          )),
-        )}
-      </div>
-    </div>
-  );
-}
-
 const subscribeToHydration = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
@@ -307,6 +205,8 @@ export default function GenerateStudio() {
   const libraryPanel = useRef<HTMLElement>(null);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryKind, setLibraryKind] = useState<"all" | "image" | "video">("all");
+  const [librarySearch, setLibrarySearch] = useState("");
   const workflowHeading = useRef<HTMLHeadingElement>(null);
 
   function navigateStep(step: WorkflowStep) {
@@ -331,6 +231,9 @@ export default function GenerateStudio() {
   const [description, setDescription] = useState("");
   const [aspect, setAspect] = useState("9:16");
   const [seconds, setSeconds] = useState(5);
+  const [engineSeed, setEngineSeed] = useState(0);
+  const [engineNegative, setEngineNegative] = useState("");
+  const [engineEndImage, setEngineEndImage] = useState("");
   const [imageModel, setImageModel] = useState("flux-dev");
   const [textVideoModel, setTextVideoModel] = useState("wan26-720p");
   const [imageVideoModel, setImageVideoModel] = useState("wan-legacy");
@@ -412,6 +315,8 @@ export default function GenerateStudio() {
   const cinemaJobIdRef = useRef(cinemaJobId);
   const cinemaWaiters = useRef(new Map<string, Promise<ModalJob>>());
   const cinemaPollJobIdRef = useRef<string | null>(null);
+  const longformDirty = useRef(false);
+  const cinemaDirty = useRef(false);
 
   useEffect(() => {
     beatQueueRef.current = beatQueue;
@@ -593,7 +498,6 @@ export default function GenerateStudio() {
             else if (hold) {
               setSelectedLongformBeatId(hold.id);
               const msg = formatLongformFalError(hold.error);
-              setError(msg);
               setMotion2Notice(msg);
             } else if (loaded.beats[0]) setSelectedLongformBeatId(loaded.beats[0].id);
           } catch {
@@ -622,7 +526,6 @@ export default function GenerateStudio() {
             else if (hold) {
               setSelectedCinemaBeatId(hold.id);
               const msg = formatCinemaFalError(hold.error);
-              setError(msg);
               setCinemaNotice(msg);
             } else if (loaded.beats[0]) setSelectedCinemaBeatId(loaded.beats[0].id);
           } catch {
@@ -871,6 +774,11 @@ export default function GenerateStudio() {
     note?: string;
     already_running?: boolean;
   }> {
+    if (longformDirty.current && action !== "save" && action !== "plan") {
+      if (inFlightLongformBeats(longformQueueRef.current).length) throw new Error("Wait for the current scene to finish before saving changes.");
+      await longformAction("save");
+    }
+    const autoAdvanceAtStart = longformQueueRef.current.auto_advance;
     const r = await fetch("/api/generate/longform", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -900,6 +808,11 @@ export default function GenerateStudio() {
     };
     if (j.queue) {
       const next = parseLongformQueue(j.queue);
+      if (action === "plan") {
+        next.auto_advance = autoAdvanceAtStart;
+        longformDirty.current = true;
+      }
+      j.queue = next;
       longformQueueRef.current = next;
       setLongformQueue(next);
     }
@@ -923,10 +836,12 @@ export default function GenerateStudio() {
       return longformAction(action, { ...extra, confirmSpend: true });
     }
     if (!r.ok) throw new Error(j.error || j.reply || "Longform update failed");
+    if (action === "save") longformDirty.current = false;
     return j;
   }
 
   function commitLongformLocal(next: LongformQueue) {
+    longformDirty.current = true;
     longformQueueRef.current = next;
     setLongformQueue(next);
     setLongformEstimate(estimateLongformQueue(next));
@@ -1091,7 +1006,7 @@ export default function GenerateStudio() {
         );
       }
       await refreshLongformQueue();
-      if (!nextGeneratableLongformBeat(longformQueueRef.current)) break;
+      if (!longformAutoAdvanceRef.current || !nextGeneratableLongformBeat(longformQueueRef.current)) break;
     }
     if (!started) {
       throw new Error("No remaining beat is ready to generate. Plan a new take or generate the previous beat first.");
@@ -1118,6 +1033,7 @@ export default function GenerateStudio() {
   }
 
   function commitCinemaLocal(next: CinemaQueue) {
+    cinemaDirty.current = true;
     cinemaQueueRef.current = next;
     setCinemaQueue(next);
     setCinemaEstimate(estimateCinema(next));
@@ -1137,6 +1053,11 @@ export default function GenerateStudio() {
     note?: string;
     already_running?: boolean;
   }> {
+    if (cinemaDirty.current && action !== "save" && action !== "plan") {
+      if (inFlightCinemaBeats(cinemaQueueRef.current).length) throw new Error("Wait for the current scene to finish before saving changes.");
+      await cinemaAction("save");
+    }
+    const autoAdvanceAtStart = cinemaQueueRef.current.auto_advance;
     const r = await fetch("/api/generate/cinema", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1166,6 +1087,11 @@ export default function GenerateStudio() {
     };
     if (j.queue) {
       const next = parseCinemaQueue(j.queue);
+      if (action === "plan") {
+        next.auto_advance = autoAdvanceAtStart;
+        cinemaDirty.current = true;
+      }
+      j.queue = next;
       cinemaQueueRef.current = next;
       setCinemaQueue(next);
     }
@@ -1189,6 +1115,7 @@ export default function GenerateStudio() {
       return cinemaAction(action, { ...extra, confirmSpend: true });
     }
     if (!r.ok) throw new Error(j.error || j.reply || "Cinema update failed");
+    if (action === "save") cinemaDirty.current = false;
     return j;
   }
 
@@ -1378,10 +1305,10 @@ export default function GenerateStudio() {
         );
       }
       await refreshCinemaQueue();
-      if (!nextGeneratableCinemaBeat(cinemaQueueRef.current)) break;
+      if (!cinemaQueueRef.current.auto_advance || !nextGeneratableCinemaBeat(cinemaQueueRef.current)) break;
     }
     setStage(null);
-    setCinemaNotice("Queue finished. Review below, or Run remaining.");
+    setCinemaNotice(nextGeneratableCinemaBeat(cinemaQueueRef.current) ? "Clip finished. Review it below, then generate the next scene when ready." : "Queue finished. Review and approve your clips below.");
   }
 
   async function resumeCinemaInFlight() {
@@ -1842,6 +1769,9 @@ export default function GenerateStudio() {
             aspect,
             seconds: imageVideoModel === "wan-legacy" ? 5 : seconds,
             slow_mo: i2vSlowMo,
+            seed: engineSeed,
+            negative_prompt: engineNegative.trim() || undefined,
+            end_image_url: engineEndImage,
           },
           start: !dryRun,
           dryRun,
@@ -1880,7 +1810,7 @@ export default function GenerateStudio() {
         prompt,
         aspect,
         seconds,
-        card: { model: mode === "t2v" ? textVideoModel : imageModel, slow_mo: i2vSlowMo },
+        card: { model: mode === "t2v" ? textVideoModel : imageModel, slow_mo: i2vSlowMo, seed: engineSeed, negative_prompt: engineNegative },
         start: !dryRun,
         dryRun,
       }),
@@ -2023,6 +1953,7 @@ export default function GenerateStudio() {
     references: mode === "modal" ? card.identity_ref_urls : cinemaQueue.image_urls,
     beatCount: mode === "motion2" ? longformQueue.beats.length : cinemaQueue.beats.length,
   });
+  if (mode === "i2v" && engineEndImage.trim() && !usableStudioImage(engineEndImage)) blockers.push({ step: 2, message: "Use a valid HTTPS end-frame image URL or clear the optional end frame." });
   const referenceProblem = mode === "modal" ? referenceModelProblem(card) : null;
   if (referenceProblem) blockers.push({ step: 2, message: referenceProblem });
   const providerReady = mode === "modal" && card.model === "qwen-modal" ? modalStatus?.configured : falStatus?.configured;
@@ -2031,7 +1962,7 @@ export default function GenerateStudio() {
     setLibraryOpen(true);
     requestAnimationFrame(() => libraryPanel.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
-  function useLibraryStill(url: string) {
+  function selectLibraryStill(url: string) {
     if (busy || chatBusy) return;
     if (mode === "motion") patchMotion({ source_image_url: url });
     else if (mode === "motion2") commitLongformLocal({ ...longformQueueRef.current, source_image_url: url });
@@ -2040,6 +1971,8 @@ export default function GenerateStudio() {
     setLibraryOpen(false);
     navigateStep(1);
   }
+  const libraryResults = modalJobs.filter(job => job.status === "done" && !isBeatQueueJob(job) && !isLongformQueueJob(job) && !isCinemaQueueJob(job)).flatMap(job => (job.output_urls || []).map((url, index) => ({ job, index, video: gen2OutputIsVideo(job.recipe, url, index) })));
+  const shownResults = libraryResults.filter(item => (libraryKind === "all" || (libraryKind === "video") === item.video) && `${item.job.id} ${item.job.recipe} ${item.job.card?.prompt || ""}`.toLowerCase().includes(librarySearch.trim().toLowerCase()));
   const nextBlocker = blockers.find(item => item.step <= workflowStep);
   const stepDescriptions = [
     "Start with the result you want. We’ll walk you through the rest.",
@@ -2061,9 +1994,9 @@ export default function GenerateStudio() {
         <div>
           <p className="gen-micro">Jelly Studio · Tolley.io</p>
           <h1 className="gen-title">
-            Gen2 <em>Directed by you.</em>
+            Gen2 <em>Your idea, your controls.</em>
           </h1>
-          <p className="gen-lede">From an idea to a finished image or film. One step at a time.</p>
+          <p className="gen-lede">Start simple. Open advanced options whenever you need more control.</p>
         </div>
         <div className="gen-top-actions">
           <nav className="gen-nav"><a href="/generate">Original Generate</a><a href="/animate">Studio</a><a href="/persona">Persona</a><a href="/hq">HQ</a></nav>
@@ -2107,6 +2040,12 @@ export default function GenerateStudio() {
         dryRun={dryRun} seconds={seconds} aspect={aspect as "9:16" | "16:9" | "1:1"}
         card={card} motion={motionCard} beats={beatQueue} longform={longformQueue} cinema={cinemaQueue}
       />}
+      {(workflowStep > 0 || allControls) && (() => {
+        const queue = mode === "cinema" ? cinemaQueue : mode === "motion2" ? longformQueue : mode === "motion" ? beatQueue : null;
+        const failed = queue?.beats.find(beat => beat.status === "rejected" && beat.error);
+        if (!failed || !queue || workflowStep === 3 || allControls) return null;
+        return <FailureNotice error={failed.error} scene={queue.beats.findIndex(beat => beat.id === failed.id) + 1} onReview={() => navigateStep(3)} />;
+      })()}
       <div className={`gen-grid gen-guided-grid${assistantOpen && (workflowStep > 0 || allControls) ? " has-assistant" : ""}`} hidden={workflowStep === 0 && !allControls}>
 
         <section className="gen-panel gen-chat" aria-label="Director chat" hidden={!assistantOpen}>
@@ -2313,6 +2252,15 @@ export default function GenerateStudio() {
               </div>
               </WorkflowSection>
               <WorkflowSection step={2}>
+              <div className="gen-settings-intro"><h3>Make it yours</h3><p>Choose the output size and how many images to make. Open Advanced options for precise control.</p></div>
+              <div className="gen-card-grid">
+                <label>Image shape<select aria-label="Character image shape" disabled={busy} value={`${card.width}x${card.height}`} onChange={e => { const [width, height] = e.target.value.split("x").map(Number); patchCard({ width, height }); }}>
+                  {!["928x1664", "1664x928", "1024x1024"].includes(`${card.width}x${card.height}`) && <option value={`${card.width}x${card.height}`}>Custom · {card.width} × {card.height}</option>}
+                  <option value="928x1664">Portrait · 9:16</option><option value="1664x928">Landscape · 16:9</option><option value="1024x1024">Square · 1:1</option>
+                </select></label>
+                <label>Number of images<select aria-label="Number of images" disabled={busy} value={card.num_images} onChange={e => patchCard({ num_images: Number(e.target.value) })}>{[1, 2, 3, 4].map(n => <option key={n} value={n}>{n} {n === 1 ? "image" : "images"}</option>)}</select></label>
+              </div>
+              <AdvancedOptions hint="Seed, steps, exact dimensions, negative prompt, guidance and JSON">
               <div>
                 <div className="gen-neg-head">
                   <p className="gen-label">Negative prompt</p>
@@ -2443,7 +2391,7 @@ export default function GenerateStudio() {
               <p className="gen-hint">
                 No denoise/strength on this recipe — use steps + CFG + negative.
               </p>
-              <details className="gen-advanced-json">
+              <details className="gen-advanced-json" open={allControls || undefined}>
                 <summary>Advanced JSON</summary>
                 <label className="gen-field">
                   sigmas (optional, comma-separated floats)
@@ -2543,6 +2491,7 @@ export default function GenerateStudio() {
                   Apply JSON
                 </button>
               </details>
+              </AdvancedOptions>
               </WorkflowSection>
               <WorkflowSection step={3}>
               <div className="gen-row">
@@ -2622,6 +2571,12 @@ export default function GenerateStudio() {
               </div>
               </WorkflowSection>
               <WorkflowSection step={2}>
+              <div className="gen-settings-intro"><h3>Clip settings</h3><p>Choose the format and length. Your model and estimate stay above.</p></div>
+              <div className="gen-card-grid">
+                <label>Clip format<select aria-label="Motion clip format" value={motionCard.aspect} disabled={busy} onChange={e => patchMotion({ aspect: e.target.value as GenerateMotionCard["aspect"] })}><option value="9:16">Portrait · 9:16</option><option value="16:9">Landscape · 16:9</option><option value="1:1">Square · 1:1</option><option value="auto">Match source image</option></select></label>
+                {motionCard.model === "wan30-i2v" ? <label>Clip length (seconds)<input aria-label="Motion clip length" type="number" min={2} max={30} value={motionCard.seconds} disabled={busy} onChange={e => patchMotion({ seconds: Math.min(30, Math.max(2, Number(e.target.value) || 2)) })} /></label> : <p className="gen-hint">Legacy Wan creates a 5-second clip.</p>}
+              </div>
+              <AdvancedOptions hint="Negative prompt, end-frame reference, seed and detailed format">
               <div>
                 <p className="gen-label">Negative prompt</p>
                 <textarea
@@ -2692,6 +2647,7 @@ export default function GenerateStudio() {
                   <input type="text" value={motionCard.model === "wan30-i2v" ? `${motionCard.seconds}s` : "5s (Wan cap)"} disabled />
                 </label>
               </div>
+              </AdvancedOptions>
               <SlowMoChip
                 on={motionCard.slow_mo === true}
                 disabled={busy}
@@ -2700,7 +2656,7 @@ export default function GenerateStudio() {
               </WorkflowSection>
               </div>
               <WorkflowSection step={2}>
-              <details className="gen-advanced-json">
+              <details className="gen-advanced-json" open={allControls || undefined}>
                 <summary>Advanced JSON</summary>
                 <p className="gen-hint">
                   Full motion card — source_image_url, optional end_image_url (last-frame still), prompt, aspect, seed.
@@ -3067,6 +3023,10 @@ export default function GenerateStudio() {
               <div>
                 <p className="gen-label gen-label-live">Your prompt</p>
                 <p className="gen-hint">Describe your subject, setting, style, and — for video — movement.</p>
+                {!inference.trim() && <div className="gen-examples" aria-label="Prompt starters">
+                  <span>Try a starting point</span>
+                  {(mode === "i2v" ? ["Keep the same subject. Add a gentle breeze and a slow camera push-in.", "The subject smiles and waves naturally. Keep the background steady."] : mode === "t2v" ? ["A quiet mountain lake at sunrise. Mist drifts over the water as the camera glides forward.", "A ceramic coffee cup on a wooden table. Steam rises in soft morning light."] : ["A ceramic vase on a sunlit oak table, soft morning light, natural textures.", "A modern home at golden hour, warm interior lights, architectural photography."]).map((text, index) => <button key={text} type="button" className="gen-view-toggle" disabled={busy} onClick={() => setInference(text)}>{mode === "i2v" ? index === 0 ? "Gentle movement" : "Smile & wave" : index === 0 ? mode === "t2v" ? "Scenic video" : "Product photo" : mode === "t2v" ? "Coffee close-up" : "Home exterior"}</button>)}
+                </div>}
                 <textarea
                   className="gen-box gen-box-inference"
                   aria-label="Your prompt"
@@ -3125,6 +3085,7 @@ export default function GenerateStudio() {
               </div>}
               </WorkflowSection>
               <WorkflowSection step={2}>
+              <div className="gen-settings-intro"><h3>Output settings</h3><p>Choose a format, then review. Advanced settings are optional.</p></div>
               {(mode === "i2v" || mode === "t2v") && (
                 <SlowMoChip on={i2vSlowMo} disabled={busy} onToggle={() => setI2vSlowMo((v) => !v)} />
               )}
@@ -3156,6 +3117,11 @@ export default function GenerateStudio() {
                   )}
                 </div>
               )}
+              <AdvancedOptions hint={mode === "t2i" ? "Reproducible seed" : "Seed, negative prompt and end-frame reference"}>
+                <label className="gen-field">Generation seed<input aria-label="Generation seed" type="number" min={0} max={2147483647} value={engineSeed} disabled={busy} onChange={e => setEngineSeed(Math.min(2147483647, Math.max(0, Math.trunc(Number(e.target.value) || 0))))} /><span className="gen-field-hint">0 chooses a new seed. Reuse a positive seed for comparable takes.</span></label>
+                {mode !== "t2i" && <label className="gen-field">What to avoid<textarea aria-label="Video negative prompt" className="gen-box" rows={3} value={engineNegative} disabled={busy} placeholder="Leave empty to use the model defaults" onChange={e => setEngineNegative(e.target.value)} /></label>}
+                {mode === "i2v" && <label className="gen-field">End-frame image URL<input aria-label="End-frame image URL" value={engineEndImage} disabled={busy} placeholder="Optional https://… image for the final pose" onChange={e => setEngineEndImage(e.target.value)} /></label>}
+              </AdvancedOptions>
               </WorkflowSection>
               <WorkflowSection step={3}>
                 <div className="gen-row">
@@ -3176,7 +3142,7 @@ export default function GenerateStudio() {
               {activeJobId ? ` · ${activeJobId}` : ""}
             </p>
           )}
-          {error && <p className="gen-err" role="alert">{error}</p>}
+          {error && <FailureNotice error={error} testId="generation-error" />}
           {runNotice && <p className="gen-ready" role="status">{runNotice}</p>}
           <WorkflowSection step={3}>
           {resultUrl && libraryUnlocked && (
@@ -3217,16 +3183,35 @@ export default function GenerateStudio() {
         <GenerateLibraryGate authed={modalAuthed} unlocked={libraryUnlocked}
           onUnlocked={() => void reloadLibraryJobs()}
           onLocked={() => { setLibraryUnlocked(false); setModalJobs([]); }}>
-          <ModalGallery jobs={modalJobs} onUseStill={busy || chatBusy ? undefined : useLibraryStill} />
-          <EngineGallery jobs={modalJobs} onUseStill={busy || chatBusy ? undefined : useLibraryStill} />
-          <MotionGallery jobs={modalJobs} />
-          {libraryUnlocked && modalJobs.length === 0 && <p className="gen-hint">No saved results yet. Generate your first image or video to see it here.</p>}
+          {libraryUnlocked && <>
+            <div className="gen-library-toolbar">
+              <div className="gen-row" role="group" aria-label="Filter library">
+                {(["all", "image", "video"] as const).map(kind => <button key={kind} type="button" className="gen-view-toggle" aria-pressed={libraryKind === kind} onClick={() => setLibraryKind(kind)}>{kind === "all" ? "All results" : kind === "image" ? "Images" : "Videos"} ({libraryResults.filter(item => kind === "all" || (kind === "video") === item.video).length})</button>)}
+              </div>
+              <input className="gen-library-search" type="search" aria-label="Search your library" placeholder="Search prompts, models or job IDs…" value={librarySearch} onChange={e => setLibrarySearch(e.target.value)} />
+            </div>
+            <div className="gen-gallery-grid">
+              {shownResults.map(({ job, index, video }) => <article className="gen-gallery-cell" key={`${job.id}-${index}`}>
+                {video ? <GatedClip src={stillSrc(job.id, index)} /> : <a href={stillSrc(job.id, index)} target="_blank" rel="noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={stillSrc(job.id, index)} alt="Generated image" loading="lazy" />
+                </a>}
+                <p className="gen-result-caption">{String(job.card?.prompt || (video ? "Generated clip" : "Generated image")).slice(0, 140)}</p>
+                <div className="gen-row">
+                  <a className="gen-view-toggle" href={stillSrc(job.id, index)} download>Download {video ? "video" : "image"}</a>
+                  {!video && <button type="button" className="gen-use-still" disabled={busy || chatBusy} onClick={() => selectLibraryStill(stillSrc(job.id, index))}>Use as source</button>}
+                </div>
+              </article>)}
+            </div>
+            {!shownResults.length && <p className="gen-hint">{libraryResults.length ? "No results match. Try another filter or search." : "No saved results yet. Generate your first image or video to see it here."}</p>}
+          </>}
         </GenerateLibraryGate>
       </section>
       <footer className="gen-workflow-footer">
         <div><strong>{workflow.title}</strong><span>{nextBlocker ? nextBlocker.message : workflowStep === 3 ? "Generate above, then review and download your result." : `Next: ${WORKFLOW_STEPS[workflowStep + 1]}`}</span></div>
         <div className="gen-footer-buttons">
           {workflowStep > 0 && <button type="button" className="gen-view-toggle" onClick={() => navigateStep((workflowStep - 1) as WorkflowStep)}>← Back</button>}
+          {workflowStep === 1 && !["motion2", "cinema"].includes(mode) && <button type="button" className="gen-view-toggle" disabled={!ready || blockers.length > 0} onClick={() => navigateStep(3)}>Review with current settings →</button>}
           {workflowStep < 3 && <button type="button" className="gen-go" disabled={!ready || Boolean(nextBlocker)} onClick={() => navigateStep((workflowStep + 1) as WorkflowStep)}>{workflowStep === 0 ? "Start this workflow" : workflowStep === 1 ? "Continue to settings" : "Review & generate"} →</button>}
           {workflowStep === 3 && nextBlocker && <button type="button" className="gen-view-toggle" onClick={() => navigateStep(nextBlocker.step)}>Complete missing inputs →</button>}
         </div>

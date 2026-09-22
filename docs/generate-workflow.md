@@ -63,3 +63,13 @@ The original `/generate` page and its compact preset lists are retained. Gen2 us
 CLI deployments must include `-m githubDeployment=1 -m githubCommitRef=feat/generate-guided-workflow` to load the branch-specific provider credentials. Generic `gitCommitRef` metadata alone does not link branch environment variables. Verify that the resulting deployment contains `FAL_KEY` and the owner allowlist keys; do not print credential values. This was the cause of the earlier preview's unavailable-engine message. See [Vercel's branch environment guide](https://vercel.com/kb/guide/branch-variables-and-domains-not-linked-to-cli-deployments).
 
 The redesigned workspace is served at `/gen2` on previews and any future production release. `/generate` retains the original page, styles and compact presets. Gen2 styles are scoped to `.gen2-root`.
+
+## Ease of use and advanced controls (2026-09-21)
+
+Guided mode starts with prompt examples and basic output settings. **Review with current settings** skips the settings step only when the inputs are valid; it never submits a render. **Advanced options** reveals the original character seed, inference, dimension, negative, guidance and JSON controls without clearing them when closed. All controls view expands the sections. Simple image/video flows also expose seed, video negative prompt and an optional end-frame image. Sequence scenes have editable per-scene overrides.
+
+Provider errors are explained separately from the original diagnostic. Balance exhaustion identifies fal as the shared billing service for Kling and Wan; missing references, rejected requests and video processing errors have distinct next steps. A failed sequence offers **Review scene**, **Clear failure**, and **Retry scene**. Reviewing is local navigation; clearing only resets the failed scene to a draft. The ineffective Continue queue button was removed. Background loading of other workflows no longer surfaces their failures as the current workflow’s error.
+
+Edited sequence settings are saved before generation, retry, approval or reset; a failed save stops the action. Planning preserves the chosen automatic-generation setting. When automatic generation is off, the main sequence button submits only the next scene. Automatic mode retains the existing sequence flow and estimates. This setting is checked between scenes, too.
+
+The private library is one list with image/video filters, prompt/model/job-ID search, and downloads. Gated Kling and Seedance clips are recognized as video; extracted last frames remain usable as image sources. Motion outputs no longer render in two separate galleries. The original library passcode and authenticated media routes still govern access.

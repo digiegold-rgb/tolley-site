@@ -1,7 +1,8 @@
 "use client";
 
 import { cinemaClipCost, costRange } from "@/lib/generate-cost";
-import { WorkflowSection } from "./workflow";
+import { AdvancedOptions, WorkflowSection } from "./workflow";
+import { FailureNotice } from "./recovery";
 
 import {
   CINEMA_SECONDS_DEFAULT,
@@ -13,7 +14,6 @@ import {
   clampCinemaSeconds,
   estimateCinema,
   failedHoldCinemaBeats,
-  formatCinemaFalError,
   inFlightCinemaBeats,
   type CinemaBeat,
   type CinemaEstimate,
@@ -131,10 +131,14 @@ export function CinemaPanel({
   const failedHoldIds = new Set(failedHold.map((b) => b.id));
   const generateLocked = cinemaGenerateLocked(queue);
   const primaryBusy = busy || inFlight.length > 0;
-  const failBanner = failedHold[0]
-    ? formatCinemaFalError(failedHold[0].error) +
-      (failedHold[0].job_id ? ` · beat ${failedHold[0].job_id}` : "")
-    : null;
+  const failedScene = failedHold[0];
+  function reviewFailure() {
+    if (!failedScene) return;
+    onSelect(failedScene.id);
+    const element = document.getElementById(`cinema-scene-${failedScene.id}`);
+    element?.scrollIntoView({ behavior: "smooth", block: "center" });
+    element?.querySelector("textarea")?.focus({ preventScroll: true });
+  }
 
   return (
     <div className="gen-longform" data-testid="cinema-lane">
@@ -193,6 +197,7 @@ export function CinemaPanel({
 
       </WorkflowSection>
       <WorkflowSection step={2}>
+      <AdvancedOptions hint="Optional audio track and previous-video reference">
       <div className="gen-card-grid">
         <label className="gen-field">
           Optional @Audio1 URL
@@ -214,6 +219,7 @@ export function CinemaPanel({
         </label>
 
       </div>
+      </AdvancedOptions>
       <p className="gen-hint" data-testid="cinema-seconds-limit">
         Max 15s per beat (fal hard limit). Stitch beats for longer.
         {queue.model === "kling" ? " Kling allows 3–15s." : " Seedance allows 4–15s."} Default 10s.
@@ -264,12 +270,13 @@ export function CinemaPanel({
             data-testid="cinema-auto-advance"
             onChange={(e) => onAutoAdvance(e.target.checked)}
           />
-          Auto-advance
+          Automatically generate the next scene
         </label>
         <button type="button" className="gen-seed-random" disabled={primaryBusy} onClick={onPlan}>
           Plan beats
         </button>
       </div>
+      <p className="gen-hint">With automatic generation off, each click renders one scene. Turn it on only when you want to run the remaining sequence at the estimate shown.</p>
       {queue.beats.length > 0 && <p className="gen-ready" role="status">{queue.beats.length} scenes planned. Continue to Generate &amp; review to check your shots and start rendering.</p>}
       {notice && <p className="gen-hint" role="status">{notice}</p>}
       </WorkflowSection>
@@ -283,7 +290,7 @@ export function CinemaPanel({
           onClick={onRunRemaining}
           style={{ marginLeft: "auto" }}
         >
-          {primaryBusy ? "Working…" : failedHold.length ? "Failed" : dryRun ? "Dry run" : "Generate remaining clips"}
+          {primaryBusy ? "Working…" : failedHold.length ? "Sequence paused" : dryRun ? "Dry run" : (queue.auto_advance ? "Generate remaining clips" : "Generate next clip")}
         </button>
       </div>
       <p className="gen-hint">
@@ -294,18 +301,14 @@ export function CinemaPanel({
           Plan beats or load the estate proof template first.
         </p>
       ) : failedHold.length ? (
-        <p className="gen-hint">Generate stays off until you dismiss, retry, or continue the queue.</p>
+        <p className="gen-hint">Review the failed scene below. Clear failure returns it to a draft; it does not skip or render the scene.</p>
       ) : null}
       {stage ? (
         <p className="gen-stage" data-testid="cinema-stage">
           ⏳ {stage}
         </p>
       ) : null}
-      {failBanner ? (
-        <p className="gen-longform-fail" data-testid="cinema-fail" role="alert">
-          {failBanner}
-        </p>
-      ) : null}
+      {failedScene && <FailureNotice error={failedScene.error} scene={queue.beats.indexOf(failedScene) + 1} onReview={reviewFailure} testId="cinema-fail" />}
       {notice ? <p className="gen-library-status" data-testid="cinema-notice">{notice}</p> : null}
 
       {queue.beats.length > 0 && (
@@ -321,6 +324,7 @@ export function CinemaPanel({
             {queue.beats.map((beat, i) => (
               <li
                 key={beat.id}
+                id={`cinema-scene-${beat.id}`}
                 className={`gen-longform-beat${selected?.id === beat.id ? " gen-longform-beat-on" : ""}`}
               >
                 <button type="button" className="gen-longform-select" onClick={() => onSelect(beat.id)}>
@@ -344,6 +348,7 @@ export function CinemaPanel({
                 {beat.vo_line ? <p className="gen-hint">VO: {beat.vo_line}</p> : null}
                 <textarea
                   className="gen-longform-prompt"
+                  aria-label={`Scene ${i + 1} prompt`}
                   value={beat.prompt}
                   disabled={primaryBusy || beat.status === "generating"}
                   onChange={(e) => onPatch(beat.id, { prompt: e.target.value })}
@@ -356,13 +361,13 @@ export function CinemaPanel({
                     disabled={primaryBusy || beat.status === "generating"}
                     onChange={(e) => onPatch(beat.id, { generate_audio: e.target.checked })}
                   />
-                  generate_audio
+                  Include generated audio
                 </label>
-                {beat.error ? (
-                  <p className="gen-err" data-testid={`cinema-beat-error-${i + 1}`}>
-                    {formatCinemaFalError(beat.error)}
-                  </p>
-                ) : null}
+                <AdvancedOptions title={`Scene ${i + 1} advanced options`} hint="Negative prompt and previous-video reference">
+                  <label className="gen-field">Negative prompt<textarea aria-label={`Scene ${i + 1} negative prompt`} className="gen-box" rows={3} value={beat.negative_prompt} disabled={primaryBusy} onChange={e => onPatch(beat.id, { negative_prompt: e.target.value })} /></label>
+                  <label className="gen-field">Previous video reference<input aria-label={`Scene ${i + 1} video reference`} value={beat.video_ref_url} disabled={primaryBusy} onChange={e => onPatch(beat.id, { video_ref_url: e.target.value })} /></label>
+                </AdvancedOptions>
+                {beat.error && <FailureNotice error={beat.error} testId={`cinema-beat-error-${i + 1}`} />}
                 {beat.job_id && (beat.status === "ready" || beat.status === "approved") ? (
                   <GatedClip src={mediaSrc(beat.job_id, 0)} />
                 ) : null}
@@ -376,7 +381,7 @@ export function CinemaPanel({
                         disabled={primaryBusy}
                         onClick={() => onDismiss(beat.id)}
                       >
-                        Dismiss
+                        Clear failure
                       </button>
                       <button
                         type="button"
@@ -385,7 +390,7 @@ export function CinemaPanel({
                         disabled={primaryBusy}
                         onClick={() => onRetry(beat.id)}
                       >
-                        Retry
+                        Retry scene
                       </button>
                     </>
                   ) : (

@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.43';
+export const APP_VERSION = '1.43.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,17 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.43.1',
+    date: '2026-09-21',
+    title: 'Simpler Gen2, with advanced controls when you need them',
+    items: [
+      'Start from a prompt example, choose a format, and jump straight to review. Expand Advanced options for seeds, negative prompts, exact dimensions, guidance, JSON and per-scene controls.',
+      'Failed scenes explain balance, source-image and provider errors, with a direct way to review the scene. Clearing a failure returns it to a draft without rendering.',
+      'Turning automatic generation off makes the main sequence button generate just the next scene. Edited scene settings are saved before rendering.',
+      'Filter the private library by images or videos and search previous prompts. Kling clips now play as videos, and motion clips appear only once.',
+    ],
+  },
   {
     version: '1.43',
     date: '2026-09-14',
