@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.49.0';
+export const APP_VERSION = '1.49.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.49.1',
+    date: '2026-09-21',
+    title: 'Keep uncertain live status visible',
+    items: ['Incomplete YouTube status data stays unknown, so missing fields cannot finish automatic tracking.'],
+  },
   {
     version: '1.49.0',
     date: '2026-09-21',
