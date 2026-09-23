@@ -74,3 +74,10 @@ CLI wrappers do the same thing:
 - Clip publishing pause, held/uncertain results, schedule and show ledgers: `/stream/growth`. Existing in-flight network requests may finish after pausing.
 - Explicit verified social account bindings are required. Never use another brand’s most recent OAuth connection.
 - Source recordings before worker installation are excluded unless deliberately selected for a test.
+
+## Spoken visual effects
+
+- Spark's `tolley-voice-effects` service recognizes “fireworks” (also “firework”) from the on-air program microphone and asks the director to restart the transparent `Voice Fireworks` media source in Live. The finished feed carries it to Windows OBS/Whatnot. No Windows plugin is needed.
+- `stream effects status|on|off|test`. On/off persists. Listening requires an armed house, live program audio, and privacy off; it stops off-air. Audio/transcripts are not stored or uploaded. Cues have a 12-second cooldown and expire after 6.2 seconds even when hidden.
+- `test` is off-air only and never starts a stream or selects a scene. For a visible off-air OBS preview select Live with all outputs stopped, test, then restore the previous scene. Recheck idle before every OBS change. Do not start a broadcast just to test this feature.
+- Setup, tests, and rollback: `ops/stream/voice-effects/README.md` in the website repository; installed operator notes: `~/stream-director/voice-effects/README.md`.
