@@ -86,10 +86,17 @@ export default function LineupBuilder({ initialSlug }: { initialSlug: string | n
     setLineup((l) => (l ? { ...l, items: l.items.map((i) => (i.id === item.id ? item : i)) } : l));
   }, []);
 
+  const inventoryRequests = useRef(new Map<string, string>());
   const patchItem = useCallback(async (id: string, body: Record<string, unknown>) => {
     if (!slug) return;
+    const signature = JSON.stringify([id, body]);
+    if (typeof body.sold === "boolean") {
+      if (!inventoryRequests.current.has(signature)) inventoryRequests.current.set(signature, crypto.randomUUID());
+      body = { ...body, key: inventoryRequests.current.get(signature) };
+    }
     try {
       const j = await api<{ item: LineupItem }>(`/api/stream-lineup/${slug}/items/${id}`, "PATCH", body);
+      inventoryRequests.current.delete(signature);
       replaceItem(j.item);
       setErr("");
     } catch (e) { fail(e); }
@@ -219,6 +226,7 @@ export default function LineupBuilder({ initialSlug }: { initialSlug: string | n
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <a href={`/stream/products/${lineup.slug}`} style={{ ...S.btn, ...S.primary, textDecoration: "none" }}>▶ Open clicker</a>
+                <a href="/stream/inventory" style={{ ...S.btn, textDecoration: "none" }}>Inventory &amp; reservations</a>
                 <a href={`/api/stream-lineup/${lineup.slug}/whatnot`} style={{ ...S.btn, background: "#6c3df4", color: "#fff", textDecoration: "none" }} title="Whatnot bulk-import CSV for this lineup (settings are in the purple panel below)">⬇ Whatnot CSV</a>
                 <button onClick={() => void deleteLineup()} style={{ ...S.btn, ...S.secondary }}>Delete</button>
               </div>

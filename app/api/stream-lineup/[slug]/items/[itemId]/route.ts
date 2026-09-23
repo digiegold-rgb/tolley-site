@@ -1,3 +1,6 @@
+import { sellLineupUnit } from "@/lib/shop/show-inventory";
+import { InventoryError, inventoryTransaction } from "@/lib/shop/inventory";
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
@@ -30,6 +33,18 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   if (!found) return NextResponse.json({ error: "not found" }, { status: 404 });
   const body = await request.json().catch(() => ({}));
 
+  if (typeof body.sold === "boolean") {
+    if (typeof body.key !== "string") return NextResponse.json({ error: "Refresh the lineup before recording a sale." }, { status: 400 });
+    try {
+      await sellLineupUnit(slug, itemId, body.key, !body.sold);
+      const item = await prisma.streamLineupItem.findUnique({ where: { id: itemId }, include: ITEM_INCLUDE });
+      revalidatePath("/shop");
+      return NextResponse.json({ item });
+    } catch (e) {
+      return NextResponse.json({ error: e instanceof InventoryError ? e.message : "Could not record sale" }, { status: e instanceof InventoryError ? e.status : 500 });
+    }
+  }
+
   const data: {
     amazonVerified?: boolean; tiktokListed?: boolean; soldAt?: Date | null; notes?: string | null;
     salePrice?: number | null; weightOz?: number | null; lengthIn?: number | null; widthIn?: number | null; heightIn?: number | null;
@@ -42,7 +57,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   }
   if (typeof body.amazonVerified === "boolean") data.amazonVerified = body.amazonVerified;
   if (typeof body.tiktokListed === "boolean") data.tiktokListed = body.tiktokListed;
-  if (typeof body.sold === "boolean") data.soldAt = body.sold ? new Date() : null;
+
   if ("notes" in body) data.notes = body.notes ? String(body.notes).slice(0, 4000) : null;
   for (const k of ["salePrice", "lengthIn", "widthIn", "heightIn"] as const) {
     if (k in body) {
@@ -69,13 +84,19 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     data.weightOz = n === null ? null : Math.round(n);
   }
 
-  const item = await prisma.$transaction(async (tx) => {
+  try {
+  const item = await inventoryTransaction(async (tx) => {
+    if (data.quantity !== undefined && await tx.inventoryReservation.count({ where: { productId: found.productId, status: "active" } })) throw new InventoryError("Release reservations before changing lineup quantities.");
     if (typeof data.weightOz === "number") {
       await tx.product.update({ where: { id: found.productId }, data: { weightOz: data.weightOz } });
     }
     return tx.streamLineupItem.update({ where: { id: found.id }, data, include: ITEM_INCLUDE });
   });
   return NextResponse.json({ item });
+  } catch (e) {
+    if (e instanceof InventoryError) return NextResponse.json({ error: e.message }, { status: e.status });
+    throw e;
+  }
 }
 
 export async function DELETE(_request: NextRequest, ctx: Ctx) {
@@ -84,6 +105,14 @@ export async function DELETE(_request: NextRequest, ctx: Ctx) {
   const { slug, itemId } = await ctx.params;
   const found = await findItem(slug, itemId);
   if (!found) return NextResponse.json({ error: "not found" }, { status: 404 });
-  await prisma.streamLineupItem.delete({ where: { id: found.id } });
+  try {
+    await inventoryTransaction(async tx => {
+      if (await tx.inventoryReservation.count({ where: { productId: found.productId, status: "active" } })) throw new InventoryError("Release reservations before removing this item.");
+      await tx.streamLineupItem.delete({ where: { id: found.id } });
+    });
+  } catch (e) {
+    if (e instanceof InventoryError) return NextResponse.json({ error: e.message }, { status: e.status });
+    throw e;
+  }
   return NextResponse.json({ ok: true });
 }

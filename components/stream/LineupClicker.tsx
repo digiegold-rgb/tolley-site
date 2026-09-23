@@ -143,12 +143,27 @@ export default function LineupClicker({ slug }: { slug: string }) {
     }, 400);
   }, [items, idx, show, slug]);
 
+  const saleBusy = useRef(false);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (!saleBusy.current) void api<{lineup: Lineup}>(`/api/stream-lineup/${slug}`).then(j => setLineup(j.lineup)).catch(() => undefined);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [slug]);
+  const saleRequest = useRef<{itemId: string; sold: boolean; key: string} | null>(null);
   const toggleSold = useCallback(async () => {
-    if (!item) return;
+    if (!item || saleBusy.current) return;
+    saleBusy.current = true;
     const sold = !item.soldAt;
-    if (sold) { fx.current?.fireworks(7); fx.current?.confetti(220); fx.current?.callout("🎉 SOLD!"); }
-    setLineup((l) => (l ? { ...l, items: l.items.map((i) => (i.id === item.id ? { ...i, soldAt: sold ? new Date().toISOString() : null } : i)) } : l));
-    try { await api(`/api/stream-lineup/${slug}/items/${item.id}`, "PATCH", { sold }); } catch (e) { setErr(e instanceof Error ? e.message : "Could not save"); }
+    if (!saleRequest.current || saleRequest.current.itemId !== item.id || saleRequest.current.sold !== sold) saleRequest.current = {itemId: item.id, sold, key: crypto.randomUUID()};
+    try {
+      const result = await api<{ item: LineupItem }>(`/api/stream-lineup/${slug}/items/${item.id}`, "PATCH", { sold, key: saleRequest.current.key });
+      saleRequest.current = null;
+      setLineup(l => l ? { ...l, items: l.items.map(i => i.id === item.id ? result.item : i) } : l);
+      setErr("");
+      if (sold) { fx.current?.fireworks(7); fx.current?.callout("One sold!"); }
+    } catch (e) { setErr(e instanceof Error ? e.message : "Could not save. Retry to check the result."); }
+    finally { saleBusy.current = false; }
   }, [item, slug]);
 
   useEffect(() => {
@@ -257,7 +272,7 @@ export default function LineupClicker({ slug }: { slug: string }) {
                   }} />
                 ))}
                 {item.soldAt && <span style={S.sold}>SOLD</span>}
-                {item.quantity > 1 && !item.soldAt && <span style={S.qty}>{item.quantity} available</span>}
+                {item.quantity > 1 && !item.soldAt && <span style={S.qty}>{Math.max(0, item.quantity - (item.soldQuantity ?? 0))} left in lineup</span>}
                 {photos.length > 1 && (
                   <>
                     <button type="button" aria-label="Previous photo" style={{ ...S.picArrow, left: 8, opacity: prefs.clean ? 0 : 1 }} onClick={() => flipPic(-1)}>‹</button>
@@ -304,7 +319,7 @@ export default function LineupClicker({ slug }: { slug: string }) {
                 <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
                   <button style={{ ...S.btn, ...S.secondary }} onClick={() => go(idx - 1)} disabled={idx === 0}>← prev</button>
                   <button style={{ ...S.btn, ...S.primary, minWidth: 140 }} onClick={() => go(idx + 1)} disabled={idx >= items.length - 1}>next →</button>
-                  <button style={{ ...S.btn, ...(item.soldAt ? S.soldBtn : S.secondary) }} onClick={() => void toggleSold()}>{item.soldAt ? "✓ SOLD (S to undo)" : "Mark sold (S)"}</button>
+                  <button style={{ ...S.btn, ...(item.soldAt ? S.soldBtn : S.secondary) }} onClick={() => void toggleSold()}>{item.soldAt ? "✓ SOLD (S to undo)" : "Sell one unit (S)"}</button>
                   <button style={{ ...S.btn, ...S.secondary }} onClick={() => show(item.amazonUrl, true)} disabled={!item.amazonUrl}>Amazon (A)</button>
                 </div>
               </>

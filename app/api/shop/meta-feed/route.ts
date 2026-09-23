@@ -77,6 +77,7 @@ export async function GET(req: NextRequest) {
   const rows = await prisma.product.findMany({
     where: {
       status: "listed",
+    AND: [{ OR: [{ inventory: null }, { inventory: { available: { gt: 0 }, blocked: false } }] }],
       targetPrice: { gt: 0 },
       NOT: { imageUrls: { isEmpty: true } },
     },

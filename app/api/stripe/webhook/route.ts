@@ -1,3 +1,4 @@
+import { releaseCheckoutReservation } from "@/lib/shop/checkout-inventory";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { recordCheckoutAttribution } from "@/lib/checkout-attribution";
@@ -104,7 +105,12 @@ export async function POST(request: Request) {
 
   try {
     switch (event.type) {
+      case "checkout.session.expired": {
+        await releaseCheckoutReservation(event.data.object as Stripe.Checkout.Session);
+        break;
+      }
       case "checkout.session.async_payment_succeeded": {
+        await fulfillShopSale(event.data.object as Stripe.Checkout.Session);
         await recordCheckoutAttribution(event.data.object as Stripe.Checkout.Session);
         break;
       }

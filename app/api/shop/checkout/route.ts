@@ -1,3 +1,6 @@
+import { syncInventoryAfterResponse } from "@/lib/shop/inventory-after";
+import { randomUUID } from "node:crypto";
+import { runInventory, InventoryError, inventoryTransaction, inventoryIssue } from "@/lib/shop/inventory";
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
@@ -28,6 +31,8 @@ function shippingOptions(
 }
 
 export async function POST(request: NextRequest) {
+  let reservationId: string | null = null;
+  let reservedProductId: string | null = null;
   try {
     const { itemId } = await request.json();
 
@@ -36,16 +41,18 @@ export async function POST(request: NextRequest) {
     }
 
     const stripe = getStripeClient();
-    const origin = request.headers.get("origin") || "https://www.tolley.io";
+    const origin = process.env.APP_URL || "https://www.tolley.io";
 
     const product = await prisma.product
-      .findUnique({
-        where: { id: itemId },
+      .findFirst({
+        where: { OR: [{ id: itemId }, { shopItemId: itemId }] },
         include: { listings: { where: { platform: "shop", status: "active" } } },
-      })
-      .catch(() => null);
+      });
 
     if (product && product.status === "listed" && product.listings.length > 0) {
+      const hold = await runInventory({ productId: product.id, key: `checkout:${randomUUID()}`, action: "reserve", channel: "shop", quantity: 1, reference: `checkout:creating`, note: "Shop checkout" });
+      reservationId = hold.movement.reservationId;
+      reservedProductId = product.id;
       const listing = product.listings[0];
       const ships =
         typeof product.shipPrice === "number" && product.shipPrice >= 0;
@@ -74,8 +81,10 @@ export async function POST(request: NextRequest) {
         metadata: {
           shopItemId: product.shopItemId || product.id,
           productId: product.id,
+          inventoryReservationId: reservationId!,
           ships: ships ? "1" : "0",
         },
+        expires_at: Math.floor(Date.now() / 1000) + 1800,
         success_url: `${origin}/shop?purchased=${product.id}`,
         cancel_url: `${origin}/shop`,
       };
@@ -91,56 +100,17 @@ export async function POST(request: NextRequest) {
         params.phone_number_collection = { enabled: true };
       }
 
-      const session = await stripe.checkout.sessions.create(params);
+      const session = await stripe.checkout.sessions.create(params, { idempotencyKey: `inventory-checkout:${reservationId}` });
+      await prisma.inventoryReservation.update({ where: { id: reservationId! }, data: { reference: `checkout:${session.id}` } });
+      syncInventoryAfterResponse(product.id);
       return NextResponse.json({ url: session.url });
     }
 
-    const item = await prisma.shopItem.findUnique({ where: { id: itemId } });
+    return NextResponse.json({ error: "Item is sold, reserved, or unavailable. Please choose another item." }, { status: 409 });
 
-    if (!item || item.status !== "active") {
-      return NextResponse.json({ error: "Item not available" }, { status: 404 });
-    }
-
-    const ships = typeof item.shipPrice === "number" && item.shipPrice >= 0;
-
-    const params: Stripe.Checkout.SessionCreateParams = {
-      mode: "payment",
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: item.title,
-              ...(item.description
-                ? { description: item.description.slice(0, 500) }
-                : {}),
-              ...(item.imageUrls.length > 0
-                ? { images: [item.imageUrls[0]] }
-                : {}),
-            },
-            unit_amount: Math.round(item.price * 100),
-          },
-          quantity: 1,
-        },
-      ],
-      metadata: {
-        shopItemId: item.id,
-        ships: ships ? "1" : "0",
-      },
-      success_url: `${origin}/shop?purchased=${item.id}`,
-      cancel_url: `${origin}/shop`,
-    };
-
-    if (ships) {
-      params.shipping_address_collection = { allowed_countries: ["US"] };
-      params.shipping_options = shippingOptions(item.shipPrice ?? 0, item.title);
-      params.phone_number_collection = { enabled: true };
-    }
-
-    const session = await stripe.checkout.sessions.create(params);
-    return NextResponse.json({ url: session.url });
   } catch (err) {
+    if (err instanceof InventoryError) return NextResponse.json({ error: err.message }, { status: err.status });
+    if (reservationId && reservedProductId) await inventoryTransaction(tx => inventoryIssue(tx, `checkout:${reservationId}`, reservedProductId, "shop", "Checkout creation did not finish cleanly. Stock remains held until the Stripe session is checked; do not release a possibly paid checkout.")).catch(() => undefined);
     console.error("[shop/checkout]", err);
     return NextResponse.json({ error: "Checkout failed" }, { status: 500 });
   }

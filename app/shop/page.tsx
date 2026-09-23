@@ -202,6 +202,7 @@ export default async function ShopPage({
   }
 
   const baseWhere: Prisma.ProductWhereInput = {
+    AND: [{ OR: [{ inventory: null }, { inventory: { available: { gt: 0 }, blocked: false } }] }],
     status: "listed",
     listings: { some: { platform: "shop", status: "active" } },
     // Hard rule: never list a product without at least one photo. A photo-less

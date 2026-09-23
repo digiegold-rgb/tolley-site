@@ -2258,6 +2258,7 @@ model SystemFeedback {
 }
 
 model Product {
+  inventory           InventoryStock?
   id                  String            @id @default(cuid())
   title               String
   description         String?
@@ -5961,6 +5962,7 @@ model StreamLineup {
 /// and measuring it for TikTok Shop. amazonUrl is a PLAIN /dp/ link (no
 /// affiliate tag — it is only ever opened on the owner's own screen).
 model StreamLineupItem {
+  soldQuantity     Int          @default(0)
   id               String       @id @default(cuid())
   lineupId         String
   productId        String
@@ -6054,4 +6056,88 @@ model LivePublication {
   clip        LiveClip @relation(fields: [clipId], references: [id], onDelete: Restrict)
   @@unique([clipId, platform])
   @@index([platform, createdAt])
+}
+
+/// A single sellable-stock balance, shared by the shop, Facebook and show lineups.
+model InventoryStock {
+  blocked Boolean @default(false)
+  productId String @id
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  onHand Int @default(1)
+  reserved Int @default(0)
+  available Int @default(1)
+  revision Int @default(0)
+  countedAt DateTime?
+  updatedAt DateTime @updatedAt
+}
+model InventoryReservation {
+  id String @id @default(cuid())
+  productId String
+  channel String
+  quantity Int
+  status String @default("active")
+  reference String?
+  note String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([productId, status])
+  @@index([reference, status])
+}
+model InventoryMovement {
+  id String @id @default(cuid())
+  key String @unique
+  fingerprint String
+  productId String
+  action String
+  channel String
+  quantity Int
+  delta Int
+  onHandAfter Int
+  reservedAfter Int
+  reservationId String?
+  reference String?
+  note String?
+  salePrice Float?
+  createdAt DateTime @default(now())
+  @@index([productId, createdAt])
+  @@index([reservationId, action])
+}
+model InventoryIssue {
+  id String @id @default(cuid())
+  key String @unique
+  productId String?
+  channel String
+  message String
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([resolvedAt, updatedAt])
+}
+/// Explicit IDs only: never join listings by their title.
+model InventoryChannel {
+  id String @id @default(cuid())
+  productId String
+  channel String
+  externalId String
+  locationId String?
+  lastQuantity Int?
+  checkedAt DateTime?
+  @@unique([productId, channel])
+  @@unique([channel, externalId])
+}
+
+model InventorySync {
+  id String @id @default(cuid())
+  key String @unique
+  productId String
+  delta Int
+  status String @default("pending")
+  expectedQuantity Int?
+  targetQuantity Int?
+  attempts Int @default(0)
+  lastError String?
+  startedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([productId, status, createdAt])
 }

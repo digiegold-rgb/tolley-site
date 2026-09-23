@@ -303,6 +303,7 @@ export default function StreamPage() {
       {/* advanced */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 18 }}>
         <button onClick={() => setShowAdv((v) => !v)} style={S.link}>{showAdv ? "▾" : "▸"} advanced</button>
+        <Link href="/stream/inventory" style={{ color: "#8ab", fontSize: 14 }}>Inventory &amp; reservations</Link>
         <Link href="/stream/products" style={{ color: "#8ab", fontSize: 14, textDecoration: "none" }}>🛒 Product lineups</Link>
       </div>
       {showAdv && s && (

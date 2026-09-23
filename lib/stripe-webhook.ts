@@ -1,3 +1,5 @@
+import { syncInventoryAfterResponse } from "@/lib/shop/inventory-after";
+import { changeInventory, inventoryTransaction, inventoryIssue, InventoryError } from "@/lib/shop/inventory";
 /**
  * lib/stripe-webhook.ts
  *
@@ -663,16 +665,10 @@ export async function fulfillShopSale(
     : null;
   const fulfillment = shippingAddressJson ? "to_ship" : "pickup";
 
-  // Legacy ShopItem update
-  await prisma.shopItem
-    .update({
-      where: { id: shopItemId },
-      data: { status: "sold", soldAt: new Date() },
-    })
-    .catch(() => {});
+  if (checkoutSession.payment_status !== "paid" && checkoutSession.payment_status !== "no_payment_required") return true;
 
   const product = await prisma.product.findFirst({
-    where: { shopItemId },
+    where: checkoutSession.metadata?.productId ? { id: checkoutSession.metadata.productId } : { shopItemId },
     include: { listings: { where: { platform: "shop" } } },
   });
 
@@ -682,9 +678,19 @@ export async function fulfillShopSale(
     const cogs = product.totalCogs || 0;
     const netProfit = salePrice - stripeFees - cogs;
 
-    await prisma.shopSale.create({
+    await inventoryTransaction(async tx => {
+      const existing = await tx.shopSale.findFirst({ where: { productId: product.id, externalId: checkoutSession.id, platform: "shop" } });
+      if (existing) return;
+      try {
+        await changeInventory(tx, { productId: product.id, key: `stripe:${checkoutSession.id}`, action: "sale", channel: "shop", quantity: 1, reservationId: checkoutSession.metadata?.inventoryReservationId, salePrice });
+      } catch (e) {
+        if (!(e instanceof InventoryError)) throw e;
+        await inventoryIssue(tx, `stripe-shortfall:${checkoutSession.id}`, product.id, "shop", `Paid order needs inventory review: ${e.message}`);
+      }
+    await tx.shopSale.create({
       data: {
         productId: product.id,
+        externalId: checkoutSession.id,
         platform: "shop",
         title: product.title,
         salePrice,
@@ -708,30 +714,14 @@ export async function fulfillShopSale(
         marketingOptIn: false,
       },
     });
-
-    await prisma.product.update({
-      where: { id: product.id },
-      data: {
-        status: "sold",
-        soldPrice: salePrice,
-        soldAt: new Date(),
-        soldPlatform: "shop",
-        totalFees: Math.round(stripeFees * 100) / 100,
-        netProfit: Math.round(netProfit * 100) / 100,
-        roi:
-          cogs > 0
-            ? Math.round((netProfit / cogs) * 10000) / 100
-            : null,
-      },
+    await tx.product.update({ where: { id: product.id }, data: {
+      totalFees: Math.round(stripeFees * 100) / 100,
+      netProfit: Math.round(netProfit * 100) / 100,
+      roi: cogs > 0 ? Math.round((netProfit / cogs) * 10000) / 100 : null,
+    } });
     });
 
-    if (product.listings[0]) {
-      await prisma.platformListing.update({
-        where: { id: product.listings[0].id },
-        data: { status: "sold", soldAt: new Date() },
-      });
-    }
-
+    syncInventoryAfterResponse(product.id);
     if (product.lotId) {
       const lotProducts = await prisma.product.findMany({
         where: { lotId: product.lotId, status: "sold" },
