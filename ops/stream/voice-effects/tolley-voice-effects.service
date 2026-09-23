@@ -1,0 +1,19 @@
+[Unit]
+Description=Tolley local spoken fireworks cue
+After=network-online.target stream-director.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/jelly/stream-director/voice-effects
+ExecStart=/home/jelly/stream-director/.voice-venv/bin/python /home/jelly/stream-director/voice-effects/service.py
+Restart=on-failure
+RestartSec=5
+UMask=0077
+Nice=10
+CPUWeight=20
+NoNewPrivileges=true
+PrivateTmp=true
+Environment=OPENBLAS_NUM_THREADS=1
+
+[Install]
+WantedBy=default.target
