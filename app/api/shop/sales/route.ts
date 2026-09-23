@@ -1,3 +1,5 @@
+import { syncInventoryAfterResponse } from "@/lib/shop/inventory-after";
+import { changeInventory, inventoryTransaction, InventoryError } from "@/lib/shop/inventory";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateShopAdmin } from "@/lib/shop-auth";
@@ -45,6 +47,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "title, salePrice, platform required" }, { status: 400 });
   }
 
+  if (productId) {
+    if (!body.inventoryKey && !externalId) return NextResponse.json({ error: "A unique sale reference is required" }, { status: 400 });
+    try {
+      const result = await inventoryTransaction(async tx => {
+        const key = body.inventoryKey || `sale:${platform}:${externalId}`;
+        const result = await changeInventory(tx, { productId, key, action: "sale", channel: platform, quantity: body.quantity ?? 1, salePrice });
+        if (result.replay) return tx.shopSale.findFirst({ where: { productId, externalId: key, platform } });
+        return tx.shopSale.create({ data: { productId, externalId: key, platform, title, salePrice, platformFees, shippingCost, cogs, buyerName, buyerLocation, paymentMethod, netProfit: salePrice - (platformFees || 0) - (shippingCost || 0) - (cogs || 0) } });
+      });
+      syncInventoryAfterResponse(productId);
+      return NextResponse.json(result);
+    } catch (e) { return NextResponse.json({ error: e instanceof InventoryError ? e.message : "Could not record sale" }, { status: e instanceof InventoryError ? e.status : 500 }); }
+  }
   const netProfit = (salePrice || 0) - (platformFees || 0) - (shippingCost || 0) - (cogs || 0);
 
   const sale = await prisma.shopSale.create({
@@ -63,22 +78,6 @@ export async function POST(req: NextRequest) {
       paymentMethod: paymentMethod || null,
     },
   });
-
-  // Update product if linked
-  if (productId) {
-    await prisma.product.update({
-      where: { id: productId },
-      data: {
-        status: "sold",
-        soldPrice: salePrice,
-        soldAt: new Date(),
-        soldPlatform: platform,
-        totalFees: platformFees || null,
-        netProfit,
-        roi: cogs && cogs > 0 ? Math.round((netProfit / cogs) * 10000) / 100 : null,
-      },
-    });
-  }
 
   return NextResponse.json(sale, { status: 201 });
 }

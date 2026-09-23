@@ -10,13 +10,14 @@
  *
  * Reconciliation strategy (v1):
  *   - Match products by case-insensitive title.
- *   - For matches: update fbStatus + lastFbCheckAt. If FB says sold, mark
- *     Product.status='sold' and stamp soldAt (only if not already sold).
+ *   - For matches: update fbStatus + lastFbCheckAt. Sold observations hold
+ *     stock for seller confirmation instead of inventing a sale.
  *   - For mirror rows that don't match any product: log as unmatched. Do not
  *     auto-create — the existing /api/shop/products POST flow is still the
  *     authoritative entry point for new items.
  */
 
+import { observeFacebookSale, inventoryTransaction, inventoryIssue } from "@/lib/shop/inventory";
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
@@ -300,10 +301,7 @@ export async function POST(req: NextRequest) {
   // intentionally include sold rows too — otherwise we'd duplicate-create
   // products on a re-run of the same backfill.
   const candidates = await prisma.product.findMany({
-    where:
-      mode === "backfill-sold"
-        ? { status: { notIn: ["archived"] } }
-        : { status: { notIn: ["sold", "archived"] } },
+    where: { status: { notIn: ["archived"] } },
     select: {
       id: true,
       title: true,
@@ -324,10 +322,15 @@ export async function POST(req: NextRequest) {
   });
 
   const byTitle = new Map<string, (typeof candidates)[number]>();
+  const byListingId = new Map(candidates.filter(p => p.fbListingId).map(p => [p.fbListingId!, p]));
+  const duplicateTitles = new Set<string>();
   for (const p of candidates) {
-    byTitle.set(p.title.trim().toLowerCase(), p);
+    const title = p.title.trim().toLowerCase();
+    if (byTitle.has(title)) duplicateTitles.add(title);
+    byTitle.set(title, p);
   }
 
+  const shopifyProducts = new Set((await prisma.inventoryChannel.findMany({ where: { channel: "shopify", productId: { in: candidates.map(p => p.id) } }, select: { productId: true } })).map(m => m.productId));
   const blocklist = await loadBlocklistMatcher();
 
   const now = new Date();
@@ -390,7 +393,13 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    const product = byTitle.get(key);
+    const exact = row.fbListingId ? byListingId.get(row.fbListingId) : undefined;
+    if (!exact && duplicateTitles.has(key)) {
+      await inventoryTransaction(tx => inventoryIssue(tx, `facebook-ambiguous:${row.fbListingId || key}`, null, "facebook", `Multiple products share the title “${row.title}”. Link the listing by ID before applying its status.`));
+      unmatched++;
+      continue;
+    }
+    const product = exact ?? byTitle.get(key);
 
     if (!product) {
       unmatched++;
@@ -456,6 +465,10 @@ export async function POST(req: NextRequest) {
       continue;
     }
     matched++;
+    if (product.status === "sold" && !shouldMarkSold(row.fbStatus)) {
+      await inventoryTransaction(tx => inventoryIssue(tx, `facebook:${product.id}`, product.id, "facebook", "This product is sold locally but still appears on Marketplace. Remove or update the listing; old snapshots cannot restock it."));
+      continue;
+    }
 
     const data: Record<string, unknown> = {
       fbStatus: row.fbStatus,
@@ -474,10 +487,9 @@ export async function POST(req: NextRequest) {
 
     let didMarkSold = false;
     if (shouldMarkSold(row.fbStatus) && product.status !== "sold") {
-      data.status = "sold";
-      if (!product.soldAt) data.soldAt = now;
+      await observeFacebookSale(product.id, row.fbListingId);
       didMarkSold = true;
-      newlySoldProductIds.push(product.id);
+
     }
 
     // Price sync. FB is Ruthann's source of truth — when she edits a price
@@ -500,8 +512,12 @@ export async function POST(req: NextRequest) {
       currentPriceCents !== row.priceCents
     ) {
       const newPrice = row.priceCents / 100;
-      data.targetPrice = newPrice;
-      didUpdatePrice = true;
+      if (shopifyProducts.has(product.id)) {
+        await inventoryTransaction(tx => inventoryIssue(tx, `facebook-price:${product.id}`, product.id, "facebook", "Facebook price differs from the connected product price. Review the product price before changing the Shopify catalog."));
+      } else {
+        data.targetPrice = newPrice;
+        didUpdatePrice = true;
+      }
       if (priceChangeSamples.length < 25) {
         priceChangeSamples.push({
           title: row.title,
@@ -593,14 +609,14 @@ export async function POST(req: NextRequest) {
   // from her seller dashboard, so the badge path above never fires and the
   // product stays "listed" on /shop forever (the leak she reported). Here we
   // reconcile by absence: a listed product previously confirmed on FB that is
-  // missing from a *healthy* snapshot for several consecutive runs is sold.
+  // missing from a *healthy* snapshot for several consecutive runs needs review.
   let absenceSold = 0;
   let absenceMissed = 0;
   let absenceSwept = false;
   let absenceAnomaly = false;
   const absenceSoldSamples: Array<{ title: string; misses: number }> = [];
   if (mode === "live") {
-    const FB_ABSENCE_SOLD_THRESHOLD = 2; // consecutive healthy misses → sold
+    const FB_ABSENCE_SOLD_THRESHOLD = 2; // consecutive healthy misses → review
     const MAX_ABSENCE_SOLD_PER_RUN = 30; // blast-radius cap per run
 
     // Eligible = currently listed AND previously confirmed present on FB
@@ -631,25 +647,12 @@ export async function POST(req: NextRequest) {
         const nextMiss = (c.fbMissCount ?? 0) + 1;
         const crosses = nextMiss >= FB_ABSENCE_SOLD_THRESHOLD;
         if (crosses && soldThisRun < MAX_ABSENCE_SOLD_PER_RUN) {
-          await prisma.product.update({
-            where: { id: c.id },
-            data: {
-              status: "sold",
-              fbMissCount: nextMiss,
-              ...(c.soldAt ? {} : { soldAt: now }),
-            },
-          });
-          // Freeze the shop PlatformListing so /shop's
-          // listings.some({status:"active"}) filter stops matching it.
-          await prisma.platformListing
-            .updateMany({
-              where: { productId: c.id, platform: "shop" },
-              data: { status: "sold" },
-            })
-            .catch(() => {});
+          await observeFacebookSale(c.id, c.fbListingId, "missing");
+          await inventoryTransaction(tx => inventoryIssue(tx, `facebook-missing:${c.id}`, c.id, "facebook", "Listing is missing from Marketplace. Confirm whether it sold, was removed, or was renewed before changing stock."));
+          await prisma.product.update({ where: { id: c.id }, data: { fbMissCount: nextMiss } });
           absenceSold++;
           soldThisRun++;
-          newlySoldProductIds.push(c.id);
+
           if (absenceSoldSamples.length < 25) {
             absenceSoldSamples.push({ title: c.title, misses: nextMiss });
           }
@@ -663,7 +666,7 @@ export async function POST(req: NextRequest) {
       }
       if (soldThisRun >= MAX_ABSENCE_SOLD_PER_RUN) {
         console.warn(
-          `[fb-sync] absence sweep hit per-run cap (${MAX_ABSENCE_SOLD_PER_RUN}); remainder marks sold on subsequent runs`
+          `[fb-sync] absence sweep hit per-run cap (${MAX_ABSENCE_SOLD_PER_RUN}); remaining listings are reviewed on subsequent runs`
         );
       }
     } else {

@@ -30,6 +30,7 @@ export type LineupItem = {
   widthIn: number | null;
   heightIn: number | null;
   tiktokListed: boolean;
+  soldQuantity?: number;
   soldAt: string | null;
   notes: string | null;
   quantity: number;

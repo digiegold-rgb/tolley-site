@@ -12,7 +12,7 @@
  * requires affirmative consent, not silence, before a past buyer can be sent
  * affiliate links via SMS/WhatsApp.
  */
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 interface MarkSoldModalProps {
   product: { id: string; title: string };
@@ -25,9 +25,12 @@ export function MarkSoldModal({ product, onClose, onSuccess }: MarkSoldModalProp
   const [buyerPhone, setBuyerPhone] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const inventoryKey = useRef<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function markSold() {
+    if (saving) return;
+    inventoryKey.current ??= crypto.randomUUID();
     setSaving(true);
     try {
       const res = await fetch(`/api/shop/products/${product.id}`, {
@@ -35,6 +38,7 @@ export function MarkSoldModal({ product, onClose, onSuccess }: MarkSoldModalProp
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: "sold",
+          inventoryKey: inventoryKey.current,
           buyerName: buyerName.trim() || undefined,
           buyerPhone: buyerPhone.trim() || undefined,
           buyerEmail: buyerEmail.trim() || undefined,

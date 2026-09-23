@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getLineup } from "@/lib/stream/lineup";
 import { normalizeLineupSettings } from "@/lib/stream/whatnot";
 import { validateWdAdmin } from "@/lib/wd-auth";
+import { InventoryError, inventoryTransaction } from "@/lib/shop/inventory";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,7 +51,16 @@ export async function DELETE(_request: NextRequest, ctx: Ctx) {
   const { authed } = await validateWdAdmin();
   if (!authed) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const { slug } = await ctx.params;
-  // Items cascade. Products are never touched.
-  await prisma.streamLineup.deleteMany({ where: { slug } });
+  try {
+    await inventoryTransaction(async tx => {
+      const lineup = await tx.streamLineup.findUnique({ where: { slug } });
+      if (lineup && await tx.inventoryReservation.count({ where: { reference: `show:${lineup.id}`, status: "active" } })) throw new InventoryError("Release show stock before deleting this lineup.");
+      // Items cascade. Products are never touched.
+      await tx.streamLineup.deleteMany({ where: { slug } });
+    });
+  } catch (e) {
+    if (e instanceof InventoryError) return NextResponse.json({ error: e.message }, { status: e.status });
+    throw e;
+  }
   return NextResponse.json({ ok: true });
 }

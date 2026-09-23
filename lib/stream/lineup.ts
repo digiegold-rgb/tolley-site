@@ -21,6 +21,7 @@ export const PRODUCT_SELECT = {
   asinMatchScore: true,
   status: true,
   fbStatus: true,
+  inventory: true,
 } satisfies Prisma.ProductSelect;
 
 export const ITEM_INCLUDE = { product: { select: PRODUCT_SELECT } } satisfies Prisma.StreamLineupItemInclude;

@@ -19,14 +19,23 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ slug: s
     include: {
       items: {
         orderBy: { sortOrder: "asc" },
-        include: { product: { select: { id: true, title: true, description: true, imageUrls: true, sku: true, costBasis: true } } },
+        include: { product: { select: { id: true, title: true, description: true, imageUrls: true, sku: true, costBasis: true, inventory: true, status: true } } },
       },
     },
   });
   if (!lineup) return NextResponse.json({ error: "not found" }, { status: 404 });
 
+  const holds = await prisma.inventoryReservation.findMany({ where: { reference: `show:${lineup.id}`, status: "active" } });
+  const problems: string[] = [];
+  const exportItems = lineup.items.filter(i => !i.soldAt).map(i => {
+    const remaining = Math.max(0, i.quantity - i.soldQuantity);
+    const stock = i.product.inventory;
+    const available = (stock?.available ?? (i.product.status === "sold" ? 0 : 1)) + holds.filter(h => h.productId === i.product.id).reduce((n,h) => n+h.quantity,0);
+    if (stock?.blocked || remaining > available) problems.push(`${i.product.title}: ${remaining} requested, ${stock?.blocked ? 0 : available} available to this show. Check inventory.`);
+    return { ...i, quantity: Math.min(remaining, stock?.blocked ? 0 : available) };
+  }).filter(i => i.quantity > 0);
   const rows = buildRows(
-    lineup.items.map((i) => ({
+    exportItems.map((i) => ({
       title: i.product.title, description: i.product.description, imageUrls: i.product.imageUrls, sku: i.product.sku,
       productId: i.product.id, costBasis: i.product.costBasis, quantity: i.quantity, salePrice: i.salePrice,
       weightOz: i.weightOz, soldAt: i.soldAt, whatnot: i.whatnot,
@@ -35,8 +44,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ slug: s
   );
 
   if (request.nextUrl.searchParams.get("preview")) {
-    return NextResponse.json({ rows: rows.map((r) => ({ title: r.title, warnings: r.warnings })) }, { headers: { "cache-control": "no-store" } });
+    return NextResponse.json({ rows: [...rows.map((r) => ({ title: r.title, warnings: r.warnings })), ...problems.map(message => ({ title: "Inventory", warnings: [message] }))] }, { headers: { "cache-control": "no-store" } });
   }
+  if (problems.length) return NextResponse.json({ error: problems.join("; ") }, { status: 409 });
   return new NextResponse(toCsv(rows), {
     headers: {
       "content-type": "text/csv; charset=utf-8",

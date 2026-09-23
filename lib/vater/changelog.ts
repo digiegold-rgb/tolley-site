@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.49.1';
+export const APP_VERSION = '1.50.0';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.50.0',
+    date: '2026-09-22',
+    title: 'Shared shop and live-show inventory',
+    items: [
+      'Reserve stock for buyers and nightly shows, record sales once, and review stock corrections in the owner inventory desk.',
+      'Shop checkout and live-sale controls share availability, with duplicate-sale protection and visible external-listing tasks.',
+      'Connect verified Shopify products for inventory synchronization when the store integration is activated.',
+    ],
+  },
   {
     version: '1.49.1',
     date: '2026-09-21',
