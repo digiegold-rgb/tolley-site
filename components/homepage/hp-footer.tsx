@@ -39,6 +39,7 @@ const directory = [
   {
     heading: "Home Services",
     links: [
+      { label: "Cleanouts", href: "/cleanouts" },
       { label: "HVAC", href: "/hvac" },
     ],
   },

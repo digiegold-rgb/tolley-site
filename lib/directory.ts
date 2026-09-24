@@ -190,6 +190,13 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
     emoji: "🤖",
     accent: "violet",
   },
+  cleanouts: {
+    group: "Hauling & Delivery",
+    tagline: "Estate & rental cleanouts, junk removal — free quotes",
+    bullets: ["KC metro", "Fast haul-away", "Call or text a photo"],
+    emoji: "🗑️",
+    accent: "amber",
+  },
   estate: {
     title: "Estate Sales",
     group: "Home Services",

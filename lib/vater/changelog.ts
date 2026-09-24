@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.49.1';
+export const APP_VERSION = '1.49.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.49.2',
+    date: '2026-09-24',
+    title: 'Cleanout quotes are open again',
+    items: ['The Kansas City cleanouts page is back, including the free quote form.'],
+  },
   {
     version: '1.49.1',
     date: '2026-09-21',
