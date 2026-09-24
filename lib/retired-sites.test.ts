@@ -18,9 +18,14 @@ test("retired pages and nested routes return Gone before authentication or rende
 });
 
 test("retirement matches complete path segments and leaves other apps available", async () => {
-  for (const path of ["/", "/shop", "/wd", "/driver", "/cleanouts-other", "/api/vater/drive/status"]) {
+  for (const path of [
+    "/", "/shop", "/wd", "/driver", "/cleanouts-other", "/api/vater/drive/status",
+    "/cleanouts", "/cleanouts/", "/api/cleanouts/quote",
+  ]) {
     assert.equal(isRetiredSitePath(path), false, path);
     const response = await proxy(new NextRequest(`https://www.tolley.io${path}`));
     assert.equal(response.headers.get("x-middleware-next"), "1", path);
+    assert.equal(response.status, 200, path);
+    assert.doesNotMatch(await response.text(), /This page has been removed/);
   }
 });
