@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Poppins, Space_Grotesk, Inter } from "next/font/google";
+import localFont from "next/font/local";
+import { Poppins, Inter } from "next/font/google";
 
 import { GA4 } from "@/components/analytics/ga4";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
@@ -11,10 +12,11 @@ const poppins = Poppins({
   weight: ["300", "400", "500", "600", "700", "800", "900"],
 });
 
-const spaceGrotesk = Space_Grotesk({
+const spaceGrotesk = localFont({
+  src: "../../public/fonts/space-grotesk/SpaceGrotesk-variable.ttf",
   variable: "--font-space-grotesk",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "400 700",
+  display: "swap",
 });
 
 const inter = Inter({
