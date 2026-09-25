@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createOwnerSession } from './helpers/owner-session.mjs';
 import { chromium, request } from 'playwright';
 import { PrismaClient } from '@prisma/client';
-const base = process.env.DISCOVERY_TEST_URL || 'http://127.0.0.1:3024';
+const base = process.env.DISCOVERY_TEST_URL || 'http://localhost:3024';
 if (!['127.0.0.1', 'localhost'].includes(new URL(base).hostname)) throw new Error('This test only submits to a local server.');
 const db = new PrismaClient({ datasources: { db: { url: 'postgresql://postgres@127.0.0.1:55450/tolley_discovery_release_test' } } });
 const api = await request.newContext({ baseURL: base, timeout: 120000, extraHTTPHeaders: { "x-forwarded-for": `127.0.5.${Math.floor(Math.random() * 200) + 1}` } });

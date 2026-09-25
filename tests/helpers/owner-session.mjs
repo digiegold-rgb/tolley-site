@@ -4,7 +4,7 @@ import { createHmac, randomBytes, scryptSync } from 'node:crypto';
 export function requireIsolatedServer(base) {
   const database = new URL(process.env.DATABASE_URL || 'postgresql://invalid');
   const revenue = base === 'http://127.0.0.1:3018' && database.port === '55438' && database.pathname === '/tolley_revenue_test';
-  const discovery = base === 'http://127.0.0.1:3024' && database.port === '55450' && database.pathname === '/tolley_discovery_release_test';
+  const discovery = base === 'http://localhost:3024' && database.port === '55450' && database.pathname === '/tolley_discovery_release_test';
   if (database.hostname !== '127.0.0.1' || (!revenue && !discovery)) {
     throw new Error('Disposable localhost app/database required');
   }

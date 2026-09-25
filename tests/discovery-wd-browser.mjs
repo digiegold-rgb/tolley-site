@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
-const base = process.env.DISCOVERY_TEST_URL || 'http://127.0.0.1:3024';
+const base = process.env.DISCOVERY_TEST_URL || 'http://localhost:3024';
 if (!['localhost', '127.0.0.1'].includes(new URL(base).hostname)) throw new Error('Local test only');
 const browser = await chromium.launch({ headless: true });
 try {
