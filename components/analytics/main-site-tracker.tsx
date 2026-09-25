@@ -2,7 +2,7 @@
 import { browserAttribution } from "@/lib/discovery-browser";
 import { attributionSource } from "@/lib/discovery-attribution";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { captureAttribution, visitorSessionId } from "@/lib/lead-capture-client";
 
@@ -16,9 +16,11 @@ function getReferrer() { return attributionSource(browserAttribution()); }
  */
 export function MainSiteTracker() {
   const pathname = usePathname();
+  const lastTrackedPath = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!pathname) return;
+    if (!pathname || lastTrackedPath.current === pathname) return;
+    lastTrackedPath.current = pathname;
 
     const site = analyticsSiteForPath(pathname);
     if (!site) return;
