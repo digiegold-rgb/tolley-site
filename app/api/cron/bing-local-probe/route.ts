@@ -26,7 +26,7 @@ function authorized(req: NextRequest): boolean {
 
 type BingResult = { organic_results?: Array<{ position?: number; link?: string; title?: string }> };
 
-async function probeOne(keyword: string): Promise<void> {
+async function probeOne(keyword: string): Promise<"recorded" | string> {
   const key = `bing:${keyword}`;
   const result = await serpapiCall<BingResult>({
     engine: "bing",
@@ -34,7 +34,7 @@ async function probeOne(keyword: string): Promise<void> {
     params: { q: keyword, cc: "US", location: "Kansas City, Missouri, United States", count: "10" },
     timeoutMs: 12000,
   });
-  if (!result.ok) return;
+  if (!result.ok) return result.budgetBlocked ? "budget" : (result.error || "serpapi error").slice(0, 80);
   const organic = (result.data?.organic_results ?? []).slice(0, 10);
   const hosts = organic.map(r => { try { return new URL(r.link || "").hostname.toLowerCase(); } catch { return ""; } });
   const idx = hosts.findIndex(h => h && isTolleyDomain(h));
@@ -53,22 +53,26 @@ async function probeOne(keyword: string): Promise<void> {
   if (cited && !previous?.tolleyCited) {
     await notifyTelegram(`🔎 Bing top-10 for "${keyword}": tolley.io is #${organic[idx].position ?? idx + 1} (${organic[idx].link}). ChatGPT search reads this index.`).catch(() => {});
   }
+  return "recorded";
 }
 
 async function handler(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!serpapiKey()) return NextResponse.json({ skipped: true });
-  // Inline, not after(): the platform froze the after() callback once the
-  // response went out and only the first batch was ever recorded (9/25 runs:
-  // 6 of 12, then 4 of 12). Four at a time keeps the whole run near 10 s.
-  const done: string[] = [], failed: string[] = [];
-  for (let i = 0; i < BING_LOCAL_QUERIES.length; i += 4) {
-    await Promise.all(BING_LOCAL_QUERIES.slice(i, i + 4).map(async q => {
-      try { await probeOne(q.keyword); done.push(q.keyword); }
-      catch (err) { failed.push(q.keyword); console.error("[bing-local-probe]", q.keyword, err); }
+  // Inline rather than after(), so the cron response carries what actually
+  // landed (after() gave no way to report budget-blocked queries).
+  const recorded: string[] = [], skipped: Record<string, string> = {};
+  // Two at a time: four overshot the monthly cap by three on 9/25 (each
+  // concurrent call read the same usage count), and 12 queries at ~4 s each
+  // still finish in ~25 s.
+  for (let i = 0; i < BING_LOCAL_QUERIES.length; i += 2) {
+    await Promise.all(BING_LOCAL_QUERIES.slice(i, i + 2).map(async q => {
+      try { const r = await probeOne(q.keyword); if (r === "recorded") recorded.push(q.keyword); else skipped[q.keyword] = r; }
+      catch (err) { skipped[q.keyword] = err instanceof Error ? err.message.slice(0, 80) : "error"; console.error("[bing-local-probe]", q.keyword, err); }
     }));
   }
-  return NextResponse.json({ ok: failed.length === 0, queries: BING_LOCAL_QUERIES.length, recorded: done.length, failed });
+  // "recorded" means a row landed; a budget-blocked query is reported, never counted.
+  return NextResponse.json({ ok: Object.keys(skipped).length === 0, queries: BING_LOCAL_QUERIES.length, recorded: recorded.length, skipped });
 }
 export async function GET(req: NextRequest) { return handler(req); }
 export async function POST(req: NextRequest) { return handler(req); }
