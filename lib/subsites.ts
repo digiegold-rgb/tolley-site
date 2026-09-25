@@ -52,6 +52,7 @@ import { manifest as vater } from "@/app/vater/agent";
 import { manifest as video } from "@/app/video/agent";
 import { manifest as water } from "@/app/water/agent";
 import { manifest as wd } from "@/app/wd/agent";
+import { manifest as live } from "@/app/live/agent";
 
 const registered: SubsiteManifest[] = [
   about,
@@ -100,6 +101,7 @@ const registered: SubsiteManifest[] = [
   video,
   water,
   wd,
+  live,
 ];
 
 export const SUBSITES: SubsiteManifest[] = registered.map(withDiscoveryFacts);

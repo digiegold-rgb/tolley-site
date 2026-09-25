@@ -198,7 +198,7 @@ export function LaunchpadIntakeForm() {
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="(816) 555-0123 — text-first is fine"
+                placeholder="Your mobile number — text-first is fine"
                 autoComplete="tel"
                 className="lp-input px-3.5 py-2.5 text-sm"
               />

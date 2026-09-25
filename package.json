@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "node scripts/check-render-upload.mjs && node scripts/check-changelog.mjs && node scripts/audit-links.mjs && prisma generate && node --max-old-space-size=4096 node_modules/typescript/bin/tsc --noEmit -p tsconfig.build.json && node scripts/build-next.mjs",
     "audit:links": "node scripts/audit-links.mjs",
+    "indexnow": "node scripts/indexnow-submit.mjs",
     "start": "next start",
     "lint": "eslint",
     "connector:start": "node connector/server.js",

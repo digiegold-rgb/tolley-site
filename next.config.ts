@@ -194,6 +194,15 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/clean", destination: "/cleanouts", permanent: true },
+      // URLs assistants guess for pages they have cited (ChatGPT printed a bad
+      // cleanouts link on 2026-09-24). Land them on the real page, never a 404.
+      { source: "/cleanout", destination: "/cleanouts", permanent: true },
+      { source: "/tolley-cleanouts", destination: "/cleanouts", permanent: true },
+      { source: "/junk-removal", destination: "/cleanouts", permanent: true },
+      { source: "/estate-sales", destination: "/estate", permanent: true },
+      { source: "/estatesales", destination: "/estate", permanent: true },
+      { source: "/washer-dryer-rental", destination: "/wd", permanent: true },
+      { source: "/whatnot", destination: "/live", permanent: true },
       { source: "/circle", destination: "/start", permanent: true },
       { source: "/leads/connects", destination: "/leads/dashboard", permanent: false },
       { source: "/leads/dossier/property/:address", destination: "/agent#demo", permanent: true },

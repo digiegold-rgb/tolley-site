@@ -31,6 +31,11 @@ const jetBrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.tolley.io'),
+  // Bing Webmaster Tools ownership (ChatGPT search reads Bing's index). Set
+  // BING_SITE_VERIFICATION on Vercel to the msvalidate.01 value from BWT.
+  ...(process.env.BING_SITE_VERIFICATION
+    ? { verification: { other: { "msvalidate.01": process.env.BING_SITE_VERIFICATION } } }
+    : {}),
   title: "Tolley | Products & Services",
   description:
     "Explore Tolley's software, creative tools, rentals and local services. Based in the Kansas City area.",

@@ -7,6 +7,12 @@ export function publicOfferings() {
 }
 export function discoveryQuestions(s: SubsiteManifest): { q: string; a: string }[] {
   const questions = [{ q: `What does ${s.title} offer?`, a: s.purpose }];
+  // A real, fact-bearing FAQ from the product's own constants beats the generic prompts below.
+  if (s.faq?.length) {
+    questions.push(...s.faq);
+    questions.push({ q: "How do I get started?", a: s.discovery?.phone ? `Call or text ${s.discovery.phone} to discuss your needs and confirm pricing and availability.` : "Use the options on this page to view current details and take the next step." });
+    return questions;
+  }
   if (s.serviceArea) questions.push({ q: "Where is this available?", a: s.serviceArea + ". Confirm your address or requirements before booking." });
   if (s.name === "cleanouts" || s.name === "estate") questions.push({ q: "Can I arrange help while I am out of town?", a: "Contact Jared to discuss access, the scope of work, and how progress will be documented. If selling the property is also a goal, ask about a separate seller consultation." });
   if (s.name === "wd") questions.push({ q: "What should I check before renting?", a: "Confirm appliance dimensions, hookups, delivery access, installation, maintenance coverage, and the monthly total before booking. Ask separately about any purchase options." });
@@ -34,4 +40,14 @@ export function discoveryText(full = false) {
   }
   lines.push("## Developer discovery", "Jelly Studio API manifest: https://www.tolley.io/api/v1/mcp", "Agent index: https://www.tolley.io/api/agent-index", "Sitemap: https://www.tolley.io/sitemap.xml", "API access and paid actions require their documented authorization. A listing here does not authorize a transaction.");
   return lines.join("\n") + "\n";
+}
+/** FAQPage JSON-LD for an offering with a real FAQ; null when there is nothing quotable. */
+export function discoveryFaqJsonLd(s: SubsiteManifest): Record<string, unknown> | null {
+  if (!s.faq?.length) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "@id": `${DISCOVERY_BASE}${s.url}#faq`,
+    mainEntity: s.faq.map(f => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+  };
 }

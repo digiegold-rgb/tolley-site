@@ -16,6 +16,7 @@
  * Big type: 17–18 px body, one idea per block, no jargon.
  */
 import { LISTING_SKUS, LISTING_SKU_IDS, formatListingPrice } from '@/lib/vater/listing-pricing';
+import { LISTING_FAQ } from '@/lib/vater/listing-faq';
 import { creditPackOptions } from '@/lib/vater/credit-packs';
 import { STUDIO_HOME, PRODUCT_NAME } from '@/lib/vater/product';
 import { LISTING_BRAND } from '../brands';
@@ -69,14 +70,6 @@ const FH_POINTS: Array<{ title: string; body: string }> = [
   { title: 'A proof page for every video', body: 'A public link that shows your original photo next to the generated one. Paste it anywhere a disclosure is asked for.' },
 ];
 
-const FAQ: Array<{ q: string; a: string }> = [
-  { q: 'Do I need a sales call or demo?', a: 'No. Enter your email below to receive a signup link automatically. Create your account, upload a photo, and follow the steps. The Help panel has instructions and a form to send a support ticket.' },
-  { q: 'Is this allowed on the MLS?', a: 'Virtual staging of furniture is allowed on most boards (Heartland MLS included) when it is labeled — we label it and give you an MLS-safe copy. Videos that change the home itself (a before→after reveal that swaps the floors) are for your socials and marketing, not the MLS photo slots. We say so on the button.' },
-  { q: 'What does it cost?', a: `A staged photo is ${formatListingPrice(LISTING_SKUS.virtual_staging.priceCents)}. A before→after video is ${formatListingPrice(LISTING_SKUS.before_after.economyPriceCents ?? LISTING_SKUS.before_after.priceCents)}–${formatListingPrice(LISTING_SKUS.before_after.priceCents)}. You buy credit in small packs and only spend it when you press Pay. No subscription. A failed render is never charged.` },
-  { q: 'How long does it take?', a: `A staged photo comes back in about a minute for your approval. A video is usually ready ${LISTING_SKUS.before_after.etaLabel} after you approve the photo.` },
-  { q: 'What if I don’t like the staged photo?', a: 'Tap “Try again” for 99¢ and we roll a fresh version. Nothing is filmed until you approve one.' },
-  { q: 'Who is behind this?', a: 'Jared Tolley — a licensed Missouri Salesperson (Your KC Homes team · United Real Estate Kansas City). Use Help in the studio to send a support ticket, or email support@tolley.io.' },
-];
 
 export default function ListingLanding({ proofStats }: { proofStats: ProofStats }): React.ReactElement {
   const support = LISTING_BRAND.support;
@@ -315,7 +308,7 @@ export default function ListingLanding({ proofStats }: { proofStats: ProofStats 
             Questions agents <GradientText serif>actually ask.</GradientText>
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {FAQ.map((f) => (
+            {LISTING_FAQ.map((f) => (
               <details key={f.q} className="jc-details jrl-faq" style={{ ...glass(t), borderRadius: JELLY_TOKENS.radius.lg, padding: '16px 20px' }}>
                 <summary style={{ fontSize: 18, fontWeight: 600, color: t.text }}>{f.q}</summary>
                 <div style={{ marginTop: 12, fontSize: 17, lineHeight: 1.65, color: t.textSecondary }}>{f.a}</div>

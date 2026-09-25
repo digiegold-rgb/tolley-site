@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.50.2';
+export const APP_VERSION = '1.50.3';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,18 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.50.3',
+    date: '2026-09-25',
+    title: 'Findable by AI assistants',
+    items: [
+      'Service pages answer with their real FAQs (cleanouts, estate sales, washer & dryer, real estate, Jelly Studio, Listing Studio) and publish them as FAQ structured data.',
+      'Treasure Hauls Live joins the public directory and AI guide, with a details section and consignment contact.',
+      'Cleanouts, estate sales, real estate, and washer & dryer titles and descriptions state the service, the metro, and the phone number.',
+      'Common guessed URLs (/cleanout, /estate-sales, /whatnot, …) land on the real page instead of a 404.',
+      'Bing: IndexNow submissions and Webmaster verification, plus a monthly Bing top-10 check and an AI-assistant referral tile in HQ Site Visits.',
+    ],
+  },
   {
     version: '1.50.2',
     date: '2026-09-25',

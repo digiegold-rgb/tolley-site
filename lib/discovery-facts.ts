@@ -7,6 +7,12 @@ import { TR_TRAILERS } from "./trailer";
 import { TBL_PRICE_TABLE, TBL_PRICE_CHAIR } from "./tables";
 import { KP_PRICE_DAY } from "./kerplunk";
 import { PT_PRICE_DAY } from "./picnic-table";
+import { TC_FAQ } from "./cleanouts";
+import { ES_FAQ } from "./estate";
+import { WD_FAQ } from "./wd";
+import { HOMES_FAQ } from "./homes";
+import { HELP_FAQ } from "./vater/help-content";
+import { LISTING_FAQ } from "./vater/listing-faq";
 
 export const DISCOVERY_BASE = "https://www.tolley.io";
 export const DISCOVERY_REVIEW_DATE = "2026-09-25";
@@ -21,9 +27,12 @@ const corrections: Record<string, Partial<SubsiteManifest>> = {
   pricing: { skipSitemap: true }, // Alias of the already-listed /leads/pricing.
   signup: { skipSitemap: true }, // Account creation is not an offering page.
   advertising: { title: "Advertising Platform | T-Agent", purpose: "Google Ads campaign management, budget tracking, keyword analytics, and performance reporting for real estate professionals. See the page for available features and access." },
-  cleanouts: { skipJsonLd: false, purpose: "Estate, rental, garage, and storage-unit cleanouts in the Kansas City metro. Free quotes, broom-clean clearing, and resale value credited against the quote. Call or text 913-283-3826." },
-  animate: { skipJsonLd: false, purpose: "Jelly Studio turns a script into a narrated video with generated scenes and captions. Public beta with prepaid, usage-based rendering; review the estimate before rendering. No subscription.", pricing: [] },
-  wd: { purpose: `Washer and dryer rental in the Kansas City metro: $${WD_PRICE_WASHER}/month for a washer or $${WD_PRICE_BUNDLE}/month for a washer and dryer. Ask about delivery, installation, and current availability.`, pricing: [price(WD_PRICE_WASHER, "monthly", "Washer"), price(WD_PRICE_BUNDLE, "monthly", "Washer and dryer")] },
+  // Title is the exact query-shaped title that was live when ChatGPT cited the page (2026-09-24). Keep it.
+  cleanouts: { skipJsonLd: false, title: "Tolley Cleanouts — Estate & Rental Cleanouts in Kansas City", purpose: "Estate, rental, garage, and storage-unit cleanouts in the Kansas City metro. One call: we clear it, broom-clean it, haul everything, and resale value comes off your bill. Free quotes: call/text 913-283-3826.", faq: TC_FAQ },
+  estate: { purpose: "Full-service estate sales in Independence and the Kansas City metro. Free walkthrough, zero upfront cost, 30% all-inclusive commission, no minimum sale size, fast settlement. Call/text 913-283-3826.", faq: ES_FAQ.map(f => ({ q: f.q, a: f.a })) },
+  homes: { title: "Your KC Homes — Real Estate Agent in Kansas City & Independence, MO", purpose: "Buy, sell, or invest in Kansas City real estate with Jared Tolley, Your KC Homes LLC (United Real Estate Kansas City). Buyer and seller representation, investment analysis, MLS access. Free consult: call/text 913-283-3826.", faq: HOMES_FAQ },
+  animate: { skipJsonLd: false, purpose: "Jelly Studio turns a script into a narrated video with generated scenes and captions. Pay per render, no subscription: a typical long-form video costs $1–7 all in. Public beta with prepaid credits; review the estimate before rendering.", pricing: [], faq: HELP_FAQ.slice(0, 6).map(f => ({ q: f.q, a: f.a })) },
+  wd: { title: "Washer & Dryer Rental in Kansas City — $42/mo, Free Delivery", purpose: `Washer and dryer rental in the Kansas City metro: $${WD_PRICE_WASHER}/month for a washer or $${WD_PRICE_BUNDLE}/month for a washer and dryer. Free delivery, install, and repairs; no credit check, no contract. Call/text 913-283-3826.`, faq: WD_FAQ, pricing: [price(WD_PRICE_WASHER, "monthly", "Washer"), price(WD_PRICE_BUNDLE, "monthly", "Washer and dryer")] },
   generator: { purpose: `${GEN_MODEL} tri-fuel generator rental in Kansas City. 7,500W running power; gasoline, propane, or natural gas. From $${GEN_PRICE_DAY}/day.`, pricing: [price(GEN_PRICE_DAY, "per day"), price(GEN_PRICE_WEEK, "per week"), price(GEN_PRICE_MONTH, "monthly")] },
   trailer: { title: "Utility Trailer & Car Hauler Rental KC", purpose: "Rent 16ft, 18ft, and 20ft utility trailers or a 20ft car hauler in the Kansas City metro. Confirm towing requirements, dates, deposit, and delivery before booking.", pricing: TR_TRAILERS.map(t => price(t.pricing.day, "per day", t.name)) },
   moving: { purpose: "Reusable moving supply rental in Kansas City: a bundle of 20 totes, 17 giant rubber bands, and 25 moving blankets.", pricing: [price(MV_PRICE_DAY, "per day"), price(MV_PRICE_WEEK, "per week"), price(MV_PRICE_2WEEK, "two weeks")] },
@@ -36,14 +45,14 @@ const corrections: Record<string, Partial<SubsiteManifest>> = {
   moupins: { title: "Precision Transfer — Junk Removal & Moving", purpose: "Junk removal, appliance haul-off, garage cleanouts, and local moving help in the Kansas City metro. Request a quote through the page." },
   shop: { purpose: "Ruthann’s Treasure Haul offers vintage, furniture, home goods, and reseller finds. Browse current listings, item-specific checkout and fulfillment details, customer reviews, and sold examples." },
   vater: { purpose: "Video content planning and production tools. Explore the public overview and studio workflows before choosing a tool." },
-  realestateanimated: { purpose: "Listing Studio by Jelly turns property photos into virtual staging and listing videos. Review generated output and required disclosures before publishing. See the landing page for beta access and current options." },
+  realestateanimated: { skipJsonLd: false, purpose: "Listing Studio by Jelly turns one listing photo into virtual staging ($4.99 per photo) or a Before→After reveal video ($29 per video). Fair-Housing labeled, MLS-safe export, pay per video, no subscription.", faq: LISTING_FAQ },
   markets: { serviceArea: undefined, title: "Market Intelligence | T-Agent", purpose: "Housing market intelligence with analyzed news, videos, and economic indicators. Review each item's source and publication date." },
 };
 
 const privateNames = new Set(["vater", "agents", "billing", "client", "food", "leads", "scan", "video", "water", "gpu"]);
 const retiredNames = new Set(["crypto", "results"]);
 const supportingNames = new Set(["about", "blog", "circle", "data-retention", "go", "pay", "pricing", "privacy", "security", "signup", "start", "tools", "terms", "rentals"]);
-const ownedPhone = new Set(["cleanouts", "estate", "wd", "generator", "trailer", "moving", "tables", "picnic-table", "kerplunk", "homes", "real-estate-agent", "housing", "lastmile", "rental", "rentals", "sales", "pools"]);
+const ownedPhone = new Set(["live", "cleanouts", "estate", "wd", "generator", "trailer", "moving", "tables", "picnic-table", "kerplunk", "homes", "real-estate-agent", "housing", "lastmile", "rental", "rentals", "sales", "pools"]);
 
 export function withDiscoveryFacts(input: SubsiteManifest): SubsiteManifest {
   const s = { ...input, ...corrections[input.name] };

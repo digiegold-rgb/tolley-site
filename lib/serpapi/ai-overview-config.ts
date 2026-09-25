@@ -30,12 +30,23 @@ export interface TrackedAiQuery {
     | "pool"
     | "food"
     | "credit"
+    | "cleanout"
+    | "estate"
+    | "live"
+    | "video"
     | "general";
   /** Optional URL fragment that signals "we're cited". Defaults to tolley.io. */
   selfDomain?: string;
 }
 
 export const TRACKED_AI_QUERIES: TrackedAiQuery[] = [
+  // Money-first order: the cap in lib/serpapi.ts stops the run part-way, so
+  // the queries that already produce phone calls (cleanouts, W/D, estate —
+  // see memory ai-search-citation-win-2026-09-24) go first.
+  { keyword: "estate cleanout kansas city", segment: "cleanout" },
+  { keyword: "junk removal independence mo", segment: "cleanout" },
+  { keyword: "estate sale company independence mo", segment: "estate" },
+  { keyword: "washer dryer rental independence mo", segment: "rental" },
   { keyword: "best real estate agent independence mo", segment: "real_estate" },
   { keyword: "how to find a real estate agent kansas city", segment: "real_estate" },
   { keyword: "washer dryer rental kansas city", segment: "rental" },
@@ -48,6 +59,29 @@ export const TRACKED_AI_QUERIES: TrackedAiQuery[] = [
   { keyword: "tolley.io shop reviews", segment: "shop" },
   { keyword: "automated lead generation real estate", segment: "real_estate" },
   { keyword: "ai dossier property research", segment: "real_estate" },
+  { keyword: "whatnot live auctions kansas city", segment: "live" },
+  { keyword: "ai video from script pay per video no subscription", segment: "video" },
+  { keyword: "virtual staging video from one photo", segment: "video" },
+];
+
+/**
+ * Bing local probe — the queries a person would ask an assistant to "find
+ * someone local". ChatGPT search draws on Bing, so a top-10 Bing result is the
+ * closest cheap proxy for "would ChatGPT find us". Monthly (7th, 08:30 UTC).
+ */
+export const BING_LOCAL_QUERIES: TrackedAiQuery[] = [
+  { keyword: "estate cleanout service kansas city", segment: "cleanout" },
+  { keyword: "rental property cleanout independence mo", segment: "cleanout" },
+  { keyword: "junk removal independence mo", segment: "cleanout" },
+  { keyword: "estate sale company independence mo", segment: "estate" },
+  { keyword: "estate sale companies kansas city", segment: "estate" },
+  { keyword: "washer and dryer rental kansas city", segment: "rental" },
+  { keyword: "washer dryer rental independence mo", segment: "rental" },
+  { keyword: "real estate agent independence mo", segment: "real_estate" },
+  { keyword: "whatnot live auctions kansas city", segment: "live" },
+  { keyword: "utility trailer rental independence mo", segment: "rental" },
+  { keyword: "ai video from script pay per video", segment: "video" },
+  { keyword: "virtual staging video from a photo", segment: "video" },
 ];
 
 const TOLLEY_DOMAINS = ["tolley.io", "www.tolley.io"];

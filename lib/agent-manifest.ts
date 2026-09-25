@@ -72,6 +72,8 @@ export const SubsiteManifestSchema = z.object({
   // a bare path that legitimately 404s.
   skipSitemap: z.boolean().optional(),
   keywords: z.array(z.string()).optional(),
+  /** Real, quotable Q&A rendered as server HTML + FAQPage JSON-LD on the public details section and llms-full.txt. */
+  faq: z.array(z.object({ q: z.string(), a: z.string() })).optional(),
 
   discovery: z.object({
     disposition: z.enum(["offering", "private", "supporting", "retired"]),

@@ -91,7 +91,7 @@ export function CleanoutQuoteForm() {
             required
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="(816) 555-0123"
+            placeholder="Your mobile number"
             autoComplete="tel"
             className="tc-input px-3.5 py-2.5 text-sm"
           />

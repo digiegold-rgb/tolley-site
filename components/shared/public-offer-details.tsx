@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getSubsite } from "@/lib/subsites";
-import { discoveryQuestions } from "@/lib/discovery";
+import { discoveryQuestions, discoveryFaqJsonLd } from "@/lib/discovery";
 import { buildJsonLd, serializeJsonLd } from "@/lib/json-ld";
 import { DiscoveryInquiry } from "@/components/discovery/inquiry";
 
@@ -8,6 +8,7 @@ import { DiscoveryInquiry } from "@/components/discovery/inquiry";
 export function PublicOfferDetails({ name }: { name: string }) {
   const s = getSubsite(name);
   if (!s || s.discovery?.disposition !== "offering") return null;
+  const faqJsonLd = discoveryFaqJsonLd(s);
   return <section id="service-details" aria-label={`${s.title} details`} className="border-t border-neutral-700 bg-neutral-950 px-6 py-12 text-neutral-100">
     <div className="mx-auto max-w-4xl space-y-6">
       <h2 className="text-2xl font-semibold">{s.title}</h2>
@@ -23,5 +24,6 @@ export function PublicOfferDetails({ name }: { name: string }) {
       <Link href="/services" className="inline-block underline">Explore all Tolley services and tools</Link>
     </div>
     {!s.skipJsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(buildJsonLd(s)) }} />}
+    {faqJsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqJsonLd) }} />}
   </section>;
 }

@@ -66,3 +66,13 @@ export const HM_VALUE_PROPS = [
       "No runaround. Fast answers, clear communication, and deals that close on time.",
   },
 ] as const;
+
+/** Public FAQ — single source for /homes HTML, FAQPage JSON-LD, and llms-full.txt. */
+export const HOMES_FAQ: { q: string; a: string }[] = [
+  { q: "What areas does Jared Tolley serve in Kansas City?", a: "Jared serves the full Kansas City metro including Independence, Lee's Summit, Blue Springs, Raytown, Grandview, and both Kansas City MO and KS." },
+  { q: "What real estate services does Your KC Homes LLC offer?", a: "Buyer representation, seller representation, investment property analysis, and relocation services \u2014 backed by AI-powered market tools." },
+  { q: "Does Your KC Homes LLC help with investment properties?", a: "Yes. Jared specializes in analyzing rental properties, fix-and-flip opportunities, and HELOC strategies for the KC metro market." },
+  { q: "How do I contact a Kansas City real estate agent?", a: `Call or text ${HM_CONTACT_PHONE} or email ${HM_CONTACT_EMAIL}. Jared is affiliated with ${HM_BROKERAGE}.` },
+  { q: "Can you help me empty or sell the contents of a house before listing it?", a: "Yes. Tolley Cleanouts clears and broom-cleans the property, and Tolley Estate Sales runs a full-service sale first if the contents are worth selling. One call covers cleanout, estate sale, and listing." },
+  { q: "What makes Your KC Homes LLC different from other KC real estate agents?", a: "AI-powered tools for market analysis, property valuation, and deal sourcing \u2014 plus local Independence MO expertise and a full suite of rental and service businesses to help with your move." },
+];

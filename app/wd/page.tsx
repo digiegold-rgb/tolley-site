@@ -9,52 +9,6 @@ import { WdServiceArea } from "@/components/wd/wd-service-area";
 import { WdLeadForm } from "@/components/wd/wd-lead-form";
 import { WdFaq } from "@/components/wd/wd-faq";
 
-const faqJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: [
-    {
-      "@type": "Question",
-      name: "What's included in the washer dryer rental?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Every rental includes free delivery, professional installation, ongoing maintenance, and replacement coverage if a machine fails. You just pay the monthly subscription.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "How much does washer and dryer rental cost?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Washer only is $42/mo. Washer + dryer bundle is $58/mo. No hidden fees, no deposits.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "How do I cancel my washer dryer rental?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Cancel anytime before your next billing date — no cancellation fees. We'll schedule a pickup within 5 business days.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "What areas does washer dryer rental serve?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "We cover the Kansas City metro including Independence, Lee's Summit, Blue Springs, Raytown, Grandview, Overland Park, Olathe, Liberty, Gladstone, Belton, and both Kansas City MO & KS.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "What happens if my rental machine breaks down?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "We repair or replace within 48 hours at no extra cost. Just report the issue and we handle the rest.",
-      },
-    },
-  ],
-};
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -105,11 +59,6 @@ function WdPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
-      />
-      {/* FAQPage structured data */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd).replace(/</g, "\\u003c") }}
       />
       <Suspense>
         <WdHero />
