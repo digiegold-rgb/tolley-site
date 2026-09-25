@@ -1,3 +1,4 @@
+import { normalizeAttribution } from "@/lib/discovery-attribution";
 import { NextResponse, after } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
 
   let body: {
     requestId?: string;
+    attribution?: unknown;
     subsite?: string;
     action?: string;
     contact?: { email?: string; name?: string; phone?: string };
@@ -91,7 +93,7 @@ export async function POST(req: Request) {
   const row = await prisma.$transaction(async tx => {
     if (requestKey) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${requestKey}))`;
     const create = { receiptToken: crypto.randomBytes(16).toString("base64url"), subsite, action,
-      ...normalizedContact, requestKey, structured: fields as Prisma.InputJsonValue };
+      ...normalizedContact, requestKey, attribution: normalizeAttribution(body.attribution), structured: fields as Prisma.InputJsonValue };
     const lead = requestKey
       ? await tx.leadAction.upsert({ where: { requestKey }, create, update: {} })
       : await tx.leadAction.create({ data: create });

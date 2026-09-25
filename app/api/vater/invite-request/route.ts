@@ -1,3 +1,4 @@
+import { normalizeAttribution } from "@/lib/discovery-attribution";
 /**
  * POST /api/vater/invite-request — public (signed-out) "Request an invite" form
  * on the /animate landing. Files an /hq INBOX lead (LeadAction subsite
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
           receiptToken: crypto.randomBytes(8).toString("base64url"),
           subsite,
           action: "invite-request",
+          attribution: normalizeAttribution(body.attribution),
           email,
           name,
           phone,

@@ -1,3 +1,5 @@
+import { discoveryMetadata } from "@/lib/discovery";
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import {
   TC_PHONE,
   TC_PHONE_TEL,
@@ -10,7 +12,7 @@ import {
 import { CleanoutQuoteForm } from "@/components/cleanouts/quote-form";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 
-export default function CleanoutsPage() {
+function CleanoutsPage() {
   return (
     <main className="relative z-10 min-h-screen">
       {/* Sticky call/text strip */}
@@ -169,4 +171,10 @@ export default function CleanoutsPage() {
       <MoreFromTolley currentSubsite="cleanouts" />
     </main>
   );
+}
+
+export const metadata = discoveryMetadata("cleanouts");
+
+export default function PublicLanding() {
+  return <><CleanoutsPage /><PublicOfferDetails name="cleanouts" /></>;
 }

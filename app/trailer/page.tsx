@@ -1,3 +1,5 @@
+import { discoveryMetadata } from "@/lib/discovery";
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import { TrailerHero } from "@/components/trailer/trailer-hero";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { TrailerFleet } from "@/components/trailer/trailer-fleet";
@@ -64,7 +66,7 @@ const faqJsonLd = {
   ],
 };
 
-export default function TrailerPage() {
+function TrailerPage() {
   return (
     <main className="relative z-10 min-h-screen">
       <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
@@ -88,4 +90,10 @@ export default function TrailerPage() {
       <MoreFromTolley currentSubsite="trailer" />
     </main>
   );
+}
+
+export const metadata = discoveryMetadata("trailer");
+
+export default function PublicLanding() {
+  return <><TrailerPage /><PublicOfferDetails name="trailer" /></>;
 }

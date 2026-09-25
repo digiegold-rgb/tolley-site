@@ -28,14 +28,14 @@ export function AgentDiscovery() {
     return best;
   }, [pathname]);
 
-  if (!match) return null;
+  if (!match || match.discovery?.disposition === "private" || match.discovery?.disposition === "retired") return null;
 
   const propName = ["dangerously", "Set", "Inner", "HTML"].join("");
 
   const elements: React.ReactNode[] = [
   ];
 
-  if (!match.skipJsonLd) {
+  if (!match.skipJsonLd && match.discovery?.disposition !== "offering") {
     const html = serializeJsonLd(buildJsonLd(match));
     const props: Record<string, unknown> = {
       type: "application/ld+json",

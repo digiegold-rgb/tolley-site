@@ -1,4 +1,6 @@
 "use client";
+import { browserAttribution } from "@/lib/discovery-browser";
+import { HeardAbout } from "@/components/discovery/inquiry";
 
 import { useRef, useState } from "react";
 import { submitLead, captureAttribution } from "@/lib/lead-capture-client";
@@ -9,6 +11,7 @@ import { fbqEvent } from "@/components/analytics/meta-pixel";
 import { WD_CONTACT_PHONE } from "@/lib/wd";
 
 export function WdLeadForm() {
+  const [reported, setReported] = useState("");
   const params = useSearchParams();
   const promo = params.get("promo") || params.get("code") || "";
   const requestId = useRef<string | null>(null);
@@ -44,6 +47,7 @@ export function WdLeadForm() {
       requestId.current ??= crypto.randomUUID();
       await submitLead("/api/lead/action", {
         requestId: requestId.current,
+        attribution: browserAttribution(reported),
         subsite: "wd", action: "request_wd_quote",
         contact: { name: form.name.trim(), phone: form.phone.trim() || undefined, email: form.email.trim() || undefined },
         fields: { zip: form.zip, unit_type: form.unit, address: form.address.trim(),
@@ -145,6 +149,7 @@ export function WdLeadForm() {
           />
         )}
 
+        <HeardAbout value={reported} onChange={setReported} />
         <textarea
           placeholder="Anything else we should know? (optional)"
           value={form.message}

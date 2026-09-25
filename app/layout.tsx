@@ -1,3 +1,4 @@
+import { ContactTracker } from "@/components/discovery/contact-tracker";
 import type { Metadata } from "next";
 import { JetBrains_Mono, Sora } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -56,6 +57,7 @@ export default function RootLayout({
           <TolleyPublicFrame>{children}</TolleyPublicFrame>
           <MainSiteTracker />
           <AgentDiscovery />
+          <ContactTracker />
           <VideoSpeedKeybinds />
           <GA4 />
           <MetaPixel />

@@ -245,13 +245,21 @@ export function buildDirectory(): DirectoryEntry[] {
   for (const [name, meta] of Object.entries(DIRECTORY_DISPLAY)) {
     if (UNPROMOTED_SUBSITES.has(name)) continue;
     const sub = byName.get(name);
+    if (sub && sub.discovery?.disposition !== "offering") continue;
     if (!sub) {
       if (process.env.NODE_ENV !== "production") {
         console.warn(`[directory] "${name}" has display metadata but is not in lib/subsites.ts`);
       }
       continue;
     }
-    entries.push({ ...meta, name, url: sub.url, title: meta.title ?? sub.title });
+    entries.push({ ...meta, tagline: sub.purpose, name, url: sub.url, title: sub.title });
+  }
+
+  // Every active offering gets a directory entry, even before custom artwork.
+  for (const sub of SUBSITES) {
+    if (sub.discovery?.disposition !== "offering" || entries.some(e => e.name === sub.name)) continue;
+    const group: DirectoryGroup = ["housing", "realestateanimated"].includes(sub.name) ? "Real Estate" : sub.name === "rental" ? "Rentals" : "AI & Ventures";
+    entries.push({ name: sub.name, url: sub.url, title: sub.title, tagline: sub.purpose, bullets: [], group, emoji: "✦", accent: "sky" });
   }
 
   if (process.env.NODE_ENV !== "production") {
@@ -265,7 +273,7 @@ export function buildDirectory(): DirectoryEntry[] {
     for (const s of SUBSITES) {
       if (INFRA.has(s.name)) continue;
       if (s.category === "misc") continue;
-      if (!DIRECTORY_DISPLAY[s.name]) {
+      if (!entries.some(e => e.name === s.name) && s.discovery?.disposition === "offering") {
         console.warn(`[directory] consumer subsite "${s.name}" (${s.url}) has no display entry in lib/directory.ts`);
       }
     }

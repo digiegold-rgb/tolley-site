@@ -1,3 +1,5 @@
+import { discoveryMetadata } from "@/lib/discovery";
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
@@ -124,7 +126,7 @@ function buildJsonLd(upcoming: SaleRow[]) {
   return [business, ...events];
 }
 
-export default async function EstatePage() {
+async function EstatePage() {
   const { upcoming, past } = await fetchSales();
   const jsonLd = buildJsonLd(upcoming);
   // Feature the soonest upcoming sale that already has photos in the hero carousel.
@@ -584,4 +586,10 @@ export default async function EstatePage() {
       <MoreFromTolley currentSubsite="estate" />
     </main>
   );
+}
+
+export const metadata = discoveryMetadata("estate");
+
+export default function PublicLanding() {
+  return <><EstatePage /><PublicOfferDetails name="estate" /></>;
 }

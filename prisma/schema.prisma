@@ -613,6 +613,7 @@ model EmailLead {
 /// gets back a `receiptToken`, then can GET /api/lead/<token> for status.
 /// Distinct from EmailLead (which is unique-per-email and used for "I want updates").
 model LeadAction {
+  attribution Json?
   requestKey      String?   @unique
   id              String    @id @default(cuid())
   receiptToken    String    @unique
@@ -1018,6 +1019,7 @@ model JjPhoneClick {
 }
 
 model SiteView {
+  attribution Json?
   audience  String @default("unknown")
   sessionId String?
   campaign Json?
@@ -4879,6 +4881,10 @@ model RoutineBrief {
 // status=approved touches — nothing in /hq sends anything itself.
 // ────────────────────────────────────────────────────────────────────────────
 model GrowthLead {
+  attribution Json?
+  referralRootId String?
+  discoveryStage String?
+  discoveryRevenue DiscoveryRevenue[]
   id            String        @id @default(cuid())
   name          String
   offer         String // "site" | "automation" | "delivery" | "video"
@@ -6054,4 +6060,16 @@ model LivePublication {
   clip        LiveClip @relation(fields: [clipId], references: [id], onDelete: Restrict)
   @@unique([clipId, platform])
   @@index([platform, createdAt])
+}
+
+/// Confirmed collected revenue only. Receipt references prevent double counting.
+model DiscoveryRevenue {
+  id String @id @default(cuid())
+  receiptKey String @unique
+  leadId String
+  lead GrowthLead @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  amountCents Int
+  collectedAt DateTime
+  createdAt DateTime @default(now())
+  @@index([leadId, collectedAt])
 }

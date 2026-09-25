@@ -1,3 +1,4 @@
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import type { Metadata } from "next";
 import { StructuredData, tAgentSoftwareSchema } from "@/components/seo/structured-data";
 import Link from "next/link";
@@ -99,6 +100,7 @@ export default async function AgentHome() {
           </ul>
         </nav>
       </div>
+      <PublicOfferDetails name="agent" />
     </main>
   );
 }

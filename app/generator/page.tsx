@@ -1,3 +1,5 @@
+import { discoveryMetadata } from "@/lib/discovery";
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import { GeneratorHero } from "@/components/generator/generator-hero";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { GeneratorGallery } from "@/components/generator/generator-gallery";
@@ -64,7 +66,7 @@ const faqJsonLd = {
   ],
 };
 
-export default function GeneratorPage() {
+function GeneratorPage() {
   return (
     <main className="relative z-10 min-h-screen">
       <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
@@ -91,4 +93,10 @@ export default function GeneratorPage() {
       <MoreFromTolley currentSubsite="generator" />
     </main>
   );
+}
+
+export const metadata = discoveryMetadata("generator");
+
+export default function PublicLanding() {
+  return <><GeneratorPage /><PublicOfferDetails name="generator" /></>;
 }

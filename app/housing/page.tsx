@@ -1,3 +1,4 @@
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import type { Metadata } from "next";
 import { AskJaredForm } from "@/components/housing/ask-jared-form";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
@@ -52,7 +53,7 @@ function VideoBriefLink({ url }: { url: string }) {
   );
 }
 
-export default async function HousingPage() {
+async function HousingPage() {
   const { pulse, statcardUrl } = await getPulse();
   const youtubeUrl = pulse?.links?.youtube_url || null;
   const dateLabel = pulse
@@ -181,4 +182,8 @@ export default async function HousingPage() {
       </p>
     </main>
   );
+}
+
+export default function PublicLanding() {
+  return <><HousingPage /><PublicOfferDetails name="housing" /></>;
 }

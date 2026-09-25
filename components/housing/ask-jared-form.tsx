@@ -1,5 +1,7 @@
 "use client";
 
+import { HeardAbout } from "@/components/discovery/inquiry";
+import { browserAttribution } from "@/lib/discovery-browser";
 import { useState } from "react";
 
 type FormStatus = "idle" | "submitting" | "success" | "error";
@@ -23,6 +25,7 @@ export function AskJaredForm() {
   const [timeline, setTimeline] = useState("exploring");
   const [zip, setZip] = useState("");
   const [address, setAddress] = useState("");
+  const [reported, setReported] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -46,6 +49,7 @@ export function AskJaredForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          attribution: browserAttribution(reported),
           subsite: "housing",
           action: "ask_about_my_home",
           contact: {
@@ -214,6 +218,8 @@ export function AskJaredForm() {
         aria-label="Notes"
         className="w-full resize-y rounded-lg border border-zinc-300 px-3.5 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
       />
+
+      <HeardAbout value={reported} onChange={setReported} />
 
       {status === "error" && (
         <p className="rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">

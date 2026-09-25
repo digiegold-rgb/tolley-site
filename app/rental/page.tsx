@@ -1,9 +1,11 @@
+import { discoveryMetadata } from "@/lib/discovery";
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import { RentalHero } from "@/components/rental/rental-hero";
 import { RentalGrid } from "@/components/rental/rental-grid";
 import { EmailCaptureForm } from "@/components/tools/EmailCaptureForm";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 
-export default function RentalPage() {
+function RentalPage() {
   return (
     <main className="relative z-10 min-h-screen">
       <RentalHero />
@@ -31,4 +33,10 @@ export default function RentalPage() {
       <MoreFromTolley currentSubsite="rental" />
     </main>
   );
+}
+
+export const metadata = discoveryMetadata("rental");
+
+export default function PublicLanding() {
+  return <><RentalPage /><PublicOfferDetails name="rental" /></>;
 }

@@ -1,3 +1,4 @@
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 /**
  * /animate — public marketing landing for signed-out visitors, full studio
  * Shell for signed-in users. (Previously hard-redirected strangers to the
@@ -62,7 +63,7 @@ export default async function AnimateStudioPage({
   const session = await auth();
   if (session?.mfaRequired) redirect("/login/mfa-challenge?callbackUrl=%2Fanimate");
   if (!session?.user?.id) {
-    return <AnimateLanding />;
+    return <><AnimateLanding /><PublicOfferDetails name="animate" /></>;
   }
   /* ?w=<tabId> — a deep link into one studio TAB (Telegram receipts, /hq).
    * A page can't set cookies, so bounce through the switch route, which

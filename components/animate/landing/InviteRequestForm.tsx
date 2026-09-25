@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import { HeardAbout } from '@/components/discovery/inquiry';
+import { browserAttribution } from '@/lib/discovery-browser';
 
 import { JELLY_TOKENS, glass } from '../tokens';
 import { PillButton } from '../cinema';
@@ -57,6 +59,7 @@ export interface InviteRequestFormProps {
 export function InviteRequestForm({ subsite = 'animate', copy }: InviteRequestFormProps = {}): React.ReactElement {
   const [state, setState] = React.useState<'idle' | 'busy' | 'done' | 'error'>('idle');
   const [ready, setReady] = React.useState(false);
+  const [reported, setReported] = React.useState('');
   const [msg, setMsg] = React.useState<string>('');
   const [autoApproved, setAutoApproved] = React.useState(false);
   const [smsOptIn, setSmsOptIn] = React.useState(false);
@@ -81,6 +84,7 @@ export function InviteRequestForm({ subsite = 'animate', copy }: InviteRequestFo
           about: fd.get('about'),
           website: fd.get('website'), // honeypot
           utm: utmRef.current,
+          attribution: browserAttribution(reported),
           phone,
           smsOptIn,
           subsite,
@@ -147,6 +151,7 @@ export function InviteRequestForm({ subsite = 'animate', copy }: InviteRequestFo
         aria-label="What do you want to make?"
         placeholder={copy?.aboutPlaceholder ?? 'What do you want to make? (channel, niche, how many videos a month)'}
       />
+      <HeardAbout value={reported} onChange={setReported} />
       <AnimateSmsConsent
         variant="landing"
         checked={smsOptIn}

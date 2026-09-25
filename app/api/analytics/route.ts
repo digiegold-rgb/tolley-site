@@ -1,3 +1,4 @@
+import { normalizeAttribution } from "@/lib/discovery-attribution";
 import { NextRequest, NextResponse } from "next/server";
 import { geolocation } from "@vercel/functions";
 import { prisma } from "@/lib/prisma";
@@ -176,7 +177,7 @@ export async function POST(request: NextRequest) {
           country,
           region,
           city,
-          meta: meta || undefined,
+          meta: { ...(meta && typeof meta === "object" && !Array.isArray(meta) ? meta : {}), attribution: normalizeAttribution(body.attribution) },
           sessionId,
         },
       });
@@ -189,6 +190,7 @@ export async function POST(request: NextRequest) {
       await prisma.siteView.create({
         data: {
           audience, sessionId, campaign,
+          attribution: normalizeAttribution(body.attribution),
           site,
           path,
           referrer: referrer || null,

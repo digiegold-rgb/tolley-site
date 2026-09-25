@@ -1,3 +1,5 @@
+import { discoveryMetadata } from "@/lib/discovery";
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import { HvacHero } from "@/components/hvac/hvac-hero";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { HvacServices } from "@/components/hvac/hvac-services";
@@ -61,7 +63,7 @@ const faqJsonLd = {
   ],
 };
 
-export default function HvacPage() {
+function HvacPage() {
   return (
     <main className="relative z-10 min-h-screen">
       <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
@@ -108,4 +110,10 @@ export default function HvacPage() {
       <MoreFromTolley currentSubsite="hvac" />
     </main>
   );
+}
+
+export const metadata = discoveryMetadata("hvac");
+
+export default function PublicLanding() {
+  return <><HvacPage /><PublicOfferDetails name="hvac" /></>;
 }

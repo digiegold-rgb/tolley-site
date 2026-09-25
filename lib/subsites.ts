@@ -1,4 +1,5 @@
 import { UNPROMOTED_SUBSITES } from "@/lib/public-route-policy";
+import { withDiscoveryFacts } from "./discovery-facts";
 import type { SubsiteManifest } from "./agent-manifest";
 
 // Per-subsite manifests are imported here. Each app/<name>/agent.ts exports
@@ -52,7 +53,7 @@ import { manifest as video } from "@/app/video/agent";
 import { manifest as water } from "@/app/water/agent";
 import { manifest as wd } from "@/app/wd/agent";
 
-export const SUBSITES: SubsiteManifest[] = [
+const registered: SubsiteManifest[] = [
   about,
   advertising,
   agents,
@@ -100,6 +101,8 @@ export const SUBSITES: SubsiteManifest[] = [
   water,
   wd,
 ];
+
+export const SUBSITES: SubsiteManifest[] = registered.map(withDiscoveryFacts);
 
 export function getSubsite(name: string): SubsiteManifest | undefined {
   return SUBSITES.find((s) => s.name === name);

@@ -1,6 +1,6 @@
 import { SUBSITES } from "@/lib/subsites";
 
-const extraSites = ["clean", "fit", "manus", "hq", "account", "settings"];
+const extraSites = ["services", "clean", "fit", "manus", "hq", "account", "settings"];
 
 /** One classification shared by the sole root pageview tracker. */
 export function analyticsSiteForPath(pathname: string): string | null {
