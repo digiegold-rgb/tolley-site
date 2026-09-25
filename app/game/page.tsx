@@ -1,3 +1,4 @@
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import PortalShell from "@/components/game/portal3d/PortalShell";
 
 export default function GamePage() {
@@ -9,6 +10,7 @@ export default function GamePage() {
         Keyboard, controller, and touchscreen controls. Choose Super Hopper for harder challenges.
       </p>
       <PortalShell />
+    <PublicOfferDetails name="game" />
     </main>
   );
 }

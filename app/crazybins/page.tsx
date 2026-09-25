@@ -1,3 +1,5 @@
+import { discoveryMetadata } from "@/lib/discovery";
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import { CrazyHero } from "@/components/crazybins/CrazyHero";
 import { CrazyMarquee } from "@/components/crazybins/CrazyMarquee";
 import { CrazyDailyLadder } from "@/components/crazybins/CrazyDailyLadder";
@@ -38,7 +40,7 @@ const jsonLd = {
   },
 };
 
-export default function CrazyBinsPage() {
+function CrazyBinsPage() {
   return (
     <main className="min-h-screen pb-24 lg:pb-0">
       <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
@@ -54,4 +56,10 @@ export default function CrazyBinsPage() {
       <CrazyAddressBar />
     </main>
   );
+}
+
+export const metadata = discoveryMetadata("crazybins");
+
+export default function PublicLanding() {
+  return <><CrazyBinsPage /><PublicOfferDetails name="crazybins" /></>;
 }

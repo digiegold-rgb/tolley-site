@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { discoveryMetadata } from "@/lib/discovery";
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import Image from "next/image";
 import { LaunchpadIntakeForm } from "@/components/launchpad/intake-form";
 
@@ -43,7 +45,7 @@ const examples = [
   },
 ];
 
-export default function SalesPage() {
+function SalesPage() {
   return (
     <main className="lp-refresh">
       <nav className="lr-nav" aria-label="Launchpad navigation">
@@ -234,4 +236,10 @@ export default function SalesPage() {
       </footer>
     </main>
   );
+}
+
+export const metadata = discoveryMetadata("sales");
+
+export default function PublicLanding() {
+  return <><SalesPage /><PublicOfferDetails name="sales" /></>;
 }

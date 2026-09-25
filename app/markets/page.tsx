@@ -1,3 +1,4 @@
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import { prisma } from "@/lib/prisma";
 import MarketPortal from "@/components/leads/markets/MarketPortal";
 
@@ -10,7 +11,7 @@ export const metadata = {
   description: "Real-time housing market intelligence — AI-analyzed YouTube transcripts, stock data, economic indicators, and news. Powered by T-Agent.",
 };
 
-export default async function MarketsPage() {
+async function MarketsPage() {
   let snapshotRow = null;
   let signals: Awaited<ReturnType<typeof prisma.marketSignal.findMany>> = [];
   let dataPoints: { id: string; type: string; title: string; url: string | null; summary: string | null; signal: string | null; signalConfidence: number | null; sentiment: number | null; numericValue: number | null; changePercent: number | null; tags: string[]; publishedAt: Date | null; createdAt: Date }[] = [];
@@ -149,4 +150,8 @@ export default async function MarketsPage() {
       </div>
     </div>
   );
+}
+
+export default function PublicLanding() {
+  return <><MarketsPage /><PublicOfferDetails name="markets" /></>;
 }

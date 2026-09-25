@@ -73,6 +73,18 @@ export const SubsiteManifestSchema = z.object({
   skipSitemap: z.boolean().optional(),
   keywords: z.array(z.string()).optional(),
 
+  discovery: z.object({
+    disposition: z.enum(["offering", "private", "supporting", "retired"]),
+    canonicalUrl: z.string().url(),
+    reviewedAt: z.string(),
+    verification: z.literal("repository"),
+    operator: z.string().optional(),
+    phone: z.string().optional(),
+    email: z.string().optional(),
+    evidence: z.array(z.string()),
+    pricingNote: z.string(),
+  }).optional(),
+
   // New: transactional + structured commerce data
   pricing: z.array(PricingTierSchema).optional(),
   availability: z.string().optional(),  // e.g. "Same-day in KC metro, 2-4 day elsewhere"

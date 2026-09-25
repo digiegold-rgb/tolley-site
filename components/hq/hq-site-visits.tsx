@@ -243,7 +243,7 @@ function RankTable({
 
 // Site Visits — first-party traffic across tolley.io (bots, datacenter hits,
 // self-IPs, and admin paths excluded server-side) + Google Search Console.
-export function HqSiteVisits() {
+function SiteVisitsContent() {
   const [days, setDays] = useState<number>(28);
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState("");
@@ -362,4 +362,8 @@ export function HqSiteVisits() {
       </div>
     </>
   );
+}
+
+export function HqSiteVisits() {
+  return <><a href="/hq/discovery" style={{ display: "inline-block", marginBottom: 16, color: "#0071e3" }}>Discovery referrals, phone leads & collected revenue →</a><SiteVisitsContent /></>;
 }

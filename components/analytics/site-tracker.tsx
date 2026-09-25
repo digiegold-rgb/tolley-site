@@ -1,34 +1,11 @@
 "use client";
+import { browserAttribution } from "@/lib/discovery-browser";
+import { attributionSource } from "@/lib/discovery-attribution";
 
 import { visitorSessionId } from "@/lib/lead-capture-client";
 import { useEffect, useCallback } from "react";
 
-function classifyReferrer(ref: string): string {
-  if (!ref) return "direct";
-  const r = ref.toLowerCase();
-  if (r.includes("google")) return "google";
-  if (r.includes("facebook") || r.includes("fb.com")) return "facebook";
-  if (r.includes("instagram")) return "instagram";
-  if (r.includes("tiktok")) return "tiktok";
-  if (r.includes("twitter") || r.includes("x.com")) return "twitter";
-  if (r.includes("nextdoor")) return "nextdoor";
-  if (r.includes("craigslist")) return "craigslist";
-  if (r.includes("offerup")) return "offerup";
-  if (r.includes("yelp")) return "yelp";
-  if (r.includes("youtube")) return "youtube";
-  if (r.includes("reddit")) return "reddit";
-  if (r.includes("linkedin")) return "linkedin";
-  if (r.includes("tolley.io")) return "internal";
-  return "other";
-}
-
-function getReferrer(): string {
-  if (typeof window === "undefined") return "direct";
-  const params = new URLSearchParams(window.location.search);
-  const refParam = params.get("ref") || params.get("utm_source");
-  if (refParam) return refParam;
-  return classifyReferrer(document.referrer);
-}
+function getReferrer() { return attributionSource(browserAttribution()); }
 
 /** Track a specific event (phone click, CTA, form, etc.) */
 export function trackEvent(
@@ -39,6 +16,7 @@ export function trackEvent(
 ) {
   fetch("/api/analytics", {
     method: "POST",
+      keepalive: true,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       type: "event",
@@ -48,6 +26,7 @@ export function trackEvent(
       event,
       label,
       referrer: getReferrer(),
+        attribution: browserAttribution(),
       meta,
     }),
   }).catch(() => {});

@@ -33,7 +33,7 @@ export function MoreFromTolley({
             More from Tolley.io
           </span>
           <Link
-            href="/start"
+            href="/services"
             className="text-xs font-semibold text-neutral-400 transition hover:text-white"
           >
             See all services &rarr;

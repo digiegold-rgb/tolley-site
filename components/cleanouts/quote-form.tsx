@@ -1,11 +1,15 @@
 "use client";
 
+import { HeardAbout } from "@/components/discovery/inquiry";
+import { browserAttribution } from "@/lib/discovery-browser";
+import { trackEvent } from "@/components/analytics/site-tracker";
 import { useState } from "react";
 import { TC_PHONE, TC_PHONE_SMS } from "@/lib/cleanouts";
 
 type FormStatus = "idle" | "submitting" | "success" | "error";
 
 export function CleanoutQuoteForm() {
+  const [reported, setReported] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -23,7 +27,7 @@ export function CleanoutQuoteForm() {
       const res = await fetch("/api/cleanouts/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone, address, details }),
+        body: JSON.stringify({ name, phone, address, details, attribution: browserAttribution(reported) }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -35,6 +39,7 @@ export function CleanoutQuoteForm() {
         return;
       }
       setStatus("success");
+      trackEvent("cleanouts", "inquiry_success", undefined, { leadId: data?.leadId });
     } catch (err) {
       setStatus("error");
       setErrorMsg(
@@ -121,6 +126,8 @@ export function CleanoutQuoteForm() {
           className="tc-input resize-y px-3.5 py-2.5 text-sm"
         />
       </div>
+
+      <HeardAbout value={reported} onChange={setReported} />
 
       {status === "error" && (
         <p className="rounded border border-red-500/40 bg-red-500/10 px-3.5 py-2.5 text-sm text-red-300">

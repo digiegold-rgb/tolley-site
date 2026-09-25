@@ -1,13 +1,14 @@
 import { createMcpHandler } from "mcp-handler";
 import { registerTools, setCurrentRequest } from "@/lib/mcp-tools";
+import { preserveWebGlobals } from "@/lib/preserve-web-globals";
 
-const mcpHandler = createMcpHandler(
+const mcpHandler = preserveWebGlobals(() => createMcpHandler(
   (server) => {
     registerTools(server);
   },
   { serverInfo: { name: "Tolley.io", version: "1.0.0" } },
   { basePath: "/api" }
-);
+));
 
 async function handler(request: Request) {
   setCurrentRequest(request);

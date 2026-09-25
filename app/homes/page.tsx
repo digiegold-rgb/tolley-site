@@ -1,3 +1,5 @@
+import { discoveryMetadata } from "@/lib/discovery";
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import { HomesHero } from "@/components/homes/homes-hero";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { HomesAgent } from "@/components/homes/homes-agent";
@@ -62,7 +64,7 @@ const faqJsonLd = {
   ],
 };
 
-export default function HomesPage() {
+function HomesPage() {
   return (
     <main className="relative z-10 min-h-screen">
       <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
@@ -95,4 +97,10 @@ export default function HomesPage() {
       <MoreFromTolley currentSubsite="homes" />
     </main>
   );
+}
+
+export const metadata = discoveryMetadata("homes");
+
+export default function PublicLanding() {
+  return <><HomesPage /><PublicOfferDetails name="homes" /></>;
 }

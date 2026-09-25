@@ -60,7 +60,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
 
   const subsiteRoutes: MetadataRoute.Sitemap = SUBSITES.filter(
-    (s) => !s.skipSitemap && !sitemapExclude.has(s.url),
+    (s) => !s.skipSitemap && !sitemapExclude.has(s.url) && s.discovery?.disposition !== "private" && s.discovery?.disposition !== "retired",
   ).map((s) => ({
     url: `${BASE}${s.url}`,
     changeFrequency:
@@ -72,6 +72,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Curated extras not represented as standalone subsites
   const extras: MetadataRoute.Sitemap = [
+    { url: `${BASE}/services`, changeFrequency: "monthly", priority: 0.9 },
     { url: `${BASE}/live`, changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE}/leads/pricing`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/shop/disclosure`, changeFrequency: "yearly", priority: 0.3 },

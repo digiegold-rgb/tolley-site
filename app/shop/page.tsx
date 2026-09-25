@@ -1,3 +1,5 @@
+import { discoveryMetadata } from "@/lib/discovery";
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
@@ -187,7 +189,7 @@ async function fetchLastFbSyncAt(): Promise<Date | null> {
   return recent?.lastFbCheckAt ?? null;
 }
 
-export default async function ShopPage({
+async function ShopPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -397,4 +399,10 @@ export default async function ShopPage({
       </div>
     </div>
   );
+}
+
+export const metadata = discoveryMetadata("shop");
+
+export default function PublicLanding(props: Parameters<typeof ShopPage>[0]) {
+  return <><ShopPage {...props} /><PublicOfferDetails name="shop" /></>;
 }

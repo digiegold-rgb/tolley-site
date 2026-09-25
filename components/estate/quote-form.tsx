@@ -1,5 +1,7 @@
 "use client";
 
+import { HeardAbout } from "@/components/discovery/inquiry";
+import { browserAttribution } from "@/lib/discovery-browser";
 import { useState } from "react";
 
 type FormStatus = "idle" | "submitting" | "success" | "error";
@@ -22,6 +24,7 @@ const TIMEFRAMES = [
 export function EstateQuoteForm() {
   const [situation, setSituation] = useState("estate_settlement");
   const [timeframe, setTimeframe] = useState("this_month");
+  const [reported, setReported] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -45,6 +48,7 @@ export function EstateQuoteForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          attribution: browserAttribution(reported),
           subsite: "estate",
           action: "request_estate_consult",
           contact: {
@@ -203,6 +207,8 @@ export function EstateQuoteForm() {
         aria-label="Details"
         className="es-input resize-y px-3.5 py-2.5 text-sm"
       />
+
+      <HeardAbout value={reported} onChange={setReported} />
 
       {status === "error" && (
         <p className="rounded border border-red-800 bg-red-950/40 px-3.5 py-2.5 text-sm text-red-300">

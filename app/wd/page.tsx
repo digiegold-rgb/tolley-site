@@ -1,3 +1,5 @@
+import { discoveryMetadata } from "@/lib/discovery";
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import { Suspense } from "react";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
 import { WdHero } from "@/components/wd/wd-hero";
@@ -97,7 +99,7 @@ const jsonLd = {
   sameAs: ["https://www.facebook.com/share/1AafKhE5tq/?mibextid=wwXIfr"],
 };
 
-export default function WdPage() {
+function WdPage() {
   return (
     <main className="relative z-10 min-h-screen">
       <script
@@ -137,4 +139,10 @@ export default function WdPage() {
       <MoreFromTolley currentSubsite="wd" />
     </main>
   );
+}
+
+export const metadata = discoveryMetadata("wd");
+
+export default function PublicLanding() {
+  return <><WdPage /><PublicOfferDetails name="wd" /></>;
 }

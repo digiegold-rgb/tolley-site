@@ -12,6 +12,7 @@
 
 import { NextRequest, NextResponse, after } from "next/server";
 
+import { normalizeAttribution } from "@/lib/discovery-attribution";
 import { prisma } from "@/lib/prisma";
 import { consumeRateLimit, rateLimited } from "@/lib/rate-limit";
 import { notifyTelegram } from "@/lib/budget/notify";
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
       name: name || `Cleanout quote ${new Date().toISOString().slice(0, 10)}`,
       offer: "cleanout",
       source: "cleanouts-page",
+      attribution: normalizeAttribution(body.attribution),
       stage: "replied",
       phone: phone || null,
       address: address || null,

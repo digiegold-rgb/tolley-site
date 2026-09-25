@@ -68,9 +68,11 @@ export function buildJsonLd(manifest: SubsiteManifest): Record<string, unknown> 
   const base: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": manifest.schemaType,
+    "@id": `${url}#offering`,
     name: manifest.title,
     description: manifest.purpose,
     url,
+    ...(manifest.discovery?.phone ? { telephone: manifest.discovery.phone } : {}),
     isPartOf: {
       "@type": "WebSite",
       name: "Tolley.io",
@@ -83,15 +85,10 @@ export function buildJsonLd(manifest: SubsiteManifest): Record<string, unknown> 
   if (manifest.schemaType === "Service" || manifest.schemaType === "LocalBusiness") {
     return {
       ...base,
-      provider: {
-        "@type": "Organization",
-        name: "Your KC Homes LLC",
-        url: BASE,
-      },
-      areaServed: manifest.serviceArea
-        ? { "@type": "GeoShape", name: manifest.serviceArea }
-        : { "@type": "City", name: "Kansas City" },
-      ...(manifest.availability ? { hoursAvailable: manifest.availability } : {}),
+      ...(manifest.schemaType === "Service" && manifest.discovery?.operator ? { provider: {
+        "@type": "Person", name: manifest.discovery.operator,
+      } } : {}),
+      ...(manifest.serviceArea ? { areaServed: { "@type": "Place", name: manifest.serviceArea } } : {}),
       ...(manifest.pricing?.length
         ? { hasOfferCatalog: { "@type": "OfferCatalog", name: manifest.title, itemListElement: offersFromPricing(manifest.pricing) } }
         : {}),
@@ -103,9 +100,7 @@ export function buildJsonLd(manifest: SubsiteManifest): Record<string, unknown> 
       ...base,
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web",
-      offers: manifest.pricing?.length
-        ? offersFromPricing(manifest.pricing)
-        : { "@type": "Offer", priceCurrency: "USD", price: "0" },
+      ...(manifest.pricing?.length ? { offers: offersFromPricing(manifest.pricing) } : {}),
     };
   }
 

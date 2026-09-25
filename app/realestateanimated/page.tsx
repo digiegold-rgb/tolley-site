@@ -1,3 +1,4 @@
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 /**
  * /realestateanimated — Listing Studio by Jelly! (real-estate front door).
  *
@@ -61,7 +62,7 @@ export default async function ListingStudioPage({
     /* Real 30-day views across Jared's RE channels (lib/vater/listing/proof-stats.ts).
      * null hides the card — it is never a hardcoded number. */
     const stats = await listingProofStats().catch(() => null);
-    return <ListingLanding proofStats={stats ? { views30d: stats.views30d, asOf: stats.asOf } : null} />;
+    return <><ListingLanding proofStats={stats ? { views30d: stats.views30d, asOf: stats.asOf } : null} /><PublicOfferDetails name="realestateanimated" /></>;
   }
   /* ?w=<tabId> — a deep link into one studio TAB (Telegram receipts, /hq).
    * A page can't set cookies, so bounce through the switch route, which
