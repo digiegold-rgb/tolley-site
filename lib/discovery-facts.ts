@@ -15,6 +15,7 @@ const price = (amount: number, unit: string, notes?: string) => ({ amount, unit,
 // These corrections come from the constants rendered by the product pages.
 // This is a source-code review date, not a claim of live inventory verification.
 const corrections: Record<string, Partial<SubsiteManifest>> = {
+  rental: { purpose: "Kansas City rental hub for washers and dryers, generators, and utility trailers. Contact Jared to confirm current availability and rental terms." },
   kerplunk: { title: "Giant Kerplunk Yard Game Rental", purpose: `Rent a giant Kerplunk yard game for Kansas City parties and events from $${KP_PRICE_DAY}/day. Refundable deposit and delivery are separate.`, pricing: [price(KP_PRICE_DAY, "per day")] },
   rentals: { skipSitemap: true },
   pricing: { skipSitemap: true }, // Alias of the already-listed /leads/pricing.

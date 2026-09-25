@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.50.1';
+export const APP_VERSION = '1.50.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.50.2',
+    date: '2026-09-25',
+    title: 'Current rental descriptions',
+    items: ['The rental directory summary now reflects the currently offered equipment.'],
+  },
   {
     version: '1.50.1',
     date: '2026-09-25',
