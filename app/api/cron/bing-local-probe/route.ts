@@ -59,8 +59,12 @@ async function handler(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!serpapiKey()) return NextResponse.json({ skipped: true });
   after(async () => {
-    for (const q of BING_LOCAL_QUERIES) {
-      try { await probeOne(q.keyword); } catch (err) { console.error("[bing-local-probe]", q.keyword, err); }
+    // Four at a time: 12 sequential SerpAPI calls at 5–12 s each overran the
+    // 60 s function budget on the first run (6 of 12 recorded, 2026-09-25).
+    for (let i = 0; i < BING_LOCAL_QUERIES.length; i += 4) {
+      await Promise.all(BING_LOCAL_QUERIES.slice(i, i + 4).map(async q => {
+        try { await probeOne(q.keyword); } catch (err) { console.error("[bing-local-probe]", q.keyword, err); }
+      }));
     }
     console.log("[bing-local-probe] done");
   });

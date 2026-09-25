@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.50.3';
+export const APP_VERSION = '1.50.4';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.50.4',
+    date: '2026-09-25',
+    title: 'Complete Bing checks',
+    items: ['The monthly Bing visibility check runs its queries concurrently so every query is recorded.'],
+  },
   {
     version: '1.50.3',
     date: '2026-09-25',
