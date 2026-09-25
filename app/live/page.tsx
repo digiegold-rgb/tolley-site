@@ -4,8 +4,10 @@ import { livePublicData } from "@/lib/live/store";
 import { campaignSource } from "@/lib/live/core";
 import JoinHaul from "./signup";
 import "./live.css";
+import { discoveryMetadata } from "@/lib/discovery";
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Treasure Hauls Live | Tolley", description: "Unexpected finds, good company, and a different haul every day. Watch Treasure Hauls on Whatnot, catch the highlights, and find your next treasure.", alternates: { canonical: "/live" } };
+export const metadata: Metadata = discoveryMetadata("live");
 const time = (d: Date) => new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(d);
 export default async function LivePage({ searchParams }: { searchParams: Promise<{ utm_source?: string }> }) {
   const source = campaignSource((await searchParams).utm_source || "live_hub");
@@ -22,6 +24,7 @@ export default async function LivePage({ searchParams }: { searchParams: Promise
     {data.clips.length > 0 && <section className="haul-section"><p className="haul-eyebrow">MISSED THE SHOW?</p><h2>From the garage</h2><div className="haul-cards">{data.clips.map(c => <article className="haul-card" key={c.id}><video src={c.mediaUrl} controls playsInline preload="metadata"/><h3>{c.title}</h3><p>From a previous show. Items may already be sold.</p></article>)}</div></section>}
     <section id="join" className="haul-join"><div><p className="haul-eyebrow">KEEP IN TOUCH</p><h2>Get the next good find.</h2><p>Join the Treasure Haul drop list for fresh finds by email. Unsubscribe any time.</p></div><JoinHaul/></section>
     <section className="haul-section haul-bottom"><div><h2>Have a haul of your own?</h2><p>Let’s talk surplus inventory, sourcing, estate finds, or resale opportunities.</p><Link href="/estate">Explore estate & sourcing services ↗</Link></div><div><h3>Part of Tolley.</h3><p>Practical businesses, creative work, and people helping people.</p><Link href="/shop">Browse the shop ↗</Link><br/><Link href="/">Explore Tolley ↗</Link></div></section>
+    <PublicOfferDetails name="live" />
     <footer>Treasure Hauls by Tolley · Kansas City area · <Link href="/privacy">Privacy</Link></footer>
   </main>;
 }

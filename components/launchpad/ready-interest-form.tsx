@@ -191,7 +191,7 @@ export function ReadyInterestForm() {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="(816) 555-0123"
+                placeholder="Your mobile number"
                 autoComplete="tel"
                 className="lp-input px-3.5 py-2.5 text-sm"
               />

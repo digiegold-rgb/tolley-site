@@ -69,7 +69,12 @@ export const MONTHLY_CAPS: Record<string, number> = {
   // Revenue: finds property owners → seller leads. The priority claim.
   // Trimmed 300 → 230 on 2026-08-11 to fund city-rank-track (Jared's call:
   // monthly rank sweep for the 33-city listings-video funnel).
-  "dossier-people-search": 230,
+  // Trimmed 230 → 216 on 2026-09-25 to fund bing-local-probe (2 calls used in
+  // the 8/05–9/05 cycle, 0 so far this cycle — the slack is real).
+  "dossier-people-search": 216,
+  // Monthly Bing top-10 check for the "find someone local" queries that
+  // already produce phone calls via ChatGPT (which answers from Bing's index).
+  "bing-local-probe": 14,
   // Revenue: Amazon affiliate links on /shop + Treasure Haul products.
   //
   // Split into two claims on 2026-07-28. The single "asin-backfill" pot was

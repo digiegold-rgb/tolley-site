@@ -402,6 +402,14 @@
     {
       "path": "/api/cron/discovery-health",
       "schedule": "15 11 * * *"
+    },
+    {
+      "path": "/api/cron/indexnow-submit",
+      "schedule": "0 12 * * 1"
+    },
+    {
+      "path": "/api/cron/bing-local-probe",
+      "schedule": "30 8 7 * *"
     }
   ]
 }

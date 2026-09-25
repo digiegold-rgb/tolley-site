@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { classifyReferrer, captureAttribution, normalizeAttribution, attributionSource } from "../lib/discovery-attribution";
 import { summarizeDiscovery } from "../lib/discovery-report";
-import { publicOfferings, discoveryText } from "../lib/discovery";
+import { publicOfferings, discoveryText, discoveryQuestions, discoveryFaqJsonLd } from "../lib/discovery";
 import { SUBSITES, getSubsite } from "../lib/subsites";
 import { SubsiteManifestSchema } from "../lib/agent-manifest";
 import { buildJsonLd, serializeJsonLd } from "../lib/json-ld";
@@ -103,4 +103,23 @@ test("search crawler access respects named groups, longest paths, and wildcard r
   assert.equal(crawlAllowed(robots, "/api/public", "OAI-SearchBot"), true);
   assert.equal(crawlAllowed(robots, "/api/public/private", "OAI-SearchBot"), false);
   assert.equal(crawlAllowed(robots, "/cleanouts", "OtherBot"), false);
+});
+
+test("cited pages keep their query-shaped title, phone in the description, and a real FAQ (2026-09-24 win)", () => {
+  const cleanouts = getSubsite("cleanouts")!;
+  assert.equal(cleanouts.title, "Tolley Cleanouts — Estate & Rental Cleanouts in Kansas City");
+  for (const name of ["cleanouts", "estate", "homes", "wd", "live"]) {
+    const s = getSubsite(name)!;
+    assert.equal(s.discovery?.disposition, "offering", name);
+    assert.match(s.purpose, /913-283-3826/, `${name} description must carry the phone`);
+    assert.ok((s.faq?.length ?? 0) >= 4, `${name} needs a real FAQ`);
+    const qs = discoveryQuestions(s);
+    assert.ok(qs.some(q => q.q === s.faq![0].q), `${name} details section must render the real FAQ`);
+    const ld = discoveryFaqJsonLd(s)!;
+    assert.equal(ld["@type"], "FAQPage");
+    assert.equal((ld.mainEntity as unknown[]).length, s.faq!.length);
+  }
+  assert.equal(discoveryFaqJsonLd(getSubsite("game")!), null);
+  assert.match(discoveryText(true), /Treasure Hauls Live/);
+  assert.match(discoveryText(true), /Q: What does it cost to hire you\?/);
 });

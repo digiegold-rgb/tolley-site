@@ -13,6 +13,12 @@ interface Payload {
   daily: Daily[];
   topPaths: { path: string; views: number; visitors: number }[];
   sources: { source: string; views: number }[];
+  aiReferrals?: {
+    total: number;
+    prevTotal: number;
+    byEngine: { engine: string; views: number }[];
+    bySite: { site: string; views: number }[];
+  };
   countries: { country: string; views: number }[];
   gsc: {
     clicks: number;
@@ -272,6 +278,9 @@ function SiteVisitsContent() {
 
   const dViews = delta(data.totals.views, data.totals.prevViews);
   const dVisitors = delta(data.totals.visitors, data.totals.prevVisitors);
+  const ai = data.aiReferrals;
+  const dAi = ai ? delta(ai.total, ai.prevTotal) : null;
+  const aiEngines = ai?.byEngine.map((e) => `${e.engine} ${e.views}`).join(" · ");
 
   return (
     <>
@@ -317,6 +326,14 @@ function SiteVisitsContent() {
             sub={dVisitors ? `${dVisitors.text} vs prior ${data.days}d` : undefined}
             subColor={dVisitors?.color}
           />
+          {ai && (
+            <StatTile
+              label="AI assistant referrals"
+              value={ai.total.toLocaleString()}
+              sub={dAi ? `${dAi.text} vs prior ${data.days}d${aiEngines ? ` · ${aiEngines}` : ""}` : aiEngines || "ChatGPT, Perplexity, Claude, Gemini, Copilot, Bing"}
+              subColor={dAi?.color}
+            />
+          )}
           {data.gsc && (
             <>
               <StatTile label="Google clicks" value={data.gsc.clicks.toLocaleString()} sub="Search Console" />
@@ -345,6 +362,13 @@ function SiteVisitsContent() {
               cols={["Source", "Visits"]}
               rows={data.sources.map((s) => [s.source, s.views])}
             />
+            {ai && ai.bySite.length > 0 && (
+              <RankTable
+                title="AI referrals by page"
+                cols={["Site", "Visits"]}
+                rows={ai.bySite.map((s) => [s.site, s.views])}
+              />
+            )}
             <RankTable
               title="Countries"
               cols={["Country", "Visits"]}

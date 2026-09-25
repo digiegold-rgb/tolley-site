@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
 import { fetchSearchConsoleSummary } from "@/lib/search-console";
+import { analyticsSiteForPath } from "@/lib/analytics-site";
 import {
   dedupKey,
   getSkipHashes,
@@ -49,6 +50,7 @@ export async function GET(req: NextRequest) {
     path: true,
     audience: true,
     referrer: true,
+    attribution: true,
     ip: true,
     ipHash: true,
     userAgent: true,
@@ -64,7 +66,7 @@ export async function GET(req: NextRequest) {
     }),
     prisma.siteView.findMany({
       where: { createdAt: { gte: prevStart, lt: periodStart } },
-      select: { audience: true, path: true, ip: true, ipHash: true, userAgent: true, city: true },
+      select: { audience: true, path: true, ip: true, ipHash: true, userAgent: true, city: true, referrer: true, attribution: true },
     }),
     fetchSearchConsoleSummary(days).catch(() => null),
   ]);
@@ -135,6 +137,36 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => b.views - a.views)
     .slice(0, 12);
 
+  // ── AI assistant referrals ──
+  // ChatGPT appends utm_source=chatgpt.com to links it cites; other assistants
+  // arrive via document.referrer (attribution.browserSource). Either counts.
+  // These are the visits that turned into phone calls in Sept 2026.
+  const AI_ENGINES = ["chatgpt", "perplexity", "claude", "gemini", "copilot", "bing"] as const;
+  const aiEngine = (v: { referrer: string | null; attribution: unknown }): string | null => {
+    const a = v.attribution && typeof v.attribution === "object" ? (v.attribution as { browserSource?: string; campaignSource?: string }) : null;
+    const candidates = [v.referrer ?? "", a?.campaignSource ?? "", a?.browserSource ?? ""].map(x => x.toLowerCase());
+    for (const e of AI_ENGINES) if (candidates.some(c => c.includes(e) || (e === "chatgpt" && c.includes("openai")))) return e;
+    return null;
+  };
+  const aiBySite = new Map<string, number>();
+  const aiByEngine = new Map<string, number>();
+  let aiTotal = 0;
+  for (const v of current) {
+    const e = aiEngine(v);
+    if (!e) continue;
+    aiTotal++;
+    aiByEngine.set(e, (aiByEngine.get(e) ?? 0) + 1);
+    const site = analyticsSiteForPath(v.path) ?? "home";
+    aiBySite.set(site, (aiBySite.get(site) ?? 0) + 1);
+  }
+  const aiPrev = prev.filter(v => aiEngine(v)).length;
+  const aiReferrals = {
+    total: aiTotal,
+    prevTotal: aiPrev,
+    byEngine: [...aiByEngine.entries()].map(([engine, views]) => ({ engine, views })).sort((a, b) => b.views - a.views),
+    bySite: [...aiBySite.entries()].map(([site, views]) => ({ site, views })).sort((a, b) => b.views - a.views).slice(0, 12),
+  };
+
   // ── Geography ──
   const geoAgg = new Map<string, number>();
   for (const v of current) {
@@ -161,6 +193,7 @@ export async function GET(req: NextRequest) {
     daily,
     topPaths,
     sources,
+    aiReferrals,
     countries,
     gsc:
       gsc && gsc.configured

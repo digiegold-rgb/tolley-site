@@ -15,6 +15,6 @@ export default function ServicesPage() {
       {s.serviceArea && <p className="text-sm">{s.serviceArea}</p>}
       {s.discovery?.phone && <a className="mt-3 inline-block underline" href={`tel:+1${s.discovery.phone.replace(/\D/g, "")}`}>{s.discovery.phone}</a>}
     </article>)}</div>
-    <p className="mt-8"><Link href="/stream" className="underline">Watch Tolley live</Link></p>
+    <p className="mt-8"><Link href="/live" className="underline">Watch Treasure Hauls live on Whatnot</Link></p>
   </div></main>;
 }
