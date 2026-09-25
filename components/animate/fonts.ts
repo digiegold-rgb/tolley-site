@@ -1,12 +1,13 @@
 /* Jelly Studio type — loaded ONCE for every /animate route by
  * app/animate/layout.tsx. Space Grotesk carries headings + UI + body,
  * Instrument Serif italic is the cinematic accent (title cards, the hero
- * phrase, "Directed by you."). next/font self-hosts both at build time. */
-import { Instrument_Serif, Space_Grotesk } from 'next/font/google';
+ * phrase, "Directed by you."). Space Grotesk is bundled locally to avoid build-time Google URL parsing. */
+import { Instrument_Serif } from 'next/font/google';
+import localFont from 'next/font/local';
 
-export const jellyDisplay = Space_Grotesk({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+export const jellyDisplay = localFont({
+  src: '../../public/fonts/space-grotesk/SpaceGrotesk-variable.ttf',
+  weight: '400 700',
   variable: '--font-jelly-display',
   display: 'swap',
 });

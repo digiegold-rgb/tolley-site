@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.50.0';
+export const APP_VERSION = '1.50.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.50.1',
+    date: '2026-09-25',
+    title: 'Reliable studio typography',
+    items: ['Studio and portal headings use a bundled font so releases no longer depend on a remote font response.'],
+  },
   {
     version: '1.50.0',
     date: '2026-09-25',

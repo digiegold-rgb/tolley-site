@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
-import { Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 
 import { VideoFooterWrapper } from "@/components/video/video-footer-wrapper";
 import "./video.css";
 
-const spaceGrotesk = Space_Grotesk({
+const spaceGrotesk = localFont({
+  src: "../../public/fonts/space-grotesk/SpaceGrotesk-variable.ttf",
   variable: "--font-space",
-  subsets: ["latin"],
+  weight: "300 700",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
