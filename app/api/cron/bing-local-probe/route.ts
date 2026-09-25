@@ -9,7 +9,7 @@
  *   overviewText  = "#<rank> <url>" when found
  * First time a query goes from unfound → found, Jared gets a Telegram ping.
  */
-import { NextRequest, NextResponse, after } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { serpapiCall, serpapiKey } from "@/lib/serpapi";
 import { BING_LOCAL_QUERIES, isTolleyDomain } from "@/lib/serpapi/ai-overview-config";
@@ -58,17 +58,17 @@ async function probeOne(keyword: string): Promise<void> {
 async function handler(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!serpapiKey()) return NextResponse.json({ skipped: true });
-  after(async () => {
-    // Four at a time: 12 sequential SerpAPI calls at 5–12 s each overran the
-    // 60 s function budget on the first run (6 of 12 recorded, 2026-09-25).
-    for (let i = 0; i < BING_LOCAL_QUERIES.length; i += 4) {
-      await Promise.all(BING_LOCAL_QUERIES.slice(i, i + 4).map(async q => {
-        try { await probeOne(q.keyword); } catch (err) { console.error("[bing-local-probe]", q.keyword, err); }
-      }));
-    }
-    console.log("[bing-local-probe] done");
-  });
-  return NextResponse.json({ scheduled: true, queries: BING_LOCAL_QUERIES.length });
+  // Inline, not after(): the platform froze the after() callback once the
+  // response went out and only the first batch was ever recorded (9/25 runs:
+  // 6 of 12, then 4 of 12). Four at a time keeps the whole run near 10 s.
+  const done: string[] = [], failed: string[] = [];
+  for (let i = 0; i < BING_LOCAL_QUERIES.length; i += 4) {
+    await Promise.all(BING_LOCAL_QUERIES.slice(i, i + 4).map(async q => {
+      try { await probeOne(q.keyword); done.push(q.keyword); }
+      catch (err) { failed.push(q.keyword); console.error("[bing-local-probe]", q.keyword, err); }
+    }));
+  }
+  return NextResponse.json({ ok: failed.length === 0, queries: BING_LOCAL_QUERIES.length, recorded: done.length, failed });
 }
 export async function GET(req: NextRequest) { return handler(req); }
 export async function POST(req: NextRequest) { return handler(req); }
