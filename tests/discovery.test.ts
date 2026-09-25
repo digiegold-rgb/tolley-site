@@ -56,6 +56,8 @@ test("correct product constants and partner contacts reach discovery manifests",
   assert.equal(getSubsite("generator")!.pricing![0].amount, GEN_PRICE_DAY);
   assert.ok(getSubsite("generator")!.purpose.includes(GEN_MODEL));
   assert.equal(getSubsite("hvac")!.discovery!.phone, "816-726-4054");
+  assert.ok(!getSubsite("rental")!.purpose.includes("furniture"));
+  assert.ok(!getSubsite("rental")!.purpose.includes("picnic"));
   for (const name of ["junkinjays", "kerplunk", "tables", "moving", "e-and-t", "drive", "lastmile", "moupins", "picnic-table"]) assert.equal(getSubsite(name), undefined, `${name} was retired in the current release`);
   for (const name of ["vater", "pools", "advertising", "real-estate-agent"]) assert.ok(!publicOfferings().some(s => s.name === name), `${name} must not be re-promoted`);
 });
