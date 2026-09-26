@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import {
+  WD_BORDERLINE_ZIPS,
   WD_OUT_OF_AREA_MESSAGE,
   WD_SERVICE_ZIPS,
   isWdServiceZip,
@@ -31,6 +32,45 @@ describe("isWdServiceZip", () => {
     for (const zip of WD_SERVICE_ZIPS) assert.match(zip, /^\d{5}$/);
     assert.ok(WD_SERVICE_ZIPS.includes("64052"));
     assert.ok(!WD_SERVICE_ZIPS.includes("66062"));
+  });
+
+  it("does not allow borderline ZIPs, including ones just over 25 minutes", () => {
+    assert.ok(WD_BORDERLINE_ZIPS.length > 0);
+    const allowed = new Set<string>(WD_SERVICE_ZIPS);
+    for (const zip of WD_BORDERLINE_ZIPS) {
+      assert.match(zip, /^\d{5}$/);
+      assert.equal(allowed.has(zip), false);
+      assert.equal(isWdServiceZip(zip), false);
+    }
+    assert.equal(isWdServiceZip("64081"), false);
+    assert.equal(isWdServiceZip("64029"), false);
+    assert.equal(isWdServiceZip("64118"), false);
+    assert.equal(isWdServiceZip("64013"), false);
+  });
+
+  it("keeps included minutes at or under 25 and borderline minutes through 30, both sorted", () => {
+    const source = readFileSync(new URL("./wd-service-zips.ts", import.meta.url), "utf8");
+    function rows(exportName: string) {
+      const block = source.split(`export const ${exportName}`)[1]?.split("] as const")[0] ?? "";
+      return [...block.matchAll(/\/\/ .+, (\d+\.\d) min\n\s+"(\d{5})"/g)].map((match) => ({
+        minutes: Number(match[1]),
+        zip: match[2],
+      }));
+    }
+    const included = rows("WD_SERVICE_ZIPS");
+    const borderline = rows("WD_BORDERLINE_ZIPS");
+    assert.deepEqual(included.map((row) => row.zip), [...WD_SERVICE_ZIPS]);
+    assert.deepEqual(borderline.map((row) => row.zip), [...WD_BORDERLINE_ZIPS]);
+    assert.equal(included[0]?.zip, "64052");
+    assert.equal(included[0]?.minutes, 0);
+    for (let i = 0; i < included.length; i++) {
+      assert.ok(included[i].minutes <= 25);
+      if (i > 0) assert.ok(included[i].minutes >= included[i - 1].minutes);
+    }
+    for (let i = 0; i < borderline.length; i++) {
+      assert.ok(borderline[i].minutes > 25 && borderline[i].minutes <= 30);
+      if (i > 0) assert.ok(borderline[i].minutes >= borderline[i - 1].minutes);
+    }
   });
 });
 
