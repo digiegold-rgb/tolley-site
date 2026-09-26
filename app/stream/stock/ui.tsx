@@ -27,6 +27,13 @@ type Data = Json<Awaited<ReturnType<typeof dashboard>>>;
 type Deal = Data["deals"][number];
 type Purchase = Data["purchases"][number];
 type Product = Purchase["lot"]["products"][number];
+type ManifestLine = {
+  title: string;
+  quantity: number;
+  sku?: string;
+  retailCents?: number | null;
+};
+type Review = { title: string; text?: string; rows?: ManifestLine[] };
 const dollars = (n: number | null | undefined) =>
   n == null
     ? "Unknown"
@@ -89,7 +96,7 @@ export default function Stock() {
   const [receiving, setReceiving] = useState<Purchase | null>(null);
   const [rows, setRows] = useState<ReceiptRow[]>([]);
   const [selling, setSelling] = useState<Product | null>(null);
-  const [review, setReview] = useState<string | null>(null);
+  const [review, setReview] = useState<Review | null>(null);
   const refresh = useCallback(async () => {
     const r = await fetch("/api/stock/dashboard", { cache: "no-store" });
     const j = await r.json();
@@ -374,7 +381,19 @@ export default function Stock() {
                     </small>
                   </p>
                 )}
-                {d.manifest && <p className="stock-badge">Manifest attached</p>}
+                {Array.isArray(d.manifest) && (
+                  <button
+                    className="secondary"
+                    onClick={() =>
+                      setReview({
+                        title: "Manifest contents",
+                        rows: d.manifest as ManifestLine[],
+                      })
+                    }
+                  >
+                    View manifest · {d.manifest.length} lines
+                  </button>
+                )}
                 <div className="stock-actions">
                   <a href={d.sourceUrl} target="_blank" rel="noreferrer">
                     Open supplier ↗
@@ -719,7 +738,24 @@ export default function Stock() {
                             const r = await fetch(`/api/stock/imports/${i.id}`);
                             const j = await r.json();
                             if (!r.ok) throw new Error(j.error);
-                            setReview(JSON.stringify(j.payload, null, 2));
+                            setReview({
+                              title: j.name,
+                              rows: Array.isArray(j.payload?.rows)
+                                ? j.payload.rows
+                                : undefined,
+                              text: String(j.payload?.text || "")
+                                .replace(
+                                  /<script\b[^>]*>[\s\S]*?<\/script>/gi,
+                                  "",
+                                )
+                                .replace(
+                                  /<style\b[^>]*>[\s\S]*?<\/style>/gi,
+                                  "",
+                                )
+                                .replace(/<[^>]*>/g, " ")
+                                .replace(/&amp;/g, "&")
+                                .replace(/&nbsp;/g, " "),
+                            });
                           } catch (e) {
                             setError(String(e));
                           }
@@ -1098,12 +1134,44 @@ export default function Stock() {
           <section
             role="dialog"
             aria-modal="true"
-            aria-label="Import contents"
+            aria-label={review.title}
             className="stock-modal"
           >
-            <h2>Import contents</h2>
-            <p>Supplier content is displayed as plain text.</p>
-            <pre>{review}</pre>
+            <h2>{review.title}</h2>
+            {review.rows ? (
+              <>
+                <p>
+                  Supplier manifest:{" "}
+                  {review.rows.reduce((n, r) => n + r.quantity, 0)} units.
+                  Retail values are supplier claims, not expected resale
+                  proceeds.
+                </p>
+                <div className="stock-table-wrap" style={{ maxHeight: "60vh" }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Quantity</th>
+                        <th>SKU</th>
+                        <th>Unit retail</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {review.rows.map((r, i) => (
+                        <tr key={i}>
+                          <td>{r.title}</td>
+                          <td>{r.quantity}</td>
+                          <td>{r.sku || "—"}</td>
+                          <td>{dollars(r.retailCents)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              <pre>{review.text || "No message text was supplied."}</pre>
+            )}
             <button onClick={() => setReview(null)}>Close</button>
           </section>
         </div>

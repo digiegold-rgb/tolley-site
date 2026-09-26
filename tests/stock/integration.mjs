@@ -231,6 +231,12 @@ try {
     .getByRole("heading", { name: "Stock for the next show." })
     .waitFor();
   await page.getByText(input.title, { exact: true }).waitFor();
+  const card = page.locator("article").filter({ has: page.getByRole("heading", { name: input.title, exact: true }) });
+  await card.getByRole("button", { name: /View manifest/ }).click();
+  const manifestDialog = page.getByRole("dialog", { name: "Manifest contents" });
+  await manifestDialog.getByRole("columnheader", { name: "Quantity", exact: true }).waitFor();
+  await manifestDialog.getByText("Tool set", { exact: true }).waitFor();
+  await manifestDialog.getByRole("button", { name: "Close", exact: true }).click();
   await page.screenshot({
     path: "/tmp/tolley-stock-desktop.png",
     fullPage: true,
