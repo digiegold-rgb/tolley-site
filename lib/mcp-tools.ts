@@ -56,6 +56,7 @@ import { SHOP_CATEGORIES } from "@/lib/shop";
 import { logInvocation } from "@/lib/mcp-analytics";
 import { SUBSITES, getSubsite, publicSubsites } from "@/lib/subsites";
 import { validateActionFields } from "@/lib/agent-manifest";
+import { prepareWdQuoteFields } from "@/lib/wd-service-zips";
 import { notifyLeadAction } from "@/lib/lead-notify";
 import crypto from "node:crypto";
 
@@ -576,7 +577,7 @@ export function registerTools(server: McpServer) {
           isError: true,
         };
       }
-      const fieldsObj = (fields ?? {}) as Record<string, unknown>;
+      let fieldsObj = (fields ?? {}) as Record<string, unknown>;
       const err = validateActionFields(verb, fieldsObj);
       if (err) {
         return {
@@ -588,6 +589,16 @@ export function registerTools(server: McpServer) {
           ],
           isError: true,
         };
+      }
+      if (subsite === "wd" && action === "request_wd_quote") {
+        const prepared = prepareWdQuoteFields(fieldsObj);
+        if (!prepared.ok) {
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify({ error: prepared.error }, null, 2) }],
+            isError: true,
+          };
+        }
+        fieldsObj = prepared.fields;
       }
       const receiptToken = crypto.randomBytes(8).toString("base64url");
       await prisma.leadAction.create({
