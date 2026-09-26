@@ -27,6 +27,7 @@ export default function robots(): MetadataRoute.Robots {
     "/action",
     "/tv",
     "/stream",
+    "/stock",
     "/research",
     "/signature",
     "/food/",

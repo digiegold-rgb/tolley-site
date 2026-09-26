@@ -1,0 +1,11 @@
+[Unit]
+Description=Tolley stock watched listing refresh
+After=network-online.target
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/tolley-stock/worker.env
+WorkingDirectory=%h/tolley-stock
+ExecStart=/usr/bin/flock -n %h/.local/state/tolley-stock/browser.lock /usr/bin/env node %h/tolley-stock/ops/stock/browser-worker.mjs
+TimeoutStartSec=600
+UMask=0077
+NoNewPrivileges=true

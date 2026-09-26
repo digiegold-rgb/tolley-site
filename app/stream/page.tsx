@@ -213,7 +213,7 @@ export default function StreamPage() {
         })}
       </div>
 
-      <p style={{ fontSize: 13, color: "#9ab", lineHeight: 1.6 }}>Sending video does not confirm a platform is live. Confirm Whatnot in Seller Hub. <Link href="/stream/growth">Schedule, clips & profit →</Link> · <Link href="/stream/coach">Stream Coach ✦</Link></p>
+      <p style={{ fontSize: 13, color: "#9ab", lineHeight: 1.6 }}>Sending video does not confirm a platform is live. Confirm Whatnot in Seller Hub. <Link href="/stream/growth">Schedule, clips & profit →</Link> · <Link href="/stream/coach">Stream Coach ✦</Link> · <Link href="/stream/stock">Stock & sourcing →</Link></p>
       <div style={{ marginBottom: 12 }}><Tile label="NAS recording" ok={s?.recording?.state === "recording"} text={s?.recording ? `${s.recording.state}${s.recording.ageS !== null ? ` · updated ${s.recording.ageS}s ago` : ""}${s.recording.error ? ` · ${s.recording.error}` : ""}` : "Health not reported"}/></div>
 
       {selling && (

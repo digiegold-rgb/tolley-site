@@ -1,0 +1,360 @@
+.stock-app {
+  --ink: #e8eef0;
+  --muted: #a5b5bf;
+  --line: #2a3c46;
+  --accent: #9ee4bf;
+  max-width: 1400px;
+  margin: auto;
+  padding: 38px 24px 100px;
+  color: var(--ink);
+  font-family: Arial, sans-serif;
+}
+.stock-app * {
+  box-sizing: border-box;
+}
+.stock-app a {
+  color: var(--accent);
+}
+.stock-header,
+.stock-row,
+.stock-toolbar,
+.stock-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.stock-header {
+  align-items: center;
+  margin-bottom: 30px;
+}
+.stock-eyebrow {
+  font-size: 11px;
+  letter-spacing: 2px;
+  margin-top: 30px;
+  color: var(--accent);
+}
+.stock-app h1 {
+  font-size: clamp(28px, 4vw, 46px);
+  letter-spacing: -1.6px;
+  line-height: 1.08;
+  margin: 10px 0 15px;
+}
+.stock-app h2 {
+  font-size: 19px;
+  line-height: 1.4;
+  margin: 14px 0;
+}
+.stock-app p {
+  line-height: 1.6;
+  font-size: 14px;
+}
+.stock-app button {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #10251b;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 11px 15px;
+  cursor: pointer;
+}
+.stock-app button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.stock-app .secondary,
+.stock-app .stock-watch {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--ink);
+}
+.stock-app .stock-watch {
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.stock-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.stock-stats article {
+  padding: 22px;
+  background: #13212b;
+  border-right: 1px solid var(--line);
+}
+.stock-stats span,
+.stock-stats small,
+.stock-app small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.stock-stats strong {
+  display: block;
+  font-size: 29px;
+  margin: 8px 0;
+}
+.stock-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 28px 0 24px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+.stock-tabs button {
+  white-space: nowrap;
+  border: 0;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 14px;
+}
+.stock-tabs button[aria-pressed="true"] {
+  color: var(--accent);
+  background: #1a3033;
+  border-bottom: 2px solid var(--accent);
+}
+.stock-toolbar {
+  margin-bottom: 14px;
+}
+.stock-app input:not([type="checkbox"]),
+.stock-app select,
+.stock-app textarea {
+  background: #0c1820;
+  border: 1px solid #42545f;
+  color: var(--ink);
+  padding: 10px 12px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 14px;
+  max-width: 100%;
+  width: 100%;
+}
+.stock-toolbar > input {
+  flex: 1;
+  min-width: 230px;
+}
+.stock-toolbar label,
+.stock-checks label {
+  font-size: 13px;
+  color: var(--muted);
+}
+.stock-app input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+.stock-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 18px;
+  margin: 22px 0;
+}
+.stock-card {
+  background: #13212b;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 23px;
+  min-width: 0;
+}
+.stock-card h2 {
+  overflow-wrap: anywhere;
+}
+.stock-badge {
+  display: inline-block;
+  border: 1px solid #345248;
+  background: #1b342b;
+  color: #b6e7cd;
+  border-radius: 30px;
+  padding: 4px 10px;
+  font-size: 11px;
+}
+.stock-muted {
+  color: var(--muted);
+}
+.stock-app dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 13px;
+}
+.stock-app dd {
+  margin: 0;
+  text-align: right;
+}
+.stock-total {
+  border-top: 1px solid var(--line);
+  font-weight: bold;
+  color: var(--accent);
+  margin-top: 6px;
+}
+.stock-actions {
+  justify-content: flex-start;
+  margin-top: 20px;
+}
+.stock-actions a {
+  font-size: 13px;
+}
+.stock-empty {
+  border: 1px dashed var(--line);
+  padding: 40px;
+  text-align: center;
+  border-radius: 12px;
+  color: var(--muted);
+}
+.stock-price {
+  font-size: 30px;
+}
+.stock-table-wrap {
+  overflow: auto;
+  margin: 24px 0;
+}
+.stock-app table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+.stock-app th,
+.stock-app td {
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  padding: 14px 12px;
+  min-width: 90px;
+}
+.stock-app th {
+  color: var(--muted);
+  font-weight: normal;
+  font-size: 12px;
+}
+.stock-app td:first-child {
+  min-width: 210px;
+  max-width: 400px;
+}
+.stock-error {
+  border: 1px solid #b97965;
+  background: #422a24;
+  padding: 14px;
+  border-radius: 8px;
+  position: relative;
+  z-index: 101;
+}
+.stock-notice {
+  background: #203b30;
+  border: 1px solid #548269;
+  padding: 14px;
+  border-radius: 8px;
+}
+.stock-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000b;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 35px 16px;
+  overflow: auto;
+}
+.stock-modal {
+  background: #13212b;
+  border: 1px solid #415761;
+  border-radius: 14px;
+  padding: 28px;
+  width: 700px;
+  max-width: 100%;
+  margin: auto;
+}
+.stock-modal.wide {
+  width: 1100px;
+}
+.stock-field {
+  display: block;
+  margin: 12px 0;
+}
+.stock-field > span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+.stock-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+.stock-checks {
+  display: flex;
+  gap: 20px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+.stock-app details {
+  margin-top: 22px;
+}
+.stock-app summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+.stock-app pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 65vh;
+  overflow: auto;
+  font-size: 12px;
+}
+.stock-saving {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  background: #9ee4bf;
+  color: #10251b;
+  border-radius: 20px;
+  padding: 12px 24px;
+  z-index: 110;
+}
+.stock-app :focus-visible {
+  outline: 2px solid #c4ffdf;
+  outline-offset: 3px;
+}
+@media (max-width: 700px) {
+  .stock-app {
+    padding: 24px 14px 80px;
+  }
+  .stock-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .stock-stats article {
+    padding: 15px;
+  }
+  .stock-stats strong {
+    font-size: 23px;
+  }
+  .stock-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .stock-modal {
+    padding: 18px;
+  }
+  .stock-header > button {
+    width: 100%;
+  }
+  .stock-tabs button {
+    font-size: 12px;
+    padding: 12px;
+  }
+  .stock-card {
+    padding: 18px;
+  }
+}
+
+.stock-app:has(.stock-overlay) .stock-error {
+  position: fixed;
+  top: 8px;
+  left: 5%;
+  width: 90%;
+  z-index: 120;
+  box-shadow: 0 5px 20px #0008;
+}

@@ -1,0 +1,8 @@
+[Unit]
+Description=Refresh watched B-Stock listings hourly
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=90
+[Install]
+WantedBy=timers.target

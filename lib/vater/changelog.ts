@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.50.6';
+export const APP_VERSION = '1.51.0';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.51.0',
+    date: '2026-09-26',
+    title: 'Stock for the next show',
+    items: ['Private stock sourcing connects supplier alerts, landed costs, received inventory, show lineups, and actual sale profit.'],
+  },
   {
     version: '1.50.6',
     date: '2026-09-25',
