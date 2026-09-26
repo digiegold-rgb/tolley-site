@@ -180,8 +180,9 @@ export async function processImports() {
         { timeout: 25000 },
       );
     } catch (e) {
-      await prisma.stockImport.update({
-        where: { id: item.id },
+      await prisma.stockImport.updateMany({
+        // A competing worker may already have committed this import successfully.
+        where: { id: item.id, status: "queued" },
         data: {
           status: "error",
           error:
