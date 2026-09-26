@@ -17,7 +17,7 @@ const fredoka = Fredoka({
 export const metadata: Metadata = {
   title: "Washer & Dryer Rental Kansas City | Free Delivery | Your KC Homes LLC",
   description:
-    "Affordable washer and dryer rentals in Kansas City. Free delivery and installation, maintenance included, no contracts. Serving Independence, Lee's Summit, Blue Springs, and the KC metro. $58/mo.",
+    "Washer and dryer rentals within about 25 minutes of Independence, MO. Free delivery and installation, maintenance included, no contracts. $42/mo washer or $58/mo bundle.",
   keywords: [
     "washer dryer rental Kansas City",
     "washer rental KC",
@@ -28,12 +28,12 @@ export const metadata: Metadata = {
     "laundry rental Kansas City",
     "washer rental Lee's Summit",
     "appliance rental Blue Springs",
-    "washer dryer rental Overland Park",
+    "washer dryer rental Independence MO",
   ],
   openGraph: {
-    title: "Washer & Dryer Rental | Free Delivery | Kansas City Metro",
+    title: "Washer & Dryer Rental | Free Delivery | Independence, MO",
     description:
-      "Skip the laundromat. Washer and dryer rentals with free delivery, maintenance included, and no contracts. Serving the entire KC metro.",
+      "Skip the laundromat. Washer and dryer rentals with free delivery and maintenance included. We deliver within about 25 minutes of Independence, MO.",
     type: "website",
     url: "https://www.tolley.io/wd",
     images: [{ url: "/wd/opengraph-image", width: 1200, height: 630 }],

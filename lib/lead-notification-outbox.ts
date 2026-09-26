@@ -1,6 +1,6 @@
 import { Prisma, type LeadNotification } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { sendDiscord, sendEmail, sendActionDiscord, sendActionEmail,
+import { sendDiscord, sendEmail, sendActionDiscord, sendActionEmail, leadDeliveryErrorMessage,
   type LeadNotifyArgs, type LeadActionNotifyArgs } from "@/lib/lead-notify";
 
 export async function enqueueLeadNotifications(
@@ -53,11 +53,13 @@ export async function deliverLeadNotifications(leadId?: string, send = sendNotif
         status: "sent", sentAt: new Date(), lastError: null, lockedAt: null,
       } });
       sent++;
-    } catch {
-      // Provider errors can contain email addresses, request URLs and secrets.
+    } catch (err) {
+      // Persist the provider status and body. Webhook URLs and secrets are stripped first.
+      const message = leadDeliveryErrorMessage(err);
+      console.error(`[lead-notification-outbox] ${row.channel} delivery failed: ${message}`);
       await prisma.leadNotification.update({ where: { id: row.id }, data: {
         status: row.attempts + 1 >= 5 ? "failed" : "pending", lockedAt: null,
-        lastError: `${row.channel} delivery failed; check provider configuration and logs`,
+        lastError: message,
         availableAt: new Date(Date.now() + Math.min(3600000, 60000 * 2 ** row.attempts)),
       } });
     }

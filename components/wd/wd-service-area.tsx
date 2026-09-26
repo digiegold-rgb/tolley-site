@@ -1,29 +1,15 @@
 import { WD_CONTACT_EMAIL, WD_CONTACT_PHONE } from "@/lib/wd";
-
-const cities = [
-  "Independence",
-  "Lee\u2019s Summit",
-  "Blue Springs",
-  "Raytown",
-  "Grandview",
-  "Kansas City, MO",
-  "Kansas City, KS",
-  "Overland Park",
-  "Olathe",
-  "Liberty",
-  "Gladstone",
-  "Belton",
-];
+import { WD_SERVICE_CITY_LABELS } from "@/lib/wd-service-zips";
 
 export function WdServiceArea() {
   return (
     <section className="rounded-2xl bg-white p-6 shadow-lg shadow-blue-100/50 sm:p-8">
       <h2 className="text-xl font-bold text-blue-900">Service Area</h2>
       <p className="mt-2 text-sm text-slate-600">
-        We deliver and service across the Kansas City metro — <strong>serving over 2.2 million people</strong>.
+        We deliver and service within about <strong>25 minutes of Independence, MO 64052</strong>.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
-        {cities.map((city) => (
+        {WD_SERVICE_CITY_LABELS.map((city) => (
           <span
             key={city}
             className="rounded-full bg-blue-100 px-4 py-1.5 text-sm font-medium text-blue-700"
@@ -31,21 +17,9 @@ export function WdServiceArea() {
             {city}
           </span>
         ))}
-        <span className="rounded-full bg-blue-600 px-4 py-1.5 text-sm font-bold text-white shadow-md shadow-blue-600/20">
-          + Many More!
-        </span>
       </div>
       <p className="mt-5 text-sm text-slate-500">
-        Don&apos;t see your area?{" "}
-        <a
-          href={`mailto:${WD_CONTACT_EMAIL}`}
-          data-track-event="email_click"
-          data-track-label="service_area"
-          className="font-semibold text-blue-600 underline decoration-blue-300 underline-offset-4 transition hover:text-blue-800"
-        >
-          Email us
-        </a>{" "}
-        or call{" "}
+        Don&apos;t see your area? Leave your number on the quote form and we&apos;ll reach out if that changes, or call{" "}
         <a
           href={`tel:${WD_CONTACT_PHONE}`}
           data-track-event="phone_click"
@@ -54,6 +28,16 @@ export function WdServiceArea() {
         >
           {WD_CONTACT_PHONE}
         </a>
+        {" "}or{" "}
+        <a
+          href={`mailto:${WD_CONTACT_EMAIL}`}
+          data-track-event="email_click"
+          data-track-label="service_area"
+          className="font-semibold text-blue-600 underline decoration-blue-300 underline-offset-4 transition hover:text-blue-800"
+        >
+          email us
+        </a>
+        .
       </p>
     </section>
   );
