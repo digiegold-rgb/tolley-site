@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { validateShopAdmin } from "@/lib/shop-auth";
 
 export async function GET(req: NextRequest) {
+  // Sales include private purchase costs and customer details, including stock lots.
+  if (!(await validateShopAdmin())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const { searchParams } = new URL(req.url);
   const platform = searchParams.get("platform");
   const limit = parseInt(searchParams.get("limit") || "50", 10);

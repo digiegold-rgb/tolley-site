@@ -2707,6 +2707,7 @@ model EbayAuth {
 }
 
 model SourceLot {
+  stockPurchase   StockPurchase?
   id              String    @id @default(cuid())
   name            String
   sourceType      String
@@ -2729,6 +2730,73 @@ model SourceLot {
 
   @@index([status])
   @@index([sourceType])
+}
+
+// Private stock sourcing. Existing SourceLot/Product/ShopSale remain the inventory ledger.
+model StockOpportunity {
+  id              String   @id @default(cuid())
+  sourceUrl       String   @unique
+  supplier        String
+  title           String
+  category        String   @default("Mixed")
+  condition       String   @default("Unknown")
+  location        String?
+  distanceMiles   Float?
+  pickup          Boolean?
+  parcel          Boolean  @default(false)
+  quantity        Int?
+  bidCents        Int?
+  feesCents       Int?
+  freightCents    Int?
+  resaleCents     Int?
+  resaleEvidence  String?
+  endsAt          DateTime?
+  observedAt      DateTime @default(now())
+  historical      Boolean  @default(false)
+  watched         Boolean  @default(false)
+  notes           String?
+  manifest        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  purchase        StockPurchase?
+  @@index([watched, endsAt])
+}
+
+model StockPurchase {
+  id              String   @id @default(cuid())
+  opportunityId   String   @unique
+  lotId           String   @unique
+  totalCents      Int
+  status          String   @default("purchased")
+  // Cumulative receipt rows, including damaged and expected units. No products until finalization.
+  receipt         Json?
+  writeoffCents   Int      @default(0)
+  finalizedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  opportunity     StockOpportunity @relation(fields: [opportunityId], references: [id])
+  lot             SourceLot @relation(fields: [lotId], references: [id])
+}
+
+model StockImport {
+  id              String   @id @default(cuid())
+  dedupeKey       String   @unique
+  name            String
+  kind            String
+  status          String   @default("queued")
+  payload         Json
+  error           String?
+  resultCount     Int      @default(0)
+  createdAt       DateTime @default(now())
+  processedAt     DateTime?
+  @@index([status, createdAt])
+}
+
+model StockSync {
+  id              String   @id
+  status          String
+  message         String?
+  checkedAt       DateTime @default(now())
 }
 
 model Supplier {
