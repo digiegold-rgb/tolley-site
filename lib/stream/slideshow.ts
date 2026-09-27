@@ -74,7 +74,8 @@ export function priceLabel(type: ProductType, price: number): string {
 
 export function detailLine(product: Pick<ShowProduct, "condition" | "size" | "quantity">): string {
   const bits = [product.condition, product.size].map((s) => s.trim()).filter(Boolean);
-  if (product.quantity > 1) bits.push(`Qty ${product.quantity}`);
+  // 50+ is an open lot ("various"), not a count to put on the slide.
+  if (product.quantity > 1 && product.quantity < 50) bits.push(`x${product.quantity}`);
   return bits.join(" · ");
 }
 

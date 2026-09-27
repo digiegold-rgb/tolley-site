@@ -30,8 +30,12 @@ test("price and detail lines match the overlay copy", () => {
   assert.equal(priceLabel("bin", 12), "Buy Now $12");
   assert.equal(priceLabel("bin", 12.5), "Buy Now $12.50");
   assert.equal(priceLabel("giveaway", 0), "GIVEAWAY");
+  assert.equal(detailLine({ condition: "", size: "", quantity: 1 }), "");
   assert.equal(detailLine({ condition: "Good", size: "", quantity: 1 }), "Good");
-  assert.equal(detailLine({ condition: "New", size: "Large", quantity: 3 }), "New · Large · Qty 3");
+  assert.equal(detailLine({ condition: "", size: "", quantity: 2 }), "x2");
+  assert.equal(detailLine({ condition: "New", size: "Large", quantity: 3 }), "New · Large · x3");
+  assert.equal(detailLine({ condition: "", size: "", quantity: 50 }), "");
+  assert.equal(detailLine({ condition: "", size: "", quantity: 988 }), "");
 });
 
 test("parser keeps the show shape and drops empty products", () => {
