@@ -159,6 +159,12 @@ const nextConfig: NextConfig = {
           value: contentSecurityPolicy.replace("script-src 'self'", "script-src 'self' 'wasm-unsafe-eval'"),
         }],
       },
+      // Tonight's Whatnot list is a static file Jared replaces before each show.
+      // Don't let a browser source keep yesterday's JSON after a deploy.
+      {
+        source: "/stream/shows/:path*",
+        headers: [{ key: "Cache-Control", value: "no-cache, must-revalidate" }],
+      },
       // The Rules PDF renders inside an iframe on /animate; the global
       // X-Frame-Options: DENY would blank it. Last matching key wins.
       {

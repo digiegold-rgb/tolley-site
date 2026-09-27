@@ -214,6 +214,7 @@ export default function StreamPage() {
       </div>
 
       <p style={{ fontSize: 13, color: "#9ab", lineHeight: 1.6 }}>Sending video does not confirm a platform is live. Confirm Whatnot in Seller Hub. <Link href="/stream/growth">Schedule, clips & profit →</Link> · <Link href="/stream/coach">Stream Coach ✦</Link> · <Link href="/stream/stock">Stock & sourcing →</Link></p>
+      <Link href="/stream/slideshow" style={S.selling}>▷ Whatnot product slideshow — OBS, phone, or TV</Link>
       <div style={{ marginBottom: 12 }}><Tile label="NAS recording" ok={s?.recording?.state === "recording"} text={s?.recording ? `${s.recording.state}${s.recording.ageS !== null ? ` · updated ${s.recording.ageS}s ago` : ""}${s.recording.error ? ` · ${s.recording.error}` : ""}` : "Health not reported"}/></div>
 
       {selling && (
@@ -242,6 +243,7 @@ export default function StreamPage() {
           <span>1. Here: <b>Arm house</b> with nothing ticked (LIVE Studio off) and start the cameras — the PC&apos;s OBS then shows the house picture (cuts, BRB and Privacy ride along).</span>
           <span>2. On the PC (Chrome Remote Desktop), in Chrome: Whatnot Seller Hub → Show OBS Tools → Connect → <b>Start Show</b>. Connect only right before the show; keep that tab open.</span>
           <span>3. Run the show from the Mac or the Whatnot app. End it in Whatnot first, then hold END STREAM here.</span>
+          <span>Product slides for OBS, a phone, or a TV (no login): <Link href="/stream/slideshow">open the slideshow</Link> — <code>https://www.tolley.io/stream/slideshow</code>. Add <code>?bg=transparent</code> in the OBS Browser Source if the page background should drop out. Tonight&apos;s list is <code>public/stream/shows/tonight.json</code>.</span>
         </div>
       </details>
 

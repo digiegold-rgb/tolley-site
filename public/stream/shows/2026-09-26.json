@@ -1,0 +1,30 @@
+{
+  "show": {
+    "title": "EXAMPLE — Treasure Hauls Saturday Night",
+    "start_ct": "2026-09-26T20:00:00-05:00",
+    "whatnot_url": "https://www.whatnot.com/user/treasure_hauls",
+    "category": "EXAMPLE"
+  },
+  "products": [
+    {
+      "id": "example-auction",
+      "title": "EXAMPLE — Vintage Brass Compass",
+      "type": "auction",
+      "price": 5,
+      "quantity": 1,
+      "condition": "Good",
+      "description": "Placeholder slide. Replace public/stream/shows/tonight.json with tonight's real Whatnot list.",
+      "images": ["/stream/shows/example-compass.svg"]
+    },
+    {
+      "id": "example-bin",
+      "title": "EXAMPLE — Ceramic Mug",
+      "type": "bin",
+      "price": 12,
+      "quantity": 1,
+      "condition": "New",
+      "description": "Placeholder slide. Buy-it-now sample, not a real listing.",
+      "images": ["/stream/shows/example-mug.svg"]
+    }
+  ]
+}
