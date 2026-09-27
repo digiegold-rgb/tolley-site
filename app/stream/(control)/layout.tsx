@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { validateWdAdmin } from "@/lib/wd-auth";
 
-// /stream and everything under it is an owner-only control surface. The pages gate themselves
-// (client 401 flow on /stream, server redirect on /stream/products/*); this only keeps them uncrawled.
+// Owner-only stream controls (OBS/director, lineups, coach, stock, growth).
+// The public product slideshow lives in the sibling (public) group at /stream/slideshow
+// so an OBS Browser Source can load it without this session. Do not move that page here.
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
