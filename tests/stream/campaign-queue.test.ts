@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { prisma } from "../../lib/prisma";
 import { reserveCampaign, drainCampaign } from "../../lib/live/campaign-publish";
 import { getStoredToken } from "../../lib/social/token-store";
+import { centralDate, centralInstant } from "../../lib/live/campaign";
 if (!process.env.DATABASE_URL?.includes("127.0.0.1:55449/tolley_live_growth_test")) throw new Error("Isolated campaign test database required");
 test("campaign reservations are atomic, bound, capped, cancellable and pauseable", async () => {
   await prisma.liveCampaignPost.deleteMany(); await prisma.livePublication.deleteMany();
@@ -16,7 +17,11 @@ test("campaign reservations are atomic, bound, capped, cancellable and pauseable
   assert.equal(await reserveCampaign((await make("wrong", { accountId: "other-brand" })).id, now), null);
   assert.equal(await reserveCampaign((await make("story", { manual: true })).id, now), null);
   const second = await make("preview"); assert.ok(await reserveCampaign(second.id, now));
-  assert.equal(await reserveCampaign((await make("fact")).id, now), null);
+  const third = await make("fact");
+  assert.equal(await reserveCampaign(third.id, now), null);
+  const yesterday = new Date(centralInstant(centralDate(now), "00:00").getTime() - 1000);
+  await prisma.liveCampaignPost.updateMany({ where: { id: { in: [first.id, second.id] } }, data: { updatedAt: yesterday } });
+  assert.ok(await reserveCampaign(third.id, now), "yesterday's slots cannot delay today's campaign");
   await prisma.liveSettings.update({ where: { id: "treasure-hauls" }, data: { campaignPaused: true } });
   await prisma.liveCampaignPost.update({ where: { id: first.id }, data: { status: "queued" } });
   assert.equal(await reserveCampaign(first.id, now), null);
