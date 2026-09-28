@@ -2,6 +2,7 @@ import test, { after } from "node:test";
 import assert from "node:assert/strict";
 import { prisma } from "../../lib/prisma";
 import { reserveCampaign, drainCampaign } from "../../lib/live/campaign-publish";
+import { getStoredToken } from "../../lib/social/token-store";
 if (!process.env.DATABASE_URL?.includes("127.0.0.1:55449/tolley_live_growth_test")) throw new Error("Isolated campaign test database required");
 test("campaign reservations are atomic, bound, capped, cancellable and pauseable", async () => {
   await prisma.liveCampaignPost.deleteMany(); await prisma.livePublication.deleteMany();
@@ -37,5 +38,16 @@ test("lost upstream response stays uncertain and is never retried", async () => 
     assert.equal(sends, 1);
     assert.equal((await prisma.liveCampaignPost.findUniqueOrThrow({ where: { id: row.id } })).status, "uncertain");
   } finally { globalThis.fetch = original; await prisma.liveCampaignPost.deleteMany(); await prisma.platformConnection.deleteMany({ where: { platform: "facebook_page:test-haul" } }); }
+});
+test("dedicated haul credentials never become the generic account fallback", async () => {
+  await prisma.platformConnection.createMany({ data: [
+    { subscriberId: "social-suite", platform: "youtube", platformAccountId: "test-generic", accessToken: "generic-test", status: "active" },
+    { subscriberId: "treasure-hauls", platform: "youtube", platformAccountId: "test-dedicated", accessToken: "haul-test", status: "active" },
+  ] });
+  try {
+    assert.equal((await getStoredToken("youtube"))?.accountId, "test-generic");
+    assert.equal((await getStoredToken("youtube", "test-dedicated"))?.accountId, "test-dedicated");
+    assert.equal(await getStoredToken("youtube", "unbound"), null);
+  } finally { await prisma.platformConnection.deleteMany({ where: { platformAccountId: { in: ["test-generic", "test-dedicated"] } } }); }
 });
 after(() => prisma.$disconnect());
