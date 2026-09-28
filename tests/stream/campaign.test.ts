@@ -2,6 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { centralInstant, isLive, canPromote, campaignDecision, campaignPack, assertAutomatedCopy } from "../../lib/live/campaign";
 import { parseSalesCsv, saleAmount } from "../../lib/live/sales-import";
+import { campaignAwareJobs } from "../../lib/post-schedule";
+test("intentional replacement and unbound accounts do not trigger missing-post alarms", () => {
+  const active = campaignAwareJobs(true, { facebook: { accountId: "haul" } }, true);
+  assert.equal(active.some(j => j.job === "growth-shorts"), false);
+  assert.deepEqual(active.find(j => j.job === "hauls-campaign")!.channels.map(c => c.channel), ["fb"]);
+  assert.equal(campaignAwareJobs(true, {}, false).some(j => j.job === "hauls-campaign"), false);
+  assert.equal(campaignAwareJobs(false, {}, false).some(j => j.job === "growth-shorts"), true);
+});
 test("Central shows stay at 8:31 through daylight saving changes", () => {
   assert.equal(centralInstant("2026-09-27").toISOString(), "2026-09-28T01:31:00.000Z");
   assert.equal(centralInstant("2026-11-01").toISOString(), "2026-11-02T02:31:00.000Z");

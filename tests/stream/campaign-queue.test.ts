@@ -1,8 +1,9 @@
 import test, { after } from "node:test";
 import assert from "node:assert/strict";
 import { prisma } from "../../lib/prisma";
-import { reserveCampaign, drainCampaign } from "../../lib/live/campaign-publish";
+import { reserveCampaign, drainCampaign, campaignBinding } from "../../lib/live/campaign-publish";
 import { getStoredToken } from "../../lib/social/token-store";
+import { centralDate, centralInstant } from "../../lib/live/campaign";
 if (!process.env.DATABASE_URL?.includes("127.0.0.1:55449/tolley_live_growth_test")) throw new Error("Isolated campaign test database required");
 test("campaign reservations are atomic, bound, capped, cancellable and pauseable", async () => {
   await prisma.liveCampaignPost.deleteMany(); await prisma.livePublication.deleteMany();
@@ -10,13 +11,17 @@ test("campaign reservations are atomic, bound, capped, cancellable and pauseable
   const now = new Date();
   const show = await prisma.liveShow.create({ data: { title: "Campaign test", category: "Electronics", startsAt: new Date(now.getTime() + 3600000), whatnotUrl: "https://www.whatnot.com/live/test", status: "confirmed" } });
   const make = (kind: string, data = {}) => prisma.liveCampaignPost.create({ data: { showId: show.id, kind, platform: "facebook", accountId: "test-haul", caption: "Tonight: a show full of finds.", dueAt: new Date(now.getTime() - 1000), expiresAt: new Date(now.getTime() + 3600000), status: "queued", ...data } });
-  const first = await make("preview");
+  const first = await make("recap");
   const claims = await Promise.all(Array.from({ length: 8 }, () => reserveCampaign(first.id, now)));
   assert.equal(claims.filter(Boolean).length, 1);
   assert.equal(await reserveCampaign((await make("wrong", { accountId: "other-brand" })).id, now), null);
   assert.equal(await reserveCampaign((await make("story", { manual: true })).id, now), null);
-  const second = await make("recap"); assert.ok(await reserveCampaign(second.id, now));
-  assert.equal(await reserveCampaign((await make("fact")).id, now), null);
+  const second = await make("preview"); assert.ok(await reserveCampaign(second.id, now));
+  const third = await make("fact");
+  assert.equal(await reserveCampaign(third.id, now), null);
+  const yesterday = new Date(centralInstant(centralDate(now), "00:00").getTime() - 1000);
+  await prisma.liveCampaignPost.updateMany({ where: { id: { in: [first.id, second.id] } }, data: { updatedAt: yesterday } });
+  assert.ok(await reserveCampaign(third.id, now), "yesterday's slots cannot delay today's campaign");
   await prisma.liveSettings.update({ where: { id: "treasure-hauls" }, data: { campaignPaused: true } });
   await prisma.liveCampaignPost.update({ where: { id: first.id }, data: { status: "queued" } });
   assert.equal(await reserveCampaign(first.id, now), null);
@@ -38,6 +43,17 @@ test("lost upstream response stays uncertain and is never retried", async () => 
     assert.equal(sends, 1);
     assert.equal((await prisma.liveCampaignPost.findUniqueOrThrow({ where: { id: row.id } })).status, "uncertain");
   } finally { globalThis.fetch = original; await prisma.liveCampaignPost.deleteMany(); await prisma.platformConnection.deleteMany({ where: { platform: "facebook_page:test-haul" } }); }
+});
+test("weekly crossover requires its own explicit account binding and only reserves once per week", async () => {
+  const bindings = { facebook: { accountId: "test-haul", label: "Haul" }, "crossover:facebook:test-other": { accountId: "test-other", label: "Other business" } };
+  assert.equal(campaignBinding(bindings, { kind: "crossover", platform: "facebook", accountId: "unbound" }), undefined);
+  await prisma.liveSettings.update({ where: { id: "treasure-hauls" }, data: { campaignPaused: false, bindings } });
+  const now = new Date();
+  const make = () => prisma.liveCampaignPost.create({ data: { kind: "crossover", platform: "facebook", accountId: "test-other", caption: "Meet Treasure Hauls. Confirmed schedule: tolley.io/live", status: "queued", dueAt: new Date(now.getTime() - 1000), expiresAt: new Date(now.getTime() + 60000) } });
+  const first = await make(), second = await make();
+  assert.ok(await reserveCampaign(first.id, now));
+  assert.equal(await reserveCampaign(second.id, now), null);
+  await prisma.liveCampaignPost.deleteMany();
 });
 test("dedicated haul credentials never become the generic account fallback", async () => {
   await prisma.platformConnection.createMany({ data: [

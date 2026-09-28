@@ -177,7 +177,16 @@ type LatestRow = {
 // but it has not posted once (usually a job that was never instrumented), dark =
 // it used to work and stopped. They need different fixes, so they get different
 // words.
-export function computeHealth(latest: LatestRow[], now = new Date()): ChannelHealth[] {
+export function campaignAwareJobs(active: boolean, bindings: Record<string, unknown>, expectedCampaign: boolean): ScheduledJob[] {
+  return SCHEDULED_JOBS.flatMap(job => {
+    if (job.job === "growth-shorts" && active) return [];
+    if (job.job !== "hauls-campaign") return [job];
+    if (!active || !expectedCampaign) return [];
+    return [{ ...job, channels: job.channels.filter(c => !!bindings[c.channel === "fb" ? "facebook" : "instagram"]) }];
+  });
+}
+
+export function computeHealth(latest: LatestRow[], now = new Date(), jobs = SCHEDULED_JOBS): ChannelHealth[] {
   const byKey = new Map<string, LatestRow>();
   for (const row of latest) {
     const key = `${row.job}::${row.channel}`;
@@ -186,7 +195,7 @@ export function computeHealth(latest: LatestRow[], now = new Date()): ChannelHea
   }
 
   const out: ChannelHealth[] = [];
-  for (const job of SCHEDULED_JOBS) {
+  for (const job of jobs) {
     for (const ch of job.channels) {
       const row = byKey.get(`${job.job}::${ch.channel}`);
       const base = {
