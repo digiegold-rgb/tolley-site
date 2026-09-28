@@ -6,6 +6,7 @@ import { getSubsite } from "@/lib/subsites";
 import { validateActionFields } from "@/lib/agent-manifest";
 import { enqueueLeadNotifications, deliverLeadNotifications } from "@/lib/lead-notification-outbox";
 import { rateLimitByIp } from "@/lib/rate-limit";
+import { prepareWdQuoteFields } from "@/lib/wd-service-zips";
 import crypto from "node:crypto";
 
 export const runtime = "nodejs";
@@ -83,22 +84,31 @@ export async function POST(req: Request) {
     );
   }
 
+  let structuredFields: Record<string, unknown> = fields;
+  let outOfArea = false;
+  if (subsite === "wd" && action === "request_wd_quote") {
+    const prepared = prepareWdQuoteFields(fields);
+    if (!prepared.ok) return NextResponse.json({ error: prepared.error }, { status: 400 });
+    structuredFields = prepared.fields;
+    outOfArea = prepared.outOfArea;
+  }
+
   const normalizedContact = {
     email: contact.email?.trim().toLowerCase() || null,
     phone: contact.phone?.trim() || null, name: contact.name?.trim() || null,
   };
   const requestKey = typeof body.requestId === "string" && /^[a-zA-Z0-9-]{16,80}$/.test(body.requestId)
-    ? crypto.createHash("sha256").update(JSON.stringify([body.requestId, subsite, action, normalizedContact, fields])).digest("hex")
+    ? crypto.createHash("sha256").update(JSON.stringify([body.requestId, subsite, action, normalizedContact, structuredFields])).digest("hex")
     : null;
   const row = await prisma.$transaction(async tx => {
     if (requestKey) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${requestKey}))`;
     const create = { receiptToken: crypto.randomBytes(16).toString("base64url"), subsite, action,
-      ...normalizedContact, requestKey, attribution: normalizeAttribution(body.attribution), structured: fields as Prisma.InputJsonValue };
+      ...normalizedContact, requestKey, attribution: normalizeAttribution(body.attribution), structured: structuredFields as Prisma.InputJsonValue };
     const lead = requestKey
       ? await tx.leadAction.upsert({ where: { requestKey }, create, update: {} })
       : await tx.leadAction.create({ data: create });
     await enqueueLeadNotifications(tx, "action", lead.id, {
-      subsite, action, ...normalizedContact, fields, receiptToken: lead.receiptToken,
+      subsite, action, ...normalizedContact, fields: structuredFields, receiptToken: lead.receiptToken,
     });
     return lead;
   });
@@ -110,5 +120,6 @@ export async function POST(req: Request) {
     statusUrl: `https://www.tolley.io/api/lead/${row.receiptToken}`,
     createdAt: row.createdAt.toISOString(),
     next: "Poll the statusUrl for updates. Status progresses: new → acknowledged → contacted → quoted → won|lost.",
+    ...(subsite === "wd" && action === "request_wd_quote" ? { outOfArea } : {}),
   });
 }

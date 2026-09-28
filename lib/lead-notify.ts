@@ -10,8 +10,79 @@ import nodemailer from "nodemailer";
  * Failures are logged, never thrown. Caller does not await.
  */
 
-const PULSE_DISCORD_WEBHOOK_URL = process.env.PULSE_DISCORD_WEBHOOK_URL || "";
 const LEAD_OWNER_EMAIL = process.env.LEAD_OWNER_EMAIL || "digiegold@gmail.com";
+
+/** Read at call time so a missing or bad webhook is reported on each attempt. */
+export function discordWebhookConfigError(): string | null {
+  const url = (process.env.PULSE_DISCORD_WEBHOOK_URL || "").trim();
+  if (!url) {
+    console.error("[lead-notify] PULSE_DISCORD_WEBHOOK_URL is missing");
+    return "PULSE_DISCORD_WEBHOOK_URL is missing";
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    console.error("[lead-notify] PULSE_DISCORD_WEBHOOK_URL is malformed");
+    return "PULSE_DISCORD_WEBHOOK_URL is malformed";
+  }
+  const hostOk = parsed.protocol === "https:" && (parsed.hostname === "discord.com" || parsed.hostname === "discordapp.com");
+  const pathOk = /^\/api\/webhooks\/\d+\/[^/]+\/?$/.test(parsed.pathname);
+  if (!hostOk || !pathOk) {
+    console.error("[lead-notify] PULSE_DISCORD_WEBHOOK_URL is malformed");
+    return "PULSE_DISCORD_WEBHOOK_URL is malformed";
+  }
+  return null;
+}
+
+/** Strip webhook URLs and known secrets before anything is logged or stored. */
+export function sanitizeDeliveryError(raw: string): string {
+  let text = raw;
+  for (const secret of [process.env.PULSE_DISCORD_WEBHOOK_URL, process.env.EMAIL_SERVER_PASSWORD, process.env.EMAIL_SERVER_USER]) {
+    if (secret && secret.length >= 6) text = text.split(secret).join("[redacted]");
+  }
+  text = text.replace(/https?:\/\/(?:(?:canary|ptb)\.)?discord(?:app)?\.com\/api\/webhooks\/\S+/gi, "[redacted-webhook]");
+  return text.replace(/\s+/g, " ").trim().slice(0, 500);
+}
+
+export function leadDeliveryErrorMessage(err: unknown): string {
+  const raw = err instanceof Error ? err.message : typeof err === "string" ? err : "Unknown delivery error";
+  return sanitizeDeliveryError(raw) || "Unknown delivery error";
+}
+
+export function discordHttpFailure(status: number, body: string): string {
+  const snippet = sanitizeDeliveryError(body).slice(0, 300);
+  return snippet ? `Discord webhook HTTP ${status}: ${snippet}` : `Discord webhook HTTP ${status}`;
+}
+
+export function leadActionLocationLines(fields?: Record<string, unknown> | null): string[] {
+  if (!fields) return [];
+  const lines: string[] = [];
+  if (typeof fields.zip === "string" && fields.zip.trim()) lines.push(`ZIP: ${fields.zip.trim()}`);
+  if (typeof fields.outOfArea === "boolean") lines.push(`outOfArea: ${fields.outOfArea}`);
+  return lines;
+}
+
+async function postDiscord(payload: unknown): Promise<void> {
+  const configError = discordWebhookConfigError();
+  if (configError) throw new Error(configError);
+  const url = (process.env.PULSE_DISCORD_WEBHOOK_URL || "").trim();
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch (err) {
+    throw new Error(`Discord webhook request failed: ${leadDeliveryErrorMessage(err)}`);
+  }
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(discordHttpFailure(res.status, body));
+  }
+}
 
 const emailHost = process.env.EMAIL_SERVER_HOST || "localhost";
 const emailPort = Number(process.env.EMAIL_SERVER_PORT || 587);
@@ -54,12 +125,15 @@ export function notifyLead(args: LeadNotifyArgs): void {
 }
 
 export async function sendDiscord(args: LeadNotifyArgs) {
-  if (!PULSE_DISCORD_WEBHOOK_URL) throw new Error("Discord notification is not configured");
   const fields: { name: string; value: string; inline?: boolean }[] = [
     { name: "Source", value: `\`${args.source}\``, inline: true },
     { name: "Email", value: args.email, inline: true },
   ];
   if (args.name) fields.push({ name: "Name", value: args.name, inline: true });
+  for (const line of leadActionLocationLines(args.data)) {
+    const [name, ...rest] = line.split(": ");
+    fields.push({ name, value: rest.join(": "), inline: true });
+  }
   if (args.data && Object.keys(args.data).length > 0) {
     const snippet = JSON.stringify(args.data).slice(0, 500);
     fields.push({ name: "Data", value: `\`\`\`json\n${snippet}\n\`\`\`` });
@@ -74,15 +148,7 @@ export async function sendDiscord(args: LeadNotifyArgs) {
       },
     ],
   };
-  const res = await fetch(PULSE_DISCORD_WEBHOOK_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!res.ok) {
-    throw new Error(`Discord webhook ${res.status}`);
-  }
+  await postDiscord(body);
 }
 
 export async function sendEmail(args: LeadNotifyArgs) {
@@ -96,6 +162,7 @@ export async function sendEmail(args: LeadNotifyArgs) {
     `Email:  ${args.email}`,
     `Name:   ${args.name ?? "—"}`,
     `Source: ${args.source}`,
+    ...leadActionLocationLines(args.data),
     args.data ? "\nData:\n" + dataLines : "",
     "",
     "https://www.tolley.io/hq?tab=inbound",
@@ -138,12 +205,16 @@ export function notifyLeadAction(args: LeadActionNotifyArgs): void {
 }
 
 export async function sendActionDiscord(args: LeadActionNotifyArgs) {
-  if (!PULSE_DISCORD_WEBHOOK_URL) throw new Error("Discord notification is not configured");
+  const location = leadActionLocationLines(args.fields);
   const fields: { name: string; value: string; inline?: boolean }[] = [
     { name: "Subsite", value: `\`${args.subsite}\``, inline: true },
     { name: "Action", value: `\`${args.action}\``, inline: true },
     { name: "Receipt", value: `\`${args.receiptToken}\``, inline: true },
   ];
+  for (const line of location) {
+    const [name, ...rest] = line.split(": ");
+    fields.push({ name, value: rest.join(": "), inline: true });
+  }
   if (args.email) fields.push({ name: "Email", value: args.email, inline: true });
   if (args.phone) fields.push({ name: "Phone", value: args.phone, inline: true });
   if (args.name) fields.push({ name: "Name", value: args.name, inline: true });
@@ -157,7 +228,7 @@ export async function sendActionDiscord(args: LeadActionNotifyArgs) {
     embeds: [
       {
         title: `🎯 Agent action: ${args.action}`,
-        description: `Submitted via /${args.subsite}`,
+        description: [`Submitted via /${args.subsite}`, ...location].join("\n"),
         color: 0x10b981,
         fields,
         timestamp: new Date().toISOString(),
@@ -165,13 +236,7 @@ export async function sendActionDiscord(args: LeadActionNotifyArgs) {
       },
     ],
   };
-  const res = await fetch(PULSE_DISCORD_WEBHOOK_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!res.ok) throw new Error(`Discord webhook ${res.status}`);
+  await postDiscord(body);
 }
 
 export async function sendActionEmail(args: LeadActionNotifyArgs) {
@@ -183,6 +248,7 @@ export async function sendActionEmail(args: LeadActionNotifyArgs) {
     `Agent action: ${args.action}`,
     `Subsite:      ${args.subsite}`,
     `Receipt:      ${args.receiptToken}`,
+    ...leadActionLocationLines(args.fields),
     "",
     `Email:        ${args.email ?? "—"}`,
     `Phone:        ${args.phone ?? "—"}`,

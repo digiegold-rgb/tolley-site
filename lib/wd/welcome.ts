@@ -26,6 +26,7 @@ import {
   wdPreWelcomedCustomer,
   type WdPreWelcomedCustomer,
 } from "@/lib/wd";
+import { normalizeWdZip } from "@/lib/wd-service-zips";
 import { sendWdEmail, wdEmailHtml } from "@/lib/wd/email";
 import { mirrorSentSms } from "@/lib/wd/messaging";
 import {
@@ -375,12 +376,22 @@ async function seedPreWelcomedCustomer(record: WdPreWelcomedCustomer): Promise<v
   }
 }
 
+function triggerDeliveryZip(trigger: WdWelcomeTrigger): string | null {
+  const raw = trigger.source === "checkout"
+    ? trigger.session.metadata?.zip || trigger.subscription.metadata?.zip
+    : trigger.source === "subscription"
+      ? trigger.subscription.metadata?.zip
+      : null;
+  return raw ? normalizeWdZip(raw) : null;
+}
+
 async function notifyWdDesk(opts: {
   custId: string;
   client: WdClient;
   amount: number;
   sms: boolean;
   email: boolean;
+  zip?: string | null;
 }): Promise<void> {
   const requestKey = `wd-welcome:${opts.custId}`;
   try {
@@ -401,6 +412,7 @@ async function notifyWdDesk(opts: {
           stripeSubscriptionId: opts.client.stripeSubscriptionId,
           welcomeSms: opts.sms,
           welcomeEmail: opts.email,
+          ...(opts.zip ? { zip: opts.zip } : {}),
         },
       },
     });
@@ -414,6 +426,7 @@ async function notifyWdDesk(opts: {
         fields: {
           planAmount: opts.amount,
           stripeCustomerId: opts.custId,
+          ...(opts.zip ? { zip: opts.zip } : {}),
         },
         receiptToken: lead.receiptToken,
       });
@@ -521,7 +534,7 @@ export async function maybeSendWdSignupWelcome(trigger: WdWelcomeTrigger): Promi
   }
 
   await stampStripeWelcome(custId);
-  await notifyWdDesk({ custId, client: fresh, amount, sms: smsOk, email: emailOk });
+  await notifyWdDesk({ custId, client: fresh, amount, sms: smsOk, email: emailOk, zip: triggerDeliveryZip(trigger) });
   console.log(`[wd] auto-welcome ${smsOk && emailOk ? "sent" : "partial"} client=${fresh.id} $${amount}`);
   return { status: smsOk && emailOk ? "sent" : "partial" };
 }
