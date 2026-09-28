@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.52.1';
+export const APP_VERSION = '1.52.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.52.2',
+    date: '2026-09-27',
+    title: 'Match posting health to the active show campaign',
+    items: ['Posting health now respects replaced jobs, connected accounts, and nights with no scheduled campaign.'],
+  },
   {
     version: '1.52.1',
     date: '2026-09-27',

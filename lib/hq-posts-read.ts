@@ -20,7 +20,7 @@ import {
 } from "@/lib/hq-ads";
 import { VIEW_CHANNELS } from "@/lib/view-counter";
 import { channelWindows, VIEW_WINDOWS } from "@/lib/view-counter-windows";
-import { computeHealth, SCHEDULED_JOBS } from "@/lib/post-schedule";
+import { computeHealth, campaignAwareJobs } from "@/lib/post-schedule";
 import { activityTotal, staleMetric, uniquePostRows } from "@/lib/posts-accuracy";
 import { metricObservedAt } from "@/lib/view-counter-windows";
 
@@ -326,7 +326,12 @@ export async function loadPostLog(daysRaw: number): Promise<PostLogPayload> {
     orderBy: { firedAt: "desc" },
     select: { job: true, channel: true, status: true, firedAt: true, url: true, error: true },
   });
-  const health = computeHealth(healthRows);
+  const [campaign, dueCampaign] = await Promise.all([
+    prisma.liveSettings.findUnique({ where: { id: "treasure-hauls" }, select: { campaignPaused: true, bindings: true } }),
+    prisma.liveCampaignPost.count({ where: { manual: false, status: { notIn: ["draft", "held", "canceled"] }, dueAt: { lte: new Date(), gte: new Date(Date.now() - 8 * 86400000) } } }),
+  ]);
+  const expectedJobs = campaignAwareJobs(campaign?.campaignPaused === false, (campaign?.bindings as Record<string, unknown>) || {}, dueCampaign > 0);
+  const health = computeHealth(healthRows, new Date(), expectedJobs);
 
   const runs = new Map<
     string,
@@ -399,7 +404,7 @@ export async function loadPostLog(daysRaw: number): Promise<PostLogPayload> {
       costCents: entries.reduce((s, e) => s + e.costCents, 0),
       costByChannel,
       problems: health.filter((h) => h.status !== "ok").length,
-      declaredChannels: SCHEDULED_JOBS.reduce((s, j) => s + j.channels.length, 0),
+      declaredChannels: expectedJobs.reduce((s, j) => s + j.channels.length, 0),
       rawRecords: rawEntries.length,
       duplicateRecords: rawEntries.length - entries.length,
       successWithoutLink: entries.filter(e => e.status === "ok" && !e.url?.match(/^https?:\/\//)).length,
