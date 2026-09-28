@@ -6,7 +6,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 const contentSecurityPolicy = [
   "default-src 'self'",
   // Static Next bootstrap needs inline scripts. Production never allows eval.
-  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""} https://js.stripe.com https://checkout.stripe.com https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://maps.googleapis.com https://va.vercel-scripts.com https://static.ads-twitter.com https://analytics.twitter.com https://maps.gstatic.com`,
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""} https://js.stripe.com https://checkout.stripe.com https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://maps.googleapis.com https://va.vercel-scripts.com https://static.ads-twitter.com https://analytics.twitter.com https://maps.gstatic.com https://utt.impactcdn.com`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   // Vater/Jelly Studio finals stream from the Vercel Blob CDN

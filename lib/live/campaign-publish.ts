@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { campaignDecision, assertAutomatedCopy, centralDate, centralInstant } from "./campaign";
 import { postInstagram } from "@/lib/social/instagram";
 import type { LiveCampaignPost } from "@prisma/client";
+import { AFFILIATE_DISCLOSURE } from "./impact-core";
 
 export type Binding = { accountId: string; label: string };
 export function campaignBinding(bindings: Record<string, Binding>, post: { platform: string; accountId: string; kind: string }) {
@@ -50,6 +51,7 @@ export async function reserveCampaign(id: string, now = new Date()) {
 }
 
 async function publish(post: LiveCampaignPost) {
+  const caption = post.caption.startsWith(AFFILIATE_DISCLOSURE) ? post.caption : `${AFFILIATE_DISCLOSURE}\n\n${post.caption}`;
   const connection = await verifyCampaignAccount(post.platform, post.accountId);
   const checkpoint = async (externalId: string) => { await prisma.liveCampaignPost.update({ where: { id: post.id }, data: { externalId } }); };
   // Identity checking is read-only; recheck schedule and pause after it, before the remote mutation.
@@ -64,13 +66,13 @@ async function publish(post: LiveCampaignPost) {
   }
   let externalId: string, url: string;
   if (post.platform === "facebook") {
-    const response = await fetch(`https://graph.facebook.com/v23.0/${post.accountId}/feed`, { method: "POST", headers: { Authorization: `Bearer ${connection.accessToken}` }, body: new URLSearchParams({ message: post.caption }), signal: AbortSignal.timeout(30000) });
+    const response = await fetch(`https://graph.facebook.com/v23.0/${post.accountId}/feed`, { method: "POST", headers: { Authorization: `Bearer ${connection.accessToken}` }, body: new URLSearchParams({ message: caption }), signal: AbortSignal.timeout(30000) });
     const result = await response.json();
     if (!response.ok || !result.id) throw new Error("Publish not confirmed");
     externalId = result.id; url = `https://www.facebook.com/${externalId}`; await checkpoint(externalId);
   } else {
     if (!post.mediaUrl) throw new Error("Instagram requires a campaign image");
-    const result = await postInstagram({ id: post.id, source: "stream", accountId: post.accountId, mediaType: "image", mediaUrl: post.mediaUrl, caption: post.caption, hashtags: [], onExternalId: checkpoint });
+    const result = await postInstagram({ id: post.id, source: "stream", accountId: post.accountId, mediaType: "image", mediaUrl: post.mediaUrl, caption, hashtags: [], onExternalId: checkpoint });
     if (!result.ok) throw new Error("Publish not confirmed");
     externalId = result.externalId; url = result.url;
   }
