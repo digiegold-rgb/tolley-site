@@ -32,8 +32,9 @@ try{
  assert.equal(await page.getByRole('link',{name:'Explore Treasure Hauls on Whatnot ↗'}).getAttribute('href'),tracking);
  const beforeClicks=await p.siteEvent.count({where:{site:'live',path:'/live',event:'impact_click'}});
  await context.route('https://whatnot.pxf.io/**',route=>route.fulfill({contentType:'text/html',body:'<p>Isolated affiliate destination</p>'}));
- const clickRequest=page.waitForResponse(r=>r.url().endsWith('/api/live/visit')&&r.request().postData()?.includes('impact_click'));
- await page.getByRole('link',{name:'Explore Treasure Hauls on Whatnot ↗'}).click();await clickRequest;
+ await page.getByRole('link',{name:'Explore Treasure Hauls on Whatnot ↗'}).click();
+ // A keepalive response may outlive its document; verify durable receipt instead.
+ for(let i=0;i<40;i++){if(await p.siteEvent.count({where:{site:'live',path:'/live',event:'impact_click'}})>beforeClicks)break;await new Promise(resolve=>setTimeout(resolve,250));}
  assert.equal(await p.siteEvent.count({where:{site:'live',path:'/live',event:'impact_click'}}),beforeClicks+1);
  await page.goto(base+'/live',{waitUntil:'networkidle'});
  await page.getByRole('button',{name:'Allow affiliate measurement'}).click();await page.waitForFunction(()=>window.__impactTagLoaded===true);assert.equal(tagLoads,1);
