@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.52.2';
+export const APP_VERSION = '1.52.3';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.52.3',
+    date: '2026-09-27',
+    title: 'Prepare Instagram campaign artwork',
+    items: ['Instagram feed campaigns use a dedicated JPEG graphic with the show time and brand.'],
+  },
   {
     version: '1.52.2',
     date: '2026-09-27',
