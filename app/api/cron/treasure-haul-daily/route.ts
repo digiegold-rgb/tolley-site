@@ -45,6 +45,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const campaign = await prisma.liveSettings.findUnique({ where: { id: "treasure-hauls" }, select: { campaignPaused: true } });
+  if (campaign?.campaignPaused === false) return NextResponse.json({ ok: true, skipped: "Treasure Hauls show campaign owns the Facebook feed" });
+
   const page = FB_PAGES.find((p) => p.id === TREASURE_HAUL_PAGE_ID);
   if (!page) {
     return NextResponse.json(

@@ -1,5 +1,5 @@
 {
-  "ignoreCommand": "if [ -n \"$VERCEL_GIT_COMMIT_REF\" ] && [ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]; then echo 'skip: branch preview builds disabled (2026-08-20 — stray branch builds were stalling and blocking the single build slot)'; exit 0; else exit 1; fi",
+  "ignoreCommand": "if [ -n \"$VERCEL_GIT_COMMIT_REF\" ] && [ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]; then echo 'skip: branch preview builds disabled (2026-08-20 \u2014 stray branch builds were stalling and blocking the single build slot)'; exit 0; else exit 1; fi",
   "functions": {
     "app/api/cron/sequence-process/route.ts": {
       "maxDuration": 120
@@ -158,7 +158,10 @@
     }
   },
   "crons": [
-    { "path": "/api/cron/leads-weekday-drop", "schedule": "0 13,14 * * 1-5" },
+    {
+      "path": "/api/cron/leads-weekday-drop",
+      "schedule": "0 13,14 * * 1-5"
+    },
     {
       "path": "/api/cron/sequence-process",
       "schedule": "0 */1 * * *"
@@ -410,6 +413,10 @@
     {
       "path": "/api/cron/bing-local-probe",
       "schedule": "30 8 7 * *"
+    },
+    {
+      "path": "/api/cron/hauls-campaign",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

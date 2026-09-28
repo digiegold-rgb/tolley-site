@@ -28,6 +28,7 @@ export type ScheduledJob = {
 };
 
 export const SCHEDULED_JOBS: ScheduledJob[] = [
+  { job: "hauls-campaign", label: "Treasure Hauls show campaign", schedule: "Confirmed shows: 18:30 Central; Stories manual", unit: "/api/cron/hauls-campaign", staleAfterHours: 8 * 24, channels: [{ channel: "fb", account: "ruthanns-treasure-haul", business: "haul" }, { channel: "ig", account: "bound-haul-account", business: "haul" }] },
   {
     job: "growth-shorts",
     label: "Product shorts (2/day)",
