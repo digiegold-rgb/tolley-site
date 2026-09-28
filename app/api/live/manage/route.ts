@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 export async function GET() {
   if (!(await validateWdAdmin()).authed) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const [settings, shows, clips, clicks, campaigns, deals, accounts, heartbeat] = await Promise.all([
+  const [settings, shows, clips, clicks, campaigns, deals, accounts, heartbeat, scheduleSync] = await Promise.all([
     prisma.liveSettings.findUnique({ where: { id: "treasure-hauls" } }),
     prisma.liveShow.findMany({ orderBy: { startsAt: "desc" }, take: 30 }),
     prisma.liveClip.findMany({ orderBy: { createdAt: "desc" }, take: 30, include: { publications: true } }),
@@ -19,8 +19,9 @@ export async function GET() {
     prisma.liveDeal.findMany({ orderBy: { soldAt: "desc" }, take: 50 }),
     prisma.platformConnection.findMany({ where: { subscriberId: "social-suite", status: "active", OR: [{ platform: { startsWith: "facebook_page:" } }, { platform: "instagram" }] }, select: { platform: true, platformAccountId: true, platformUsername: true } }),
     prisma.siteEvent.findFirst({ where: { event: "campaign_heartbeat", site: "live" }, orderBy: { createdAt: "desc" }, select: { createdAt: true, meta: true } }),
+    prisma.siteEvent.findFirst({ where: { event: "whatnot_schedule_sync", site: "live" }, orderBy: { createdAt: "desc" }, select: { createdAt: true, meta: true } }),
   ]);
-  return NextResponse.json({ settings, shows, clips, clicks, campaigns, deals, accounts, heartbeat }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ settings, shows, clips, clicks, campaigns, deals, accounts, heartbeat, scheduleSync }, { headers: { "Cache-Control": "no-store" } });
 }
 export async function POST(req: NextRequest) {
   if (!(await validateWdAdmin()).authed) return NextResponse.json({ error: "unauthorized" }, { status: 401 });

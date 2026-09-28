@@ -10,12 +10,12 @@ export const SHOW_DESCRIPTION = `Treasure Hauls is a live shopping show with Jar
 export const CAMPAIGN_BUDGET = { ads: 200, production: 50, reserve: 50, total: 300 };
 export const FEATURE_WEEK = ["Weekly best moments", "Deal of the night", "Guess the final bid", "Weird find Wednesday", "You pick the table", "Meet the hosts", "Packing the haul"];
 
-export type ShowState = { status: string; startsAt: Date; confirmedUntil: Date | null; endedAt: Date | null };
+export type ShowState = { id?: string; status: string; startsAt: Date; confirmedUntil: Date | null; endedAt: Date | null };
 export function isLive(s: ShowState, now = new Date()) {
   return s.status === "live" && !s.endedAt && !!s.confirmedUntil && s.confirmedUntil > now;
 }
 export function canPromote(s: ShowState, now = new Date()) {
-  return !s.endedAt && ((s.status === "confirmed" && s.startsAt > now) || isLive(s, now));
+  return !s.endedAt && ((s.status === "confirmed" && s.startsAt > now && (!s.id?.startsWith("whatnot_") || (!!s.confirmedUntil && s.confirmedUntil > now))) || isLive(s, now));
 }
 export function centralDate(d: Date) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: SHOW_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
@@ -48,7 +48,7 @@ export function campaignPack(s: { id: string; title: string; startsAt: Date }) {
   const link = `https://www.tolley.io/live?utm_source=facebook&utm_campaign=show_${s.id}#schedule`;
   return [
     { kind: "poll", format: "story", dueAt: new Date(s.startsAt.getTime() - 391 * 60000), caption: "You pick what hits the table first! Add two categories from tonight’s actual lineup, then use the Story poll sticker.", manual: true },
-    { kind: "preview", format: "feed", dueAt: new Date(s.startsAt.getTime() - 121 * 60000), caption: `Tonight: ${s.title} 👀\n${when}. Bring your questions and grab a seat.\n${SHOW_TAGLINE}\nBookmark the show: ${link}`, manual: false },
+    { kind: "preview", format: "feed", dueAt: new Date(s.startsAt.getTime() - 121 * 60000), caption: `Next up: ${s.title} 👀\n${when}. Bring your questions and grab a seat.\n${SHOW_TAGLINE}\nBookmark the show: ${link}`, manual: false },
     { kind: "countdown", format: "story", dueAt: new Date(s.startsAt.getTime() - 16 * 60000), caption: `16 minutes. Grab a seat. We’re getting the table ready.\nTreasure Hauls · ${when}\n${link}`, manual: true },
     { kind: "live", format: "story", dueAt: s.startsAt, caption: `WE’RE LIVE 🔴 Come hang with Treasure Hauls. See what hits the table next.\n${link}`, manual: true },
   ].map(post => ({ ...post, caption: `${AFFILIATE_DISCLOSURE}\n\n${post.caption}` }));

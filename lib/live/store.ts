@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { canPromote } from "./campaign";
 import { WHATNOT_PROFILE } from "./core";
 
 export async function livePublicData() {
@@ -10,5 +11,5 @@ export async function livePublicData() {
     prisma.liveClip.findMany({ where: { status: "ready", publications: { some: { status: "posted" } } }, take: 6, orderBy: { createdAt: "desc" }, select: { id: true, title: true, mediaUrl: true } }),
     prisma.liveDeal.findMany({ where: { verified: true }, orderBy: { soldAt: "desc" }, take: 6, select: { id: true, item: true, priceCents: true, soldAt: true } }),
   ]);
-  return { dailyTime: settings?.dailyTime, watchUrl: WHATNOT_PROFILE, shows, clips, deals };
+  return { dailyTime: settings?.dailyTime, watchUrl: WHATNOT_PROFILE, shows: shows.filter(s => canPromote(s, now)), clips, deals };
 }

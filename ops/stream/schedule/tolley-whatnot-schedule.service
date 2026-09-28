@@ -1,0 +1,12 @@
+[Unit]
+Description=Read Whatnot Seller Hub schedule and refresh Treasure Hauls reminders
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/jelly/tolley-hauls-campaign
+ExecStart=/usr/bin/node --env-file=/home/jelly/.config/tolley-security/production.env --env-file=/home/jelly/.config/treasure-hauls/impact.env --conditions=react-server --import /home/jelly/.npm-global/lib/node_modules/tsx/dist/loader.mjs ops/stream/schedule/worker.ts
+TimeoutStartSec=240
+UMask=0077
+Nice=10
+NoNewPrivileges=true
