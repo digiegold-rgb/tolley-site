@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.52.3';
+export const APP_VERSION = '1.52.4';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.52.4',
+    date: '2026-09-27',
+    title: 'Allow time for complete show-result imports',
+    items: ['Larger sale-result imports keep their all-or-nothing save behavior with a longer transaction window.'],
+  },
   {
     version: '1.52.3',
     date: '2026-09-27',

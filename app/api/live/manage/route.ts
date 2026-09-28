@@ -6,6 +6,7 @@ import { campaignPack, centralInstant, dealSchema, metricsSchema, assertAutomate
 import { verifyCampaignAccount, type Binding } from "@/lib/live/campaign-publish";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 export async function GET() {
   if (!(await validateWdAdmin()).authed) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const [settings, shows, clips, clicks, campaigns, deals, accounts, heartbeat] = await Promise.all([
@@ -129,7 +130,7 @@ export async function POST(req: NextRequest) {
           if (soldAt > new Date()) throw new Error("Past deals require a completed sale date");
           await tx.liveDeal.upsert({ where: { showId_item_soldAt: { showId: row.showId, item: row.item, soldAt } }, create: { ...data, soldAt, priceCents: Math.round(price * 100) }, update: { priceCents: Math.round(price * 100), evidence: data.evidence, verified: true } });
         }
-      });
+      }, { timeout: 30000 });
     } else if (b.action === "deal_hide") {
       await prisma.liveDeal.update({ where: { id: z.string().parse(b.id) }, data: { verified: false } });
     } else if (b.action === "metrics") {
