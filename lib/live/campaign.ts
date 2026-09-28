@@ -66,4 +66,6 @@ export function campaignDecision(p: { kind: string; dueAt: Date; expiresAt: Date
 }
 export function assertAutomatedCopy(caption: string) {
   if (/whatnot\.com\/invite\b|\/go\/whatnot\b|referral|signup.credit/i.test(caption)) throw new Error("Referral invitations are manual only");
+  const disclosed = caption.startsWith(AFFILIATE_DISCLOSURE) ? caption : `${AFFILIATE_DISCLOSURE}\n\n${caption}`;
+  if (disclosed.length > 2200) throw new Error("Shorten the caption so it fits 2,200 characters including the affiliate disclosure");
 }
