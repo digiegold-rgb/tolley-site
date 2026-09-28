@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.53.1';
+export const APP_VERSION = '1.54.0';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.54.0',
+    date: '2026-09-28',
+    title: 'Sync Treasure Hauls shows directly from Whatnot',
+    items: ['Scheduled Whatnot shows refresh automatically, with Central times and queued feed previews.', 'Schedule changes update unsent reminders; expired verification pauses automatic promotion.'],
+  },
   {
     version: '1.53.1',
     date: '2026-09-27',

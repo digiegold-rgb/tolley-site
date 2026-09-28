@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Whatnot schedule checks and checks before show reminders
+
+[Timer]
+OnCalendar=*-*-* 00,04,08,12,16,18,20:15:00 America/Chicago
+OnCalendar=*-*-* 20:05:00 America/Chicago
+Persistent=true
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target
