@@ -43,7 +43,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: '1.52.2',
     date: '2026-09-27',
     title: 'Match posting health to the active show campaign',
-    items: ['Posting health now respects replaced jobs, connected accounts, and nights with no scheduled campaign.'],
+    items: ['Posting health now respects replaced jobs, connected accounts, and nights with no scheduled campaign.', 'Daily posting limits follow Central calendar days and preserve the evening show-preview slot.'],
   },
   {
     version: '1.52.1',

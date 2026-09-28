@@ -4,6 +4,7 @@ import { postInstagram } from "@/lib/social/instagram";
 import { LIVE_PLATFORMS, canAutoPublish, type LivePlatform } from "./core";
 import type { PostInput } from "@/lib/social/types";
 import type { Prisma } from "@prisma/client";
+import { centralDate, centralInstant } from "./campaign";
 
 type Binding = { accountId: string; label: string };
 const API = "https://graph.facebook.com/v23.0";
@@ -44,13 +45,14 @@ export async function reservePublication(clipId: string, platform: LivePlatform)
     const show = await tx.liveShow.findUnique({ where: { id: clip.showId } });
     if (!show?.confirmedUntil) return null;
     if (await tx.livePublication.findUnique({ where: { clipId_platform: { clipId, platform } } })) return null;
-    // Rolling 24 hours is stricter than a calendar-day cap, including midnight/DST.
-    const count = await tx.livePublication.count({ where: { platform, accountId: binding.accountId, createdAt: { gte: new Date(Date.now() - 86400000) } } });
-    const campaigns = await tx.liveCampaignPost.count({ where: { platform, accountId: binding.accountId, format: "feed", status: { in: ["posting", "posted", "uncertain"] }, updatedAt: { gte: new Date(Date.now() - 86400000) } } });
+    // A Central calendar day keeps nightly reminders from drifting later each day.
+    const since = settings.campaignPaused ? new Date(Date.now() - 86400000) : centralInstant(centralDate(new Date()), "00:00");
+    const count = await tx.livePublication.count({ where: { platform, accountId: binding.accountId, createdAt: { gte: since } } });
+    const campaigns = await tx.liveCampaignPost.count({ where: { platform, accountId: binding.accountId, format: "feed", status: { in: ["posting", "posted", "uncertain"] }, updatedAt: { gte: since } } });
     if (count + campaigns >= 2) return null;
     if (!settings.campaignPaused) {
       const hour = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "2-digit", hourCycle: "h23" }).format(new Date()));
-      if (hour < 10 || hour >= 12 || count >= 1) return null;
+      if (hour < 10 || hour >= 12 || count + campaigns >= 1) return null;
     }
     return tx.livePublication.create({ data: { clipId, platform, accountId: binding.accountId }, include: { clip: true } });
   });

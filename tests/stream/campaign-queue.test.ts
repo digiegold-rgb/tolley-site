@@ -10,12 +10,12 @@ test("campaign reservations are atomic, bound, capped, cancellable and pauseable
   const now = new Date();
   const show = await prisma.liveShow.create({ data: { title: "Campaign test", category: "Electronics", startsAt: new Date(now.getTime() + 3600000), whatnotUrl: "https://www.whatnot.com/live/test", status: "confirmed" } });
   const make = (kind: string, data = {}) => prisma.liveCampaignPost.create({ data: { showId: show.id, kind, platform: "facebook", accountId: "test-haul", caption: "Tonight: a show full of finds.", dueAt: new Date(now.getTime() - 1000), expiresAt: new Date(now.getTime() + 3600000), status: "queued", ...data } });
-  const first = await make("preview");
+  const first = await make("recap");
   const claims = await Promise.all(Array.from({ length: 8 }, () => reserveCampaign(first.id, now)));
   assert.equal(claims.filter(Boolean).length, 1);
   assert.equal(await reserveCampaign((await make("wrong", { accountId: "other-brand" })).id, now), null);
   assert.equal(await reserveCampaign((await make("story", { manual: true })).id, now), null);
-  const second = await make("recap"); assert.ok(await reserveCampaign(second.id, now));
+  const second = await make("preview"); assert.ok(await reserveCampaign(second.id, now));
   assert.equal(await reserveCampaign((await make("fact")).id, now), null);
   await prisma.liveSettings.update({ where: { id: "treasure-hauls" }, data: { campaignPaused: true } });
   await prisma.liveCampaignPost.update({ where: { id: first.id }, data: { status: "queued" } });

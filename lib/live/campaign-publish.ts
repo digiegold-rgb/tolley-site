@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { campaignDecision, assertAutomatedCopy } from "./campaign";
+import { campaignDecision, assertAutomatedCopy, centralDate, centralInstant } from "./campaign";
 import { postInstagram } from "@/lib/social/instagram";
 import type { LiveCampaignPost } from "@prisma/client";
 
@@ -29,10 +29,12 @@ export async function reserveCampaign(id: string, now = new Date()) {
     if (decision === "expired" || decision === "canceled") { await tx.liveCampaignPost.update({ where: { id }, data: { status: decision } }); return null; }
     if (decision !== "ready") return null;
     assertAutomatedCopy(post.caption);
-    const since = new Date(now.getTime() - 86400000);
+    const since = centralInstant(centralDate(now), "00:00");
     const clips = await tx.livePublication.count({ where: { platform: post.platform, accountId: post.accountId, createdAt: { gte: since } } });
     const campaigns = await tx.liveCampaignPost.count({ where: { platform: post.platform, accountId: post.accountId, format: "feed", status: { in: ["posting", "posted", "uncertain"] }, updatedAt: { gte: since } } });
     if (clips + campaigns >= 2) return null;
+    // Preserve the second feed slot for the confirmed evening preview.
+    if (post.kind !== "preview" && clips + campaigns >= 1) return null;
     const claimed = await tx.liveCampaignPost.updateMany({ where: { id, status: "queued" }, data: { status: "posting", error: null } });
     return claimed.count === 1 ? post : null;
   });
