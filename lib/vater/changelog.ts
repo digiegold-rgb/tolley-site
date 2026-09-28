@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.53.0';
+export const APP_VERSION = '1.53.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.53.1',
+    date: '2026-09-27',
+    title: 'Make affiliate impressions measurable on the show hub',
+    items: ['The disclosed profile link is visible to the optional publisher tag, while show links retain their schedule checks.'],
+  },
   {
     version: '1.53.0',
     date: '2026-09-27',
