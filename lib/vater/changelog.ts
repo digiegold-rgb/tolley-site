@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.51.1';
+export const APP_VERSION = '1.52.0';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,16 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.52.0',
+    date: '2026-09-27',
+    title: 'Treasure Hauls: the 8:31 show',
+    items: [
+      'Find the next confirmed show, real past deals, and the Treasure Hauls invitation on the refreshed live page.',
+      'Prepare daily show campaigns with Central-time scheduling, cancellation controls, and editable social posts.',
+      'Track show clicks, referral clicks, verified sale results, and the first-month promotion budget separately.',
+    ],
+  },
   {
     version: '1.51.1',
     date: '2026-09-26',

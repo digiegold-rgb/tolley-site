@@ -6077,6 +6077,7 @@ model LiveSettings {
   referralUrl    String?
   dailyTime      String?
   publishingPaused Boolean @default(true)
+  campaignPaused Boolean @default(true)
   bindings       Json     @default("{}")
   updatedAt      DateTime @updatedAt
 }
@@ -6088,6 +6089,8 @@ model LiveShow {
   startsAt       DateTime
   durationMin    Int      @default(120)
   whatnotUrl     String
+  status         String   @default("scheduled")
+  metrics        Json     @default("{}")
   confirmedUntil DateTime?
   endedAt        DateTime?
   ledger         Json     @default("{}")
@@ -6140,4 +6143,40 @@ model DiscoveryRevenue {
   collectedAt DateTime
   createdAt DateTime @default(now())
   @@index([leadId, collectedAt])
+}
+
+/// Campaign drafts are separate from clip uploads; remote ambiguity is never retried automatically.
+model LiveCampaignPost {
+  id String @id @default(cuid())
+  showId String?
+  kind String
+  format String @default("feed")
+  platform String
+  accountId String
+  caption String
+  mediaUrl String?
+  dueAt DateTime
+  expiresAt DateTime
+  status String @default("draft")
+  manual Boolean @default(false)
+  externalId String?
+  url String?
+  error String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([showId, kind, platform, accountId])
+  @@index([status, dueAt])
+}
+
+model LiveDeal {
+  id String @id @default(cuid())
+  showId String
+  item String
+  priceCents Int
+  soldAt DateTime
+  evidence String
+  verified Boolean @default(false)
+  createdAt DateTime @default(now())
+  @@unique([showId, item, soldAt])
+  @@index([verified, soldAt])
 }

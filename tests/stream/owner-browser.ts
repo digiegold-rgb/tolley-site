@@ -21,8 +21,9 @@ async function main(){
  const start=new Date(Date.now()+86400000).toISOString();
  const r=await context.request.post(base+'/api/live/manage',{timeout:120000,data:{action:'show',show:{title:'Test gadgets haul',category:'Electronics',startsAt:start,durationMin:120,whatnotUrl:'https://www.whatnot.com/live/test-show'}}});assert.equal(r.status(),200);
  const s=await prisma.liveShow.findFirstOrThrow({where:{title:'Test gadgets haul'}});
+ await context.request.post(base+'/api/live/manage',{data:{action:'schedule_confirm',id:s.id}});
  assert.equal((await context.request.post(base+'/api/live/manage',{timeout:120000,data:{action:'confirm',id:s.id}})).status(),200);
- await page.goto(base+'/live',{waitUntil:'domcontentloaded',timeout:120000});await page.getByRole('link',{name:'Watch the show live ↗'}).waitFor();
+ await page.goto(base+'/live',{waitUntil:'domcontentloaded',timeout:120000});await page.getByRole('link',{name:'We’re live — come hang ↗'}).waitFor();
  await context.request.post(base+'/api/live/manage',{timeout:120000,data:{action:'end',id:s.id}});
  await prisma.liveShow.delete({where:{id:s.id}});
  let cameraError=true;

@@ -6,7 +6,8 @@ export function requireIsolatedServer(base) {
   const revenue = base === 'http://127.0.0.1:3018' && database.port === '55438' && database.pathname === '/tolley_revenue_test';
   const discovery = base === 'http://localhost:3024' && database.port === '55450' && database.pathname === '/tolley_discovery_release_test';
   const stock = base === 'http://localhost:3059' && database.port === '55449' && database.pathname === '/tolley_stock_test';
-  if (database.hostname !== '127.0.0.1' || (!revenue && !discovery && !stock)) {
+  const hauls = ['http://127.0.0.1:3029','http://localhost:3029'].includes(base) && database.port === '55449' && database.pathname === '/tolley_live_growth_test';
+  if (database.hostname !== '127.0.0.1' || (!revenue && !discovery && !stock && !hauls)) {
     throw new Error('Disposable localhost app/database required');
   }
 }

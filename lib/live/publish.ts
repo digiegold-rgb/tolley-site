@@ -45,8 +45,13 @@ export async function reservePublication(clipId: string, platform: LivePlatform)
     if (!show?.confirmedUntil) return null;
     if (await tx.livePublication.findUnique({ where: { clipId_platform: { clipId, platform } } })) return null;
     // Rolling 24 hours is stricter than a calendar-day cap, including midnight/DST.
-    const count = await tx.livePublication.count({ where: { platform, createdAt: { gte: new Date(Date.now() - 86400000) } } });
-    if (count >= 2) return null;
+    const count = await tx.livePublication.count({ where: { platform, accountId: binding.accountId, createdAt: { gte: new Date(Date.now() - 86400000) } } });
+    const campaigns = await tx.liveCampaignPost.count({ where: { platform, accountId: binding.accountId, format: "feed", status: { in: ["posting", "posted", "uncertain"] }, updatedAt: { gte: new Date(Date.now() - 86400000) } } });
+    if (count + campaigns >= 2) return null;
+    if (!settings.campaignPaused) {
+      const hour = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "2-digit", hourCycle: "h23" }).format(new Date()));
+      if (hour < 10 || hour >= 12 || count >= 1) return null;
+    }
     return tx.livePublication.create({ data: { clipId, platform, accountId: binding.accountId }, include: { clip: true } });
   });
 }

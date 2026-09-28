@@ -147,6 +147,8 @@ async function postFacebook(
   products: (Product & { listings: PlatformListing[] })[],
   mode: CycleMode,
 ): Promise<PlatformResult> {
+  const campaign = await prisma.liveSettings.findUnique({ where: { id: "treasure-hauls" }, select: { campaignPaused: true } });
+  if (campaign?.campaignPaused === false) return { platform: "facebook", ok: true, skipped: "Show campaign owns the Facebook feed" };
   const page = FB_PAGES.find((p) => p.id === TREASURE_HAUL_PAGE_ID);
   if (!page) return { platform: "facebook", ok: false, error: "Treasure Haul page not configured" };
   const token = getPageToken(page);

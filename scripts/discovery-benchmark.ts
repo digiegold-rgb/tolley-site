@@ -1,5 +1,6 @@
 import { publicOfferings } from "../lib/discovery";
 const needs: Record<string, string> = {
+  live: "an evening live shopping show with tools, home finds, and local pickup",
   advertising: "Google Ads management for real estate agents", animate: "script to narrated AI video creation", realestateanimated: "real estate listing video creation",
   cleanouts: "estate and rental property cleanouts", crazybins: "liquidation bin shopping", estate: "estate sale services", drive: "delivery driver work", "e-and-t": "wedding planning and coordination",
   game: "browser adventure games", generator: "portable generator rental", homes: "help buying or selling a home", housing: "local housing market information", hvac: "heating and air conditioning repair",

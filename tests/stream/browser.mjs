@@ -5,7 +5,7 @@ const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 const page=await browser.newPage({viewport:{width:390,height:844}});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
 await page.goto(base+'/live',{waitUntil:'domcontentloaded',timeout:120000});
-await page.getByRole('heading',{name:/You never know/}).waitFor();
+await page.getByRole('heading',{name:/Come for the show/}).waitFor();
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'mobile overflow');
 await page.screenshot({path:'/tmp/tolley-live-mobile.png',fullPage:true});
 await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:'/tmp/tolley-live-desktop.png',fullPage:true});

@@ -90,8 +90,8 @@ for (const f of appFiles) {
     if (route.split("/").some((seg) => seg.startsWith("_"))) continue; // private
     pageRoutes.push(route === "" ? "/" : route);
   }
-  if (/\/route\.(ts|js)$/.test(rel)) {
-    apiRoutes.push(rel.replace(/\/route\.(ts|js)$/, ""));
+  if (/\/route\.(tsx|jsx|ts|js)$/.test(rel)) {
+    apiRoutes.push(rel.replace(/\/route\.(tsx|jsx|ts|js)$/, ""));
   }
 }
 
