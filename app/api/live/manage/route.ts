@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
 import { ledgerSchema, showSchema } from "@/lib/live/core";
 import { campaignPack, centralInstant, dealSchema, metricsSchema, assertAutomatedCopy } from "@/lib/live/campaign";
 import { verifyCampaignAccount, type Binding } from "@/lib/live/campaign-publish";
 import { z } from "zod";
+import { ensureImpactLink } from "@/lib/live/impact";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 export async function GET() {
@@ -13,7 +14,7 @@ export async function GET() {
     prisma.liveSettings.findUnique({ where: { id: "treasure-hauls" } }),
     prisma.liveShow.findMany({ orderBy: { startsAt: "desc" }, take: 30 }),
     prisma.liveClip.findMany({ orderBy: { createdAt: "desc" }, take: 30, include: { publications: true } }),
-    prisma.siteEvent.groupBy({ by: ["event", "label"], where: { site: "live", event: { in: ["whatnot_click", "show_click", "referral_click", "campaign_visit"] }, createdAt: { gte: new Date(Date.now() - 30 * 86400000) } }, _count: true }),
+    prisma.siteEvent.groupBy({ by: ["event", "label"], where: { site: "live", event: { in: ["whatnot_click", "show_click", "referral_click", "campaign_visit", "impact_click"] }, createdAt: { gte: new Date(Date.now() - 30 * 86400000) } }, _count: true }),
     prisma.liveCampaignPost.findMany({ orderBy: { dueAt: "desc" }, take: 150 }),
     prisma.liveDeal.findMany({ orderBy: { soldAt: "desc" }, take: 50 }),
     prisma.platformConnection.findMany({ where: { subscriberId: "social-suite", status: "active", OR: [{ platform: { startsWith: "facebook_page:" } }, { platform: "instagram" }] }, select: { platform: true, platformAccountId: true, platformUsername: true } }),
@@ -42,6 +43,10 @@ export async function POST(req: NextRequest) {
         if (b.action === "schedule_confirm" && show.startsAt <= new Date()) throw new Error("Choose a future show time");
         await tx.liveShow.update({ where: { id: show.id }, data: { status: b.action === "schedule_confirm" ? "confirmed" : "canceled" } });
         if (b.action === "cancel_show") await tx.liveCampaignPost.updateMany({ where: { showId: show.id, status: { in: ["queued", "draft", "manual", "held"] } }, data: { status: "canceled" } });
+      });
+      if (b.action === "schedule_confirm" && process.env.IMPACT_ACCOUNT_SID && process.env.IMPACT_AUTH_TOKEN) after(async () => {
+        const show = await prisma.liveShow.findUnique({ where: { id: b.id } });
+        if (show) await ensureImpactLink(show.whatnotUrl, `show_${show.id}`).catch(async () => { await prisma.siteEvent.create({ data: { site: "live", path: "/stream/growth", event: "impact_link_error", label: show.id } }); });
       });
     } else if (b.action === "confirm" || b.action === "end") {
       if (typeof b.id !== "string") throw new Error("Show required");

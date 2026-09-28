@@ -9,7 +9,7 @@ Manual referral invitation: https://www.whatnot.com/invite/treasure_hauls
 ## First setup
 
 1. Create upcoming shows in Whatnot. Copy each direct show URL into Growth with its Central date/time; default is 20:31. Confirm each date, then Prepare campaign.
-2. Facebook already has a dedicated Treasure Haul binding. Reconnect dedicated Instagram/YouTube identities before using them; Your KC Homes connections are different brands.
+2. Dedicated Facebook and YouTube are verified and bound. @jaredtolley is a weekly Instagram crossover; a dedicated haul Instagram is not connected.
 3. Review the evening preview draft and queue it. Enable the campaign queue. Stories/polls remain manual tasks with captions and downloadable artwork. Mark the actual show live only after checking Seller Hub, and ended after it finishes. These controls never start or stop a broadcast.
 4. Use the existing recording worker for public-show highlights. It preserves archived recordings and avoids rendering while streaming. Older footage needs a deliberately selected public-show window; do not reinterpret rehearsal as public footage.
 5. Import completed sale prices using the CSV column picker. Verify the per-item sale-price column; seller earnings, payout amounts, order totals, and reference retail prices are not sale prices. Include no canceled/refunded sales. Buyer fields never leave the browser.
@@ -76,8 +76,18 @@ Use only when the actual matching item appears in the lineup; otherwise hold the
 
 ## Budget and weekly review
 
-Hard first-month ceiling: $300; $200 ads, $50 production, $50 reserve. No spend happens automatically. Launch organically; choose the strongest show-preview post after seven days of results. Test up to $10/day in $50 increments. Stop a $50 test with zero tracked show clicks. Paid posts promote the show, not referral incentives.
+Hard first-month ceiling: $300; $200 ads, $50 production, $50 reserve. No spend happens automatically. Launch organically; choose the strongest show-preview post after seven days of results. Test up to $10/day in $50 increments. Stop a $50 test with zero tracked show clicks. Paid posts promote Treasure Hauls and land on the real hub. The active Whatnot affiliate contract prohibits trademark bidding, Whatnot in paid-ad copy, and direct affiliate PPC destinations. Do not boost the organic Whatnot-name copy unchanged.
 
 Every seven days export Growth’s weekly CSV. Compare visits, show-link clicks, published/missed posts, Whatnot viewer/bookmark metrics, actual orders, sales, and contribution after costs. Preserve each metric’s definition and source. Clicks are not purchases; summed show views are not unique people. Leave unavailable results blank.
 
 Daily owner work: confirm the show, make the poll, mark actual live/end, provide the results. Weekly: choose next dates and review performance. No SMS or unsolicited DMs are part of this launch.
+
+## Impact affiliate integration
+
+The public hub discloses that qualifying purchases can earn us a commission. Intentional hub clicks use Impact-generated profile/show links when available; the buyer invite remains a separate manual program and is excluded from affiliate payouts. Do not wrap the invite inside an affiliate link or promise combined rewards.
+
+Organic social posts link to the real hub. Start affiliate endorsements with: “Affiliate disclosure: We may earn a commission on qualifying purchases through our Whatnot links.” Video affiliate endorsements need a spoken/on-screen disclosure as well as the caption. Optional publisher measurement can be enabled or disabled in the hub footer; affiliate links work with measurement off.
+
+Growth syncs a rolling 30-day Impact report daily, with a manual Sync control. Pending, approved and reversed commissions remain separate by currency. Approved is not cash received. These commissions are separate from show merchandise revenue; do not add the affiliate order values into the show ledger. Source-level hub clicks are local measurements, not proof of source-level commissions.
+
+Keep affiliate promotion on your registered properties and owned social pages. No affiliate posting to Whatnot corporate pages. Affiliate email copy requires the program's email process; physical affiliate materials require prior written consent. The current launch adds neither email affiliate campaigns nor print materials.

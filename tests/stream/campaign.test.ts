@@ -43,6 +43,7 @@ test("campaign pack has local schedule and no automatic referral invitations", (
   assert.equal(posts.find(p => p.kind === "countdown")!.dueAt.toISOString(), "2026-11-02T02:15:00.000Z");
   for (const p of posts) assert.doesNotThrow(() => assertAutomatedCopy(p.caption));
   for (const caption of ["https://www.whatnot.com/invite/treasure_hauls", "https://www.tolley.io/go/whatnot", "Get referral credit"]) assert.throws(() => assertAutomatedCopy(caption));
+  assert.throws(() => assertAutomatedCopy("x".repeat(2200)), /including the affiliate disclosure/);
 });
 test("CSV handles quoted commas and newlines; prices never silently parse malformed input", () => {
   const parsed = parseSalesCsv('\uFEFFItem,Price,Buyer\r\n"Pan, large","$1,234.50",private\r\n"Multi\nline",0,private');
