@@ -49,6 +49,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <meta name="impact-site-verification" {...{ value: "c46464d8-a0db-478d-a62e-c9b45ea9d4df" }} />
         <link rel="describedby" type="text/plain" href="https://www.tolley.io/llms.txt" title="Tolley AI guide" />
         <link rel="describedby" type="text/plain" href="https://www.tolley.io/llms-full.txt" title="Tolley detailed AI guide" />
         <link rel="describedby" type="application/json" href="https://www.tolley.io/.well-known/agent-card.json" title="Tolley agent discovery card" />
