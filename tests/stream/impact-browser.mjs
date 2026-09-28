@@ -22,12 +22,21 @@ try{
  assert.equal((await api.get('/go/whatnot',{maxRedirects:0,headers:{referer:base+'/live'}})).headers().location,'https://www.whatnot.com/invite/treasure_hauls');
  await p.affiliateLink.update({where:{shortCode},data:{isActive:false}});
  assert.equal(await go({referer:base+'/live'}),profile);
+ await p.affiliateLink.update({where:{shortCode},data:{isActive:true}});
  browser=await chromium.launch({headless:true,args:['--no-sandbox']});
  const context=await browser.newContext({viewport:{width:390,height:844},userAgent});let tagLoads=0;
  await context.route('https://utt.impactcdn.com/**',async route=>{tagLoads++;await route.fulfill({contentType:'application/javascript',body:'window.__impactTagLoaded=true;'});});
  const page=await context.newPage();page.setDefaultTimeout(120000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base+'/live',{waitUntil:'networkidle'});
  assert.equal(tagLoads,0);await page.getByText('Affiliate disclosure:',{exact:false}).first().waitFor();
+ assert.equal(await page.getByRole('link',{name:'Explore Treasure Hauls on Whatnot ↗'}).getAttribute('href'),tracking);
+ const beforeClicks=await p.siteEvent.count({where:{site:'live',path:'/live',event:'impact_click'}});
+ await context.route('https://whatnot.pxf.io/**',route=>route.fulfill({contentType:'text/html',body:'<p>Isolated affiliate destination</p>'}));
+ await page.getByRole('link',{name:'Explore Treasure Hauls on Whatnot ↗'}).click();
+ // A keepalive response may outlive its document; verify durable receipt instead.
+ for(let i=0;i<40;i++){if(await p.siteEvent.count({where:{site:'live',path:'/live',event:'impact_click'}})>beforeClicks)break;await new Promise(resolve=>setTimeout(resolve,250));}
+ assert.equal(await p.siteEvent.count({where:{site:'live',path:'/live',event:'impact_click'}}),beforeClicks+1);
+ await page.goto(base+'/live',{waitUntil:'networkidle'});
  await page.getByRole('button',{name:'Allow affiliate measurement'}).click();await page.waitForFunction(()=>window.__impactTagLoaded===true);assert.equal(tagLoads,1);
  await page.getByRole('link',{name:'Privacy details'}).click();await page.waitForURL('**/privacy#treasure-hauls');assert.equal(await page.evaluate(()=>window.__impactTagLoaded),undefined);
  await page.goto(base+'/live',{waitUntil:'networkidle'});await page.waitForFunction(()=>window.__impactTagLoaded===true);assert.equal(tagLoads,2);
