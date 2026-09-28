@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.54.0';
+export const APP_VERSION = '1.54.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.54.1',
+    date: '2026-09-28',
+    title: 'Show only verified schedule details',
+    items: ['Imported Whatnot schedules show the confirmed start without presenting an estimated runtime as a platform-supplied duration.'],
+  },
   {
     version: '1.54.0',
     date: '2026-09-28',
