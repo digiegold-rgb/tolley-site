@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
         if (!accountId) continue;
         for (const post of campaignPack(show)) {
           const expiresAt = post.kind === "live" ? new Date(show.startsAt.getTime() + 60 * 60000) : post.kind === "preview" ? show.startsAt : new Date(post.dueAt.getTime() + 15 * 60000);
-          await prisma.liveCampaignPost.upsert({ where: { showId_kind_platform_accountId: { showId: show.id, kind: post.kind, platform, accountId } }, create: { ...post, showId: show.id, platform, accountId, expiresAt, status: post.manual ? "manual" : "draft", caption: post.caption.replaceAll("utm_source=facebook", `utm_source=${platform}`), mediaUrl: `https://www.tolley.io/live/poster?show=${show.id}&format=${post.format}` }, update: {} });
+          await prisma.liveCampaignPost.upsert({ where: { showId_kind_platform_accountId: { showId: show.id, kind: post.kind, platform, accountId } }, create: { ...post, showId: show.id, platform, accountId, expiresAt, status: post.manual ? "manual" : "draft", caption: post.caption.replaceAll("utm_source=facebook", `utm_source=${platform}`), mediaUrl: platform === "instagram" && post.format === "feed" ? "https://www.tolley.io/treasure-hauls/feed.jpg" : `https://www.tolley.io/live/poster?show=${show.id}&format=${post.format}` }, update: {} });
         }
       }
     } else if (b.action === "campaign_custom") {
