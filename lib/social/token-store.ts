@@ -48,7 +48,9 @@ export async function getStoredToken(
 ): Promise<{ accessToken: string; refreshToken: string | null; accountId: string | null } | null> {
   try {
     const row = await prisma.platformConnection.findFirst({
-      where: { subscriberId: ADMIN_SUBSCRIBER, platform, status: "active", ...(accountId ? { platformAccountId: accountId } : {}) },
+      // Explicit haul bindings may use their dedicated credential namespace.
+      // Adding a haul account must never change the generic "latest account" fallback.
+      where: { subscriberId: accountId ? { in: [ADMIN_SUBSCRIBER, "treasure-hauls"] } : ADMIN_SUBSCRIBER, platform, status: "active", ...(accountId ? { platformAccountId: accountId } : {}) },
       orderBy: { updatedAt: "desc" },
     });
     if (!row) return null;

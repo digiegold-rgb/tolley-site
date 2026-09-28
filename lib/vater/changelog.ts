@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.52.0';
+export const APP_VERSION = '1.52.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.52.1',
+    date: '2026-09-27',
+    title: 'Keep Treasure Hauls channel connections isolated',
+    items: ['Dedicated show credentials no longer affect the default account used for other businesses.'],
+  },
   {
     version: '1.52.0',
     date: '2026-09-27',
