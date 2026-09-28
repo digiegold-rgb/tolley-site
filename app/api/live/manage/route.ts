@@ -101,7 +101,9 @@ export async function POST(req: NextRequest) {
       assertAutomatedCopy(caption);
       const dueAt = centralInstant(z.string().parse(b.date), z.string().parse(b.time));
       if (dueAt <= new Date()) throw new Error("Choose a future posting time");
-      await prisma.liveCampaignPost.create({ data: { kind, platform, accountId, caption, dueAt, expiresAt: new Date(dueAt.getTime() + 3 * 3600000), manual: kind !== "recap" || platform !== "facebook", status: kind === "recap" && platform === "facebook" ? "draft" : "manual" } });
+      const crossoverBound = (settings?.bindings as Record<string, Binding> | null)?.[`crossover:${platform}:${accountId}`]?.accountId === accountId;
+      const manual = platform !== "facebook" || (kind !== "recap" && !(kind === "crossover" && crossoverBound));
+      await prisma.liveCampaignPost.create({ data: { kind, platform, accountId, caption, dueAt, expiresAt: new Date(dueAt.getTime() + 3 * 3600000), manual, status: manual ? "manual" : "draft" } });
     } else if (b.action === "campaign_edit" || b.action === "campaign_queue" || b.action === "campaign_hold" || b.action === "campaign_posted") {
       const id = z.string().parse(b.id);
       const post = await prisma.liveCampaignPost.findUniqueOrThrow({ where: { id } });
