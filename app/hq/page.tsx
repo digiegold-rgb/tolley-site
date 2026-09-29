@@ -682,7 +682,7 @@ function HqPageInner() {
               <div className="tab-docs-menu">
                 <a href="/stream/guide" onClick={closeDocs}>
                   📡 Streaming setup &amp; nightly checklist
-                  <span className="doc-sub">Whatnot on Windows, camera and audio fixes, delay testing, and the Facebook / combined-chat plan — Sep 29, 2026</span>
+                  <span className="doc-sub">Whatnot on Windows, camera and audio fixes, delay testing, Facebook previews, and combined live chat — Sep 29, 2026</span>
                 </a>
                 <a
                   href="/research/whatnot-market-study-2026-09-20.pdf"

@@ -2,7 +2,7 @@
 
 ## Latest shared handoff
 
-Read [OPERATIONS.md](OPERATIONS.md) for the September 29 camera/audio findings, nightly Windows Whatnot workflow, single-DJI delay test, TikTok account gate and deferred Facebook LIVE / combined-chat work. The same document is served behind owner authentication at `/stream/guide` and linked from HQ Docs. Treat its hardware and platform observations as dated; query current state before acting.
+Read [OPERATIONS.md](OPERATIONS.md) for the September 29 camera/audio findings, nightly Windows Whatnot workflow, single-DJI delay test, TikTok account gate and Facebook preview / combined-chat setup. The same document is served behind owner authentication at `/stream/guide` and linked from HQ Docs. Treat its hardware and platform observations as dated; query current state before acting.
 
 Any agent (Claude on the DGX "Spark", Grok Bot on the Windows PC, Codex on the Mac) controls the
 house live pipeline through ONE HTTP API on the DGX stream director. Same commands, same power,
@@ -31,6 +31,19 @@ every call is logged with the agent's name.
 CLI wrappers do the same thing:
 - DGX / Mac (bash): `stream status | go-live [youtube] [tiktok] [whatnot] [nostudio] | end [reason] | privacy on|off | cam 1-4 | audio 1-4 | dest youtube|tiktok|whatnot on|off | whatnot-key <url> <key> | whatnot-key clear | rotate-key [slot] | pc <powershell>`
 - Windows PC (PowerShell): `stream status | go-live [youtube] [tiktok] | end | privacy on|off | dest youtube on|off`
+
+## Facebook preview workflow
+
+CLI: `stream facebook status | prepare [title] | select <video-id> | send <video-id> | stop`. For recovery of an already-public show only: `stream facebook resume <video-id> --confirm-public`, requiring Jared’s readiness.
+
+Read `OPERATIONS.md` for the nightly steps. `GET /status.facebook` reports verified Page, selected video, Meta phase and errors; `destinations.facebook.running` reports transport only. The Page is fixed to `1156652300855210`.
+
+- `POST /facebook/prepare {"title":"..."}` creates/reuses an **UNPUBLISHED** preview. It never publishes; on an ambiguous timeout, recover the existing preview in Live Producer.
+- `POST /facebook/select {"videoId":"..."}` verifies Page ownership and selects an existing unpublished/live show while the Facebook sender is stopped.
+- `POST /facebook/send {"videoId":"..."}` requires an armed, ready house and an unpublished selected preview. It only forwards the house program. Publish manually in Facebook Live Producer when Jared explicitly says he is ready.
+- An already-public show can resume only with explicit `confirmLive` equal to that selected video ID. This forwards public picture/audio; do not issue it under preparation-only authorization.
+- `POST /destinations {"facebook":false}` stops the sender; end the Facebook show separately in Live Producer first. Generic toggles/go-live cannot enable Facebook. Restarting the director clears Facebook enablement.
+- New credentials remain only in `~/.config/tolley-security/stream.env`. Do not print `FACEBOOK_PAGE_TOKEN` or `FACEBOOK_INGEST_URL`. Run `ops/stream/facebook/install.py` only while idle; it preserves other director integrations.
 
 ## Cameras (slots 1–4)
 - Each slot has its own 32-hex key (`CAM_KEY`, `CAM2_KEY`…`CAM4_KEY` in stream.env; `/status` only ever shows the last 6 chars as `keyTail`).
@@ -72,7 +85,7 @@ CLI wrappers do the same thing:
 ## Public hub and clips
 - `/live` is public. `/stream` and `/stream/growth` remain owner-only.
 - Armed, encoding and sending are distinct from a platform-confirmed live show. Confirm public Whatnot live state only after checking Seller Hub; the public flag expires automatically.
-- Chat here covers YouTube/TikTok only; Whatnot chat stays in Seller Hub.
+- Chat here covers YouTube/TikTok and the selected Facebook live video; Whatnot chat stays in Seller Hub. Facebook comments are not yet saved by Stream Coach.
 - `/status.recording` reports a read-only NAS file freshness check, not an OBS recording flag. `unknown` is not healthy.
 - Clip worker: `tolley-stream-clips.timer`; skips work while house armed/encoding. It never starts/stops streams or deletes archive recordings.
 - Clip publishing pause, held/uncertain results, schedule and show ledgers: `/stream/growth`. Existing in-flight network requests may finish after pausing.

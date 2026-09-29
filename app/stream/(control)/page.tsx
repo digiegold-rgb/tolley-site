@@ -4,15 +4,17 @@ import Link from "next/link";
 import { broadcastLabel } from "@/lib/live/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import FacebookLive, { type FacebookMeta } from "@/components/stream/FacebookLive";
 import CamSwitcher, { type StreamCam } from "@/components/stream/CamSwitcher";
 
 // tolley.io/stream — one-handed phone remote for the house live pipeline.
 // Gated like /hq: owner NextAuth session + MFA (validateWdAdmin). Commands go through /api/stream/* → DGX director.
 // tolley.io stores no stream keys.
 
-type Dest = "youtube" | "tiktok" | "whatnot";
+type Dest = "youtube" | "tiktok" | "whatnot" | "facebook";
 type DestState = { enabled: boolean; configured: boolean; running: boolean; uptimeS: number; keyTail?: string };
 type Status = {
+  facebook?: FacebookMeta;
   recording?: { state: string; ageS: number | null; bytes: number; error?: string };
   armed: boolean;
   privacy: boolean;
@@ -29,11 +31,11 @@ type Status = {
   events: { t: number; kind: string; msg: string }[];
 };
 
-type ChatMsg = { id: number; t: number; p: "yt" | "tt"; u: string; m: string; k: "chat" | "gift" | "join"; amt?: string };
-type ChatState = { items: ChatMsg[]; last: number; youtube?: { connected: boolean; video: string; error: string }; tiktok?: { connected: boolean; user: string; error: string; viewers: number }; error?: string };
+type ChatMsg = { id: number; t: number; p: "yt" | "tt" | "fb"; source?: string; eventId?: string; u: string; m: string; k: "chat" | "gift" | "join"; amt?: string };
+type ChatState = { epoch?: string; reset?: boolean; sources?: Partial<Record<ChatMsg["p"], string>>; facebook?: FacebookMeta & { connected: boolean }; items: ChatMsg[]; last: number; youtube?: { connected: boolean; video: string; error: string }; tiktok?: { connected: boolean; user: string; error: string; viewers: number }; error?: string };
 
 const DESTS: Dest[] = ["youtube", "tiktok", "whatnot"];
-const LABEL: Record<Dest, string> = { youtube: "YouTube", tiktok: "TikTok", whatnot: "Whatnot" };
+const LABEL: Record<Dest, string> = { youtube: "YouTube", tiktok: "TikTok", whatnot: "Whatnot", facebook: "Facebook" };
 
 type NowSelling = { slug: string; name: string; currentIndex: number; total: number; currentTitle: string | null };
 
@@ -49,8 +51,8 @@ export default function StreamPage() {
   const [status, setStatus] = useState<Status | null>(null);
   const [offline, setOffline] = useState<string>("");
   const [busy, setBusy] = useState("");
-  const [sel, setSel] = useState<Record<Dest, boolean>>({ youtube: true, tiktok: false, whatnot: false });
-  const [openStudio, setOpenStudio] = useState(true);
+  const [sel, setSel] = useState<Record<Dest, boolean>>({ youtube: false, tiktok: false, whatnot: false, facebook: false });
+  const [openStudio, setOpenStudio] = useState(false);
   const [selling, setSelling] = useState<NowSelling | null>(null);
   const [holdPct, setHoldPct] = useState(0);
   const [showAdv, setShowAdv] = useState(false);
@@ -59,6 +61,7 @@ export default function StreamPage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [showJoins, setShowJoins] = useState(false);
   const chatLast = useRef(0);
+  const chatEpoch = useRef("");
   const chatBox = useRef<HTMLDivElement | null>(null);
   const holdTimer = useRef<number | null>(null);
   const holdStart = useRef(0);
@@ -73,7 +76,7 @@ export default function StreamPage() {
       if (!r.ok) { setOffline(j.error || `HTTP ${r.status}`); return; }
       setOffline("");
       setStatus(j);
-      if (j.armed) setSel({ youtube: !!j.destinations.youtube?.enabled, tiktok: !!j.destinations.tiktok?.enabled, whatnot: !!j.destinations.whatnot?.enabled });
+      if (j.armed) setSel({ youtube: !!j.destinations.youtube?.enabled, tiktok: !!j.destinations.tiktok?.enabled, whatnot: !!j.destinations.whatnot?.enabled, facebook: !!j.destinations.facebook?.enabled });
     } catch (e) {
       setChecking(false);
       setOffline(e instanceof Error ? e.message : "network error");
@@ -91,35 +94,50 @@ export default function StreamPage() {
   // "Now selling" — the active product lineup, if the clicker is running one.
   useEffect(() => {
     if (!authed) return;
-    let stop = false;
+    let stop = false, polling = false;
     const tick = async () => {
+      if (polling) return;
+      polling = true;
       try {
         const r = await fetch("/api/stream-lineup", { cache: "no-store" });
         if (!r.ok) return;
         const j = await r.json();
         if (!stop) setSelling(j.active ?? null);
       } catch { /* keep polling */ }
+      finally { polling = false; }
     };
     void tick();
     const t = window.setInterval(() => void tick(), 10_000);
     return () => { stop = true; window.clearInterval(t); };
   }, [authed]);
 
-  // Live chat: merged YouTube + TikTok feed, polled every 2 s while signed in.
+  // Live chat: merged YouTube + Facebook + TikTok feed, polled every 2 s while signed in.
   useEffect(() => {
     if (!authed) return;
-    let stop = false;
+    let stop = false, polling = false;
     const tick = async () => {
+      if (polling) return;
+      polling = true;
       try {
-        const r = await fetch(`/api/stream/chat?since=${chatLast.current}&limit=80`, { cache: "no-store" });
-        if (!r.ok) return;
+        const r = await fetch(`/api/stream/chat?since=${chatLast.current}&limit=80&epoch=${encodeURIComponent(chatEpoch.current)}`, { cache: "no-store" });
+        if (!r.ok) throw new Error("Chat unavailable");
         const j: ChatState = await r.json();
+        if (stop) return;
         setChatMeta(j);
-        if (j.items?.length) {
-          chatLast.current = j.last;
-          setChat((prev) => [...prev, ...j.items].slice(-300));
-        }
-      } catch { /* keep polling */ }
+        const reset = !!j.reset || !!(j.epoch && chatEpoch.current && j.epoch !== chatEpoch.current);
+        if (j.epoch) chatEpoch.current = j.epoch;
+        chatLast.current = j.last;
+        setChat(prev => {
+          const retained = (reset ? [] : prev).filter(m => !j.sources || !m.source || m.source === j.sources[m.p]);
+          const seen = new Set(retained.map(m => `${m.p}:${m.source}:${m.eventId || m.id}`));
+          return [...retained, ...(j.items || []).filter(m => {
+            const key = `${m.p}:${m.source}:${m.eventId || m.id}`;
+            if (seen.has(key)) return false;
+            seen.add(key); return true;
+          })].slice(-300);
+        });
+      } catch { setChatMeta(prev => prev ? { ...prev, error: "Chat connection interrupted; reconnecting…" } : { items: [], last: 0, error: "Chat connection interrupted; reconnecting…" }); }
+      finally { polling = false; }
     };
     void tick();
     const t = window.setInterval(() => { if (!stop && !document.hidden) void tick(); }, 2000);
@@ -145,7 +163,7 @@ export default function StreamPage() {
   function toggleDest(d: Dest) {
     const next = { ...sel, [d]: !sel[d] };
     setSel(next);
-    if (status?.armed) void cmd("destinations", next);
+    if (status?.armed) void cmd("destinations", { [d]: next[d] });
   }
 
   // Hold-to-end: 1 s press so a pocket tap can't kill the live.
@@ -235,6 +253,9 @@ export default function StreamPage() {
         ))}
       </div>
 
+      <FacebookLive meta={s?.facebook} armed={live} programReady={!!s?.obs.programReady}
+        enabled={!!s?.destinations.facebook?.enabled} sending={!!s?.destinations.facebook?.running} refresh={load} />
+
       {/* Whatnot streams over WHIP through ITS OWN Show Tools page driving a local OBS (no RTMP key), so it is not a pusher here:
           the OBS on the wired Windows stream PC already shows the house program feed, and Whatnot's page points that OBS at the show. */}
       <section aria-labelledby="whatnot-start-heading" style={{ margin: "-4px 0 14px", padding: 16, border: "1px solid #66508a", borderRadius: 12, fontSize: 14, color: "#dce" }}>
@@ -262,7 +283,7 @@ export default function StreamPage() {
       {/* main controls */}
       <div style={{ display: "grid", gap: 12 }}>
         {!live ? (
-          <button style={{ ...S.btn, ...S.primary }} disabled={!!busy || dgxDown} onClick={() => cmd("go-live", { destinations: sel, studio: openStudio })}>
+          <button style={{ ...S.btn, ...S.primary }} disabled={!!busy || dgxDown} onClick={() => cmd("go-live", { destinations: { ...sel, facebook: false }, studio: openStudio })}>
             {busy === "go-live" ? "…" : "▶ Arm house"}
           </button>
         ) : (
@@ -278,13 +299,14 @@ export default function StreamPage() {
         </button>
       </div>
 
-      <p style={{ color: "#9ab", fontSize: 13, marginTop: 18 }}>Combined live chat: YouTube and TikTok. Facebook LIVE and Facebook comments are planned, not connected yet. Keep Whatnot chat open in Seller Hub. <Link href="/stream/guide">Streaming guide →</Link></p>
-      {/* live chat (YouTube + TikTok merged) */}
+      <p style={{ color: "#9ab", fontSize: 13, marginTop: 18 }}>Combined live chat: YouTube, Facebook and TikTok. Facebook follows the selected show above. YouTube is connected to Digital Gold Jelly Studio. Keep Whatnot chat open in Seller Hub. <Link href="/stream/guide">Streaming guide →</Link></p>
+      {/* live chat (YouTube + Facebook + TikTok merged) */}
       <div style={{ marginTop: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
           <div style={{ fontSize: 13, color: "#8a9", textTransform: "uppercase", letterSpacing: 0.5 }}>
             Chat ·
             <span style={{ color: chatMeta?.youtube?.connected ? "#2ecc71" : "#667" }}> ▶ YT</span>
+            <span style={{ color: chatMeta?.facebook?.connected ? "#2ecc71" : "#667" }}> f FB</span>
             <span style={{ color: chatMeta?.tiktok?.connected ? "#2ecc71" : "#667" }}> ♪ TT{chatMeta?.tiktok?.connected && chatMeta.tiktok.viewers ? ` ${chatMeta.tiktok.viewers}👀` : ""}</span>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
@@ -292,13 +314,15 @@ export default function StreamPage() {
             <button style={S.link} onClick={() => setChatOpen((v) => !v)}>{chatOpen ? "▾ small" : "▴ full screen"}</button>
           </div>
         </div>
+        {(chatMeta?.error || chatMeta?.facebook?.error) && <p role="status" style={{ color: "#ffd3bc", fontSize: 13 }}>{chatMeta.error || chatMeta.facebook?.error}</p>}
         <div ref={chatBox} style={{ ...S.chat, height: chatOpen ? "70vh" : 220 }}>
           {chat.filter((c) => showJoins || c.k !== "join").length === 0 && (
-            <div style={{ color: "#667", fontSize: 14 }}>{chatMeta?.error ? chatMeta.error : "No messages yet. YouTube connects when a live is found; TikTok when @digiegold is live."}</div>
+            <div style={{ color: "#667", fontSize: 14 }}>{chatMeta?.error ? chatMeta.error : "No messages yet. Messages appear when the selected platform shows are live and viewers comment."}</div>
           )}
           {chat.filter((c) => showJoins || c.k !== "join").map((c) => (
-            <div key={`${c.p}-${c.id}`} style={{ ...S.msg, ...(c.k === "gift" ? S.msgGift : {}) }}>
-              <span style={{ color: c.p === "yt" ? "#ff5c5c" : "#69e0ff", fontWeight: 700 }}>{c.p === "yt" ? "▶" : "♪"} </span>
+            <div key={`${c.p}-${c.id}`} title={c.source || ""} style={{ ...S.msg, ...(c.k === "gift" ? S.msgGift : {}) }}>
+              <span style={{ color: c.p === "yt" ? "#ff5c5c" : c.p === "fb" ? "#82b8ff" : "#69e0ff", fontWeight: 700 }}>{c.p === "yt" ? "YouTube" : c.p === "fb" ? "Facebook" : "TikTok"} </span>
+              <time dateTime={new Date(c.t * 1000).toISOString()} style={{ fontSize: 11, color: "#9ab" }}>{new Date(c.t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} </time>
               <span style={{ color: "#dfe", fontWeight: 600 }}>{c.u}</span>
               {c.k === "gift" && <span style={{ color: "#f5c542" }}> 🎁 {c.amt}</span>}
               <span style={{ color: c.k === "join" ? "#889" : "#fff" }}> {c.m}</span>

@@ -4,7 +4,7 @@ Updated September 29, 2026. Shared instructions for Jared and the agents maintai
 
 ## Today's scope and readiness
 
-Use one DJI camera for the first test. Defer extra cameras, Facebook activation and the other connections until later. Prepare the preview first; Jared starts the public show when ready. A request to get ready is not permission to publish immediately or after an assumed countdown.
+Use one DJI camera for the first test. Defer extra cameras and the other camera connections until later. The requested Facebook phase is now installed as an unpublished preview; public activation still waits for Jared. Prepare the preview first; Jared starts the public show when ready. A request to get ready is not permission to publish immediately or after an assumed countdown.
 
 The DJI USB connection is **not verified**. Windows did not enumerate a DJI or UVC camera, and the camera did not offer its usual USB mode menu. The Windows USB controller reported healthy. The top case port is not proven faulty; check camera power, Webcam mode, a data-capable cable, and the port connection before changing software. Confirm the model and which computer it is connected to. Do not claim a working DJI preview until it is visible.
 
@@ -16,7 +16,7 @@ For the house feed: camera → UGREEN NAS relay → Spark OBS → UGREEN finishe
 
 Larix phones publish SRT to the house relay. A DJI publishing through Mimo must use its configured house input. A DJI plugged into Windows in USB Webcam mode is a separate, direct camera path: it does **not** automatically pass through the Spark or inherit the house BRB, Privacy or camera switching. Establish which path is being tested before comparing delay.
 
-The Spark can send the finished house program to YouTube through its configured destination. TikTok currently uses LIVE Studio on Windows. A running sender, an open application and a platform-confirmed public broadcast are different states.
+The Spark can send the finished house program to YouTube and Facebook through separate destinations. On September 29 the owner API verified the YouTube channel as **Digital Gold Jelly Studio** (`UCd4bJKIvbGOIAT-GK4K-3_w`), not a separately verified Treasure Hauls YouTube channel. TikTok currently uses LIVE Studio on Windows. A running sender, an open application and a platform-confirmed public broadcast are different states.
 
 ## What the buttons do
 
@@ -26,6 +26,7 @@ The Spark can send the finished house program to YouTube through its configured 
 | YouTube | Selects the YouTube sender. While armed, enabling it can immediately send video; YouTube's visibility and auto-start settings determine public availability. Verify the intended channel and visibility first. |
 | Privacy | Replaces house camera/audio with the privacy slate. It does not make a platform's audience private and does not cover a direct USB camera in TikTok. |
 | Hold to END STREAM | Ends the house pipeline and closes LIVE Studio. End the platform shows first. |
+| Facebook LIVE | Creates an unpublished preview on the verified Page. Send house feed starts only the Facebook sender; publish separately in Live Producer when ready. |
 | Whatnot checklist | Explains how to connect the correct nightly show on Windows. Arming the house does not start a Whatnot show. |
 
 When all house cameras disconnect for over five seconds, the Spark switches to BRB. A camera returning restores the picture. With another camera connected, the director can switch to it automatically. After all cameras are gone for 15 minutes, the house ends; the normal maximum session is eight hours. The user observed BRB preserve the downstream stream during a camera disconnect. Do not generalize this to a direct USB feed.
@@ -76,21 +77,32 @@ Troubleshooting evidence:
 
 The current house SRT setup needs **Larix Broadcaster Premium**, not the NDI subscription. Premium removes the watermark and time limit. The official FAQ allows up to ten devices sharing one Apple ID or one Google account; iOS and Android purchases are separate. Use Restore purchases if an eligible device has not activated. Recheck current pricing and terms in the [Larix Premium FAQ](https://softvelum.com/larix/premium/).
 
-## Facebook and combined chat: requested next phase
+## Facebook LIVE and combined chat
 
-Target: Treasure Hauls' Facebook Page should receive the same finished house show. Viewers should be able to watch and comment on Facebook, with their live comments and YouTube live messages appearing together on tolley.io/stream. This means live-video comments, not the separate Facebook Messenger inbox.
+The Facebook destination and comments reader are installed on the Spark. The owner-only stream page has a **Facebook LIVE** panel. Facebook Page **1156652300855210**, currently **Ruthann’s Treasure Haul**, was reverified through the existing Page token on September 29. Reading its live-video list, video ownership and comments endpoint succeeded. Existing clip publishing is independent of this live sender.
 
-Current code merges YouTube and TikTok chat; the Stream Coach can save supported chat. Whatnot chat remains in Seller Hub. Facebook live ingest and Facebook live comments are **not implemented in the running director/chat service**. Existing Facebook clip publishing is not Facebook LIVE support.
+An unpublished preview was created: **Treasure Hauls — house preview**, live-video ID **122117051781297240**. Meta returned `UNPUBLISHED`; the house and Facebook sender were left off. This is dated evidence: recheck `/status.facebook` before operating. The complete camera → Facebook picture/audio path and real viewer comments on both platforms still need an authorized live test. No public Facebook show was started during installation.
 
-Earlier installation evidence verified Facebook Page **1156652300855210**, then named **Ruthann’s Treasure Haul**. Reverify its current identity and permissions before connecting LIVE. Do not substitute another brand's account. Prior saved YouTube/Instagram publishing connections were associated with Your KC Homes; clip publishing credentials and the house's YouTube ingest configuration must not be assumed to target the same account.
+### Nightly Facebook workflow
 
-Next implementation checklist:
+1. In [stream controls](/stream), open **Facebook LIVE**. Check the Page name, enter the title and click **Create Facebook preview**. An existing unpublished preview is reused; its title is retained. For a show made in Facebook, open “Select an existing Facebook show” and enter its live-video ID. IDs from other Pages are rejected.
+2. **Arm house** with other destinations off and LIVE Studio unchecked. Start the camera and confirm the house preview/audio. Initial selections now default off.
+3. Click **Send house feed to preview**. Open [Facebook Live Producer](https://www.facebook.com/live/producer/?page_id=1156652300855210), choose the same Page and preview, and check picture and sound. The ingest credential stays on the Spark; there is no stream key to copy through the website.
+4. When Jared is ready for viewers, click **Go live in Facebook Live Producer**. The website never performs this publish action. The Facebook panel changes to “Live on Facebook” only after Meta reports `LIVE`. “Sending” alone is not live confirmation. An unpublished preview is not an audience privacy setting; the public show’s audience is controlled in Facebook.
+5. Facebook comments appear beside YouTube and TikTok messages with platform, sender and timestamp. They follow the selected Facebook live-video ID and only read while Meta reports it live. If no author name is supplied, “Facebook viewer” is shown. Whatnot chat remains in Seller Hub. Stream Coach currently saves YouTube/TikTok only; Facebook comments are displayed in the combined panel, not added to Coach’s saved sessions yet.
+6. End Facebook in Live Producer, then stop the Facebook sender or end the house after all platform shows have ended. Stopping video transport does not explicitly end the Facebook show.
 
-1. Reverify the intended Facebook Page, live eligibility and Page access. Confirm the correct Treasure Hauls YouTube channel independently.
-2. Add Facebook as a separate director destination using the finished program, with credentials stored only in the existing secure configuration. Prepare a Live Producer preview; publish only when Jared is ready. Confirm current Meta ingest requirements before implementation.
-3. Associate the actual Facebook live-video ID with the show. Read its comments through supported, authorized Meta APIs; verify required permissions against current documentation. Never infer live-comment permission from successful clip uploads.
-4. Merge Facebook and YouTube messages in the stream page with platform, sender, timestamp and source-show identity. Deduplicate by platform/event ID, preserve reconnect cursors, label connection failures, and reset sources between shows so old comments cannot masquerade as current ones. Preserve the existing YouTube/TikTok feed.
-5. Prove the path with one real viewer comment on each platform and a reconnect test during an authorized show. Keep Whatnot chat explicitly separate unless a supported integration is established. Do not send replies or messages on Jared's behalf without authorization.
+The sender cannot start from a generic destination toggle or a remembered selection. A director restart disables Facebook sending. If an already-public show needs reconnecting, select its ID and use **Resume public Facebook feed**, which asks for explicit confirmation before forwarding picture/audio. The house’s BRB and Privacy slates are part of the same finished program sent to Facebook. Privacy is not a platform audience control.
+
+### Recovery and validation
+
+- Expired token: reconnect the exact Page in social settings; rerun `ops/stream/facebook/provision.mjs` with the production environment available privately. It checks the saved binding and `/me` identity and stores credentials only in the existing secure configuration. No camera or OBS passwords belong in documents or chat.
+- Ambiguous preview request: creation intent is recorded before the API POST. Do not retry blindly or clear the guard. Open Live Producer, locate that preview and use its live-video ID to select it. Creating another preview does not automatically clear an uncertain previous attempt.
+- Failed ownership/status checks disable forwarding. Facebook errors are displayed without returning upstream bodies or ingest credentials. FFmpeg’s Facebook output is not logged because an error can echo its ingest URL.
+- The comments reader preserves its paging cursor across ordinary polling, retries from the last timestamp after a failed cursor request and suppresses replayed event IDs. Show changes clear old source messages. Chat service restarts send a new epoch so the browser cannot become stuck behind an old sequence number.
+- Remaining live acceptance check: once Jared approves a public test, confirm the actual picture/audio in Facebook, send one viewer comment on Facebook and one on YouTube, verify both in the combined panel, then interrupt/reconnect the chat reader and confirm no duplicates. Do not send comments or replies as Jared without authorization.
+
+Implementation, mocked contract tests, install and rollback instructions: `ops/stream/facebook/README.md`. All nine offline contract tests passed during installation; website browser checks are recorded in the validation handoff.
 
 ## Agent handoff and source of truth
 
