@@ -43,12 +43,12 @@ export async function reservePublication(clipId: string, platform: LivePlatform)
     const clip = await tx.liveClip.findUnique({ where: { id: clipId } });
     if (!clip || !clip.showId || clip.status !== "ready" || !canAutoPublish(clip.review)) return null;
     const show = await tx.liveShow.findUnique({ where: { id: clip.showId } });
-    if (!show?.confirmedUntil) return null;
+    if (!show?.confirmedUntil || !show.liveStartedAt) return null;
     if (await tx.livePublication.findUnique({ where: { clipId_platform: { clipId, platform } } })) return null;
     // A Central calendar day keeps nightly reminders from drifting later each day.
     const since = settings.campaignPaused ? new Date(Date.now() - 86400000) : centralInstant(centralDate(new Date()), "00:00");
     const count = await tx.livePublication.count({ where: { platform, accountId: binding.accountId, createdAt: { gte: since } } });
-    const campaigns = await tx.liveCampaignPost.count({ where: { platform, accountId: binding.accountId, format: "feed", status: { in: ["posting", "posted", "uncertain"] }, updatedAt: { gte: since } } });
+    const campaigns = await tx.liveCampaignPost.count({ where: { platform, accountId: binding.accountId, format: "feed", NOT: { kind: { startsWith: "announce_" } }, status: { in: ["posting", "posted", "uncertain"] }, updatedAt: { gte: since } } });
     if (count + campaigns >= 2) return null;
     if (!settings.campaignPaused) {
       const hour = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "2-digit", hourCycle: "h23" }).format(new Date()));
@@ -113,6 +113,6 @@ export async function matchShowForClip(recordedAt: string, startS: number, endS:
   const stamp = Date.parse(recordedAt);
   if (!Number.isFinite(stamp)) return null;
   const start = new Date(stamp + startS * 1000), end = new Date(stamp + endS * 1000);
-  const shows = await prisma.liveShow.findMany({ where: { confirmedUntil: { gte: end }, OR: [{ endedAt: null }, { endedAt: { gte: end } }] }, orderBy: { startsAt: "desc" }, take: 20 });
-  return shows.find(s => s.confirmedUntil && s.confirmedUntil.getTime() - s.durationMin * 60000 <= start.getTime())?.id || null;
+  const shows = await prisma.liveShow.findMany({ where: { status: { in: ["live", "ended"] }, liveStartedAt: { lte: start }, confirmedUntil: { gte: end }, OR: [{ endedAt: null }, { endedAt: { gte: end } }] }, orderBy: { startsAt: "desc" }, take: 20 });
+  return shows[0]?.id || null;
 }

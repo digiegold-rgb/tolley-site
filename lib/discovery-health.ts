@@ -4,7 +4,7 @@ export type HealthResult = { path: string; ok: boolean; status?: number; finalUr
 export async function checkDiscoveryHealth(base = "https://www.tolley.io", fetcher: typeof fetch = fetch): Promise<HealthResult[]> {
   const offers = publicOfferings();
   let robots = "";
-  const paths = ["/services", "/llms.txt", "/llms-full.txt", "/robots.txt", "/sitemap.xml", ...offers.map(s => s.url)];
+  const paths = ["/live/reselling", "/live/sell", "/blog", "/services", "/llms.txt", "/llms-full.txt", "/robots.txt", "/sitemap.xml", ...offers.map(s => s.url)];
   const results: HealthResult[] = [];
   // Four concurrent GETs; never submit forms, initiate payments, or render video.
   for (let i = 0; i < paths.length; i += 4) {

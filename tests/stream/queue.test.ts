@@ -6,7 +6,7 @@ const review = {transcriptSafe:true,visualSafe:true,humiliationFree:true,profani
 test("durable reservations prevent duplicates, enforce cap and honor pause/holds",async()=>{
  if(!process.env.DATABASE_URL?.endsWith('/tolley_live_growth_test')) throw new Error('Isolated test database required');
  await prisma.livePublication.deleteMany();await prisma.liveClip.deleteMany();
- const show=await prisma.liveShow.create({data:{title:"Queue test",category:"Electronics",startsAt:new Date(),durationMin:120,whatnotUrl:"https://www.whatnot.com/live/test",confirmedUntil:new Date(Date.now()+7200000)}});
+ const show=await prisma.liveShow.create({data:{title:"Queue test",category:"Electronics",startsAt:new Date(),durationMin:120,liveStartedAt:new Date(),status:"live",whatnotUrl:"https://www.whatnot.com/live/test",confirmedUntil:new Date(Date.now()+7200000)}});
  await prisma.liveSettings.upsert({where:{id:"treasure-hauls"},create:{publishingPaused:false,bindings:{facebook:{accountId:"test-page",label:"test"}}},update:{publishingPaused:false,bindings:{facebook:{accountId:"test-page",label:"test"}}}});
  for(const id of ['one','two','three','held']) await prisma.liveClip.create({data:{id,showId:show.id,recording:"test",startS:0,endS:30,title:"test",caption:"test",mediaUrl:"https://example.test/video.mp4",status:id==='held'?'held':'ready',review}});
  const concurrent=await Promise.all(Array.from({length:5},()=>reservePublication('one','facebook')));
@@ -20,7 +20,7 @@ test("durable reservations prevent duplicates, enforce cap and honor pause/holds
  await prisma.livePublication.deleteMany();await prisma.liveClip.deleteMany();await prisma.liveShow.delete({where:{id:show.id}});
 });
 test("only clips wholly inside a confirmed public show can be associated",async()=>{
- const show=await prisma.liveShow.create({data:{title:"Boundary test",category:"Electronics",startsAt:new Date("2026-09-01T17:00:00Z"),durationMin:60,whatnotUrl:"https://www.whatnot.com/live/test",confirmedUntil:new Date("2026-09-01T18:00:00Z"),endedAt:new Date("2026-09-01T17:45:00Z")}});
+ const show=await prisma.liveShow.create({data:{title:"Boundary test",category:"Electronics",startsAt:new Date("2026-09-01T17:00:00Z"),durationMin:60,liveStartedAt:new Date("2026-09-01T17:00:00Z"),status:"ended",whatnotUrl:"https://www.whatnot.com/live/test",confirmedUntil:new Date("2026-09-01T18:00:00Z"),endedAt:new Date("2026-09-01T17:45:00Z")}});
  assert.equal(await matchShowForClip("2026-09-01T17:00:00Z",30,60),show.id);
  assert.equal(await matchShowForClip("2026-09-01T16:59:50Z",0,30),null);
  assert.equal(await matchShowForClip("2026-09-01T17:44:50Z",0,30),null);

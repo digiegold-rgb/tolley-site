@@ -44,7 +44,7 @@ export default async function LivePage({ searchParams }: { searchParams: Promise
     {data.clips.length > 0 && <section className="haul-section"><p className="haul-eyebrow">MISSED THE SHOW?</p><h2>From the garage</h2><div className="haul-cards">{data.clips.map(c => <article className="haul-card" key={c.id}><video src={c.mediaUrl} controls playsInline preload="metadata"/><h3>{c.title}</h3><p>From a previous show. Items may already be sold.</p></article>)}</div></section>}
     <section id="join" className="haul-join"><div><p className="haul-eyebrow">KEEP IN TOUCH</p><h2>Get the next good find.</h2><p>Join the Treasure Haul drop list for fresh finds by email. Unsubscribe any time.</p></div><JoinHaul/></section>
     <section className="haul-section haul-bottom"><div><h2>Have a haul of your own?</h2><p>Let’s talk surplus inventory, sourcing, estate finds, or resale opportunities.</p><Link href="/estate">Explore estate & sourcing services ↗</Link></div><div><h3>Part of Tolley.</h3><p>Practical businesses, creative work, and people helping people.</p><Link href="/shop">Browse the shop ↗</Link><br/><Link href="/">Explore Tolley ↗</Link></div></section>
-    <PublicOfferDetails name="live" />
+    <section className="haul-section"><h2>Find your next move.</h2><div className="haul-actions"><Link href="/live/reselling">Sourcing and resale calculators ↗</Link><Link href="/live/sell">Ask us about selling your items ↗</Link><Link href="/blog">The Tolley build journal ↗</Link></div></section><PublicOfferDetails name="live" />
     <footer>Treasure Hauls by Tolley · Kansas City area · <Link href="/privacy">Privacy</Link><ImpactPublisher/></footer>
   </main>;
 }

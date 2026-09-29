@@ -1,0 +1,10 @@
+"use client";
+import { useState } from "react";
+import { browserAttribution } from "@/lib/discovery-browser";
+import { HeardAbout } from "@/components/discovery/inquiry";
+export default function SellerForm() {
+  const [reported,setReported] = useState(""), [state,setState] = useState(""), [busy,setBusy] = useState(false), [sent,setSent] = useState(false);
+  async function submit(e: React.FormEvent<HTMLFormElement>) { e.preventDefault(); setBusy(true); setState(""); try { const f = new FormData(e.currentTarget); const photos = f.getAll("photos").filter(x => x instanceof File && x.size) as File[]; if (photos.length > 3 || photos.reduce((n,p) => n+p.size,0) > 3000000) throw Error("Choose up to 3 photos totaling less than 3 MB."); f.set("attribution", JSON.stringify(browserAttribution(reported))); const r=await fetch("/api/live/sell", {method:"POST",body:f}); const b=await r.json(); if(!r.ok) throw Error(b.error || "Could not save your inquiry."); setSent(true); setState("Your inquiry and photos are saved. Jared will review them."); } catch(e) {setState(e instanceof Error ? e.message : "Could not send. Please call instead.");} finally {setBusy(false);} }
+  const cls="block w-full rounded border p-3 bg-transparent";
+  return <form onSubmit={submit} className="space-y-4">{!sent && <><label className="block">Your name<input className={cls} name="name" maxLength={120} required/></label><label className="block">Phone or email<input className={cls} name="contact" maxLength={200} required/></label><label className="block">City or ZIP<input className={cls} name="location" maxLength={150} required/></label><label className="block">Items, quantity, and condition<textarea className={cls} name="details" maxLength={2000} required/></label><label className="block">Item photos (up to 3; 3 MB total)<input className={cls} type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple/></label><HeardAbout value={reported} onChange={setReported}/><button className="rounded bg-white text-black p-3" disabled={busy}>{busy ? "Saving…" : "Ask for a quote"}</button></>}{state && <p role="status">{state}</p>}</form>;
+}

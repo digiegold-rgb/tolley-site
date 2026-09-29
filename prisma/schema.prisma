@@ -4949,6 +4949,7 @@ model RoutineBrief {
 // status=approved touches — nothing in /hq sends anything itself.
 // ────────────────────────────────────────────────────────────────────────────
 model GrowthLead {
+  sellerPhotos GrowthInquiryPhoto[]
   attribution Json?
   referralRootId String?
   discoveryStage String?
@@ -6091,6 +6092,7 @@ model LiveShow {
   whatnotUrl     String
   status         String   @default("scheduled")
   metrics        Json     @default("{}")
+  liveStartedAt  DateTime?
   confirmedUntil DateTime?
   endedAt        DateTime?
   ledger         Json     @default("{}")
@@ -6179,4 +6181,54 @@ model LiveDeal {
   createdAt DateTime @default(now())
   @@unique([showId, item, soldAt])
   @@index([verified, soldAt])
+}
+
+/// Owner controls for the growth workers. Independent of camera/broadcast controls.
+model GrowthAutomation {
+  id String @id @default("owner")
+  blogPaused Boolean @default(true)
+  announcementsPaused Boolean @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+/// Durable evidence and operational outcomes, never an inferred successful publication.
+model GrowthActivity {
+  id String @id
+  kind String
+  status String
+  title String
+  detail String
+  url String?
+  metadata Json @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([createdAt])
+}
+
+model BuildStory {
+  id String @id @default(cuid())
+  slot String @unique
+  sourceKey String @unique
+  slug String @unique
+  title String
+  description String
+  body String @db.Text
+  evidence Json
+  status String @default("draft")
+  retrospective Boolean @default(false)
+  publishedAt DateTime?
+  notificationStatus String @default("pending")
+  notificationId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, publishedAt])
+}
+
+model GrowthInquiryPhoto {
+  lead GrowthLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  id String @id @default(cuid())
+  leadId String
+  image Bytes
+  createdAt DateTime @default(now())
+  @@index([leadId])
 }

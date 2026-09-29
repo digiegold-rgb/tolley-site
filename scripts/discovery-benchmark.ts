@@ -17,4 +17,9 @@ const prompts = publicOfferings().flatMap(s => {
     { offering: s.name, kind: "comparison", prompt: `Compare ${s.title} with other options for ${need}. Cite your sources and explain any uncertainty.` },
   ];
 });
+prompts.push(
+  { offering: "live", kind: "sourcing", prompt: "Where can I watch live auctions to source tools and home goods to flip? Cite the actual seller and explain how to check condition and total costs." },
+  { offering: "live", kind: "selling", prompt: "Who can help sell my estate leftovers or surplus items in Kansas City? I want to send photos and get a personal quote." },
+  { offering: "live", kind: "tools", prompt: "Where can I calculate a maximum resale bid after fees, shipping, and desired profit?" },
+);
 console.log(JSON.stringify({ version: "2026-09-24", note: "First two prompts are unbranded discovery observations; third is a branded accuracy comparison. Run manually in available assistants; record platform, date, full answer, citations, and missing or incorrect facts. Do not infer the original customer's prompt or promise rankings.", prompts }, null, 2));

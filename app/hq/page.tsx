@@ -550,7 +550,7 @@ function HqPageInner() {
     <div>
       {/* Top bar */}
       <div className="topbar">
-        <span className="title">Growth HQ — Pipeline</span>
+        <span className="title">Growth HQ — Pipeline</span><a href="/hq/growth" className="tab-btn">Daily growth report ↗</a>
         <div className="actions">
           <HqAiPnl />
           <HqEngineStatus />

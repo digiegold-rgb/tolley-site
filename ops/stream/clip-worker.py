@@ -98,6 +98,10 @@ def review_clip(video,clip,segments,directory):
 def bridge(*args):
     run(['node','--env-file='+str(Path.home()/'.config/tolley-security/production.env'),'--import','/home/jelly/.npm-global/lib/node_modules/tsx/dist/loader.mjs',str(ROOT/'ops/stream/bridge.ts'),*map(str,args)],cwd=ROOT,timeout=600)
 
+def report(ident, status, title, detail):
+    try: bridge('activity', json.dumps({'id':ident,'status':status,'title':title,'detail':detail}))
+    except Exception: print('Activity reporting unavailable; inspect local worker state')
+
 def process(recording):
     if not NAME.fullmatch(recording): raise ValueError('Invalid recording filename')
     if not idle(): raise RuntimeError('House is busy')
@@ -137,7 +141,8 @@ def main():
     with (WORK/'worker.lock').open('w') as lock:
         try: fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError: return
-        if not idle(): print('House active; deferred');return
+        if not idle():
+            print('House active; deferred');report('clip-worker-health','deferred','Clip worker','House active; analysis deferred until idle.');return
         if args.recording: print('Candidates:',process(args.recording))
         if args.discover:
             db=sqlite3.connect(WORK/'recordings.sqlite');db.execute('CREATE TABLE IF NOT EXISTS recordings(name TEXT PRIMARY KEY, status TEXT, error TEXT)')
@@ -152,8 +157,16 @@ def main():
                 state=db.execute('SELECT status FROM recordings WHERE name=?',(name,)).fetchone()
                 if not state or state[0]!='done': pending.append(name)
             for name in sorted(pending)[:1]:
-                try: process(name);db.execute('INSERT OR REPLACE INTO recordings VALUES (?, ?, ?)',(name,'done',None))
-                except Exception as e: db.execute('INSERT OR REPLACE INTO recordings VALUES (?, ?, ?)',(name,'retry',type(e).__name__));print('Deferred',name,type(e).__name__)
+                try:
+                    count=process(name)
+                    db.execute('INSERT OR REPLACE INTO recordings VALUES (?, ?, ?)',(name,'done',None))
+                    segments=len(json.loads((WORK/name[:-4]/'transcript.json').read_text()).get('segments',[]))
+                    report('clip-recording-'+name,'no_speech' if not segments else 'processed' if count else 'no_candidates','Recording '+name,('No speech segments detected. Check the recorded microphone/audio feed before expecting clips.' if not segments else str(count)+' candidate moments selected. No candidate means no clip was published.'))
+                except Exception as e:
+                    db.execute('INSERT OR REPLACE INTO recordings VALUES (?, ?, ?)',(name,'retry',type(e).__name__))
+                    print('Deferred',name,type(e).__name__)
+                    report('clip-recording-'+name,'retry','Recording '+name,'Processing deferred: '+type(e).__name__)
                 db.commit()
         if args.publish and idle(): bridge('drain')
+        report('clip-worker-health','checked','Clip worker','Run finished. Consult individual recording and publication outcomes; completion alone does not mean a clip posted.')
 if __name__=='__main__': main()
