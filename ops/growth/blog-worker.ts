@@ -5,11 +5,12 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { prisma } from "../../lib/prisma";
 import { centralDate, centralInstant } from "../../lib/live/campaign";
+import { selectPublicFeature } from "../../lib/growth/source-core";
 import { validateStory, storyHtml, type Story } from "../../lib/growth/story-core";
 import { consumeRateLimit, releaseLock } from "../../lib/rate-limit";
 import { sendSms, getTwilioClient } from "../../lib/twilio";
 const projects = [
-  { id:"prj_0g1FEUx7Qwpgi0aWxsZKTzkAOe8D", name:"Tolley", vercelName:"tolley-site", repo:"digiegold-rgb/tolley-site", origin:"https://www.tolley.io", publicPaths:["live","blog","shop","estate","cleanouts","animate","leads"] },
+  { id:"prj_0g1FEUx7Qwpgi0aWxsZKTzkAOe8D", name:"Tolley", vercelName:"tolley-site", repo:"digiegold-rgb/tolley-site", origin:"https://www.tolley.io", publicPaths:["live","shop","estate","cleanouts","animate","leads"] },
   { id:"prj_ErCRMUgfFKSMHoeDCyn54jCjV6yI", name:"Cordport", vercelName:"cordport-services", repo:"digiegold-rgb/cordport-services", origin:"https://cordport.io", publicPaths:["tools","verify"] },
 ];
 const dry=process.argv.includes("--dry-run");
@@ -74,14 +75,14 @@ async function main() {
       phase="GitHub commit verification";
       const commit=JSON.parse(execFileSync("gh",["api",`repos/${c.repo}/commits/${c.d.sha}`],{encoding:"utf8",maxBuffer:8000000,timeout:30000}));
       // Only public page changes authorize a public story. Private implementation and diffs are never sent to the model.
-      const file=(commit.files || []).find((f:{filename:string;status:string})=>f.status!=="removed" && c.project.publicPaths.some(p=>f.filename===`app/${p}/page.tsx` || f.filename.startsWith(`app/${p}/`) && /page\.tsx$/.test(f.filename) && !/admin|\[|private/.test(f.filename)));
+      const file=selectPublicFeature(commit.files || [],c.project.publicPaths);
       if(!file) continue;
       const path=file.filename.replace(/^app/,"").replace(/\/page\.tsx$/,"");
       const url=c.project.origin+path;
       phase="public page verification";
       const r=await fetch(url,{redirect:"error",signal:AbortSignal.timeout(20000)});if(!r.ok || !(r.headers.get("content-type")||"").includes("text/html")) continue;
       const html=(await r.text()).slice(0,500000);
-      const facts=[...html.matchAll(/<(h[1-3]|p)\b[^>]*>([\s\S]*?)<\/\1>/gi)].map(m=>m[2].replace(/<[^>]*>/g," ").replace(/&[^;]+;/g," ").trim()).filter(x=>x.length>10).join("\n").slice(0,10000);
+      const facts=[...html.matchAll(/<(h[1-3]|p)\b[^>]*>([\s\S]*?)<\/\1>/gi)].map(m=>m[2].replace(/<[^>]*>/g," ").replace(/&[^;]+;/g," ").trim()).filter(x=>x.length>10 && !/^(?:Estimated profit|Maximum acquisition cost|Break-even resale price|Cost per item):/i.test(x)).join("\n").slice(0,10000);
       if(facts.length<150 || /sign in to continue|owner.only/i.test(facts)) continue;
       selected={sourceKey:c.sourceKey,project:c.project.name,commit:c.d.sha,deployment:String(c.d.id),releasedAt:status.created_at,url,title:String(commit.commit.message).split("\n")[0].slice(0,200),facts};break;
     }
