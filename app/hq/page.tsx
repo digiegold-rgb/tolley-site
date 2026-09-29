@@ -680,6 +680,10 @@ function HqPageInner() {
             <details className="tab-docs" ref={docsRef}>
               <summary className="tab-btn">📄 Docs ▾</summary>
               <div className="tab-docs-menu">
+                <a href="/stream/guide" onClick={closeDocs}>
+                  📡 Streaming setup &amp; nightly checklist
+                  <span className="doc-sub">Whatnot on Windows, camera and audio fixes, delay testing, and the Facebook / combined-chat plan — Sep 29, 2026</span>
+                </a>
                 <a
                   href="/research/whatnot-market-study-2026-09-20.pdf"
                   target="_blank"

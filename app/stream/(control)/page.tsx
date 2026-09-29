@@ -237,15 +237,20 @@ export default function StreamPage() {
 
       {/* Whatnot streams over WHIP through ITS OWN Show Tools page driving a local OBS (no RTMP key), so it is not a pusher here:
           the OBS on the wired Windows stream PC already shows the house program feed, and Whatnot's page points that OBS at the show. */}
-      <details style={{ margin: "-4px 0 14px", fontSize: 13, color: "#bcc" }}>
-        <summary style={{ cursor: "pointer" }}>🟣 Whatnot — goes out through the OBS on the stream PC</summary>
+      <section aria-labelledby="whatnot-start-heading" style={{ margin: "-4px 0 14px", padding: 16, border: "1px solid #66508a", borderRadius: 12, fontSize: 14, color: "#dce" }}>
+        <h2 id="whatnot-start-heading" style={{ margin: 0, fontSize: 18 }}>🟣 Start tonight&apos;s Whatnot show</h2>
         <div style={{ display: "grid", gap: 6, marginTop: 8, lineHeight: 1.5 }}>
-          <span>1. Here: <b>Arm house</b> with nothing ticked (LIVE Studio off) and start the cameras — the PC&apos;s OBS then shows the house picture (cuts, BRB and Privacy ride along).</span>
-          <span>2. On the PC (Chrome Remote Desktop), in Chrome: Whatnot Seller Hub → Show OBS Tools → Connect → <b>Start Show</b>. Connect only right before the show; keep that tab open.</span>
-          <span>3. Run the show from the Mac or the Whatnot app. End it in Whatnot first, then hold END STREAM here.</span>
+          <span>1. <b>Arm house</b> with destinations off and LIVE Studio unchecked. Start the camera; check picture and audio in Windows OBS.</span>
+          <span>2. Remote into the <b>Windows stream PC</b>. In OBS select <b>Whatnot Live (Recommended)</b>. In Chrome open Whatnot Seller Hub → Show OBS Tools → Connect.</span>
+          <span>3. Select <b>tonight&apos;s show</b> and click <b>Start Show in Show Tools</b>. Keep that tab open. No show key needs to be pasted here.</span>
+          <span>Arming the house does not start Whatnot. End the show in Whatnot first, then hold END STREAM here.</span>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 14, margin: "6px 0" }}>
+            <a href="https://remotedesktop.google.com/access" target="_blank" rel="noopener noreferrer" style={{ color: "#bdddff", textDecoration: "underline" }}>Open Chrome Remote Desktop ↗</a>
+            <Link href="/stream/guide" style={{ color: "#bdddff", textDecoration: "underline" }}>Setup, delay test & troubleshooting →</Link>
+          </div>
           <span>Product slides for OBS, a phone, or a TV (no login): <Link href="/stream/slideshow">open the slideshow</Link> — <code>https://www.tolley.io/stream/slideshow</code>. Add <code>?bg=transparent</code> in the OBS Browser Source if the page background should drop out. Tonight&apos;s list is <code>public/stream/shows/tonight.json</code>.</span>
         </div>
-      </details>
+      </section>
 
       {!live && studioLane && s?.cameras && (
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#bcc", margin: "0 0 12px" }}>
@@ -273,7 +278,7 @@ export default function StreamPage() {
         </button>
       </div>
 
-      <p style={{ color: "#9ab", fontSize: 12, marginTop: 18 }}>Chat below: YouTube and TikTok only. Keep Whatnot chat open in Seller Hub.</p>
+      <p style={{ color: "#9ab", fontSize: 13, marginTop: 18 }}>Combined live chat: YouTube and TikTok. Facebook LIVE and Facebook comments are planned, not connected yet. Keep Whatnot chat open in Seller Hub. <Link href="/stream/guide">Streaming guide →</Link></p>
       {/* live chat (YouTube + TikTok merged) */}
       <div style={{ marginTop: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
