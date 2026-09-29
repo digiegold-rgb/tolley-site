@@ -2,6 +2,7 @@
 Description=Tolley verified daily build journal
 [Service]
 Type=oneshot
+Environment=PATH=/home/jelly/bin:/home/jelly/.npm-global/bin:/usr/local/bin:/usr/bin:/bin
 WorkingDirectory=/home/jelly/tolley-growth-hq
 EnvironmentFile=/home/jelly/.config/tolley-security/production.env
 ExecStart=/usr/bin/node --conditions=react-server --import /home/jelly/.npm-global/lib/node_modules/tsx/dist/loader.mjs /home/jelly/tolley-growth-hq/ops/growth/blog-worker.ts
