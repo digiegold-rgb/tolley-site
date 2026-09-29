@@ -22,7 +22,7 @@ try{
  const errors=[];page.on('pageerror',e=>errors.push(page.url()+': '+e.stack));
  for(const path of ['/live/reselling','/live/sell','/blog']){await page.goto(base+path,{waitUntil:'networkidle'});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,path);}
  await context.addCookies(owner.cookie.split("; ").map(pair=>{const i=pair.indexOf("=");return {name:pair.slice(0,i),value:pair.slice(i+1),url:base};}));
- await page.goto(base+'/hq/growth',{waitUntil:'networkidle'});await page.getByRole('heading',{name:'What growth did today'}).waitFor();await page.getByRole('heading',{name:'Where we posted'}).waitFor();await page.screenshot({path:'/tmp/tolley-growth-hq-mobile.png',fullPage:true});
+ await page.goto(base+'/hq/growth',{waitUntil:'networkidle'});await page.getByRole('heading',{name:'Growth at a glance'}).waitFor();await page.getByRole('heading',{name:'Where we posted'}).waitFor();await page.screenshot({path:'/tmp/tolley-growth-hq-mobile.png',fullPage:true});
  assert.equal(errors.length,0,errors.join('\n'));
  await admin.dispose();console.log('Growth browser passed: owner access, private photos, saved inquiry attribution, pause, reporting, JPEG media, mobile public pages and HQ.');
 }finally{await browser?.close();await owner?.cleanup();await api.dispose();await p.$disconnect();}
