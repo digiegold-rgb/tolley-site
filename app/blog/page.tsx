@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { blogPosts } from "@/lib/blog-posts";
+import { allBlogPosts } from "@/lib/growth/stories";
+export const dynamic = "force-dynamic";
 import { JsonLd } from "@/components/blog/json-ld";
 
 export const metadata: Metadata = {
-  title: "Blog | T-Agent — Real Estate AI Insights",
+  title: "The Tolley Build Journal",
   description:
-    "AI lead scoring, Kansas City real estate guides, SMS follow-up strategies, and productivity playbooks for modern real estate agents.",
+    "Stories from building Tolley and Cordport: practical tools, live shows, AI-assisted work, and the lessons behind them.",
   alternates: {
     canonical: "https://tolley.io/blog",
   },
   openGraph: {
-    title: "T-Agent Blog — Real Estate AI Insights",
+    title: "The Tolley Build Journal",
     description:
-      "AI tools, KC real estate market insights, and lead management strategies for real estate professionals.",
+      "Real builds, useful tools, and behind-the-scenes stories from Jared Tolley.",
     type: "website",
     url: "https://tolley.io/blog",
   },
@@ -36,8 +37,8 @@ function formatDate(iso: string) {
 const blogIndexJsonLd = {
   "@context": "https://schema.org",
   "@type": "Blog",
-  name: "T-Agent Blog",
-  description: "AI tools and real estate insights for Kansas City agents",
+  name: "Tolley Build Journal",
+  description: "Stories from building practical tools and businesses with AI.",
   url: "https://tolley.io/blog",
   publisher: {
     "@type": "Organization",
@@ -46,7 +47,8 @@ const blogIndexJsonLd = {
   },
 };
 
-export default function BlogIndexPage() {
+export default async function BlogIndexPage() {
+  const blogPosts = await allBlogPosts();
   const sorted = [...blogPosts].sort(
     (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
   );
@@ -58,21 +60,20 @@ export default function BlogIndexPage() {
         {/* Header */}
         <div className="text-center mb-14">
           <p className="text-[0.7rem] font-semibold uppercase tracking-[0.4em] text-cyan-400/70 mb-3">
-            T-Agent by Tolley.io
+            Built by Jared Tolley
           </p>
           <h1 className="text-3xl font-bold text-white/95 sm:text-4xl">
-            Real Estate AI Insights
+            The Tolley Build Journal
           </h1>
           <p className="mt-4 mx-auto max-w-xl text-sm leading-7 text-white/55">
-            Practical guides on AI lead management, Kansas City market intelligence, and
-            tools that help agents close more deals with less overhead.
+            What we built, what it helps people do, and the stories behind Tolley and Cordport.
           </p>
           <div className="mt-6">
             <Link
-              href="/leads/pricing"
+              href="/services"
               className="inline-block rounded-full bg-cyan-500 px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-cyan-400"
             >
-              Try T-Agent Free
+              Explore Tolley
             </Link>
           </div>
         </div>
@@ -130,17 +131,16 @@ export default function BlogIndexPage() {
         {/* CTA Block */}
         <div className="mt-16 rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-8 text-center">
           <h2 className="text-xl font-bold text-white/90">
-            Ready to Put AI to Work for Your Real Estate Business?
+            See the work in action.
           </h2>
           <p className="mt-3 text-sm text-white/55 max-w-lg mx-auto">
-            T-Agent gives Kansas City agents AI lead scoring, automated SMS follow-up, and
-            market intelligence — all in one platform.
+            Explore our public tools, local services, and Treasure Hauls live shows.
           </p>
           <Link
-            href="/leads/pricing"
+            href="/services"
             className="mt-6 inline-block rounded-full bg-cyan-500 px-8 py-3 text-sm font-bold text-black transition hover:bg-cyan-400"
           >
-            Start Free Trial
+            Explore Tolley
           </Link>
         </div>
       </main>

@@ -1,3 +1,4 @@
+import { isAnnouncement } from "../growth/core";
 import { prisma } from "@/lib/prisma";
 import { campaignDecision, assertAutomatedCopy, centralDate, centralInstant } from "./campaign";
 import { postInstagram } from "@/lib/social/instagram";
@@ -6,6 +7,8 @@ import { AFFILIATE_DISCLOSURE } from "./impact-core";
 
 export type Binding = { accountId: string; label: string };
 export function campaignBinding(bindings: Record<string, Binding>, post: { platform: string; accountId: string; kind: string }) {
+  const dedicated = bindings[post.platform];
+  if (isAnnouncement(post.kind)) return dedicated?.accountId === post.accountId ? dedicated : bindings[`crossover:${post.platform}:${post.accountId}`];
   return bindings[post.kind === "crossover" ? `crossover:${post.platform}:${post.accountId}` : post.platform];
 }
 export async function verifyCampaignAccount(platform: string, accountId: string) {
@@ -26,6 +29,7 @@ export async function reserveCampaign(id: string, now = new Date()) {
     const post = await tx.liveCampaignPost.findUnique({ where: { id } });
     const settings = await tx.liveSettings.findUnique({ where: { id: "treasure-hauls" } });
     if (!post || post.status !== "queued" || post.manual || settings?.campaignPaused !== false) return null;
+    if (isAnnouncement(post.kind) && (await tx.growthAutomation.findUnique({ where: { id: "owner" } }))?.announcementsPaused !== false) return null;
     const binding = campaignBinding(settings.bindings as Record<string, Binding>, post);
     if (!binding || binding.accountId !== post.accountId) return null;
     const show = post.showId ? await tx.liveShow.findUnique({ where: { id: post.showId } }) : null;
@@ -41,10 +45,10 @@ export async function reserveCampaign(id: string, now = new Date()) {
       if (await tx.liveCampaignPost.count({ where: { kind: "crossover", platform: post.platform, accountId: post.accountId, status: { in: ["posting", "posted", "uncertain"] }, updatedAt: { gte: weekStart } } })) return null;
     }
     const clips = await tx.livePublication.count({ where: { platform: post.platform, accountId: post.accountId, createdAt: { gte: since } } });
-    const campaigns = await tx.liveCampaignPost.count({ where: { platform: post.platform, accountId: post.accountId, format: "feed", status: { in: ["posting", "posted", "uncertain"] }, updatedAt: { gte: since } } });
-    if (clips + campaigns >= 2) return null;
+    const campaigns = await tx.liveCampaignPost.count({ where: { platform: post.platform, accountId: post.accountId, format: "feed", NOT: { kind: { startsWith: "announce_" } }, status: { in: ["posting", "posted", "uncertain"] }, updatedAt: { gte: since } } });
+    if (!isAnnouncement(post.kind) && clips + campaigns >= 2) return null;
     // Preserve the second feed slot for the confirmed evening preview.
-    if (post.kind !== "preview" && clips + campaigns >= 1) return null;
+    if (!isAnnouncement(post.kind) && post.kind !== "preview" && clips + campaigns >= 1) return null;
     const claimed = await tx.liveCampaignPost.updateMany({ where: { id, status: "queued" }, data: { status: "posting", error: null } });
     return claimed.count === 1 ? post : null;
   });
@@ -60,7 +64,7 @@ async function publish(post: LiveCampaignPost) {
     prisma.liveCampaignPost.findUnique({ where: { id: post.id } }),
     post.showId ? prisma.liveShow.findUnique({ where: { id: post.showId } }) : null,
   ]);
-  if (settings?.campaignPaused !== false || fresh?.status !== "posting" || campaignBinding(settings.bindings as Record<string, Binding>, post)?.accountId !== post.accountId || campaignDecision(post, show, new Date()) !== "ready") {
+  if ((isAnnouncement(post.kind) && (await prisma.growthAutomation.findUnique({ where: { id: "owner" } }))?.announcementsPaused !== false) || settings?.campaignPaused !== false || fresh?.status !== "posting" || campaignBinding(settings.bindings as Record<string, Binding>, post)?.accountId !== post.accountId || campaignDecision(post, show, new Date()) !== "ready") {
     await prisma.liveCampaignPost.updateMany({ where: { id: post.id, status: "posting" }, data: { status: "held", error: "Paused, changed, or show no longer eligible before sending" } });
     return;
   }
@@ -84,7 +88,7 @@ export async function drainCampaign() {
   const now = new Date();
   await prisma.liveCampaignPost.updateMany({ where: { status: "posting", updatedAt: { lt: new Date(now.getTime() - 15 * 60000) } }, data: { status: "uncertain", error: "Worker interrupted. Verify platform before marking posted; no automatic retry." } });
   await prisma.liveCampaignPost.updateMany({ where: { status: { in: ["draft", "queued", "manual", "held"] }, expiresAt: { lt: now } }, data: { status: "expired" } });
-  const due = await prisma.liveCampaignPost.findMany({ where: { status: "queued", dueAt: { lte: now } }, orderBy: { dueAt: "asc" }, take: 4 });
+  const due = await prisma.liveCampaignPost.findMany({ where: { status: "queued", dueAt: { lte: now } }, orderBy: { dueAt: "asc" }, take: 20 });
   for (const row of due) {
     const post = await reserveCampaign(row.id, now);
     if (!post) continue;

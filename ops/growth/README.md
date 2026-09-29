@@ -1,0 +1,15 @@
+# Daily growth operations
+
+HQ: `/hq/growth`. Owner login and MFA are required. `/stream/growth` retains detailed show controls. Apply only the additive `20260929090000_growth_reporting` migration, then record it in Prisma history when applying the SQL directly. Do not run unrelated pending migrations against production.
+
+Announcements use explicit social bindings. All supported bound accounts receive a start post; dedicated show accounts also receive half-hour reminders. The existing five-minute campaign cron schedules reminders; manual live confirmation also invokes it immediately. A `liveStartedAt` timestamp is required; scheduled shows and armed encoders never authorize an announcement or clip. Late intervals are skipped. YouTube's connector has no announcement capability and records `unsupported`. Instagram uses the public JPEG card. Ads are not purchased. Campaign master pause and the independent HQ announcement pause both apply. An uncertain send is never automatically retried.
+
+The build journal runs on Spark at 09:00 America/Chicago and retries hourly through 23:00 after stream/source/model deferrals. It reads only the allowlisted Tolley and Cordport Vercel projects, verifies READY + PROMOTED production state and the GitHub commit, then reads an allowlisted public page. The existing Vercel CLI refreshes its local credential; no token is copied. Source evidence stays private in BuildStory. Local model calls require the house to be idle. No paid fallback. Drafts and failed reviews stay private. A daily slot and deployment commit cannot be published twice. Owner SMS is sent only after publication and follows existing opt-out handling. Accepted messages are reconciled through Twilio; uncertain sends require review, never a resend.
+
+Install the included journal service/timer after verification. Configure the clip service to use this release's `ops/stream/clip-worker.py` and its matching Prisma client; retain the existing recording workspace and installation marker. Run `backfill-clips.ts` once to import candidate-file outcomes without reading private transcripts or claiming successful historical posts.
+
+All new controls initially pause automation. Enable them only after successful application deployment and worker verification. Rollback: pause both controls in HQ, stop the journal timer, and restore the prior web deployments and clip service path. Retain additive tables and private photo records. No broadcast controls are changed.
+
+Validation: `tests/growth/core.test.ts`, `tests/growth/queue.test.ts` on `tolley_growth_hq_test`, `tests/growth/browser.mjs` on localhost:3026 with `ADMIN_ALLOWLIST_EMAILS=security-admin@example.invalid`. Run discovery, campaign, TypeScript, link, and build checks. `blog-worker.ts --dry-run` reads sources and generates/reviews a story without publication, database writes, or SMS.
+
+Cordport `/api/tools/stats` exposes only dated aggregate free-tool usage. HQ collects it hourly through the campaign cron. No private report, checked-domain, prospect, or visitor data crosses that boundary.

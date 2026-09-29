@@ -57,9 +57,9 @@ export function campaignDecision(p: { kind: string; dueAt: Date; expiresAt: Date
   if (now > p.expiresAt) return "expired";
   if (s?.status === "canceled") return "canceled";
   if (now < p.dueAt) return "wait";
-  if (["preview", "poll", "countdown", "live"].includes(p.kind)) {
+  if (["preview", "poll", "countdown", "live"].includes(p.kind) || p.kind.startsWith("announce_")) {
     if (!s) return "canceled";
-    if (p.kind === "live") return isLive(s, now) ? "ready" : "wait";
+    if (p.kind === "live" || p.kind.startsWith("announce_")) return isLive(s, now) ? "ready" : s.endedAt || s.status === "ended" ? "canceled" : "wait";
     if (!canPromote(s, now)) return s.status === "ended" || s.endedAt ? "canceled" : "wait";
   }
   return "ready";

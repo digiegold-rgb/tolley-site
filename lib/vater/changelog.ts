@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.54.1';
+export const APP_VERSION = '1.54.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.54.2',
+    date: '2026-09-29',
+    title: 'Daily growth reporting and the Tolley build journal',
+    items: ['HQ now brings show promotion, worker outcomes, tracked clicks, and daily stories together.', 'Treasure Hauls adds private seller inquiries and resale planning tools.', 'Confirmed shows can announce across connected accounts, with half-hour reminders on show accounts.'],
+  },
   {
     version: '1.54.1',
     date: '2026-09-28',

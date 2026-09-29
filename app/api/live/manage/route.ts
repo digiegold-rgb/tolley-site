@@ -1,9 +1,10 @@
+import { scheduleAnnouncements } from "@/lib/growth/announcements";
 import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
 import { ledgerSchema, showSchema } from "@/lib/live/core";
 import { campaignPack, centralInstant, dealSchema, metricsSchema, assertAutomatedCopy } from "@/lib/live/campaign";
-import { verifyCampaignAccount, type Binding } from "@/lib/live/campaign-publish";
+import { verifyCampaignAccount, drainCampaign, type Binding } from "@/lib/live/campaign-publish";
 import { z } from "zod";
 import { ensureImpactLink } from "@/lib/live/impact";
 export const dynamic = "force-dynamic";
@@ -53,8 +54,9 @@ export async function POST(req: NextRequest) {
       if (typeof b.id !== "string") throw new Error("Show required");
       const show = await prisma.liveShow.findUniqueOrThrow({ where: { id: b.id } });
       if (b.action === "confirm" && !["confirmed", "live"].includes(show.status)) throw new Error("Confirm the schedule first");
-      await prisma.liveShow.update({ where: { id: show.id }, data: b.action === "end" ? { status: "ended", endedAt: new Date() } : { status: "live", endedAt: null, confirmedUntil: new Date(Date.now() + show.durationMin * 60000) } });
-      if (b.action === "end") await prisma.liveCampaignPost.updateMany({ where: { showId: show.id, kind: { in: ["preview", "poll", "countdown", "live"] }, status: { in: ["queued", "manual", "draft", "held"] } }, data: { status: "canceled" } });
+      await prisma.liveShow.update({ where: { id: show.id }, data: b.action === "end" ? { status: "ended", endedAt: new Date() } : { status: "live", liveStartedAt: show.liveStartedAt || new Date(), endedAt: null, confirmedUntil: new Date(Date.now() + show.durationMin * 60000) } });
+      if (b.action === "confirm") after(async () => { await scheduleAnnouncements(); await drainCampaign(); });
+      if (b.action === "end") await prisma.liveCampaignPost.updateMany({ where: { showId: show.id, OR: [{ kind: { in: ["preview", "poll", "countdown", "live"] } }, { kind: { startsWith: "announce_" } }], status: { in: ["queued", "manual", "draft", "held"] } }, data: { status: "canceled" } });
     } else if (b.action === "ledger") {
       if (typeof b.id !== "string") throw new Error("Show required");
       await prisma.liveShow.update({ where: { id: b.id }, data: { ledger: ledgerSchema.parse(b.ledger) } });

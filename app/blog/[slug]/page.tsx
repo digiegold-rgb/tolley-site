@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getBlogPost, blogPosts } from "@/lib/blog-posts";
+import { allBlogPosts } from "@/lib/growth/stories";
+export const dynamic = "force-dynamic";
 import { JsonLd } from "@/components/blog/json-ld";
 import { BlogBody } from "@/components/blog/blog-body";
 
@@ -9,13 +10,10 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateStaticParams() {
-  return blogPosts.map((post) => ({ slug: post.slug }));
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const blogPosts = await allBlogPosts();
+  const post = blogPosts.find(p => p.slug === slug);
   if (!post) return {};
 
   const url = `https://tolley.io/blog/${post.slug}`;
@@ -35,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       modifiedTime: post.updatedAt ?? post.publishedAt,
       authors: ["https://tolley.io"],
       tags: post.tags,
-      siteName: "T-Agent by Tolley.io",
+      siteName: "Tolley Build Journal",
     },
     twitter: {
       card: "summary_large_image",
@@ -61,7 +59,8 @@ const categoryColors: Record<string, string> = {
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const blogPosts = await allBlogPosts();
+  const post = blogPosts.find(p => p.slug === slug);
   if (!post) notFound();
 
   const colorClass =
@@ -148,17 +147,16 @@ export default async function BlogPostPage({ params }: Props) {
         {/* Mid-Article CTA */}
         <div className="my-12 rounded-xl border border-cyan-500/20 bg-cyan-500/[0.06] p-6 text-center">
           <p className="text-sm font-semibold text-white/80">
-            Ready to put AI to work for your real estate business?
+            See what we’re building.
           </p>
           <p className="mt-1 text-xs text-white/45">
-            T-Agent gives KC agents AI lead scoring, automated SMS follow-up, and market
-            intelligence.
+            Explore Tolley’s public tools, services, and live shows.
           </p>
           <Link
-            href="/leads/pricing"
+            href="/services"
             className="mt-4 inline-block rounded-full bg-cyan-500 px-6 py-2 text-sm font-bold text-black transition hover:bg-cyan-400"
           >
-            See Pricing & Start Free Trial →
+            Explore Tolley →
           </Link>
         </div>
 

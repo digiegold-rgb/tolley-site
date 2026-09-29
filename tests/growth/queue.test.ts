@@ -1,0 +1,36 @@
+import test,{after} from "node:test";
+import assert from "node:assert/strict";
+import {prisma} from "../../lib/prisma";
+import {scheduleAnnouncements} from "../../lib/growth/announcements";
+import {reserveCampaign} from "../../lib/live/campaign-publish";
+if(!process.env.DATABASE_URL?.endsWith('/tolley_growth_hq_test')) throw Error('Isolated growth test DB required');
+test("concurrent scheduling and claims send once; crossover announces only at start",async()=>{
+ await prisma.liveCampaignPost.deleteMany();await prisma.liveShow.deleteMany();
+ await prisma.growthAutomation.upsert({where:{id:"owner"},create:{announcementsPaused:false},update:{announcementsPaused:false}});
+ await prisma.liveSettings.upsert({where:{id:"treasure-hauls"},create:{campaignPaused:false,bindings:{}},update:{campaignPaused:false}});
+ await prisma.liveSettings.update({where:{id:"treasure-hauls"},data:{bindings:{facebook:{accountId:"show",label:"Show"},"crossover:facebook:business":{accountId:"business",label:"Business"},youtube:{accountId:"youtube",label:"YouTube"}}}});
+ const start=new Date(),show=await prisma.liveShow.create({data:{title:"Fixture show",category:"Estate / mixed finds",whatnotUrl:"https://www.whatnot.com/live/fixture",startsAt:start,liveStartedAt:start,status:"live",confirmedUntil:new Date(+start+7200000)}});
+ await Promise.all([scheduleAnnouncements(start),scheduleAnnouncements(start)]);
+ assert.equal(await prisma.liveCampaignPost.count(),3);
+ assert.equal(await prisma.liveCampaignPost.count({where:{status:"unsupported"}}),1);
+ const post=await prisma.liveCampaignPost.findFirstOrThrow({where:{accountId:"show"}});
+ assert.equal((await Promise.all([reserveCampaign(post.id,start),reserveCampaign(post.id,start)])).filter(Boolean).length,1);
+ await scheduleAnnouncements(new Date(+start+1800001));
+ assert.equal(await prisma.liveCampaignPost.count({where:{accountId:"business"}}),1);
+ const reminder=await prisma.liveCampaignPost.findFirstOrThrow({where:{kind:"announce_reminder_1",accountId:"show"}});
+ await prisma.growthAutomation.update({where:{id:"owner"},data:{announcementsPaused:true}});
+ assert.equal(await reserveCampaign(reminder.id,new Date(+start+1800001)),null);
+ await prisma.growthAutomation.update({where:{id:"owner"},data:{announcementsPaused:false}});
+ await prisma.liveShow.update({where:{id:show.id},data:{endedAt:new Date(),status:"ended"}});
+ assert.equal(await reserveCampaign(reminder.id,new Date(+start+1800001)),null);
+ assert.equal((await prisma.liveCampaignPost.findUniqueOrThrow({where:{id:reminder.id}})).status,"canceled");
+});
+test("article source and daily slot are unique; SMS can only be claimed once",async()=>{
+ await prisma.buildStory.deleteMany();
+ const data={slot:"2026-09-29",sourceKey:"verified-commit",slug:"test-story",title:"Fixture",description:"Fixture",body:"<p>Fixture</p>",evidence:{},status:"published",publishedAt:new Date()};
+ const story=await prisma.buildStory.create({data});
+ await assert.rejects(prisma.buildStory.create({data:{...data,slug:"duplicate"}}));
+ const claims=await Promise.all([1,2].map(()=>prisma.buildStory.updateMany({where:{id:story.id,notificationStatus:"pending"},data:{notificationStatus:"sending"}})));
+ assert.equal(claims.reduce((n,c)=>n+c.count,0),1);
+});
+after(()=>prisma.$disconnect());

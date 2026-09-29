@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { withPrismaTimeout } from "@/lib/prisma-url";
 import { publicSubsites, SUBSITES } from "@/lib/subsites";
-import { blogPosts } from "@/lib/blog-posts";
+import { allBlogPosts } from "@/lib/growth/stories";
 
 const BASE = "https://www.tolley.io";
 
@@ -16,6 +16,7 @@ export const revalidate = 3600;
  * because their public manifest endpoints are agent-discoverable.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const blogPosts = await allBlogPosts();
   // Static pages have no authoritative per-page edit timestamp; omit rather than invent it.
 
   const priorityMap: Record<string, number> = {
@@ -72,6 +73,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Curated extras not represented as standalone subsites
   const extras: MetadataRoute.Sitemap = [
+    { url: `${BASE}/live/reselling`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE}/live/sell`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/services`, changeFrequency: "monthly", priority: 0.9 },
     { url: `${BASE}/leads/pricing`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/shop/disclosure`, changeFrequency: "yearly", priority: 0.3 },
