@@ -79,13 +79,14 @@ function HqPageInner() {
   // SMS threads deep-link as /hq?tab=sms&phone=9132833826 — don't strip phone.
   useEffect(() => {
     if (tab === "business") {
-      window.history.replaceState(null, "", "/hq");
+      if (window.location.pathname + window.location.search !== "/hq") window.history.replaceState(null, "", "/hq");
       return;
     }
     const phone = tab === "sms" ? searchParams.get("phone") : null;
     const qs = new URLSearchParams({ tab });
     if (phone) qs.set("phone", phone);
-    window.history.replaceState(null, "", `/hq?${qs.toString()}`);
+    const nextUrl = `/hq?${qs.toString()}`;
+    if (window.location.pathname + window.location.search !== nextUrl) window.history.replaceState(null, "", nextUrl);
   }, [tab, searchParams]);
   const [mustOpen, setMustOpen] = useState<MustCompleteItem[]>([]);
   const [mustDone, setMustDone] = useState<MustCompleteItem[]>([]);
