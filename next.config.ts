@@ -107,6 +107,7 @@ const nextConfig: NextConfig = {
   },
   // Include authenticated document assets read at runtime in serverless bundles.
   outputFileTracingIncludes: {
+    "/stream/guide": ["./ops/stream/OPERATIONS.md"],
     "/leads/guide/owner": ["./docs/product/tagent-personal-use-20260909.md"],
     "/api/leads/guide/plan": ["./docs/product/tagent-personal-use-20260909.md"],
     "/api/vater/rules": ["./data/VATER-RULES.pdf"],

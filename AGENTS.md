@@ -8,6 +8,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
+## Live-stream work
+
+Before stream changes, read `ops/stream/STREAM-AGENTS.md` and `ops/stream/OPERATIONS.md`. The latter is the shared operator handoff rendered at the owner-only `/stream/guide` and linked in HQ Docs. Check current state through `stream status`; dated documentation is not proof that a camera or platform is live.
+
 # Tolley discovery and referral principles
 
 For public-offering work, read `docs/discovery-rollout.md`. The internal flagship case is `/home/jelly/business-os/wins/2026-09-24-chatgpt-cleanouts.md`; the operating playbook is `/home/jelly/business-os/03-PLAYBOOKS/AI-DISCOVERY.md`. Keep that customer story internal.
