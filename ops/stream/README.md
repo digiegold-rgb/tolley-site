@@ -4,6 +4,10 @@
 
 Verified September 19, 2026: the old digie86 invitation returns 404; https://www.whatnot.com/invite/treasure_hauls names the correct account. The stable first-party share URL is https://www.tolley.io/go/whatnot?utm_source=instagram (or youtube/facebook). Count clicks separately from Whatnot referral conversions.
 
+## Facebook LIVE
+
+The preview-first Facebook sender and combined-chat setup are documented in [facebook/README.md](facebook/README.md). Read the shared [operator guide](OPERATIONS.md) before operating; publish only when Jared is ready.
+
 ## Installation
 
 - Apply `prisma/migrations/20260920_live_growth/migration.sql` transactionally (`ops/stream/migrate.ts` for this repo's additive SQL deployment workflow). No existing tables are changed.

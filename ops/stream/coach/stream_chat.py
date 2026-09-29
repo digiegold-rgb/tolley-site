@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""stream_chat — merges YouTube + TikTok live chat into one feed for tolley.io/stream.
+"""stream_chat — merges YouTube + TikTok + Facebook live chat into one feed for tolley.io/stream.
 
 YouTube: owner-verified live discovery via Data API; chat-downloader for chat.
 TikTok:  TikTokLive (unofficial webcast client) on CHAT_TIKTOK_USER while that account is live.
@@ -14,6 +14,8 @@ import logging
 import re
 import threading
 import time
+import uuid
+from facebook_live import FacebookLive, CommentReader, FacebookError
 from collections import deque
 from pathlib import Path
 
@@ -39,16 +41,55 @@ TT_USER = ENV.get("CHAT_TIKTOK_USER", "digiegold").lstrip("@")
 
 TT_OWNER = TT_USER
 ACTIVE_TT = None
+EPOCH = uuid.uuid4().hex
 SEQ = itertools.count(1)
+SEEN = {}
+SOURCES = {}
 MSGS: deque[dict] = deque(maxlen=2000)
-STATE = {"youtube": {"connected": False, "video": "", "override": "", "error": ""},
+STATE = {"facebook": {"connected": False, "verified": False, "error": "", "source": ""}, "youtube": {"connected": False, "video": "", "override": "", "error": ""},
          "tiktok": {"connected": False, "user": TT_USER, "error": "", "viewers": None}}
 LOCK = threading.Lock()
 
 
 def push(platform: str, user: str, text: str, kind: str = "chat", extra: dict | None = None) -> None:
+    extra = extra or {}
     with LOCK:
-        MSGS.append({"id": next(SEQ), "t": int(time.time()), "p": platform, "u": (user or "?")[:40], "m": (text or "")[:400], "k": kind, **(extra or {})})
+        source = extra.get("source", "")
+        if source and SOURCES.get(platform) != source:
+            SOURCES[platform] = source
+            retained = [m for m in MSGS if m["p"] != platform]
+            MSGS.clear()
+            MSGS.extend(retained)
+        key = (platform, source, extra.get("eventId", ""))
+        if key[2] and key in SEEN:
+            return
+        if key[2]:
+            SEEN[key] = True
+            if len(SEEN) > 20000:
+                SEEN.pop(next(iter(SEEN)))
+        MSGS.append({"id": next(SEQ), "t": int(time.time()), "p": platform, "u": (user or "?")[:40], "m": (text or "")[:400], "k": kind, **extra})
+
+
+def fb_worker() -> None:
+    api = FacebookLive()
+    reader = CommentReader(api)
+    while True:
+        meta = api.refresh()
+        try:
+            if meta.get("verified") and meta.get("phase") == "LIVE":
+                comments = reader.poll(meta)
+                with LOCK:
+                    STATE["facebook"] = dict(meta)
+                for item in comments:
+                    push("fb", item.pop("u"), item.pop("m"), extra=item)
+                meta.update(connected=True, error="")
+        except FacebookError as error:
+            meta.update(connected=False, error=str(error))
+        except Exception:
+            meta.update(connected=False, error="Facebook comments unavailable; reconnecting")
+        with LOCK:
+            STATE["facebook"] = meta
+        time.sleep(4 if meta.get("phase") == "LIVE" else 15)
 
 
 # ── YouTube ─────────────────────────────────────────────────────────────
@@ -168,12 +209,22 @@ app = FastAPI(docs_url=None, redoc_url=None)
 
 
 @app.get("/chat")
-async def chat(since: int = 0, limit: int = 80) -> JSONResponse:
+async def chat(since: int = 0, limit: int = 80, epoch: str = "") -> JSONResponse:
     with LOCK:
         limit=max(1,min(limit,2000))
-        items = [m for m in MSGS if m["id"] > since][-limit:]
-        last = MSGS[-1]["id"] if MSGS else 0
-    return JSONResponse({"items": items, "last": last, "youtube": STATE["youtube"], "tiktok": STATE["tiktok"]})
+        latest = MSGS[-1]["id"] if MSGS else 0
+        reset = bool(epoch and epoch != EPOCH) or since > latest
+        if reset:
+            since = 0
+        active = {"yt": STATE["youtube"].get("source") or STATE["youtube"].get("video"),
+                  "tt": STATE["tiktok"].get("source"), "fb": STATE["facebook"].get("source")}
+        for platform, field in [("yt", "youtube"), ("tt", "tiktok"), ("fb", "facebook")]:
+            if STATE[field].get("liveNow") is not True:
+                active[platform] = ""
+        items = [m for m in MSGS if m["id"] > since and (not m.get("source") or m["source"] == active.get(m["p"]))][:limit]
+        last = items[-1]["id"] if items else latest
+        metadata = {field: dict(STATE[field]) for field in ("facebook", "youtube", "tiktok")}
+    return JSONResponse({"items": items, "last": last, "epoch": EPOCH, "reset": reset, "sources": active, **metadata})
 
 
 @app.post("/chat/tiktok")
@@ -201,6 +252,7 @@ async def set_youtube(request: Request) -> JSONResponse:
 
 @app.on_event("startup")
 async def _start() -> None:
+    threading.Thread(target=fb_worker, daemon=True).start()
     threading.Thread(target=yt_status_worker, daemon=True).start()
     threading.Thread(target=yt_worker, daemon=True).start()
     asyncio.create_task(tt_loop())

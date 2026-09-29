@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.54.4';
+export const APP_VERSION = '1.55';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.55', date: '2026-09-29', title: 'Facebook live previews and combined chat', items: ['Prepare the Treasure Hauls Facebook preview, send the house feed, then publish when ready in Facebook Live Producer.', 'Facebook live comments join YouTube and TikTok chat, with timestamps and connection status.', 'Stream controls start with destinations off; the nightly Whatnot workflow remains visible.'] },
   { version: '1.54.4', date: '2026-09-29', title: 'Clearer nightly streaming setup', items: ['The stream controls now show the Windows Whatnot startup steps without opening a hidden section.', 'HQ Docs includes a private streaming guide with camera, audio and delay checks, plus the planned Facebook live-chat connection.'] },
   { version: '1.54.3', date: '2026-09-29', title: 'A visual Growth tab inside HQ', items: ['Growth now lives in the HQ tabs with big totals, color-coded status cards and daily charts.', 'Seven days of real activity load first, with post links and details one tap away.'] },
   {

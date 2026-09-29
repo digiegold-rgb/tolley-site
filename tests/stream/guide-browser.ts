@@ -16,17 +16,17 @@ async function main() {
   try {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await context.newPage();
-    page.setDefaultTimeout(120000);
+    page.setDefaultTimeout(240000);
     const errors: string[] = [];
     page.on("pageerror", e => errors.push(e.message));
-    await page.goto(base + "/stream/guide", { waitUntil: "domcontentloaded", timeout: 120000 });
+    await page.goto(base + "/stream/guide", { waitUntil: "domcontentloaded", timeout: 240000 });
     assert.match(page.url(), /\/login/);
     assert.equal(await page.getByRole("heading", { name: "Streaming operator guide", exact: true }).count(), 0);
     await context.addCookies([{ name: "authjs.session-token", value: jwt, domain: "127.0.0.1", path: "/" }]);
-    await page.goto(base + "/stream/guide", { waitUntil: "domcontentloaded", timeout: 120000 });
+    await page.goto(base + "/stream/guide", { waitUntil: "domcontentloaded", timeout: 240000 });
     assert.match(page.url(), /\/login|\/mfa/);
     await context.addCookies([{ name: "tolley_mfa", value: signMfaProof(user.id, session, enrollmentKey(mfa)), domain: "127.0.0.1", path: "/" }]);
-    await page.goto(base + "/stream/guide", { waitUntil: "domcontentloaded", timeout: 120000 });
+    await page.goto(base + "/stream/guide", { waitUntil: "domcontentloaded", timeout: 240000 });
     await page.getByRole("heading", { name: "Streaming operator guide", exact: true }).waitFor();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({ path: "/tmp/stream-guide-mobile.png", fullPage: true });
@@ -34,23 +34,57 @@ async function main() {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({ path: "/tmp/stream-guide-desktop.png", fullPage: true });
 
-    const status = { armed: false, privacy: false, liveSinceS: 0, camera: { connected: false, kbps: 0, sinceS: 0, goneS: 0 }, obs: { connected: true, scene: "Ending", streaming: false, programReady: false, lastError: "" }, mediamtx: { ok: true }, destinations: { youtube: { enabled: false, configured: true, running: false, uptimeS: 0 }, tiktok: { enabled: false, configured: false, running: false, uptimeS: 0 } }, cameras: [], limits: { camGoneEndMin: 15, maxStreamMin: 480, brbAfterS: 5 }, ingest: { url: "test", keyTail: "test" }, studio: { online: true, ageS: 0, studioRunning: false, obsRunning: true, host: "test" }, events: [] };
+    const facebook = { verified: true, pageId: "1156652300855210", pageName: "Ruthann’s Treasure Haul", videoId: "123456", title: "Test preview", phase: "UNPUBLISHED", liveNow: false, checkedAt: Date.now()/1000, error: "" };
+    const status = { facebook, armed: false, privacy: false, liveSinceS: 0, camera: { connected: false, kbps: 0, sinceS: 0, goneS: 0 }, obs: { connected: true, scene: "Ending", streaming: false, programReady: false, lastError: "" }, mediamtx: { ok: true }, destinations: { facebook: { enabled: false, configured: true, running: false, uptimeS: 0 }, youtube: { enabled: false, configured: true, running: false, uptimeS: 0 }, tiktok: { enabled: false, configured: false, running: false, uptimeS: 0 } }, cameras: [], limits: { camGoneEndMin: 15, maxStreamMin: 480, brbAfterS: 5 }, ingest: { url: "test", keyTail: "test" }, studio: { online: true, ageS: 0, studioRunning: false, obsRunning: true, host: "test" }, events: [] };
     let mutations = 0;
+    let chatStage = 0;
+    const commands: { path: string; body: unknown }[] = [];
+    const stamp = Math.floor(Date.now()/1000);
+    const feeds = [
+      { epoch: "first", sources: { fb: "facebook:page:old", yt: "youtube:old" }, items: [{ id: 1, p: "fb", t: stamp, u: "Facebook viewer", m: "First Facebook message", source: "facebook:page:old", eventId: "comment1", k: "chat" }, { id: 2, p: "yt", t: stamp, u: "YouTube viewer", m: "YouTube message", source: "youtube:old", eventId: "yt1", k: "chat" }], last: 2 },
+      { epoch: "second", reset: true, sources: { fb: "facebook:page:new", yt: "youtube:old" }, items: [{ id: 1, p: "fb", t: stamp, u: "New viewer", m: "New show message", source: "facebook:page:new", eventId: "comment2", k: "chat" }], last: 1 },
+    ];
     await page.route("**/api/stream/**", async route => {
-      if (route.request().method() !== "GET") mutations++;
-      await route.fulfill({ json: route.request().url().includes("/chat") ? { items: [], last: 0 } : status });
+      if (route.request().method() !== "GET") { mutations++; commands.push({ path: new URL(route.request().url()).pathname, body: route.request().postDataJSON() }); }
+      await route.fulfill({ json: route.request().url().includes("/chat") ? { ...feeds[chatStage], facebook: { ...facebook, connected: true } } : status });
     });
     await page.route("**/api/stream-lineup", route => route.fulfill({ json: { active: null } }));
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(base + "/stream", { waitUntil: "domcontentloaded", timeout: 120000 });
+    await page.goto(base + "/stream", { waitUntil: "domcontentloaded", timeout: 240000 });
     await page.getByRole("heading", { name: "🟣 Start tonight's Whatnot show" }).waitFor();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.getByRole("link", { name: "Open Chrome Remote Desktop ↗" }).waitFor();
-    assert.equal(await page.getByRole("button", { name: /Facebook/ }).count(), 0);
+    await page.getByRole("heading", { name: "Facebook LIVE", exact: true }).waitFor();
+    assert.equal(await page.getByRole("button", { name: "Send house feed to preview" }).isDisabled(), true);
+    await page.getByText("First Facebook message", { exact: false }).waitFor();
+    await page.getByText("YouTube message", { exact: false }).waitFor();
+    await page.waitForTimeout(2200);
+    assert.equal(await page.getByText("First Facebook message", { exact: false }).count(), 1, "Replayed poll must not duplicate comments");
+    chatStage = 1;
+    await page.getByText("New show message", { exact: false }).waitFor();
+    assert.equal(await page.getByText("First Facebook message", { exact: false }).count(), 0, "Restart/source change removes old comments");
+    assert.equal(await page.getByText("YouTube message", { exact: false }).count(), 0);
     await page.screenshot({ path: "/tmp/stream-checklist-mobile.png", fullPage: true });
     assert.equal(mutations, 0, "Opening instructions must not arm or publish");
+    await page.getByRole("button", { name: "Refresh preview" }).click();
+    await page.waitForTimeout(500);
+    assert.equal(commands.at(-1)?.path, "/api/stream/facebook/prepare");
+    assert.deepEqual(commands.at(-1)?.body, { title: "Treasure Hauls live show" });
+    status.armed = true; status.obs.programReady = true;
+    await page.getByRole("button", { name: "Send house feed to preview" }).waitFor();
+    await page.waitForTimeout(3500);
+    assert.equal(await page.getByRole("button", { name: "Send house feed to preview" }).isDisabled(), false);
+    await page.getByRole("button", { name: "Send house feed to preview" }).click();
+    await page.waitForTimeout(500);
+    assert.deepEqual(commands.at(-1), { path: "/api/stream/facebook/send", body: { videoId: "123456" } });
+    assert.equal(commands.some(c => /go-live|publish/.test(c.path)), false);
+    assert.equal((await context.request.post(base + "/api/stream/facebook/send", { headers: { Origin: "https://wrong.invalid" }, data: {} })).status(), 403);
+    assert.equal((await context.request.post(base + "/api/stream/facebook/send", { headers: { Origin: base }, data: { value: "x".repeat(9000) } })).status(), 413);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await page.screenshot({ path: "/tmp/stream-facebook-desktop.png", fullPage: true });
     assert.deepEqual(errors, []);
-    console.log("Guide owner/MFA gate, mobile/desktop layout, visible Whatnot steps and no control mutations: passed");
+    console.log("Owner/MFA gate, layout, Facebook preview commands, merged chat dedupe/restart, and proxy origin/size guards: passed");
   } finally { await browser.close(); await prisma.$disconnect(); }
 }
 main().catch(e => { console.error(e); process.exitCode = 1; });

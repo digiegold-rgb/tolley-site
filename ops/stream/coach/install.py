@@ -29,6 +29,7 @@ if occupied and subprocess.run(['systemctl','--user','is-active','--quiet','toll
 files={'coach_service.py':'service.py','coach_director_routes.py':'director_routes.py',
        'automatic.py':'automatic.py','source_metadata.py':'source_metadata.py',
        'youtube_metrics.py':'youtube_metrics.py','stream_chat.py':'stream_chat.py',
+       'facebook_live.py':'../facebook/facebook_live.py',
        'whatnot-observer.mjs':'whatnot-observer.mjs'}
 for name in files.values():
     if not name.endswith('.py'):continue
