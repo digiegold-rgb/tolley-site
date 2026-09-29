@@ -26,6 +26,7 @@ test("resale math includes fixed costs and rejects invalid inputs",()=>{
 test("generated copy cannot introduce HTML, links, contacts or secrets",()=>{
   const s={title:"A practical new way to plan a haul",description:"A useful look at the public tools we built to help people plan their next haul.",paragraphs:Array(4).fill("I built this tool to help people compare their costs before buying a haul.")};
   assert.ok(validateStory(s));
+  assert.ok(validateStory({...s,paragraphs:[...s.paragraphs,"The public checker needs no password or API key and does not sign into your site."]}));
   for(const content of ["<script>alert(1)</script>","https://evil.test/", "Email me at private@example.com", "The password is public"])
     assert.throws(()=>validateStory({...s,paragraphs:[...s.paragraphs,content.padEnd(60," ")]}));
   assert.match(storyHtml(s,"https://www.tolley.io/live","2026-09-01",true),/From the build archive/);

@@ -4,7 +4,7 @@ export const storySchema = z.object({
   paragraphs: z.array(z.string().min(40).max(1800)).min(4).max(12),
 });
 export type Story = z.infer<typeof storySchema>;
-const privatePattern = /(?:\b(?:api[_ -]?key|access[_ -]?token|password|secret|credential|customer name|private report|security vulnerability)\b|\b\d{3}[- .]\d{3}[- .]\d{4}\b|[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b(?:fuck\w*|shit\w*|bitch\w*)\b)/i;
+const privatePattern = /(?:\b(?:customer name|private report|security vulnerability)\b|\b(?:api[_ -]?key|access[_ -]?token|password|secret|credential)\s*(?:is|:|=)\s*\S+|\bsk[-_][a-zA-Z0-9_-]{16,}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\b\d{3}[- .]\d{3}[- .]\d{4}\b|[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b(?:fuck\w*|shit\w*|bitch\w*)\b)/i;
 export function validateStory(value: unknown): Story {
   const s=storySchema.parse(value), text=[s.title,s.description,...s.paragraphs].join("\n");
   if(privatePattern.test(text) || /<[^>]*>|https?:\/\/|\]\(/.test(text)) throw Error("Story contains private, unsafe, or unverified embedded content");
