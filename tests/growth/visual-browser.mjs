@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {chromium,request} from 'playwright';
+import {PrismaClient} from '@prisma/client';
+import {createOwnerSession,requireIsolatedServer} from '../helpers/owner-session.mjs';
+const base='http://localhost:3026';requireIsolatedServer(base);
+const p=new PrismaClient(),api=await request.newContext({baseURL:base,timeout:120000});let owner,browser;
+try{
+ assert.equal((await api.get('/api/hq/growth')).status(),401);
+ owner=await createOwnerSession(p,base);console.log('Owner session ready');
+ const payload=process.env.GROWTH_CAPTURE_JSON?JSON.parse(await readFile(process.env.GROWTH_CAPTURE_JSON,'utf8')):await (await api.get('/api/hq/growth?period=7',{headers:{Cookie:owner.cookie}})).json();
+ browser=await chromium.launch({headless:true,args:['--no-sandbox']});const context=await browser.newContext({viewport:{width:1440,height:1100}});
+ await context.addCookies(owner.cookie.split('; ').map(pair=>{const i=pair.indexOf('=');return{name:pair.slice(0,i),value:pair.slice(i+1),url:base};}));
+ if(process.env.GROWTH_CAPTURE_JSON)await context.route('**/api/hq/growth?period=7',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(payload)}));
+ const page=await context.newPage();page.setDefaultTimeout(120000);const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('Browser error:',e.message);});
+ await page.goto(base+'/hq/growth',{waitUntil:'domcontentloaded'});
+ await page.getByRole('heading',{name:'Growth at a glance'}).waitFor();assert.equal(new URL(page.url()).searchParams.get('tab'),'growth');console.log('Growth tab loaded');
+ assert.equal(await page.getByRole('button',{name:'↗ Growth',exact:true}).getAttribute('aria-current'),'true');
+ const expected=payload.daily.reduce((sum,d)=>sum+d.posts,0);
+ await page.getByTestId('metric-Posts published').filter({hasText:String(expected)}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'7 days',exact:true}).getAttribute('aria-pressed'),'true');
+ assert.ok((await page.getByTestId('metric-Posts published').evaluate(el=>Number.parseFloat(getComputedStyle(el).fontSize)))>=38);
+ const backgrounds=await page.locator('article').filter({has:page.locator('[data-testid^="metric-"]')}).evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).backgroundColor));assert.equal(new Set(backgrounds).size,4);
+ const chart=page.getByRole('region',{name:'Daily activity chart'});assert.equal(await chart.locator('button[aria-label]').count(),7);
+ await page.screenshot({path:'/tmp/tolley-growth-visual-before-click.png',fullPage:true});
+ await chart.locator('button[aria-label]').first().click();assert.equal(await chart.locator('button[aria-label]').first().getAttribute('aria-pressed'),'true');console.log('Chart selection passed');
+ await page.getByRole('button',{name:'Page views',exact:true}).click();assert.equal(await page.getByRole('button',{name:'Page views',exact:true}).getAttribute('aria-pressed'),'true');
+ assert.equal(await page.getByText('All post records',{exact:true}).isVisible(),false);
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ await page.screenshot({path:'/tmp/tolley-growth-visual-desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ await page.screenshot({path:'/tmp/tolley-growth-visual-mobile.png',fullPage:true});
+ await page.getByRole('button',{name:'Today',exact:true}).click();await page.getByRole('button',{name:'Today',exact:true,pressed:true}).waitFor();
+ await page.getByRole('button',{name:'7 days',exact:true}).click();await page.getByTestId('metric-Posts published').waitFor();
+ await page.getByText('More detail',{exact:false}).filter({hasText:'All posts, activity'}).click();await page.getByRole('heading',{name:'All post records'}).waitFor();
+ assert.deepEqual(errors,[]);console.log('Visual HQ passed: actual tab, redirect, 7-day default, four colored totals, interactive daily chart, collapsed details, mobile/desktop layouts, owner access.');
+}catch(error){const page=browser?.contexts()[0]?.pages()[0];if(page){console.log('Failed at',page.url(),(await page.locator('body').innerText().catch(()=>'' )).slice(0,1600));await page.screenshot({path:'/tmp/tolley-growth-visual-failure.png',fullPage:true}).catch(()=>{});}throw error;}finally{await browser?.close();await owner?.cleanup();await api.dispose();await p.$disconnect();}

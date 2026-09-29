@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.54.2';
+export const APP_VERSION = '1.54.3';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.54.3', date: '2026-09-29', title: 'A visual Growth tab inside HQ', items: ['Growth now lives in the HQ tabs with big totals, color-coded status cards and daily charts.', 'Seven days of real activity load first, with post links and details one tap away.'] },
   {
     version: '1.54.2',
     date: '2026-09-29',

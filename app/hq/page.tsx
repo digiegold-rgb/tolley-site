@@ -33,6 +33,7 @@ import { HqHaulAppraisals } from "@/components/hq/hq-haul-appraisals";
 import { HqPosts } from "@/components/hq/hq-posts";
 import { HqTiktokShop } from "@/components/hq/hq-tiktok-shop";
 import { HqChannelScoreboard } from "@/components/hq/hq-channel-scoreboard";
+import GrowthReport from "./growth/report";
 import { HqSiteVisits } from "@/components/hq/hq-site-visits";
 import {
   HqMustComplete,
@@ -47,9 +48,9 @@ import {
   type HqInboundLead,
 } from "@/components/hq/types";
 
-type Tab = "business" | "empire" | "must" | "fable5" | "pipeline" | "inbound" | "approvals" | "money" | "sms" | "dnc" | "estates" | "stats" | "site" | "chats" | "hauls" | "posts" | "tiktok" | "bk";
+type Tab = "growth" | "business" | "empire" | "must" | "fable5" | "pipeline" | "inbound" | "approvals" | "money" | "sms" | "dnc" | "estates" | "stats" | "site" | "chats" | "hauls" | "posts" | "tiktok" | "bk";
 
-const TABS: readonly Tab[] = ["business", "empire", "must", "fable5", "pipeline", "inbound", "approvals", "money", "sms", "dnc", "estates", "stats", "site", "chats", "hauls", "posts", "tiktok", "bk"];
+const TABS: readonly Tab[] = ["business", "growth", "empire", "must", "fable5", "pipeline", "inbound", "approvals", "money", "sms", "dnc", "estates", "stats", "site", "chats", "hauls", "posts", "tiktok", "bk"];
 
 function isTab(v: string | null): v is Tab {
   return v != null && (TABS as readonly string[]).includes(v);
@@ -78,13 +79,14 @@ function HqPageInner() {
   // SMS threads deep-link as /hq?tab=sms&phone=9132833826 — don't strip phone.
   useEffect(() => {
     if (tab === "business") {
-      window.history.replaceState(null, "", "/hq");
+      if (window.location.pathname + window.location.search !== "/hq") window.history.replaceState(null, "", "/hq");
       return;
     }
     const phone = tab === "sms" ? searchParams.get("phone") : null;
     const qs = new URLSearchParams({ tab });
     if (phone) qs.set("phone", phone);
-    window.history.replaceState(null, "", `/hq?${qs.toString()}`);
+    const nextUrl = `/hq?${qs.toString()}`;
+    if (window.location.pathname + window.location.search !== nextUrl) window.history.replaceState(null, "", nextUrl);
   }, [tab, searchParams]);
   const [mustOpen, setMustOpen] = useState<MustCompleteItem[]>([]);
   const [mustDone, setMustDone] = useState<MustCompleteItem[]>([]);
@@ -550,7 +552,7 @@ function HqPageInner() {
     <div>
       {/* Top bar */}
       <div className="topbar">
-        <span className="title">Growth HQ — Pipeline</span><a href="/hq/growth" className="tab-btn">Daily growth report ↗</a>
+        <span className="title">Growth HQ</span>
         <div className="actions">
           <HqAiPnl />
           <HqEngineStatus />
@@ -600,6 +602,7 @@ function HqPageInner() {
           <div className="tab-strip">
             {/* Ops */}
             {tabPill("business", "Business")}
+            {tabPill("growth", "↗ Growth", undefined, "tab-growth")}
             {tabPill("empire", "🗺️ Empire", undefined, "tab-empire")}
             {tabPill("must", "🎯 Must Complete", mustOpen.length, "tab-must")}
             {tabPill(
@@ -810,7 +813,9 @@ function HqPageInner() {
           </div>
         </div>
 
-        {tab === "business" ? (
+        {tab === "growth" ? (
+          <GrowthReport />
+        ) : tab === "business" ? (
           <HqBusiness />
         ) : tab === "empire" ? (
           <HqEmpireMap />

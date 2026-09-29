@@ -1002,3 +1002,6 @@
   .hq-admin .sms-hide-mobile { display: none !important; }
   .hq-admin .sms-back { display: inline-flex; }
 }
+
+.hq-admin .tab-btn.tab-growth { background: #ede8ff; color: #512da8; }
+.hq-admin .tab-btn.tab-growth.active { background: #6840cc; color: #fff; box-shadow: 0 2px 8px #6840cc33; }
