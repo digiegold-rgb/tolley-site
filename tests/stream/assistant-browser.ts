@@ -39,6 +39,10 @@ async function main() {
     assert.equal(await page.getByRole("link",{name:/Classic|Inventory Assistant.*V2/}).count(),0);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     await page.getByRole("link",{name:"Show Assistant",exact:true}).click();
+    await page.waitForURL(/\/api\/stream\/whatnot-bot\/admin$/);
+    // Playwright routes only the first request of an HTTP redirect chain.
+    // The real redirect is checked above; a direct navigation loads the isolated dashboard fixture.
+    await page.goto(base+"/api/stream/whatnot-bot/admin",{waitUntil:"domcontentloaded"});
     await page.getByRole("heading",{name:"Welcome viewers. Answer product questions.",exact:true}).waitFor();
     assert.match(page.url(),/\/api\/stream\/whatnot-bot\/admin$/);
     assert.equal(await page.getByRole("button",{name:"Start assistant",exact:true}).isDisabled(),true);
