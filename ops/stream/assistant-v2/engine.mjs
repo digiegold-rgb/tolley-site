@@ -105,7 +105,7 @@ export class Engine {
       if(m.user&&(!eligible(m.user,c)||this.store.optedOut(m.user)))throw Error('Recipient excluded.');
       if(m.kind==='dm'&&!c.dmEnabled)throw Error('DM sending is disabled.');
       if(m.evidence&&!this.inventory?.validEvidence(m.evidence))throw Error('Inventory changed or expired before sending; host review required.');
-      
+
       if(m.kind==='public'&&!(m.user?c.repliesEnabled:c.announcementsEnabled))throw Error('Public sending is disabled.');
     };
     if(!(await this.classicStatus()).paused)throw Error("Classic is running; Inventory V2 sending stopped.");

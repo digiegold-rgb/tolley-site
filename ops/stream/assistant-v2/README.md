@@ -24,4 +24,4 @@ node --test ops/stream/assistant-v2/test/*.test.mjs
 /home/jelly/stream-director/.venv/bin/python ops/stream/assistant-v2/test/proxy_test.py
 ```
 
-Fixtures launch isolated headless browsers and intercept all Whatnot navigation; they do not log in or send real messages. `tests/stream/guide-browser.ts` uses the local test database and owner/MFA fixture for website controls. See `VALIDATION.md` for installation evidence and remaining live acceptance.
+Fixtures launch isolated headless browsers and intercept all Whatnot navigation; they do not log in or send real messages. `tests/stream/assistant-browser.ts` uses the local test database and owner/MFA fixture for website controls. See `VALIDATION.md` for installation evidence and remaining live acceptance.
