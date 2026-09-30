@@ -2,7 +2,7 @@
 
 ## Latest shared handoff
 
-Read [OPERATIONS.md](OPERATIONS.md) for the September 29 camera/audio findings, nightly Windows Whatnot workflow, single-DJI delay test, TikTok account gate and Facebook preview / combined-chat setup. The same document is served behind owner authentication at `/stream/guide` and linked from HQ Docs. Treat its hardware and platform observations as dated; query current state before acting.
+Read [OPERATIONS.md](OPERATIONS.md), updated September 30, for the next-show checklist, unified Show Assistant, minute inventory refresh and Facebook-only draft-import gap, plus the September 29 camera/audio findings, Windows Whatnot workflow, single-DJI delay test, TikTok account gate and Facebook preview / combined-chat setup. The same document is served behind owner authentication at `/stream/guide` and linked from HQ Docs. Treat its hardware and platform observations as dated; query current state before acting.
 
 Any agent (Claude on the DGX "Spark", Grok Bot on the Windows PC, Codex on the Mac) controls the
 house live pipeline through ONE HTTP API on the DGX stream director. Same commands, same power,
