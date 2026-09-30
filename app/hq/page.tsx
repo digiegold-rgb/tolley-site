@@ -681,8 +681,8 @@ function HqPageInner() {
               <summary className="tab-btn">📄 Docs ▾</summary>
               <div className="tab-docs-menu">
                 <a href="/stream/guide" onClick={closeDocs}>
-                  📡 Streaming setup &amp; nightly checklist
-                  <span className="doc-sub">Whatnot on Windows, camera and audio fixes, delay testing, Facebook previews, and combined live chat — Sep 29, 2026</span>
+                  📡 Streaming &amp; Show Assistant guide
+                  <span className="doc-sub">Next-show checklist, one Show Assistant, automatic inventory updates, Windows Whatnot, and Facebook previews — Sep 30, 2026</span>
                 </a>
                 <a
                   href="/research/whatnot-market-study-2026-09-20.pdf"

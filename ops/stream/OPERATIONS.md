@@ -1,8 +1,30 @@
 # Streaming operator guide
 
-Updated September 29, 2026. Shared instructions for Jared and the agents maintaining Treasure Hauls. Available in HQ → Docs → Streaming setup & nightly checklist, and from the stream controls.
+Updated September 30, 2026. Shared instructions for Jared and the agents maintaining Treasure Hauls. Available in HQ → Docs → Streaming & Show Assistant guide, and from the stream controls.
 
-## Today's scope and readiness
+## Next show: quick start
+
+There is **one Show Assistant** for viewer greetings, thank-you DMs, announcements and inventory answers. The old V1/V2 choice is retired; existing settings, message history, cooldowns and opt-outs are preserved. [Open Show Assistant](/stream/assistant) · [Open stream controls](/stream).
+
+1. **Before going live:** open Show Assistant, check that inventory says **Fresh**, and try **Preview answer** with “Do you have any Stagg electric kettles?” Preview never posts. Try “What condition is it?” too; an unrecorded detail should be left for you rather than guessed.
+2. **Prepare the picture and sound:** select the correct Whatnot show, arm the house with destinations off and LIVE Studio unchecked, start the house camera, and confirm picture plus moving audio in Windows OBS. Follow the Windows Whatnot steps below. A direct DJI USB feed is a different path; its detection remains unverified.
+3. **Start the Whatnot show on Windows:** select **Whatnot Live (Recommended)** in OBS, connect the correct show through Whatnot Show Tools, then click **Start Show** when ready. Keep Show Tools open. Confirm the show is actually live before connecting the assistant.
+4. **Connect the assistant:** paste that show's URL and click **Connect show**. Optionally confirm the correct saved Tolley lineup. Without a selected lineup, it can still answer catalog/backstock questions, with availability qualified. Review settings, then click **Start assistant** when you want replies.
+5. **Check the first real interaction:** have a viewer send a new “Hi” after Start, then a named-product question. Public messages are at least 60 seconds apart and capped at 40/hour, so allow time. Old comments are not replayed. Review **Questions and decisions** to see an answer's evidence or why a question was held for you. The first live inventory-answer acceptance test is still pending; previews and automated tests have passed.
+6. **When finished:** click **Pause assistant**, end the show in Whatnot, then end the house after all platform broadcasts have ended. Pausing the assistant does not stop the camera or broadcast.
+
+If **Connect show** fails, confirm the show is live and the Spark's existing Chrome session is still signed in as `treasure_hauls`. The assistant uses that browser session; Windows Chrome/OBS handles the separate Whatnot video connection. Do not restart OBS or change stream keys to fix assistant chat.
+
+## Daily drafts and automatic inventory refresh
+
+The assistant reads the saved **Tolley inventory every minute**, throughout the day and overnight. Ruthann's new drafts entered through Tolley's listing tools become available on the next successful refresh; there is no nightly wait or manual model training. During the September 29 setup, 15 new Tolley drafts automatically appeared in the assistant (624 → 639 drafts), confirming this path was working. Those counts are dated records, not a current physical stock count.
+
+**Unpublished drafts created only inside Facebook Marketplace are not automatically imported by the existing Facebook mirror.** That mirror handles published inventory/status changes. Confirm where Ruthann creates a draft before assuming it is covered. Once the item exists in Tolley, the assistant can pick it up automatically. New Facebook-only draft import has not been enabled.
+
+Freshness describes the latest database snapshot, not a physical count of the shelves. Drafts remain unconfirmed stock; sold/archived records override old active listings. Inventory older than three minutes stops product answers until a fresh snapshot is available. Missing details, current auction pricing and physical condition checks stay with the host. Tonight's Whatnot auction list is not imported automatically: select a saved Tolley lineup explicitly if it applies.
+
+## Camera and platform readiness
+
 
 Use one DJI camera for the first test. Defer extra cameras and the other camera connections until later. The requested Facebook phase is now installed as an unpublished preview; public activation still waits for Jared. Prepare the preview first; Jared starts the public show when ready. A request to get ready is not permission to publish immediately or after an assumed countdown.
 
@@ -27,6 +49,7 @@ The Spark can send the finished house program to YouTube and Facebook through se
 | Privacy | Replaces house camera/audio with the privacy slate. It does not make a platform's audience private and does not cover a direct USB camera in TikTok. |
 | Hold to END STREAM | Ends the house pipeline and closes LIVE Studio. End the platform shows first. |
 | Facebook LIVE | Creates an unpublished preview on the verified Page. Send house feed starts only the Facebook sender; publish separately in Live Producer when ready. |
+| Show Assistant | Opens the single assistant for greetings, thank-yous and inventory answers. Preview does not post; Start assistant enables chat responses after a verified show connection. |
 | Whatnot checklist | Explains how to connect the correct nightly show on Windows. Arming the house does not start a Whatnot show. |
 
 When all house cameras disconnect for over five seconds, the Spark switches to BRB. A camera returning restores the picture. With another camera connected, the director can switch to it automatically. After all cameras are gone for 15 minutes, the house ends; the normal maximum session is eight hours. The user observed BRB preserve the downstream stream during a camera disconnect. Do not generalize this to a direct USB feed.
@@ -134,7 +157,7 @@ Public messages: at least 60 seconds apart, at most 40 per rolling hour includin
 
 ### Inventory and answer boundaries
 
-The read-only minute export uses Tolley Product/PlatformListing records, including imported Facebook listings/drafts, plus saved StreamLineups. Initial snapshot: 1,906 records (54 listed, 624 drafts, 1,228 sold/unavailable), not a verified physical stock count. No Whatnot PlatformListing rows were present at implementation time. Auction-1 was a saved 12-item lineup dated September 27; never automatically call it tonight's show.
+The read-only minute export uses Tolley Product/PlatformListing records, including imported Facebook listings and Tolley draft records, plus saved StreamLineups. Initial snapshot: 1,906 records (54 listed, 624 drafts, 1,228 sold/unavailable), not a verified physical stock count. No Whatnot PlatformListing rows were present at implementation time. Auction-1 was a saved 12-item lineup dated September 27; never automatically call it tonight's show.
 
 The existing local model selects catalog IDs, intent and literal facts; public text comes from bounded templates. Recorded titles, condition and verified descriptions can support answers. Unverified descriptions, internal purchase costs, minimum prices and private lineup notes are not exported. Sold/archived records override old active listings. Drafts need host confirmation; backstock is not promised in the show. Prices refer viewers to Whatnot/the host. Missing details, working-condition checks, compatibility and policy questions stay with the host. Inventory older than three minutes stops product answers; evidence is rechecked before sending.
 
