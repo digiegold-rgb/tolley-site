@@ -109,3 +109,32 @@ Implementation, mocked contract tests, install and rollback instructions: `ops/s
 Read `ops/stream/STREAM-AGENTS.md` or the installed `~/stream-director/agents/STREAM-AGENTS.md` before operations. Use `stream status` first and the director CLI for normal control. Live state is not persistent memory. Never copy camera keys, platform credentials or OBS websocket passwords into these notes.
 
 This guide is the durable shared handoff. Keep it updated alongside the HQ link and stream-page directions. Today's source configuration repairs were explicitly authorized by Jared; they are not blanket permission for future agents to interrupt a live show, install software, or start a public broadcast.
+
+## Windows OBS blank after the house reconnects
+
+Observed September 29 after Facebook setup: the house was armed, camera 1 active and Spark encoding. Windows OBS had the correct Whatnot Live (Recommended) profile, Program scene and enabled House Program source, but source dimensions were 0×0, media cursor 0 and no RTSP relay connection. The media state misleadingly said PLAYING. The relay itself supplied 1080×1920 H.264 plus 48 kHz stereo AAC. Windows OBS was not broadcasting.
+
+Jared explicitly authorized refreshing this Windows source while the house remained armed. TriggerMediaInputAction RESTART did not recover it. Reapplying only the existing House Program input address through SetInputSettings with overlay=true reopened its network connection, preserving all source settings. The current address was rtsp://192.168.2.196:8554/program. A Windows Program screenshot then showed the camera; source dimensions returned to 1080×1920, cursor advanced, and 99 meter samples had a nonzero audio peak (~0.219). House Program stayed unmuted at unity gain with Monitor and Output to CABLE Input. House and Facebook sender stayed running. No Whatnot/public broadcast was started.
+
+For recurrence, inspect first: this is one observed stale connection, not proof that every black preview has this cause. While armed, obtain the specific Windows-source refresh authorization required by the hard rule; this prior approval applies to this repair only. Do not restart OBS, change profiles, stop the house, or start Whatnot just to refresh the input.
+
+
+## Inventory Assistant V2 — September 29, version 1.56
+
+The owner-only [assistant chooser](/stream/assistant) and main [stream controls](/stream) have separate buttons for [Classic](/api/stream/whatnot-bot/admin) and [Inventory V2](/api/stream/whatnot-bot-v2/admin). Classic's existing worker and settings remain in place. V2 is installed **paused**; installation did not connect to a show or send public replies/DMs.
+
+V2 reads a catalog snapshot every minute from Tolley Product and PlatformListing records, including imported Facebook listings/drafts, plus saved StreamLineups. Initial ledger had 1,906 product records, including 54 listed and 624 drafts before conservative sold overrides. These are records, not a physical stock count. No Whatnot PlatformListing records were present at implementation time. The saved Auction-1 lineup is dated September 27 and must not automatically be called tonight's show.
+
+1. Open V2 and use **Preview answer**. It never sends chat or DMs. Named-product follow-up questions are remembered per viewer for five minutes.
+2. Pause Classic, paste tonight's Whatnot link into V2, and **Connect show**. Existing chat becomes a baseline and is not replayed.
+3. Optionally select and confirm the saved Tolley lineup for this connected show. Reconnection clears this binding. This is not an automatic import of tonight's Whatnot auction list.
+4. Review V2 settings and press **Start Inventory V2** when ready. It requires verified live chat for treasure_hauls, fresh inventory and Classic paused. Starting an assistant never starts the video broadcast.
+5. **Pause V2 sending** before returning to Classic. The proxy serializes starts and blocks simultaneous senders. If V2 is stopped/unreachable by connection refusal, Classic remains usable. V2 checks Classic before every send and pauses if Classic is active.
+
+Public messages: at least 60 seconds apart, at most 40 per rolling hour including announcements, at least five minutes between public replies to the same viewer. Replies expire after two minutes. Thank-you DMs retain the existing 45-second delay and 30-day recipient cooldown; opt-outs and outgoing-message history are shared across versions. Separate settings and incoming events prevent V2 from changing Classic's configuration. Uncertain sends are not retried.
+
+The existing local model interprets the viewer's question and selects catalog IDs/facts; it cannot generate unrestricted public prose. Answers are built from recorded facts. Listed backstock is not promised in the show, drafts need confirmation, and sold/archived records override old active listings. Unverified descriptions, internal costs, floor prices and private lineup notes are not exported. Prices refer viewers to Whatnot/host. Missing details, working-condition checks, compatibility and policy questions stay with the host. It cannot see the item being held or hear the host. Inventory older than three minutes stops product answers; known facts are rechecked before sending.
+
+Runtime: `~/whatnot-inventory-bot`, loopback port 8112, `tolley-inventory-assistant.service`; catalog oneshot/timer `tolley-inventory-catalog`, snapshot/SQLite under `~/.local/state/tolley-inventory-assistant/`. Classic remains `~/whatnot-admin-bot`, port 8111, `tolley-whatnot-bot.service`. Owner auth + MFA and origin/CSRF checks protect both website dashboards. Never print credentials or copy browser sessions. Source and offline tests: `ops/stream/assistant-v2/`.
+
+Real catalog/model preview found the listed Fellow Stagg kettle and declined to invent its missing condition. Offline tests cover matching, ambiguity, sold overrides, stale inventory, cross-version limits, owner/browser checks and preview-only behavior. A real V2 viewer-chat acceptance test remains pending explicit owner Start during a show. Do not claim that test passed or enable it automatically.

@@ -231,6 +231,7 @@ export default function StreamPage() {
         })}
       </div>
 
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, margin: "14px 0" }}><Link href="/api/stream/whatnot-bot/admin" style={{ padding: "12px 18px", border: "1px solid #52708b", borderRadius: 8 }}>Show Assistant · Classic</Link><Link href="/api/stream/whatnot-bot-v2/admin" style={{ padding: "12px 18px", border: "1px solid #63c9a4", borderRadius: 8 }}>Inventory Assistant · V2</Link><Link href="/stream/assistant" style={{ padding: "12px 4px" }}>How the assistants work →</Link></div>
       <p style={{ fontSize: 13, color: "#9ab", lineHeight: 1.6 }}>Sending video does not confirm a platform is live. Confirm Whatnot in Seller Hub. <Link href="/stream/growth">Schedule, clips & profit →</Link> · <Link href="/stream/coach">Stream Coach ✦</Link> · <Link href="/stream/stock">Stock & sourcing →</Link></p>
       <Link href="/stream/slideshow" style={S.selling}>▷ Whatnot product slideshow — OBS, phone, or TV</Link>
       <div style={{ marginBottom: 12 }}><Tile label="NAS recording" ok={s?.recording?.state === "recording"} text={s?.recording ? `${s.recording.state}${s.recording.ageS !== null ? ` · updated ${s.recording.ageS}s ago` : ""}${s.recording.error ? ` · ${s.recording.error}` : ""}` : "Health not reported"}/></div>

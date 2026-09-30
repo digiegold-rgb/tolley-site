@@ -34,6 +34,13 @@ async function main() {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({ path: "/tmp/stream-guide-desktop.png", fullPage: true });
 
+    await page.goto(base + "/stream/assistant", { waitUntil: "domcontentloaded", timeout: 240000 });
+    await page.getByRole("heading", { name: "Your Whatnot show assistants", exact: true }).waitFor();
+    assert.equal(await page.getByRole("link", { name: "Open Classic Show Assistant →", exact: true }).getAttribute("href"), "/api/stream/whatnot-bot/admin");
+    assert.equal(await page.getByRole("link", { name: "Open Inventory Assistant V2 →", exact: true }).getAttribute("href"), "/api/stream/whatnot-bot-v2/admin");
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+
     const facebook = { verified: true, pageId: "1156652300855210", pageName: "Ruthann’s Treasure Haul", videoId: "123456", title: "Test preview", phase: "UNPUBLISHED", liveNow: false, checkedAt: Date.now()/1000, error: "" };
     const status = { facebook, armed: false, privacy: false, liveSinceS: 0, camera: { connected: false, kbps: 0, sinceS: 0, goneS: 0 }, obs: { connected: true, scene: "Ending", streaming: false, programReady: false, lastError: "" }, mediamtx: { ok: true }, destinations: { facebook: { enabled: false, configured: true, running: false, uptimeS: 0 }, youtube: { enabled: false, configured: true, running: false, uptimeS: 0 }, tiktok: { enabled: false, configured: false, running: false, uptimeS: 0 } }, cameras: [], limits: { camGoneEndMin: 15, maxStreamMin: 480, brbAfterS: 5 }, ingest: { url: "test", keyTail: "test" }, studio: { online: true, ageS: 0, studioRunning: false, obsRunning: true, host: "test" }, events: [] };
     let mutations = 0;
@@ -65,6 +72,8 @@ async function main() {
     assert.equal(await page.getByText("First Facebook message", { exact: false }).count(), 0, "Restart/source change removes old comments");
     assert.equal(await page.getByText("YouTube message", { exact: false }).count(), 0);
     await page.screenshot({ path: "/tmp/stream-checklist-mobile.png", fullPage: true });
+    await page.getByRole("link", { name: "Show Assistant · Classic", exact: true }).waitFor();
+    await page.getByRole("link", { name: "Inventory Assistant · V2", exact: true }).waitFor();
     assert.equal(mutations, 0, "Opening instructions must not arm or publish");
     await page.getByRole("button", { name: "Refresh preview" }).click();
     await page.waitForTimeout(500);
