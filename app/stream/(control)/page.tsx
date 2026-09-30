@@ -255,7 +255,7 @@ export default function StreamPage() {
       </div>
 
       <FacebookLive meta={s?.facebook} armed={live} programReady={!!s?.obs.programReady}
-        enabled={!!s?.destinations.facebook?.enabled} sending={!!s?.destinations.facebook?.running} refresh={load} />
+        enabled={!!s?.destinations.facebook?.enabled} sending={!!s?.destinations.facebook?.running} keyTail={s?.destinations.facebook?.keyTail} refresh={load} />
 
       {/* Whatnot streams over WHIP through ITS OWN Show Tools page driving a local OBS (no RTMP key), so it is not a pusher here:
           the OBS on the wired Windows stream PC already shows the house program feed, and Whatnot's page points that OBS at the show. */}

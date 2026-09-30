@@ -2,6 +2,12 @@
 
 Meta Graph v23: Page.live_videos, LiveVideo.from/status/secure_stream_url/comments.
 Credentials stay in stream.env; API responses/logs contain only allowlisted metadata.
+
+Two ways to bind a show:
+- graph: prepare()/select() read secure_stream_url for a video the Page token can see.
+- manual: set_key() stores the Server URL + stream key pasted from Facebook Live Producer.
+  Meta does not expose a Live Producer video to the Page token until it goes live
+  (Graph code 100), so its phase is reported as KEYED until Graph can read it.
 """
 from __future__ import annotations
 
@@ -21,10 +27,18 @@ API = "https://graph.facebook.com/v23.0"
 ENV_PATH = Path.home() / ".config/tolley-security/stream.env"
 STATE_PATH = Path.home() / "stream-director/facebook-state.json"
 ACCEPTED = {"UNPUBLISHED", "LIVE"}
+KEYED = "KEYED"  # manual key loaded; Meta cannot show the video yet
+KEY_RE = re.compile(r"FB-(\d{5,40})-(\d)-[A-Za-z0-9_-]{8,200}")
+DEFAULT_SERVER = "rtmps://live-api-s.facebook.com:443/rtmp/"
+NOT_VISIBLE = 100  # Graph: object missing or not visible to this token
 
 
 class FacebookError(Exception):
     """Only fixed, credential-free messages may cross the API boundary."""
+
+    def __init__(self, message, code=None):
+        super().__init__(message)
+        self.code = code
 
 
 def env_read(path=ENV_PATH):
@@ -59,6 +73,26 @@ def safe_ingest(value):
     return value
 
 
+def safe_server(value):
+    """The Server URL shown in Live Producer: rtmps://<facebook host>/rtmp/ and nothing else."""
+    server = value.strip() or DEFAULT_SERVER
+    if not server.endswith("/"):
+        server += "/"
+    url = urlparse(server)
+    if (url.scheme != "rtmps" or not (url.hostname or "").endswith(".facebook.com") or
+            url.username or url.password or url.query or url.fragment or url.path != "/rtmp/"):
+        raise FacebookError("Use the RTMPS Server URL shown in Facebook Live Producer")
+    return server
+
+
+def parse_key(value, label="stream key"):
+    key = value.strip()
+    match = KEY_RE.fullmatch(key)
+    if not match:
+        raise FacebookError(f"Paste the full Facebook {label} (FB-…) from Live Producer")
+    return key, match.group(1), match.group(2)
+
+
 class FacebookLive:
     def __init__(self, env_path=ENV_PATH, state_path=STATE_PATH, transport=None):
         self.env_path, self.state_path, self.transport = env_path, state_path, transport
@@ -81,7 +115,8 @@ class FacebookLive:
                 code = result.get("error", {}).get("code")
                 if code == 190:
                     raise FacebookError("Facebook connection expired; reconnect the Page in social settings")
-                raise FacebookError(f"Facebook request failed (HTTP {r.status_code}, code {code if isinstance(code, int) else 'unknown'}). Check Page access in Live Producer")
+                raise FacebookError(f"Facebook request failed (HTTP {r.status_code}, code {code if isinstance(code, int) else 'unknown'}). Check Page access in Live Producer",
+                                    code=code if isinstance(code, int) else None)
             return result
         except FacebookError:
             raise
@@ -106,29 +141,46 @@ class FacebookLive:
     def refresh(self):
         try:
             identity = self.identity()
-            selected = env_read(self.env_path).get("FACEBOOK_VIDEO_ID", "")
-            video = self.video(selected) if selected else None
-            phase = video.get("status", "unknown") if video else "idle"
+            env = env_read(self.env_path)
+            selected, manual = env.get("FACEBOOK_VIDEO_ID", ""), env.get("FACEBOOK_INGEST_MODE") == "manual"
+            phase, title = "idle", ""
+            if selected:
+                try:
+                    video = self.video(selected)
+                    phase, title = video.get("status", "unknown"), str(video.get("title", ""))[:120]
+                except FacebookError as error:
+                    if not (manual and error.code == NOT_VISIBLE):
+                        raise
+                    phase, title = KEYED, "Live Producer stream key"
             self.meta = {**identity, "verified": True, "connected": False,
                          "videoId": selected, "source": f"facebook:{PAGE_ID}:{selected}" if selected else "",
-                         "title": str(video.get("title", ""))[:120] if video else "",
-                         "phase": phase, "liveNow": phase == "LIVE", "error": "", "checkedAt": time.time()}
+                         "title": title, "phase": phase, "liveNow": None if phase == KEYED else phase == "LIVE",
+                         "ingest": "manual" if manual else "graph", "error": "", "checkedAt": time.time()}
         except FacebookError as error:
             self.meta = {**self.meta, "verified": False, "connected": False, "liveNow": None,
                          "error": str(error), "checkedAt": time.time()}
         return dict(self.meta)
 
     def target(self):
-        if (not self.meta.get("verified") or self.meta.get("phase") not in ACCEPTED or
+        manual = self.meta.get("ingest") == "manual"
+        phase = self.meta.get("phase")
+        if (not self.meta.get("verified") or (phase not in ACCEPTED and not (manual and phase == KEYED)) or
                 time.time() - self.meta.get("checkedAt", 0) > 45):
             return None
         env = env_read(self.env_path)
-        if env.get("FACEBOOK_VIDEO_ID") != self.meta.get("videoId"):
+        if env.get("FACEBOOK_VIDEO_ID") != self.meta.get("videoId") or manual != (env.get("FACEBOOK_INGEST_MODE") == "manual"):
             return None
         try:
             return safe_ingest(env.get("FACEBOOK_INGEST_URL", ""))
         except FacebookError:
             return None
+
+    def key_tail(self):
+        """Last characters of the loaded ingest key, for status only. Never the key itself."""
+        try:
+            return safe_ingest(env_read(self.env_path).get("FACEBOOK_INGEST_URL", ""))[-6:]
+        except (FacebookError, OSError):
+            return ""
 
     def select(self, video_id):
         self.identity()
@@ -136,8 +188,32 @@ class FacebookLive:
         if video.get("status") not in ACCEPTED:
             raise FacebookError("Choose an unpublished preview or an active live video")
         target = safe_ingest(video.get("secure_stream_url", ""))
-        env_update({"FACEBOOK_VIDEO_ID": video_id, "FACEBOOK_INGEST_URL": target}, self.env_path)
+        env_update({"FACEBOOK_VIDEO_ID": video_id, "FACEBOOK_INGEST_URL": target,
+                    "FACEBOOK_INGEST_MODE": "graph", "FACEBOOK_INGEST_BACKUP": ""}, self.env_path)
         self.state_path.write_text(json.dumps({"uncertain": False, "videoId": video_id}))
+        return self.refresh()
+
+    def set_key(self, server, key, backup=""):
+        """Bind the Server URL + stream key copied from Live Producer. All empty = clear."""
+        self.identity()
+        state = json.loads(self.state_path.read_text()) if self.state_path.exists() else {}
+        if not (server.strip() or key.strip() or backup.strip()):
+            env_update({"FACEBOOK_INGEST_MODE": "graph", "FACEBOOK_INGEST_URL": "",
+                        "FACEBOOK_INGEST_BACKUP": "", "FACEBOOK_VIDEO_ID": ""}, self.env_path)
+            self.state_path.write_text(json.dumps({**state, "videoId": "", "manual": False}))
+            return self.refresh()
+        server = safe_server(server)
+        key, video_id, index = parse_key(key)
+        values = {"FACEBOOK_INGEST_MODE": "manual", "FACEBOOK_VIDEO_ID": video_id,
+                  "FACEBOOK_INGEST_URL": safe_ingest(server + key), "FACEBOOK_INGEST_BACKUP": ""}
+        if backup.strip():
+            backup, backup_id, backup_index = parse_key(backup, "backup stream key")
+            if backup_id != video_id or backup_index == index:
+                raise FacebookError("The backup key must belong to the same Live Producer stream")
+            values["FACEBOOK_INGEST_BACKUP"] = safe_ingest(server + backup)
+        env_update(values, self.env_path)
+        # Keep any unresolved preview-creation guard; a pasted key does not settle it.
+        self.state_path.write_text(json.dumps({**state, "videoId": video_id, "manual": True}))
         return self.refresh()
 
     def prepare(self, title):
@@ -145,9 +221,16 @@ class FacebookLive:
         state = json.loads(self.state_path.read_text()) if self.state_path.exists() else {}
         if state.get("uncertain"):
             raise FacebookError("A previous preview request was not confirmed. Open Live Producer and select its video ID; do not create duplicates")
-        selected = env_read(self.env_path).get("FACEBOOK_VIDEO_ID", "")
+        env = env_read(self.env_path)
+        selected = env.get("FACEBOOK_VIDEO_ID", "")
         if selected:
-            current = self.video(selected)
+            try:
+                current = self.video(selected)
+            except FacebookError as error:
+                # A pasted Live Producer key is invisible to Graph until it goes live; make a Spark preview instead.
+                if not (env.get("FACEBOOK_INGEST_MODE") == "manual" and error.code == NOT_VISIBLE):
+                    raise
+                current = {}
             if current.get("status") in ACCEPTED:
                 return self.select(selected)
         # Record intent BEFORE POST. An ambiguous timeout must never create duplicates.
@@ -243,6 +326,22 @@ def install(app, require_key, state, obs_state, pushers, status_payload, api):
             except FacebookError as error:
                 raise HTTPException(409, str(error)) from None
 
+    @app.post("/facebook/key", dependencies=[Depends(require_key)])
+    async def key(body: dict):
+        async with api.mutation_lock:
+            if state.destinations.get("facebook") or pushers["facebook"].running():
+                raise HTTPException(409, "Stop the Facebook sender before changing its stream key")
+            try:
+                result = await asyncio.to_thread(api.set_key, str(body.get("server") or ""),
+                                                 str(body.get("key") or ""), str(body.get("backup") or ""))
+            except FacebookError as error:
+                raise HTTPException(409, str(error)) from None
+            fails = getattr(pushers["facebook"], "fails", None)
+            if fails is not None:  # a fresh key deserves an immediate retry once sending is enabled
+                fails.clear()
+                pushers["facebook"].next_try = 0.0
+            return result
+
     @app.post("/facebook/send", dependencies=[Depends(require_key)])
     async def send(body: dict):
         async with api.mutation_lock:
@@ -251,10 +350,10 @@ def install(app, require_key, state, obs_state, pushers, status_payload, api):
             meta = await asyncio.to_thread(api.refresh)
             if not state.armed or not obs_state.get("program_ready"):
                 raise HTTPException(409, "The house stopped while Facebook was being checked")
-            allowed_phase = meta.get("phase") == "UNPUBLISHED" or (
+            allowed_phase = meta.get("phase") in ("UNPUBLISHED", KEYED) or (
                 meta.get("phase") == "LIVE" and body.get("confirmLive") == meta.get("videoId"))
             if body.get("videoId") != meta.get("videoId") or not allowed_phase or not api.target():
-                raise HTTPException(409, "Select a verified unpublished Facebook preview before sending")
+                raise HTTPException(409, "Select a verified unpublished Facebook preview or paste a Live Producer stream key before sending")
             # Only this action can enable Facebook. Publishing is manual in Live Producer.
             state.destinations["facebook"] = True
             state.save()

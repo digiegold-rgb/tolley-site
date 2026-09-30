@@ -14,3 +14,11 @@
 - Source backups: `~/stream-director/facebook-backup-1790722952` is the pre-feature director/chat; subsequent timestamped backups contain the newer integration. No credentials are included.
 
 No camera → Facebook ingest/audio test, real live viewer message or public broadcast was performed. These are the remaining acceptance steps when Jared is ready. Website deployment evidence is appended after release.
+
+## September 29 (late) — pasted Live Producer stream key
+
+- Jared created tonight's show in Live Producer and supplied its RTMPS server, primary and backup keys (video ID `122117077251297240`). Authorized read-only Graph probes with the Page token: `GET /122117077251297240` → HTTP 400, code 100, subcode 33; the Page `live_videos` edge (all `broadcast_status` filters) did not list it, while the Spark-made preview `122117051781297240` stayed readable and `UNPUBLISHED`. Conclusion: Live Producer videos are invisible to the token until live, so a paste-the-key path was added.
+- Twelve offline contract tests pass (the nine above plus manual-key storage/redaction, bad-input and running-sender rejection, and the `KEYED` phase/send gate including the switch back to graph mode).
+- Installed while the house was disarmed and nothing was sending (`install.py --check`, then `install.py`; backup `~/stream-director/facebook-backup-1790742400`). Both services active afterwards; status first showed the Spark preview in `graph` mode (tail `pGYEO9`).
+- Keys loaded with `stream facebook key --stdin`. `stream facebook status`: video `122117077251297240`, phase `KEYED`, `ingest manual`, sender configured/off, key tail `lnDlzO`; `stream.env` still mode 600; no key text in director logs or journal.
+- No arming, sending or publishing was performed. Remaining acceptance with Jared: arm → send → confirm picture/audio in Live Producer → Go Live there → panel shows Live on Facebook and comments arrive.
