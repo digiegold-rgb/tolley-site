@@ -21,7 +21,7 @@ async function main() {
     await context.addCookies([{name:"tolley_mfa",value:signMfaProof(user.id,session,enrollmentKey(mfa)),domain:"127.0.0.1",path:"/"}]);
     const redirect=await context.request.get(base+"/stream/assistant",{maxRedirects:0});assert.equal(redirect.status(),307);assert.equal(redirect.headers().location,"/api/stream/whatnot-bot/admin");
     let mutations=0;
-    const status={armed:false,privacy:false,obs:{connected:true,streaming:false,programReady:false},camera:{connected:false,kbps:0},cameras:[],destinations:{},events:[],limits:{},studio:{}};
+    const status={armed:false,privacy:false,obs:{connected:true,streaming:false,programReady:false},camera:{connected:false,kbps:0},cameras:[],destinations:{},events:[],limits:{camGoneEndMin:15,maxStreamMin:480,brbAfterS:5},studio:{online:false},ingest:{url:"fixture",keyTail:"fixture"},mediamtx:{ok:true}};
     const snapshot={paused:true,phase:"disconnected",inventory:{ready:true,generatedAt:Date.now(),counts:{listed:54,draft:624,unavailable:1228},lineups:[]},settings:{repliesEnabled:true,dmEnabled:true,announcementsEnabled:true,announcements:[],faqs:[],testUsers:[],excludedUsers:[]},messages:[],decisions:[],csrf:"fixture"};
     await page.route("**/api/stream/**",async route=>{
       const url=new URL(route.request().url());if(route.request().method()!=="GET")mutations++;
@@ -34,6 +34,7 @@ async function main() {
     });
     await page.route("**/api/stream-lineup",route=>route.fulfill({json:{active:null}}));
     await page.goto(base+"/stream",{waitUntil:"domcontentloaded",timeout:240000});
+    await page.getByRole("link",{name:"Show Assistant",exact:true}).waitFor();
     assert.equal(await page.getByRole("link",{name:"Show Assistant",exact:true}).count(),1);
     assert.equal(await page.getByRole("link",{name:/Classic|Inventory Assistant.*V2/}).count(),0);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);

@@ -60,7 +60,7 @@ test('shared history prevents cross-version duplicates and cooldown resets; Clas
  const v2=new SharedStore(join(f.dir,'v2.sqlite'),path);const m={dedupe:'once',kind:'public',user:'alice',show:'s',text:'Hello',reason:'fixture'};
  const id=v2.reserve(m,f.now());assert.ok(id);assert.equal(classic.has('once'),true);assert.equal(v2.count('public',0),1);assert.equal(classic.count('public',0),1);v2.finish(id,'sent');assert.equal(classic.history()[0].status,'sent');
  v2.optOut('bob',f.now());assert.equal(classic.optedOut('bob'),true);classic.optOut('eve',f.now());assert.equal(v2.optedOut('eve'),true);assert.equal(v2.reserve(m,f.now()),null);assert.equal(JSON.stringify(classic.config()),before);
- assert.equal(v2.history().length,1);assert.equal(v2.history()[0].status,'sent');
+ assert.equal(v2.history().length,1);assert.equal(v2.history()[0].status,'sent');assert.equal(v2.history()[0].reason,'fixture');
  const oldId=classic.reserve({...m,dedupe:'old-before-migration'},f.now()-10000);classic.finish(oldId,'sent');assert.equal(v2.history().length,2);
  v2.close();classic.close();
 });

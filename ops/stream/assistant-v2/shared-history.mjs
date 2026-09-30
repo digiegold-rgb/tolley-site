@@ -26,6 +26,6 @@ export class SharedStore extends Store {
     super.finish(id,status,error,now);
     this.legacy.prepare('UPDATE messages SET status=?,error=?,updated=? WHERE id=?').run(status,error.slice(0,400),now,id);
   }
-  history(){const rows=[...super.history(),...this.legacy.prepare('SELECT * FROM messages ORDER BY created DESC LIMIT 100').all()];return [...new Map(rows.sort((a,b)=>b.created-a.created).map(m=>[m.id,m])).values()].slice(0,100);}
+  history(){const rows=[...super.history(),...this.legacy.prepare('SELECT * FROM messages ORDER BY created DESC LIMIT 100').all()];const unique=new Map();for(const m of rows.sort((a,b)=>b.created-a.created))if(!unique.has(m.id))unique.set(m.id,m);return [...unique.values()].slice(0,100);}
   close(){this.legacy.close();super.close();}
 }

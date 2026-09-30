@@ -90,7 +90,7 @@ export class Engine {
     const result=await this.inventory.answer(e.text,{user:e.user,show:e.show,binding:this.binding});
     this.decisions.push({at:this.clock(),user:e.user,question:e.text,...result});
     this.decisions=this.decisions.slice(-100);
-    return result.text?{text:`@${e.user} ${result.text}`.slice(0,500),reason:`Inventory V2: ${result.reason}`,evidence:result.evidence} : null;
+    return result.text?{text:`@${e.user} ${result.text}`.slice(0,500),reason:`Inventory: ${result.reason}`,evidence:result.evidence} : null;
   }
   bindLineup(slug){
     if(!this.snapshot?.show)throw Error('Connect a show before selecting its lineup');
