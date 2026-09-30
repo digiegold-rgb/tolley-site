@@ -78,7 +78,9 @@ test('a new product question goes through engine to one grounded public reply; s
  const f=fixture(t);const store=new Store(':memory:');store.configure({...defaults,dmEnabled:false,announcementsEnabled:false});const sent=[];
  const data={show:'s',ownerVerified:true,inputEnabled:true,liveFresh:true,chat:[]};const browser={read:async()=>({...data,at:f.now()}),attach:async()=>({...data,at:f.now()}),publicSend:async(text,guard)=>{guard();sent.push(text);}};
  const e=new Engine(store,browser,{inventory:f.inv,clock:f.now});await e.connect('https://www.whatnot.com/live/7034d537-5ecb-4933-915f-cd4b6baaab2d');await e.resume();data.chat.push({user:'alice',text:'Do you have any stag electric kettles?'});await e.tick();assert.equal(sent.length,1);assert.match(sent[0],/^@alice Our catalog lists/);
- f.advance(61000);const answer=await f.inv.answer('Do you have Stagg kettles?');f.data.products[0]={...kettle,sold:true};f.save();await assert.rejects(e.send({show:'s',kind:'public',user:'bob',text:answer.text,evidence:answer.evidence,dedupe:'changed'}),/Inventory changed/);assert.equal(sent.length,1);store.close();
+ f.advance(61000);data.chat.push({user:'alice',text:'What condition is it?'});await e.tick();assert.equal(sent.length,2);assert.match(sent[1],/like new/);
+ f.advance(61000);data.chat.push({user:'alice',text:'Hello'});await e.tick();assert.equal(sent.length,2,'Repeated greeting remains limited');
+ f.advance(61000);const answer=await f.inv.answer('Do you have Stagg kettles?');f.data.products[0]={...kettle,sold:true};f.save();await assert.rejects(e.send({show:'s',kind:'public',user:'bob',text:answer.text,evidence:answer.evidence,dedupe:'changed'}),/Inventory changed/);assert.equal(sent.length,2);store.close();
 });
 test('settings changed during model interpretation cancel its pending reply',async t=>{
  const f=fixture(t);const store=new Store(':memory:');store.configure({...defaults,dmEnabled:false,announcementsEnabled:false});let sent=0;const data={show:'s',ownerVerified:true,inputEnabled:true,liveFresh:true,chat:[]};

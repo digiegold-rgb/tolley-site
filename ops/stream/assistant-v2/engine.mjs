@@ -56,10 +56,11 @@ export class Engine {
       if(c.repliesEnabled&&now-this.store.last('public')>=60000&&this.store.count('public',now-3600000)<40){
         for(const [id,e] of this.replies){
           this.replies.delete(id);
-          if(now-e.observed>120000||!eligible(e.user,c)||this.store.optedOut(e.user)||this.store.recent('public',e.user,now-300000))continue;
+          if(now-e.observed>120000||!eligible(e.user,c)||this.store.optedOut(e.user))continue;
           const epoch=this.epoch;
           const reply=await this.replyFor(e,{...c,faqs:this.store.factsShow()===s.show?c.faqs:[]});
           if(this.paused||epoch!==this.epoch)return;
+          if(reply&&!reply.evidence&&this.store.recent('public',e.user,now-300000))continue;
           if(reply){await this.send({kind:'public',user:e.user,show:s.show,text:reply.text,reason:reply.reason,evidence:reply.evidence,dedupe:hash(s.show,'reply',e.id)});return;}
           break; // One inventory interpretation per tick; do not drain a room of questions at once.
         }

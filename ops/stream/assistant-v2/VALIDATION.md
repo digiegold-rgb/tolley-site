@@ -9,3 +9,5 @@
 - Website TypeScript check passed. Owner/MFA, separate-button and mobile layout browser checks passed; opening controls caused zero mutations. These use `tests/stream/assistant-browser.ts` with a local test database; production deployment evidence is appended after completion.
 
 Pending: owner-authorized live V2 acceptance (fresh viewer greeting + product question; owner-selected lineup if applicable). Offline fixtures and catalog previews are not proof of a live-platform send. Keep V2 paused until the owner explicitly starts it.
+
+Follow-up review: end-to-end fixture verifies that the same viewer can ask about a named product and receive a recorded-condition answer 61 seconds later, while another greeting remains suppressed. A broader existing Facebook harness timed out waiting for its Refresh preview button; the dedicated assistant owner/MFA/mobile harness passed. No Facebook behavior changed in this release.
