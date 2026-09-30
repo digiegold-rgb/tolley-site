@@ -2,9 +2,15 @@
 
 The Spark sends its finished house program to the bound Facebook Page. The website
 prepares/selects an unpublished Live Producer preview, or binds a stream key pasted
-from Live Producer, and explicitly enables its sender. Publishing remains a human
-action in Facebook Live Producer. No route creates `LIVE_NOW` or updates a video's
-publish status.
+from Live Producer, and explicitly enables its sender. Publishing is the owner's
+explicit action: either in Facebook Live Producer, or through the one-click
+`POST /facebook/golive {"confirm":true}` (September 30, at Jared's request), which
+publishes `LIVE_NOW` only after the house is armed, the sender is running and Meta
+reports incoming video (`ingest_streams{stream_health}.video_bitrate > 0`, verified
+readable with the Page token) or 15 s of sending, retrying for up to 120 s.
+`POST /facebook/end` sends `end_live_video=true` and stops the sender; a show this
+director published is ended automatically when the house ends. Generic toggles
+still cannot publish.
 
 ## Two ingest modes (`FACEBOOK_INGEST_MODE` in `stream.env`)
 
@@ -17,7 +23,11 @@ publish status.
   answers code 100 / subcode 33 for a Live Producer video until it goes live, and
   the Page `live_videos` edge lists it only afterwards, so `select` cannot bind it.
   In manual mode that code-100 answer yields phase `KEYED`, which `target()` and
-  `/facebook/send` accept like an unpublished preview. Any other Graph failure
+  `/facebook/send` accept like an unpublished preview. Meta also turns repeated
+  lookups of such a hidden ID into `(#4) Application request limit reached` for
+  that object only (seen after ~45 min of 15-second polling on September 30, while
+  `/me` kept working); manual mode treats code 4 on the video lookup as hidden too
+  and re-asks about a hidden video only once a minute (`HIDDEN_RECHECK_S`). Any other Graph failure
   (expired token, network, wrong Page) still fails closed, and a readable
   `VOD`/ended status still stops the sender. Selecting or preparing a Graph video
   switches back to `graph` mode and clears the backup key.

@@ -22,3 +22,9 @@ No camera → Facebook ingest/audio test, real live viewer message or public bro
 - Installed while the house was disarmed and nothing was sending (`install.py --check`, then `install.py`; backup `~/stream-director/facebook-backup-1790742400`). Both services active afterwards; status first showed the Spark preview in `graph` mode (tail `pGYEO9`).
 - Keys loaded with `stream facebook key --stdin`. `stream facebook status`: video `122117077251297240`, phase `KEYED`, `ingest manual`, sender configured/off, key tail `lnDlzO`; `stream.env` still mode 600; no key text in director logs or journal.
 - No arming, sending or publishing was performed. Remaining acceptance with Jared: arm → send → confirm picture/audio in Live Producer → Go Live there → panel shows Live on Facebook and comments arrive.
+
+## September 30 — one-click go-live and hidden-video throttle
+
+- Added `POST /facebook/golive` / `/facebook/end` and the stream-page **Hold to GO LIVE on Facebook** / **End Facebook show** buttons at Jared's request. Meta confirmed `ingest_streams{stream_health}` (with `video_bitrate`) is readable with the Page token on both the Spark preview and a past VOD, so publish waits for real incoming video (or 15 s of sending). Thirteen offline tests pass, including publish/end, refused publish with redaction, timeout, house-drop cancellation and auto-end when the house ends.
+- After ~45 minutes of 15-second status polling on the hidden Live Producer video, Meta answered that ID with `(#4) Application request limit reached` while `/me` and other objects stayed at 6% usage. The director showed the Facebook panel unverified. Fixed: manual mode treats code 4 on the video lookup as hidden and rechecks a hidden video once a minute. Reinstalled while idle (backup `~/stream-director/facebook-backup-1790745162`); status returned to `KEYED`, key tail `lnDlzO`.
+- No show was armed, sent or published.

@@ -31,6 +31,10 @@ KEYED = "KEYED"  # manual key loaded; Meta cannot show the video yet
 KEY_RE = re.compile(r"FB-(\d{5,40})-(\d)-[A-Za-z0-9_-]{8,200}")
 DEFAULT_SERVER = "rtmps://live-api-s.facebook.com:443/rtmp/"
 NOT_VISIBLE = 100  # Graph: object missing or not visible to this token
+HIDDEN_CODES = {NOT_VISIBLE, 4}  # Meta answers repeated lookups of a hidden ID with (#4) "request limit" for that object
+HIDDEN_RECHECK_S = 60  # while a pasted key's video is hidden, ask Meta about it this often, not every status cycle
+GOLIVE_WAIT_S = 15      # one-click go-live: publish once Meta reports incoming video, or after this much continuous sending
+GOLIVE_TIMEOUT_S = 120  # give up asking Meta to publish after this long (the house feed keeps sending)
 
 
 class FacebookError(Exception):
@@ -100,6 +104,10 @@ class FacebookLive:
                      "pageName": "Ruthann’s Treasure Haul", "videoId": "", "source": "",
                      "phase": "unknown", "liveNow": None, "error": "", "checkedAt": 0}
         self.mutation_lock = asyncio.Lock()
+        self.golive = None          # pending one-click go-live: {"videoId", "at", "attempts"}; cleared on restart
+        self.golive_state = {"goLive": "", "goLiveError": ""}
+        self.published = ""         # live-video ID this director made public; auto-ended when the house ends
+        self.hidden_until = 0.0     # manual mode: skip the video lookup until then after Meta said it is not visible
 
     def graph(self, path, params=None, data=None):
         env = env_read(self.env_path)
@@ -144,22 +152,57 @@ class FacebookLive:
             env = env_read(self.env_path)
             selected, manual = env.get("FACEBOOK_VIDEO_ID", ""), env.get("FACEBOOK_INGEST_MODE") == "manual"
             phase, title = "idle", ""
-            if selected:
+            if selected and manual and time.time() < self.hidden_until:
+                phase, title = KEYED, "Live Producer stream key"
+            elif selected:
                 try:
                     video = self.video(selected)
                     phase, title = video.get("status", "unknown"), str(video.get("title", ""))[:120]
                 except FacebookError as error:
-                    if not (manual and error.code == NOT_VISIBLE):
+                    if not (manual and error.code in HIDDEN_CODES):
                         raise
+                    self.hidden_until = time.time() + HIDDEN_RECHECK_S
                     phase, title = KEYED, "Live Producer stream key"
             self.meta = {**identity, "verified": True, "connected": False,
                          "videoId": selected, "source": f"facebook:{PAGE_ID}:{selected}" if selected else "",
                          "title": title, "phase": phase, "liveNow": None if phase == KEYED else phase == "LIVE",
-                         "ingest": "manual" if manual else "graph", "error": "", "checkedAt": time.time()}
+                         "ingest": "manual" if manual else "graph", "error": "", "checkedAt": time.time(),
+                         **self.golive_state}
         except FacebookError as error:
             self.meta = {**self.meta, "verified": False, "connected": False, "liveNow": None,
-                         "error": str(error), "checkedAt": time.time()}
+                         "error": str(error), "checkedAt": time.time(), **self.golive_state}
         return dict(self.meta)
+
+    def ingesting(self, video_id):
+        """True once Meta reports video arriving on the selected live video's ingest stream."""
+        try:
+            video = self.graph(video_id, {"fields": "id,status,ingest_streams{stream_health}"})
+        except FacebookError:
+            return False
+        streams = video.get("ingest_streams") or []
+        if isinstance(streams, dict):
+            streams = streams.get("data", [])
+        return any((stream.get("stream_health") or {}).get("video_bitrate", 0) > 0 for stream in streams)
+
+    def publish(self, video_id):
+        """Owner-confirmed only: make the selected unpublished preview public (LIVE_NOW)."""
+        self.identity()
+        video = self.video(video_id)
+        if video.get("status") != "LIVE":
+            if video.get("status") != "UNPUBLISHED":
+                raise FacebookError("Only an unpublished Facebook preview can go live")
+            self.graph(video_id, data={"status": "LIVE_NOW"})
+        self.published = video_id
+        return self.refresh()
+
+    def end(self, video_id):
+        """End the selected live show on Facebook (the platform side of 'End Facebook show')."""
+        self.identity()
+        self.video(video_id)
+        self.graph(video_id, data={"end_live_video": "true"})
+        if self.published == video_id:
+            self.published = ""
+        return self.refresh()
 
     def target(self):
         manual = self.meta.get("ingest") == "manual"
@@ -191,6 +234,7 @@ class FacebookLive:
         env_update({"FACEBOOK_VIDEO_ID": video_id, "FACEBOOK_INGEST_URL": target,
                     "FACEBOOK_INGEST_MODE": "graph", "FACEBOOK_INGEST_BACKUP": ""}, self.env_path)
         self.state_path.write_text(json.dumps({"uncertain": False, "videoId": video_id}))
+        self.hidden_until = 0.0
         return self.refresh()
 
     def set_key(self, server, key, backup=""):
@@ -214,6 +258,7 @@ class FacebookLive:
         env_update(values, self.env_path)
         # Keep any unresolved preview-creation guard; a pasted key does not settle it.
         self.state_path.write_text(json.dumps({**state, "videoId": video_id, "manual": True}))
+        self.hidden_until = 0.0
         return self.refresh()
 
     def prepare(self, title):
@@ -228,7 +273,7 @@ class FacebookLive:
                 current = self.video(selected)
             except FacebookError as error:
                 # A pasted Live Producer key is invisible to Graph until it goes live; make a Spark preview instead.
-                if not (env.get("FACEBOOK_INGEST_MODE") == "manual" and error.code == NOT_VISIBLE):
+                if not (env.get("FACEBOOK_INGEST_MODE") == "manual" and error.code in HIDDEN_CODES):
                     raise
                 current = {}
             if current.get("status") in ACCEPTED:
@@ -342,6 +387,87 @@ def install(app, require_key, state, obs_state, pushers, status_payload, api):
                 pushers["facebook"].next_try = 0.0
             return result
 
+    @app.post("/facebook/golive", dependencies=[Depends(require_key)])
+    async def golive(body: dict):
+        """One click: bind a Spark preview, start sending, then publish once Meta receives video."""
+        async with api.mutation_lock:
+            if not body.get("confirm"):
+                raise HTTPException(409, "Confirm going live on Facebook")
+            if not state.armed or not obs_state.get("program_ready"):
+                raise HTTPException(409, "Arm the house and check the program preview first")
+            meta = await asyncio.to_thread(api.refresh)
+            if meta.get("phase") == "LIVE" and api.target():
+                state.destinations["facebook"] = True  # already public: owner asked to (re)send the house feed
+                state.save()
+                api.published = meta.get("videoId", "")
+                api.golive_state = {"goLive": "live", "goLiveError": ""}
+                return status_payload()
+            if not (meta.get("ingest") == "graph" and meta.get("phase") == "UNPUBLISHED" and api.target()):
+                if state.destinations.get("facebook") or pushers["facebook"].running():
+                    raise HTTPException(409, "Stop the Facebook sender before starting a new Facebook show")
+                try:  # replaces a pasted Live Producer key (which the website cannot publish) with a Spark preview
+                    meta = await asyncio.to_thread(api.prepare, str(body.get("title") or "Treasure Hauls live show"))
+                except FacebookError as error:
+                    raise HTTPException(409, str(error)) from None
+            if not state.armed or not obs_state.get("program_ready"):
+                raise HTTPException(409, "The house stopped while Facebook was being prepared")
+            if meta.get("phase") != "UNPUBLISHED" or not api.target():
+                raise HTTPException(409, "The Facebook preview is not ready to go live")
+            state.destinations["facebook"] = True
+            state.save()
+            api.golive = {"videoId": meta["videoId"], "at": time.time(), "attempts": 0}
+            api.golive_state = {"goLive": "pending", "goLiveError": ""}
+            api.meta.update(api.golive_state)
+            return status_payload()
+
+    @app.post("/facebook/end", dependencies=[Depends(require_key)])
+    async def end(body: dict):
+        """End the Facebook show on the platform, then stop the sender. Sender stops even if Meta errors."""
+        async with api.mutation_lock:
+            api.golive = None
+            meta = await asyncio.to_thread(api.refresh)
+            error = ""
+            if meta.get("phase") == "LIVE" and meta.get("videoId"):
+                try:
+                    await asyncio.to_thread(api.end, meta["videoId"])
+                except FacebookError as failure:
+                    error = str(failure)
+            state.destinations["facebook"] = False
+            pushers["facebook"].stop()
+            state.save()
+            api.golive_state = {"goLive": "", "goLiveError": ""}
+            api.meta.update(api.golive_state)
+            if error:
+                raise HTTPException(409, error + ". The house feed to Facebook was stopped")
+            return status_payload()
+
+    async def golive_tick():
+        pending = api.golive
+        if not pending:
+            return
+        def finish(result, message=""):
+            api.golive = None
+            api.golive_state = {"goLive": result, "goLiveError": message}
+            api.meta.update(api.golive_state)
+        meta = api.meta
+        if not state.armed or not state.destinations.get("facebook") or meta.get("videoId") != pending["videoId"]:
+            return finish("failed", "The house or Facebook sender stopped before the show went live")
+        if meta.get("phase") == "LIVE":
+            api.published = pending["videoId"]
+            return finish("live")
+        uptime = pushers["facebook"].uptime() if hasattr(pushers["facebook"], "uptime") else 0
+        ready = uptime >= GOLIVE_WAIT_S or (uptime > 0 and await asyncio.to_thread(api.ingesting, pending["videoId"]))
+        if ready:
+            pending["attempts"] += 1
+            try:
+                await asyncio.to_thread(api.publish, pending["videoId"])
+                return finish("live")
+            except FacebookError as error:
+                api.golive_state = {"goLive": "pending", "goLiveError": str(error)}
+                api.meta.update(api.golive_state)
+        if time.time() - pending["at"] > GOLIVE_TIMEOUT_S:
+            finish("failed", "Facebook did not confirm the show went live; check Live Producer. The house feed is still sending")
+
     @app.post("/facebook/send", dependencies=[Depends(require_key)])
     async def send(body: dict):
         async with api.mutation_lock:
@@ -359,6 +485,11 @@ def install(app, require_key, state, obs_state, pushers, status_payload, api):
             state.save()
             return status_payload()
 
+    async def house_ended_tick():
+        """A show this director published ends on Facebook when the house ends (nothing left to send)."""
+        if api.published and not state.armed and api.meta.get("phase") == "LIVE" and api.meta.get("videoId") == api.published:
+            await asyncio.to_thread(api.end, api.published)
+
     @app.on_event("startup")
     async def start():
         async def watch():
@@ -369,7 +500,11 @@ def install(app, require_key, state, obs_state, pushers, status_payload, api):
                         state.destinations["facebook"] = False
                         pushers["facebook"].stop()
                         state.save()
+                    await golive_tick()
+                    await house_ended_tick()
                 except Exception:
                     api.meta.update(verified=False, error="Facebook status unavailable")
-                await asyncio.sleep(15)
+                await asyncio.sleep(3 if api.golive else 15)
         asyncio.create_task(watch())
+
+    return {"golive_tick": golive_tick, "house_ended_tick": house_ended_tick}

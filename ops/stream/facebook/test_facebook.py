@@ -15,7 +15,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).parent))
-from facebook_live import FacebookLive, FacebookError, CommentReader, PAGE_ID, safe_ingest, install
+from facebook_live import FacebookLive, FacebookError, CommentReader, PAGE_ID, GOLIVE_TIMEOUT_S, safe_ingest, install
 from install import patched, patched_v2
 
 SERVER = "rtmps://live-api-s.facebook.com:443/rtmp/"
@@ -33,6 +33,7 @@ class FacebookTests(unittest.TestCase):
         self.comment_calls = []
         self.pages = []
         self.hidden, self.created_id = set(), "123456"  # hidden: Graph code 100, like a Live Producer video before it goes live
+        self.bitrate, self.fail_publish, self.hooks, self.hidden_code = 0, False, {}, 100
         self.api = FacebookLive(self.env, root / "state.json", httpx.MockTransport(self.handle))
 
     def tearDown(self):
@@ -48,7 +49,18 @@ class FacebookTests(unittest.TestCase):
                 raise httpx.ReadTimeout("unsafe-token-echo")
             result = {"id": self.created_id}
         elif path in self.hidden:
+            if self.hidden_code == 4:
+                return httpx.Response(403, json={"error": {"code": 4, "type": "OAuthException", "message": "(#4) Application request limit reached unsafe-token-echo"}})
             return httpx.Response(400, json={"error": {"code": 100, "error_subcode": 33, "type": "GraphMethodException", "message": "unsafe-token-echo"}})
+        elif req.method == "POST" and path.isdigit():
+            data = parse_qs(req.content.decode())
+            if data.get("status") == ["LIVE_NOW"]:
+                if self.fail_publish:
+                    return httpx.Response(400, json={"error": {"code": 100, "message": "unsafe-token-echo"}})
+                self.phase = "LIVE"
+            elif data.get("end_live_video") == ["true"]:
+                self.phase = "VOD"
+            result = {"success": True}
         elif path.endswith("/comments"):
             self.comment_calls.append(dict(req.url.params))
             if self.comments_fail:
@@ -57,6 +69,8 @@ class FacebookTests(unittest.TestCase):
         else:
             result = {"id": path, "from": {"id": self.owner}, "status": self.phase, "title": "Test",
                       "secure_stream_url": "rtmps://live-api-s.facebook.com:443/rtmp/secret-stream-key"}
+            if "stream_health" in req.url.params.get("fields", ""):
+                result["ingest_streams"] = [{"stream_health": {"video_bitrate": self.bitrate}}]
         return httpx.Response(200, json=result)
 
     def test_preview_is_unpublished_and_secret_free(self):
@@ -172,7 +186,7 @@ class FacebookTests(unittest.TestCase):
         keyed = patched_v2(result)
         self.assertEqual(patched_v2(keyed), keyed)
         self.assertIn("return FACEBOOK.key_tail()", keyed)
-        with self.assertRaises(RuntimeError): patched_v2(source.replace("def dest_key_tail", "def renamed_tail"))
+        with self.assertRaises(RuntimeError): patched_v2('FACEBOOK = FacebookLive()\ndef renamed_tail(name: str) -> str:\n    return ""\n')
 
     def test_merged_chat_epoch_pagination_and_source_reset(self):
         import ast
@@ -213,8 +227,63 @@ class FacebookTests(unittest.TestCase):
         from fastapi import Header
         async def key(x_api_key: str = Header(default="")):
             if x_api_key != "test-only": raise HTTPException(401)
-        install(app, key, state, obs, {"facebook": pusher}, lambda: {"armed": state.armed, "facebook": dict(self.api.meta)}, self.api)
+        self.hooks = install(app, key, state, obs, {"facebook": pusher}, lambda: {"armed": state.armed, "facebook": dict(self.api.meta)}, self.api)
         return TestClient(app), state, obs, {"x-api-key": "test-only"}
+
+    def test_one_click_go_live_publishes_and_ends(self):
+        self.hidden = {"123456"}
+        self.api.set_key(SERVER, PRIMARY)  # a pasted Live Producer key is loaded; go-live must switch to a Spark preview
+        up = [0]
+        pusher = SimpleNamespace(running=lambda: False, stop=lambda: None, uptime=lambda: up[0])
+        client, state, obs, headers = self.install_app(pusher)
+        tick = self.hooks["golive_tick"]
+        self.created_id = "654321"
+        self.assertEqual(client.post("/facebook/golive", headers=headers, json={"confirm": True}).status_code, 409)  # house not armed
+        state.armed, obs["program_ready"] = True, True
+        self.assertEqual(client.post("/facebook/golive", headers=headers, json={}).status_code, 409)  # no confirmation
+        self.assertFalse(any(c[0] == "POST" for c in self.calls))
+        self.assertEqual(client.post("/facebook/golive", headers=headers, json={"confirm": True, "title": "Tonight"}).status_code, 200)
+        self.assertTrue(state.destinations["facebook"])
+        env = self.env_map()
+        self.assertEqual((env["FACEBOOK_INGEST_MODE"], env["FACEBOOK_VIDEO_ID"], self.api.meta["goLive"]), ("graph", "654321", "pending"))
+        self.assertEqual(sum(c[0] == "POST" for c in self.calls), 1)  # only the unpublished preview was created
+        asyncio.run(tick())
+        up[0] = 3
+        asyncio.run(tick())  # sending, but Meta reports no incoming video yet
+        self.assertEqual((self.phase, self.api.meta["goLive"]), ("UNPUBLISHED", "pending"))
+        self.bitrate = 2500
+        asyncio.run(tick())
+        publishes = [c for c in self.calls if c[0] == "POST" and c[1].endswith("/654321")]
+        self.assertEqual(publishes[-1][2]["status"], ["LIVE_NOW"])
+        self.assertEqual((self.api.meta["goLive"], self.api.meta["phase"], self.api.published), ("live", "LIVE", "654321"))
+        self.assertIsNotNone(self.api.target())
+        self.assertEqual(client.post("/facebook/golive", headers=headers, json={"confirm": True}).status_code, 200)  # already live: no second show
+        self.assertEqual(len([c for c in self.calls if c[0] == "POST" and c[1].endswith("/live_videos")]), 1)
+        self.assertEqual(client.post("/facebook/end", headers=headers, json={}).status_code, 200)
+        self.assertEqual(len([c for c in self.calls if c[0] == "POST" and c[2].get("end_live_video") == ["true"]]), 1)
+        self.assertEqual((state.destinations["facebook"], self.phase, self.api.published, self.api.meta["goLive"]), (False, "VOD", "", ""))
+        # Meta refuses to publish: keep sending, keep trying, then give up without echoing upstream text.
+        self.phase, self.fail_publish = "UNPUBLISHED", True
+        self.assertEqual(client.post("/facebook/golive", headers=headers, json={"confirm": True}).status_code, 200)
+        up[0] = 20
+        asyncio.run(tick())
+        self.assertEqual(self.api.meta["goLive"], "pending")
+        self.assertTrue(self.api.meta["goLiveError"])
+        self.assertNotIn("unsafe-token", json.dumps(self.api.meta))
+        self.api.golive["at"] -= GOLIVE_TIMEOUT_S + 1
+        asyncio.run(tick())
+        self.assertEqual((self.api.meta["goLive"], self.api.golive, state.destinations["facebook"]), ("failed", None, True))
+        # The house drops while a go-live is pending: the attempt is abandoned, nothing is published.
+        self.fail_publish = False
+        self.assertEqual(client.post("/facebook/golive", headers=headers, json={"confirm": True}).status_code, 200)
+        state.armed = False
+        asyncio.run(tick())
+        self.assertEqual((self.api.meta["goLive"], self.phase), ("failed", "UNPUBLISHED"))
+        # A show this director published ends on Facebook once the house ends.
+        self.phase, self.api.published = "LIVE", "654321"
+        self.api.refresh()
+        asyncio.run(self.hooks["house_ended_tick"]())
+        self.assertEqual((self.phase, self.api.published), ("VOD", ""))
 
     def test_manual_key_is_stored_and_never_echoed(self):
         self.hidden = {"123456"}
@@ -289,8 +358,20 @@ class FacebookTests(unittest.TestCase):
         self.assertEqual(client.post("/facebook/send", headers=headers, json={"videoId": "123456"}).status_code, 200)
         self.assertTrue(state.destinations["facebook"])
         self.assertEqual(client.post("/facebook/key", headers=headers, json={"server": SERVER, "key": BACKUP}).status_code, 409)
-        # Jared goes live in Live Producer: Graph can now read the video; comments follow the LIVE phase.
-        self.hidden, self.phase = set(), "LIVE"
+        # While hidden, the video is asked about once a minute, not every cycle (Meta throttles repeated hidden lookups).
+        lookups = lambda: sum(1 for c in self.calls if c[1].endswith("/123456") and c[0] == "GET")
+        before = lookups()
+        self.api.refresh(); self.api.refresh()
+        self.assertEqual(lookups(), before)
+        self.assertEqual(self.api.meta["phase"], "KEYED")
+        self.api.hidden_until = 0
+        self.hidden_code = 4  # Meta's per-object "(#4) request limit" for a hidden ID still means hidden
+        meta = self.api.refresh()
+        self.assertEqual((meta["phase"], meta["verified"]), ("KEYED", True))
+        self.assertNotIn("unsafe-token", json.dumps(meta))
+        self.assertEqual(lookups(), before + 1)
+        # Jared goes live in Live Producer: after the recheck, Graph reads the video; comments follow the LIVE phase.
+        self.hidden, self.phase, self.api.hidden_until = set(), "LIVE", 0
         meta = self.api.refresh()
         self.assertEqual((meta["phase"], meta["liveNow"], meta["ingest"], meta["title"]), ("LIVE", True, "manual", "Test"))
         self.assertEqual(self.api.target(), SERVER + PRIMARY)
@@ -300,6 +381,7 @@ class FacebookTests(unittest.TestCase):
         self.hidden, self.phase = {"123456"}, "UNPUBLISHED"
         self.api.refresh()
         self.assertEqual(self.api.target(), SERVER + PRIMARY)
+        self.api.hidden_until = 0
         self.api.meta["checkedAt"] = time.time() - 46
         self.assertIsNone(self.api.target())
         self.api.refresh()

@@ -34,7 +34,7 @@ CLI wrappers do the same thing:
 
 ## Facebook preview workflow
 
-CLI: `stream facebook status | prepare [title] | select <video-id> | key <server-url> <key> [backup] | key --stdin | key clear | send <video-id> | stop`. For recovery of an already-public show only: `stream facebook resume <video-id> --confirm-public`, requiring Jared’s readiness.
+CLI: `stream facebook status | prepare [title] | select <video-id> | key <server-url> <key> [backup] | key --stdin | key clear | send <video-id> | golive [title] --confirm-public | end | stop`. For recovery of an already-public show only: `stream facebook resume <video-id> --confirm-public`, requiring Jared’s readiness.
 
 Read `OPERATIONS.md` for the nightly steps. `GET /status.facebook` reports verified Page, selected video, Meta phase and errors; `destinations.facebook.running` reports transport only. The Page is fixed to `1156652300855210`.
 
@@ -43,6 +43,7 @@ Read `OPERATIONS.md` for the nightly steps. `GET /status.facebook` reports verif
 - `POST /facebook/key {"server":"rtmps://…/rtmp/","key":"FB-…","backup":"FB-…"}` binds a stream key copied from Live Producer (manual ingest mode) while the sender is stopped; all fields empty clears it. The video ID comes from the key. Meta returns Graph code 100 for such a video until it goes live, so status reports phase `KEYED`; only in manual mode is that accepted for sending. Never print the key; `/status.destinations.facebook.keyTail` is the only echo.
 - `POST /facebook/send {"videoId":"..."}` requires an armed, ready house and an unpublished selected preview or a loaded Live Producer key (`KEYED`). It only forwards the house program. Publish manually in Facebook Live Producer when Jared explicitly says he is ready.
 - An already-public show can resume only with explicit `confirmLive` equal to that selected video ID. This forwards public picture/audio; do not issue it under preparation-only authorization.
+- `POST /facebook/golive {"confirm":true,"title":"..."}` is the owner's one-click publish (added September 30 at Jared's request): requires an armed, ready house; binds/reuses a graph-mode unpublished preview (replacing a pasted key only while the sender is stopped), enables the sender, then a 3-second loop publishes `LIVE_NOW` once `ingest_streams.stream_health.video_bitrate > 0` or after 15 s of sending, retrying until 120 s (`status.facebook.goLive` = pending/live/failed, `goLiveError`). Agents run it only on Jared's explicit go-live instruction. `POST /facebook/end {}` ends the show on Facebook and stops the sender; a show this director published is also ended automatically when the house ends.
 - `POST /destinations {"facebook":false}` stops the sender; end the Facebook show separately in Live Producer first. Generic toggles/go-live cannot enable Facebook. Restarting the director clears Facebook enablement.
 - New credentials remain only in `~/.config/tolley-security/stream.env`. Do not print `FACEBOOK_PAGE_TOKEN` or `FACEBOOK_INGEST_URL`. Run `ops/stream/facebook/install.py` only while idle; it preserves other director integrations.
 
