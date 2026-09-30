@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.56.1';
+export const APP_VERSION = '1.56.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.56.2', date: '2026-09-29', title: 'One Show Assistant for greetings and inventory', items: ['A single Show Assistant combines welcomes, thank-yous and inventory answers, with existing settings and history carried forward.', 'Previous assistant links open the same controls; no version selection is needed.'] },
   { version: '1.56.1', date: '2026-09-29', title: 'Keep product follow-up questions flowing', items: ['Inventory V2 can answer a viewer’s follow-up after the normal one-minute gap while keeping repeated greetings restrained.'] },
   { version: '1.56', date: '2026-09-29', title: 'A separate inventory-aware show assistant', items: ['Keep Classic greetings or choose Inventory V2 from separate stream buttons.', 'Preview answers from saved products and drafts without posting, and confirm a lineup for each show.', 'Inventory answers use recorded facts with freshness checks, shared cooldowns and restrained reply limits.'] },
   { version: '1.55', date: '2026-09-29', title: 'Facebook live previews and combined chat', items: ['Prepare the Treasure Hauls Facebook preview, send the house feed, then publish when ready in Facebook Live Producer.', 'Facebook live comments join YouTube and TikTok chat, with timestamps and connection status.', 'Stream controls start with destinations off; the nightly Whatnot workflow remains visible.'] },

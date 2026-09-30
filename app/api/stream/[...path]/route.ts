@@ -37,7 +37,7 @@ async function proxy(request: NextRequest, path: string[]) {
     method: request.method,
     headers: { "x-api-key": key, "content-type": "application/json" },
     cache: "no-store",
-    signal: AbortSignal.timeout(path[0] === "facebook" ? 60_000 : path[0] === "whatnot-bot-v2" ? 30_000 : 12_000),
+    signal: AbortSignal.timeout(path[0] === "facebook" ? 60_000 : path[0].startsWith("whatnot-bot") ? 30_000 : 12_000),
   };
   if (request.method === "POST") {
     init.body = await request.text();

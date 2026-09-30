@@ -21,7 +21,7 @@ export class Engine {
     }catch(e){this.phase='error';this.error=e.message;throw e;}finally{this.busy=false;}
   }
   async resume(){
-    const classic=await this.classicStatus();if(!classic.paused)throw Error("Classic is running. Pause Classic before starting Inventory V2.");
+    const classic=await this.classicStatus();if(!classic.paused)throw Error("The previous worker is still running. Sending stays paused until it is stopped.");
     const now=this.clock(),s=this.snapshot;
     if(this.busy||this.phase!=='connected'||!s?.ownerVerified||!s.inputEnabled||!s.liveFresh||now-s.at>12000)throw Error('Connect a live show and wait for a fresh observation first.');
     this.paused=false;this.error='';this.epoch++;this.startedAt=now;
@@ -34,7 +34,7 @@ export class Engine {
     if(this.busy||!this.snapshot)return;
     this.busy=true;
     try{
-      if(!this.paused&&!(await this.classicStatus()).paused){this.pause("Classic is running; Inventory V2 paused to prevent duplicate replies.");return;}
+      if(!this.paused&&!(await this.classicStatus()).paused){this.pause("The previous worker is running; sending paused to prevent duplicate replies.");return;}
       const now=this.clock(),s=await this.browser.read();this.snapshot=s;
       if(!s.ownerVerified||!s.inputEnabled||!s.liveFresh){this.phase='unavailable';this.pause('Live chat is unavailable or stale. Sending is paused.');return;}
       if(this.phase==='unavailable'||this.phase==='error')this.error='Connection recovered. Sending remains paused; press Start when ready.';
@@ -90,7 +90,7 @@ export class Engine {
     const result=await this.inventory.answer(e.text,{user:e.user,show:e.show,binding:this.binding});
     this.decisions.push({at:this.clock(),user:e.user,question:e.text,...result});
     this.decisions=this.decisions.slice(-100);
-    return result.text?{text:`@${e.user} ${result.text}`.slice(0,500),reason:`Inventory V2: ${result.reason}`,evidence:result.evidence} : null;
+    return result.text?{text:`@${e.user} ${result.text}`.slice(0,500),reason:`Inventory: ${result.reason}`,evidence:result.evidence} : null;
   }
   bindLineup(slug){
     if(!this.snapshot?.show)throw Error('Connect a show before selecting its lineup');
@@ -109,7 +109,7 @@ export class Engine {
 
       if(m.kind==='public'&&!(m.user?c.repliesEnabled:c.announcementsEnabled))throw Error('Public sending is disabled.');
     };
-    if(!(await this.classicStatus()).paused)throw Error("Classic is running; Inventory V2 sending stopped.");
+    if(!(await this.classicStatus()).paused)throw Error("The previous worker is running; sending stopped.");
     if(m.evidence)await this.inventory.refresh();
     guard();if(m.kind==='public'&&(this.clock()-this.store.last('public')<60000||this.store.count('public',this.clock()-3600000)>=40))return;
     const id=this.store.reserve(m,this.clock());if(!id)return;
