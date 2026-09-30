@@ -11,10 +11,16 @@ import {Inventory} from './inventory.mjs';
 import {normalizeUser,validUser,validateShowUrl} from './core.mjs';
 const HERE=dirname(fileURLToPath(import.meta.url));
 
-export async function classicStatus(){
-  const r=await fetch('http://127.0.0.1:8111/snapshot',{signal:AbortSignal.timeout(2500)});
-  if(!r.ok)throw Error('Cannot verify Classic status; V2 sending stays paused');
-  const s=await r.json();return {paused:s.paused,phase:s.phase};
+export async function classicStatus(fetcher=fetch){
+  try{
+    const r=await fetcher('http://127.0.0.1:8111/snapshot',{signal:AbortSignal.timeout(2500)});
+    if(!r.ok)throw Error('Cannot verify previous worker status; sending stays paused');
+    const s=await r.json();return {paused:s.paused,phase:s.phase};
+  }catch(e){
+    // The retired worker no longer listens. Timeouts/unknown failures still fail closed.
+    if(e.cause?.code==='ECONNREFUSED')return {paused:true,phase:'retired'};
+    throw e;
+  }
 }
 export function createServer(engine,{port=8112,csrf=randomBytes(32).toString('hex')}={}){
   const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"};
@@ -37,7 +43,7 @@ export function createServer(engine,{port=8112,csrf=randomBytes(32).toString('he
         case 'connect':
           if(engine.busy)throw Error('An operation is finishing. Please wait.');validateShowUrl(body.url);
           engine.connect(body.url).catch(()=>{});return send(202,{ok:true});
-        case 'start':await engine.inventory.refresh();if(!engine.inventory.fresh())throw Error('Inventory must be fresh before starting V2');await engine.resume();break;
+        case 'start':await engine.inventory.refresh();if(!engine.inventory.fresh())throw Error('Inventory must be fresh before starting the assistant');await engine.resume();break;
         case 'pause':engine.pause();break;
         case 'settings':engine.configure(body.settings);break;
         case 'lineup':await engine.inventory.refresh();engine.bindLineup(String(body.slug||''));break;
@@ -61,7 +67,7 @@ if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
   const store=new SharedStore(process.env.WHATNOT_BOT_V2_DB||join(root,'bot.sqlite3'),join(homedir(),'.local/state/tolley-whatnot-bot/bot.sqlite3'));
   const inventory=new Inventory({path:process.env.ASSISTANT_CATALOG||join(root,'catalog.json')});await inventory.refresh();
   const browser=new WhatnotBrowser();const engine=new Engine(store,browser,{inventory,classicStatus});
-  const server=createServer(engine);server.listen(8112,'127.0.0.1',()=>console.log('Inventory V2 ready; sending paused'));
+  const server=createServer(engine);server.listen(8112,'127.0.0.1',()=>console.log('Show Assistant ready; sending paused'));
   const timer=setInterval(()=>engine.tick(),3000),refresh=setInterval(()=>inventory.refresh(),30000);
   for(const sig of ['SIGTERM','SIGINT'])process.on(sig,()=>{engine.pause('Worker stopping');clearInterval(timer);clearInterval(refresh);server.close();browser.disconnect().catch(()=>{}).finally(()=>process.exit(0));setTimeout(()=>process.exit(0),5000).unref();});
 }

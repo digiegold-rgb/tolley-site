@@ -5,8 +5,8 @@ async function action(action,more={}){const r=await fetch('./action',{method:'PO
 function renderDecision(d,target){const item=el('div','','item');item.append(el('span',d.action,'badge'),el('strong',d.question||''),el('p',d.text||'Left for the host.'),el('small',`${d.reason}${d.source?' · '+d.source:''}`));target.append(item);}
 async function refresh(){
  try{
-  const r=await fetch('./snapshot',{cache:'no-store'});if(!r.ok)throw Error(r.status===401?'Sign in to Tolley with your owner account.':'V2 is unavailable');const s=await r.json();snapshot=s;csrf=s.csrf;
-  $('notice').textContent=s.error||(!s.paused?'Inventory V2 is running.':'Inventory V2 is paused. You can preview answers without starting.');
+  const r=await fetch('./snapshot',{cache:'no-store'});if(!r.ok)throw Error(r.status===401?'Sign in to Tolley with your owner account.':'Show Assistant is unavailable');const s=await r.json();snapshot=s;csrf=s.csrf;
+  $('notice').textContent=s.error||(!s.paused?'Show Assistant is running.':'Show Assistant is paused. You can preview answers without starting.');
   $('connection').textContent=`${s.paused?'Paused':'Running'} · ${s.show?.title||'No show connected'}`;
   $('start').disabled=s.busy||!s.paused||s.phase!=='connected'||!s.inventory?.ready;
   const inv=s.inventory;$('inventory').textContent=inv?.counts?`${inv.counts.listed} listed · ${inv.counts.draft} drafts · ${inv.counts.unavailable} sold/unavailable`:'Inventory not loaded';
@@ -14,7 +14,7 @@ async function refresh(){
   const key=JSON.stringify(inv?.lineups||[]);if(key!==optionsKey){optionsKey=key;const current=$('lineup').value;$('lineup').replaceChildren(el('option','Backstock only — no show lineup confirmed'));$('lineup').firstChild.value='';for(const l of inv?.lineups||[]){const o=el('option',`${l.name} (${l.count} items)`);o.value=l.slug;$('lineup').append(o);}$('lineup').value=current;}
   $('binding').textContent=s.binding?`Confirmed: ${s.binding.slug} for show ${s.binding.show}`:'No lineup confirmed for this show; answers will not claim an item is in tonight’s lineup.';
   if(!loaded){config=s.settings;for(const k of ['repliesEnabled','dmEnabled','announcementsEnabled'])$(k).checked=config[k];$('announcements').value=config.announcements.join('\n');$('faqs').value=config.faqs.map(f=>f.keywords.join(', ')+' | '+f.answer).join('\n');for(const k of ['testUsers','excludedUsers'])$(k).value=config[k].join(', ');loaded=true;}
-  $('decisions').replaceChildren();for(const d of s.decisions||[])renderDecision(d,$('decisions'));if(!s.decisions?.length)$('decisions').append(el('p','Product-question decisions appear here once V2 is running.','muted'));
+  $('decisions').replaceChildren();for(const d of s.decisions||[])renderDecision(d,$('decisions'));if(!s.decisions?.length)$('decisions').append(el('p','Product-question decisions appear here once the assistant is running.','muted'));
   $('history').replaceChildren();for(const m of s.messages||[]){const item=el('div','','item');item.append(el('span',m.status,'badge '+m.status),el('strong',m.kind==='dm'?'DM · @'+m.user:'Public chat'),el('p',m.text),el('small',m.reason));$('history').append(item);}
  }catch(e){showError(e);$('start').disabled=true;}
 }

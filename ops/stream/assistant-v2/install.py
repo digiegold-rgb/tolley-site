@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Install paused V2 and read-only catalog timer; director must be idle."""
 from pathlib import Path
+from migrate import check_workers, retire_classic
 import subprocess, shutil, time, importlib.util
 HERE = Path(__file__).resolve().parent
 HOME = Path.home()
@@ -11,14 +12,15 @@ def main():
     s = module.status()
     if s['armed'] or s['obs']['streaming'] or any(d.get('running') for d in s['destinations'].values()):
         raise SystemExit('House active: no installation performed. Do not interrupt a live show.')
+    check_workers()
     root=HOME/'whatnot-inventory-bot'; root.mkdir(mode=0o700,exist_ok=True)
     for src in HERE.glob('*.mjs'): shutil.copy2(src,root/src.name)
     shutil.copytree(HERE/'web',root/'web',dirs_exist_ok=True)
     shutil.copy2(HERE/'package.json',root/'package.json')
     units=HOME/'.config/systemd/user'; units.mkdir(parents=True,exist_ok=True)
     (units/'tolley-inventory-assistant.service').write_text(f'''[Unit]
-Description=Tolley Inventory Assistant V2 (starts paused)
-After=network-online.target tolley-whatnot-bot.service
+Description=Tolley Show Assistant (starts paused)
+After=network-online.target
 [Service]
 Type=simple
 WorkingDirectory={root}
@@ -51,6 +53,7 @@ WantedBy=timers.target
     director=HOME/'stream-director'; target=director/'whatnot_bot_routes.py'
     backup=director/f'whatnot-bot-routes-backup-{int(time.time())}.py'
     shutil.copy2(target,backup); shutil.copy2(HERE/'director_routes.py',target)
+    retire_classic()
     for command in [['daemon-reload'],['start','tolley-inventory-catalog.service'],['enable','--now','tolley-inventory-catalog.timer','tolley-inventory-assistant.service']]:
         subprocess.run(['systemctl','--user',*command],check=True)
     # Recheck immediately before the sole director restart.
@@ -59,5 +62,5 @@ WantedBy=timers.target
         shutil.copy2(backup,target)
         raise SystemExit('House became active; route installation deferred, V2 remains paused.')
     subprocess.run(['systemctl','--user','restart','stream-director.service'],check=True)
-    print('V2 installed paused; catalog timer enabled. Classic service was not restarted. Backup:',backup.name)
+    print('Unified Show Assistant installed paused; catalog timer enabled. Previous sender retired. Route backup:',backup.name)
 if __name__=='__main__': main()

@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {chromium} from '/home/jelly/dgx-services/whatnot-sync-worker/node_modules/playwright/index.mjs';
-import {createServer} from '../server.mjs';import {defaults} from '../core.mjs';
+import {createServer,classicStatus} from '../server.mjs';import {defaults} from '../core.mjs';
 test('dashboard preview never calls a sender, starts disabled, is mobile usable and requires CSRF',async()=>{
  let previews=0,sends=0;const state={paused:true,phase:'disconnected',inventory:{ready:true,generatedAt:Date.now(),counts:{listed:54,draft:624,unavailable:1228},lineups:[]},settings:defaults,messages:[],decisions:[]};
  const engine={status:()=>state,inventory:{answer:async q=>{previews++;return {action:'answer',text:'Our catalog lists Fellow Stagg kettle. Not confirmed for this show.',reason:'Listed record'};}},resume:()=>sends++,send:()=>sends++};
@@ -12,4 +12,12 @@ test('dashboard preview never calls a sender, starts disabled, is mobile usable 
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:'/tmp/tolley-inventory-v2-mobile.png',fullPage:true});
  assert.equal((await page.request.post('http://127.0.0.1:18112/action',{data:{action:'start',csrf:'wrong'}})).status(),403);assert.equal(sends,0);assert.deepEqual(errors,[]);
  }finally{await browser.close();await new Promise(r=>server.close(r));}
+});
+
+test('retired worker connection refusal is allowed; unknown errors and active workers are not treated as retired',async()=>{
+ const error=Object.assign(new Error('connect'),{cause:{code:'ECONNREFUSED'}});
+ assert.deepEqual(await classicStatus(async()=>{throw error;}),{paused:true,phase:'retired'});
+ await assert.rejects(classicStatus(async()=>{throw new Error('timeout');}),/timeout/);
+ await assert.rejects(classicStatus(async()=>({ok:false})),/Cannot verify/);
+ assert.equal((await classicStatus(async()=>({ok:true,json:async()=>({paused:false,phase:'connected'})}))).paused,false);
 });

@@ -1,21 +1,22 @@
-# Inventory Assistant V2
+# Show Assistant — greetings and inventory together
 
-Separate Whatnot assistant, explicit owner Start, installed paused. Classic is preserved. Operator workflow: `/stream/assistant` and `ops/stream/OPERATIONS.md`.
+Jared requested one assistant instead of separate V1/V2 choices. `/stream/assistant` is the single entry; both historical API dashboard prefixes resolve to port 8112. The source directory retains its historical name. See `ops/stream/OPERATIONS.md` for nightly operation.
 
-- `catalog-export.mjs`: Prisma transaction explicitly READ ONLY; minute snapshot of allowlisted Product, PlatformListing and StreamLineup fields. No schema changes, private prices, customer details or unverified descriptions. Snapshots expire after three minutes.
-- `inventory.mjs`: typo-tolerant candidates and five-minute per-viewer context; existing loopback local model selects candidate IDs, intent and a literal fact index. All public prose comes from bounded templates. Model outage uses conservative matching, never unrestricted generation. Sold overrides active, drafts are qualified, show lineup binding is explicit per connected show. Physical inspection and missing facts stay with host.
-- `engine.mjs`: existing Classic browser safeguards/greetings; 60 seconds between public messages, max 40/hour including announcements, five minutes per viewer for greetings/saved FAQs; product follow-ups use the 60-second gap. Pause/settings/lineup changes cancel pending interpretations. Evidence is rechecked before the browser sends; no automatic retry on uncertain sends.
-- `shared-history.mjs`: separate settings/events; mirrored outgoing ledger and opt-outs share cooldowns across versions. Classic database schema/configuration are unchanged. Original Classic source/service are preserved.
-- `director_routes.py`: authenticated allowlist for both dashboards. Serializes Start, requires the other worker paused and idle. Classic can start if V2 connection is refused. V2 additionally checks Classic each tick and send. Do not bypass the authenticated proxy with manual loopback Start requests.
-- `server.mjs`/`web`: loopback 8112, CSRF, host validation, owner-only Next proxy, non-posting answer preview. A preview does not attach to Whatnot or invoke any message sender.
+- Read-only minute catalog export allowlists Product/PlatformListing/StreamLineup fields; no costs, minimum prices, private notes or unverified descriptions. Three-minute freshness limit.
+- Existing local model selects candidate IDs and literal facts. Public prose uses bounded templates. Sold overrides active; drafts/backstock are qualified; lineup selection is per connected show. No automatic Whatnot auction import, camera vision or audio understanding.
+- Greetings, thank-yous and announcements are included. Public messages: 60-second minimum gap, 40/hour maximum including announcements; repeated greetings/saved FAQs wait five minutes per viewer, inventory follow-ups may use the next minute. Uncertain sends never retry.
+- Own settings/events database, with original outgoing history/opt-outs carried forward across both stores. One-time migration preserves configuration without overwriting later edits. Original source and database remain available for recovery; the original sender is stopped/disabled.
+- Authenticated director allowlist aliases both old prefixes to one sender. CSRF/host checks and owner/MFA/same-origin website protection remain. Preview never connects to Whatnot or invokes a sender.
 
-## Install and recover
+## Installation
 
-Run `/home/jelly/stream-director/.venv/bin/python ops/stream/assistant-v2/install.py` from this checkout only while the house is idle. The installer checks armed/encoding/senders twice, copies runtime into `~/whatnot-inventory-bot`, installs a read-only exporter timer, and replaces only the existing assistant route module before restarting the idle director. It does not restart Classic or OBS. Exporter module resolution references this checkout's package.json, so retain the checkout and its node_modules link.
+Run `/home/jelly/stream-director/.venv/bin/python ops/stream/assistant-v2/install.py` from this checkout. It requires an idle house and both assistants paused/not busy. It backs up both SQLite databases, migrates settings once, disables the old sender, installs the upgraded runtime/timer, replaces the assistant route module and restarts the idle director. The assistant starts paused/disconnected. OBS/NAS/Windows are untouched.
 
-`systemctl --user status tolley-inventory-assistant tolley-inventory-catalog.timer`
+The exporter resolves Prisma using this checkout's package.json and node_modules link; retain the checkout. Runtime is `~/whatnot-inventory-bot`; service is `tolley-inventory-assistant`. Minute catalog timer is `tolley-inventory-catalog`. State is `~/.local/state/tolley-inventory-assistant/`.
 
-Stop V2 using its Pause button, or stop `tolley-inventory-assistant.service` after its pending operation settles. Classic continues at `/api/stream/whatnot-bot/admin`; no broadcast restart is needed. Full route rollback, only while idle: restore the timestamped `~/stream-director/whatnot-bot-routes-backup-*.py` to `whatnot_bot_routes.py`, restart the director, disable the V2 service/catalog timer. Never delete shared history to bypass cooldowns. Keep credentials in their existing secure configuration, never in this directory.
+## Operator recovery
+
+Pause/stop the upgraded worker first. Do not run two senders. Original Classic source/runtime at `~/whatnot-admin-bot` and its SQLite data under `~/.local/state/tolley-whatnot-bot` remain intact. To restore Classic as an operator rollback, while the house is idle restore the pre-V2 assistant route-module backup (`whatnot-bot-routes-backup-1790740089.py`) and restart the director, then enable/start `tolley-whatnot-bot.service`. Restore website entry wording if rollback is permanent. Never delete history to bypass cooldowns. The upgraded worker recognizes connection refusal as retired; timeouts/unknown failures fail closed, and a running previous sender blocks sending.
 
 ## Verification
 
@@ -24,4 +25,4 @@ node --test ops/stream/assistant-v2/test/*.test.mjs
 /home/jelly/stream-director/.venv/bin/python ops/stream/assistant-v2/test/proxy_test.py
 ```
 
-Fixtures launch isolated headless browsers and intercept all Whatnot navigation; they do not log in or send real messages. `tests/stream/assistant-browser.ts` uses the local test database and owner/MFA fixture for website controls. See `VALIDATION.md` for installation evidence and remaining live acceptance.
+Isolated browser fixtures intercept all Whatnot navigation and send no real messages. `tests/stream/assistant-browser.ts` uses the local test database for owner/MFA, single-button navigation and layout checks. Live chat acceptance remains pending explicit owner Start. See `VALIDATION.md` for evidence.

@@ -1,13 +1,15 @@
-# September 29 implementation evidence
+# Unified Show Assistant validation — September 29
 
-- 27 Node tests passed: original greeting/DM/live-session safeguards, isolated Whatnot DOM browser fixture, inventory matching/context, ambiguity, sold/draft/show scope, freshness, model output restrictions, private-field exclusion, shared history, 40/hour and 60-second limits, pause/settings cancellation, grounded engine-to-sender path, mobile preview UI and CSRF rejection.
-- Python authenticated proxy contract passed: unauthenticated/unknown routes rejected, simultaneous starts yield one success/one conflict, Classic works when V2 is stopped.
-- Real read-only catalog export: 1,906 records; 54 listed, 624 draft, 1,228 sold/unavailable; one saved 12-item lineup. No Whatnot listing rows; no direct Whatnot inventory import is claimed.
-- Real installed local-model preview through the authenticated director found Fellow Stagg EKG Pro Electric Pour-Over Kettle Studio Edition and qualified it as catalog/backstock, not confirmed show stock. Missing condition held for host.
-- Classic source SHA256 hashes unchanged and its service PID remained 2102810 through installation. V2 service started paused/disconnected. Classic remained paused/unavailable from the ended show. No real chats/DMs or broadcasts started.
-- The director was verified idle/disarmed/no senders before its route-module restart. Catalog refresh timer active; no OBS/NAS/Windows changes.
-- Website TypeScript check passed. Owner/MFA, separate-button and mobile layout browser checks passed; opening controls caused zero mutations. These use `tests/stream/assistant-browser.ts` with a local test database; production deployment evidence is appended after completion.
+Jared changed the request from separate versions to one assistant. The upgraded worker includes the established greetings, thank-you DMs and announcements plus inventory answers. Both historical dashboard prefixes now resolve to that same worker.
 
-Pending: owner-authorized live V2 acceptance (fresh viewer greeting + product question; owner-selected lineup if applicable). Offline fixtures and catalog previews are not proof of a live-platform send. Keep V2 paused until the owner explicitly starts it.
+- 28 Node tests passed: greeting/DM/live-session safeguards, isolated Whatnot DOM fixture, matching/context, ambiguity, sold/draft/show scope, freshness, constrained model output, private-field exclusion, preserved history, public rate limits, cancellation, same-viewer product follow-up, mobile preview and CSRF. Retired-worker connection refusal is accepted; unknown failures still fail closed.
+- Two Python contracts passed: authenticated route allowlist and both aliases target port 8112; settings migrate once without overwriting later owner edits.
+- Real read-only catalog: 1,906 records (54 listed, 624 drafts, 1,228 sold/unavailable), one saved 12-item lineup. No direct Whatnot auction import is claimed.
+- Real local-model preview found the Fellow Stagg kettle, qualified it as catalog/backstock, and held its missing condition for host review.
+- Migration verified original settings exactly preserved, 11 original history entries visible, new worker outgoing table empty. Previous service inactive/disabled; upgraded service active, paused/disconnected. Both authenticated URL prefixes returned the same worker CSRF token. No real chats, DMs or broadcasts started.
+- Director verified idle before route restart; no OBS/NAS/Windows changes. Minute read-only catalog timer healthy. Timestamped SQLite migration backups and original runtime/source retained.
+- Website checks use `tests/stream/assistant-browser.ts` with a local test database: owner/MFA, one button, canonical redirect, unified controls, desktop/mobile layout and zero sends. Runtime preview fixture checks are independent of website mocks.
 
-Follow-up review: end-to-end fixture verifies that the same viewer can ask about a named product and receive a recorded-condition answer 61 seconds later, while another greeting remains suppressed. A broader existing Facebook harness timed out waiting for its Refresh preview button; the dedicated assistant owner/MFA/mobile harness passed. No Facebook behavior changed in this release.
+Pending: owner-authorized live chat acceptance with a new viewer greeting and product question, and optional confirmed show lineup. Offline tests and previews are not proof of a live-platform send. Keep the assistant paused until owner Start.
+
+An earlier broader Facebook harness hit its static 45-second freshness limit during cold compilation. No Facebook production behavior changed; the dedicated assistant browser checks cover this release.
