@@ -104,8 +104,9 @@ export type Entity =
   | { kind: "switch"; id: string; at: Vec3 }
   | { kind: "sign"; text: string; at: Vec3 }
   | { kind: "hopper"; id: string; at: Vec3 }
-  | { kind: "enemy"; id: string; type: string; at: Vec3 }
-  | { kind: "boss"; id: string; type: string; at: Vec3; arena: { x0: number; z0: number; x1: number; z1: number } }
+  | { kind: "enemy"; id: string; type: EnemyType; at: Vec3; path?: Vec3[] }
+  | { kind: "boss"; id: string; type: BossType; at: Vec3; arena: Arena }
+  | { kind: "prop"; type: PropType; at: Vec3; rot?: number; scale?: number }
   | {
       kind: "mover";
       id: string;
@@ -115,6 +116,18 @@ export type Entity =
       speed: number;
       block: BlockId;
     };
+
+export type Arena = { x0: number; z0: number; x1: number; z1: number; y: number };
+export type EnemyType = "boltbot";
+export type BossType = "foreman";
+export type PropType = "gear" | "stack" | "lamp" | "vent" | "crane";
+/** Enemy archetype tuning. HP by world band is applied in the model. */
+export const ENEMIES: Record<EnemyType, { name: string; speed: number; hw: number; h: number; chase: number }> = {
+  boltbot: { name: "Bolt-Bot", speed: 2.6, hw: 0.45, h: 1.1, chase: 7 },
+};
+export const BOSSES: Record<BossType, { name: string; hp: number; hw: number; h: number; charge: number; line: string }> = {
+  foreman: { name: "Forge Foreman", hp: 40, hw: 1.2, h: 2.6, charge: 13, line: "The Forge Foreman stomps in. Dodge the charge, then bash the red button on his back!" },
+};
 
 export type DoorDef = {
   id: string;
@@ -195,7 +208,7 @@ export const emptyControls = (): Controls => ({
 export type AimHit = {
   point: Vec3;
   dist: number;
-  kind: "none" | "block" | "cage" | "switch" | "enemy" | "boss" | "cubo";
+  kind: "none" | "block" | "cage" | "switch" | "enemy" | "boss" | "cubo" | "gear";
   id: string | null;
 };
 
@@ -223,6 +236,9 @@ export type Snapshot = {
   bossHP: number;
   bossMax: number;
   bossName: string | null;
+  bossAwake: boolean;
+  bossPhase: number;
+  showIntro: boolean;
   aim: AimHit["kind"];
   hasCubo: boolean;
   liftCooldown: number;

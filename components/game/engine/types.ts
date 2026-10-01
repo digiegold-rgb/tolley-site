@@ -189,6 +189,7 @@ export type MusicId =
   | "danger"
   | "candy"
   | "dark"
+  | "between"
   | "finale"
   | "boss"
   | "none";

@@ -103,6 +103,11 @@ export class Synth {
     return this.ctx ? this.ctx.currentTime : 0;
   }
 
+  /** The music bus, so real audio tracks share the music volume/mute controls. */
+  get musicOut(): GainNode | null {
+    return this.musicBus;
+  }
+
   playNote(freq: number, dur: number, type: Wave, vol: number, o: NoteOpts = {}): void {
     const c = this.ctx;
     if (!c || !this.sfxBus || !this.musicBus || freq <= 0) return;
@@ -241,6 +246,7 @@ const P = (bpm: number, leadType: Wave, bassType: Wave, lead: string[], bass: st
 
 export const PATTERNS: Record<MusicId, Pattern | null> = {
   none: null,
+  between: null,
   title: P(
     112,
     "triangle",

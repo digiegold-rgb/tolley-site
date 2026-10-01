@@ -17,11 +17,13 @@ try {
   const page = await context.newPage();
   watch(page);
   await ready(page);
-  await page.screenshot({ path: `${shots}/voxel-title.png` });
+  await page.screenshot({ path: `${shots}/voxel-title.png`, timeout: 150000 });
   await page.getByRole("button", { name: "Ember Clever & quick" }).click();
   await page.getByRole("button", { name: /Let’s play!/ }).click();
   await page.waitForFunction(() => window.__voxel.game.time > 0.3, {}, { timeout: 60000 });
   assert.equal(await page.getAttribute('[data-testid="voxel"]', "data-mode"), "play");
+  await G(page, () => (window.__voxel.game.peaceful = true)); // scripted walk; the Bolt-Bots get their own checks below
+  assert.ok(await page.locator(".vx-intro").isVisible(), "world intro card shows");
   const start = await G(page, () => ({ pos: { ...window.__voxel.game.position }, def: { ...window.__voxel.game.def.start } }));
   assert.ok(Math.abs(start.pos.z - start.def.z) < 0.6 && start.pos.y === 4, `start ${JSON.stringify(start)}`);
   // Walk forward through the coin row, jump, and check the aim ray is live.
@@ -42,7 +44,7 @@ try {
   // Headless Chromium may or may not grant pointer lock; the hint must match whichever happened.
   assert.equal(await page.locator(".vx-lockhint").isVisible(), !walk.locked, `lock hint vs locked=${walk.locked}`);
   assert.ok(await page.locator(".vx-reticle").isVisible(), "reticle visible");
-  await page.screenshot({ path: `${shots}/voxel-play.png` });
+  await page.screenshot({ path: `${shots}/voxel-play.png`, timeout: 150000 });
   // Lever → door: stand by lever 1 and press E, then the door cells are air.
   await G(page, () => {
     const g = window.__voxel.game;
@@ -68,10 +70,43 @@ try {
   }
   await page.waitForSelector('[role="dialog"]', { timeout: 20000 });
   assert.match(await page.locator('[role="dialog"] h2').innerText(), /Zippy is free/);
-  await page.screenshot({ path: `${shots}/voxel-rescue.png` });
+  await page.screenshot({ path: `${shots}/voxel-rescue.png`, timeout: 150000 });
   await page.getByRole("button", { name: /keep hopping/i }).click();
   await page.waitForFunction(() => !window.__voxel.game.paused);
   assert.equal(await G(page, () => window.__voxel.game.has("doubleJump")), true);
+  // Enemies and the boss are live: a Bolt-Bot dies to three bashes; the Foreman wakes in his hall and the boss bar appears.
+  const fight = await G(page, () => {
+    const g = window.__voxel.game;
+    g.peaceful = false;
+    g.invulnerable = Infinity;
+    const bot = g.enemies[0];
+    g.position = { x: bot.at.x - 1, y: bot.at.y, z: bot.at.z };
+    g.yaw = Math.atan2(1, 0);
+    g.velocity = { x: 0, y: 0, z: 0 };
+    for (let i = 0; i < 3; i++) {
+      g.attackCooldown = 0;
+      g.bash();
+    }
+    g.position = { x: 40.5, y: 12, z: 112.5 };
+    return { dead: bot.dead, enemies: g.enemies.length, boss: g.boss?.name };
+  });
+  assert.equal(fight.dead, true, "bashed a Bolt-Bot to scrap");
+  assert.ok(fight.enemies >= 8, `enemies placed: ${fight.enemies}`);
+  assert.equal(fight.boss, "Forge Foreman");
+  await page.waitForFunction(() => window.__voxel.game.bossAwake, {}, { timeout: 10000 });
+  await page.waitForSelector(".vx-boss-meter", { timeout: 10000 });
+  await page.waitForFunction(() => window.__voxel.game.boss.state === "stagger", {}, { timeout: 30000 });
+  await page.screenshot({ path: `${shots}/voxel-boss.png`, timeout: 150000 });
+  const music = await G(page, () => ({ track: window.__voxel.audio?.track, mode: window.__voxel.audio?.music.mode }));
+  assert.equal(music.track, "boss", "boss music cue");
+  console.log(`music: ${music.track} via ${music.mode}`);
+  await G(page, () => {
+    const g = window.__voxel.game;
+    g.defeatBoss();
+    g.peaceful = true;
+    g.invulnerable = 0;
+    g.position = { x: 40.5, y: 4, z: 8.5 };
+  });
   // Pause, settings, resume; then reload and continue from the save.
   await page.keyboard.press("Escape");
   await page.waitForSelector('[data-testid="voxel"][data-mode="pause"]');
@@ -81,7 +116,7 @@ try {
   await page.keyboard.press("Escape");
   await page.waitForSelector('[data-testid="voxel"][data-mode="pause"]');
   await page.getByRole("button", { name: /Save & title/ }).click();
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 180000 });
   await page.waitForSelector('[data-testid="voxel"][data-ready="true"]', { timeout: 180000 });
   const saved = await G(page, () => JSON.parse(localStorage.getItem("tolley-portal-hoppers-voxel-v3")));
   assert.deepEqual(saved.rescued, ["zippy"]);
@@ -106,7 +141,7 @@ try {
     requestAnimationFrame(step);
   }));
   console.log(`fps (software GL): ${fps.toFixed(1)}`);
-  await page.screenshot({ path: `${shots}/voxel-continue.png` });
+  await page.screenshot({ path: `${shots}/voxel-continue.png`, timeout: 150000 });
   await context.close();
 } finally {
   await browser.close();
@@ -115,4 +150,4 @@ if (errors.length) {
   console.error("page errors:\n" + errors.join("\n"));
   process.exit(1);
 }
-console.log("Blocky Worlds browser checks passed: title, play, coins, aim, lever/door, cage rescue, pause/settings, save/reload, drag look.");
+console.log("Blocky Worlds browser checks passed: title, intro, play, coins, aim, lever/door, cage rescue, Bolt-Bot, Foreman + boss bar + boss music, pause/settings, save/reload, drag look.");

@@ -6,7 +6,9 @@ import { FRIENDS, FRIEND_BY_ID } from "../worlds/friends";
 import type { FriendId, PowerId, SfxName } from "../engine/types";
 import {
   B,
+  BOSSES,
   CUBO_SIZE,
+  ENEMIES,
   HERO,
   PHYS,
   clamp,
@@ -14,8 +16,11 @@ import {
   dist3,
   emptyControls,
   type AimHit,
+  type Arena,
+  type BossType,
   type Controls,
   type DoorDef,
+  type EnemyType,
   type Entity,
   type Snapshot,
   type Vec3,
@@ -31,6 +36,39 @@ export type { Controls, Save };
 type Effect = { id: number; kind: "coin" | "bash" | "rescue" | "jump" | "hurt" | "key" | "switch"; x: number; y: number; z: number; age: number };
 type CageState = { friend: FriendId; at: Vec3; hp: number; max: number; armor?: string };
 type Timed = { t: number; id: number };
+export type EnemyState = {
+  id: string;
+  type: EnemyType;
+  at: Vec3;
+  spawn: Vec3;
+  path: Vec3[];
+  target: number;
+  yaw: number;
+  hp: number;
+  max: number;
+  stun: number;
+  flash: number;
+  dead: boolean;
+};
+export type Projectile = { id: number; kind: "gear"; x: number; y: number; z: number; vx: number; vy: number; vz: number; owner: "boss" | "hero"; life: number; spin: number };
+export type BossState = {
+  type: BossType;
+  name: string;
+  at: Vec3;
+  yaw: number;
+  hp: number;
+  max: number;
+  phase: 1 | 2 | 3;
+  state: "sleep" | "idle" | "windup" | "charge" | "stagger" | "dead";
+  t: number;
+  staggerFor: number;
+  vx: number;
+  vz: number;
+  arena: Arena;
+  flash: number;
+  charges: number;
+  hits: number;
+};
 
 const ACTIVE_POWERS: PowerId[] = ["rocket", "pound", "megaPunch", "freeze", "bubble", "dash", "speed", "shrink", "slowTime"];
 
@@ -77,6 +115,14 @@ export class VoxelGame {
   bossHP = 0;
   bossMax = 0;
   bossName: string | null = null;
+  boss: BossState | null = null;
+  enemies: EnemyState[] = [];
+  projectiles: Projectile[] = [];
+  knock: Vec3 = { x: 0, y: 0, z: 0 };
+  /** Camera shake budget in seconds, consumed by the renderer. */
+  shake = 0;
+  /** Test hook: freeze enemies, the boss and projectiles (route bots, physics tests). */
+  peaceful = false;
   worldVersion = 0;
   saveFailed = false;
   effects: Effect[] = [];
@@ -111,6 +157,7 @@ export class VoxelGame {
     this.cuboJoined = saveData.world >= 2;
     this.placeCubo();
     this.resetBoss();
+    this.spawnEnemies();
     for (const d of this.def.doors) if (d.boss && this.bossHP === 0) this.openDoor(d, true);
     this.active = this.powers.find((p) => ACTIVE_POWERS.includes(p)) ?? null;
   }
@@ -196,10 +243,297 @@ export class VoxelGame {
     this.save();
   }
   resetBoss() {
-    const boss = this.entities("boss")[0];
-    this.bossHP = boss ? 40 : 0;
-    this.bossMax = this.bossHP;
-    this.bossName = boss ? boss.type : null;
+    const def = this.entities("boss")[0];
+    if (!def) {
+      this.boss = null;
+      this.bossHP = this.bossMax = 0;
+      this.bossName = null;
+      return;
+    }
+    const kit = BOSSES[def.type];
+    const max = Math.round(kit.hp * (this.challenge ? 1.25 : 1));
+    const down = this.saveData.bossDown;
+    this.boss = {
+      type: def.type,
+      name: kit.name,
+      at: { ...def.at },
+      yaw: Math.PI,
+      hp: down ? 0 : max,
+      max,
+      phase: 1,
+      state: down ? "dead" : "sleep",
+      t: 0,
+      staggerFor: 3,
+      vx: 0,
+      vz: 0,
+      arena: def.arena,
+      flash: 0,
+      charges: 0,
+      hits: 0,
+    };
+    this.bossHP = this.boss.hp;
+    this.bossMax = max;
+    this.bossName = kit.name;
+    this.projectiles = [];
+  }
+  spawnEnemies() {
+    const band = this.def.id <= 3 ? 3 : this.def.id <= 6 ? 4 : 5;
+    this.enemies = this.entities("enemy").map((e) => ({
+      id: e.id,
+      type: e.type,
+      at: { ...e.at },
+      spawn: { ...e.at },
+      path: [e.at, ...(e.path ?? [])],
+      target: 0,
+      yaw: 0,
+      hp: band,
+      max: band,
+      stun: 0,
+      flash: 0,
+      dead: false,
+    }));
+  }
+  get bossAwake() {
+    return !!this.boss && this.boss.state !== "sleep" && this.boss.state !== "dead";
+  }
+  /** Push the hero away from a point; decays over about half a second. */
+  knockFrom(src: Vec3, power: number) {
+    const dx = this.position.x - src.x,
+      dz = this.position.z - src.z;
+    const d = Math.hypot(dx, dz) || 1;
+    this.knock = { x: (dx / d) * power, y: 0, z: (dz / d) * power };
+    this.velocity.y = Math.max(this.velocity.y, 5);
+    this.grounded = false;
+    this.groundBody = null;
+  }
+  hurtEnemy(e: EnemyState, hits: number) {
+    if (e.dead) return;
+    e.hp -= hits;
+    e.flash = 0.25;
+    e.stun = Math.max(e.stun, 0.35);
+    this.sfx("crack");
+    this.effect("bash", e.at);
+    const dx = e.at.x - this.position.x,
+      dz = e.at.z - this.position.z,
+      d = Math.hypot(dx, dz) || 1;
+    const nx = e.at.x + (dx / d) * 0.7,
+      nz = e.at.z + (dz / d) * 0.7;
+    if (this.grid.floorBelow(nx, e.at.y, nz) + 1 === Math.floor(e.at.y + 0.001)) {
+      e.at.x = nx;
+      e.at.z = nz;
+    }
+    if (e.hp <= 0) {
+      e.dead = true;
+      this.sfx("pop");
+      this.effect("coin", e.at);
+      this.saveData.coins += 2;
+      this.say(`${ENEMIES[e.type].name} scrapped! +2 coins`, 1.5);
+    }
+  }
+  hitBoss(source: "bash" | "stomp" | "punch" | "gear") {
+    const b = this.boss;
+    if (!b || !this.bossAwake) return;
+    const open = b.state === "stagger" || source === "gear";
+    const dmg = source === "gear" ? 6 : source === "punch" ? 3 : open ? (source === "bash" ? 4 : 2) : source === "stomp" ? 1 : 0;
+    if (dmg === 0) {
+      this.sfx("hit");
+      this.say("Clang! Armor. Make him crash into a wall, then bash the red button.", 2);
+      return;
+    }
+    b.hp = Math.max(0, b.hp - dmg);
+    b.hits++;
+    b.flash = 0.3;
+    this.sfx("crack");
+    this.effect("bash", { x: b.at.x, y: b.at.y + 1, z: b.at.z });
+    if (source === "gear") {
+      b.state = "stagger";
+      b.t = 0;
+      b.staggerFor = 1.5;
+      this.say("Batted it right back! 6 damage.", 2);
+    } else this.say(`${dmg} damage to the ${b.name}!`, 1.5);
+    if (b.hp <= 0) this.defeatBoss();
+  }
+  defeatBoss() {
+    const b = this.boss;
+    if (!b || b.state === "dead") return;
+    b.hp = 0;
+    b.state = "dead";
+    this.bossHP = 0;
+    this.saveData.bossDown = true;
+    this.projectiles = [];
+    this.shake = 0.8;
+    this.sfx("victory");
+    this.effect("rescue", { x: b.at.x, y: b.at.y + 1, z: b.at.z });
+    this.say(`${b.name} is scrap! The vault door grinds open.`, 6);
+    this.save();
+  }
+  private throwGears(n: number) {
+    const b = this.boss!;
+    for (let i = 0; i < n; i++) {
+      const dx = this.position.x - b.at.x,
+        dz = this.position.z - b.at.z;
+      const spread = (i - (n - 1) / 2) * 0.35;
+      const a = Math.atan2(dx, dz) + spread;
+      const spd = 8;
+      this.projectiles.push({ id: ++this.effectId, kind: "gear", x: b.at.x, y: b.at.y + 1.5, z: b.at.z, vx: Math.sin(a) * spd, vy: 0, vz: Math.cos(a) * spd, owner: "boss", life: 5, spin: 0 });
+    }
+    this.sfx("whistle");
+  }
+  private overlapsHero(at: Vec3, hw: number, h: number) {
+    const p = this.position;
+    return Math.abs(p.x - at.x) < hw + this.half && Math.abs(p.z - at.z) < hw + this.half && p.y < at.y + h && p.y + this.height > at.y;
+  }
+  private tickEnemies(dt: number) {
+    const p = this.position;
+    for (const e of this.enemies) {
+      if (e.dead) continue;
+      e.flash = Math.max(0, e.flash - dt);
+      if (e.stun > 0) {
+        e.stun -= dt;
+        continue;
+      }
+      const kit = ENEMIES[e.type];
+      const speed = kit.speed * (this.challenge ? 1.3 : 1);
+      const near = dist2(p, e.at) < kit.chase && Math.abs(p.y - e.at.y) < 2.5;
+      let tx: number, tz: number;
+      if (near) {
+        tx = p.x;
+        tz = p.z;
+      } else {
+        const t = e.path[e.target];
+        if (dist2(t, e.at) < 0.3) e.target = (e.target + 1) % e.path.length;
+        tx = e.path[e.target].x;
+        tz = e.path[e.target].z;
+      }
+      const dx = tx - e.at.x,
+        dz = tz - e.at.z,
+        d = Math.hypot(dx, dz);
+      if (d > 0.05) {
+        const step = Math.min(d, speed * dt);
+        const nx = e.at.x + (dx / d) * step,
+          nz = e.at.z + (dz / d) * step;
+        const top = this.grid.floorBelow(nx, e.at.y, nz) + 1;
+        if (top > 0 && Math.abs(top - e.at.y) <= 1.01) {
+          e.at.x = nx;
+          e.at.z = nz;
+          e.at.y = top;
+          e.yaw = Math.atan2(dx, dz);
+        } else if (!near) e.target = (e.target + 1) % e.path.length;
+      }
+      if (this.overlapsHero(e.at, kit.hw, kit.h)) {
+        if (this.velocity.y < -1 && p.y > e.at.y + kit.h * 0.5) {
+          this.hurtEnemy(e, 2);
+          this.velocity.y = 9;
+          this.grounded = false;
+          this.groundBody = null;
+          this.sfx("stomp");
+        } else if (this.invulnerable <= 0) {
+          this.damage(1);
+          this.knockFrom(e.at, 7);
+        }
+      }
+    }
+  }
+  private tickBoss(dt: number) {
+    const b = this.boss;
+    if (!b || b.state === "dead") return;
+    b.flash = Math.max(0, b.flash - dt);
+    const p = this.position;
+    const a = b.arena;
+    const kit = BOSSES[b.type];
+    if (b.state === "sleep") {
+      if (p.x > a.x0 && p.x < a.x1 + 1 && p.z > a.z0 && p.z < a.z1 + 1 && Math.abs(p.y - a.y) < 6) {
+        b.state = "idle";
+        b.t = 0;
+        this.shake = 0.4;
+        this.sfx("roar");
+        this.say(kit.line, 6);
+      }
+      return;
+    }
+    b.phase = b.hp <= b.max / 3 ? 3 : b.hp <= (b.max * 2) / 3 ? 2 : 1;
+    b.t += dt;
+    const faceHero = () => (b.yaw = Math.atan2(p.x - b.at.x, p.z - b.at.z));
+    if (b.state === "idle") {
+      faceHero();
+      if (b.t > (b.phase === 3 ? 0.5 : 0.9)) {
+        b.state = "windup";
+        b.t = 0;
+        this.sfx("ultraCharge");
+      }
+    } else if (b.state === "windup") {
+      faceHero();
+      if (b.t > 0.55) {
+        b.state = "charge";
+        b.t = 0;
+        const d = dist2(p, b.at) || 1;
+        const spd = kit.charge * (b.phase === 3 ? 1.25 : 1);
+        b.vx = ((p.x - b.at.x) / d) * spd;
+        b.vz = ((p.z - b.at.z) / d) * spd;
+        b.charges++;
+        this.sfx("boost");
+      }
+    } else if (b.state === "charge") {
+      const nx = b.at.x + b.vx * dt,
+        nz = b.at.z + b.vz * dt;
+      if (nx - kit.hw < a.x0 || nx + kit.hw > a.x1 + 1 || nz - kit.hw < a.z0 || nz + kit.hw > a.z1 + 1 || b.t > 2.4) {
+        b.state = "stagger";
+        b.t = 0;
+        b.staggerFor = (this.challenge ? 0.75 : 1) * 3;
+        this.shake = 0.5;
+        this.sfx("stomp");
+        this.say("CRASH! The red button is glowing. Bash it!", 2.5);
+        if (b.phase >= 2) this.throwGears(b.phase === 3 ? 2 : 1);
+      } else {
+        b.at.x = nx;
+        b.at.z = nz;
+      }
+      if (this.overlapsHero(b.at, kit.hw, kit.h) && this.invulnerable <= 0) {
+        this.damage(2);
+        this.knockFrom(b.at, 11);
+      }
+    } else if (b.state === "stagger") {
+      if (b.t > b.staggerFor) {
+        b.state = "idle";
+        b.t = 0;
+      }
+    }
+    // Landing on him counts as a stomp.
+    if (this.velocity.y < -1 && this.overlapsHero(b.at, kit.hw, kit.h + 0.4) && p.y > b.at.y + kit.h * 0.6) {
+      this.hitBoss("stomp");
+      this.velocity.y = 10;
+      this.grounded = false;
+      this.groundBody = null;
+    }
+    this.bossHP = b.hp;
+  }
+  private tickProjectiles(dt: number) {
+    const b = this.boss;
+    const keep: Projectile[] = [];
+    for (const pr of this.projectiles) {
+      pr.life -= dt;
+      pr.spin += dt * 12;
+      pr.x += pr.vx * dt;
+      pr.y += pr.vy * dt;
+      pr.z += pr.vz * dt;
+      if (pr.life <= 0 || this.grid.solidAt(pr.x, pr.y, pr.z)) {
+        this.effect("bash", { x: pr.x, y: pr.y - 0.8, z: pr.z });
+        continue;
+      }
+      if (pr.owner === "boss" && this.overlapsHero({ x: pr.x, y: pr.y - 0.45, z: pr.z }, 0.45, 0.9)) {
+        if (this.invulnerable <= 0) {
+          this.damage(2);
+          this.knockFrom(pr, 8);
+        }
+        continue;
+      }
+      if (pr.owner === "hero" && b && this.bossAwake && Math.abs(pr.x - b.at.x) < BOSSES[b.type].hw + 0.4 && Math.abs(pr.z - b.at.z) < BOSSES[b.type].hw + 0.4 && pr.y > b.at.y && pr.y < b.at.y + BOSSES[b.type].h + 0.5) {
+        this.hitBoss("gear");
+        continue;
+      }
+      keep.push(pr);
+    }
+    this.projectiles = keep;
   }
   placeCubo() {
     this.cubo.x = this.position.x - Math.sin(this.yaw) * 1.8;
@@ -219,6 +553,15 @@ export class VoxelGame {
     this.jumpCharge = 0;
     this.stamina = PHYS.glideStamina;
     this.saveData.coins = Math.max(0, this.saveData.coins - 10);
+    this.knock = { x: 0, y: 0, z: 0 };
+    this.projectiles = [];
+    if (this.boss && this.bossAwake) {
+      const def = this.entities("boss")[0];
+      this.boss.state = "sleep";
+      this.boss.at = { ...def.at };
+      this.boss.hp = Math.min(this.boss.max, this.boss.hp + Math.round(this.boss.max * 0.25));
+      this.bossHP = this.boss.hp;
+    }
     this.placeCubo();
     this.sfx("respawn");
     this.say(this.hasCubo ? "Cubo saved your spot. Take a breath and try again!" : "Back to the checkpoint. Try again!");
@@ -308,7 +651,15 @@ export class VoxelGame {
       this.sfx("stomp");
     }
     if (this.active === "megaPunch") this.bash(5, 3);
-    if (this.active === "freeze") this.sfx("freeze");
+    if (this.active === "freeze") {
+      this.sfx("freeze");
+      for (const e of this.enemies) if (!e.dead && dist3(e.at, this.position) < 9) e.stun = 5;
+      if (this.boss && this.bossAwake && dist2(this.boss.at, this.position) < 10) {
+        this.boss.state = "stagger";
+        this.boss.t = 0;
+        this.boss.staggerFor = 2;
+      }
+    }
     if (this.active === "bubble") {
       this.velocity.y = Math.max(this.velocity.y, 6);
       this.grounded = false;
@@ -376,6 +727,28 @@ export class VoxelGame {
       else this.say(`${c.hp} more to crack ${FRIEND_BY_ID[c.friend].name}'s cage!`, 2);
     }
     for (const s of this.entities("switch")) if (!this.switches.has(s.id) && inFront(s.at)) this.throwSwitch(s.id);
+    for (const e of this.enemies) if (!e.dead && (inFront(e.at) || (this.aim.kind === "enemy" && this.aim.id === e.id && this.aim.dist < radius + 1.5))) this.hurtEnemy(e, hits);
+    const b = this.boss;
+    if (b && this.bossAwake) {
+      const bk = BOSSES[b.type];
+      const near = dist2(b.at, this.position) < radius + bk.hw && Math.abs(b.at.y - this.position.y) < 3;
+      if (near || (this.aim.kind === "boss" && this.aim.dist < radius + bk.hw + 1)) this.hitBoss(hits >= 3 ? "punch" : "bash");
+    }
+    // Bat a gear back toward the boss.
+    for (const pr of this.projectiles) {
+      if (pr.owner !== "boss" || !inFront({ x: pr.x, y: pr.y - 0.8, z: pr.z })) continue;
+      if (!b) continue;
+      const dx = b.at.x - pr.x,
+        dz = b.at.z - pr.z;
+      const d = Math.hypot(dx, dz) || 1;
+      pr.owner = "hero";
+      pr.vx = (dx / d) * 16;
+      pr.vz = (dz / d) * 16;
+      pr.vy = 0;
+      pr.life = 4;
+      this.sfx("boing");
+      this.say("Batted it back!", 1.5);
+    }
   }
   free(c: CageState) {
     if (this.saveData.rescued.includes(c.friend)) return;
@@ -404,6 +777,7 @@ export class VoxelGame {
     this.saveData.unlocked = Math.max(this.saveData.unlocked, next);
     this.saveData.keys = [];
     this.saveData.checkpoint = 0;
+    this.saveData.bossDown = false;
     this.loadWorld();
     return true;
   }
@@ -425,8 +799,11 @@ export class VoxelGame {
     this.hearts = this.maxHearts;
     this.invulnerable = 1.5;
     this.cuboJoined = this.cuboJoined || this.saveData.world >= 2;
+    this.knock = { x: 0, y: 0, z: 0 };
     this.placeCubo();
+    this.saveData.bossDown = false;
     this.resetBoss();
+    this.spawnEnemies();
     for (const d of this.def.doors) if (d.boss && this.bossHP === 0) this.openDoor(d, true);
     this.worldVersion++;
     this.say(this.def.intro, 7);
@@ -445,6 +822,9 @@ export class VoxelGame {
     for (const c of this.cages) if (!this.saveData.rescued.includes(c.friend)) test("cage", c.friend, c.at, 0.7, 1.4);
     for (const s of this.entities("switch")) if (!this.switches.has(s.id)) test("switch", s.id, s.at, 0.5, 1);
     if (this.hasCubo) test("cubo", "cubo", this.cubo, this.cubo.hw, this.cubo.h);
+    for (const e of this.enemies) if (!e.dead) test("enemy", e.id, e.at, ENEMIES[e.type].hw, ENEMIES[e.type].h);
+    if (this.boss && this.bossAwake) test("boss", "boss", this.boss.at, BOSSES[this.boss.type].hw, BOSSES[this.boss.type].h);
+    for (const pr of this.projectiles) if (pr.owner === "boss") test("gear", String(pr.id), { x: pr.x, y: pr.y - 0.5, z: pr.z }, 0.5, 1);
     this.aim = best;
   }
   /* ── main step ───────────────────────────────────────────────────────── */
@@ -454,7 +834,7 @@ export class VoxelGame {
     this.time += dt;
     const slow = this.powerTime > 0 && this.active === "slowTime" ? 0.35 : 1;
     this.worldTime += dt * slow;
-    for (const key of ["invulnerable", "attack", "attackCooldown", "powerTime", "powerCooldown", "rocketCooldown", "messageTime", "liftCooldown", "ceilingToast"] as const)
+    for (const key of ["invulnerable", "attack", "attackCooldown", "powerTime", "powerCooldown", "rocketCooldown", "messageTime", "liftCooldown", "ceilingToast", "shake"] as const)
       this[key] = Math.max(0, this[key] - dt);
     this.effects = this.effects.filter((e) => (e.age += dt) < 1.3);
     this.tickBlocks(dt);
@@ -490,6 +870,13 @@ export class VoxelGame {
       this.velocity.x += belt.x * 3;
       this.velocity.z += belt.z * 3;
     }
+    if (Math.abs(this.knock.x) + Math.abs(this.knock.z) > 0.05) {
+      this.velocity.x += this.knock.x;
+      this.velocity.z += this.knock.z;
+      const k = Math.exp(-dt * 5);
+      this.knock.x *= k;
+      this.knock.z *= k;
+    } else this.knock.x = this.knock.z = 0;
     if (len > 0.1) this.yaw = Math.atan2(nx, nz);
     this.coyote = this.grounded ? PHYS.coyote : Math.max(0, this.coyote - dt);
     this.jumpBuffer = c.jump ? PHYS.buffer : Math.max(0, this.jumpBuffer - dt);
@@ -602,6 +989,11 @@ export class VoxelGame {
       this.sfx("step");
     }
     this.tickPickups();
+    if (!this.peaceful) {
+      this.tickEnemies(dt * slow);
+      this.tickBoss(dt * slow);
+      this.tickProjectiles(dt * slow);
+    }
     this.checkDoors();
     this.hint = "";
     for (const s of this.entities("sign")) if (dist2(s.at, this.position) < 2.6 && Math.abs(s.at.y - this.position.y) < 2) this.hint = s.text;
@@ -742,7 +1134,7 @@ export class VoxelGame {
     const cage = this.cages.find((c) => !this.saveData.rescued.includes(c.friend));
     if (this.keys.length < this.keysNeeded) return `Find the keys · ${this.keys.length}/${this.keysNeeded}${cage ? ` · free ${FRIEND_BY_ID[cage.friend].name}` : ""}`;
     if (cage) return `Free ${FRIEND_BY_ID[cage.friend].name} from the cage`;
-    if (this.bossHP > 0) return `Defeat ${this.bossName}`;
+    if (this.bossHP > 0) return this.bossAwake ? `Defeat the ${this.bossName} · ${this.bossHP}/${this.bossMax}` : `Face the ${this.bossName} in the boss hall`;
     return "The portal is open — E to hop through!";
   }
   snapshot(): Snapshot {
@@ -770,6 +1162,9 @@ export class VoxelGame {
       bossHP: this.bossHP,
       bossMax: this.bossMax,
       bossName: this.bossName,
+      bossAwake: this.bossAwake,
+      bossPhase: this.boss?.phase ?? 0,
+      showIntro: this.worldTime < 4.5 && !this.saveData.finished,
       aim: this.aim.kind,
       hasCubo: this.hasCubo,
       liftCooldown: Math.ceil(this.liftCooldown),

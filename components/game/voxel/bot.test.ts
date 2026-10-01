@@ -51,7 +51,9 @@ test("a bot with no flight powers clears every authored world along its route", 
     const save = newSave();
     save.world = w.id;
     const g = new VoxelGame(save);
+    g.peaceful = true; // traversal only; combat has its own tests
     g.start();
+    g.defeatBoss(); // so the vault door opens for the walk-through
     const log: string[] = [];
     walkRoute(g, w.route, log);
     assert.equal(g.keys.length, 3, `world ${w.id} keys: ${log.join("\n")}`);

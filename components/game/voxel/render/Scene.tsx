@@ -15,6 +15,8 @@ import { Terrain } from "./Terrain";
 import { Sky } from "./Sky";
 import { Cubo, HERO_MODELS, Hero, modelPath } from "./Actors";
 import { Entities } from "./Entities";
+import { Enemies } from "./Enemies";
+import { Props } from "./Props";
 import { Fx } from "./Fx";
 
 type Props = {
@@ -101,6 +103,11 @@ function PlayWorld({ game, input, onPause, quality }: { game: VoxelGame; input: 
       initialized.current = true;
     } else camera.position.lerp(desired, 1 - Math.exp(-Math.min(delta, 0.1) * (input.locked ? 26 : 12)));
     camera.lookAt(target);
+    if (game.shake > 0) {
+      const k = Math.min(1, game.shake) * 0.35;
+      camera.position.x += (Math.random() - 0.5) * k;
+      camera.position.y += (Math.random() - 0.5) * k;
+    }
   });
   return (
     <>
@@ -108,6 +115,8 @@ function PlayWorld({ game, input, onPause, quality }: { game: VoxelGame; input: 
       <Sun game={game} intensity={kit.sun} shadows={quality === "high"} />
       <Terrain grid={game.grid} kit={kit} quality={quality} />
       <Entities game={game} />
+      <Props game={game} kit={kit} />
+      <Enemies game={game} />
       <Hero hero={game.saveData.hero} game={game} />
       <Cubo game={game} />
       <Fx game={game} />

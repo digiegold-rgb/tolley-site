@@ -18,7 +18,15 @@ replaces `/game`; the current 3D game (`components/game/portal3d`) and the origi
   (per-chunk InstancedMesh cubes with baked three-tone shading, rebuilt when cells change), `Sky.tsx`, `Actors.tsx`,
   `Entities.tsx`, `Fx.tsx`.
 - `input.ts` — keyboard, pointer lock (mouse look + LMB bash + wheel power cycle) with drag fallback, gamepad, touch.
-- `audio.ts` — original Synth effects and Sequencer music (real looped tracks arrive in M4).
+- `audio.ts` + `music.ts` — original Synth effects; `MusicPlayer` streams the looping tracks in `public/game/music/`
+  (built by `scripts/game/build-music.py`, local ACE-Step, whisper vocal gate, bar-aligned loops, ogg + m4a) through the
+  Synth's music bus with 1.2 s crossfades, falling back to the Sequencer patterns when a track is missing.
+- Combat lives in `model.ts` too: `EnemyState` patrols (path back and forth, chase within range, contact damage with
+  knockback, bash 1 / stomp 2), `BossState` machines (`sleep → idle → windup → charge → stagger`, armored unless staggered,
+  weak point bash 4, stomp 2, Mega Punch 3, batted gear 6), projectiles, `peaceful` test hook, `bossDown` in the save.
+- `render/Enemies.tsx` (Bolt-Bot, Forge Foreman, gears) and `render/Props.tsx` (spinning gears, smokestacks with smoke,
+  lamps, steam vents, gantry crane) are procedural boxes; heroes/Cubo come from `public/game/models/blocky/` built by
+  `scripts/game/build-blocky-models.py` (six clips: Idle, Run, Jump, Bash, Hurt, Cheer).
 - `save.ts` — save v3 (`tolley-portal-hoppers-voxel-v3`), sanitized on read; older saves are ignored, never deleted.
 - `VoxelShell.tsx` + `voxel.css` — title, HUD (hearts, sparks, keys, stamina), reticle, pause/settings, rescue modal.
 
@@ -27,7 +35,10 @@ replaces `/game`; the current 3D game (`components/game/portal3d`) and the origi
 - Exactly three keys, two or three checkpoints, every door registered.
 - Keys, cages, the boss hall and the portal are sealed from the open sky (doors count as walls): flying never skips a room.
 - The `route` waypoints are walkable with real physics and no flight powers (`bot.test.ts`).
-- The portal opens only with all keys, all cages and the boss defeated.
+- The portal opens only with all keys, all cages and the boss defeated. The boss hall door opens with the keys; the vault
+  door opens when the boss falls (`door({ boss: true })`).
+- World builder extras: `enemy(type, x, y, z, path)`, `boss(type, x, y, z, arena)`, `prop(type, x, y, z, rot, scale)`,
+  `stripe(...)` hazard trims, `pillarsUnder(...)` support columns. Props never collide.
 
 ## Verification
 
@@ -45,5 +56,6 @@ and defaults graphics to low; nothing is exposed in production.
 
 ## Milestones
 
-M0 scaffold (this) → M1 blocky art → M2 all ten worlds (kid playtest) → M3 combat, bosses, Cubo place/bat, followers →
-M4 real music → M5 polish and swap `/game`. Plan: `~/.claude/plans/tolley-io-game-ok-i-had-wise-zephyr.md`.
+M0 scaffold → **M1 blocky art + first combat slice + real music (1.56.5, this)** → M2 all ten worlds (kid playtest) →
+M3 remaining enemy archetypes, the other nine bosses, Cubo place/bat, followers → M4 music for every world → M5 polish
+and swap `/game`. Plan: `~/.claude/plans/tolley-io-game-ok-i-had-wise-zephyr.md`.

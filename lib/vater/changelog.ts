@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.56.4';
+export const APP_VERSION = '1.56.5';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.56.5', date: '2026-10-01', title: 'Portal Hoppers preview: a real foundry, real enemies, real music', items: ['World 1 at /game/next is now Clank\u2019s foundry: molten-metal floor, riveted pillars, hazard stripes, smokestacks, spinning gears, lamps, conveyors and a gantry crane instead of plain boxes.', 'Ten patrolling Bolt-Bots guard the route (bash three times or stomp them), and the Forge Foreman waits in a boss hall that opens with three keys: dodge his charge, bash the red button when he crashes, bat his gears back. The vault only opens when he falls.', 'Heroes are rebuilt as chunky blocky characters with distinct silhouettes and now face the way they run; Cubo has a face on all four sides.', 'Real looping soundtrack tracks (title, factory, boss, victory and the other worlds) generated locally replace the short synth loops, with crossfades and the old loops as a fallback; a world intro card and a boss health bar with phases were added.'] },
   { version: '1.56.4', date: '2026-09-30', title: 'Portal Hoppers preview: the blocky rebuild begins', items: ['A preview of the rebuilt Portal Hoppers is playable at /game/next: a blocky first world with three key rooms, levers, crumbling floors, a sealed vault and a mouse-aimed reticle.', 'Cubo can be stood on and lifts you four blocks; glide runs on a stamina budget and the sky has a ceiling, so flying cannot skip a level.', 'The live game at /game is unchanged; the unused Whisperwood prototype was removed.'] },
   { version: '1.56.3', date: '2026-09-30', title: 'The next-show checklist is in HQ Docs', items: ['The streaming guide now starts with the single Show Assistant workflow, safe answer previews and the first live-question check.', 'Daily inventory guidance explains minute updates from Tolley and the remaining Facebook-only draft import gap.'] },
   { version: '1.56.2', date: '2026-09-29', title: 'One Show Assistant for greetings and inventory', items: ['A single Show Assistant combines welcomes, thank-yous and inventory answers, with existing settings and history carried forward.', 'Previous assistant links open the same controls; no version selection is needed.'] },

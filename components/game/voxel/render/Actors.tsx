@@ -8,7 +8,8 @@ import type { HeroKind } from "../../engine/types";
 import type { VoxelGame } from "../model";
 import { CUBO_SIZE } from "../types";
 
-export const modelPath = (name: string) => `/game/models/${name}.glb`;
+/** Blocky Worlds art lives in its own folder; the smooth originals stay for the current /game. */
+export const modelPath = (name: string) => `/game/models/blocky/${name}.glb`;
 export const HERO_MODELS: HeroKind[] = ["frog", "fox", "cat"];
 
 export function Model({ name, scale = 1 }: { name: string; scale?: number }) {
@@ -50,7 +51,7 @@ export function Hero({ hero, game, title = false }: { hero: HeroKind; game?: Vox
     }
     if (group.current && game && !title) {
       group.current.position.set(game.position.x, game.position.y, game.position.z);
-      const target = game.yaw + Math.PI; // the GLB faces -z
+      const target = game.yaw; // the GLB faces +z (Blender -Y → glTF +Z), same as portal3d
       group.current.rotation.y = THREE.MathUtils.lerp(
         group.current.rotation.y,
         group.current.rotation.y + Math.atan2(Math.sin(target - group.current.rotation.y), Math.cos(target - group.current.rotation.y)),
@@ -84,7 +85,7 @@ export function Cubo({ game }: { game: VoxelGame }) {
     pillar.current.scale.set(1, Math.max(0.01, extra), 1);
     pillar.current.position.y = extra / 2;
     face.current.position.y = extra;
-    face.current.rotation.y = THREE.MathUtils.lerp(face.current.rotation.y, game.yaw + Math.PI, 0.12);
+    face.current.rotation.y = THREE.MathUtils.lerp(face.current.rotation.y, game.yaw, 0.12);
   });
   return (
     <group ref={group}>

@@ -1,0 +1,119 @@
+{
+  "title": {
+    "id": "title",
+    "seconds": 73.94,
+    "bpm": 120,
+    "take": 0,
+    "seed": 1000,
+    "vocalScore": -1,
+    "prompt": "playful chiptune orchestral adventure theme, bright marimba and 8-bit lead melody, heroic brass stabs, warm strings, upbeat kids video game title screen, clean mix, no vocals, instrumental, 120 bpm"
+  },
+  "factory": {
+    "id": "factory",
+    "seconds": 74.94,
+    "bpm": 128,
+    "take": 0,
+    "seed": 2000,
+    "vocalScore": -1,
+    "prompt": "industrial toy factory electro swing, clanking metallic percussion, bouncy upright bass, muted brass, mechanical gear rhythms, steam hiss hits, cheerful mischievous video game level music, instrumental, no vocals, 128 bpm"
+  },
+  "boss": {
+    "id": "boss",
+    "seconds": 73.54,
+    "bpm": 150,
+    "take": 0,
+    "seed": 3000,
+    "vocalScore": -1,
+    "prompt": "epic boss battle, pounding taiko drums, synth brass fanfare, driving bass, urgent heroic video game boss music, instrumental, no vocals, 150 bpm"
+  },
+  "finale": {
+    "id": "finale",
+    "seconds": 74.485,
+    "bpm": 132,
+    "take": 0,
+    "seed": 4000,
+    "vocalScore": -1,
+    "prompt": "triumphant victory march, full orchestra with brass fanfare, snare rolls, glockenspiel, celebration ending credits video game music, instrumental, no vocals, 132 bpm"
+  },
+  "star": {
+    "id": "star",
+    "seconds": 74.122,
+    "bpm": 110,
+    "take": 0,
+    "seed": 5000,
+    "vocalScore": -1,
+    "prompt": "dreamy space disco, shimmering arpeggios, cosmic pads, four-on-the-floor groove, twinkling bells, wonder and awe, kids video game level music, instrumental, no vocals, 110 bpm"
+  },
+  "falling": {
+    "id": "falling",
+    "seconds": 74.34,
+    "bpm": 100,
+    "take": 0,
+    "seed": 6000,
+    "vocalScore": -1,
+    "prompt": "soaring wind orchestral, sweeping strings, flutes, light timpani, open sky freedom, descending motifs, adventurous video game level music, instrumental, no vocals, 100 bpm"
+  },
+  "water": {
+    "id": "water",
+    "seconds": 74.94,
+    "bpm": 96,
+    "take": 0,
+    "seed": 7000,
+    "vocalScore": -1,
+    "prompt": "underwater synthwave, deep bubbly bass, chorus-drenched electric piano, Labyrinth Zone feel, mysterious and calm with tension, video game level music, instrumental, no vocals, 96 bpm"
+  },
+  "pipes": {
+    "id": "pipes",
+    "seconds": 73.16,
+    "bpm": 118,
+    "take": 0,
+    "seed": 8000,
+    "vocalScore": -1,
+    "prompt": "funky plumbing bossa nova, wah guitar, clavinet, bongos, playful brass, pipes clanging percussion, cheerful video game level music, instrumental, no vocals, 118 bpm"
+  },
+  "bouncy": {
+    "id": "bouncy",
+    "seconds": 74.94,
+    "bpm": 160,
+    "take": 0,
+    "seed": 9000,
+    "vocalScore": -1,
+    "prompt": "bouncy ska pop, upstroke guitar, horn section, fast trampoline energy, hyper cheerful kids video game level music, instrumental, no vocals, 160 bpm"
+  },
+  "danger": {
+    "id": "danger",
+    "seconds": 74.764,
+    "bpm": 170,
+    "take": 0,
+    "seed": 10000,
+    "vocalScore": -1,
+    "prompt": "tense drum and bass with sirens, aggressive breakbeats, warning klaxon stabs, pulsing bass, high alert video game level music, instrumental, no vocals, 170 bpm"
+  },
+  "candy": {
+    "id": "candy",
+    "seconds": 74.485,
+    "bpm": 132,
+    "take": 0,
+    "seed": 11000,
+    "vocalScore": -1,
+    "prompt": "candy shop swing, sugary vibraphone, bubbly xylophone, big band horns, sweet and silly kids video game level music, instrumental, no vocals, 132 bpm"
+  },
+  "dark": {
+    "id": "dark",
+    "seconds": 74.94,
+    "bpm": 80,
+    "take": 0,
+    "seed": 12000,
+    "vocalScore": -1,
+    "prompt": "dark music box lullaby, eerie celesta, reversed piano, deep sub drone, upside down haunted but kid friendly, slow video game level music, instrumental, no vocals, 80 bpm"
+  },
+  "between": {
+    "id": "between",
+    "seconds": 73.654,
+    "bpm": 140,
+    "take": 0,
+    "seed": 13000,
+    "vocalScore": -1,
+    "prompt": "glitchy remix medley, chopped samples, stuttering edits, chiptune and orchestral mashup, bitcrushed drums, chaotic final world video game music, instrumental, no vocals, 140 bpm"
+  }
+}

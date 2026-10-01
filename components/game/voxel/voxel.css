@@ -1221,3 +1221,93 @@
   letter-spacing: 0.08em;
   vertical-align: middle;
 }
+
+/* ── World intro card and boss bar (combat update) ─────────────────────── */
+.vx-intro {
+  position: absolute;
+  top: 26%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, 90vw);
+  text-align: center;
+  z-index: 4;
+  pointer-events: none;
+  animation: vx-intro 4.5s ease forwards;
+}
+.vx-intro small {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.32em;
+  color: #ffe66d;
+  text-shadow: 0 2px 0 #30204488;
+}
+.vx-intro strong {
+  display: block;
+  font-size: clamp(30px, 6vw, 54px);
+  line-height: 1;
+  margin: 8px 0 12px;
+  color: #fff;
+  text-shadow:
+    0 4px 0 #30204499,
+    0 0 28px #ff7a1a88;
+}
+.vx-intro span {
+  display: inline-block;
+  background: #30204499;
+  color: #fff5dc;
+  padding: 10px 16px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+@keyframes vx-intro {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(14px) scale(0.96);
+  }
+  10% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  82% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px) scale(1.02);
+  }
+}
+.vx-boss-meter span {
+  display: block;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.vx-boss-meter span small {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 8px;
+  background: #ffe66d;
+  color: #302044;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+.vx-boss-meter[data-phase="2"] span small {
+  background: #ff9a3c;
+}
+.vx-boss-meter[data-phase="3"] span small {
+  background: #ff5a3c;
+  color: #fff;
+}
+.vx-boss-meter[data-phase="3"] {
+  animation: vx-boss-pulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes vx-boss-pulse {
+  from {
+    box-shadow: 0 0 0 0 #ff5a3c00;
+  }
+  to {
+    box-shadow: 0 0 0 5px #ff5a3c66;
+  }
+}

@@ -15,6 +15,7 @@ const run = (g: VoxelGame, seconds: number, c = emptyControls()) => {
 };
 const fresh = () => {
   const g = new VoxelGame(newSave());
+  g.peaceful = true; // movement and puzzle tests ignore the Bolt-Bots and the Foreman
   g.start();
   return g;
 };
@@ -98,10 +99,21 @@ test("switches open their doors, keys count toward the vault, and the portal sta
     g.tick(1 / 60, emptyControls());
   }
   assert.equal(g.keys.length, 3);
-  assert.equal(g.portalOpen, true);
+  assert.equal(g.portalOpen, false, "the Foreman still stands");
+  // Three keys open the boss hall door when you walk up to it.
+  const db = g.def.doors.find((d) => d.id === "db")!;
+  assert.equal(g.grid.get(db.cells[0].x, db.cells[0].y, db.cells[0].z), B.door);
+  g.position = { x: 40.5, y: 12, z: 106.5 };
+  g.tick(1 / 60, emptyControls());
+  assert.equal(g.grid.get(db.cells[0].x, db.cells[0].y, db.cells[0].z), B.air);
+  // The vault only opens once the boss is scrap.
   const dp = g.def.doors.find((d) => d.id === "dp")!;
   assert.equal(g.grid.get(dp.cells[0].x, dp.cells[0].y, dp.cells[0].z), B.door);
   g.position = { x: 40.5, y: 12, z: 118.5 };
+  g.tick(1 / 60, emptyControls());
+  assert.equal(g.grid.get(dp.cells[0].x, dp.cells[0].y, dp.cells[0].z), B.door, "vault stays shut while the boss lives");
+  g.defeatBoss();
+  assert.equal(g.portalOpen, true);
   g.tick(1 / 60, emptyControls());
   assert.equal(g.grid.get(dp.cells[0].x, dp.cells[0].y, dp.cells[0].z), B.air);
   assert.equal(g.interact(), false, "must stand at the portal");

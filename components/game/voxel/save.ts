@@ -28,6 +28,8 @@ export type Save = {
   keys: string[];
   /** Index of the last checkpoint touched in the current world; 0 = world start. */
   checkpoint: number;
+  /** The current world's boss is already beaten (cleared when a new world loads). */
+  bossDown: boolean;
   finished: boolean;
   settings: Settings;
 };
@@ -53,6 +55,7 @@ export const newSave = (hero: HeroKind = "frog", difficulty: Difficulty = "chall
   stars: [],
   keys: [],
   checkpoint: 0,
+  bossDown: false,
   finished: false,
   settings: defaultSettings(),
 });
@@ -74,6 +77,7 @@ export function readSave(raw?: string | null): Save | null {
     d.stars = strings(s.stars, (x) => /^star-(10|[1-9])-[1-3]$/.test(x));
     d.keys = strings(s.keys, (x) => /^key-[1-3]$/.test(x));
     d.checkpoint = Number.isInteger(s.checkpoint) ? clamp(s.checkpoint, 0, 3) : 0;
+    d.bossDown = s.bossDown === true;
     d.finished = s.finished === true;
     if (s.settings && typeof s.settings === "object") {
       const t = s.settings;

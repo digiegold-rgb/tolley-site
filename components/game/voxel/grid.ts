@@ -6,10 +6,14 @@
 import {
   B,
   isSolid,
+  type Arena,
   type BiomeId,
   type BlockId,
+  type BossType,
   type DoorDef,
+  type EnemyType,
   type Entity,
+  type PropType,
   type Vec3,
 } from "./types";
 
@@ -76,6 +80,14 @@ export class VoxelGrid {
       if (dir === "x" || dir === "-x") this.box(sx, base, sz, sx, y + i, sz + width - 1, id);
       else this.box(sx, base, sz, sx + width - 1, y + i, sz, id);
     }
+  }
+  /** Highest solid cell at or below a feet height (ignores roofs overhead), or -1. */
+  floorBelow(x: number, y: number, z: number) {
+    x = Math.floor(x);
+    z = Math.floor(z);
+    if (x < 0 || z < 0 || x >= this.w || z >= this.d) return -1;
+    for (let cy = Math.min(this.h - 1, Math.floor(y + 0.5)); cy >= 0; cy--) if (isSolid(this.data[this.index(x, cy, z)])) return cy;
+    return -1;
   }
   /** Highest solid cell in a column, or -1. */
   columnTop(x: number, z: number) {
@@ -219,6 +231,7 @@ export class WorldBuilder {
   private checkpoints = 0;
   private hoppers = 0;
   private switches = 0;
+  private enemies = 0;
   constructor(
     public grid: VoxelGrid,
     public worldId: number,
@@ -250,6 +263,30 @@ export class WorldBuilder {
   }
   sign(x: number, y: number, z: number, text: string) {
     return this.entity({ kind: "sign", text, at: cellCenter(x, y, z) });
+  }
+  /** A patrolling enemy; `path` cells are visited back and forth (the spawn cell is the first stop). */
+  enemy(type: EnemyType, x: number, y: number, z: number, path: [number, number, number][] = []) {
+    return this.entity({ kind: "enemy", id: `e-${this.worldId}-${++this.enemies}`, type, at: cellCenter(x, y, z), path: path.map(([px, py, pz]) => cellCenter(px, py, pz)) });
+  }
+  boss(type: BossType, x: number, y: number, z: number, arena: Arena) {
+    return this.entity({ kind: "boss", id: `boss-${this.worldId}`, type, at: cellCenter(x, y, z), arena });
+  }
+  /** Decoration only: never collides, never gates anything. */
+  prop(type: PropType, x: number, y: number, z: number, rot = 0, scale = 1) {
+    return this.entity({ kind: "prop", type, at: cellCenter(x, y, z), rot, scale });
+  }
+  /** Hazard-stripe trim: alternating two colours along a line of cells (same y). */
+  stripe(x0: number, y: number, z0: number, x1: number, z1: number, a: BlockId, b: BlockId) {
+    let n = 0;
+    for (let z = Math.min(z0, z1); z <= Math.max(z0, z1); z++) for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) this.grid.set(x, y, z, n++ % 2 ? b : a);
+  }
+  /** Support columns under a platform footprint so structures look grounded (corners + every `every` cells). */
+  pillarsUnder(x0: number, z0: number, x1: number, z1: number, topY: number, id: BlockId, every = 6, floor = 0) {
+    const xs = new Set<number>([x0, x1]);
+    const zs = new Set<number>([z0, z1]);
+    for (let x = x0; x <= x1; x += every) xs.add(x);
+    for (let z = z0; z <= z1; z += every) zs.add(z);
+    for (const x of xs) for (const z of zs) for (let y = floor; y < topY; y++) if (this.grid.get(x, y, z) === B.air) this.grid.set(x, y, z, id);
   }
   door(def: Omit<DoorDef, "cells">, cells: Vec3[] = []) {
     this.doors.push(def);

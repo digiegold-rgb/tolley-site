@@ -171,7 +171,12 @@ export default function VoxelShell() {
         audio.current?.play(game.def.music);
         input.clear();
       }
-      if (game.saveData.finished && modeRef.current === "play") audio.current?.play("finale");
+      if (modeRef.current === "play") {
+        const a = audio.current;
+        if (game.saveData.finished) a?.play("finale");
+        else if (snapshot.bossAwake && a?.track !== "boss") a?.play("boss");
+        else if (!snapshot.bossAwake && a?.track === "boss") a?.play(game.def.music);
+      }
     }, 100);
     const save = () => {
       if (modeRef.current !== "title") game.save();
@@ -213,6 +218,7 @@ export default function VoxelShell() {
       audio.current?.unlock();
       audio.current?.configure(settings);
       audio.current?.play(g.def.music);
+      audio.current?.preload("boss");
       stage.current?.focus();
       if (!touch && settings.look === "lock") input.requestLock();
     },
@@ -483,7 +489,7 @@ export default function VoxelShell() {
           </div>
           {snap.message && !rescue && (
             <div className="vx-message" role="status">
-              <b>{snap.hasCubo ? "CUBO" : "PORTAL HOPPERS"}</b>
+              <b>{snap.bossAwake ? "FOREMAN FIGHT" : snap.hasCubo ? "CUBO" : "PORTAL HOPPERS"}</b>
               {snap.message}
             </div>
           )}
@@ -503,10 +509,19 @@ export default function VoxelShell() {
             </button>
             {snap.active && <span className="vx-power-key">{snap.powerCooldown > 0 ? `${snap.powerCooldown}s` : "C"}</span>}
           </div>
-          {snap.bossHP > 0 && (
-            <div className="vx-boss-meter">
-              <span>{snap.bossName}</span>
+          {snap.bossAwake && (
+            <div className="vx-boss-meter" data-phase={snap.bossPhase}>
+              <span>
+                {snap.bossName} <small>PHASE {snap.bossPhase}</small>
+              </span>
               <meter min={0} max={snap.bossMax} value={snap.bossHP} />
+            </div>
+          )}
+          {snap.showIntro && mode === "play" && !modal && (
+            <div className="vx-intro" aria-hidden="true">
+              <small>WORLD {snap.world}</small>
+              <strong>{snap.worldName}</strong>
+              <span>{WORLDS[snap.world - 1]?.intro}</span>
             </div>
           )}
           {!touch && mode === "play" && !modal && <div className="vx-reticle" data-aim={snap.aim} aria-hidden="true" />}
