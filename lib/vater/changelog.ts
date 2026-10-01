@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.56.3';
+export const APP_VERSION = '1.56.4';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.56.4', date: '2026-09-30', title: 'Portal Hoppers preview: the blocky rebuild begins', items: ['A preview of the rebuilt Portal Hoppers is playable at /game/next: a blocky first world with three key rooms, levers, crumbling floors, a sealed vault and a mouse-aimed reticle.', 'Cubo can be stood on and lifts you four blocks; glide runs on a stamina budget and the sky has a ceiling, so flying cannot skip a level.', 'The live game at /game is unchanged; the unused Whisperwood prototype was removed.'] },
   { version: '1.56.3', date: '2026-09-30', title: 'The next-show checklist is in HQ Docs', items: ['The streaming guide now starts with the single Show Assistant workflow, safe answer previews and the first live-question check.', 'Daily inventory guidance explains minute updates from Tolley and the remaining Facebook-only draft import gap.'] },
   { version: '1.56.2', date: '2026-09-29', title: 'One Show Assistant for greetings and inventory', items: ['A single Show Assistant combines welcomes, thank-yous and inventory answers, with existing settings and history carried forward.', 'Previous assistant links open the same controls; no version selection is needed.'] },
   { version: '1.56.1', date: '2026-09-29', title: 'Keep product follow-up questions flowing', items: ['Inventory V2 can answer a viewer’s follow-up after the normal one-minute gap while keeping repeated greetings restrained.'] },
