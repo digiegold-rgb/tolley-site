@@ -31,9 +31,6 @@ type Status = {
   events: { t: number; kind: string; msg: string }[];
 };
 
-type ChatMsg = { id: number; t: number; p: "yt" | "tt" | "fb"; source?: string; eventId?: string; u: string; m: string; k: "chat" | "gift" | "join"; amt?: string };
-type ChatState = { epoch?: string; reset?: boolean; sources?: Partial<Record<ChatMsg["p"], string>>; facebook?: FacebookMeta & { connected: boolean }; items: ChatMsg[]; last: number; youtube?: { connected: boolean; video: string; error: string }; tiktok?: { connected: boolean; user: string; error: string; viewers: number }; error?: string };
-
 const DESTS: Dest[] = ["youtube", "tiktok", "whatnot"];
 const LABEL: Record<Dest, string> = { youtube: "YouTube", tiktok: "TikTok", whatnot: "Whatnot", facebook: "Facebook" };
 
@@ -56,13 +53,6 @@ export default function StreamPage() {
   const [selling, setSelling] = useState<NowSelling | null>(null);
   const [holdPct, setHoldPct] = useState(0);
   const [showAdv, setShowAdv] = useState(false);
-  const [chat, setChat] = useState<ChatMsg[]>([]);
-  const [chatMeta, setChatMeta] = useState<ChatState | null>(null);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [showJoins, setShowJoins] = useState(false);
-  const chatLast = useRef(0);
-  const chatEpoch = useRef("");
-  const chatBox = useRef<HTMLDivElement | null>(null);
   const holdTimer = useRef<number | null>(null);
   const holdStart = useRef(0);
 
@@ -111,40 +101,6 @@ export default function StreamPage() {
     return () => { stop = true; window.clearInterval(t); };
   }, [authed]);
 
-  // Live chat: merged YouTube + Facebook + TikTok feed, polled every 2 s while signed in.
-  useEffect(() => {
-    if (!authed) return;
-    let stop = false, polling = false;
-    const tick = async () => {
-      if (polling) return;
-      polling = true;
-      try {
-        const r = await fetch(`/api/stream/chat?since=${chatLast.current}&limit=80&epoch=${encodeURIComponent(chatEpoch.current)}`, { cache: "no-store" });
-        if (!r.ok) throw new Error("Chat unavailable");
-        const j: ChatState = await r.json();
-        if (stop) return;
-        setChatMeta(j);
-        const reset = !!j.reset || !!(j.epoch && chatEpoch.current && j.epoch !== chatEpoch.current);
-        if (j.epoch) chatEpoch.current = j.epoch;
-        chatLast.current = j.last;
-        setChat(prev => {
-          const retained = (reset ? [] : prev).filter(m => !j.sources || !m.source || m.source === j.sources[m.p]);
-          const seen = new Set(retained.map(m => `${m.p}:${m.source}:${m.eventId || m.id}`));
-          return [...retained, ...(j.items || []).filter(m => {
-            const key = `${m.p}:${m.source}:${m.eventId || m.id}`;
-            if (seen.has(key)) return false;
-            seen.add(key); return true;
-          })].slice(-300);
-        });
-      } catch { setChatMeta(prev => prev ? { ...prev, error: "Chat connection interrupted; reconnecting…" } : { items: [], last: 0, error: "Chat connection interrupted; reconnecting…" }); }
-      finally { polling = false; }
-    };
-    void tick();
-    const t = window.setInterval(() => { if (!stop && !document.hidden) void tick(); }, 2000);
-    return () => { stop = true; window.clearInterval(t); };
-  }, [authed]);
-  useEffect(() => { const el = chatBox.current; if (el) el.scrollTop = el.scrollHeight; }, [chat, chatOpen]);
-
   async function cmd(path: string, body?: unknown) {
     setBusy(path);
     try {
@@ -168,6 +124,7 @@ export default function StreamPage() {
 
   // Hold-to-end: 1 s press so a pocket tap can't kill the live.
   function holdBegin() {
+    if (holdTimer.current || busy || offline || !status?.armed) return;
     holdStart.current = Date.now();
     holdTimer.current = window.setInterval(() => {
       const p = Math.min(100, ((Date.now() - holdStart.current) / 1000) * 100);
@@ -181,15 +138,20 @@ export default function StreamPage() {
     setHoldPct(0);
   }
 
+  useEffect(() => {
+    if (!status?.armed || busy || offline) holdEnd();
+    return () => { if (holdTimer.current) window.clearInterval(holdTimer.current); };
+  }, [status?.armed, busy, offline]);
+
   if (checking) {
-    return <main style={S.wrap}><h1 style={S.h1}>📡 Stream</h1><div style={{ color: "#9aa" }}>Loading…</div></main>;
+    return <main style={S.wrap}><h1 style={S.h1}>House controls</h1><div style={{ color: "#9aa" }}>Loading…</div></main>;
   }
 
   if (!authed) {
     // Same gate as /hq: owner account + authenticator (NextAuth admin session). No PIN.
     return (
       <main style={S.wrap}>
-        <h1 style={S.h1}>📡 Stream</h1>
+        <h1 style={S.h1}>House controls</h1>
         <p style={{ color: "#9aa", fontSize: 15 }}>Use your owner account and authenticator to continue.</p>
         <a href="/login?callbackUrl=/stream" style={{ ...S.btn, ...S.primary, display: "block", textAlign: "center", textDecoration: "none" }}>Sign in securely</a>
       </main>
@@ -205,36 +167,60 @@ export default function StreamPage() {
 
   return (
     <main style={S.wrap}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <h1 style={S.h1}>📡 Stream</h1>
-        <span style={{ fontSize: 13, color: "#9aa" }}>{dgxDown ? "Status unavailable" : broadcastLabel(s)}</span>
+      <style jsx>{`
+        .tools { position: relative; }
+        .tools summary { list-style: none; cursor: pointer; padding: 8px 12px; border: 1px solid #33465e; border-radius: 10px; color: #bdd1e5; font-size: 14px; }
+        .tools summary::-webkit-details-marker { display: none; }
+        .tools-menu { display: none; position: absolute; right: 0; top: 100%; width: min(320px, calc(100vw - 32px)); padding: 16px; border: 1px solid #33465e; border-radius: 12px; background: #152238; box-shadow: 0 12px 32px #0008; z-index: 10; }
+        .tools[open] .tools-menu, .tools:hover .tools-menu, .tools:focus-within .tools-menu { display: grid; gap: 12px; }
+        .tools-menu :global(a) { color: #bddfff; text-decoration: none; }
+        .tools-menu :global(small) { display: block; color: #9ab; line-height: 1.5; margin-top: 4px; }
+        button:disabled { opacity: .45; cursor: not-allowed; }
+      `}</style>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16 }}>
+        <h1 style={{ ...S.h1, fontSize: 20, margin: 0 }} aria-live="polite">{dgxDown ? "Status unavailable" : broadcastLabel(s)}</h1>
+        <details className="tools"
+          onPointerEnter={e => { if (e.pointerType === "mouse") e.currentTarget.open = true; }}
+          onPointerLeave={e => { if (e.pointerType === "mouse" && !e.currentTarget.contains(document.activeElement)) e.currentTarget.open = false; }}
+          onFocus={e => { if ((e.target as HTMLElement).matches(":focus-visible")) e.currentTarget.open = true; }}
+          onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.open = false; }}
+          onKeyDown={e => { if (e.key === "Escape") { e.currentTarget.open = false; (document.activeElement as HTMLElement)?.blur(); } }}>
+          <summary aria-label="Help and tools">Help &amp; tools</summary>
+          <nav className="tools-menu" aria-label="Show tools">
+            <p style={{ margin: 0, fontSize: 13, color: "#bcc", lineHeight: 1.6 }}>Sending video does not confirm a platform is live. Confirm Whatnot in Seller Hub.</p>
+            <Link href="/stream/growth">Schedule, clips &amp; profit →</Link>
+            <Link href="/stream/coach">Stream Coach ✦</Link>
+            <Link href="/stream/stock">Stock &amp; sourcing →</Link>
+            <Link href="/stream/slideshow">Product display →<small>Optional product cards for OBS, a phone, or a TV.</small></Link>
+            <Link href="/stream/guide">Setup &amp; troubleshooting →</Link>
+          </nav>
+        </details>
       </div>
 
-      {dgxDown && <div style={S.banner}>DGX unreachable: {offline}</div>}
+      {dgxDown && <div role="alert" style={S.banner}>Could not refresh house status: {offline}</div>}
 
-      {/* status strip */}
-      <div style={S.grid}>
-        <Tile label={onAirCam ? `Camera · ${onAirCam.label || `Cam ${onAirCam.slot}`}` : "Camera"} ok={!!cam?.connected} text={cam?.connected ? `${onAirCam?.kbps ?? cam.kbps} kbps · ${fmt(cam.sinceS)}` : cam ? `gone ${fmt(cam.goneS)}` : "—"} />
-        <Tile label="OBS" ok={!!s?.obs.connected} text={s ? `${s.obs.scene || "?"}${s.obs.streaming ? " · encoding" : ""}` : "—"} />
-        {DESTS.map((d) => {
-          // TikTok without a stream key runs through LIVE Studio on the PC: show the poller heartbeat instead.
-          const ds = s?.destinations[d];
-          if (s && !ds) return null; // older director: no such destination
-          if (d === "whatnot" && !ds?.configured) return null; // Whatnot runs through the stream PC's OBS (WHIP), not a pusher
-          if (d === "tiktok" && s && !ds?.configured) {
-            const st = s.studio;
-            return <Tile key={d} label="TikTok · LIVE Studio" ok={st.online && st.studioRunning}
-              text={!st.online ? (st.ageS < 0 ? "PC not set up" : `PC offline ${fmt(st.ageS)}`) : st.studioRunning ? "LIVE Studio open" : st.obsRunning ? "PC ready · open LIVE Studio" : "PC on · OBS down"} />;
-          }
-          return <Tile key={d} label={LABEL[d]} ok={!!ds?.running} dim={!ds?.configured}
-            text={!ds ? "—" : !ds.configured ? "no key" : ds.running ? `sending ${fmt(ds.uptimeS)}` : ds.enabled ? "waiting" : "off"} />;
-        })}
+      {/* House controls come first. Arming still uses the selected destinations. */}
+      <div style={{ display: "grid", gap: 10 }}>
+        {!live ? (
+          <button style={{ ...S.btn, ...S.primary }} disabled={!s || !!busy || dgxDown} onClick={() => cmd("go-live", { destinations: { ...sel, facebook: false }, studio: openStudio })}>
+            {busy === "go-live" ? "Arming…" : "▶ Arm house"}
+          </button>
+        ) : (
+          <>
+            <button style={{ ...S.btn, ...(s?.privacy ? S.warnOn : S.secondary) }} disabled={!!busy || dgxDown} onClick={() => cmd("privacy", { on: !s?.privacy })}>
+              {s?.privacy ? "🔒 Privacy ON — tap to resume" : "🔒 Privacy"}
+            </button>
+            <button style={{ ...S.btn, ...S.danger, background: `linear-gradient(90deg,#c0392b ${holdPct}%,#5a1f1a ${holdPct}%)` }}
+              onPointerDown={holdBegin} onPointerUp={holdEnd} onPointerLeave={holdEnd} onPointerCancel={holdEnd} onBlur={holdEnd}
+              onKeyDown={e => { if ((e.key === " " || e.key === "Enter") && !e.repeat) { e.preventDefault(); holdBegin(); } }}
+              onKeyUp={e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); holdEnd(); } }}
+              disabled={!!busy || dgxDown}>
+              {busy === "end" ? "Ending…" : "■ Hold to END STREAM"}
+            </button>
+            <small style={{ color: "#9ab" }}>End your platform shows before ending the house.</small>
+          </>
+        )}
       </div>
-
-      <div style={{ margin: "14px 0" }}><a href="/stream/assistant" style={{ display: "inline-block", padding: "12px 18px", border: "1px solid #63c9a4", borderRadius: 8 }}>Show Assistant</a><span style={{ marginLeft: 12, color: "#9ab", fontSize: 13 }}>Greetings, thank-yous &amp; inventory answers</span></div>
-      <p style={{ fontSize: 13, color: "#9ab", lineHeight: 1.6 }}>Sending video does not confirm a platform is live. Confirm Whatnot in Seller Hub. <Link href="/stream/growth">Schedule, clips & profit →</Link> · <Link href="/stream/coach">Stream Coach ✦</Link> · <Link href="/stream/stock">Stock & sourcing →</Link></p>
-      <Link href="/stream/slideshow" style={S.selling}>▷ Whatnot product slideshow — OBS, phone, or TV</Link>
-      <div style={{ marginBottom: 12 }}><Tile label="NAS recording" ok={s?.recording?.state === "recording"} text={s?.recording ? `${s.recording.state}${s.recording.ageS !== null ? ` · updated ${s.recording.ageS}s ago` : ""}${s.recording.error ? ` · ${s.recording.error}` : ""}` : "Health not reported"}/></div>
 
       {selling && (
         <a href={`/stream/products/${selling.slug}`} style={S.selling}>
@@ -247,7 +233,7 @@ export default function StreamPage() {
       {/* destinations */}
       <div style={{ display: "flex", gap: 8, margin: "14px 0" }}>
         {DESTS.filter((d) => !(s && !s.destinations[d]) && !(d === "tiktok" && s && !s.destinations.tiktok?.configured) && !(d === "whatnot" && !s?.destinations.whatnot?.configured)).map((d) => (
-          <button key={d} onClick={() => toggleDest(d)} disabled={!s?.destinations[d]?.configured}
+          <button key={d} onClick={() => toggleDest(d)} disabled={!!busy || dgxDown || !s?.destinations[d]?.configured}
             style={{ ...S.chip, ...(sel[d] ? S.chipOn : {}), opacity: s?.destinations[d]?.configured ? 1 : 0.4 }}>
             {sel[d] ? "✓ " : ""}{LABEL[d]}
           </button>
@@ -255,102 +241,41 @@ export default function StreamPage() {
       </div>
 
       <FacebookLive meta={s?.facebook} armed={live} programReady={!!s?.obs.programReady}
-        enabled={!!s?.destinations.facebook?.enabled} sending={!!s?.destinations.facebook?.running} refresh={load} />
+        enabled={!!s?.destinations.facebook?.enabled} sending={!!s?.destinations.facebook?.running} keyTail={s?.destinations.facebook?.keyTail} refresh={load} available={!dgxDown} />
 
-      {/* Whatnot streams over WHIP through ITS OWN Show Tools page driving a local OBS (no RTMP key), so it is not a pusher here:
-          the OBS on the wired Windows stream PC already shows the house program feed, and Whatnot's page points that OBS at the show. */}
-      <section aria-labelledby="whatnot-start-heading" style={{ margin: "-4px 0 14px", padding: 16, border: "1px solid #66508a", borderRadius: 12, fontSize: 14, color: "#dce" }}>
-        <h2 id="whatnot-start-heading" style={{ margin: 0, fontSize: 18 }}>🟣 Start tonight&apos;s Whatnot show</h2>
-        <div style={{ display: "grid", gap: 6, marginTop: 8, lineHeight: 1.5 }}>
-          <span>1. <b>Arm house</b> with destinations off and LIVE Studio unchecked. Start the camera; check picture and audio in Windows OBS.</span>
-          <span>2. Remote into the <b>Windows stream PC</b>. In OBS select <b>Whatnot Live (Recommended)</b>. In Chrome open Whatnot Seller Hub → Show OBS Tools → Connect.</span>
-          <span>3. Select <b>tonight&apos;s show</b> and click <b>Start Show in Show Tools</b>. Keep that tab open. No show key needs to be pasted here.</span>
-          <span>Arming the house does not start Whatnot. End the show in Whatnot first, then hold END STREAM here.</span>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 14, margin: "6px 0" }}>
-            <a href="https://remotedesktop.google.com/access" target="_blank" rel="noopener noreferrer" style={{ color: "#bdddff", textDecoration: "underline" }}>Open Chrome Remote Desktop ↗</a>
-            <Link href="/stream/guide" style={{ color: "#bdddff", textDecoration: "underline" }}>Setup, delay test & troubleshooting →</Link>
-          </div>
-          <span>Product slides for OBS, a phone, or a TV (no login): <Link href="/stream/slideshow">open the slideshow</Link> — <code>https://www.tolley.io/stream/slideshow</code>. Add <code>?bg=transparent</code> in the OBS Browser Source if the page background should drop out. Tonight&apos;s list is <code>public/stream/shows/tonight.json</code>.</span>
-        </div>
-      </section>
-
-      {!live && studioLane && s?.cameras && (
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#bcc", margin: "0 0 12px" }}>
-          <input type="checkbox" checked={openStudio} onChange={(e) => setOpenStudio(e.target.checked)} />
-          Open TikTok LIVE Studio on the PC
-        </label>
-      )}
-
-      {/* main controls */}
-      <div style={{ display: "grid", gap: 12 }}>
-        {!live ? (
-          <button style={{ ...S.btn, ...S.primary }} disabled={!!busy || dgxDown} onClick={() => cmd("go-live", { destinations: { ...sel, facebook: false }, studio: openStudio })}>
-            {busy === "go-live" ? "…" : "▶ Arm house"}
-          </button>
-        ) : (
-          <button
-            style={{ ...S.btn, ...S.danger, background: `linear-gradient(90deg,#c0392b ${holdPct}%,#5a1f1a ${holdPct}%)` }}
-            onPointerDown={holdBegin} onPointerUp={holdEnd} onPointerLeave={holdEnd} onPointerCancel={holdEnd}
-            disabled={!!busy}>
-            {busy === "end" ? "ending…" : "■ Hold to END STREAM"}
-          </button>
-        )}
-        <button style={{ ...S.btn, ...(s?.privacy ? S.warnOn : S.secondary) }} disabled={!live || !!busy} onClick={() => cmd("privacy", { on: !s?.privacy })}>
-          {s?.privacy ? "🔒 Privacy ON — tap to resume" : "🔒 Privacy"}
-        </button>
+      <div style={{ display: "flex", margin: "18px 0" }}>
+        <Link href="/stream/assistant" style={{ ...S.btn, ...S.secondary, width: "100%", textAlign: "center", textDecoration: "none", padding: "14px 16px", fontSize: 16 }}>Show Assistant</Link>
       </div>
 
-      <p style={{ color: "#9ab", fontSize: 13, marginTop: 18 }}>Combined live chat: YouTube, Facebook and TikTok. Facebook follows the selected show above. YouTube is connected to Digital Gold Jelly Studio. Keep Whatnot chat open in Seller Hub. <Link href="/stream/guide">Streaming guide →</Link></p>
-      {/* live chat (YouTube + Facebook + TikTok merged) */}
-      <div style={{ marginTop: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-          <div style={{ fontSize: 13, color: "#8a9", textTransform: "uppercase", letterSpacing: 0.5 }}>
-            Chat ·
-            <span style={{ color: chatMeta?.youtube?.connected ? "#2ecc71" : "#667" }}> ▶ YT</span>
-            <span style={{ color: chatMeta?.facebook?.connected ? "#2ecc71" : "#667" }}> f FB</span>
-            <span style={{ color: chatMeta?.tiktok?.connected ? "#2ecc71" : "#667" }}> ♪ TT{chatMeta?.tiktok?.connected && chatMeta.tiktok.viewers ? ` ${chatMeta.tiktok.viewers}👀` : ""}</span>
-          </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button style={S.link} onClick={() => setShowJoins((v) => !v)}>{showJoins ? "hide joins" : "show joins"}</button>
-            <button style={S.link} onClick={() => setChatOpen((v) => !v)}>{chatOpen ? "▾ small" : "▴ full screen"}</button>
-          </div>
-        </div>
-        {(chatMeta?.error || chatMeta?.facebook?.error) && <p role="status" style={{ color: "#ffd3bc", fontSize: 13 }}>{chatMeta.error || chatMeta.facebook?.error}</p>}
-        <div ref={chatBox} style={{ ...S.chat, height: chatOpen ? "70vh" : 220 }}>
-          {chat.filter((c) => showJoins || c.k !== "join").length === 0 && (
-            <div style={{ color: "#667", fontSize: 14 }}>{chatMeta?.error ? chatMeta.error : "No messages yet. Messages appear when the selected platform shows are live and viewers comment."}</div>
-          )}
-          {chat.filter((c) => showJoins || c.k !== "join").map((c) => (
-            <div key={`${c.p}-${c.id}`} title={c.source || ""} style={{ ...S.msg, ...(c.k === "gift" ? S.msgGift : {}) }}>
-              <span style={{ color: c.p === "yt" ? "#ff5c5c" : c.p === "fb" ? "#82b8ff" : "#69e0ff", fontWeight: 700 }}>{c.p === "yt" ? "YouTube" : c.p === "fb" ? "Facebook" : "TikTok"} </span>
-              <time dateTime={new Date(c.t * 1000).toISOString()} style={{ fontSize: 11, color: "#9ab" }}>{new Date(c.t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} </time>
-              <span style={{ color: "#dfe", fontWeight: 600 }}>{c.u}</span>
-              {c.k === "gift" && <span style={{ color: "#f5c542" }}> 🎁 {c.amt}</span>}
-              <span style={{ color: c.k === "join" ? "#889" : "#fff" }}> {c.m}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <details style={{ margin: "16px 0", color: "#bcc", fontSize: 14, lineHeight: 1.6 }}>
+        <summary style={{ cursor: "pointer", color: "#cdb8ee" }}>Whatnot setup</summary>
+        <ol style={{ paddingLeft: 20 }}>
+          <li>Arm the house with destinations off. Start the camera and check picture and sound in Windows OBS.</li>
+          <li>Open the Windows stream PC. In OBS choose <b>Whatnot Live (Recommended)</b>. In Chrome open Seller Hub → Show OBS Tools → Connect.</li>
+          <li>Choose tonight&apos;s show and click <b>Start Show</b>. Keep that tab open. Confirm the show is live in Whatnot.</li>
+        </ol>
+        <a href="https://remotedesktop.google.com/access" target="_blank" rel="noopener noreferrer" style={{ color: "#bdddff" }}>Open Chrome Remote Desktop ↗</a>
+      </details>
 
       {/* advanced */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 18 }}>
-        <button onClick={() => setShowAdv((v) => !v)} style={S.link}>{showAdv ? "▾" : "▸"} advanced</button>
+        <button onClick={() => setShowAdv((v) => !v)} style={S.link}>{showAdv ? "▾" : "▸"} House details</button>
         <Link href="/stream/products" style={{ color: "#8ab", fontSize: 14, textDecoration: "none" }}>🛒 Product lineups</Link>
       </div>
       {showAdv && s && (
         <div style={{ fontSize: 13, color: "#bcc", display: "grid", gap: 6 }}>
+          <div style={S.grid}>
+            <Tile label={onAirCam ? `Camera · ${onAirCam.label || `Cam ${onAirCam.slot}`}` : "Camera"} ok={!!cam?.connected} text={cam?.connected ? `${onAirCam?.kbps ?? cam.kbps} kbps · ${fmt(cam.sinceS)}` : "Disconnected"} />
+            <Tile label="OBS" ok={!!s.obs.connected} text={`${s.obs.scene || "Unknown"}${s.obs.streaming ? " · encoding" : ""}`} />
+            {DESTS.map(d => { const ds = s.destinations[d]; return ds?.configured ? <Tile key={d} label={LABEL[d]} ok={ds.running} text={ds.running ? `Sending ${fmt(ds.uptimeS)}` : ds.enabled ? "Waiting" : "Off"} /> : null; })}
+            <Tile label="NAS recording" ok={s.recording?.state === "recording"} text={s.recording ? `${s.recording.state}${s.recording.ageS !== null ? ` · updated ${s.recording.ageS}s ago` : ""}${s.recording.error ? ` · ${s.recording.error}` : ""}` : "Health not reported"} />
+          </div>
+          {!live && studioLane && <label style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0" }}>
+            <input type="checkbox" checked={openStudio} onChange={e => setOpenStudio(e.target.checked)} /> Open TikTok LIVE Studio when arming
+          </label>}
           <div>Mimo URL: <code>{s.ingest.url}</code> · key ends …{s.ingest.keyTail}</div>
           <div>Auto-end after camera gone {s.limits.camGoneEndMin} min · max {s.limits.maxStreamMin} min · BRB after {s.limits.brbAfterS}s</div>
           <div>PC poller: {s.studio.online ? `online (${s.studio.host})` : "offline"} · LIVE Studio {s.studio.studioRunning ? "running" : "closed"} · Ending here force-closes LIVE Studio</div>
-          <div>Chat YT: {chatMeta?.youtube?.video || "searching for a live…"} {chatMeta?.youtube?.error && `· ${chatMeta.youtube.error}`} · TT: {chatMeta?.tiktok?.error || (chatMeta?.tiktok?.connected ? "connected" : "not live")}</div>
-          <form onSubmit={(e) => { e.preventDefault(); const f = e.currentTarget; const v = (f.elements.namedItem("yturl") as HTMLInputElement).value; void fetch("/api/stream/chat/youtube", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: v }) }); }} style={{ display: "flex", gap: 6 }}>
-            <input name="yturl" placeholder="paste YouTube live URL if chat can't find it" style={{ flex: 1, fontSize: 13, padding: 8, borderRadius: 8, border: "1px solid #334", background: "#111a2b", color: "#eef" }} />
-            <button type="submit" style={{ ...S.btn, ...S.secondary, padding: "8px 10px", fontSize: 13 }}>set</button>
-          </form>
-          <form onSubmit={(e) => { e.preventDefault(); const f = e.currentTarget; const v = (f.elements.namedItem("ttuser") as HTMLInputElement).value; void fetch("/api/stream/chat/tiktok", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user: v }) }); }} style={{ display: "flex", gap: 6 }}>
-            <input name="ttuser" placeholder={`TikTok @handle to follow (now @${chatMeta?.tiktok?.user || "digiegold"})`} style={{ flex: 1, fontSize: 13, padding: 8, borderRadius: 8, border: "1px solid #334", background: "#111a2b", color: "#eef" }} />
-            <button type="submit" style={{ ...S.btn, ...S.secondary, padding: "8px 10px", fontSize: 13 }}>set</button>
-          </form>
           <div>MediaMTX {s.mediamtx.ok ? "ok" : "DOWN"} · program {s.obs.programReady ? "ready" : "idle"} {s.obs.lastError && `· OBS: ${s.obs.lastError}`}</div>
           {s.cameras?.length ? (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -389,7 +314,7 @@ function Tile({ label, ok, text, dim }: { label: string; ok: boolean; text: stri
 }
 
 const S: Record<string, React.CSSProperties> = {
-  wrap: { maxWidth: 480, margin: "0 auto", padding: "16px 16px 40px", fontFamily: "system-ui, -apple-system, sans-serif", color: "#eef", background: "#0b1220", minHeight: "100vh" },
+  wrap: { maxWidth: 480, boxSizing: "border-box", margin: "0 auto", padding: "16px 16px 40px", fontFamily: "system-ui, -apple-system, sans-serif", color: "#eef", background: "#0b1220", minHeight: "100vh" },
   h1: { fontSize: 22, margin: "6px 0 14px" },
   btn: { fontSize: 18, fontWeight: 600, padding: "18px 16px", borderRadius: 14, border: "none", cursor: "pointer", touchAction: "none", userSelect: "none", WebkitUserSelect: "none" },
   primary: { background: "#2ecc71", color: "#062" },
@@ -401,10 +326,6 @@ const S: Record<string, React.CSSProperties> = {
   grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 },
   tile: { background: "#111a2b", borderRadius: 12, padding: "10px 12px" },
   banner: { background: "#5a1f1a", color: "#ffd", padding: "10px 12px", borderRadius: 10, marginBottom: 12, fontSize: 14 },
-  input: { fontSize: 14, padding: 10, borderRadius: 8, border: "1px solid #334", background: "#111a2b", color: "#eef" },
   selling: { display: "block", margin: "12px 0 0", padding: "10px 12px", borderRadius: 10, background: "#16233a", color: "#dfe", fontSize: 14, textDecoration: "none" },
   link: { background: "none", border: "none", color: "#8ab", fontSize: 14, padding: 0, cursor: "pointer" },
-  chat: { background: "#0e1626", border: "1px solid #223", borderRadius: 12, padding: "8px 10px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 },
-  msg: { fontSize: 17, lineHeight: 1.3, wordBreak: "break-word" },
-  msgGift: { background: "#2a2410", borderRadius: 8, padding: "4px 6px" },
 };

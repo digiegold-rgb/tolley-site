@@ -45,6 +45,20 @@ def patched(source):
     return source
 
 
+def patched_v2(source):
+    """Second pass: /status reports the tail of the loaded Facebook key (Live Producer keys are pasted, so
+    operators confirm the right key by its last characters). Idempotent; requires the v1 patch."""
+    if "# Facebook preview integration v2" in source:
+        return source
+    old = 'def dest_key_tail(name: str) -> str:\n    return ENV.get(f"{name.upper()}_STREAM_KEY", "").strip()[-6:]\n'
+    if source.count(old) != 1 or "FACEBOOK = FacebookLive()" not in source:
+        raise RuntimeError("Director changed: review installation anchors before installing")
+    source = source.replace(old, 'def dest_key_tail(name: str) -> str:\n    if name == "facebook":  # Facebook preview integration v2\n'
+                            '        return FACEBOOK.key_tail()\n    return ENV.get(f"{name.upper()}_STREAM_KEY", "").strip()[-6:]\n', 1)
+    compile(source, "director.py", "exec")
+    return source
+
+
 def status():
     import httpx
     env = dict(line.split("=", 1) for line in (Path.home()/".config/tolley-stream/agent.env").read_text().splitlines() if "=" in line and not line.startswith("#"))
@@ -62,7 +76,7 @@ def main():
     args = parser.parse_args()
     root = Path.home()/"stream-director"
     target = root/"director.py"
-    source = patched(target.read_text())
+    source = patched_v2(patched(target.read_text()))
     cli = root/"agents/stream"
     cli_source = cli.read_text()
     if '  facebook) shift;' not in cli_source:
