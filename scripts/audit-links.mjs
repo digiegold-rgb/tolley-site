@@ -25,6 +25,7 @@ const APP = join(ROOT, "app");
 // Pages that are deliberately reachable only by URL (paid ads, direct sends,
 // owner dashboards linked from /admin). Add here CONSCIOUSLY, with a reason.
 const ORPHAN_ALLOWLIST = new Set([
+  "/game/next", // noindex preview of the rebuilt Portal Hoppers; shared 1:1 with playtesters until it replaces /game
   "/stock", // Owner shortcut redirects to the private /stream/stock dashboard.
   "/post", // Direct-link introduction to the independently deployed Post app; signup remains gated.
   "/fixes", // owner-only doorway to the private Spark/Tailscale repair queue
