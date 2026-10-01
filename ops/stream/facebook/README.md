@@ -1,9 +1,41 @@
 # Facebook LIVE preview + comments
 
 The Spark sends its finished house program to the bound Facebook Page. The website
-prepares/selects an unpublished Live Producer preview and explicitly enables its
-sender. Publishing remains a human action in Facebook Live Producer. No route
-creates `LIVE_NOW` or updates a video's publish status.
+prepares/selects an unpublished Live Producer preview, or binds a stream key pasted
+from Live Producer, and explicitly enables its sender. Publishing is the owner's
+explicit action: either in Facebook Live Producer, or through the one-click
+`POST /facebook/golive {"confirm":true}` (September 30, at Jared's request), which
+publishes `LIVE_NOW` only after the house is armed, the sender is running and Meta
+reports incoming video (`ingest_streams{stream_health}.video_bitrate > 0`, verified
+readable with the Page token) or 15 s of sending, retrying for up to 120 s.
+`POST /facebook/end` sends `end_live_video=true` and stops the sender; a show this
+director published is ended automatically when the house ends. Generic toggles
+still cannot publish.
+
+## Two ingest modes (`FACEBOOK_INGEST_MODE` in `stream.env`)
+
+- `graph` — `prepare`/`select` read `secure_stream_url` for a video the Page token can
+  read and store it as `FACEBOOK_INGEST_URL`.
+- `manual` — `POST /facebook/key` / `stream facebook key` store the Server URL + key
+  copied from Live Producer as `FACEBOOK_INGEST_URL` (backup key in
+  `FACEBOOK_INGEST_BACKUP`, unused by the single sender), with `FACEBOOK_VIDEO_ID`
+  parsed from the key (`FB-<video-id>-<index>-…`). Verified September 29: Graph
+  answers code 100 / subcode 33 for a Live Producer video until it goes live, and
+  the Page `live_videos` edge lists it only afterwards, so `select` cannot bind it.
+  In manual mode that code-100 answer yields phase `KEYED`, which `target()` and
+  `/facebook/send` accept like an unpublished preview. Meta also turns repeated
+  lookups of such a hidden ID into `(#4) Application request limit reached` for
+  that object only (seen after ~45 min of 15-second polling on September 30, while
+  `/me` kept working); manual mode treats code 4 on the video lookup as hidden too
+  and re-asks about a hidden video only once a minute (`HIDDEN_RECHECK_S`). Any other Graph failure
+  (expired token, network, wrong Page) still fails closed, and a readable
+  `VOD`/ended status still stops the sender. Selecting or preparing a Graph video
+  switches back to `graph` mode and clears the backup key.
+- The website's paste form sends the key through the owner-only, MFA-gated proxy
+  once; it is not stored or logged there and never returned. `/status` exposes
+  only `destinations.facebook.keyTail` (last six characters) via the installer's
+  v2 director patch. A wrong key still passes local shape checks; Meta then
+  rejects the RTMPS session and the pusher backs off as usual.
 
 Target Page: `1156652300855210`, verified September 29 as **Ruthann's Treasure Haul**.
 YouTube's owner API independently reported **Digital Gold Jelly Studio**,
@@ -28,7 +60,8 @@ The installer checks live state, validates unique source anchors, compiles befor
 writing, and backs up only the director/chat/module Python source. Other director
 integrations remain in place. It copies `facebook_live.py` and the repository's
 `coach/stream_chat.py`, then restarts only `stream-director` and `stream-chat`.
-It also adds `stream facebook status|prepare|select|send|stop` to the CLI.
+It also adds `stream facebook status|prepare|select|key|send|stop` to the CLI
+(`key --stdin` reads server, key and backup as lines so keys stay out of argv).
 No new dependencies, OBS profiles, NAS changes or Windows installations.
 
 Facebook uses the existing pusher's H.264 NVENC CBR path at 4500 kbps, a 60-frame
@@ -44,7 +77,8 @@ selected video after confirming the public-feed warning.
 
 Every director route requires the existing per-agent key. Website routes require
 owner login + MFA; POST requests also require the website Origin and a body <=8KB.
-The website never receives the Page token or ingest URL. `facebook-state.json`
+The website never receives the Page token or a Graph-issued ingest URL; a pasted
+Live Producer key passes through it once and is neither stored nor echoed. `facebook-state.json`
 contains only preview-creation intent and video ID, used to block duplicate
 creation after ambiguous network failures. Runtime credentials remain only in
 the secure env file. Do not print environment files, HTTP headers or FFmpeg args.

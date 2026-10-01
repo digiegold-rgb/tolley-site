@@ -14,3 +14,27 @@
 - Source backups: `~/stream-director/facebook-backup-1790722952` is the pre-feature director/chat; subsequent timestamped backups contain the newer integration. No credentials are included.
 
 No camera → Facebook ingest/audio test, real live viewer message or public broadcast was performed. These are the remaining acceptance steps when Jared is ready. Website deployment evidence is appended after release.
+
+## September 29 (late) — pasted Live Producer stream key
+
+- Jared created tonight's show in Live Producer and supplied its RTMPS server, primary and backup keys (video ID `122117077251297240`). Authorized read-only Graph probes with the Page token: `GET /122117077251297240` → HTTP 400, code 100, subcode 33; the Page `live_videos` edge (all `broadcast_status` filters) did not list it, while the Spark-made preview `122117051781297240` stayed readable and `UNPUBLISHED`. Conclusion: Live Producer videos are invisible to the token until live, so a paste-the-key path was added.
+- Twelve offline contract tests pass (the nine above plus manual-key storage/redaction, bad-input and running-sender rejection, and the `KEYED` phase/send gate including the switch back to graph mode).
+- Installed while the house was disarmed and nothing was sending (`install.py --check`, then `install.py`; backup `~/stream-director/facebook-backup-1790742400`). Both services active afterwards; status first showed the Spark preview in `graph` mode (tail `pGYEO9`).
+- Keys loaded with `stream facebook key --stdin`. `stream facebook status`: video `122117077251297240`, phase `KEYED`, `ingest manual`, sender configured/off, key tail `lnDlzO`; `stream.env` still mode 600; no key text in director logs or journal.
+- No arming, sending or publishing was performed. Remaining acceptance with Jared: arm → send → confirm picture/audio in Live Producer → Go Live there → panel shows Live on Facebook and comments arrive.
+
+## September 30 — one-click go-live and hidden-video throttle
+
+- Added `POST /facebook/golive` / `/facebook/end` and the stream-page **Hold to GO LIVE on Facebook** / **End Facebook show** buttons at Jared's request. Meta confirmed `ingest_streams{stream_health}` (with `video_bitrate`) is readable with the Page token on both the Spark preview and a past VOD, so publish waits for real incoming video (or 15 s of sending). Thirteen offline tests pass, including publish/end, refused publish with redaction, timeout, house-drop cancellation and auto-end when the house ends.
+- After ~45 minutes of 15-second status polling on the hidden Live Producer video, Meta answered that ID with `(#4) Application request limit reached` while `/me` and other objects stayed at 6% usage. The director showed the Facebook panel unverified. Fixed: manual mode treats code 4 on the video lookup as hidden and rechecks a hidden video once a minute. Reinstalled while idle (backup `~/stream-director/facebook-backup-1790745162`); status returned to `KEYED`, key tail `lnDlzO`.
+- No show was armed, sent or published.
+
+## September 30 — simpler house controls
+
+- Replaced the redundant page title with the current house status; moved Arm house and active house controls to the top. Camera switcher source and YouTube payloads are preserved. Now selling remains linked to the product clicker.
+- Help & tools opens on hover, keyboard focus or touch, with schedule/Coach/stock links, the transport-vs-live explanation and the optional product display. Diagnostics are under House details; Whatnot setup is collapsed.
+- Removed the combined-chat UI, polling and chat configuration forms from stream controls. The one existing Show Assistant link remains; background chat readers and Coach are preserved.
+- Facebook reveals only its current step and requires acknowledgement of picture/audio before the one-second publish hold. A feed loss, changed show or unavailable status resets that acknowledgement. A sending manual preview retains the Live Producer publish route.
+- Browser checks cover owner/MFA gating, 320/390/1440px layout, hover/focus help, no automatic arming/publishing, no chat polling, camera cut and YouTube command bodies, readiness acknowledgement, tap-vs-hold publish, pending-vs-confirmed live state, ending Facebook, feed-loss reset, navigation hold cancellation and manual preview flow. Every stream command was mocked; no public show was started.
+- TypeScript, changed-file ESLint, changelog and link audit passed; all 13 offline Facebook contract tests passed.
+- Screenshots: `/tmp/stream-simple-mobile.png`, `/tmp/stream-simple-cameras-mobile.png`, `/tmp/stream-simple-desktop.png`. Real camera-to-Facebook picture/audio acceptance still requires the owner’s live test.

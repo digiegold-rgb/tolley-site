@@ -2,7 +2,7 @@
 
 ## Latest shared handoff
 
-Read [OPERATIONS.md](OPERATIONS.md), updated September 30, for the next-show checklist, unified Show Assistant, minute inventory refresh and Facebook-only draft-import gap, plus the September 29 camera/audio findings, Windows Whatnot workflow, single-DJI delay test, TikTok account gate and Facebook preview / combined-chat setup. The same document is served behind owner authentication at `/stream/guide` and linked from HQ Docs. Treat its hardware and platform observations as dated; query current state before acting.
+Read [OPERATIONS.md](OPERATIONS.md) for the September 29 camera/audio findings, nightly Windows Whatnot workflow, single-DJI delay test, TikTok account gate and Facebook preview / combined-chat setup. The same document is served behind owner authentication at `/stream/guide` and linked from HQ Docs. Treat its hardware and platform observations as dated; query current state before acting.
 
 Any agent (Claude on the DGX "Spark", Grok Bot on the Windows PC, Codex on the Mac) controls the
 house live pipeline through ONE HTTP API on the DGX stream director. Same commands, same power,
@@ -34,14 +34,16 @@ CLI wrappers do the same thing:
 
 ## Facebook preview workflow
 
-CLI: `stream facebook status | prepare [title] | select <video-id> | send <video-id> | stop`. For recovery of an already-public show only: `stream facebook resume <video-id> --confirm-public`, requiring Jared’s readiness.
+CLI: `stream facebook status | prepare [title] | select <video-id> | key <server-url> <key> [backup] | key --stdin | key clear | send <video-id> | golive [title] --confirm-public | end | stop`. For recovery of an already-public show only: `stream facebook resume <video-id> --confirm-public`, requiring Jared’s readiness.
 
 Read `OPERATIONS.md` for the nightly steps. `GET /status.facebook` reports verified Page, selected video, Meta phase and errors; `destinations.facebook.running` reports transport only. The Page is fixed to `1156652300855210`.
 
 - `POST /facebook/prepare {"title":"..."}` creates/reuses an **UNPUBLISHED** preview. It never publishes; on an ambiguous timeout, recover the existing preview in Live Producer.
 - `POST /facebook/select {"videoId":"..."}` verifies Page ownership and selects an existing unpublished/live show while the Facebook sender is stopped.
-- `POST /facebook/send {"videoId":"..."}` requires an armed, ready house and an unpublished selected preview. It only forwards the house program. Publish manually in Facebook Live Producer when Jared explicitly says he is ready.
+- `POST /facebook/key {"server":"rtmps://…/rtmp/","key":"FB-…","backup":"FB-…"}` binds a stream key copied from Live Producer (manual ingest mode) while the sender is stopped; all fields empty clears it. The video ID comes from the key. Meta returns Graph code 100 for such a video until it goes live, so status reports phase `KEYED`; only in manual mode is that accepted for sending. Never print the key; `/status.destinations.facebook.keyTail` is the only echo.
+- `POST /facebook/send {"videoId":"..."}` requires an armed, ready house and an unpublished selected preview or a loaded Live Producer key (`KEYED`). It only forwards the house program. Publish manually in Facebook Live Producer when Jared explicitly says he is ready.
 - An already-public show can resume only with explicit `confirmLive` equal to that selected video ID. This forwards public picture/audio; do not issue it under preparation-only authorization.
+- `POST /facebook/golive {"confirm":true,"title":"..."}` is the owner's one-click publish (added September 30 at Jared's request): requires an armed, ready house; binds/reuses a graph-mode unpublished preview (replacing a pasted key only while the sender is stopped), enables the sender, then a 3-second loop publishes `LIVE_NOW` once `ingest_streams.stream_health.video_bitrate > 0` or after 15 s of sending, retrying until 120 s (`status.facebook.goLive` = pending/live/failed, `goLiveError`). Agents run it only on Jared's explicit go-live instruction. `POST /facebook/end {}` ends the show on Facebook and stops the sender; a show this director published is also ended automatically when the house ends.
 - `POST /destinations {"facebook":false}` stops the sender; end the Facebook show separately in Live Producer first. Generic toggles/go-live cannot enable Facebook. Restarting the director clears Facebook enablement.
 - New credentials remain only in `~/.config/tolley-security/stream.env`. Do not print `FACEBOOK_PAGE_TOKEN` or `FACEBOOK_INGEST_URL`. Run `ops/stream/facebook/install.py` only while idle; it preserves other director integrations.
 
@@ -85,7 +87,7 @@ Read `OPERATIONS.md` for the nightly steps. `GET /status.facebook` reports verif
 ## Public hub and clips
 - `/live` is public. `/stream` and `/stream/growth` remain owner-only.
 - Armed, encoding and sending are distinct from a platform-confirmed live show. Confirm public Whatnot live state only after checking Seller Hub; the public flag expires automatically.
-- Chat here covers YouTube/TikTok and the selected Facebook live video; Whatnot chat stays in Seller Hub. Facebook comments are not yet saved by Stream Coach.
+- The control page links to Show Assistant for Whatnot and no longer displays combined chat. The background reader still handles YouTube/TikTok and the selected Facebook live video; Facebook comments are not yet saved by Stream Coach.
 - `/status.recording` reports a read-only NAS file freshness check, not an OBS recording flag. `unknown` is not healthy.
 - Clip worker: `tolley-stream-clips.timer`; skips work while house armed/encoding. It never starts/stops streams or deletes archive recordings.
 - Clip publishing pause, held/uncertain results, schedule and show ledgers: `/stream/growth`. Existing in-flight network requests may finish after pausing.
