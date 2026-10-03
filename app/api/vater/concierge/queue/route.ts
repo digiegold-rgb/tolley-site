@@ -15,7 +15,7 @@
  *    email,name,tier,lane,unmetered,balanceUsd,maxWords,tickets:[TicketSummary]}]}
  */
 import { NextRequest, NextResponse } from "next/server";
-import type { YouTubeProject } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { authorizeConcierge } from "@/lib/vater/concierge-auth";
@@ -32,23 +32,66 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 const DELIVERED_TAKE = 20;
+const LIVE_TAKE = 200;
+const POOL_RETRY_MS = 400;
+
+/** Columns this handler and ticketSummary() read. Full rows are not needed. */
+const queueProjectSelect = Prisma.validator<Prisma.YouTubeProjectSelect>()({
+  id: true,
+  userId: true,
+  status: true,
+  sourceTitle: true,
+  topic: true,
+  settingsJson: true,
+  autopilotJobId: true,
+  finalVideoUrl: true,
+  errorMessage: true,
+  stepDetails: true,
+  updatedAt: true,
+});
+
+type QueueProject = Prisma.YouTubeProjectGetPayload<{ select: typeof queueProjectSelect }>;
+
+function isPoolTimeout(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2024";
+}
+
+/** One extra attempt after a pool wait. A second P2024 still throws. */
+async function onceOnPoolTimeout<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (err) {
+    if (!isPoolTimeout(err)) throw err;
+    await new Promise((resolve) => setTimeout(resolve, POOL_RETRY_MS));
+    return run();
+  }
+}
 
 /** fable5-engine rows sitting on `ready`, newest first (bounded). */
-async function loadReadyFable5(): Promise<YouTubeProject[]> {
+async function loadReadyFable5(): Promise<QueueProject[]> {
   // Prefer the JSON-path filter (same shape findTicketProject uses); fall
   // back to a bounded scan of recent `ready` rows if the engine rejects it.
   try {
-    return await prisma.youTubeProject.findMany({
-      where: { status: "ready", settingsJson: { path: ["engine"], equals: "fable5" } },
-      orderBy: { updatedAt: "desc" },
-      take: 200,
-    });
-  } catch {
-    const rows = await prisma.youTubeProject.findMany({
-      where: { status: "ready" },
-      orderBy: { updatedAt: "desc" },
-      take: 300,
-    });
+    return await onceOnPoolTimeout(() =>
+      prisma.youTubeProject.findMany({
+        where: { status: "ready", settingsJson: { path: ["engine"], equals: "fable5" } },
+        orderBy: { updatedAt: "desc" },
+        take: 200,
+        select: queueProjectSelect,
+      }),
+    );
+  } catch (err) {
+    // Pool checkout failure is not an engine rejection. Don't turn it into a
+    // second scan (or an empty queue).
+    if (isPoolTimeout(err)) throw err;
+    const rows = await onceOnPoolTimeout(() =>
+      prisma.youTubeProject.findMany({
+        where: { status: "ready" },
+        orderBy: { updatedAt: "desc" },
+        take: 300,
+        select: queueProjectSelect,
+      }),
+    );
     return rows.filter((r) => !!readConcierge(r.settingsJson));
   }
 }
@@ -59,18 +102,22 @@ export async function GET(req: NextRequest) {
 
   const includeDelivered = req.nextUrl.searchParams.get("include") === "delivered";
 
-  const [live, ready] = await Promise.all([
+  // One connection at a time. Concurrent findMany calls on a warm isolate
+  // fill the default pool of 5 and the waiter dies at pool_timeout (P2024).
+  const live = await onceOnPoolTimeout(() =>
     prisma.youTubeProject.findMany({
       where: { status: { in: Array.from(CONCIERGE_STATUSES) } },
       orderBy: { updatedAt: "asc" },
+      take: LIVE_TAKE,
+      select: queueProjectSelect,
     }),
-    loadReadyFable5(),
-  ]);
+  );
+  const ready = await loadReadyFable5();
 
   const now = Date.now();
   const counts = { queued: 0, in_progress: 0, needs_info: 0 };
-  const byUser = new Map<string, Array<{ project: YouTubeProject; ticket: ConciergeTicket }>>();
-  const add = (project: YouTubeProject, ticket: ConciergeTicket) => {
+  const byUser = new Map<string, Array<{ project: QueueProject; ticket: ConciergeTicket }>>();
+  const add = (project: QueueProject, ticket: ConciergeTicket) => {
     const key = project.userId ?? "";
     const rows = byUser.get(key) ?? [];
     rows.push({ project, ticket });
