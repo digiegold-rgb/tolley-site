@@ -206,8 +206,22 @@ export function dgxPhaseOf(stepDetails: unknown): string | null {
   return typeof phase === "string" && phase ? phase : null;
 }
 
+/** Columns ticketSummary reads. Callers may select a wider row. */
+export type TicketSummaryProject = Pick<
+  YouTubeProject,
+  | "id"
+  | "status"
+  | "sourceTitle"
+  | "topic"
+  | "autopilotJobId"
+  | "finalVideoUrl"
+  | "errorMessage"
+  | "stepDetails"
+  | "updatedAt"
+>;
+
 export function ticketSummary(
-  project: YouTubeProject,
+  project: TicketSummaryProject,
   ticket: ConciergeTicket,
   now: number = Date.now(),
 ): TicketSummary {
