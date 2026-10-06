@@ -653,6 +653,12 @@ function HqPageInner() {
                 >
                   📡 Stream
                 </a>
+                <a href="/stream/assistant" onClick={closeIdeas}>
+                  Show Assistant
+                </a>
+                <a href="/stream/mac-mini" onClick={closeIdeas}>
+                  Mac mini hub
+                </a>
                 <a
                   href="/generate"
                   onClick={closeIdeas}
@@ -680,6 +686,10 @@ function HqPageInner() {
             <details className="tab-docs" ref={docsRef}>
               <summary className="tab-btn">📄 Docs ▾</summary>
               <div className="tab-docs-menu">
+                <a href="/stream/mac-mini" onClick={closeDocs}>
+                  Mac mini — setup &amp; connections
+                  <span className="doc-sub">Setup download, Screen Sharing, Spark SSH, Safari assistant and shared-file servers</span>
+                </a>
                 <a href="/stream/guide" onClick={closeDocs}>
                   📡 Streaming &amp; Show Assistant guide
                   <span className="doc-sub">Next-show checklist, one Show Assistant, automatic inventory updates, Windows Whatnot, and Facebook previews — Sep 30, 2026</span>

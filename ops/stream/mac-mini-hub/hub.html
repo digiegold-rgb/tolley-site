@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tolley · Mac mini hub</title>
+<style>body{font:17px system-ui;background:#101925;color:#edf4fa;max-width:850px;margin:50px auto;padding:0 24px}h1{font-size:36px;margin-bottom:8px}p{color:#b5c9da;line-height:1.6}.links{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:30px 0}a{color:#8cdece} .links a{display:block;background:#1e3043;border:1px solid #38546e;padding:24px;border-radius:14px;text-decoration:none}small{display:block;color:#b5c9da;margin-top:8px}code{color:#addfe9}li{margin:12px 0;line-height:1.5}</style>
+<h1>Mac mini control hub</h1><p>Your operator workstation for HQ, Show Assistant, shared files and Spark.</p>
+<div class="links">
+<a href="https://www.tolley.io/hq">Open HQ<small>Your owner dashboard</small></a>
+<a href="https://www.tolley.io/stream/assistant">Show Assistant<small>The existing assistant on Spark</small></a>
+<a href="https://www.tolley.io/stream">Stream controls<small>Check current house state</small></a>
+<a href="https://www.tolley.io/stream/guide">Streaming guide<small>Show setup and operating rules</small></a>
+<a href="https://remotedesktop.google.com/access">Windows remote desktop<small>Sign in and select the streaming PC</small></a>
+<a href="https://chatgpt.com/">ChatGPT<small>Sign in to your account</small></a>
+<a href="smb://192.168.2.196/UserFolder">NAS shared files<small>Connect with your NAS account</small></a>
+<a href="smb://192.168.2.196/personal_folder">NAS personal folder<small>Existing personal file share</small></a>
+</div>
+<p>To control this mini from your other Mac, keep Tailscale connected on both, open Finder → Go → Connect to Server, and enter <code>vnc://100.96.109.9</code>. Screen Sharing must be enabled for your mini account first.</p>
+<p>For Terminal, use the adjacent <strong>Spark Terminal.command</strong> or <strong>Codex on Spark.command</strong> shortcut. <code>stream status</code> runs through Spark. The full setup and server instructions are in <strong>README.md</strong>.</p>
+<p>Sign in to Tolley with your existing owner account and MFA. Check the correct show before starting the assistant. Spark runs the house; Windows handles Whatnot and TikTok.</p>
+</html>
