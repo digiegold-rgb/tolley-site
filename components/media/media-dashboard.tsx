@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 type Job = {
   id: string;
@@ -37,6 +37,20 @@ const CATEGORIES = [
   { value: "video", label: "Video / Movie", icon: "🎥" },
 ] as const;
 
+const PLEX_WEB_URL = "http://192.168.2.43:32400/web";
+
+async function messageFromResponse(res: Response): Promise<string> {
+  try {
+    const data = (await res.json()) as { error?: unknown };
+    if (typeof data?.error === "string" && data.error.trim()) {
+      return data.error.trim();
+    }
+  } catch {
+    // Non-JSON body. Fall through to the status line.
+  }
+  return `Media request failed (${res.status})`;
+}
+
 function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -71,16 +85,12 @@ export function MediaDashboard() {
   const [recent, setRecent] = useState<RecentFile[]>([]);
   const [workerOnline, setWorkerOnline] = useState<boolean | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-
-  const fetchQueue = useCallback(async () => {
-    try {
-      const res = await fetch("/api/media/queue");
-      if (res.ok) {
-        const data = await res.json();
-        setJobs(data.jobs || []);
-      }
-    } catch {}
-  }, []);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [queueError, setQueueError] = useState<string | null>(null);
+  const [recentError, setRecentError] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const recentFailedRef = useRef(false);
+  const visibleError = actionError || recentError || queueError;
 
   const fetchRecent = useCallback(async () => {
     try {
@@ -89,11 +99,35 @@ export function MediaDashboard() {
         const data = await res.json();
         setRecent(data.recent || []);
         setWorkerOnline(data.worker?.ok ?? false);
+        setRecentError(null);
+        recentFailedRef.current = false;
+      } else {
+        recentFailedRef.current = true;
+        setWorkerOnline(false);
+        setRecentError(await messageFromResponse(res));
       }
     } catch {
+      recentFailedRef.current = true;
       setWorkerOnline(false);
+      setRecentError("Could not reach the media service.");
     }
   }, []);
+
+  const fetchQueue = useCallback(async () => {
+    try {
+      const res = await fetch("/api/media/queue");
+      if (res.ok) {
+        const data = await res.json();
+        setJobs(data.jobs || []);
+        setQueueError(null);
+        if (recentFailedRef.current) void fetchRecent();
+      } else {
+        setQueueError(await messageFromResponse(res));
+      }
+    } catch {
+      setQueueError("Could not reach the media service.");
+    }
+  }, [fetchRecent]);
 
   useEffect(() => {
     fetchQueue();
@@ -113,22 +147,26 @@ export function MediaDashboard() {
     e.preventDefault();
     if (!url.trim()) return;
     setSubmitting(true);
+    setActionError(null);
     try {
       const res = await fetch("/api/media/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim(), category }),
       });
-      const data = await res.json();
       if (res.ok) {
         showToast("Download queued!");
         setUrl("");
         fetchQueue();
       } else {
-        showToast(data.error || "Failed to submit");
+        const message = await messageFromResponse(res);
+        setActionError(message);
+        showToast(message);
       }
     } catch {
-      showToast("Network error");
+      const message = "Could not reach the media service.";
+      setActionError(message);
+      showToast(message);
     } finally {
       setSubmitting(false);
     }
@@ -138,6 +176,7 @@ export function MediaDashboard() {
     e.preventDefault();
     if (!searchQuery.trim()) return;
     setSearching(true);
+    setActionError(null);
     try {
       const res = await fetch(
         `/api/media/search?q=${encodeURIComponent(searchQuery.trim())}`,
@@ -145,12 +184,20 @@ export function MediaDashboard() {
       if (res.ok) {
         const data = await res.json();
         setSearchResults(data.results || []);
+      } else {
+        setSearchResults([]);
+        setActionError(await messageFromResponse(res));
       }
-    } catch {}
-    setSearching(false);
+    } catch {
+      setActionError("Could not reach the media service.");
+    } finally {
+      setSearching(false);
+    }
   }
 
   async function downloadResult(result: SearchResult) {
+    setDownloadingId(result.id);
+    setActionError(null);
     try {
       const res = await fetch("/api/media/download", {
         method: "POST",
@@ -164,9 +211,17 @@ export function MediaDashboard() {
       if (res.ok) {
         showToast(`Queued: ${result.title}`);
         fetchQueue();
+      } else {
+        const message = await messageFromResponse(res);
+        setActionError(message);
+        showToast(message);
       }
     } catch {
-      showToast("Failed to queue");
+      const message = "Could not reach the media service.";
+      setActionError(message);
+      showToast(message);
+    } finally {
+      setDownloadingId(null);
     }
   }
 
@@ -195,7 +250,7 @@ export function MediaDashboard() {
           {workerOnline ? "Online" : workerOnline === false ? "Offline" : "Checking..."}
         </span>
         <a
-          href="http://192.168.2.42:32400/web"
+          href={PLEX_WEB_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="ml-auto text-sm text-purple-400 hover:text-purple-300"
@@ -203,6 +258,15 @@ export function MediaDashboard() {
           Open Plex →
         </a>
       </div>
+
+      {visibleError && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-500/30 bg-red-900/10 px-4 py-3 text-sm text-red-300"
+        >
+          {visibleError}
+        </div>
+      )}
 
       {/* Input Tabs */}
       <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
@@ -295,9 +359,10 @@ export function MediaDashboard() {
                     </div>
                     <button
                       onClick={() => downloadResult(r)}
-                      className="shrink-0 rounded-lg border border-purple-500/30 bg-purple-900/20 px-4 py-2 text-sm text-purple-300 transition hover:bg-purple-900/40"
+                      disabled={downloadingId === r.id}
+                      className="shrink-0 rounded-lg border border-purple-500/30 bg-purple-900/20 px-4 py-2 text-sm text-purple-300 transition hover:bg-purple-900/40 disabled:opacity-40"
                     >
-                      Download
+                      {downloadingId === r.id ? "Queuing..." : "Download"}
                     </button>
                   </div>
                 ))}

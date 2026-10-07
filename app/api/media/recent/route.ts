@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdminEmail } from "@/lib/admin-auth";
-import { getRecent, getHealth } from "@/lib/media-worker";
+import { getHealth, getRecent, logMediaWorkerFailure } from "@/lib/media-worker";
 
 export async function GET() {
   const session = await auth();
@@ -13,9 +13,7 @@ export async function GET() {
     const [recent, health] = await Promise.all([getRecent(), getHealth()]);
     return NextResponse.json({ ...recent, worker: health });
   } catch (err) {
-    return NextResponse.json(
-      { error: (err as Error).message },
-      { status: 502 },
-    );
+    const { error } = logMediaWorkerFailure("recent", err);
+    return NextResponse.json({ error }, { status: 502 });
   }
 }
