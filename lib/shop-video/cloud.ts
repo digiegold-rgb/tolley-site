@@ -12,7 +12,7 @@ async function client() {
 export async function workerHealth() {
   const c = await client();
   const fn = await c.functions.fromName(WORKER_APP,"health");
-  return await fn.remote([],{}) as {ready:boolean;fal:boolean;version:string};
+  return await fn.remote([],{}) as {ready:boolean;fal:boolean;falBillingIssue?:boolean;version:string};
 }
 export async function connectedTikTokAccounts() {
   if (!process.env.ZERNIO_API_KEY) return [];

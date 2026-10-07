@@ -29,7 +29,7 @@ export async function dashboard() {
     totals:{...commissionTotals(aggregates.map(r=>({status:r.status,amountCents:r._sum.amountCents||0}))),
       allowanceCents:costs._sum.allowanceCents||0,providerEstimateCents:costs._sum.providerEstimateCents||0,
       confirmedCostCents:costs._sum.actualCostCents||0,unconfirmedCharges},
-    worker:{configured:cloudConfigured(),ready:worker?.ready===true,fal:worker?.fal===true,version:worker?.version||null},
+    worker:{configured:cloudConfigured(),ready:worker?.ready===true,fal:worker?.fal===true,falBillingIssue:worker?.falBillingIssue===true,version:worker?.version||null},
   };
 }
 export async function saveProduct(input:unknown) {

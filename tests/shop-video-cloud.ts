@@ -13,6 +13,15 @@ async function main(){
   }
   const health=await workerHealth();assert.equal(health.ready,true);assert.equal(health.fal,true);assert.equal(health.version,RECIPE_VERSION);
   const accounts=await connectedTikTokAccounts();assert.ok(accounts.length);console.log(JSON.stringify({health,connectedTikTokAccounts:accounts.map(a=>a.username)}));
+  if(process.argv.includes("--dispatch-only")){
+    const id=`dispatch-smoke-${randomUUID()}`;
+    const call=await spawnRender({job_id:id,provider:"modal",recipe_version:"invalid-test-recipe"});
+    let result;const deadline=Date.now()+60000;
+    while(Date.now()<deadline){result=await pollRender(call);if(result)break;await new Promise(r=>setTimeout(r,1000));}
+    assert.equal(result?.status,"failed");assert.equal(result?.providerEstimateCents,0);assert.deepEqual(result?.receipts,[]);
+    assert.deepEqual(await readSavedResult(id),result);
+    console.log(JSON.stringify({serialModalDispatch:"passed",paidProviderCalls:0,durableResult:"passed"}));return;
+  }
   const c=new ModalClient({tokenId:process.env.MODAL_TOKEN_ID!,tokenSecret:process.env.MODAL_TOKEN_SECRET!});
   const fn=await c.functions.fromName(WORKER_APP,"assembly_smoke");
   const assembled=await fn.remote([],{}) as {job_id:string;size:number;duration:number;width:number;height:number};

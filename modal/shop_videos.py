@@ -129,8 +129,10 @@ def paid_fal(directory, state, stage, model, body, cents, allowance):
             stages[stage]["rejectionDiagnostic"] = r.text.replace(os.environ["FAL_KEY"], "[redacted]")[:500]
             write_state(directory, state)
             if r.status_code in (402, 403) and any(word in r.text.lower() for word in ("balance", "credit", "billing")):
+                claims.put("fal-billing-issue", True)
                 raise ValueError("fal generation is blocked by account billing or credits; check the fal dashboard")
             raise ValueError(f"Provider rejected {stage} (HTTP {r.status_code})")
+        claims.put("fal-billing-issue", False)
         receipt = r.json()
         for field in ("status_url", "response_url"):
             allowed_url(receipt[field], "queue")
@@ -209,10 +211,10 @@ def health():
             authorized = requests.get("https://api.fal.ai/v1/models", params={"limit": 1}, headers={"Authorization": "Key " + os.environ["FAL_KEY"]}, timeout=8).status_code == 200
         except requests.RequestException:
             pass
-    return {"ready": True, "fal": authorized, "version": VERSION}
+    return {"ready": True, "fal": authorized, "falBillingIssue": bool(claims.get("fal-billing-issue", False)), "version": VERSION}
 
 
-@app.function(image=wan_image, volumes={"/models": models, "/data": volume}, gpu="L40S", cpu=4, memory=65536, timeout=840, retries=0, max_containers=1, scaledown_window=5)
+@app.function(image=wan_image, volumes={"/models": models, "/data": volume}, gpu="L40S", cpu=4, memory=65536, timeout=1080, retries=0, max_containers=1, scaledown_window=5)
 def motion(job_id: str, image_bytes: bytes, prompt: str):
     """Dedicated cloud Wan with sufficient host RAM and a supervised model process."""
     import random
@@ -232,7 +234,7 @@ def motion(job_id: str, image_bytes: bytes, prompt: str):
     name = f"shop-{job_id}.png"
     (Path("/opt/ComfyUI/input") / name).write_bytes(image_bytes)
     text = Path("/opt/shop_video_wan.json").read_text()
-    values = {"IMAGE_NAME": name, "POSITIVE_PROMPT": prompt, "NEGATIVE_PROMPT": "distorted product, warped labels, changing colors, extra accessories, missing product parts, hands, people, animation, cartoon, morphing, flicker, camera shake", "FILENAME_PREFIX": f"shop-{job_id}"}
+    values = {"IMAGE_NAME": name, "POSITIVE_PROMPT": prompt, "NEGATIVE_PROMPT": "invented logos, new branding, added writing, illegible lettering, distorted product, warped labels, changing colors, extra accessories, missing product parts, hands, people, animation, cartoon, morphing, flicker, camera shake", "FILENAME_PREFIX": f"shop-{job_id}"}
     for key, value in values.items():
         text = text.replace('"{{' + key + '}}"', json.dumps(value))
     numbers = {"WIDTH": 480, "HEIGHT": 848, "NUM_FRAMES": 65, "TOTAL_STEPS": 20, "HANDOFF_STEP": 10, "CFG": 3.5, "SHIFT": 5, "SEED": random.randrange(1, 2**31), "FRAME_RATE": 16, "LORA_STRENGTH": 0, "START_LATENT_STRENGTH": 1, "END_LATENT_STRENGTH": 0}
@@ -269,7 +271,7 @@ def motion(job_id: str, image_bytes: bytes, prompt: str):
         request = urllib.request.Request("http://127.0.0.1:8188/prompt", data=body, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(request, timeout=30) as response:
             prompt_id = json.loads(response.read())["prompt_id"]
-        deadline = time.monotonic() + 690
+        deadline = time.monotonic() + 900
         while time.monotonic() < deadline:
             if proc.poll() is not None:
                 raise RuntimeError("Modal model process exited during generation; inspect its saved process log")
@@ -345,7 +347,7 @@ def render_job(payload: dict):
             download(edited["images"][0]["url"], source, "artifact", 15*1024*1024)
             image_url = inline_image(source)
         ai = directory / "ai.mp4"
-        prompt = "A gentle realistic camera push toward the exact product shown in the reference. The product stays stationary and fully visible. Preserve its shape, color, proportions, material, labels, printed text and all details. No rotation, no invented functionality, no demonstrations of unsupported effects, no hands, no people, no new accessories, no additional text. Smooth natural motion in the existing scene."
+        prompt = "A gentle realistic camera push toward the exact product shown in the reference. The product stays stationary and fully visible. Preserve its shape, color, proportions, material, labels, printed text and all details. Blank surfaces remain completely blank. Do not invent logos, lettering or branding. Preserve existing printing unchanged. No rotation, no invented functionality, no demonstrations of unsupported effects, no hands, no people, no new accessories, no additional text. Smooth natural motion in the existing scene."
         if payload["provider"] == "fal":
             result = paid_fal(directory, state, "motion", "fal-ai/wan/v2.2-a14b/image-to-video/turbo", {
                 "image_url": image_url, "prompt": prompt, "resolution": "480p", "aspect_ratio": "9:16", "enable_safety_checker": True, "enable_output_safety_checker": True, "enable_prompt_expansion": False,
@@ -360,7 +362,7 @@ def render_job(payload: dict):
             state["stages"]["motion"].update({"request_id": call.object_id, "status": "queued"})
             write_state(directory, state)
             try:
-                ai.write_bytes(call.get(timeout=900))
+                ai.write_bytes(call.get(timeout=1150))
             except (TimeoutError, modal.exception.TimeoutError):
                 call.cancel()
                 raise HeldJob("Modal GPU exceeded the execution window; check the saved call before generating again") from None
