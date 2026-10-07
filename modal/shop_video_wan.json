@@ -1,0 +1,177 @@
+{
+  "_comment": "Wan2.2-I2V-A14B BASE (non-Fun-InP) + Civitai 2222779 Anime Style v2.0 narrative LoRA. Path A — the calm-motion variant. Differences from vater_wan22_i2v.json: (1) base I2V model instead of Fun-InP (less mouth-flap/flailing per issue #77); (2) TWO LoRAs — narrative_high on HIGH-noise expert, narrative_low on LOW-noise expert (v2.0 ships separate weights for each); (3) defaults tuned for calm motion (shift=10, 4+4 step split per LoRA author's recommendation). Placeholders: {{IMAGE_NAME}}, {{POSITIVE_PROMPT}}, {{NEGATIVE_PROMPT}}, {{WIDTH}}, {{HEIGHT}}, {{NUM_FRAMES}}, {{TOTAL_STEPS}}, {{HANDOFF_STEP}}, {{CFG}}, {{SHIFT}}, {{SEED}}, {{FRAME_RATE}}, {{FILENAME_PREFIX}}, {{LORA_STRENGTH}}, {{START_LATENT_STRENGTH}}, {{END_LATENT_STRENGTH}}. `end_image` on node 40 is injected at runtime when hold_start_pose=true.",
+
+  "10": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{IMAGE_NAME}}"
+    }
+  },
+  "11": {
+    "class_type": "LoadWanVideoT5TextEncoder",
+    "inputs": {
+      "model_name": "models_t5_umt5-xxl-enc-bf16.pth",
+      "precision": "bf16",
+      "load_device": "offload_device",
+      "quantization": "disabled"
+    }
+  },
+  "12": {
+    "class_type": "WanVideoVAELoader",
+    "inputs": {
+      "model_name": "Wan2.1_VAE.pth",
+      "precision": "bf16"
+    }
+  },
+  "13": {
+    "class_type": "WanVideoBlockSwap",
+    "inputs": {
+      "blocks_to_swap": 20,
+      "offload_img_emb": false,
+      "offload_txt_emb": false,
+      "use_non_blocking": false,
+      "vace_blocks_to_swap": 0,
+      "prefetch_blocks": 0,
+      "block_swap_debug": false
+    }
+  },
+  "20": {
+    "_comment": "HIGH-noise expert — base Wan2.2-I2V-A14B (NOT Fun-InP). Gets the HIGH-noise variant of the narrative LoRA (node 22).",
+    "class_type": "WanVideoModelLoader",
+    "inputs": {
+      "model": "I2V/HighNoise/Wan2.2-I2V-A14B-HighNoise-Q8_0.gguf",
+      "base_precision": "bf16",
+      "quantization": "disabled",
+      "load_device": "offload_device",
+      "attention_mode": "sdpa",
+      "block_swap_args": ["13", 0],
+      "lora": ["22", 0]
+    }
+  },
+  "21": {
+    "_comment": "LOW-noise expert — base Wan2.2-I2V-A14B. Gets the LOW-noise variant of the narrative LoRA (node 23).",
+    "class_type": "WanVideoModelLoader",
+    "inputs": {
+      "model": "I2V/LowNoise/Wan2.2-I2V-A14B-LowNoise-Q8_0.gguf",
+      "base_precision": "bf16",
+      "quantization": "disabled",
+      "load_device": "offload_device",
+      "attention_mode": "sdpa",
+      "block_swap_args": ["13", 0],
+      "lora": ["23", 0]
+    }
+  },
+  "22": {
+    "_comment": "Narrative LoRA HIGH-noise variant (Civitai 2222779 v2.0). Trained explicitly for 'traditional character movement as seen in Japanese animation' — biases toward calm narrative motion, fighting the action-data distribution. merge_loras must be false (GGUF can't merge).",
+    "class_type": "WanVideoLoraSelect",
+    "inputs": {
+      "lora": "wan2.2_i2v_animestyle_v2_high.safetensors",
+      "strength": {{LORA_STRENGTH}},
+      "low_mem_load": false,
+      "merge_loras": false
+    }
+  },
+  "23": {
+    "_comment": "Narrative LoRA LOW-noise variant (Civitai 2222779 v2.0, low-noise).",
+    "class_type": "WanVideoLoraSelect",
+    "inputs": {
+      "lora": "wan2.2_i2v_animestyle_v2_low.safetensors",
+      "strength": {{LORA_STRENGTH}},
+      "low_mem_load": false,
+      "merge_loras": false
+    }
+  },
+  "30": {
+    "class_type": "WanVideoTextEncode",
+    "inputs": {
+      "positive_prompt": "{{POSITIVE_PROMPT}}",
+      "negative_prompt": "{{NEGATIVE_PROMPT}}",
+      "t5": ["11", 0],
+      "force_offload": true,
+      "device": "gpu"
+    }
+  },
+  "40": {
+    "class_type": "WanVideoImageToVideoEncode",
+    "inputs": {
+      "width": {{WIDTH}},
+      "height": {{HEIGHT}},
+      "num_frames": {{NUM_FRAMES}},
+      "noise_aug_strength": 0.0,
+      "start_latent_strength": {{START_LATENT_STRENGTH}},
+      "end_latent_strength": {{END_LATENT_STRENGTH}},
+      "force_offload": true,
+      "vae": ["12", 0],
+      "start_image": ["10", 0],
+      "fun_or_fl2v_model": true,
+      "tiled_vae": false
+    }
+  },
+  "50": {
+    "class_type": "WanVideoSampler",
+    "inputs": {
+      "model": ["20", 0],
+      "image_embeds": ["40", 0],
+      "text_embeds": ["30", 0],
+      "steps": {{TOTAL_STEPS}},
+      "cfg": {{CFG}},
+      "shift": {{SHIFT}},
+      "seed": {{SEED}},
+      "force_offload": true,
+      "scheduler": "dpm++_sde",
+      "riflex_freq_index": 0,
+      "denoise_strength": 1.0,
+      "start_step": 0,
+      "end_step": {{HANDOFF_STEP}},
+      "rope_function": "comfy",
+      "add_noise_to_samples": false
+    }
+  },
+  "51": {
+    "_comment": "LOW-noise expert — denoise_strength MUST be 1.0 (WanVideoSampler rejects start_step!=0 + denoise<1.0).",
+    "class_type": "WanVideoSampler",
+    "inputs": {
+      "model": ["21", 0],
+      "image_embeds": ["40", 0],
+      "text_embeds": ["30", 0],
+      "samples": ["50", 0],
+      "steps": {{TOTAL_STEPS}},
+      "cfg": {{CFG}},
+      "shift": {{SHIFT}},
+      "seed": {{SEED}},
+      "force_offload": true,
+      "scheduler": "dpm++_sde",
+      "riflex_freq_index": 0,
+      "denoise_strength": 1.0,
+      "start_step": {{HANDOFF_STEP}},
+      "end_step": -1,
+      "rope_function": "comfy",
+      "add_noise_to_samples": false
+    }
+  },
+  "60": {
+    "class_type": "WanVideoDecode",
+    "inputs": {
+      "vae": ["12", 0],
+      "samples": ["51", 0],
+      "enable_vae_tiling": false,
+      "tile_x": 272,
+      "tile_y": 272,
+      "tile_stride_x": 144,
+      "tile_stride_y": 128,
+      "normalization": "default"
+    }
+  },
+  "70": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": ["60", 0],
+      "frame_rate": {{FRAME_RATE}},
+      "loop_count": 0,
+      "filename_prefix": "{{FILENAME_PREFIX}}",
+      "format": "video/h264-mp4",
+      "pingpong": false,
+      "save_output": true
+    }
+  }
+}

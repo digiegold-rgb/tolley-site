@@ -6232,3 +6232,96 @@ model GrowthInquiryPhoto {
   createdAt DateTime @default(now())
   @@index([leadId])
 }
+
+// Owner-only affiliate video batches. Currency is USD integer cents.
+model ShopVideoProduct {
+  id                    String   @id @default(cuid())
+  productId             String   @unique
+  title                 String
+  productUrl            String
+  imageUrl              String
+  realVideoUrl          String?
+  seller                String
+  variant               String
+  commissionBps         Int
+  priceCents            Int
+  rightsConfirmed       Boolean  @default(false)
+  authenticityConfirmed Boolean  @default(false)
+  realFootageConfirmed  Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model ShopVideoAccount {
+  id                String    @id @default(cuid())
+  externalAccountId String    @unique
+  username          String
+  displayName       String
+  dailyQuota        Int       @default(3)
+  weeklyQuota       Int       @default(21)
+  verifiedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model ShopVideoBatch {
+  id            String         @id @default(cuid())
+  requestKey    String         @unique
+  accountId     String
+  username      String
+  provider      String
+  format        String
+  scene         String
+  overlay       String
+  maxSpendCents Int
+  reservedCents Int
+  createdAt     DateTime       @default(now())
+  jobs          ShopVideoJob[]
+}
+
+model ShopVideoJob {
+  id                    String                @id @default(cuid())
+  batchId               String
+  batch                 ShopVideoBatch        @relation(fields: [batchId], references: [id])
+  productSnapshot       Json
+  status                String                @default("queued")
+  allowanceCents        Int
+  providerEstimateCents Int?
+  actualCostCents       Int?
+  costEvidence          String?
+  callId                String?
+  receipts              Json?
+  outputSize            Int?
+  outputSha256          String?
+  outputDuration        Float?
+  outputWidth           Int?
+  outputHeight          Int?
+  error                 String?
+  review                Json?
+  handoff               Json?
+  reviewedAt            DateTime?
+  handoffAt             DateTime?
+  publishedAt           DateTime?
+  publishedUrl          String?
+  publishedId           String?               @unique
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  commissions           ShopVideoCommission[]
+
+  @@index([status, updatedAt])
+  @@index([batchId, createdAt])
+}
+
+model ShopVideoCommission {
+  id          String       @id @default(cuid())
+  externalId  String       @unique
+  jobId       String
+  job         ShopVideoJob @relation(fields: [jobId], references: [id])
+  amountCents Int
+  status      String
+  evidence    String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([status, updatedAt])
+}
