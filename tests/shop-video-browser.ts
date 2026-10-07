@@ -7,6 +7,7 @@ import { prisma } from "../lib/prisma";
 import { enrollmentKey, MFA_COOKIE, signMfaProof } from "../lib/auth/mfa-proof";
 
 const base="http://127.0.0.1:3029";
+let browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
 if(new URL(process.env.DATABASE_URL||"http://missing").port!=="55449")throw new Error("Browser validation requires the isolated test database");
 async function main(){
   assert.equal(process.env.AUTH_SECRET,"shop-video-local-validation-only");
@@ -31,18 +32,27 @@ async function main(){
     const range=await fetch(base+`/api/hq/shop-videos/media/${artifact.id}`,{headers:{cookie,range:"bytes=0-31"}});assert.equal(range.status,206);const head=Buffer.from(await range.arrayBuffer());assert.equal(head.length,32);assert.equal(head.subarray(4,8).toString(),"ftyp");
     const download=await fetch(base+`/api/hq/shop-videos/media/${artifact.id}?download=1`,{headers:{cookie}});assert.equal(download.status,200);assert.match(download.headers.get("content-disposition")||"",/^attachment;/);assert.equal(createHash("sha256").update(Buffer.from(await download.arrayBuffer())).digest("hex"),artifact.outputSha256);
   }
-  const browser=await chromium.launch({headless:true});
+  browser=await chromium.launch({headless:true,executablePath:process.env.SHOP_VIDEO_BROWSER_EXECUTABLE||undefined});
   const context=await browser.newContext({viewport:{width:1440,height:1000}});await context.addCookies(ownerCookies);
   const page=await context.newPage();const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
   await page.goto(base+"/hq/shop-videos",{waitUntil:"networkidle",timeout:120000});
   await page.getByRole("heading",{name:"Shop Video Batch",exact:true}).waitFor();
   await page.getByText("Cloud worker ready",{exact:true}).waitFor();
+  await page.getByRole("button",{name:"Refresh batches",exact:true}).click();
+  await page.getByText("Batch status refreshed",{exact:true}).waitFor();
+  if(process.argv.includes("--upload")){
+    const fixture=process.argv[process.argv.indexOf("--upload")+1];assert.ok(fixture);
+    await page.getByLabel("Or upload a product photo",{exact:true}).setInputFiles(fixture);
+    await page.getByText("Media uploaded",{exact:true}).waitFor({timeout:60000});
+    assert.match(await page.getByLabel("Authorized product image URL",{exact:true}).inputValue(),/^https:\/\/[^/]+\.public\.blob\.vercel-storage\.com\//);
+  }
   assert.equal(await page.locator(".hq-admin").evaluate(el=>getComputedStyle(el).backgroundColor),"rgb(11, 18, 27)");
   assert.equal(await page.getByLabel("Generation provider").inputValue(),"fal");
   assert.equal(await page.getByLabel("Video format").inputValue(),"hybrid");
   await page.getByLabel("Video format").selectOption("boomerang");
   await page.getByText("Pure loops need a passed TikTok video pre-check",{exact:false}).waitFor();
   if(artifact){
+    assert.ok(await page.evaluate(()=>document.createElement("video").canPlayType('video/mp4; codecs="avc1.640028"')),"This browser build has no H.264 decoder; use the installed Chrome/Brave executable");
     const video=page.locator(`video[src="/api/hq/shop-videos/media/${artifact.id}"]`);
     await video.evaluate(async(el:HTMLVideoElement)=>{el.muted=true;await el.play();});
     await page.waitForFunction((id)=>{const v=document.querySelector(`video[src="/api/hq/shop-videos/media/${id}"]`) as HTMLVideoElement;return v?.videoWidth===1080 && v.duration===8 && v.currentTime>0;},artifact.id,{timeout:60000});
@@ -54,9 +64,9 @@ async function main(){
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,"mobile layout must not overflow");
   await page.screenshot({path:"/tmp/tolley-shop-video-validation/mobile.png",fullPage:true});
   assert.deepEqual(errors,[]);
-  if(artifact){
+  if(artifact?.status==="ready"){
     const rejected=await fetch(base+"/api/hq/shop-videos",{method:"POST",headers:{cookie,origin:base,"Content-Type":"application/json"},body:JSON.stringify({kind:"job",id:artifact.id,data:{action:"reject",reason:"Visual review: generated text was absent from the source fixture"}})});assert.equal(rejected.status,200);assert.equal((await rejected.json()).result.status,"rejected");
   }
   await browser.close();console.log(JSON.stringify({ownerMfa:"passed",anonymousAndLegacyBypasses:"denied",foreignOrigin:"denied",malformedJson:400,range:416,liveConnections:dashboard.connections.accounts.length,desktopAndMobile:"passed",realCloudPlaybackAndDownload:artifact?"passed":"not seeded",browserErrors:0}));
 }
-main().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>prisma.$disconnect());
+main().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{await browser?.close();await prisma.$disconnect();});
