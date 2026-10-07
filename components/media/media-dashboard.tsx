@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 type Job = {
   id: string;
@@ -89,22 +89,8 @@ export function MediaDashboard() {
   const [queueError, setQueueError] = useState<string | null>(null);
   const [recentError, setRecentError] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const recentFailedRef = useRef(false);
   const visibleError = actionError || recentError || queueError;
-
-  const fetchQueue = useCallback(async () => {
-    try {
-      const res = await fetch("/api/media/queue");
-      if (res.ok) {
-        const data = await res.json();
-        setJobs(data.jobs || []);
-        setQueueError(null);
-      } else {
-        setQueueError(await messageFromResponse(res));
-      }
-    } catch {
-      setQueueError("Could not reach the media service.");
-    }
-  }, []);
 
   const fetchRecent = useCallback(async () => {
     try {
@@ -114,22 +100,40 @@ export function MediaDashboard() {
         setRecent(data.recent || []);
         setWorkerOnline(data.worker?.ok ?? false);
         setRecentError(null);
+        recentFailedRef.current = false;
       } else {
+        recentFailedRef.current = true;
         setWorkerOnline(false);
         setRecentError(await messageFromResponse(res));
       }
     } catch {
+      recentFailedRef.current = true;
       setWorkerOnline(false);
       setRecentError("Could not reach the media service.");
     }
   }, []);
+
+  const fetchQueue = useCallback(async () => {
+    try {
+      const res = await fetch("/api/media/queue");
+      if (res.ok) {
+        const data = await res.json();
+        setJobs(data.jobs || []);
+        setQueueError(null);
+        if (recentFailedRef.current) void fetchRecent();
+      } else {
+        setQueueError(await messageFromResponse(res));
+      }
+    } catch {
+      setQueueError("Could not reach the media service.");
+    }
+  }, [fetchRecent]);
 
   useEffect(() => {
     fetchQueue();
     fetchRecent();
     const interval = setInterval(() => {
       fetchQueue();
-      fetchRecent();
     }, 3000);
     return () => clearInterval(interval);
   }, [fetchQueue, fetchRecent]);
