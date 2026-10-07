@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdminEmail } from "@/lib/admin-auth";
-import { searchYouTube } from "@/lib/media-worker";
+import { logMediaWorkerFailure, searchYouTube } from "@/lib/media-worker";
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -22,9 +22,7 @@ export async function GET(req: Request) {
     const data = await searchYouTube(q);
     return NextResponse.json(data);
   } catch (err) {
-    return NextResponse.json(
-      { error: (err as Error).message },
-      { status: 502 },
-    );
+    const { error } = logMediaWorkerFailure("search", err);
+    return NextResponse.json({ error }, { status: 502 });
   }
 }

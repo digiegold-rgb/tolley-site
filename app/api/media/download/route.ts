@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdminEmail } from "@/lib/admin-auth";
-import { submitDownload, type MediaCategory } from "@/lib/media-worker";
+import {
+  logMediaWorkerFailure,
+  submitDownload,
+  type MediaCategory,
+} from "@/lib/media-worker";
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -33,9 +37,7 @@ export async function POST(req: Request) {
     const data = await submitDownload(url, category, title);
     return NextResponse.json(data);
   } catch (err) {
-    return NextResponse.json(
-      { error: (err as Error).message },
-      { status: 502 },
-    );
+    const { error } = logMediaWorkerFailure("download", err);
+    return NextResponse.json({ error }, { status: 502 });
   }
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdminEmail } from "@/lib/admin-auth";
-import { getJobs } from "@/lib/media-worker";
+import { getJobs, logMediaWorkerFailure } from "@/lib/media-worker";
 
 export async function GET() {
   const session = await auth();
@@ -13,9 +13,7 @@ export async function GET() {
     const data = await getJobs();
     return NextResponse.json(data);
   } catch (err) {
-    return NextResponse.json(
-      { error: (err as Error).message },
-      { status: 502 },
-    );
+    const { error } = logMediaWorkerFailure("queue", err);
+    return NextResponse.json({ error }, { status: 502 });
   }
 }
