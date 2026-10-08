@@ -22,7 +22,7 @@ APP = "tolley-shop-videos"
 VERSION = "store-display-v1"
 DATA = Path("/data")
 app = modal.App(APP)
-image = modal.Image.debian_slim(python_version="3.12").apt_install("ffmpeg", "fonts-dejavu-core").pip_install("requests==2.32.5", "Pillow==12.1.1").env({"SHOP_VIDEO_WORKER_BUILD": "20261007b"})
+image = modal.Image.debian_slim(python_version="3.12").apt_install("ffmpeg", "fonts-dejavu-core").pip_install("requests==2.32.5", "Pillow==12.1.1").env({"SHOP_VIDEO_WORKER_BUILD": "20261008a"})
 volume = modal.Volume.from_name("tolley-shop-videos", create_if_missing=True)
 claims = modal.Dict.from_name("tolley-shop-video-claims", create_if_missing=True)
 secret = modal.Secret.from_name("tolley-shop-video-secrets", required_keys=["FAL_KEY"])
@@ -210,6 +210,17 @@ def health():
         try:
             authorized = requests.get("https://api.fal.ai/v1/models", params={"limit": 1}, headers={"Authorization": "Key " + os.environ["FAL_KEY"]}, timeout=8).status_code == 200
         except requests.RequestException:
+            pass
+    # Model-list access alone does not demonstrate usable generation credits.
+    # Refresh the prior billing failure after the owner replenishes the account.
+    if authorized:
+        try:
+            billing = requests.get("https://api.fal.ai/v1/account/billing", params={"expand": "credits"}, headers={"Authorization": "Key " + os.environ["FAL_KEY"]}, timeout=8)
+            if billing.status_code == 200:
+                balance = billing.json().get("credits", {}).get("current_balance")
+                if isinstance(balance, (int, float)) and not isinstance(balance, bool):
+                    claims.put("fal-billing-issue", balance <= 0)
+        except (requests.RequestException, ValueError, AttributeError):
             pass
     return {"ready": True, "fal": authorized, "falBillingIssue": bool(claims.get("fal-billing-issue", False)), "version": VERSION}
 

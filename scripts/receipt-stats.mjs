@@ -11,6 +11,7 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { contentIncomeReceipt } from "./content-income-receipt.mjs";
 
 const prisma = new PrismaClient();
 const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -113,6 +114,7 @@ const fifteenMinutes = mustComplete
 
 console.log(
   JSON.stringify({
+    contentIncome: await contentIncomeReceipt(prisma),
     goClicks,
     goClicksTotal: Object.values(goClicks).reduce((s, n) => s + n, 0),
     goClicksBotFiltered: goClickEvents.length - Object.values(goClicks).reduce((s, n) => s + n, 0),

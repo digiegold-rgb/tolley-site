@@ -46,9 +46,10 @@ export async function reserveCampaign(id: string, now = new Date()) {
     }
     const clips = await tx.livePublication.count({ where: { platform: post.platform, accountId: post.accountId, createdAt: { gte: since } } });
     const campaigns = await tx.liveCampaignPost.count({ where: { platform: post.platform, accountId: post.accountId, format: "feed", NOT: { kind: { startsWith: "announce_" } }, status: { in: ["posting", "posted", "uncertain"] }, updatedAt: { gte: since } } });
-    if (!isAnnouncement(post.kind) && clips + campaigns >= 2) return null;
+    const originals = await tx.contentIncomePost.count({ where: { account: { platform: post.platform, externalId: post.accountId }, status: { in: ["sending", "posted", "uncertain"] }, attemptedAt: { gte: since } } });
+    if (!isAnnouncement(post.kind) && clips + campaigns + originals >= 2) return null;
     // Preserve the second feed slot for the confirmed evening preview.
-    if (!isAnnouncement(post.kind) && post.kind !== "preview" && clips + campaigns >= 1) return null;
+    if (!isAnnouncement(post.kind) && post.kind !== "preview" && clips + campaigns + originals >= 1) return null;
     const claimed = await tx.liveCampaignPost.updateMany({ where: { id, status: "queued" }, data: { status: "posting", error: null } });
     return claimed.count === 1 ? post : null;
   });

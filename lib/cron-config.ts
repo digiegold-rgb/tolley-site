@@ -16,6 +16,7 @@ export interface CronEntry {
 const day = 1440;
 
 export const CRONS: CronEntry[] = [
+  { path: "/api/cron/content-income", schedule: "*/5 * * * *", cadenceMin: 5, description: "Original Treasure Haul images/text and Meta earnings", heartbeat: async () => (await prisma.contentIncomeAccount.findUnique({ where: { id: "facebook-treasure" }, select: { heartbeatAt: true } }))?.heartbeatAt ?? null },
   { path: "/api/cron/hauls-campaign", schedule: "*/5 * * * *", cadenceMin: 5, description: "Treasure Hauls confirmed-show campaign", heartbeat: async () => (await prisma.siteEvent.findFirst({ where: { site: "live", event: "campaign_heartbeat" }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }))?.createdAt ?? null },
   { path: "/api/cron/lead-notifications", schedule: "*/2 * * * *", cadenceMin: 2, description: "Retry owner lead notifications" },
   { path: "/api/cron/sequence-process", schedule: "0 */1 * * *", cadenceMin: 60, description: "SMS sequence drip" },
