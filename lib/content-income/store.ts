@@ -80,7 +80,10 @@ export async function publishTip(post: ContentIncomePost) {
 }
 export async function drainQueue(sender: Sender = publishTip, now = new Date()) {
   const account = await ensureAccount();
-  if (account.paused) return { paused: true, published: 0 };
+  if (account.paused) {
+    await prisma.contentIncomeAccount.update({ where: { id: ACCOUNT_ID }, data: { heartbeatAt: now } });
+    return { paused: true, published: 0 };
+  }
   await seedQueue(now);
   await prisma.contentIncomePost.updateMany({ where: { status: "sending", attemptedAt: { lt: new Date(now.getTime() - 15 * 60000) } }, data: { status: "uncertain", error: "Worker interrupted. Verify the actual post before resuming; no automatic retry." } });
   await prisma.contentIncomePost.updateMany({ where: { status: "queued", scheduledAt: { lt: centralInstant(centralDate(now), "00:00") } }, data: { status: "skipped", error: "Calendar slot passed. Old posts are not replayed in a burst." } });
@@ -109,7 +112,7 @@ export async function syncMetrics() {
   const verified = await verifyPage();
   await prisma.contentIncomeAccount.update({ where: { id: ACCOUNT_ID }, data: { followers: verified.followers, connectionCheckedAt: new Date(), metricsError: null } });
   const token = verified.connection.accessToken;
-  const rows = await prisma.contentIncomePost.findMany({ where: { accountId: ACCOUNT_ID, status: "posted", publishedAt: { gte: new Date(Date.now() - 30 * 86400000) } }, orderBy: { metricsAt: { sort: "asc", nulls: "first" } }, take: 10 });
+  const rows = await prisma.contentIncomePost.findMany({ where: { accountId: ACCOUNT_ID, status: "posted", publishedAt: { gte: new Date(Date.now() - 30 * 86400000) } }, orderBy: { metricsAt: { sort: "asc", nulls: "first" } }, take: 8 });
   for (const p of rows) {
     const number = (v: unknown) => Number.isSafeInteger(v) && Number(v) >= 0 ? Number(v) : null;
     try {

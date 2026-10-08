@@ -8,7 +8,7 @@ export async function connection() {
 }
 // Mutations are single-shot. A timeout never causes another paid/public request.
 export async function graph(path: string, token: string, body?: URLSearchParams) {
-  const r = await fetch(`https://graph.facebook.com/v23.0/${path}`, { method: body ? "POST" : "GET", headers: { Authorization: `Bearer ${token}` }, body, signal: AbortSignal.timeout(20000), cache: "no-store" });
+  const r = await fetch(`https://graph.facebook.com/v23.0/${path}`, { method: body ? "POST" : "GET", headers: { Authorization: `Bearer ${token}` }, body, signal: AbortSignal.timeout(body ? 20000 : 10000), cache: "no-store" });
   const d = await r.json();
   if (d.error) throw new MetaRejected(`Meta rejected the request (HTTP ${r.status}, code ${Number(d.error.code) || "unknown"}). ${String(d.error.message || "").replace(token, "[redacted]").slice(0, 180)}`);
   if (!r.ok) throw new Error(`Meta request was not confirmed (HTTP ${r.status}).`);
