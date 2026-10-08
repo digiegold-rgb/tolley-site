@@ -417,6 +417,10 @@
     {
       "path": "/api/cron/hauls-campaign",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/content-income",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

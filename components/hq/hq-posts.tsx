@@ -204,6 +204,7 @@ export function HqPosts() {
 
       {/* ── Paid ads (read-only). Jared: after the DGX strip, before every-video. ── */}
       <HqAdsStatus />
+      <p style={{ padding: "8px 16px", color: "var(--hq-ink-2)" }}><a href="/hq/content-income">Content income →</a> · Original images/text, measured performance and confirmed payouts.</p>
 
       {/* ── Live view counter across every channel ── */}
       <HqViewCounter />

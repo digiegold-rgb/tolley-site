@@ -644,6 +644,7 @@ function HqPageInner() {
                 <button onClick={() => { setTab("hauls"); closeIdeas(); }}>💎 Hauls</button>
                 <button onClick={() => { setTab("tiktok"); closeIdeas(); }}>🛍 TikTok</button>
                 <a href="/hq/shop-videos" onClick={closeIdeas}>Shop Video Batch</a>
+                <a href="/hq/content-income" onClick={closeIdeas}>Content income</a>
                 {/* Route links, not tab states. */}
                 <a href="/vater" onClick={closeIdeas}>🏭 Vater owner tools</a>
                 <a href="/water" onClick={closeIdeas}>💧 Pool water dashboard</a>

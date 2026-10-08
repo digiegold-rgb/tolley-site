@@ -5292,6 +5292,94 @@ model ContactVaultEntry {
 // Posts tab reds out any channel whose window closed with no row here.
 //
 // runId groups every channel of a single run (one short fans out to 8 rows).
+/// Owner's original image/text experiments; enrollment is separate from publishing.
+model ContentIncomeAccount {
+  id                 String   @id
+  platform           String   @default("facebook")
+  externalId         String   @unique
+  label              String
+  paused             Boolean  @default(true)
+  startedAt          DateTime?
+  programStatus      String   @default("unknown")
+  payoutsVerified    Boolean  @default(false)
+  programEvidence    String?
+  programVerifiedAt  DateTime?
+  connectionCheckedAt DateTime?
+  followers          Int?
+  metricsError       String?
+  earningsCheckedAt  DateTime?
+  earningsError      String?
+  qualifiedViewsError String?
+  heartbeatAt        DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  posts              ContentIncomePost[]
+  receipts           ContentIncomeReceipt[]
+  earningDays        ContentIncomeEarningDay[]
+}
+
+model ContentIncomePost {
+  id                 String   @id @default(cuid())
+  accountId          String
+  scheduleKey        String
+  topicKey           String
+  format             String
+  headline           String
+  caption            String   @db.Text
+  points             Json
+  status             String   @default("queued")
+  scheduledAt        DateTime
+  attemptedAt        DateTime?
+  publishedAt        DateTime?
+  externalId         String?  @unique
+  url                String?
+  error              String?
+  views              Int?
+  qualifiedViews     Int?
+  reactions          Int?
+  comments           Int?
+  shares             Int?
+  follows            Int?
+  earningsCents      Int?
+  metricsSource      String?
+  metricsAt          DateTime?
+  ownerMetricsAt     DateTime?
+  ownerMetricsEvidence String?
+  metricsError       String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  account            ContentIncomeAccount @relation(fields:[accountId], references:[id])
+  @@unique([accountId, scheduleKey])
+  @@index([status, scheduledAt])
+  @@index([accountId, publishedAt])
+}
+
+model ContentIncomeReceipt {
+  id            String   @id @default(cuid())
+  accountId     String
+  externalId    String
+  amountCents   Int
+  status        String
+  period        String
+  evidence      String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  account       ContentIncomeAccount @relation(fields:[accountId], references:[id])
+  @@unique([accountId, externalId])
+}
+
+/// Meta's daily estimates, never counted as a cash receipt.
+model ContentIncomeEarningDay {
+  id            String   @id @default(cuid())
+  accountId     String
+  endTime       DateTime
+  amountMicros  BigInt
+  currency      String
+  capturedAt    DateTime @default(now())
+  account       ContentIncomeAccount @relation(fields:[accountId], references:[id])
+  @@unique([accountId, endTime])
+}
+
 model PostLogEntry {
   id        String   @id @default(cuid())
   job       String // growth-shorts | fb-daily-post | pin-circle | wd-listings | ...

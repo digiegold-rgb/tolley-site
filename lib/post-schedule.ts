@@ -28,6 +28,7 @@ export type ScheduledJob = {
 };
 
 export const SCHEDULED_JOBS: ScheduledJob[] = [
+  { job: "content-income", label: "Treasure Hauls original tips", schedule: "09:30 text / 14:30 image Central; shared 2/day feed cap", unit: "/api/cron/content-income", staleAfterHours: 54, channels: [{ channel: "fb", account: "1156652300855210", business: "haul" }] },
   { job: "hauls-campaign", label: "Treasure Hauls show campaign", schedule: "Confirmed shows: 18:30 Central; Stories manual", unit: "/api/cron/hauls-campaign", staleAfterHours: 8 * 24, channels: [{ channel: "fb", account: "ruthanns-treasure-haul", business: "haul" }, { channel: "ig", account: "bound-haul-account", business: "haul" }] },
   {
     job: "growth-shorts",
@@ -177,8 +178,9 @@ type LatestRow = {
 // but it has not posted once (usually a job that was never instrumented), dark =
 // it used to work and stopped. They need different fixes, so they get different
 // words.
-export function campaignAwareJobs(active: boolean, bindings: Record<string, unknown>, expectedCampaign: boolean): ScheduledJob[] {
+export function campaignAwareJobs(active: boolean, bindings: Record<string, unknown>, expectedCampaign: boolean, incomeActive = false): ScheduledJob[] {
   return SCHEDULED_JOBS.flatMap(job => {
+    if (job.job === "content-income" && !incomeActive) return [];
     if (job.job === "growth-shorts" && active) return [];
     if (job.job !== "hauls-campaign") return [job];
     if (!active || !expectedCampaign) return [];

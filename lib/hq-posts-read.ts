@@ -326,11 +326,12 @@ export async function loadPostLog(daysRaw: number): Promise<PostLogPayload> {
     orderBy: { firedAt: "desc" },
     select: { job: true, channel: true, status: true, firedAt: true, url: true, error: true },
   });
-  const [campaign, dueCampaign] = await Promise.all([
+  const [campaign, dueCampaign, income] = await Promise.all([
     prisma.liveSettings.findUnique({ where: { id: "treasure-hauls" }, select: { campaignPaused: true, bindings: true } }),
     prisma.liveCampaignPost.count({ where: { manual: false, status: { notIn: ["draft", "held", "canceled"] }, dueAt: { lte: new Date(), gte: new Date(Date.now() - 8 * 86400000) } } }),
+    prisma.contentIncomeAccount.findUnique({ where: { id: "facebook-treasure" }, select: { paused: true, startedAt: true } }),
   ]);
-  const expectedJobs = campaignAwareJobs(campaign?.campaignPaused === false, (campaign?.bindings as Record<string, unknown>) || {}, dueCampaign > 0);
+  const expectedJobs = campaignAwareJobs(campaign?.campaignPaused === false, (campaign?.bindings as Record<string, unknown>) || {}, dueCampaign > 0, income?.paused === false && !!income.startedAt);
   const health = computeHealth(healthRows, new Date(), expectedJobs);
 
   const runs = new Map<
