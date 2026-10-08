@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { centralDate, centralInstant } from "@/lib/live/campaign";
-import { ACCOUNT_ID, TREASURE_PAGE, actionSchema, receiptTotals, performanceScore, allowedFeedSlots, USED_STATUSES, safeError } from "./core";
+import { ACCOUNT_ID, TREASURE_PAGE, actionSchema, receiptTotals, performanceScore, allowedFeedSlots, USED_STATUSES, safeError, morningFormat } from "./core";
 import { TOPICS, topicCopy } from "./catalog";
 import { graph, verifyPage, MetaRejected } from "./meta";
 import type { ContentIncomePost } from "@prisma/client";
@@ -23,7 +23,7 @@ export async function seedQueue(now = new Date()) {
     const elapsed = Math.round((Date.parse(`${day}T12:00:00Z`) - Date.parse(`${start}T12:00:00Z`)) / 86400000);
     for (const format of ["text", "image"] as const) {
       const copy = topicCopy(elapsed + (format === "image" ? 7 : 0), format);
-      rows.push({ ...copy, accountId: ACCOUNT_ID, scheduleKey: `${day}:${format}`, scheduledAt: centralInstant(day, format === "text" ? "09:30" : "14:30"), status: "queued" });
+      rows.push({ ...copy, accountId: ACCOUNT_ID, scheduleKey: `${day}:${format}`, scheduledAt: centralInstant(day, format === morningFormat(elapsed) ? "09:30" : "14:30"), status: "queued" });
     }
   }
   return (await prisma.contentIncomePost.createMany({ data: rows, skipDuplicates: true })).count;

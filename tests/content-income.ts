@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 import sharp from "sharp";
 import { prisma } from "../lib/prisma";
-import { ACCOUNT_ID, TREASURE_PAGE, actionSchema, allowedFeedSlots, receiptTotals, performanceScore } from "../lib/content-income/core";
+import { ACCOUNT_ID, TREASURE_PAGE, actionSchema, allowedFeedSlots, receiptTotals, performanceScore, morningFormat } from "../lib/content-income/core";
 import { ensureAccount, seedQueue, drainQueue, reservePost, act, report } from "../lib/content-income/store";
 import { MetaRejected } from "../lib/content-income/meta";
 import { renderTip } from "../lib/content-income/art";
@@ -20,6 +20,7 @@ async function reset() {
 }
 async function main() {
   assert.equal(allowedFeedSlots({used:1,reservedPreview:true,hasUncertain:false}),0);
+  assert.equal(morningFormat(0),"image");assert.equal(morningFormat(1),"text");assert.equal(morningFormat(30),"text");
   assert.equal(allowedFeedSlots({used:0,reservedPreview:false,hasUncertain:true}),0);
   assert.deepEqual(receiptTotals([{amountCents:100,status:"paid"},{amountCents:200,status:"pending"},{amountCents:300,status:"reversed"}]),{paidCents:100,pendingCents:200,reversedCents:300});
   assert.equal(performanceScore({views:null,shares:10,follows:0,comments:0}),null);
@@ -45,6 +46,7 @@ async function main() {
   const show=await prisma.liveShow.create({data:{title:"Isolated cap test",category:"Resale",status:"confirmed",startsAt:new Date(now.getTime()+3600000),whatnotUrl:"https://www.whatnot.com/live/isolated-cap-test"}});
   const preview=await prisma.liveCampaignPost.create({data:{showId:show.id,kind:"preview",platform:"facebook",accountId:TREASURE_PAGE,format:"feed",status:"queued",caption:"Upcoming resale show",dueAt:now,expiresAt:new Date(now.getTime()+3600000)}});
   sends=0;await drainQueue(sender,now);assert.equal(sends,1,"A confirmed preview retains its feed slot");
+  assert.equal((await prisma.contentIncomePost.findFirstOrThrow({where:{status:"posted"}})).format,"image","Show previews cannot starve the image experiment every day");
   assert.ok(await reserveCampaign(preview.id,now),"Preview can use the second slot after an original");
   const remaining=await prisma.contentIncomePost.findFirstOrThrow({where:{status:"queued",scheduledAt:{lte:now}}});
   assert.equal(await reservePost(remaining.id,now),null,"Campaign and original reservations share one cap");

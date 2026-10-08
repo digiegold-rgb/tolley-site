@@ -28,7 +28,7 @@ export type ScheduledJob = {
 };
 
 export const SCHEDULED_JOBS: ScheduledJob[] = [
-  { job: "content-income", label: "Treasure Hauls original tips", schedule: "09:30 text / 14:30 image Central; shared 2/day feed cap", unit: "/api/cron/content-income", staleAfterHours: 54, channels: [{ channel: "fb", account: "1156652300855210", business: "haul" }] },
+  { job: "content-income", label: "Treasure Hauls original tips", schedule: "09:30 / 14:30 Central, alternating formats; shared 2/day feed cap", unit: "/api/cron/content-income", staleAfterHours: 54, channels: [{ channel: "fb", account: "1156652300855210", business: "haul" }] },
   { job: "hauls-campaign", label: "Treasure Hauls show campaign", schedule: "Confirmed shows: 18:30 Central; Stories manual", unit: "/api/cron/hauls-campaign", staleAfterHours: 8 * 24, channels: [{ channel: "fb", account: "ruthanns-treasure-haul", business: "haul" }, { channel: "ig", account: "bound-haul-account", business: "haul" }] },
   {
     job: "growth-shorts",

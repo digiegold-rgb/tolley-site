@@ -3,6 +3,9 @@ import { z } from "zod";
 export const TREASURE_PAGE = "1156652300855210";
 export const ACCOUNT_ID = "facebook-treasure";
 export const USED_STATUSES = ["sending", "posted", "uncertain"];
+export function morningFormat(elapsedDays: number): "text" | "image" {
+  return (elapsedDays + Math.floor(elapsedDays / 30)) % 2 === 0 ? "image" : "text";
+}
 export const programStatuses = ["unknown", "not_invited", "invited", "active", "restricted"] as const;
 const count = z.number().int().min(0).max(2_000_000_000).nullable();
 const cents = z.number().int().min(0).max(100_000_000);
