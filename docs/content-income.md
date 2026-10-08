@@ -8,7 +8,7 @@ The five-minute cron shares the existing database reservation lock and two-feed-
 
 Meta metrics refresh every six hours. Total post views, reactions, comments and shares come from Graph API. Total views are distinct from qualified monetization views. Permission errors are displayed, and missing measurements remain null. Daily Content Monetization earnings are USD estimates with their returned date coverage. They never count as cash received. Actual payouts require dated statement evidence and an idempotent reference; pending, paid and reversed statements remain distinct.
 
-On October 8, Meta Page Eligibility said the Page had not met the criteria to apply for monetization access. The Page had 103 followers. The readable daily earnings endpoint returned two zero-earning days; qualified-view access was denied. This is not proof of active program enrollment or completed payout setup. Verify those independently in Meta before recording them as active.
+On October 8, Meta Page Eligibility said the Page had not met the criteria to apply for monetization access. The Page had 103 followers. An explicit 30-day daily earnings query returned 30 zero-earning values; qualified-view access was denied. This is not proof of active program enrollment or completed payout setup. Verify those independently in Meta before recording them as active.
 
 ## Deployment and activation
 
