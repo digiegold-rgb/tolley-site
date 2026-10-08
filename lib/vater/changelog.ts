@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.60';
+export const APP_VERSION = '1.60.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.60.1', date: '2026-10-08', title: 'Reliable image artwork', items: ['Original content images use bundled font outlines so the lettering stays readable on the production server.'] },
   { version: '1.60', date: '2026-10-08', title: 'Original content and real income reporting', items: ['Treasure Haul can publish original text and image tips on a measured schedule, sharing daily feed slots with shows and clips.', 'Meta earnings, audience measurements and cash receipts are tracked separately, with missing access and uncertain publishes visible in Growth HQ.'] },
   { version: '1.59', date: '2026-10-07', title: 'Shop Video Batch in Growth HQ', items: ['Create eight-second product videos with fal.ai or Modal, review each output and finish the product-linked post in TikTok.', 'Account verification, posting allowances and separate pending, settled and reversed commissions keep the affiliate workflow measurable.'] },
   { version: '1.58', date: '2026-10-05', title: 'Mac mini control hub setup', items: ['HQ links directly to Show Assistant and a private Mac mini setup guide.', 'The setup download adds Safari shortcuts, Spark Terminal access and shared-file instructions; remote access still needs to be enabled and verified on the mini.'] },
