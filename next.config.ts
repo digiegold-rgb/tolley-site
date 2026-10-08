@@ -107,6 +107,7 @@ const nextConfig: NextConfig = {
   },
   // Include authenticated document assets read at runtime in serverless bundles.
   outputFileTracingIncludes: {
+    "/api/content-income/art/*": ["./assets/content-income/*.ttf"],
     "/stream/guide": ["./ops/stream/OPERATIONS.md"],
     "/stream/mac-mini": ["./ops/stream/mac-mini-hub/README.md"],
     "/api/stream/mac-mini-setup": ["./ops/stream/mac-mini-hub/Tolley-Mac-Mini-Setup.command"],
