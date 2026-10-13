@@ -61,7 +61,9 @@ def run():
                 if e['body'] is None and archive and not e['retracted']:
                     try: e['body']=decode(archive)
                     except Exception: e['decodeError']=True;counts['decodeErrors']+=1
-                attachments[e['guid']]=e.pop('attachments',[])
+                files=e.pop('attachments',[])
+                if e['retracted']: e['body']=None
+                attachments[e['guid']]=[] if e['retracted'] else files
             result=post_events(thread['id'],rows)
             for event in result['saved']:
                 for a in attachments.get(event['sourceKey'],[]):
