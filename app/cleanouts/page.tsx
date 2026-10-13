@@ -160,6 +160,8 @@ function CleanoutsPage() {
           </a>
         </p>
         <div className="mt-3 flex flex-wrap justify-center gap-3 text-xs text-white/20">
+          <a href="/cleanouts/terms" className="hover:text-white/40">Terms</a>
+          <a href="/cleanouts/privacy" className="hover:text-white/40">Privacy</a>
           <a href="/junkinjays" className="hover:text-white/40">Scrap &amp; Junk</a>
           <a href="/trailer" className="hover:text-white/40">Trailers</a>
           <a href="/wd" className="hover:text-white/40">W/D Rental</a>
