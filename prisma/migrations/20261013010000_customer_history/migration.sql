@@ -184,4 +184,3 @@ ALTER TABLE "HqCustomerAttachment" ADD CONSTRAINT "HqCustomerAttachment_eventId_
 
 -- AddForeignKey
 ALTER TABLE "HqPhoneThread" ADD CONSTRAINT "HqPhoneThread_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "HqCustomer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
