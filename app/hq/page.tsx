@@ -34,6 +34,7 @@ import { HqPosts } from "@/components/hq/hq-posts";
 import { HqTiktokShop } from "@/components/hq/hq-tiktok-shop";
 import { HqChannelScoreboard } from "@/components/hq/hq-channel-scoreboard";
 import GrowthReport from "./growth/report";
+import { HqCustomers } from "@/components/hq/hq-customers";
 import { HqSiteVisits } from "@/components/hq/hq-site-visits";
 import {
   HqMustComplete,
@@ -48,9 +49,9 @@ import {
   type HqInboundLead,
 } from "@/components/hq/types";
 
-type Tab = "growth" | "business" | "empire" | "must" | "fable5" | "pipeline" | "inbound" | "approvals" | "money" | "sms" | "dnc" | "estates" | "stats" | "site" | "chats" | "hauls" | "posts" | "tiktok" | "bk";
+type Tab = "customers" | "growth" | "business" | "empire" | "must" | "fable5" | "pipeline" | "inbound" | "approvals" | "money" | "sms" | "dnc" | "estates" | "stats" | "site" | "chats" | "hauls" | "posts" | "tiktok" | "bk";
 
-const TABS: readonly Tab[] = ["business", "growth", "empire", "must", "fable5", "pipeline", "inbound", "approvals", "money", "sms", "dnc", "estates", "stats", "site", "chats", "hauls", "posts", "tiktok", "bk"];
+const TABS: readonly Tab[] = ["customers", "business", "growth", "empire", "must", "fable5", "pipeline", "inbound", "approvals", "money", "sms", "dnc", "estates", "stats", "site", "chats", "hauls", "posts", "tiktok", "bk"];
 
 function isTab(v: string | null): v is Tab {
   return v != null && (TABS as readonly string[]).includes(v);
@@ -85,6 +86,8 @@ function HqPageInner() {
     const phone = tab === "sms" ? searchParams.get("phone") : null;
     const qs = new URLSearchParams({ tab });
     if (phone) qs.set("phone", phone);
+    if (tab === "customers" && searchParams.get("customer")) qs.set("customer", searchParams.get("customer")!);
+    if (tab === "customers" && searchParams.get("q")) qs.set("q", searchParams.get("q")!);
     const nextUrl = `/hq?${qs.toString()}`;
     if (window.location.pathname + window.location.search !== nextUrl) window.history.replaceState(null, "", nextUrl);
   }, [tab, searchParams]);
@@ -602,6 +605,7 @@ function HqPageInner() {
           <div className="tab-strip">
             {/* Ops */}
             {tabPill("business", "Business")}
+            {tabPill("customers", "Customers")}
             {tabPill("growth", "↗ Growth", undefined, "tab-growth")}
             {tabPill("empire", "🗺️ Empire", undefined, "tab-empire")}
             {tabPill("must", "🎯 Must Complete", mustOpen.length, "tab-must")}
@@ -880,6 +884,8 @@ function HqPageInner() {
             <HqChannelScoreboard />
             <HqStats />
           </>
+        ) : tab === "customers" ? (
+          <HqCustomers />
         ) : tab === "site" ? (
           <HqSiteVisits />
         ) : tab === "chats" ? (

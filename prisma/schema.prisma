@@ -1019,6 +1019,8 @@ model JjPhoneClick {
 }
 
 model SiteView {
+  visitorId String?
+  eventKey String? @unique
   attribution Json?
   audience  String @default("unknown")
   sessionId String?
@@ -1040,9 +1042,13 @@ model SiteView {
   @@index([referrer, createdAt])
   @@index([ipHash, createdAt])
   @@index([country, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([visitorId, createdAt])
 }
 
 model SiteEvent {
+  visitorId String?
+  audience String @default("unknown")
   sessionId String?
   eventKey String? @unique
   id        String   @id @default(cuid())
@@ -1064,6 +1070,8 @@ model SiteEvent {
   @@index([event, createdAt])
   @@index([createdAt])
   @@index([ipHash, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([visitorId, createdAt])
 }
 
 model SnapRequest {
@@ -6412,4 +6420,109 @@ model ShopVideoCommission {
   updatedAt   DateTime     @updatedAt
 
   @@index([status, updatedAt])
+}
+
+/// Owner CRM, separate from subscriber prospect pipelines. Never merge by IP.
+model HqCustomer {
+  closedAt DateTime?
+  id String @id @default(cuid())
+  phone String? @unique
+  email String? @unique
+  name String?
+  notes String?
+  reportedSource String?
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  links HqCustomerLink[]
+  timeline HqCustomerEvent[]
+  threads HqPhoneThread[]
+}
+model HqCustomerLink {
+  id String @id @default(cuid())
+  customerId String
+  customer HqCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  kind String
+  sourceId String
+  confidence String
+  evidence String
+  snapshot Json?
+  createdAt DateTime @default(now())
+  @@unique([kind, sourceId])
+  @@index([customerId])
+}
+model HqCustomerEvent {
+  id String @id @default(cuid())
+  customerId String
+  customer HqCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  sourceKey String @unique
+  kind String
+  body String?
+  meta Json?
+  occurredAt DateTime
+  updatedAt DateTime @updatedAt
+  attachments HqCustomerAttachment[]
+  @@index([customerId, occurredAt])
+}
+model HqCustomerAttachment {
+  id String @id @default(cuid())
+  eventId String
+  event HqCustomerEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sourceKey String @unique
+  mime String
+  name String
+  // AES-256-GCM encrypted bytes; included in the existing encrypted DB backup.
+  encrypted Bytes
+  encryptedPreview Bytes?
+  size Int
+  createdAt DateTime @default(now())
+}
+model HqPhoneThread {
+  id String @id
+  phone String
+  name String?
+  customerId String?
+  customer HqCustomer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  // candidate | selected | ignored | deleted. Never auto-select new threads.
+  status String @default("candidate")
+  lastMessageAt DateTime
+  lastSyncedAt DateTime?
+  checkpoint String?
+  @@index([status, lastMessageAt])
+}
+model HqSyncState {
+  id String @id
+  lastAttemptAt DateTime?
+  lastSuccessAt DateTime?
+  error String?
+  meta Json?
+}
+model ContactReference {
+  code String @id
+  sessionId String
+  visitorId String?
+  offering String
+  attribution Json?
+  createdAt DateTime @default(now())
+  @@unique([sessionId, offering])
+}
+model VisitorSession {
+  id String @id
+  visitorId String?
+  firstTouch Json?
+  latestTouch Json?
+  landingPath String
+  userAgent String?
+  audience String @default("anonymous")
+  createdAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  @@index([visitorId, createdAt])
+}
+model SiteDailyTotal {
+  day String
+  site String
+  views Int
+  events Int
+  sessions Int
+  @@id([day, site])
 }

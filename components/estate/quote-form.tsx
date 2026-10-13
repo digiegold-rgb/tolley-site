@@ -1,4 +1,5 @@
 "use client";
+import { visitorSessionId } from "@/lib/lead-capture-client";
 
 import { HeardAbout } from "@/components/discovery/inquiry";
 import { browserAttribution } from "@/lib/discovery-browser";
@@ -48,6 +49,7 @@ export function EstateQuoteForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          sessionId: visitorSessionId(),
           attribution: browserAttribution(reported),
           subsite: "estate",
           action: "request_estate_consult",

@@ -357,7 +357,7 @@ export function HqInbound({ leads, counts, loading, busyId, onRefresh, onAdvance
   return (
     <div style={{ paddingTop: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-        <span style={{ fontSize: 13, fontWeight: 700 }}>Inbound leads</span>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>Inbound leads</span><a href="/hq?tab=customers">Customer history →</a>
         <select
           value={subsiteFilter}
           onChange={(e) => setSubsiteFilter(e.target.value)}

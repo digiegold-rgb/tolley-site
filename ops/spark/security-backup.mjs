@@ -26,12 +26,12 @@ try {
   'pg_dump','--format=custom','--no-owner','--no-acl','--file=/backup/database.dump']);
  await run('tar',['-czf',path.join(dir,'spark-config.tar.gz'),'-C','/home/jelly',
   '.cloudflared/config-research.yml','.config/systemd/user','.config/rclone/rclone.conf',
-  '.config/tolley-security/production.env']);
+  '.config/tolley-security/production.env', '.config/tolley-customer-sync']);
  const bytes=(await stat(path.join(dir,'database.dump'))).size;
  if(bytes<1000)throw new Error('Backup unexpectedly small');
  await writeFile(path.join(dir,'manifest.json'),JSON.stringify({createdAt:new Date().toISOString(),
   databaseBytes:bytes,format:'PostgreSQL custom dump',destination:'gcs-crypt:tolley-backups/'+stamp,
-  scope:'Production database and Spark service/tunnel/app configuration; generated media excluded'},null,2));
+  scope:'Production database and Spark service/tunnel/app configuration; encrypted customer photos and customer media key included; generated public video media excluded'},null,2));
  await run('rclone',['copy',dir,'gcs-crypt:tolley-backups/'+stamp,'--exclude','pg.env','--transfers','2']);
  await writeFile(path.join(state,'latest.json'),JSON.stringify({stamp,dir,bytes,uploadedAt:new Date().toISOString()}));
  console.log(JSON.stringify({backup:stamp,bytes,encryptedRemote:'gcs-crypt:tolley-backups/'+stamp}));

@@ -26,6 +26,7 @@ export function DiscoveryReport() {
     <label>Reporting period <select value={days} onChange={e => setDays(e.target.value)}>{[7, 30, 60, 90].map(d => <option key={d} value={d}>{d} days</option>)}</select></label>
     {error && <p role="alert">{error}</p>}
     {data && <>
+      <a href="/hq?tab=customers" className="underline">Customer history &amp; website journeys →</a>
       <p>{data.customers} original leads · ${(data.collectedCents / 100).toFixed(2)} collected · {data.clicks.phone} call clicks · {data.clicks.sms} text clicks</p>
       <p className="text-sm">Clicks do not prove a completed call. Customer reports, campaign tags, and browser referrals are separate evidence. Revenue uses its collection date; inquiry stages describe leads received during this period.</p>
       {data.truncated && <p role="alert">Result limit reached. Choose a shorter period; these totals are incomplete.</p>}

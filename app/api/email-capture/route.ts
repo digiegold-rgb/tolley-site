@@ -1,3 +1,5 @@
+import { recordLeadCustomer } from "@/lib/customer-history/store";
+import { normalizeAttribution } from "@/lib/discovery-attribution";
 import { NextResponse, after } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -18,7 +20,9 @@ export async function POST(request: Request) {
   const limited = await rateLimitByIp(request, "email-capture", 10, 3600);
   if (limited) return limited;
   try {
-    const { email: rawEmail, name, source, data } = await request.json() as {
+    const { email: rawEmail, name, source, data, sessionId, attribution } = await request.json() as {
+      sessionId?: string;
+      attribution?: unknown;
       email?: string;
       name?: string;
       source?: string;
@@ -60,6 +64,7 @@ export async function POST(request: Request) {
       },
     });
 
+      await recordLeadCustomer(tx, "email", { ...lead, attribution: normalizeAttribution(attribution) }, { sessionId });
       // Idempotent outbox keys also cover retries after a lost HTTP response.
       if (isNew) await enqueueLeadNotifications(tx, "email", lead.id, { source, email, name, data });
       return lead;

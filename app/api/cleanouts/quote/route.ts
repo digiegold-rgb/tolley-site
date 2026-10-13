@@ -1,3 +1,4 @@
+import { recordLeadCustomer } from "@/lib/customer-history/store";
 /**
  * POST /api/cleanouts/quote — public quote-request form on /cleanouts.
  *
@@ -50,7 +51,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const lead = await prisma.growthLead.create({
+  const lead = await prisma.$transaction(async tx => {
+  const lead = await tx.growthLead.create({
     data: {
       name: name || `Cleanout quote ${new Date().toISOString().slice(0, 10)}`,
       offer: "cleanout",
@@ -61,6 +63,10 @@ export async function POST(request: NextRequest) {
       address: address || null,
       notes: details || null,
     },
+  });
+
+  await recordLeadCustomer(tx, "growth", lead, { sessionId: body.sessionId });
+  return lead;
   });
 
   after(async () => {

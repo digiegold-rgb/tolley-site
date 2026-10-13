@@ -64,7 +64,7 @@ export function HqLeadDrawer({ lead, saving, onClose, onSave }: Props) {
       <div className="drawer">
         <div className="drawer-head">
           <div>
-            <h3>{lead.name}</h3>
+            <h3>{lead.name}</h3><a href={"/hq?tab=customers&q=" + encodeURIComponent(lead.phone?.replace(/\D/g, "").slice(-10) || lead.email || lead.name)}>Customer history →</a>
             <div style={{ display: "flex", gap: 5, marginTop: 4, flexWrap: "wrap" }}>
               <span className={`pill pill-offer-${lead.offer}`}>{lead.offer}</span>
               {lead.score !== null && <span className="pill pill-score">score {lead.score}</span>}

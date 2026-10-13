@@ -1,0 +1,10 @@
+[Unit]
+Description=Selected business phone history sync to Tolley HQ
+After=network-online.target
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/tolley-customer-sync/env
+ExecStart=%h/.local/share/tolley-customer-sync/venv/bin/python %h/.local/share/tolley-customer-sync/app/sync.py
+TimeoutStartSec=900
+UMask=0077
+NoNewPrivileges=yes

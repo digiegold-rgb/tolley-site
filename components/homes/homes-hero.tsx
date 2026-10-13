@@ -16,15 +16,14 @@ export function HomesHero() {
           Your KC Homes LLC
         </p>
 
-        <h1 className="homes-neon-text mt-5 text-5xl font-extrabold tracking-tight text-sky-300 sm:text-6xl lg:text-7xl">
-          Find Your Next Home
+        <h1 className="homes-neon-text mt-5 text-4xl font-extrabold tracking-tight text-sky-300 sm:text-6xl lg:text-6xl">
+          Sell your Kansas City home
           <br />
-          <span className="text-white">in Kansas City.</span>
+          <span className="text-white">with help getting it ready.</span>
         </h1>
 
         <p className="mt-5 max-w-xl text-lg leading-relaxed font-light text-neutral-300">
-          Whether you&apos;re <strong className="font-semibold text-white">buying, selling, or investing</strong> —
-          get expert guidance from a local agent who knows the KC metro inside and out.
+          Work with Jared Tolley at United Real Estate Kansas City, from pricing and preparation to marketing, negotiations and closing. Serving home sellers across the Kansas City metro in Missouri and Kansas.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3 text-xs font-bold tracking-widest text-neutral-400 uppercase">
@@ -43,13 +42,13 @@ export function HomesHero() {
 
         <div className="mt-8 flex flex-wrap items-center gap-4">
           <Link
-            href={HM_HOME_SEARCH_URL}
+            href="#sell"
             className="homes-glow inline-flex items-center gap-3 rounded-lg bg-sky-500 px-8 py-3.5 text-lg font-extrabold tracking-wide text-white uppercase transition-all hover:-translate-y-0.5"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
-            Find Me a Home
+            Talk about selling
           </Link>
           <a
             href={`tel:${HM_CONTACT_PHONE}`}
@@ -60,7 +59,9 @@ export function HomesHero() {
             </svg>
             Call Jared
           </a>
+          <a href="sms:+19132833826" className="text-sky-200 underline">Text Jared</a>
         </div>
+        <p className="mt-5 text-sm text-slate-400">Buying instead? <Link href={HM_HOME_SEARCH_URL} className="underline">Tell Jared what you’re looking for</Link>.</p>
       </div>
 
       {/* Bottom edge — angular cut */}

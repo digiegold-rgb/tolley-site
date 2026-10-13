@@ -1,4 +1,5 @@
 "use client";
+import { visitorSessionId } from "@/lib/lead-capture-client";
 
 import { HeardAbout } from "@/components/discovery/inquiry";
 import { browserAttribution } from "@/lib/discovery-browser";
@@ -27,7 +28,7 @@ export function CleanoutQuoteForm() {
       const res = await fetch("/api/cleanouts/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone, address, details, attribution: browserAttribution(reported) }),
+        body: JSON.stringify({ sessionId: visitorSessionId(), name, phone, address, details, attribution: browserAttribution(reported) }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {

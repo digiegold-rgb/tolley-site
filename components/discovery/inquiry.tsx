@@ -1,4 +1,5 @@
 "use client";
+import { visitorSessionId } from "@/lib/lead-capture-client";
 import { useId, useState } from "react";
 import { browserAttribution } from "@/lib/discovery-browser";
 import { trackEvent } from "@/components/analytics/site-tracker";
@@ -18,7 +19,7 @@ export function DiscoveryInquiry({ offering }: { offering: string }) {
     const data = new FormData(e.currentTarget);
     setState("sending");
     try {
-      const res = await fetch("/api/discovery/inquiry", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offering, name: data.get("name"), contact: data.get("contact"), details: data.get("details"), attribution: browserAttribution(reported) }) });
+      const res = await fetch("/api/discovery/inquiry", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: visitorSessionId(), offering, name: data.get("name"), contact: data.get("contact"), details: data.get("details"), attribution: browserAttribution(reported) }) });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "Unable to send your inquiry.");
       setState("sent"); setMessage("Your inquiry has been received. For urgent requests, use the contact number above.");

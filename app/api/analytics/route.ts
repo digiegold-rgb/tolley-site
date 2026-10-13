@@ -1,3 +1,4 @@
+import { safeId } from "@/lib/customer-history/core";
 import { normalizeAttribution } from "@/lib/discovery-attribution";
 import { NextRequest, NextResponse } from "next/server";
 import { geolocation } from "@vercel/functions";
@@ -75,7 +76,7 @@ function isSystemEvent(event: string | null): boolean {
 
 // Hard cap: at most N views or events per IP per 60s. Backed by a single
 // COUNT query — cheap on Neon pooled, caps runaway loops and curl spam.
-const RATE_LIMIT_COUNT = 30;
+const RATE_LIMIT_COUNT = 120;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 
 async function isRateLimited(ip: string | null): Promise<boolean> {
@@ -121,11 +122,17 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { type, site, path, event, label, referrer, meta } = body;
+    const { type, event, meta } = body;
+    const site = typeof body.site === 'string' ? body.site.slice(0, 80) : '';
+    const path = typeof body.path === 'string' && body.path.startsWith('/') ? body.path.split(/[?#]/)[0].slice(0, 300) : '';
+    const label = typeof body.label === 'string' ? body.label.slice(0, 120) : null;
+    const referrer = typeof body.referrer === 'string' ? body.referrer.slice(0, 120) : null;
     if (event === "payment_confirmed") {
       return NextResponse.json({ error: "Reserved event" }, { status: 400, headers: corsHeaders(origin) });
     }
     const sessionId = typeof body.sessionId === "string" && /^[a-f0-9-]{36}$/i.test(body.sessionId) ? body.sessionId : null;
+    const visitorId = safeId(body.visitorId);
+    const eventKey = safeId(body.eventKey);
     const campaign = Object.fromEntries(["utm_source", "utm_medium", "utm_campaign", "ref"].flatMap(key =>
       typeof body.campaign?.[key] === "string" ? [[key, body.campaign[key].slice(0, 120)]] : []));
 
@@ -163,9 +170,19 @@ export async function POST(request: NextRequest) {
     const region = geo.countryRegion || null;
     const city = geo.city ? decodeURIComponent(geo.city) : null;
 
+      const hasSession = request.cookies.getAll().some(c => /authjs.session-token/.test(c.name));
+      const session = hasSession ? await auth() : null;
+      const operator = request.cookies.has("wd_admin") && (await validateWdAdmin()).authed;
+      const adminEmails = [process.env.ADMIN_ALLOWLIST_EMAILS, process.env.VATER_ADMIN_ALLOWLIST_EMAILS].join(",").split(",").map(e => e.trim().toLowerCase());
+      const audience = operator || session?.user?.email && adminEmails.includes(session.user.email.toLowerCase()) ? "operator" : session?.user?.id ? "customer" : "anonymous";
+    if (sessionId) {
+      await prisma.visitorSession.upsert({ where: { id: sessionId }, create: { id: sessionId, visitorId, firstTouch: normalizeAttribution(body.firstTouch || body.attribution), latestTouch: normalizeAttribution(body.latestTouch || body.attribution), landingPath: normalizeAttribution(body.attribution)?.landingPath || path, userAgent, audience }, update: { lastSeenAt: new Date(), latestTouch: normalizeAttribution(body.latestTouch || body.attribution), audience } });
+    }
     if (type === "event" && event) {
-      await prisma.siteEvent.create({
+      await prisma.siteEvent.createMany({
+        skipDuplicates: true,
         data: {
+          visitorId, eventKey, audience,
           site,
           path,
           event,
@@ -182,13 +199,10 @@ export async function POST(request: NextRequest) {
         },
       });
     } else {
-      const hasSession = request.cookies.getAll().some(c => /authjs.session-token/.test(c.name));
-      const session = hasSession ? await auth() : null;
-      const operator = request.cookies.has("wd_admin") && (await validateWdAdmin()).authed;
-      const adminEmails = [process.env.ADMIN_ALLOWLIST_EMAILS, process.env.VATER_ADMIN_ALLOWLIST_EMAILS].join(",").split(",").map(e => e.trim().toLowerCase());
-      const audience = operator || session?.user?.email && adminEmails.includes(session.user.email.toLowerCase()) ? "operator" : session?.user?.id ? "customer" : "anonymous";
-      await prisma.siteView.create({
+      await prisma.siteView.createMany({
+        skipDuplicates: true,
         data: {
+          visitorId, eventKey,
           audience, sessionId, campaign,
           attribution: normalizeAttribution(body.attribution),
           site,
