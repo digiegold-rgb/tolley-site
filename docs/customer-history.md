@@ -53,3 +53,9 @@ Use only the disposable database at `127.0.0.1:55460/tolley_customers` for mutat
 - `DISCOVERY_BASE_URL=http://localhost:3061 tsx scripts/discovery-health.ts`
 
 Browser coverage uses real test-account credentials and MFA: access denial, inquiry/outbox idempotence, separate source signals, reference conflicts, selected-thread permissions, GUID edits, encrypted photos/previews, owner memory, responsive rendering, server-rendered facts, unsubscribe and deletion. Retention checks protect saved evidence, aggregate idempotence and relationship expiry. The migration adds only tables, nullable columns, indexes and the event audience default.
+
+## October 13 release validation
+
+The isolated migration matches the target schema exactly. Fourteen customer/discovery tests, three decoder tests, retention checks and the full production-mode browser workflow pass. The optimized build generated all 581 pages; 26 public discovery health checks passed. Desktop/mobile screenshots were inspected. The browser suite explicitly tests a failed seller-form save, concurrent reference creation, encrypted image previews, reference conflicts, real owner MFA, stopping sync and deletion preventing reimport.
+
+The initial production-mode test was started before build tracing finished and returned empty responses. It was discarded; the fresh-server tests above ran after the build exited successfully. The local build used the previously tested IPv4 font-download setting. Existing unrelated build warnings and a missing optional Fable key in the isolated HQ test environment did not affect these checks.
