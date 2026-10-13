@@ -4,7 +4,7 @@ After=network-online.target
 [Service]
 Type=oneshot
 EnvironmentFile=%h/.config/tolley-customer-sync/production.env
-ExecStart=/usr/bin/node %h/tolley-customer-history/ops/customer-history/backup.mjs
+ExecStart=/usr/bin/node %h/.local/share/tolley-customer-sync/app/backup.mjs
 TimeoutStartSec=1800
 UMask=0077
 NoNewPrivileges=yes

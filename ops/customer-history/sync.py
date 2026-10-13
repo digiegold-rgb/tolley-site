@@ -32,6 +32,16 @@ def decode(blob):
         child=item.value if isinstance(item,TypedValue) else item
         if isinstance(child,NSString): return child.value
     raise ValueError('No string in message archive')
+def post_events(thread_id,rows):
+    result=[];batch=[];size=0
+    for row in rows:
+        if isinstance(row.get('body'),str): row['body']=row['body'][:50000]
+        length=len(json.dumps(row).encode())
+        if batch and (size+length>1400000 or len(batch)>=100):
+            result.extend(api('/api/hq/customer-sync',{'type':'events','threadId':thread_id,'events':batch})['saved']);batch=[];size=0
+        batch.append(row);size+=length
+    if batch: result.extend(api('/api/hq/customer-sync',{'type':'events','threadId':thread_id,'events':batch})['saved'])
+    return {'saved':result}
 def run():
     cfg=api('/api/hq/customer-sync'); candidates=json.loads(mac({'mode':'candidates'}))
     api('/api/hq/customer-sync',{'type':'candidates',**candidates})
@@ -52,7 +62,7 @@ def run():
                     try: e['body']=decode(archive)
                     except Exception: e['decodeError']=True;counts['decodeErrors']+=1
                 attachments[e['guid']]=e.pop('attachments',[])
-            result=api('/api/hq/customer-sync',{'type':'events','threadId':thread['id'],'events':rows})
+            result=post_events(thread['id'],rows)
             for event in result['saved']:
                 for a in attachments.get(event['sourceKey'],[]):
                     source='apple:'+thread['id']+':'+a['guid']
