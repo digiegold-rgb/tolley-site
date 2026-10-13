@@ -69,6 +69,10 @@ export const HM_VALUE_PROPS = [
 
 /** Public FAQ — single source for /homes HTML, FAQPage JSON-LD, and llms-full.txt. */
 export const HOMES_FAQ: { q: string; a: string }[] = [
+  { q: "Who can help me sell a home in Kansas City and get it ready to list?", a: "Jared Tolley with Your KC Homes LLC at United Real Estate Kansas City helps sellers plan pricing, prepare the property, market the listing, negotiate offers and work toward closing. Cleanout or estate-sale help can be separately arranged when needed." },
+  { q: "Can Jared help sell an inherited home or a house full of belongings?", a: "Yes. Start with a conversation about the property, your role and your timeline. Jared can help coordinate a home-sale plan with Tolley Cleanouts or Tolley Estate Sales. Confirm your authority to sell with the appropriate professional before listing." },
+  { q: "Are cleanouts included in the real estate commission?", a: "Cleanout, estate-sale and real estate services are separately scoped. Jared will discuss the work and applicable fees before you agree to proceed." },
+  { q: "Can I talk to Jared before I know my selling date?", a: "Yes. Request a free seller consultation to discuss the property, preparation and timing, including downsizing or relocation. You do not need a fixed listing date to start the conversation." },
   { q: "What areas does Jared Tolley serve in Kansas City?", a: "Jared serves the full Kansas City metro including Independence, Lee's Summit, Blue Springs, Raytown, Grandview, and both Kansas City MO and KS." },
   { q: "What real estate services does Your KC Homes LLC offer?", a: "Buyer representation, seller representation, investment property analysis, and relocation services \u2014 backed by AI-powered market tools." },
   { q: "Does Your KC Homes LLC help with investment properties?", a: "Yes. Jared specializes in analyzing rental properties, fix-and-flip opportunities, and HELOC strategies for the KC metro market." },
@@ -76,3 +80,5 @@ export const HOMES_FAQ: { q: string; a: string }[] = [
   { q: "Can you help me empty or sell the contents of a house before listing it?", a: "Yes. Tolley Cleanouts clears and broom-cleans the property, and Tolley Estate Sales runs a full-service sale first if the contents are worth selling. One call covers cleanout, estate sale, and listing." },
   { q: "What makes Your KC Homes LLC different from other KC real estate agents?", a: "AI-powered tools for market analysis, property valuation, and deal sourcing \u2014 plus local Independence MO expertise and a full suite of rental and service businesses to help with your move." },
 ];
+
+export const HM_SELLER_DESCRIPTION = "Sell your Kansas City home with Jared Tolley, Your KC Homes LLC at United Real Estate Kansas City. Full-service seller representation across the KC metro in Missouri and Kansas, with separately quoted cleanout and estate-sale help when needed. Free consultation: call or text 913-283-3826.";

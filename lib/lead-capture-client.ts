@@ -3,7 +3,7 @@ export async function submitLead(url: string, payload: Record<string, unknown>) 
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, sessionId: visitorSessionId() }),
   });
   const data = await response.json().catch(() => null);
   if (!response.ok || (!data?.id && !data?.receiptToken)) {

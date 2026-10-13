@@ -140,12 +140,12 @@ export async function GET(req: NextRequest) {
   // ── AI assistant referrals ──
   // ChatGPT appends utm_source=chatgpt.com to links it cites; other assistants
   // arrive via document.referrer (attribution.browserSource). Either counts.
-  // These are the visits that turned into phone calls in Sept 2026.
-  const AI_ENGINES = ["chatgpt", "perplexity", "claude", "gemini", "copilot", "bing"] as const;
+  // These count pageviews carrying an assistant signal, not customers or calls.
+  const AI_ENGINES = ["chatgpt", "perplexity", "claude", "gemini", "copilot"] as const;
   const aiEngine = (v: { referrer: string | null; attribution: unknown }): string | null => {
     const a = v.attribution && typeof v.attribution === "object" ? (v.attribution as { browserSource?: string; campaignSource?: string }) : null;
     const candidates = [v.referrer ?? "", a?.campaignSource ?? "", a?.browserSource ?? ""].map(x => x.toLowerCase());
-    for (const e of AI_ENGINES) if (candidates.some(c => c.includes(e) || (e === "chatgpt" && c.includes("openai")))) return e;
+    for (const e of AI_ENGINES) if (candidates.some(c => c === e || c === e + ".com" || (e === "chatgpt" && ["chat.openai.com", "chatgpt.com"].includes(c)))) return e;
     return null;
   };
   const aiBySite = new Map<string, number>();

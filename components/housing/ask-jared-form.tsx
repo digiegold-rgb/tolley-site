@@ -1,4 +1,5 @@
 "use client";
+import { visitorSessionId } from "@/lib/lead-capture-client";
 
 import { HeardAbout } from "@/components/discovery/inquiry";
 import { browserAttribution } from "@/lib/discovery-browser";
@@ -49,6 +50,7 @@ export function AskJaredForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          sessionId: visitorSessionId(),
           attribution: browserAttribution(reported),
           subsite: "housing",
           action: "ask_about_my_home",

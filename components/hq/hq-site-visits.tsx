@@ -328,9 +328,9 @@ function SiteVisitsContent() {
           />
           {ai && (
             <StatTile
-              label="AI assistant referrals"
+              label="AI-attributed pageviews"
               value={ai.total.toLocaleString()}
-              sub={dAi ? `${dAi.text} vs prior ${data.days}d${aiEngines ? ` · ${aiEngines}` : ""}` : aiEngines || "ChatGPT, Perplexity, Claude, Gemini, Copilot, Bing"}
+              sub={dAi ? `${dAi.text} vs prior ${data.days}d${aiEngines ? ` · ${aiEngines}` : ""}` : aiEngines || "ChatGPT, Perplexity, Claude, Gemini, Copilot"}
               subColor={dAi?.color}
             />
           )}
@@ -349,6 +349,7 @@ function SiteVisitsContent() {
         <DailyBars daily={data.daily} />
       </div>
 
+      <a href="/hq?tab=customers" className="underline">Customer history &amp; website journeys →</a>
       <div className="panel">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18 }}>
           <RankTable
@@ -364,8 +365,8 @@ function SiteVisitsContent() {
             />
             {ai && ai.bySite.length > 0 && (
               <RankTable
-                title="AI referrals by page"
-                cols={["Site", "Visits"]}
+                title="AI-attributed pageviews"
+                cols={["Site", "Pageviews"]}
                 rows={ai.bySite.map((s) => [s.site, s.views])}
               />
             )}

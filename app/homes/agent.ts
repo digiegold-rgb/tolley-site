@@ -1,9 +1,10 @@
+import { HM_SELLER_DESCRIPTION } from "@/lib/homes";
 import type { SubsiteManifest } from "@/lib/agent-manifest";
 
 export const manifest: SubsiteManifest = {
   name: "homes",
-  title: "Your KC Homes — Real Estate",
-  purpose: "Buy, sell, or invest in Kansas City real estate with Your KC Homes LLC — local agent, MLS access, neighborhood market reports, full service.",
+  title: "Sell Your Kansas City Home — Your KC Homes",
+  purpose: HM_SELLER_DESCRIPTION,
   url: "/homes",
   schemaType: "Service",
   jsonEndpoints: [],
@@ -23,6 +24,8 @@ export const manifest: SubsiteManifest = {
         intent: { type: "enum", required: true, enum: ["buyer", "seller", "investor", "renter"] },
         zip: { type: "zip", required: false, description: "Target ZIP" },
         timeline: { type: "enum", required: false, enum: ["asap", "30_days", "90_days", "exploring"] },
+        address: { type: "string", required: false, description: "Property address or city" },
+        situation: { type: "string", required: false },
         notes: { type: "string", required: false }
       }
     }

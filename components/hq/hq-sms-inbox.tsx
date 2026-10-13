@@ -242,6 +242,7 @@ export function HqSmsInbox({ onCounts }: { onCounts?: (needsSend: number) => voi
     <div className="sms-inbox">
       <div className={`sms-list${mobileView === "thread" ? " sms-hide-mobile" : ""}`}>
         <div className="sms-list-head">
+          <a href={"/hq?tab=customers&q=" + encodeURIComponent(selectedKey || "")}>iPhone conversations &amp; customer history →</a>
           <div className="sms-list-head-row">
             <div>
               <div className="sms-title">SMS — 913-600-7508</div>

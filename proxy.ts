@@ -1,3 +1,4 @@
+import { captureAttribution } from "@/lib/discovery-attribution";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
@@ -188,11 +189,17 @@ export async function proxy(request: NextRequest) {
     headers.set("x-request-id", crypto.randomUUID());
   }
 
-  return NextResponse.next({
-    request: {
-      headers,
-    },
-  });
+  const response = NextResponse.next({ request: { headers } });
+  // Preserve only approved landing facts from real document requests. No DB work
+  // in proxy, no tracking of private pages, assets, bots or speculative prefetch.
+  const publicLanding = /^\/(?:$|homes|cleanouts|estate|services|start|about|wd|shop|housing)(?:\/|$)/.test(pathname);
+  if (publicLanding && request.method === "GET" && request.headers.get("accept")?.includes("text/html") && !request.headers.has("next-router-prefetch") && !request.headers.has("rsc") && !/bot|crawler|spider|preview/i.test(ua || "") && !isAuthenticated) {
+    const attribution = captureAttribution(request.url, request.headers.get("referer") || "");
+    if (!request.cookies.has("tolley_entry") || attribution.campaignSource || (attribution.referrerHost && attribution.browserSource !== "internal")) {
+      response.cookies.set("tolley_entry", JSON.stringify({ at: Date.now(), attribution }), { path: "/", maxAge: 1800, sameSite: "lax", secure: request.nextUrl.protocol === "https:" });
+    }
+  }
+  return response;
 }
 
 export const config = {

@@ -1,8 +1,9 @@
 "use client";
+import { journeyCapture } from "@/lib/customer-history/browser";
 import { browserAttribution } from "@/lib/discovery-browser";
 import { attributionSource } from "@/lib/discovery-attribution";
 
-import { visitorSessionId } from "@/lib/lead-capture-client";
+
 import { useEffect, useCallback } from "react";
 
 function getReferrer() { return attributionSource(browserAttribution()); }
@@ -20,7 +21,8 @@ export function trackEvent(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       type: "event",
-      sessionId: visitorSessionId(),
+      ...journeyCapture(),
+        eventKey: crypto.randomUUID(),
       site,
       path: typeof window !== "undefined" ? window.location.pathname : "/",
       event,

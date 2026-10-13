@@ -10,7 +10,7 @@ import { PT_PRICE_DAY } from "./picnic-table";
 import { TC_FAQ } from "./cleanouts";
 import { ES_FAQ } from "./estate";
 import { WD_FAQ } from "./wd";
-import { HOMES_FAQ } from "./homes";
+import { HOMES_FAQ, HM_SELLER_DESCRIPTION } from "./homes";
 import { HELP_FAQ } from "./vater/help-content";
 import { LISTING_FAQ } from "./vater/listing-faq";
 
@@ -30,7 +30,7 @@ const corrections: Record<string, Partial<SubsiteManifest>> = {
   // Title is the exact query-shaped title that was live when ChatGPT cited the page (2026-09-24). Keep it.
   cleanouts: { skipJsonLd: false, title: "Tolley Cleanouts — Estate & Rental Cleanouts in Kansas City", purpose: "Estate, rental, garage, and storage-unit cleanouts in the Kansas City metro. One call: we clear it, broom-clean it, haul everything, and resale value comes off your bill. Free quotes: call/text 913-283-3826.", faq: TC_FAQ },
   estate: { purpose: "Full-service estate sales in Independence and the Kansas City metro. Free walkthrough, zero upfront cost, 30% all-inclusive commission, no minimum sale size, fast settlement. Call/text 913-283-3826.", faq: ES_FAQ.map(f => ({ q: f.q, a: f.a })) },
-  homes: { title: "Your KC Homes — Real Estate Agent in Kansas City & Independence, MO", purpose: "Buy, sell, or invest in Kansas City real estate with Jared Tolley, Your KC Homes LLC (United Real Estate Kansas City). Buyer and seller representation, investment analysis, MLS access. Free consult: call/text 913-283-3826.", faq: HOMES_FAQ },
+  homes: { title: "Sell Your Kansas City Home | Jared Tolley — Your KC Homes", purpose: HM_SELLER_DESCRIPTION, faq: HOMES_FAQ },
   animate: { skipJsonLd: false, purpose: "Jelly Studio turns a script into a narrated video with generated scenes and captions. Pay per render, no subscription: a typical long-form video costs $1–7 all in. Public beta with prepaid credits; review the estimate before rendering.", pricing: [], faq: HELP_FAQ.slice(0, 6).map(f => ({ q: f.q, a: f.a })) },
   wd: { title: "Washer & Dryer Rental in Kansas City — $42/mo, Free Delivery", purpose: `Washer and dryer rental in the Kansas City metro: $${WD_PRICE_WASHER}/month for a washer or $${WD_PRICE_BUNDLE}/month for a washer and dryer. Free delivery, install, and repairs; no credit check, no contract. Call/text 913-283-3826.`, faq: WD_FAQ, pricing: [price(WD_PRICE_WASHER, "monthly", "Washer"), price(WD_PRICE_BUNDLE, "monthly", "Washer and dryer")] },
   generator: { purpose: `${GEN_MODEL} tri-fuel generator rental in Kansas City. 7,500W running power; gasoline, propane, or natural gas. From $${GEN_PRICE_DAY}/day.`, pricing: [price(GEN_PRICE_DAY, "per day"), price(GEN_PRICE_WEEK, "per week"), price(GEN_PRICE_MONTH, "monthly")] },

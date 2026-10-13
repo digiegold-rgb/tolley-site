@@ -7,10 +7,16 @@ let documentUrl = "";
 export function browserAttribution(reportedSource?: string): Attribution | undefined {
   if (typeof window === "undefined") return undefined;
   if (!memory || documentUrl !== window.location.href) {
-    const current = captureAttribution(window.location.href, document.referrer);
+    const initialDocument = !documentUrl;
+    let current = captureAttribution(window.location.href, document.referrer);
+    try {
+      const cookie = document.cookie.split('; ').find(c => c.startsWith('tolley_entry='));
+      const entry = cookie ? JSON.parse(decodeURIComponent(cookie.slice('tolley_entry='.length))) : null;
+      if (entry && Date.now() - entry.at < 1800000 && !current.campaignSource && (!current.referrerHost || current.browserSource === 'internal')) current = normalizeAttribution(entry.attribution) || current;
+    } catch { /* malformed or disabled cookies */ }
     documentUrl = window.location.href;
     try { memory = normalizeAttribution(JSON.parse(sessionStorage.getItem(KEY) || "null")) || memory; } catch { /* restricted storage */ }
-    if (!memory || current.campaignSource || current.shareSource) memory = current;
+    if (!memory || current.campaignSource || current.shareSource || (initialDocument && current.referrerHost && current.browserSource !== "internal")) memory = current;
     try { sessionStorage.setItem(KEY, JSON.stringify(memory)); } catch { /* retain in memory */ }
   }
   return { ...memory!, ...(reportedSource?.trim() ? { reportedSource: reportedSource.trim().slice(0, 300) } : {}) };

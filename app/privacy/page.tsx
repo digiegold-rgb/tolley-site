@@ -4,7 +4,7 @@ import { LegalPageShell } from "@/components/legal/legal-page-shell";
 import {
   LEGAL_BRAND,
   LEGAL_EFFECTIVE_DATE,
-  LEGAL_LAST_UPDATED,
+
   LEGAL_SUPPORT_EMAIL,
 } from "@/lib/legal";
 
@@ -63,13 +63,14 @@ const PRIVACY_SECTIONS: PrivacySection[] = [
     heading: "5. Cookies and Analytics",
     items: [
       "Cookies and similar technologies may be used to keep you signed in, remember preferences, understand usage, and improve performance.",
-      "You can manage cookies in your browser settings.",
+      "You can manage cookies in your browser settings. Anonymous browser identifiers expire after 12 months; Global Privacy Control and Do Not Track disable the persistent browser identifier.",
+      "We record service-page interactions, referral hosts, approved campaign tags, approximate location and device/browser details to understand inquiries. Text links may include an editable reference that connects your message to a website visit. We do not record form keystrokes or arbitrary URL query strings.",
     ],
   },
   {
     heading: "6. Data Retention",
     items: [
-      "Personal information is retained only as long as reasonably necessary to provide service, maintain records, resolve disputes, enforce agreements, and satisfy legal obligations.",
+      "Anonymous website interaction records are retained for up to 12 months, then reduced to daily totals. Evidence saved with a customer inquiry, selected business conversations and customer-supplied photos are retained for the customer relationship and up to one year afterward, unless legal, financial or dispute requirements require longer retention. Ask us to correct or delete customer information using the contact below.",
     ],
   },
   {
@@ -139,7 +140,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           <span className="font-semibold text-white/94">Last Updated: </span>
-          {LEGAL_LAST_UPDATED}
+          {"October 13, 2026"}
         </p>
         <p>
           <span className="font-semibold text-white/94">Support Email: </span>

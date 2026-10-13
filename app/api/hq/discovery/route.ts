@@ -1,3 +1,4 @@
+import { recordLeadCustomer } from "@/lib/customer-history/store";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
@@ -44,13 +45,15 @@ async function resolveLead(id: string) {
   if (!id.startsWith("action:")) return prisma.growthLead.findUnique({ where: { id } });
   const action = await prisma.leadAction.findUnique({ where: { id: id.slice(7) } });
   if (!action) return null;
-  return prisma.growthLead.upsert({ where: { id: `discovery-action:${action.id}` }, update: {}, create: {
+  const lead = await prisma.growthLead.upsert({ where: { id: `discovery-action:${action.id}` }, update: {}, create: {
     id: `discovery-action:${action.id}`, name: action.name || action.email || "Inquiry",
     offer: action.subsite === "realestate" ? "realestateanimated" : action.subsite,
     source: "discovery-action", stage: "replied", phone: action.phone, email: action.email,
     attribution: action.attribution ?? Prisma.DbNull, createdAt: action.createdAt,
     notes: `Original inquiry: ${action.id} (${action.action}).`,
   } });
+  await prisma.$transaction(tx => recordLeadCustomer(tx, "growth", lead));
+  return lead;
 }
 export async function POST(req: NextRequest) {
   if (!(await validateWdAdmin()).authed) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -62,7 +65,10 @@ export async function POST(req: NextRequest) {
     const parent = b.referralRootId ? await resolveLead(b.referralRootId) : null;
     if (b.referralRootId && !parent) return NextResponse.json({ error: "Original lead not found" }, { status: 400 });
     const attribution = normalizeAttribution({ reportedSource: b.reportedSource, landingPath: "/" });
-    const lead = await prisma.growthLead.create({ data: { name: b.name, offer: b.offer, source: "manual-discovery", stage: "replied", notes: b.notes || null, referralRootId: parent ? parent.referralRootId || parent.id : null, attribution, ...(b.contact?.includes("@") ? { email: b.contact } : { phone: b.contact || null }) } });
+    const lead = await prisma.$transaction(async tx => { const lead = await tx.growthLead.create({ data: { name: b.name, offer: b.offer, source: "manual-discovery", stage: "replied", notes: b.notes || null, referralRootId: parent ? parent.referralRootId || parent.id : null, attribution, ...(b.contact?.includes("@") ? { email: b.contact } : { phone: b.contact || null }) } });
+    await recordLeadCustomer(tx, "growth", lead);
+    if (parent) { const original = await tx.hqCustomerLink.findUnique({ where: { kind_sourceId: { kind: "growth", sourceId: parent.id } } }); if (original) await tx.hqCustomerLink.upsert({ where: { kind_sourceId: { kind: "growth", sourceId: lead.id } }, create: { customerId: original.customerId, kind: "growth", sourceId: lead.id, confidence: "confirmed", evidence: "Owner linked related opportunity" }, update: {} }); }
+    return lead; });
     return NextResponse.json({ ok: true, leadId: lead.id }, { headers });
   }
   const lead = await resolveLead(b.leadId);
@@ -71,7 +77,11 @@ export async function POST(req: NextRequest) {
     await prisma.growthLead.update({ where: { id: lead.id }, data: { discoveryStage: b.stage } });
   } else {
     if (new Date(b.collectedAt).getTime() > Date.now()) return NextResponse.json({ error: "Only record money already collected." }, { status: 400 });
-    try { await prisma.discoveryRevenue.create({ data: { receiptKey: b.receiptKey, leadId: lead.id, amountCents: b.amountCents, collectedAt: new Date(b.collectedAt) } }); }
+    try { await prisma.$transaction(async tx => {
+      await tx.discoveryRevenue.create({ data: { receiptKey: b.receiptKey, leadId: lead.id, amountCents: b.amountCents, collectedAt: new Date(b.collectedAt) } });
+      const link = await tx.hqCustomerLink.findUnique({ where: { kind_sourceId: { kind: "growth", sourceId: lead.id } } });
+      if (link) await tx.hqCustomerEvent.create({ data: { customerId: link.customerId, sourceKey: "payment:" + b.receiptKey, kind: "payment", body: `Collected $${(b.amountCents / 100).toFixed(2)} for ${lead.offer}`, occurredAt: new Date(b.collectedAt), meta: { leadId: lead.id, receiptKey: b.receiptKey, amountCents: b.amountCents } } });
+    }); }
     catch (e) { if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return NextResponse.json({ error: "This receipt is already recorded; no revenue was added." }, { status: 409 }); throw e; }
   }
   return NextResponse.json({ ok: true }, { headers });

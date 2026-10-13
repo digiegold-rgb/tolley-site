@@ -1,3 +1,4 @@
+import { recordLeadCustomer } from "@/lib/customer-history/store";
 import { normalizeAttribution } from "@/lib/discovery-attribution";
 import { NextResponse, after } from "next/server";
 import { Prisma } from "@prisma/client";
@@ -34,6 +35,7 @@ export async function POST(req: Request) {
 
   let body: {
     requestId?: string;
+    sessionId?: string;
     attribution?: unknown;
     subsite?: string;
     action?: string;
@@ -97,6 +99,7 @@ export async function POST(req: Request) {
     const lead = requestKey
       ? await tx.leadAction.upsert({ where: { requestKey }, create, update: {} })
       : await tx.leadAction.create({ data: create });
+    await recordLeadCustomer(tx, "action", lead, { sessionId: body.sessionId || (body.attribution as { sessionId?: unknown } | undefined)?.sessionId });
     await enqueueLeadNotifications(tx, "action", lead.id, {
       subsite, action, ...normalizedContact, fields, receiptToken: lead.receiptToken,
     });

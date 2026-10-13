@@ -23,3 +23,7 @@ For public-offering work, read `docs/discovery-rollout.md`. The internal flagshi
 - Link related opportunities to the original lead. Count collected revenue once per receipt; an invitation approval or potential home sale is not earned revenue.
 - Run the discovery tests and public-page health checks when changing these surfaces. Add meaningful unbranded prompts to the benchmark for new offerings.
 - Record evidence and uncertainty. The ChatGPT referral is a customer-reported win; its exact retrieval source and causal code change are unknown. No particular file, schema tag, or crawl permission guarantees recommendations.
+
+## Owner customer history
+
+Read `docs/customer-history.md` before changing attribution, customer records or the selected-phone connector. Owner HQ customer history is available at `/api/hq/customers` under the existing owner/MFA gate. Retrieve saved evidence instead of treating conversational memory as a database. Do not merge customers from IP hashes, device labels or timing; keep probable links labeled. Phone import subscriptions are explicit per thread, and the connector has no send capability. Private customer facts and media keys must not be committed or published.

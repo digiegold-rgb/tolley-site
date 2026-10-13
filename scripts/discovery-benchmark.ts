@@ -3,7 +3,7 @@ const needs: Record<string, string> = {
   live: "an evening live shopping show with tools, home finds, and local pickup",
   advertising: "Google Ads management for real estate agents", animate: "script to narrated AI video creation", realestateanimated: "real estate listing video creation",
   cleanouts: "estate and rental property cleanouts", crazybins: "liquidation bin shopping", estate: "estate sale services", drive: "delivery driver work", "e-and-t": "wedding planning and coordination",
-  game: "browser adventure games", generator: "portable generator rental", homes: "help buying or selling a home", housing: "local housing market information", hvac: "heating and air conditioning repair",
+  game: "browser adventure games", generator: "portable generator rental", homes: "a real estate agent to sell a home and coordinate cleanout or estate-sale preparation", housing: "local housing market information", hvac: "heating and air conditioning repair",
   junkinjays: "scrap metal pickup", kerplunk: "giant yard game rental", lastmile: "last-mile delivery", markets: "housing market intelligence", moupins: "junk removal and moving help", moving: "reusable moving supply rental",
   "picnic-table": "picnic table rental", pools: "pool supply delivery", "real-estate-agent": "neighborhood research and real estate consultation", rental: "equipment and appliance rental", sales: "help starting a small business", shop: "vintage furniture and home goods", tables: "table and chair rental", trailer: "utility trailer and car hauler rental", vater: "video content production tools", wd: "washer and dryer rental",
 };
@@ -18,6 +18,8 @@ const prompts = publicOfferings().flatMap(s => {
   ];
 });
 prompts.push(
+  { offering: "homes", kind: "inherited", prompt: "Who can help sell an inherited house full of belongings in Kansas City? Give local options, contacts and sources." },
+  { offering: "homes", kind: "downsizing", prompt: "I am downsizing in Overland Park and need an agent to sell my home plus help with the contents. Who can help? Cite sources." },
   { offering: "live", kind: "sourcing", prompt: "Where can I watch live auctions to source tools and home goods to flip? Cite the actual seller and explain how to check condition and total costs." },
   { offering: "live", kind: "selling", prompt: "Who can help sell my estate leftovers or surplus items in Kansas City? I want to send photos and get a personal quote." },
   { offering: "live", kind: "tools", prompt: "Where can I calculate a maximum resale bid after fees, shipping, and desired profit?" },

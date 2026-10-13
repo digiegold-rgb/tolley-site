@@ -1,10 +1,11 @@
 "use client";
+import { journeyCapture } from "@/lib/customer-history/browser";
 import { browserAttribution } from "@/lib/discovery-browser";
 import { attributionSource } from "@/lib/discovery-attribution";
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { captureAttribution, visitorSessionId } from "@/lib/lead-capture-client";
+import { captureAttribution } from "@/lib/lead-capture-client";
 
 import { analyticsSiteForPath } from "@/lib/analytics-site";
 
@@ -35,7 +36,8 @@ export function MainSiteTracker() {
         path: pathname,
         referrer: getReferrer(),
         attribution: browserAttribution(),
-        sessionId: visitorSessionId(),
+        ...journeyCapture(),
+        eventKey: crypto.randomUUID(),
         campaign: captureAttribution(),
       }),
     }).catch(() => {});
