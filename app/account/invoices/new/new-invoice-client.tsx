@@ -3,6 +3,14 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { upload } from '@vercel/blob/client';
+import {
+  CLEANOUT_DEPOSIT_HINT,
+  CLEANOUT_INVOICE_NOTE,
+  CLEANOUT_REFERENCE,
+  cleanoutJobDescription,
+  isCleanoutManagedLine,
+  syncCleanoutDepositLines,
+} from '@/lib/legal-cleanouts';
 
 const fmt = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -60,6 +68,25 @@ export default function NewInvoiceClient() {
   const [saving, setSaving] = useState(false);
   const [savingStatus, setSavingStatus] = useState('');
   const [error, setError] = useState('');
+  const [cleanoutOn, setCleanoutOn] = useState(false);
+  const [jobAddress, setJobAddress] = useState('');
+  const [jobDate, setJobDate] = useState('');
+
+  const blankLine = useCallback(
+    (): LineItem => ({ description: '', quantity: 1, unitAmount: 0, accountId: '' }),
+    [],
+  );
+
+  function sameLines(a: LineItem[], b: LineItem[]) {
+    if (a.length !== b.length) return false;
+    return a.every(
+      (line, index) =>
+        line.description === b[index].description &&
+        line.quantity === b[index].quantity &&
+        line.unitAmount === b[index].unitAmount &&
+        line.accountId === b[index].accountId,
+    );
+  }
 
   function addFiles(files: FileList | File[]) {
     const list = Array.from(files);
@@ -90,22 +117,59 @@ export default function NewInvoiceClient() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    if (!cleanoutOn || !jobAddress.trim() || !jobDate) return;
+    const description = cleanoutJobDescription(jobAddress, jobDate);
+    setLineItems((prev) => {
+      const service = prev.filter((line) => !isCleanoutManagedLine(line.description));
+      const base = (service.length > 0 ? service : [blankLine()]).map((line, index) =>
+        index === 0 ? { ...line, description } : line,
+      );
+      const next = syncCleanoutDepositLines(base, blankLine());
+      return sameLines(prev, next) ? prev : next;
+    });
+  }, [blankLine, cleanoutOn, jobAddress, jobDate]);
+
   function updateLineItem(index: number, field: keyof LineItem, value: string | number) {
-    setLineItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
-    );
+    setLineItems((prev) => {
+      const updated = prev.map((item, i) => (i === index ? { ...item, [field]: value } : item));
+      return cleanoutOn ? syncCleanoutDepositLines(updated, blankLine()) : updated;
+    });
   }
 
   function addLineItem() {
-    setLineItems((prev) => [
-      ...prev,
-      { description: '', quantity: 1, unitAmount: 0, accountId: '' },
-    ]);
+    setLineItems((prev) => {
+      const updated = [...prev, blankLine()];
+      return cleanoutOn ? syncCleanoutDepositLines(updated, blankLine()) : updated;
+    });
   }
 
   function removeLineItem(index: number) {
-    if (lineItems.length === 1) return;
-    setLineItems((prev) => prev.filter((_, i) => i !== index));
+    setLineItems((prev) => {
+      const target = prev[index];
+      if (!target || isCleanoutManagedLine(target.description)) return prev;
+      const serviceCount = prev.filter((line) => !isCleanoutManagedLine(line.description)).length;
+      if (serviceCount <= 1) return prev;
+      const updated = prev.filter((_, i) => i !== index);
+      return cleanoutOn ? syncCleanoutDepositLines(updated, blankLine()) : updated;
+    });
+  }
+
+  function applyCleanoutPreset() {
+    if (!jobAddress.trim() || !jobDate) {
+      setError('Enter the job address and date for the cleanout line.');
+      return;
+    }
+    setError('');
+    setCleanoutOn(true);
+    setReference(CLEANOUT_REFERENCE);
+    setNotes((prev) =>
+      prev.includes('tolley.io/cleanouts/terms')
+        ? prev
+        : prev.trim()
+          ? `${prev.trim()}\n\n${CLEANOUT_INVOICE_NOTE}`
+          : CLEANOUT_INVOICE_NOTE,
+    );
   }
 
   function lineTotal(item: LineItem) {
@@ -120,7 +184,9 @@ export default function NewInvoiceClient() {
     setSavingStatus('Creating invoice...');
 
     try {
-      const validLines = lineItems.filter((l) => l.description.trim() && l.unitAmount > 0);
+      const validLines = lineItems.filter(
+        (l) => l.description.trim() && Number.isFinite(l.unitAmount) && l.unitAmount !== 0,
+      );
       if (validLines.length === 0) {
         setError('At least one line item with a description and amount is required.');
         setSaving(false);
@@ -297,9 +363,50 @@ export default function NewInvoiceClient() {
             <input
               type="text"
               value={reference}
-              onChange={(e) => setReference(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setReference(value);
+                if (cleanoutOn && value !== CLEANOUT_REFERENCE) {
+                  setCleanoutOn(false);
+                  setLineItems((prev) => {
+                    const service = prev.filter((line) => !isCleanoutManagedLine(line.description));
+                    return service.length > 0 ? service : [blankLine()];
+                  });
+                }
+              }}
               placeholder="PO number, project name, etc."
               className="w-full bg-white/[0.06] border border-white/[0.12] rounded-lg text-white placeholder:text-white/30 px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-white">Cleanout</p>
+              <p className="text-xs text-white/40 mt-1">{CLEANOUT_DEPOSIT_HINT}</p>
+            </div>
+            <button
+              type="button"
+              onClick={applyCleanoutPreset}
+              className="bg-white/[0.08] hover:bg-white/[0.12] text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+            >
+              {cleanoutOn ? 'Cleanout preset on' : 'Use cleanout preset'}
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input
+              type="text"
+              value={jobAddress}
+              onChange={(e) => setJobAddress(e.target.value)}
+              placeholder="Job address"
+              className="w-full bg-white/[0.06] border border-white/[0.12] rounded-lg text-white placeholder:text-white/30 px-3 py-2 text-sm"
+            />
+            <input
+              type="date"
+              value={jobDate}
+              onChange={(e) => setJobDate(e.target.value)}
+              className="w-full bg-white/[0.06] border border-white/[0.12] rounded-lg text-white px-3 py-2 text-sm"
             />
           </div>
         </div>
@@ -318,37 +425,43 @@ export default function NewInvoiceClient() {
               <div className="col-span-1" />
             </div>
 
-            {lineItems.map((item, idx) => (
+            {lineItems.map((item, idx) => {
+              const managed = isCleanoutManagedLine(item.description);
+              return (
               <div key={idx} className="grid grid-cols-12 gap-2 items-center">
                 <input
-                  className="col-span-4 bg-white/[0.06] border border-white/[0.12] rounded-lg text-white placeholder:text-white/30 px-3 py-2 text-sm"
+                  className="col-span-4 bg-white/[0.06] border border-white/[0.12] rounded-lg text-white placeholder:text-white/30 px-3 py-2 text-sm disabled:text-white/60"
                   placeholder="Description"
                   value={item.description}
+                  readOnly={managed}
                   onChange={(e) => updateLineItem(idx, 'description', e.target.value)}
                 />
                 <input
-                  className="col-span-1 bg-white/[0.06] border border-white/[0.12] rounded-lg text-white text-center px-2 py-2 text-sm"
+                  className="col-span-1 bg-white/[0.06] border border-white/[0.12] rounded-lg text-white text-center px-2 py-2 text-sm disabled:text-white/60"
                   type="number"
-                  min={1}
+                  min={managed ? undefined : 1}
                   value={item.quantity}
+                  disabled={managed}
                   onChange={(e) =>
                     updateLineItem(idx, 'quantity', Math.max(1, parseInt(e.target.value) || 1))
                   }
                 />
                 <input
-                  className="col-span-2 bg-white/[0.06] border border-white/[0.12] rounded-lg text-white text-right px-3 py-2 text-sm"
+                  className="col-span-2 bg-white/[0.06] border border-white/[0.12] rounded-lg text-white text-right px-3 py-2 text-sm disabled:text-white/60"
                   type="number"
                   step="0.01"
-                  min={0}
+                  min={managed ? undefined : 0}
                   placeholder="0.00"
                   value={item.unitAmount || ''}
+                  disabled={managed}
                   onChange={(e) =>
                     updateLineItem(idx, 'unitAmount', parseFloat(e.target.value) || 0)
                   }
                 />
                 <select
-                  className="col-span-3 bg-white/[0.06] border border-white/[0.12] rounded-lg text-white px-2 py-2 text-sm"
+                  className="col-span-3 bg-white/[0.06] border border-white/[0.12] rounded-lg text-white px-2 py-2 text-sm disabled:text-white/60"
                   value={item.accountId}
+                  disabled={managed}
                   onChange={(e) => updateLineItem(idx, 'accountId', e.target.value)}
                 >
                   <option value="">Account...</option>
@@ -358,18 +471,23 @@ export default function NewInvoiceClient() {
                     </option>
                   ))}
                 </select>
-                <div className="col-span-1 text-right text-white font-mono text-sm">
+                <div className={`col-span-1 text-right font-mono text-sm ${item.unitAmount < 0 ? 'text-amber-300' : 'text-white'}`}>
                   {fmt.format(lineTotal(item))}
                 </div>
-                <button
-                  onClick={() => removeLineItem(idx)}
-                  className="col-span-1 text-red-400/60 hover:text-red-400 text-lg text-center"
-                  title="Remove"
-                >
-                  ×
-                </button>
+                {managed ? (
+                  <div className="col-span-1" />
+                ) : (
+                  <button
+                    onClick={() => removeLineItem(idx)}
+                    className="col-span-1 text-red-400/60 hover:text-red-400 text-lg text-center"
+                    title="Remove"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <button

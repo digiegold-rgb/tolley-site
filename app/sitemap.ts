@@ -88,6 +88,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/shop/reviews`, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/shop/sold`, changeFrequency: "weekly", priority: 0.4 },
     { url: `${BASE}/estate/our-work`, changeFrequency: "weekly", priority: 0.8 },
+    // Public cleanout legal pages. /cleanouts/payment is an unlisted noindex lookup and stays out.
+    { url: `${BASE}/cleanouts/terms`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/cleanouts/privacy`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/tools/missed-call-calculator`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/tools/lead-follow-up-audit`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/tools/digital-presence-audit`, changeFrequency: "monthly", priority: 0.6 },
