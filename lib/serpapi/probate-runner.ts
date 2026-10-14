@@ -7,6 +7,7 @@ import {
   buildObitQuery,
   buildAddressQuery,
   extractStreetAddress,
+  claimDecedent,
   type ObitTarget,
 } from "@/lib/serpapi/probate-config";
 import { parseSurvivedBy } from "@/lib/leads/heir-name";
@@ -74,7 +75,7 @@ interface DiscoverySummary {
  * Scan one obituary source for recent listings. Returns the count of new
  * ProbateSignal rows created.
  */
-async function scanTarget(target: ObitTarget): Promise<DiscoverySummary> {
+async function scanTarget(target: ObitTarget, seenDecedents: Set<string>): Promise<DiscoverySummary> {
   const result = await callWithRetry<{ organic_results?: OrganicResult[] }>(
     "probate-scan",
     {
@@ -99,8 +100,13 @@ async function scanTarget(target: ObitTarget): Promise<DiscoverySummary> {
   let duplicates = 0;
 
   for (const item of organic) {
-    const parsed = parseObitResult(item);
-    if (!parsed) continue;
+    const parsed = parseObitResult(item, target);
+    if (!parsed?.obitDate) continue;
+    // Same person and death date from another hit in this run is one signal.
+    if (!claimDecedent(seenDecedents, parsed.decedentName, parsed.obitDate)) {
+      duplicates += 1;
+      continue;
+    }
 
     try {
       await prisma.probateSignal.create({
@@ -130,10 +136,11 @@ async function scanTarget(target: ObitTarget): Promise<DiscoverySummary> {
 
 export async function runProbateDiscovery() {
   const totals = { scanned: 0, newSignals: 0, duplicates: 0 };
+  const seenDecedents = new Set<string>();
   for (let i = 0; i < OBIT_TARGETS.length; i += 1) {
     const target = OBIT_TARGETS[i];
     try {
-      const r = await scanTarget(target);
+      const r = await scanTarget(target, seenDecedents);
       totals.scanned += r.scanned;
       totals.newSignals += r.newSignals;
       totals.duplicates += r.duplicates;
