@@ -1,5 +1,11 @@
+import { WD_SERVICE_CITY_LABELS } from "./wd-service-zips";
+
 export const WD_STRIPE_CHECKOUT_WASHER_URL = "https://buy.stripe.com/9B628k3fE5RJ2DQ8NN18c02";
 export const WD_STRIPE_CHECKOUT_URL = "https://buy.stripe.com/00w14g03sgwn4LYe8718c00";
+/** $42/mo washer. Same price id as the analytics dashboard. */
+export const WD_STRIPE_PRICE_WASHER = "price_1SB0UF29zOZYc3GpYYrlpCFe";
+/** $58/mo washer + dryer. Also recognized by lib/wd-product.ts. */
+export const WD_STRIPE_PRICE_BUNDLE = "price_1Rxey029zOZYc3GpfoFkUbmv";
 export const WD_STRIPE_PORTAL_URL = "https://billing.stripe.com/p/login/00w14g03sgwn4LYe8718c00";
 export const WD_SITE_URL = "https://tolley.io/wd";
 export const WD_PRICE_WASHER = 42;
@@ -96,7 +102,7 @@ export const WD_FAQ: { q: string; a: string }[] = [
   { q: "What\u2019s included in the washer and dryer rental?", a: "Every rental includes free delivery, professional installation, ongoing maintenance, and replacement coverage if a machine fails. You just pay the monthly subscription." },
   { q: "How much does washer and dryer rental cost in Kansas City?", a: `Washer only is $${WD_PRICE_WASHER}/mo. Washer + dryer bundle is $${WD_PRICE_BUNDLE}/mo. No hidden fees, no deposits, no credit check.` },
   { q: "How do I cancel?", a: "Cancel anytime before your next billing date \u2014 no cancellation fees. We\u2019ll schedule a pickup within 5 business days." },
-  { q: "What areas do you serve?", a: "We cover the Kansas City metro including Independence, Lee\u2019s Summit, Blue Springs, Raytown, Grandview, Overland Park, Olathe, Liberty, Gladstone, Belton, and both Kansas City MO & KS." },
+  { q: "What areas do you serve?", a: `We deliver within about 25 minutes of Independence, MO 64052: ${WD_SERVICE_CITY_LABELS.join(", ")}. Enter your ZIP when you sign up. If we can't deliver there yet, leave your number and we'll reach out if that changes.` },
   { q: "What if my machine breaks down?", a: "We repair or replace within 48 hours at no extra cost. Just report the issue and we handle the rest." },
   { q: "Do you offer referral discounts?", a: "Yes \u2014 refer a friend and get 50% off your next month. Ask us for details when you sign up." },
   { q: "How do I get support or sign up?", a: `Call or text ${WD_CONTACT_PHONE} or email ${WD_CONTACT_EMAIL}. We\u2019re a local Kansas City business and respond fast.` },

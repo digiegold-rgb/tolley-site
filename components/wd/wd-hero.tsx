@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { WD_STRIPE_CHECKOUT_URL, WD_STRIPE_PORTAL_URL, WD_FACEBOOK_URL } from "@/lib/wd";
+import { WD_STRIPE_PORTAL_URL, WD_FACEBOOK_URL } from "@/lib/wd";
 import { WdCheckoutLink } from "./wd-checkout-link";
 
 function WavyText({ text }: { text: string }) {
@@ -46,7 +46,7 @@ export function WdHero() {
 
         <p className="mt-4 max-w-xl text-lg leading-relaxed text-blue-100">
           Washer &amp; dryer rentals delivered to your door. Free install,
-          maintenance included, no contracts. Kansas City metro.
+          maintenance included, no contracts. Within about 25 minutes of Independence.
         </p>
 
         <div className="mt-5 flex flex-wrap gap-2">
@@ -73,20 +73,12 @@ export function WdHero() {
         </a>
 
         <div className="mt-8 flex flex-wrap gap-3">
-          <Suspense fallback={
-            <a
-              href={WD_STRIPE_CHECKOUT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="wd-glow inline-flex items-center rounded-full bg-white px-8 py-3 text-sm font-bold text-blue-700 shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
-            >
-              Start Renting
-            </a>
-          }>
+          <Suspense fallback={<span className="inline-flex items-center rounded-full bg-white/80 px-8 py-3 text-sm font-bold text-blue-700">Enter your ZIP to start</span>}>
             <WdCheckoutLink
-              href={WD_STRIPE_CHECKOUT_URL}
+              plan="bundle"
+              variant="hero"
               label="bundle_hero"
-              className="wd-glow inline-flex items-center rounded-full bg-white px-8 py-3 text-sm font-bold text-blue-700 shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+              className="wd-glow inline-flex items-center justify-center rounded-full bg-white px-8 py-3 text-sm font-bold text-blue-700 shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
             >
               Start Renting
             </WdCheckoutLink>
