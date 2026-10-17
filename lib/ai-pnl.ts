@@ -1,12 +1,7 @@
-// AI P&L ledger — cash invested in the AI venture over the LAST YEAR
-// (~Aug 2025 onward, the Anthropic/DGX era) vs actual cash it has returned
-// (ads, affiliate, promotions, subscriptions to AI products ONLY).
-// Compiled 2026-07-28 from a three-way audit (Gmail receipts, Stripe's 1,073
-// lifetime charges, local records); refreshed 2026-07-31 with real receipts:
-// Anthropic console total, 24 Anthropic Gmail receipts, Neon invoices
-// ($79.57 Apr–Jul), fal.ai topups ($20 + $50), Modal CLI billed cash.
-// Product sales (shop flips, estate sales, W/D rent, cleaning) are excluded from
-// the "made" side by definition — that's labor/product income, not AI income.
+// Historical AI investment baseline. Direct AI-referral receipts and job costs
+// now live in the private HqAiIncome ledger and are loaded by /api/hq/ai-spend.
+// This file contains no current income total; do not use its historical zero
+// as current earnings. Baseline evidence was compiled in July 2026.
 //
 // This static file is the BASELINE. Providers with a `provider` key can be
 // overridden daily by live rows from /api/hq/ai-spend (pushed by the DGX

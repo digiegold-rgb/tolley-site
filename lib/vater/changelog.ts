@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.61';
+export const APP_VERSION = '1.61.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.61.1', date: '2026-10-16', title: 'AI referral profit in HQ', items: ['HQ separates collected referral revenue, job costs and profit, and applies profit against AI investment.', 'Future bookings stay separate from earned income; private job details remain behind owner login.'] },
   { version: '1.61', date: '2026-10-13', title: 'Customer history and home-seller discovery', items: ['HQ connects saved inquiries, selected phone conversations, private photos and website referral evidence in customer history.', 'Home sellers can request a consultation with Jared and explore separately quoted property cleanout and estate-sale help.'] },
   { version: '1.60.1', date: '2026-10-08', title: 'Reliable image artwork', items: ['Original content images use bundled font outlines so the lettering stays readable on the production server.'] },
   { version: '1.60', date: '2026-10-08', title: 'Original content and real income reporting', items: ['Treasure Haul can publish original text and image tips on a measured schedule, sharing daily feed slots with shows and clips.', 'Meta earnings, audience measurements and cash receipts are tracked separately, with missing access and uncertain publishes visible in Growth HQ.'] },

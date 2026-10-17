@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateWdAdmin } from "@/lib/wd-auth";
 import { secretEquals } from "@/lib/secret-compare";
+import { aiIncomeSchema } from "@/lib/ai-income";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,7 +75,9 @@ export async function GET() {
   }
   try {
     const rows = await prisma.aiSpendLive.findMany({ orderBy: { provider: "asc" } });
+    const income = await prisma.$queryRaw<{ id: string; payload: unknown }[]>`SELECT id, payload FROM "HqAiIncome" ORDER BY "createdAt", id`;
     return NextResponse.json({
+      income: income.map(r => aiIncomeSchema.parse({ ...(r.payload as object), id: r.id })),
       rows: rows.map((r) => ({
         provider: r.provider,
         label: r.label,
@@ -83,7 +86,7 @@ export async function GET() {
         note: r.note,
         asOf: r.asOf.toISOString(),
       })),
-    });
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (err) {
     console.error("[hq/ai-spend GET]", err);
     return NextResponse.json({ error: "Failed to load AI spend" }, { status: 500 });
