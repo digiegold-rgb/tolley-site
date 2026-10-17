@@ -5967,6 +5967,13 @@ model VaterOrgMember {
 /// Manual one-line spend log on the /hq Money tab ("+" button): Jared types a
 /// label + amount for purchases no reconciler sees (subscriptions, hardware…).
 /// amountCents is always positive = money OUT.
+model HqAiIncome {
+  id        String   @id
+  payload   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model HqSpendEntry {
   id          String   @id @default(cuid())
   label       String
