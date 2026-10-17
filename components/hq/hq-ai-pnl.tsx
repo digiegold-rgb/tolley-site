@@ -103,11 +103,12 @@ export function HqAiPnl() {
   const net = earned - spendTotal;
 
   return (
-    <div style={{ position: "relative" }}>
+    <div style={{ position: "relative", maxWidth: "100%" }}>
       <button
         onClick={() => setOpen((o) => !o)}
         title="AI P&L — total invested vs actual cash made from AI. Click for ledger."
         className="topbar-pill"
+        style={{ maxWidth: "100%", whiteSpace: "normal", flexWrap: "wrap" }}
       >
         <span style={{
           width: 8, height: 8, borderRadius: "50%",
