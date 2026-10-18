@@ -88,6 +88,17 @@ async function main() {
   assert.equal(videoBalance.grantCents, 1000, "Purchased-only company execution cannot consume a stills promotion");
   assert.equal(videoBalance.purchasedCents, 1000 - videoQuote.maxCents);
   console.log("PASS quoted video settlement, repair cap, duplicate completion and promotional credit isolation");
+  const researchUser = await customer("research-outage", 100);
+  await prisma.companyKnowledge.create({ data: { sourceKey: `synthesis-fixture:${tag}`, title: "orchidtestsource", body: "Synthetic evidence for a research outage test", contentHash: tag, sources: [], audience: "public", status: "verified" } });
+  const unavailableQuote = await makeQuote(researchUser, { capabilityId: "company.research", input: { question: "orchidtestsource", sources: [] } });
+  const unavailableTask = await createTask(researchUser, `outage-${tag}`, { quoteId: unavailableQuote.id, maxCents: 100 });
+  const savedModel = process.env.COMPANY_LOCAL_MODEL_URL; delete process.env.COMPANY_LOCAL_MODEL_URL;
+  const claimedResearch = await claimTask(); assert(claimedResearch); assert.equal(claimedResearch.id, unavailableTask.id); await runTask(claimedResearch);
+  if (savedModel) process.env.COMPANY_LOCAL_MODEL_URL = savedModel;
+  assert.equal((await getTask(researchUser, unavailableTask.id)).error, "research_synthesis_unavailable");
+  assert.equal((await getBalance(researchUser.userId)).purchasedCents, 100, "No delivered synthesis means no charge and no retained hold");
+  console.log("PASS research outage fails without charging for undelivered synthesis");
+
 
   const secret = `tenant-secret-${tag}`;
   await prisma.companyKnowledge.create({ data: { sourceKey: secret, title: "private", body: secret, userId: a.userId, audience: "customer", contentHash: fingerprint(secret), sources: [], status: "verified" } });
