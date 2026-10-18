@@ -3,7 +3,7 @@ import { createHmac, randomBytes, scryptSync } from 'node:crypto';
 
 export function requireIsolatedServer(base) {
   const database = new URL(process.env.DATABASE_URL || 'postgresql://invalid');
-  const company = base === 'http://127.0.0.1:3063' && database.port === '55463' && database.pathname === '/tolley_company';
+  const company = ['http://127.0.0.1:3063', 'http://localhost:3063'].includes(base) && database.port === '55463' && database.pathname === '/tolley_company';
   const customers = ['http://127.0.0.1:3061', 'http://localhost:3061'].includes(base) && database.port === '55460' && database.pathname === '/tolley_customers';
   const revenue = base === 'http://127.0.0.1:3018' && database.port === '55438' && database.pathname === '/tolley_revenue_test';
   const discovery = base === 'http://localhost:3024' && database.port === '55450' && database.pathname === '/tolley_discovery_release_test';

@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import { createOwnerSession, requireIsolatedServer } from './helpers/owner-session.mjs';
 import { prisma as workerDb } from '../lib/prisma.ts';
 import { tick } from '../lib/company/worker.ts';
-const base = 'http://127.0.0.1:3063';
+const base = 'http://localhost:3063';
 requireIsolatedServer(base);
 const db = new PrismaClient();
 let owner, browser;
