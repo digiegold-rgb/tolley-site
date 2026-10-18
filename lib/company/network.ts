@@ -39,7 +39,7 @@ export async function readPublicSource(raw: string) {
   const u = publicUrl(raw);
   const robots = await publicFetch(new URL("/robots.txt", u).href);
   if (robots.status !== 404 && (robots.status !== 200 || !crawlAllowed(robots.text, u.pathname, "TolleyResearchBot"))) throw new CompanyError("source_disallows_crawl");
-  // Recheck robots on every redirect target: fetch redirects explicitly here.
+  // Page redirects are rejected so every fetched page has its own robots decision.
   const page = await publicFetch(u.href, { redirects: 3 });
   if (page.status !== 200 || !/(text\/|json|xml)/i.test(page.type)) throw new CompanyError("source_unavailable");
   const text = page.text.replace(/<(script|style|nav|footer)\b[^>]*>[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&(?:nbsp|amp|lt|gt|quot);/g, " ").replace(/\s+/g, " ").trim().slice(0, 30000);

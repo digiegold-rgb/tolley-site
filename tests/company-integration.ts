@@ -131,11 +131,11 @@ async function main() {
   await expectCode(() => createTask(b, `expired-${tag}`, { quoteId: expiryQuote.id, maxCents: 0 }), "quote_expired");
   const leasedQuote = await makeQuote(b, { capabilityId: "animate.help", input: {} });
   const leasedTask = await createTask(b, `leased-${tag}`, { quoteId: leasedQuote.id, maxCents: 0 });
-  const oldLease = await claimTask(); assert.equal(oldLease?.id, leasedTask.id);
+  const oldLease = await claimTask(); assert.equal(oldLease?.id, leasedTask.id); assert.equal(oldLease?.state, "running", "Claimed work must not be advertised as queued and freely cancellable");
   assert.equal(await claimTask(), null);
   await prisma.companyTask.update({ where: { id: leasedTask.id }, data: { leaseUntil: new Date(0) } });
   const newLease = await claimTask(); assert(newLease); assert.notEqual(newLease.leaseToken, oldLease!.leaseToken);
-  await runTask(oldLease!); assert.equal((await getTask(b, leasedTask.id)).status, "queued");
+  await runTask(oldLease!); assert.equal((await getTask(b, leasedTask.id)).status, "running");
   await runTask(newLease); assert.equal((await getTask(b, leasedTask.id)).status, "completed");
   console.log("PASS shadow promotion, concurrent control deduplication, expiry and stale-lease fencing");
 

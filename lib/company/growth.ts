@@ -33,7 +33,7 @@ export async function reserveExperiment(id: string, amount: number) {
     const month = monthKey();
     const totals = await tx.companyExperiment.aggregate({ where: { month }, _sum: { reservedCents: true, spentCents: true } });
     if ((totals._sum.reservedCents || 0) + (totals._sum.spentCents || 0) + amount > COMPANY_POLICY.monthlyResearchCents) throw new CompanyError("research_budget_exhausted", 402);
-    return tx.companyExperiment.update({ where: { id }, data: { state: "running", month, reservedCents: amount, attempts: { increment: 1 }, leaseUntil: new Date(Date.now() + 300000) } });
+    return tx.companyExperiment.update({ where: { id }, data: { state: "running", month, reservedCents: amount, attempts: { increment: 1 }, leaseUntil: new Date(Date.now() + 600000) } });
   });
 }
 export async function verifyRecipe(recipe: unknown) {
