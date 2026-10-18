@@ -21,6 +21,10 @@ try {
   const minted = await request('/api/company/keys',{ name:'browser', scopes:['tasks:read','tasks:write','knowledge:read'],monthlyLimitCents:0 });
   assert.equal(minted.status, 200); const credentials = await minted.json(); assert(credentials.key);
   const api = (path, data, extra={}) => fetch(base + path, { method:data?'POST':'GET', headers:{authorization:`Bearer ${credentials.key}`,'content-type':'application/json',...extra},...(data?{body:JSON.stringify(data)}:{}) });
+  assert.equal((await api('/api/v1/status')).status,401,'Company key rejected by legacy API');
+  assert(!JSON.stringify(await (await request('/api/company/keys')).json()).includes(credentials.key),'Plaintext key never returned again');
+  const initialized = await api('/api/v1/agent-mcp',{jsonrpc:'2.0',id:1,method:'initialize',params:{protocolVersion:'2025-11-25',capabilities:{},clientInfo:{name:'company-browser',version:'1'}}},{accept:'application/json, text/event-stream'});
+  assert.equal(initialized.status,200); assert.equal((await initialized.json()).result.serverInfo.name,'Tolley Company');
   await db.companyControl.update({ where:{id:'company'},data:{admission:true} });
   const quoted = await api('/api/v1/quotes',{capabilityId:'animate.help',input:{}}); assert.equal(quoted.status,201); const quote=await quoted.json();
   const created = await api('/api/v1/tasks',{quoteId:quote.id,maxCents:0},{'Idempotency-Key':'browser-'+Date.now()}); assert.equal(created.status,202); const task=await created.json();
