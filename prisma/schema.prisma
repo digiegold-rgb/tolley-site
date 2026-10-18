@@ -6533,3 +6533,166 @@ model SiteDailyTotal {
   sessions Int
   @@id([day, site])
 }
+
+
+// Autonomous company: tenant identity always comes from authentication, never input.
+model CompanyKeyGrant {
+  keyId String @id
+  userId String
+  scopes String[]
+  monthlyLimitCents Int @default(0)
+  createdAt DateTime @default(now())
+  @@index([userId])
+}
+model CompanyQuote {
+  id String @id @default(cuid())
+  userId String
+  keyId String
+  capabilityId String
+  capabilityVersion String
+  input Json
+  inputHash String
+  providerCents Int
+  serviceCents Int
+  maxCents Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
+}
+model CompanyTask {
+  id String @id @default(cuid())
+  userId String
+  keyId String
+  quoteId String @unique
+  idempotencyKey String
+  requestHash String
+  capabilityId String
+  capabilityVersion String
+  adapter String
+  input Json
+  state String @default("queued")
+  result Json?
+  error String?
+  projectId String? @unique
+  maxCents Int
+  chargedCents Int @default(0)
+  providerCents Int @default(0)
+  serviceCents Int @default(0)
+  attempts Int @default(0)
+  availableAt DateTime @default(now())
+  leaseUntil DateTime?
+  leaseToken String?
+  cancelRequested Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  completedAt DateTime?
+  @@unique([userId, idempotencyKey])
+  @@index([state, availableAt, leaseUntil])
+  @@index([userId, createdAt])
+  @@index([keyId, createdAt])
+}
+model CompanyReservation {
+  id String @id
+  userId String
+  cents Int
+  purchasedOnly Boolean @default(true)
+  projectId String? @unique
+  taskId String? @unique
+  state String @default("held")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId, state])
+}
+model CompanyKnowledge {
+  id String @id @default(cuid())
+  audience String @default("internal")
+  userId String?
+  sourceKey String @unique
+  title String
+  body String @db.Text
+  sources Json
+  contentHash String
+  status String @default("candidate")
+  evidence Json?
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId, status])
+  @@index([audience, status, expiresAt])
+}
+model CompanyExperiment {
+  id String @id @default(cuid())
+  demandKey String @unique
+  title String
+  specification Json
+  state String @default("queued")
+  attempts Int @default(0)
+  month String
+  reservedCents Int @default(0)
+  spentCents Int @default(0)
+  leaseUntil DateTime?
+  evidence Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([state, leaseUntil])
+  @@index([month])
+}
+model CompanyCapability {
+  id String @id
+  version Int @default(1)
+  status String @default("candidate")
+  manifest Json
+  recipe Json
+  evidence Json
+  previousVersion Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model CompanyEvent {
+  id String @id @default(cuid())
+  key String @unique
+  userId String?
+  taskId String?
+  kind String
+  data Json
+  createdAt DateTime @default(now())
+  @@index([taskId, createdAt])
+  @@index([kind, createdAt])
+}
+model CompanyOutbox {
+  id String @id
+  channel String
+  userId String?
+  taskId String?
+  keyId String?
+  payload Json
+  state String @default("pending")
+  attempts Int @default(0)
+  availableAt DateTime @default(now())
+  leaseUntil DateTime?
+  leaseToken String?
+  lastError String?
+  createdAt DateTime @default(now())
+  @@index([state, availableAt])
+}
+model CompanyControl {
+  id String @id @default("company")
+  admission Boolean @default(false)
+  learning Boolean @default(false)
+  development Boolean @default(false)
+  deployment Boolean @default(false)
+  workerHeartbeat DateTime?
+  lastDiscovery DateTime?
+  lastDigest DateTime?
+  policyVersion String @default("2026-10-17.1")
+  updatedAt DateTime @updatedAt
+}
+model CompanyDecision {
+  id String @id @default(cuid())
+  kind String
+  request Json
+  state String @default("pending")
+  expiresAt DateTime
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+}

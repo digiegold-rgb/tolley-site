@@ -19,7 +19,7 @@ export function TolleyFooter() {
   return <footer className="tolley-footer">
     <div><Link href="/" className="tolley-wordmark" aria-label="Tolley home">tolley<span aria-hidden="true">●</span></Link><p>Kansas City roots. Ideas that travel.</p></div>
     <nav aria-label="Tolley footer navigation">
-      <Link href="/agent">T-Agent</Link><Link href="/animate">Jelly Studio</Link><Link href="/start">All services</Link><Link href="/about">About</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link>
+      <Link href="/agent">T-Agent</Link><Link href="/animate">Jelly Studio</Link><Link href="/start">All services</Link><Link href="/services/agent">For AI agents</Link><Link href="/about">About</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link>
     </nav>
     <small>© {new Date().getFullYear()} Tolley.io</small>
   </footer>;

@@ -15,6 +15,9 @@ const API_GUARDS = ["/api/agents", "/api/admin", "/api/results"];
  * these prefixes and nothing else on tolley.io.
  */
 const STUDIO_ONLY_ALLOWED = [
+  "/services/agent",
+  "/api/company",
+  "/api/v1",
   "/animate",
   // Listing Studio front door (lib/vater/product.ts STUDIO_HOME.realestate).
   "/realestateanimated",

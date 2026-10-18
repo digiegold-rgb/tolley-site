@@ -1,3 +1,4 @@
+import { reserveProject } from "@/lib/company/credits";
 /**
  * lib/vater/billing/check-budget.ts
  *
@@ -144,7 +145,9 @@ export async function checkBudget(
     }
     const estimateCents = Math.round(estimateUsd * 100);
 
-    if (spendableCents < estimateCents) {
+    const reservation = opts?.projectId && PROJECT_SCALE_ACTIONS.has(action)
+      ? await reserveProject(userId, opts.projectId, estimateCents, isAnimation) : null;
+    if (reservation ? !reservation.allow : spendableCents < estimateCents) {
       return {
         allow: false,
         reason: "insufficient_credits",

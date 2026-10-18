@@ -15,7 +15,7 @@ const BASE = "https://www.tolley.io";
  * Public, unauthenticated, CORS-open.
  */
 export async function GET(_req: Request) {
-  const subsites = SUBSITES.map((s) => ({
+  const subsites = publicSubsites().map((s) => ({
     ...s,
     manifestUrl: `${BASE}/api/agent/${s.name}`,
     fullUrl: `${BASE}${s.url}`,
@@ -38,6 +38,9 @@ export async function GET(_req: Request) {
         sitemap: `${BASE}/sitemap.xml`,
         robots: `${BASE}/robots.txt`,
         mcp: `${BASE}/api/mcp`,
+        taskMcp: `${BASE}/api/v1/agent-mcp`,
+        capabilities: `${BASE}/api/v1/capabilities`,
+        documentation: `${BASE}/services/agent`,
         openapi: `${BASE}/api/openapi.json`,
       },
       endpoints: {

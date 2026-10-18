@@ -1,4 +1,5 @@
 "use client";
+import { routeClassification } from "@/lib/company/routes";
 
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
@@ -28,6 +29,8 @@ export function AgentDiscovery() {
     return best;
   }, [pathname]);
 
+  const classification = pathname ? routeClassification(pathname) : null;
+  if (!classification || !["public", "supporting"].includes(classification.audience)) return null;
   if (!match || match.discovery?.disposition === "private" || match.discovery?.disposition === "retired") return null;
 
   const propName = ["dangerously", "Set", "Inner", "HTML"].join("");

@@ -1,5 +1,6 @@
+import { companyOpenApiPaths } from "@/lib/company/openapi";
 import { NextResponse } from "next/server";
-import { SUBSITES, publicSubsites } from "@/lib/subsites";
+import { publicSubsites } from "@/lib/subsites";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ const BASE = "https://www.tolley.io";
  */
 export async function GET() {
   const perSubsitePaths: Record<string, unknown> = {};
-  for (const s of SUBSITES) {
+  for (const s of publicSubsites()) {
     for (const ep of s.jsonEndpoints) {
       perSubsitePaths[ep] = {
         get: {
@@ -47,7 +48,9 @@ export async function GET() {
       contact: { name: "Tolley.io", url: BASE },
     },
     servers: [{ url: BASE }],
+    components: { securitySchemes: { companyKey: { type: "http", scheme: "bearer", description: "Explicit company scopes and a monthly limit; configure in /services/agent." } } },
     paths: {
+      ...companyOpenApiPaths,
       "/.well-known/agent-card.json": {
         get: {
           summary: "Tolley agent discovery card",

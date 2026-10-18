@@ -1,0 +1,169 @@
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { NextRequest } from "next/server";
+import { prisma } from "../lib/prisma";
+import { makeQuote, createTask, getTask, cancelTask, knowledge, controls } from "../lib/company/store";
+import { claimTask, runTask } from "../lib/company/worker";
+import { reserveExperiment, queueExperiment, develop, rollbackCapability, verifyRecipe } from "../lib/company/growth";
+import { getBalance, adjustProjectDebit } from "../lib/vater/billing/ledger";
+import { reserveProject, releaseProject } from "../lib/company/credits";
+import { mintApiKey } from "../lib/vater/api-keys";
+import { requireApiKey } from "../lib/vater/direct-auth";
+import { principal, type Principal } from "../lib/company/auth";
+import { isPublicIPv4, publicUrl } from "../lib/company/network";
+import { fingerprint, monthKey } from "../lib/company/policy";
+import { capabilities } from "../lib/company/catalog";
+import { controlCommand } from "../lib/company/control";
+import { POST as telegram } from "../app/api/company/telegram/route";
+import { POST as mcp } from "../app/api/v1/agent-mcp/route";
+
+assert.match(process.env.DATABASE_URL || "", /^postgresql:\/\/[^@]+@127\.0\.0\.1:55463\/tolley_company(?:\?|$)/, "Use only the disposable company database");
+process.env.COMPANY_CREDITS_ENABLED = "1";
+const tag = randomUUID();
+async function customer(name: string, credit = 500) {
+  const user = await prisma.user.create({ data: { email: `company-${name}-${tag}@example.invalid`, name } });
+  const key = mintApiKey();
+  const row = await prisma.vaterApiKey.create({ data: { userId: user.id, name: "test", keyHash: key.keyHash, prefix: key.prefix } });
+  const p: Principal = { userId: user.id, keyId: row.id, scopes: ["tasks:read", "tasks:write", "knowledge:read", "knowledge:write"], monthlyLimitCents: 10000 };
+  await prisma.companyKeyGrant.create({ data: { ...p } });
+  await prisma.vaterCreditLedger.create({ data: { userId: user.id, deltaCents: credit, kind: "purchase", dedupeKey: `fixture:${user.id}` } });
+  return { ...p, secret: key.plaintext };
+}
+async function expectCode(fn: () => Promise<unknown>, code: string) { await assert.rejects(fn, (e: unknown) => typeof e === "object" && e !== null && "code" in e && e.code === code); }
+async function main() {
+  // This guard-protected database is dedicated to this suite; remove prior fixtures.
+  for (const model of [prisma.companyOutbox, prisma.companyEvent, prisma.companyTask, prisma.companyQuote, prisma.companyReservation, prisma.companyExperiment, prisma.companyCapability, prisma.companyKnowledge, prisma.companyDecision]) await model.deleteMany();
+  await controls(); await prisma.companyControl.update({ where: { id: "company" }, data: { admission: true, learning: false, development: true, deployment: true } });
+  const a = await customer("a"); const b = await customer("b");
+  assert(capabilities().some(c => c.id === "animate.create_video"));
+  assert(!capabilities().some(c => c.subsite === "food" || c.subsite === "moving"));
+  const q = await makeQuote(a, { capabilityId: "animate.help", input: {} });
+  const tasks = await Promise.all(Array.from({ length: 6 }, () => createTask(a, `idem-${tag}`, { quoteId: q.id, maxCents: 0 })));
+  assert.equal(new Set(tasks.map(t => t.id)).size, 1);
+  await expectCode(() => createTask(a, `idem-${tag}`, { quoteId: q.id, maxCents: 1 }), "idempotency_conflict");
+  await expectCode(() => getTask(b, tasks[0].id), "not_found");
+  await expectCode(() => cancelTask(b, tasks[0].id), "not_found");
+  const t = await claimTask(); assert(t); await runTask(t);
+  assert.equal((await getTask(a, t.id)).status, "completed");
+  console.log("PASS idempotent creation, tenant isolation and free task execution");
+
+  const quotes = await Promise.all(Array.from({ length: 9 }, () => makeQuote(a, { capabilityId: "company.research", input: { question: "How can I render a video?" } })));
+  const funded = await Promise.allSettled(quotes.map((q, i) => createTask(a, `paid-${tag}-${i}`, { quoteId: q.id, maxCents: 100 })));
+  assert.equal(funded.filter(r => r.status === "fulfilled").length, 5);
+  assert.equal((await getBalance(a.userId)).purchasedCents, 0);
+  assert.equal((await reserveProject(a.userId, `legacy-${tag}`, 100, true))?.allow, false);
+  const held = funded.find(r => r.status === "fulfilled"); assert(held?.status === "fulfilled");
+  await cancelTask(a, held.value.id);
+  const cancelled = await claimTask(); assert(cancelled); await runTask(cancelled);
+  assert.equal((await getTask(a, held.value.id)).status, "cancelled");
+  assert.equal((await getBalance(a.userId)).purchasedCents, 100);
+  assert.equal((await reserveProject(a.userId, `legacy-${tag}`, 100, true))?.allow, true);
+  assert.equal((await reserveProject(a.userId, `legacy-${tag}`, 100, true))?.allow, true);
+  assert.equal((await reserveProject(a.userId, `legacy-other-${tag}`, 100, true))?.allow, false);
+  await releaseProject(`legacy-${tag}`);
+  // Avoid running actual research in a unit/integration fixture.
+  await prisma.companyTask.updateMany({ where: { userId: a.userId, adapter: "research", state: "queued" }, data: { state: "cancelled" } });
+  await prisma.companyReservation.updateMany({ where: { userId: a.userId }, data: { state: "released" } });
+  console.log("PASS concurrent spending, legacy reservation sharing, cancellation and reservation reuse");
+
+  const videoUser = await customer("video", 1000);
+  await prisma.vaterCreditLedger.create({ data: { userId: videoUser.userId, deltaCents: 1000, kind: "grant", stillsOnly: true, dedupeKey: `promo:${tag}` } });
+  const style = await prisma.youTubeStyle.create({ data: { name: "Company test style", userId: videoUser.userId } });
+  const videoQuote = await makeQuote(videoUser, { capabilityId: "animate.create_video", input: { script: "Flowers open gently in the morning sunlight while bees travel between their colorful petals and a soft breeze moves through the garden.", styleId: style.id } });
+  const videoTask = await createTask(videoUser, `video-${tag}`, { quoteId: videoQuote.id, maxCents: videoQuote.maxCents });
+  const projectId = `company_test_${tag}`;
+  await prisma.youTubeProject.create({ data: { id: projectId, userId: videoUser.userId, status: "ready", finalVideoUrl: "https://example.invalid/fixture.mp4", targetDuration: 1, audioDuration: 60, costJson: { totalUsd: 20 } } });
+  await prisma.companyTask.update({ where: { id: videoTask.id }, data: { projectId, state: "submitted" } });
+  await prisma.companyReservation.update({ where: { taskId: videoTask.id }, data: { projectId, id: `project:${projectId}` } });
+  assert.equal((await reserveProject(videoUser.userId, projectId, 900, false))?.allow, true);
+  const unchangedHold = await prisma.companyReservation.findUniqueOrThrow({ where: { projectId } });
+  assert.equal(unchangedHold.cents, videoQuote.maxCents, "Studio estimates cannot increase a signed company quote");
+  assert.equal(unchangedHold.purchasedOnly, true, "Studio rechecks cannot spend promotional credits for company work");
+  const claimedVideo = await claimTask(); assert(claimedVideo); assert.equal(claimedVideo.id, videoTask.id); await runTask(claimedVideo);
+  const videoResult = await getTask(videoUser, videoTask.id); assert.equal(videoResult.status, "completed"); assert.equal(videoResult.receipt.chargedCents, videoQuote.maxCents);
+  await runTask(claimedVideo);
+  assert.equal(await prisma.vaterCreditLedger.count({ where: { dedupeKey: `debit:${projectId}` } }), 1);
+  await adjustProjectDebit(projectId);
+  const videoBalance = await getBalance(videoUser.userId);
+  assert.equal(videoBalance.grantCents, 1000, "Purchased-only company execution cannot consume a stills promotion");
+  assert.equal(videoBalance.purchasedCents, 1000 - videoQuote.maxCents);
+  console.log("PASS quoted video settlement, repair cap, duplicate completion and promotional credit isolation");
+
+  const secret = `tenant-secret-${tag}`;
+  await prisma.companyKnowledge.create({ data: { sourceKey: secret, title: "private", body: secret, userId: a.userId, audience: "customer", contentHash: fingerprint(secret), sources: [], status: "verified" } });
+  assert(!JSON.stringify(await knowledge(b.userId, "")).includes(secret));
+  assert(!JSON.stringify(await knowledge(null, "")).includes(secret));
+  assert(JSON.stringify(await knowledge(a.userId, "")).includes(secret));
+  await prisma.companyKnowledge.update({ where: { sourceKey: secret }, data: { status: "retracted", body: "" } });
+  assert(!JSON.stringify(await knowledge(a.userId, "")).includes(secret));
+  console.log("PASS private knowledge isolation and retraction");
+
+  await verifyRecipe({ version: 1, steps: [{ kind: "facts", subsite: "animate" }] });
+  await assert.rejects(() => verifyRecipe({ version: 1, steps: [{ kind: "shell", command: "anything" }] }));
+  const exp = await queueExperiment(`test:${tag}`, "animate"); await develop();
+  assert.equal((await prisma.companyExperiment.findUnique({ where: { id: exp.id } }))?.state, "released");
+  assert.equal((await prisma.companyCapability.findUnique({ where: { id: "guide.animate" } }))?.status, "published");
+  await rollbackCapability("guide.animate");
+  const afterRollback = await prisma.companyCapability.findUnique({ where: { id: "guide.animate" } }); assert(afterRollback);
+  assert(afterRollback.status === "withdrawn" || afterRollback.version > 1);
+  console.log("PASS capability experiment, verification, release and rollback");
+  await prisma.companyControl.update({ where: { id: "company" }, data: { deployment: false } });
+  await queueExperiment(`shadow:${tag}`, "animate"); await develop();
+  assert.equal((await prisma.companyCapability.findUnique({ where: { id: "guide.animate" } }))?.status, "verified");
+  await controlCommand("RESUME", "", `resume:${tag}`); await develop();
+  assert.equal((await prisma.companyCapability.findUnique({ where: { id: "guide.animate" } }))?.status, "published");
+  await Promise.all([controlCommand("ROLLBACK", "guide.animate", `rollback:${tag}`), controlCommand("ROLLBACK", "guide.animate", `rollback:${tag}`)]);
+  assert.equal(await prisma.companyEvent.count({ where: { key: `rollback:${tag}` } }), 1);
+  await expectCode(() => controlCommand("ADMISSION", "maybe", `bad-control:${tag}`), "admission_on_or_off_required");
+  const expiryQuote = await makeQuote(b, { capabilityId: "animate.help", input: {} });
+  await prisma.companyQuote.update({ where: { id: expiryQuote.id }, data: { expiresAt: new Date(0) } });
+  await expectCode(() => createTask(b, `expired-${tag}`, { quoteId: expiryQuote.id, maxCents: 0 }), "quote_expired");
+  const leasedQuote = await makeQuote(b, { capabilityId: "animate.help", input: {} });
+  const leasedTask = await createTask(b, `leased-${tag}`, { quoteId: leasedQuote.id, maxCents: 0 });
+  const oldLease = await claimTask(); assert.equal(oldLease?.id, leasedTask.id);
+  assert.equal(await claimTask(), null);
+  await prisma.companyTask.update({ where: { id: leasedTask.id }, data: { leaseUntil: new Date(0) } });
+  const newLease = await claimTask(); assert(newLease); assert.notEqual(newLease.leaseToken, oldLease!.leaseToken);
+  await runTask(oldLease!); assert.equal((await getTask(b, leasedTask.id)).status, "queued");
+  await runTask(newLease); assert.equal((await getTask(b, leasedTask.id)).status, "completed");
+  console.log("PASS shadow promotion, concurrent control deduplication, expiry and stale-lease fencing");
+
+
+  const budget = await queueExperiment(`budget:${tag}`, "animate");
+  await prisma.companyExperiment.create({ data: { demandKey: `budget-spent:${tag}`, title: "fixture", specification: {}, month: monthKey(), state: "released", spentCents: 50000 } });
+  await expectCode(() => reserveExperiment(budget.id, 1), "research_budget_exhausted");
+  await expectCode(() => reserveExperiment(budget.id, 1001), "experiment_limit");
+  await prisma.companyExperiment.update({ where: { demandKey: `budget-spent:${tag}` }, data: { spentCents: 0 } });
+  console.log("PASS research budget ceiling and per-experiment ceiling");
+
+  const r = new NextRequest("http://localhost/api/v1/tasks", { headers: { authorization: `Bearer ${b.secret}` } });
+  assert.equal((await principal(r, "tasks:read")).userId, b.userId);
+  await prisma.companyKeyGrant.update({ where: { keyId: b.keyId }, data: { scopes: [] } });
+  await expectCode(() => principal(r, "tasks:read"), "scope_required");
+  await prisma.companyKeyGrant.update({ where: { keyId: b.keyId }, data: { scopes: b.scopes } });
+  const mcpResponse = await mcp(new NextRequest("http://localhost/api/v1/agent-mcp", { method: "POST", headers: { authorization: `Bearer ${b.secret}`, "Content-Type": "application/json", accept: "application/json, text/event-stream" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "company-integration-test", version: "1" } } }) }));
+  assert.equal(mcpResponse.status, 200); const reply = await mcpResponse.json(); assert.equal(reply.result.serverInfo.name, "Tolley Company");
+  console.log("PASS scoped authentication and real MCP initialization");
+  const scoped = mintApiKey("company");
+  await prisma.vaterApiKey.update({ where: { id: b.keyId }, data: { keyHash: scoped.keyHash, prefix: scoped.prefix } });
+  const scopedRequest = new NextRequest("http://localhost/api/v1/videos", { headers: { authorization: `Bearer ${scoped.plaintext}` } });
+  assert.equal((await requireApiKey(scopedRequest)).ok, false, "Company-only credentials cannot bypass task limits through the legacy video API");
+  assert.equal((await principal(scopedRequest, "tasks:read")).userId, b.userId);
+  console.log("PASS company-only key isolation from legacy spending routes");
+  process.env.COMPANY_TELEGRAM_WEBHOOK_SECRET = "test-forwarding-secret";
+  process.env.COMPANY_TELEGRAM_OWNER_ID = "10"; process.env.COMPANY_TELEGRAM_CHAT_ID = "20";
+  const send = (sender: number, secret: string) => telegram(new Request("http://localhost/api/company/telegram", { method: "POST", headers: { "x-tolley-telegram-secret": secret, "content-type": "application/json" }, body: JSON.stringify({ update_id: 1234, message: { from: { id: sender }, chat: { id: 20 }, text: "COMPANY PAUSE" } }) }));
+  assert.equal((await send(10, "wrong")).status, 401);
+  assert.equal((await (await send(99, "test-forwarding-secret")).json()).accepted, false);
+  assert.equal((await (await send(10, "test-forwarding-secret")).json()).accepted, true);
+  assert.equal((await (await send(10, "test-forwarding-secret")).json()).accepted, true);
+  assert.equal((await controls()).learning, false);
+  assert.equal(await prisma.companyOutbox.count({ where: { id: "reply:telegram:webhook:1234" } }), 1);
+  console.log("PASS forwarded Telegram secret, owner isolation and update deduplication");
+
+  for (const ip of ["127.0.0.1", "10.1.1.1", "169.254.169.254", "100.81.82.79", "192.168.2.104", "::1"]) assert.equal(isPublicIPv4(ip), false);
+  assert(isPublicIPv4("1.1.1.1"));
+  for (const url of ["http://example.com", "https://127.0.0.1", "https://user:password@example.com", "https://example.com:8080"]) assert.throws(() => publicUrl(url));
+  console.log("PASS URL and private-network boundaries");
+}
+main().then(() => console.log("All company integration checks passed.")).finally(() => prisma.$disconnect());

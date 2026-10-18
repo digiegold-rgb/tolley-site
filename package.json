@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/check-render-upload.mjs && node scripts/check-changelog.mjs && node scripts/audit-links.mjs && prisma generate && node --max-old-space-size=4096 node_modules/typescript/bin/tsc --noEmit -p tsconfig.build.json && node scripts/build-next.mjs",
+    "build": "node scripts/company-route-coverage.mjs && node scripts/check-render-upload.mjs && node scripts/check-changelog.mjs && node scripts/audit-links.mjs && prisma generate && node --max-old-space-size=4096 node_modules/typescript/bin/tsc --noEmit -p tsconfig.build.json && node scripts/build-next.mjs",
     "audit:links": "node scripts/audit-links.mjs",
     "indexnow": "node scripts/indexnow-submit.mjs",
     "start": "next start",
@@ -16,7 +16,9 @@
     "test:e2e:list": "playwright test --list",
     "audit:hq": "playwright test tests/e2e/audit/hq.spec.ts",
     "audit:animate": "playwright test tests/e2e/audit/animate.spec.ts",
-    "audit:all": "playwright test tests/e2e/audit"
+    "audit:all": "playwright test tests/e2e/audit",
+    "company:coverage": "node scripts/company-route-coverage.mjs",
+    "company:worker": "node --import ./ops/company/runtime.mjs --import tsx ops/company/worker.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
@@ -92,6 +94,7 @@
     "pdf-lib": "^1.17.1",
     "playwright": "^1.58.2",
     "tailwindcss": "^4",
+    "tsx": "4.23.11",
     "typescript": "^5"
   },
   "overrides": {

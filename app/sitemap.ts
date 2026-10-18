@@ -87,6 +87,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/shop/haul`, changeFrequency: "daily", priority: 0.7 },
     { url: `${BASE}/shop/reviews`, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/shop/sold`, changeFrequency: "weekly", priority: 0.4 },
+    { url: `${BASE}/services/agent`, changeFrequency: "daily", priority: 0.7 },
     { url: `${BASE}/estate/our-work`, changeFrequency: "weekly", priority: 0.8 },
     // Public cleanout legal pages. /cleanouts/payment is an unlisted noindex lookup and stays out.
     { url: `${BASE}/cleanouts/terms`, changeFrequency: "yearly", priority: 0.3 },
@@ -171,6 +172,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Use publicSubsites for log so we don't surprise builds
   void publicSubsites;
 
+  const guides = await withPrismaTimeout(prisma.companyCapability.findMany({
+    where: { status: "published" }, select: { id: true, updatedAt: true }, take: 500,
+  }).catch(() => []), []);
+
   return [
     homeRoute,
     ...subsiteRoutes,
@@ -179,5 +184,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...estateRoutes,
     ...productRoutes,
     ...neighborhoodRoutes,
+    ...guides.map(g => ({ url: `${BASE}/services/agent/${encodeURIComponent(g.id)}`, lastModified: g.updatedAt, changeFrequency: "daily" as const, priority: 0.6 })),
   ];
 }

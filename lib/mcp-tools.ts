@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+import { companyOfferings, capabilities } from "@/lib/company/catalog";
 import { z } from "zod";
 import { PrismaClient } from "@prisma/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -61,24 +63,18 @@ import crypto from "node:crypto";
 
 const prisma = new PrismaClient();
 
-// Stored reference to the incoming request for analytics
-let currentRequest: Request | undefined;
-
-export function setCurrentRequest(req: Request) {
-  currentRequest = req;
-}
-
+const requestContext = new AsyncLocalStorage<Request>();
+export function withMcpRequest<T>(req: Request, fn: () => T): T { return requestContext.run(req, fn); }
 function log(tool: string, input: unknown) {
-  if (currentRequest) {
-    logInvocation(tool, input, currentRequest);
-  }
+  const request = requestContext.getStore();
+  if (request) logInvocation(tool, input, request);
 }
 
 export function registerTools(server: McpServer) {
   // 1. list_services
   server.tool(
     "list_services",
-    "Returns all 8 Tolley.io services with descriptions and URLs",
+    "Returns active public Tolley offerings and their current capability IDs",
     {},
     async () => {
       log("list_services", {});
@@ -88,50 +84,9 @@ export function registerTools(server: McpServer) {
             type: "text" as const,
             text: JSON.stringify(
               {
-                services: [
-                  {
-                    name: TR_BRAND,
-                    description:
-                      "Enclosed cargo trailers (5×8 to 8.5×20), daily/weekly/monthly pricing",
-                    url: "https://www.tolley.io/trailer",
-                  },
-                  {
-                    name: WD_BRAND,
-                    description:
-                      "Washer & dryer appliance rentals starting at $42/mo",
-                    url: "https://www.tolley.io/wd",
-                  },
-                  {
-                    name: GEN_BRAND,
-                    description:
-                      "FIRMAN T07571 tri-fuel generator, 7500W running",
-                    url: "https://www.tolley.io/generator",
-                  },
-                  {
-                    name: HVAC_BRAND,
-                    description:
-                      "Heating & air conditioning, 24/7 service, 4.7★",
-                    url: "https://www.tolley.io/hvac",
-                  },
-                  {
-                    name: "Real Estate — " + HM_AGENT_NAME,
-                    description:
-                      HM_BROKERAGE + ", Kansas City metro area",
-                    url: "https://www.tolley.io/homes",
-                  },
-                  {
-                    name: MV_BRAND,
-                    description:
-                      "Totes, blankets, rubber bands bundle — daily/weekly rental",
-                    url: "https://www.tolley.io/moving",
-                  },
-                  {
-                    name: "Shop",
-                    description:
-                      "Facebook Marketplace mirror — furniture, electronics, home goods",
-                    url: "https://www.tolley.io/shop",
-                  },
-                ],
+                services: companyOfferings().map(s => ({ name: s.title, description: s.purpose, url: s.discovery!.canonicalUrl, capabilities: capabilities().filter(c => c.subsite === s.name).map(c => c.id) })),
+                capabilityEndpoint: "https://www.tolley.io/api/v1/capabilities",
+                taskMcpEndpoint: "https://www.tolley.io/api/v1/agent-mcp",
                 contact: {
                   phone: "913-283-3826",
                   email: "Jared@yourkchomes.com",
@@ -149,8 +104,8 @@ export function registerTools(server: McpServer) {
   // 2. get_trailer_fleet
   server.tool(
     "get_trailer_fleet",
-    "Returns enclosed cargo trailer specs, pricing, and availability",
-    { trailer_size: z.string().optional().describe("Filter by size (e.g. '5x8', '6x12', '7x14', '8.5x20')") },
+    "Returns published utility trailer and car hauler specs and pricing; confirm availability with the provider",
+    { trailer_size: z.string().optional().describe("Filter by a published trailer size") },
     async ({ trailer_size }) => {
       log("get_trailer_fleet", { trailer_size });
       const trailers = trailer_size
@@ -470,7 +425,7 @@ export function registerTools(server: McpServer) {
     },
     async ({ name, includeLiveData }) => {
       log("get_subsite_info", { name, includeLiveData });
-      const m = getSubsite(name);
+      const m = publicSubsites().find(s => s.name === name);
       if (!m) {
         return {
           content: [

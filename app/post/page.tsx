@@ -1,3 +1,4 @@
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import type { Metadata } from "next";
 import styles from "./post.module.css";
 
@@ -47,6 +48,7 @@ export default function PostDoorway() {
         <div>{["Facebook Marketplace", "eBay", "Mercari", "Poshmark", "Depop"].map(name => <span key={name}>{name}</span>)}</div>
         <small>Each connection opens after customer onboarding and draft delivery pass testing.</small>
       </section>
+      <PublicOfferDetails name="post" />
       <footer className={styles.footer}><span>Made for the habit of selling.</span><a href="/">Back to Tolley ↗</a></footer>
     </main>
   );

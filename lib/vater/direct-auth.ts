@@ -76,6 +76,7 @@ function apiError(status: number, error: string, message: string): NextResponse 
 
 export async function requireApiKey(
   req: NextRequest,
+  options: { allowCompany?: boolean } = {},
 ): Promise<ApiKeyAuthOk | ApiKeyAuthFail> {
   const header = req.headers.get("authorization") || "";
   const [scheme, ...rest] = header.split(" ");
@@ -105,7 +106,7 @@ export async function requireApiKey(
 
   let key: ResolvedKey | null;
   try {
-    key = await resolveApiKey(token);
+    key = await resolveApiKey(token, options.allowCompany);
   } catch (err) {
     console.error("[v1/auth] key lookup failed", err);
     return {

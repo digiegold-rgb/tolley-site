@@ -204,6 +204,7 @@ export async function createVideoFromScript(
   userId: string,
   email: string | null,
   input: CreateVideoInput,
+  companyProjectId?: string,
 ): Promise<CreateVideoSuccess | CreateVideoFailure> {
   const script = typeof input.script === "string" ? input.script.trim() : "";
   if (!script) {
@@ -252,6 +253,7 @@ export async function createVideoFromScript(
 
   const project = await prisma.youTubeProject.create({
     data: {
+      ...(companyProjectId ? { id: companyProjectId } : {}),
       userId,
       mode: "topic",
       sourceType: "topic",
