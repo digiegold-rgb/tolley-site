@@ -9,6 +9,7 @@ export default function ServicesPage() {
   return <main className="min-h-screen bg-neutral-950 px-6 py-16 text-white"><div className="mx-auto max-w-5xl">
     <h1 className="text-4xl font-bold">Services, rentals & creative tools</h1>
     <p className="my-6 text-lg text-neutral-300">Find help for your property, equipment for your next job, something for your home, or tools for your next video. Each offering has its own details and next steps.</p>
+    <p className="mb-8"><Link href="/services/agent" className="underline">Work with Tolley through your AI agent →</Link></p>
     <div className="grid gap-6 md:grid-cols-2">{publicOfferings().map(s => <article key={s.name} className="rounded-xl border border-neutral-700 p-6">
       <h2 className="text-xl font-semibold"><Link className="underline" href={s.url}>{s.title}</Link></h2>
       <p className="my-3 text-neutral-300">{s.purpose}</p>

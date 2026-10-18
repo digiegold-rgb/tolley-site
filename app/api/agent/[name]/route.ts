@@ -1,5 +1,6 @@
+import { capabilities } from "@/lib/company/catalog";
 import { NextResponse } from "next/server";
-import { getSubsite } from "@/lib/subsites";
+import { getSubsite, publicSubsites } from "@/lib/subsites";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export async function GET(
 ) {
   const { name } = await ctx.params;
   const m = getSubsite(name);
-  if (!m) {
+  if (!m || !publicSubsites().some(s => s.name === name)) {
     return NextResponse.json({ error: "Unknown subsite" }, { status: 404 });
   }
 
@@ -27,6 +28,9 @@ export async function GET(
 
   const body: Record<string, unknown> = {
     ...m,
+    capabilities: capabilities().filter(c => c.subsite === m.name),
+    taskEndpoint: "/api/v1/tasks",
+    quoteEndpoint: "/api/v1/quotes",
     fullUrl: `${BASE}${m.url}`,
     manifestUrl: `${BASE}/api/agent/${m.name}`,
   };

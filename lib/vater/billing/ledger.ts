@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+import { releaseProject } from "@/lib/company/credits";
 /**
  * lib/vater/billing/ledger.ts — the prepaid credit ledger ("Model B").
  *
@@ -155,7 +157,7 @@ export interface VideoBillingLineJson {
   totalUsd: number;
   /** The pre-render estimate this was measured against. */
   estimateUsd: number;
-  /** Present only when the repair cap fired: the amount actually charged. */
+  /** Present when a repair or accepted-price cap applies: the amount charged. */
   cappedAt?: number;
 }
 
@@ -178,6 +180,7 @@ interface LedgerRowLite {
   kind: string;
   expiresAt: Date | null;
   dedupeKey: string | null;
+  lineJson?: unknown;
 }
 
 /** A prior expiry sweep is bookkeeping, not the customer spending money. */
@@ -196,7 +199,7 @@ function unspentGrantCents(rows: LedgerRowLite[]): number {
     .filter((r) => r.kind === "grant" && r.deltaCents > 0)
     .reduce((a, r) => a + r.deltaCents, 0);
   const spent = rows
-    .filter((r) => r.deltaCents < 0 && !isExpirySweep(r))
+    .filter((r) => r.deltaCents < 0 && !isExpirySweep(r) && !(r.lineJson as { purchasedOnly?: boolean } | null)?.purchasedOnly)
     .reduce((a, r) => a - r.deltaCents, 0);
   return Math.max(0, grants - spent);
 }
@@ -214,6 +217,7 @@ async function sweepExpiredGrants(
   userId: string,
   rows: LedgerRowLite[],
   now: Date,
+  db: Prisma.TransactionClient = prisma,
 ): Promise<boolean> {
   const alreadySwept = new Set(
     rows
@@ -243,7 +247,8 @@ async function sweepExpiredGrants(
       // re-checking this grant on every future balance read.
     }
     try {
-      await prisma.vaterCreditLedger.create({
+      await db.vaterCreditLedger.createMany({
+        skipDuplicates: true,
         data: {
           userId,
           deltaCents: -sweepCents,
@@ -272,32 +277,23 @@ async function sweepExpiredGrants(
   return wrote;
 }
 
-export async function getBalance(userId: string): Promise<CreditBalance> {
-  if (!(await hasVaterCreditLedgerTable())) return EMPTY_BALANCE;
+export async function getBalance(userId: string, tx?: Prisma.TransactionClient): Promise<CreditBalance> {
+  const db = tx || prisma;
+  if (!tx && !(await hasVaterCreditLedgerTable())) return EMPTY_BALANCE;
   try {
-    let rows = await prisma.vaterCreditLedger.findMany({
-      where: { userId },
-      select: {
-        id: true,
-        deltaCents: true,
-        kind: true,
-        expiresAt: true,
-        dedupeKey: true,
-      },
-    });
-
-    if (await sweepExpiredGrants(userId, rows, new Date())) {
-      rows = await prisma.vaterCreditLedger.findMany({
-        where: { userId },
-        select: {
-          id: true,
-          deltaCents: true,
-          kind: true,
-          expiresAt: true,
-          dedupeKey: true,
-        },
-      });
-    }
+    const readSnapshot = async (): Promise<(LedgerRowLite & { heldCents: number })[]> => {
+      if (process.env.COMPANY_CREDITS_ENABLED !== "1") {
+        const rows = await db.vaterCreditLedger.findMany({ where: { userId }, select: { id: true, deltaCents: true, kind: true, expiresAt: true, dedupeKey: true, lineJson: true } });
+        return rows.map(r => ({ ...r, heldCents: 0 }));
+      }
+      // One SQL statement: a concurrent settlement cannot appear as an old
+      // ledger balance combined with a newly released reservation.
+      return db.$queryRaw`SELECT l."id", l."deltaCents", l."kind", l."expiresAt", l."dedupeKey", l."lineJson",
+        COALESCE((SELECT SUM(r."cents") FROM "CompanyReservation" r WHERE r."userId"=${userId} AND r."state"='held'),0)::integer AS "heldCents"
+        FROM "VaterCreditLedger" l WHERE l."userId"=${userId}`;
+    };
+    let rows = await readSnapshot();
+    if (await sweepExpiredGrants(userId, rows, new Date(), db)) rows = await readSnapshot();
 
     const balanceCents = rows.reduce((a, r) => a + r.deltaCents, 0);
     const liveGrants = rows.filter(
@@ -318,10 +314,11 @@ export async function getBalance(userId: string): Promise<CreditBalance> {
       .filter((d): d is Date => d !== null)
       .sort((a, b) => a.getTime() - b.getTime());
 
+    const heldCents = rows[0]?.heldCents || 0;
     return {
       ready: true,
-      balanceCents,
-      purchasedCents: balanceCents - grantCents,
+      balanceCents: balanceCents - heldCents,
+      purchasedCents: balanceCents - grantCents - heldCents,
       grantCents,
       grantExpiresAt: grantCents > 0 ? (grantExpiries[0] ?? null) : null,
       lifetimePurchasedCents: rows
@@ -634,7 +631,12 @@ export async function debitForProject(
   opts?: { skip?: boolean; skipReason?: string },
 ): Promise<DebitResult> {
   if (opts?.skip) {
-    return { ok: true, outcome: "skipped", reason: opts.skipReason ?? "unmetered" };
+    const companyHold = process.env.COMPANY_CREDITS_ENABLED === "1"
+      ? await prisma.companyReservation.findUnique({ where: { projectId }, select: { taskId: true } }) : null;
+    if (!companyHold?.taskId) {
+      await releaseProject(projectId);
+      return { ok: true, outcome: "skipped", reason: opts.skipReason ?? "unmetered" };
+    }
   }
   if (!(await hasVaterCreditLedgerTable())) {
     return { ok: false, outcome: "not_ready", reason: "ledger table missing" };
@@ -665,8 +667,12 @@ export async function debitForProject(
   }
 
   const { line, chargeUsd } = buildDebitLine(project);
-  const chargeCents = toCents(chargeUsd);
+  const reservation = process.env.COMPANY_CREDITS_ENABLED === "1"
+    ? await prisma.companyReservation.findUnique({ where: { projectId } }) : null;
+  const chargeCents = reservation ? Math.min(toCents(chargeUsd), reservation.cents) : toCents(chargeUsd);
+  if (chargeCents < toCents(chargeUsd)) line.cappedAt = chargeCents / 100;
   if (chargeCents <= 0) {
+    await releaseProject(projectId);
     return { ok: true, outcome: "skipped", reason: "zero_charge" };
   }
 
@@ -678,15 +684,18 @@ export async function debitForProject(
         kind: "debit",
         projectId: project.id,
         dedupeKey: `debit:${project.id}`,
-        lineJson: line as unknown as object,
-        note: line.cappedAt
+        lineJson: { ...line, purchasedOnly: reservation?.purchasedOnly || false } as unknown as object,
+        note: reservation && chargeCents < toCents(chargeUsd)
+          ? `${project.publishTitle ?? project.sourceTitle ?? "Video"} — capped at accepted price`
+          : line.cappedAt
           ? `${project.publishTitle ?? project.sourceTitle ?? "Video"} — capped at ${REPAIR_CAP_MULTIPLE}× estimate (repair-cap)`
           : (project.publishTitle ?? project.sourceTitle ?? "Video"),
       },
     });
+    await releaseProject(projectId);
     if (line.cappedAt) {
       console.warn(
-        `[vater-credits] repair-cap applied project=${project.id} cost=$${line.totalUsd.toFixed(2)} charged=$${chargeUsd.toFixed(2)} estimate=$${line.estimateUsd.toFixed(2)}`,
+        `[vater-credits] price-cap applied project=${project.id} cost=$${line.totalUsd.toFixed(2)} charged=$${(chargeCents / 100).toFixed(2)} estimate=$${line.estimateUsd.toFixed(2)}`,
       );
     }
 
@@ -713,6 +722,7 @@ export async function debitForProject(
     return { ok: true, outcome: "created", chargedCents: chargeCents, line };
   } catch (err) {
     if ((err as { code?: string })?.code === "P2002") {
+      await releaseProject(projectId);
       return { ok: true, outcome: "existing", chargedCents: chargeCents, line };
     }
     if (isMissingSchemaError(err)) {
@@ -817,6 +827,7 @@ export async function refundOnFailure(
   if (!(await hasVaterCreditLedgerTable())) {
     return { refunded: false, reason: "not_ready" };
   }
+  await releaseProject(projectId);
 
   try {
     const rows = await prisma.vaterCreditLedger.findMany({
@@ -941,7 +952,10 @@ export async function adjustProjectDebit(
     select: { deltaCents: true },
   });
   const chargedCents = priorRows.reduce((a, r) => a - r.deltaCents, 0);
-  const targetCents = toCents(chargeUsd);
+  const heldQuote = process.env.COMPANY_CREDITS_ENABLED === "1"
+    ? await prisma.companyReservation.findUnique({ where: { projectId } }) : null;
+  const targetCents = heldQuote ? Math.min(toCents(chargeUsd), heldQuote.cents) : toCents(chargeUsd);
+  if (targetCents < toCents(chargeUsd)) line.cappedAt = targetCents / 100;
   const deltaCents = targetCents - chargedCents; // >0 = charge more
 
   if (Math.abs(deltaCents) < Math.round(threshold * 100)) {
@@ -957,7 +971,7 @@ export async function adjustProjectDebit(
         kind: "adjust",
         projectId,
         dedupeKey: `adjust:reconcile:${projectId}:${revision}`,
-        lineJson: line as unknown as object,
+        lineJson: { ...line, purchasedOnly: heldQuote?.purchasedOnly || false } as unknown as object,
         note: line.cappedAt
           ? `Cost true-up (capped at ${REPAIR_CAP_MULTIPLE}× estimate — repair-cap)`
           : `Cost true-up — $${(chargedCents / 100).toFixed(2)} → $${(targetCents / 100).toFixed(2)}`,

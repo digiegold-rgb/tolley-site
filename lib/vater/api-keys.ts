@@ -40,6 +40,7 @@ import { isMissingRelationError } from "@/lib/vater/beta-schema";
 
 /** Marker so a leaked key is greppable and obviously ours. */
 const KEY_MARKER = "jly_live_";
+const COMPANY_KEY_MARKER = "jly_company_";
 /** Random bytes of entropy per key (32 hex chars). */
 const KEY_ENTROPY_BYTES = 16;
 /** Characters of the plaintext kept in the clear for display. */
@@ -92,11 +93,12 @@ export function hashApiKey(plaintext: string): string {
 }
 
 /** `jly_live_` + 32 hex chars of CSPRNG output. */
-export function mintApiKey(): { plaintext: string; prefix: string; keyHash: string } {
-  const plaintext = `${KEY_MARKER}${randomBytes(KEY_ENTROPY_BYTES).toString("hex")}`;
+export function mintApiKey(scope: "studio" | "company" = "studio"): { plaintext: string; prefix: string; keyHash: string } {
+  const marker = scope === "company" ? COMPANY_KEY_MARKER : KEY_MARKER;
+  const plaintext = `${marker}${randomBytes(KEY_ENTROPY_BYTES).toString("hex")}`;
   return {
     plaintext,
-    prefix: plaintext.slice(0, PREFIX_LEN),
+    prefix: plaintext.slice(0, scope === "company" ? marker.length + 6 : PREFIX_LEN),
     keyHash: hashApiKey(plaintext),
   };
 }
@@ -173,8 +175,9 @@ export async function createApiKey(
   userId: string,
   name: string,
   webhookUrl?: string | null,
+  scope: "studio" | "company" = "studio",
 ): Promise<{ row: ApiKeyRow; plaintext: string }> {
-  const { plaintext, prefix, keyHash } = mintApiKey();
+  const { plaintext, prefix, keyHash } = mintApiKey(scope);
   const cleanName = (name || "").trim().slice(0, 80) || "Untitled key";
   const hook = webhookUrl ? normalizeWebhookUrl(webhookUrl) : null;
 
@@ -230,8 +233,8 @@ export interface ResolvedKey {
  * the returned row's hash is re-compared with timingSafeEqual so this function
  * stays correct if the index is ever changed to a prefix lookup.
  */
-export async function resolveApiKey(plaintext: string): Promise<ResolvedKey | null> {
-  if (!plaintext.startsWith(KEY_MARKER)) return null;
+export async function resolveApiKey(plaintext: string, allowCompany = false): Promise<ResolvedKey | null> {
+  if (!plaintext.startsWith(KEY_MARKER) && !(allowCompany && plaintext.startsWith(COMPANY_KEY_MARKER))) return null;
   if (!(await hasApiKeyTable())) return null;
 
   const keyHash = hashApiKey(plaintext);

@@ -1,5 +1,5 @@
 import { createMcpHandler } from "mcp-handler";
-import { registerTools, setCurrentRequest } from "@/lib/mcp-tools";
+import { registerTools, withMcpRequest } from "@/lib/mcp-tools";
 import { preserveWebGlobals } from "@/lib/preserve-web-globals";
 
 const mcpHandler = preserveWebGlobals(() => createMcpHandler(
@@ -11,8 +11,7 @@ const mcpHandler = preserveWebGlobals(() => createMcpHandler(
 ));
 
 async function handler(request: Request) {
-  setCurrentRequest(request);
-  return mcpHandler(request);
+  return withMcpRequest(request, () => mcpHandler(request));
 }
 
 export { handler as GET, handler as POST, handler as DELETE };

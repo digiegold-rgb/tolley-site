@@ -53,6 +53,7 @@ export default function RootLayout({
         <link rel="describedby" type="text/plain" href="https://www.tolley.io/llms.txt" title="Tolley AI guide" />
         <link rel="describedby" type="text/plain" href="https://www.tolley.io/llms-full.txt" title="Tolley detailed AI guide" />
         <link rel="describedby" type="application/json" href="https://www.tolley.io/.well-known/agent-card.json" title="Tolley agent discovery card" />
+        <link rel="alternate" type="application/json" href="https://www.tolley.io/api/v1/capabilities" title="Tolley agent capabilities" />
         <link rel="service-desc" type="application/json" href="https://www.tolley.io/api/openapi.json" title="Tolley OpenAPI specification" />
         <link rel="describedby" type="application/json" href="https://www.tolley.io/api/agent-index" title="Tolley agent index" />
         <StructuredData data={organizationSchema} id="ld-organization" />

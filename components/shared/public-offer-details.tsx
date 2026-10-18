@@ -21,6 +21,7 @@ export function PublicOfferDetails({ name }: { name: string }) {
       {["cleanouts", "estate", "homes", "real-estate-agent", "housing"].includes(name) && <p>Preparing a property? <Link href="/cleanouts" className="underline">Cleanouts</Link> · <Link href="/estate" className="underline">Estate sales</Link> · <Link href="/homes" className="underline">Home-selling help</Link></p>}
       {["wd", "moving", "trailer"].includes(name) && <p>Clearing space first? <Link href="/cleanouts" className="underline">Ask about cleanouts and appliance haul-away</Link>.</p>}
       {s.discovery.operator && !["cleanouts", "wd", "housing", "estate", "homes"].includes(name) && <DiscoveryInquiry offering={name} />}
+      <Link href={`/services/agent?offering=${encodeURIComponent(name)}`} className="inline-block underline">Let your AI agent explore this service</Link>
       <Link href="/services" className="inline-block underline">Explore all Tolley services and tools</Link>
     </div>
     {!s.skipJsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(buildJsonLd(s)) }} />}

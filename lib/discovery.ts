@@ -26,7 +26,7 @@ export function discoveryMetadata(name: string) {
   return { title: s.title, description: s.purpose, alternates: { canonical: DISCOVERY_BASE + s.url } };
 }
 export function discoveryText(full = false) {
-  const lines = ["# Tolley.io", "", "> Kansas City services, rentals, real estate, local commerce, and online creative tools.", "", "Public directory: https://www.tolley.io/services", "", "Facts below are drawn from the same registry as the public pages. Confirm availability and final prices with the named provider. Partner businesses have their own contacts.", ""];
+  const lines = ["# Tolley.io", "", "> Kansas City services, rentals, real estate, local commerce, and online creative tools.", "", "Public directory: https://www.tolley.io/services", "Agent capabilities: https://www.tolley.io/api/v1/capabilities", "Agent guide: https://www.tolley.io/services/agent", "Structured tasks: POST /api/v1/quotes then POST /api/v1/tasks with a scoped bearer key and Idempotency-Key. Existing video API: /api/v1/mcp. Paid tasks require an accepted maximum and prepaid credit.", "", "Facts below are drawn from the same registry as the public pages. Confirm availability and final prices with the named provider. Partner businesses have their own contacts.", ""];
   for (const s of publicOfferings()) {
     lines.push(`## ${s.title}`, `URL: ${s.discovery!.canonicalUrl}`, s.purpose);
     if (s.serviceArea) lines.push(`Service area: ${s.serviceArea}`);

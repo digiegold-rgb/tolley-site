@@ -1,3 +1,6 @@
+import { isRetiredSitePath } from "@/lib/retired-sites";
+import { manifest as post } from "@/app/post/agent";
+import { manifest as fit } from "@/app/fit/agent";
 import { UNPROMOTED_SUBSITES } from "@/lib/public-route-policy";
 import { withDiscoveryFacts } from "./discovery-facts";
 import type { SubsiteManifest } from "./agent-manifest";
@@ -55,6 +58,7 @@ import { manifest as wd } from "@/app/wd/agent";
 import { manifest as live } from "@/app/live/agent";
 
 const registered: SubsiteManifest[] = [
+  post, fit,
   about,
   advertising,
   agents,
@@ -111,7 +115,7 @@ export function getSubsite(name: string): SubsiteManifest | undefined {
 }
 
 export function publicSubsites(): SubsiteManifest[] {
-  return SUBSITES.filter((s) => s.status === "public");
+  return SUBSITES.filter((s) => s.status === "public" && s.discovery?.disposition !== "private" && s.discovery?.disposition !== "retired" && !isRetiredSitePath(s.url));
 }
 
 export function discoverableSubsites(): SubsiteManifest[] {

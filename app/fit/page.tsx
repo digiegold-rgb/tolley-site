@@ -1,3 +1,4 @@
+import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import Link from "next/link";
 import { lookbook, SLOT_ORDER, SLOT_META, wardrobeCounts, catalogUpdated } from "@/lib/fit/catalog";
 import { recentFits, LANE_LABEL } from "@/lib/fit/recent";
@@ -77,6 +78,7 @@ export default async function FitIndexPage({
       </section>
 
       <FitDisclosure />
+      <PublicOfferDetails name="fit" />
     </div>
   );
 }

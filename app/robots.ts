@@ -1,3 +1,4 @@
+import { publicOfferings } from "@/lib/discovery";
 import type { MetadataRoute } from "next";
 import { ADMIN_ROUTES } from "@/lib/agent-manifest";
 
@@ -64,7 +65,7 @@ export default function robots(): MetadataRoute.Robots {
   ];
   const adminDisallow = [...ADMIN_ROUTES, ...internalDisallow];
   // End anchors prevent these exceptions from opening API subpaths.
-  const publicAllow = ["/", "/api/openapi.json$", "/api/agent-index$"];
+  const publicAllow = ["/", "/api/openapi.json$", "/api/agent-index$", "/api/v1/capabilities$", "/api/v1/knowledge$", "/api/v1/mcp$", ...publicOfferings().map(s => `/api/agent/${s.name}$`)];
 
   const aiBots = [
     "GPTBot",

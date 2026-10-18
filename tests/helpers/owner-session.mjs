@@ -3,13 +3,14 @@ import { createHmac, randomBytes, scryptSync } from 'node:crypto';
 
 export function requireIsolatedServer(base) {
   const database = new URL(process.env.DATABASE_URL || 'postgresql://invalid');
+  const company = ['http://127.0.0.1:3063', 'http://localhost:3063'].includes(base) && database.port === '55463' && database.pathname === '/tolley_company';
   const customers = ['http://127.0.0.1:3061', 'http://localhost:3061'].includes(base) && database.port === '55460' && database.pathname === '/tolley_customers';
   const revenue = base === 'http://127.0.0.1:3018' && database.port === '55438' && database.pathname === '/tolley_revenue_test';
   const discovery = base === 'http://localhost:3024' && database.port === '55450' && database.pathname === '/tolley_discovery_release_test';
   const stock = base === 'http://localhost:3059' && database.port === '55449' && database.pathname === '/tolley_stock_test';
   const hauls = ['http://127.0.0.1:3029','http://localhost:3029'].includes(base) && database.port === '55449' && database.pathname === '/tolley_live_growth_test';
   const growth = ["http://127.0.0.1:3026","http://localhost:3026"].includes(base) && database.port === "55438" && database.pathname === "/tolley_growth_hq_test";
-  if (database.hostname !== '127.0.0.1' || (!customers && !revenue && !discovery && !stock && !hauls && !growth)) {
+  if (database.hostname !== '127.0.0.1' || (!customers && !revenue && !discovery && !stock && !hauls && !growth && !company)) {
     throw new Error('Disposable localhost app/database required');
   }
 }
