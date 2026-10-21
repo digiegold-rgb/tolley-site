@@ -1,10 +1,12 @@
 import { discoveryMetadata } from "@/lib/discovery";
+import Link from "next/link";
 import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import {
   TC_PHONE,
   TC_PHONE_TEL,
   TC_PHONE_SMS,
   TC_AREA,
+  TC_FACEBOOK_URL,
   TC_STEPS,
   TC_SERVICES,
   TC_FAQ,
@@ -60,6 +62,9 @@ function CleanoutsPage() {
             Free quotes, no public price list games — one flat number for the whole
             job, <span className="font-semibold text-[#ff7a1a]">before</span> we start.
           </p>
+          <a href={TC_FACEBOOK_URL} target="_blank" rel="noopener noreferrer" className="mt-5 inline-block text-sm text-[#ff7a1a] underline underline-offset-4 hover:text-white">
+            Follow Tolley Clean Outs on Facebook
+          </a>
         </div>
       </section>
 
@@ -160,6 +165,7 @@ function CleanoutsPage() {
           </a>
         </p>
         <div className="mt-3 flex flex-wrap justify-center gap-3 text-xs text-white/20">
+          <a href={TC_FACEBOOK_URL} target="_blank" rel="noopener noreferrer" className="hover:text-white/40">Facebook</a>
           <a href="/cleanouts/terms" className="hover:text-white/40">Terms</a>
           <a href="/cleanouts/privacy" className="hover:text-white/40">Privacy</a>
           <a href="/junkinjays" className="hover:text-white/40">Scrap &amp; Junk</a>
@@ -167,7 +173,7 @@ function CleanoutsPage() {
           <a href="/wd" className="hover:text-white/40">W/D Rental</a>
           <a href="/homes" className="hover:text-white/40">Real Estate</a>
           <a href="/moving" className="hover:text-white/40">Moving</a>
-          <a href="/shop" className="hover:text-white/40">Shop</a>
+          <Link href="/shop" className="hover:text-white/40">Shop</Link>
         </div>
       </footer>
       <MoreFromTolley currentSubsite="cleanouts" />

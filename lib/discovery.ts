@@ -31,6 +31,7 @@ export function discoveryText(full = false) {
     lines.push(`## ${s.title}`, `URL: ${s.discovery!.canonicalUrl}`, s.purpose);
     if (s.serviceArea) lines.push(`Service area: ${s.serviceArea}`);
     if (s.discovery?.phone) lines.push(`Phone: ${s.discovery.phone}`);
+    if (s.sameAs?.length) lines.push(`Official profiles: ${s.sameAs.join(", ")}`);
     if (s.discovery?.operator) lines.push(`Contact: ${s.discovery.operator}`);
     for (const p of s.pricing ?? []) lines.push(`Published price: ${p.currency} ${p.amount} ${p.unit}${p.notes ? ` — ${p.notes}` : ""}`);
     lines.push(s.discovery!.pricingNote);

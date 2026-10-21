@@ -72,6 +72,7 @@ export function buildJsonLd(manifest: SubsiteManifest): Record<string, unknown> 
     name: manifest.title,
     description: manifest.purpose,
     url,
+    ...(manifest.sameAs?.length ? { sameAs: manifest.sameAs } : {}),
     ...(manifest.discovery?.phone ? { telephone: manifest.discovery.phone } : {}),
     isPartOf: {
       "@type": "WebSite",

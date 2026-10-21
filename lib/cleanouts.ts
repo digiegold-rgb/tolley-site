@@ -11,6 +11,7 @@ export const TC_PHONE_TEL = "tel:+19132833826";
 export const TC_PHONE_SMS = "sms:+19132833826";
 
 export const TC_AREA = "Kansas City Metro";
+export const TC_FACEBOOK_URL = "https://www.facebook.com/profile.php?id=61595780667564";
 
 export interface TcStep {
   num: string;
