@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.62';
+export const APP_VERSION = '1.62.1';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.62.1', date: '2026-10-21', title: 'Cleanouts on Facebook', items: ['The Cleanouts page links to the official Tolley Clean Outs Facebook page, with the same profile included in public business information for search.'] },
   { version: '1.62', date: '2026-10-18', title: 'Agent services and company operations', items: ['Discover public capabilities, authorize scoped agent access and submit quoted tasks with durable receipts.', 'Company operations adds isolated knowledge, research budgets, verified guides and owner controls.'] },
   { version: '1.61.2', date: '2026-10-16', title: 'Readable AI totals on phones', items: ['The HQ AI summary wraps within narrow screens while keeping the ledger accessible.'] },
   { version: '1.61.1', date: '2026-10-16', title: 'AI referral profit in HQ', items: ['HQ separates collected referral revenue, job costs and profit, and applies profit against AI investment.', 'Future bookings stay separate from earned income; private job details remain behind owner login.'] },

@@ -1,4 +1,5 @@
 import type { SubsiteManifest } from "@/lib/agent-manifest";
+import { TC_FACEBOOK_URL } from "@/lib/cleanouts";
 
 export const manifest: SubsiteManifest = {
   name: "cleanouts",
@@ -7,6 +8,7 @@ export const manifest: SubsiteManifest = {
     "Estate and rental cleanouts, junk and trash removal, furniture moving, and haul-away across the Kansas City metro. Free quotes, fast turnaround.",
   url: "/cleanouts",
   schemaType: "LocalBusiness",
+  sameAs: [TC_FACEBOOK_URL],
   jsonEndpoints: [],
   leadEndpoint: "/api/cleanouts/quote",
   leadSource: "cleanouts",

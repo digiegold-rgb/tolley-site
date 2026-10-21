@@ -11,6 +11,7 @@ import { checkDiscoveryHealth } from "../lib/discovery-health";
 import { WD_PRICE_WASHER, WD_PRICE_BUNDLE } from "../lib/wd";
 import { GEN_MODEL, GEN_PRICE_DAY } from "../lib/generator";
 import { preserveWebGlobals } from "../lib/preserve-web-globals";
+import { TC_FACEBOOK_URL } from "../lib/cleanouts";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
 test("MCP transport initialization preserves responses from unrelated Next routes", async () => {
@@ -65,6 +66,8 @@ test("unknown software pricing is never advertised as free; JSON-LD is escaped",
   assert.equal(buildJsonLd(getSubsite("animate")!).offers, undefined);
   assert.equal(buildJsonLd(getSubsite("cleanouts")!).telephone, "913-283-3826");
   assert.equal(getSubsite("cleanouts")!.skipJsonLd, false);
+  assert.deepEqual(buildJsonLd(getSubsite("cleanouts")!).sameAs, [TC_FACEBOOK_URL]);
+  assert.ok(discoveryText(true).includes(`Official profiles: ${TC_FACEBOOK_URL}`));
   assert.ok(!serializeJsonLd({ text: "</script><script>alert(1)</script>" }).includes("<"));
 });
 test("one customer can have two opportunities without duplicate revenue", () => {
