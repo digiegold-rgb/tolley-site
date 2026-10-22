@@ -111,6 +111,7 @@
   {"file":"app/api/circle/stats/route.ts","path":"/api/circle/stats","audience":"endpoint"},
   {"file":"app/api/cleanouts/payment/route.ts","path":"/api/cleanouts/payment","audience":"endpoint"},
   {"file":"app/api/cleanouts/quote/route.ts","path":"/api/cleanouts/quote","audience":"endpoint"},
+  {"file":"app/api/cleanouts/sms/route.ts","path":"/api/cleanouts/sms","audience":"endpoint"},
   {"file":"app/api/client/geo/route.ts","path":"/api/client/geo","audience":"endpoint"},
   {"file":"app/api/client/listings/route.ts","path":"/api/client/listings","audience":"endpoint"},
   {"file":"app/api/client/pois/route.ts","path":"/api/client/pois","audience":"endpoint"},
