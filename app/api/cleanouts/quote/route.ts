@@ -43,6 +43,11 @@ export async function POST(request: NextRequest) {
   const phone = str(body.phone, 40);
   const address = str(body.address, 200);
   const details = str(body.details, 2000);
+  const smsConsent = body.smsConsent === true;
+  const attribution = {
+    ...(normalizeAttribution(body.attribution) ?? {}),
+    smsConsent: { optedIn: smsConsent, at: new Date().toISOString(), ip, source: "tolley.io/cleanouts quote form" },
+  };
 
   if (!name && !phone && !address && !details) {
     return NextResponse.json(
@@ -57,7 +62,7 @@ export async function POST(request: NextRequest) {
       name: name || `Cleanout quote ${new Date().toISOString().slice(0, 10)}`,
       offer: "cleanout",
       source: "cleanouts-page",
-      attribution: normalizeAttribution(body.attribution),
+      attribution,
       stage: "replied",
       phone: phone || null,
       address: address || null,
