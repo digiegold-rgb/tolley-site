@@ -215,6 +215,15 @@ export const TERMS_SECTIONS: LegalSection[] = [
       `${CK_CONTACT_NAME} · ${CK_PHONE} · ${CK_EMAIL}`,
     ],
   },
+  {
+    heading: "15. Text messaging (SMS) terms",
+    paragraphs: [
+      "Program: Tolley Clean Outs sends text messages about cleanout quotes, scheduling, arrival times, and job updates to people who opt in by checking the optional SMS consent box on the tolley.io/cleanouts quote form or by texting us first.",
+      "Message frequency varies. Message and data rates may apply. Consent is not a condition of purchase.",
+      "Reply STOP to opt out at any time; you will get one confirmation and no further texts. Reply HELP for help, or call (913) 283-3826.",
+      "Carriers are not liable for delayed or undelivered messages. See our Privacy Policy at tolley.io/cleanouts/privacy for how we handle your information.",
+    ],
+  },
 ];
 
 export const PRIVACY_SECTIONS: LegalSection[] = [
@@ -249,6 +258,14 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
         text: "Buyers of consignment items, who get only what a sale needs. Your address is never shared without your OK.",
       },
       { text: "Authorities, when the law requires it." },
+    ],
+  },
+  {
+    heading: "Text messaging and mobile information",
+    paragraphs: [
+      "If you check the optional SMS consent box on our quote form, we use your mobile number only to text you about your cleanout quote, scheduling, arrival times, and job updates from Tolley Clean Outs.",
+      "No mobile information will be shared with third parties or affiliates for marketing or promotional purposes. Text messaging originator opt-in data and consent are not shared with any third parties, except service providers (such as our SMS carrier platform) that help us deliver the messages.",
+      "Reply STOP to any message to opt out at any time, or HELP for help.",
     ],
   },
   {

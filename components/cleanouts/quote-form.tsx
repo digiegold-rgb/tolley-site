@@ -15,6 +15,7 @@ export function CleanoutQuoteForm() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [details, setDetails] = useState("");
+  const [smsConsent, setSmsConsent] = useState(false);
   const [status, setStatus] = useState<FormStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -28,7 +29,7 @@ export function CleanoutQuoteForm() {
       const res = await fetch("/api/cleanouts/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: visitorSessionId(), name, phone, address, details, attribution: browserAttribution(reported) }),
+        body: JSON.stringify({ sessionId: visitorSessionId(), name, phone, address, details, smsConsent, attribution: browserAttribution(reported) }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -127,6 +128,23 @@ export function CleanoutQuoteForm() {
           className="tc-input resize-y px-3.5 py-2.5 text-sm"
         />
       </div>
+
+      <label htmlFor="tc-sms-consent" className="flex items-start gap-3 text-xs leading-relaxed text-white/60">
+        <input
+          id="tc-sms-consent"
+          type="checkbox"
+          checked={smsConsent}
+          onChange={(e) => setSmsConsent(e.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0"
+        />
+        <span>
+          (Optional) I agree to receive text messages from Tolley Clean Outs about my cleanout quote, scheduling,
+          and job updates. Message frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for
+          help. Consent is not a condition of purchase. See our{" "}
+          <a href="/cleanouts/privacy" className="underline">Privacy Policy</a> and{" "}
+          <a href="/cleanouts/terms" className="underline">Terms</a>.
+        </span>
+      </label>
 
       <HeardAbout value={reported} onChange={setReported} />
 
