@@ -22,7 +22,7 @@ export function NumberField({ id, label, value, onChange, min = 0, max, suffix, 
     <span>{label}</span>
     <span className={styles.inputWrap}>
       {prefix && <span aria-hidden="true">{prefix}</span>}
-      <input id={id} type="text" inputMode="decimal" autoComplete="off" value={draft ?? (prefix === "$" ? Number(value.toFixed(2)).toLocaleString("en-US") : String(Number(value.toFixed(4))))}
+      <input id={id} type="text" inputMode={min < 0 ? "text" : "decimal"} autoComplete="off" value={draft ?? (prefix === "$" ? Number(value.toFixed(2)).toLocaleString("en-US") : String(Number(value.toFixed(4))))}
         onChange={e => {
           const next = e.target.value.replace(/[$,%\s]/g, "");
           if (!(min < 0 ? /^-?\d*\.?\d*$/ : /^\d*\.?\d*$/).test(next)) return;
