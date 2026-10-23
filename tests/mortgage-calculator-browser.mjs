@@ -7,7 +7,8 @@ const base = process.env.CALCULATOR_TEST_URL || 'http://127.0.0.1:3027';
 const output = process.env.CALCULATOR_SCREENSHOTS || '/tmp/tolley-calculator-screenshots';
 await mkdir(output, { recursive: true });
 for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
-  const browser = await engine.launch({ headless: true });
+  if (process.env.CALCULATOR_BROWSER && process.env.CALCULATOR_BROWSER !== name) continue;
+  const browser = await engine.launch({ headless: true, ...(name === 'webkit' && process.env.CALCULATOR_WEBKIT_EXECUTABLE ? { executablePath: process.env.CALCULATOR_WEBKIT_EXECUTABLE } : {}) });
   try {
     const context = await browser.newContext({ ...devices['iPhone 13'], defaultBrowserType: undefined, colorScheme: 'light' });
     await context.route('**/*', route => new URL(route.request().url()).origin === new URL(base).origin ? route.continue() : route.abort());
