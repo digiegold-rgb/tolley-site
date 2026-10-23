@@ -17,6 +17,7 @@
   {"file":"app/admin/page.tsx","path":"/admin","audience":"private"},
   {"file":"app/admin/routines/page.tsx","path":"/admin/routines","audience":"private"},
   {"file":"app/advertising/page.tsx","path":"/advertising","audience":"supporting"},
+  {"file":"app/agent/calculator/page.tsx","path":"/agent/calculator","audience":"supporting"},
   {"file":"app/agent/page.tsx","path":"/agent","audience":"public"},
   {"file":"app/agents/page.tsx","path":"/agents","audience":"private"},
   {"file":"app/animate/beta/page.tsx","path":"/animate/beta","audience":"private"},
