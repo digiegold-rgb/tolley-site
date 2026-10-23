@@ -34,6 +34,7 @@ export function HpNavbar({ isAuthenticated }: HpNavbarProps) {
           >
             Pricing
           </a>
+          <Link href="/agent/calculator" className="text-xs tracking-[0.1em] text-white/68 uppercase transition hover:text-white">Calculator</Link>
           <Link
             href="/tools/lead-follow-up-audit"
             className="text-xs tracking-[0.1em] text-white/68 uppercase transition hover:text-white"
@@ -133,6 +134,7 @@ export function HpNavbar({ isAuthenticated }: HpNavbarProps) {
             >
               Pricing
             </a>
+            <Link href="/agent/calculator" onClick={() => setMenuOpen(false)} className="text-sm tracking-[0.08em] text-white/72 uppercase transition hover:text-white">Mortgage Calculator</Link>
             <Link
               href="/tools/lead-follow-up-audit"
               onClick={() => setMenuOpen(false)}
