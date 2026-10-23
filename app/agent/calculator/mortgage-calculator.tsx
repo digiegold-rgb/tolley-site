@@ -1,57 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { calculateMortgage, DEFAULT_MORTGAGE, LOANS, normalizeMortgage, type LoanType, type MortgageInputs } from "@/lib/mortgage-calculator";
+import { money, exactMoney, Icon, NumberField, Slider, Row } from "./calculator-controls";
+import { calculateHeloc, DEFAULT_HELOC, normalizeHeloc, type HelocInputs } from "@/lib/heloc-calculator";
+import HelocCalculator from "./heloc-calculator";
 import styles from "./mortgage-calculator.module.css";
-
-const money = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
-const exactMoney = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-
-function Icon({ name }: { name: "home" | "sun" | "moon" | "share" | "arrow" }) {
-  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    {name === "home" ? <><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" /><path d="M9 21v-8h6v8" /></> : name === "sun" ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></> : name === "moon" ? <path d="M20.5 13.2A8.5 8.5 0 0 1 10.8 3.5a8.5 8.5 0 1 0 9.7 9.7Z" /> : name === "share" ? <><path d="M12 15V3m-4 4 4-4 4 4M5 11v9h14v-9" /></> : <path d="M5 12h14m-5-5 5 5-5 5" />}
-  </svg>;
-}
-
-function NumberField({ id, label, value, onChange, min = 0, max, suffix, prefix, large = false }: {
-  id: string; label: string; value: number; onChange: (n: number) => void; min?: number; max: number; suffix?: string; prefix?: string; large?: boolean;
-}) {
-  const [draft, setDraft] = useState<string | null>(null);
-  return <label className={`${styles.field} ${large ? styles.largeField : ""}`} htmlFor={id}>
-    <span>{label}</span>
-    <span className={styles.inputWrap}>
-      {prefix && <span aria-hidden="true">{prefix}</span>}
-      <input id={id} type="text" inputMode="decimal" autoComplete="off" value={draft ?? (prefix === "$" ? Number(value.toFixed(2)).toLocaleString("en-US") : String(Number(value.toFixed(2))))}
-        onChange={e => {
-          const next = e.target.value.replace(/[$,%\s]/g, "");
-          if (!/^\d*\.?\d*$/.test(next)) return;
-          setDraft(next);
-          const n = Number(next);
-          if (next && Number.isFinite(n) && n >= min && n <= max) onChange(n);
-        }}
-        onBlur={() => {
-          if (draft !== null && draft !== "" && draft !== ".") onChange(Math.min(max, Math.max(min, Number(draft))));
-          setDraft(null);
-        }} />
-      {suffix && <span>{suffix}</span>}
-    </span>
-  </label>;
-}
-
-function Slider({ id, label, value, min, max, step, onChange, format }: { id: string; label: string; value: number; min: number; max: number; step: number; onChange: (n: number) => void; format: (n: number) => string }) {
-  return <div className={styles.sliderWrap}>
-    <input id={id} aria-label={label} aria-valuetext={format(value)} type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))} style={{ "--fill": `${(value - min) / (max - min) * 100}%` } as CSSProperties} />
-    <div className={styles.rangeEnds}><span>{format(min)}</span><span>{format(max)}</span></div>
-  </div>;
-}
-
-function Row({ label, value, dot, strong = false }: { label: ReactNode; value: string; dot?: string; strong?: boolean }) {
-  return <div className={`${styles.row} ${strong ? styles.strongRow : ""}`}><dt>{dot && <i style={{ background: dot }} />}{label}</dt><dd>{value}</dd></div>;
-}
 
 export default function MortgageCalculator() {
   const [input, setInput] = useState<MortgageInputs>(DEFAULT_MORTGAGE);
+  const [tab, setTab] = useState<"mortgage" | "heloc">("mortgage");
+  const [heloc, setHeloc] = useState<HelocInputs>(DEFAULT_HELOC);
   const [theme, setTheme] = useState<"system" | "light" | "dark">("system");
   const [ready, setReady] = useState(false);
   const [shareMessage, setShareMessage] = useState("");
@@ -63,6 +23,11 @@ export default function MortgageCalculator() {
     } catch { /* Private browsing can block storage. */ }
     try {
       const params = new URLSearchParams(window.location.search);
+      if (params.get("tab") === "heloc") setTab("heloc");
+      const helocRaw = params.get("heloc");
+      if (helocRaw && helocRaw.length < 5000) {
+        try { const parsed = JSON.parse(helocRaw); if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) setHeloc(normalizeHeloc(parsed)); } catch { /* Keep the default HELOC for invalid links. */ }
+      }
       const raw = params.get("scenario");
       if (raw && raw.length < 3000) {
         const parsed = JSON.parse(raw);
@@ -72,6 +37,9 @@ export default function MortgageCalculator() {
     setReady(true);
   }, []);
   const result = calculateMortgage(input);
+  const helocResult = calculateHeloc(heloc);
+  const helocDueNow = heloc.drawYears === 0 && heloc.repaymentType === "balloon";
+  const displayedTotal = tab === "heloc" ? helocDueNow ? helocResult.balloon : helocResult.monthlyBudget : result.monthly;
   const loan = LOANS[input.loan];
   const miLabel = input.loan === "fha" ? "FHA mortgage insurance" : input.loan === "usda" ? "USDA annual fee" : "Mortgage insurance (PMI)";
   const upfrontLabel = input.loan === "fha" ? "FHA upfront MIP" : input.loan === "va" ? "VA funding fee" : "USDA guarantee fee";
@@ -83,6 +51,16 @@ export default function MortgageCalculator() {
     setInput(current => normalizeMortgage({ ...current, loan: next, down: Math.max(current.down, LOANS[next].minimum) }));
     setShareMessage(""); setFallbackLink("");
   }
+  function updateHeloc<K extends keyof HelocInputs>(key: K, value: HelocInputs[K]) {
+    setHeloc(current => normalizeHeloc({ ...current, [key]: value }));
+    setShareMessage(""); setFallbackLink("");
+  }
+  function changeTab(next: "mortgage" | "heloc") {
+    setTab(next); setShareMessage(""); setFallbackLink("");
+    const url = new URL(window.location.href);
+    if (next === "heloc") url.searchParams.set("tab", next); else url.searchParams.delete("tab");
+    window.history.replaceState(null, "", url.href);
+  }
   function toggleTheme() {
     const isDark = theme === "dark" || (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
     const next = isDark ? "light" : "dark";
@@ -91,8 +69,9 @@ export default function MortgageCalculator() {
   }
   async function share() {
     const url = new URL(window.location.pathname, window.location.origin);
-    url.searchParams.set("scenario", JSON.stringify(input));
-    const data = { title: "My home payment estimate · T-Agent", text: `${money(input.price)} home · ${loan.name} · ${input.down}% down · estimated ${money(result.monthly)}/month`, url: url.href };
+    if (tab === "heloc") { url.searchParams.set("tab", "heloc"); url.searchParams.set("heloc", JSON.stringify(heloc)); }
+    else url.searchParams.set("scenario", JSON.stringify(input));
+    const data = { title: "My home payment estimate · T-Agent", text: tab === "heloc" ? `${money(heloc.drawn)} HELOC balance · estimated ${money(displayedTotal)}${helocDueNow ? " balloon due now" : "/month"}` : `${money(input.price)} home · ${loan.name} · ${input.down}% down · estimated ${money(result.monthly)}/month`, url: url.href };
     try {
       if (navigator.share) await navigator.share(data);
       else { await navigator.clipboard.writeText(url.href); setShareMessage("Estimate link copied."); }
@@ -105,13 +84,23 @@ export default function MortgageCalculator() {
   const parts = [result.pi, result.taxes, result.insurance, result.mi, input.hoa];
   const presets = [...new Set([loan.minimum, 5, 10, 20])];
   return <div className={styles.calculator} data-theme={theme} data-mortgage-calculator data-ready={ready}>
-    <a className={styles.skip} href="#calculator-inputs">Skip to calculator</a>
+    <a className={styles.skip} href={tab === "heloc" ? "#heloc-inputs" : "#calculator-inputs"}>Skip to calculator</a>
     <header className={styles.header}>
       <Link href="/agent" className={styles.brand}><span className={styles.brandMark}><Icon name="home" /></span><span>T-AGENT<span className={styles.brandSub}>HOME FINANCING, SIMPLIFIED</span></span></Link>
       <div className={styles.headerActions}><Link href="/agent" className={styles.backLink}>Back to Agent <span aria-hidden="true">↗</span></Link><button type="button" className={styles.themeButton} onClick={toggleTheme} aria-label="Switch light or dark appearance"><span className={styles.sun}><Icon name="sun" /></span><span className={styles.moon}><Icon name="moon" /></span></button></div>
     </header>
     <main className={styles.main}>
       <div className={styles.intro}><span className={styles.eyebrow}><span /> A LITTLE CLARITY FOR YOUR NEXT CHAPTER</span><h1>What could your<br className={styles.mobileBreak} /> payment be?</h1><p>A home you love. A payment you understand.<br className={styles.mobileBreak} /> Let’s find your comfortable.</p><span className={styles.freeBadge}>Free to use <span>·</span> No sign-in needed</span></div>
+      <div className={styles.calculatorTabs} role="tablist" aria-label="Financing calculator" onKeyDown={e => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+        e.preventDefault();
+        const next = e.key === "Home" ? "mortgage" : e.key === "End" ? "heloc" : tab === "mortgage" ? "heloc" : "mortgage";
+        changeTab(next); document.getElementById(`${next}-tab`)?.focus();
+      }}>
+        <button type="button" id="mortgage-tab" role="tab" aria-selected={tab === "mortgage"} aria-controls="mortgage-panel" tabIndex={tab === "mortgage" ? 0 : -1} onClick={() => changeTab("mortgage")}>Mortgage<span>Buying a home</span></button>
+        <button type="button" id="heloc-tab" role="tab" aria-selected={tab === "heloc"} aria-controls="heloc-panel" tabIndex={tab === "heloc" ? 0 : -1} onClick={() => changeTab("heloc")}>HELOC<span>Using your home’s equity</span></button>
+      </div>
+      <div id="mortgage-panel" role="tabpanel" aria-labelledby="mortgage-tab" hidden={tab !== "mortgage"}>
       <div className={styles.workspace}>
         <section id="calculator-inputs" className={styles.controls} aria-label="Mortgage calculator inputs">
           <div className={styles.card}>
@@ -161,11 +150,15 @@ export default function MortgageCalculator() {
           </section>
         </aside>
       </div>
+      </div>
+      <div id="heloc-panel" role="tabpanel" aria-labelledby="heloc-tab" hidden={tab !== "heloc"}>
+        <HelocCalculator result={helocResult} onChange={updateHeloc} onShare={share} shareMessage={shareMessage} fallbackLink={fallbackLink} />
+      </div>
       <section className={styles.bottomNote}><div><span className={styles.eyebrow}>YOUR NEXT MOVE</span><h2>Less guessing. More house hunting.</h2><p>Change one thing at a time to see what makes a comfortable payment for you.</p></div><Link href="/homes">Explore Your KC Homes <Icon name="arrow" /></Link></section>
-      <details className={styles.assumptions}><summary>About these estimates & loan guidelines</summary><p>This is a planning tool for fixed-rate home purchases, not a loan offer, APR disclosure, approval or eligibility check. Rates and costs are examples. County loan limits, credit, occupancy, income and property requirements still apply. A lender’s Loan Estimate is the source for your actual terms. Mortgage insurance and government annual fees are estimates; lender rounding and fee calculations may differ.</p><p>Fee assumptions reviewed October 23, 2026: <a href="https://www.hud.gov/sites/dfiles/OCHCO/documents/2023-05hsgml.pdf" target="_blank" rel="noreferrer">HUD FHA MIP schedule</a>, <a href="https://www.va.gov/housing-assistance/home-loans/funding-fee-and-closing-costs/" target="_blank" rel="noreferrer">VA funding fees</a>, <a href="https://content.govdelivery.com/accounts/USDARD/bulletins/42b1054" target="_blank" rel="noreferrer">USDA FY2027 fees</a>, and <a href="https://www.consumerfinance.gov/ask-cfpb/when-can-i-remove-private-mortgage-insurance-pmi-from-my-loan-en-202/" target="_blank" rel="noreferrer">CFPB PMI cancellation</a>. This calculator models USDA Guaranteed loans, not USDA Direct loans. FHA MIP uses the published $726,200 premium tier threshold; that is not a county loan limit.</p></details>
-      <footer className={styles.footer}><span>T-AGENT <span>·</span> A little more confidence, from Tolley.</span><div><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><button type="button" onClick={() => { setInput(DEFAULT_MORTGAGE); setShareMessage(""); setFallbackLink(""); window.history.replaceState(null, "", window.location.pathname); }}>Reset calculator</button></div></footer>
+      <details hidden={tab !== "mortgage"} className={styles.assumptions}><summary>About these estimates & loan guidelines</summary><p>This is a planning tool for fixed-rate home purchases, not a loan offer, APR disclosure, approval or eligibility check. Rates and costs are examples. County loan limits, credit, occupancy, income and property requirements still apply. A lender’s Loan Estimate is the source for your actual terms. Mortgage insurance and government annual fees are estimates; lender rounding and fee calculations may differ.</p><p>Fee assumptions reviewed October 23, 2026: <a href="https://www.hud.gov/sites/dfiles/OCHCO/documents/2023-05hsgml.pdf" target="_blank" rel="noreferrer">HUD FHA MIP schedule</a>, <a href="https://www.va.gov/housing-assistance/home-loans/funding-fee-and-closing-costs/" target="_blank" rel="noreferrer">VA funding fees</a>, <a href="https://content.govdelivery.com/accounts/USDARD/bulletins/42b1054" target="_blank" rel="noreferrer">USDA FY2027 fees</a>, and <a href="https://www.consumerfinance.gov/ask-cfpb/when-can-i-remove-private-mortgage-insurance-pmi-from-my-loan-en-202/" target="_blank" rel="noreferrer">CFPB PMI cancellation</a>. This calculator models USDA Guaranteed loans, not USDA Direct loans. FHA MIP uses the published $726,200 premium tier threshold; that is not a county loan limit.</p></details>
+      <footer className={styles.footer}><span>T-AGENT <span>·</span> A little more confidence, from Tolley.</span><div><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><button type="button" onClick={() => { if (tab === "heloc") setHeloc(DEFAULT_HELOC); else setInput(DEFAULT_MORTGAGE); setShareMessage(""); setFallbackLink(""); window.history.replaceState(null, "", window.location.pathname + (tab === "heloc" ? "?tab=heloc" : "")); }}>Reset calculator</button></div></footer>
     </main>
-    <div className={styles.mobileTotal}><div><span>Estimated monthly total</span><strong>{money(result.monthly)}<small>/mo</small></strong></div><a href="#payment-breakdown">Breakdown <Icon name="arrow" /></a></div>
-    <div className={styles.srOnly} role="status" aria-live="polite" aria-atomic="true">Estimated monthly payment {money(result.monthly)} with a {loan.name} loan.</div>
+    <div className={styles.mobileTotal}><div><span>{tab === "heloc" ? helocDueNow ? "HELOC balloon due now" : "HELOC monthly budget" : "Estimated monthly total"}</span><strong>{money(displayedTotal)}<small>{tab === "heloc" && helocDueNow ? "one-time" : "/mo"}</small></strong></div><a href={tab === "heloc" ? "#heloc-breakdown" : "#payment-breakdown"}>Breakdown <Icon name="arrow" /></a></div>
+    <div className={styles.srOnly} role="status" aria-live="polite" aria-atomic="true">{tab === "heloc" ? helocDueNow ? "HELOC balloon due now" : "Estimated HELOC monthly budget" : "Estimated mortgage monthly payment"} {money(displayedTotal)}.</div>
   </div>;
 }

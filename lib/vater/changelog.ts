@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.63';
+export const APP_VERSION = '1.64';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.64', date: '2026-10-23', title: 'Explore your home equity payment', items: ['The free calculator now has a HELOC tab with equity limits, draw and repayment periods, interest-only or principal payments, rate scenarios and fixed-rate portions.', 'Compare fees, extra payments, balloon payoffs and total costs, then share your HELOC estimate from your phone.'] },
   { version: '1.63', date: '2026-10-23', title: 'A clearer home payment', items: ['The free Agent mortgage calculator compares conventional, FHA, VA and USDA purchase loans with live price sliders, down-payment presets and a complete monthly breakdown.', 'Explore closing costs and full-term costs, switch between light and dark, and share your estimate from your phone.'] },
   { version: '1.62.1', date: '2026-10-21', title: 'Cleanouts on Facebook', items: ['The Cleanouts page links to the official Tolley Clean Outs Facebook page, with the same profile included in public business information for search.'] },
   { version: '1.62', date: '2026-10-18', title: 'Agent services and company operations', items: ['Discover public capabilities, authorize scoped agent access and submit quoted tasks with durable receipts.', 'Company operations adds isolated knowledge, research budgets, verified guides and owner controls.'] },

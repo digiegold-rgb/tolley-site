@@ -38,7 +38,7 @@ export default async function AgentHome() {
       <HpHero />
       <div className="relative z-10 mx-auto max-w-6xl px-5 py-6">
         <Link href="/agent/calculator" className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-teal-200/25 bg-teal-300/10 px-6 py-5 text-white">
-          <span><span className="block text-xs font-semibold uppercase tracking-widest text-teal-200">Free client tool</span><span className="mt-2 block text-lg">A home payment your clients can understand.</span><span className="mt-1 block text-sm text-white/70">Conventional, FHA, VA and USDA. Move a slider, see the full payment.</span></span>
+          <span><span className="block text-xs font-semibold uppercase tracking-widest text-teal-200">Free client tool</span><span className="mt-2 block text-lg">A home payment your clients can understand.</span><span className="mt-1 block text-sm text-white/70">Mortgages and HELOCs. Move a slider, see the payment now and what comes next.</span></span>
           <span className="text-sm font-semibold text-teal-200">Open mortgage calculator →</span>
         </Link>
       </div>
