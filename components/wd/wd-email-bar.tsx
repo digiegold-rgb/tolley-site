@@ -5,7 +5,7 @@ import { trackEvent } from "@/components/analytics/site-tracker";
 import { gtagEvent } from "@/components/analytics/ga4";
 import { fbqEvent } from "@/components/analytics/meta-pixel";
 import { submitLead, captureAttribution } from "@/lib/lead-capture-client";
-import { WD_SMS_PHONE } from "@/lib/wd";
+import { WD_CONTACT_PHONE_E164, WD_SMS_PHONE } from "@/lib/wd";
 
 const PRIVACY_URL = "https://www.tolley.io/wd/privacy";
 const TERMS_URL = "https://www.tolley.io/wd/terms";
@@ -128,7 +128,11 @@ export function WdEmailBar() {
               </span>
             </label>
             <p className="text-[11px] leading-4 text-slate-500">
-              You can also opt in by texting START to {WD_SMS_PHONE}.
+              You can also opt in by texting START to{" "}
+              <a href={`sms:${WD_CONTACT_PHONE_E164}`} className="font-semibold text-blue-600 underline">
+                {WD_SMS_PHONE}
+              </a>
+              .
             </p>
           </form>
         </div>

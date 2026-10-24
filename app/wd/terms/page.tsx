@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { WD_BRAND, WD_COMPANY, WD_CONTACT_EMAIL, WD_CONTACT_PHONE } from "@/lib/wd";
+import { WD_BRAND, WD_COMPANY, WD_CONTACT_EMAIL, WD_CONTACT_PHONE, WD_CONTACT_PHONE_E164, WD_SMS_PHONE } from "@/lib/wd";
 
 export const metadata: Metadata = {
   title: "Rental Agreement | Wash & Dry Rental",
@@ -187,7 +187,14 @@ const sections: TermsSection[] = [
         </p>
         <p className="mt-2">
           Opt out at any time by replying STOP. For help, reply HELP or contact
-          Jared@yourkchomes.com or 913-283-3826. After you reply STOP, we will send one
+          Jared@yourkchomes.com or{" "}
+          <a
+            href={`tel:${WD_CONTACT_PHONE_E164}`}
+            className="font-semibold text-blue-600 underline decoration-blue-300 underline-offset-4"
+          >
+            {WD_CONTACT_PHONE}
+          </a>
+          . After you reply STOP, we will send one
           confirmation and then no further SMS unless you opt in again.
         </p>
         <p className="mt-2">
@@ -198,7 +205,14 @@ const sections: TermsSection[] = [
         </p>
         <p className="mt-2">
           By providing your mobile number at checkout, on a rental form, or by texting
-          YES or START to 913-600-7508, you agree to receive the informational
+          YES or START to{" "}
+          <a
+            href={`sms:${WD_CONTACT_PHONE_E164}`}
+            className="font-semibold text-blue-600 underline decoration-blue-300 underline-offset-4"
+          >
+            {WD_SMS_PHONE}
+          </a>
+          , you agree to receive the informational
           messages described above. Full terms:{" "}
           <Link
             href="/wd/terms"
@@ -275,7 +289,7 @@ export default function WdTermsPage() {
             <span className="font-semibold text-blue-900">Phone: </span>
             <a
               className="text-blue-600 underline decoration-blue-300 underline-offset-4"
-              href={`tel:${WD_CONTACT_PHONE}`}
+              href={`tel:${WD_CONTACT_PHONE_E164}`}
             >
               {WD_CONTACT_PHONE}
             </a>
@@ -312,7 +326,7 @@ export default function WdTermsPage() {
             </a>
             {" \u00B7 "}
             <a
-              href={`tel:${WD_CONTACT_PHONE}`}
+              href={`tel:${WD_CONTACT_PHONE_E164}`}
               className="text-blue-600 underline decoration-blue-300 underline-offset-4"
             >
               {WD_CONTACT_PHONE}

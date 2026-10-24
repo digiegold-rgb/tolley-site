@@ -7,6 +7,7 @@ import {
 
   LEGAL_SUPPORT_EMAIL,
 } from "@/lib/legal";
+import { WD_CONTACT_PHONE } from "@/lib/wd";
 
 export const metadata: Metadata = {
   alternates: { canonical: "https://www.tolley.io/privacy" },
@@ -179,7 +180,7 @@ export default function PrivacyPage() {
             "No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.",
             "Text messaging originator opt-in data and consent will not be shared with any third parties.",
             "Message frequency is up to 8 messages per month. Msg & data rates may apply.",
-            "Reply STOP to cancel. Reply HELP for help. Support: jared@yourkchomes.com / 913-283-3826.",
+            `Reply STOP to cancel. Reply HELP for help. Support: jared@yourkchomes.com / ${WD_CONTACT_PHONE}.`,
           ].map((item) => (
             <li key={item} className="flex gap-3">
               <span className="mt-[0.6rem] h-1.5 w-1.5 shrink-0 rounded-full bg-violet-200/80" />

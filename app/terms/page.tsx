@@ -9,6 +9,7 @@ import {
   LEGAL_OPT_IN_MESSAGE,
   LEGAL_SUPPORT_EMAIL,
 } from "@/lib/legal";
+import { WD_CONTACT_PHONE, WD_CONTACT_PHONE_E164 } from "@/lib/wd";
 
 export const metadata: Metadata = {
   alternates: { canonical: "https://www.tolley.io/terms" },
@@ -283,9 +284,9 @@ export default function TermsPage() {
             /{" "}
             <a
               className="underline decoration-white/35 underline-offset-4"
-              href="tel:913-283-3826"
+              href={`tel:${WD_CONTACT_PHONE_E164}`}
             >
-              913-283-3826
+              {WD_CONTACT_PHONE}
             </a>
             .
           </li>
@@ -309,7 +310,11 @@ export default function TermsPage() {
           </li>
         </ul>
         <p className="text-sm leading-6 text-white/84 sm:text-[0.95rem]">
-          You may also opt in by texting START to 913-600-7508.
+          You may also opt in by texting START to{" "}
+          <a className="underline decoration-white/35 underline-offset-4" href={`sms:${WD_CONTACT_PHONE_E164}`}>
+            {WD_CONTACT_PHONE}
+          </a>
+          .
         </p>
       </section>
 
