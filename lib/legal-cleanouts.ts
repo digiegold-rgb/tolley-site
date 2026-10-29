@@ -13,7 +13,7 @@ export const CK_PHONE_TEL = "tel:+19132833826";
 export const CK_PHONE_SMS = "sms:+19132833826";
 export const CK_CONTACT_NAME = "Jared Tolley";
 export const CK_EFFECTIVE_DATE = "October 13, 2026";
-export const CK_LAST_UPDATED = "October 13, 2026";
+export const CK_LAST_UPDATED = "October 29, 2026";
 export const CK_TERMS_URL = "https://tolley.io/cleanouts/terms";
 export const CK_TERMS_PATH = "/cleanouts/terms";
 export const CK_PRIVACY_PATH = "/cleanouts/privacy";
@@ -227,6 +227,13 @@ export const TERMS_SECTIONS: LegalSection[] = [
 ];
 
 export const PRIVACY_SECTIONS: LegalSection[] = [
+  {
+    heading: "ChatGPT ad measurement",
+    paragraphs: [
+      "If you arrive through a ChatGPT ad, we keep its click reference for your browser session, for no more than 30 days. After a quote request is saved, we may send OpenAI that reference, an event identifier, the time, and confirmation that a quote was requested. This helps us measure which ads produce inquiries. This measurement does not send your name, phone, address, job notes, or SMS consent.",
+      "We disable this measurement when your browser sends Global Privacy Control or Do Not Track. Measurement failure does not affect your quote request. An inquiry is not recorded as a purchase or revenue.",
+    ],
+  },
   {
     heading: "What we collect",
     items: [
