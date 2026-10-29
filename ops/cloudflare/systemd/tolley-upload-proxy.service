@@ -1,0 +1,12 @@
+[Unit]
+Description=Authenticated owner video uploads
+After=network.target tolley-upload-store.service
+Wants=tolley-upload-store.service
+[Service]
+ExecStart=/usr/bin/python3 /home/jelly/.local/lib/tolley-cloudflare/upload_proxy.py
+EnvironmentFile=/home/jelly/.config/tolley-security/upload.env
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+[Install]
+WantedBy=default.target

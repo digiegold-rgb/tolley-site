@@ -1,0 +1,11 @@
+[Unit]
+Description=Authenticated Hermes API only (no messaging or cron)
+After=network.target
+[Service]
+WorkingDirectory=/home/jelly/.hermes
+ExecStart=/home/jelly/.hermes/.venv/bin/python /home/jelly/.local/lib/tolley-cloudflare/hermes_api_only.py
+Restart=always
+RestartSec=15
+TimeoutStopSec=240
+[Install]
+WantedBy=default.target

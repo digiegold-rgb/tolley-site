@@ -233,7 +233,7 @@ export function ContentPortal() {
   useEffect(() => { syncKeyRef.current = syncKey; }, [syncKey]);
 
   // Upload state
-  const [tusUrl, setTusUrl] = useState("https://upload.tolley.io/files/");
+  const [tusUrl] = useState("https://upload.tolley.io/files/");
 
   // Bootstrap: get auth keys (admin-gated — the autopilot key must never be
   // hardcoded here: this is a client bundle, anything literal ships publicly),
@@ -252,7 +252,6 @@ export function ContentPortal() {
       .then((r) => {
         if (r.ok) {
           setApiUrl("http://100.81.82.79:8096");
-          setTusUrl("http://100.81.82.79:8090/files/");
           setIsLocal(true);
         }
       })
@@ -559,7 +558,7 @@ export function ContentPortal() {
             }} />}
             {section === "agent" && <AgentSection />}
             {section === "analytics" && <AnalyticsSection posts={posts} queue={queue} videos={videos} />}
-            {section === "upload" && <UploadSection tusUrl={tusUrl} isLocal={isLocal} onNavigate={setSection} />}
+            {section === "upload" && <UploadSection tusUrl={tusUrl} uploadKey={autopilotKey} isLocal={false} onNavigate={setSection} />}
             {section === "logs" && <LogsSection logs={logs} onRefresh={() => autopilotFetch("/api/logs?lines=300").then((d) => setLogs(d.logs))} />}
             {section === "settings" && <SettingsSection status={status} />}
           </>
@@ -2513,12 +2512,16 @@ function AnalyticsSection({ posts, queue, videos }: { posts: ContentPost[]; queu
 // =========================================================================
 // UPLOAD
 // =========================================================================
-function UploadSection({ tusUrl, isLocal, onNavigate }: { tusUrl: string; isLocal: boolean; onNavigate: (s: Section) => void }) {
+function UploadSection({ tusUrl, uploadKey, isLocal, onNavigate }: { tusUrl: string; uploadKey: string; isLocal: boolean; onNavigate: (s: Section) => void }) {
   const [state, setState] = useState<{ s: "idle" } | { s: "uploading"; name: string; pct: number; sent: number; total: number | null } | { s: "done"; name: string } | { s: "error"; msg: string }>({ s: "idle" });
   const [title, setTitle] = useState("");
   const uppyRef = useRef<import("@uppy/core").Uppy | null>(null);
 
   async function handleFile(file: File) {
+    if (!uploadKey) {
+      setState({ s: "error", msg: "Sign in again before uploading." });
+      return;
+    }
     if (!file.type.startsWith("video/") && !file.name.match(/\.(mp4|mov|webm|avi|mkv|m4v|hevc)$/i)) {
       setState({ s: "error", msg: "Video files only." });
       return;
@@ -2526,12 +2529,12 @@ function UploadSection({ tusUrl, isLocal, onNavigate }: { tusUrl: string; isLoca
     const { default: Uppy } = await import("@uppy/core");
     const { default: Tus } = await import("@uppy/tus");
     const name = title.trim() ? `${title.trim().replace(/[^a-zA-Z0-9_\- ]/g, "")}.${file.name.split(".").pop()}` : file.name;
-    const uppy = new Uppy({ autoProceed: true }).use(Tus, { endpoint: tusUrl, retryDelays: [0, 1000, 3000, 5000], chunkSize: 5 * 1024 * 1024 });
+    const uppy = new Uppy({ autoProceed: true }).use(Tus, { endpoint: tusUrl, retryDelays: [0, 1000, 3000, 5000], chunkSize: 5 * 1024 * 1024, headers: { Authorization: `Bearer ${uploadKey}` } });
     uppyRef.current = uppy;
     uppy.addFile({ name, type: file.type || "video/mp4", data: file });
     setState({ s: "uploading", name, pct: 0, sent: 0, total: file.size });
     uppy.on("upload-progress", (_, p) => setState({ s: "uploading", name, pct: p.bytesTotal ? Math.round((p.bytesUploaded / p.bytesTotal) * 100) : 0, sent: p.bytesUploaded, total: p.bytesTotal }));
-    uppy.on("complete", () => { setState({ s: "done", name }); setTitle(""); uppy.destroy(); uppyRef.current = null; });
+    uppy.on("complete", (result) => { if (result.failed?.length || !result.successful?.length) return; setState({ s: "done", name }); setTitle(""); uppy.destroy(); uppyRef.current = null; });
     uppy.on("upload-error", (_, e) => { setState({ s: "error", msg: e?.message || "Upload failed" }); uppy.destroy(); uppyRef.current = null; });
   }
 

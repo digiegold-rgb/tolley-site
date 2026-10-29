@@ -15,5 +15,5 @@ export async function GET() {
     autopilotKey: process.env.CONTENT_API_KEY || "",
     autopilotUrl: "https://content-api.tolley.io",
     autopilotTailscale: "http://100.81.82.79:8096",
-  });
+  }, { headers: { "Cache-Control": "private, no-store" } });
 }

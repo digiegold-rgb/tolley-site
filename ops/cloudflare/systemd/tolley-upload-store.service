@@ -1,0 +1,11 @@
+[Unit]
+Description=Private resumable video upload store
+After=network.target
+[Service]
+ExecStart=/home/jelly/.local/bin/tusd -host 127.0.0.1 -port 8091 -upload-dir /home/jelly/video-incoming -base-path /files/ -behind-proxy -disable-download -disable-concatenation -max-size 21474836480 -hooks-dir /home/jelly/.local/lib/tolley-cloudflare/hooks -hooks-enabled-events post-finish
+EnvironmentFile=/home/jelly/.config/tolley-security/upload.env
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+[Install]
+WantedBy=default.target

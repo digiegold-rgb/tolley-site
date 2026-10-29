@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-28",
+  "cloudflared": "2026.10.5",
+  "tusd": "2.10.1",
+  "tusdArm64Sha256": "134e575a6524698b54d989958c680f0a4ec243d9622c1926e30e27c2a86e4752",
+  "restored": [
+    "gb10.tolley.io",
+    "capital-router.tolley.io",
+    "manus.tolley.io",
+    "hermes.tolley.io",
+    "upload.tolley.io"
+  ],
+  "removedObsoleteDns": [
+    "chat.cordport.io.tolley.io",
+    "engine.cordport.io.tolley.io",
+    "sms.tolley.io",
+    "api.tolley.io",
+    "agent.tolley.io",
+    "chat-bridge.tolley.io",
+    "engine.tolley.io",
+    "postiz.tolley.io",
+    "tradingagents.tolley.io"
+  ],
+  "retirementEvidence": {
+    "sms": "Live Twilio incoming-number URLs checked; all three use www.tolley.io webhooks.",
+    "openclaw": "Owner retirement recorded August 8; gateway, bridge and dashboard intentionally disabled.",
+    "tradingagents": "Existing masked service preserved.",
+    "postiz": "Replaced by direct social API integration; no current code uses the Postiz hostname.",
+    "legacyApi": "No connected connector; current public API is served by the website."
+  },
+  "runtimeDirectory": "/home/jelly/.local/lib/tolley-cloudflare",
+  "privateRollbackDirectory": "/home/jelly/.local/state/cloudflare-repair-20261028",
+  "constraints": [
+    "Hermes runs only its authenticated API adapter; no messaging adapters or cron ticker.",
+    "No trading engines restarted, trades submitted or messages sent.",
+    "Upload bearer key uses existing CONTENT_API_KEY from the owner-gated portal.",
+    "Upload listener and store bind only to loopback; clients use HTTPS.",
+    "Uploads limited to 20 GiB per file and 50 GiB staging, retaining 20 GiB free disk."
+  ]
+}
