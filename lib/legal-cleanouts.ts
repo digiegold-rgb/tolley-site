@@ -44,6 +44,19 @@ export const CLEANOUT_DEPOSIT_HINT =
 export const TERMS_ACCEPTED_MARKER = `Agreed to the cleanout terms at ${CK_TERMS_URL}`;
 export const CASH_NOTE_MARKER = "Customer will pay by cash or check. No card or bank fee.";
 
+export const CK_VENMO_HANDLE = "Jared-Tolley";
+export const CK_VENMO_PHONE = "215-300-4488";
+
+/** Venmo pay deep link. Amount comes from the invoice, never the customer. */
+export function venmoPayUrl(amount: number, invoiceNumber: string): string {
+  const params = new URLSearchParams({
+    txn: "pay",
+    amount: amount.toFixed(2),
+    note: `Cleanout ${invoiceNumber}`,
+  });
+  return `https://venmo.com/u/${CK_VENMO_HANDLE}?${params.toString()}`;
+}
+
 export const PAYMENT_COPY = {
   kicker: "Payment",
   title: "Pay your cleanout invoice",
@@ -63,6 +76,8 @@ export const PAYMENT_COPY = {
   cashButton: "I'll pay cash or check",
   cashNote:
     "Cash and check have no added fee. We only add a note on the invoice — nothing is charged online.",
+  venmoButton: "Pay with Venmo",
+  venmoNote: "Venmo @Jared-Tolley (or phone 215-300-4488). Put your invoice number in the note.",
   cashThanks:
     "Thanks. We noted that you'll pay by cash or check, and there is no online fee. We'll confirm with you.",
   paidTitle: "This invoice is already paid.",
