@@ -11,6 +11,7 @@ try {
       Object.defineProperty(navigator, "doNotTrack", { get: () => "0" });
     }, { denied });
     const page = await context.newPage();
+    await page.route("**/api/analytics", route => route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' }));
     const submissions = [];
     let fail = true;
     // Always intercepted, including when checking production. No lead or message is created.
