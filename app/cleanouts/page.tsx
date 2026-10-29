@@ -168,6 +168,7 @@ function CleanoutsPage() {
           <a href={TC_FACEBOOK_URL} target="_blank" rel="noopener noreferrer" className="hover:text-white/40">Facebook</a>
           <a href="/cleanouts/terms" className="hover:text-white/40">Terms</a>
           <a href="/cleanouts/privacy" className="hover:text-white/40">Privacy</a>
+          <a href="/sms-terms" className="hover:text-white/40">SMS Terms</a>
           <a href="/junkinjays" className="hover:text-white/40">Scrap &amp; Junk</a>
           <a href="/trailer" className="hover:text-white/40">Trailers</a>
           <a href="/wd" className="hover:text-white/40">W/D Rental</a>

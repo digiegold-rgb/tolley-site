@@ -1193,6 +1193,7 @@
   {"file":"app/shop/whatsapp/watches/page.tsx","path":"/shop/whatsapp/watches","audience":"private"},
   {"file":"app/signature/page.tsx","path":"/signature","audience":"private"},
   {"file":"app/signup/page.tsx","path":"/signup","audience":"private"},
+  {"file":"app/sms-terms/page.tsx","path":"/sms-terms","audience":"public"},
   {"file":"app/social/page.tsx","path":"/social","audience":"private"},
   {"file":"app/start/analytics/page.tsx","path":"/start/analytics","audience":"private"},
   {"file":"app/start/page.tsx","path":"/start","audience":"public"},

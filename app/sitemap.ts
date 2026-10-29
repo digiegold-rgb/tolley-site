@@ -92,6 +92,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Public cleanout legal pages. /cleanouts/payment is an unlisted noindex lookup and stays out.
     { url: `${BASE}/cleanouts/terms`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/cleanouts/privacy`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/sms-terms`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/tools/missed-call-calculator`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/tools/lead-follow-up-audit`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/tools/digital-presence-audit`, changeFrequency: "monthly", priority: 0.6 },

@@ -13,20 +13,28 @@ const nextServer = require("next/server");
 const creates = [];
 const alerts = [];
 
+const prismaStub = {
+  async $transaction(fn) {
+    return fn(prismaStub);
+  },
+  growthLead: {
+    create: async ({ data }) => {
+      creates.push(data);
+      return { id: "lead_test", ...data, createdAt: new Date() };
+    },
+  },
+};
+
 const stubs = {
   "next/server": {
     ...nextServer,
     after: (fn) => Promise.resolve().then(fn),
   },
   "@/lib/prisma": {
-    prisma: {
-      growthLead: {
-        create: async ({ data }) => {
-          creates.push(data);
-          return { id: "lead_test", ...data };
-        },
-      },
-    },
+    prisma: prismaStub,
+  },
+  "@/lib/customer-history/store": {
+    recordLeadCustomer: async () => {},
   },
   "@/lib/rate-limit": {
     consumeRateLimit: async () => ({ allowed: true, count: 1, limit: 5, retryAfterSeconds: 0 }),
@@ -105,9 +113,26 @@ assert.equal(creates[0].name, "Ada Homeowner");
 assert.equal(creates[0].phone, "816-555-0100");
 assert.equal(creates[0].address, "100 Main St, Independence, MO");
 assert.equal(creates[0].notes, "Garage full of furniture");
+assert.equal(creates[0].attribution.smsConsent.optedIn, false, "omitted consent is stored as not opted in");
+
+const declined = await post({
+  name: "No Texts",
+  phone: "816-555-0101",
+  smsConsent: false,
+});
+assert.equal(declined.status, 200);
+assert.equal(creates[1].attribution.smsConsent.optedIn, false);
+
+const optedIn = await post({
+  name: "Yes Texts",
+  phone: "816-555-0102",
+  smsConsent: true,
+});
+assert.equal(optedIn.status, 200);
+assert.equal(creates[2].attribution.smsConsent.optedIn, true);
 
 await new Promise((resolvePromise) => setTimeout(resolvePromise, 0));
-assert.equal(alerts.length, 1);
+assert.equal(alerts.length, 3);
 assert.match(alerts[0], /Cleanout quote request: Ada Homeowner 816-555-0100/);
 assert.match(alerts[0], /100 Main St, Independence, MO/);
 
