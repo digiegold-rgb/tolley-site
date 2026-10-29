@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 const TUS_ENDPOINT = "https://upload.tolley.io/files/";
-const TAILSCALE_TUS = "http://100.81.82.79:8090/files/";
 
 type UploadState =
   | { status: "idle" }
@@ -18,16 +17,10 @@ function formatBytes(bytes: number): string {
 
 export function UploadClient() {
   const [state, setState] = useState<UploadState>({ status: "idle" });
-  const [useLocal, setUseLocal] = useState(false);
+  const useLocal = false;
   const [title, setTitle] = useState("");
   const uppyRef = useRef<import("@uppy/core").Uppy | null>(null);
 
-  useEffect(() => {
-    // Detect if on Tailscale network by trying a quick ping
-    fetch(`${TAILSCALE_TUS}`, { method: "OPTIONS", mode: "no-cors", signal: AbortSignal.timeout(2000) })
-      .then(() => setUseLocal(true))
-      .catch(() => setUseLocal(false));
-  }, []);
 
   async function handleFile(file: File) {
     if (!file.type.startsWith("video/") && !file.name.match(/\.(mp4|mov|webm|avi|mkv|m4v|hevc)$/i)) {
@@ -35,11 +28,23 @@ export function UploadClient() {
       return;
     }
 
+    let uploadKey: string;
+    try {
+      const response = await fetch("/api/content/portal-auth", { cache: "no-store" });
+      if (!response.ok) throw new Error("Please sign in again to upload.");
+      const credentials = await response.json();
+      if (!credentials.autopilotKey) throw new Error("Upload access is not configured.");
+      uploadKey = credentials.autopilotKey;
+    } catch (error) {
+      setState({ status: "error", message: error instanceof Error ? error.message : "Unable to authorize upload." });
+      return;
+    }
+
     // Dynamically import Uppy to avoid SSR issues
     const { default: Uppy } = await import("@uppy/core");
     const { default: Tus } = await import("@uppy/tus");
 
-    const endpoint = useLocal ? TAILSCALE_TUS : TUS_ENDPOINT;
+    const endpoint = TUS_ENDPOINT;
     const filename = title.trim() ? `${title.trim().replace(/[^a-zA-Z0-9_\- ]/g, "")}.${file.name.split(".").pop()}` : file.name;
 
     const uppy = new Uppy({ autoProceed: true })
@@ -47,7 +52,7 @@ export function UploadClient() {
         endpoint,
         retryDelays: [0, 1000, 3000, 5000],
         chunkSize: 5 * 1024 * 1024, // 5MB chunks
-        headers: {},
+        headers: { Authorization: `Bearer ${uploadKey}` },
       });
 
     uppyRef.current = uppy;
@@ -73,7 +78,8 @@ export function UploadClient() {
       });
     });
 
-    uppy.on("complete", () => {
+    uppy.on("complete", (result) => {
+      if (result.failed?.length || !result.successful?.length) return;
       setState({ status: "done", filename });
       setTitle("");
       uppy.destroy();
