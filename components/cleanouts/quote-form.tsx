@@ -4,12 +4,14 @@ import { visitorSessionId } from "@/lib/lead-capture-client";
 import { HeardAbout } from "@/components/discovery/inquiry";
 import { browserAttribution } from "@/lib/discovery-browser";
 import { trackEvent } from "@/components/analytics/site-tracker";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { cleanoutAdReference } from "@/lib/openai-ad-browser";
 import { TC_PHONE, TC_PHONE_SMS } from "@/lib/cleanouts";
 
 type FormStatus = "idle" | "submitting" | "success" | "error";
 
 export function CleanoutQuoteForm() {
+  useEffect(() => { cleanoutAdReference(); }, []);
   const [reported, setReported] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -29,7 +31,7 @@ export function CleanoutQuoteForm() {
       const res = await fetch("/api/cleanouts/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: visitorSessionId(), name, phone, address, details, smsConsent, attribution: browserAttribution(reported) }),
+        body: JSON.stringify({ sessionId: visitorSessionId(), name, phone, address, details, smsConsent, attribution: browserAttribution(reported), openaiClickRef: cleanoutAdReference() }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {

@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.64.1';
+export const APP_VERSION = '1.64.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.64.2', date: '2026-10-29', title: 'Measure and discover cleanout inquiries', items: ['Cleanout quote requests can now be attributed to ChatGPT ads after the inquiry is saved, without sending contact details or job notes.', 'Ad measurement respects browser privacy signals and cannot interrupt a quote request.', 'Public agent documentation now describes the free cleanout quote form and its saved-inquiry receipt.'] },
   { version: '1.64.1', date: '2026-10-28', title: 'Reliable private video uploads', items: ['Owner video uploads reconnect to the restored upload service with authenticated, resumable transfers.', 'Failed uploads no longer appear as completed.'] },
   { version: '1.64', date: '2026-10-23', title: 'Explore your home equity payment', items: ['The free calculator now has a HELOC tab with equity limits, draw and repayment periods, interest-only or principal payments, rate scenarios and fixed-rate portions.', 'Compare fees, extra payments, balloon payoffs and total costs, then share your HELOC estimate from your phone.'] },
   { version: '1.63', date: '2026-10-23', title: 'A clearer home payment', items: ['The free Agent mortgage calculator compares conventional, FHA, VA and USDA purchase loans with live price sliders, down-payment presets and a complete monthly breakdown.', 'Explore closing costs and full-term costs, switch between light and dark, and share your estimate from your phone.'] },

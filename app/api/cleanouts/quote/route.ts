@@ -17,6 +17,8 @@ import { normalizeAttribution } from "@/lib/discovery-attribution";
 import { prisma } from "@/lib/prisma";
 import { consumeRateLimit, rateLimited } from "@/lib/rate-limit";
 import { notifyTelegram } from "@/lib/budget/notify";
+import { measurementDenied, openAIReference } from "@/lib/openai-ad-attribution";
+import { reportCleanoutConversion } from "@/lib/openai-ad-conversions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,6 +75,12 @@ export async function POST(request: NextRequest) {
   await recordLeadCustomer(tx, "growth", lead, { sessionId: body.sessionId });
   return lead;
   });
+
+  const clickReference = measurementDenied(request.headers.get("sec-gpc"), request.headers.get("dnt"))
+    ? undefined : openAIReference(body.openaiClickRef);
+  if (clickReference) {
+    after(async () => { await reportCleanoutConversion(lead.id, clickReference); });
+  }
 
   after(async () => {
     const msg =
