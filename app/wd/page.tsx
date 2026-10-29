@@ -8,6 +8,7 @@ import { WdPricing } from "@/components/wd/wd-pricing";
 import { WdServiceArea } from "@/components/wd/wd-service-area";
 import { WdLeadForm } from "@/components/wd/wd-lead-form";
 import { WdFaq } from "@/components/wd/wd-faq";
+import { WD_SERVICE_CITY_LABELS } from "@/lib/wd-service-zips";
 
 
 const jsonLd = {
@@ -15,27 +16,18 @@ const jsonLd = {
   "@type": "LocalBusiness",
   name: "Wash & Dry Rental by Your KC Homes LLC",
   description:
-    "Affordable washer and dryer rentals in Kansas City with free delivery, installation, and maintenance included. No contracts. $58/mo.",
+    "Washer and dryer rentals within about 25 minutes of Independence, MO. Free delivery, installation, and maintenance. No contracts. $42/mo washer or $58/mo bundle.",
   url: "https://www.tolley.io/wd",
   telephone: "913-283-3826",
   email: "Jared@yourkchomes.com",
   priceRange: "$58/mo",
   currenciesAccepted: "USD",
   paymentAccepted: "Credit Card",
-  areaServed: [
-    { "@type": "City", name: "Independence", containedInPlace: { "@type": "State", name: "Missouri" } },
-    { "@type": "City", name: "Kansas City", containedInPlace: { "@type": "State", name: "Missouri" } },
-    { "@type": "City", name: "Lee's Summit", containedInPlace: { "@type": "State", name: "Missouri" } },
-    { "@type": "City", name: "Blue Springs", containedInPlace: { "@type": "State", name: "Missouri" } },
-    { "@type": "City", name: "Raytown", containedInPlace: { "@type": "State", name: "Missouri" } },
-    { "@type": "City", name: "Grandview", containedInPlace: { "@type": "State", name: "Missouri" } },
-    { "@type": "City", name: "Liberty", containedInPlace: { "@type": "State", name: "Missouri" } },
-    { "@type": "City", name: "Gladstone", containedInPlace: { "@type": "State", name: "Missouri" } },
-    { "@type": "City", name: "Belton", containedInPlace: { "@type": "State", name: "Missouri" } },
-    { "@type": "City", name: "Kansas City", containedInPlace: { "@type": "State", name: "Kansas" } },
-    { "@type": "City", name: "Overland Park", containedInPlace: { "@type": "State", name: "Kansas" } },
-    { "@type": "City", name: "Olathe", containedInPlace: { "@type": "State", name: "Kansas" } },
-  ],
+  areaServed: WD_SERVICE_CITY_LABELS.map((name) => ({
+    "@type": "City",
+    name,
+    containedInPlace: { "@type": "State", name: "Missouri" },
+  })),
   hasOfferCatalog: {
     "@type": "OfferCatalog",
     name: "Washer & Dryer Rentals",
@@ -53,7 +45,7 @@ const jsonLd = {
   sameAs: ["https://www.facebook.com/share/1AafKhE5tq/?mibextid=wwXIfr"],
 };
 
-function WdPage() {
+function WdPage({ paid }: { paid?: boolean }) {
   return (
     <main className="relative z-10 min-h-screen">
       <script
@@ -65,6 +57,11 @@ function WdPage() {
       </Suspense>
 
       <div className="mx-auto max-w-6xl space-y-8 px-5 py-12 sm:px-8 sm:py-16">
+        {paid && (
+          <p role="status" className="rounded-2xl bg-white p-4 text-sm font-semibold text-blue-900 shadow">
+            Payment received. We&apos;ll reach out to schedule your delivery.
+          </p>
+        )}
         <div className="wd-enter" style={{ "--enter-delay": "0.1s" } as React.CSSProperties}>
           <WdHowItWorks />
         </div>
@@ -92,6 +89,12 @@ function WdPage() {
 
 export const metadata = discoveryMetadata("wd");
 
-export default function PublicLanding() {
-  return <><WdPage /><PublicOfferDetails name="wd" /></>;
+export default async function PublicLanding({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const checkout = Array.isArray(params.checkout) ? params.checkout[0] : params.checkout;
+  return <><WdPage paid={checkout === "success"} /><PublicOfferDetails name="wd" /></>;
 }
