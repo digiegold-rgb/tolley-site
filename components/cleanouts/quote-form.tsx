@@ -140,11 +140,12 @@ export function CleanoutQuoteForm() {
           className="mt-0.5 h-4 w-4 shrink-0"
         />
         <span>
-          (Optional) I agree to receive text messages from Tolley Clean Outs about my cleanout quote, scheduling,
-          and job updates. Message frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for
-          help. Consent is not a condition of purchase. See our{" "}
-          <a href="/cleanouts/privacy" className="underline">Privacy Policy</a> and{" "}
-          <a href="/cleanouts/terms" className="underline">Terms</a>.
+          (Optional) I agree to receive Tolley Cleanouts texts about appointment confirmations, quotes, and job
+          updates. Message frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help.
+          Consent is not a condition of purchase.{" "}
+          <a href="/sms-terms" className="underline">SMS Terms</a>
+          {" · "}
+          <a href="/privacy" className="underline">Privacy Policy</a>.
         </span>
       </label>
 

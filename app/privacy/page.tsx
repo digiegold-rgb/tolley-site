@@ -140,7 +140,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           <span className="font-semibold text-white/94">Last Updated: </span>
-          {"October 13, 2026"}
+          {"October 29, 2026"}
         </p>
         <p>
           <span className="font-semibold text-white/94">Support Email: </span>
@@ -150,6 +150,23 @@ export default function PrivacyPage() {
           >
             {LEGAL_SUPPORT_EMAIL}
           </a>
+        </p>
+      </section>
+
+      <section id="sms" className="space-y-3 rounded-2xl border border-violet-200/25 bg-violet-300/[0.06] p-4 sm:p-5">
+        <h2 className="text-lg font-semibold text-white/95 sm:text-xl">SMS</h2>
+        <p className="text-sm leading-6 text-white/84 sm:text-[0.95rem]">
+          Mobile information and SMS consent will not be shared with third parties or affiliates for marketing or promotional purposes.
+        </p>
+        <p className="text-sm leading-6 text-white/84 sm:text-[0.95rem]">
+          Tolley Cleanouts texts are described in the{" "}
+          <a
+            className="underline decoration-white/35 underline-offset-4"
+            href="/sms-terms"
+          >
+            SMS Terms
+          </a>
+          .
         </p>
       </section>
 
