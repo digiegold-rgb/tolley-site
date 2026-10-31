@@ -11,6 +11,7 @@ try {
   const errors = []; page.on('pageerror', e => errors.push(e.name));
   await page.goto(`${base}/day`, { waitUntil: 'domcontentloaded', timeout: 180000 });
   await page.getByRole('heading', { name: 'A clear start.' }).waitFor();
+  await page.waitForLoadState('networkidle', { timeout: 120000 });
   const html = await page.content(); assert.doesNotMatch(html, /W\/D MRR|Seller alerts/);
   assert.match(await page.locator('link[rel="manifest"]').getAttribute('href'), /day\/manifest/);
   assert.equal(await page.locator('meta[name="apple-mobile-web-app-capable"]').getAttribute('content'), 'yes');
