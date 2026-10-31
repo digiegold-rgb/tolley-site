@@ -1,4 +1,8 @@
 [
+  {"file":"app/day/page.tsx","path":"/day","audience":"private"},
+  {"file":"app/day/summary.txt/route.ts","path":"/day/summary.txt","audience":"private"},
+  {"file":"app/api/day/route.ts","path":"/api/day","audience":"private"},
+  {"file":"app/api/cron/day-snapshot/route.ts","path":"/api/cron/day-snapshot","audience":"private"},
   {"file":"app/.well-known/agent-card.json/route.ts","path":"/.well-known/agent-card.json","audience":"machine"},
   {"file":"app/about/page.tsx","path":"/about","audience":"public"},
   {"file":"app/account/accounts/page.tsx","path":"/account/accounts","audience":"private"},
