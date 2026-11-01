@@ -176,11 +176,11 @@
     },
     {
       "path": "/api/cron/dossier-process",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/15 12-23,0-1 * * *"
     },
     {
       "path": "/api/cron/dossier-synthesis-poll",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/15 12-23,0-1 * * *"
     },
     {
       "path": "/api/cron/auto-responder-reset",
@@ -264,7 +264,7 @@
     },
     {
       "path": "/api/cron/trading-sim-sync",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/15 12-23,0-1 * * *"
     },
     {
       "path": "/api/cron/fb-sync",
@@ -372,7 +372,7 @@
     },
     {
       "path": "/api/cron/research-poll",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/15 12-23,0-1 * * *"
     },
     {
       "path": "/api/cron/youtube-stats",
@@ -400,7 +400,7 @@
     },
     {
       "path": "/api/cron/lead-notifications",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/15 12-23,0-1 * * *"
     },
     {
       "path": "/api/cron/discovery-health",
