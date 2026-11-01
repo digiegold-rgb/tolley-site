@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
-import { Oswald } from "next/font/google";
+import localFont from "next/font/local";
 import "./cleanouts.css";
 
-const oswald = Oswald({
-  weight: ["500", "600", "700"],
+// Self-hosted (Oswald v57 latin variable, same file Google Fonts serves) so a
+// Google Fonts network blip can't fail the production build.
+const oswald = localFont({
+  src: "./fonts/oswald-latin-variable.woff2",
+  weight: "500 700",
+  style: "normal",
+  display: "swap",
   variable: "--font-oswald",
-  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
