@@ -32,7 +32,7 @@ async function run() {
  try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1100 } });
   await context.addCookies([{ name: 'authjs.session-token', value: token, url: base }, { name: MFA_COOKIE, value: proof, url: base }]);
-  const page = await context.newPage(), errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+  const page = await context.newPage(), errors: string[] = []; page.on('pageerror', e => errors.push(e.stack || e.message));
   await page.goto(base + '/route', { waitUntil: 'networkidle', timeout: 120000 });
   await page.getByRole('heading', { name: 'Every day. Every delivery.' }).waitFor();
   await page.locator('.route-month').first().waitFor();
@@ -41,6 +41,7 @@ async function run() {
   const activeDay = page.locator('.route-day').filter({ has: page.locator('small') }).first(); await activeDay.click(); await page.locator('#route-day-details').waitFor();
   await page.getByRole('button', { name: 'Map', exact: true }).click(); await page.locator('.leaflet-container').waitFor(); await page.locator('.leaflet-interactive').first().waitFor();
   await page.locator('.leaflet-interactive').first().click({ force: true });
+  await page.locator('.route-map').scrollIntoViewIfNeeded(); await page.waitForTimeout(1500);
   await page.screenshot({ path: '/tmp/tolley-route-map.png', fullPage: false });
   await page.getByLabel('Group by').selectOption('locations');
   await page.getByRole('button', { name: 'Locations', exact: true }).click(); assert.ok(await page.locator('tbody tr').count() > 0);
