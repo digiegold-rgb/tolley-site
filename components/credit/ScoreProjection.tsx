@@ -10,9 +10,13 @@ type ProjectionPoint = {
 export function ScoreProjection({
   projection,
   currentScore,
+  modelLabel,
+  modelNote,
 }: {
   projection?: ProjectionPoint[];
   currentScore?: number;
+  modelLabel?: string | null;
+  modelNote?: string | null;
 }) {
   const [sliderIdx, setSliderIdx] = useState(0);
 
@@ -136,6 +140,9 @@ export function ScoreProjection({
         <div className="mt-4 flex items-center justify-center gap-4 rounded-xl bg-white/3 p-3">
           <div className="text-center">
             <p className="text-2xl font-bold text-white/70">{currentScore}</p>
+            {modelLabel && (
+              <p className="text-[0.6rem] text-white/45">{modelLabel}</p>
+            )}
             <p className="text-[0.6rem] text-white/40 uppercase">Current</p>
           </div>
           <div className="text-2xl text-white/30">&rarr;</div>
@@ -151,9 +158,13 @@ export function ScoreProjection({
             </p>
           </div>
           <div className="text-center">
-            <p className="text-xl font-bold text-green-400">
-              +{current.score - currentScore}
-            </p>
+            {modelNote ? (
+              <p className="text-[0.65rem] text-amber-300/80">{modelNote}</p>
+            ) : (
+              <p className="text-xl font-bold text-green-400">
+                +{current.score - currentScore}
+              </p>
+            )}
             <p className="text-[0.6rem] text-white/40 uppercase">Change</p>
           </div>
         </div>

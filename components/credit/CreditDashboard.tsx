@@ -19,13 +19,14 @@ import { BusinessVentures } from "./BusinessVentures";
 import { OnePayCard } from "./OnePayCard";
 import { KikoffStatusCard } from "./KikoffStatusCard";
 import { AltBureaus } from "./AltBureaus";
+import { deltaForDisplayedScore } from "@/lib/credit/score-delta";
 import type {
   AltBureauPlaceholder,
   DisputeRow,
   KikoffStatus,
   MortgageSnapshot,
   OnePaySnapshot,
-  ScoreTrend,
+  ScoreHistoryEntry,
 } from "@/lib/credit/types";
 
 type DashboardData = {
@@ -37,14 +38,13 @@ type DashboardData = {
   kikoff?: KikoffStatus | null;
   altBureaus?: AltBureauPlaceholder[] | null;
   scores: {
-    latest: any;
-    previous: any;
+    latest: ScoreHistoryEntry | null;
+    previous: ScoreHistoryEntry | null;
     perBureau: any;
     bestScore: number | null;
     avgScore: number | null;
     startScore: number | null;
     startDate: string | null;
-    trend: ScoreTrend | null;
     historyCount: number;
     lastScoreSyncAt?: string | null;
   };
@@ -167,6 +167,13 @@ export function CreditDashboard({
           ].filter(Boolean).length
       )
     : null;
+  const headlineScore = data?.scores?.bestScore ?? avgScore ?? null;
+  const headlineDelta = deltaForDisplayedScore({
+    score: data?.scores?.bestScore ?? null,
+    perBureau: data?.scores?.perBureau,
+    latest: data?.scores?.latest,
+    previous: data?.scores?.previous,
+  });
 
   return (
     <div className="space-y-5">
@@ -325,7 +332,8 @@ export function CreditDashboard({
             avgScore={data?.scores?.avgScore ?? null}
             startScore={data?.scores?.startScore ?? null}
             goal={680}
-            trend={data?.scores?.trend ?? null}
+            latest={data?.scores?.latest ?? null}
+            previous={data?.scores?.previous ?? null}
             lastScoreSyncAt={data?.scores?.lastScoreSyncAt ?? null}
           />
 
@@ -335,7 +343,9 @@ export function CreditDashboard({
           {/* Score Projection Slider */}
           <ScoreProjection
             projection={data?.scoreProjection}
-            currentScore={data?.scores?.bestScore ?? avgScore ?? undefined}
+            currentScore={headlineScore ?? undefined}
+            modelLabel={headlineDelta.modelLabel}
+            modelNote={headlineDelta.note}
           />
 
           {/* Debt Tracker */}

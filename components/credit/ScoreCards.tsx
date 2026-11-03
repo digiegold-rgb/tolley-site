@@ -1,6 +1,7 @@
 "use client";
 
-import type { BureauReading, ScoreTrend } from "@/lib/credit/types";
+import { bureauScoreDelta, type BureauDelta } from "@/lib/credit/score-delta";
+import type { BureauReading, ScoreBureau, ScoreHistoryEntry } from "@/lib/credit/types";
 
 type PerBureau = {
   transunion: BureauReading;
@@ -15,7 +16,8 @@ type ScoreCardsProps = {
   avgScore: number | null;
   startScore: number | null;
   goal?: number;
-  trend?: ScoreTrend | null;
+  latest?: ScoreHistoryEntry | null;
+  previous?: ScoreHistoryEntry | null;
   lastScoreSyncAt?: string | null;
 };
 
@@ -80,10 +82,12 @@ function fmtPulledAt(iso: string | null | undefined): string {
 function ScoreCard({
   bureau,
   reading,
+  delta,
   accentColor,
 }: {
   bureau: string;
   reading: BureauReading | undefined;
+  delta: BureauDelta;
   accentColor: string;
 }) {
   const r = reading
@@ -116,23 +120,29 @@ function ScoreCard({
             <p className="text-5xl font-black leading-none" style={{ color: accentColor }}>
               {r.value}
             </p>
-            {r.change != null && r.change !== 0 && (
+            {delta.modelLabel && (
+              <span className="mb-1 text-[0.65rem] text-white/45">{delta.modelLabel}</span>
+            )}
+            {delta.change != null && delta.change !== 0 && (
               <span
-                className={`mb-1 text-sm font-bold ${r.change > 0 ? "text-green-400" : "text-red-400"}`}
+                className={`mb-1 text-sm font-bold ${delta.change > 0 ? "text-green-400" : "text-red-400"}`}
               >
-                {r.change > 0 ? "▲" : "▼"}
-                {Math.abs(r.change)}
+                {delta.change > 0 ? "▲" : "▼"}
+                {Math.abs(delta.change)}
               </span>
             )}
           </div>
+          {delta.note && (
+            <p className="mt-1 text-[0.6rem] text-amber-300/80">{delta.note}</p>
+          )}
           <p className="mt-2 text-[0.65rem] text-white/35">
             as of {fmtDate(r.date)}
-            {r.previous != null && (
+            {delta.change != null && r.previous != null && (
               <span className="text-white/25"> · prev {r.previous}</span>
             )}
           </p>
           <p className="mt-0.5 text-[0.6rem] text-white/30">
-            {r.model ?? "--"} · pulled {fmtPulledAt(r.pulledAt)}
+            pulled {fmtPulledAt(r.pulledAt)}
           </p>
         </>
       ) : (
@@ -153,7 +163,7 @@ function TrendChip({
   value,
 }: {
   label: string;
-  value: number | undefined;
+  value: number | null | undefined;
 }) {
   if (value == null) return null;
   const up = value > 0;
@@ -173,13 +183,26 @@ function TrendChip({
   );
 }
 
+const BUREAU_CARDS: {
+  key: ScoreBureau;
+  label: string;
+  short: string;
+  color: string;
+}[] = [
+  { key: "transunion", label: "TransUnion", short: "TU", color: "#22c55e" },
+  { key: "equifax", label: "Equifax", short: "EQ", color: "#60a5fa" },
+  { key: "experian", label: "Experian", short: "EX", color: "#f59e0b" },
+  { key: "kickoff_score", label: "Kikoff", short: "KO", color: "#a78bfa" },
+];
+
 export function ScoreCards({
   perBureau,
   bestScore,
   avgScore,
   startScore,
   goal = 680,
-  trend,
+  latest,
+  previous,
   lastScoreSyncAt,
 }: ScoreCardsProps) {
   const start = startScore ?? 0;
@@ -188,11 +211,24 @@ export function ScoreCards({
   const pct = Math.min(100, Math.max(0, Math.round(((best - start) / span) * 100)));
   const gained = best - start;
   const remaining = Math.max(0, goal - best);
-  const hasTrend =
-    trend &&
-    (trend.transunion != null ||
-      trend.equifax != null ||
-      trend.experian != null);
+  const deltas = Object.fromEntries(
+    BUREAU_CARDS.map((bureau) => [
+      bureau.key,
+      bureauScoreDelta({
+        bureau: bureau.key,
+        reading: perBureau?.[bureau.key],
+        latest,
+        previous,
+      }),
+    ])
+  ) as Record<ScoreBureau, BureauDelta>;
+  const bestBureau = BUREAU_CARDS.find(
+    (bureau) => bestScore != null && perBureau?.[bureau.key]?.value === bestScore
+  );
+  const bestDelta = bestBureau ? deltas[bestBureau.key] : null;
+  const headlineTrend = BUREAU_CARDS.filter(
+    (bureau) => bureau.key !== "kickoff_score" && (deltas[bureau.key].change != null || deltas[bureau.key].note)
+  );
 
   return (
     <div className="space-y-4">
@@ -205,6 +241,9 @@ export function ScoreCards({
             </p>
             <p className="mt-1 text-sm text-white/60">
               <span className="font-black text-2xl text-[#00d4ff]">{best || "--"}</span>
+              {bestDelta?.modelLabel && (
+                <span className="ml-2 text-[0.65rem] text-white/45">{bestDelta.modelLabel}</span>
+              )}
               <span className="ml-2 text-white/40">best of bureaus</span>
               {avgScore != null && (
                 <span className="ml-2 text-white/30">· avg {avgScore}</span>
@@ -221,7 +260,7 @@ export function ScoreCards({
                 HELOC ELIGIBLE
               </span>
             )}
-            {gained !== 0 && (
+            {gained !== 0 && !bestDelta?.note && (
               <p className="mt-1 text-[0.65rem] text-white/35">
                 {gained > 0 ? "+" : ""}
                 {gained} since {startScore} start
@@ -239,14 +278,24 @@ export function ScoreCards({
           <span>start {startScore ?? "--"}</span>
           <span>goal {goal}</span>
         </div>
-        {hasTrend && trend && (
+        {headlineTrend.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className="text-[0.6rem] tracking-wider text-white/35 uppercase">
               Trend
             </span>
-            <TrendChip label="TU" value={trend.transunion} />
-            <TrendChip label="EQ" value={trend.equifax} />
-            <TrendChip label="EX" value={trend.experian} />
+            {headlineTrend.map((bureau) =>
+              deltas[bureau.key].change != null ? (
+                <TrendChip
+                  key={bureau.key}
+                  label={bureau.short}
+                  value={deltas[bureau.key].change ?? undefined}
+                />
+              ) : (
+                <span key={bureau.key} className="text-[0.6rem] text-amber-300/80">
+                  {bureau.short} {deltas[bureau.key].note}
+                </span>
+              )
+            )}
           </div>
         )}
         {lastScoreSyncAt && (
@@ -262,26 +311,15 @@ export function ScoreCards({
 
       {/* Per-bureau cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <ScoreCard
-          bureau="TransUnion"
-          reading={perBureau?.transunion}
-          accentColor="#22c55e"
-        />
-        <ScoreCard
-          bureau="Equifax"
-          reading={perBureau?.equifax}
-          accentColor="#60a5fa"
-        />
-        <ScoreCard
-          bureau="Experian"
-          reading={perBureau?.experian}
-          accentColor="#f59e0b"
-        />
-        <ScoreCard
-          bureau="Kikoff"
-          reading={perBureau?.kickoff_score}
-          accentColor="#a78bfa"
-        />
+        {BUREAU_CARDS.map((bureau) => (
+          <ScoreCard
+            key={bureau.key}
+            bureau={bureau.label}
+            reading={perBureau?.[bureau.key]}
+            delta={deltas[bureau.key]}
+            accentColor={bureau.color}
+          />
+        ))}
       </div>
     </div>
   );

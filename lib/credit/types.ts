@@ -8,6 +8,12 @@ export type ScoreSource =
   | "scraper"
   | (string & {});
 
+export type ScoreBureau =
+  | "transunion"
+  | "equifax"
+  | "experian"
+  | "kickoff_score";
+
 export type BureauReading = {
   value: number | null;
   date: string | null;
@@ -19,6 +25,24 @@ export type BureauReading = {
   ageDays: number | null;
 };
 
+/**
+ * One row from the ledger score history.
+ * `model` is the entry-level label; `models` overrides it per bureau.
+ * Dashboard `scores.latest` / `scores.previous` use this shape.
+ */
+export type ScoreHistoryEntry = {
+  date?: string | null;
+  transunion?: number | null;
+  equifax?: number | null;
+  experian?: number | null;
+  kickoff_score?: number | null;
+  model?: string | null;
+  models?: Partial<Record<ScoreBureau | "kickoff", string | null>> | null;
+  source?: string | null;
+  sources?: Record<string, string | null> | null;
+  pulledAt?: string | null;
+};
+
 export type ScoreTrend = {
   transunion?: number;
   equifax?: number;
@@ -26,8 +50,8 @@ export type ScoreTrend = {
 };
 
 export type ScoresBlock = {
-  latest?: Record<string, number | null> | null;
-  previous?: Record<string, number | null> | null;
+  latest?: ScoreHistoryEntry | null;
+  previous?: ScoreHistoryEntry | null;
   perBureau: {
     transunion: BureauReading;
     equifax: BureauReading;
