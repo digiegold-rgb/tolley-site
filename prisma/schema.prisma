@@ -6696,3 +6696,16 @@ model CompanyDecision {
   resolvedAt DateTime?
   createdAt DateTime @default(now())
 }
+
+// Private delivery evidence. Corrections survive repeat archive imports.
+model RouteArchive {
+  id        String   @id
+  payload   Json
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model RouteDeliveryCorrection {
+  recordId  String   @id
+  changes   Json
+  updatedAt DateTime @default(now()) @updatedAt
+}

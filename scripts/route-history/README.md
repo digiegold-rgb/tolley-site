@@ -1,0 +1,21 @@
+# Private delivery history
+
+`/route` is an owner/MFA application. It is intentionally absent from the public offerings registry and marked private in the company route inventory. HQ links to it. API responses are private/no-store, with owner/MFA and same-origin checks on corrections. The database contains the evidence snapshot, never the public repository or static assets.
+
+The UI shares year, inclusive date range, supplier and text filters across calendar, map, locations and records. Orders mean distinct shipment documents, with exact scans and repeated shipment IDs consolidated. Distinct packing lists for partial orders remain distinct shipments. A visit means one destination on one date. Pounds are known totals only; missing weights are never invented. Dates are received/delivered dates when corroborated, otherwise printed ship dates. Scan timestamps are not delivery dates. The calendar's blank cells mean no archived evidence, not proven days off. Area cells are 0.025° geographic bins, not city boundaries; their colors represent thirds of the selected view's maximum. Coarse geocodes are omitted.
+
+## Import workflow
+
+Keep all source documents, page images, extraction responses and manual reviews outside the checkout. Set `ROUTE_ARCHIVE_DIR` to that private directory. Its `source/` contains PDFs; `inventory.json` records each file's name (`file`), `pages`, `sha256` and byte `size`. The extraction scripts expect `pages/`, `extracted/` and `verified/` directories, and Python with pypdfium2/Pillow. Set `GEMINI_API_KEY` in the process environment; `GOOGLE_MAPS_API_KEY` is optional. Geocoding falls back to Nominatim serially, at most one request per 1.1 seconds, with a persistent cache.
+
+0. `python prepare.py /private/archive.zip` safely extracts PDF basenames and inventories page counts and hashes using `pdfinfo`. Conflicting basenames abort.
+1. `python extract.py` renders pages, hashes images, reuses exact duplicates and extracts each unique page. It records source file/page/hash. Results are restartable.
+2. `python verify.py` independently transcribes date/weight/document fields. All unique pages must have a verification response. Review failed batches rather than silently skipping them.
+3. `python geocode.py` populates the cache. It reads the assembled archive if present, or first-pass extraction addresses on the initial pass. No postal-code-only fallback is plotted.
+4. `python assemble.py` parses numeric dates deterministically as US month/day/year, reports disagreements in `assembly-conflicts.json`, and creates `archive.json`. Visually inspect conflicting fields in original scans, especially document IDs, date digit transpositions and supporting bills of lading. `manual-review.json` is a private map from page ID to reviewed fields. Repeat assembly after review. Do not automatically clamp historical years or use filenames as dates.
+5. Inspect duplicate order/document groups. A bill of lading supporting the same packing list should be excluded, with the reason retained; distinct packing lists should remain separate. Verify uncertain/partial address matches before including them.
+6. Run `node --env-file=/private/env --import tsx scripts/route-history/import.ts /private/archive.json` from the repo for validation, then append `--apply` to save. This creates only the two additive route tables, upserts the archive and preserves owner corrections. Existing snapshots are backed up beside the import file before replacement. It does not send messages, create invoices, or alter billing.
+
+Corrections are stored independently by stable supplier/document identity, so repeated imports retain them. Changing a date in Review records owner-confirmed delivery evidence. A missing value remains null. The original extraction text and source references remain available. Original PDFs are retained on .104; this release shows file/page references, not downloadable public PDFs.
+
+Validation: `node --import tsx --test tests/route-history.test.ts`, TypeScript build check, route coverage, link audit. `tests/route-history-browser.ts` uses only an isolated `tolley_route_test` database on localhost:55438 and its fixed test secret. It covers owner/MFA access, rejected writes, persistence, all tabs, calendar selection, map layers, review dialog, CSV export, search and mobile overflow.
