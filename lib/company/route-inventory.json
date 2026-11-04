@@ -1264,5 +1264,8 @@
   {"file":"app/wd/terms/page.tsx","path":"/wd/terms","audience":"public"},
   {"file":"app/route/share/route.tsx","path":"/route/share","audience":"endpoint"},
   {"file":"app/route/page.tsx","path":"/route","audience":"supporting"},
-  {"file":"app/api/route/history/route.ts","path":"/api/route/history","audience":"endpoint"}
+  {"file":"app/api/route/history/route.ts","path":"/api/route/history","audience":"endpoint"},
+  {"file":"app/wd/activity/page.tsx","path":"/wd/activity","audience":"supporting"},
+  {"file":"app/wd/activity/share/route.tsx","path":"/wd/activity/share","audience":"endpoint"},
+  {"file":"app/api/wd/activity/route.ts","path":"/api/wd/activity","audience":"endpoint"}
 ]

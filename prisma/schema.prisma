@@ -6709,3 +6709,10 @@ model RouteDeliveryCorrection {
   changes   Json
   updatedAt DateTime @default(now()) @updatedAt
 }
+
+/// Public, allowlisted activity only. No raw WD customer or billing data.
+model WdActivitySnapshot {
+  id        String   @id
+  payload   Json
+  updatedAt DateTime @updatedAt
+}
