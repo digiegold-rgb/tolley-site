@@ -15,13 +15,17 @@ async function run() {
  const token = await encode({ secret: process.env.AUTH_SECRET!, salt: 'authjs.session-token', token: { sub: owner.id, email: owner.email, name: owner.name, authSessionId: sessionId, authAt: now, sv: 0, svAt: now } });
  const proof = signMfaProof(owner.id, sessionId, enrollmentKey(mfa));
  const cookie = `authjs.session-token=${token}; ${MFA_COOKIE}=${proof}`;
- assert.equal((await fetch(base + '/api/route/history')).status, 401);
- assert.equal((await fetch(base + '/api/route/history', { headers: { cookie: `authjs.session-token=${token}` } })).status, 401, 'MFA required');
+ assert.equal((await fetch(base + '/api/route/history')).status, 200, 'public history needs no account');
+ assert.equal((await fetch(base + '/route', { redirect: 'manual' })).status, 200, 'public page does not redirect');
+ assert.equal((await fetch(base + '/api/route/history', { headers: { cookie: `authjs.session-token=${token}` } })).status, 200, 'read access does not require MFA');
  const nonowner = await db.user.upsert({ where: { email: 'route-viewer@example.test' }, create: { email: 'route-viewer@example.test' }, update: {} });
  const other = await encode({ secret: process.env.AUTH_SECRET!, salt: 'authjs.session-token', token: { sub: nonowner.id, email: nonowner.email, authSessionId: randomUUID(), authAt: now, sv: 0, svAt: now } });
- assert.equal((await fetch(base + '/api/route/history', { headers: { cookie: `authjs.session-token=${other}` } })).status, 401, 'nonowner denied');
+ assert.equal((await fetch(base + '/api/route/history', { headers: { cookie: `authjs.session-token=${other}` } })).status, 200, 'nonowner can view');
  const response = await fetch(base + '/api/route/history', { headers: { cookie } }); assert.equal(response.status, 200); assert.match(response.headers.get('cache-control') || '', /no-store/);
  const archive = await response.json(); assert.ok(archive.deliveries.length > 0); const id = archive.deliveries[0].id;
+ for (const viewerCookie of ['', `authjs.session-token=${token}`, `authjs.session-token=${other}`]) {
+  assert.equal((await fetch(base + '/api/route/history', { method: 'PATCH', headers: { cookie: viewerCookie, origin: base, 'Content-Type': 'application/json' }, body: JSON.stringify({ id, changes: { notes: 'must not save' } }) })).status, 401, 'anonymous, incomplete MFA and nonowner edits denied');
+ }
  const patch = (changes: object, origin=base) => fetch(base + '/api/route/history', { method: 'PATCH', headers: { cookie, origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ id, changes }) });
  assert.ok([401,403].includes((await patch({ notes: 'invalid origin' }, 'https://untrusted.test')).status));
  assert.equal((await patch({ date: '2026-02-30' })).status, 400); assert.equal((await patch({ weightLbs: -1 })).status, 400); assert.equal((await patch({ lat: 0 })).status, 400);
@@ -31,6 +35,21 @@ async function run() {
  const browser = await chromium.launch({ headless: true });
  try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1100 } });
+  const publicPage = await context.newPage();
+  await publicPage.goto(base + '/route', { waitUntil: 'networkidle', timeout: 120000 });
+  await publicPage.locator('.route-month').first().waitFor();
+  await publicPage.getByRole('button', { name: 'Map', exact: true }).click();
+  await publicPage.locator('.leaflet-interactive').first().waitFor();
+  await publicPage.getByRole('button', { name: 'Records', exact: true }).click();
+  assert.equal(await publicPage.getByRole('button', { name: /^Review / }).count(), 0);
+  assert.equal(await publicPage.getByRole('link', { name: /Invoices/ }).count(), 0);
+  assert.match(await publicPage.locator('meta[property="og:title"]').getAttribute('content') || '', /Tolley Route/);
+  const previewUrl = await publicPage.locator('meta[property="og:image"]').getAttribute('content');
+  assert.ok(previewUrl?.includes('/route/share'));
+  const preview = await fetch(base + new URL(previewUrl!).pathname);
+  assert.equal(preview.status, 200); assert.match(preview.headers.get('content-type') || '', /image\/png/);
+  fs.writeFileSync('/tmp/tolley-route-share-preview.png', Buffer.from(await preview.arrayBuffer()));
+  await publicPage.close();
   await context.addCookies([{ name: 'authjs.session-token', value: token, url: base }, { name: MFA_COOKIE, value: proof, url: base }]);
   const page = await context.newPage(), errors: string[] = []; page.on('pageerror', e => errors.push(e.stack || e.message));
   await page.goto(base + '/route', { waitUntil: 'networkidle', timeout: 120000 });
@@ -53,7 +72,7 @@ async function run() {
   await page.getByLabel('Destination or order').fill('no-such-location-qa'); await page.getByText('No deliveries match this selection.').waitFor(); await page.getByRole('button', { name: 'Reset', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 }); await page.getByRole('button', { name: 'Calendar', exact: true }).click(); await page.screenshot({ path: '/tmp/tolley-route-mobile.png', fullPage: false });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'mobile page does not overflow');
-  assert.deepEqual(errors, []); console.log('PASS: owner/MFA isolation, no-store, corrections, calendar, map, locations, review, CSV, search, mobile and zero browser errors');
+  assert.deepEqual(errors, []); console.log('PASS: anonymous dashboard/map, link preview image, owner/MFA write isolation, no-store, corrections, calendar, map, locations, review, CSV, search, mobile and zero browser errors');
  } finally { await browser.close(); }
 }
 run().finally(() => db.$disconnect()).catch(e => { console.error(e); process.exitCode = 1; });
