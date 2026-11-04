@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.65.1';
+export const APP_VERSION = '1.66';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.66', date: '2026-11-03', title: 'Wash & Dry activity across the city', items: ['Explore rental installations and subscription starts on a public calendar and city map, with a maintenance overview.', 'First names and broad city summaries keep customer locations and financial details private.', 'Shared activity links include a custom illustrated preview.'] },
   { version: '1.65.1', date: '2026-11-03', title: 'Open and share delivery history', items: ['The delivery calendar and territory map open without an account.', 'Shared Route links include a picture and description for messaging previews. Record corrections remain restricted to the owner.'] },
   { version: '1.65', date: '2026-11-03', title: 'Delivery history at a glance', items: ['A private delivery dashboard compares order counts and recorded pounds on a yearly calendar.', 'Explore delivery activity by area, destination and weekday, with source references and saved corrections.'] },
   { version: '1.64.2', date: '2026-10-29', title: 'Measure and discover cleanout inquiries', items: ['Cleanout quote requests can now be attributed to ChatGPT ads after the inquiry is saved, without sending contact details or job notes.', 'Ad measurement respects browser privacy signals and cannot interrupt a quote request.', 'Public agent documentation now describes the free cleanout quote form and its saved-inquiry receipt.'] },
