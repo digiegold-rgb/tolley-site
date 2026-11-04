@@ -5,7 +5,6 @@ import { validDate, sameRequestOrigin, type Correction } from '@/lib/route-histo
 export const dynamic = 'force-dynamic';
 const reply = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'private, no-store' } });
 export async function GET() {
-  if (!await validateOwnerTool()) return reply({ error: 'Unauthorized' }, 401);
   try { return reply(await readArchive()); } catch { return reply({ error: 'Delivery history could not be loaded. Please retry.' }, 503); }
 }
 export async function PATCH(req: Request) {

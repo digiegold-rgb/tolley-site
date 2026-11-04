@@ -1,6 +1,6 @@
-# Private delivery history
+# Delivery history
 
-`/route` is an owner/MFA application. It is intentionally absent from the public offerings registry and marked private in the company route inventory. HQ links to it. API responses are private/no-store, with owner/MFA and same-origin checks on corrections. The database contains the evidence snapshot, never the public repository or static assets.
+`/route` and its GET API are public at the owner’s request. No account is needed to view the calendar, map, records or CSV. It is a supporting dashboard, not a service offering; HQ links to it. Corrections remain owner/MFA gated with same-origin checks, and edit controls are hidden for viewers. Responses use no-store. The evidence snapshot stays in the database rather than the repository. Original PDFs remain local. Open Graph metadata and a generated cover image support rich messaging previews.
 
 The UI shares year, inclusive date range, supplier and text filters across calendar, map, locations and records. Orders mean distinct shipment documents, with exact scans and repeated shipment IDs consolidated. Distinct packing lists for partial orders remain distinct shipments. A visit means one destination on one date. Pounds are known totals only; missing weights are never invented. Dates are received/delivered dates when corroborated, otherwise printed ship dates. Scan timestamps are not delivery dates. The calendar's blank cells mean no archived evidence, not proven days off. Area cells are 0.025° geographic bins, not city boundaries; their colors represent thirds of the selected view's maximum. Coarse geocodes are omitted.
 
