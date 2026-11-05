@@ -1,4 +1,4 @@
-import { WD_CONTACT_EMAIL, WD_CONTACT_PHONE } from "@/lib/wd";
+import { WD_CONTACT_EMAIL, WD_CONTACT_PHONE, WD_CONTACT_PHONE_E164 } from "@/lib/wd";
 
 const cities = [
   "Independence",
@@ -47,7 +47,7 @@ export function WdServiceArea() {
         </a>{" "}
         or call{" "}
         <a
-          href={`tel:${WD_CONTACT_PHONE}`}
+          href={`tel:${WD_CONTACT_PHONE_E164}`}
           data-track-event="phone_click"
           data-track-label="service_area"
           className="font-semibold text-blue-600 underline decoration-blue-300 underline-offset-4 transition hover:text-blue-800"

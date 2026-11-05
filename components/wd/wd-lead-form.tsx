@@ -8,7 +8,7 @@ import { useSearchParams } from "next/navigation";
 import { trackEvent } from "@/components/analytics/site-tracker";
 import { gtagEvent } from "@/components/analytics/ga4";
 import { fbqEvent } from "@/components/analytics/meta-pixel";
-import { WD_CONTACT_PHONE } from "@/lib/wd";
+import { WD_CONTACT_PHONE, WD_CONTACT_PHONE_E164 } from "@/lib/wd";
 
 export function WdLeadForm() {
   const [reported, setReported] = useState("");
@@ -73,7 +73,7 @@ export function WdLeadForm() {
         <p className="mt-2 text-sm text-slate-600">
           We&apos;ll reach out within 24 hours to schedule your delivery. Questions? Call us
           at{" "}
-          <a href={`tel:${WD_CONTACT_PHONE}`} className="font-semibold text-blue-600 underline">
+          <a href={`tel:${WD_CONTACT_PHONE_E164}`} className="font-semibold text-blue-600 underline">
             {WD_CONTACT_PHONE}
           </a>
         </p>
@@ -175,7 +175,7 @@ export function WdLeadForm() {
       {status === "error" && (
         <p className="mt-3 text-sm text-red-500">
           Something went wrong. Please call us at{" "}
-          <a href={`tel:${WD_CONTACT_PHONE}`} className="font-semibold underline">
+          <a href={`tel:${WD_CONTACT_PHONE_E164}`} className="font-semibold underline">
             {WD_CONTACT_PHONE}
           </a>
         </p>

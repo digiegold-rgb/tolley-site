@@ -1,4 +1,5 @@
 import { discoveryMetadata } from "@/lib/discovery";
+import { WD_CONTACT_PHONE_E164 } from "@/lib/wd";
 import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import { Suspense } from "react";
 import { MoreFromTolley } from "@/components/shared/more-from-tolley";
@@ -17,7 +18,7 @@ const jsonLd = {
   description:
     "Affordable washer and dryer rentals in Kansas City with free delivery, installation, and maintenance included. No contracts. $58/mo.",
   url: "https://www.tolley.io/wd",
-  telephone: "913-283-3826",
+  telephone: WD_CONTACT_PHONE_E164,
   email: "Jared@yourkchomes.com",
   priceRange: "$58/mo",
   currenciesAccepted: "USD",

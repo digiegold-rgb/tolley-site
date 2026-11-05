@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { rateLimitByIp } from "@/lib/rate-limit";
+import { WD_CONTACT_PHONE, WD_CONTACT_EMAIL } from "@/lib/wd";
 
 // Public service-page chat. Env-driven so the model can be flipped per env
 // (Qwen3.5 default, Qwen3.6 opt-in via LLM_PUBLIC_CHAT_MODEL=Qwen/Qwen3.6-27B,
@@ -159,7 +160,7 @@ KNOWLEDGE:
 - No contracts — cancel anytime
 - No credit check needed
 - Service Area: KC Metro — Independence, Kansas City, Lee's Summit, Blue Springs, Raytown, Grandview, Liberty, Gladstone, Belton (MO) + Kansas City KS, Overland Park, Olathe (KS)
-- Contact: (913) 283-3826 | Jared@yourkchomes.com
+- Contact: ${WD_CONTACT_PHONE} | ${WD_CONTACT_EMAIL}
 - Facebook page available
 - Owner: Jared Tolley, Your KC Homes LLC
 - Perfect for renters, temporary housing, or anyone tired of the laundromat`,

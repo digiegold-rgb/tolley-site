@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { WD_BRAND, WD_COMPANY, WD_CONTACT_EMAIL, WD_CONTACT_PHONE } from "@/lib/wd";
+import { WD_BRAND, WD_COMPANY, WD_CONTACT_EMAIL, WD_CONTACT_PHONE, WD_CONTACT_PHONE_E164 } from "@/lib/wd";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | Wash & Dry Rental",
@@ -163,7 +163,7 @@ export default function WdPrivacyPage() {
             Phone:{" "}
             <a
               className="text-blue-600 underline decoration-blue-300 underline-offset-4"
-              href={`tel:${WD_CONTACT_PHONE}`}
+              href={`tel:${WD_CONTACT_PHONE_E164}`}
             >
               {WD_CONTACT_PHONE}
             </a>

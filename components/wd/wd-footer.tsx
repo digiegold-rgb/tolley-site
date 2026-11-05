@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { WD_COMPANY, WD_CONTACT_EMAIL, WD_CONTACT_PHONE, WD_FACEBOOK_URL } from "@/lib/wd";
+import { WD_COMPANY, WD_CONTACT_EMAIL, WD_CONTACT_PHONE, WD_CONTACT_PHONE_E164, WD_FACEBOOK_URL } from "@/lib/wd";
 
 export function WdFooter() {
   return (
@@ -20,7 +20,7 @@ export function WdFooter() {
               </a>
               {" \u00B7 "}
               <a
-                href={`tel:${WD_CONTACT_PHONE}`}
+                href={`tel:${WD_CONTACT_PHONE_E164}`}
                 data-track-event="phone_click"
                 data-track-label="footer"
                 className="transition hover:text-blue-600"

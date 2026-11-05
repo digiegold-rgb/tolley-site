@@ -114,7 +114,9 @@ test("cited pages keep their query-shaped title, phone in the description, and a
   for (const name of ["cleanouts", "estate", "homes", "wd", "live"]) {
     const s = getSubsite(name)!;
     assert.equal(s.discovery?.disposition, "offering", name);
-    assert.match(s.purpose, /913-283-3826/, `${name} description must carry the phone`);
+    const phone = name === "wd" ? "913-600-7508" : "913-283-3826";
+    assert.match(s.purpose, new RegExp(phone), `${name} description must carry the phone`);
+    assert.equal(s.discovery?.phone, phone);
     assert.ok((s.faq?.length ?? 0) >= 4, `${name} needs a real FAQ`);
     const qs = discoveryQuestions(s);
     assert.ok(qs.some(q => q.q === s.faq![0].q), `${name} details section must render the real FAQ`);

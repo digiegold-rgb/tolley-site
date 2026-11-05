@@ -1,6 +1,6 @@
 import { UNPROMOTED_SUBSITES } from "./public-route-policy";
 import type { SubsiteManifest } from "./agent-manifest";
-import { WD_PRICE_WASHER, WD_PRICE_BUNDLE } from "./wd";
+import { WD_PRICE_WASHER, WD_PRICE_BUNDLE, WD_CONTACT_PHONE, WD_FAQ } from "./wd";
 import { GEN_MODEL, GEN_PRICE_DAY, GEN_PRICE_WEEK, GEN_PRICE_MONTH } from "./generator";
 import { MV_PRICE_DAY, MV_PRICE_WEEK, MV_PRICE_2WEEK } from "./moving";
 import { TR_TRAILERS } from "./trailer";
@@ -9,7 +9,6 @@ import { KP_PRICE_DAY } from "./kerplunk";
 import { PT_PRICE_DAY } from "./picnic-table";
 import { TC_FAQ } from "./cleanouts";
 import { ES_FAQ } from "./estate";
-import { WD_FAQ } from "./wd";
 import { HOMES_FAQ, HM_SELLER_DESCRIPTION } from "./homes";
 import { HELP_FAQ } from "./vater/help-content";
 import { LISTING_FAQ } from "./vater/listing-faq";
@@ -32,7 +31,7 @@ const corrections: Record<string, Partial<SubsiteManifest>> = {
   estate: { purpose: "Full-service estate sales in Independence and the Kansas City metro. Free walkthrough, zero upfront cost, 30% all-inclusive commission, no minimum sale size, fast settlement. Call/text 913-283-3826.", faq: ES_FAQ.map(f => ({ q: f.q, a: f.a })) },
   homes: { title: "Sell Your Kansas City Home | Jared Tolley — Your KC Homes", purpose: HM_SELLER_DESCRIPTION, faq: HOMES_FAQ },
   animate: { skipJsonLd: false, purpose: "Jelly Studio turns a script into a narrated video with generated scenes and captions. Pay per render, no subscription: a typical long-form video costs $1–7 all in. Public beta with prepaid credits; review the estimate before rendering.", pricing: [], faq: HELP_FAQ.slice(0, 6).map(f => ({ q: f.q, a: f.a })) },
-  wd: { title: "Washer & Dryer Rental in Kansas City — $42/mo, Free Delivery", purpose: `Washer and dryer rental in the Kansas City metro: $${WD_PRICE_WASHER}/month for a washer or $${WD_PRICE_BUNDLE}/month for a washer and dryer. Free delivery, install, and repairs; no credit check, no contract. Call/text 913-283-3826.`, faq: WD_FAQ, pricing: [price(WD_PRICE_WASHER, "monthly", "Washer"), price(WD_PRICE_BUNDLE, "monthly", "Washer and dryer")] },
+  wd: { title: "Washer & Dryer Rental in Kansas City — $42/mo, Free Delivery", purpose: `Washer and dryer rental in the Kansas City metro: $${WD_PRICE_WASHER}/month for a washer or $${WD_PRICE_BUNDLE}/month for a washer and dryer. Free delivery, install, and repairs; no credit check, no contract. Call/text ${WD_CONTACT_PHONE}.`, faq: WD_FAQ, pricing: [price(WD_PRICE_WASHER, "monthly", "Washer"), price(WD_PRICE_BUNDLE, "monthly", "Washer and dryer")] },
   generator: { purpose: `${GEN_MODEL} tri-fuel generator rental in Kansas City. 7,500W running power; gasoline, propane, or natural gas. From $${GEN_PRICE_DAY}/day.`, pricing: [price(GEN_PRICE_DAY, "per day"), price(GEN_PRICE_WEEK, "per week"), price(GEN_PRICE_MONTH, "monthly")] },
   trailer: { title: "Utility Trailer & Car Hauler Rental KC", purpose: "Rent 16ft, 18ft, and 20ft utility trailers or a 20ft car hauler in the Kansas City metro. Confirm towing requirements, dates, deposit, and delivery before booking.", pricing: TR_TRAILERS.map(t => price(t.pricing.day, "per day", t.name)) },
   moving: { purpose: "Reusable moving supply rental in Kansas City: a bundle of 20 totes, 17 giant rubber bands, and 25 moving blankets.", pricing: [price(MV_PRICE_DAY, "per day"), price(MV_PRICE_WEEK, "per week"), price(MV_PRICE_2WEEK, "two weeks")] },
@@ -57,7 +56,7 @@ const ownedPhone = new Set(["live", "cleanouts", "estate", "wd", "generator", "t
 export function withDiscoveryFacts(input: SubsiteManifest): SubsiteManifest {
   const s = { ...input, ...corrections[input.name] };
   const disposition = retiredNames.has(s.name) ? "retired" : privateNames.has(s.name) || s.status === "auth" ? "private" : supportingNames.has(s.name) || UNPROMOTED_SUBSITES.has(s.name) || s.skipSitemap ? "supporting" : "offering";
-  const phone = ownedPhone.has(s.name) ? "913-283-3826" : s.name === "hvac" ? "816-726-4054" : s.name === "junkinjays" ? "816-206-2897" : undefined;
+  const phone = s.name === "wd" ? WD_CONTACT_PHONE : ownedPhone.has(s.name) ? "913-283-3826" : s.name === "hvac" ? "816-726-4054" : s.name === "junkinjays" ? "816-206-2897" : undefined;
   return { ...s, ...(ownedPhone.has(s.name) ? { availability: "Contact the provider to confirm current availability and scheduling." } : {}), discovery: {
     disposition,
     canonicalUrl: DISCOVERY_BASE + s.url,

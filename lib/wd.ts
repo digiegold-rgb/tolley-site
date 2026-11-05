@@ -5,8 +5,10 @@ export const WD_SITE_URL = "https://tolley.io/wd";
 export const WD_PRICE_WASHER = 42;
 export const WD_PRICE_BUNDLE = 58;
 export const WD_CONTACT_EMAIL = "Jared@yourkchomes.com";
-export const WD_CONTACT_PHONE = "913-283-3826";
-export const WD_SMS_PHONE = "913-600-7508";
+/** Public Wash & Dry number. Display form; tel:/sms: links use WD_CONTACT_PHONE_E164. */
+export const WD_CONTACT_PHONE = "913-600-7508";
+export const WD_CONTACT_PHONE_E164 = "+19136007508";
+export const WD_SMS_PHONE = WD_CONTACT_PHONE;
 export const WD_WELCOME_FROM = "Jared <jared@yourkchomes.com>";
 /** Live W/D A2P Messaging Service (sender +19136007508). Public resource id, not a secret. */
 export const WD_MESSAGING_SERVICE_SID = "MG82db38fc4ae258c8869e4f0ae6c525ed";
