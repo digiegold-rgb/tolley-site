@@ -1,10 +1,5 @@
 import { Suspense } from "react";
-import {
-  WD_STRIPE_CHECKOUT_WASHER_URL,
-  WD_STRIPE_CHECKOUT_URL,
-  WD_PRICE_WASHER,
-  WD_PRICE_BUNDLE,
-} from "@/lib/wd";
+import { WD_PRICE_WASHER, WD_PRICE_BUNDLE } from "@/lib/wd";
 import { WdCheckoutLink } from "./wd-checkout-link";
 
 const features = [
@@ -35,20 +30,11 @@ export function WdPricing() {
               </li>
             ))}
           </ul>
-          <Suspense fallback={
-            <a
-              href={WD_STRIPE_CHECKOUT_WASHER_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 inline-flex w-full items-center justify-center rounded-full border-2 border-blue-200 bg-white px-6 py-2.5 text-sm font-bold text-blue-600 transition-all hover:bg-blue-50 hover:border-blue-300"
-            >
-              Get Started
-            </a>
-          }>
+          <Suspense fallback={<p className="mt-6 text-sm text-slate-500">Enter your delivery ZIP to get started.</p>}>
             <WdCheckoutLink
-              href={WD_STRIPE_CHECKOUT_WASHER_URL}
+              plan="washer"
               label="washer_pricing"
-              className="mt-6 inline-flex w-full items-center justify-center rounded-full border-2 border-blue-200 bg-white px-6 py-2.5 text-sm font-bold text-blue-600 transition-all hover:bg-blue-50 hover:border-blue-300"
+              className="inline-flex w-full items-center justify-center rounded-full border-2 border-blue-200 bg-white px-6 py-2.5 text-sm font-bold text-blue-600 transition-all hover:bg-blue-50 hover:border-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Get Started
             </WdCheckoutLink>
@@ -79,20 +65,11 @@ export function WdPricing() {
               Full set — washer &amp; dryer together
             </li>
           </ul>
-          <Suspense fallback={
-            <a
-              href={WD_STRIPE_CHECKOUT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="wd-glow mt-6 inline-flex w-full items-center justify-center rounded-full bg-blue-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-blue-700"
-            >
-              Get Started
-            </a>
-          }>
+          <Suspense fallback={<p className="mt-6 text-sm text-slate-500">Enter your delivery ZIP to get started.</p>}>
             <WdCheckoutLink
-              href={WD_STRIPE_CHECKOUT_URL}
+              plan="bundle"
               label="bundle_pricing"
-              className="wd-glow mt-6 inline-flex w-full items-center justify-center rounded-full bg-blue-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-blue-700"
+              className="wd-glow inline-flex w-full items-center justify-center rounded-full bg-blue-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Get Started
             </WdCheckoutLink>
