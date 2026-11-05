@@ -16,6 +16,7 @@ import {
   CK_PHONE_TEL,
   CK_TERMS_PATH,
   PAYMENT_COPY,
+  venmoPayUrl,
 } from "@/lib/legal-cleanouts";
 
 export const dynamic = "force-dynamic";
@@ -210,6 +211,19 @@ export default async function CleanoutPaymentPage({
                   {PAYMENT_COPY.cashButton}
                 </button>
               </form>
+            )}
+            {invoice.paid ? null : (
+              <div className="tc-form space-y-3 p-6">
+                <a
+                  href={venmoPayUrl(invoice.amountDue, invoice.invoiceNumber)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="tc-btn-secondary block w-full rounded px-4 py-3 text-center text-sm"
+                >
+                  {PAYMENT_COPY.venmoButton} · {money.format(invoice.amountDue)}
+                </a>
+                <p className="text-xs leading-relaxed text-white/45">{PAYMENT_COPY.venmoNote}</p>
+              </div>
             )}
           </div>
         ) : null}
