@@ -4,7 +4,7 @@
  * is missing, so the digest cron never fails the run because notifications
  * aren't configured.
  */
-export async function notifyTelegram(message: string): Promise<{ ok: boolean; error?: string }> {
+export async function notifyTelegram(message: string, options?: { plainText?: boolean }): Promise<{ ok: boolean; error?: string }> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) {
@@ -17,7 +17,7 @@ export async function notifyTelegram(message: string): Promise<{ ok: boolean; er
       body: JSON.stringify({
         chat_id: chatId,
         text: message,
-        parse_mode: "Markdown",
+        ...(options?.plainText ? {} : { parse_mode: "Markdown" }),
         disable_web_page_preview: true,
       }),
       signal: AbortSignal.timeout(10_000),

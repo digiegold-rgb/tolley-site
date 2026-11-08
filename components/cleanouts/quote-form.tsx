@@ -34,11 +34,13 @@ export function CleanoutQuoteForm() {
         body: JSON.stringify({ sessionId: visitorSessionId(), name, phone, address, details, smsConsent, attribution: browserAttribution(reported), openaiClickRef: cleanoutAdReference() }),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok) {
+      if (!res.ok || data?.ok !== true || typeof data?.leadId !== "string" || !data.leadId) {
         setStatus("error");
         setErrorMsg(
           (data && typeof data.error === "string" && data.error) ||
-            `Something went wrong (HTTP ${res.status}). Call or text us instead — ${TC_PHONE}.`,
+            (res.ok
+              ? `We couldn't confirm your request was saved. Call or text us instead — ${TC_PHONE}.`
+              : `Something went wrong (HTTP ${res.status}). Call or text us instead — ${TC_PHONE}.`),
         );
         return;
       }

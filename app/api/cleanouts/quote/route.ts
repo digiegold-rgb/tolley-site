@@ -6,9 +6,8 @@ import { recordLeadCustomer } from "@/lib/customer-history/store";
  * validation, and if a field is shaky we still create the GrowthLead with
  * whatever we have. Only a completely empty submission is rejected.
  *
- * Per-IP rate limit (5/hour) keeps bots from flooding the table; Telegram
- * ping fires via after() so the response returns fast and the notification
- * isn't killed by the function freezing (feedback_vercel_after_not_fire_forget).
+ * Per-IP rate limit (5/hour) keeps bots from flooding the table. The owner alert
+ * is committed with the lead, attempted after the response, and retried by cron.
  */
 
 import { NextRequest, NextResponse, after } from "next/server";
@@ -16,7 +15,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { normalizeAttribution } from "@/lib/discovery-attribution";
 import { prisma } from "@/lib/prisma";
 import { consumeRateLimit, rateLimited } from "@/lib/rate-limit";
-import { notifyTelegram } from "@/lib/budget/notify";
+import { enqueueCleanoutNotification, deliverLeadNotifications } from "@/lib/lead-notification-outbox";
 import { measurementDenied, openAIReference } from "@/lib/openai-ad-attribution";
 import { reportCleanoutConversion } from "@/lib/openai-ad-conversions";
 
@@ -73,6 +72,7 @@ export async function POST(request: NextRequest) {
   });
 
   await recordLeadCustomer(tx, "growth", lead, { sessionId: body.sessionId });
+  await enqueueCleanoutNotification(tx, lead.id, { name, phone, address });
   return lead;
   });
 
@@ -82,15 +82,7 @@ export async function POST(request: NextRequest) {
     after(async () => { await reportCleanoutConversion(lead.id, clickReference); });
   }
 
-  after(async () => {
-    const msg =
-      `🧹 Cleanout quote request: ${name || "(no name)"} ${phone || "(no phone)"}` +
-      `${address ? ` — ${address}` : ""}`;
-    const sent = await notifyTelegram(msg);
-    if (!sent.ok) {
-      console.error(`[cleanouts/quote] Telegram notify failed for lead ${lead.id}: ${sent.error}`);
-    }
-  });
+  after(() => deliverLeadNotifications(lead.id));
 
   return NextResponse.json({ ok: true, leadId: lead.id });
 }

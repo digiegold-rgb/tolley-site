@@ -14,10 +14,11 @@ try {
     await page.route("**/api/analytics", route => route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' }));
     const submissions = [];
     let fail = true;
+    let missingReceipt = false;
     // Always intercepted, including when checking production. No lead or message is created.
     await page.route("**/api/cleanouts/quote", async route => {
       submissions.push(route.request().postDataJSON());
-      await route.fulfill({ status: fail ? 503 : 200, contentType: "application/json", body: JSON.stringify(fail ? { error: "Validation: save unavailable" } : { ok: true, leadId: "intercepted-browser-test" }) });
+      await route.fulfill({ status: fail ? 503 : 200, contentType: "application/json", body: JSON.stringify(fail ? { error: "Validation: save unavailable" } : missingReceipt ? { ok: true } : { ok: true, leadId: "intercepted-browser-test" }) });
     });
     await page.goto(base + "/cleanouts?utm_source=chatgpt&utm_medium=cpc&oppref=browser-validation-ref", { waitUntil: "networkidle", timeout: 120000 });
     await page.locator("#tc-phone").fill("202-555-0100");
@@ -25,16 +26,22 @@ try {
     await page.getByText("Validation: save unavailable").waitFor();
     assert.equal(await page.getByText("Got it — quote coming your way", { exact: true }).count(), 0);
     assert.equal(submissions[0].openaiClickRef, denied ? undefined : "browser-validation-ref");
+    fail = false;
+    missingReceipt = true;
+    await page.getByRole("button", { name: "Get My Free Quote", exact: true }).click();
+    await page.getByText("We couldn't confirm your request was saved.", { exact: false }).waitFor();
+    assert.equal(await page.getByText("Got it — quote coming your way", { exact: true }).count(), 0);
+    missingReceipt = false;
     // A reload without tracking parameters retains only the session click reference.
     await page.goto(base + "/cleanouts", { waitUntil: "networkidle" });
     await page.locator("#tc-phone").fill("202-555-0100");
     fail = false;
     await page.getByRole("button", { name: "Get My Free Quote", exact: true }).click();
     await page.getByText("Got it — quote coming your way", { exact: true }).waitFor();
-    assert.equal(submissions[1].openaiClickRef, denied ? undefined : "browser-validation-ref");
-    assert.equal(submissions[1].attribution.campaignSource, "chatgpt");
+    assert.equal(submissions[2].openaiClickRef, denied ? undefined : "browser-validation-ref");
+    assert.equal(submissions[2].attribution.campaignSource, "chatgpt");
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
-    results.push({ privacyOptOut: denied, retainedAdReference: !denied, failedSaveNoSuccess: true, successfulSaveReceipt: true, realSubmissions: 0 });
+    results.push({ privacyOptOut: denied, retainedAdReference: !denied, failedSaveNoSuccess: true, missingReceiptNoSuccess: true, successfulSaveReceipt: true, realSubmissions: 0 });
     await context.close();
   }
   const response = await fetch(base + "/api/openapi.json");

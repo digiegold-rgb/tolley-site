@@ -17,3 +17,11 @@ Delivery retries at most three times with six-second timeouts. Permanent 4xx fai
 - Confirm the first genuine attributed quote in Ads Manager. A successful validation request does not prove that a real customer converted.
 
 The public OpenAPI document also describes the direct free-quote endpoint, optional explicit SMS consent, saved `leadId` receipt, and failure responses. Discovery documentation is not an invitation to submit test inquiries to production.
+
+## Owner quote alerts
+
+The GrowthLead, customer link and Telegram owner-notification record commit in the same transaction. The response schedules immediate delivery through the existing lead-notification outbox; its cron retries failed delivery up to five attempts with backoff during the existing scheduled hours. A provider outage leaves the saved inquiry and pending alert intact. Exhausted attempts remain visible as failed notification rows. Delivery is at least once: a crash after provider acceptance can repeat an alert.
+
+Cleanout alerts use plain text so punctuation in names and addresses cannot break Telegram Markdown parsing. Other Telegram callers keep their existing formatting. The browser shows success only with an explicit successful saved-lead receipt. No historic quotes are backfilled or re-notified.
+
+Verify the transaction boundary with `node --conditions=react-server tests/cleanouts-quote.mjs`, and retry, rollback and concurrent delivery with `tests/revenue-outbox.ts` against its required isolated database. The latter intercepts Telegram HTTP calls; it sends no owner message.

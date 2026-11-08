@@ -12,15 +12,22 @@ const nextServer = require("next/server");
 
 const creates = [];
 const alerts = [];
+const deliveries = [];
+let inTransaction = false;
+let rejectEnqueue = false;
 
 const prismaStub = {
   async $transaction(fn) {
-    return fn(prismaStub);
+    const before = creates.length;
+    inTransaction = true;
+    try { return await fn(prismaStub); }
+    catch (error) { creates.length = before; throw error; }
+    finally { inTransaction = false; }
   },
   growthLead: {
     create: async ({ data }) => {
       creates.push(data);
-      return { id: "lead_test", ...data, createdAt: new Date() };
+      return { id: `lead_test_${creates.length}`, ...data, createdAt: new Date() };
     },
   },
 };
@@ -40,10 +47,16 @@ const stubs = {
     consumeRateLimit: async () => ({ allowed: true, count: 1, limit: 5, retryAfterSeconds: 0 }),
     rateLimited: (rl) => nextServer.NextResponse.json({ error: "rate limited", retryAfterSeconds: rl.retryAfterSeconds }, { status: 429 }),
   },
-  "@/lib/budget/notify": {
-    notifyTelegram: async (message) => {
-      alerts.push(message);
-      return { ok: true };
+  "@/lib/lead-notification-outbox": {
+    enqueueCleanoutNotification: async (tx, leadId, contact) => {
+      assert.equal(tx, prismaStub);
+      assert.equal(inTransaction, true, "alert is saved in the lead transaction");
+      if (rejectEnqueue) throw new Error("Simulated outbox storage failure");
+      alerts.push({ leadId, contact });
+    },
+    deliverLeadNotifications: async (leadId) => {
+      assert.equal(inTransaction, false, "delivery happens only after commit");
+      deliveries.push(leadId);
     },
   },
 };
@@ -104,7 +117,7 @@ const ok = await post({
   details: "Garage full of furniture",
 });
 assert.equal(ok.status, 200);
-assert.deepEqual(await ok.json(), { ok: true, leadId: "lead_test" });
+assert.deepEqual(await ok.json(), { ok: true, leadId: "lead_test_1" });
 assert.equal(creates.length, 1);
 assert.equal(creates[0].offer, "cleanout");
 assert.equal(creates[0].source, "cleanouts-page");
@@ -133,7 +146,15 @@ assert.equal(creates[2].attribution.smsConsent.optedIn, true);
 
 await new Promise((resolvePromise) => setTimeout(resolvePromise, 0));
 assert.equal(alerts.length, 3);
-assert.match(alerts[0], /Cleanout quote request: Ada Homeowner 816-555-0100/);
-assert.match(alerts[0], /100 Main St, Independence, MO/);
+assert.deepEqual(alerts[0], { leadId: "lead_test_1", contact: {
+  name: "Ada Homeowner", phone: "816-555-0100", address: "100 Main St, Independence, MO",
+} });
+assert.deepEqual(deliveries, ["lead_test_1", "lead_test_2", "lead_test_3"]);
+
+rejectEnqueue = true;
+await assert.rejects(post({ phone: "816-555-0103" }), /outbox storage failure/);
+await new Promise(resolve => setTimeout(resolve, 0));
+assert.equal(creates.length, 3, "failed alert storage rolls the lead transaction back");
+assert.equal(deliveries.length, 3, "failed transactions never trigger delivery");
 
 console.log("cleanouts quote: GrowthLead write and Telegram owner alert path passed.");

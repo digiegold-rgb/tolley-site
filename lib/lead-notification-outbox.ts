@@ -1,5 +1,6 @@
 import { Prisma, type LeadNotification } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { notifyTelegram } from "@/lib/budget/notify";
 import { sendDiscord, sendEmail, sendActionDiscord, sendActionEmail,
   type LeadNotifyArgs, type LeadActionNotifyArgs } from "@/lib/lead-notify";
 
@@ -17,11 +18,28 @@ export async function enqueueLeadNotifications(
   }
 }
 
+export async function enqueueCleanoutNotification(
+  tx: Prisma.TransactionClient, leadId: string,
+  contact: { name: string; phone: string; address: string },
+) {
+  const message = `🧹 Cleanout quote request: ${contact.name || "(no name)"} ${contact.phone || "(no phone)"}` +
+    (contact.address ? ` — ${contact.address}` : "");
+  await tx.leadNotification.createMany({ skipDuplicates: true, data: {
+    id: `cleanout:${leadId}:telegram`, kind: "cleanout", leadId, channel: "telegram",
+    payload: { message },
+  } });
+}
+
 /** Per-channel leases prevent parallel cron/after workers from sending together.
  * A crash after provider acceptance can redeliver; this is at-least-once delivery.
  * Never enqueue customer marketing or historical imports here. */
 async function sendNotification(row: LeadNotification) {
-  if (row.kind === "action") {
+  if (row.kind === "cleanout" && row.channel === "telegram") {
+    const payload = row.payload as { message?: unknown };
+    if (typeof payload.message !== "string" || !payload.message) throw new Error("Invalid cleanout notification");
+    const result = await notifyTelegram(payload.message, { plainText: true });
+    if (!result.ok) throw new Error("Telegram notification failed");
+  } else if (row.kind === "action") {
     const args = row.payload as unknown as LeadActionNotifyArgs;
     await (row.channel === "email" ? sendActionEmail(args) : sendActionDiscord(args));
   } else {
