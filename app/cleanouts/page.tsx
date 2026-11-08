@@ -31,13 +31,13 @@ function CleanoutsPage() {
           </a>
           <span className="text-white/30">|</span>
           <a href={TC_PHONE_SMS} className="text-xs text-white/70 hover:text-white">
-            Call or Text
+            Text Photos
           </a>
         </div>
       </div>
 
       {/* Hero */}
-      <section className="relative overflow-hidden px-5 pt-16 pb-20 text-center sm:pt-24 sm:pb-24">
+      <section className="relative overflow-hidden px-5 pt-10 pb-10 text-center sm:pt-16 sm:pb-14">
         <div className="mx-auto max-w-3xl">
           <p className="tc-kicker">Tolley Cleanouts · {TC_AREA}</p>
           <h1 className="tc-display mt-4 text-4xl font-bold text-white sm:text-6xl">
@@ -58,9 +58,13 @@ function CleanoutsPage() {
             </a>
           </div>
 
-          <p className="mx-auto mt-6 max-w-md text-sm text-white/40">
-            Free quotes, no public price list games — one flat number for the whole
-            job, <span className="font-semibold text-[#ff7a1a]">before</span> we start.
+          <a href="#quote" className="mt-5 inline-flex min-h-11 items-center text-base font-semibold text-[#ff7a1a] underline underline-offset-4 hover:text-white">
+            Request a quote online
+          </a>
+
+          <p className="mx-auto mt-4 max-w-md text-sm text-white/60">
+            Free quote. One flat price agreed before work starts. Items with resale
+            value can reduce your bill.
           </p>
           <a href={TC_FACEBOOK_URL} target="_blank" rel="noopener noreferrer" className="mt-5 inline-block text-sm text-[#ff7a1a] underline underline-offset-4 hover:text-white">
             Follow Tolley Clean Outs on Facebook
@@ -69,6 +73,20 @@ function CleanoutsPage() {
       </section>
 
       <div className="mx-auto max-w-6xl space-y-16 px-5 pb-20 sm:px-8">
+        {/* Quote form */}
+        <section id="quote" className="scroll-mt-24">
+          <div className="mx-auto max-w-2xl">
+            <p className="tc-kicker text-center">Free quote</p>
+            <h2 className="tc-display mt-2 mb-3 text-center text-3xl text-white">
+              Tell us what needs clearing
+            </h2>
+            <p className="mb-8 text-center text-sm text-white/50">
+              We&apos;ll get back to you with a flat number, usually same day.
+            </p>
+            <CleanoutQuoteForm />
+          </div>
+        </section>
+
         {/* How it works */}
         <section className="tc-enter" style={{ "--enter-delay": "0.1s" } as React.CSSProperties}>
           <p className="tc-kicker text-center">How it works</p>
@@ -131,20 +149,6 @@ function CleanoutsPage() {
                 <div className="px-5 pb-4 text-sm text-white/50">{faq.a}</div>
               </details>
             ))}
-          </div>
-        </section>
-
-        {/* Quote form */}
-        <section id="quote" className="tc-enter scroll-mt-24" style={{ "--enter-delay": "0.5s" } as React.CSSProperties}>
-          <div className="mx-auto max-w-2xl">
-            <p className="tc-kicker text-center">Free quote</p>
-            <h2 className="tc-display mt-2 mb-3 text-center text-3xl text-white">
-              Tell us what needs clearing
-            </h2>
-            <p className="mb-8 text-center text-sm text-white/50">
-              We&apos;ll get back to you with a flat number, usually same day.
-            </p>
-            <CleanoutQuoteForm />
           </div>
         </section>
       </div>
