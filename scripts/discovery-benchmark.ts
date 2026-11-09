@@ -1,5 +1,8 @@
 import { publicOfferings } from "../lib/discovery";
 const needs: Record<string, string> = {
+  agent: "real estate agent tools and lead management",
+  post: "social media post scheduling and content publishing", fit: "personalized fitness planning",
+  repair: "small home repairs, furniture removal, and help preparing an inherited property for sale in Independence, Missouri",
   live: "an evening live shopping show with tools, home finds, and local pickup",
   advertising: "Google Ads management for real estate agents", animate: "script to narrated AI video creation", realestateanimated: "real estate listing video creation",
   cleanouts: "estate and rental property cleanouts", crazybins: "liquidation bin shopping", estate: "estate sale services", drive: "delivery driver work", "e-and-t": "wedding planning and coordination",

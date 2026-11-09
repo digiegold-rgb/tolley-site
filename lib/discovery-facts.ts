@@ -52,7 +52,7 @@ const corrections: Record<string, Partial<SubsiteManifest>> = {
 const privateNames = new Set(["vater", "agents", "billing", "client", "food", "leads", "scan", "video", "water", "gpu"]);
 const retiredNames = new Set(["crypto", "results"]);
 const supportingNames = new Set(["about", "blog", "circle", "data-retention", "go", "pay", "pricing", "privacy", "security", "signup", "start", "tools", "terms", "rentals"]);
-const ownedPhone = new Set(["live", "cleanouts", "estate", "wd", "generator", "trailer", "moving", "tables", "picnic-table", "kerplunk", "homes", "real-estate-agent", "housing", "lastmile", "rental", "rentals", "sales", "pools"]);
+const ownedPhone = new Set(["repair", "live", "cleanouts", "estate", "wd", "generator", "trailer", "moving", "tables", "picnic-table", "kerplunk", "homes", "real-estate-agent", "housing", "lastmile", "rental", "rentals", "sales", "pools"]);
 
 export function withDiscoveryFacts(input: SubsiteManifest): SubsiteManifest {
   const s = { ...input, ...corrections[input.name] };

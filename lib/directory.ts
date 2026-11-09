@@ -49,6 +49,7 @@ interface DisplayMeta {
 // Keyed by subsite `name` (must match lib/subsites.ts). Legal/infra/misc
 // subsites are intentionally absent — they are not consumer products.
 const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
+  repair: { title: "Tolley Repair & Property Services", group: "Home Services", tagline: "Repairs, cleanouts, and your next move", bullets: ["Small home repairs", "Furniture removal & cleanouts", "Property transitions"], emoji: "🔧", accent: "orange", featured: true },
   sales: {
     title: "The Launchpad",
     group: "Start a Business",
