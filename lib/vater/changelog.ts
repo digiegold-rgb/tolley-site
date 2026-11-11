@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.67';
+export const APP_VERSION = '1.68';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.68', date: '2026-11-11', title: 'A custom PC, built around you', items: ['Tolley PC offers custom computers, workstations, and assembly using your own parts.', 'Tell Jared about your goals, parts, budget, and preferred timing to request a personal quote.'] },
   { version: '1.67', date: '2026-11-09', title: 'One call for repairs and property help', items: ['Tolley Repair brings small repairs, furniture removal, cleanouts, estate sales, and home-sale options together.', 'Send one request to Jared for help with the whole property.'] },
   { version: '1.66.1', date: '2026-11-07', title: 'Easier cleanout quotes and reliable owner alerts', items: ['The cleanout quote form is near the top of the page, with a direct shortcut beside the call and text options.', 'Quote confirmations require a saved inquiry receipt, and owner alerts retry when delivery fails.'] },
   { version: '1.66', date: '2026-11-03', title: 'Wash & Dry activity across the city', items: ['Explore rental installations and subscription starts on a public calendar and city map, with a maintenance overview.', 'First names and broad city summaries keep customer locations and financial details private.', 'Shared activity links include a custom illustrated preview.'] },

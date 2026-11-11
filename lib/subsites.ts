@@ -1,3 +1,4 @@
+import { manifest as pc } from '@/app/pc/agent';
 import { manifest as repair } from '@/app/repair/agent';
 import { isRetiredSitePath } from "@/lib/retired-sites";
 import { manifest as post } from "@/app/post/agent";
@@ -60,6 +61,7 @@ import { manifest as wd } from "@/app/wd/agent";
 import { manifest as live } from "@/app/live/agent";
 
 const registered: SubsiteManifest[] = [
+  pc,
   repair,
   post, fit,
   about,
