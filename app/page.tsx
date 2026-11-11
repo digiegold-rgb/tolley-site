@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 };
 
 const services = [
+  { name: "Custom PC builds", text: "Plan a custom computer with Jared, or bring your own parts for assembly.", href: "/pc" },
   { name: "Washer & dryer rentals", text: "Explore equipment rental options and request availability in your ZIP.", href: "/wd" },
   { name: "Homes & real estate", text: "Find Kansas City homes and connect with Jared about your next move.", href: "/homes" },
   { name: "Estate sales", text: "Browse upcoming sales or get help planning a sale of your own.", href: "/estate" },

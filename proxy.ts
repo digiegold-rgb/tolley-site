@@ -82,6 +82,13 @@ const authSecret =
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
+  // Accept the printed /PC address without a case-insensitive redirect loop.
+  if (pathname === '/PC') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/pc';
+    return NextResponse.redirect(url, 308);
+  }
+
   // Return before auth and page rendering, including nested routes and RSC requests.
   // The matcher leaves static assets available to other sites that share them.
   if (isRetiredSitePath(pathname)) {
@@ -195,7 +202,7 @@ export async function proxy(request: NextRequest) {
   const response = NextResponse.next({ request: { headers } });
   // Preserve only approved landing facts from real document requests. No DB work
   // in proxy, no tracking of private pages, assets, bots or speculative prefetch.
-  const publicLanding = /^\/(?:$|repair|homes|cleanouts|estate|services|start|about|wd|shop|housing)(?:\/|$)/.test(pathname);
+  const publicLanding = /^\/(?:$|pc|repair|homes|cleanouts|estate|services|start|about|wd|shop|housing)(?:\/|$)/.test(pathname);
   if (publicLanding && request.method === "GET" && request.headers.get("accept")?.includes("text/html") && !request.headers.has("next-router-prefetch") && !request.headers.has("rsc") && !/bot|crawler|spider|preview/i.test(ua || "") && !isAuthenticated) {
     const attribution = captureAttribution(request.url, request.headers.get("referer") || "");
     if (!request.cookies.has("tolley_entry") || attribution.campaignSource || (attribution.referrerHost && attribution.browserSource !== "internal")) {
