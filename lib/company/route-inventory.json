@@ -1,4 +1,5 @@
 [
+  {"file":"app/job/page.tsx","path":"/job","audience":"supporting"},
   {"file":"app/pc/page.tsx","path":"/pc","audience":"public"},
   {"file":"app/repair/page.tsx","path":"/repair","audience":"public"},
   {"file":"app/.well-known/agent-card.json/route.ts","path":"/.well-known/agent-card.json","audience":"machine"},

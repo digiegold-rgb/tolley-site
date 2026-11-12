@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.68';
+export const APP_VERSION = '1.69';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.69', date: '2026-11-11', title: 'Local part-time work, paid daily', items: ['The new job page explains the $28/hour helper role, neighborhood requirement, provided equipment, and starting hours.', 'Apply with five short answers, then send the prefilled text straight to Jared.'] },
   { version: '1.68', date: '2026-11-11', title: 'A custom PC, built around you', items: ['Tolley PC offers custom computers, workstations, and assembly using your own parts.', 'Tell Jared about your goals, parts, budget, and preferred timing to request a personal quote.'] },
   { version: '1.67', date: '2026-11-09', title: 'One call for repairs and property help', items: ['Tolley Repair brings small repairs, furniture removal, cleanouts, estate sales, and home-sale options together.', 'Send one request to Jared for help with the whole property.'] },
   { version: '1.66.1', date: '2026-11-07', title: 'Easier cleanout quotes and reliable owner alerts', items: ['The cleanout quote form is near the top of the page, with a direct shortcut beside the call and text options.', 'Quote confirmations require a saved inquiry receipt, and owner alerts retry when delivery fails.'] },
